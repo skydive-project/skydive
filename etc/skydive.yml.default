@@ -152,6 +152,9 @@ agent:
       # - socketinfo
       # - lxd
 
+    docker:
+      # url: unix:///var/run/docker.sock
+
     netlink:
       # delay in seconds between two metric updates
       # metrics_update: 30
@@ -234,9 +237,6 @@ sflow:
   # with a port from this range
   # port_min: 6345
   # port_max: 6355
-
-docker:
-  # url: unix:///var/run/docker.sock
 
 netns:
   # allow to specify where the netns probe is watching network namespace

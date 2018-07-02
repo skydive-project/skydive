@@ -269,16 +269,16 @@ func (probe *DockerProbe) Stop() {
 	atomic.StoreInt64(&probe.state, common.StoppedState)
 }
 
-// NewDockerProbe creates a new topology Docker probe
-func NewDockerProbe(nsProbe *ns.NetNSProbe, dockerURL string) (*DockerProbe, error) {
+// NewDockerProbeFromConfig creates a new topology Docker probe
+func NewDockerProbeFromConfig(nsProbe *ns.NetNSProbe) (*DockerProbe, error) {
 	dockerProbe := &DockerProbe{
 		NetNSProbe:   nsProbe,
-		url:          dockerURL,
+		url:          config.GetString("agent.topology.docker.url"),
 		containerMap: make(map[string]containerInfo),
 		state:        common.StoppedState,
 	}
 
-	if path := config.GetString("docker.netns.run_path"); path != "" {
+	if path := config.GetString("agent.topology.docker.netns.run_path"); path != "" {
 		nsProbe.Exclude(path + "/default")
 		nsProbe.Watch(path)
 	}

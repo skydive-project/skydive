@@ -79,8 +79,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.Pro
 			}
 			probes[t] = lxdProbe
 		case "docker":
-			dockerURL := config.GetString("docker.url")
-			dockerProbe, err := docker.NewDockerProbe(nsProbe, dockerURL)
+			dockerProbe, err := docker.NewDockerProbeFromConfig(nsProbe)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to initialize Docker probe: %s", err)
 			}

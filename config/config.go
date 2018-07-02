@@ -48,6 +48,8 @@ var (
 		"agent.auth.cluster.password":                {"auth.analyzer_password"},
 		"agent.auth.cluster.username":                {"auth.analyzer_username"},
 		"agent.capture.stats_update":                 {"agent.flow.stats_update"},
+		"agent.topology.docker.url":                  {"docker.url"},
+		"agent.topology.docker.netns.run_path":       {"docker.netns.run_path"},
 		"agent.topology.ovs.ovsdb":                   {"ovs.ovsdb"},
 		"agent.topology.ovs.oflow.enable":            {"ovs.oflow.enable"},
 		"agent.topology.ovs.oflow.openflow_versions": {"ovs.oflow.openflow_versions"},
@@ -81,6 +83,8 @@ func init() {
 	cfg.SetDefault("agent.flow.pcapsocket.max_port", 8132)
 	cfg.SetDefault("agent.listen", "127.0.0.1:8081")
 	cfg.SetDefault("agent.topology.probes", []string{"ovsdb"})
+	cfg.SetDefault("agent.topology.docker.url", "unix:///var/run/docker.sock")
+	cfg.SetDefault("agent.topology.docker.netns.run_path", "/var/run/docker/netns")
 	cfg.SetDefault("agent.topology.netlink.metrics_update", 30)
 	cfg.SetDefault("agent.topology.neutron.domain_name", "Default")
 	cfg.SetDefault("agent.topology.neutron.endpoint_type", "public")
@@ -111,9 +115,6 @@ func init() {
 
 	cfg.SetDefault("cache.expire", 300)
 	cfg.SetDefault("cache.cleanup", 30)
-
-	cfg.SetDefault("docker.url", "unix:///var/run/docker.sock")
-	cfg.SetDefault("docker.netns.run_path", "/var/run/docker/netns")
 
 	cfg.SetDefault("etcd.data_dir", "/var/lib/skydive/etcd")
 	cfg.SetDefault("etcd.embedded", true)
