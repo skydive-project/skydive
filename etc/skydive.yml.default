@@ -170,6 +170,43 @@ agent:
       # The endpoint_type value must be 'public', 'internal' or 'admin'
       # endpoint_type: public
 
+    ovs:
+      # ovsdb connection, Format supported :
+      # * addr:port
+      # * tcp://addr:port
+      # * unix:///var/run/openvswitch/db.sock
+      # If you use the tcp connection you need to authorize connexion to ovsdb agent
+      # at least locally
+      # % sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote ptcp:6400:127.0.0.1
+      # ovsdb: unix:///var/run/openvswitch/db.sock
+
+      oflow:
+        # Enable the parsing of openflow rules (disabled by default)
+        # enable: false
+
+        # Openflow versions used by ovs-ofctl when queries are made to the
+        # switch. 1.0 should always be supported. 1.3 gives a nicer output and
+        # it is recommended to add it if it is supported.
+        # 1.4 can be broken on some switch, 1.5 and 1.6 are still considered
+        # as experimental.
+        # openflow_versions:
+        #  - OpenFlow10
+
+        # The probe can connect to remote bridge over TLS (ssl url).
+        # The default value is empty for those options.
+        # Path to the private key file (TLS connection)
+        # key: /etc/ssl/private/agent.key
+
+        # Path to the certificate associated to the key (TLS connection)
+        # cert: /etc/ssl/certs/agent.crt
+
+        # Path to certificate authority validating bridge connections (TLS connection)
+        # ca: /etc/ssl/certs/ca.crt
+
+        address:
+          # Map translating bridge names into URL for remote connection
+          # - bridge: ssl:xxx.yyy.zzz.ttt:port
+
   capture:
     # Period in second to get capture stats from the probe. Note this
     # stats_update: 1
@@ -197,43 +234,6 @@ sflow:
   # with a port from this range
   # port_min: 6345
   # port_max: 6355
-
-ovs:
-  # ovsdb connection, Format supported :
-  # * addr:port
-  # * tcp://addr:port
-  # * unix:///var/run/openvswitch/db.sock
-  # If you use the tcp connection you need to authorize connexion to ovsdb agent
-  # at least locally
-  # % sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote ptcp:6400:127.0.0.1
-  # ovsdb: unix:///var/run/openvswitch/db.sock
-
-  oflow:
-    # Enable the parsing of openflow rules (disabled by default)
-    # enable: false
-
-    # Openflow versions used by ovs-ofctl when queries are made to the
-    # switch. 1.0 should always be supported. 1.3 gives a nicer output and
-    # it is recommended to add it if it is supported.
-    # 1.4 can be broken on some switch, 1.5 and 1.6 are still considered
-    # as experimental.
-    # openflow_versions:
-    #  - OpenFlow10
-
-    # The probe can connect to remote bridge over TLS (ssl url).
-    # The default value is empty for those options.
-    # Path to the private key file (TLS connection)
-    # key: /etc/ssl/private/agent.key
-
-    # Path to the certificate associated to the key (TLS connection)
-    # cert: /etc/ssl/certs/agent.crt
-
-    # Path to certificate authority validating bridge connections (TLS connection)
-    # ca: /etc/ssl/certs/ca.crt
-
-    address:
-      # Map translating bridge names into URL for remote connection
-      # - bridge: ssl:xxx.yyy.zzz.ttt:port
 
 docker:
   # url: unix:///var/run/docker.sock

@@ -44,17 +44,20 @@ var ErrNoAnalyzerSpecified = errors.New("No analyzer specified in the configurat
 var (
 	cfg           *viper.Viper
 	relocationMap = map[string][]string{
-		"agent.auth.api.backend":         {"auth.type"},
-		"agent.auth.cluster.password":    {"auth.analyzer_password"},
-		"agent.auth.cluster.username":    {"auth.analyzer_username"},
-		"agent.capture.stats_update":     {"agent.flow.stats_update"},
-		"analyzer.auth.api.backend":      {"auth.type"},
-		"analyzer.auth.cluster.backend":  {"auth.type"},
-		"analyzer.auth.cluster.password": {"auth.analyzer_password"},
-		"analyzer.auth.cluster.username": {"auth.analyzer_username"},
-		"analyzer.flow.backend":          {"analyzer.storage.backend"},
-		"analyzer.flow.max_buffer_size":  {"analyzer.storage.max_flow_buffer_size"},
-		"analyzer.topology.backend":      {"graph.backend"},
+		"agent.auth.api.backend":                     {"auth.type"},
+		"agent.auth.cluster.password":                {"auth.analyzer_password"},
+		"agent.auth.cluster.username":                {"auth.analyzer_username"},
+		"agent.capture.stats_update":                 {"agent.flow.stats_update"},
+		"agent.topology.ovs.ovsdb":                   {"ovs.ovsdb"},
+		"agent.topology.ovs.oflow.enable":            {"ovs.oflow.enable"},
+		"agent.topology.ovs.oflow.openflow_versions": {"ovs.oflow.openflow_versions"},
+		"analyzer.auth.api.backend":                  {"auth.type"},
+		"analyzer.auth.cluster.backend":              {"auth.type"},
+		"analyzer.auth.cluster.password":             {"auth.analyzer_password"},
+		"analyzer.auth.cluster.username":             {"auth.analyzer_username"},
+		"analyzer.flow.backend":                      {"analyzer.storage.backend"},
+		"analyzer.flow.max_buffer_size":              {"analyzer.storage.max_flow_buffer_size"},
+		"analyzer.topology.backend":                  {"graph.backend"},
 	}
 )
 
@@ -85,6 +88,9 @@ func init() {
 	cfg.SetDefault("agent.topology.neutron.region_name", "RegionOne")
 	cfg.SetDefault("agent.topology.neutron.tenant_name", "service")
 	cfg.SetDefault("agent.topology.neutron.username", "neutron")
+	cfg.SetDefault("agent.topology.ovs.ovsdb", "unix:///var/run/openvswitch/db.sock")
+	cfg.SetDefault("agent.topology.ovs.oflow.enable", false)
+	cfg.SetDefault("agent.topology.ovs.oflow.openflow_versions", []string{"OpenFlow10"})
 	cfg.SetDefault("agent.topology.socketinfo.host_update", 10)
 	cfg.SetDefault("agent.X509_servername", "")
 
@@ -140,10 +146,6 @@ func init() {
 	cfg.SetDefault("opencontrail.host", "localhost")
 	cfg.SetDefault("opencontrail.mpls_udp_port", 51234)
 	cfg.SetDefault("opencontrail.port", 8085)
-
-	cfg.SetDefault("ovs.ovsdb", "unix:///var/run/openvswitch/db.sock")
-	cfg.SetDefault("ovs.oflow.enable", false)
-	cfg.SetDefault("ovs.oflow.openflow_versions", []string{"OpenFlow10"})
 
 	cfg.SetDefault("sflow.port_min", 6345)
 	cfg.SetDefault("sflow.port_max", 6355)

@@ -196,8 +196,19 @@ $(get_probes_for_config $SKYDIVE_AGENT_PROBES)
       region_name: RegionOne
       domain_name: $SERVICE_DOMAIN_NAME
 
-analyzer:
 EOF
+
+    if [ "x$SKYDIVE_OVSDB_REMOTE_PORT" != "x" ]; then
+        cat >> $SKYDIVE_CONFIG_FILE <<- EOF
+    ovs:
+      ovsdb: $SKYDIVE_OVSDB_REMOTE_PORT
+      oflow:
+        enable: true
+
+EOF
+    fi
+
+    echo "analyzer:" >> $SKYDIVE_CONFIG_FILE
 
     if [ "$SKYDIVE_FLOWS_STORAGE" == "elasticsearch" ]; then
         cat >> $SKYDIVE_CONFIG_FILE <<- EOF
@@ -223,16 +234,6 @@ EOF
     if [ "x$SKYDIVE_ANALYZER_LISTEN" != "x" ]; then
         cat >> $SKYDIVE_CONFIG_FILE <<- EOF
   listen: $SKYDIVE_ANALYZER_LISTEN
-EOF
-    fi
-
-    if [ "x$SKYDIVE_OVSDB_REMOTE_PORT" != "x" ]; then
-        cat >> $SKYDIVE_CONFIG_FILE <<- EOF
-ovs:
-  ovsdb: $SKYDIVE_OVSDB_REMOTE_PORT
-  oflow:
-    enable: true
-
 EOF
     fi
 

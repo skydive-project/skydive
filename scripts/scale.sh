@@ -181,20 +181,22 @@ agent:
   X509_cert: $AGENT_CRT
   X509_key: $AGENT_KEY
   X509_insecure: true
+  auth:
+    cluster:
+      username: agent-${IDX}
+      password: agent-password-${IDX}
   topology:
-    netlink:
-      metrics_update: 5
-    socketinfo:
-      host_update: 5
     probes:
       - netlink
       - netns
       - ovsdb
       - socketinfo
-  auth:
-    cluster:
-      username: agent-${IDX}
-      password: agent-password-${IDX}
+    netlink:
+      metrics_update: 5
+    ovs:
+      ovsdb: unix://$TEMP_DIR/$NAME.sock
+    socketinfo:
+      host_update: 5
 flow:
   expire: 600
   update: 5
@@ -205,8 +207,6 @@ etcd:
   data_dir: $TEMP_DIR/$NAME-etcd
   servers:
     - http://$ETCD
-ovs:
-  ovsdb: unix://$TEMP_DIR/$NAME.sock
 logging:
   level: DEBUG
 EOF

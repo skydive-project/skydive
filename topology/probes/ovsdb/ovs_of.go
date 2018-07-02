@@ -362,7 +362,7 @@ func completeEvent(ctx context.Context, o *OvsOfProbe, event *Event, prefix stri
 	// the priority is provided. Another approach would be to use the shortest filter as it is the more generic
 	expected := countElements(oldrule.Filter)
 	filter := makeFilter(oldrule)
-	versions := strings.Join(config.GetStringSlice("ovs.oflow.openflow_versions"), ",")
+	versions := strings.Join(config.GetStringSlice("agent.topology.ovs.oflow.openflow_versions"), ",")
 	command, err1 := o.makeCommand(
 		[]string{"ovs-ofctl", "-O", versions, "dump-flows"},
 		bridge, filter)
@@ -561,15 +561,15 @@ func (o *OvsOfProbe) OnOvsBridgeDel(uuid string, bridgeNode *graph.Node) {
 
 // NewOvsOfProbe creates a new probe associated to a given graph, root node and host.
 func NewOvsOfProbe(ctx context.Context, g *graph.Graph, root *graph.Node, host string) *OvsOfProbe {
-	if !config.GetBool("ovs.oflow.enable") {
+	if !config.GetBool("agent.topology.ovs.oflow.enable") {
 		return nil
 	}
 
 	logging.GetLogger().Infof("Adding OVS probe on %s", host)
-	translate := config.GetStringMapString("ovs.oflow.address")
-	cert := config.GetString("ovs.oflow.cert")
-	pk := config.GetString("ovs.oflow.key")
-	ca := config.GetString("ovs.oflow.ca")
+	translate := config.GetStringMapString("agent.topology.ovs.oflow.address")
+	cert := config.GetString("agent.topology.ovs.oflow.cert")
+	pk := config.GetString("agent.topology.ovs.oflow.key")
+	ca := config.GetString("agent.topology.ovs.oflow.ca")
 	sslOk := (pk != "") && (ca != "") && (cert != "")
 	o := &OvsOfProbe{
 		Host:         host,

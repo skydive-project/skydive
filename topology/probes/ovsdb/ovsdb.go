@@ -608,7 +608,7 @@ func NewOvsdbProbe(g *graph.Graph, n *graph.Node, p string, t string) *OvsdbProb
 
 // NewOvsdbProbeFromConfig creates a new probe based on configuration
 func NewOvsdbProbeFromConfig(g *graph.Graph, n *graph.Node) *OvsdbProbe {
-	address := config.GetString("ovs.ovsdb")
+	address := config.GetString("agent.topology.ovs.ovsdb")
 
 	var protocol string
 	var target string

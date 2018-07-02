@@ -80,6 +80,9 @@ agent:
       - opencontrail
     netlink:
       metrics_update: 5
+    ovs:
+      oflow:
+        enable: true
 
   metadata:
     info: This is compute node
@@ -94,10 +97,6 @@ agent:
 flow:
   expire: 600
   update: 10
-
-ovs:
-  oflow:
-    enable: true
 
 storage:
   orientdb:
