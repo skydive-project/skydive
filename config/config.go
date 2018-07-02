@@ -62,6 +62,8 @@ var (
 		"analyzer.flow.backend":                      {"analyzer.storage.backend"},
 		"analyzer.flow.max_buffer_size":              {"analyzer.storage.max_flow_buffer_size"},
 		"analyzer.topology.backend":                  {"graph.backend"},
+		"analyzer.topology.k8s.config_file":          {"k8s.config_file"},
+		"analyzer.topology.k8s.probes":               {"k8s.probes"},
 	}
 )
 
@@ -112,6 +114,7 @@ func init() {
 	cfg.SetDefault("analyzer.replication.debug", false)
 	cfg.SetDefault("analyzer.topology.backend", "memory")
 	cfg.SetDefault("analyzer.topology.probes", []string{})
+	cfg.SetDefault("analyzer.topology.k8s.config_file", "/etc/skydive/kubeconfig")
 
 	cfg.SetDefault("auth.basic.type", "basic") // defined for backward compatibility
 	cfg.SetDefault("auth.keystone.tenant_name", "admin")
@@ -138,8 +141,6 @@ func init() {
 	cfg.SetDefault("http.ws.pong_timeout", 5)
 	cfg.SetDefault("http.ws.queue_size", 10000)
 	cfg.SetDefault("http.ws.enable_write_compression", true)
-
-	cfg.SetDefault("k8s.config_file", "/etc/skydive/kubeconfig")
 
 	cfg.SetDefault("logging.backends", []string{"stderr"})
 	cfg.SetDefault("logging.color", true)

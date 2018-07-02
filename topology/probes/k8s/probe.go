@@ -123,5 +123,5 @@ func NewProbe(g *graph.Graph) (*Probe, error) {
 		"statefulset":           newStatefulSetProbe,
 		"storageclass":          newStorageClassProbe,
 	}
-	return NewProbeHelper(g, "k8s", &name2ctor)
+	return NewProbeHelper(g, "analyzer.topology.k8s", &name2ctor)
 }

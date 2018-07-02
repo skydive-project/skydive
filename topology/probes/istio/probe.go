@@ -36,5 +36,5 @@ func NewProbe(g *graph.Graph) (*k8s.Probe, error) {
 		"cluster":         newClusterProbe,
 		"destinationrule": newDestinationRuleProbe,
 	}
-	return k8s.NewProbeHelper(g, "istio", &name2ctor)
+	return k8s.NewProbeHelper(g, "analyzer.topology.istio", &name2ctor)
 }

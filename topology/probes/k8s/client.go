@@ -40,7 +40,7 @@ import (
 var clientset *kubernetes.Clientset
 
 func NewConfig() (*rest.Config, error) {
-	file := config.GetString("k8s.config_file")
+	file := config.GetString("analyzer.topology.k8s.config_file")
 	config, err := clientcmd.BuildConfigFromFlags("", file)
 	if err != nil {
 		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
