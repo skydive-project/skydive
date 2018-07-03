@@ -20,7 +20,7 @@
  *
  */
 
-package metadata
+package usertopology
 
 import (
 	"github.com/skydive-project/skydive/api/server"

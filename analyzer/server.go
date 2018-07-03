@@ -61,7 +61,8 @@ type Server struct {
 	alertServer         *alert.Server
 	onDemandClient      *ondemand.OnDemandProbeClient
 	piClient            *packet_injector.PacketInjectorClient
-	metadataManager     *metadata.UserMetadataManager
+	metadataManager     *usertopology.UserMetadataManager
+	topologyManager     *usertopology.TopologyManager
 	flowServer          *FlowServer
 	probeBundle         *probe.ProbeBundle
 	storage             storage.Storage
@@ -127,6 +128,7 @@ func (s *Server) Start() error {
 	s.piClient.Start()
 	s.alertServer.Start()
 	s.metadataManager.Start()
+	s.topologyManager.Start()
 	s.flowServer.Start()
 	s.agentWSServer.Start()
 	s.publisherWSServer.Start()
@@ -161,6 +163,7 @@ func (s *Server) Stop() {
 	s.piClient.Stop()
 	s.alertServer.Stop()
 	s.metadataManager.Stop()
+	s.topologyManager.Stop()
 	s.etcdClient.Stop()
 	s.wgServers.Wait()
 	if tr, ok := http.DefaultTransport.(interface {
@@ -307,6 +310,16 @@ func NewServerFromConfig() (*Server, error) {
 	}
 	piClient := packet_injector.NewPacketInjectorClient(agentWSServer, etcdClient, piAPIHandler, g)
 
+	nodeAPIHandler, err := api.RegisterNodeRuleAPI(apiServer, g, apiAuthBackend)
+	if err != nil {
+		return nil, err
+	}
+	edgeAPIHandler, err := api.RegisterEdgeRuleAPI(apiServer, g, apiAuthBackend)
+	if err != nil {
+		return nil, err
+	}
+	topologyManager := usertopology.NewTopologyManager(etcdClient, nodeAPIHandler, edgeAPIHandler, g)
+
 	if _, err = api.RegisterAlertAPI(apiServer, apiAuthBackend); err != nil {
 		return nil, err
 	}
@@ -317,7 +330,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	onDemandClient := ondemand.NewOnDemandProbeClient(g, captureAPIHandler, agentWSServer, subscriberWSServer, etcdClient)
 
-	metadataManager := metadata.NewUserMetadataManager(g, metadataAPIHandler)
+	metadataManager := usertopology.NewUserMetadataManager(g, metadataAPIHandler)
 
 	flowServer, err := NewFlowServer(hserver, g, storage, probeBundle, clusterAuthBackend)
 	if err != nil {
@@ -342,6 +355,7 @@ func NewServerFromConfig() (*Server, error) {
 		onDemandClient:      onDemandClient,
 		piClient:            piClient,
 		metadataManager:     metadataManager,
+		topologyManager:     topologyManager,
 		storage:             storage,
 		flowServer:          flowServer,
 		alertServer:         alertServer,

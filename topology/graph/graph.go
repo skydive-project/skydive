@@ -93,6 +93,7 @@ type MetadataTransaction struct {
 	graph        *Graph
 	graphElement interface{}
 	adds         map[string]interface{}
+	removes      []string
 }
 
 type graphElement struct {
@@ -809,7 +810,9 @@ func (g *Graph) DelMetadata(i interface{}, k string) bool {
 		ge.kind = edgeUpdated
 	}
 
-	common.DelField(e.metadata, k)
+	if updated := common.DelField(e.metadata, k); !updated {
+		return updated
+	}
 
 	e.updatedAt = time.Now().UTC()
 	e.revision++
@@ -879,6 +882,11 @@ func (t *MetadataTransaction) AddMetadata(k string, v interface{}) {
 	t.adds[k] = v
 }
 
+// DelMetadata in the current transaction
+func (t *MetadataTransaction) DelMetadata(k string) {
+	t.removes = append(t.removes, k)
+}
+
 // Commit the current transaction to the graph
 func (t *MetadataTransaction) Commit() {
 	var e *graphElement
@@ -904,6 +912,9 @@ func (t *MetadataTransaction) Commit() {
 		}
 	}
 
+	for _, k := range t.removes {
+		updated = common.DelField(e.metadata, k) || updated
+	}
 	if !updated {
 		return
 	}
