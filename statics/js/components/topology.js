@@ -520,7 +520,7 @@ var TopologyComponent = {
       }
 
       var favorites = app.getConfigValue('topology.favorites');
-      if (favorites.length == 0) return;
+      if (!favorites || favorites.length == 0) return;
 
       $.each(favorites, function(key, value) {
         options.append($("<option/>").text(key).val(value));
