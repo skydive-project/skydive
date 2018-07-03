@@ -33,6 +33,8 @@ _sudo ovs-vsctl set interface patch-br1 option:peer=patch-br2
 _sudo ovs-vsctl set interface patch-br2 option:peer=patch-br1
 _sudo ovs-vsctl add-br br3
 _sudo ovs-vsctl add-port br3 int -- set interface int type=internal
+_sudo ovs-vsctl add-port br3 ovn-xxx
+_sudo ovs-vsctl set interface ovn-xxx type=geneve options:remote_ip=33.33.33.33
 _sudo ip l set int netns vm1
 
 _sudo ovs-vsctl show
