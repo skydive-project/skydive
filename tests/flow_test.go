@@ -481,32 +481,32 @@ func TestFlowGremlin(t *testing.T) {
 				return errors.New("Node TID not Found")
 			}
 
-			flows, _ := gh.GetFlows(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", tid))
+			flows, _ := gh.GetFlows(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4", "NodeTID", tid))
 			if len(flows) == 0 {
 				return fmt.Errorf("Should return at least 1 flow, got: %v", flows)
 			}
 
-			flowsOpt, _ := gh.GetFlows(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", tid))
+			flowsOpt, _ := gh.GetFlows(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4", "NodeTID", tid))
 			if len(flowsOpt) != len(flows) {
 				return fmt.Errorf("Should return the same number of flows that without optimisation, got: %v", flowsOpt)
 			}
 
-			nodes, _ := gh.GetNodes(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", tid).Out())
+			nodes, _ := gh.GetNodes(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4", "NodeTID", tid).Out())
 			if len(nodes) != 0 {
 				return fmt.Errorf("Should return no destination node, got %d", len(nodes))
 			}
 
-			nodes, _ = gh.GetNodes(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", tid).Both().Dedup())
+			nodes, _ = gh.GetNodes(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4", "NodeTID", tid).Both().Dedup())
 			if len(nodes) != 1 {
 				return fmt.Errorf("Should return one node, got %d", len(nodes))
 			}
 
-			nodes, _ = gh.GetNodes(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", tid).In().Dedup())
+			nodes, _ = gh.GetNodes(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4", "NodeTID", tid).In().Dedup())
 			if len(nodes) != 1 {
 				return fmt.Errorf("Should return one source node, got %d", len(nodes))
 			}
 
-			gh.QueryObject(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", tid).Count(), &count)
+			gh.QueryObject(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4", "NodeTID", tid).Count(), &count)
 			if int(count) != len(flows) {
 				return fmt.Errorf("Gremlin count doesn't correspond to the number of flows, got: %v, expected: %v", len(flows), count)
 			}
