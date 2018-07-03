@@ -406,12 +406,6 @@ func (mapper *NeutronProbe) Start() {
 				continue
 			}
 
-			if err = openstack.Authenticate(client, mapper.opts); err != nil {
-				logging.GetLogger().Errorf("keystone authentication error: %s", err)
-				time.Sleep(time.Second)
-				continue
-			}
-
 			sslInsecure := config.GetBool("agent.topology.neutron.ssl_insecure")
 			if sslInsecure {
 				logging.GetLogger().Warningf("Skipping SSL certificates verification")
@@ -423,6 +417,12 @@ func (mapper *NeutronProbe) Start() {
 						InsecureSkipVerify: sslInsecure,
 					},
 				},
+			}
+
+			if err = openstack.Authenticate(client, mapper.opts); err != nil {
+				logging.GetLogger().Errorf("keystone authentication error: %s", err)
+				time.Sleep(time.Second)
+				continue
 			}
 
 			networkClient, err := openstack.NewNetworkV2(client, gophercloud.EndpointOpts{
