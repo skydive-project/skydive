@@ -1588,28 +1588,28 @@ func TestFlowCaptureNodeStep(t *testing.T) {
 		setupCmds: []helper.Cmd{
 			{"ovs-vsctl add-br br-fcn", true},
 
-			{"ip netns add vm1", true},
-			{"ip link add vm1-eth0 type veth peer name intf1 netns vm1", true},
-			{"ip link set vm1-eth0 up", true},
-			{"ip netns exec vm1 ip link set intf1 up", true},
-			{"ip netns exec vm1 ip address add 169.254.38.33/24 dev intf1", true},
+			{"ip netns add cns-vm1", true},
+			{"ip link add cns-vm1-eth0 type veth peer name intf1 netns cns-vm1", true},
+			{"ip link set cns-vm1-eth0 up", true},
+			{"ip netns exec cns-vm1 ip link set intf1 up", true},
+			{"ip netns exec cns-vm1 ip address add 169.254.38.33/24 dev intf1", true},
 
-			{"ip netns add vm2", true},
-			{"ip link add vm2-eth0 type veth peer name intf2 netns vm2", true},
-			{"ip link set vm2-eth0 up", true},
-			{"ip netns exec vm2 ip link set intf2 up", true},
-			{"ip netns exec vm2 ip address add 169.254.38.34/24 dev intf2", true},
+			{"ip netns add cns-vm2", true},
+			{"ip link add cns-vm2-eth0 type veth peer name intf2 netns cns-vm2", true},
+			{"ip link set cns-vm2-eth0 up", true},
+			{"ip netns exec cns-vm2 ip link set intf2 up", true},
+			{"ip netns exec cns-vm2 ip address add 169.254.38.34/24 dev intf2", true},
 
-			{"ovs-vsctl add-port br-fcn vm1-eth0", true},
-			{"ovs-vsctl add-port br-fcn vm2-eth0", true},
+			{"ovs-vsctl add-port br-fcn cns-vm1-eth0", true},
+			{"ovs-vsctl add-port br-fcn cns-vm2-eth0", true},
 		},
 
 		tearDownCmds: []helper.Cmd{
 			{"ovs-vsctl del-br br-fcn", true},
-			{"ip link del vm1-eth0", true},
-			{"ip link del vm2-eth0", true},
-			{"ip netns del vm1", true},
-			{"ip netns del vm2", true},
+			{"ip link del cns-vm1-eth0", true},
+			{"ip link del cns-vm2-eth0", true},
+			{"ip netns del cns-vm1", true},
+			{"ip netns del cns-vm2", true},
 		},
 
 		captures: []TestCapture{

@@ -45,11 +45,11 @@ import (
 func TestBridgeOVS(t *testing.T) {
 	test := &Test{
 		setupCmds: []helper.Cmd{
-			{"ovs-vsctl add-br br-test1", true},
+			{"ovs-vsctl add-br br-testbovs1", true},
 		},
 
 		tearDownCmds: []helper.Cmd{
-			{"ovs-vsctl del-br br-test1", true},
+			{"ovs-vsctl del-br br-testbovs1", true},
 		},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
@@ -57,9 +57,9 @@ func TestBridgeOVS(t *testing.T) {
 			gremlin := g.G
 			gremlin = gremlin.Context(c.time)
 
-			gremlin = gremlin.V().Has("Type", "ovsbridge", "Name", "br-test1")
-			gremlin = gremlin.Out("Type", "ovsport", "Name", "br-test1")
-			gremlin = gremlin.Out("Type", "internal", "Name", "br-test1", "Driver", "openvswitch")
+			gremlin = gremlin.V().Has("Type", "ovsbridge", "Name", "br-testbovs1")
+			gremlin = gremlin.Out("Type", "ovsport", "Name", "br-testbovs1")
+			gremlin = gremlin.Out("Type", "internal", "Name", "br-testbovs1", "Driver", "openvswitch")
 
 			// we have 2 links between ovsbridge and ovsport, this
 			// results in 2 out nodes which are the same node so we Dedup
@@ -84,17 +84,17 @@ func TestBridgeOVS(t *testing.T) {
 func TestPatchOVS(t *testing.T) {
 	test := &Test{
 		setupCmds: []helper.Cmd{
-			{"ovs-vsctl add-br br-test1", true},
-			{"ovs-vsctl add-br br-test2", true},
-			{"ovs-vsctl add-port br-test1 patch-br-test2 -- set interface patch-br-test2 type=patch", true},
-			{"ovs-vsctl add-port br-test2 patch-br-test1 -- set interface patch-br-test1 type=patch", true},
-			{"ovs-vsctl set interface patch-br-test2 option:peer=patch-br-test1", true},
-			{"ovs-vsctl set interface patch-br-test1 option:peer=patch-br-test2", true},
+			{"ovs-vsctl add-br br-testpaovs1", true},
+			{"ovs-vsctl add-br br-testpaovs2", true},
+			{"ovs-vsctl add-port br-testpaovs1 patch-br-testpaovs2 -- set interface patch-br-testpaovs2 type=patch", true},
+			{"ovs-vsctl add-port br-testpaovs2 patch-br-testpaovs1 -- set interface patch-br-testpaovs1 type=patch", true},
+			{"ovs-vsctl set interface patch-br-testpaovs2 option:peer=patch-br-testpaovs1", true},
+			{"ovs-vsctl set interface patch-br-testpaovs1 option:peer=patch-br-testpaovs2", true},
 		},
 
 		tearDownCmds: []helper.Cmd{
-			{"ovs-vsctl del-br br-test1", true},
-			{"ovs-vsctl del-br br-test2", true},
+			{"ovs-vsctl del-br br-testpaovs1", true},
+			{"ovs-vsctl del-br br-testpaovs2", true},
 		},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
@@ -102,8 +102,8 @@ func TestPatchOVS(t *testing.T) {
 			gremlin := g.G
 			gremlin = gremlin.Context(c.time)
 
-			gremlin = gremlin.V().Has("Type", "patch", "Name", "patch-br-test1", "Driver", "openvswitch")
-			gremlin = gremlin.Both("Type", "patch", "Name", "patch-br-test2", "Driver", "openvswitch")
+			gremlin = gremlin.V().Has("Type", "patch", "Name", "patch-br-testpaovs1", "Driver", "openvswitch")
+			gremlin = gremlin.Both("Type", "patch", "Name", "patch-br-testpaovs2", "Driver", "openvswitch")
 
 			nodes, err := gh.GetNodes(gremlin)
 			if err != nil {

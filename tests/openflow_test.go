@@ -25,7 +25,7 @@ func verify(c *CheckContext, expected []int) error {
 		gremlin := g.G
 		gremlin = gremlin.Context(c.time)
 
-		gremlin = gremlin.V().Has("Type", "ovsbridge", "Name", "br-test1")
+		gremlin = gremlin.V().Has("Type", "ovsbridge", "Name", "br-testof1")
 		actions := fmt.Sprintf(`resubmit(;%d)`, i+1)
 		gremlin = gremlin.Out("Type", "ofrule").Has("actions", actions)
 		nodes, err := gh.GetNodes(gremlin)
@@ -43,17 +43,17 @@ func verify(c *CheckContext, expected []int) error {
 func makeTest(t *testing.T, rules []ruleCmd, expected []int) {
 	checkTest(t)
 	setupCmds := []helper.Cmd{
-		{"ovs-vsctl add-br br-test1", true},
-		{"ovs-vsctl add-port br-test1 intf1 -- set interface intf1 type=internal", true},
-		{"ovs-vsctl add-port br-test1 intf2 -- set interface intf2 type=internal", true},
+		{"ovs-vsctl add-br br-testof1", true},
+		{"ovs-vsctl add-port br-testof1 intf1 -- set interface intf1 type=internal", true},
+		{"ovs-vsctl add-port br-testof1 intf2 -- set interface intf2 type=internal", true},
 	}
 
 	for _, ruleCmd := range rules {
 		var cmd string
 		if ruleCmd.add {
-			cmd = fmt.Sprintf("ovs-ofctl add-flow br-test1 %s", ruleCmd.rule)
+			cmd = fmt.Sprintf("ovs-ofctl add-flow br-testof1 %s", ruleCmd.rule)
 		} else {
-			cmd = fmt.Sprintf("ovs-ofctl del-flows --strict br-test1 %s", ruleCmd.rule)
+			cmd = fmt.Sprintf("ovs-ofctl del-flows --strict br-testof1 %s", ruleCmd.rule)
 		}
 		setupCmds = append(setupCmds, helper.Cmd{Cmd: cmd, Check: true})
 	}
@@ -62,7 +62,7 @@ func makeTest(t *testing.T, rules []ruleCmd, expected []int) {
 		setupCmds: setupCmds,
 
 		tearDownCmds: []helper.Cmd{
-			{"ovs-vsctl del-br br-test1", true},
+			{"ovs-vsctl del-br br-testof1", true},
 		},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
@@ -106,13 +106,13 @@ func TestSuperimposedOFRule(t *testing.T) {
 func TestDelRuleWithBridgeOFRule(t *testing.T) {
 	checkTest(t)
 	setupCmds := []helper.Cmd{
-		{"ovs-vsctl add-br br-test1", true},
-		{"ovs-vsctl add-port br-test1 intf1 -- set interface intf1 type=internal", true},
-		{"ovs-vsctl add-port br-test1 intf2 -- set interface intf2 type=internal", true},
+		{"ovs-vsctl add-br br-testof1", true},
+		{"ovs-vsctl add-port br-testof1 intf1 -- set interface intf1 type=internal", true},
+		{"ovs-vsctl add-port br-testof1 intf2 -- set interface intf2 type=internal", true},
 		{"sleep 1", true},
-		{"ovs-ofctl add-flow br-test1 table=0,priority=1,actions=resubmit(,1)", true},
+		{"ovs-ofctl add-flow br-testof1 table=0,priority=1,actions=resubmit(,1)", true},
 		{"sleep 1", true},
-		{"ovs-vsctl del-br br-test1", true},
+		{"ovs-vsctl del-br br-testof1", true},
 	}
 
 	test := &Test{
