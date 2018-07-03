@@ -6,7 +6,8 @@
     "graphElement": {
       "properties": {
         "ID": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "Host": {
           "type": "string"
@@ -30,10 +31,12 @@
     {
       "properties": {
         "Child": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "Parent": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [ "Child", "Parent" ]

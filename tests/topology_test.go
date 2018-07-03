@@ -609,8 +609,7 @@ func TestQueryMetadata(t *testing.T) {
 				return err
 			}
 
-			n := new(graph.Node)
-			n.Decode(map[string]interface{}{
+			m := map[string]interface{}{
 				"ID":   "123",
 				"Host": "test",
 				"Metadata": map[string]interface{}{
@@ -624,9 +623,17 @@ func TestQueryMetadata(t *testing.T) {
 						},
 					},
 				},
-			})
+			}
+			n := new(graph.Node)
+			n.Decode(m)
 
+			// The first message should be rejected as it has no 'Type' attribute
 			msg := shttp.NewWSStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
+			masterElection.SendMessageToMaster(msg)
+
+			m["Metadata"].(map[string]interface{})["Type"] = "external"
+			n.Decode(m)
+			msg = shttp.NewWSStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
 			masterElection.SendMessageToMaster(msg)
 
 			return nil
