@@ -169,10 +169,17 @@ func NewUserMetadata(query string, key string, value string) *UserMetadata {
 	}
 }
 
+type WorkflowChoice struct {
+	Value       string `yaml:"value"`
+	Description string `yaml:"description"`
+}
+
 type WorkflowParam struct {
 	Name        string
 	Description string
 	Type        string
+	Default     interface{}
+	Values      []WorkflowChoice
 }
 
 // Workflow describes a workflow
