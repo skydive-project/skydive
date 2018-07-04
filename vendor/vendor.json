@@ -1978,14 +1978,16 @@
 			"revisionTime": "2016-09-30T03:27:40Z"
 		},
 		{
-			"checksumSHA1": "cPdi9F9KsV/5s9FxZo5Km8uooG8=",
+			"checksumSHA1": "2GMUQoP70/aoHkEYR9gHtUd/HAE=",
 			"path": "github.com/skydive-project/dede/dede",
-			"revision": "d95b69cd1f75137aab3bcc01d6facf2aa7a43b80"
+			"revision": "90df8e39b679fe75c1f2e8c3d9f3dd4646b9771f",
+			"revisionTime": "2018-07-04T10:08:32Z"
 		},
 		{
 			"checksumSHA1": "LPxzXx+6DGiG/91JW6EzfpepDHY=",
 			"path": "github.com/skydive-project/dede/statics",
-			"revision": "d95b69cd1f75137aab3bcc01d6facf2aa7a43b80"
+			"revision": "90df8e39b679fe75c1f2e8c3d9f3dd4646b9771f",
+			"revisionTime": "2018-07-04T10:08:32Z"
 		},
 		{
 			"checksumSHA1": "/HwlJqv7kKCmWqX88A2rehLiOic=",

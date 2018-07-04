@@ -332,7 +332,9 @@ func NewServerFromConfig() (*Server, error) {
 	api.RegisterConfigAPI(hserver)
 	api.RegisterStatusAPI(hserver, s)
 
-	dede.RegisterHandler("terminal", "/dede", hserver.Router)
+	if err := dede.RegisterHandler("terminal", "/dede", hserver.Router); err != nil {
+		return nil, err
+	}
 
 	return s, nil
 }
