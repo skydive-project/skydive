@@ -723,7 +723,7 @@ func TestFlowMetricsStep(t *testing.T) {
 
 			m, err := gh.GetMetric(gremlin.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics().Sum())
 			if err != nil {
-				flows, _ := gh.GetFlows(gremlin)
+				flows, _ := gh.GetFlows(gremlin.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics())
 				return fmt.Errorf("Could not find metrics (%+v) for flows %s", m, helper.FlowsToString(flows))
 			}
 			metric := m.(*flow.FlowMetric)

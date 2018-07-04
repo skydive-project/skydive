@@ -98,7 +98,7 @@ objects:
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 5
-        - image: elasticsearch:2
+        - image: elasticsearch:5
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3

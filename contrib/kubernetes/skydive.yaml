@@ -61,7 +61,7 @@ spec:
           periodSeconds: 10
           failureThreshold: 3
       - name: skydive-elasticsearch
-        image: elasticsearch:2
+        image: elasticsearch:5
         ports:
         - containerPort: 9200
 ---

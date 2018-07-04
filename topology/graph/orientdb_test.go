@@ -118,6 +118,15 @@ func newOrientDBGraph(t *testing.T) (*Graph, *fakeOrientDBClient) {
 	return NewGraphFromConfig(b), client
 }
 
+func metadataToJSONRawMessage(t *testing.T, metadata Metadata) json.RawMessage {
+	data, err := json.Marshal(metadata)
+	if err != nil {
+		t.Error(err)
+	}
+
+	return json.RawMessage(data)
+}
+
 // test history when doing local modification
 func TestLocalHistory(t *testing.T) {
 	g, client := newOrientDBGraph(t)
@@ -139,9 +148,9 @@ func TestLocalHistory(t *testing.T) {
 				"@class":    "Node",
 				"ID":        Identifier("aaa"),
 				"Host":      "host1",
-				"Metadata": Metadata{
+				"Metadata": metadataToJSONRawMessage(t, Metadata{
 					"MTU": 1500,
-				},
+				}),
 			},
 		},
 		{
@@ -157,9 +166,9 @@ func TestLocalHistory(t *testing.T) {
 				"@class":    "Node",
 				"ID":        Identifier("aaa"),
 				"Host":      "host1",
-				"Metadata": Metadata{
+				"Metadata": metadataToJSONRawMessage(t, Metadata{
 					"MTU": 1510,
-				},
+				}),
 			},
 		},
 	}
@@ -180,9 +189,9 @@ func TestLocalHistory(t *testing.T) {
 				"@class":    "Node",
 				"ID":        Identifier("aaa"),
 				"Host":      "host1",
-				"Metadata": Metadata{
+				"Metadata": metadataToJSONRawMessage(t, Metadata{
 					"MTU": 1500,
-				},
+				}),
 			},
 		},
 		{
@@ -198,9 +207,9 @@ func TestLocalHistory(t *testing.T) {
 				"@class":    "Node",
 				"ID":        Identifier("aaa"),
 				"Host":      "host1",
-				"Metadata": Metadata{
+				"Metadata": metadataToJSONRawMessage(t, Metadata{
 					"MTU": 1510,
-				},
+				}),
 			},
 		},
 		{
@@ -216,9 +225,9 @@ func TestLocalHistory(t *testing.T) {
 				"@class":    "Node",
 				"ID":        Identifier("aaa"),
 				"Host":      "host1",
-				"Metadata": Metadata{
+				"Metadata": metadataToJSONRawMessage(t, Metadata{
 					"MTU": 1520,
-				},
+				}),
 			},
 		},
 	}
@@ -243,9 +252,9 @@ func TestLocalHistory(t *testing.T) {
 				"@class":    "Node",
 				"ID":        Identifier("aaa"),
 				"Host":      "host1",
-				"Metadata": Metadata{
+				"Metadata": metadataToJSONRawMessage(t, Metadata{
 					"MTU": 1500,
-				},
+				}),
 			},
 		},
 		{
@@ -261,9 +270,9 @@ func TestLocalHistory(t *testing.T) {
 				"@class":    "Node",
 				"ID":        Identifier("aaa"),
 				"Host":      "host1",
-				"Metadata": Metadata{
+				"Metadata": metadataToJSONRawMessage(t, Metadata{
 					"MTU": 1510,
-				},
+				}),
 			},
 		},
 		{
@@ -279,9 +288,9 @@ func TestLocalHistory(t *testing.T) {
 				"@class":    "Node",
 				"ID":        Identifier("aaa"),
 				"Host":      "host1",
-				"Metadata": Metadata{
+				"Metadata": metadataToJSONRawMessage(t, Metadata{
 					"MTU": 1520,
-				},
+				}),
 			},
 		},
 		{

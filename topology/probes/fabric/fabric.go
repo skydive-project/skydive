@@ -234,7 +234,7 @@ func NewFabricProbe(g *graph.Graph) *FabricProbe {
 				continue
 			}
 
-			if !topology.HaveOwnershipLink(fb.Graph, node1, node2, nil) {
+			if !topology.HaveOwnershipLink(fb.Graph, node1, node2) {
 				if !l2OnlyLink {
 					topology.AddOwnershipLink(fb.Graph, node1, node2, nil)
 				}

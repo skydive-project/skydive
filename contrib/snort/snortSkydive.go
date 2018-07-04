@@ -37,11 +37,11 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	esclient "github.com/skydive-project/skydive/storage/elasticsearch"
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
+	es "github.com/skydive-project/skydive/storage/elasticsearch"
 )
 
 // sudo -E /usr/bin/snort -A cmg -c /etc/snort/snort.lua -R snort3-community-rules/snort3-community.rules -i br-gre -X 2>/dev/null | go run contrib/snort/snortSkydive.go
@@ -59,6 +59,12 @@ const snortMessageMapping = `
 		}
 	]
 }`
+
+var snortIndex = es.Index{
+	Name:    "snort",
+	Type:    "snort_message",
+	Mapping: snortMessageMapping,
+}
 
 const (
 	timestamp = iota
@@ -78,7 +84,7 @@ func min(a, b int) int {
 
 // SnortFlowEnhancer describes a snort graph enhancer
 type SnortFlowEnhancer struct {
-	client  *esclient.ElasticSearchClient
+	client  *es.Client
 	running atomic.Value
 	quit    chan bool
 }
@@ -120,9 +126,11 @@ func (sfe *SnortFlowEnhancer) insertElasticSearch(msg *snortMessage, f *flow.Flo
 		"Message":        msg.Message,
 		"Classification": msg.Classification,
 	}
-	if _, err := sfe.client.BulkIndex("snortMessage", "", snortMessage); err != nil {
+
+	if err := sfe.client.BulkIndex(snortIndex, "", snortMessage); err != nil {
 		return fmt.Errorf("Error while indexing: %s", err.Error())
 	}
+
 	logging.GetLogger().Infof("insert flow TrackingID %s %+#v", f.TrackingID, f)
 	return nil
 }
@@ -219,18 +227,17 @@ func newSnortFlowEnhancer() *SnortFlowEnhancer {
 	sfe.quit = make(chan bool)
 	sfe.running.Store(true)
 
-	var err error
-	mappings := esclient.Mappings{
-		{"snortMessage": []byte(snortMessageMapping)},
-	}
-	cfg := esclient.NewConfig()
-	sfe.client, err = esclient.NewElasticSearchClient("snort", mappings, cfg)
+	indices := []es.Index{snortIndex}
+
+	cfg := es.NewConfig()
+	client, err := es.NewClient(indices, cfg, nil)
 	if err != nil {
 		if err != io.EOF {
 			logging.GetLogger().Errorf("elasticsearch client error : %v", err)
 			return nil
 		}
 	}
+	sfe.client = client
 
 	return sfe
 }

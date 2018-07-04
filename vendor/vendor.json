@@ -989,6 +989,12 @@
 			"revisionTime": "2017-06-06T14:27:51Z"
 		},
 		{
+			"checksumSHA1": "TI+QiWWuz4SQKW/MyRRYhjzdq2A=",
+			"path": "github.com/go-test/deep",
+			"revision": "57af0be209c537ba1d9c2a4b285ab7aea0897e51",
+			"revisionTime": "2018-05-09T20:02:13Z"
+		},
+		{
 			"checksumSHA1": "j+2QWtfa7AsYOoqpJuwwfgkOvr8=",
 			"path": "github.com/gobwas/httphead",
 			"revision": "01c9b01b368a438f615030bbbd5e4f9e0023e15c",
@@ -1358,6 +1364,12 @@
 			"versionExact": "v1.3.0"
 		},
 		{
+			"checksumSHA1": "4+PK0yd1prnC11PETgrXPzHyct4=",
+			"path": "github.com/hashicorp/go-version",
+			"revision": "23480c0665776210b5fbbac6eaaee40e3e6a96b7",
+			"revisionTime": "2018-03-22T23:02:33Z"
+		},
+		{
 			"checksumSHA1": "d9PxF1XQGLMJZRct2R8qVM/eYlE=",
 			"path": "github.com/hashicorp/golang-lru",
 			"revision": "0a025b7e63adc15a622f29b0b2c4c3848243bbf6",
@@ -1701,10 +1713,28 @@
 			"revisionTime": "2018-03-23T15:44:45Z"
 		},
 		{
+			"checksumSHA1": "W8CjFM+BSf5yW0+PGv+eXN0Z1n0=",
+			"path": "github.com/mailru/easyjson/bootstrap",
+			"revision": "3fdea8d05856a0c8df22ed4bc71b3219245e4485",
+			"revisionTime": "2018-06-06T16:35:43Z"
+		},
+		{
 			"checksumSHA1": "T8soMJArSZrYnhmdpAnq1bVxQ6Q=",
 			"path": "github.com/mailru/easyjson/buffer",
 			"revision": "2a92e673c9a6302dd05c3a691ae1f24aef46457d",
 			"revisionTime": "2017-09-02T15:12:37Z"
+		},
+		{
+			"checksumSHA1": "ZZNuLdXAod35jfV8tgMTrK+qhOQ=",
+			"path": "github.com/mailru/easyjson/easyjson",
+			"revision": "3fdea8d05856a0c8df22ed4bc71b3219245e4485",
+			"revisionTime": "2018-06-06T16:35:43Z"
+		},
+		{
+			"checksumSHA1": "QCOSMCP+znzImWyoYv+LK8VqAT8=",
+			"path": "github.com/mailru/easyjson/gen",
+			"revision": "3fdea8d05856a0c8df22ed4bc71b3219245e4485",
+			"revisionTime": "2018-06-06T16:35:43Z"
 		},
 		{
 			"checksumSHA1": "Xw5HIdQ2vlr5wkKl+8ANM9xp5Zs=",
@@ -1717,6 +1747,12 @@
 			"path": "github.com/mailru/easyjson/jwriter",
 			"revision": "2a92e673c9a6302dd05c3a691ae1f24aef46457d",
 			"revisionTime": "2017-09-02T15:12:37Z"
+		},
+		{
+			"checksumSHA1": "M7JP8bFK4tdXYrEYmhOE1knP/ec=",
+			"path": "github.com/mailru/easyjson/parser",
+			"revision": "3fdea8d05856a0c8df22ed4bc71b3219245e4485",
+			"revisionTime": "2018-06-06T16:35:43Z"
 		},
 		{
 			"checksumSHA1": "DdH3xAkzAWJ4B/LGYJyCeRsly2I=",

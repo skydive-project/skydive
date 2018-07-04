@@ -79,7 +79,7 @@ spec:
 {{ toYaml .Values.resources | indent 10 }}
 
       - name: skydive-elasticsearch
-        image: elasticsearch:2
+        image: elasticsearch:5
         ports:
         - containerPort: 9200
         resources:

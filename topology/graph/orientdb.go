@@ -63,8 +63,7 @@ func graphElementToOrientDBSetString(e graphElement) (s string) {
 
 func metadataToOrientDBSetString(m Metadata) string {
 	if len(m) > 0 {
-		b, err := json.Marshal(m)
-		if err == nil {
+		if b, err := json.Marshal(m); err == nil {
 			return "Metadata = " + string(b)
 		}
 	}
@@ -91,19 +90,24 @@ func metadataToOrientDBSelectString(m GraphElementMatcher) string {
 	})
 }
 
-func graphElementToOrientDBDocument(e graphElement) orientdb.Document {
+func graphElementToOrientDBDocument(e graphElement) (orientdb.Document, error) {
+	data, err := json.Marshal(e.metadata)
+	if err != nil {
+		return nil, fmt.Errorf("Error while adding graph element %s: %s", e.ID, err)
+	}
+
 	doc := make(orientdb.Document)
 	doc["@class"] = "Node"
 	doc["ID"] = e.ID
 	doc["Host"] = e.host
-	doc["Metadata"] = e.metadata.Clone()
+	doc["Metadata"] = json.RawMessage(data)
 	doc["CreatedAt"] = common.UnixMillis(e.createdAt)
 	doc["UpdatedAt"] = common.UnixMillis(e.updatedAt)
 	if !e.deletedAt.IsZero() {
 		doc["DeletedAt"] = common.UnixMillis(e.deletedAt)
 	}
 	doc["Revision"] = e.revision
-	return doc
+	return doc, nil
 }
 
 func orientDBDocumentToNode(doc orientdb.Document) *Node {
@@ -126,7 +130,7 @@ func (o *OrientDBBackend) updateTimes(e string, id string, events ...eventTime) 
 	query := fmt.Sprintf("UPDATE %s SET %s WHERE DeletedAt IS NULL AND ArchivedAt IS NULL AND ID = '%s'", e, strings.Join(attrs, ", "), id)
 	docs, err := o.client.Search(query)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while deleting %s: %s", id, err.Error())
+		logging.GetLogger().Errorf("Error while deleting %s: %s", id, err)
 		return false
 	}
 
@@ -140,10 +144,13 @@ func (o *OrientDBBackend) updateTimes(e string, id string, events ...eventTime) 
 }
 
 func (o *OrientDBBackend) createNode(n *Node) bool {
-	doc := graphElementToOrientDBDocument(n.graphElement)
+	doc, err := graphElementToOrientDBDocument(n.graphElement)
+	if err != nil {
+		logging.GetLogger().Errorf("Error while marshalling node %s: %s", n.ID, err)
+	}
 	doc["@class"] = "Node"
 	if _, err := o.client.CreateDocument(doc); err != nil {
-		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err.Error())
+		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err)
 		return false
 	}
 	return true
@@ -157,7 +164,7 @@ func (o *OrientDBBackend) searchNodes(t GraphContext, where string) (nodes []*No
 
 	docs, err := o.client.Search(query)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while retrieving nodes: %s (%+v)", err.Error(), docs)
+		logging.GetLogger().Errorf("Error while retrieving nodes: %s (%+v)", err, docs)
 		return
 	}
 
@@ -181,7 +188,7 @@ func (o *OrientDBBackend) searchEdges(t GraphContext, where string) (edges []*Ed
 
 	docs, err := o.client.Search(query)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while retrieving edges: %s", err.Error())
+		logging.GetLogger().Errorf("Error while retrieving edges: %s", err)
 		return nil
 	}
 
@@ -234,7 +241,7 @@ func (o *OrientDBBackend) createEdge(e *Edge) bool {
 	query := fmt.Sprintf("CREATE EDGE Link FROM (%s) TO (%s) SET %s RETRY 100 WAIT 20", fromQuery, toQuery, setQuery)
 	docs, err := o.client.Search(query)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while adding edge %s: %s (sql: %s)", e.ID, err.Error(), query)
+		logging.GetLogger().Errorf("Error while adding edge %s: %s (sql: %s)", e.ID, err, query)
 		return false
 	}
 	return len(docs) == 1
@@ -344,7 +351,7 @@ func newOrientDBBackend(client orientdb.ClientInterface) (*OrientDBBackend, erro
 			},
 		}
 		if err := client.CreateDocumentClass(class); err != nil {
-			return nil, fmt.Errorf("Failed to register class Node: %s", err.Error())
+			return nil, fmt.Errorf("Failed to register class Node: %s", err)
 		}
 	}
 
@@ -369,7 +376,7 @@ func newOrientDBBackend(client orientdb.ClientInterface) (*OrientDBBackend, erro
 			},
 		}
 		if err := client.CreateDocumentClass(class); err != nil {
-			return nil, fmt.Errorf("Failed to register class Link: %s", err.Error())
+			return nil, fmt.Errorf("Failed to register class Link: %s", err)
 		}
 	}
 

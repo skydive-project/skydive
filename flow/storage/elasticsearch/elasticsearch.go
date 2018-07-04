@@ -25,16 +25,16 @@ package elasticsearch
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/google/gopacket/layers"
-	elastic "github.com/olivere/elastic"
+	"github.com/olivere/elastic"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
-	esclient "github.com/skydive-project/skydive/storage/elasticsearch"
+	es "github.com/skydive-project/skydive/storage/elasticsearch"
 )
 
 const flowMapping = `
@@ -45,7 +45,8 @@ const flowMapping = `
 				"match": "*",
 				"match_mapping_type": "string",
 				"mapping": {
-					"type": "string", "index": "not_analyzed", "doc_values": false
+					"type": "keyword",
+					"doc_values": false
 				}
 			}
 		},
@@ -77,7 +78,8 @@ const flowMapping = `
 			"start": {
 				"match": "*Start",
 				"mapping": {
-					"type": "date", "format": "epoch_millis"
+					"type": "date",
+					"format": "epoch_millis"
 				}
 			}
 		},
@@ -85,94 +87,95 @@ const flowMapping = `
 			"last": {
 				"match": "Last",
 				"mapping": {
-					"type": "date", "format": "epoch_millis"
-				}
-			}
-		}
-	]
-}`
-
-const metricMapping = `
-{
-	"_parent": {
-		"type": "flow"
-	},
-	"dynamic_templates": [
-		{
-			"packets": {
-				"match": "*Packets",
-				"mapping": {
-					"type": "long"
+					"type": "date",
+					"format": "epoch_millis"
 				}
 			}
 		},
-		{
-			"bytes": {
-				"match": "*Bytes",
-				"mapping": {
-					"type": "long"
-				}
-			}
-		},
-		{
-			"start": {
-				"match": "Start",
-				"mapping": {
-					"type": "date", "format": "epoch_millis"
-				}
-			}
-		},
-		{
-			"last": {
-				"match": "Last",
-				"mapping": {
-					"type": "date", "format": "epoch_millis"
-				}
-			}
-		}
-	]
-}`
-
-const rawPacketMapping = `
-{
-	"_parent": {
-		"type": "flow"
-	},
-	"dynamic_templates": [
 		{
 			"last": {
 				"match": "Timestamp",
 				"mapping": {
-					"type": "date", "format": "epoch_millis"
-				}
-			}
-		},
-		{
-			"bytes": {
-				"match": "Index",
-				"mapping": {
-					"type": "long"
+					"type": "date",
+					"format": "epoch_millis"
 				}
 			}
 		}
 	]
 }`
 
+var (
+	flowIndex = es.Index{
+		Name:      "flow",
+		Type:      "flow",
+		Mapping:   flowMapping,
+		RollIndex: true,
+	}
+	metricIndex = es.Index{
+		Name:      "metric",
+		Type:      "metric",
+		Mapping:   flowMapping,
+		RollIndex: true,
+	}
+	rawpacketIndex = es.Index{
+		Name:      "rawpacket",
+		Type:      "rawpacket",
+		Mapping:   flowMapping,
+		RollIndex: true,
+	}
+)
+
 // ElasticSearchStorage describes an ElasticSearch flow backend
 type ElasticSearchStorage struct {
-	client *esclient.ElasticSearchClient
+	client *es.Client
 }
 
-func (c *ElasticSearchStorage) rollIndex(shouldRoll bool, err error) error {
-	if err != nil {
-		return fmt.Errorf("Error while indexing: %s", err.Error())
+// easyjson:json
+type embeddedFlow struct {
+	UUID         *string
+	LayersPath   *string
+	Application  *string
+	Link         *flow.FlowLayer      `json:"Link,omitempty"`
+	Network      *flow.FlowLayer      `json:"Network,omitempty"`
+	Transport    *flow.TransportLayer `json:"Transport,omitempty"`
+	ICMP         *flow.ICMPLayer      `json:"ICMP,omitempty"`
+	TrackingID   *string
+	L3TrackingID *string
+	ParentUUID   *string
+	NodeTID      *string
+	Start        *int64
+	Last         *int64
+}
+
+func flowToEmbbedFlow(f *flow.Flow) *embeddedFlow {
+	return &embeddedFlow{
+		UUID:         &f.UUID,
+		LayersPath:   &f.LayersPath,
+		Application:  &f.Application,
+		Link:         f.Link,
+		Network:      f.Network,
+		Transport:    f.Transport,
+		ICMP:         f.ICMP,
+		TrackingID:   &f.TrackingID,
+		L3TrackingID: &f.L3TrackingID,
+		ParentUUID:   &f.ParentUUID,
+		NodeTID:      &f.NodeTID,
+		Start:        &f.Start,
+		Last:         &f.Last,
 	}
-	if shouldRoll {
-		if err := c.client.RollIndex(); err != nil {
-			return fmt.Errorf("Error while rolling index: %s", err.Error())
-		}
-	}
-	return nil
+}
+
+// easyjson:json
+type metricRecord struct {
+	*flow.FlowMetric
+	Flow *embeddedFlow `json:"Flow"`
+}
+
+// easyjson:json
+type rawpacketRecord struct {
+	LinkType layers.LinkType
+	*flow.RawPacket
+	Flow *embeddedFlow `json:"Flow"`
 }
 
 // StoreFlows push a set of flows in the database
@@ -182,43 +185,67 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	}
 
 	for _, f := range flows {
-		if err := c.rollIndex(c.client.BulkIndex("flow", f.UUID, f)); err != nil {
-			logging.GetLogger().Errorf(err.Error())
+		data, err := json.Marshal(f)
+		if err != nil {
+			logging.GetLogger().Error(err)
 			continue
 		}
 
+		if err := c.client.BulkIndex(flowIndex, f.UUID, json.RawMessage(data)); err != nil {
+			logging.GetLogger().Error(err)
+			continue
+		}
+
+		eflow := flowToEmbbedFlow(f)
+
 		if f.LastUpdateMetric != nil {
-			if err := c.rollIndex(c.client.BulkIndexChild("metric", f.UUID, "", f.LastUpdateMetric)); err != nil {
-				logging.GetLogger().Errorf(err.Error())
+			record := &metricRecord{
+				FlowMetric: f.LastUpdateMetric,
+				Flow:       eflow,
+			}
+
+			data, err := json.Marshal(record)
+			if err != nil {
+				logging.GetLogger().Error(err)
+				continue
+			}
+
+			if err := c.client.BulkIndex(metricIndex, "", json.RawMessage(data)); err != nil {
+				logging.GetLogger().Error(err)
 				continue
 			}
 		}
 
 		linkType, err := f.LinkType()
 		if err != nil {
-			logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
+			logging.GetLogger().Errorf("Error while indexing: %s", err)
 			continue
 		}
 		for _, r := range f.LastRawPackets {
-			rawpacket := map[string]interface{}{
-				"LinkType":  linkType,
-				"Timestamp": r.Timestamp,
-				"Index":     r.Index,
-				"Data":      r.Data,
+			record := &rawpacketRecord{
+				LinkType:  linkType,
+				RawPacket: r,
+				Flow:      eflow,
 			}
-			if c.rollIndex(c.client.BulkIndexChild("rawpacket", f.UUID, "", rawpacket)) != nil {
-				logging.GetLogger().Errorf(err.Error())
+
+			data, err := json.Marshal(record)
+			if err != nil {
+				logging.GetLogger().Error(err)
 				continue
 			}
 
+			if c.client.BulkIndex(rawpacketIndex, f.UUID, json.RawMessage(data)) != nil {
+				logging.GetLogger().Error(err)
+				continue
+			}
 		}
 	}
 
 	return nil
 }
 
-func (c *ElasticSearchStorage) sendRequest(docType string, esQuery elastic.Query, query filters.SearchQuery) (*elastic.SearchResult, error) {
-	return c.client.Search(docType, esQuery, "", query)
+func (c *ElasticSearchStorage) sendRequest(typ string, query elastic.Query, pagination filters.SearchQuery, indices ...string) (*elastic.SearchResult, error) {
+	return c.client.Search(typ, query, pagination, indices...)
 }
 
 // SearchRawPackets searches flow raw packets matching filters in the database
@@ -228,14 +255,13 @@ func (c *ElasticSearchStorage) SearchRawPackets(fsq filters.SearchQuery, packetF
 	}
 
 	// do not escape flow as ES use sub object in that case
-	flowQuery := c.client.FormatFilter(fsq.Filter, "")
-	mustQueries := []elastic.Query{elastic.NewHasParentQuery("flow", flowQuery)}
+	mustQueries := []elastic.Query{es.FormatFilter(fsq.Filter, "Flow")}
 
 	if packetFilter != nil {
-		mustQueries = append(mustQueries, c.client.FormatFilter(packetFilter, ""))
+		mustQueries = append(mustQueries, es.FormatFilter(packetFilter, ""))
 	}
 
-	out, err := c.sendRequest("rawpacket", elastic.NewBoolQuery().Must(mustQueries...), fsq)
+	out, err := c.sendRequest("rawpacket", elastic.NewBoolQuery().Must(mustQueries...), fsq, rawpacketIndex.IndexWildcard())
 	if err != nil {
 		return nil, err
 	}
@@ -243,28 +269,17 @@ func (c *ElasticSearchStorage) SearchRawPackets(fsq filters.SearchQuery, packetF
 	rawpackets := make(map[string]*flow.RawPackets)
 	if len(out.Hits.Hits) > 0 {
 		for _, d := range out.Hits.Hits {
-			obj := struct {
-				LinkType  layers.LinkType
-				Timestamp int64
-				Index     int64
-				Data      []byte
-			}{}
-			if err := json.Unmarshal([]byte(*d.Source), &obj); err != nil {
+			var record rawpacketRecord
+			if err := json.Unmarshal([]byte(*d.Source), &record); err != nil {
 				return nil, err
 			}
 
-			r := &flow.RawPacket{
-				Timestamp: obj.Timestamp,
-				Index:     obj.Index,
-				Data:      obj.Data,
-			}
-
-			if fr, ok := rawpackets[d.Parent]; ok {
-				fr.RawPackets = append(fr.RawPackets, r)
+			if fr, ok := rawpackets[*record.Flow.UUID]; ok {
+				fr.RawPackets = append(fr.RawPackets, record.RawPacket)
 			} else {
-				rawpackets[d.Parent] = &flow.RawPackets{
-					LinkType:   obj.LinkType,
-					RawPackets: []*flow.RawPacket{r},
+				rawpackets[*record.Flow.UUID] = &flow.RawPackets{
+					LinkType:   record.LinkType,
+					RawPackets: []*flow.RawPacket{record.RawPacket},
 				}
 			}
 		}
@@ -280,27 +295,28 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilt
 	}
 
 	// do not escape flow as ES use sub object in that case
-	flowQuery := c.client.FormatFilter(fsq.Filter, "")
-	metricQuery := c.client.FormatFilter(metricFilter, "")
-	esQuery := elastic.NewBoolQuery().Must(
-		elastic.NewHasParentQuery("flow", flowQuery),
-		metricQuery,
-	)
+	flowQuery := es.FormatFilter(fsq.Filter, "Flow")
+	metricQuery := es.FormatFilter(metricFilter, "")
 
-	out, err := c.sendRequest("metric", esQuery, fsq)
+	query := elastic.NewBoolQuery().Must(flowQuery, metricQuery)
+	out, err := c.sendRequest("metric", query, fsq, metricIndex.IndexWildcard())
 	if err != nil {
 		return nil, err
 	}
 
-	metrics := map[string][]common.Metric{}
+	metrics := make(map[string][]common.Metric)
 	if len(out.Hits.Hits) > 0 {
 		for _, d := range out.Hits.Hits {
-			m := new(flow.FlowMetric)
-			if err := json.Unmarshal([]byte(*d.Source), m); err != nil {
+			var record metricRecord
+			if err := json.Unmarshal([]byte(*d.Source), &record); err != nil {
 				return nil, err
 			}
 
-			metrics[d.Parent] = append(metrics[d.Parent], m)
+			if fm, ok := metrics[*record.Flow.UUID]; ok {
+				metrics[*record.Flow.UUID] = append(fm, record.FlowMetric)
+			} else {
+				metrics[*record.Flow.UUID] = []common.Metric{record.FlowMetric}
+			}
 		}
 	}
 
@@ -313,7 +329,8 @@ func (c *ElasticSearchStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowS
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
 
-	out, err := c.sendRequest("flow", c.client.FormatFilter(fsq.Filter, ""), fsq)
+	// TODO: dedup and sort in order to remove duplicate flow UUID due to rolling index
+	out, err := c.sendRequest("flow", es.FormatFilter(fsq.Filter, ""), fsq, flowIndex.IndexWildcard())
 	if err != nil {
 		return nil, err
 	}
@@ -349,14 +366,16 @@ func (c *ElasticSearchStorage) Stop() {
 }
 
 // New creates a new ElasticSearch database client
-func New(backend string) (*ElasticSearchStorage, error) {
-	cfg := esclient.NewConfig(backend)
-	mappings := esclient.Mappings{
-		{"metric": []byte(metricMapping)},
-		{"rawpacket": []byte(rawPacketMapping)},
-		{"flow": []byte(flowMapping)},
+func New(backend string, etcdClient *etcd.Client) (*ElasticSearchStorage, error) {
+	cfg := es.NewConfig(backend)
+
+	indices := []es.Index{
+		flowIndex,
+		metricIndex,
+		rawpacketIndex,
 	}
-	client, err := esclient.NewElasticSearchClient("flows", mappings, cfg)
+
+	client, err := es.NewClient(indices, cfg, etcdClient)
 	if err != nil {
 		return nil, err
 	}

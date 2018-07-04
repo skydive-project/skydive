@@ -43,6 +43,9 @@ PROTOC_GEN_GO_GITHUB:=github.com/golang/protobuf/protoc-gen-go
 FLOW_PROTO_FILES=flow/flow.proto flow/set.proto flow/request.proto
 FILTERS_PROTO_FILES=filters/filters.proto
 HTTP_PROTO_FILES=http/wsstructmessage.proto
+EASYJSON_GITHUB:=github.com/mailru/easyjson/easyjson
+EASYJSON_FILES_ALL=flow/flow.pb.go
+EASYJSON_FILES_TAG=flow/storage/elasticsearch/elasticsearch.go topology/graph/elasticsearch.go
 VERBOSE_FLAGS?=-v
 VERBOSE_TESTS_FLAGS?=-test.v
 VERBOSE?=true
@@ -196,6 +199,11 @@ debug.analyzer:
 	# add flowState to flow generated struct
 	sed -e 's/type Flow struct {/type Flow struct { XXX_state flowState `json:"-"`/' -i.bak flow/flow.pb.go
 	gofmt -s -w flow/flow.pb.go
+
+.PHONY: .easyjson
+.easyjson: builddep .proto ${EASYJSON_FILES_ALL} ${EASYJSON_FILES_TAG}
+	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -all ${EASYJSON_FILES_ALL}
+	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson ${EASYJSON_FILES_TAG}
 
 BINDATA_DIRS := \
 	js/*.js \
@@ -420,9 +428,10 @@ lint: gometalinter
 builddep: govendor
 	$(call VENDOR_BUILD,${PROTOC_GEN_GO_GITHUB})
 	$(call VENDOR_BUILD,${GO_BINDATA_GITHUB})
+	$(call VENDOR_BUILD,${EASYJSON_GITHUB})
 
 .PHONY: genlocalfiles
-genlocalfiles: .proto .bindata
+genlocalfiles: .proto .bindata .easyjson
 
 .PHONY: clean
 clean: skydive.clean test.functionals.clean dpdk.clean contribs.clean

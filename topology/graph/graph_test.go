@@ -345,6 +345,42 @@ func TestMetadata(t *testing.T) {
 	}
 }
 
+func TestMetadataTransaction(t *testing.T) {
+	g := newGraph(t)
+
+	n := g.NewNode(GenID(), Metadata{"Type": "intf", "Section": []string{"A1", "A2"}})
+	g.AddMetadata(n, "Label.List1", "EL1")
+	g.AddMetadata(n, "Label.List2", "EL2")
+
+	tr := g.StartMetadataTransaction(n)
+	tr.AddMetadata("Name", "test123")
+
+	if _, ok := n.metadata["Name"]; ok {
+		t.Error("Name field should not be in the node metadata until commit")
+	}
+
+	tr.AddMetadata("Section", []string{"B1"})
+	tr.AddMetadata("Label.List3", "EL3")
+
+	if _, err := n.GetFieldString("Label.List3"); err == nil {
+		t.Errorf("Element shouldn't be present: %+v", n)
+	}
+
+	tr.Commit()
+
+	if len(n.metadata["Section"].([]string)) != 1 {
+		t.Errorf("Should only have one element, found: %+v\n", n.metadata["Section"])
+	}
+
+	if _, err := n.GetFieldString("Label.List1"); err != nil {
+		t.Errorf("Element should be present: %+v", n)
+	}
+
+	if _, err := n.GetFieldString("Label.List3"); err != nil {
+		t.Errorf("Element should be present: %+v", n)
+	}
+}
+
 type FakeListener struct {
 	lastNodeUpdated *Node
 	lastNodeAdded   *Node

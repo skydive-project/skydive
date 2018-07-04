@@ -136,7 +136,7 @@ type DocumentClass struct {
 func parseError(body io.Reader) error {
 	var errs Errors
 	if err := common.JSONDecode(body, &errs); err != nil {
-		return fmt.Errorf("Error while parsing error: %s (%s)", err.Error(), body)
+		return fmt.Errorf("Error while parsing error: %s (%s)", err, body)
 	}
 	var s string
 	for _, err := range errs.Errors {
@@ -174,7 +174,7 @@ func parseResponse(resp *http.Response, result interface{}) error {
 	content, _ := ioutil.ReadAll(body)
 	if len(content) != 0 && result != nil {
 		if err := common.JSONDecode(bytes.NewBuffer(content), result); err != nil {
-			return fmt.Errorf("Error while parsing OrientDB response: %s (%s)", err.Error(), content)
+			return fmt.Errorf("Error while parsing OrientDB response: %s (%s)", err, content)
 		}
 	}
 	return nil

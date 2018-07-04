@@ -23,6 +23,7 @@
 package analyzer
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -42,11 +43,16 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-// FlowBulkInsertDefault maximum number of flows aggregated between two data store inserts
-const FlowBulkInsertDefault int = 100
+const (
+	// FlowBulkInsertDefault maximum number of flows aggregated between two data store inserts
+	FlowBulkInsertDefault int = 100
 
-// FlowBulkInsertDeadlineDefault deadline of each bulk insert in second
-const FlowBulkInsertDeadlineDefault int = 5
+	// FlowBulkDeadlineDefault deadline of each bulk insert in second
+	FlowBulkInsertDeadlineDefault int = 5
+
+	// FlowBulkMaxDelayDefault delay between two bulk
+	FlowBulkMaxDelayDefault int = 5
+)
 
 func max(a, b int) int {
 	if a > b {
@@ -249,17 +255,20 @@ func (s *FlowServer) setupBulkConfigFromBackend() error {
 	s.bulkInsertDeadline = time.Duration(FlowBulkInsertDeadlineDefault) * time.Second
 
 	storage := fmt.Sprintf("storage.%s.", config.GetString("analyzer.flow.backend"))
-	if config.GetString(storage+"driver") == "elasticsearch" {
-		s.bulkInsert = config.GetInt(storage + "bulk_maxdocs")
+	if config.IsSet(storage + "driver") {
 		bulkMaxDelay := config.GetInt(storage + "bulk_maxdelay")
-		if s.bulkInsert < 1 || bulkMaxDelay < 1 {
-			return fmt.Errorf("bulk_maxdocs and bulk_maxdelay must be positive values")
+		if bulkMaxDelay < 0 {
+			return errors.New("bulk_maxdelay must be positive values")
+		}
+		if bulkMaxDelay == 0 {
+			bulkMaxDelay = FlowBulkMaxDelayDefault
 		}
 		s.bulkInsertDeadline = time.Duration(bulkMaxDelay) * time.Second
 	}
 
 	flowsMax := config.GetConfig().GetInt("analyzer.flow.max_buffer_size")
 	s.ch = make(chan *flow.Flow, max(flowsMax, s.bulkInsert*2))
+
 	return nil
 }
 

@@ -104,7 +104,7 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 			o.portToBridge[u] = bridge
 
 			if port, ok := o.uuidToPort[u]; ok {
-				if !topology.HaveOwnershipLink(o.Graph, bridge, port, nil) {
+				if !topology.HaveOwnershipLink(o.Graph, bridge, port) {
 					topology.AddOwnershipLink(o.Graph, bridge, port, nil)
 					topology.AddLayer2Link(o.Graph, bridge, port, nil)
 				}
@@ -120,7 +120,7 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 		o.portToBridge[u] = bridge
 
 		if port, ok := o.uuidToPort[u]; ok {
-			if !topology.HaveOwnershipLink(o.Graph, bridge, port, nil) {
+			if !topology.HaveOwnershipLink(o.Graph, bridge, port) {
 				topology.AddOwnershipLink(o.Graph, bridge, port, nil)
 				topology.AddLayer2Link(o.Graph, bridge, port, nil)
 			}
@@ -370,7 +370,7 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 
 		var prevMetric, lastUpdateMetric *topology.InterfaceMetric
 
-		if ovs, ok := tr.Metadata["Ovs"]; ok {
+		if ovs, err := intf.GetField("Ovs"); err == nil {
 			prevMetric, ok = ovs.(map[string]interface{})["Metric"].(*topology.InterfaceMetric)
 			if ok {
 				lastUpdateMetric = currMetric.Sub(prevMetric).(*topology.InterfaceMetric)
@@ -519,7 +519,7 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 	}
 
 	if bridge, ok := o.portToBridge[uuid]; ok {
-		if !topology.HaveOwnershipLink(o.Graph, bridge, port, nil) {
+		if !topology.HaveOwnershipLink(o.Graph, bridge, port) {
 			topology.AddOwnershipLink(o.Graph, bridge, port, nil)
 			topology.AddLayer2Link(o.Graph, bridge, port, nil)
 		}
