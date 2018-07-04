@@ -1,0 +1,340 @@
+---
+UUID: "bcc2e200-7a57-11e8-913c-28d2442e1325"
+name: "FlowMatrix"
+description: "Create a flow matrix of the running processes"
+parameters:
+  - name: useFlows
+    description: Also use flows to build matrix
+    type: boolean
+  - name: format
+    description: Flow matrix output format
+    type: choice
+    default: graph
+    values:
+      - description: "Add nodes and edges to the current topology"
+        value: graph
+      - description: "Graphviz output"
+        value: dot
+  - name: debug
+    description: Show debug logs in the JavaScript console
+    type: boolean
+source: |
+    function FlowMatrix(useFlows, format, debug) {
+        var G = client.gremlin.G()
+        var at;
+        var listenPorts = []
+        var peerSockets = {}
+        var matrix = {}
+        var endpoints = {}
+        var hosts = {}
+        var hostAddresses = {}
+
+        var isLoopback = function(addr) {
+            return addr.startsWith("127.") ||
+                   addr.startsWith("::1/")
+        }
+
+        var isListenSocket = function(socket) {
+            return (socket.State == "LISTEN") || (
+                    ((socket.Protocol == "UDP") &&
+                    (socket.State == "CLOSE") &&
+                    ((socket.RemoteAddress == "0.0.0.0") ||
+                    (socket.RemoteAddress == "::"))))
+        }
+
+        var buildCaches = function(nodes, interfaces) {
+            // Build a list of the port for which we have a socket listening
+            // and a dict that maps outgoing connection local port to the remote socket
+            for (var i in nodes) {
+                var host = nodes[i]
+                hosts[host.Host] = host
+
+                var sockets = host.Metadata.Sockets
+                for (var j in sockets) {
+                    var socket = host.Metadata.Sockets[j]
+                    var localPort = socket.LocalPort
+                    if (isListenSocket(socket)) {
+                        listenPorts.push(localPort)
+                    } else {
+                        if (!(localPort in peerSockets)) {
+                            peerSockets[localPort] = []
+                        }
+                        peerSockets[localPort].push({
+                            "host": host.Host,
+                            "socket": socket,
+                        })
+                    }
+                }
+            }
+
+            for (var intf in interfaces) {
+                var intf = interfaces[intf]
+                for (var i in intf.Metadata.IPV4) {
+                    var ip = intf.Metadata.IPV4[i].split('/')[0]
+                    hostAddresses[ip] = hosts[intf.Host]
+                }
+            }
+        }
+
+        var getSocket = function(node, protocol, localAddress, localPort) {
+            if (!node.Metadata.Sockets) return
+
+            for (var i in node.Metadata.Sockets) {
+                var socket = node.Metadata.Sockets[i]
+                if (socket.Protocol == protocol && socket.LocalAddress == localAddress && socket.LocalPort == localPort) {
+                    return socket
+                }
+            }
+        }
+
+        var getSocketPeer = function(socket, fromHost) {
+            var localPort = socket.RemotePort
+            var localAddress = socket.RemoteAddress
+            var protocol = socket.Protocol
+
+            if (!(localPort in peerSockets)) {
+                return
+            }
+
+            for (var i in peerSockets) {
+                var sockets = peerSockets[i]
+                for (var j in sockets) {
+                    var s = sockets[j].socket
+                    if ((s.Protocol == protocol) && (s.LocalAddress == localAddress) && (s.LocalPort == localPort)) {
+                        if (isLoopback(localAddress)) {
+                            if (sockets[j].host == fromHost) {
+                                return sockets[j]
+                            }
+                        } else {
+                            return sockets[j]
+                        }
+                    }
+                }
+            }
+
+            if (protocol == "UDP") {
+                var node = hostAddresses[localAddress]
+                if (node) {
+                    for (var i in node.Metadata.Sockets) {
+                        var s = node.Metadata.Sockets[i]
+                        if (s.Protocol == "UDP" && isListenSocket(s) && s.LocalPort == localPort) {
+                            return {
+                                "host": node.Host,
+                                "socket": socket
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        var log = function() {
+            if (debug) {
+                console.log.apply(console, arguments)
+            }
+        }
+
+        var addEntry = function(protocol, serviceHost, serviceAddress, servicePort, serviceProcess, serviceName,
+                                clientHost, clientAddress, clientProcess, clientName) {
+            log("Adding entry", protocol, serviceHost, serviceAddress, servicePort, serviceProcess, serviceName,
+                clientHost, clientAddress, clientProcess, clientName, Math.random())
+
+            var key = [ protocol, serviceHost, serviceAddress, servicePort, serviceProcess, serviceName,
+                        clientHost, clientAddress, clientProcess, clientName ].join(',')
+
+            var entry = { "protocol": protocol,
+                          "serviceHost": serviceHost,
+                          "serviceAddress": serviceAddress,
+                          "servicePort": servicePort,
+                          "serviceProcess": serviceProcess,
+                          "serviceName": serviceName,
+                          "clientHost": clientHost,
+                          "clientAddress": clientAddress,
+                          "clientProcess": clientProcess,
+                          "clientName": clientName }
+
+            matrix[key] = entry
+        }
+
+        var outputDot = function() {
+            var endpoints = buildEndpoints()
+            var s = "digraph g {\n"
+
+            for (var k in endpoints) {
+                var endpoint = endpoints[k]
+                s += "subgraph cluster_" + k + " {\n"
+                s += 'label = "' + k + '"\n'
+                for (var name in endpoint) {
+                    s += '"' + k+name + '" [label=' + name + ',shape=box]\n'
+                }
+                s += "}\n"
+            }
+
+            for (var i in matrix) {
+                var entry = matrix[i]
+                s += '"' + entry.clientHost+entry.clientName + '" -> ' +
+                     '"' + entry.serviceHost+entry.serviceName + '" ' +
+                     '[label="' + entry.protocol + ":" + entry.serviceAddress + ":" + entry.servicePort + '"]\n'
+            }
+
+            return s + "}\n"
+        }
+
+        var buildEndpoints = function() {
+            for (var i in matrix) {
+                var entry = matrix[i]
+
+                if (!(entry.serviceHost in endpoints)) {
+                    endpoints[entry.serviceHost] = {}
+                }
+                endpoints[entry.serviceHost][entry.serviceName] = entry
+
+                if (!(entry.clientHost in endpoints)) {
+                    endpoints[entry.clientHost] = {}
+                }
+                endpoints[entry.clientHost][entry.clientName] = entry
+            }
+
+            log("Endpoints: ", endpoints)
+            return endpoints
+        }
+
+        var topologyMatrix = function(nodes) {
+            for (var i in nodes) {
+                var node = nodes[i]
+                for (var i in node.Metadata.Sockets) {
+                    var socket = node.Metadata.Sockets[i]
+                    if ((listenPorts.indexOf(socket.RemotePort) != -1) && (socket.State == "ESTABLISHED") || (at && !isListenSocket(socket))) {
+                        var peer = getSocketPeer(socket, node.Host)
+                        if (!peer) continue
+
+                        addEntry(socket.Protocol,
+                                 peer.host, socket.RemoteAddress, socket.RemotePort, peer.socket.Process, peer.socket.Name,
+                                 node.Host, socket.LocalAddress, socket.Process, socket.Name )
+                    }
+                }
+            }
+        }
+
+        var flowMatrix = function(sockets) {
+            for (var flowID in sockets) {
+                var entries = sockets[flowID]
+                for (var i in entries) {
+                    var socket = entries[i]
+                    if (listenPorts.indexOf(socket.RemotePort) != -1) {
+                        var serverAddress = socket.RemoteAddress
+                        var serverPort = socket.RemotePort
+
+                        var node = hostAddresses[serverAddress]
+                        if (!node) break
+
+                        var serverSocket = getSocket(node, socket.Protocol, serverAddress, serverPort)
+                        if (!serverSocket) break
+
+                        var server = node.Host
+                        var serverProc = serverSocket.Process
+                        var serverProcName = serverSocket.Name
+
+                        var clientAddress = socket.LocalAddress
+                        node = hostAddresses[clientAddress]
+                        if (!node) continue
+
+                        var client = node.Host
+                        var clientProc = socket.Process
+                        var clientProcName = socket.Name
+
+                        addEntry(socket.Protocol,
+                                 server, serverAddress, serverPort, serverProc, serverProcName,
+                                 client, clientAddress, clientProc, clientProcName)
+                    }
+                }
+            }
+        }
+
+        var buildGraph = function() {
+            log("Matrix", matrix)
+
+            var endpoints = buildEndpoints()
+            var g = new api.Graph()
+
+            for (var k in endpoints) {
+                var endpoint = endpoints[k]
+                for (var name in endpoint) {
+                    var nodeID = new UUID(5, "ns:URL", k+name).toString();
+                    var metadata = {
+                        "Name": name,
+                        "Type": "service",
+                        "Process": endpoint[name].serviceProcess,
+                        "Port": endpoint[name].servicePort
+                    }
+                    var node = new api.GraphNode()
+                    node.ID = nodeID.toString()
+                    node.Host = k
+                    node.Metadata = metadata
+                    g.nodes[node.ID] = node
+
+                    var edgeID = new UUID(5, "ns:URL", hosts[k].ID+nodeID.toString())
+                    var edge = new api.GraphEdge()
+                    edge.ID = edgeID.toString()
+                    edge.Host = k
+                    edge.Metadata = { "RelationType": "ownership" }
+                    edge.Parent = hosts[k].ID
+                    edge.Child = nodeID.toString()
+                    g.edges[edge.ID] = edge
+                }
+            }
+
+            for (var i in matrix) {
+                var entry = matrix[i]
+
+                var parent = new UUID(5, "ns:URL", entry.clientHost+entry.clientName).toString()
+                var child = new UUID(5, "ns:URL", entry.serviceHost+entry.serviceName).toString()
+                var edgeID = new UUID(5, "ns:URL", parent+child)
+
+                var edge = new api.GraphEdge()
+                edge.ID = edgeID.toString()
+                edge.Host = entry.serviceHost
+                edge.Metadata = { "RelationType": "connection",
+                                  "ServicePort": entry.servicePort }
+                edge.Parent = parent
+                edge.Child = child
+
+                g.edges[edge.ID] = edge
+            }
+
+            return g
+        }
+
+        var outputResult = function() {
+            log("Output result in " + format)
+            switch (format) {
+                case "dot":
+                    return outputDot()
+                case "graph":
+                    return buildGraph()
+            }
+        }
+
+        var nodes
+        return G.V().Has('Type', 'host').HasKey('Sockets')
+            .then(function (data) {
+                nodes = data
+                return G.V().HasKey('IPV4')
+            })
+            .then(function (interfaces) {
+                buildCaches(nodes, interfaces)
+
+                topologyMatrix(nodes)
+
+                if (useFlows) {
+                    return G.Flows().Has('Transport', NE('')).Sockets().then(
+                        function (sockets) {
+                            flowMatrix(sockets)
+                            return outputResult()
+                        }
+                    )
+                }
+
+                return outputResult()
+            })
+    }
