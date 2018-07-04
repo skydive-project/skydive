@@ -15,6 +15,7 @@ make install
 export ELASTICSEARCH=localhost:9200
 export SKYDIVE=${GOPATH}/bin/skydive
 export SKYDIVE_LOGGING_LEVEL=DEBUG
+export SKYDIVE_UI='{"theme":"light"}'
 
 make test.functionals WITH_CDD=true VERBOSE=true TIMEOUT=10m TEST_PATTERN=Overview
 
