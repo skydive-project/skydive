@@ -177,7 +177,7 @@ func TestK8sNetworkPolicyNode(t *testing.T) {
 }
 
 func TestK8sNodeNode(t *testing.T) {
-	testNodeCreation(t, nil, nil, "node", nodeName)
+	testNodeCreation(t, nil, nil, "node", nodeName, "Arch", "Cluster", "Hostname", "IP", "Labels", "OS")
 }
 
 func TestK8sPersistentVolumeNode(t *testing.T) {

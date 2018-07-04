@@ -25,7 +25,6 @@ package k8s
 import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/probe"
-	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 
 	"k8s.io/api/core/v1"
@@ -52,11 +51,26 @@ func newHostIndexer(g *graph.Graph) *graph.MetadataIndexer {
 }
 
 func (c *nodeProbe) newMetadata(node *v1.Node) graph.Metadata {
-	return newMetadata("node", node.GetNamespace(), node.GetName(), node)
+	m := newMetadata("node", node.Namespace, node.Name, node)
+	m.SetField("Labels", node.Labels)
+	m.SetField("Cluster", node.ClusterName)
+	for _, a := range node.Status.Addresses {
+		switch a.Type {
+		case "Hostname":
+			m.SetField("Hostname", a.Address)
+		case "InternalIP":
+			m.SetField("IP", a.Address)
+		}
+	}
+	info := node.Status.NodeInfo
+	m.SetField("Arch", info.Architecture)
+	m.SetField("Kernel", info.KernelVersion)
+	m.SetField("OS", info.OperatingSystem)
+	return m
 }
 
 func linkNodeToHost(g *graph.Graph, host, node *graph.Node) {
-	topology.AddOwnershipLink(g, host, node, nil)
+	addLink(g, host, node)
 }
 
 func nodeUID(node *v1.Node) graph.Identifier {
