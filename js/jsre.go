@@ -438,5 +438,9 @@ func NewJSRE() (*JSRE, error) {
 		return nil, err
 	}
 
+	if err := jsre.runEmbededScript("statics/js/vendor/pure-uuid.js"); err != nil {
+		return nil, err
+	}
+
 	return jsre, nil
 }
