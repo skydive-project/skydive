@@ -237,7 +237,6 @@ var TopologyComponent = {
       topologyMode: "live",
       topologyHumanTimeContext: "",
       isTopologyOptionsVisible: false,
-      isSSHEnabled: false,
       timeType: "absolute",
       topologyRelTime: "1m",
       metadataCollapseState: {
@@ -437,9 +436,6 @@ var TopologyComponent = {
       return app.enforce("injectpacket", "write");
     },
 
-    isSSHEnabled: function() {
-      return app.getConfigValue('ssh_enabled');
-    }
   },
 
   methods: {
@@ -448,12 +444,16 @@ var TopologyComponent = {
       setTimeout(this.emphasize.bind(this), 1000);
     },
 
+    isSSHEnabled: function() {
+      return app.getConfigValue('ssh_enabled');
+    },
+
     metadataLinks: function(m) {
       var self = this;
 
       var links = {};
 
-      if (m.Type === "host" && this.isSSHEnabled) {
+      if (m.Type === "host" && this.isSSHEnabled()) {
         links.Name = {
           "class": "indicator glyphicon glyphicon-new-window raw-packet-link",
           "onClick": function() {

@@ -49,9 +49,6 @@ analyzer:
     # capture_gremlin: "G.V().has('Name', NE('lo'))"
     # capture_bpf: "port 80"
 
-  # Enable/disable ssh to hosts
-  # ssh_enabled: false
-
   # Flow storage engine
   flow:
     # Storage backend name: myelasticsearch, myorientdb
@@ -425,6 +422,9 @@ ui:
   bandwidth_relative_active: 0.1
   bandwidth_relative_warning: 0.4
   bandwidth_relative_alert: 0.8
+
+  # Enable/disable ssh to hosts
+  # ssh_enabled: false
 
 rbac:
   model:
