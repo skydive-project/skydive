@@ -24,3 +24,15 @@ declare var window: any;
 import apiLib = require('./api');
 window.api = apiLib
 window.Metadata = apiLib.Metadata
+window.NE = apiLib.NE
+window.GT = apiLib.GT
+window.LT = apiLib.LT
+window.GTE = apiLib.GTE
+window.LTE = apiLib.LTE
+window.IPV4RANGE = apiLib.IPV4RANGE
+window.REGEX = apiLib.REGEX
+window.WITHIN = apiLib.WITHIN
+window.WITHOUT = apiLib.WITHOUT
+window.INSIDE = apiLib.INSIDE
+window.OUTSIDE = apiLib.OUTSIDE
+window.BETWEEN = apiLib.BETWEEN
