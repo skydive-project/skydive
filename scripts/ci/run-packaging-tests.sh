@@ -14,7 +14,7 @@ VERSION=$(make -s version | cut -d '-' -f 1)
 TAG=$(make -s version | cut -d '-' -f 2- | tr '-' '.')
 for srpm in $(ls rpmbuild/SRPMS/skydive-${VERSION}*${TAG}.src.rpm)
 do
-    for root in epel-7-x86_64 fedora-27-x86_64 fedora-28-x86_64
+    for root in centos-7-x86_64 epel-7-x86_64 fedora-27-x86_64 fedora-28-x86_64
     do
         mock -r $root -D "fullver $FULLVER" --rebuild $srpm
     done
