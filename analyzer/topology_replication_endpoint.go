@@ -166,10 +166,7 @@ func (p *TopologyReplicatorPeer) connect(wg *sync.WaitGroup) {
 		return
 	}
 
-	authAddr := common.NormalizeAddrForURL(p.URL.Hostname())
-	authPort, _ := strconv.Atoi(p.URL.Port())
-	authClient := shttp.NewAuthenticationClient(config.GetURL("http", authAddr, authPort, ""), p.AuthOptions)
-	wsClient := shttp.NewWSClientFromConfig(common.AnalyzerService, p.URL, authClient, http.Header{}).UpgradeToWSStructSpeaker()
+	wsClient := shttp.NewWSClientFromConfig(common.AnalyzerService, p.URL, p.AuthOptions, http.Header{}).UpgradeToWSStructSpeaker()
 
 	// will trigger shttp.WSSpeakerEventHandler, so OnConnected
 	wsClient.AddEventHandler(p)
@@ -231,7 +228,7 @@ func (t *TopologyReplicationEndpoint) DisconnectPeers() {
 func (t *TopologyReplicationEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
 	msgType, obj, err := graph.UnmarshalWSMessage(msg)
 	if err != nil {
-		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err.Error())
+		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
 		return
 	}
 

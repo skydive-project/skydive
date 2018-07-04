@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/skydive-project/skydive/api/types"
+	shttp "github.com/skydive-project/skydive/http"
 )
 
 // AlertResourceHandler aims to creates and manage a new Alert.
@@ -51,14 +52,14 @@ func (a *AlertResourceHandler) Name() string {
 }
 
 // RegisterAlertAPI registers an Alert's API to a designated API Server
-func RegisterAlertAPI(apiServer *Server) (*AlertAPIHandler, error) {
+func RegisterAlertAPI(apiServer *Server, authBackend shttp.AuthenticationBackend) (*AlertAPIHandler, error) {
 	alertAPIHandler := &AlertAPIHandler{
 		BasicAPIHandler: BasicAPIHandler{
 			ResourceHandler: &AlertResourceHandler{},
 			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
 		},
 	}
-	if err := apiServer.RegisterAPIHandler(alertAPIHandler); err != nil {
+	if err := apiServer.RegisterAPIHandler(alertAPIHandler, authBackend); err != nil {
 		return nil, err
 	}
 	return alertAPIHandler, nil

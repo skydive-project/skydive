@@ -28,6 +28,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/skydive-project/skydive/api/types"
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/statics"
 )
@@ -106,14 +107,14 @@ func (w *WorkflowAPIHandler) Index() map[string]types.Resource {
 }
 
 // RegisterWorkflowAPI registers a new workflow api handler
-func RegisterWorkflowAPI(apiServer *Server) (*WorkflowAPIHandler, error) {
+func RegisterWorkflowAPI(apiServer *Server, authBackend shttp.AuthenticationBackend) (*WorkflowAPIHandler, error) {
 	workflowAPIHandler := &WorkflowAPIHandler{
 		BasicAPIHandler: BasicAPIHandler{
 			ResourceHandler: &WorkflowResourceHandler{},
 			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
 		},
 	}
-	if err := apiServer.RegisterAPIHandler(workflowAPIHandler); err != nil {
+	if err := apiServer.RegisterAPIHandler(workflowAPIHandler, authBackend); err != nil {
 		return nil, err
 	}
 	return workflowAPIHandler, nil

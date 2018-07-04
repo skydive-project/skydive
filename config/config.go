@@ -44,10 +44,17 @@ var ErrNoAnalyzerSpecified = errors.New("No analyzer specified in the configurat
 var (
 	cfg           *viper.Viper
 	relocationMap = map[string][]string{
-		"analyzer.flow.max_buffer_size": {"analyzer.storage.max_flow_buffer_size"},
-		"analyzer.topology.backend":     {"graph.backend"},
-		"analyzer.flow.backend":         {"analyzer.storage.backend"},
-		"agent.capture.stats_update":    {"agent.flow.stats_update"},
+		"agent.auth.api.backend":         {"auth.type"},
+		"agent.auth.cluster.password":    {"auth.analyzer_password"},
+		"agent.auth.cluster.username":    {"auth.analyzer_username"},
+		"agent.capture.stats_update":     {"agent.flow.stats_update"},
+		"analyzer.auth.api.backend":      {"auth.type"},
+		"analyzer.auth.cluster.backend":  {"auth.type"},
+		"analyzer.auth.cluster.password": {"auth.analyzer_password"},
+		"analyzer.auth.cluster.username": {"auth.analyzer_username"},
+		"analyzer.flow.backend":          {"analyzer.storage.backend"},
+		"analyzer.flow.max_buffer_size":  {"analyzer.storage.max_flow_buffer_size"},
+		"analyzer.topology.backend":      {"graph.backend"},
 	}
 )
 
@@ -63,6 +70,7 @@ func init() {
 
 	cfg = viper.New()
 
+	cfg.SetDefault("agent.auth.api.backend", "noauth")
 	cfg.SetDefault("agent.capture.stats_update", 1)
 	cfg.SetDefault("agent.flow.probes", []string{"gopacket", "pcapsocket"})
 	cfg.SetDefault("agent.flow.pcapsocket.bind_address", "127.0.0.1")
@@ -80,6 +88,8 @@ func init() {
 	cfg.SetDefault("agent.topology.socketinfo.host_update", 10)
 	cfg.SetDefault("agent.X509_servername", "")
 
+	cfg.SetDefault("analyzer.auth.cluster.backend", "noauth")
+	cfg.SetDefault("analyzer.auth.api.backend", "noauth")
 	cfg.SetDefault("analyzer.flow.backend", "memory")
 	cfg.SetDefault("analyzer.flow.max_buffer_size", 100000)
 	cfg.SetDefault("analyzer.listen", "127.0.0.1:8082")
@@ -87,9 +97,11 @@ func init() {
 	cfg.SetDefault("analyzer.topology.backend", "memory")
 	cfg.SetDefault("analyzer.topology.probes", []string{})
 
+	cfg.SetDefault("auth.basic.type", "basic") // defined for backward compatibility
 	cfg.SetDefault("auth.keystone.tenant_name", "admin")
+	cfg.SetDefault("auth.keystone.type", "keystone") // defined for backward compatibility
 	cfg.SetDefault("auth.keystone.domain_name", "Default")
-	cfg.SetDefault("auth.type", "noauth")
+	cfg.SetDefault("auth.noauth.type", "noauth") // defined for backward compatibility
 
 	cfg.SetDefault("cache.expire", 300)
 	cfg.SetDefault("cache.cleanup", 30)
@@ -142,18 +154,18 @@ func init() {
 	cfg.SetDefault("rbac.model.policy_effect", []string{"some(where (p_eft == allow)) && !some(where (p_eft == deny))"})
 	cfg.SetDefault("rbac.model.matchers", []string{"g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act"})
 
-	cfg.SetDefault("storage.elasticsearch.driver", "elasticsearch")
-	cfg.SetDefault("storage.elasticsearch.host", "127.0.0.1:9200")
-	cfg.SetDefault("storage.elasticsearch.bulk_maxdelay", 5)
-	cfg.SetDefault("storage.elasticsearch.index_age_limit", 0)
-	cfg.SetDefault("storage.elasticsearch.index_entries_limit", 0)
-	cfg.SetDefault("storage.elasticsearch.indices_to_keep", 0)
-	cfg.SetDefault("storage.memory.driver", "memory")
-	cfg.SetDefault("storage.orientdb.driver", "orientdb")
-	cfg.SetDefault("storage.orientdb.addr", "http://localhost:2480")
-	cfg.SetDefault("storage.orientdb.database", "Skydive")
-	cfg.SetDefault("storage.orientdb.username", "root")
-	cfg.SetDefault("storage.orientdb.password", "root")
+	cfg.SetDefault("storage.elasticsearch.driver", "elasticsearch")  // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.elasticsearch.host", "127.0.0.1:9200")   // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.elasticsearch.bulk_maxdelay", 5)         // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.elasticsearch.index_age_limit", 0)       // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.elasticsearch.index_entries_limit", 0)   // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.elasticsearch.indices_to_keep", 0)       // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.memory.driver", "memory")                // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.orientdb.driver", "orientdb")            // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.orientdb.addr", "http://localhost:2480") // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.orientdb.database", "Skydive")           // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.orientdb.username", "root")              // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.orientdb.password", "root")              // defined for backward compatibility and to set defaults
 
 	cfg.SetDefault("ui", map[string]interface{}{})
 
@@ -214,7 +226,7 @@ func checkViperSupportedExts(ext string) bool {
 }
 
 func setStorageDefaults() {
-	for key, _ := range cfg.GetStringMap("storage") {
+	for key := range cfg.GetStringMap("storage") {
 		if key == "elasticsearch" || key == "orientdb" || key == "memory" {
 			continue
 		}
@@ -278,7 +290,7 @@ func GetConfig() *viper.Viper {
 	return cfg
 }
 
-// SetDefault set default configuration key the value
+// SetDefault set the default configuration value for a key
 func SetDefault(key string, value interface{}) {
 	cfg.SetDefault(key, value)
 }

@@ -99,12 +99,12 @@ func (f *fakeWSMessageClientSubscriptionHandler) OnWSStructMessage(c WSSpeaker, 
 
 func TestWSMessageSubscription(t *testing.T) {
 	logging.InitLogging()
-	httpserver := NewServer("myhost", common.AnalyzerService, "localhost", 59999, NewNoAuthenticationBackend(), "")
+	httpserver := NewServer("myhost", common.AnalyzerService, "localhost", 59999, "")
 
 	go httpserver.ListenAndServe()
 	defer httpserver.Stop()
 
-	wsserver := NewWSStructServer(NewWSServer(httpserver, "/wstest"))
+	wsserver := NewWSStructServer(NewWSServer(httpserver, "/wstest", NewNoAuthenticationBackend()))
 
 	serverHandler := &fakeWSMessageServerSubscriptionHandler{t: t, server: wsserver, received: make(map[string]bool)}
 	wsserver.AddEventHandler(serverHandler)

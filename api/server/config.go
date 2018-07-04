@@ -35,7 +35,7 @@ func (c *configAPI) configGet(w http.ResponseWriter, r *auth.AuthenticatedReques
 	}
 }
 
-func (c *configAPI) registerEndpoints(r *shttp.Server) {
+func (c *configAPI) registerEndpoints(r *shttp.Server, authBackend shttp.AuthenticationBackend) {
 	routes := []shttp.Route{
 		{
 			Name:        "ConfigGet",
@@ -45,14 +45,14 @@ func (c *configAPI) registerEndpoints(r *shttp.Server) {
 		},
 	}
 
-	r.RegisterRoutes(routes)
+	r.RegisterRoutes(routes, authBackend)
 }
 
 // RegisterConfigAPI registers a configuration endpoint (read only) in API server
-func RegisterConfigAPI(r *shttp.Server) {
+func RegisterConfigAPI(r *shttp.Server, authBackend shttp.AuthenticationBackend) {
 	c := &configAPI{
 		cfg: config.GetConfig(),
 	}
 
-	c.registerEndpoints(r)
+	c.registerEndpoints(r, authBackend)
 }

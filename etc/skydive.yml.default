@@ -42,6 +42,20 @@ analyzer:
   # X509_cert: /etc/ssl/certs/analyzer.domain.com.crt
   # X509_key:  /etc/ssl/certs/analyzer.domain.com.key
 
+  auth:
+    # auth section for API request
+    api:
+      # Specify the name of the auth backend definition, see auth section.
+      # backend: noauth
+
+    cluster:
+      # Specify the name of the auth backend definition, see auth section.
+      # backend: noauth
+
+      # Specify username, password for cluster authentication. Used for analyzer/analyzer communication.
+      # username: admin
+      # password: password
+
   # Section defining things to be invoked on startup
   startup:
     # By default no capturing,  set filter to capture from selected nodes
@@ -113,6 +127,17 @@ agent:
   # Server name field specified in TLS communications.
   # Not required, but can be used to allow virtual hosting
   # X509_servername: domain.com
+
+  auth:
+    # auth section for API request
+    api:
+      # Specify the name of the auth backend definition, see auth section.
+      # backend: noauth
+
+    cluster:
+      # Specify username, password for cluster authentication. Used for agent/analyzer communication.
+      # username: admin
+      # password: password
 
   topology:
     # Probes used to capture topology information like interfaces,
@@ -277,23 +302,22 @@ logging:
   # color: false
 
 auth:
-  # specify the type of authentication mechanism: noauth, basic, keystone (default: noauth)
-  # type: basic
-  basic:
+  mybasic:
+    # Define a basic auth authentication backend
+    # type: basic
     # file: /etc/skydive/htpasswd
 
-  # Define Keystone authentication type parameters
-  keystone:
+  mykeystone:
+    # Define a basic auth authentication backend
+    # type: keystone
     # auth_url: http://xxx.xxx.xxx.xxx:5000/v3
 
     # define the tenant and the domain that the users have to belong to
     # tenant_name: admin
     # domain_name: Default
 
-  # The 'analyzer_username' and 'analyzer_password' parameters are
-  # used by the agent to authenticate against the analyzer
-  # analyzer_username: admin
-  # analyzer_password: password
+    # define which role an authenticated user will have. Only used for API authentication.
+    # role: admin
 
 etcd:
   # server parameters

@@ -304,19 +304,14 @@ var app = new Vue({
       return value;
     },
 
-    enforce: function(subject, action) {
-      var authorized = false;
+    enforce: function(object, action) {
       var perms = this.$store.state.permissions;
       for (var perm in perms) {
-        if (perms[perm][1] === subject && perms[perm][2] === action) {
-          if (perms[perm][3] === "allow") {
-            authorized = true
-          } else if (perms[perm][3] === "deny") {
-            authorized = false
-          }
+        if (perms[perm].Object === object && perms[perm].Action === action) {
+          return perms[perm].Allowed;
         }
       }
-      return authorized;
+      return false;
     },
 
     setThemeFromConfig: function() {

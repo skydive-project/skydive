@@ -27,7 +27,6 @@ import (
 	"math/rand"
 	"net"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -108,11 +107,8 @@ func (c *FlowClientWebSocketConn) Close() error {
 
 // Connect to the WebSocket flow server
 func (c *FlowClientWebSocketConn) Connect() error {
-	authOptions := NewAnalyzerAuthenticationOpts()
-	authAddr := common.NormalizeAddrForURL(c.url.Hostname())
-	authPort, _ := strconv.Atoi(c.url.Port())
-	authClient := shttp.NewAuthenticationClient(config.GetURL("http", authAddr, authPort, ""), authOptions)
-	c.wsClient = shttp.NewWSClientFromConfig(common.AgentService, c.url, authClient, nil)
+	authOptions := AnalyzerClusterAuthenticationOpts()
+	c.wsClient = shttp.NewWSClientFromConfig(common.AgentService, c.url, authOptions, nil)
 	c.wsClient.Connect()
 	c.wsClient.AddEventHandler(c)
 

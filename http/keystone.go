@@ -23,6 +23,7 @@
 package http
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -31,7 +32,6 @@ import (
 	"github.com/gophercloud/gophercloud/openstack"
 	tokens2 "github.com/gophercloud/gophercloud/openstack/identity/v2/tokens"
 	tokens3 "github.com/gophercloud/gophercloud/openstack/identity/v3/tokens"
-	"github.com/gorilla/context"
 	"github.com/mitchellh/mapstructure"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
@@ -41,11 +41,28 @@ type KeystoneAuthenticationBackend struct {
 	AuthURL string
 	Tenant  string
 	Domain  string
+	name    string
+	role    string
 }
 
 type User struct {
 	ID   string `mapstructure:"id"`
 	Name string `mapstructure:"name"`
+}
+
+// Name returns the name of the backend
+func (b *KeystoneAuthenticationBackend) Name() string {
+	return b.name
+}
+
+// DefaultUserRole return the default user role
+func (b *KeystoneAuthenticationBackend) DefaultUserRole(user string) string {
+	return b.role
+}
+
+// SetDefaultUserRole defines the default user role
+func (b *KeystoneAuthenticationBackend) SetDefaultUserRole(role string) {
+	b.role = role
 }
 
 func (b *KeystoneAuthenticationBackend) checkUserV2(client *gophercloud.ServiceClient, tokenID string) (string, error) {
@@ -100,24 +117,12 @@ func (b *KeystoneAuthenticationBackend) checkUserV3(client *gophercloud.ServiceC
 	return response.Token.User.Name, nil
 }
 
-func (b *KeystoneAuthenticationBackend) CheckUser(r *http.Request) (string, error) {
-	cookie, err := r.Cookie("authtok")
-	if err != nil {
-		logging.GetLogger().Debug("Keystone authentication error, cookie not found")
-		return "", ErrWrongCredentials
-	}
-
-	tokenID := cookie.Value
-	if tokenID == "" {
-		logging.GetLogger().Debug("Keystone authentication error, empty cookie value")
-		return "", ErrWrongCredentials
-	}
-
+func (b *KeystoneAuthenticationBackend) CheckUser(token string) (string, error) {
 	provider, err := openstack.NewClient(b.AuthURL)
 	if err != nil {
 		return "", err
 	}
-	provider.TokenID = cookie.Value
+	provider.TokenID = token
 
 	client := &gophercloud.ServiceClient{
 		ProviderClient: provider,
@@ -125,10 +130,10 @@ func (b *KeystoneAuthenticationBackend) CheckUser(r *http.Request) (string, erro
 	}
 
 	if b.Domain != "" {
-		return b.checkUserV3(client, tokenID)
+		return b.checkUserV3(client, token)
 	}
 
-	return b.checkUserV2(client, tokenID)
+	return b.checkUserV2(client, token)
 }
 
 func (b *KeystoneAuthenticationBackend) Authenticate(username string, password string) (string, error) {
@@ -147,6 +152,9 @@ func (b *KeystoneAuthenticationBackend) Authenticate(username string, password s
 
 	if err := openstack.Authenticate(provider, opts); err != nil {
 		logging.GetLogger().Noticef("Keystone authentication error: %s", err)
+
+		opts.Password = "xxxxxxxxx"
+		logging.GetLogger().Debugf("Keystone endpoint: %s, request: %+v", b.AuthURL, opts)
 		return "", err
 	}
 
@@ -155,22 +163,28 @@ func (b *KeystoneAuthenticationBackend) Authenticate(username string, password s
 
 func (b *KeystoneAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		setTLSHeader(w, r)
-		if username, err := b.CheckUser(r); username == "" {
+		token, err := authenticateWithHeaders(b, w, r)
+		if err != nil {
+			unauthorized(w, r)
+			return
+		}
+
+		if username, err := b.CheckUser(token); username == "" {
 			if err != nil {
 				logging.GetLogger().Warningf("Failed to check token: %s", err)
 			}
 			unauthorized(w, r)
 		} else {
-			ar := &auth.AuthenticatedRequest{Request: *r, Username: username}
-			copyRequestVars(r, &ar.Request)
-			wrapped(w, ar)
-			context.Clear(&ar.Request)
+			authCallWrapped(w, r, username, wrapped)
 		}
 	}
 }
 
-func NewKeystoneBackend(authURL string, tenant string, domain string) *KeystoneAuthenticationBackend {
+func NewKeystoneBackend(name string, authURL string, tenant string, domain string, role string) (*KeystoneAuthenticationBackend, error) {
+	if authURL == "" {
+		return nil, errors.New("Authentication URL empty")
+	}
+
 	if !strings.HasSuffix(authURL, "/") {
 		authURL += "/"
 	}
@@ -179,13 +193,20 @@ func NewKeystoneBackend(authURL string, tenant string, domain string) *KeystoneA
 		AuthURL: authURL,
 		Tenant:  tenant,
 		Domain:  domain,
-	}
+		name:    name,
+		role:    role,
+	}, nil
 }
 
-func NewKeystoneAuthenticationBackendFromConfig() *KeystoneAuthenticationBackend {
-	authURL := config.GetString("auth.keystone.auth_url")
-	domain := config.GetString("auth.keystone.domain_name")
-	tenant := config.GetString("auth.keystone.tenant_name")
+func NewKeystoneAuthenticationBackendFromConfig(name string) (*KeystoneAuthenticationBackend, error) {
+	authURL := config.GetString("auth." + name + ".auth_url")
+	domain := config.GetString("auth." + name + ".domain_name")
+	tenant := config.GetString("auth." + name + ".tenant_name")
 
-	return NewKeystoneBackend(authURL, tenant, domain)
+	role := config.GetString("auth." + name + ".role")
+	if role == "" {
+		role = defaultUserRole
+	}
+
+	return NewKeystoneBackend(name, authURL, tenant, domain, role)
 }

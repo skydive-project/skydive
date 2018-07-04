@@ -24,7 +24,6 @@ package http
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/abbot/go-http-auth"
 	"github.com/gorilla/websocket"
@@ -42,14 +41,6 @@ type WSServer struct {
 	common.RWMutex
 	*wsIncomerPool
 	incomerHandler WSIncomerHandler
-}
-
-func getRequestParameter(r *auth.AuthenticatedRequest, name string) string {
-	param := r.Header.Get(name)
-	if param == "" {
-		param = r.URL.Query().Get(strings.ToLower(name))
-	}
-	return param
 }
 
 func defaultIncomerHandler(conn *websocket.Conn, r *auth.AuthenticatedRequest) *wsIncomingClient {
@@ -70,7 +61,7 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 	}
 
 	// if X-Host-ID specified avoid having twice the same ID
-	host := getRequestParameter(r, "X-Host-ID")
+	host := getRequestParameter(&r.Request, "X-Host-ID")
 	if host == "" {
 		host = r.RemoteAddr
 	}
@@ -101,8 +92,8 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 	s.OnConnected(c)
 }
 
-// NewWSServer returns a new WSServer.
-func NewWSServer(server *Server, endpoint string) *WSServer {
+// NewWSServer returns a new WSServer. The given auth backend will validate the credentials
+func NewWSServer(server *Server, endpoint string, authBackend AuthenticationBackend) *WSServer {
 	s := &WSServer{
 		wsIncomerPool: newWSIncomerPool(endpoint), // server inherites from a WSSpeaker pool
 		incomerHandler: func(c *websocket.Conn, a *auth.AuthenticatedRequest) WSSpeaker {
@@ -110,6 +101,6 @@ func NewWSServer(server *Server, endpoint string) *WSServer {
 		},
 	}
 
-	server.HandleFunc(endpoint, s.serveMessages)
+	server.HandleFunc(endpoint, s.serveMessages, authBackend)
 	return s
 }

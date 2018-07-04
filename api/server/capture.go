@@ -29,6 +29,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 )
@@ -135,7 +136,7 @@ func (c *CaptureAPIHandler) Create(r types.Resource) error {
 }
 
 // RegisterCaptureAPI registers an new resource, capture
-func RegisterCaptureAPI(apiServer *Server, g *graph.Graph) (*CaptureAPIHandler, error) {
+func RegisterCaptureAPI(apiServer *Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*CaptureAPIHandler, error) {
 	captureAPIHandler := &CaptureAPIHandler{
 		BasicAPIHandler: BasicAPIHandler{
 			ResourceHandler: &CaptureResourceHandler{},
@@ -143,7 +144,7 @@ func RegisterCaptureAPI(apiServer *Server, g *graph.Graph) (*CaptureAPIHandler, 
 		},
 		Graph: g,
 	}
-	if err := apiServer.RegisterAPIHandler(captureAPIHandler); err != nil {
+	if err := apiServer.RegisterAPIHandler(captureAPIHandler, authBackend); err != nil {
 		return nil, err
 	}
 	return captureAPIHandler, nil

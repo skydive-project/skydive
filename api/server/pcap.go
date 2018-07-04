@@ -78,7 +78,7 @@ func (p *PcapAPI) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest
 	w.WriteHeader(http.StatusOK)
 }
 
-func (p *PcapAPI) registerEndpoints(r *shttp.Server) {
+func (p *PcapAPI) registerEndpoints(r *shttp.Server, authBackend shttp.AuthenticationBackend) {
 	routes := []shttp.Route{
 		{
 			Name:        "PCAP",
@@ -88,14 +88,14 @@ func (p *PcapAPI) registerEndpoints(r *shttp.Server) {
 		},
 	}
 
-	r.RegisterRoutes(routes)
+	r.RegisterRoutes(routes, authBackend)
 }
 
 // RegisterPcapAPI registers a new pcap injector API
-func RegisterPcapAPI(r *shttp.Server, store storage.Storage) {
+func RegisterPcapAPI(r *shttp.Server, store storage.Storage, authBackend shttp.AuthenticationBackend) {
 	p := &PcapAPI{
 		Storage: store,
 	}
 
-	p.registerEndpoints(r)
+	p.registerEndpoints(r, authBackend)
 }
