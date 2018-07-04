@@ -40,18 +40,13 @@ const (
 	nodeNameField = detailsField + ".Spec.NodeName"
 )
 
-func newMetadata(ty, namespace, name string, details interface{}, extras ...graph.Metadata) graph.Metadata {
+func newMetadata(ty, namespace, name string, details interface{}) graph.Metadata {
 	m := graph.Metadata{
 		"Manager":    managerValue,
 		"Type":       ty,
 		"Namespace":  namespace,
 		"Name":       name,
 		detailsField: common.NormalizeValue(details),
-	}
-	for _, extra := range extras {
-		for k, v := range extra {
-			m[k] = v
-		}
 	}
 	return m
 }
