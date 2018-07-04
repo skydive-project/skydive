@@ -29,7 +29,6 @@ import (
 	"github.com/skydive-project/skydive/api/client"
 	api "github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/validator"
@@ -90,12 +89,7 @@ var CaptureCreate = &cobra.Command{
 		capture.IPDefrag = ipDefrag
 		capture.ReassembleTCP = reassembleTCP
 		capture.LayerKeyMode = layerKeyMode
-
-		if !config.GetConfig().GetBool("analyzer.packet_capture_enabled") {
-			capture.RawPacketLimit = 0
-		} else {
-			capture.RawPacketLimit = rawPacketLimit
-		}
+		capture.RawPacketLimit = rawPacketLimit
 
 		if err := validator.Validate(capture); err != nil {
 			logging.GetLogger().Error(err)
