@@ -53,6 +53,10 @@ var (
 	}
 )
 
+const (
+	etcdDefaultPort = 12379
+)
+
 func init() {
 	host, err := os.Hostname()
 	if err != nil {
@@ -98,7 +102,7 @@ func init() {
 	cfg.SetDefault("etcd.data_dir", "/var/lib/skydive/etcd")
 	cfg.SetDefault("etcd.embedded", true)
 	cfg.SetDefault("etcd.name", host)
-	cfg.SetDefault("etcd.listen", "127.0.0.1:12379")
+	cfg.SetDefault("etcd.listen", fmt.Sprintf("127.0.0.1:%d", etcdDefaultPort))
 
 	cfg.SetDefault("flow.expire", 600)
 	cfg.SetDefault("flow.update", 60)
@@ -305,10 +309,19 @@ func GetEtcdServerAddrs() []string {
 	if len(etcdServers) > 0 {
 		return etcdServers
 	}
-	if address, err := GetOneAnalyzerServiceAddress(); err == nil {
-		return []string{"http://" + address.Addr + ":12379"}
+
+	port := etcdDefaultPort
+	if GetBool("etcd.embedded") {
+		sa, err := common.ServiceAddressFromString(GetString("etcd.listen"))
+		if err == nil {
+			port = sa.Port
+		}
 	}
-	return []string{"http://localhost:12379"}
+
+	if address, err := GetOneAnalyzerServiceAddress(); err == nil {
+		return []string{fmt.Sprintf("http://%s:%d", address.Addr, port)}
+	}
+	return []string{fmt.Sprintf("http://localhost:%d", port)}
 }
 
 // IsTLSenabled returns true is the analyzer certificates are set
