@@ -148,9 +148,7 @@ func (o *OvsdbProbe) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row 
 // linkIntfTOBridge having ifindex set to 0 (not handled by netlink) or being in
 // error
 func (o *OvsdbProbe) linkIntfTOBridge(bridge, intf *graph.Node) {
-	oerror, _ := intf.GetFieldString("Ovs.Error")
-	ifindex, _ := intf.GetFieldInt64("IfIndex")
-	if (oerror != "" || ifindex == 0) && !topology.IsOwnershipLinked(o.Graph, intf) {
+	if isOvsDrivenInterface(intf) && !topology.IsOwnershipLinked(o.Graph, intf) {
 		topology.AddOwnershipLink(o.Graph, bridge, intf, nil)
 	}
 }
@@ -253,11 +251,6 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 	ifindex := columnInt64Value(&row.New, "ifindex")
 	itype := columnStringValue(&row.New, "type")
 
-	driver := goMapStringValue(&row.New, "status", "driver_name")
-	if driver == "" && isOvsInterfaceType(itype) {
-		driver = "openvswitch"
-	}
-
 	o.Graph.Lock()
 	defer o.Graph.Unlock()
 
@@ -291,12 +284,13 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 	defer tr.Commit()
 
 	tr.AddMetadata("UUID", uuid)
+	tr.AddMetadata("Ovs.Error", oerror)
 
-	if oerror != "" {
-		tr.AddMetadata("Ovs.Error", oerror)
+	driver := goMapStringValue(&row.New, "status", "driver_name")
+	if driver == "" {
+		driver = "openvswitch"
 	}
-
-	if driver != "" {
+	if _, err := intf.GetFieldString("Driver"); err != nil {
 		tr.AddMetadata("Driver", driver)
 	}
 
