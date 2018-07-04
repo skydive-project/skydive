@@ -82,7 +82,11 @@ func dumpNamespace(ns *v1.Namespace) string {
 }
 
 func (p *namespaceProbe) newMetadata(ns *v1.Namespace) graph.Metadata {
-	return newMetadata("namespace", "", ns.GetName(), ns)
+	m := newMetadata("namespace", "", ns.GetName(), ns)
+	m.SetField("Labels", ns.Labels)
+	m.SetField("Cluster", ns.ClusterName)
+	m.SetField("Status", ns.Status.Phase)
+	return m
 }
 
 func namespaceUID(ns *v1.Namespace) graph.Identifier {
