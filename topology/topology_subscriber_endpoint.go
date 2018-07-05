@@ -222,12 +222,12 @@ func (t *TopologySubscriberEndpoint) OnEdgeDeleted(e *graph.Edge) {
 
 // NewTopologySubscriberEndpoint returns a new server to be used by external subscribers,
 // for instance the WebUI.
-func NewTopologySubscriberEndpoint(pool shttp.WSStructSpeakerPool, auth *shttp.AuthenticationOpts, g *graph.Graph) *TopologySubscriberEndpoint {
+func NewTopologySubscriberEndpoint(pool shttp.WSStructSpeakerPool, g *graph.Graph, tr *traversal.GremlinTraversalParser) *TopologySubscriberEndpoint {
 	t := &TopologySubscriberEndpoint{
 		Graph:         g,
 		pool:          pool,
 		subscribers:   make(map[string]*topologySubscriber),
-		gremlinParser: traversal.NewGremlinTraversalParser(),
+		gremlinParser: tr,
 	}
 
 	pool.AddEventHandler(t)

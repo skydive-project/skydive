@@ -234,7 +234,7 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 				continue
 			}
 
-			if c.client.BulkIndex(rawpacketIndex, f.UUID, json.RawMessage(data)) != nil {
+			if c.client.BulkIndex(rawpacketIndex, "", json.RawMessage(data)) != nil {
 				logging.GetLogger().Error(err)
 				continue
 			}

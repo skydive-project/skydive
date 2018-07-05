@@ -187,9 +187,11 @@ func NewAgent() (*Agent, error) {
 
 	wsServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/subscriber"))
 
+	// declare all extension available throught API and filtering
 	tr := traversal.NewGremlinTraversalParser()
 	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewRawPacketsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
 
 	rootNode, err := createRootNode(g)
 	if err != nil {
@@ -200,7 +202,7 @@ func NewAgent() (*Agent, error) {
 
 	authOptions := analyzer.NewAnalyzerAuthenticationOpts()
 
-	topologyEndpoint := topology.NewTopologySubscriberEndpoint(wsServer, authOptions, g)
+	topologyEndpoint := topology.NewTopologySubscriberEndpoint(wsServer, g, tr)
 
 	analyzerClientPool, err := NewAnalyzerWSStructClientPool(authOptions)
 	if err != nil {
