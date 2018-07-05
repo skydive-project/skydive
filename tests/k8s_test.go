@@ -34,6 +34,7 @@ import (
 	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/tests/helper"
 	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/topology/probes/k8s"
 )
 
 func k8sConfigFile(name string) string {
@@ -109,12 +110,25 @@ func checkNodeCreation(t *testing.T, c *CheckContext, ty string, values ...inter
 	return queryNodeCreation(t, c, query)
 }
 
-func checkEdgeCreation(t *testing.T, c *CheckContext, from, to *graph.Node, relType string) error {
+func checkEdge(t *testing.T, c *CheckContext, from, to *graph.Node, relType string, edgeArgs ...interface{}) error {
+	edgeArgs = append([]interface{}{"RelationType", relType}, edgeArgs...)
 	fromArgs := makeHasArgsNode(from)
 	toArgs := makeHasArgsNode(to)
-	query := c.gremlin.V().Has(fromArgs...).OutE().Has("RelationType", relType).OutV().Has(toArgs...)
+	query := c.gremlin.V().Has(fromArgs...).OutE().Has(edgeArgs...).OutV().Has(toArgs...)
 	_, err := queryNodeCreation(t, c, query)
 	return err
+}
+
+func checkEdgeLink(t *testing.T, c *CheckContext, from, to *graph.Node, edgeArgs ...interface{}) error {
+	return checkEdge(t, c, from, to, "association", edgeArgs...)
+}
+
+func checkEdgeNetworkPolicy(t *testing.T, c *CheckContext, from, to *graph.Node, edgeArgs ...interface{}) error {
+	return checkEdge(t, c, from, to, "networkpolicy", edgeArgs...)
+}
+
+func checkEdgeOwnership(t *testing.T, c *CheckContext, from, to *graph.Node, edgeArgs ...interface{}) error {
+	return checkEdge(t, c, from, to, "ownership", edgeArgs...)
 }
 
 func testRunner(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, checks []CheckFunction) {
@@ -140,7 +154,6 @@ func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, typ, n
 			m := obj.Metadata()
 			for _, field := range fields {
 				if _, ok := m[field]; !ok {
-
 					return fmt.Errorf("Node '%s %s' missing field: %s", typ, name, field)
 				}
 			}
@@ -269,19 +282,19 @@ func TestHelloNodeScenario(t *testing.T) {
 				}
 
 				// check edges exist
-				if err = checkEdgeCreation(t, c, cluster, namespace, "ownership"); err != nil {
+				if err = checkEdgeOwnership(t, c, cluster, namespace); err != nil {
 					return err
 				}
 
-				if err = checkEdgeCreation(t, c, namespace, deployment, "ownership"); err != nil {
+				if err = checkEdgeOwnership(t, c, namespace, deployment); err != nil {
 					return err
 				}
 
-				if err = checkEdgeCreation(t, c, namespace, pod, "ownership"); err != nil {
+				if err = checkEdgeOwnership(t, c, namespace, pod); err != nil {
 					return err
 				}
 
-				if err = checkEdgeCreation(t, c, pod, container, "ownership"); err != nil {
+				if err = checkEdgeOwnership(t, c, pod, container); err != nil {
 					return err
 				}
 				return nil
@@ -309,7 +322,7 @@ func TestK8sNetworkPolicyScenario1(t *testing.T) {
 					return err
 				}
 
-				if err = checkEdgeCreation(t, c, networkpolicy, namespace, "association"); err != nil {
+				if err = checkEdgeNetworkPolicy(t, c, networkpolicy, namespace); err != nil {
 					return err
 				}
 
@@ -338,7 +351,7 @@ func TestK8sNetworkPolicyScenario2(t *testing.T) {
 					return err
 				}
 
-				if err = checkEdgeCreation(t, c, networkpolicy, pod, "association"); err != nil {
+				if err = checkEdgeNetworkPolicy(t, c, networkpolicy, pod); err != nil {
 					return err
 				}
 
@@ -346,4 +359,49 @@ func TestK8sNetworkPolicyScenario2(t *testing.T) {
 			},
 		},
 	)
+}
+
+func testK8sNetworkPolicyDefaultScenario(t *testing.T, policyType k8s.PolicyType, policyTarget k8s.PolicyTarget) {
+	file := fmt.Sprintf("networkpolicy-%s-%s", policyType, policyTarget)
+	name := objName + "-" + file
+	testRunner(
+		t,
+		setupFromConfigFile(file),
+		tearDownFromConfigFile(file),
+		[]CheckFunction{
+			func(c *CheckContext) error {
+				np, err := checkNodeCreation(t, c, "networkpolicy", "Name", name)
+				if err != nil {
+					return err
+				}
+
+				ns, err := checkNodeCreation(t, c, "namespace", "Name", "default")
+				if err != nil {
+					return err
+				}
+
+				if err = checkEdgeNetworkPolicy(t, c, np, ns, "PolicyType", policyType, "PolicyTarget", policyTarget); err != nil {
+					return err
+				}
+
+				return nil
+			},
+		},
+	)
+}
+
+func TestK8sNetworkPolicyDenyIngressScenario(t *testing.T) {
+	testK8sNetworkPolicyDefaultScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetDeny)
+}
+
+func TestK8sNetworkPolicyAllowIngressScenario(t *testing.T) {
+	testK8sNetworkPolicyDefaultScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow)
+}
+
+func TestK8sNetworkPolicyDenyEgressScenario(t *testing.T) {
+	testK8sNetworkPolicyDefaultScenario(t, k8s.PolicyTypeEgress, k8s.PolicyTargetDeny)
+}
+
+func TestK8sNetworkPolicyAllowEgressScenario(t *testing.T) {
+	testK8sNetworkPolicyDefaultScenario(t, k8s.PolicyTypeEgress, k8s.PolicyTargetAllow)
 }

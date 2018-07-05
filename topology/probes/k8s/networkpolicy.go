@@ -81,7 +81,7 @@ func (n *networkPolicyProbe) OnAdd(obj interface{}) {
 		logging.GetLogger().Debugf("Adding %s", dumpNetworkPolicy(np))
 		n.graph.Lock()
 		npNode := newNode(n.graph, networkPolicyUID(np), n.newMetadata(np))
-		n.handleNetworkPolicyUpdate(npNode, np)
+		n.updateLinks(npNode, np)
 		n.graph.Unlock()
 	}
 }
@@ -92,7 +92,7 @@ func (n *networkPolicyProbe) OnUpdate(oldObj, newObj interface{}) {
 		n.graph.Lock()
 		if npNode := n.graph.GetNode(networkPolicyUID(np)); npNode != nil {
 			addMetadata(n.graph, npNode, np)
-			n.handleNetworkPolicyUpdate(npNode, np)
+			n.updateLinks(npNode, np)
 		}
 		n.graph.Unlock()
 	}
@@ -190,16 +190,99 @@ func (n *networkPolicyProbe) isSelected(np *v1beta1.NetworkPolicy, obj interface
 	}
 }
 
-func (n *networkPolicyProbe) handleNetworkPolicyUpdate(npNode *graph.Node, np *v1beta1.NetworkPolicy) {
-	logging.GetLogger().Debugf("Handling update of %s", dumpNetworkPolicy(np))
+type PolicyType string
+
+const (
+	PolicyTypeIngress PolicyType = "ingress"
+	PolicyTypeEgress  PolicyType = "egress"
+)
+
+func (policyType PolicyType) String() string {
+	return string(policyType)
+}
+
+type PolicyTarget string
+
+const (
+	PolicyTargetDeny  PolicyTarget = "deny"
+	PolicyTargetAllow PolicyTarget = "allow"
+)
+
+func (policyTarget PolicyTarget) String() string {
+	return string(policyTarget)
+}
+
+type IsPolicyType func(np *v1beta1.NetworkPolicy) bool
+
+func (n *networkPolicyProbe) isIngress(np *v1beta1.NetworkPolicy) bool {
+	if len(np.Spec.PolicyTypes) == 0 {
+		return true
+	}
+	for _, ty := range np.Spec.PolicyTypes {
+		if ty == v1beta1.PolicyTypeIngress {
+			return true
+		}
+	}
+	return false
+}
+
+func (n *networkPolicyProbe) isEgress(np *v1beta1.NetworkPolicy) bool {
+	for _, ty := range np.Spec.PolicyTypes {
+		if ty == v1beta1.PolicyTypeEgress {
+			return true
+		}
+	}
+	return false
+}
+
+type IsPolicyTarget func(np *v1beta1.NetworkPolicy) bool
+
+func (n *networkPolicyProbe) isIngressDeny(np *v1beta1.NetworkPolicy) bool {
+	return len(np.Spec.Ingress) == 0
+}
+
+func (n *networkPolicyProbe) isIngressAllow(np *v1beta1.NetworkPolicy) bool {
+	for _, rule := range np.Spec.Ingress {
+		if len(rule.Ports) == 0 && len(rule.From) == 0 {
+			return true
+		}
+		// FIXME: missing logic to check match to target object
+	}
+	return false
+}
+
+func (n *networkPolicyProbe) isEgressDeny(np *v1beta1.NetworkPolicy) bool {
+	return len(np.Spec.Egress) == 0
+}
+
+func (n *networkPolicyProbe) isEgressAllow(np *v1beta1.NetworkPolicy) bool {
+	for _, rule := range np.Spec.Egress {
+		if len(rule.Ports) == 0 && len(rule.To) == 0 {
+			return true
+		}
+		// FIXME: missing logic to check match to target object
+	}
+	return false
+}
+
+func (n *networkPolicyProbe) updateLinksForTarget(npNode *graph.Node, np *v1beta1.NetworkPolicy, policyType PolicyType, isPolicyType IsPolicyType, policyTarget PolicyTarget, isPolicyTarget IsPolicyTarget) {
+	if !isPolicyType(np) || !isPolicyTarget(np) {
+		return
+	}
 
 	selected := n.selected(np)
-	staleChilderen := make(map[graph.Identifier]*graph.Node)
+
 	childFilter := graph.Metadata{
 		"Manager": managerValue,
 	}
 
-	for _, child := range n.graph.LookupChildren(npNode, childFilter, newEdgeMetadata()) {
+	m := newEdgeMetadata()
+	m.SetField("RelationType", "networkpolicy")
+	m.SetField("PolicyType", string(policyType))
+	m.SetField("PolicyTarget", string(policyTarget))
+
+	staleChilderen := make(map[graph.Identifier]*graph.Node)
+	for _, child := range n.graph.LookupChildren(npNode, childFilter, m) {
 		logging.GetLogger().Debugf("found child %s", dumpGraphNode(child))
 		staleChilderen[child.ID] = child
 	}
@@ -211,12 +294,20 @@ func (n *networkPolicyProbe) handleNetworkPolicyUpdate(npNode *graph.Node, np *v
 	}
 
 	for _, child := range staleChilderen {
-		delLink(n.graph, npNode, child)
+		delLink(n.graph, npNode, child, m)
 	}
 
 	for _, objNode := range selected {
-		addLink(n.graph, npNode, objNode)
+		addLink(n.graph, npNode, objNode, m)
 	}
+}
+
+func (n *networkPolicyProbe) updateLinks(npNode *graph.Node, np *v1beta1.NetworkPolicy) {
+	logging.GetLogger().Debugf("Handling update of %s", dumpNetworkPolicy(np))
+	n.updateLinksForTarget(npNode, np, PolicyTypeIngress, n.isIngress, PolicyTargetDeny, n.isIngressDeny)
+	n.updateLinksForTarget(npNode, np, PolicyTypeIngress, n.isIngress, PolicyTargetAllow, n.isIngressAllow)
+	n.updateLinksForTarget(npNode, np, PolicyTypeEgress, n.isEgress, PolicyTargetDeny, n.isEgressDeny)
+	n.updateLinksForTarget(npNode, np, PolicyTypeEgress, n.isEgress, PolicyTargetAllow, n.isEgressAllow)
 }
 
 func (n *networkPolicyProbe) getObjByNode(node *graph.Node) interface{} {
@@ -254,7 +345,7 @@ func (n *networkPolicyProbe) onNodeUpdated(objNode *graph.Node) {
 			logging.GetLogger().Debugf("can't find %s", dumpNetworkPolicy(np))
 			continue
 		}
-		syncLink(n.graph, npNode, objNode, n.isSelected(np, obj))
+		n.updateLinks(npNode, np)
 	}
 }
 
