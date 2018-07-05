@@ -46,7 +46,10 @@ type networkPolicyProbe struct {
 }
 
 func (n *networkPolicyProbe) newMetadata(np *networking_v1.NetworkPolicy) graph.Metadata {
-	return newMetadata("networkpolicy", np.GetNamespace(), np.GetName(), np)
+	m := newMetadata("networkpolicy", np.Namespace, np.Name, np)
+	m.SetField("Labels", np.Labels)
+	m.SetField("PodSelector", np.Spec.PodSelector)
+	return m
 }
 
 func networkPolicyUID(np *networking_v1.NetworkPolicy) graph.Identifier {

@@ -173,7 +173,7 @@ func TestK8sDaemonSetNode(t *testing.T) {
 }
 
 func TestK8sNetworkPolicyNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "networkpolicy", objName+"-networkpolicy")
+	testNodeCreationFromConfig(t, "networkpolicy", objName+"-networkpolicy", "Labels", "PodSelector")
 }
 
 func TestK8sNodeNode(t *testing.T) {
