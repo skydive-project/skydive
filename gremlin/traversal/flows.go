@@ -101,11 +101,6 @@ type AggregatesGremlinTraversalStep struct {
 	context traversal.GremlinTraversalContext
 }
 
-// RawPacketsGremlinTraversalStep rawpackets step
-type RawPacketsGremlinTraversalStep struct {
-	context traversal.GremlinTraversalContext
-}
-
 // BpfGremlinTraversalStep step
 type BpfGremlinTraversalStep struct {
 	context traversal.GremlinTraversalContext

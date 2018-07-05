@@ -37,6 +37,11 @@ type RawPacketsTraversalExtension struct {
 	RawPacketsToken traversal.Token
 }
 
+// RawPacketsGremlinTraversalStep rawpackets step
+type RawPacketsGremlinTraversalStep struct {
+	context traversal.GremlinTraversalContext
+}
+
 // RawPacketsTraversalStep rawpackets step
 type RawPacketsTraversalStep struct {
 	GraphTraversal *traversal.GraphTraversal
@@ -44,7 +49,7 @@ type RawPacketsTraversalStep struct {
 	error          error
 }
 
-// NewMetricsTraversalExtension returns a new graph traversal extension
+// NewRawPacketsTraversalExtension returns a new graph traversal extension
 func NewRawPacketsTraversalExtension() *RawPacketsTraversalExtension {
 	return &RawPacketsTraversalExtension{
 		RawPacketsToken: traversalRawPacketsToken,

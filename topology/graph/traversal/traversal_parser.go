@@ -301,7 +301,7 @@ func (s *GremlinTraversalStepContext) Exec(last GraphTraversalStep) (_ GraphTrav
 		case *ForeverPredicate:
 			s.Params[1] = time.Duration(time.Now().UnixNano())
 		default:
-			return nil, errors.New("Key must be either an integer or a string")
+			return nil, errors.New("Key 'Context' must be either an integer or a string")
 		}
 		fallthrough
 	case 1:
@@ -319,10 +319,10 @@ func (s *GremlinTraversalStepContext) Exec(last GraphTraversalStep) (_ GraphTrav
 		case *NowPredicate:
 			s.Params[0] = time.Now()
 		default:
-			return nil, errors.New("Key must be either an integer or a string")
+			return nil, errors.New("Key 'Context' must be either an integer or a string")
 		}
 	default:
-		return nil, errors.New("At most two parameters must be provided")
+		return nil, errors.New("At most two parameters must be provided to 'Context'")
 	}
 
 	return g.Context(s.Params...), nil
@@ -1003,10 +1003,10 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 		case 0:
 		case 1:
 			if _, ok := params[0].(string); !ok {
-				return nil, fmt.Errorf("V parameter must be a string")
+				return nil, fmt.Errorf("V parameter must be a string : %v", params)
 			}
 		default:
-			return nil, fmt.Errorf("V accepts at most one parameter")
+			return nil, fmt.Errorf("V accepts at most one parameter : %v", params)
 		}
 		return &GremlinTraversalStepV{gremlinStepContext}, nil
 	case E:
@@ -1014,10 +1014,10 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 		case 0:
 		case 1:
 			if _, ok := params[0].(string); !ok {
-				return nil, fmt.Errorf("E parameter must be a string")
+				return nil, fmt.Errorf("E parameter must be a string : %v", params)
 			}
 		default:
-			return nil, fmt.Errorf("E accepts at most one parameter")
+			return nil, fmt.Errorf("E accepts at most one parameter : %v", params)
 		}
 		return &GremlinTraversalStepE{gremlinStepContext}, nil
 	case OUT:
@@ -1041,7 +1041,7 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 	case DEDUP:
 		for _, param := range params {
 			if _, ok := param.(string); !ok {
-				return nil, fmt.Errorf("Dedup parameters have to be string keys")
+				return nil, fmt.Errorf("Dedup parameters have to be string keys : %v", params)
 			}
 		}
 		return &GremlinTraversalStepDedup{gremlinStepContext}, nil
@@ -1055,7 +1055,7 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 			}
 			fallthrough
 		default:
-			return nil, fmt.Errorf("HasNot accepts only one parameter of type string")
+			return nil, fmt.Errorf("HasNot accepts only one parameter of type string : %v", params)
 		}
 	case HASKEY:
 		switch len(params) {
@@ -1065,11 +1065,11 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 			}
 			fallthrough
 		default:
-			return nil, fmt.Errorf("HasKey accepts only one parameter of type string")
+			return nil, fmt.Errorf("HasKey accepts only one parameter of type string : %v", params)
 		}
 	case SHORTESTPATHTO:
 		if len(params) == 0 || len(params) > 2 {
-			return nil, fmt.Errorf("ShortestPathTo predicate accepts only 1 or 2 parameters")
+			return nil, fmt.Errorf("ShortestPathTo predicate accepts only 1 or 2 parameters : %v", params)
 		}
 		return &GremlinTraversalStepShortestPathTo{gremlinStepContext}, nil
 	case BOTH:
@@ -1078,7 +1078,7 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 		return &GremlinTraversalStepContext{gremlinStepContext}, nil
 	case COUNT:
 		if len(params) != 0 {
-			return nil, fmt.Errorf("Count accepts no parameter")
+			return nil, fmt.Errorf("Count accepts no parameter : %v", params)
 		}
 		return &GremlinTraversalStepCount{gremlinStepContext}, nil
 	case SORT:
@@ -1087,37 +1087,37 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 			return &GremlinTraversalStepSort{gremlinStepContext}, nil
 		case 1:
 			if _, ok := params[0].(string); !ok {
-				return nil, fmt.Errorf("Sort parameter has to be a string key")
+				return nil, fmt.Errorf("Sort parameter has to be a string key : %v", params)
 			}
 			gremlinStepContext.Params = []interface{}{common.SortAscending, params[0]}
 			return &GremlinTraversalStepSort{gremlinStepContext}, nil
 		case 2:
 			if _, ok := params[0].(common.SortOrder); !ok {
-				return nil, fmt.Errorf("Use ASC or DESC predicate")
+				return nil, fmt.Errorf("Use ASC or DESC predicate : %v", params)
 			}
 			if _, ok := params[1].(string); !ok {
-				return nil, fmt.Errorf("Second sort parameter has to be a string key")
+				return nil, fmt.Errorf("Second sort parameter has to be a string key : %v", params)
 			}
 			return &GremlinTraversalStepSort{gremlinStepContext}, nil
 		default:
-			return nil, fmt.Errorf("Sort accepts 1 predicate and 1 string parameter, got: %d", len(params))
+			return nil, fmt.Errorf("Sort accepts 1 predicate and 1 string parameter : %v", params)
 		}
 	case RANGE:
 		if len(params) != 2 {
-			return nil, fmt.Errorf("Range requires 2 parameters")
+			return nil, fmt.Errorf("Range requires 2 parameters : %v", params)
 		}
 		return &GremlinTraversalStepRange{gremlinStepContext}, nil
 	case LIMIT:
 		if len(params) != 1 {
-			return nil, fmt.Errorf("Limit requires 1 parameter")
+			return nil, fmt.Errorf("Limit requires 1 parameter : %v", params)
 		}
 		return &GremlinTraversalStepLimit{gremlinStepContext}, nil
 	case VALUES:
 		if len(params) != 1 {
-			return nil, fmt.Errorf("Values requires 1 parameter")
+			return nil, fmt.Errorf("Values requires 1 parameter : %v", params)
 		}
 		if _, ok := params[0].(string); !ok {
-			return nil, fmt.Errorf("Values parameter has to be a string key")
+			return nil, fmt.Errorf("Values parameter has to be a string key : %v", params)
 		}
 		return &GremlinTraversalStepValues{gremlinStepContext}, nil
 	case KEYS:

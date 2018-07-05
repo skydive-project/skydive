@@ -243,8 +243,23 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
+	tableClient := flow.NewTableClient(agentWSServer)
+
+	storage, err := storage.NewStorageFromConfig(etcdClient)
+	if err != nil {
+		return nil, err
+	}
+
+	// declare all extension available throught API and filtering
+	tr := traversal.NewGremlinTraversalParser()
+	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewRawPacketsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewFlowTraversalExtension(tableClient, storage))
+	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
+
 	subscriberWSServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/subscriber"))
-	topology.NewTopologySubscriberEndpoint(subscriberWSServer, authOptions, g)
+	topology.NewTopologySubscriberEndpoint(subscriberWSServer, g, tr)
 
 	probeBundle, err := NewTopologyProbeBundleFromConfig(g)
 	if err != nil {
@@ -284,23 +299,10 @@ func NewServerFromConfig() (*Server, error) {
 
 	metadataManager := metadata.NewUserMetadataManager(g, metadataAPIHandler)
 
-	tableClient := flow.NewTableClient(agentWSServer)
-
-	storage, err := storage.NewStorageFromConfig(etcdClient)
-	if err != nil {
-		return nil, err
-	}
-
 	flowServer, err := NewFlowServer(hserver, g, storage, probeBundle)
 	if err != nil {
 		return nil, err
 	}
-
-	tr := traversal.NewGremlinTraversalParser()
-	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewRawPacketsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewFlowTraversalExtension(tableClient, storage))
-	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
 
 	alertServer, err := alert.NewServer(apiServer, subscriberWSServer, g, tr, etcdClient)
 	if err != nil {

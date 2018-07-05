@@ -1718,6 +1718,7 @@ func printRawPackets(t *testing.T, gh *gclient.GremlinQueryHelper, query g.Query
 func getRawPackets(gh *gclient.GremlinQueryHelper, query g.QueryString) ([]gopacket.Packet, error) {
 	header := make(http.Header)
 	header.Set("Accept", "vnd.tcpdump.pcap")
+
 	resp, err := gh.Request(query.String(), header)
 	if err != nil {
 		return nil, err
@@ -1816,7 +1817,7 @@ func TestRawPackets(t *testing.T) {
 			}
 
 			if err = printRawPackets(t, gh, query.RawPackets()); err != nil {
-				return nil
+				return err
 			}
 
 			packets, err := getRawPackets(gh, query.RawPackets())
