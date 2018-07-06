@@ -305,7 +305,14 @@ auth:
   mybasic:
     # Define a basic auth authentication backend
     # type: basic
+
+    # Specify the htpassword file to be used
     # file: /etc/skydive/htpasswd
+
+    # Users can be declared in this section instead of using a file.
+    users:
+      # user1: secret1
+      # user2: secret2
 
   mykeystone:
     # Define a basic auth authentication backend

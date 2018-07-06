@@ -24,6 +24,7 @@ package http
 
 import (
 	"encoding/base64"
+	"errors"
 	"net/http"
 	"os"
 
@@ -88,26 +89,33 @@ func (b *BasicAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc)
 	}
 }
 
-func NewBasicAuthenticationBackend(name string, file string, role string) (*BasicAuthenticationBackend, error) {
-	if _, err := os.Stat(file); err != nil {
-		return nil, err
-	}
+func NewBasicAuthenticationBackend(name string, provider auth.SecretProvider, role string) (*BasicAuthenticationBackend, error) {
 
-	// TODO(safchain) add more providers
-	h := auth.HtpasswdFileProvider(file)
 	return &BasicAuthenticationBackend{
-		BasicAuth: auth.NewBasicAuthenticator(basicAuthRealm, h),
+		BasicAuth: auth.NewBasicAuthenticator(basicAuthRealm, provider),
 		name:      name,
 		role:      role,
 	}, nil
 }
 
 func NewBasicAuthenticationBackendFromConfig(name string) (*BasicAuthenticationBackend, error) {
-	file := config.GetString("auth." + name + ".file")
 	role := config.GetString("auth." + name + ".role")
 	if role == "" {
 		role = defaultUserRole
 	}
 
-	return NewBasicAuthenticationBackend(name, file, role)
+	var provider auth.SecretProvider
+	if file := config.GetString("auth." + name + ".file"); file != "" {
+		if _, err := os.Stat(file); err != nil {
+			return nil, err
+		}
+
+		provider = auth.HtpasswdFileProvider(file)
+	} else if users := config.GetStringMapString("auth." + name + ".users"); users != nil && len(users) > 0 {
+		provider = NewHtpasswdMapProvider(users).SecretProvider()
+	} else {
+		return nil, errors.New("No htpassword provider set, you set either file or inline sections")
+	}
+
+	return NewBasicAuthenticationBackend(name, provider, role)
 }
