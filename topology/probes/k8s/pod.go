@@ -75,22 +75,22 @@ func dumpPod(pod *v1.Pod) string {
 }
 
 func (p *podProbe) newMetadata(pod *v1.Pod) graph.Metadata {
-	extra := graph.Metadata{}
+	m := newMetadata("pod", pod.Namespace, pod.Name, pod)
 
 	podIP := pod.Status.PodIP
 	if podIP != "" {
-		extra["IP"] = podIP
+		m.SetField("IP", podIP)
 	}
 
-	extra["Node"] = pod.Spec.NodeName
+	m.SetField("Node", pod.Spec.NodeName)
 
 	reason := string(pod.Status.Phase)
 	if pod.Status.Reason != "" {
 		reason = pod.Status.Reason
 	}
-	extra["Status"] = reason
+	m.SetField("Status", reason)
 
-	return newMetadata("pod", pod.Namespace, pod.Name, pod, extra)
+	return m
 }
 
 func (p *podProbe) linkPodToNode(pod *v1.Pod, podNode *graph.Node) {

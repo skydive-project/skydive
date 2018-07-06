@@ -68,18 +68,18 @@ func newContainerIndexer(g *graph.Graph) *graph.MetadataIndexer {
 	filter := filters.NewAndFilter(
 		filters.NewTermStringFilter("Manager", "k8s"),
 		filters.NewTermStringFilter("Type", "container"),
-		filters.NewNotNullFilter(DockerPodNameField),
-		filters.NewNotNullFilter(DockerPodNamespaceField))
+		filters.NewNotNullFilter("Namespace"),
+		filters.NewNotNullFilter("Pod"))
 	m := graph.NewGraphElementFilter(filter)
 
-	return graph.NewMetadataIndexer(g, m, DockerPodNamespaceField, DockerPodNameField)
+	return graph.NewMetadataIndexer(g, m, "Namespace", "Pod")
 }
 
 func (c *containerProbe) newMetadata(pod *v1.Pod, container *v1.Container) graph.Metadata {
-	m := newMetadata("container", pod.GetNamespace(), container.Name, container)
-	m.SetField(DockerNameField, container.Name)
-	m.SetField(DockerPodNamespaceField, pod.GetNamespace())
-	m.SetField(DockerPodNameField, pod.GetName())
+	m := newMetadata("container", pod.Namespace, container.Name, container)
+	m.SetField("Pod", pod.Name)
+	m.SetField("Labels", pod.Labels)
+	m.SetField("Image", container.Image)
 	return m
 }
 
