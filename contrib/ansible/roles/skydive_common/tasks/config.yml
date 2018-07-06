@@ -37,16 +37,16 @@
     key: "flow.protocol"
     value: "{{ skydive_flow_protocol }}"
 
-- name: Define basic auth parameters
+- name: Define cluster auth parameters
   yedit:
     src: "{{ skydive_config_file }}"
     edits:
-        - key: "auth.analyzer_username"
-          value: "{{ skydive_username }}"
-        - key: "auth.analyzer_password"
-          value: "{{ skydive_password }}"
+        - key: "auth.cluster.type"
+          value: "basic"
+        - key: "auth.cluster.users.{{ skydive_cluster_username }}"
+          value: "{{ skydive_cluster_password }}"
     state: present
-  when: skydive_auth_type == "basic"
+  when: skydive_cluster_username is not none
 
 - name: Define Keystone parameters
   yedit:

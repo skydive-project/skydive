@@ -19,8 +19,12 @@
         {%- else -%}
           {{ hostvars[inventory_hostname].ansible_default_ipv4.address }}
         {%- endif -%}
+  tags:
+    - config
 
 - include: config.yml
+  tags:
+    - config
 
 - include: docker.yml
   when: skydive_deployment_mode == "container"

@@ -16,6 +16,7 @@
         {%- if not loop.last -%},{%- endif -%}
       {%- endfor %}
   tags:
+    - config
     - tests
 
 - include: binary.yml
@@ -25,3 +26,5 @@
   when: skydive_deployment_mode == "package"
 
 - include: config.yml
+  tags:
+    - config

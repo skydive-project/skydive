@@ -2,7 +2,7 @@
 
 set -e
 
-USERNAME=skydive
+USERNAME=admin
 PASSWORD=skydive
 
 curl -Lo skydive-latest https://github.com/skydive-project/skydive-binaries/raw/jenkins-builds/skydive-latest

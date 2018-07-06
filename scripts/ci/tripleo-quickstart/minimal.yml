@@ -5,6 +5,10 @@
 # Deploy an Openstack environment with ssl undercloud, introspect, and use network isolation
 # Note: any change in this featureset must also be done in featureset035.
 
+overcloud_templates_path: "{{ working_dir }}/tripleo-heat-templates"
+overcloud_templates_repo: https://github.com/openstack/tripleo-heat-templates
+overcloud_templates_branch: master
+
 # This enables TLS for the undercloud which will also make haproxy bind to the
 # configured public-vip and admin-vip.
 undercloud_generate_service_certificate: true

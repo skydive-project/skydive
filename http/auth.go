@@ -59,7 +59,7 @@ func AuthCookie(token, path string) *http.Cookie {
 	return &http.Cookie{Name: tokenName, Value: token, Path: path}
 }
 
-// SetAuthCookies apply all the cookie used for authentication to the header
+// SetAuthHeaders apply all the cookie used for authentication to the header
 func SetAuthHeaders(headers *http.Header, authOpts *AuthenticationOpts) {
 	cookies := []*http.Cookie{}
 	if authOpts.Token != "" {

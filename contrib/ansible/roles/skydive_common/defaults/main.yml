@@ -12,7 +12,7 @@ skydive_agent_port: 8081
 skydive_flow_protocol: udp
 
 skydive_auth_type:
-skydive_username: skydive
+skydive_username: admin
 skydive_password: skydive
 
 skydive_os_auth_url:
@@ -22,3 +22,6 @@ skydive_os_service_tenant_name: service
 skydive_os_service_domain_name: Default
 skydive_os_service_region_name: RegionOne
 skydive_os_service_endpoint_type: internal
+
+skydive_cluster_username: skydive
+skydive_cluster_password: skydive
