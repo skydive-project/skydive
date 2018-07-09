@@ -184,6 +184,10 @@ var TopologyComponent = {
                title="Metadata">\
           <object-detail :object="currentEdge.metadata"></object-detail>\
         </panel>\
+        <panel id="k8s-metadata" v-if="currentNodeK8s"\
+               title="K8s">\
+          <object-detail :object="currentNodeK8s"></object-detail>\
+        </panel>\
         <panel id="feature-table" v-if="currentNodeFeatures"\
                title="Features">\
           <feature-table :features="currentNodeFeatures"></feature-table>\
@@ -390,7 +394,7 @@ var TopologyComponent = {
     currentNodeMetadata: function() {
       if (!this.currentNode) return null;
       return this.extractMetadata(this.currentNode.metadata,
-        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'RoutingTable', 'Features']);
+        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'RoutingTable', 'Features', 'K8s']);
     },
 
     currentNodeFlowsQuery: function() {
@@ -399,6 +403,11 @@ var TopologyComponent = {
       return null;
     },
 
+    currentNodeK8s: function() {
+      if (!this.currentNodeMetadata || !this.currentNode.metadata.K8s) return null;
+      return this.currentNode.metadata.K8s;
+    },
+ 
     currentNodeFeatures: function() {
       if (!this.currentNodeMetadata || !this.currentNode.metadata.Features) return null;
       return this.currentNode.metadata.Features;
