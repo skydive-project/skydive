@@ -46,8 +46,7 @@ const graphElementMapping = `
 				"match": "*",
 				"match_mapping_type": "string",
 				"mapping": {
-					"type": "keyword",
-					"doc_values": false
+					"type": "keyword"
 				}
 			}
 		},
