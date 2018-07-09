@@ -165,7 +165,7 @@ func TestK8sJobNode(t *testing.T) {
 }
 
 func TestK8sNamespaceNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "namespace", objName+"-namespace")
+	testNodeCreationFromConfig(t, "namespace", objName+"-namespace", "Cluster", "Labels", "Status")
 }
 
 func TestK8sDaemonSetNode(t *testing.T) {
