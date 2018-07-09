@@ -71,12 +71,18 @@ label {
   overflow: auto;
 }
 
-.sidebar {
+.sidebar, .status {
   border-left: 5px #222 solid;
   color: #fff;
   padding-top: 5px;
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+.statustab {
+  margin-left: 150px;
+  margin-right: 150px;
+  border-left: 0px;
 }
 
 .fill {

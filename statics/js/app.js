@@ -150,6 +150,7 @@ var routes = [
   { path: '/conversation', component: ConversationComponent },
   { path: '/discovery', component: DiscoveryComponent },
   { path: '/preference', component: PreferenceComponent },
+  { path: '/status', component: StatusComponent },
   { path: '*', redirect: '/topology' }
 ];
 
