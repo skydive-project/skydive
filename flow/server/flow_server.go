@@ -201,13 +201,13 @@ func NewFlowServerUDPConn(addr string, port int) (*FlowServerUDPConn, error) {
 	return &FlowServerUDPConn{conn: conn, maxFlowBufferSize: flowsMax}, err
 }
 
-func (s *FlowServer) storeFlows(flows *flow.FlowArray) {
-	if len(flows.Flows) > 0 {
+func (s *FlowServer) storeFlows(flows []*flow.Flow) {
+	if len(flows) > 0 {
 		if s.storage != nil {
-			if err := s.storage.StoreFlows(flows.Flows); err != nil {
+			if err := s.storage.StoreFlows(flows); err != nil {
 				logging.GetLogger().Error(err)
 			} else {
-				logging.GetLogger().Debugf("%d flows stored", len(flows.Flows))
+				logging.GetLogger().Debugf("%d flows stored", len(flows))
 			}
 		}
 
@@ -227,21 +227,21 @@ func (s *FlowServer) Start() {
 		dlTimer := time.NewTicker(s.bulkInsertDeadline)
 		defer dlTimer.Stop()
 
-		var flowArray flow.FlowArray
-		defer s.storeFlows(&flowArray)
+		var flows []*flow.Flow
+		defer s.storeFlows(flows)
 
 		for {
 			select {
 			case <-s.quit:
 				return
 			case <-dlTimer.C:
-				s.storeFlows(&flowArray)
-				flowArray.Flows = flowArray.Flows[:0]
+				s.storeFlows(flows)
+				flows = flows[:0]
 			case f := <-s.ch:
-				flowArray.Flows = append(flowArray.Flows, f)
-				if len(flowArray.Flows) >= s.bulkInsert {
-					s.storeFlows(&flowArray)
-					flowArray.Flows = flowArray.Flows[:0]
+				flows = append(flows, f)
+				if len(flows) >= s.bulkInsert {
+					s.storeFlows(flows)
+					flows = flows[:0]
 				}
 			}
 		}

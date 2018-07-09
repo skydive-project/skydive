@@ -27,19 +27,10 @@ import (
 // TableAllocator aims to create/allocate a new flow table
 type TableAllocator struct {
 	common.RWMutex
-	update time.Duration
-	expire time.Duration
-	tables map[*Table]bool
-}
-
-// Expire returns the expire parameter used by allocated tables
-func (a *TableAllocator) Expire() time.Duration {
-	return a.expire
-}
-
-// Update returns the update parameter used by allocated tables
-func (a *TableAllocator) Update() time.Duration {
-	return a.update
+	updateEvery time.Duration
+	expireAfter time.Duration
+	sender      MessageSender
+	tables      map[*Table]bool
 }
 
 // QueryTable search/query within the flow table
@@ -61,13 +52,11 @@ func (a *TableAllocator) QueryTable(tq *TableQuery) *TableReply {
 }
 
 // Alloc instantiate/allocate a new table
-func (a *TableAllocator) Alloc(flowCallBack ExpireUpdateFunc, nodeTID string, opts TableOpts) *Table {
+func (a *TableAllocator) Alloc(nodeTID string, opts TableOpts) *Table {
 	a.Lock()
 	defer a.Unlock()
 
-	updateHandler := NewFlowHandler(flowCallBack, a.update)
-	expireHandler := NewFlowHandler(flowCallBack, a.expire)
-	t := NewTable(updateHandler, expireHandler, nodeTID, opts)
+	t := NewTable(a.updateEvery, a.expireAfter, a.sender, nodeTID, opts)
 	a.tables[t] = true
 
 	return t
@@ -81,10 +70,11 @@ func (a *TableAllocator) Release(t *Table) {
 }
 
 // NewTableAllocator creates a new flow table
-func NewTableAllocator(update, expire time.Duration) *TableAllocator {
+func NewTableAllocator(updateEvery, expireAfter time.Duration, sender MessageSender) *TableAllocator {
 	return &TableAllocator{
-		update: update,
-		expire: expire,
-		tables: make(map[*Table]bool),
+		updateEvery: updateEvery,
+		expireAfter: expireAfter,
+		sender:      sender,
+		tables:      make(map[*Table]bool),
 	}
 }

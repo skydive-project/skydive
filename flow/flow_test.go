@@ -1276,7 +1276,7 @@ func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType, bpf 
 		opt = opts[0]
 	}
 
-	table := NewTable(nil, nil, "", opt)
+	table := NewTable(time.Second, time.Second, &fakeMessageSender{}, "", opt)
 	fillTableFromPCAP(t, table, filename, linkType, bpf)
 	validateAllParentChains(t, table)
 
@@ -1768,7 +1768,7 @@ func benchPacketList(b *testing.B, filename string, linkType layers.LinkType, ca
 	if err != nil {
 		b.Fatal("PCAP OpenOffline error (handle to read packet): ", err)
 	}
-	ft := NewTable(nil, nil, "", TableOpts{})
+	ft := NewTable(time.Hour, time.Hour, nil, "", TableOpts{})
 	packets = 0
 
 	for {
@@ -1879,7 +1879,7 @@ func BenchmarkPacketsFlowTable(b *testing.B) {
 
 // Bench creation of flow and connection tracking, via FlowTable
 func BenchmarkQueryFlowTable(b *testing.B) {
-	t := NewTable(nil, nil, "")
+	t := NewTable(time.Hour, time.Hour, &fakeMessageSender{}, "")
 
 	for i := 0; i != 10; i++ {
 		f := &Flow{

@@ -263,7 +263,7 @@ func (p *GoPacketProbesHandler) registerProbe(n *graph.Node, capture *types.Capt
 		logging.GetLogger().Infof("MPLSUDP port: %v", port)
 	}
 
-	opts := tableOptsFromCapture(capture)
+	opts := TableOptsFromCapture(capture)
 	flowTable := p.fpta.Alloc(tid, opts)
 
 	headerSize := flow.DefaultCaptureLength

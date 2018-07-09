@@ -28,8 +28,8 @@ type FlowSubscriberEndpoint struct {
 }
 
 // SendFlows sends flow to the subscribers
-func (fs *FlowSubscriberEndpoint) SendFlows(flowArray *flow.FlowArray) {
-	msg := ws.NewStructMessage("flow", "store", flowArray.Flows)
+func (fs *FlowSubscriberEndpoint) SendFlows(flows []*flow.Flow) {
+	msg := ws.NewStructMessage("flow", "store", flows)
 	fs.pool.BroadcastMessage(msg)
 }
 

@@ -22,7 +22,6 @@ import (
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/flow/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
@@ -48,16 +47,15 @@ type FlowProbeEventHandler interface {
 // FlowProbeTableAllocator allocates table and set the table update callback
 type FlowProbeTableAllocator struct {
 	*flow.TableAllocator
-	fcpool *client.FlowClientPool
 }
 
 // Alloc override the default implementation provide a default update function
 func (a *FlowProbeTableAllocator) Alloc(nodeTID string, opts flow.TableOpts) *flow.Table {
-	return a.TableAllocator.Alloc(a.fcpool.SendFlows, nodeTID, opts)
+	return a.TableAllocator.Alloc(nodeTID, opts)
 }
 
 // NewFlowProbeBundle returns a new bundle of flow probes
-func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *client.FlowClientPool) *probe.Bundle {
+func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocator) *probe.Bundle {
 	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket", "dpdk", "ebpf", "ovsmirror", "ovsnetflow"}
 	logging.GetLogger().Infof("Flow probes: %v", list)
 
@@ -67,7 +65,6 @@ func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocat
 
 	fpta := &FlowProbeTableAllocator{
 		TableAllocator: fta,
-		fcpool:         fcpool,
 	}
 
 	fb := probe.NewBundle(make(map[string]probe.Probe))
@@ -125,7 +122,7 @@ func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocat
 	return fb
 }
 
-func tableOptsFromCapture(capture *types.Capture) flow.TableOpts {
+func TableOptsFromCapture(capture *types.Capture) flow.TableOpts {
 	layerKeyMode, _ := flow.LayerKeyModeByName(capture.LayerKeyMode)
 
 	return flow.TableOpts{

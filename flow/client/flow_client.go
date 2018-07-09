@@ -158,12 +158,13 @@ retry:
 	return nil
 }
 
-// SendFlows sends flows to the server
-func (c *FlowClient) SendFlows(flowArray *flow.FlowArray) {
+// SendFlows implements the flow Sender interface
+func (c *FlowClient) SendFlows(flows []*flow.Flow) {
 	// TODO(safchain) in case of websocket there is no size limitation we should send
 	// bulk directly
-	for _, flow := range flowArray.Flows {
-		if err := c.SendFlow(flow); err != nil {
+	for _, flow := range flows {
+		err := c.SendFlow(flow)
+		if err != nil {
 			logging.GetLogger().Errorf("Unable to send flow: %s", err)
 		}
 	}
@@ -235,8 +236,8 @@ func (p *FlowClientPool) OnDisconnected(c ws.Speaker) {
 	}
 }
 
-// SendFlows sends flows using a random connection
-func (p *FlowClientPool) SendFlows(flowArray *flow.FlowArray) {
+// SendMessage implements the flow MessageSender interface
+func (p *FlowClientPool) SendMessage(msg *flow.Message) {
 	p.RLock()
 	defer p.RUnlock()
 
@@ -245,7 +246,7 @@ func (p *FlowClientPool) SendFlows(flowArray *flow.FlowArray) {
 	}
 
 	fc := p.flowClients[rand.Intn(len(p.flowClients))]
-	fc.SendFlows(flowArray)
+	fc.SendMessage(msg)
 }
 
 // Close all connections

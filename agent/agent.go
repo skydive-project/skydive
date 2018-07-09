@@ -229,19 +229,18 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	updateTime := time.Duration(config.GetInt("flow.update")) * time.Second
-	expireTime := time.Duration(config.GetInt("flow.expire")) * time.Second
+	updateEvery := time.Duration(config.GetInt("flow.update")) * time.Second
+	expireAfter := time.Duration(config.GetInt("flow.expire")) * time.Second
 
-	flowTableAllocator := flow.NewTableAllocator(updateTime, expireTime)
+	flowClientPool := client.NewFlowClientPool(analyzerClientPool, clusterAuthOptions)
+	flowTableAllocator := flow.NewTableAllocator(updateEvery, expireAfter, flowClientPool)
 
 	// exposes a flow server through the client connections
 	flow.NewWSTableServer(flowTableAllocator, analyzerClientPool)
 
 	packetinjector.NewServer(g, analyzerClientPool)
 
-	flowClientPool := client.NewFlowClientPool(analyzerClientPool, clusterAuthOptions)
-
-	flowProbeBundle := fprobes.NewFlowProbeBundle(topologyProbeBundle, g, flowTableAllocator, flowClientPool)
+	flowProbeBundle := fprobes.NewFlowProbeBundle(topologyProbeBundle, g, flowTableAllocator)
 
 	onDemandProbeServer, err := ondemand.NewOnDemandProbeServer(flowProbeBundle, g, analyzerClientPool)
 	if err != nil {

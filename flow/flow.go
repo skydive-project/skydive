@@ -965,19 +965,33 @@ func (f *Flow) newApplicationLayer(packet *Packet, opts Opts) error {
 	return nil
 }
 
+// ProcessGoPacket takes a gopacket as input and filter, defrag it.
+func ProcessGoPacket(packet gopacket.Packet, bpf *BPF, defragger *IPDefragger) (gopacket.Packet, *IPMetric) {
+	var ipMetric *IPMetric
+	if defragger != nil {
+		m, ok := defragger.Defrag(packet)
+		if !ok {
+			return nil, nil
+		}
+		ipMetric = m
+	}
+
+	if bpf != nil && !bpf.Matches(packet.Data()) {
+		return nil, nil
+	}
+
+	return packet, ipMetric
+}
+
 // PacketSeqFromGoPacket split original packet into multiple packets in
 // case of encapsulation like GRE, VXLAN, etc.
 func PacketSeqFromGoPacket(packet gopacket.Packet, outerLength int64, bpf *BPF, defragger *IPDefragger) *PacketSequence {
 	ps := &PacketSequence{}
 
-	// defragment and set ip metric if requested
 	var ipMetric *IPMetric
-	if defragger != nil {
-		m, ok := defragger.Defrag(packet)
-		if !ok {
-			return ps
-		}
-		ipMetric = m
+	packet, ipMetric = ProcessGoPacket(packet, bpf, defragger)
+	if packet == nil {
+		return ps
 	}
 
 	if packet.ErrorLayer() != nil {
@@ -986,11 +1000,6 @@ func PacketSeqFromGoPacket(packet gopacket.Packet, outerLength int64, bpf *BPF, 
 
 	if packet.LinkLayer() == nil && packet.NetworkLayer() == nil {
 		logging.GetLogger().Debugf("Unknown packet : %s\n", packet.Dump())
-		return ps
-	}
-
-	packetData := packet.Data()
-	if bpf != nil && !bpf.Matches(packetData) {
 		return ps
 	}
 
@@ -1012,6 +1021,8 @@ func PacketSeqFromGoPacket(packet gopacket.Packet, outerLength int64, bpf *BPF, 
 			outerLength = int64(ipv6Packet.Length)
 		}
 	}
+
+	packetData := packet.Data()
 
 	// length of the encapsulation header + the inner packet
 	topLayerIndex, topLayerOffset, topLayerLength := 0, 0, int(outerLength)

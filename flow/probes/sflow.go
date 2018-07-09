@@ -98,7 +98,7 @@ func (d *SFlowProbesHandler) registerProbe(n *graph.Node, capture *types.Capture
 		headerSize = uint32(capture.HeaderSize)
 	}
 
-	opts := tableOptsFromCapture(capture)
+	opts := TableOptsFromCapture(capture)
 	ft := d.fpta.Alloc(tid, opts)
 
 	addr := common.ServiceAddress{Addr: address, Port: capture.Port}

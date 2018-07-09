@@ -36,23 +36,6 @@ import (
 // HoldTimeoutMilliseconds is the number of milliseconds for holding ended flows before they get deleted from the flow table
 const HoldTimeoutMilliseconds = int64(time.Duration(15) * time.Second / time.Millisecond)
 
-// ExpireUpdateFunc defines expire and updates callback
-type ExpireUpdateFunc func(f *FlowArray)
-
-// Handler defines a flow callback called every time
-type Handler struct {
-	callback ExpireUpdateFunc
-	every    time.Duration
-}
-
-// NewFlowHandler creates a flow callback handler that will be asynchronously called every time
-func NewFlowHandler(callback ExpireUpdateFunc, every time.Duration) *Handler {
-	return &Handler{
-		callback: callback,
-		every:    every,
-	}
-}
-
 // TableOpts defines flow table options
 type TableOpts struct {
 	RawPacketLimit int64
@@ -78,10 +61,11 @@ type Table struct {
 	lockState         common.RWMutex
 	wg                sync.WaitGroup
 	quit              chan bool
-	updateHandler     *Handler
+	updateEvery       time.Duration
+	expireAfter       time.Duration
+	sender            MessageSender
 	lastUpdate        int64
 	updateVersion     int64
-	expireHandler     *Handler
 	lastExpire        int64
 	nodeTID           string
 	ipDefragger       *IPDefragger
@@ -117,7 +101,7 @@ func updateTCPFlagTime(prevFlagTime int64, currFlagTime int64) int64 {
 }
 
 // NewTable creates a new flow table
-func NewTable(updateHandler *Handler, expireHandler *Handler, nodeTID string, opts ...TableOpts) *Table {
+func NewTable(updateEvery, expireAfter time.Duration, sender MessageSender, nodeTID string, opts ...TableOpts) *Table {
 	appTimeout := make(map[string]int64)
 	for key := range config.GetConfig().GetStringMap("flow.application_timeout") {
 		// convert seconds to milleseconds
@@ -133,8 +117,9 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, nodeTID string, op
 		flushDone:         make(chan bool),
 		state:             common.StoppedState,
 		quit:              make(chan bool),
-		updateHandler:     updateHandler,
-		expireHandler:     expireHandler,
+		updateEvery:       updateEvery,
+		expireAfter:       expireAfter,
+		sender:            sender,
 		nodeTID:           nodeTID,
 		ipDefragger:       NewIPDefragger(),
 		tcpAssembler:      NewTCPAssembler(),
@@ -240,7 +225,7 @@ func (ft *Table) expire(expireBefore int64) {
 	}
 
 	/* Advise Clients */
-	ft.expireHandler.callback(&FlowArray{Flows: expiredFlows})
+	ft.sender.SendMessage(&Message{Flows: expiredFlows})
 
 	flowTableSz := ft.table.Len()
 	logging.GetLogger().Debugf("Expire Flow : removed %v ; new size %v", flowTableSzBefore-flowTableSz, flowTableSz)
@@ -305,7 +290,7 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 
 	if len(updatedFlows) != 0 {
 		/* Advise Clients */
-		ft.updateHandler.callback(&FlowArray{Flows: updatedFlows})
+		ft.sender.SendMessage(&Message{Flows: updatedFlows})
 		logging.GetLogger().Debugf("Send updated Flows: %d", len(updatedFlows))
 
 		// cleanup raw packets
@@ -509,10 +494,10 @@ func (ft *Table) Run() {
 	ft.wg.Add(1)
 	defer ft.wg.Done()
 
-	updateTicker := time.NewTicker(ft.updateHandler.every)
+	updateTicker := time.NewTicker(ft.updateEvery)
 	defer updateTicker.Stop()
 
-	expireTicker := time.NewTicker(ft.expireHandler.every)
+	expireTicker := time.NewTicker(ft.expireAfter)
 	defer expireTicker.Stop()
 
 	// ticker used internally to track fragment and tcp connections
