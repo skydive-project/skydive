@@ -90,7 +90,6 @@ func (b *BasicAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc)
 }
 
 func NewBasicAuthenticationBackend(name string, provider auth.SecretProvider, role string) (*BasicAuthenticationBackend, error) {
-
 	return &BasicAuthenticationBackend{
 		BasicAuth: auth.NewBasicAuthenticator(basicAuthRealm, provider),
 		name:      name,

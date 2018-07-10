@@ -421,6 +421,7 @@ func (c *WSClient) connect() {
 		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err)
 		return
 	}
+
 	c.conn, _, err = d.Dial(endpoint, headers)
 
 	if err != nil {
