@@ -171,7 +171,7 @@ func (u *NetNSProbe) Register(path string, name string) (*graph.Node, error) {
 	logging.GetLogger().Debugf("Registering namespace: %s", nsString)
 	probe, err := u.NetLinkProbe.Register(path, n)
 	if err != nil {
-		logging.GetLogger().Errorf("Could not register netlink probe within namespace: %s", err)
+		return nil, fmt.Errorf("Could not register netlink probe within namespace: %s", err)
 	}
 
 	u.netNsNetLinkProbes[nsString] = &netNsNetLinkProbe{NetNsNetLinkProbe: probe, useCount: 1}
