@@ -176,6 +176,10 @@
           name: DRY_RUN
           default: "{dry-run}"
           description: If specified, do not upload anything
+      - string:
+          name: KEEP_RESOURCES
+          default: "{keep-resources}"
+          description: Keep resources at the end of the test
 
 - parameter:
     name: skydive-default-parameters
@@ -185,6 +189,7 @@
           ref: "${sha1}"
           refspec: "+refs/pull/*:refs/remotes/origin/pr/*"
           dry-run: "true"
+          keep-resources: ""
 
 - defaults:
     name: skydive
@@ -582,6 +587,7 @@
           ref: ""
           refspec: "+refs/tags/*:refs/remotes/origin/tags/*"
           dry-run: ""
+          keep-resources: ""
     scm:
       - skydive-github:
           repository: "https://github.com/skydive-project/skydive"
@@ -621,6 +627,7 @@
           ref: "refs/heads/master"
           refspec: "+refs/heads/*:refs/remotes/origin/*"
           dry-run: ""
+          keep-resources: ""
     scm:
       - skydive-github:
           repository: "https://github.com/skydive-project/skydive"

@@ -8,7 +8,7 @@ dir="$(dirname "$0")"
 function vagrant_cleanup {
     vagrant destroy --force
 }
-trap vagrant_cleanup EXIT
+[ "$KEEP_RESOURCES" = "true" ] || trap vagrant_cleanup EXIT
 
 make -f ${dir}/../../Makefile static
 cp $GOPATH/bin/skydive .

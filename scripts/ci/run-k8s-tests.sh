@@ -31,6 +31,6 @@ if [ -e functionals.cover ]; then
     mv functionals.cover functionals-${BACKEND}.cover
 fi
 
-. "${dir}/install-minikube.sh" stop
+[ "$KEEP_RESOURCES" = "true" ] || . "${dir}/install-minikube.sh" stop
 
 exit $retcode
