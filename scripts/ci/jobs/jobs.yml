@@ -406,6 +406,12 @@
     name: skydive-create-vagrant-boxes
     defaults: skydive
     node: baremetal
+    parameters:
+      - skydive-default-parameters
+      - string:
+          name: PROVIDERS
+          default: ""
+          description: Providers to build the image for
     triggers:
       - skydive-pull-request:
           name: create-vagrant-boxes

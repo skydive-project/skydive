@@ -32,7 +32,8 @@ trap vagrant_cleanup EXIT
 set -v
 set -e
 
-for provider in libvirt virtualbox
+[ -z "$PROVIDERS" ] && PROVIDERS="libvirt virtualbox"
+for provider in $PROVIDERS
 do
     PREPARE_BOX=true vagrant up --provider=$provider
     [ "$provider" = "libvirt" ] && sudo chmod a+r /var/lib/libvirt/images/dev_dev.img || true
