@@ -245,7 +245,7 @@ compile.static:
 		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) \
 		-extldflags \"-static $(STATIC_LIBS_ABS)\" \
 		-B $(BUILD_ID)" \
-		${VERBOSE_FLAGS} -tags "netgo ${BUILDTAGS}" \
+		${VERBOSE_FLAGS} -tags "netgo ${BUILD_TAGS}" \
 		-installsuffix netgo || true
 
 .PHONY: skydive

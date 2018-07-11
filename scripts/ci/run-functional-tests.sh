@@ -27,7 +27,7 @@ if [ "$COVERAGE" != "true" ]; then
     GOFLAGS="-race"
 fi
 
-make test.functionals.batch GOFLAGS="$GOFLAGS" GORACE="history_size=5" WITH_EBPF=true WITH_K8S=false VERBOSE=true TIMEOUT=20m COVERAGE=$COVERAGE ARGS="$ARGS -graph.output ascii -standalone" TEST_PATTERN=$TEST_PATTERN 2>&1 | tee $WORKSPACE/output.log
+make test.functionals.batch GOFLAGS="$GOFLAGS" TAGS="$TAGS" GORACE="history_size=5" WITH_EBPF=true WITH_K8S=false VERBOSE=true TIMEOUT=20m COVERAGE=$COVERAGE ARGS="$ARGS -graph.output ascii -standalone" TEST_PATTERN=$TEST_PATTERN 2>&1 | tee $WORKSPACE/output.log
 go2xunit -fail -fail-on-race -suite-name-prefix tests -input $WORKSPACE/output.log -output $WORKSPACE/tests.xml
 retcode=$?
 sed -i 's/\x1b\[[0-9;]*m//g' $WORKSPACE/tests.xml

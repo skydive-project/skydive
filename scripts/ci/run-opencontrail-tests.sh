@@ -9,7 +9,7 @@ then
     . $HOME/.nix-profile/etc/profile.d/nix.sh
 fi
 
-make test.functionals.compile TAGS=opencontrail_tests
+make test.functionals.compile TAGS="$TAGS opencontrail_tests"
 
 # For development or debug purposes, the Contrail VM can
 # be launched in an interactive mode.
