@@ -336,7 +336,7 @@ var app = new Vue({
       }
 
       for (var i = 0; i < document.styleSheets.length; i++) {
-        if (document.styleSheets[i].href.search(/themes/) == -1) {
+        if (!document.styleSheets[i].href || document.styleSheets[i].href.search(/themes/) == -1) {
           continue;
         }
         if (document.styleSheets[i].href.search(theme) != -1) {
