@@ -18,7 +18,7 @@ export SKYDIVE=${GOPATH}/bin/skydive
 export FLOW_PROTOCOL=${FLOW_PROTOCOL:-udp}
 export SKYDIVE_LOGGING_LEVEL=DEBUG
 
-make test.functionals WITH_SCALE=true VERBOSE=true TIMEOUT=10m TEST_PATTERN=Scale
+make test.functionals WITH_SCALE=true TAGS=${TAGS} VERBOSE=true TIMEOUT=10m TEST_PATTERN=Scale
 status=$?
 
 cat /tmp/skydive-scale/{analyzer,agent}-?.log | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" | perl -ne '$d=$1 if /^(\d+-\d+-\d+),/; $k{$d}.=$_; END{print $k{$_} for sort keys(%k);}'

@@ -16,7 +16,7 @@ export ELASTICSEARCH=localhost:9200
 export SKYDIVE=${GOPATH}/bin/skydive
 export SKYDIVE_LOGGING_LEVEL=DEBUG
 
-make test.functionals WITH_CDD=true VERBOSE=true TIMEOUT=10m TEST_PATTERN=Overview
+make test.functionals WITH_CDD=true TAGS=${TAGS} VERBOSE=true TIMEOUT=10m TEST_PATTERN=Overview
 
 "${dir}/convert-to-gif.sh" tests/overview.mp4 tests/overview-tmp.gif
 gifsicle -O3 tests/overview-tmp.gif -o tests/overview.gif
