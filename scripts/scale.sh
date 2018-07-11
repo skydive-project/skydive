@@ -298,6 +298,8 @@ function create_analyzer() {
 	fi
 
 	cat <<EOF >> $TEMP_DIR/$NAME.yml
+ui:
+  theme: light
 host_id: $NAME
 http:
   ws:
