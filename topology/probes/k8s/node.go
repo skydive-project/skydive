@@ -23,7 +23,6 @@
 package k8s
 
 import (
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 
@@ -32,7 +31,6 @@ import (
 )
 
 type nodeProbe struct {
-	common.RWMutex
 	defaultKubeCacheEventHandler
 	graph.DefaultGraphListener
 	*kubeCache
@@ -79,9 +77,6 @@ func nodeUID(node *v1.Node) graph.Identifier {
 
 func (c *nodeProbe) onAdd(obj interface{}) {
 	node := obj.(*v1.Node)
-
-	c.Lock()
-	defer c.Unlock()
 
 	c.graph.Lock()
 	defer c.graph.Unlock()
