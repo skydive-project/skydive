@@ -39,7 +39,13 @@ Vue.component('capture-form', {
         </div>\
         <div class="form-group">\
           <label for="capture-bpf">BPF filter</label>\
-          <input id="capture-bpf" type="text" class="form-control input-sm" v-model="bpf" />\
+          <div class="input">\
+            <input list="capture-bpf-favorites" placeholder="e.g. port 80 and port 443"\
+            id="capture-bpf" type="text" v-model="bpf"\
+            class="input-sm form-control"></input>\
+            <datalist id="capture-bpf-favorites" class="capture-bpf-favorites">\
+            </datalist>\
+          </div>\
         </div>\
         <collapse :collapsed="true" class="form-group">\
           <h1 slot="collapse-header" slot-scope="props" :class="{\'closed\': !props.active}">\
@@ -100,7 +106,7 @@ Vue.component('capture-form', {
               id="create-capture"\
               class="btn btn-primary"\
               v-else\
-              @click="visible = !visible">\
+              @click="toggleForm">\
         Create\
       </button>\
     </div>\
@@ -335,7 +341,23 @@ Vue.component('capture-form', {
         else
           self.$store.commit('unhighlight', n.ID);
       });
-    }
+    },
+
+    setBPFFavoritesFromConfig: function() {
+      var self = this;
+      var options = $(".capture-bpf-favorites");
+
+      var favorites = app.getConfigValue('bpf.favorites');
+      if (!favorites || favorites.length === 0) return;
+      $.each(favorites, function(key, value) {
+        options.append($("<option/>").text(key).val(value));
+      });
+    },
+
+    toggleForm: function() {
+      this.visible = !this.visible;
+      setTimeout(this.setBPFFavoritesFromConfig, 200);
+    },
 
   }
 

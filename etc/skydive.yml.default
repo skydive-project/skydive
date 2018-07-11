@@ -419,6 +419,12 @@ ui:
   # Enable/disable ssh to hosts
   # ssh_enabled: false
 
+  bpf:
+    # Pre-defined BPF filters
+    favorites:
+      # filter1: ip broadcast
+      # filter2: ip multicast
+
 rbac:
   model:
     # RBAC model
