@@ -27,6 +27,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/skydive-project/skydive/common"
 )
 
 func newGraph(t *testing.T) *Graph {
@@ -35,7 +37,7 @@ func newGraph(t *testing.T) *Graph {
 		t.Error(err.Error())
 	}
 
-	return NewGraphFromConfig(b)
+	return NewGraphFromConfig(b, common.ExternalService)
 }
 
 func TestLinks(t *testing.T) {

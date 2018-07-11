@@ -127,6 +127,7 @@ type rawData struct {
 	Type       string `json:"_Type,omitempty"`
 	ID         string
 	Host       string
+	Origin     string
 	CreatedAt  int64
 	UpdatedAt  int64
 	Metadata   json.RawMessage
@@ -147,6 +148,7 @@ func graphElementToRaw(typ string, e *graphElement) (*rawData, error) {
 		Type:      typ,
 		ID:        string(e.ID),
 		Host:      e.host,
+		Origin:    e.origin,
 		CreatedAt: common.UnixMillis(e.createdAt),
 		UpdatedAt: common.UnixMillis(e.updatedAt),
 		Metadata:  json.RawMessage(data),

@@ -99,6 +99,7 @@ type graphElement struct {
 	ID        Identifier
 	metadata  Metadata
 	host      string
+	origin    string
 	createdAt time.Time
 	updatedAt time.Time
 	deletedAt time.Time
@@ -153,6 +154,7 @@ type Graph struct {
 	backend      GraphBackend
 	context      GraphContext
 	host         string
+	service      common.ServiceType
 }
 
 // HostNodeTIDMap a map of host and node ID
@@ -359,6 +361,10 @@ func (e *graphElement) Host() string {
 	return e.host
 }
 
+func (e *graphElement) Origin() string {
+	return e.origin
+}
+
 func (e *graphElement) GetFieldInt64(field string) (_ int64, err error) {
 	f, err := e.GetField(field)
 	if err != nil {
@@ -393,13 +399,15 @@ func (e *graphElement) GetField(name string) (interface{}, error) {
 		return common.UnixMillis(e.deletedAt), nil
 	case "Revision":
 		return e.revision, nil
+	case "Origin":
+		return e.origin, nil
 	default:
 		return common.GetField(e.metadata, name)
 	}
 }
 
 func (e *graphElement) GetFields() ([]string, error) {
-	keys := []string{"ID", "Host", "CreatedAt", "UpdatedAt", "DeletedAt", "Revision"}
+	keys := []string{"ID", "Host", "CreatedAt", "UpdatedAt", "DeletedAt", "Revision", "Origin"}
 	subkeys, err := common.GetFields(e.metadata)
 	if err != nil {
 		return nil, err
@@ -509,6 +517,13 @@ func (e *graphElement) Decode(i interface{}) (err error) {
 		}
 	}
 
+	if _, ok := objMap["Origin"]; ok {
+		if origin, ok := objMap["Origin"].(string); ok {
+			e.origin = origin
+		} else {
+			return errors.New("Wrong type for Origin")
+		}
+	}
 	if createdAt, ok := objMap["CreatedAt"]; ok {
 		if e.createdAt, err = parseTime(createdAt); err != nil {
 			return err
@@ -573,6 +588,7 @@ func (n *Node) MarshalJSON() ([]byte, error) {
 		UpdatedAt int64 `json:",omitempty"`
 		DeletedAt int64 `json:",omitempty"`
 		Revision  int64
+		Origin    string
 	}{
 		ID:        n.ID,
 		Metadata:  n.metadata,
@@ -581,6 +597,7 @@ func (n *Node) MarshalJSON() ([]byte, error) {
 		UpdatedAt: common.UnixMillis(n.updatedAt),
 		DeletedAt: deletedAt,
 		Revision:  n.revision,
+		Origin:    n.origin,
 	})
 }
 
@@ -622,6 +639,7 @@ func (e *Edge) MarshalJSON() ([]byte, error) {
 		Parent    Identifier
 		Child     Identifier
 		Host      string
+		Origin    string
 		CreatedAt int64
 		UpdatedAt int64 `json:",omitempty"`
 		DeletedAt int64 `json:",omitempty"`
@@ -631,6 +649,7 @@ func (e *Edge) MarshalJSON() ([]byte, error) {
 		Parent:    e.parent,
 		Child:     e.child,
 		Host:      e.host,
+		Origin:    e.origin,
 		CreatedAt: common.UnixMillis(e.createdAt),
 		UpdatedAt: common.UnixMillis(e.updatedAt),
 		DeletedAt: deletedAt,
@@ -1154,11 +1173,13 @@ func (g *Graph) GetNode(i Identifier) *Node {
 	return nil
 }
 
-func newNode(i Identifier, m Metadata, t time.Time, h string) *Node {
+func newNode(i Identifier, m Metadata, t time.Time, h string, s common.ServiceType) *Node {
+	o := string(s) + "." + h
 	n := &Node{
 		graphElement: graphElement{
 			ID:        i,
 			host:      h,
+			origin:    o,
 			createdAt: t,
 			updatedAt: t,
 			revision:  1,
@@ -1180,7 +1201,7 @@ func (g *Graph) newNode(i Identifier, m Metadata, t time.Time, h ...string) *Nod
 		hostname = h[0]
 	}
 
-	n := newNode(i, m, t, hostname)
+	n := newNode(i, m, t, hostname, g.service)
 
 	if !g.AddNode(n) {
 		return nil
@@ -1194,13 +1215,15 @@ func (g *Graph) NewNode(i Identifier, m Metadata, h ...string) *Node {
 	return g.newNode(i, m, time.Now().UTC(), h...)
 }
 
-func newEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Time, h string) *Edge {
+func newEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Time, h string, s common.ServiceType) *Edge {
+	o := string(s) + "." + h
 	e := &Edge{
 		parent: p.ID,
 		child:  c.ID,
 		graphElement: graphElement{
 			ID:        i,
 			host:      h,
+			origin:    o,
 			createdAt: t,
 			updatedAt: t,
 			revision:  1,
@@ -1222,7 +1245,7 @@ func (g *Graph) newEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Time,
 		hostname = h[0]
 	}
 
-	e := newEdge(i, p, c, m, t, hostname)
+	e := newEdge(i, p, c, m, t, hostname, g.service)
 
 	if !g.AddEdge(e) {
 		return nil
@@ -1336,7 +1359,7 @@ func (g *Graph) MarshalJSON() ([]byte, error) {
 
 // CloneWithContext creates a new graph based on the given one and the given context
 func (g *Graph) CloneWithContext(context GraphContext) (*Graph, error) {
-	ng := NewGraph(g.host, g.backend)
+	ng := NewGraph(g.host, g.backend, g.service)
 	if context.TimeSlice != nil && !g.backend.IsHistorySupported() {
 		return nil, errors.New("Backend does not support history")
 	}
@@ -1395,19 +1418,20 @@ func (g *Graph) RemoveEventListener(l GraphEventListener) {
 }
 
 // NewGraph creates a new graph based on the backend
-func NewGraph(host string, backend GraphBackend) *Graph {
+func NewGraph(host string, backend GraphBackend, service common.ServiceType) *Graph {
 	return &Graph{
 		eventHandler: NewGraphEventHandler(maxEvents),
 		backend:      backend,
 		host:         host,
 		context:      GraphContext{TimePoint: true},
+		service:      service,
 	}
 }
 
 // NewGraphFromConfig creates a new graph based on configuration
-func NewGraphFromConfig(backend GraphBackend) *Graph {
+func NewGraphFromConfig(backend GraphBackend, service common.ServiceType) *Graph {
 	host := config.GetString("host_id")
-	return NewGraph(host, backend)
+	return NewGraph(host, backend, service)
 }
 
 // NewBackendByName creates a new graph backend based on the name

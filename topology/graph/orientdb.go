@@ -50,6 +50,7 @@ func graphElementToOrientDBSetString(e graphElement) (s string) {
 	properties := []string{
 		fmt.Sprintf("ID = \"%s\"", string(e.ID)),
 		fmt.Sprintf("Host = \"%s\"", e.host),
+		fmt.Sprintf("Origin = \"%s\"", e.origin),
 		fmt.Sprintf("CreatedAt = %d", common.UnixMillis(e.createdAt)),
 		fmt.Sprintf("UpdatedAt = %d", common.UnixMillis(e.updatedAt)),
 		fmt.Sprintf("Revision = %d", e.revision),
@@ -100,6 +101,7 @@ func graphElementToOrientDBDocument(e graphElement) (orientdb.Document, error) {
 	doc["@class"] = "Node"
 	doc["ID"] = e.ID
 	doc["Host"] = e.host
+	doc["Origin"] = e.origin
 	doc["Metadata"] = json.RawMessage(data)
 	doc["CreatedAt"] = common.UnixMillis(e.createdAt)
 	doc["UpdatedAt"] = common.UnixMillis(e.updatedAt)
@@ -339,6 +341,7 @@ func newOrientDBBackend(client orientdb.ClientInterface) (*OrientDBBackend, erro
 			Properties: []orientdb.Property{
 				{Name: "ID", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "Host", Type: "STRING", Mandatory: true, NotNull: true},
+				{Name: "Origin", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "ArchivedAt", Type: "LONG", NotNull: true, ReadOnly: true},
 				{Name: "CreatedAt", Type: "LONG", Mandatory: true, NotNull: true, ReadOnly: true},
 				{Name: "UpdatedAt", Type: "LONG"},
@@ -362,6 +365,7 @@ func newOrientDBBackend(client orientdb.ClientInterface) (*OrientDBBackend, erro
 			Properties: []orientdb.Property{
 				{Name: "ID", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "Host", Type: "STRING", Mandatory: true, NotNull: true},
+				{Name: "Origin", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "ArchivedAt", Type: "LONG", NotNull: true, ReadOnly: true},
 				{Name: "CreatedAt", Type: "LONG", Mandatory: true, NotNull: true, ReadOnly: true},
 				{Name: "UpdatedAt", Type: "LONG"},

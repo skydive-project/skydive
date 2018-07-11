@@ -26,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -35,7 +36,7 @@ func newGraph(t *testing.T) *graph.Graph {
 		t.Error(err.Error())
 	}
 
-	return graph.NewGraphFromConfig(b)
+	return graph.NewGraphFromConfig(b, common.ExternalService)
 }
 
 func newTransversalGraph(t *testing.T) *graph.Graph {
@@ -167,8 +168,8 @@ func TestBasicTraversal(t *testing.T) {
 	}
 
 	props := tr.V().PropertyKeys()
-	if len(props.Values()) != 14 {
-		t.Fatalf("Should return 14 properties, returned: %s", props.Values())
+	if len(props.Values()) != 15 {
+		t.Fatalf("Should return 15 properties, returned: %s", props.Values())
 	}
 
 	res := tr.V().PropertyValues("Type")
