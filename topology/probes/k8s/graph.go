@@ -26,6 +26,7 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 )
@@ -60,9 +61,13 @@ func addMetadata(g *graph.Graph, n *graph.Node, details interface{}) {
 func newEdgeMetadata() graph.Metadata {
 	m := graph.Metadata{
 		"Manager":      managerValue,
-		"RelationType": "Association",
+		"RelationType": "association",
 	}
 	return m
+}
+
+func dumpGraphLink(parent, child *graph.Node) string {
+	return fmt.Sprintf("%s -> %s", dumpGraphNode(parent), dumpGraphNode(child))
 }
 
 func addLink(g *graph.Graph, parent, child *graph.Node) *graph.Edge {
@@ -70,7 +75,18 @@ func addLink(g *graph.Graph, parent, child *graph.Node) *graph.Edge {
 	if e := g.GetFirstLink(parent, child, m); e != nil {
 		return e
 	}
+
+	logging.GetLogger().Debugf("Adding link: %s", dumpGraphLink(parent, child))
 	return g.Link(parent, child, m, hostID)
+}
+
+func delLink(g *graph.Graph, parent, child *graph.Node) {
+	m := newEdgeMetadata()
+	if e := g.GetFirstLink(parent, child, m); e == nil {
+		return
+	}
+	logging.GetLogger().Debugf("Deleting link: %s", dumpGraphLink(parent, child))
+	g.Unlink(parent, child)
 }
 
 func addOwnershipLink(g *graph.Graph, parent, child *graph.Node) *graph.Edge {
@@ -80,12 +96,13 @@ func addOwnershipLink(g *graph.Graph, parent, child *graph.Node) *graph.Edge {
 	if e := topology.GetOwnershipLink(g, parent, child); e != nil {
 		return e
 	}
+	logging.GetLogger().Debugf("Adding ownership: %s", dumpGraphLink(parent, child))
 	return topology.AddOwnershipLink(g, parent, child, m, hostID)
 }
 
 func syncLink(g *graph.Graph, parent, child *graph.Node, toAdd bool) {
 	if !toAdd {
-		g.Unlink(parent, child)
+		delLink(g, parent, child)
 	} else {
 		addLink(g, parent, child)
 	}
