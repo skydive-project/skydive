@@ -52,7 +52,6 @@ func newObjectIndexer(g *graph.Graph) *graph.MetadataIndexer {
 		filters.NewTermStringFilter("Type", "pod"),
 		filters.NewTermStringFilter("Type", "persistentvolume"),
 		filters.NewTermStringFilter("Type", "persistentvolumeclaim"),
-		filters.NewTermStringFilter("Type", "networkpolicy"),
 		filters.NewTermStringFilter("Type", "replicaset"),
 		filters.NewTermStringFilter("Type", "replicationcontroller"),
 		filters.NewTermStringFilter("Type", "service"),
@@ -95,7 +94,6 @@ func namespaceUID(ns *v1.Namespace) graph.Identifier {
 
 func (p *namespaceProbe) linkObject(objNode, nsNode *graph.Node) {
 	addOwnershipLink(p.graph, nsNode, objNode)
-	logging.GetLogger().Debugf("Added link: %s -> %s", dumpGraphNode(nsNode), dumpGraphNode(objNode))
 }
 
 func (p *namespaceProbe) OnAdd(obj interface{}) {
