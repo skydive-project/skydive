@@ -18,10 +18,10 @@
 %global selinux_policyver 3.13.1-192
 %global moduletype contrib
 
-%if 0%{?rhel} >= 7
-%global selinux_semanage_pkg policycoreutils-python
-%else
+%if 0%{?fedora} >= 27
 %global selinux_semanage_pkg policycoreutils-python-utils
+%else
+%global selinux_semanage_pkg policycoreutils-python
 %endif
 
 %if %{defined fullver}
