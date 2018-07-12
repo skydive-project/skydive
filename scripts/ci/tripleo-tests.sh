@@ -2,16 +2,19 @@
 
 set -e
 
+USERNAME=skydive
+PASSWORD=skydive
+
 curl -Lo skydive-latest https://github.com/skydive-project/skydive-binaries/raw/jenkins-builds/skydive-latest
 chmod +x skydive-latest
 sudo mv skydive-latest /usr/bin/skydive
 
 . ~/stackrc
 CTLIP=$( openstack server show overcloud-controller-0 -f json | jq -r .addresses | cut -d '=' -f 2 )
-AGENTS_COUNT=$( SKYDIVE_ANALYZERS=$CTLIP:8082 skydive client status --username skydive --password skydive | jq '.Agents | length' )
+AGENTS_COUNT=$( SKYDIVE_ANALYZERS=$CTLIP:8082 skydive client status --username $USERNAME --password $PASSWORD | jq '.Agents | length' )
 if [ $AGENTS_COUNT -lt 2 ]; then
 	echo Expected agent count not found
-	SKYDIVE_ANALYZERS=$CTLIP:8082 skydive client status --username skydive --password skydive
+	SKYDIVE_ANALYZERS=$CTLIP:8082 skydive client status --username $USERNAME --password $PASSWORD
 	exit 1
 fi
 
@@ -28,7 +31,7 @@ openstack server create --image cirros --flavor tiny --nic net-id=$NETID vm1
 for i in {1..30}; do
 
 	INTF_COUNT=$( SKYDIVE_ANALYZERS=$CTLIP:8082 \
-		skydive client query "G.V().HasKey('Neutron').Count()" --username skydive --password skydive )
+		skydive client query "G.V().HasKey('Neutron').Count()" --username $USERNAME --password $PASSWORD )
 	if [ $INTF_COUNT -eq 5 ]; then
 		exit 0
 	fi

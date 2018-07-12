@@ -7,10 +7,6 @@
 
 # This enables TLS for the undercloud which will also make haproxy bind to the
 # configured public-vip and admin-vip.
-overcloud_templates_path: "{{ working_dir }}/tripleo-heat-templates"
-overcloud_templates_repo: https://github.com/safchain/tripleo-heat-templates
-overcloud_templates_branch: review/sylvain_afchain/bp/skydive-external-deploy-tasks
-
 undercloud_generate_service_certificate: true
 ssl_overcloud: true
 step_introspect: true

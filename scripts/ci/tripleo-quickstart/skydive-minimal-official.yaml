@@ -61,8 +61,10 @@ parameter_defaults:
     nova::compute::libvirt::libvirt_virt_type: qemu
   Debug: true
   DockerPuppetDebug: True
-  DockerSkydiveAnalyzerImage: skydive/skydive
-  DockerSkydiveAnalyzerCommand: analyzer --conf /etc/skydive.yml
-  DockerSkydiveAgentImage: skydive/skydive
-  DockerSkydiveAnalyzerCommand: agent --conf /etc/skydive.yml
-
+  SkydiveVars:
+    analyzers:
+      skydive_analyzer_docker_image: skydive/skydive
+      skydive_analyzer_docker_command: analyzer --conf /etc/skydive.yml
+    agents:
+      skydive_analyzer_docker_image: skydive/skydive
+      skydive_analyzer_docker_command: agent --conf /etc/skydive.yml
