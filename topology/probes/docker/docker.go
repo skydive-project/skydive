@@ -81,7 +81,7 @@ func (probe *DockerProbe) registerContainer(id string) {
 	}
 	info, err := probe.client.ContainerInspect(context.Background(), id)
 	if err != nil {
-		logging.GetLogger().Errorf("Failed to inspect Docker container %s: %s", id, err.Error())
+		logging.GetLogger().Errorf("Failed to inspect Docker container %s: %s", id, err)
 		return
 	}
 
@@ -100,7 +100,7 @@ func (probe *DockerProbe) registerContainer(id string) {
 		n = probe.Root
 	} else {
 		if n, err = probe.Register(namespace, info.Name[1:]); err != nil {
-			logging.GetLogger().Debugf("Failed to register probe for namespace %s: %s", namespace, err.Error())
+			logging.GetLogger().Debugf("Failed to register probe for namespace %s: %s", namespace, err)
 			return
 		}
 
@@ -165,23 +165,27 @@ func (probe *DockerProbe) handleDockerEvent(event *events.Message) {
 func (probe *DockerProbe) connect() error {
 	var err error
 
-	if probe.hostNs, err = netns.Get(); err != nil {
-		return err
-	}
-	defer probe.hostNs.Close()
-
 	logging.GetLogger().Debugf("Connecting to Docker daemon: %s", probe.url)
 	defaultHeaders := map[string]string{"User-Agent": fmt.Sprintf("skydive-agent-%s", sversion.Version)}
 	probe.client, err = client.NewClient(probe.url, DockerClientAPIVersion, nil, defaultHeaders)
 	if err != nil {
-		logging.GetLogger().Errorf("Failed to create client to Docker daemon: %s", err.Error())
+		logging.GetLogger().Errorf("Failed to create client to Docker daemon: %s", err)
 		return err
 	}
 	defer probe.client.Close()
 
 	if _, err := probe.client.ServerVersion(context.Background()); err != nil {
-		logging.GetLogger().Errorf("Failed to connect to Docker daemon: %s", err.Error())
+		logging.GetLogger().Errorf("Failed to connect to Docker daemon: %s", err)
 		return err
+	}
+
+	if probe.hostNs, err = netns.Get(); err != nil {
+		return err
+	}
+	defer probe.hostNs.Close()
+
+	for id, _ := range probe.containerMap {
+		probe.unregisterContainer(id)
 	}
 
 	eventsFilter := filters.NewArgs()
@@ -200,9 +204,9 @@ func (probe *DockerProbe) connect() error {
 	go func() {
 		defer probe.wg.Done()
 
-		containers, err := probe.client.ContainerList(context.Background(), types.ContainerListOptions{})
+		containers, err := probe.client.ContainerList(ctx, types.ContainerListOptions{})
 		if err != nil {
-			logging.GetLogger().Errorf("Failed to list containers: %s", err.Error())
+			logging.GetLogger().Errorf("Failed to list containers: %s", err)
 			return
 		}
 
@@ -220,7 +224,7 @@ func (probe *DockerProbe) connect() error {
 		select {
 		case err := <-errChan:
 			if atomic.LoadInt64(&probe.state) != common.StoppingState {
-				logging.GetLogger().Errorf("Got error while waiting for Docker event: %s", err.Error())
+				err = fmt.Errorf("Got error while waiting for Docker event: %s", err)
 			}
 			return err
 		case event := <-eventChan:
