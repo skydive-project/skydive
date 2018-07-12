@@ -25,7 +25,6 @@ package k8s
 import (
 	"fmt"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
@@ -36,7 +35,6 @@ import (
 )
 
 type podProbe struct {
-	common.RWMutex
 	defaultKubeCacheEventHandler
 	graph.DefaultGraphListener
 	*kubeCache
@@ -123,9 +121,6 @@ func (p *podProbe) OnAdd(obj interface{}) {
 		return
 	}
 
-	p.Lock()
-	defer p.Unlock()
-
 	p.graph.Lock()
 	defer p.graph.Unlock()
 
@@ -137,9 +132,6 @@ func (p *podProbe) OnAdd(obj interface{}) {
 func (p *podProbe) OnUpdate(oldObj, newObj interface{}) {
 	oldPod := oldObj.(*v1.Pod)
 	newPod := newObj.(*v1.Pod)
-
-	p.Lock()
-	defer p.Unlock()
 
 	p.graph.Lock()
 	defer p.graph.Unlock()

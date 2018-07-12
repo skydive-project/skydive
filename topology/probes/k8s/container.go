@@ -25,7 +25,6 @@ package k8s
 import (
 	"fmt"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
@@ -35,7 +34,6 @@ import (
 )
 
 type containerProbe struct {
-	common.RWMutex
 	defaultKubeCacheEventHandler
 	graph.DefaultGraphListener
 	*kubeCache
@@ -119,9 +117,6 @@ func (c *containerProbe) linkContainerToDocker(pod *v1.Pod, container *v1.Contai
 }
 
 func (c *containerProbe) onContainerAdd(pod *v1.Pod, container *v1.Container) {
-	c.Lock()
-	defer c.Unlock()
-
 	c.graph.Lock()
 	defer c.graph.Unlock()
 
