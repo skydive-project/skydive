@@ -16,7 +16,13 @@ cd ${GOPATH}/src/github.com/skydive-project/skydive
 
 if [ "$DEVMODE" == "true" ]; then
     make static
-    make rpm
+    make srpm
+    VERSION=$(make -s version | cut -d '-' -f 1)
+    TAG=$(make -s version | cut -s -d '-' -f 2- | tr '-' '.')
+    mock -r centos-7-x86_64 -D "fullver $(make -s version)" --resultdir . --rebuild rpmbuild/SRPMS/skydive-${VERSION}*${TAG}.src.rpm
+    mkdir -p rpmbuild/RPMS/{x86_64,noarch}
+    mv skydive*-${VERSION}-*${TAG}*.x86_64.rpm rpmbuild/RPMS/x86_64/
+    mv skydive*-${VERSION}-*${TAG}*.noarch.rpm rpmbuild/RPMS/noarch/
     make docker-image
     docker save skydive/skydive:devel -o skydive-docker-devel.tar
 fi

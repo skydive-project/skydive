@@ -28,8 +28,9 @@
     paths: /tmp
     patterns: 'skydive-*.rpm'
   register: skydive_packages
+  when: '"file://" in skydive_binary_remote_location'
 
-- name: Install skydive package
+- name: Install skydive packages
   yum:
     name: "{{ item.path }}"
     state: present
