@@ -45,7 +45,13 @@ FILTERS_PROTO_FILES=filters/filters.proto
 HTTP_PROTO_FILES=http/wsstructmessage.proto
 EASYJSON_GITHUB:=github.com/mailru/easyjson/easyjson
 EASYJSON_FILES_ALL=flow/flow.pb.go
-EASYJSON_FILES_TAG=flow/storage/elasticsearch/elasticsearch.go topology/graph/elasticsearch.go
+EASYJSON_FILES_TAG=\
+	flow/storage/elasticsearch/elasticsearch.go \
+	topology/graph/elasticsearch.go \
+	topology/metrics.go
+EASYJSON_FILES_TAG_LINUX=\
+	topology/probes/netlink/netlink.go \
+	topology/probes/socketinfo/connection.go
 VERBOSE_FLAGS?=-v
 VERBOSE_TESTS_FLAGS?=-test.v
 VERBOSE?=true
@@ -200,10 +206,17 @@ debug.analyzer:
 	sed -e 's/type Flow struct {/type Flow struct { XXX_state flowState `json:"-"`/' -i.bak flow/flow.pb.go
 	gofmt -s -w flow/flow.pb.go
 
-.PHONY: .easyjson
-.easyjson: builddep .proto ${EASYJSON_FILES_ALL} ${EASYJSON_FILES_TAG}
+.PHONY: .easyjson.all
+.easyjson.all: builddep .proto ${EASYJSON_FILES_ALL}
 	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -all ${EASYJSON_FILES_ALL}
+
+.PHONY: .easyjson.tag
+.easyjson.tag: builddep ${EASYJSON_FILES_TAG}
 	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson ${EASYJSON_FILES_TAG}
+
+.PHONY: .easyjson.tag.linux
+.easyjson.tag.linux: builddep ${EASYJSON_FILES_TAG_LINUX}
+	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags linux ${EASYJSON_FILES_TAG_LINUX}
 
 BINDATA_DIRS := \
 	js/*.js \
@@ -306,6 +319,10 @@ ebpf.clean:
 .PHONY: test.functionals.clean
 test.functionals.clean:
 	rm -f tests/functionals
+
+.PHONY: easyjson.clean
+easyjson.clean:
+	find . -name "*_easyjson.go" -exec rm {} \;
 
 .PHONY: test.functionals.compile
 test.functionals.compile: govendor genlocalfiles
@@ -431,10 +448,10 @@ builddep: govendor
 	$(call VENDOR_BUILD,${EASYJSON_GITHUB})
 
 .PHONY: genlocalfiles
-genlocalfiles: .proto .bindata .easyjson
+genlocalfiles: .proto .bindata .easyjson.all .easyjson.tag .easyjson.tag.linux
 
 .PHONY: clean
-clean: skydive.clean test.functionals.clean dpdk.clean contribs.clean
+clean: skydive.clean test.functionals.clean dpdk.clean contribs.clean ebpf.clean easyjson.clean
 	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
 
 .PHONY: srpm

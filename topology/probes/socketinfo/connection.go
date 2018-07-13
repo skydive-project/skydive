@@ -48,6 +48,7 @@ type ProcessInfo struct {
 type ConnectionState string
 
 // ConnectionInfo describes a connection and its corresponding process
+// easyjson:json
 type ConnectionInfo struct {
 	ProcessInfo   `mapstructure:",squash"`
 	LocalAddress  string
