@@ -460,6 +460,9 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 		metadata["BondMode"] = link.(*netlink.Bond).Mode.String()
 	}
 
+	u.Graph.Lock()
+	defer u.Graph.Unlock()
+
 	var intf *graph.Node
 
 	switch driver {
