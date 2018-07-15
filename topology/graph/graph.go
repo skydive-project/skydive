@@ -1103,7 +1103,7 @@ func (g *Graph) Unlink(n1 *Node, n2 *Node) {
 
 // GetFirstLink get Link between the parent and the child node or nil
 func (g *Graph) GetFirstLink(parent, child *Node, metadata Metadata) *Edge {
-	for _, e := range g.GetNodeEdges(child, metadata) {
+	for _, e := range g.GetNodeEdges(parent, metadata) {
 		if e.GetChild() == child.ID {
 			return e
 		}
