@@ -73,6 +73,7 @@ func dumpGraphLink(parent, child *graph.Node) string {
 func addLink(g *graph.Graph, parent, child *graph.Node) *graph.Edge {
 	m := newEdgeMetadata()
 	if e := g.GetFirstLink(parent, child, m); e != nil {
+		logging.GetLogger().Debugf("Adding link: %s: exists - skipping", dumpGraphLink(parent, child))
 		return e
 	}
 
@@ -83,6 +84,7 @@ func addLink(g *graph.Graph, parent, child *graph.Node) *graph.Edge {
 func delLink(g *graph.Graph, parent, child *graph.Node) {
 	m := newEdgeMetadata()
 	if e := g.GetFirstLink(parent, child, m); e == nil {
+		logging.GetLogger().Debugf("Deleting link: %s: missing - skipping", dumpGraphLink(parent, child))
 		return
 	}
 	logging.GetLogger().Debugf("Deleting link: %s", dumpGraphLink(parent, child))

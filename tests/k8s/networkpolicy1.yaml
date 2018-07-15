@@ -1,0 +1,14 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: skydive-test-networkpolicy1
+  labels:
+    name: skydive-test-networkpolicy1
+---
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  namespace: skydive-test-networkpolicy1
+  name: skydive-test-networkpolicy1
+spec:
+  podSelector: {}

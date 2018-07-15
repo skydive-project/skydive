@@ -280,3 +280,61 @@ func TestHelloNodeScenario(t *testing.T) {
 		},
 	)
 }
+
+func TestK8sNetworkPolicyScenario1(t *testing.T) {
+	file := "networkpolicy1"
+	name := objName + "-" + file
+	testRunner(
+		t,
+		setupFromConfigFile(file),
+		tearDownFromConfigFile(file),
+		[]CheckFunction{
+			func(c *CheckContext) error {
+				networkpolicy, err := checkNodeCreation(t, c, "networkpolicy", "Name", name)
+				if err != nil {
+					return err
+				}
+
+				namespace, err := checkNodeCreation(t, c, "namespace", "Name", name)
+				if err != nil {
+					return err
+				}
+
+				if err = checkEdgeCreation(t, c, networkpolicy, namespace, "association"); err != nil {
+					return err
+				}
+
+				return nil
+			},
+		},
+	)
+}
+
+func TestK8sNetworkPolicyScenario2(t *testing.T) {
+	file := "networkpolicy2"
+	name := objName + "-" + file
+	testRunner(
+		t,
+		setupFromConfigFile(file),
+		tearDownFromConfigFile(file),
+		[]CheckFunction{
+			func(c *CheckContext) error {
+				networkpolicy, err := checkNodeCreation(t, c, "networkpolicy", "Name", name)
+				if err != nil {
+					return err
+				}
+
+				pod, err := checkNodeCreation(t, c, "pod", "Name", name)
+				if err != nil {
+					return err
+				}
+
+				if err = checkEdgeCreation(t, c, networkpolicy, pod, "association"); err != nil {
+					return err
+				}
+
+				return nil
+			},
+		},
+	)
+}
