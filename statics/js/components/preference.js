@@ -77,6 +77,28 @@ var PreferenceComponent = {
           <input id="bw-rel-alert" type="number" class="form-control input-sm" v-model.number="preferences.bandwidthRelativeAlert" min="0" max="1" step="0.1"/>\
         </div>\
       </div>\
+      <div class="form-group">\
+        <label for="bpf-favorite">Favorite BPF Filters</label>\
+        <a><i class="fa fa-question help-text" aria-hidden="true" title="BPF filters, listed in the capture form"></i></a>\
+        <div v-for="f in preferences.bpf">\
+          <div class="form-group">\
+            <div class="input-group">\
+              <label class="input-group-addon">Name: </label>\
+              <input class="form-control" v-model="f.name"/>\
+              <span class="input-group-btn">\
+                <button class="btn btn-danger" type="button" @click="removeBPF(f)" title="Delete BPF filter">\
+                  <i class="fa fa-trash-o" aria-hidden="true"></i>\
+                </button>\
+              </span>\
+            </div>\
+            <div class="input-group favorite-field">\
+              <label class="input-group-addon">Filter:  </label>\
+              <input class="form-control" v-model="f.expression"/>\
+            </div>\
+          </div>\
+        </div>\
+        <button class="btn btn-primary btn-round-xs btn-xs" type="button" @click="addBPF" title="Add new BPF">+</button>\
+      </div>\
       <div class="button-holder row">\
         <button class="btn btn-lg btn-primary" type="button" @click="saveToFile" title="download preferences to local file"> Export</button>\
         <input type="file" @change="openfile($event)" id="file_selector" style="display:none;">\
@@ -92,6 +114,7 @@ var PreferenceComponent = {
     var p = {};
     if (localStorage.preferences) p = JSON.parse(localStorage.preferences);
     if (!p.favorites || p.favorites.length <= 0) p.favorites = [{name:"", expression:""}];
+    if (!p.bpf || p.bpf.length <= 0) p.bpf = [{name:"", expression:""}];
 
     return {
       preferences: p,
@@ -102,6 +125,7 @@ var PreferenceComponent = {
 
     save: function() {
       this.preferences.favorites = this.filterEmpty(this.preferences.favorites);
+      this.preferences.bpf = this.filterEmpty(this.preferences.bpf);
       localStorage.setItem("preferences", JSON.stringify(this.preferences));
       this.$success({message: 'Preferences Saved'});
       this.$router.push("/topology");
@@ -122,6 +146,15 @@ var PreferenceComponent = {
     removeFavorite: function(favorite) {
       i = this.preferences.favorites.indexOf(favorite);
       this.preferences.favorites.splice(i, 1);
+    },
+
+    addBPF: function() {
+      this.preferences.bpf.push({name: "", expression: ""});
+    },
+
+    removeBPF: function(filter) {
+      i = this.preferences.bpf.indexOf(filter);
+      this.preferences.bpf.splice(i, 1);
     },
 
     filterEmpty: function(list) {
@@ -151,6 +184,7 @@ var PreferenceComponent = {
         var obj = JSON.parse(reader.result);
         self.preferences = obj;
 	if (!self.preferences.favorites || self.preferences.favorites.length <= 0) self.preferences.favorites = [{name: "", expression: ""}];
+	if (!self.preferences.bpf || self.preferences.bpf.length <= 0) self.preferences.bpf = [{name: "", expression: ""}];
       };
       reader.readAsText(e.target.files[0]);
       e.target.value = "";

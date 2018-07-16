@@ -347,6 +347,15 @@ Vue.component('capture-form', {
       var self = this;
       var options = $(".capture-bpf-favorites");
 
+      if (typeof(Storage) !== "undefined" && localStorage.preferences) {
+        var bpf = JSON.parse(localStorage.preferences).bpf;
+        if (bpf) {
+          $.each(bpf, function(i, f) {
+            options.append($("<option/>").text(f.name).val(f.expression));
+          });
+        }
+      }
+
       var favorites = app.getConfigValue('bpf.favorites');
       if (!favorites || favorites.length === 0) return;
       $.each(favorites, function(key, value) {
