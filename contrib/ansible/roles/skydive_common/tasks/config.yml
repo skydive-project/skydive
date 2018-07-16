@@ -4,20 +4,13 @@
     path: "{{ skydive_config_file | dirname }}"
     state: directory
 
-- name: Download default config file
-  get_url:
-    url: https://raw.githubusercontent.com/skydive-project/skydive/{{ skydive_release }}/etc/skydive.yml.default
-    dest: "{{ skydive_config_file }}"
-    mode: 0600
-    force: no
-  ignore_errors: yes
-
-- name: Create empty config file if needed
+- name: Create empty config file is needed
   copy:
     content: ""
     dest: "{{ skydive_config_file }}"
     mode: 0600
-    force: no
+    force: yes
+  run_once: true
 
 - name: Set host ID
   yedit:
