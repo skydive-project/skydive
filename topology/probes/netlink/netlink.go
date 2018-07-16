@@ -55,7 +55,8 @@ type pendingLink struct {
 	Metadata graph.Metadata
 }
 
-type neighbor struct {
+// easyjson:json
+type Neighbor struct {
 	Flags   []string `json:"Flags,omitempty"`
 	MAC     string
 	IP      string   `json:"IP,omitempty"`
@@ -93,6 +94,7 @@ type NetLinkProbe struct {
 }
 
 // RoutingTable describes a list of Routes
+// easyjson:json
 type RoutingTable struct {
 	ID     int64   `json:"Id"`
 	Src    net.IP  `json:"Src,omitempty"`
@@ -100,6 +102,7 @@ type RoutingTable struct {
 }
 
 // Route describes a route
+// easyjson:json
 type Route struct {
 	Protocol int64     `json:"Protocol,omitempty"`
 	Prefix   string    `json:"Prefix,omitempty"`
@@ -107,6 +110,7 @@ type Route struct {
 }
 
 // NextHop describes a next hop
+// easyjson:json
 type NextHop struct {
 	Priority int64  `json:"Priority,omitempty"`
 	IP       net.IP `json:"Src,omitempty"`
@@ -316,11 +320,11 @@ func getFlagsString(flags []string, state int) (a []string) {
 	return
 }
 
-func (u *NetNsNetLinkProbe) getNeighbors(index, family int) (neighbors []neighbor) {
+func (u *NetNsNetLinkProbe) getNeighbors(index, family int) (neighbors []Neighbor) {
 	neighList, err := u.handle.NeighList(index, family)
 	if err == nil && len(neighList) > 0 {
 		for i, neigh := range neighList {
-			neighbors = append(neighbors, neighbor{
+			neighbors = append(neighbors, Neighbor{
 				Flags:   getFlagsString(neighFlags, neigh.Flags),
 				MAC:     neigh.HardwareAddr.String(),
 				State:   getFlagsString(neighStates, neigh.State),

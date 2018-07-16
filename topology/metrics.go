@@ -27,6 +27,7 @@ import (
 )
 
 // InterfaceMetric the interface packets counters
+// easyjson:json
 type InterfaceMetric struct {
 	Collisions        int64 `json:"Collisions,omitempty"`
 	Multicast         int64 `json:"Multicast,omitempty"`
