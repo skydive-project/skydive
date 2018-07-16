@@ -221,7 +221,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	g := graph.NewGraphFromConfig(cached)
+	g := graph.NewGraphFromConfig(cached, common.AnalyzerService)
 
 	authOptions := NewAnalyzerAuthenticationOpts()
 

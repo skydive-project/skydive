@@ -38,6 +38,8 @@ const (
 	AnalyzerService ServiceType = "analyzer"
 	// AgentService agent
 	AgentService ServiceType = "agent"
+	// ExternalService exttool
+	ExternalService ServiceType = "exttool"
 )
 
 const (

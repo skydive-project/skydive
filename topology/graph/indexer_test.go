@@ -25,6 +25,7 @@ package graph
 import (
 	"testing"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 )
 
@@ -34,7 +35,7 @@ func TestMetadataIndexer(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	g := NewGraphFromConfig(b)
+	g := NewGraphFromConfig(b, common.ExternalService)
 
 	nodeFilter := NewGraphElementFilter(filters.NewAndFilter(
 		filters.NewNotNullFilter("TID"),

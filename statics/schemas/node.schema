@@ -11,6 +11,9 @@
         "Host": {
           "type": "string"
         },
+        "Origin": {
+          "type": "string"
+        },
         "CreatedAt": {
           "type": "integer"
         },
