@@ -45,6 +45,7 @@ func newClusterLinkedObjectIndexer(g *graph.Graph) *graph.MetadataIndexer {
 		filters.NewTermStringFilter("Manager", managerValue),
 		filters.NewOrFilter(
 			filters.NewTermStringFilter("Type", "namespace"),
+			filters.NewTermStringFilter("Type", "networkpolicy"),
 			filters.NewTermStringFilter("Type", "node"),
 			filters.NewTermStringFilter("Type", "persistentvolume"),
 			filters.NewTermStringFilter("Type", "persistentvolumeclaim"),
@@ -74,7 +75,6 @@ func (p *clusterProbe) newMetadata(name string) graph.Metadata {
 
 func (p *clusterProbe) linkObject(objNode, clusterNode *graph.Node) {
 	addOwnershipLink(p.graph, clusterNode, objNode)
-	logging.GetLogger().Debugf("Added link: %s -> %s", dumpGraphNode(clusterNode), dumpGraphNode(objNode))
 }
 
 func (p *clusterProbe) addNode(name string) {

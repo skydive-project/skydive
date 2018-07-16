@@ -124,9 +124,8 @@ func (p *podProbe) OnAdd(obj interface{}) {
 	p.graph.Lock()
 	defer p.graph.Unlock()
 
-	logging.GetLogger().Debugf("Creating node for %s", dumpPod(pod))
-
 	p.onAdd(obj)
+	logging.GetLogger().Debugf("Added %s", dumpPod(pod))
 }
 
 func (p *podProbe) OnUpdate(oldObj, newObj interface{}) {
@@ -143,22 +142,22 @@ func (p *podProbe) OnUpdate(oldObj, newObj interface{}) {
 		return
 	}
 
-	logging.GetLogger().Debugf("Updating node for %s", dumpPod(newPod))
 	if oldPod.Spec.NodeName == "" && newPod.Spec.NodeName != "" {
 		p.linkPodToNode(newPod, podNode)
 	}
 
 	addMetadata(p.graph, podNode, newPod)
+	logging.GetLogger().Debugf("Updated %s", dumpPod(newPod))
 }
 
 func (p *podProbe) OnDelete(obj interface{}) {
 	if pod, ok := obj.(*v1.Pod); ok {
-		logging.GetLogger().Debugf("Deleting node for %s", dumpPod(pod))
 		p.graph.Lock()
 		if podNode := p.graph.GetNode(podUID(pod)); podNode != nil {
 			p.graph.DelNode(podNode)
 		}
 		p.graph.Unlock()
+		logging.GetLogger().Debugf("Deleted %s", dumpPod(pod))
 	}
 }
 

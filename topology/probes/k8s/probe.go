@@ -23,11 +23,24 @@
 package k8s
 
 import (
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 )
+
+func dumpObject(obj interface{}) string {
+	switch obj := obj.(type) {
+	case *corev1.Namespace:
+		return dumpNamespace(obj)
+	case *corev1.Pod:
+		return dumpPod(obj)
+	default:
+		return "<nil>"
+	}
+}
 
 // Probe for tracking k8s events
 type Probe struct {

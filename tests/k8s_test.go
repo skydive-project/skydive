@@ -42,23 +42,24 @@ func k8sConfigFile(name string) string {
 
 const (
 	clusterName = "cluster"
-	k8sRetry    = 10
-	k8sDelay    = time.Second
+	k8sRetry    = 3
+	k8sDelay    = 10 * time.Second
 	manager     = "k8s"
 	objName     = "skydive-test"
 )
 
 var nodeName, _ = os.Hostname()
 
-func setupFromConfigFile(ty, name string) []helper.Cmd {
+func setupFromConfigFile(file string) []helper.Cmd {
 	return []helper.Cmd{
-		{"kubectl create -f " + k8sConfigFile(ty), true},
+		{"kubectl create -f " + k8sConfigFile(file), true},
 	}
 }
 
-func tearDownFromConfigFile(ty, name string) []helper.Cmd {
+func tearDownFromConfigFile(file string) []helper.Cmd {
 	return []helper.Cmd{
-		{"kubectl delete --grace-period=0 --force -f " + k8sConfigFile(ty), false},
+		{"kubectl delete --grace-period=0 --force -f " + k8sConfigFile(file), false},
+		{"sleep 2", true},
 	}
 }
 
@@ -76,17 +77,22 @@ func makeHasArgsNode(node *graph.Node, args1 ...interface{}) []interface{} {
 }
 
 func queryNodeCreation(t *testing.T, c *CheckContext, query g.QueryString) (node *graph.Node, err error) {
+	node = nil
 	err = common.Retry(func() error {
 		const expectedNumNodes = 1
 
-		t.Logf("Gremlin Query: %s", query)
+		t.Logf("Executing query '%s'", query)
 		nodes, e := c.gh.GetNodes(query.String())
 		if e != nil {
+			e = fmt.Errorf("Failed executing query '%s': %s", query, e)
+			t.Logf("%s", e)
 			return e
 		}
 
 		if len(nodes) != expectedNumNodes {
-			return fmt.Errorf("Ran '%s', expected %d node, got %d nodes: %+v", query, expectedNumNodes, len(nodes), nodes)
+			e = fmt.Errorf("Ran '%s', expected %d node, got %d nodes: %+v", query, expectedNumNodes, len(nodes), nodes)
+			t.Logf("%s", e)
+			return e
 		}
 
 		if expectedNumNodes > 0 {
@@ -111,14 +117,20 @@ func checkEdgeCreation(t *testing.T, c *CheckContext, from, to *graph.Node, relT
 	return err
 }
 
-/* -- test creation of single resource -- */
-func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, typ, name string, fields ...string) {
+func testRunner(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, checks []CheckFunction) {
 	test := &Test{
 		mode:         OneShot,
-		retries:      3,
+		retries:      1,
 		setupCmds:    append(tearDownCmds, setupCmds...),
 		tearDownCmds: tearDownCmds,
-		checks: []CheckFunction{func(c *CheckContext) error {
+		checks:       checks,
+	}
+	RunTest(t, test)
+}
+
+func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, typ, name string, fields ...string) {
+	testRunner(t, setupCmds, tearDownCmds, []CheckFunction{
+		func(c *CheckContext) error {
 			obj, err := checkNodeCreation(t, c, typ, "Name", name)
 			if err != nil {
 				return err
@@ -133,17 +145,18 @@ func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, typ, n
 			}
 
 			return nil
-		}},
-	}
-	RunTest(t, test)
+		},
+	})
 }
 
-func testNodeCreationFromConfig(t *testing.T, typ, name string, fields ...string) {
-	setup := setupFromConfigFile(typ, name)
-	tearDown := tearDownFromConfigFile(typ, name)
-	testNodeCreation(t, setup, tearDown, typ, name, fields...)
+func testNodeCreationFromConfig(t *testing.T, ty, name string, fields ...string) {
+	file := ty
+	setup := setupFromConfigFile(file)
+	tearDown := tearDownFromConfigFile(file)
+	testNodeCreation(t, setup, tearDown, ty, name, fields...)
 }
 
+/* -- test creation of single resource -- */
 func TestK8sClusterNode(t *testing.T) {
 	testNodeCreation(t, nil, nil, "cluster", clusterName)
 }
@@ -209,19 +222,8 @@ func TestK8sStatefulSetNode(t *testing.T) {
 }
 
 /* -- test multi-node scenarios -- */
-func testScenario(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, checks []CheckFunction) {
-	test := &Test{
-		mode:         OneShot,
-		retries:      3,
-		setupCmds:    append(tearDownCmds, setupCmds...),
-		tearDownCmds: tearDownCmds,
-		checks:       checks,
-	}
-	RunTest(t, test)
-}
-
 func TestHelloNodeScenario(t *testing.T) {
-	testScenario(
+	testRunner(
 		t,
 		[]helper.Cmd{
 			{"kubectl run hello-node --image=hello-node:v1 --port=8080", true},
