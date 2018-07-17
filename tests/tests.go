@@ -315,9 +315,16 @@ func RunTest(t *testing.T, test *Test) {
 				if err != nil {
 					return fmt.Errorf("Node %+v matched the capture but capture is not enabled, graph: %s", node, context.getWholeGraph(t, time.Now()))
 				}
-
 				if captureID != capture.ID() {
 					return fmt.Errorf("Node %s matches multiple captures, graph: %s", node.ID, context.getWholeGraph(t, time.Now()))
+				}
+
+				captureState, err := node.GetFieldString("Capture.State")
+				if err != nil {
+					return fmt.Errorf("Node %+v matched the capture but capture state is not set, graph: %s", node, context.getWholeGraph(t, time.Now()))
+				}
+				if captureState != "active" {
+					return fmt.Errorf("Capture %s is not active, graph: %s", capture.ID(), context.getWholeGraph(t, time.Now()))
 				}
 			}
 		}
