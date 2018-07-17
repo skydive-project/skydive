@@ -87,6 +87,64 @@ func TestAreLinkedWithMetadata(t *testing.T) {
 	}
 }
 
+func TestFirstLinkDoesExist(t *testing.T) {
+	g := newGraph(t)
+
+	n1 := g.NewNode(GenID(), Metadata{"Type": "intf"})
+	n2 := g.NewNode(GenID(), Metadata{"Type": "intf"})
+
+	g.Link(n1, n2, Metadata{})
+
+	if g.GetFirstLink(n1, n2, nil) == nil {
+		t.Error("nodes should be linked")
+	}
+
+	if g.GetFirstLink(n2, n1, nil) != nil {
+		t.Error("nodes should not be linked")
+	}
+}
+
+func TestFirstLinkIsCorrect(t *testing.T) {
+	g := newGraph(t)
+
+	n1 := g.NewNode(GenID(), Metadata{"Type": "intf"})
+	n2 := g.NewNode(GenID(), Metadata{"Type": "intf"})
+
+	g.Link(n2, n1, Metadata{"Field": "other"})
+	expected := "me"
+	g.Link(n1, n2, Metadata{"Field": expected})
+
+	e := g.GetFirstLink(n1, n2, nil)
+	if e == nil {
+		t.Error("nodes should be linked")
+	}
+
+	if actual := e.Metadata()["Field"]; actual != expected {
+		t.Errorf("Wrong metadata['Direction'] expected '%s' got '%s'", expected, actual)
+	}
+}
+
+func TestGetFirstLinkLoop(t *testing.T) {
+	g := newGraph(t)
+
+	n1 := g.NewNode(GenID(), Metadata{"Type": "intf"})
+	n2 := g.NewNode(GenID(), Metadata{"Type": "intf"})
+
+	g.Link(n2, n2, Metadata{})
+
+	if g.GetFirstLink(n1, n2, nil) != nil {
+		t.Error("nodes should not be linked")
+	}
+
+	if g.GetFirstLink(n2, n1, nil) != nil {
+		t.Error("nodes should not be linked")
+	}
+
+	if g.GetFirstLink(n2, n2, nil) == nil {
+		t.Error("nodes should be linked")
+	}
+}
+
 func TestBasicLookup(t *testing.T) {
 	g := newGraph(t)
 
