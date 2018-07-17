@@ -183,9 +183,9 @@ Vagrant.configure(2) do |config|
             if DEPLOYMENT_MODE == "binary" then
               ansible_extra_vars["skydive_binary_remote_location"] = "file://" + ENV.fetch("GOPATH") + "/bin/skydive"
             elsif DEPLOYMENT_MODE == "package" then
-              ansible_extra_vars["skydive_binary_remote_location"] = "file://" + ENV.fetch("GOPATH") + "/src/github.com/skydive-project/skydive/rpmbuild/RPMS/"
+              ansible_extra_vars["skydive_package_location"] = "file://" + ENV.fetch("GOPATH") + "/src/github.com/skydive-project/skydive/rpmbuild/RPMS/"
             elsif DEPLOYMENT_MODE == "container" then
-              ansible_extra_vars["skydive_binary_remote_location"] = "file://" + ENV.fetch("GOPATH") + "/src/github.com/skydive-project/skydive/skydive-docker-devel.tar"
+              ansible_extra_vars["skydive_load_docker_image"] = "file://" + ENV.fetch("GOPATH") + "/src/github.com/skydive-project/skydive/skydive-docker-devel.tar"
             end
           end
 

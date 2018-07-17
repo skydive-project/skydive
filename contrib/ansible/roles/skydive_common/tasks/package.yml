@@ -3,36 +3,36 @@
   package:
     name: https://buildlogs.centos.org/centos/7/opstools/x86_64/common/centos-release-opstools-1-4.el7.noarch.rpm
     state: present
-  when: 'ansible_os_family == "RedHat" and "file://" not in skydive_binary_remote_location'
+  when: ansible_os_family == "RedHat" and skydive_package_location is not defined
 
 - name: Install skydive package
   package:
     name: skydive
     state: present
-  when: '"file://" not in skydive_binary_remote_location'
+  when: skydive_package_location is not defined
 
 - name: Copy skydive packages
   copy:
-    src: "{{ skydive_binary_remote_location | replace('file://', '') }}"
+    src: "{{ skydive_package_location | replace('file://', '') }}"
     dest: /tmp
     force: true
     mode: 0755
-  when: '"file://" in skydive_binary_remote_location'
+  when: skydive_package_location is defined
 
 - name: Move skydive packages
   shell: "mv /tmp/*/*.rpm /tmp"
-  when: '"file://" in skydive_binary_remote_location'
+  when: skydive_package_location is defined
 
 - name: Search skydive packages
   find:
     paths: /tmp
     patterns: 'skydive-*.rpm'
   register: skydive_packages
-  when: '"file://" in skydive_binary_remote_location'
+  when: skydive_package_location is defined
 
 - name: Install skydive packages
   yum:
     name: "{{ item.path }}"
     state: present
-  when: '"file://" in skydive_binary_remote_location'
+  when: skydive_package_location is defined
   with_items: "{{ skydive_packages.files }}"

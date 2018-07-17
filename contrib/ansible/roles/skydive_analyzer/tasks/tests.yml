@@ -1,18 +1,13 @@
-- name: Wait for Analyzer port listening
-  wait_for:
-    port: 8082
-    delay: 120
-
-- name: Check API status, retrieve token from login page !!
+- name: Check API status, retrieve token from login page
   uri:
     url: "http://{{ analyzers.split(',')[0] }}/login"
+    status_code: 200
     method: POST
     body: "username={{ skydive_username }}&password={{ skydive_password }}"
     headers:
       Content-Type: "application/x-www-form-urlencoded"
   register: login
-  changed_when: false
-  until: login.failed is defined
+  until: login is not failed
   retries: 10
   delay: 20
   tags:

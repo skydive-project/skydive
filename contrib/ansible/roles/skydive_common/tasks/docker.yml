@@ -1,0 +1,43 @@
+---
+- name: Install Docker
+  package:
+    name: docker
+    state: present
+
+- name: Enable Docker service
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Pull skydive image
+  shell: "docker pull {{ skydive_docker_registry }}/{{ skydive_docker_image }}:{{ skydive_docker_image_tag }}"
+  when: skydive_load_docker_image is not defined
+
+- name: Run docker registry
+  shell: "docker run -d -p 5000:5000 --restart=always --name registry registry:2"
+  when: skydive_load_docker_image is defined
+
+- name: Set facts
+  set_fact: "skydive_docker_registry=localhost:5000"
+  when: skydive_load_docker_image is defined
+
+- name: Copy docker image
+  copy:
+    src: "{{ skydive_load_docker_image | replace('file://', '') }}"
+    dest: /tmp
+    force: true
+    mode: 0755
+  when: skydive_load_docker_image is defined
+
+- name: Import skydive image
+  shell: "docker load -i /tmp/{{ skydive_load_docker_image | replace('file://', '') | basename }}"
+  when: skydive_load_docker_image is defined
+
+- name: Tag skydive image
+  shell: "docker tag skydive/skydive:devel {{ skydive_docker_registry }}/{{ skydive_docker_image }}:{{ skydive_docker_image_tag }}"
+  when: skydive_load_docker_image is defined
+
+- name: Push skydive image to registry
+  shell: "docker push {{ skydive_docker_registry }}/{{ skydive_docker_image }}:{{ skydive_docker_image_tag }}"
+  when: skydive_load_docker_image is defined

@@ -1,7 +1,6 @@
 ---
 skydive_release: v0.18.0
 skydive_docker_registry: docker.io
-skydive_docker_image: "skydive/skydive"
 skydive_docker_image_tag: latest
 skydive_config_file: /etc/skydive/skydive.yml
 skydive_binary_location: /usr/bin/skydive

@@ -4,4 +4,4 @@
     tasks_from: systemd
   vars:
     service_name: skydive-analyzer
-    exec_start: /usr/bin/skydive analyzer --conf /etc/skydive/skydive.yml
+    exec_start: "{{ skydive_binary_location }} analyzer --conf /etc/skydive/skydive.yml"
