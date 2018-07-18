@@ -264,7 +264,10 @@ func (u *NetNsNetLinkProbe) addOvsLinkToTopology(link netlink.Link, m graph.Meta
 
 	filter := filters.NewAndFilter(
 		filters.NewTermStringFilter("Name", name),
-		filters.NewTermStringFilter("MAC", attrs.HardwareAddr.String()),
+		filters.NewOrFilter(
+			filters.NewTermStringFilter("MAC", attrs.HardwareAddr.String()),
+			filters.NewTermStringFilter("ExtID.attached-mac", attrs.HardwareAddr.String()),
+		),
 		filters.NewNotNullFilter("UUID"),
 	)
 
