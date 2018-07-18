@@ -82,34 +82,34 @@ class SkydiveWSTest(unittest.TestCase):
 
     def test_injection(self):
         def create_node(protocol):
-            node = Node("TOR_TEST", "",
+            node = Node("TOR_TEST", "", origin="exttool",
                         metadata={"Name": "Test TOR", "Type": "fabric"})
             msg = WSMessage("Graph", NodeAddedMsgType, node)
             protocol.sendWSMessage(msg)
 
-            node = Node("PORT_TEST", "",
+            node = Node("PORT_TEST", "", origin="exttool",
                         metadata={"Name": "Test port", "Type": "fabric"})
             msg = WSMessage("Graph", NodeAddedMsgType, node)
             protocol.sendWSMessage(msg)
 
-            node = Node("BAD_NODE", "",
+            node = Node("BAD_NODE", "", origin="exttool",
                         metadata={"Name": "Bad node"})
             msg = WSMessage("Graph", NodeAddedMsgType, node)
             protocol.sendWSMessage(msg)
 
-            node = Node("BAD_NETNS", "",
+            node = Node("BAD_NETNS", "", origin="exttool",
                         metadata={"Name": "Bad netns", "Type": "netns"})
             msg = WSMessage("Graph", NodeAddedMsgType, node)
             protocol.sendWSMessage(msg)
 
             edge = Edge("TOR_L2LINK", "",
-                        "TOR_TEST", "PORT_TEST",
+                        "TOR_TEST", "PORT_TEST", origin="exttool",
                         metadata={"RelationType": "layer2"})
             msg = WSMessage("Graph", EdgeAddedMsgType, edge)
             protocol.sendWSMessage(msg)
 
             edge = Edge("BAD_LINK", "",
-                        "", "",
+                        "", "", origin="exttool",
                         metadata={"RelationType": "layer2"})
             msg = WSMessage("Graph", EdgeAddedMsgType, edge)
             protocol.sendWSMessage(msg)
