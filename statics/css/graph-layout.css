@@ -105,11 +105,12 @@ circle.emphasized  {
   stroke-width: 2;
 }
 
-.links path.netpolicy {
-  stroke-dasharray: 20;
+.links path.networkpolicy {
+  stroke-dasharray: 5;
   stroke-dashoffset: 80;
   stroke: rgb(50, 109, 230);
-  stroke-width: 5;
+  stroke-width: 2;
+  opacity: 0.1;
 }
 
 .group {
