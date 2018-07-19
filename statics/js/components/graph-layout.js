@@ -268,6 +268,38 @@ var TopologyGraphLayout = function(vm, selector) {
     .call(this.zoom)
     .on("dblclick.zoom", null);
 
+  var defsMarker = function(type, target) {
+    let id = "arrowhead-"+type+"-"+target
+
+    let refX = 1.65
+    let pathD = "M0,0 L0,0.3 L0.5,0.15 Z"
+    if (type === "egress") {
+      pathD = "M0.5,0 L0.5,0.3 L0,0.15 Z"
+    }
+
+    let color = "rgb(60, 179, 113, 0.4)"
+    if (target === "deny") {
+      color = "rgba(255, 99, 71, 0.4)"
+    }
+
+    self.svg.append("defs").append("marker")
+      .attr("id", id)
+      .attr("refX", refX)
+      .attr("refY", 0.15)
+      .attr("markerWidth", 1)
+      .attr("markerHeight", 1)
+      .attr("orient", "auto")
+      .attr("markerUnits", "strokeWidth")
+      .append("path")
+        .attr("fill", color)
+        .attr("d", pathD);
+  }
+
+  defsMarker("ingress", "deny");
+  defsMarker("ingress", "allow");
+  defsMarker("egress", "deny");
+  defsMarker("egress", "allow");
+
   this.g = this.svg.append("g");
 
   this.group = this.g.append("g").attr('class', 'groups').selectAll(".group");
@@ -1490,6 +1522,13 @@ TopologyGraphLayout.prototype = {
     this.tick();
   },
 
+  arrowhead: function(link) {
+    if (link.metadata.RelationType !== "networkpolicy") {
+      return "url(#arrowhead-none)";
+    }
+    return "url(#arrowhead-"+link.metadata.PolicyType+"-"+link.metadata.PolicyTarget+")";
+  },
+
   update: function() {
     var self = this;
 
@@ -1571,7 +1610,8 @@ TopologyGraphLayout.prototype = {
       .on("click", function(d) {self.onEdgeClick(d.link); })
       .on("mouseover", function(d) { self.highlightLink(d.link); })
       .on("mouseout", function(d) { self.unhighlightLink(d.link); })
-      .attr("class", this.linkWrapClass);
+      .attr("class", this.linkWrapClass)
+      .attr("marker-end", function(d) { return self.arrowhead(d.link); });
 
     this.linkWrap = linkWrapEnter.merge(this.linkWrap);
 
