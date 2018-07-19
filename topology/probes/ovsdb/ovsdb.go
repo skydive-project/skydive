@@ -32,6 +32,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/ovs"
 	"github.com/skydive-project/skydive/topology"
@@ -250,26 +251,39 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 	mac := columnStringValue(&row.New, "mac_in_use")
 	ifindex := columnInt64Value(&row.New, "ifindex")
 	itype := columnStringValue(&row.New, "type")
+	attachedMAC := goMapStringValue(&row.New, "external_ids", "attached-mac")
 
 	o.Graph.Lock()
 	defer o.Graph.Unlock()
 
 	intf := o.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
-	if mac != "" {
-		lm := graph.Metadata{"Name": name, "MAC": mac}
-		if ifindex > 0 {
-			lm["IfIndex"] = ifindex
+	if mac != "" || attachedMAC != "" {
+		var macFilter *filters.Filter
+		if mac != "" {
+			macFilter = filters.NewTermStringFilter("MAC", mac)
+		} else {
+			macFilter = filters.NewTermStringFilter("MAC", attachedMAC)
 		}
+		andFilters := []*filters.Filter{
+			filters.NewTermStringFilter("Name", name),
+			macFilter,
+		}
+
+		if ifindex > 0 {
+			andFilters = append(andFilters, filters.NewTermInt64Filter("IfIndex", ifindex))
+		}
+
+		andFilter := filters.NewAndFilter(andFilters...)
 
 		if intf == nil {
 			// no already inserted ovs interface but maybe already detected by netlink
-			intf = o.Graph.LookupFirstNode(lm)
+			intf = o.Graph.LookupFirstNode(graph.NewGraphElementFilter(andFilter))
 		} else {
 			// if there is a interface with the same MAC, name and optionally
 			// the same ifindex but having another ID, it means that ovs and
 			// netlink have seen the same interface. In order to keep only
 			// one interface we delete the ovs one and use the netlink one.
-			if nintf := o.Graph.LookupFirstNode(lm); nintf != nil && intf.ID != nintf.ID {
+			if nintf := o.Graph.LookupFirstNode(graph.NewGraphElementFilter(andFilter)); nintf != nil && intf.ID != nintf.ID {
 				o.Graph.DelNode(intf)
 				intf = nintf
 			}
