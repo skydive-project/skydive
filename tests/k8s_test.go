@@ -121,7 +121,8 @@ func testRunner(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, checks []Che
 	test := &Test{
 		mode:         OneShot,
 		retries:      1,
-		setupCmds:    append(tearDownCmds, setupCmds...),
+		preCleanup:   true,
+		setupCmds:    setupCmds,
 		tearDownCmds: tearDownCmds,
 		checks:       checks,
 	}
