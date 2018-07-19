@@ -289,7 +289,7 @@ var TopologyGraphLayout = function(vm, selector) {
   };
 
   this.loadBandwidthConfig()
-  self.bandwidth.intervalID = setInterval(self.updatelinkLatency.bind(self), self.bandwidth.updatePeriod);
+  self.bandwidth.intervalID = setInterval(self.updateLinkLabelHandler.bind(self), self.bandwidth.updatePeriod);
 };
 
 TopologyGraphLayout.prototype = {
@@ -1394,7 +1394,7 @@ TopologyGraphLayout.prototype = {
     return this.styleReturn(d, ["YellowGreen", "Yellow", "Tomato", ""]);
   },
 
-  updateLinkLabel: function() {
+  bindLinkLabelData: function() {
     this.linkLabel = this.linkLabel.data(Object.values(this.linkLabelData), function(d) { return d.id; });
   },
 
@@ -1428,48 +1428,46 @@ TopologyGraphLayout.prototype = {
     }
   },
 
-  updatelinkLatency: function() {
+  updateLinkLabelHandler: function() {
     var self = this;
 
     this.updateLinkLabelData();
-    this.updateLinkLabel();
-    var exit = this.linkLabel.exit();
+    this.bindLinkLabelData();
 
     // update links which don't have traffic
+    var exit = this.linkLabel.exit();
     exit.each(function(d) {
       self.g.select("#link-" + d.link.id)
-      .classed ("link-label-active", false)
-      .classed ("link-label-warning", false)
-      .classed ("link-label-alert", false)
+      .classed("link-label-active", false)
+      .classed("link-label-warning", false)
+      .classed("link-label-alert", false)
       .style("stroke-dasharray", "")
       .style("stroke-dashoffset", "")
       .style("animation", "")
       .style("stroke", "");
     });
-
     exit.remove();
 
-    var linkLabelEnter = this.linkLabel.enter()
+    var enter = this.linkLabel.enter()
       .append('text')
       .attr("id", function(d) { return "link-label-" + d.id; })
       .attr("class", "link-label");
-    linkLabelEnter.append('textPath')
+    enter.append('textPath')
       .attr("startOffset", "50%")
       .attr("xlink:href", function(d) { return "#link-" + d.link.id; } );
-
-    this.linkLabel = linkLabelEnter.merge(this.linkLabel);
+    this.linkLabel = enter.merge(this.linkLabel);
 
     this.linkLabel.select('textPath')
-      .classed ("link-label-active", function(d) { return d.active; })
-      .classed ("link-label-warning", function(d) { return d.warning; })
-      .classed ("link-label-alert",  function(d) { return d.alert; })
+      .classed("link-label-active", function(d) { return d.active; })
+      .classed("link-label-warning", function(d) { return d.warning; })
+      .classed("link-label-alert",  function(d) { return d.alert; })
       .text(function(d) { return d.text; });
 
     this.linkLabel.each(function(d) {
       self.g.select("#link-" + d.link.id)
-        .classed ("link-label-active", d.active)
-        .classed ("link-label-warning", d.warning)
-        .classed ("link-label-alert", d.alert)
+        .classed("link-label-active", d.active)
+        .classed("link-label-warning", d.warning)
+        .classed("link-label-alert", d.alert)
         .style("stroke-dasharray", self.styleStrokeDasharray(d))
         .style("stroke-dashoffset", self.styleStrokeDashoffset(d))
         .style("animation", self.styleAnimation(d))
@@ -1485,7 +1483,7 @@ TopologyGraphLayout.prototype = {
       return;
     delete this.linkLabelData[link.id];
 
-    this.updateLinkLabel();
+    this.bindLinkLabelData();
     this.linkLabel.exit().remove();
 
     // force a tick
