@@ -324,6 +324,7 @@ auth:
     # domain_name: Default
 
     # define which role an authenticated user will have. Only used for API authentication.
+    # two roles are predefined, admin and guest.
     # role: admin
 
 etcd:
@@ -473,3 +474,4 @@ rbac:
   policy:
     # additional RBAC policy:
     # - p, myuser, capture, write, deny
+    # - g, myuser, myrole

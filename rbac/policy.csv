@@ -18,3 +18,24 @@ p, admin, websocket, /ws/flow, allow
 p, admin, websocket, /ws/publisher, allow
 p, admin, websocket, /ws/replication, allow
 p, admin, websocket, /ws/subscriber, allow
+
+p, guest, alert, read, deny
+p, guest, alert, write, deny
+p, guest, capture, read, deny
+p, guest, capture, write, deny
+p, guest, capture, rawpackets, deny
+p, guest, config, read, deny
+p, guest, injectpacket, read, deny
+p, guest, injectpacket, write, deny
+p, guest, pcap, write, deny
+p, guest, status, read, allow
+p, guest, topology, read, allow
+p, guest, usermetadata, read, allow
+p, guest, usermetadata, write, deny
+p, guest, workflow, read, deny
+p, guest, workflow, write, deny
+p, guest, websocket, /ws/agent, deny
+p, guest, websocket, /ws/flow, deny
+p, guest, websocket, /ws/publisher, deny
+p, guest, websocket, /ws/replication, deny
+p, guest, websocket, /ws/subscriber, allow
