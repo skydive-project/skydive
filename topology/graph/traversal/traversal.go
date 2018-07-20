@@ -69,6 +69,7 @@ type GraphTraversal struct {
 	error              error
 	currentStepContext GraphStepContext
 	lockGraph          bool
+	as                 map[string]*GraphTraversalAs
 }
 
 // GraphTraversalV traversal steps on nodes
@@ -97,6 +98,12 @@ type GraphTraversalValue struct {
 	GraphTraversal *GraphTraversal
 	value          interface{}
 	error          error
+}
+
+// GraphTraversalAs store a state of the nodes selected
+type GraphTraversalAs struct {
+	GraphTraversal *GraphTraversal
+	nodes          []*graph.Node
 }
 
 func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
@@ -430,7 +437,11 @@ type Since struct {
 
 // NewGraphTraversal creates a new graph traversal
 func NewGraphTraversal(g *graph.Graph, lockGraph bool) *GraphTraversal {
-	return &GraphTraversal{Graph: g, lockGraph: lockGraph}
+	return &GraphTraversal{
+		Graph:     g,
+		lockGraph: lockGraph,
+		as:        make(map[string]*GraphTraversalAs),
+	}
 }
 
 func (t *GraphTraversal) CurrentStepContext() GraphStepContext {
@@ -545,7 +556,7 @@ func (t *GraphTraversal) V(s ...interface{}) *GraphTraversalV {
 	case 1:
 		id, ok := s[0].(string)
 		if !ok {
-			return &GraphTraversalV{error: fmt.Errorf("V accepts only a string when there is only one argument")}
+			return &GraphTraversalV{error: errors.New("V accepts only a string when there is only one argument")}
 		}
 		node := t.Graph.GetNode(graph.Identifier(id))
 		if node == nil {
@@ -684,11 +695,11 @@ func (tv *GraphTraversalV) Sum(keys ...interface{}) *GraphTraversalValue {
 	}
 
 	if len(keys) != 1 {
-		return NewGraphTraversalValueFromError(fmt.Errorf("Sum requires 1 parameter"))
+		return NewGraphTraversalValueFromError(errors.New("Sum requires 1 parameter"))
 	}
 	key, ok := keys[0].(string)
 	if !ok {
-		return NewGraphTraversalValueFromError(fmt.Errorf("Sum parameter has to be a string key"))
+		return NewGraphTraversalValueFromError(errors.New("Sum parameter has to be a string key"))
 	}
 
 	tv.GraphTraversal.RLock()
@@ -711,6 +722,53 @@ func (tv *GraphTraversalV) Sum(keys ...interface{}) *GraphTraversalValue {
 	return NewGraphTraversalValue(tv.GraphTraversal, s)
 }
 
+// As stores the result of the previous step using the given key
+func (tv *GraphTraversalV) As(keys ...interface{}) *GraphTraversalV {
+	if tv.error != nil {
+		return tv
+	}
+
+	if len(keys) != 1 {
+		return &GraphTraversalV{error: errors.New("As parameter have to be a string key")}
+	}
+	key, ok := keys[0].(string)
+	if !ok {
+		return &GraphTraversalV{error: errors.New("As parameter have to be a string key")}
+	}
+
+	tv.GraphTraversal.as[key] = &GraphTraversalAs{nodes: tv.nodes}
+
+	return tv
+}
+
+// G returns the GraphTraversal
+func (tv *GraphTraversalV) G() *GraphTraversal {
+	return tv.GraphTraversal
+}
+
+func (tv *GraphTraversalV) Select(keys ...interface{}) *GraphTraversalV {
+	if len(keys) == 0 {
+		return &GraphTraversalV{error: errors.New("Select requires at least one key")}
+	}
+
+	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
+	for _, k := range keys {
+		key, ok := k.(string)
+		if !ok {
+			return &GraphTraversalV{error: errors.New("Select accepts only string parameters")}
+		}
+
+		as, ok := tv.GraphTraversal.as[key]
+		if !ok {
+			return &GraphTraversalV{error: fmt.Errorf("Key %s not registered. Need to be registered using 'As' step", key)}
+		}
+
+		ntv.nodes = append(ntv.nodes, as.nodes...)
+	}
+
+	return ntv
+}
+
 // E step : [edge ID]
 func (t *GraphTraversal) E(s ...interface{}) *GraphTraversalE {
 	var edges []*graph.Edge
@@ -728,7 +786,7 @@ func (t *GraphTraversal) E(s ...interface{}) *GraphTraversalE {
 	case 1:
 		id, ok := s[0].(string)
 		if !ok {
-			return &GraphTraversalE{error: fmt.Errorf("E accepts only a string when there is only one argument")}
+			return &GraphTraversalE{error: errors.New("E accepts only a string when there is only one argument")}
 		}
 		edge := t.Graph.GetEdge(graph.Identifier(id))
 		if edge == nil {
@@ -798,6 +856,11 @@ func (te *GraphTraversalE) MarshalJSON() ([]byte, error) {
 	return json.Marshal(values)
 }
 
+// G returns the GraphTraversal
+func (te *GraphTraversalE) G() *GraphTraversal {
+	return te.GraphTraversal
+}
+
 // ParseSortParameter helper
 func ParseSortParameter(keys ...interface{}) (order common.SortOrder, sortBy string, err error) {
 	order = common.SortAscending
@@ -810,10 +873,10 @@ func ParseSortParameter(keys ...interface{}) (order common.SortOrder, sortBy str
 		order, ok1 = keys[0].(common.SortOrder)
 		sortBy, ok2 = keys[1].(string)
 		if !ok1 || !ok2 {
-			return order, sortBy, fmt.Errorf("Sort parameters has to be SortOrder(ASC/DESC) and a sort string Key")
+			return order, sortBy, errors.New("Sort parameters have to be SortOrder(ASC/DESC) and a sort string Key")
 		}
 	default:
-		return order, sortBy, fmt.Errorf("Sort accepts up to 2 parameters only")
+		return order, sortBy, errors.New("Sort accepts up to 2 parameters only")
 	}
 
 	return order, sortBy, err
@@ -850,7 +913,7 @@ func (tv *GraphTraversalV) Dedup(s ...interface{}) *GraphTraversalV {
 		for _, key := range s {
 			k, ok := key.(string)
 			if !ok {
-				return &GraphTraversalV{error: fmt.Errorf("Dedup parameters have to be string keys")}
+				return &GraphTraversalV{error: errors.New("Dedup parameters have to be string keys")}
 			}
 			keys = append(keys, k)
 		}
@@ -1400,7 +1463,7 @@ func (te *GraphTraversalE) Dedup(keys ...interface{}) *GraphTraversalE {
 	if len(keys) > 0 {
 		k, ok := keys[0].(string)
 		if !ok {
-			return &GraphTraversalE{error: fmt.Errorf("Dedup parameter has to be a string key")}
+			return &GraphTraversalE{error: errors.New("Dedup parameter has to be a string key")}
 		}
 		key = k
 	}
