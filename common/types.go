@@ -304,6 +304,7 @@ type Metric interface {
 	GetLast() int64
 	SetLast(last int64)
 	IsZero() bool
+	GetFields() []string
 }
 
 // SetField set a value in a tree based on dot key ("a.b.c.d" = "ok")
@@ -566,4 +567,36 @@ func NormalizeAddrForURL(addr string) string {
 		return "[" + addr + "]"
 	}
 	return addr
+}
+
+func structFieldKeys(t reflect.Type, prefix string) []string {
+	var fFields []string
+	for i := 0; i < t.NumField(); i++ {
+		vField := t.Field(i)
+		tField := vField.Type
+
+		// ignore XXX fields as there are considered as private
+		if strings.HasPrefix(vField.Name, "XXX_") {
+			continue
+		}
+
+		vName := prefix + vField.Name
+
+		for tField.Kind() == reflect.Ptr {
+			tField = tField.Elem()
+		}
+
+		if tField.Kind() == reflect.Struct {
+			fFields = append(fFields, structFieldKeys(tField, vName+".")...)
+		} else {
+			fFields = append(fFields, vName)
+		}
+	}
+
+	return fFields
+}
+
+// StructFieldKeys returns field names of a structure
+func StructFieldKeys(i interface{}) []string {
+	return structFieldKeys(reflect.TypeOf(i), "")
 }

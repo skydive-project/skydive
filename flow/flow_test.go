@@ -1076,8 +1076,7 @@ func TestGetFieldsXXX(t *testing.T) {
 	f := &Flow{}
 
 	fields := f.GetFields()
-	for _, i := range fields {
-		k := i.(string)
+	for _, k := range fields {
 		if strings.HasPrefix(k, "XXX_") {
 			t.Error("XXX_ private field exposed")
 		}

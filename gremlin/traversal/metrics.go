@@ -272,6 +272,27 @@ func (m *MetricsTraversalStep) Count(s ...interface{}) *traversal.GraphTraversal
 	return traversal.NewGraphTraversalValue(m.GraphTraversal, len(m.metrics))
 }
 
+// PropertyKeys returns metric fields
+func (m *MetricsTraversalStep) PropertyKeys(keys ...interface{}) *traversal.GraphTraversalValue {
+	if m.error != nil {
+		return traversal.NewGraphTraversalValueFromError(m.error)
+	}
+
+	var s []string
+
+	if len(m.metrics) > 0 {
+		for _, metrics := range m.metrics {
+			// all Metric struct are the same, take the first one
+			if len(metrics) > 0 {
+				s = metrics[0].GetFields()
+				break
+			}
+		}
+	}
+
+	return traversal.NewGraphTraversalValue(m.GraphTraversal, s)
+}
+
 // NewMetricsTraversalStep creates a new traversal metric step
 func NewMetricsTraversalStep(gt *traversal.GraphTraversal, metrics map[string][]common.Metric) *MetricsTraversalStep {
 	m := &MetricsTraversalStep{GraphTraversal: gt, metrics: metrics}

@@ -26,7 +26,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -1229,40 +1228,12 @@ func (f *Flow) GetField(field string) (interface{}, error) {
 }
 
 // GetFields returns the list of valid field of a Flow
-func (f *Flow) GetFields() []interface{} {
-	return fields
+func (f *Flow) GetFields() []string {
+	return flowFields
 }
 
-var fields []interface{}
-
-func introspectFields(t reflect.Type, prefix string) []interface{} {
-	var fFields []interface{}
-
-	for i := 0; i < t.NumField(); i++ {
-		vField := t.Field(i)
-		tField := vField.Type
-
-		// ignore XXX fields as there are considered as private
-		if strings.HasPrefix(vField.Name, "XXX_") {
-			continue
-		}
-
-		vName := prefix + vField.Name
-
-		for tField.Kind() == reflect.Ptr {
-			tField = tField.Elem()
-		}
-
-		if tField.Kind() == reflect.Struct {
-			fFields = append(fFields, introspectFields(tField, vName+".")...)
-		} else {
-			fFields = append(fFields, vName)
-		}
-	}
-
-	return fFields
-}
+var flowFields []string
 
 func init() {
-	fields = introspectFields(reflect.TypeOf(Flow{}), "")
+	flowFields = common.StructFieldKeys(Flow{})
 }
