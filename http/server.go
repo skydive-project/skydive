@@ -80,6 +80,7 @@ type ExtraAsset struct {
 }
 
 type Server struct {
+	sync.RWMutex
 	http.Server
 	Host        string
 	ServiceType common.ServiceType
@@ -92,6 +93,7 @@ type Server struct {
 	CnxType     ConnectionType
 	wg          sync.WaitGroup
 	extraAssets map[string]ExtraAsset
+	globalVars  map[string]interface{}
 }
 
 func copyRequestVars(old, new *http.Request) {
@@ -210,6 +212,9 @@ func (s *Server) serveStatics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
+	s.RLock()
+	defer s.RUnlock()
+
 	html, err := s.readStatics("statics/index.html")
 	if err != nil {
 		logging.GetLogger().Error("Unable to find the asset index.html")
@@ -219,11 +224,11 @@ func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
 		ExtraAssets map[string]ExtraAsset
-		UIConfig    interface{}
+		GlobalVars  interface{}
 		Permissions [][]string
 	}{
 		ExtraAssets: s.extraAssets,
-		UIConfig:    config.Get("ui"),
+		GlobalVars:  s.globalVars,
 		Permissions: rbac.GetPermissionsForUser("admin"),
 	}
 
@@ -324,6 +329,12 @@ func (s *Server) loadExtraAssets(folder, prefix string) {
 	}
 }
 
+func (s *Server) AddGlobalVar(key string, v interface{}) {
+	s.Lock()
+	s.globalVars[key] = v
+	s.Unlock()
+}
+
 func NewServer(host string, serviceType common.ServiceType, addr string, port int, auth AuthenticationBackend, assetsFolder string) *Server {
 	router := mux.NewRouter().StrictSlash(true)
 	router.Headers("X-Host-ID", host, "X-Service-Type", serviceType.String())
@@ -336,6 +347,7 @@ func NewServer(host string, serviceType common.ServiceType, addr string, port in
 		Port:        port,
 		Auth:        auth,
 		extraAssets: make(map[string]ExtraAsset),
+		globalVars:  make(map[string]interface{}),
 	}
 
 	if assetsFolder != "" {

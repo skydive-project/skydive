@@ -102,7 +102,9 @@
     },
   }
 
-  uiConfig = $.extend({}, defaultConfig, << .UIConfig >>);
+  var globalVars = << .GlobalVars >>
+
+  uiConfig = $.extend({}, defaultConfig, globalVars["ui"]);
 
   var allPermissions = << .Permissions >>;
   </script>
