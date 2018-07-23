@@ -75,18 +75,19 @@ static inline void update_hash_word(__u64 *key, __u32 word)
 }
 
 static inline void fill_payload_bucket(struct __sk_buff *skb, int offset, __u8 *bucket, int bsize) {
+#pragma unroll
 	for (int i = 0; i != bsize; i++) {
 		bucket[i] = load_byte(skb, offset + i);
 	}
 }
 
-static void fill_payload(struct __sk_buff *skb, int offset, struct flow *flow, int len)
+static inline void fill_payload(struct __sk_buff *skb, int offset, struct flow *flow, int len)
 {
 	// TODO add more data
 	fill_payload_bucket(skb, offset, flow->payload, 30);
 }
 
-static void fill_transport(struct __sk_buff *skb, __u8 protocol, int offset,
+static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, int offset,
 	struct flow *flow, int len)
 {
 	struct transport_layer *layer = &flow->transport_layer;
@@ -117,7 +118,7 @@ static void fill_transport(struct __sk_buff *skb, __u8 protocol, int offset,
 	flow->layers |= TRANSPORT_LAYER;
 }
 
-static void fill_icmpv4(struct __sk_buff *skb, int offset, struct flow *flow)
+static inline void fill_icmpv4(struct __sk_buff *skb, int offset, struct flow *flow)
 {
 	struct icmp_layer *layer = &flow->icmp_layer;
 
@@ -143,7 +144,7 @@ static void fill_icmpv4(struct __sk_buff *skb, int offset, struct flow *flow)
 	flow->layers |= ICMP_LAYER;
 }
 
-static void fill_icmpv6(struct __sk_buff *skb, int offset, struct flow *flow)
+static inline void fill_icmpv6(struct __sk_buff *skb, int offset, struct flow *flow)
 {
 	struct icmp_layer *layer = &flow->icmp_layer;
 
@@ -169,7 +170,7 @@ static void fill_icmpv6(struct __sk_buff *skb, int offset, struct flow *flow)
 	flow->layers |= ICMP_LAYER;
 }
 
-static void fill_word(__u32 src, __u8 *dst, int offset)
+static inline void fill_word(__u32 src, __u8 *dst, int offset)
 {
 	dst[offset] = (src >> 24) & 0xff;
 	dst[offset + 1] = (src >> 16) & 0xff;
@@ -203,7 +204,7 @@ static inline void fill_ipv6(struct __sk_buff *skb, int offset, __u8 *dst, __u64
 	update_hash_word(hash, w);
 }
 
-static void fill_network(struct __sk_buff *skb, __u16 protocol, int offset,
+static inline void fill_network(struct __sk_buff *skb, __u16 protocol, int offset,
 	struct flow *flow)
 {
 	struct network_layer *layer = &flow->network_layer;
@@ -277,7 +278,7 @@ static inline void fill_haddr(struct __sk_buff *skb, int offset,
 	mac[5] = load_byte(skb, offset + 5);
 }
 
-static void fill_link(struct __sk_buff *skb, int offset, struct flow *flow)
+static inline void fill_link(struct __sk_buff *skb, int offset, struct flow *flow)
 {
 	struct link_layer *layer = &flow->link_layer;
 
@@ -298,7 +299,7 @@ static void fill_link(struct __sk_buff *skb, int offset, struct flow *flow)
 	flow->layers |= LINK_LAYER;
 }
 
-static void update_metrics(struct __sk_buff *skb, struct flow *flow, __u64 tm, int ab)
+static inline void update_metrics(struct __sk_buff *skb, struct flow *flow, __u64 tm, int ab)
 {
 	struct link_layer *layer = &flow->link_layer;
 

@@ -436,7 +436,7 @@ func loadModule() (*elf.Module, error) {
 			logging.GetLogger().Debugf("eBPF kernel stacktrace: %s", errs[1])
 		}
 
-		return nil, fmt.Errorf("Unable to load eBPF elf %s binary from bindata: %s", runtime.GOARCH, errs[0])
+		return nil, fmt.Errorf("Unable to load eBPF elf binary (host %s) from bindata: %s", runtime.GOARCH, errs[0])
 	}
 
 	return module, nil

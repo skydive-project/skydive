@@ -26,7 +26,6 @@ package tests
 
 import (
 	"fmt"
-	"runtime"
 	"testing"
 
 	g "github.com/skydive-project/skydive/gremlin"
@@ -34,10 +33,6 @@ import (
 )
 
 func TestFlowsEBPF(t *testing.T) {
-	if runtime.GOARCH == "ppc64le" {
-		t.Skip("ebpf probe won't run on ppc64le")
-	}
-
 	test := &Test{
 		setupCmds: []helper.Cmd{
 			{"ovs-vsctl add-br br-ebpf", true},

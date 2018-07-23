@@ -35,6 +35,7 @@
      - python3-virtualenv
      - llvm-devel
      - clang-devel
+     - bcc-devel
      - elfutils-libelf-devel
      - kubernetes-client
      - jq
