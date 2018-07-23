@@ -997,8 +997,8 @@ func TestICMP(t *testing.T) {
 				increment: true,
 			},
 			{
-				from:  g.G.V().Has("Name", "icmp-intf1", "Type", "internal"),
-				to:    g.G.V().Has("Name", "icmp-intf2", "Type", "internal"),
+				from:  g.G.V().Has("Name", "icmp-vm1").Out().Has("Name", "icmp-intf1", "Type", "internal"),
+				to:    g.G.V().Has("Name", "icmp-vm2").Out().Has("Name", "icmp-intf2", "Type", "internal"),
 				count: 1,
 				id:    456,
 				ipv6:  true,
