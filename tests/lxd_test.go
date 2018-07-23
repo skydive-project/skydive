@@ -24,6 +24,7 @@ package tests
 
 import (
 	"fmt"
+	"runtime"
 	"testing"
 
 	g "github.com/skydive-project/skydive/gremlin"
@@ -31,6 +32,10 @@ import (
 )
 
 func TestLxdSimple(t *testing.T) {
+	if runtime.GOARCH == "ppc64le" {
+		t.Skip("lxd won't run on ppc64le")
+	}
+
 	test := &Test{
 		setupCmds: []helper.Cmd{
 			{"lxc launch images:fedora/27 test-skydive-lxd-simple", false},

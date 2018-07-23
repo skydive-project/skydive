@@ -5,6 +5,9 @@
   with_items:
      - unzip
      - wget
+     - automake
+     - autoconf
+     - libtool
 - shell: |
     mkdir -p /tmp/protoc
     cd /tmp/protoc
@@ -12,3 +15,14 @@
     unzip protoc-3.1.0-linux-x86_64.zip
     chmod +x bin/protoc
     mv bin/protoc /usr/bin/
+  when: ansible_architecture != "ppc64le"
+- shell: |
+    mkdir -p /tmp/protoc
+    cd /tmp/protoc
+    wget https://github.com/google/protobuf/archive/v3.1.0.tar.gz
+    tar xzf v3.1.0.tar.gz
+    cd protobuf-3.1.0
+    ./autogen.sh
+    ./configure --enable-static --disable-shared
+    mv ./src/protoc /usr/bin/
+  when: ansible_architecture == "ppc64le"

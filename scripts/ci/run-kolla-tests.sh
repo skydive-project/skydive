@@ -12,7 +12,11 @@ function vagrant_cleanup {
 
 make -f ${dir}/../../Makefile static
 cp $GOPATH/bin/skydive .
-make -f ${dir}/../../Makefile test.functionals.compile GOFLAGS="-race" TAGS="${TAGS}" GORACE="history_size=5" WITH_NEUTRON=true VERBOSE=true
+GOFLAGS=-race
+if [ "$(uname -m)" = "ppc64le" ] ; then
+    GOFLAGS=""
+fi
+make -f ${dir}/../../Makefile test.functionals.compile GOFLAGS="${GOFLAGS}" TAGS="${TAGS}" GORACE="history_size=5" WITH_NEUTRON=true VERBOSE=true
 cd ${dir}/kolla
 DEPLOYMENT_MODE=dev vagrant up --provider=libvirt
 vagrant destroy --force

@@ -23,7 +23,7 @@ case "$BACKEND" in
     ;;
 esac
 
-if [ "$COVERAGE" != "true" ]; then
+if [ "$COVERAGE" != "true" -a "$(uname -m)" != "ppc64le" ]; then
     GOFLAGS="-race"
 fi
 
