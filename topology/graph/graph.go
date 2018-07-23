@@ -825,6 +825,11 @@ func (m *Metadata) SetField(k string, v interface{}) bool {
 	return common.SetField(*m, k, v)
 }
 
+// SetFieldAndNormalize set metadata value after normalization (and deepcopy)
+func (m *Metadata) SetFieldAndNormalize(k string, v interface{}) bool {
+	return common.SetField(*m, k, common.NormalizeValue(v))
+}
+
 func (g *Graph) addMetadata(i interface{}, k string, v interface{}, t time.Time) bool {
 	var e *graphElement
 	ge := graphEvent{element: i}

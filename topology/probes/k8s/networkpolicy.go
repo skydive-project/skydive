@@ -47,8 +47,8 @@ type networkPolicyProbe struct {
 
 func (n *networkPolicyProbe) newMetadata(np *networking_v1.NetworkPolicy) graph.Metadata {
 	m := newMetadata("networkpolicy", np.Namespace, np.Name, np)
-	m.SetField("Labels", np.Labels)
-	m.SetField("PodSelector", np.Spec.PodSelector)
+	m.SetFieldAndNormalize("Labels", np.Labels)
+	m.SetFieldAndNormalize("PodSelector", np.Spec.PodSelector)
 	return m
 }
 
