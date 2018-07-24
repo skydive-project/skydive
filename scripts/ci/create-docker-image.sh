@@ -56,7 +56,7 @@ if [ -z "$DOCKER_PASSWORD" ]; then
     exit 1
 fi
 
-docker login -e "${DOCKER_EMAIL}" -u "${DOCKER_USERNAME}" -p "${DOCKER_PASSWORD}"
+docker login -u "${DOCKER_USERNAME}" -p "${DOCKER_PASSWORD}"
 
 for arch in $ARCHES
 do
