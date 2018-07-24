@@ -31,8 +31,8 @@ unzip protoc-3.1.0-linux-x86_64.zip
 mv bin/protoc /usr/bin/
 
 # Install package for static compilation
-dpkg --add-architecture ppc64el
-echo "deb [arch=ppc64el] http://ports.ubuntu.com/ubuntu-ports bionic main universe" >> /etc/apt/sources.list
+dpkg --add-architecture ${DEBARCH}
+echo "deb [arch=${DEBARCH}] http://ports.ubuntu.com/ubuntu-ports bionic main universe" >> /etc/apt/sources.list
 apt -y update
 apt -y install zlib1g-dev:$DEBARCH \
                liblzma-dev:$DEBARCH \

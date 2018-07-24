@@ -8,7 +8,8 @@ fi
 set -v
 set -e
 
-ARCHES="amd64 ppc64le"
+ARCHES="amd64 ppc64le s390x"
+# aarch64 waiting on  golang 1.11 (https://github.com/skydive-project/skydive/pull/1188#discussion_r204336060)
 TAG=`echo $REF | awk -F '/' '{print $NF}'`
 VERSION=`echo $TAG | tr -d [a-z]`
 DOCKER_IMAGE=skydive/skydive
@@ -25,7 +26,7 @@ function cross_compile() {
     docker run -tid --name skydive-crosscompile -v `pwd`:/root/go/src/github.com/skydive-project/skydive -v $GOPATH/.cache/govendor:/root/go/.cache/govendor ubuntu:18.04 /bin/bash
     trap cleanup ERR
     docker exec --env http_proxy=http://172.17.0.1:3128 skydive-crosscompile /root/go/src/github.com/skydive-project/skydive/scripts/ci/create-docker-multiarch-image.sh $1 $2 $3
-    docker build -t ${DOCKER_IMAGE}:${arch}-${DOCKER_TAG} -f contrib/docker/Dockerfile.${arch} contrib/docker/
+    docker build -t ${DOCKER_IMAGE}:${arch}-${DOCKER_TAG} --build-arg TARGET_ARCH="${arch}" -f contrib/docker/Dockerfile.ubuntu contrib/docker/
     docker rm -f skydive-crosscompile
 }
 
@@ -39,9 +40,11 @@ do
     ppc64le)
       cross_compile powerpc64le ppc64le ppc64el
       ;;
-    \?)
-      echo "Unsupported architecture $arch" >&2
-      exit 1
+    aarch64)
+      cross_compile aarch64 arm64 arm64
+      ;;
+    *)
+      cross_compile $arch $arch $arch
       ;;
   esac
 done
