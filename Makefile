@@ -479,8 +479,42 @@ rpm:
 
 .PHONY: docker-image
 docker-image: static
-	cp $$GOPATH/bin/skydive contrib/docker/
-	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} -f contrib/docker/Dockerfile contrib/docker/
+	cp $$GOPATH/bin/skydive contrib/docker/skydive.$$(uname -m)
+	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} --build-arg ARCH=$$(uname -m) -f contrib/docker/Dockerfile contrib/docker/
+
+.PHONY: docker-build
+docker-build:
+	docker build -t skydive-compile -f contrib/docker/Dockerfile.compile  contrib/docker
+	docker volume create govendor-cache
+	docker rm skydive-compile-build || true
+	docker run --name skydive-compile-build \
+		--volume $$PWD:/root/go/src/github.com/skydive-project/skydive \
+		--volume govendor-cache:/root/go/.cache/govendor \
+		skydive-compile
+	docker cp skydive-compile-build:/root/go/bin/skydive contrib/docker/skydive.$$(uname -m)
+	docker rm skydive-compile-build
+	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} --build-arg ARCH=$$(uname -m) -f contrib/docker/Dockerfile contrib/docker/
+
+.PHONY: docker-cross-build
+docker-cross-build: ebpf.build
+	docker build -t skydive-crosscompile-${TARGET_ARCH} -f  contrib/docker/Dockerfile.crosscompile \
+		$${TARGET_ARCH:+--build-arg TARGET_ARCH=$${TARGET_ARCH}} \
+		$${TARGET_GOARCH:+--build-arg TARGET_GOARCH=$${TARGET_GOARCH}} \
+		$${DEBARCH:+--build-arg DEBARCH=$${DEBARCH}} \
+		contrib/docker
+	docker volume create govendor-cache
+	docker rm skydive-crosscompile-build-${TARGET_ARCH} || true
+	docker run --name skydive-crosscompile-build-${TARGET_ARCH} \
+		--volume $$PWD:/root/go/src/github.com/skydive-project/skydive \
+		--volume govendor-cache:/root/go/.cache/govendor \
+		skydive-crosscompile-${TARGET_ARCH}
+	docker cp skydive-crosscompile-build-${TARGET_ARCH}:/root/go/bin/linux_${TARGET_GOARCH}/skydive contrib/docker/skydive.${TARGET_GOARCH}
+	docker rm skydive-crosscompile-build-${TARGET_ARCH}
+	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} \
+		--build-arg ARCH=${TARGET_GOARCH} \
+		$${BASE:+--build-arg BASE=$${BASE}} \
+		-f contrib/docker/Dockerfile \
+		contrib/docker/
 
 SKYDIVE_PROTO_FILES:= \
 	flow/flow.proto \

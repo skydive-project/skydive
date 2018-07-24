@@ -1,0 +1,28 @@
+FROM ubuntu:18.04
+
+VOLUME /root/go/src/github.com/skydive-project/skydive
+VOLUME /root/go/.cache/govendor
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get -y update \
+    && apt-get -y install software-properties-common \
+    && add-apt-repository -y ppa:ubuntu-toolchain-r/ppa \
+    && apt-get -y update \
+    && apt-get -y install git make flex bison wget unzip golang libpcap0.8-dev npm \
+         clang llvm zlib1g-dev liblzma-dev libc++-dev libc-dev linux-libc-dev
+
+# EBPF requires llvm-6.0 clang-6.0 however the cross compulation docker image can't install them
+
+RUN PROTOC_VER=3.5.1; \
+    wget https://github.com/google/protobuf/releases/download/v${PROTOC_VER}/protoc-${PROTOC_VER}-linux-$(uname -m).zip \
+    && unzip protoc-${PROTOC_VER}-linux-$(uname -m).zip \
+    && mv bin/protoc /usr/bin/
+
+WORKDIR /root/go/src/github.com/skydive-project/skydive
+
+CMD GOPATH=/root/go \
+    PATH=/root/go/bin:$PATH \
+    CGO_ENABLED=1 \
+    GOOS=linux \
+    make govendor .bindata .proto compile.static WITH_OPENCONTRAIL=false WITH_EBPF=true

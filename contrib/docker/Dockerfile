@@ -1,4 +1,6 @@
-FROM gcr.io/distroless/base
-COPY skydive /usr/bin/skydive
+ARG  BASE=gcr.io/distroless/base
+FROM $BASE
+ARG  ARCH=x86_64
+COPY skydive.$ARCH /usr/bin/skydive
 COPY skydive.yml /etc/skydive.yml
 ENTRYPOINT ["/usr/bin/skydive", "--conf", "/etc/skydive.yml"]
