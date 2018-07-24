@@ -148,7 +148,7 @@ func (u *NetNsNetLinkProbe) linkIntfToIndex(intf *graph.Node, index int64, m gra
 			return
 		}
 
-		if !topology.HaveLayer2Link(u.Graph, parent, intf, nil) {
+		if !topology.HaveLayer2Link(u.Graph, parent, intf) {
 			topology.AddLayer2Link(u.Graph, parent, intf, m)
 		}
 	} else {
@@ -204,7 +204,7 @@ func (u *NetNsNetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link
 			if peer == nil {
 				return errors.New("Peer not found")
 			}
-			if !topology.HaveLayer2Link(u.Graph, peer, intf, linkMetadata) {
+			if !topology.HaveLayer2Link(u.Graph, peer, intf) {
 				topology.AddLayer2Link(u.Graph, peer, intf, linkMetadata)
 			}
 

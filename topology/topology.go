@@ -142,13 +142,13 @@ func AddOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, met
 }
 
 // HaveLayer2Link returns true if parent and child have the same layer 2
-func HaveLayer2Link(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, metadata graph.Metadata) bool {
+func HaveLayer2Link(g *graph.Graph, node1 *graph.Node, node2 *graph.Node) bool {
 	return g.AreLinked(node1, node2, Layer2Metadata)
 }
 
 // AddLayer2Link Link the parent and the child node
 func AddLayer2Link(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, metadata graph.Metadata) *graph.Edge {
-	m := Layer2Metadata
+	m := graph.Metadata{"RelationType": Layer2Link}
 	for k, v := range metadata {
 		m[k] = v
 	}

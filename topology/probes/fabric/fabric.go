@@ -73,7 +73,7 @@ func (fb *FabricProbe) OnNodeDeleted(n *graph.Node) {
 
 // LinkNodes link the parent and child (layer 2) if there not linked already
 func (fb *FabricProbe) LinkNodes(parent *graph.Node, child *graph.Node, linkMetadata *graph.Metadata) {
-	if !topology.HaveLayer2Link(fb.Graph, child, parent, *linkMetadata) {
+	if !topology.HaveLayer2Link(fb.Graph, child, parent) {
 		topology.AddLayer2Link(fb.Graph, parent, child, *linkMetadata)
 	}
 }

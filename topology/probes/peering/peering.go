@@ -38,7 +38,7 @@ type PeeringProbe struct {
 func (p *PeeringProbe) onNodeEvent(n *graph.Node) {
 	if mac, _ := n.GetFieldString("MAC"); mac != "" {
 		if node, ok := p.peers[mac]; ok {
-			if !topology.HaveLayer2Link(p.graph, node, n, nil) {
+			if !topology.HaveLayer2Link(p.graph, node, n) {
 				topology.AddLayer2Link(p.graph, node, n, nil)
 			}
 			return
@@ -48,7 +48,7 @@ func (p *PeeringProbe) onNodeEvent(n *graph.Node) {
 		nodes := p.graph.GetNodes(graph.Metadata{"MAC": mac})
 		switch len(nodes) {
 		case 1:
-			if !topology.HaveLayer2Link(p.graph, n, nodes[0], nil) {
+			if !topology.HaveLayer2Link(p.graph, n, nodes[0]) {
 				topology.AddLayer2Link(p.graph, n, nodes[0], nil)
 			}
 			fallthrough

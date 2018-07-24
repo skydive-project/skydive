@@ -40,7 +40,7 @@ import (
 )
 
 var (
-	patchMetadata = graph.Metadata{"Type": "patch"}
+	patchMetadata = graph.Metadata{"RelationType": "layer2", "Type": "patch"}
 )
 
 // OvsdbProbe describes a probe that reads OVS database and updates the graph
@@ -361,13 +361,13 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 		if peerName := goMapStringValue(&row.New, "options", "peer"); peerName != "" {
 			peer := o.Graph.LookupFirstNode(graph.Metadata{"Name": peerName, "Type": "patch"})
 			if peer != nil {
-				if !topology.HaveLayer2Link(o.Graph, intf, peer, nil) {
+				if !topology.HaveLayer2Link(o.Graph, intf, peer) {
 					topology.AddLayer2Link(o.Graph, intf, peer, patchMetadata)
 				}
 			} else {
 				// lookup in the intf queue
 				for _, peer := range o.uuidToIntf {
-					if name, _ := peer.GetFieldString("Name"); name == peerName && !topology.HaveLayer2Link(o.Graph, intf, peer, patchMetadata) {
+					if name, _ := peer.GetFieldString("Name"); name == peerName && !topology.HaveLayer2Link(o.Graph, intf, peer) {
 						topology.AddLayer2Link(o.Graph, intf, peer, patchMetadata)
 					}
 				}
@@ -402,7 +402,7 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 	}
 
 	if port, ok := o.intfToPort[uuid]; ok {
-		if !topology.HaveLayer2Link(o.Graph, port, intf, nil) {
+		if !topology.HaveLayer2Link(o.Graph, port, intf) {
 			topology.AddLayer2Link(o.Graph, port, intf, nil)
 		}
 
@@ -514,7 +514,7 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 			if intf, ok := o.uuidToIntf[u]; ok {
 				o.portToIntf[uuid] = intf
 
-				if !topology.HaveLayer2Link(o.Graph, port, intf, nil) {
+				if !topology.HaveLayer2Link(o.Graph, port, intf) {
 					topology.AddLayer2Link(o.Graph, port, intf, nil)
 				}
 			}
@@ -526,7 +526,7 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 		if intf, ok := o.uuidToIntf[u]; ok {
 			o.portToIntf[uuid] = intf
 
-			if !topology.HaveLayer2Link(o.Graph, port, intf, nil) {
+			if !topology.HaveLayer2Link(o.Graph, port, intf) {
 				topology.AddLayer2Link(o.Graph, port, intf, nil)
 			}
 		}
