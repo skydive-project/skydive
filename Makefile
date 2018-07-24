@@ -52,6 +52,8 @@ EASYJSON_FILES_TAG=\
 EASYJSON_FILES_TAG_LINUX=\
 	topology/probes/netlink/netlink.go \
 	topology/probes/socketinfo/connection.go
+EASYJSON_FILES_TAG_OPENCONTRAIL=\
+	topology/probes/opencontrail/routing_table.go
 VERBOSE_FLAGS?=-v
 VERBOSE_TESTS_FLAGS?=-test.v
 VERBOSE?=true
@@ -220,6 +222,10 @@ debug.analyzer:
 .PHONY: .easyjson.tag.linux
 .easyjson.tag.linux: builddep ${EASYJSON_FILES_TAG_LINUX}
 	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags linux ${EASYJSON_FILES_TAG_LINUX}
+
+.PHONY: .easyjson.tag.opencontrail
+.easyjson.tag.opencontrail: builddep ${EASYJSON_FILES_TAG_OPENCONTRAIL}
+	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags "linux opencontrail" ${EASYJSON_FILES_TAG_OPENCONTRAIL}
 
 BINDATA_DIRS := \
 	js/*.js \
@@ -451,7 +457,7 @@ builddep: govendor
 	$(call VENDOR_BUILD,${EASYJSON_GITHUB})
 
 .PHONY: genlocalfiles
-genlocalfiles: .proto .bindata .easyjson.all .easyjson.tag .easyjson.tag.linux
+genlocalfiles: .proto .bindata .easyjson.all .easyjson.tag .easyjson.tag.linux .easyjson.tag.opencontrail
 
 .PHONY: clean
 clean: skydive.clean test.functionals.clean dpdk.clean contribs.clean ebpf.clean easyjson.clean

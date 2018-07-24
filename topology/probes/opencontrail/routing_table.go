@@ -47,7 +47,6 @@ import (
 	"os/exec"
 	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
@@ -55,6 +54,7 @@ import (
 )
 
 // This represents the data we get from rt --monitor stdout
+// easyjson:json
 type rtMonitorRoute struct {
 	Operation string
 	Family    string
@@ -69,10 +69,11 @@ const afInetFamily string = "AF_INET"
 const OpenContrailRouteProtocol int64 = 200
 
 // The skydive representation of a Contrail route
+// easyjson:json
 type OpenContrailRoute struct {
 	Family   string
 	Prefix   string
-	NhId     int `json:"Nh_id"`
+	NhId     int `json:"NhId"`
 	Protocol int64
 }
 
@@ -108,7 +109,7 @@ type RoutingTableUpdate struct {
 // and interfaces.
 func (mapper *OpenContrailProbe) routingTableUpdater() {
 	var vrfId int
-	logging.GetLogger().Debugf("Starting routingTableUpdater...")
+	logging.GetLogger().Debug("Starting routingTableUpdater...")
 	for a := range mapper.routingTableUpdaterChan {
 		if a.action == AddRoute {
 			ocRoute := OpenContrailRoute{
@@ -149,7 +150,7 @@ func (mapper *OpenContrailProbe) getOrCreateRoutingTable(vrfId int) *RoutingTabl
 		mapper.routingTables[vrfId] = vrf
 		err := mapper.vrfInit(vrfId)
 		if err != nil {
-			logging.GetLogger().Errorf(err.Error())
+			logging.GetLogger().Error(err)
 		}
 	}
 	return vrf
@@ -196,10 +197,10 @@ func (mapper *OpenContrailProbe) OnInterfaceDeleted(interfaceUUID string) {
 // onRouteChanged writes the Contrail routing table into the
 // Contrail.RoutingTable metadata attribute.
 func (mapper *OpenContrailProbe) onRouteChanged(vrfId int) {
+	vrf := mapper.getOrCreateRoutingTable(vrfId)
+
 	mapper.graph.Lock()
 	defer mapper.graph.Unlock()
-
-	vrf := mapper.getOrCreateRoutingTable(vrfId)
 
 	filter := graph.NewGraphElementFilter(filters.NewTermInt64Filter("Contrail.VRFID", int64(vrfId)))
 	intfs := mapper.graph.GetNodes(filter)
@@ -265,26 +266,22 @@ func (mapper *OpenContrailProbe) vrfInit(vrfId int) error {
 			continue
 		}
 
-		destination := strings.Split(s[0], "/")
+		prefix := s[0]
 		nhId, err := strconv.Atoi(s[4])
 		if err != nil {
-			logging.GetLogger().Errorf(err.Error())
 			return err
 		}
 		// These are not interesting routes
 		if nhId == 0 || nhId == 1 {
 			continue
 		}
-		prefix, err := strconv.Atoi(destination[1])
-		if err != nil {
-			logging.GetLogger().Errorf(err.Error())
-			return err
-		}
+
 		// TODO add family
 		mapper.addRoute(vrfId, OpenContrailRoute{
 			Protocol: OpenContrailRouteProtocol,
-			Prefix:   fmt.Sprintf("%s/%d", destination[0], prefix),
-			NhId:     nhId, Family: afInetFamily})
+			Prefix:   prefix,
+			NhId:     nhId,
+			Family:   afInetFamily})
 	}
 	return nil
 }
@@ -300,7 +297,7 @@ func (mapper *OpenContrailProbe) rtMonitor() {
 	cmd := exec.Command("rt", "--monitor")
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		logging.GetLogger().Debugf(err.Error())
+		logging.GetLogger().Debug(err)
 	}
 	stdoutBuf := bufio.NewReader(stdout)
 
@@ -309,11 +306,11 @@ func (mapper *OpenContrailProbe) rtMonitor() {
 		for {
 			line, err := stdoutBuf.ReadString('\n')
 			if err != nil {
-				logging.GetLogger().Errorf("Failed to read 'rt --monitor' output: %s", err.Error())
+				logging.GetLogger().Errorf("Failed to read 'rt --monitor' output: %s", err)
 				return err
 			}
 			if err := json.Unmarshal([]byte(line), &route); err != nil {
-				logging.GetLogger().Errorf(err.Error())
+				logging.GetLogger().Error(err)
 				continue
 			}
 			// We currently only support IPV4 routes
@@ -332,7 +329,7 @@ func (mapper *OpenContrailProbe) rtMonitor() {
 	}
 
 	if err := cmd.Start(); err != nil {
-		logging.GetLogger().Debugf(err.Error())
+		logging.GetLogger().Debug(err)
 	}
 	go mapper.routingTableUpdater()
 	go rtMonitorConsumer()
