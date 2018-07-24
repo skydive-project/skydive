@@ -54,7 +54,6 @@ Requires:       %{name}-selinux = %{version}-%{release}
 # generate the list of the Go libraries bundled into the Skydive binaries
 ### AUTO-BUNDLED-GEN-ENTRY-POINT
 
-ExclusiveArch: x86_64
 # If go_compiler is not set to 1, there is no virtual provide. Use golang instead.
 BuildRequires:  %{?go_compiler:compiler(go-compiler)}%{!?go_compiler:golang} >= 1.8
 
