@@ -215,7 +215,6 @@ func (s *ProcSocketInfoProbe) scanProc() error {
 			}
 			conn.Protocol = protocol
 
-			logging.GetLogger().Debugf("Adding connection %+v", conn)
 			s.connCache.Set(conn.Hash(), conn)
 		}
 	}
