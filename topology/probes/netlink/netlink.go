@@ -1036,6 +1036,7 @@ func (u *NetLinkProbe) Register(nsPath string, root *graph.Node) (*NetNsNetLinkP
 
 	event := syscall.EpollEvent{Events: syscall.EPOLLIN, Fd: int32(probe.epollFd)}
 	if err := syscall.EpollCtl(u.epollFd, syscall.EPOLL_CTL_ADD, probe.epollFd, &event); err != nil {
+		probe.closeFds()
 		return nil, fmt.Errorf("Failed to add fd to epoll events set for %s: %s", root.String(), err.Error())
 	}
 
