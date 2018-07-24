@@ -280,3 +280,14 @@ func (im *InterfaceMetric) Split(cut int64) (common.Metric, common.Metric) {
 
 	return m1, m2
 }
+
+// GetFields returns all the field keys available
+func (im *InterfaceMetric) GetFields() []string {
+	return metricsFields
+}
+
+var metricsFields []string
+
+func init() {
+	metricsFields = common.StructFieldKeys(InterfaceMetric{})
+}

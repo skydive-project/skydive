@@ -164,3 +164,14 @@ func (fm *FlowMetric) Split(cut int64) (common.Metric, common.Metric) {
 
 	return m1, m2
 }
+
+// GetFields returns all the field keys available
+func (fm *FlowMetric) GetFields() []string {
+	return metricsFields
+}
+
+var metricsFields []string
+
+func init() {
+	metricsFields = common.StructFieldKeys(FlowMetric{})
+}

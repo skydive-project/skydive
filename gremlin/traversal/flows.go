@@ -535,16 +535,16 @@ func (f *FlowTraversalStep) PropertyValues(keys ...interface{}) *traversal.Graph
 	return traversal.NewGraphTraversalValue(f.GraphTraversal, s)
 }
 
-// PropertyKeys returns a flow field
+// PropertyKeys returns flow fields
 func (f *FlowTraversalStep) PropertyKeys(keys ...interface{}) *traversal.GraphTraversalValue {
 	if f.error != nil {
 		return traversal.NewGraphTraversalValueFromError(f.error)
 	}
 
-	var s []interface{}
+	var s []string
 
 	if len(f.flowset.Flows) > 0 {
-		// all Flow structs are the same, take the first one
+		// all Flow struct are the same, take the first one
 		s = f.flowset.Flows[0].GetFields()
 	}
 

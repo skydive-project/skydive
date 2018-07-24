@@ -206,6 +206,11 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
+	// add some global vars
+	hserver.AddGlobalVar("ui", config.Get("ui"))
+	hserver.AddGlobalVar("flow-metric-keys", (&flow.FlowMetric{}).GetFields())
+	hserver.AddGlobalVar("interface-metric-keys", (&topology.InterfaceMetric{}).GetFields())
+
 	name := config.GetString("analyzer.topology.backend")
 	if len(name) == 0 {
 		name = "memory"

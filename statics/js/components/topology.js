@@ -201,19 +201,21 @@ var TopologyComponent = {
         <panel id="total-metric" v-if="currentNodeMetric"\
                title="Metrics">\
           <h2>Total metrics</h2>\
-          <metrics-table :object="currentNodeMetric"></metrics-table>\
+          <metrics-table :object="currentNodeMetric" :keys="globalVars[\'interface-metric-keys\']"></metrics-table>\
           <div v-show="currentNodeLastUpdateMetric && topologyTimeContext === 0">\
             <h2>Last metrics</h2>\
-            <metrics-table :object="currentNodeLastUpdateMetric"></metrics-table>\
+            <metrics-table :object="currentNodeLastUpdateMetric" :keys="globalVars[\'interface-metric-keys\']" \
+              :defaultKeys="[\'Last\', \'Start\', \'RxBytes\', \'RxPackets\', \'TxBytes\', \'TxPackets\']"></metrics-table>\
           </div>\
         </panel>\
         <panel id="ovs-metric" v-if="currentNodeOvsMetric"\
                title="OVS metrics">\
           <h2>Total metrics</h2>\
-          <metrics-table :object="currentNodeOvsMetric"></metrics-table>\
+          <metrics-table :object="currentNodeOvsMetric" :keys="globalVars[\'interface-metric-keys\']"></metrics-table>\
           <div v-show="currentNodeOvsLastUpdateMetric && topologyTimeContext === 0">\
             <h2>Last metrics</h2>\
-            <metrics-table :object="currentNodeOvsLastUpdateMetric"></metrics-table>\
+            <metrics-table :object="currentNodeOvsLastUpdateMetric" :keys="globalVars[\'interface-metric-keys\']" \
+              :defaultKeys="[\'Last\', \'Start\', \'RxBytes\', \'RxPackets\', \'TxBytes\', \'TxPackets\']"></metrics-table>\
           </div>\
         </panel>\
         <panel id="routing-tabel" v-if="currentNodeMetadata && currentNode.metadata.RoutingTable"\
