@@ -132,7 +132,7 @@ func AddOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, met
 		}
 	}
 
-	m := OwnershipMetadata
+	m := graph.Metadata{"RelationType": OwnershipLink}
 	for k, v := range metadata {
 		m[k] = v
 	}
