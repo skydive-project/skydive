@@ -10,17 +10,7 @@
 let
   contrailPkgs = import nixpkgsContrailPath {};
 
-  skydiveTestFunctionals = pkgs.stdenv.mkDerivation {
-    name = "skydive-test-functionals";
-    phases = [ "installPhase" "fixupPhase" ];
-    installPhase = "cp ${../../tests/functionals} $out";
-    # This could be avoided by using a static linked test binary.
-    preFixup = let
-      libPath = pkgs.lib.makeLibraryPath [ pkgs.libpcap pkgs.libxml2 ];
-    in ''
-      ${pkgs.patchelf}/bin/patchelf --set-interpreter ${pkgs.stdenv.glibc}/lib/ld-linux-x86-64.so.2 --set-rpath "${libPath}" $out
-    '';
-  };
+  skydiveTestFunctionals = ../../tests/functionals;
 
   testScript = ''
     # This is to wait until OpenContrail is ready
