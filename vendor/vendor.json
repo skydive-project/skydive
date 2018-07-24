@@ -913,12 +913,6 @@
 			"revisionTime": "2017-07-04T05:34:23Z"
 		},
 		{
-			"checksumSHA1": "u8OBIxT092B+GShtrcph7JFcH2s=",
-			"path": "github.com/emicklei/go-restful-swagger12",
-			"revision": "7524189396c68dc4b04d53852f9edc00f816b123",
-			"revisionTime": "2017-09-26T06:31:55Z"
-		},
-		{
 			"checksumSHA1": "rmsBHtFpV3osid71XnTZBo/b3bU=",
 			"path": "github.com/emicklei/go-restful/log",
 			"revision": "68c9750c36bb8cb433f1b88c807b4b30df4acc40",
@@ -2934,14 +2928,6 @@
 			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "PHEosEphl6qMGMG2huK39aeHsVk=",
-			"path": "k8s.io/apimachinery/pkg/api/equality",
-			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
-			"revisionTime": "2018-01-03T00:02:50Z",
-			"version": "kubernetes-1.9.1",
-			"versionExact": "kubernetes-1.9.1"
-		},
-		{
 			"checksumSHA1": "kAxC6UWROH6EQu0q4x2G+3ONhHk=",
 			"path": "k8s.io/apimachinery/pkg/api/errors",
 			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
@@ -3010,14 +2996,6 @@
 			"path": "k8s.io/apimachinery/pkg/conversion/queryparams",
 			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
 			"revisionTime": "2018-01-03T00:02:50Z",
-			"version": "kubernetes-1.9.1",
-			"versionExact": "kubernetes-1.9.1"
-		},
-		{
-			"checksumSHA1": "hZmjOAfW+yi+YX2ejwANwIYVkFQ=",
-			"path": "k8s.io/apimachinery/pkg/conversion/unstructured",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
 			"version": "kubernetes-1.9.1",
 			"versionExact": "kubernetes-1.9.1"
 		},
