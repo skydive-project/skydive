@@ -242,7 +242,6 @@ func (mapper *OpenContrailProbe) nodeUpdater() {
 			}
 			mapper.updateNode(node, extIDs)
 			mapper.linkToVhost(node)
-			fmt.Printf("extIDs %#v\n", extIDs)
 			mapper.OnInterfaceAdded(extIDs.VRFID, extIDs.UUID)
 		}
 
