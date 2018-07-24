@@ -24,7 +24,7 @@ function cross_compile() {
     docker pull ubuntu:18.04
     docker run -tid --name skydive-crosscompile -v `pwd`:/root/go/src/github.com/skydive-project/skydive -v $GOPATH/.cache/govendor:/root/go/.cache/govendor ubuntu:18.04 /bin/bash
     trap cleanup ERR
-    docker exec --env http_proxy=http://172.17.0.1:3128 skydive-crosscompile /root/go/src/github.com/skydive-project/skydive/scripts/ci/create-docker-multiarch-image.sh $1 $2 $3
+    docker exec ${http_proxy:+--env http_proxy=$http_proxy} skydive-crosscompile /root/go/src/github.com/skydive-project/skydive/scripts/ci/create-docker-multiarch-image.sh $1 $2 $3
     docker build -t ${DOCKER_IMAGE}:${arch}-${DOCKER_TAG} -f contrib/docker/Dockerfile.${arch} contrib/docker/
     docker rm -f skydive-crosscompile
 }
