@@ -61,12 +61,14 @@ func (t *TopologyPublisherEndpoint) OnDisconnected(c ws.Speaker) {
 		return
 	}
 
-	host := c.GetRemoteHost()
-
-	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources %s", host)
+	origin := string(c.GetServiceType())
+	if len(c.GetRemoteHost()) > 0 {
+		origin += "." + c.GetRemoteHost()
+	}
+	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources %s", origin)
 
 	t.Graph.Lock()
-	t.Graph.DelHostGraph(host)
+	t.Graph.DelOriginGraph(origin)
 	t.Graph.Unlock()
 }
 
@@ -78,10 +80,17 @@ func (t *TopologyPublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Struct
 		return
 	}
 
+	origin := string(c.GetServiceType())
+	if len(c.GetRemoteHost()) > 0 {
+		origin += "." + c.GetRemoteHost()
+	}
+
 	switch msgType {
 	case graph.NodeAddedMsgType, graph.NodeUpdatedMsgType, graph.NodeDeletedMsgType:
+		obj.(*graph.Node).SetOrigin(origin)
 		err = t.schemaValidator.ValidateNode(obj.(*graph.Node))
 	case graph.EdgeAddedMsgType, graph.EdgeUpdatedMsgType, graph.EdgeDeletedMsgType:
+		obj.(*graph.Edge).SetOrigin(origin)
 		err = t.schemaValidator.ValidateEdge(obj.(*graph.Edge))
 	}
 
@@ -97,12 +106,12 @@ func (t *TopologyPublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Struct
 	case graph.SyncRequestMsgType:
 		reply := msg.Reply(t.Graph, graph.SyncReplyMsgType, http.StatusOK)
 		c.SendMessage(reply)
-	case graph.HostGraphDeletedMsgType:
-		// HostGraphDeletedMsgType is handled specifically as we need to be sure to not use the
+	case graph.OriginGraphDeletedMsgType:
+		// OriginGraphDeletedMsgType is handled specifically as we need to be sure to not use the
 		// cache while deleting otherwise the delete mechanism is using the cache to walk through
 		// the graph.
-		logging.GetLogger().Debugf("Got %s message for host %s", graph.HostGraphDeletedMsgType, obj.(string))
-		t.Graph.DelHostGraph(obj.(string))
+		logging.GetLogger().Debugf("Got %s message for origin %s", graph.OriginGraphDeletedMsgType, obj.(string))
+		t.Graph.DelOriginGraph(obj.(string))
 	case graph.SyncMsgType, graph.SyncReplyMsgType:
 		r := obj.(*graph.SyncMsg)
 		for _, n := range r.Nodes {

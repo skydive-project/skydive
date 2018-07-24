@@ -44,8 +44,8 @@ func (t *TopologyForwarder) triggerResync() {
 	t.graph.RLock()
 	defer t.graph.RUnlock()
 
-	// request for deletion of everything belonging this host
-	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.HostGraphDeletedMsgType, t.host))
+	// request for deletion of everything belonging this origin
+	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.OriginGraphDeletedMsgType, t.graph.Origin()))
 
 	// re-add all the nodes and edges
 	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.SyncMsgType, t.graph))
