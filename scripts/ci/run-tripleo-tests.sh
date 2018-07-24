@@ -5,6 +5,10 @@ set -e
 
 SKYDIVE_PATH=$PWD
 
+pushd ${GOPATH}/src/github.com/skydive-project/skydive
+make static
+popd
+
 QUICKSTART=${QUICKSTART:-/tmp/tripleo-quickstart}
 NODES=${NODE:-$QUICKSTART/config/nodes/1ctlr_1comp.yml}
 CONFIG=${CONFIG:-$SKYDIVE_PATH/scripts/ci/tripleo-quickstart/minimal.yml}
@@ -27,9 +31,11 @@ bash quickstart.sh -R master --no-clone --tags all --nodes $NODES \
 	-I --teardown none -p quickstart-extras-undercloud.yml $VHOST
 popd
 
-scp -F ~/.quickstart/ssh.config.ansible -r ../skydive undercloud:
+scp -F ~/.quickstart/ssh.config.ansible -r ../skydive undercloud:skydive.git
 
-ssh -F ~/.quickstart/ssh.config.ansible undercloud "sudo ln -s /home/stack/skydive/contrib/ansible /usr/share/skydive-ansible"
+scp -F ~/.quickstart/ssh.config.ansible -r ${GOPATH}/bin/skydive undercloud:
+
+ssh -F ~/.quickstart/ssh.config.ansible undercloud "sudo ln -s /home/stack/skydive.git/contrib/ansible /usr/share/skydive-ansible"
 
 scp -F ~/.quickstart/ssh.config.ansible $SKYDIVE_CONFIG undercloud:skydive.yaml
 
@@ -38,10 +44,30 @@ bash quickstart.sh -R master --no-clone --tags all --nodes $NODES \
 	--config $CONFIG \
 	-I --teardown none -p quickstart-extras-overcloud-prep.yml $VHOST
 
+ssh -F ~/.quickstart/ssh.config.ansible undercloud <<'EOF'
+REGISTRY=$(grep push_destination containers-prepare-parameter.yaml | head -n 1 | awk '{print $3}' | tr -d '"' )
+
+sudo iptables -I INPUT -p tcp --dport 18888 -j ACCEPT
+python -m SimpleHTTPServer 18888 &
+
+rm -rf kolla
+git clone https://github.com/openstack/kolla
+
+pushd kolla
+sed -i "s|https://github.com/skydive-project/skydive/releases/download/\(.*\)/skydive|http://172.17.0.1:18888/skydive|" docker/skydive/skydive-base/Dockerfile.j2
+tools/build.py --registry $REGISTRY --push -b centos skydive-agent --tag devel
+tools/build.py --registry $REGISTRY --push -b centos skydive-analyzer --tag devel
+popd
+
+echo "  DockerSkydiveAnalyzerImage: $REGISTRY/kolla/centos-binary-skydive-agent" >> skydive.yaml
+echo "  DockerSkydiveAgentImage: $REGISTRY/kolla/centos-binary-skydive-agent" >> skydive.yaml
+
+exit
+EOF
+
 bash quickstart.sh -R master --no-clone --tags all --nodes $NODES \
 	--config $CONFIG \
 	-I --teardown none -p quickstart-extras-overcloud.yml $VHOST
 popd
 
-scp -F ~/.quickstart/ssh.config.ansible $SKYDIVE_PATH/scripts/ci/tripleo-tests.sh undercloud:
-ssh -F ~/.quickstart/ssh.config.ansible undercloud "bash -x tripleo-tests.sh"
+ssh -F ~/.quickstart/ssh.config.ansible undercloud "bash -x skydive.git/scripts/ci/tripleo-tests.sh"
