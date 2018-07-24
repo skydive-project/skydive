@@ -41,6 +41,8 @@ const (
 var (
 	OwnershipMetadata = graph.Metadata{"RelationType": OwnershipLink}
 	Layer2Metadata    = graph.Metadata{"RelationType": Layer2Link}
+
+	ErrNetworkPathNotFound = func(name string) error { return fmt.Errorf("Failed to determine network namespace path for %s", name) }
 )
 
 // NamespaceFromNode returns the namespace name and the path of a node in the graph
@@ -50,9 +52,9 @@ func NamespaceFromNode(g *graph.Graph, n *graph.Node) (string, string, error) {
 		return "", "", fmt.Errorf("No Name for node %v", n)
 	}
 
-	nodes := g.LookupShortestPath(n, graph.Metadata{"Type": "host"}, graph.Metadata{"RelationType": "ownership"})
+	nodes := g.LookupShortestPath(n, graph.Metadata{"Type": "host"}, OwnershipMetadata)
 	if len(nodes) == 0 {
-		return "", "", fmt.Errorf("Failed to determine probePath for %s", name)
+		return "", "", ErrNetworkPathNotFound(name)
 	}
 
 	for _, node := range nodes {
@@ -109,7 +111,7 @@ func HaveOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node) bo
 	return g.AreLinked(parent, child, OwnershipMetadata)
 }
 
-// IsOwnershipLinked checks whether the node as an OwnershipLink
+// IsOwnershipLinked checks whether the node has an OwnershipLink
 func IsOwnershipLinked(g *graph.Graph, node *graph.Node) bool {
 	edges := g.GetNodeEdges(node, OwnershipMetadata)
 	return len(edges) != 0
@@ -123,9 +125,11 @@ func GetOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node) *gr
 // AddOwnershipLink Link between the parent and the child node, the child can have only one parent, previous will be overwritten
 func AddOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, metadata graph.Metadata, h ...string) *graph.Edge {
 	// a child node can only have one parent of type ownership, so delete the previous link
-	if e := g.GetFirstLink(parent, child, OwnershipMetadata); e != nil {
-		logging.GetLogger().Debugf("Delete previous ownership link: %v", e)
-		g.DelEdge(e)
+	for _, e := range g.GetNodeEdges(child, OwnershipMetadata) {
+		if e.GetChild() == child.ID {
+			logging.GetLogger().Debugf("Delete previous ownership link: %v", e)
+			g.DelEdge(e)
+		}
 	}
 
 	m := OwnershipMetadata

@@ -138,14 +138,14 @@ func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC
 
 	buffer := gopacket.NewSerializeBuffer()
 	if err := gopacket.SerializeLayers(buffer, options, l...); err != nil {
-		return nil, nil, fmt.Errorf("Error while generating %s packet: %s", packetType, err.Error())
+		return nil, nil, fmt.Errorf("Error while generating %s packet: %s", packetType, err)
 	}
 
 	packetData := buffer.Bytes()
 	return packetData, gopacket.NewPacket(packetData, layerType, gopacket.Default), nil
 }
 
-// InjectPacket inject some packets based on the graph
+// InjectPackets inject some packets based on the graph
 func InjectPackets(pp *PacketInjectionParams, g *graph.Graph, chnl *channels) (string, error) {
 	srcIP := getIP(pp.SrcIP)
 	if srcIP == nil {
@@ -234,16 +234,16 @@ func InjectPackets(pp *PacketInjectionParams, g *graph.Graph, chnl *channels) (s
 		for i := int64(0); i < pp.Count; i++ {
 			select {
 			case <-c:
-				logging.GetLogger().Debugf("Injection stoped on interface %s", ifName)
+				logging.GetLogger().Debugf("Injection stopped on interface %s", ifName)
 				break stopInjection
 			default:
 				logging.GetLogger().Debugf("Injecting packet on interface %s", ifName)
 
 				if _, err := rawSocket.Write(packetData); err != nil {
 					if err == syscall.ENXIO {
-						logging.GetLogger().Warningf("Write error: %s", err.Error())
+						logging.GetLogger().Warningf("Write error on interface %s: %s", ifName, err)
 					} else {
-						logging.GetLogger().Errorf("Write error: %s", err.Error())
+						logging.GetLogger().Errorf("Write error on interface %s: %s", ifName, err)
 					}
 				}
 

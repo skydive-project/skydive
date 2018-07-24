@@ -273,7 +273,9 @@ func (u *NetNsNetLinkProbe) addOvsLinkToTopology(link netlink.Link, m graph.Meta
 
 	intf := u.Graph.LookupFirstNode(graph.NewGraphElementFilter(filter))
 	if intf != nil {
-		topology.AddOwnershipLink(u.Graph, u.Root, intf, nil)
+		if !topology.HaveOwnershipLink(u.Graph, u.Root, intf) {
+			topology.AddOwnershipLink(u.Graph, u.Root, intf, nil)
+		}
 	}
 
 	return intf

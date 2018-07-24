@@ -407,8 +407,8 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 		}
 
 		puuid, _ := port.GetFieldString("UUID")
-		if brige, ok := o.portToBridge[puuid]; ok {
-			o.linkIntfTOBridge(brige, intf)
+		if bridge, ok := o.portToBridge[puuid]; ok {
+			o.linkIntfTOBridge(bridge, intf)
 		}
 	}
 }
