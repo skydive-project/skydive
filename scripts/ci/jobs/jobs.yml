@@ -382,6 +382,7 @@
           cancel-builds-on-update: true
     wrappers:
       - github-credentials
+      - skydive-wrappers
     builders:
       - skydive-test:
           test: scripts/ci/create-release.sh
@@ -438,6 +439,7 @@
           test: scripts/ci/create-docker-image.sh
     wrappers:
       - docker-credentials
+      - skydive-wrappers
 
 - job:
     name: skydive-build-copr
@@ -453,6 +455,7 @@
           test: scripts/ci/build-copr.sh
     wrappers:
       - copr-credentials
+      - skydive-wrappers
 
 - job:
     name: skydive-devstack-tests
