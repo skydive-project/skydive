@@ -1,5 +1,7 @@
 /* jshint multistr: true */
 
+var topologyComponent
+
 var TopologyComponent = {
 
   name: 'topology',
@@ -251,6 +253,7 @@ var TopologyComponent = {
   },
 
   mounted: function() {
+    topologyComponent = this;
     var self = this;
 
     // run d3 layout
@@ -895,6 +898,8 @@ Graph.prototype = {
     this.nodes[id] = node;
 
     this.notifyHandlers('nodeAdded', node);
+
+    return node;
   },
 
   updateNode: function(id, metadata) {
@@ -1015,6 +1020,8 @@ Graph.prototype = {
         target.group = group;
         this.addGroupMember(group, target);
       }
+
+      return edge;
     }
   },
 

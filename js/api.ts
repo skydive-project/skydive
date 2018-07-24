@@ -144,8 +144,16 @@ export class SerializationHelper {
         return items
     }
 
+    static unmarshalMapArray<T>(data, c: new () => T): { [key: string]: T[]; } {
+        var items: { [key: string]: T[]; } = {};
+        for (var key in data) {
+            items[key] = this.unmarshalArray(data[key], c);
+        }
+        return items
+    }
+
     static unmarshalMap<T>(data, c: new () => T): { [key: string]: T; } {
-        var items: { [key: string]: T; };
+        var items: { [key: string]: T; } = {};
         for (var obj in data) {
             let newT: T = SerializationHelper.toInstance(new c(), data[obj]);
             items[obj] = newT;
@@ -228,9 +236,17 @@ export class GraphNode extends GraphElement {
 export class GraphEdge extends GraphElement {
 }
 
+type NodeMap = { [key: string]: GraphNode; };
+type EdgeMap = { [key: string]: GraphEdge; };
+
 export class Graph {
-    Nodes: GraphNode[]
-    Edges: GraphEdge[]
+    nodes: NodeMap;
+    edges: EdgeMap;
+
+    constructor(nodes: NodeMap, edges: EdgeMap) {
+        this.nodes = nodes || {}
+        this.edges = edges || {}
+    }
 }
 
 export class GremlinAPI {
@@ -309,7 +325,7 @@ export class Step implements Step {
         let self = this;
         return self.api.query(self.toString())
             .then(function (data) {
-                return cb(data)
+                return cb(self.serialize(data))
             });
     }
 }
@@ -807,7 +823,7 @@ export class Metrics extends Step {
     name() { return "Metrics" }
 
     serialize(data) {
-        return SerializationHelper.unmarshalMap(data, Metric);
+        return SerializationHelper.unmarshalMapArray(data[0], Metric);
     }
 
     Sum(...params: any[]): Value {
@@ -831,7 +847,7 @@ export class RawPackets extends Step {
     name() { return "RawPackets" }
 
     serialize(data) {
-        return SerializationHelper.unmarshalMap(data, RawPacket);
+        return SerializationHelper.unmarshalMapArray(data[0], RawPacket);
     }
 
     BPF(...params: any[]): RawPackets {
@@ -850,7 +866,7 @@ export class Sockets extends Step {
     name() { return "Sockets" }
 
     serialize(data) {
-        return SerializationHelper.unmarshalMap(data, Socket);
+        return SerializationHelper.unmarshalMapArray(data[0], Socket);
     }
 
     Values(...params: any[]): Value {

@@ -1,7 +1,7 @@
 ---
 UUID: "85757b38-6e21-11e8-b42d-28d2442e1325"
 name: "CheckMTU"
-description: "Check MTU on a path between 2 interfaces"
+description: "Check MTU on a path between two interfaces"
 parameters:
   - name: source
     description: Source node
@@ -10,19 +10,20 @@ parameters:
     description: Destination node
     type: node
 source: |
-  function CheckMTU(from, to) {
-    var MTU
-    var G = client.gremlin.G()
-    return G.V().Has('TID', from).ShortestPathTo(Metadata('TID', to))
-      .then(function (path) {
-        for (var i in path) {
-          var node = path[i]
-          if (MTU != undefined && (node.Metadata === undefined || node.Metadata.MTU < MTU)) {
-            console.log("MTU " + node.Metadata.MTU + " on node " + node.ID + " is inferior to " + MTU)
-            return false
-          }
-          MTU = node.Metadata.MTU
-        }
-        return true
-      })
-  }
+    function CheckMTU(from, to) {
+        var MTU
+        var G = client.gremlin.G()
+        return G.V().Has('TID', from).ShortestPathTo(Metadata('TID', to))
+            .then(function (path) {
+                for (var i in path) {
+                    var node = path[i]
+                    if (MTU != undefined && (node.Metadata === undefined || node.Metadata.MTU < MTU)) {
+                        console.log("MTU " + node.Metadata.MTU + " on node " + node.ID + " is inferior to " + MTU)
+                        return false
+                    }
+                    if (node.Metadata !== undefined)
+                        MTU = node.Metadata.MTU
+                }
+                return true
+            })
+    }

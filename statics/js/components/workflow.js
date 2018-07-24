@@ -5,6 +5,8 @@ Vue.component('item', {
     'Name',
     'Description',
     'Type',
+    'Values',
+    'Default'
   ],
 
   inject: [
@@ -12,24 +14,26 @@ Vue.component('item', {
   ],
 
   template: `
-  <div class="form-group">\
+  <div class="form-group">
     <label :for="name">{{Description}}</label>
     <textarea v-if="Type == 'string'" :id="name" v-model="formData[Name]"></textarea>
     <input v-else-if="Type == 'date'" type="date" :id="name" v-model="formData[Name]" class="form-control input-sm">
     <input v-else-if="Type == 'integer'" type="number" :id="name" v-model="formData[Name]" class="form-control input-sm">
     <input v-else-if="Type == 'boolean'" type="checkbox" :id="name" v-model="formData[Name]" class="form-check-input">
     <node-selector v-else-if="Type == 'node'" :id="name" v-model="formData[Name]"></node-selector>
-    <template v-else-if="Type == 'choice'" v-for="option in ['yes','no','dont know']">
-    <label class="radio-inline">\
-      <input  type="radio" :id="name + option" v-model="formData[Name]" :value="option"  class="form-control input-sm">
-      <label :for="name + option">{{option}}</label>
-    </label>
+    <template v-else-if="Type == 'choice'">
+      <select :id="name" v-model="formData[Name]" class="form-control input-sm">
+        <option v-for="(option, index) in Values" :value="option.Value">{{ option.Value }} ({{ option.Description }})</option>
+      </select>
     </template>
     <template v-else-if="Type == 'group'">
       <item v-for="i in item" v-bind="i" :key="i.name"></item>
     </template>
-  </div>`
+  </div>`,
 
+  created: function() {
+    this.formData[this.Name] = this.Default
+  }
 })
 
 Vue.component('workflow-params', {
@@ -78,9 +82,22 @@ Vue.component('workflow-params', {
       }
       var promise = f.apply({}, args)
       promise.then(function (result) {
-        self.result.output = JSON.stringify(result)
+        self.result.value = result
+        if (typeof result == "object") {
+          if (result.nodes && result.edges) {
+            var g = topologyComponent.graph
+            for (var n in result.nodes) {
+              var node = result.nodes[n]
+              g.addNode(node.ID, node.Host, node.Metadata)
+            }
+            for (var e in result.edges) {
+              var edge = result.edges[e]
+              g.addEdge(edge.ID, edge.Host, edge.Metadata, g.nodes[edge.Parent], g.nodes[edge.Child])
+            }
+          }
+        }
       }).catch(function (e) {
-        self.result.output = JSON.stringify(e)
+        self.result.value = e.toString()
       })
     }
   }
@@ -93,7 +110,7 @@ Vue.component('workflow-call', {
   	return {
       "currentWorkflow": {},
       "result": {
-        "output": ""
+        "value": null
       },
       "workflows": {}
     }
@@ -114,13 +131,25 @@ Vue.component('workflow-call', {
           <option v-for="(workflow, id) in workflows" :value="workflow">{{ workflow.Name }} ({{ workflow.Description }})</option>
         </select>
       </div>
-      <workflow-params :workflow="currentWorkflow"></workflow-params>
       <div class="form-group">
-        <label for="workflow-output" v-if="result.output">Output</label>
-        <textarea id="workflow-output" type="text" class="form-control input-sm" rows="5" v-model="result.output" v-if="result.output"></textarea>
+        <workflow-params :workflow="currentWorkflow"></workflow-params>
+      </div>
+      <div class="form-group">
+        <form>
+          <label for="workflow-output" v-if="result.value">Output</label>
+          <textarea id="workflow-output" type="text" class="form-control input-sm" rows="5" v-model="result.value" v-if="result.value && (typeof result.value) != 'object'"></textarea>
+          <object-detail v-else-if="typeof result.value == 'object'" id="workflow-output" :object="result.value"></object-detail>\
+        </div>
+        </form>
       </div>
     </div>
   `,
+
+  watch: {
+    'currentWorkflow': function () {
+      this.result.value = undefined
+    }
+  },
 
   created: function() {
     var self = this;
