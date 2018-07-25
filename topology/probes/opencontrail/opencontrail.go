@@ -154,7 +154,7 @@ func (mapper *OpenContrailProbe) onVhostAdded(node *graph.Node, itf collection.E
 
 func (mapper *OpenContrailProbe) linkToVhost(node *graph.Node) {
 	if mapper.vHost != nil {
-		if !topology.HaveLayer2Link(mapper.graph, node, mapper.vHost, nil) {
+		if !topology.HaveLayer2Link(mapper.graph, node, mapper.vHost) {
 			logging.GetLogger().Debugf("Link %s to %s", node.String(), mapper.vHost.String())
 			topology.AddLayer2Link(mapper.graph, node, mapper.vHost, nil)
 		}
