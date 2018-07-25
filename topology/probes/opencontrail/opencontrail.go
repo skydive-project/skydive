@@ -27,6 +27,7 @@ package opencontrail
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -43,14 +44,16 @@ import (
 // OpenContrailProbe describes a probe that reads OpenContrail database and updates the graph
 type OpenContrailProbe struct {
 	graph.DefaultGraphListener
-	graph           *graph.Graph
-	root            *graph.Node
-	nodeUpdaterChan chan graph.Identifier
-	vHost           *graph.Node
-	pendingLinks    []*graph.Node
-	agentHost       string
-	agentPort       int
-	mplsUDPPort     int
+	graph                   *graph.Graph
+	root                    *graph.Node
+	nodeUpdaterChan         chan graph.Identifier
+	vHost                   *graph.Node
+	pendingLinks            []*graph.Node
+	agentHost               string
+	agentPort               int
+	mplsUDPPort             int
+	routingTables           map[int]*RoutingTable
+	routingTableUpdaterChan chan RoutingTableUpdate
 }
 
 // OpenContrailMdata metadata
@@ -58,6 +61,7 @@ type OpenContrailMdata struct {
 	UUID    string
 	Mac     string
 	VRF     string
+	VRFID   int
 	LocalIP string
 }
 
@@ -80,6 +84,10 @@ func (mapper *OpenContrailProbe) retrieveMetadata(metadata graph.Metadata, itf c
 	if vrfName == "" {
 		return nil, errors.New("No vrf_name field")
 	}
+	vrfId, err := getVrfIdFromIntrospect(mapper.agentHost, mapper.agentPort, vrfName)
+	if err != nil {
+		return nil, errors.New("No vrf_id found")
+	}
 
 	mdataIP, _ := itf.GetField("mdata_ip_addr")
 	if mdataIP == "" {
@@ -92,6 +100,7 @@ func (mapper *OpenContrailProbe) retrieveMetadata(metadata graph.Metadata, itf c
 		UUID:    portUUID,
 		Mac:     mac,
 		VRF:     vrfName,
+		VRFID:   vrfId,
 		LocalIP: mdataIP,
 	}
 
@@ -119,6 +128,27 @@ func getInterfaceFromIntrospect(host string, port int, name string) (col collect
 	}
 	// Retry during about 8 seconds
 	err = common.RetryExponential(getFromIntrospect, 5, 250*time.Millisecond)
+	return
+}
+
+func getVrfIdFromIntrospect(host string, port int, vrfName string) (vrfId int, err error) {
+	col, err := collection.LoadCollection(descriptions.Vrf(), []string{fmt.Sprintf("%s:%d", host, port)})
+	if err != nil {
+		return
+	}
+	elem, err := col.SearchStrictUnique(vrfName)
+	if err != nil {
+		col.Close()
+		return 0, err
+	}
+	field, _ := elem.GetField("ucindex")
+	if field == "" {
+		return 0, errors.New("No ucindex field")
+	}
+	vrfId, err = strconv.Atoi(field)
+	if err != nil {
+		return 0, err
+	}
 	return
 }
 
@@ -212,7 +242,9 @@ func (mapper *OpenContrailProbe) nodeUpdater() {
 			}
 			mapper.updateNode(node, extIDs)
 			mapper.linkToVhost(node)
+			mapper.OnInterfaceAdded(extIDs.VRFID, extIDs.UUID)
 		}
+
 	}
 
 	logging.GetLogger().Debugf("Starting OpenContrail updater (using the vrouter agent on %s:%d)", mapper.agentHost, mapper.agentPort)
@@ -232,6 +264,7 @@ func (mapper *OpenContrailProbe) updateNode(node *graph.Node, mdata *OpenContrai
 	tr.AddMetadata("ExtID.iface-id", mdata.UUID)
 	tr.AddMetadata("ExtID.attached-mac", mdata.Mac)
 	tr.AddMetadata("Contrail.VRF", mdata.VRF)
+	tr.AddMetadata("Contrail.VRFID", int64(mdata.VRFID))
 	tr.AddMetadata("Contrail.LocalIP", mdata.LocalIP)
 }
 
@@ -271,10 +304,16 @@ func (mapper *OpenContrailProbe) OnNodeDeleted(n *graph.Node) {
 		logging.GetLogger().Debugf("Removed %s", name)
 		mapper.vHost = nil
 	}
+	interfaceUUID, _ := n.GetFieldString("ExtID.iface-id")
+	if interfaceUUID != "" {
+		mapper.OnInterfaceDeleted(interfaceUUID)
+	}
+
 }
 
 // Start the probe
 func (mapper *OpenContrailProbe) Start() {
+	mapper.rtMonitor()
 	go mapper.nodeUpdater()
 }
 
@@ -298,6 +337,8 @@ func NewOpenContrailProbeFromConfig(g *graph.Graph, r *graph.Node) (*OpenContrai
 
 	mapper := &OpenContrailProbe{graph: g, root: r, agentHost: host, agentPort: port, mplsUDPPort: mplsUDPPort}
 	mapper.nodeUpdaterChan = make(chan graph.Identifier, 500)
+	mapper.routingTables = make(map[int]*RoutingTable)
+	mapper.routingTableUpdaterChan = make(chan RoutingTableUpdate, 500)
 	g.AddEventListener(mapper)
 	return mapper, nil
 }
