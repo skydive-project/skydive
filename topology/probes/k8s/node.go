@@ -54,10 +54,8 @@ func (c *nodeProbe) newMetadata(node *v1.Node) graph.Metadata {
 	m.SetField("Cluster", node.ClusterName)
 	for _, a := range node.Status.Addresses {
 		switch a.Type {
-		case "Hostname":
-			m.SetField("Hostname", a.Address)
-		case "InternalIP":
-			m.SetField("IP", a.Address)
+		case "Hostname", "InternalIP", "ExternalIP":
+			m.SetField(string(a.Type), a.Address)
 		}
 	}
 	info := node.Status.NodeInfo
