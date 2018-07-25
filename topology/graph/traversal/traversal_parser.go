@@ -162,6 +162,14 @@ type (
 	GremlinTraversalStepSum struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepAs step
+	GremlinTraversalStepAs struct {
+		GremlinTraversalContext
+	}
+	// GremlinTraversalStepSelect step
+	GremlinTraversalStepSelect struct {
+		GremlinTraversalContext
+	}
 )
 
 var (
@@ -220,7 +228,17 @@ func (p *GremlinTraversalContext) Context() *GremlinTraversalContext {
 
 // Exec G step
 func (s *GremlinTraversalStepG) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
-	return nil, nil
+	if last == nil {
+		return nil, nil
+	}
+
+	switch last.(type) {
+	case *GraphTraversalV:
+		return last.(*GraphTraversalV).G(), nil
+	case *GraphTraversalE:
+		return last.(*GraphTraversalE).G(), nil
+	}
+	return invokeStepFnc(last, "Has", s)
 }
 
 // Reduce G step
@@ -776,6 +794,56 @@ func (s *GremlinTraversalStepSum) Reduce(next GremlinTraversalStep) GremlinTrave
 	return next
 }
 
+// Exec As step
+func (s *GremlinTraversalStepAs) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
+	switch last.(type) {
+	case *GraphTraversalV:
+		return last.(*GraphTraversalV).As(s.Params...), nil
+	}
+
+	// fallback to reflection way
+	return invokeStepFnc(last, "As", s)
+}
+
+// Reduce As step
+func (s *GremlinTraversalStepAs) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	if hasStep, ok := next.(*GremlinTraversalStepHas); ok && len(s.Params) == 0 {
+		s.Params = hasStep.Params
+		return s
+	}
+
+	if s.ReduceRange(next) {
+		return s
+	}
+
+	return next
+}
+
+// Exec Select step
+func (s *GremlinTraversalStepSelect) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
+	switch last.(type) {
+	case *GraphTraversalV:
+		return last.(*GraphTraversalV).Select(s.Params...), nil
+	}
+
+	// fallback to reflection way
+	return invokeStepFnc(last, "Select", s)
+}
+
+// Reduce As step
+func (s *GremlinTraversalStepSelect) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	if hasStep, ok := next.(*GremlinTraversalStepHas); ok && len(s.Params) == 0 {
+		s.Params = hasStep.Params
+		return s
+	}
+
+	if s.ReduceRange(next) {
+		return s
+	}
+
+	return next
+}
+
 // Exec sequence step
 func (s *GremlinTraversalSequence) Exec(g *graph.Graph, lockGraph bool) (GraphTraversalStep, error) {
 	var step GremlinTraversalStep
@@ -1124,6 +1192,21 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 		return &GremlinTraversalStepKeys{gremlinStepContext}, nil
 	case SUM:
 		return &GremlinTraversalStepSum{gremlinStepContext}, nil
+	case AS:
+		if len(params) != 1 {
+			return nil, fmt.Errorf("As requires 1 parameter : %v", params)
+		}
+		if _, ok := params[0].(string); !ok {
+			return nil, fmt.Errorf("As parameter has to be a string key : %v", params)
+		}
+
+		return &GremlinTraversalStepAs{gremlinStepContext}, nil
+	case SELECT:
+		if len(params) == 0 {
+			return nil, fmt.Errorf("Select requires at least one key : %v", params)
+		}
+
+		return &GremlinTraversalStepSelect{gremlinStepContext}, nil
 	}
 
 	// extensions

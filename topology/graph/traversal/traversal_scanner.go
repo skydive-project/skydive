@@ -94,6 +94,8 @@ const (
 	SUBGRAPH
 	FOREVER
 	NOW
+	AS
+	SELECT
 
 	// extensions token have to start after 1000
 )
@@ -295,6 +297,10 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return FOREVER, buf.String()
 	case "NOW":
 		return NOW, buf.String()
+	case "AS":
+		return AS, buf.String()
+	case "SELECT":
+		return SELECT, buf.String()
 	}
 
 	for _, e := range s.extensions {
