@@ -137,7 +137,7 @@ Vue.component('workflow-call', {
       <div class="form-group">
         <form>
           <label for="workflow-output" v-if="result.value">Output</label>
-          <textarea id="workflow-output" type="text" class="form-control input-sm" rows="5" v-model="result.value" v-if="result.value && (typeof result.value) != 'object'"></textarea>
+          <textarea readonly id="workflow-output" type="text" class="form-control input-sm" rows="5" v-model="result.value" v-if="result.value && (typeof result.value) != 'object'"></textarea>
           <object-detail v-else-if="typeof result.value == 'object'" id="workflow-output" :object="result.value"></object-detail>\
         </div>
         </form>
