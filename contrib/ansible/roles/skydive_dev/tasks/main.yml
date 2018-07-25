@@ -62,7 +62,7 @@
     - docker
 
 - include: lxd.yml
-  when: ansible_distribution == "Fedora"
+  when: ansible_distribution == "Fedora" and ansible_architecture == "x86_64"
 
 - include: protobuf.yml
 

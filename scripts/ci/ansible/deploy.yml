@@ -74,9 +74,6 @@
        - unzip
        - wget
        - https://www.rdoproject.org/repos/rdo-release.rpm
-  - package:
-      name: "http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-27.noarch.rpm"
-      state: present
   - copy:
       content: |
         jenkins ALL=(root) NOPASSWD:ALL
@@ -192,6 +189,9 @@
       state: present
   - group:
       name: docker
+      state: present
+  - group:
+      name: lxd
       state: present
   - user:
       name: jenkins

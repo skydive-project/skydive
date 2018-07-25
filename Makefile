@@ -433,7 +433,7 @@ LINTER_COMMANDS := \
 .PHONY: $(LINTER_COMMANDS)
 $(LINTER_COMMANDS):
 	@$(GO_GET) github.com/alecthomas/gometalinter
-	@command -v $@ >/dev/null || gometalinter --install --update
+	@command -v $@ >/dev/null || gometalinter --install
 
 .PHONY: gometalinter
 gometalinter: $(LINTER_COMMANDS)

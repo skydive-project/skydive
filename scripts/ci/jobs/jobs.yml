@@ -670,3 +670,27 @@
           test: scripts/ci/run-tripleo-tests.sh
     wrappers:
       - skydive-wrappers
+
+- job:
+    name: skydive-ppc64le-tests
+    defaults: skydive
+    node: ppc64le
+    triggers:
+      - skydive-pull-request:
+          name: ppc64le-tests
+          trigger-prefix: "(all )?"
+          only-trigger-phrase: false
+          cancel-builds-on-update: true
+    builders:
+      - skydive-test:
+          test: scripts/ci/run-unit-tests.sh
+      - skydive-cleanup
+      - skydive-test:
+          test: scripts/ci/run-scale.sh
+      - skydive-cleanup
+      - skydive-test:
+          test: BACKEND=elasticsearch scripts/ci/run-functional-tests.sh
+    publishers:
+      - junit:
+          results: tests.xml
+      - chuck-norris

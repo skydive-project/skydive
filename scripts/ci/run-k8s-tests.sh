@@ -15,7 +15,7 @@ for i in $(find /proc/sys/net/bridge/ -type f) ; do echo 0 | sudo tee $i ; done
 
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 
-if [ "$COVERAGE" != "true" ]; then
+if [ "$COVERAGE" != "true" -a "$(uname -m)" != "ppc64le" ]; then
     GOFLAGS="-race"
 fi
 
