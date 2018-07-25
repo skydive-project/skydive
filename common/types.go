@@ -38,6 +38,7 @@ import (
 	"time"
 
 	"github.com/fatih/structs"
+	"github.com/mohae/deepcopy"
 )
 
 var (
@@ -267,7 +268,7 @@ func NormalizeValue(obj interface{}) interface{} {
 			v[i] = NormalizeValue(val)
 		}
 	}
-	return obj
+	return deepcopy.Copy(obj)
 }
 
 // JSONDecode wrapper to UseNumber during JSON decoding

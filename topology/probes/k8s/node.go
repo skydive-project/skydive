@@ -50,7 +50,7 @@ func newHostIndexer(g *graph.Graph) *graph.MetadataIndexer {
 
 func (c *nodeProbe) newMetadata(node *v1.Node) graph.Metadata {
 	m := newMetadata("node", node.Namespace, node.Name, node)
-	m.SetField("Labels", node.Labels)
+	m.SetFieldAndNormalize("Labels", node.Labels)
 	m.SetField("Cluster", node.ClusterName)
 	for _, a := range node.Status.Addresses {
 		switch a.Type {

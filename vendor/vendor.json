@@ -1783,6 +1783,12 @@
 			"revision": "281073eb9eb092240d33ef253c404f1cca550309"
 		},
 		{
+			"checksumSHA1": "2jsbDTvwxafPp7FJjJ8IIFlTLjs=",
+			"path": "github.com/mohae/deepcopy",
+			"revision": "c48cc78d482608239f6c4c92a4abd87eb8761c90",
+			"revisionTime": "2017-09-29T03:49:55Z"
+		},
+		{
 			"checksumSHA1": "NY/yQ26e4WcmK6+IxMR6TWK0X2U=",
 			"path": "github.com/nlewo/contrail-introspect-cli/collection",
 			"revision": "e4df28ccf9801abbe32edd5ddaba31a7a62b61b6",
