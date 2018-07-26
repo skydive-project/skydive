@@ -913,12 +913,6 @@
 			"revisionTime": "2017-07-04T05:34:23Z"
 		},
 		{
-			"checksumSHA1": "u8OBIxT092B+GShtrcph7JFcH2s=",
-			"path": "github.com/emicklei/go-restful-swagger12",
-			"revision": "7524189396c68dc4b04d53852f9edc00f816b123",
-			"revisionTime": "2017-09-26T06:31:55Z"
-		},
-		{
 			"checksumSHA1": "rmsBHtFpV3osid71XnTZBo/b3bU=",
 			"path": "github.com/emicklei/go-restful/log",
 			"revision": "68c9750c36bb8cb433f1b88c807b4b30df4acc40",
@@ -2724,866 +2718,906 @@
 			"revision": "bef53efd0c76e49e6de55ead051f886bea7e9420"
 		},
 		{
-			"checksumSHA1": "2AkXviX+M3zAqe5Lo7sZZgY2TRg=",
+			"checksumSHA1": "xwvGTst/xgcrHZB2fy3PhWHAXAk=",
 			"path": "k8s.io/api/admissionregistration/v1alpha1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "CZ9Fr5Ku0aYFPYFDvPg2A/hxppM=",
+			"checksumSHA1": "ZI8P3sqWmCm3LmPD5UdqBsPYdeQ=",
+			"path": "k8s.io/api/admissionregistration/v1beta1",
+			"revision": "kubernetes-1.9.1",
+			"version": "kubernetes-1.9.1"
+		},
+		{
+			"checksumSHA1": "78yoJHd5n+d30eUyTe2mBSyTM8A=",
+			"path": "k8s.io/api/apps/v1",
+			"revision": "kubernetes-1.9.1",
+			"version": "kubernetes-1.9.1"
+		},
+		{
+			"checksumSHA1": "cN8s7aK0JrxaEGGSthXUrdjNrEA=",
 			"path": "k8s.io/api/apps/v1beta1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "4oxzyWh82KPS05TaWBkm17l4y54=",
+			"checksumSHA1": "pNND/D3J4n6dDvZ/PSTetQ0nhis=",
 			"path": "k8s.io/api/apps/v1beta2",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "v9/Tce1Fik+Dx0pSD3f/PPB5NK8=",
+			"checksumSHA1": "NoDXYHzX8uieDLr52syLB9yA0b4=",
 			"path": "k8s.io/api/authentication/v1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "6yLkxsvbky9CSqdHndluKpxdzTw=",
+			"checksumSHA1": "UWHBCzQuPal70BYqlaLX0a72mZ8=",
 			"path": "k8s.io/api/authentication/v1beta1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "jphmvudkyBbKf+hCQlNtTfrve70=",
+			"checksumSHA1": "sHFBgBJwIOXMFFiM5p5EzaehkOQ=",
 			"path": "k8s.io/api/authorization/v1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "u5FpJlVq4eFUQTVOxf8AEyiQyBs=",
+			"checksumSHA1": "3iZqL+XjMfIH96C54beAJUsrGVk=",
 			"path": "k8s.io/api/authorization/v1beta1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "8szvzHHnRXRiFFXzgUneKYgyRVM=",
+			"checksumSHA1": "W1lEkkLsZBO6uvvNJ6WiFlvnO7M=",
 			"path": "k8s.io/api/autoscaling/v1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "ySmoLnAPLIHzpxzgFmqpUugdaV4=",
+			"checksumSHA1": "v63pjbfycje73uCPLbB7y7lzC9k=",
 			"path": "k8s.io/api/autoscaling/v2beta1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "UIUTkPJGVcqjDcaBKeAxVIXVltg=",
+			"checksumSHA1": "GJRNfBBwgXw2At4ZVpF0KsWlI+o=",
 			"path": "k8s.io/api/batch/v1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "F2yVNNzagKTdhxe+S+6c6LiftxA=",
+			"checksumSHA1": "tOZIFvqloLP3/lilHPQCJogPaJg=",
 			"path": "k8s.io/api/batch/v1beta1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "DqzcXH7xEIp3LbvBJZ7jnp/A8BA=",
+			"checksumSHA1": "LEzmNJyJwUKd1kn4bpjmSVKwtHs=",
 			"path": "k8s.io/api/batch/v2alpha1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "4nwXV0OJ6hLOx0ULiIyEd1qbu3w=",
+			"checksumSHA1": "rWE1nEtQ8rER5p5WU7kzSV19RkU=",
 			"path": "k8s.io/api/certificates/v1beta1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "fXswabweXVITc+uIGcqL4r1r87U=",
+			"checksumSHA1": "rQh3lulTmaZi2bo2Spbvt+fNpdA=",
 			"path": "k8s.io/api/core/v1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "nd4AaLXS2H2hQZjdeNChaY0gQe0=",
+			"checksumSHA1": "IMOdn8J5FNDJKu/diHipSgPzHgc=",
+			"path": "k8s.io/api/events/v1beta1",
+			"revision": "kubernetes-1.9.1",
+			"version": "kubernetes-1.9.1"
+		},
+		{
+			"checksumSHA1": "48ruJpnz3kU2HZiPweCD81qwn2k=",
 			"path": "k8s.io/api/extensions/v1beta1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "vwXWuow7dV4kzxvvwOu2LGlyM/Y=",
+			"checksumSHA1": "l6AoHIMBA1LmvjIvU/RGjrluV9M=",
 			"path": "k8s.io/api/networking/v1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "XCj97wHrp+gutdQ9fTTXkatkDLI=",
+			"checksumSHA1": "3iebLejriSN5T/fkzTDlxhQFOS8=",
 			"path": "k8s.io/api/policy/v1beta1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "4rUtXHjPGaFKTKhmxRNQg4W6TNk=",
+			"checksumSHA1": "WOoDtSbupk65DhZSAvUxJ5lsdCo=",
 			"path": "k8s.io/api/rbac/v1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "bVzvgo2lK4eEkV54SmyVZIPDi1o=",
+			"checksumSHA1": "0A3NCzXxtWAhESHNUrEgm6y615k=",
 			"path": "k8s.io/api/rbac/v1alpha1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "PSZ0yg8lErUtFbKRAYewcBjB4Es=",
+			"checksumSHA1": "EEV8fZx5KBId/QeDWr/iuLb+E+0=",
 			"path": "k8s.io/api/rbac/v1beta1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "bWptG/pMpn5z9exhL8if+HCxbzw=",
+			"checksumSHA1": "bCEhmDKoLVINfACqw3ULkQ1mcuA=",
 			"path": "k8s.io/api/scheduling/v1alpha1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "Nrf3R+/FhLmgQuz13PKvwwGdWAU=",
+			"checksumSHA1": "N57nqFB1iyd/+/tR2sTCGJGhAL0=",
 			"path": "k8s.io/api/settings/v1alpha1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "JqN6RttUPsxjm+J6ZuCrhsPCwdc=",
+			"checksumSHA1": "h10tcYz4COs/VHYE68ufUdB7OvU=",
 			"path": "k8s.io/api/storage/v1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "ICSvXDD0T0vxRLoEFdcfhnDuw1U=",
+			"checksumSHA1": "A/EdKEnPeTNi+swvWV4eFvDyMXc=",
+			"path": "k8s.io/api/storage/v1alpha1",
+			"revision": "kubernetes-1.9.1",
+			"version": "kubernetes-1.9.1"
+		},
+		{
+			"checksumSHA1": "xZ4A/7Yp2H8CeTI5/o+7nXGYTb0=",
 			"path": "k8s.io/api/storage/v1beta1",
-			"revision": "4df58c811fe2e65feb879227b2b245e4dc26e7ad",
-			"revisionTime": "2017-10-18T03:29:29Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "006a217681ae70cbacdd66a5e2fca1a61a8ff28e",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "hwGqHQjIUMYZYgMVQL7G2gi5+Ew=",
-			"path": "k8s.io/apimachinery/pkg/api/equality",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
-		},
-		{
-			"checksumSHA1": "ILD37za2C2dzipWhmzcUvr1Hn8c=",
+			"checksumSHA1": "kAxC6UWROH6EQu0q4x2G+3ONhHk=",
 			"path": "k8s.io/apimachinery/pkg/api/errors",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "HNcREJxGsZIS7EQegB2NfLFSgcc=",
+			"checksumSHA1": "3vyIG9R7G49doG6+JVL5Ym2SHwY=",
 			"path": "k8s.io/apimachinery/pkg/api/meta",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "GGyKxdhp54tu5dH30NiFxJzdgF0=",
+			"checksumSHA1": "B8RnR4Qlu+mGSLNu/AON3VvhdJw=",
 			"path": "k8s.io/apimachinery/pkg/api/resource",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "ZfbdkO5t+0fb59pLvB8OHRx+IN0=",
+			"checksumSHA1": "UuVtj/84PTK3OYGuzwvfkU/KKiU=",
 			"path": "k8s.io/apimachinery/pkg/apis/meta/internalversion",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "/J5Z9PPsxArxw7LS2LgJARAgOm8=",
+			"checksumSHA1": "zro+24sXnIMAQyysMg2Txq0GHNw=",
 			"path": "k8s.io/apimachinery/pkg/apis/meta/v1",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "3j7WwtI5QIA+zJFNQMuVYh9ffys=",
+			"checksumSHA1": "djaYW+2vzZcvTDlivLP1grpllX8=",
 			"path": "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "pOKjQXMj2+nk/qwK/+VdmDL/m30=",
+			"checksumSHA1": "HGQt3EbflEQ7L0naFlqfJJ+soio=",
 			"path": "k8s.io/apimachinery/pkg/apis/meta/v1alpha1",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "2iTT2DXAFUnik1BJUeFuzLDIqeI=",
+			"checksumSHA1": "NlwUHr59gJrUDk6Cz/xF3vfHoBE=",
 			"path": "k8s.io/apimachinery/pkg/conversion",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "8xRKmT7vCN0n3zmFeo/o8SMpHG8=",
+			"checksumSHA1": "GA82FBmiCzVIXGUnTZtz5z5Er0s=",
 			"path": "k8s.io/apimachinery/pkg/conversion/queryparams",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "hZmjOAfW+yi+YX2ejwANwIYVkFQ=",
-			"path": "k8s.io/apimachinery/pkg/conversion/unstructured",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
-		},
-		{
-			"checksumSHA1": "ivd39gfTr2eGwIgh7KWsJZ/vrFY=",
+			"checksumSHA1": "JKIs3haOjRLmpL0UDXfaz7QX7Sk=",
 			"path": "k8s.io/apimachinery/pkg/fields",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "ZA8z/BoGqqLFWVsFh8lQRSwBwKs=",
+			"checksumSHA1": "g6VZCm2Y/70qwiuFkxR3F7CRI1s=",
 			"path": "k8s.io/apimachinery/pkg/labels",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "oVB14cWbKwYxHGUteqnDFCubFro=",
+			"checksumSHA1": "wxUrrPVNH/CZbSSN3qHfK/fjubk=",
 			"path": "k8s.io/apimachinery/pkg/runtime",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "Msz2iUhSsVWrCmXCrB1GufEradA=",
+			"checksumSHA1": "EJDYvs83u4rIUq/426FcA0ecgc4=",
 			"path": "k8s.io/apimachinery/pkg/runtime/schema",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "mrgedPZ710STmNQtqbE4dQXhf0A=",
+			"checksumSHA1": "cQTG5Vn/GcjPxQaMFHonSbN3w1M=",
 			"path": "k8s.io/apimachinery/pkg/runtime/serializer",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "WUwBgP3WYaXwRmKABn15BAaAOtM=",
+			"checksumSHA1": "OEoPoGrZxp8SfaOu6jb1cv5Bu2I=",
 			"path": "k8s.io/apimachinery/pkg/runtime/serializer/json",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "mUJqYVjcj3pWOGbhp5NN3u9v9fk=",
+			"checksumSHA1": "qNfaSnYQAGJUIDM9SqI8UoFJLns=",
 			"path": "k8s.io/apimachinery/pkg/runtime/serializer/protobuf",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "erNv9/VzdPpZhnR1VhEMiIC2e78=",
+			"checksumSHA1": "Ybpu6Yt4iipOUy9Jta4+6uADBYo=",
 			"path": "k8s.io/apimachinery/pkg/runtime/serializer/recognizer",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "x3mYikBU17/RYM2Mvo9exDbJvgM=",
+			"checksumSHA1": "L19ONy132+XupD1bHMCM5C/GVBs=",
 			"path": "k8s.io/apimachinery/pkg/runtime/serializer/streaming",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "hoynyQc2QgtupT/JVpui9w0Xseo=",
+			"checksumSHA1": "xUZ54e4b9l/EQch7FgnR4Zevjr8=",
 			"path": "k8s.io/apimachinery/pkg/runtime/serializer/versioning",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "Zhyc+m5yqgl7/2KbJ7cPxqVJIUo=",
+			"checksumSHA1": "jjMq79D66L64Ku50azu5VuL6J+I=",
 			"path": "k8s.io/apimachinery/pkg/selection",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "kVi3kos7VIL5ozDiAhdzS1Tj2Ok=",
+			"checksumSHA1": "bw1ACevKtvhp8qmK/V3A7+JkpAM=",
 			"path": "k8s.io/apimachinery/pkg/types",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "ZafNsuBNEOinRgqaCFmTnhHm2gQ=",
+			"checksumSHA1": "YvU2GUVsxTFzfVus4NyHU885cJU=",
 			"path": "k8s.io/apimachinery/pkg/util/cache",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "2g3yhAcIQkh5Ew7/jiBIq4qNvJE=",
+			"checksumSHA1": "dK8PziypGU+TNZJ+PHljZTSpsps=",
 			"path": "k8s.io/apimachinery/pkg/util/clock",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "AvEuZOtS3h2qiFtKHDfBLmbp4ak=",
+			"checksumSHA1": "5eGDfwJaAMQwA+1ljois9Vs0BDc=",
 			"path": "k8s.io/apimachinery/pkg/util/diff",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "Y8eknNMxlkQATtfsuR0Ri2SNMxk=",
+			"checksumSHA1": "Jd2ZDrgkxdr7R9XohVdZmOWihbw=",
 			"path": "k8s.io/apimachinery/pkg/util/errors",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "+S1GDlp2L9Pcr5SZeQHuqPsBdR8=",
+			"checksumSHA1": "HSGH6DTZjpFn0nW6BCLbQE+fk6k=",
 			"path": "k8s.io/apimachinery/pkg/util/framer",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "ieO7YmZYJWIoMdp50TsezwaJ8EE=",
+			"checksumSHA1": "/xEOrORVsRkE531SPUGDjb8P01U=",
 			"path": "k8s.io/apimachinery/pkg/util/intstr",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "vdM0nkNeoPRqRA8HhPTyLfaZnl8=",
+			"checksumSHA1": "osSiPaBtsvLPzh73uGFIRtIdTds=",
 			"path": "k8s.io/apimachinery/pkg/util/json",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "b+x7Q6PPR0YM+KBWyZvjtvGHDFo=",
+			"checksumSHA1": "kxdjwhRnxHHLBBqfgasjlSSsubM=",
 			"path": "k8s.io/apimachinery/pkg/util/net",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "vAQvCm3B23He0Xr/PsgGra6WI04=",
+			"checksumSHA1": "geDTFhVkWXa5MnhuJ/AAYLGgq3I=",
 			"path": "k8s.io/apimachinery/pkg/util/runtime",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
 			"checksumSHA1": "2p066REe+o1932lveLsySRedt9E=",
 			"path": "k8s.io/apimachinery/pkg/util/sets",
-			"revision": "18a564baac720819100827c16fdebcadb05b2d0d",
-			"revisionTime": "2017-10-26T18:46:55Z"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "CLTr3JJ2TyTLx6kgymR6sAGByNc=",
+			"checksumSHA1": "k60MqyoSBev3Ybs/G297aRv8uA0=",
 			"path": "k8s.io/apimachinery/pkg/util/validation",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "0S4GN8R/Kjw6MVC+AGxU80Shhaw=",
+			"checksumSHA1": "QmUaaalnjN+2cYMB5Ycf4ia93C0=",
 			"path": "k8s.io/apimachinery/pkg/util/validation/field",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "TlA/BgEs7f2xrwpNNeeK2XUMr8s=",
+			"checksumSHA1": "YudUrts7DUXaHq+Y1euWfIuOwBg=",
 			"path": "k8s.io/apimachinery/pkg/util/wait",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "WUq0jg0XjjFhCZ9eLUu/5vYfVKs=",
+			"checksumSHA1": "yTo2L0dSdCN1Dr6c3IQ5hh70nEg=",
 			"path": "k8s.io/apimachinery/pkg/util/yaml",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "k5DPetW5s/SNSAfcesWAf47z0/Y=",
+			"checksumSHA1": "EuqAkTwZIcIu01GoQXO/agISKCY=",
 			"path": "k8s.io/apimachinery/pkg/version",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "ipI6jIk9AIBdV4OQHSGiD16e5gc=",
+			"checksumSHA1": "/Xtnh6PmypLLOKSGnANh9A/Yvxc=",
 			"path": "k8s.io/apimachinery/pkg/watch",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "6fYMMjAbff1bWCfLo1gklASPnEY=",
+			"checksumSHA1": "s35dSpFQP7xMIF/+fEFgJSD0h4o=",
 			"path": "k8s.io/apimachinery/third_party/forked/golang/reflect",
-			"revision": "019ae5ada31de202164b118aee88ee2d14075c31",
-			"revisionTime": "2017-09-25T23:41:55Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "dfHOK/hJlXu8tJFvAliihfJHbzo=",
+			"checksumSHA1": "+/OlhPU3eeYgFgG/pKCYAhx3JmU=",
 			"path": "k8s.io/client-go/discovery",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "qGQ+CfrK4MTEqYBpsp/y5/yQiTk=",
+			"checksumSHA1": "BJ8Mh5RvQGuGq99b/i+8eICr5mQ=",
 			"path": "k8s.io/client-go/kubernetes",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "EMxwRIuw9wu3BNGUW85GVn8xU8s=",
+			"checksumSHA1": "ypXh4YVMXip3NeQ3iSDzYK4W5M4=",
 			"path": "k8s.io/client-go/kubernetes/scheme",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "mhtuHNJrHCrtqqrwoMR9hH67/II=",
+			"checksumSHA1": "dEtFyiIQAH+XDJ4ibnJW96f8tAY=",
 			"path": "k8s.io/client-go/kubernetes/typed/admissionregistration/v1alpha1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "gdKgptqLALzNfOFjceTdjXJ24kY=",
+			"checksumSHA1": "fIe7FS8POu6nJH4FHRvIPV9NTwM=",
+			"path": "k8s.io/client-go/kubernetes/typed/admissionregistration/v1beta1",
+			"revision": "kubernetes-1.9.1",
+			"version": "kubernetes-1.9.1"
+		},
+		{
+			"checksumSHA1": "CtgvOD1sTtpl3zxY0eB0449JjDw=",
+			"path": "k8s.io/client-go/kubernetes/typed/apps/v1",
+			"revision": "kubernetes-1.9.1",
+			"version": "kubernetes-1.9.1"
+		},
+		{
+			"checksumSHA1": "Gzotvw3zJjPZvFjyFOycZA1IlPQ=",
 			"path": "k8s.io/client-go/kubernetes/typed/apps/v1beta1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "mSj5pfW6OdRPfsHKxHFJ5z5poXo=",
+			"checksumSHA1": "CZmkKfR6q38rRKI+x8AZgsuImS4=",
 			"path": "k8s.io/client-go/kubernetes/typed/apps/v1beta2",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "j6VYGudswzXnWwpz2yBfjKNDMrg=",
+			"checksumSHA1": "QBnfSzGPfDf+wuVOyyxq/dOmVIs=",
 			"path": "k8s.io/client-go/kubernetes/typed/authentication/v1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "QPr86EfL0ws+SJBkW5WRBerX3DE=",
+			"checksumSHA1": "9OxX2PIiH/1Lj+LX4IW303g+vB0=",
 			"path": "k8s.io/client-go/kubernetes/typed/authentication/v1beta1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "cev2V5fkVsUA7KJvOVjk94gwcdU=",
+			"checksumSHA1": "GMrH5mGCg1zpZnNv/KViAKMMQO4=",
 			"path": "k8s.io/client-go/kubernetes/typed/authorization/v1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "QA81Vl8fbcq1LWCmvA+fiK+Dyw4=",
+			"checksumSHA1": "p5KMvN55F0lVbcsESIde6UEPv78=",
 			"path": "k8s.io/client-go/kubernetes/typed/authorization/v1beta1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "EBu4/Uzr9NNSw+Ho+TYlm1YkNqs=",
+			"checksumSHA1": "ZXhw5ThUFmJT/9EzNGjzUSMO+x4=",
 			"path": "k8s.io/client-go/kubernetes/typed/autoscaling/v1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "AiJHKTHpXleum6qHT2PCZjlJLNg=",
+			"checksumSHA1": "uqNVFIineEyLtbu6/dFNIRh//68=",
 			"path": "k8s.io/client-go/kubernetes/typed/autoscaling/v2beta1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "WZOGzYSFDyBrmkZKwTHN9KdowWE=",
+			"checksumSHA1": "6uQbhWiXM5UMsPJ63qjpbhQsYl4=",
 			"path": "k8s.io/client-go/kubernetes/typed/batch/v1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "66Gir1O3iDwIoqCF2rUDV9jbpFg=",
+			"checksumSHA1": "wanM+RJNoyY9sdJPpxsrBFrQgPg=",
 			"path": "k8s.io/client-go/kubernetes/typed/batch/v1beta1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "s7LB4h+pUrA33GPiDacPMAV5IBM=",
+			"checksumSHA1": "ajpdQoEK4+USWVX98A/lQdDmGfc=",
 			"path": "k8s.io/client-go/kubernetes/typed/batch/v2alpha1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "9cdAvM+MLV8Exl6RruCM4AHYvjk=",
+			"checksumSHA1": "JFLbbkktoB4kzlH/Uc9q7qHf4AU=",
 			"path": "k8s.io/client-go/kubernetes/typed/certificates/v1beta1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "xydTZdWtn+Io7D4zJpU29/M1Orw=",
+			"checksumSHA1": "hDeufZhApccOBw8mTrR0VhuJXmA=",
 			"path": "k8s.io/client-go/kubernetes/typed/core/v1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "oc9pPbcCYVhMTf5/y6QoG/4qPMM=",
+			"checksumSHA1": "d59wh83ffWyrkgJ9LHTkP1f+4Ss=",
+			"path": "k8s.io/client-go/kubernetes/typed/events/v1beta1",
+			"revision": "kubernetes-1.9.1",
+			"version": "kubernetes-1.9.1"
+		},
+		{
+			"checksumSHA1": "emfFVWb+1Z5d1YSwWlU+hedysI8=",
 			"path": "k8s.io/client-go/kubernetes/typed/extensions/v1beta1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "qwSRx6afHdfYRZUMxB7ju8vku0s=",
+			"checksumSHA1": "4VNFHNB74lG5IBuRtV2Ff+ViMeg=",
 			"path": "k8s.io/client-go/kubernetes/typed/networking/v1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "qTv/KtvGoXaE+vxxj74nk6ncMeU=",
+			"checksumSHA1": "w+iSBIP4Er3r1buFWRVFwWVx564=",
 			"path": "k8s.io/client-go/kubernetes/typed/policy/v1beta1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "tQoW5rHAvK64gxfwrjuIHsQkSuk=",
+			"checksumSHA1": "NLQ6tEJlhBk+3dalNqsAYcAA8Fw=",
 			"path": "k8s.io/client-go/kubernetes/typed/rbac/v1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "+6VVDzrl/7hNMEu4r3iCbqce67c=",
+			"checksumSHA1": "zQY0Tlri6yWH9DG1B/dkSSynRkY=",
 			"path": "k8s.io/client-go/kubernetes/typed/rbac/v1alpha1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "j2IFGZAIVYTgP+AvM18gaMpCakY=",
+			"checksumSHA1": "lU4Ap5jhi2TuCJvQwqexXWm8kao=",
 			"path": "k8s.io/client-go/kubernetes/typed/rbac/v1beta1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "ZoI6jXglGvTb8sbSoCpqGkKr98s=",
+			"checksumSHA1": "md0ACb+m+FwPzDYGfzDCuTpeCH4=",
 			"path": "k8s.io/client-go/kubernetes/typed/scheduling/v1alpha1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "sTqHPPDUuzDgVRjv1+iPph57MtQ=",
+			"checksumSHA1": "0A8kdXwyuvWKT28+q86cj52SUpY=",
 			"path": "k8s.io/client-go/kubernetes/typed/settings/v1alpha1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "5qwbQYmPiRuNCGBlDUQlyFDLFkg=",
+			"checksumSHA1": "5CBaIeoDIVoPjMJQ6vQf0QqTVIE=",
 			"path": "k8s.io/client-go/kubernetes/typed/storage/v1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "eBG4G/5XidbBf5/qJkG+z9kKfII=",
+			"checksumSHA1": "OJQAS5sxE8OGOLqCNZJ9O5+iSgk=",
+			"path": "k8s.io/client-go/kubernetes/typed/storage/v1alpha1",
+			"revision": "kubernetes-1.9.1",
+			"version": "kubernetes-1.9.1"
+		},
+		{
+			"checksumSHA1": "qAsD419LG05bovFs5yaGXamMJYQ=",
 			"path": "k8s.io/client-go/kubernetes/typed/storage/v1beta1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "h1ziEBKAFJ4cRXd9g4hcEmhjsPQ=",
+			"checksumSHA1": "H25gc1/2dHqA07N8Gx9Uu2QcUGs=",
 			"path": "k8s.io/client-go/pkg/version",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "tS1uuA038pSJp6VsBboujLzW3eI=",
+			"checksumSHA1": "BkmmLif+XhptSdlPw1iZggA7MWc=",
 			"path": "k8s.io/client-go/rest",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "lhEw27AccBxkgBR7xFKFy5Gq2vc=",
+			"checksumSHA1": "M0FDUGLtrZ2OMNA34i/CKv8fTrE=",
 			"path": "k8s.io/client-go/rest/watch",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "gc2fJMsET0ZYX+WuEIMJrlihWH4=",
+			"checksumSHA1": "eO/OiNf5UgU+dQk7IK93EG/Uo6c=",
 			"path": "k8s.io/client-go/tools/auth",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "Mn+hrNfeUzFt3kF6c4WR9sr0tLs=",
+			"checksumSHA1": "0Sn5oCkDK6pq3jEjv3ZKDm4T1EU=",
 			"path": "k8s.io/client-go/tools/cache",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "WbzlQVv0GiM4eG9tCqCRd0GxtpI=",
+			"checksumSHA1": "80dIwT+I3Qw7Li2vX39zE/NTj9c=",
 			"path": "k8s.io/client-go/tools/clientcmd",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "Z3VsN/loY2PvJj5Lr7sb/jTCLLU=",
+			"checksumSHA1": "XoImwHZnv8io5NJjJgc5/XsRHb8=",
 			"path": "k8s.io/client-go/tools/clientcmd/api",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "9Wlfp4lj3dke8If8fdbD9JRF1xA=",
+			"checksumSHA1": "jr8SKI2j7OUkR64nylGgi8u2P+A=",
 			"path": "k8s.io/client-go/tools/clientcmd/api/latest",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "2ciO1G3y0MgMEgNa3LhQ/SIMxjQ=",
+			"checksumSHA1": "+QM3HGNtcWLbL/KV/XbTNXc48kI=",
 			"path": "k8s.io/client-go/tools/clientcmd/api/v1",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "fFJHFs7O/tbJdfAob6OlMu1dzfU=",
+			"checksumSHA1": "GxtcTCanDg8Sw2TZJp17QvAz/F8=",
 			"path": "k8s.io/client-go/tools/metrics",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "anyR30xPqZyIXFyS1IAZ7LTPih8=",
+			"checksumSHA1": "rnBwQRoq4jn1hLHAvUjYp5DAx6w=",
 			"path": "k8s.io/client-go/tools/pager",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "/OmdOm7If5oWsdFiaBmmTHGsVo8=",
+			"checksumSHA1": "ovCbP7mHGNp8MHFSQimIOrQ+dIU=",
 			"path": "k8s.io/client-go/tools/reference",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "r03GEHlqxA+H1XYI2Ia1kUAPbjY=",
+			"checksumSHA1": "ovP8dqDsXe94Zz+g/JW9n+nDQhQ=",
 			"path": "k8s.io/client-go/transport",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "GqbFQLyPkSn5bGGr4dXTpUt42kk=",
+			"checksumSHA1": "9EaXp3l/D7mx12PK9mILsZs1jGE=",
+			"path": "k8s.io/client-go/util/buffer",
+			"revision": "kubernetes-1.9.1",
+			"version": "kubernetes-1.9.1"
+		},
+		{
+			"checksumSHA1": "2yokbokTrzhLqCtYPvxjcGmXuLw=",
 			"path": "k8s.io/client-go/util/cert",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "HqPdEvRNHVz9lzLiM5AD2bPYNKk=",
+			"checksumSHA1": "MYbpCIl6JA5p1QplR2vZhg5cSs8=",
 			"path": "k8s.io/client-go/util/flowcontrol",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "JHqy7DdWoSJx//oqEyYXLQHEzrY=",
+			"checksumSHA1": "PEK+ZmfZjB5eunb7QPMU125Bvms=",
 			"path": "k8s.io/client-go/util/homedir",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
-			"checksumSHA1": "L8GTMw2mqnaFT48eShpaTniKN6M=",
+			"checksumSHA1": "sbSkAg+ubomXBwCmTysDmYcD9ag=",
 			"path": "k8s.io/client-go/util/integer",
-			"revision": "35ccd4336052e7d73018b1382413534936f34eee",
-			"revisionTime": "2017-10-24T19:37:22Z",
-			"version": "kubernetes-1.8.2",
-			"versionExact": "kubernetes-1.8.2"
+			"revision": "9389c055a838d4f208b699b3c7c51b70f2368861",
+			"revisionTime": "2018-01-03T00:02:50Z",
+			"version": "kubernetes-1.9.1",
+			"versionExact": "kubernetes-1.9.1"
 		},
 		{
 			"checksumSHA1": "/zjulDhlMogVSOhPGM9UlDWyFuo=",
