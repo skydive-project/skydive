@@ -221,6 +221,10 @@ func TestK8sStatefulSetNode(t *testing.T) {
 	testNodeCreationFromConfig(t, "statefulset", objName+"-statefulset")
 }
 
+func TestK8sStorageClassNode(t *testing.T) {
+	testNodeCreationFromConfig(t, "storageclass", objName+"-storageclass")
+}
+
 /* -- test multi-node scenarios -- */
 func TestHelloNodeScenario(t *testing.T) {
 	testRunner(
