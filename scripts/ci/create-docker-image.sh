@@ -20,27 +20,31 @@ VERSION=${TAG//[a-z]/}
 
 [ -n "$VERSION" ] && DOCKER_TAG=$VERSION || DOCKER_TAG=latest
 
-for arch in $ARCHES
-do
-  case $arch in
-    amd64)
-      # x86_64 image
-      make docker-build DOCKER_IMAGE=${DOCKER_IMAGE} DOCKER_TAG=amd64-${DOCKER_TAG}
-      ;;
-    ppc64le)
-      make docker-cross-build TARGET_ARCH=powerpc64le TARGET_GOARCH=ppc64le DEBARCH=ppc64el DOCKER_IMAGE=${DOCKER_IMAGE} BASE=ppc64le/centos DOCKER_TAG=$arch-${DOCKER_TAG}
-      ;;
-    arm64)
-      make docker-cross-build TARGET_ARCH=aarch64 TARGET_GOARCH=arm64 DOCKER_IMAGE=${DOCKER_IMAGE} BASE=aarch64/alpine DOCKER_TAG=$arch-${DOCKER_TAG}
-      ;;
-    s390x)
-      make docker-cross-build TARGET_ARCH=s390x TARGET_GOARCH=s390x DOCKER_IMAGE=${DOCKER_IMAGE} BASE=s390x/clefos DOCKER_TAG=$arch-${DOCKER_TAG}
-      ;;
-    *)
-      make docker-cross-build TARGET_ARCH=$arch TARGET_GOARCH=$arch DOCKER_IMAGE=${DOCKER_IMAGE} BASE=scratch DOCKER_TAG=$arch-${DOCKER_TAG}
-      ;;
-  esac
-done
+if [ -n "$PUSH_RUN" ]; then
+    echo "Running in push run mode. Skipping build."
+else
+    for arch in $ARCHES
+    do
+        case $arch in
+          amd64)
+            # x86_64 image
+            make docker-build DOCKER_IMAGE=${DOCKER_IMAGE} DOCKER_TAG=amd64-${DOCKER_TAG}
+            ;;
+          ppc64le)
+            make docker-cross-build TARGET_ARCH=powerpc64le TARGET_GOARCH=ppc64le DEBARCH=ppc64el DOCKER_IMAGE=${DOCKER_IMAGE} BASE=ppc64le/centos DOCKER_TAG=$arch-${DOCKER_TAG}
+            ;;
+          arm64)
+            make docker-cross-build TARGET_ARCH=aarch64 TARGET_GOARCH=arm64 DOCKER_IMAGE=${DOCKER_IMAGE} BASE=aarch64/alpine DOCKER_TAG=$arch-${DOCKER_TAG}
+            ;;
+          s390x)
+            make docker-cross-build TARGET_ARCH=s390x TARGET_GOARCH=s390x DOCKER_IMAGE=${DOCKER_IMAGE} BASE=s390x/clefos DOCKER_TAG=$arch-${DOCKER_TAG}
+            ;;
+          *)
+            make docker-cross-build TARGET_ARCH=$arch TARGET_GOARCH=$arch DOCKER_IMAGE=${DOCKER_IMAGE} BASE=scratch DOCKER_TAG=$arch-${DOCKER_TAG}
+            ;;
+        esac
+    done
+fi
 
 if [ -n "$DRY_RUN" ]; then
     echo "Running in dry run mode. Exiting."
