@@ -45,6 +45,7 @@ type namespaceProbe struct {
 
 func newObjectIndexer(g *graph.Graph) *graph.MetadataIndexer {
 	ownedByNamespaceFilter := filters.NewOrFilter(
+		filters.NewTermStringFilter("Type", "cronjob"),
 		filters.NewTermStringFilter("Type", "deployment"),
 		filters.NewTermStringFilter("Type", "daemonset"),
 		filters.NewTermStringFilter("Type", "ingress"),
