@@ -165,6 +165,7 @@ type Test struct {
 	tearDownFunction func(c *TestContext) error
 	captures         []TestCapture
 	injections       []TestInjection
+	preCleanup       bool
 	retries          int
 	mode             int
 	checks           []CheckFunction
@@ -273,6 +274,9 @@ func RunTest(t *testing.T, test *Test) {
 	}
 
 	t.Log("Executing setup commands")
+	if test.preCleanup {
+		helper.ExecCmds(t, test.tearDownCmds...)
+	}
 	helper.ExecCmds(t, test.setupCmds...)
 
 	context := &TestContext{
@@ -347,6 +351,9 @@ func RunTest(t *testing.T, test *Test) {
 	context.setupTime = time.Now()
 
 	t.Log("Executing setup function")
+	if test.preCleanup && test.tearDownFunction != nil {
+		test.tearDownFunction(context)
+	}
 	if test.setupFunction != nil {
 		if err = test.setupFunction(context); err != nil {
 			g := context.getWholeGraph(t, context.setupTime)
