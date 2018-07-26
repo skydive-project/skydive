@@ -11,7 +11,7 @@
     "qs": "^6.2.0",
     "typescript": "^2.7.1",
     "vue-form-generator": "^2.2.2",
-    "vue-json-schema": "^1.1.0"
+    "@formschema/native": "^1.1.0"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
