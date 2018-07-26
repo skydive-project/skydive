@@ -91,10 +91,10 @@ func TestPacketInjector(t *testing.T) {
 			{gremlin: g.G.V().Has("Name", "pi-eth-src").ShortestPathTo(g.Metadata("Name", "pi-eth-dst"), g.Metadata("RelationType", "layer2"))},
 		},
 
+		mode: Replay,
+
 		checks: []CheckFunction{func(c *CheckContext) error {
-			gremlin := g.G
-			gremlin = gremlin.Context(c.time)
-			gremlin = gremlin.V().Flows().Has("Network.A", "169.254.33.73").Has("Network.B", "169.254.33.74").Dedup()
+			gremlin := c.gremlin.V().Flows().Has("Network.A", "169.254.33.73").Has("Network.B", "169.254.33.74").Dedup()
 
 			flows, err := c.gh.GetFlows(gremlin)
 			if err != nil {

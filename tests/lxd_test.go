@@ -28,7 +28,6 @@ import (
 	"runtime"
 	"testing"
 
-	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/tests/helper"
 )
 
@@ -52,15 +51,13 @@ func TestLxdSimple(t *testing.T) {
 			{"lxc delete --force test-skydive-lxd-simple", false},
 		},
 
-		checks: []CheckFunction{func(c *CheckContext) error {
-			gh := c.gh
-			gremlin := g.G
-			gremlin = gremlin.Context(c.time)
+		mode: Replay,
 
-			gremlin = gremlin.V().Has("Type", "netns", "Manager", "lxd")
+		checks: []CheckFunction{func(c *CheckContext) error {
+			gremlin := c.gremlin.V().Has("Type", "netns", "Manager", "lxd")
 			gremlin = gremlin.Out("Type", "container", "Name", "test-skydive-lxd-simple")
 
-			nodes, err := gh.GetNodes(gremlin)
+			nodes, err := c.gh.GetNodes(gremlin)
 			if err != nil {
 				return err
 			}

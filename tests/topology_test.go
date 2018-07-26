@@ -52,12 +52,11 @@ func TestBridgeOVS(t *testing.T) {
 			{"ovs-vsctl del-br br-testbovs1", true},
 		},
 
+		mode: Replay,
+
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			gremlin := g.G
-			gremlin = gremlin.Context(c.time)
-
-			gremlin = gremlin.V().Has("Type", "ovsbridge", "Name", "br-testbovs1")
+			gremlin := c.gremlin.V().Has("Type", "ovsbridge", "Name", "br-testbovs1")
 			gremlin = gremlin.Out("Type", "ovsport", "Name", "br-testbovs1")
 			gremlin = gremlin.Out("Type", "internal", "Name", "br-testbovs1", "Driver", "openvswitch")
 
@@ -97,12 +96,11 @@ func TestPatchOVS(t *testing.T) {
 			{"ovs-vsctl del-br br-testpaovs2", true},
 		},
 
+		mode: Replay,
+
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			gremlin := g.G
-			gremlin = gremlin.Context(c.time)
-
-			gremlin = gremlin.V().Has("Type", "patch", "Name", "patch-br-testpaovs1", "Driver", "openvswitch")
+			gremlin := c.gremlin.V().Has("Type", "patch", "Name", "patch-br-testpaovs1", "Driver", "openvswitch")
 			gremlin = gremlin.Both("Type", "patch", "Name", "patch-br-testpaovs2", "Driver", "openvswitch")
 
 			nodes, err := gh.GetNodes(gremlin)
@@ -142,10 +140,11 @@ func TestInterfaceOVS(t *testing.T) {
 			{"ovs-vsctl del-br br-test1", true},
 		},
 
+		mode: Replay,
+
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			prefix := g.G
-			prefix = prefix.Context(c.time)
+			prefix := c.gremlin
 			gremlin := prefix.V().Has("Type", "internal", "Name", "intf1", "Driver", "openvswitch").HasKey("UUID").HasKey("MAC")
 			nodes, err := gh.GetNodes(gremlin)
 			if err != nil {
@@ -183,10 +182,11 @@ func TestVeth(t *testing.T) {
 			{"ip link del vm1-veth0", true},
 		},
 
+		mode: Replay,
+
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			prefix := g.G
-			prefix = prefix.Context(c.time)
+			prefix := c.gremlin
 
 			nodes, err := gh.GetNodes(prefix.V().Has("Type", "veth", "Name", "vm1-veth0").Both("Type", "veth", "Name", "vm1-veth1"))
 			if err != nil {
@@ -215,10 +215,11 @@ func TestBridge(t *testing.T) {
 			{"ip link del intf1", true},
 		},
 
+		mode: Replay,
+
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			prefix := g.G
-			prefix = prefix.Context(c.time)
+			prefix := c.gremlin
 
 			nodes, err := gh.GetNodes(prefix.V().Has("Type", "bridge", "Name", "br-test").Out("Name", "intf1"))
 			if err != nil {
@@ -248,11 +249,11 @@ func TestMacNameUpdate(t *testing.T) {
 			{"ip link del vm1-veth0", true},
 		},
 
+		mode: Replay,
+
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-
-			prefix := g.G
-			prefix = prefix.Context(c.time)
+			prefix := c.gremlin
 
 			newNodes, err := gh.GetNodes(prefix.V().Has("Name", "vm1-veth2", "MAC", "00:00:00:00:00:aa"))
 			if err != nil {
@@ -285,11 +286,11 @@ func TestNameSpace(t *testing.T) {
 			{"ip netns del ns1", true},
 		},
 
+		mode: Replay,
+
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-
-			prefix := g.G
-			prefix = prefix.Context(c.time)
+			prefix := c.gremlin
 
 			nodes, err := gh.GetNodes(prefix.V().Has("Name", "ns1", "Type", "netns"))
 			if err != nil {
@@ -319,10 +320,11 @@ func TestNameSpaceVeth(t *testing.T) {
 			{"ip netns del ns1", true},
 		},
 
+		mode: Replay,
+
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			prefix := g.G
-			prefix = prefix.Context(c.time)
+			prefix := c.gremlin
 
 			nodes, err := gh.GetNodes(prefix.V().Has("Name", "ns1", "Type", "netns").Out("Name", "vm1-veth1", "Type", "veth"))
 			if err != nil {
@@ -354,10 +356,11 @@ func TestNameSpaceOVSInterface(t *testing.T) {
 			{"ip netns del ns1", true},
 		},
 
+		mode: Replay,
+
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			prefix := g.G
-			prefix = prefix.Context(c.time)
+			prefix := c.gremlin
 
 			nodes, err := gh.GetNodes(prefix.V().Has("Name", "ns1", "Type", "netns").Out("Name", "intf1", "Type", "internal"))
 			if err != nil {
@@ -388,7 +391,6 @@ func TestInterfaceUpdate(t *testing.T) {
 	start := time.Now()
 
 	test := &Test{
-		mode: OneShot,
 		setupCmds: []helper.Cmd{
 			{"ip netns add iu", true},
 			{"sleep 5", false},
@@ -399,11 +401,12 @@ func TestInterfaceUpdate(t *testing.T) {
 			{"ip netns del iu", true},
 		},
 
+		mode: OneShot,
+
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-
 			now := time.Now()
-			gremlin := g.G.Context("NOW", int(now.Sub(start).Seconds()))
+			gremlin := c.gremlin.Context("NOW", int(now.Sub(start).Seconds()))
 			gremlin = gremlin.V().Has("Name", "iu", "Type", "netns").Out().Has("Name", "lo")
 
 			nodes, err := gh.GetNodes(gremlin)
@@ -439,7 +442,6 @@ func TestInterfaceUpdate(t *testing.T) {
 
 func TestInterfaceMetrics(t *testing.T) {
 	test := &Test{
-		mode: OneShot,
 		setupCmds: []helper.Cmd{
 			{"ip netns add im", true},
 			{"ip netns exec im ip link set lo up", true},
@@ -458,10 +460,11 @@ func TestInterfaceMetrics(t *testing.T) {
 			{"ip netns del im", true},
 		},
 
+		mode: OneShot,
+
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-
-			gremlin := g.G.Context(c.startTime, c.startTime.Unix()-c.setupTime.Unix()+5)
+			gremlin := c.gremlin.Context(c.startTime, c.startTime.Unix()-c.setupTime.Unix()+5)
 			gremlin = gremlin.V().Has("Name", "im", "Type", "netns").Out().Has("Name", "lo").Metrics().Aggregates(10)
 
 			metrics, err := gh.GetMetrics(gremlin)
@@ -529,10 +532,11 @@ func TestOVSOwnershipLink(t *testing.T) {
 			{"ovs-vsctl del-br br-owner", true},
 		},
 
+		mode: Replay,
+
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			prefix := g.G
-			prefix = prefix.Context(c.time)
+			prefix := c.gremlin
 
 			intfs := []string{"patch-br-owner", "gre-br-owner", "vxlan-br-owner", "geneve-br-owner"}
 			for _, intf := range intfs {
@@ -639,11 +643,11 @@ func TestQueryMetadata(t *testing.T) {
 			return nil
 		},
 
+		mode: Replay,
+
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-
-			prefix := g.G
-			prefix = prefix.Context(c.time)
+			prefix := c.gremlin
 
 			_, err := gh.GetNode(prefix.V().Has("A.F.G", 123))
 			if err != nil {
@@ -688,27 +692,21 @@ func TestUserMetadata(t *testing.T) {
 			{"ovs-vsctl del-br br-umd", true},
 		},
 
+		mode: Replay,
+
 		checks: []CheckFunction{
 			func(c *CheckContext) error {
-				prefix := g.G
-				prefix = prefix.Context(c.time)
-
-				_, err := c.gh.GetNode(prefix.V().Has("UserMetadata.testKey", "testValue"))
-				if err != nil {
+				if _, err := c.gh.GetNode(c.gremlin.V().Has("UserMetadata.testKey", "testValue")); err != nil {
 					return fmt.Errorf("Failed to find a node with UserMetadata.testKey metadata")
 				}
 
-				return err
+				return nil
 			},
 
 			func(c *CheckContext) error {
-				prefix := g.G
-				prefix = prefix.Context(c.time)
-
 				c.client.Delete("usermetadata", umd.ID())
 
-				node, err := c.gh.GetNode(prefix.V().Has("UserMetadata.testKey", "testValue"))
-				if err != common.ErrNotFound {
+				if node, err := c.gh.GetNode(c.gremlin.V().Has("UserMetadata.testKey", "testValue")); err != common.ErrNotFound {
 					return fmt.Errorf("Node %+v was found with metadata UserMetadata.testKey", node)
 				}
 
@@ -723,13 +721,11 @@ func TestUserMetadata(t *testing.T) {
 // TestAgentMetadata tests metadata set to the agent using the configuration file
 func TestAgentMetadata(t *testing.T) {
 	test := &Test{
+		mode: Replay,
+
 		checks: []CheckFunction{
 			func(c *CheckContext) error {
-				prefix := g.G
-				prefix = prefix.Context(c.time)
-
-				_, err := c.gh.GetNode(prefix.V().Has("mydict.value", 123))
-				if err != nil {
+				if _, err := c.gh.GetNode(c.gremlin.V().Has("mydict.value", 123)); err != nil {
 					return fmt.Errorf("Failed to find the host node with mydict.value metadata")
 				}
 
@@ -744,8 +740,6 @@ func TestAgentMetadata(t *testing.T) {
 //TestRouteTable tests route table update
 func TestRouteTable(t *testing.T) {
 	test := &Test{
-		mode: OneShot,
-
 		setupCmds: []helper.Cmd{
 			{"ovs-vsctl add-br br-rt", true},
 			{"ip netns add rt-vm1", true},
@@ -770,10 +764,11 @@ func TestRouteTable(t *testing.T) {
 			{"ip netns del rt-vm2", true},
 		},
 
+		mode: OneShot,
+
 		checks: []CheckFunction{
 			func(c *CheckContext) error {
-				prefix := g.G
-				prefix = prefix.Context(c.time)
+				prefix := c.gremlin
 
 				node, err := c.gh.GetNode(prefix.V().Has("IPV4", "124.65.91.42/24"))
 				if err != nil {
@@ -813,8 +808,6 @@ func TestRouteTable(t *testing.T) {
 //TestRouteTableHistory tests route table update available in history
 func TestRouteTableHistory(t *testing.T) {
 	test := &Test{
-		mode: OneShot,
-
 		setupCmds: []helper.Cmd{
 			{"ovs-vsctl add-br br-rth", true},
 			{"ip netns add rth-vm1", true},
@@ -840,6 +833,8 @@ func TestRouteTableHistory(t *testing.T) {
 			{"ip link del rth-vm2-eth0", true},
 			{"ip netns del rth-vm2", true},
 		},
+
+		mode: OneShot,
 
 		checks: []CheckFunction{
 			func(c *CheckContext) error {

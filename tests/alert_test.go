@@ -120,8 +120,6 @@ func TestAlertWebhook(t *testing.T) {
 	}
 
 	test := &Test{
-		mode: OneShot,
-
 		setupCmds: []helper.Cmd{
 			{"ip netns add alert-ns-webhook", true},
 		},
@@ -206,8 +204,6 @@ func TestAlertScript(t *testing.T) {
 	defer os.Remove(tmpfile.Name())
 
 	test := &Test{
-		mode: OneShot,
-
 		setupCmds: []helper.Cmd{
 			{"ip netns add alert-ns-script", true},
 		},
@@ -262,8 +258,8 @@ func TestAlertWithTimer(t *testing.T) {
 	)
 
 	test := &Test{
-		mode:    OneShot,
 		retries: 1,
+
 		setupCmds: []helper.Cmd{
 			{"ip netns add alert-ns-timer", true},
 		},
@@ -336,8 +332,6 @@ func TestMultipleTriggering(t *testing.T) {
 	)
 
 	test := &Test{
-		mode:    OneShot,
-		retries: 1,
 		setupCmds: []helper.Cmd{
 			{"ip netns add alert-lo-down", true},
 		},
@@ -367,6 +361,8 @@ func TestMultipleTriggering(t *testing.T) {
 			helper.WSClose(ws)
 			return c.client.Delete("alert", al.ID())
 		},
+
+		retries: 1,
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			alertNumber := 0

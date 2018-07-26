@@ -37,7 +37,6 @@ const (
 
 func TestHelmInstall(t *testing.T) {
 	test := &Test{
-		mode:    OneShot,
 		retries: 3,
 		setupCmds: []helper.Cmd{
 			{"helm delete --purge " + relName, false},
