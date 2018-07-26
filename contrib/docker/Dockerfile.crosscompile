@@ -45,12 +45,25 @@ RUN dpkg --add-architecture $DEBARCH \
                    libpcap0.8-dev:$DEBARCH \
                    linux-libc-dev:$DEBARCH
 
+RUN mkdir -p /root/go/bin && chmod a+wrx /root/go/bin
+
+RUN arch="$(dpkg --print-architecture)" \
+    && wget -O /gosu "https://github.com/tianon/gosu/releases/download/1.10/gosu-${arch##*-}" \
+    && chmod a+x /gosu
+
+ARG UID=1000
+ENV UID=$UID
+RUN chown -R $UID /root/
+
 WORKDIR /root/go/src/github.com/skydive-project/skydive
 
 ENV TARGET_ARCH=$TARGET_ARCH
 ENV TARGET_GOARCH=$TARGET_GOARCH
 
-CMD GOPATH=/root/go \
+CMD chown -R $UID /root/go/.cache/govendor \
+    && /gosu $UID env \
+    HOME=/root \
+    GOPATH=/root/go \
     PATH=/root/go/bin:$PATH \
     CGO_ENABLED=1 \
     CC=${TARGET_ARCH}-linux-gnu-gcc \
