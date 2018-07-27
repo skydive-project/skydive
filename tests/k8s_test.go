@@ -183,7 +183,7 @@ func TestK8sNamespaceNode(t *testing.T) {
 }
 
 func TestK8sDaemonSetNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "daemonset", objName+"-daemonset")
+	testNodeCreationFromConfig(t, "daemonset", objName+"-daemonset", "Labels", "DesiredNumberScheduled", "CurrentNumberScheduled", "NumberMisscheduled")
 }
 
 func TestK8sNetworkPolicyNode(t *testing.T) {

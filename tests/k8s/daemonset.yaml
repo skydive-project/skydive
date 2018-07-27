@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: skydive-test-daemonset
-  namespace: kube-system
   labels:
     k8s-app: skydive-test-daemonset-fluentd-logging
 spec:
