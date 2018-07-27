@@ -481,32 +481,32 @@ func TestFlowGremlin(t *testing.T) {
 				return errors.New("Node TID not Found")
 			}
 
-			flows, _ := gh.GetFlows(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", tid))
+			flows, _ := gh.GetFlows(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4", "NodeTID", tid))
 			if len(flows) == 0 {
 				return fmt.Errorf("Should return at least 1 flow, got: %v", flows)
 			}
 
-			flowsOpt, _ := gh.GetFlows(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", tid))
+			flowsOpt, _ := gh.GetFlows(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4", "NodeTID", tid))
 			if len(flowsOpt) != len(flows) {
 				return fmt.Errorf("Should return the same number of flows that without optimisation, got: %v", flowsOpt)
 			}
 
-			nodes, _ := gh.GetNodes(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", tid).Out())
+			nodes, _ := gh.GetNodes(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4", "NodeTID", tid).Out())
 			if len(nodes) != 0 {
 				return fmt.Errorf("Should return no destination node, got %d", len(nodes))
 			}
 
-			nodes, _ = gh.GetNodes(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", tid).Both().Dedup())
+			nodes, _ = gh.GetNodes(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4", "NodeTID", tid).Both().Dedup())
 			if len(nodes) != 1 {
 				return fmt.Errorf("Should return one node, got %d", len(nodes))
 			}
 
-			nodes, _ = gh.GetNodes(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", tid).In().Dedup())
+			nodes, _ = gh.GetNodes(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4", "NodeTID", tid).In().Dedup())
 			if len(nodes) != 1 {
 				return fmt.Errorf("Should return one source node, got %d", len(nodes))
 			}
 
-			gh.QueryObject(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", tid).Count(), &count)
+			gh.QueryObject(prefix.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4", "NodeTID", tid).Count(), &count)
 			if int(count) != len(flows) {
 				return fmt.Errorf("Gremlin count doesn't correspond to the number of flows, got: %v, expected: %v", len(flows), count)
 			}
@@ -1368,14 +1368,16 @@ func TestFlowVLANSegmentation(t *testing.T) {
 		}},
 
 		tearDownCmds: []helper.Cmd{
-			{"ip netns del vlan-vm1", true},
-			{"ip netns del vlan-vm2", true},
-			{"ovs-vsctl del-br br-vlan", true},
+			{"sudo ip link del vlan-vm1-eth0", true},
+			{"sudo ip link del vlan-vm2-eth0", true},
+			{"sudo ip netns del vlan-vm1", true},
+			{"sudo ip netns del vlan-vm2", true},
+			{"sudo ovs-vsctl del-br br-vlan", true},
 		},
 
 		captures: []TestCapture{
 			{gremlin: g.G.V().Has("Name", "vlan-vm1").Out().Has("Name", "vlan")},
-			{gremlin: g.G.V().Has("Name", "vlan-vm2-eth0")},
+			{gremlin: g.G.V().Has("Name", "vlan-vm2-eth0", "Type", "veth")},
 		},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
@@ -1586,28 +1588,28 @@ func TestFlowCaptureNodeStep(t *testing.T) {
 		setupCmds: []helper.Cmd{
 			{"ovs-vsctl add-br br-fcn", true},
 
-			{"ip netns add vm1", true},
-			{"ip link add vm1-eth0 type veth peer name intf1 netns vm1", true},
-			{"ip link set vm1-eth0 up", true},
-			{"ip netns exec vm1 ip link set intf1 up", true},
-			{"ip netns exec vm1 ip address add 169.254.38.33/24 dev intf1", true},
+			{"ip netns add cns-vm1", true},
+			{"ip link add cns-vm1-eth0 type veth peer name intf1 netns cns-vm1", true},
+			{"ip link set cns-vm1-eth0 up", true},
+			{"ip netns exec cns-vm1 ip link set intf1 up", true},
+			{"ip netns exec cns-vm1 ip address add 169.254.38.33/24 dev intf1", true},
 
-			{"ip netns add vm2", true},
-			{"ip link add vm2-eth0 type veth peer name intf2 netns vm2", true},
-			{"ip link set vm2-eth0 up", true},
-			{"ip netns exec vm2 ip link set intf2 up", true},
-			{"ip netns exec vm2 ip address add 169.254.38.34/24 dev intf2", true},
+			{"ip netns add cns-vm2", true},
+			{"ip link add cns-vm2-eth0 type veth peer name intf2 netns cns-vm2", true},
+			{"ip link set cns-vm2-eth0 up", true},
+			{"ip netns exec cns-vm2 ip link set intf2 up", true},
+			{"ip netns exec cns-vm2 ip address add 169.254.38.34/24 dev intf2", true},
 
-			{"ovs-vsctl add-port br-fcn vm1-eth0", true},
-			{"ovs-vsctl add-port br-fcn vm2-eth0", true},
+			{"ovs-vsctl add-port br-fcn cns-vm1-eth0", true},
+			{"ovs-vsctl add-port br-fcn cns-vm2-eth0", true},
 		},
 
 		tearDownCmds: []helper.Cmd{
 			{"ovs-vsctl del-br br-fcn", true},
-			{"ip link del vm1-eth0", true},
-			{"ip link del vm2-eth0", true},
-			{"ip netns del vm1", true},
-			{"ip netns del vm2", true},
+			{"ip link del cns-vm1-eth0", true},
+			{"ip link del cns-vm2-eth0", true},
+			{"ip netns del cns-vm1", true},
+			{"ip netns del cns-vm2", true},
 		},
 
 		captures: []TestCapture{

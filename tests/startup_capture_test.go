@@ -7,7 +7,6 @@ import (
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
 )
@@ -41,10 +40,7 @@ func TestStartupCapture(t *testing.T) {
 				return err
 			}
 
-			gremlin := config.GetString("analyzer.startup.capture_gremlin")
-			if gremlin == "" {
-				return fmt.Errorf("No startup capture is defined in config!")
-			}
+			gremlin := "g.V().Has('Name','startup-vm2')"
 			var capture *types.Capture
 			for _, tc := range captures {
 				if gremlin == tc.GremlinQuery {

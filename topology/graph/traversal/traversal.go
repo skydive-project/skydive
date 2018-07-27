@@ -521,10 +521,6 @@ func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
 		duration = s[1].(time.Duration)
 	}
 
-	if at.After(time.Now().UTC()) {
-		return &GraphTraversal{error: errors.New("Sorry, I can't predict the future")}
-	}
-
 	t.RLock()
 	defer t.RUnlock()
 

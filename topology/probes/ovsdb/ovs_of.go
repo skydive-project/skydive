@@ -297,6 +297,7 @@ func launchContinuousOnSwitch(ctx context.Context, cmd []string) (<-chan string,
 
 	go func() {
 		for ctx.Err() == nil {
+		retry:
 			out, err := executor.ExecCommandPipe(ctx, cmd[0], cmd[1:]...)
 			if err != nil {
 				logging.GetLogger().Errorf("Can't execute command %v", cmd)
@@ -312,6 +313,10 @@ func launchContinuousOnSwitch(ctx context.Context, cmd []string) (<-chan string,
 				} else if err != nil {
 					logging.GetLogger().Errorf("IO Error on command %v: %s", cmd, err.Error())
 				} else {
+					if strings.Contains(line, "is not a bridge or a socket") {
+						reader.Discard(int(^uint(0) >> 1))
+						goto retry
+					}
 					cout <- line
 				}
 			}

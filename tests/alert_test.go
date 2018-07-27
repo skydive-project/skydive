@@ -86,6 +86,11 @@ func TestAlertWebhook(t *testing.T) {
 
 	testPassed.Store(false)
 
+	agent1IP := os.Getenv("AGENT1_IP")
+	if agent1IP == "" {
+		agent1IP = "localhost"
+	}
+
 	ListenAndServe := func(addr string, port int) {
 		listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", addr, port))
 		if err != nil {
@@ -123,14 +128,14 @@ func TestAlertWebhook(t *testing.T) {
 
 		setupFunction: func(c *TestContext) error {
 			wg.Add(1)
-			ListenAndServe("localhost", 8080)
+			ListenAndServe(agent1IP, 8080)
 
 			alertLock.Lock()
 			defer alertLock.Unlock()
 
 			al = types.NewAlert()
 			al.Expression = "G.V().Has('Name', 'alert-ns-webhook', 'Type', 'netns')"
-			al.Action = "http://localhost:8080/"
+			al.Action = fmt.Sprintf("http://%s:8080/", agent1IP)
 
 			if err = c.client.Create("alert", al); err != nil {
 				return fmt.Errorf("Failed to create alert: %s", err.Error())
@@ -165,6 +170,10 @@ func TestAlertWebhook(t *testing.T) {
 }
 
 func TestAlertScript(t *testing.T) {
+	if helper.AgentTestsOnly {
+		t.Skip("this test works only when agent and analyzers are on the same host")
+	}
+
 	var (
 		err        error
 		al         *types.Alert
@@ -260,7 +269,7 @@ func TestAlertWithTimer(t *testing.T) {
 		},
 
 		setupFunction: func(c *TestContext) error {
-			ws, err = helper.WSConnect(config.GetString("analyzer.listen"), 5, nil)
+			ws, err = helper.WSConnect(config.GetStringSlice("analyzers")[0], 5, nil)
 			if err != nil {
 				return err
 			}
@@ -334,7 +343,7 @@ func TestMultipleTriggering(t *testing.T) {
 		},
 
 		setupFunction: func(c *TestContext) error {
-			ws, err = helper.WSConnect(config.GetString("analyzer.listen"), 5, nil)
+			ws, err = helper.WSConnect(config.GetStringSlice("analyzers")[0], 5, nil)
 			if err != nil {
 				return err
 			}

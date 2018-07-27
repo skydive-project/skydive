@@ -66,7 +66,7 @@ analyzer:
     backend: {{.TopologyBackend}}
     probes: {{block "list" .}}{{"\n"}}{{range .AnalyzerProbes}}{{println "    -" .}}{{end}}{{end}}
   startup:
-    capture_gremlin: "g.V().Has('Name', 'startup-vm2')"
+    capture_gremlin: "g.V().Has('Name','startup-vm2')"
 
 agent:
   listen: {{.AgentAddr}}:{{.AgentPort}}
@@ -179,6 +179,7 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 	case "ascii":
 		header := make(http.Header)
 		header.Set("Accept", "vnd.graphviz")
+
 		resp, err := c.gh.Request(gremlin, header)
 		if err != nil {
 			t.Error(err)
@@ -187,10 +188,16 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 
 		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
+			resp.Body.Close()
 			t.Error(err)
 			return ""
 		}
 		resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Error(string(b))
+			return ""
+		}
 
 		cmd := exec.Command("graph-easy", "--as_ascii")
 		stdin, err := cmd.StdinPipe()
@@ -308,9 +315,16 @@ func RunTest(t *testing.T, test *Test) {
 				if err != nil {
 					return fmt.Errorf("Node %+v matched the capture but capture is not enabled, graph: %s", node, context.getWholeGraph(t, time.Now()))
 				}
-
 				if captureID != capture.ID() {
 					return fmt.Errorf("Node %s matches multiple captures, graph: %s", node.ID, context.getWholeGraph(t, time.Now()))
+				}
+
+				captureState, err := node.GetFieldString("Capture.State")
+				if err != nil {
+					return fmt.Errorf("Node %+v matched the capture but capture state is not set, graph: %s", node, context.getWholeGraph(t, time.Now()))
+				}
+				if captureState != "active" {
+					return fmt.Errorf("Capture %s is not active, graph: %s", capture.ID(), context.getWholeGraph(t, time.Now()))
 				}
 			}
 		}
@@ -504,7 +518,7 @@ func RunTest(t *testing.T, test *Test) {
 
 	helper.ExecCmds(t, test.tearDownCmds...)
 
-	if test.mode == Replay {
+	if test.mode == Replay && helper.AgentTestsOnly == false {
 		for i, check := range test.checks {
 			checkContext := test.checkContexts[i]
 			t.Logf("Replaying test with time %s (Unix: %d), startTime %s (Unix: %d)", checkContext.time, checkContext.time.Unix(), checkContext.startTime, checkContext.startTime.Unix())

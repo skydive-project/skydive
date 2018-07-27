@@ -24,6 +24,7 @@ package gremlin
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/skydive-project/skydive/common"
@@ -104,6 +105,16 @@ func (q QueryString) Context(list ...interface{}) QueryString {
 	for _, v := range list {
 		if !first {
 			newQ = newQ.appends(", ")
+		} else {
+			switch t := v.(type) {
+			case string:
+				up := strings.ToUpper(t)
+				if up == "NOW" || up == "FOREVER" {
+					newQ = newQ.appends(up)
+					first = false
+					continue
+				}
+			}
 		}
 		first = false
 		switch t := v.(type) {
