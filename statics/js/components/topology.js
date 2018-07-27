@@ -250,6 +250,8 @@ var TopologyComponent = {
       metadataCollapseState: {
         IPV4: false,
         IPV6: false,
+        'Neutron.IPV4': false,
+        'Neutron.IPV6': false,
       },
     };
   },

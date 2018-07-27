@@ -74,40 +74,40 @@ type attributes struct {
 
 // portMetadata neutron metadata
 type portMetadata struct {
+	name   string
 	mac    string
 	portID string
 }
 
-// NeutronPortNotFound error
-type NeutronPortNotFound struct {
-	MAC string
+var emptyPortMetadata = portMetadata{}
+
+func (p *portMetadata) String() string {
+	return fmt.Sprintf("Name: `%s`, ID: `%s`, MAC: `%s`", p.name, p.portID, p.mac)
 }
 
-func (e NeutronPortNotFound) Error() string {
-	return "Unable to find port for MAC address: " + e.MAC
-}
-
-func retrieveportMetadata(node *graph.Node) portMetadata {
-	md := portMetadata{}
-
-	// We prefer to use the 'ExtID/attached-mac' metadata to get
-	// the port, and we fallback to the 'mac' metadata.
-	if attachedMAC, _ := node.GetFieldString("ExtID.attached-mac"); attachedMAC != "" {
-		md.mac = attachedMAC
-	} else if mac, _ := node.GetFieldString("MAC"); mac != "" {
-		md.mac = mac
-	}
-
+func (mapper *NeutronProbe) retrievePortMetadata(name string, node *graph.Node) portMetadata {
+	// always prefer IDs
 	if ifaceID, _ := node.GetFieldString("ExtID.iface-id"); ifaceID != "" {
-		md.portID = ifaceID
+		return portMetadata{name: name, portID: ifaceID}
 	}
-	return md
+
+	// then attached-mac
+	if attachedMAC, _ := node.GetFieldString("ExtID.attached-mac"); attachedMAC != "" {
+		return portMetadata{name: name, mac: attachedMAC}
+	}
+
+	// finally MAC if matching allowed interface name
+	if name != "" && mapper.intfRegexp.MatchString(name) {
+		if mac, _ := node.GetFieldString("MAC"); mac != "" {
+			return portMetadata{name: name, mac: mac}
+		}
+	}
+
+	return emptyPortMetadata
 }
 
 func (mapper *NeutronProbe) retrievePort(portMd portMetadata) (port ports.Port, err error) {
 	var opts ports.ListOpts
-
-	logging.GetLogger().Debugf("Retrieving attributes from Neutron for MAC: %s", portMd.mac)
 
 	/* Determine the best way to search for the Neutron port.
 	 * We prefer the Neutron port UUID if we have it, but will fall back
@@ -117,6 +117,9 @@ func (mapper *NeutronProbe) retrievePort(portMd portMetadata) (port ports.Port, 
 	} else {
 		opts.MACAddress = portMd.mac
 	}
+
+	logging.GetLogger().Debugf("Retrieving attributes from Neutron port with options: %+v", opts)
+
 	pager := ports.List(mapper.client, opts)
 
 	err = pager.EachPage(func(page pagination.Page) (bool, error) {
@@ -125,11 +128,9 @@ func (mapper *NeutronProbe) retrievePort(portMd portMetadata) (port ports.Port, 
 			return false, err
 		}
 
-		for _, p := range portList {
-			if p.MACAddress == portMd.mac {
-				port = p
-				return false, nil
-			}
+		if len(portList) > 0 {
+			port = portList[0]
+			return false, nil
 		}
 
 		return true, nil
@@ -140,10 +141,10 @@ func (mapper *NeutronProbe) retrievePort(portMd portMetadata) (port ports.Port, 
 	}
 
 	if len(port.NetworkID) == 0 {
-		return port, NeutronPortNotFound{portMd.mac}
+		return port, fmt.Errorf("Unable to find port with options: %+v", opts)
 	}
 
-	return port, err
+	return port, nil
 }
 
 func (mapper *NeutronProbe) retrieveAttributes(portMd portMetadata) (*attributes, error) {
@@ -193,7 +194,7 @@ func (mapper *NeutronProbe) retrieveAttributes(portMd portMetadata) (*attributes
 }
 
 func (mapper *NeutronProbe) nodeUpdater() {
-	logging.GetLogger().Debugf("Starting Neutron updater")
+	logging.GetLogger().Debug("Starting Neutron updater")
 
 	for nodeID := range mapper.nodeUpdaterChan {
 		mapper.graph.RLock()
@@ -203,27 +204,27 @@ func (mapper *NeutronProbe) nodeUpdater() {
 			continue
 		}
 
-		if mac, _ := node.GetFieldString("MAC"); mac == "" {
+		name, _ := node.GetFieldString("Name")
+		if name == "" {
 			mapper.graph.RUnlock()
+			return
+		}
+
+		portMd := mapper.retrievePortMetadata(name, node)
+		mapper.graph.RUnlock()
+
+		if portMd == emptyPortMetadata {
 			continue
 		}
 
-		portMd := retrieveportMetadata(node)
-		mapper.graph.RUnlock()
-
 		attrs, err := mapper.retrieveAttributes(portMd)
 		if err != nil {
-			if nerr, ok := err.(NeutronPortNotFound); ok {
-				logging.GetLogger().Debugf("Setting in cache not found MAC %s", nerr.MAC)
-			} else {
-				logging.GetLogger().Errorf("Failed to retrieve attributes for port %s/%s : %v",
-					portMd.portID, portMd.mac, err)
-			}
+			logging.GetLogger().Errorf("Failed to retrieve attributes for port %s: %v", portMd.String(), err)
 		} else {
 			mapper.updateNode(node, attrs)
 		}
 	}
-	logging.GetLogger().Debugf("Stopping Neutron updater")
+	logging.GetLogger().Debug("Stopping Neutron updater")
 }
 
 func (mapper *NeutronProbe) updateNode(node *graph.Node, attrs *attributes) {
@@ -340,16 +341,12 @@ func (mapper *NeutronProbe) enhanceNode(node *graph.Node) {
 		return
 	}
 
-	if !mapper.intfRegexp.MatchString(name) {
-		return
-	}
-
-	if mac, _ := node.GetFieldString("MAC"); mac == "" {
+	currPortMd := mapper.retrievePortMetadata(name, node)
+	if currPortMd == emptyPortMetadata {
 		return
 	}
 
 	prevPortMd, f := mapper.portMetadata[node.ID]
-	currPortMd := retrieveportMetadata(node)
 
 	// If port metadata have not changed, we return
 	if f && (prevPortMd == currPortMd) {
@@ -456,7 +453,8 @@ func (mapper *NeutronProbe) Stop() {
 // NewNeutronProbe creates a neutron probe that will enhance the graph
 func NewNeutronProbe(g *graph.Graph, authURL, username, password, tenantName, regionName, domainName string, availability gophercloud.Availability) (*NeutronProbe, error) {
 	// only looking for interfaces matching the following regex as nova, neutron interfaces match this pattern
-	intfRegexp := regexp.MustCompile(`(tap|qr-|qg-|qvo)[a-fA-F0-9]{8}-[a-fA-F0-9]{2}`)
+
+	intfRegexp := regexp.MustCompile(`((tap|qr-|qg-|qvo)[a-fA-F0-9]{8}-[a-fA-F0-9]{2})|(vnet[0-9]+)`)
 	nsRegexp := regexp.MustCompile(`(qrouter|qdhcp)-[a-fA-F0-9]{8}`)
 
 	opts := gophercloud.AuthOptions{
