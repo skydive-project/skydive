@@ -42,6 +42,13 @@ func dumpObject(obj interface{}) string {
 	}
 }
 
+func int32ValueOrDefault(value *int32, defaultValue int32) int32 {
+	if value == nil {
+		return defaultValue
+	}
+	return *value
+}
+
 // Probe for tracking k8s events
 type Probe struct {
 	bundle *probe.ProbeBundle

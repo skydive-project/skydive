@@ -44,7 +44,14 @@ func dumpDeployment(deploy *v1beta1.Deployment) string {
 }
 
 func (p *deployProbe) newMetadata(deploy *v1beta1.Deployment) graph.Metadata {
-	return newMetadata("deployment", deploy.Namespace, deploy.Name, deploy)
+	m := newMetadata("deployment", deploy.Namespace, deploy.Name, deploy)
+	m.SetFieldAndNormalize("Selector", deploy.Spec.Selector)
+	m.SetField("DesiredReplicas", int32ValueOrDefault(deploy.Spec.Replicas, 1))
+	m.SetField("Replicas", deploy.Status.Replicas)
+	m.SetField("ReadyReplicas", deploy.Status.ReadyReplicas)
+	m.SetField("AvailableReplicas", deploy.Status.AvailableReplicas)
+	m.SetField("UnavailableReplicas", deploy.Status.UnavailableReplicas)
+	return m
 }
 
 func deployUID(deploy *v1beta1.Deployment) graph.Identifier {
