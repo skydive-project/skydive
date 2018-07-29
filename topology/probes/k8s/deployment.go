@@ -40,11 +40,11 @@ type deployProbe struct {
 }
 
 func dumpDeployment(deploy *v1beta1.Deployment) string {
-	return fmt.Sprintf("deployment{Name: %s}", deploy.GetName())
+	return fmt.Sprintf("deployment{Namespace: %s, Name: %s}", deploy.Namespace, deploy.Name)
 }
 
 func (p *deployProbe) newMetadata(deploy *v1beta1.Deployment) graph.Metadata {
-	return newMetadata("deployment", deploy.Namespace, deploy.GetName(), deploy)
+	return newMetadata("deployment", deploy.Namespace, deploy.Name, deploy)
 }
 
 func deployUID(deploy *v1beta1.Deployment) graph.Identifier {
@@ -66,8 +66,8 @@ func (p *deployProbe) OnUpdate(oldObj, newObj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		if nsNode := p.graph.GetNode(deployUID(deploy)); nsNode != nil {
-			addMetadata(p.graph, nsNode, deploy)
+		if deployNode := p.graph.GetNode(deployUID(deploy)); deployNode != nil {
+			addMetadata(p.graph, deployNode, deploy)
 			logging.GetLogger().Debugf("Updated %s", dumpDeployment(deploy))
 		}
 	}
@@ -78,8 +78,8 @@ func (p *deployProbe) OnDelete(obj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		if nsNode := p.graph.GetNode(deployUID(deploy)); nsNode != nil {
-			p.graph.DelNode(nsNode)
+		if deployNode := p.graph.GetNode(deployUID(deploy)); deployNode != nil {
+			p.graph.DelNode(deployNode)
 			logging.GetLogger().Debugf("Deleted %s", dumpDeployment(deploy))
 		}
 	}
