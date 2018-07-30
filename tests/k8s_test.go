@@ -166,6 +166,10 @@ func TestK8sContainerNode(t *testing.T) {
 	testNodeCreationFromConfig(t, "container", objName+"-container", "Image", "Labels", "Pod")
 }
 
+func TestK8sCronJobNode(t *testing.T) {
+	testNodeCreationFromConfig(t, "cronjob", objName+"-cronjob")
+}
+
 func TestK8sDeploymentNode(t *testing.T) {
 	testNodeCreationFromConfig(t, "deployment", objName+"-deployment", "Selector", "DesiredReplicas", "Replicas", "ReadyReplicas", "AvailableReplicas", "UnavailableReplicas")
 }

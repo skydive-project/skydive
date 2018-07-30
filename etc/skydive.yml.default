@@ -368,6 +368,7 @@ k8s:
   probes:
   - cluster
   - container
+  - cronjob
   - deployment
   - ingress
   - job
