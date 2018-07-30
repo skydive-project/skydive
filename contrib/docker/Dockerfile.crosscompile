@@ -9,7 +9,7 @@ RUN apt-get -y update \
     && apt-get -y install software-properties-common \
     && add-apt-repository -y ppa:ubuntu-toolchain-r/ppa \
     && apt-get -y update \
-    && apt-get -y install git make flex bison wget unzip golang libpcap0.8-dev npm
+    && apt-get -y install git make flex bison wget unzip golang npm
 
 # EBPF would require llvm-6.0 clang-6.0 however static compulation packages uninstall clang dependancies
 # libstdc++-5-dev and libc6-dev
@@ -19,7 +19,11 @@ RUN PROTOC_VER=3.5.1; \
     && unzip protoc-${PROTOC_VER}-linux-$(uname -m).zip \
     && mv bin/protoc /usr/bin/
 
-RUN git clone https://github.com/the-tcpdump-group/libpcap.git
+RUN mkdir -p /root/go/bin && chmod a+wrx /root/go/bin
+
+RUN arch="$(dpkg --print-architecture)" \
+    && wget --no-verbose -O /gosu "https://github.com/tianon/gosu/releases/download/1.10/gosu-${arch##*-}" \
+    && chmod a+x /gosu
 
 # Arch dependence
 ARG TARGET_ARCH=s390x
@@ -27,12 +31,6 @@ ARG TARGET_GOARCH=$TARGET_ARCH
 ARG DEBARCH=$TARGET_GOARCH
 
 RUN apt-get -y install gcc-${TARGET_ARCH}-linux-gnu
-
-RUN cd libpcap/ \
-    && CC=${TARGET_ARCH}-linux-gnu-gcc ./configure --prefix=/usr/local --disable-shared --disable-dbus --disable-bluetooth --host=${TARGET_ARCH}-linux-gnu \
-    && make \
-    && make install \
-    && cd ..
 
 # Install package for static compilation
 RUN dpkg --add-architecture $DEBARCH \
@@ -44,12 +42,6 @@ RUN dpkg --add-architecture $DEBARCH \
                    libc-dev:$DEBARCH \
                    libpcap0.8-dev:$DEBARCH \
                    linux-libc-dev:$DEBARCH
-
-RUN mkdir -p /root/go/bin && chmod a+wrx /root/go/bin
-
-RUN arch="$(dpkg --print-architecture)" \
-    && wget --no-verbose -O /gosu "https://github.com/tianon/gosu/releases/download/1.10/gosu-${arch##*-}" \
-    && chmod a+x /gosu
 
 ARG UID=1000
 ENV UID=$UID
