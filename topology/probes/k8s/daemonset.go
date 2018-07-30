@@ -40,11 +40,16 @@ type dsProbe struct {
 }
 
 func dumpDaemonSet(ds *v1beta1.DaemonSet) string {
-	return fmt.Sprintf("daemonset{Name: %s}", ds.GetName())
+	return fmt.Sprintf("daemonset{Namespace: %s, Name: %s}", ds.Namespace, ds.Name)
 }
 
 func (p *dsProbe) newMetadata(ds *v1beta1.DaemonSet) graph.Metadata {
-	return newMetadata("daemonset", ds.Namespace, ds.GetName(), ds)
+	m := newMetadata("daemonset", ds.Namespace, ds.Name, ds)
+	m.SetFieldAndNormalize("Labels", ds.Labels)
+	m.SetField("DesiredNumberScheduled", ds.Status.DesiredNumberScheduled)
+	m.SetField("CurrentNumberScheduled", ds.Status.CurrentNumberScheduled)
+	m.SetField("NumberMisscheduled", ds.Status.NumberMisscheduled)
+	return m
 }
 
 func dsUID(ds *v1beta1.DaemonSet) graph.Identifier {
