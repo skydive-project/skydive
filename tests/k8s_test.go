@@ -167,7 +167,7 @@ func TestK8sContainerNode(t *testing.T) {
 }
 
 func TestK8sDeploymentNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "deployment", objName+"-deployment")
+	testNodeCreationFromConfig(t, "deployment", objName+"-deployment", "Selector", "DesiredReplicas", "Replicas", "ReadyReplicas", "AvailableReplicas", "UnavailableReplicas")
 }
 
 func TestK8sIngressNode(t *testing.T) {
