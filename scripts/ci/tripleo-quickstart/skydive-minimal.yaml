@@ -1,14 +1,14 @@
-parameter_defaults: 
+parameter_defaults:
   ControllerServices:
     - OS::TripleO::Services::CACerts
     - OS::TripleO::Services::Clustercheck
-    - OS::TripleO::Services::Docker  
+    - OS::TripleO::Services::Docker
     - OS::TripleO::Services::GlanceApi
-    - OS::TripleO::Services::HAproxy 
-    - OS::TripleO::Services::Ipsec 
+    - OS::TripleO::Services::HAproxy
+    - OS::TripleO::Services::Ipsec
     - OS::TripleO::Services::Iscsid
     - OS::TripleO::Services::Keepalived
-    - OS::TripleO::Services::Kernel 
+    - OS::TripleO::Services::Kernel
     - OS::TripleO::Services::Keystone
     - OS::TripleO::Services::Memcached
     - OS::TripleO::Services::MySQL
@@ -16,7 +16,7 @@ parameter_defaults:
     - OS::TripleO::Services::NeutronCorePlugin
     - OS::TripleO::Services::NeutronApi
     - OS::TripleO::Services::NeutronDhcpAgent
-    - OS::TripleO::Services::NeutronL3Agent 
+    - OS::TripleO::Services::NeutronL3Agent
     - OS::TripleO::Services::NeutronMetadataAgent
     - OS::TripleO::Services::NeutronOvsAgent
     - OS::TripleO::Services::NovaApi
@@ -26,7 +26,7 @@ parameter_defaults:
     - OS::TripleO::Services::NovaScheduler
     - OS::TripleO::Services::Ntp
     - OS::TripleO::Services::OsloMessagingNotify
-    - OS::TripleO::Services::OsloMessagingRpc  
+    - OS::TripleO::Services::OsloMessagingRpc
     - OS::TripleO::Services::Pacemaker
     - OS::TripleO::Services::Sshd
     - OS::TripleO::Services::SwiftProxy
@@ -61,4 +61,3 @@ parameter_defaults:
     nova::compute::libvirt::libvirt_virt_type: qemu
   Debug: true
   DockerPuppetDebug: True
-

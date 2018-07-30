@@ -9,8 +9,7 @@
     content: ""
     dest: "{{ skydive_config_file }}"
     mode: 0600
-    force: yes
-  run_once: true
+    force: no
 
 - name: Set host ID
   yedit:
@@ -29,28 +28,6 @@
     src: "{{ skydive_config_file }}"
     key: "flow.protocol"
     value: "{{ skydive_flow_protocol }}"
-
-- name: Define cluster auth parameters
-  yedit:
-    src: "{{ skydive_config_file }}"
-    edits:
-        - key: "auth.cluster.type"
-          value: "basic"
-        - key: "auth.cluster.users.{{ skydive_cluster_username }}"
-          value: "{{ skydive_cluster_password }}"
-    state: present
-  when: skydive_cluster_username is not none
-
-- name: Define Keystone parameters
-  yedit:
-    src: "{{ skydive_config_file }}"
-    edits:
-        - key: "auth.analyzer_username"
-          value: "{{ skydive_os_service_username }}"
-        - key: "auth.analyzer_password"
-          value: "{{ skydive_os_service_password }}"
-    state: present
-  when: skydive_auth_type == "keystone"
 
 - name: Set extra config vars
   yedit:

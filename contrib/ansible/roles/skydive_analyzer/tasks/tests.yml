@@ -1,3 +1,4 @@
+---
 - name: Check API status, retrieve token from login page
   uri:
     url: "http://{{ analyzers.split(',')[0] }}/login"

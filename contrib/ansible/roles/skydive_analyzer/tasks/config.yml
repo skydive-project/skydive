@@ -87,6 +87,17 @@
     state: present
   when: skydive_cluster_username is not none
 
+- name: Define cluster auth users
+  yedit:
+    src: "{{ skydive_config_file }}"
+    edits:
+        - key: "auth.cluster.type"
+          value: "basic"
+        - key: "auth.cluster.users.{{ skydive_cluster_username }}"
+          value: "{{ skydive_cluster_password }}"
+    state: present
+  when: skydive_cluster_username is not none
+
 - name: Define API auth backend
   yedit:
     src: "{{ skydive_config_file }}"
@@ -96,7 +107,7 @@
     state: present
   when: skydive_auth_type is not none
 
-- name: Define API basic auth parameters
+- name: Define API basic auth users file
   yedit:
     src: "{{ skydive_config_file }}"
     edits:
@@ -107,7 +118,7 @@
     state: present
   when: skydive_auth_type == "basic"
 
-- name: Create API basic auth secret file
+- name: Create API basic auth users file
   htpasswd:
     path: "{{ skydive_basic_auth_file }}"
     name: "{{ skydive_username }}"
@@ -117,7 +128,7 @@
     mode: 0640
   when: skydive_auth_type == "basic"
 
-- name: Define API keystone auth parameters
+- name: Define API keystone user authentication parameters
   yedit:
     src: "{{ skydive_config_file }}"
     edits:

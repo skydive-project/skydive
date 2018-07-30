@@ -11,14 +11,30 @@
     state: present
   when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
 
+- name: Create a Skydive tenant
+  environment:
+    OS_AUTH_URL: "{{ os_auth_url }}"
+    OS_USERNAME: "{{ os_username }}"
+    OS_PASSWORD: "{{ os_password }}"
+    OS_PROJECT_NAME: "{{ os_tenant_name }}"
+    OS_USER_DOMAIN_NAME: "{{ os_user_domain_name }}"
+    OS_PROJECT_DOMAIN_NAME: "{{ os_project_domain_name }}"
+    OS_IDENTITY_API_VERSION: "{{ os_identity_api_version }}"
+  os_project:
+    name: "{{ skydive_auth_os_tenant_name }}"
+    description: "Skydive admin users"
+    domain_id: "{{ skydive_auth_os_domain_id }}"
+    enabled: True
+    state: present
+
 - name: Create a Skydive keystone API user
   environment:
     OS_AUTH_URL: "{{ os_auth_url }}"
     OS_USERNAME: "{{ os_username }}"
     OS_PASSWORD: "{{ os_password }}"
     OS_PROJECT_NAME: "{{ os_tenant_name }}"
-    OS_USER_DOMAIN_NAME: "{{ OS_USER_DOMAIN_NAME }}"
-    OS_PROJECT_DOMAIN_NAME: "{{ OS_PROJECT_DOMAIN_NAME }}"
+    OS_USER_DOMAIN_NAME: "{{ os_user_domain_name }}"
+    OS_PROJECT_DOMAIN_NAME: "{{ os_project_domain_name }}"
     OS_IDENTITY_API_VERSION: "{{ os_identity_api_version }}"
   os_user:
     name: "{{ skydive_username }}"
@@ -33,8 +49,8 @@
     OS_USERNAME: "{{ os_username }}"
     OS_PASSWORD: "{{ os_password }}"
     OS_PROJECT_NAME: "{{ os_tenant_name }}"
-    OS_USER_DOMAIN_NAME: "{{ OS_USER_DOMAIN_NAME }}"
-    OS_PROJECT_DOMAIN_NAME: "{{ OS_PROJECT_DOMAIN_NAME }}"
+    OS_USER_DOMAIN_NAME: "{{ os_user_domain_name }}"
+    OS_PROJECT_DOMAIN_NAME: "{{ os_project_domain_name }}"
     OS_IDENTITY_API_VERSION: "{{ os_identity_api_version }}"
   os_user_role:
     user: "{{ skydive_username }}"
@@ -48,8 +64,8 @@
     OS_USERNAME: "{{ os_username }}"
     OS_PASSWORD: "{{ os_password }}"
     OS_PROJECT_NAME: "{{ os_tenant_name }}"
-    OS_USER_DOMAIN_NAME: "{{ OS_USER_DOMAIN_NAME }}"
-    OS_PROJECT_DOMAIN_NAME: "{{ OS_PROJECT_DOMAIN_NAME }}"
+    OS_USER_DOMAIN_NAME: "{{ os_user_domain_name }}"
+    OS_PROJECT_DOMAIN_NAME: "{{ os_project_domain_name }}"
     OS_IDENTITY_API_VERSION: "{{ os_identity_api_version }}"
   os_user:
     name: "{{ skydive_os_service_username }}"
@@ -64,8 +80,8 @@
     OS_USERNAME: "{{ os_username }}"
     OS_PASSWORD: "{{ os_password }}"
     OS_PROJECT_NAME: "{{ os_tenant_name }}"
-    OS_USER_DOMAIN_NAME: "{{ OS_USER_DOMAIN_NAME }}"
-    OS_PROJECT_DOMAIN_NAME: "{{ OS_PROJECT_DOMAIN_NAME }}"
+    OS_USER_DOMAIN_NAME: "{{ os_user_domain_name }}"
+    OS_PROJECT_DOMAIN_NAME: "{{ os_project_domain_name }}"
     OS_IDENTITY_API_VERSION: "{{ os_identity_api_version }}"
   os_user_role:
     user: "{{ skydive_os_service_username }}"
