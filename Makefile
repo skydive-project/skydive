@@ -224,8 +224,12 @@ debug.analyzer:
 	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags linux ${EASYJSON_FILES_TAG_LINUX}
 
 .PHONY: .easyjson.tag.opencontrail
+ifeq ($(WITH_OPENCONTRAIL), true)
 .easyjson.tag.opencontrail: builddep ${EASYJSON_FILES_TAG_OPENCONTRAIL}
 	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags "opencontrail" ${EASYJSON_FILES_TAG_OPENCONTRAIL}
+else
+.easyjson.tag.opencontrail:
+endif
 
 BINDATA_DIRS := \
 	js/*.js \
