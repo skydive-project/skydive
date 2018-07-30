@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/tests/helper"
 )
 
@@ -21,14 +20,9 @@ func checkTest(t *testing.T) {
 
 func verify(c *CheckContext, expected []int) error {
 	for i, e := range expected {
-		gh := c.gh
-		gremlin := g.G
-		gremlin = gremlin.Context(c.time)
-
-		gremlin = gremlin.V().Has("Type", "ovsbridge", "Name", "br-testof1")
 		actions := fmt.Sprintf(`resubmit(;%d)`, i+1)
-		gremlin = gremlin.Out("Type", "ofrule").Has("actions", actions)
-		nodes, err := gh.GetNodes(gremlin)
+		gremlin := c.gremlin.V().Has("Type", "ovsbridge", "Name", "br-testof1").Out("Type", "ofrule").Has("actions", actions)
+		nodes, err := c.gh.GetNodes(gremlin)
 		if err != nil {
 			return err
 		}
@@ -64,6 +58,8 @@ func makeTest(t *testing.T, rules []ruleCmd, expected []int) {
 		tearDownCmds: []helper.Cmd{
 			{"ovs-vsctl del-br br-testof1", true},
 		},
+
+		mode: Replay,
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			return verify(c, expected)
@@ -119,6 +115,8 @@ func TestDelRuleWithBridgeOFRule(t *testing.T) {
 		setupCmds: setupCmds,
 
 		tearDownCmds: []helper.Cmd{},
+
+		mode: Replay,
 
 		checks: []CheckFunction{func(c *CheckContext) error { return verify(c, []int{0}) }},
 	}

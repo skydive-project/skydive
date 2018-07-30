@@ -6,27 +6,28 @@ import (
 	"fmt"
 	"testing"
 
-	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/tests/helper"
 )
 
 func TestOpenContrailTopology(t *testing.T) {
 	test := &Test{
-		mode: OneShot,
 		setupCmds: []helper.Cmd{
 			{"contrail-create-network.py default-domain:default-project:vn1", true},
 			{"netns-daemon-start -n default-domain:default-project:vn1 vm1", true},
 		},
+
 		tearDownCmds: []helper.Cmd{
 			// We should delete the net
 			{"netns-daemon-stop vm1", true},
 		},
 
+		mode: Replay,
+
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			gremlin := g.G.V().Has("Contrail")
+			gremlin := c.gremlin.V().Has("Contrail")
 
-			nodes, err := gh.GetNodes(gremlin)
+			nodes, err := c.gh.GetNodes(gremlin)
 			if err != nil {
 				return err
 			}
@@ -54,11 +55,11 @@ func TestOpenContrailRoutingTable(t *testing.T) {
 			{"netns-daemon-stop vm1", true},
 		},
 
-		checks: []CheckFunction{func(c *CheckContext) error {
-			gh := c.gh
+		mode: Replay,
 
-			gremlin := g.G.V().Has("Contrail.RoutingTable.Prefix", "20.1.1.253/32")
-			nodes, err := gh.GetNodes(gremlin)
+		checks: []CheckFunction{func(c *CheckContext) error {
+			gremlin := c.gremlin.V().Has("Contrail.RoutingTable.Prefix", "20.1.1.253/32")
+			nodes, err := c.gh.GetNodes(gremlin)
 			if err != nil {
 				return err
 			}

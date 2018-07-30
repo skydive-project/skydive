@@ -760,7 +760,7 @@ func (e *FlowTraversalExtension) ScanIdent(s string) (traversal.Token, bool) {
 func (e *FlowTraversalExtension) ParseStep(t traversal.Token, p traversal.GremlinTraversalContext) (traversal.GremlinTraversalStep, error) {
 	switch t {
 	case e.FlowToken:
-		return &FlowGremlinTraversalStep{TableClient: e.TableClient, Storage: e.Storage, context: p}, nil
+		return &FlowGremlinTraversalStep{TableClient: e.TableClient, Storage: e.Storage, context: p, hasParams: p.Params}, nil
 	case e.HopsToken:
 		return &HopsGremlinTraversalStep{context: p}, nil
 	case e.NodesToken:

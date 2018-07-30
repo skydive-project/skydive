@@ -71,10 +71,10 @@ func TestFlowsEBPF(t *testing.T) {
 			{gremlin: g.G.V().Has("Name", "ebpf-src-eth0"), kind: "ebpf"},
 		},
 
+		mode: Replay,
+
 		checks: []CheckFunction{func(c *CheckContext) error {
-			gremlin := g.G
-			gremlin = gremlin.Context(c.time)
-			gremlin = gremlin.Flows().Has("Network", "169.254.107.33", "LayersPath", "Ethernet/IPv4/ICMPv4").Dedup()
+			gremlin := c.gremlin.Flows().Has("Network", "169.254.107.33", "LayersPath", "Ethernet/IPv4/ICMPv4").Dedup()
 			flows, err := c.gh.GetFlows(gremlin)
 			if err != nil {
 				return err

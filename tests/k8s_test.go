@@ -105,21 +105,21 @@ func queryNodeCreation(t *testing.T, c *CheckContext, query g.QueryString) (node
 
 func checkNodeCreation(t *testing.T, c *CheckContext, ty string, values ...interface{}) (*graph.Node, error) {
 	args := makeHasArgsType(ty, values...)
-	query := g.G.V().Has(args...)
+	query := c.gremlin.V().Has(args...)
 	return queryNodeCreation(t, c, query)
 }
 
 func checkEdgeCreation(t *testing.T, c *CheckContext, from, to *graph.Node, relType string) error {
 	fromArgs := makeHasArgsNode(from)
 	toArgs := makeHasArgsNode(to)
-	query := g.G.V().Has(fromArgs...).OutE().Has("RelationType", relType).OutV().Has(toArgs...)
+	query := c.gremlin.V().Has(fromArgs...).OutE().Has("RelationType", relType).OutV().Has(toArgs...)
 	_, err := queryNodeCreation(t, c, query)
 	return err
 }
 
 func testRunner(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, checks []CheckFunction) {
 	test := &Test{
-		mode:         OneShot,
+		mode:         Replay,
 		retries:      1,
 		preCleanup:   true,
 		setupCmds:    setupCmds,

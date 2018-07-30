@@ -44,8 +44,8 @@ import (
 )
 
 const (
-	Replay = iota
-	OneShot
+	OneShot = iota
+	Replay
 )
 
 const testConfig = `---
@@ -152,6 +152,7 @@ type CheckFunction func(c *CheckContext) error
 
 type CheckContext struct {
 	*TestContext
+	gremlin     g.QueryString
 	startTime   time.Time
 	successTime time.Time
 	time        time.Time
@@ -173,7 +174,10 @@ type Test struct {
 }
 
 func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
-	gremlin := g.G.Context(at)
+	gremlin := g.G
+	if !at.IsZero() {
+		gremlin = gremlin.Context(at)
+	}
 
 	switch helper.GraphOutputFormat {
 	case "ascii":
@@ -233,7 +237,11 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 }
 
 func (c *TestContext) getAllFlows(t *testing.T, at time.Time) string {
-	gremlin := g.G.Context(at).V().Flows().Sort()
+	gremlin := g.G
+	if !at.IsZero() {
+		gremlin = gremlin.Context(at)
+	}
+	gremlin = gremlin.V().Flows().Sort()
 
 	flows, err := c.gh.GetFlows(gremlin)
 	if err != nil {
@@ -302,7 +310,7 @@ func RunTest(t *testing.T, test *Test) {
 			}
 
 			if len(nodes) == 0 {
-				return fmt.Errorf("No node matching capture %s, graph: %s", capture.GremlinQuery, context.getWholeGraph(t, time.Now()))
+				return fmt.Errorf("No node matching capture %s, graph: %s", capture.GremlinQuery, context.getWholeGraph(t, time.Time{}))
 			}
 
 			for _, node := range nodes {
@@ -313,18 +321,18 @@ func RunTest(t *testing.T, test *Test) {
 
 				captureID, err := node.GetFieldString("Capture.ID")
 				if err != nil {
-					return fmt.Errorf("Node %+v matched the capture but capture is not enabled, graph: %s", node, context.getWholeGraph(t, time.Now()))
+					return fmt.Errorf("Node %+v matched the capture but capture is not enabled, graph: %s", node, context.getWholeGraph(t, time.Time{}))
 				}
 				if captureID != capture.ID() {
-					return fmt.Errorf("Node %s matches multiple captures, graph: %s", node.ID, context.getWholeGraph(t, time.Now()))
+					return fmt.Errorf("Node %s matches multiple captures, graph: %s", node.ID, context.getWholeGraph(t, time.Time{}))
 				}
 
 				captureState, err := node.GetFieldString("Capture.State")
 				if err != nil {
-					return fmt.Errorf("Node %+v matched the capture but capture state is not set, graph: %s", node, context.getWholeGraph(t, time.Now()))
+					return fmt.Errorf("Node %+v matched the capture but capture state is not set, graph: %s", node, context.getWholeGraph(t, time.Time{}))
 				}
 				if captureState != "active" {
-					return fmt.Errorf("Capture %s is not active, graph: %s", capture.ID(), context.getWholeGraph(t, time.Now()))
+					return fmt.Errorf("Capture %s is not active, graph: %s", capture.ID(), context.getWholeGraph(t, time.Time{}))
 				}
 			}
 		}
@@ -370,8 +378,8 @@ func RunTest(t *testing.T, test *Test) {
 	}
 	if test.setupFunction != nil {
 		if err = test.setupFunction(context); err != nil {
-			g := context.getWholeGraph(t, context.setupTime)
-			f := context.getAllFlows(t, context.setupTime)
+			g := context.getWholeGraph(t, time.Time{})
+			f := context.getAllFlows(t, time.Time{})
 			helper.ExecCmds(t, test.tearDownCmds...)
 			context.getSystemState(t)
 			t.Fatalf("Failed to setup test: %s, graph: %s, flows: %s", err, g, f)
@@ -416,8 +424,8 @@ func RunTest(t *testing.T, test *Test) {
 	}, 15, time.Second)
 
 	if err != nil {
-		g := context.getWholeGraph(t, context.setupTime)
-		f := context.getAllFlows(t, context.setupTime)
+		g := context.getWholeGraph(t, time.Time{})
+		f := context.getAllFlows(t, time.Time{})
 		helper.ExecCmds(t, test.tearDownCmds...)
 		context.getSystemState(t)
 		t.Fatalf("Failed to setup test: %s, graph: %s, flows: %s", err, g, f)
@@ -465,8 +473,8 @@ func RunTest(t *testing.T, test *Test) {
 		}
 
 		if err := pingRequest(t, context, packet); err != nil {
-			g := context.getWholeGraph(t, context.setupTime)
-			f := context.getAllFlows(t, context.setupTime)
+			g := context.getWholeGraph(t, time.Time{})
+			f := context.getAllFlows(t, time.Time{})
 			helper.ExecCmds(t, test.tearDownCmds...)
 			context.getSystemState(t)
 			t.Errorf("Packet injection failed: %s, graph: %s, flows: %s", err, g, f)
@@ -482,6 +490,7 @@ func RunTest(t *testing.T, test *Test) {
 	for i, check := range test.checks {
 		checkContext := &CheckContext{
 			TestContext: context,
+			gremlin:     g.G,
 			startTime:   time.Now(),
 		}
 		test.checkContexts[i] = checkContext
@@ -498,8 +507,8 @@ func RunTest(t *testing.T, test *Test) {
 		}, retries, time.Second)
 
 		if err != nil {
-			g := checkContext.getWholeGraph(t, checkContext.startTime)
-			f := checkContext.getAllFlows(t, checkContext.startTime)
+			g := checkContext.getWholeGraph(t, time.Time{})
+			f := checkContext.getAllFlows(t, time.Time{})
 			helper.ExecCmds(t, test.tearDownCmds...)
 			context.getSystemState(t)
 			t.Errorf("Test failed: %s, graph: %s, flows: %s", err, g, f)
@@ -519,16 +528,21 @@ func RunTest(t *testing.T, test *Test) {
 	helper.ExecCmds(t, test.tearDownCmds...)
 
 	if test.mode == Replay && helper.AgentTestsOnly == false {
-		for i, check := range test.checks {
-			checkContext := test.checkContexts[i]
-			t.Logf("Replaying test with time %s (Unix: %d), startTime %s (Unix: %d)", checkContext.time, checkContext.time.Unix(), checkContext.startTime, checkContext.startTime.Unix())
-			err = common.Retry(func() error {
-				return check(checkContext)
-			}, retries, time.Second)
+		if helper.TopologyBackend != "memory" {
+			for i, check := range test.checks {
+				checkContext := test.checkContexts[i]
+				checkContext.gremlin = checkContext.gremlin.Context(checkContext.time)
+				t.Logf("Replaying test with time %s (Unix: %d), startTime %s (Unix: %d)", checkContext.time, checkContext.time.Unix(), checkContext.startTime, checkContext.startTime.Unix())
+				err = common.Retry(func() error {
+					return check(checkContext)
+				}, retries, time.Second)
 
-			if err != nil {
-				t.Errorf("Failed to replay test: %s, graph: %s, flows: %s", err, checkContext.getWholeGraph(t, checkContext.time), checkContext.getAllFlows(t, checkContext.time))
+				if err != nil {
+					t.Errorf("Failed to replay test: %s, graph: %s, flows: %s", err, checkContext.getWholeGraph(t, checkContext.time), checkContext.getAllFlows(t, checkContext.time))
+				}
 			}
+		} else {
+			t.Logf("Skipping replay as there is no persistent backend")
 		}
 	}
 }
