@@ -15,19 +15,19 @@ Vue.component('item', {
 
   template: `
   <div class="form-group">
-    <label :for="name">{{Description}}</label>
-    <textarea v-if="Type == 'string'" :id="name" v-model="formData[Name]"></textarea>
-    <input v-else-if="Type == 'date'" type="date" :id="name" v-model="formData[Name]" class="form-control input-sm">
-    <input v-else-if="Type == 'integer'" type="number" :id="name" v-model="formData[Name]" class="form-control input-sm">
-    <input v-else-if="Type == 'boolean'" type="checkbox" :id="name" v-model="formData[Name]" class="form-check-input">
-    <node-selector v-else-if="Type == 'node'" :id="name" v-model="formData[Name]"></node-selector>
+    <label :for="Name">{{Description}}</label>
+    <textarea v-if="Type == 'string'" :id="Name" v-model="formData[Name]"></textarea>
+    <input v-else-if="Type == 'date'" type="date" :id="Name" v-model="formData[Name]" class="form-control input-sm">
+    <input v-else-if="Type == 'integer'" type="number" :id="Name" v-model="formData[Name]" class="form-control input-sm">
+    <input v-else-if="Type == 'boolean'" type="checkbox" :id="Name" v-model="formData[Name]" class="form-check-input">
+    <node-selector v-else-if="Type == 'node'" :id="Name" v-model="formData[Name]"></node-selector>
     <template v-else-if="Type == 'choice'">
-      <select :id="name" v-model="formData[Name]" class="form-control input-sm">
+      <select :id="Name" v-model="formData[Name]" class="form-control input-sm">
         <option v-for="(option, index) in Values" :value="option.Value">{{ option.Value }} ({{ option.Description }})</option>
       </select>
     </template>
     <template v-else-if="Type == 'group'">
-      <item v-for="i in item" v-bind="i" :key="i.name"></item>
+      <item v-for="i in item" v-bind="i" :key="i.Name"></item>
     </template>
   </div>`,
 
