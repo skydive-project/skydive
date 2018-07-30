@@ -33,7 +33,7 @@ else
         case $arch in
           amd64)
             # x86_64 image
-            make docker-build DOCKER_IMAGE=${DOCKER_IMAGE} DOCKER_TAG=amd64-${DOCKER_TAG}
+            make docker-image DOCKER_IMAGE=${DOCKER_IMAGE} DOCKER_TAG=amd64-${DOCKER_TAG}
             ;;
           ppc64le)
             make docker-cross-build TARGET_ARCH=powerpc64le TARGET_GOARCH=ppc64le DEBARCH=ppc64el DOCKER_IMAGE=${DOCKER_IMAGE} BASE=ppc64le/centos DOCKER_TAG=$arch-${DOCKER_TAG}
