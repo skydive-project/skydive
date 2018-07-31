@@ -9,3 +9,7 @@ browser.js: browser.ts api.ts
 
 ../statics/js/bundle.js: browser.js
 	browserify browser.js -o ../statics/js/bundle.js
+
+.PHONY: clean
+clean:
+	rm -f ../statics/js/bundle.js browser.js api.js

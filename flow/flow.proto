@@ -176,3 +176,13 @@ message Flow {
 /* number of raw packet captured */
   int64 RawPacketsCaptured = 37;
 }
+
+message FlowSet {
+  repeated Flow Flows = 1;
+  int64 Start = 2;
+  int64 End = 3;
+}
+
+message FlowSearchReply {
+  FlowSet FlowSet = 1;
+}

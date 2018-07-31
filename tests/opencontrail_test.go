@@ -45,7 +45,6 @@ func TestOpenContrailTopology(t *testing.T) {
 
 func TestOpenContrailRoutingTable(t *testing.T) {
 	test := &Test{
-		mode: OneShot,
 		setupCmds: []helper.Cmd{
 			{"contrail-create-network.py default-domain:default-project:vn1", true},
 			{"netns-daemon-start -n default-domain:default-project:vn1 vm1", true},
