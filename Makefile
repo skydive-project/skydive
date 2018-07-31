@@ -198,11 +198,11 @@ flow/flow.pb.go: flow/flow.proto
 		-e 's/Protocol\(.*\),omitempty\(.*\)/Protocol\1\2/' \
 		-e 's/ICMPType\(.*\),omitempty\(.*\)/ICMPType\1\2/' \
 		-e 's/int64\(.*\),omitempty\(.*\)/int64\1\2/' \
-		-i.bak $@
+		-i $@
 	# do not export LastRawPackets used internally
-	sed -e 's/json:"LastRawPackets,omitempty"/json:"-"/g' -i.bak $@
+	sed -e 's/json:"LastRawPackets,omitempty"/json:"-"/g' -i $@
 	# add flowState to flow generated struct
-	sed -e 's/type Flow struct {/type Flow struct { XXX_state flowState `json:"-"`/' -i.bak $@
+	sed -e 's/type Flow struct {/type Flow struct { XXX_state flowState `json:"-"`/' -i $@
 	gofmt -s -w $@
 
 .proto: govendor flow/flow.pb.go filters/filters.pb.go http/wsstructmessage.pb.go
