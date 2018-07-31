@@ -97,6 +97,9 @@ const (
 	AS
 	SELECT
 
+	TRUE
+	FALSE
+
 	// extensions token have to start after 1000
 )
 
@@ -301,6 +304,10 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return AS, buf.String()
 	case "SELECT":
 		return SELECT, buf.String()
+	case "TRUE":
+		return TRUE, buf.String()
+	case "FALSE":
+		return FALSE, buf.String()
 	}
 
 	for _, e := range s.extensions {

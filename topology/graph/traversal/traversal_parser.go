@@ -1038,6 +1038,10 @@ func (p *GremlinTraversalParser) parseStepParams() ([]interface{}, error) {
 			params = append(params, &ForeverPredicate{})
 		case NOW:
 			params = append(params, &NowPredicate{})
+		case TRUE:
+			params = append(params, true)
+		case FALSE:
+			params = append(params, false)
 		default:
 			return nil, fmt.Errorf("Unexpected token while parsing parameters, got: %s", lit)
 		}

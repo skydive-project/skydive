@@ -24,6 +24,7 @@ package gremlin
 
 import (
 	"fmt"
+	"strconv"
 )
 
 // ValueString a value used within query constructs
@@ -40,6 +41,8 @@ func NewValueStringFromArgument(v interface{}) ValueString {
 		return Quote(t.String())
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return ValueString(fmt.Sprintf("%d", t))
+	case bool:
+		return ValueString(strconv.FormatBool(t))
 	default:
 		panic(fmt.Sprintf("argument %v: type %T not supported", v, t))
 	}

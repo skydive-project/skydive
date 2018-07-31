@@ -252,6 +252,9 @@ func FormatFilter(filter *filters.Filter, mapKey string) elastic.Query {
 	if f := filter.TermInt64Filter; f != nil {
 		return elastic.NewTermQuery(prefix+f.Key, f.Value)
 	}
+	if f := filter.TermBoolFilter; f != nil {
+		return elastic.NewTermQuery(prefix+f.Key, f.Value)
+	}
 
 	if f := filter.RegexFilter; f != nil {
 		// remove anchors as ES matches the whole string and doesn't support them

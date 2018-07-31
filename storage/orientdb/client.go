@@ -31,6 +31,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/skydive-project/skydive/common"
@@ -219,6 +220,10 @@ func FilterToExpression(f *filters.Filter, formatter func(string) string) string
 
 	if f.TermInt64Filter != nil {
 		return fmt.Sprintf(`%d IN %s`, f.TermInt64Filter.Value, formatter(f.TermInt64Filter.Key))
+	}
+
+	if f.TermBoolFilter != nil {
+		return fmt.Sprintf(`%s IN %s`, strconv.FormatBool(f.TermBoolFilter.Value), formatter(f.TermBoolFilter.Key))
 	}
 
 	if f.GtInt64Filter != nil {

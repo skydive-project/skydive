@@ -620,9 +620,11 @@ func TestQueryMetadata(t *testing.T) {
 						"B": map[string]interface{}{
 							"C": 123,
 							"D": []interface{}{1, 2, 3},
+							"E": []interface{}{"a", "b", "c"},
 						},
 						"F": map[string]interface{}{
 							"G": 123,
+							"H": []interface{}{true, true},
 						},
 					},
 				},
@@ -663,7 +665,13 @@ func TestQueryMetadata(t *testing.T) {
 				return err
 			}
 
-			return nil
+			_, err = gh.GetNode(prefix.V().Has("A.B.E", "b"))
+			if err != nil {
+				return err
+			}
+
+			_, err = gh.GetNode(prefix.V().Has("A.F.H", true))
+			return err
 		}},
 	}
 
@@ -855,6 +863,26 @@ func TestRouteTableHistory(t *testing.T) {
 					return fmt.Errorf("Failed to get added Route from history")
 				}
 				return nil
+			},
+		},
+	}
+	RunTest(t, test)
+}
+
+func TestInterfaceFeatures(t *testing.T) {
+	test := &Test{
+		setupCmds: []helper.Cmd{
+			{"brctl addbr br-features", true},
+		},
+
+		tearDownCmds: []helper.Cmd{
+			{"brctl delbr br-features", true},
+		},
+
+		checks: []CheckFunction{
+			func(c *CheckContext) error {
+				_, err := c.gh.GetNode(c.gremlin.V().Has("Name", "br-features", "Features.highdma", true))
+				return err
 			},
 		},
 	}

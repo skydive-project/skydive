@@ -32,12 +32,17 @@ enum BoolFilterOp {
 
 message TermStringFilter {
   string Key = 1;
-  string value = 2;
+  string Value = 2;
 }
 
 message TermInt64Filter {
   string Key = 1;
-  int64 value = 2;
+  int64 Value = 2;
+}
+
+message TermBoolFilter {
+  string Key = 1;
+  bool Value = 2;
 }
 
 message NeStringFilter {
@@ -87,16 +92,17 @@ message IPV4RangeFilter {
 message Filter {
   TermStringFilter TermStringFilter = 1;
   TermInt64Filter TermInt64Filter = 2;
+  TermBoolFilter TermBoolFilter = 3;
 
-  GtInt64Filter GtInt64Filter = 3;
-  LtInt64Filter LtInt64Filter = 4;
-  GteInt64Filter GteInt64Filter = 5;
-  LteInt64Filter LteInt64Filter = 6;
+  GtInt64Filter GtInt64Filter = 4;
+  LtInt64Filter LtInt64Filter = 5;
+  GteInt64Filter GteInt64Filter = 6;
+  LteInt64Filter LteInt64Filter = 7;
 
-  BoolFilter BoolFilter = 9;
-  RegexFilter RegexFilter = 10;
-  NullFilter NullFilter = 11;
-  IPV4RangeFilter IPV4RangeFilter = 12;
+  BoolFilter BoolFilter = 8;
+  RegexFilter RegexFilter = 9;
+  NullFilter NullFilter = 10;
+  IPV4RangeFilter IPV4RangeFilter = 11;
 }
 
 message BoolFilter {
