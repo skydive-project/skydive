@@ -41,11 +41,11 @@ type nodeProbe struct {
 }
 
 func newNodeIndexer(g *graph.Graph) *graph.MetadataIndexer {
-	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "node"}, "Name")
+	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "node"}, "Hostname")
 }
 
 func newHostIndexer(g *graph.Graph) *graph.MetadataIndexer {
-	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "host"}, "Name")
+	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "host"}, "Hostname")
 }
 
 func (c *nodeProbe) newMetadata(node *v1.Node) graph.Metadata {
@@ -116,9 +116,19 @@ func (c *nodeProbe) OnDelete(obj interface{}) {
 	}
 }
 
+func (c *nodeProbe) OnNodeAdded(n *graph.Node) {
+	if hostname, _ := n.GetFieldString("Hostname"); hostname != "" {
+		// A kubernetes node already exists
+		if nodes, _ := c.nodeIndexer.Get(hostname); len(nodes) > 0 {
+			linkNodeToHost(c.graph, n, nodes[0])
+		}
+	}
+}
+
 func (c *nodeProbe) Start() {
 	c.kubeCache.Start()
 	c.nodeIndexer.Start()
+	c.hostIndexer.AddEventListener(c)
 	c.hostIndexer.Start()
 	c.podIndexer.Start()
 }
