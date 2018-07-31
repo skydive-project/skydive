@@ -33,19 +33,19 @@ else
         case $arch in
           amd64)
             # x86_64 image
-            make docker-image DOCKER_IMAGE=${DOCKER_IMAGE} DOCKER_TAG=amd64-${DOCKER_TAG} ${BASE:+BASE=$BASE}
+            make docker-build DOCKER_IMAGE=${DOCKER_IMAGE} DOCKER_TAG=amd64-${DOCKER_TAG} ${BASE:+BASE=$BASE}
             ;;
           ppc64le)
-            make docker-cross-build TARGET_ARCH=powerpc64le TARGET_GOARCH=ppc64le DEBARCH=ppc64el DOCKER_IMAGE=${DOCKER_IMAGE} BASE=${BASE:-${arch}/ubuntu} DOCKER_TAG=$arch-${DOCKER_TAG}
+            make docker-cross-build WITH_EBPF=true TARGET_ARCH=powerpc64le TARGET_GOARCH=ppc64le DEBARCH=ppc64el DOCKER_IMAGE=${DOCKER_IMAGE} BASE=${BASE:-${arch}/ubuntu} DOCKER_TAG=$arch-${DOCKER_TAG}
             ;;
           arm64)
-            make docker-cross-build TARGET_ARCH=aarch64 TARGET_GOARCH=arm64 DOCKER_IMAGE=${DOCKER_IMAGE} BASE=${BASE:-aarch64/ubuntu} DOCKER_TAG=$arch-${DOCKER_TAG}
+            make docker-cross-build WITH_EBPF=true TARGET_ARCH=aarch64 TARGET_GOARCH=arm64 DOCKER_IMAGE=${DOCKER_IMAGE} BASE=${BASE:-aarch64/ubuntu} DOCKER_TAG=$arch-${DOCKER_TAG}
             ;;
           s390x)
-            make docker-cross-build TARGET_ARCH=s390x TARGET_GOARCH=s390x DOCKER_IMAGE=${DOCKER_IMAGE} BASE=${BASE:-${arch}/ubuntu} DOCKER_TAG=$arch-${DOCKER_TAG}
+            make docker-cross-build WITH_EBPF=true TARGET_ARCH=s390x TARGET_GOARCH=s390x DOCKER_IMAGE=${DOCKER_IMAGE} BASE=${BASE:-${arch}/ubuntu} DOCKER_TAG=$arch-${DOCKER_TAG}
             ;;
           *)
-            make docker-cross-build TARGET_ARCH=$arch TARGET_GOARCH=$arch DOCKER_IMAGE=${DOCKER_IMAGE} BASE=${BASE:-${arch}/ubuntu} DOCKER_TAG=$arch-${DOCKER_TAG}
+            make docker-cross-build WITH_EBPF=true TARGET_ARCH=$arch TARGET_GOARCH=$arch DOCKER_IMAGE=${DOCKER_IMAGE} BASE=${BASE:-${arch}/ubuntu} DOCKER_TAG=$arch-${DOCKER_TAG}
             ;;
         esac
     done
