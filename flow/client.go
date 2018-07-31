@@ -80,7 +80,7 @@ func (f *TableClient) LookupFlows(flowSearchQuery filters.SearchQuery) (*FlowSet
 	ch := make(chan *FlowSet, len(speakers))
 
 	for _, c := range speakers {
-		go f.lookupFlows(ch, c.GetHost(), flowSearchQuery)
+		go f.lookupFlows(ch, c.GetRemoteHost(), flowSearchQuery)
 	}
 
 	flowset := NewFlowSet()

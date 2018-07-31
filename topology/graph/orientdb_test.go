@@ -116,7 +116,7 @@ func newOrientDBGraph(t *testing.T) (*Graph, *fakeOrientDBClient) {
 		t.Error(err.Error())
 	}
 
-	return NewGraphFromConfig(b, common.ExternalService), client
+	return NewGraphFromConfig(b, common.UnknownService), client
 }
 
 func metadataToJSONRawMessage(t *testing.T, metadata Metadata) json.RawMessage {
@@ -139,6 +139,8 @@ func TestLocalHistory(t *testing.T) {
 	node := g.newNode("aaa", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
 	g.addMetadata(node, "MTU", 1510, time.Unix(2, 0))
 
+	origin := common.UnknownService.String() + ".host1"
+
 	expected := []op{
 		{
 			name: "CreateDocument",
@@ -149,7 +151,7 @@ func TestLocalHistory(t *testing.T) {
 				"@class":    "Node",
 				"ID":        Identifier("aaa"),
 				"Host":      "host1",
-				"Origin":    "exttool.host1",
+				"Origin":    origin,
 				"Metadata": metadataToJSONRawMessage(t, Metadata{
 					"MTU": 1500,
 				}),
@@ -168,7 +170,7 @@ func TestLocalHistory(t *testing.T) {
 				"@class":    "Node",
 				"ID":        Identifier("aaa"),
 				"Host":      "host1",
-				"Origin":    "exttool.host1",
+				"Origin":    origin,
 				"Metadata": metadataToJSONRawMessage(t, Metadata{
 					"MTU": 1510,
 				}),
@@ -192,7 +194,7 @@ func TestLocalHistory(t *testing.T) {
 				"@class":    "Node",
 				"ID":        Identifier("aaa"),
 				"Host":      "host1",
-				"Origin":    "exttool.host1",
+				"Origin":    origin,
 				"Metadata": metadataToJSONRawMessage(t, Metadata{
 					"MTU": 1500,
 				}),
@@ -211,7 +213,7 @@ func TestLocalHistory(t *testing.T) {
 				"@class":    "Node",
 				"ID":        Identifier("aaa"),
 				"Host":      "host1",
-				"Origin":    "exttool.host1",
+				"Origin":    origin,
 				"Metadata": metadataToJSONRawMessage(t, Metadata{
 					"MTU": 1510,
 				}),
@@ -230,7 +232,7 @@ func TestLocalHistory(t *testing.T) {
 				"@class":    "Node",
 				"ID":        Identifier("aaa"),
 				"Host":      "host1",
-				"Origin":    "exttool.host1",
+				"Origin":    origin,
 				"Metadata": metadataToJSONRawMessage(t, Metadata{
 					"MTU": 1520,
 				}),
@@ -258,7 +260,7 @@ func TestLocalHistory(t *testing.T) {
 				"@class":    "Node",
 				"ID":        Identifier("aaa"),
 				"Host":      "host1",
-				"Origin":    "exttool.host1",
+				"Origin":    origin,
 				"Metadata": metadataToJSONRawMessage(t, Metadata{
 					"MTU": 1500,
 				}),
@@ -277,7 +279,7 @@ func TestLocalHistory(t *testing.T) {
 				"@class":    "Node",
 				"ID":        Identifier("aaa"),
 				"Host":      "host1",
-				"Origin":    "exttool.host1",
+				"Origin":    origin,
 				"Metadata": metadataToJSONRawMessage(t, Metadata{
 					"MTU": 1510,
 				}),
@@ -296,7 +298,7 @@ func TestLocalHistory(t *testing.T) {
 				"@class":    "Node",
 				"ID":        Identifier("aaa"),
 				"Host":      "host1",
-				"Origin":    "exttool.host1",
+				"Origin":    origin,
 				"Metadata": metadataToJSONRawMessage(t, Metadata{
 					"MTU": 1520,
 				}),

@@ -1363,7 +1363,7 @@ func (tv *GraphTraversalV) SubGraph(s ...interface{}) *GraphTraversal {
 		}
 	}
 
-	ng := graph.NewGraph(tv.GraphTraversal.Graph.GetHost(), memory, common.ExternalService)
+	ng := graph.NewGraph(tv.GraphTraversal.Graph.GetHost(), memory, common.UnknownService)
 
 	return NewGraphTraversal(ng, tv.GraphTraversal.lockGraph)
 }
@@ -1399,7 +1399,7 @@ func (sp *GraphTraversalShortestPath) SubGraph(s ...interface{}) *GraphTraversal
 		}
 	}
 
-	ng := graph.NewGraph(sp.GraphTraversal.Graph.GetHost(), memory, common.ExternalService)
+	ng := graph.NewGraph(sp.GraphTraversal.Graph.GetHost(), memory, common.UnknownService)
 
 	return NewGraphTraversal(ng, sp.GraphTraversal.lockGraph)
 }
@@ -1692,7 +1692,7 @@ func (te *GraphTraversalE) SubGraph(s ...interface{}) *GraphTraversal {
 		}
 	}
 
-	ng := graph.NewGraph(te.GraphTraversal.Graph.GetHost(), memory, common.ExternalService)
+	ng := graph.NewGraph(te.GraphTraversal.Graph.GetHost(), memory, common.UnknownService)
 
 	return NewGraphTraversal(ng, te.GraphTraversal.lockGraph)
 }

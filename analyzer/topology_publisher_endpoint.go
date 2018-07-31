@@ -65,10 +65,13 @@ func (t *TopologyPublisherEndpoint) OnDisconnected(c shttp.WSSpeaker) {
 	if policy == Persistent {
 		return
 	}
-	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources %s", c.GetHost())
+
+	host := c.GetRemoteHost()
+
+	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources %s", host)
 
 	t.Graph.Lock()
-	t.Graph.DelHostGraph(c.GetHost())
+	t.Graph.DelHostGraph(host)
 	t.Graph.Unlock()
 }
 

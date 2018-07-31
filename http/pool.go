@@ -37,9 +37,10 @@ import (
 // WSSpeakerPool is the interface that WSSpeaker pools have to implement.
 type WSSpeakerPool interface {
 	AddClient(c WSSpeaker) error
-	RemoveClient(c WSSpeaker)
+	RemoveClient(c WSSpeaker) bool
 	AddEventHandler(h WSSpeakerEventHandler)
 	GetSpeakers() []WSSpeaker
+	GetSpeakerByRemoteHost(host string) WSSpeaker
 	PickConnectedSpeaker() WSSpeaker
 	BroadcastMessage(m WSMessage)
 	SendMessageTo(m WSMessage, host string) error
@@ -89,7 +90,7 @@ func (s *WSPool) OnConnected(c WSSpeaker) {
 
 // OnDisconnected forwards the OnConnected event to event listeners of the pool.
 func (s *WSPool) OnDisconnected(c WSSpeaker) {
-	logging.GetLogger().Debugf("OnDisconnected %s for pool %s ", c.GetHost(), s.GetName())
+	logging.GetLogger().Debugf("OnDisconnected %s for pool %s ", c.GetRemoteHost(), s.GetName())
 	s.eventHandlersLock.RLock()
 	for _, h := range s.eventHandlers {
 		h.OnDisconnected(c)
@@ -106,7 +107,7 @@ func (s *wsIncomerPool) OnDisconnected(c WSSpeaker) {
 
 // AddClient adds the given WSSpeaker to the pool.
 func (s *WSPool) AddClient(c WSSpeaker) error {
-	logging.GetLogger().Debugf("AddClient %s for pool %s", c.GetHost(), s.GetName())
+	logging.GetLogger().Debugf("AddClient %s for pool %s", c.GetRemoteHost(), s.GetName())
 	s.Lock()
 	s.speakers = append(s.speakers, c)
 	s.Unlock()
@@ -119,7 +120,7 @@ func (s *WSPool) AddClient(c WSSpeaker) error {
 
 // AddClient adds the given WSSpeaker to the wsIncomerPool.
 func (s *wsIncomerPool) AddClient(c WSSpeaker) error {
-	logging.GetLogger().Debugf("AddClient %s for pool %s", c.GetHost(), s.GetName())
+	logging.GetLogger().Debugf("AddClient %s for pool %s", c.GetRemoteHost(), s.GetName())
 	s.Lock()
 	s.speakers = append(s.speakers, c)
 	s.Unlock()
@@ -139,24 +140,28 @@ func (s *WSPool) OnMessage(c WSSpeaker, m WSMessage) {
 	s.eventHandlersLock.RUnlock()
 }
 
-func (s *WSPool) RemoveClient(c WSSpeaker) {
+func (s *WSPool) RemoveClient(c WSSpeaker) bool {
 	s.Lock()
 	defer s.Unlock()
+
+	host := c.GetRemoteHost()
 	for i, ic := range s.speakers {
-		if ic.GetHost() == c.GetHost() {
-			logging.GetLogger().Debugf("Successfully removed client %s for pool %s", c.GetHost(), s.GetName())
+		if ic.GetRemoteHost() == host {
+			logging.GetLogger().Debugf("Successfully removed client %s for pool %s", host, s.GetName())
 			s.speakers = append(s.speakers[:i], s.speakers[i+1:]...)
-			return
+			return true
 		}
 	}
-	logging.GetLogger().Debugf("Failed to remove client %s for pool %s", c.GetHost(), s.GetName())
+	logging.GetLogger().Debugf("Failed to remove client %s for pool %s", host, s.GetName())
+
+	return false
 }
 
 // GetStatus returns the states of the WebSocket clients
 func (s *WSPool) GetStatus() map[string]WSConnStatus {
 	clients := make(map[string]WSConnStatus)
 	for _, client := range s.GetSpeakers() {
-		clients[client.GetHost()] = client.GetStatus()
+		clients[client.GetRemoteHost()] = client.GetStatus()
 	}
 	return clients
 }
@@ -234,19 +239,19 @@ func (s *WSPool) GetSpeakersByType(serviceType common.ServiceType) (speakers []W
 	return
 }
 
-// GetSpeakerByHost returns the WSSpeaker for the given host.
-func (s *WSPool) GetSpeakerByHost(host string) WSSpeaker {
+// GetSpeakerByRemoteHost returns the WSSpeaker for the given remote host.
+func (s *WSPool) GetSpeakerByRemoteHost(host string) WSSpeaker {
 	for _, c := range s.speakers {
-		if c.GetHost() == host {
+		if c.GetRemoteHost() == host {
 			return c
 		}
 	}
 	return nil
 }
 
-// SendMessageTo sends message to WSSpeaker for the given host.
+// SendMessageTo sends message to WSSpeaker for the given remote host.
 func (s *WSPool) SendMessageTo(m WSMessage, host string) error {
-	c := s.GetSpeakerByHost(host)
+	c := s.GetSpeakerByRemoteHost(host)
 	if c == nil {
 		return common.ErrNotFound
 	}

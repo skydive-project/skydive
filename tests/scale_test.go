@@ -116,7 +116,7 @@ func checkPeers(client *shttp.CrudClient, peersExpected int, state shttp.WSConnS
 	}
 
 	if count != peersExpected {
-		return fmt.Errorf("Expected %d peers, got %d", peersExpected, count)
+		return fmt.Errorf("Expected %d peers, got %d, status: %+v", peersExpected, count, status)
 	}
 
 	return nil
@@ -315,7 +315,8 @@ func TestScaleHA(t *testing.T) {
 
 	gh := gclient.NewGremlinQueryHelper(authOptions)
 
-	if err = checkPeers(client, 1, common.RunningState); err != nil {
+	// expected 2 for because of 1 incoming and 1 outgoer
+	if err = common.Retry(func() error { return checkPeers(client, 2, common.RunningState) }, 5, time.Second); err != nil {
 		helper.ExecCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
@@ -456,7 +457,7 @@ func TestScaleHA(t *testing.T) {
 	helper.ExecCmds(t, setupCmds...)
 
 	if err = common.Retry(func() error {
-		return checkPeers(client, 1, common.RunningState)
+		return checkPeers(client, 2, common.RunningState)
 	}, 15, time.Second); err != nil {
 		helper.ExecCmds(t, tearDownCmds...)
 		t.Fatal(err)

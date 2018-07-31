@@ -76,12 +76,13 @@ func (s *Server) GetStatus() interface{} {
 		Incomers: make(map[string]shttp.WSConnStatus),
 		Outgoers: make(map[string]shttp.WSConnStatus),
 	}
-	for host, peer := range s.replicationEndpoint.conns {
-		if host == peer.GetHost() {
-			peersStatus.Incomers[host] = peer.GetStatus()
-		} else {
-			peersStatus.Outgoers[host] = peer.GetStatus()
-		}
+
+	for _, speaker := range s.replicationEndpoint.in.GetSpeakers() {
+		peersStatus.Incomers[speaker.GetRemoteHost()] = speaker.GetStatus()
+	}
+
+	for _, speaker := range s.replicationEndpoint.out.GetSpeakers() {
+		peersStatus.Outgoers[speaker.GetRemoteHost()] = speaker.GetStatus()
 	}
 
 	return &types.AnalyzerStatus{
@@ -235,7 +236,7 @@ func NewServerFromConfig() (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	// force admin user for the cluster backend to ensure that all the user connection throught
+	// force admin user for the cluster backend to ensure that all the user connection through
 	// "cluster" endpoints will be admin
 	clusterAuthBackend.SetDefaultUserRole("admin")
 
@@ -263,13 +264,13 @@ func NewServerFromConfig() (*Server, error) {
 
 	storage, err := storage.NewStorageFromConfig(etcdClient)
 
-	replicationWSServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/replication", apiAuthBackend))
+	replicationWSServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/replication", clusterAuthBackend))
 	replicationEndpoint, err := NewTopologyReplicationEndpoint(replicationWSServer, clusterAuthOptions, cached, g)
 	if err != nil {
 		return nil, err
 	}
 
-	// declare all extension available throught API and filtering
+	// declare all extension available through API and filtering
 	tr := traversal.NewGremlinTraversalParser()
 	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewRawPacketsTraversalExtension())

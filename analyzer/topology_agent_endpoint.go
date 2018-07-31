@@ -43,7 +43,11 @@ type TopologyAgentEndpoint struct {
 
 // OnDisconnected called when an agent disconnected.
 func (t *TopologyAgentEndpoint) OnDisconnected(c shttp.WSSpeaker) {
-	host := c.GetHost()
+	host := c.GetRemoteHost()
+	if host == "" {
+		return
+	}
+
 	t.Graph.Lock()
 	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources %s", host)
 	t.Graph.DelHostGraph(host)

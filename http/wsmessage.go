@@ -451,9 +451,9 @@ func (a *WSStructClientPool) AddClient(c WSSpeaker) error {
 	return nil
 }
 
-// Request sends a Request Struct message to the WSSpeaker of the given host.
+// Request sends a Request Struct message to the WSSpeaker of the given remote host.
 func (s *WSStructClientPool) Request(host string, request *WSStructMessage, timeout time.Duration) (*WSStructMessage, error) {
-	c := s.WSClientPool.GetSpeakerByHost(host)
+	c := s.WSClientPool.GetSpeakerByRemoteHost(host)
 	if c == nil {
 		return nil, common.ErrNotFound
 	}
@@ -476,9 +476,9 @@ type WSStructServer struct {
 	*wsStructSpeakerPoolEventDispatcher
 }
 
-// Request sends a Request Struct message to the WSSpeaker of the given host.
+// Request sends a Request Struct message to the WSSpeaker of the given remote host.
 func (s *WSStructServer) Request(host string, request *WSStructMessage, timeout time.Duration) (*WSStructMessage, error) {
-	c := s.WSServer.GetSpeakerByHost(host)
+	c := s.WSServer.GetSpeakerByRemoteHost(host)
 	if c == nil {
 		return nil, common.ErrNotFound
 	}

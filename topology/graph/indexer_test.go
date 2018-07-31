@@ -35,7 +35,7 @@ func TestMetadataIndexer(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	g := NewGraphFromConfig(b, common.ExternalService)
+	g := NewGraphFromConfig(b, common.UnknownService)
 
 	nodeFilter := NewGraphElementFilter(filters.NewAndFilter(
 		filters.NewNotNullFilter("TID"),

@@ -40,6 +40,7 @@ type WSIncomerHandler func(*websocket.Conn, *auth.AuthenticatedRequest) WSSpeake
 type WSServer struct {
 	common.RWMutex
 	*wsIncomerPool
+	server         *Server
 	incomerHandler WSIncomerHandler
 }
 
@@ -68,16 +69,21 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 	logging.GetLogger().Debugf("Serving messages for client %s for pool %s", host, s.GetName())
 
 	s.wsIncomerPool.RLock()
-	c := s.GetSpeakerByHost(host)
+	c := s.GetSpeakerByRemoteHost(host)
 	s.wsIncomerPool.RUnlock()
 	if c != nil {
-		logging.GetLogger().Errorf("host_id error, connection from %s(%s) conflicts with another one", r.RemoteAddr, host)
+		logging.GetLogger().Errorf("host_id(%s) conflict, same host_id used by %s", host, r.RemoteAddr)
 		w.Header().Set("Connection", "close")
 		w.WriteHeader(http.StatusConflict)
 		return
 	}
 
-	conn, err := websocket.Upgrade(w, &r.Request, nil, 1024, 1024)
+	// reply with host-id and service type of the server
+	header := http.Header{}
+	header.Set("X-Host-ID", s.server.Host)
+	header.Set("X-Service-Type", s.server.ServiceType.String())
+
+	conn, err := websocket.Upgrade(w, &r.Request, header, 1024, 1024)
 	if err != nil {
 		return
 	}
@@ -99,6 +105,7 @@ func NewWSServer(server *Server, endpoint string, authBackend AuthenticationBack
 		incomerHandler: func(c *websocket.Conn, a *auth.AuthenticatedRequest) WSSpeaker {
 			return defaultIncomerHandler(c, a)
 		},
+		server: server,
 	}
 
 	server.HandleFunc(endpoint, s.serveMessages, authBackend)

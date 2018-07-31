@@ -103,7 +103,7 @@ func newElasticsearchGraph(t *testing.T) (*Graph, *fakeESClient) {
 		t.Error(err.Error())
 	}
 
-	return NewGraphFromConfig(b, common.ExternalService), client
+	return NewGraphFromConfig(b, common.UnknownService), client
 }
 
 func TestElasticsearchNode(t *testing.T) {
@@ -112,12 +112,14 @@ func TestElasticsearchNode(t *testing.T) {
 	node := g.newNode("aaa", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
 	g.addMetadata(node, "MTU", 1510, time.Unix(2, 0))
 
+	origin := common.UnknownService.String() + ".host1"
+
 	expectedLive := map[string]interface{}{
 		"aaa": map[string]interface{}{
 			"_Type":     "node",
 			"CreatedAt": float64(1000),
 			"Host":      "host1",
-			"Origin":    "exttool.host1",
+			"Origin":    origin,
 			"ID":        "aaa",
 			"Metadata": map[string]interface{}{
 				"MTU": float64(1510),
@@ -138,7 +140,7 @@ func TestElasticsearchNode(t *testing.T) {
 			"ArchivedAt": float64(2000),
 			"CreatedAt":  float64(1000),
 			"Host":       "host1",
-			"Origin":     "exttool.host1",
+			"Origin":     origin,
 			"ID":         "aaa",
 			"Metadata": map[string]interface{}{
 				"MTU": float64(1500),
@@ -160,7 +162,7 @@ func TestElasticsearchNode(t *testing.T) {
 			"_Type":     "node",
 			"CreatedAt": float64(1000),
 			"Host":      "host1",
-			"Origin":    "exttool.host1",
+			"Origin":    origin,
 			"ID":        "aaa",
 			"Metadata": map[string]interface{}{
 				"MTU": float64(1520),
@@ -180,7 +182,7 @@ func TestElasticsearchNode(t *testing.T) {
 			"ArchivedAt": float64(2000),
 			"CreatedAt":  float64(1000),
 			"Host":       "host1",
-			"Origin":     "exttool.host1",
+			"Origin":     origin,
 			"ID":         "aaa",
 			"Metadata": map[string]interface{}{
 				"MTU": float64(1500),
@@ -193,7 +195,7 @@ func TestElasticsearchNode(t *testing.T) {
 			"ArchivedAt": float64(3000),
 			"CreatedAt":  float64(1000),
 			"Host":       "host1",
-			"Origin":     "exttool.host1",
+			"Origin":     origin,
 			"ID":         "aaa",
 			"Metadata": map[string]interface{}{
 				"MTU": float64(1510),
@@ -221,7 +223,7 @@ func TestElasticsearchNode(t *testing.T) {
 			"ArchivedAt": float64(2000),
 			"CreatedAt":  float64(1000),
 			"Host":       "host1",
-			"Origin":     "exttool.host1",
+			"Origin":     origin,
 			"ID":         "aaa",
 			"Metadata": map[string]interface{}{
 				"MTU": float64(1500),
@@ -234,7 +236,7 @@ func TestElasticsearchNode(t *testing.T) {
 			"ArchivedAt": float64(3000),
 			"CreatedAt":  float64(1000),
 			"Host":       "host1",
-			"Origin":     "exttool.host1",
+			"Origin":     origin,
 			"ID":         "aaa",
 			"Metadata": map[string]interface{}{
 				"MTU": float64(1510),
@@ -248,7 +250,7 @@ func TestElasticsearchNode(t *testing.T) {
 			"DeletedAt":  float64(4000),
 			"CreatedAt":  float64(1000),
 			"Host":       "host1",
-			"Origin":     "exttool.host1",
+			"Origin":     origin,
 			"ID":         "aaa",
 			"Metadata": map[string]interface{}{
 				"MTU": float64(1520),
@@ -272,12 +274,14 @@ func TestElasticsearchEdge(t *testing.T) {
 	edge := g.newEdge("eee", node1, node2, Metadata{"Name": "eee"}, time.Unix(1, 0), "host1")
 	g.addMetadata(edge, "Type", "veth", time.Unix(2, 0))
 
+	origin := common.UnknownService.String() + ".host1"
+
 	expectedLive := map[string]interface{}{
 		"aaa": map[string]interface{}{
 			"_Type":     "node",
 			"CreatedAt": float64(1000),
 			"Host":      "host1",
-			"Origin":    "exttool.host1",
+			"Origin":    origin,
 			"ID":        "aaa",
 			"Metadata": map[string]interface{}{
 				"MTU": float64(1500),
@@ -289,7 +293,7 @@ func TestElasticsearchEdge(t *testing.T) {
 			"_Type":     "node",
 			"CreatedAt": float64(1000),
 			"Host":      "host1",
-			"Origin":    "exttool.host1",
+			"Origin":    origin,
 			"ID":        "bbb",
 			"Metadata": map[string]interface{}{
 				"MTU": float64(1500),
@@ -301,7 +305,7 @@ func TestElasticsearchEdge(t *testing.T) {
 			"_Type":     "edge",
 			"CreatedAt": float64(1000),
 			"Host":      "host1",
-			"Origin":    "exttool.host1",
+			"Origin":    origin,
 			"ID":        "eee",
 			"Metadata": map[string]interface{}{
 				"Type": "veth",
@@ -325,7 +329,7 @@ func TestElasticsearchEdge(t *testing.T) {
 			"CreatedAt":  float64(1000),
 			"ArchivedAt": float64(2000),
 			"Host":       "host1",
-			"Origin":     "exttool.host1",
+			"Origin":     origin,
 			"ID":         "eee",
 			"Metadata": map[string]interface{}{
 				"Name": "eee",
@@ -354,7 +358,7 @@ func TestElasticsearchEdge(t *testing.T) {
 			"DeletedAt":  float64(3000),
 			"ArchivedAt": float64(3000),
 			"Host":       "host1",
-			"Origin":     "exttool.host1",
+			"Origin":     origin,
 			"ID":         "eee",
 			"Metadata": map[string]interface{}{
 				"Name": "eee",
@@ -370,7 +374,7 @@ func TestElasticsearchEdge(t *testing.T) {
 			"CreatedAt":  float64(1000),
 			"ArchivedAt": float64(2000),
 			"Host":       "host1",
-			"Origin":     "exttool.host1",
+			"Origin":     origin,
 			"ID":         "eee",
 			"Metadata": map[string]interface{}{
 				"Name": "eee",

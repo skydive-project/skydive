@@ -77,7 +77,7 @@ func (a *WSMasterElection) OnConnected(c WSSpeaker) {
 // the master a new election is triggered.
 func (a *WSMasterElection) OnDisconnected(c WSSpeaker) {
 	a.Lock()
-	if a.master != nil && a.master.GetHost() == c.GetHost() {
+	if a.master != nil && a.master.GetRemoteHost() == c.GetRemoteHost() {
 		a.selectMaster()
 		defer func() {
 			a.notifyNewMaster(a.master)

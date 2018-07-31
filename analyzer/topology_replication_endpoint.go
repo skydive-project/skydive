@@ -23,18 +23,12 @@
 package analyzer
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strconv"
 	"sync"
 	"sync/atomic"
-	"time"
 
-	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
@@ -62,7 +56,8 @@ type TopologyReplicationEndpoint struct {
 	shttp.DefaultWSSpeakerEventHandler
 	in           shttp.WSStructSpeakerPool
 	out          *shttp.WSStructClientPool
-	conns        map[string]shttp.WSSpeaker
+	inByHost     map[string]shttp.WSSpeaker
+	outByHost    map[string]*url.URL
 	candidates   []*TopologyReplicatorPeer
 	Graph        *graph.Graph
 	cached       *graph.CachedBackend
@@ -74,46 +69,6 @@ func (t *TopologyReplicationEndpoint) debug() bool {
 	return config.GetBool("analyzer.replication.debug")
 }
 
-// getHostID loop until being able to get the host-id of the peer.
-func (p *TopologyReplicatorPeer) getHostID() (string, error) {
-	addr := common.NormalizeAddrForURL(p.URL.Hostname())
-	port, _ := strconv.Atoi(p.URL.Port())
-	client, err := shttp.NewRestClient(config.GetURL("http", addr, port, ""), p.AuthOptions)
-	if err != nil {
-		return "", err
-	}
-	contentReader := bytes.NewReader([]byte{})
-
-	var data []byte
-	var info api.Info
-
-	for {
-		resp, err := client.Request("GET", "api", contentReader, nil)
-		if err != nil {
-			goto NotReady
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			goto NotReady
-		}
-
-		data, _ = ioutil.ReadAll(resp.Body)
-		if len(data) == 0 {
-			goto NotReady
-		}
-
-		if err := json.Unmarshal(data, &info); err != nil {
-			goto NotReady
-		}
-		p.host = info.Host
-
-		return p.host, nil
-
-	NotReady:
-		time.Sleep(1 * time.Second)
-	}
-}
-
 // OnConnected is called when the peer gets connected then the whole graph
 // is send to initialize it.
 func (p *TopologyReplicatorPeer) OnConnected(c shttp.WSSpeaker) {
@@ -123,15 +78,25 @@ func (p *TopologyReplicatorPeer) OnConnected(c shttp.WSSpeaker) {
 	p.endpoint.Lock()
 	defer p.endpoint.Unlock()
 
-	if _, found := p.endpoint.conns[p.host]; found {
+	host := c.GetRemoteHost()
+
+	if host == config.GetString("host_id") {
+		logging.GetLogger().Debugf("Disconnecting from %s since it's me", p.URL.String())
+		c.Disconnect()
+		return
+	}
+
+	// disconnect as can be connect to the same host from different addresses.
+	if u, ok := p.endpoint.outByHost[host]; ok {
+		logging.GetLogger().Debugf("Disconnecting from %s as already connected through", p.URL.String(), u.String())
 		c.Disconnect()
 		return
 	}
 
 	p.wsspeaker.SendMessage(shttp.NewWSStructMessage(graph.Namespace, graph.SyncMsgType, p.Graph))
 
-	p.endpoint.conns[p.host] = c
 	p.endpoint.out.AddClient(c)
+	p.endpoint.outByHost[host] = c.GetURL()
 }
 
 // OnDisconnected is called when the peer gets disconnected
@@ -139,33 +104,13 @@ func (p *TopologyReplicatorPeer) OnDisconnected(c shttp.WSSpeaker) {
 	p.endpoint.Lock()
 	defer p.endpoint.Unlock()
 
-	if peer, found := p.endpoint.conns[p.host]; found {
-		for _, outgoer := range p.endpoint.out.GetSpeakers() {
-			if outgoer.GetHost() == peer.GetHost() {
-				p.endpoint.out.RemoveClient(c)
-				delete(p.endpoint.conns, p.host)
-				break
-			}
-		}
-	}
+	delete(p.endpoint.outByHost, c.GetRemoteHost())
 }
 
 func (p *TopologyReplicatorPeer) connect(wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	// check whether the peer is the local server itself or not thanks to the /api
-	// the goal is to not add itself as peer.
-	hostID, err := p.getHostID()
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to get the remote host ID: %s", err)
-		return
-	}
-
-	if hostID == config.GetString("host_id") {
-		logging.GetLogger().Debugf("No connection to %s since it's me", p.URL.String())
-		return
-	}
-
+	logging.GetLogger().Infof("Connecting to peer: %s", p.URL.String())
 	wsClient := shttp.NewWSClientFromConfig(common.AnalyzerService, p.URL, p.AuthOptions, http.Header{}).UpgradeToWSStructSpeaker()
 
 	// will trigger shttp.WSSpeakerEventHandler, so OnConnected
@@ -340,16 +285,6 @@ func (t *TopologyReplicationEndpoint) GetSpeakers() []shttp.WSSpeaker {
 	return append(t.in.GetSpeakers(), t.out.GetSpeakers()...)
 }
 
-func (t *TopologyReplicationEndpoint) getPeer(host string) shttp.WSSpeaker {
-	for _, peer := range t.GetSpeakers() {
-		if peer.GetHost() == host {
-			return peer
-		}
-	}
-
-	return nil
-}
-
 // OnConnected is called when an incoming peer got connected.
 func (t *TopologyReplicationEndpoint) OnConnected(c shttp.WSSpeaker) {
 	t.Graph.RLock()
@@ -358,12 +293,12 @@ func (t *TopologyReplicationEndpoint) OnConnected(c shttp.WSSpeaker) {
 	t.Lock()
 	defer t.Unlock()
 
-	if _, found := t.conns[c.GetHost()]; found {
+	host := c.GetRemoteHost()
+	if speaker := t.inByHost[host]; speaker != nil {
+		logging.GetLogger().Debugf("Disconnecting %s from %s as already connected from %s", host, c.GetURL(), speaker.GetURL())
 		c.Disconnect()
 		return
 	}
-
-	t.conns[c.GetHost()] = c
 
 	// subscribe to websocket structured messages
 	c.(*shttp.WSStructSpeaker).AddStructMessageHandler(t, []string{graph.Namespace})
@@ -375,11 +310,7 @@ func (t *TopologyReplicationEndpoint) OnDisconnected(c shttp.WSSpeaker) {
 	t.Lock()
 	defer t.Unlock()
 
-	if peer, found := t.conns[c.GetHost()]; found {
-		if peer.GetHost() == c.GetHost() {
-			delete(t.conns, c.GetHost())
-		}
-	}
+	delete(t.inByHost, c.GetRemoteHost())
 }
 
 // NewTopologyReplicationEndpoint returns a new server to be used by other analyzers for replication.
@@ -390,11 +321,12 @@ func NewTopologyReplicationEndpoint(pool shttp.WSStructSpeakerPool, auth *shttp.
 	}
 
 	t := &TopologyReplicationEndpoint{
-		Graph:  g,
-		cached: cached,
-		in:     pool,
-		out:    shttp.NewWSStructClientPool("TopologyReplicationEndpoint"),
-		conns:  make(map[string]shttp.WSSpeaker),
+		Graph:     g,
+		cached:    cached,
+		in:        pool,
+		out:       shttp.NewWSStructClientPool("TopologyReplicationEndpoint"),
+		inByHost:  make(map[string]shttp.WSSpeaker),
+		outByHost: make(map[string]*url.URL),
 	}
 	t.replicateMsg.Store(true)
 
