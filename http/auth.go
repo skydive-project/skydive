@@ -24,14 +24,18 @@ package http
 
 import (
 	"bytes"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
+
+	"github.com/gorilla/context"
 
 	"github.com/abbot/go-http-auth"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/rbac"
 )
 
 var (
@@ -39,124 +43,137 @@ var (
 	ErrWrongCredentials = errors.New("Wrong credentials")
 )
 
+const (
+	defaultUserRole = "admin"
+	tokenName       = "authtok"
+)
+
 type AuthenticationOpts struct {
 	Username string
 	Password string
+	Token    string
 }
 
-type AuthenticationClient struct {
-	authOptions   *AuthenticationOpts
-	authenticated bool
-	Url           *url.URL
-	AuthToken     string
+// AuthCookie returns a authentication cookie
+func AuthCookie(token, path string) *http.Cookie {
+	return &http.Cookie{Name: tokenName, Value: token, Path: path}
 }
 
-func (c *AuthenticationClient) Authenticated() bool {
-	return c.authenticated
-}
+// SetAuthHeaders apply all the cookie used for authentication to the header
+func SetAuthHeaders(headers *http.Header, authOpts *AuthenticationOpts) {
+	cookies := []*http.Cookie{}
+	if authOpts.Token != "" {
+		cookies = append(cookies, AuthCookie(authOpts.Token, ""))
+	} else if authOpts.Username != "" {
+		basic := base64.StdEncoding.EncodeToString([]byte(authOpts.Username + ":" + authOpts.Password))
+		headers.Set("Authorization", "Basic "+basic)
+	}
 
-func setCookies(headers *http.Header, c *AuthenticationClient) {
+	// cookie that comes from the config, can be used with proxies
+	for name, value := range config.GetStringMapString("http.cookie") {
+		cookies = append(cookies, &http.Cookie{Name: name, Value: value})
+	}
+
 	var b bytes.Buffer
-	for _, cookie := range cookies(c) {
+	for _, cookie := range cookies {
 		b.WriteString(cookie.String())
 		b.WriteString("; ")
 	}
 	headers.Set("Cookie", b.String())
 }
 
-func cookies(c *AuthenticationClient) []*http.Cookie {
-	var cookies []*http.Cookie
-	cookies = append(cookies, configCookies()...)
-	if c != nil {
-		cookies = append(cookies, c.AuthCookies()...)
-	}
-	return cookies
-}
-
-func configCookies() []*http.Cookie {
-	var cookies []*http.Cookie
-	for name, value := range config.GetStringMapString("http.cookie") {
-		cookies = append(cookies, &http.Cookie{Name: name, Value: value})
-	}
-	return cookies
-}
-
-func (c *AuthenticationClient) AuthCookies() []*http.Cookie {
-	var cookies []*http.Cookie
-	if c.authenticated && c.AuthToken != "" {
-		cookies = append(cookies, c.Cookie())
-	}
-	return cookies
-}
-
-func (c *AuthenticationClient) Cookie() *http.Cookie {
-	return &http.Cookie{Name: "authtok", Value: c.AuthToken}
-}
-
-func (c *AuthenticationClient) Authenticate() error {
-	values := url.Values{"username": {c.authOptions.Username}, "password": {c.authOptions.Password}}
-
-	u := c.Url.ResolveReference(&url.URL{Path: "/login"})
-	req, err := http.NewRequest("POST", u.String(), strings.NewReader(values.Encode()))
-	if err != nil {
-		return err
-	}
-
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	var resp *http.Response
-	if config.IsTLSenabled() == true {
-		var client *http.Client
-		client, err = getHttpClient()
-		if err != nil {
-			return err
-		}
-		resp, err = client.Do(req)
-	} else {
-		resp, err = http.DefaultTransport.RoundTrip(req)
-	}
-	if err != nil {
-		return fmt.Errorf("Authentication failed: %s", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusFound {
-		return fmt.Errorf("Authentication failed: returned code %d", resp.StatusCode)
-	}
-
-	c.authenticated = true
-
-	for _, cookie := range resp.Cookies() {
-		if cookie.Name == "authtok" {
-			c.AuthToken = cookie.Value
-			break
-		}
-	}
-
-	return nil
-}
-
-func NewAuthenticationClient(url *url.URL, authOptions *AuthenticationOpts) *AuthenticationClient {
-	return &AuthenticationClient{
-		Url:         url,
-		authOptions: authOptions,
-	}
-}
-
+// AuthenticationBackend is the interface of a authentication backend
 type AuthenticationBackend interface {
+	Name() string
+	DefaultUserRole(user string) string
+	SetDefaultUserRole(role string)
 	Authenticate(username string, password string) (string, error)
 	Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc
 }
 
-func NewAuthenticationBackendFromConfig() (AuthenticationBackend, error) {
-	t := config.GetString("auth.type")
+func setPermissionsCookie(w http.ResponseWriter, username string) {
+	jsonPerms, _ := json.Marshal(rbac.GetPermissionsForUser(username))
+	http.SetCookie(w, &http.Cookie{
+		Name:  "permissions",
+		Value: base64.StdEncoding.EncodeToString([]byte(jsonPerms)),
+		Path:  "/",
+	})
+}
 
-	switch t {
-	case "basic":
-		return NewBasicAuthenticationBackendFromConfig()
-	case "keystone":
-		return NewKeystoneAuthenticationBackendFromConfig(), nil
-	default:
-		return NewNoAuthenticationBackend(), nil
+func authCallWrapped(w http.ResponseWriter, r *http.Request, username string, wrapped auth.AuthenticatedHandlerFunc) {
+	ar := &auth.AuthenticatedRequest{Request: *r, Username: username}
+	copyRequestVars(r, &ar.Request)
+	wrapped(w, ar)
+	context.Clear(&ar.Request)
+}
+
+func authenticate(backend AuthenticationBackend, w http.ResponseWriter, username, password string) (string, error) {
+	token, err := backend.Authenticate(username, password)
+	if err != nil {
+		return "", err
 	}
+
+	if roles := rbac.GetUserRoles(username); len(roles) == 0 {
+		rbac.AddRoleForUser(username, backend.DefaultUserRole(username))
+	}
+
+	if token != "" {
+		http.SetCookie(w, AuthCookie(token, "/"))
+	}
+
+	setPermissionsCookie(w, username)
+
+	return token, nil
+}
+
+// Authenticate uses request and the given backend to authenticate
+func authenticateWithHeaders(backend AuthenticationBackend, w http.ResponseWriter, r *http.Request) (string, error) {
+	// first try to get an already retrieve auth token through cookie
+	cookie, err := r.Cookie(tokenName)
+	if err == nil {
+		http.SetCookie(w, AuthCookie(cookie.Value, "/"))
+		return cookie.Value, nil
+	}
+
+	authorization := r.Header.Get("Authorization")
+	if authorization == "" {
+		return "", nil
+	}
+
+	s := strings.SplitN(authorization, " ", 2)
+	if len(s) != 2 || s[0] != "Basic" {
+		return "", ErrWrongCredentials
+	}
+
+	b, err := base64.StdEncoding.DecodeString(s[1])
+	if err != nil {
+		return "", ErrWrongCredentials
+	}
+	pair := strings.SplitN(string(b), ":", 2)
+	if len(pair) != 2 {
+		return "", ErrWrongCredentials
+	}
+	username, password := pair[0], pair[1]
+
+	return authenticate(backend, w, username, password)
+}
+
+// NewAuthenticationBackendByName creates a new auth backend based on the name
+func NewAuthenticationBackendByName(name string) (backend AuthenticationBackend, err error) {
+	typ := config.GetString("auth." + name + ".type")
+	switch typ {
+	case "basic":
+		backend, err = NewBasicAuthenticationBackendFromConfig(name)
+	case "keystone":
+		backend, err = NewKeystoneAuthenticationBackendFromConfig(name)
+	case "noauth":
+		backend = NewNoAuthenticationBackend()
+	default:
+		err = fmt.Errorf("Authentication type unknown or backend not defined for: %s", name)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	return backend, nil
 }

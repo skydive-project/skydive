@@ -27,6 +27,7 @@ import (
 
 	"github.com/skydive-project/skydive/api/types"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -125,7 +126,7 @@ func (pi *PacketInjectorAPI) getNode(gremlinQuery string) *graph.Node {
 }
 
 // RegisterPacketInjectorAPI registers a new packet injector resource in the API
-func RegisterPacketInjectorAPI(g *graph.Graph, apiServer *Server) (*PacketInjectorAPI, error) {
+func RegisterPacketInjectorAPI(g *graph.Graph, apiServer *Server, authBackend shttp.AuthenticationBackend) (*PacketInjectorAPI, error) {
 	pia := &PacketInjectorAPI{
 		BasicAPIHandler: BasicAPIHandler{
 			ResourceHandler: &packetInjectorResourceHandler{},
@@ -134,7 +135,7 @@ func RegisterPacketInjectorAPI(g *graph.Graph, apiServer *Server) (*PacketInject
 		Graph:      g,
 		TrackingID: make(chan string),
 	}
-	if err := apiServer.RegisterAPIHandler(pia); err != nil {
+	if err := apiServer.RegisterAPIHandler(pia, authBackend); err != nil {
 		return nil, err
 	}
 

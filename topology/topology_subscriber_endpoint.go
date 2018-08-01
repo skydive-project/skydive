@@ -88,21 +88,23 @@ func (t *TopologySubscriberEndpoint) OnConnected(c shttp.WSSpeaker) {
 	}
 
 	if gremlinFilter != "" {
-		subscriber, err := t.newTopologySubscriber(c.GetHost(), gremlinFilter, false)
+		host := c.GetRemoteHost()
+
+		subscriber, err := t.newTopologySubscriber(host, gremlinFilter, false)
 		if err != nil {
 			logging.GetLogger().Error(err)
 			return
 		}
 
-		logging.GetLogger().Infof("Client %s subscribed with filter %s", c.GetHost(), gremlinFilter)
-		t.subscribers[c.GetHost()] = subscriber
+		logging.GetLogger().Infof("Client %s subscribed with filter %s", host, gremlinFilter)
+		t.subscribers[host] = subscriber
 	}
 }
 
 // OnDisconnected called when a subscriber got disconnected.
 func (t *TopologySubscriberEndpoint) OnDisconnected(c shttp.WSSpeaker) {
 	t.Lock()
-	delete(t.subscribers, c.GetHost())
+	delete(t.subscribers, c.GetRemoteHost())
 	t.Unlock()
 }
 
@@ -129,16 +131,18 @@ func (t *TopologySubscriberEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *s
 		}
 
 		if syncMsg.GremlinFilter != "" {
-			subscriber, err := t.newTopologySubscriber(c.GetHost(), syncMsg.GremlinFilter, false)
+			host := c.GetRemoteHost()
+
+			subscriber, err := t.newTopologySubscriber(host, syncMsg.GremlinFilter, false)
 			if err != nil {
 				logging.GetLogger().Error(err)
 				return
 			}
 
-			logging.GetLogger().Infof("Client %s subscribed with filter %s", c.GetHost(), syncMsg.GremlinFilter)
+			logging.GetLogger().Infof("Client %s subscribed with filter %s", host, syncMsg.GremlinFilter)
 			result = subscriber.graph
 			t.Lock()
-			t.subscribers[c.GetHost()] = subscriber
+			t.subscribers[host] = subscriber
 			t.Unlock()
 		}
 
@@ -155,7 +159,7 @@ func (t *TopologySubscriberEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *s
 func (t *TopologySubscriberEndpoint) notifyClients(msg *shttp.WSStructMessage) {
 	for _, c := range t.pool.GetSpeakers() {
 		t.RLock()
-		subscriber, found := t.subscribers[c.GetHost()]
+		subscriber, found := t.subscribers[c.GetRemoteHost()]
 		t.RUnlock()
 
 		if found {

@@ -108,7 +108,7 @@ var AllInOneCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		authOptions := analyzer.NewAnalyzerAuthenticationOpts()
+		authOptions := analyzer.AnalyzerClusterAuthenticationOpts()
 		svcAddr, _ := common.ServiceAddressFromString(config.GetString("analyzer.listen"))
 		restClient, err := http.NewRestClient(config.GetURL("http", svcAddr.Addr, svcAddr.Port, ""), authOptions)
 		if err != nil {

@@ -25,9 +25,6 @@ package http
 import (
 	"context"
 	"crypto/tls"
-	"encoding/base64"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -87,7 +84,7 @@ type Server struct {
 	Router      *mux.Router
 	Addr        string
 	Port        int
-	Auth        AuthenticationBackend
+	AuthBackend AuthenticationBackend
 	lock        sync.Mutex
 	listener    net.Listener
 	CnxType     ConnectionType
@@ -103,12 +100,20 @@ func copyRequestVars(old, new *http.Request) {
 	}
 }
 
-func (s *Server) RegisterRoutes(routes []Route) {
+func getRequestParameter(r *http.Request, name string) string {
+	param := r.Header.Get(name)
+	if param == "" {
+		param = r.URL.Query().Get(strings.ToLower(name))
+	}
+	return param
+}
+
+func (s *Server) RegisterRoutes(routes []Route, auth AuthenticationBackend) {
 	for _, route := range routes {
 		r := s.Router.
 			Methods(route.Method).
 			Name(route.Name).
-			Handler(s.Auth.Wrap(route.HandlerFunc))
+			Handler(auth.Wrap(route.HandlerFunc))
 		switch p := route.Path.(type) {
 		case string:
 			r.Path(p)
@@ -118,12 +123,16 @@ func (s *Server) RegisterRoutes(routes []Route) {
 	}
 }
 
+func (s *Server) RegisterLoginRoute(authBackend AuthenticationBackend) {
+	s.Router.HandleFunc("/login", s.serveLoginHandlerFunc(authBackend))
+}
+
 func (s *Server) Listen() error {
 	listenAddrPort := fmt.Sprintf("%s:%d", s.Addr, s.Port)
 	socketType := "TCP"
 	ln, err := net.Listen("tcp", listenAddrPort)
 	if err != nil {
-		return fmt.Errorf("Failed to listen on %s:%d: %s", s.Addr, s.Port, err.Error())
+		return fmt.Errorf("Failed to listen on %s:%d: %s", s.Addr, s.Port, err)
 	}
 	s.listener = ln
 
@@ -164,7 +173,7 @@ func (s *Server) Serve() {
 		if err == http.ErrServerClosed {
 			return
 		}
-		logging.GetLogger().Errorf("Failed to Serve on %s:%d: %s", s.Addr, s.Port, err.Error())
+		logging.GetLogger().Errorf("Failed to serve on %s:%d: %s", s.Addr, s.Port, err)
 	}
 }
 
@@ -172,7 +181,7 @@ func (s *Server) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := s.Server.Shutdown(ctx); err != nil {
-		logging.GetLogger().Error("Shutdown error :", err.Error())
+		logging.GetLogger().Error("Shutdown error :", err)
 	}
 	s.listener.Close()
 	s.wg.Wait()
@@ -211,10 +220,8 @@ func (s *Server) serveStatics(w http.ResponseWriter, r *http.Request) {
 	w.Write(content)
 }
 
-func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
-	s.RLock()
-	defer s.RUnlock()
-
+// ServeIndex servers the index page
+func (s *Server) ServeIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	html, err := s.readStatics("statics/index.html")
 	if err != nil {
 		logging.GetLogger().Error("Unable to find the asset index.html")
@@ -222,20 +229,28 @@ func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	username := r.Username
+	if username == "" {
+		username = "admin"
+	}
+
+	s.RLock()
+	defer s.RUnlock()
+
 	data := struct {
 		ExtraAssets map[string]ExtraAsset
 		GlobalVars  interface{}
-		Permissions [][]string
+		Permissions []rbac.Permission
 	}{
 		ExtraAssets: s.extraAssets,
 		GlobalVars:  s.globalVars,
-		Permissions: rbac.GetPermissionsForUser("admin"),
+		Permissions: rbac.GetPermissionsForUser(username),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 
-	setTLSHeader(w, r)
+	setTLSHeader(w, &r.Request)
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 
@@ -245,31 +260,23 @@ func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) serveLogin(w http.ResponseWriter, r *http.Request) {
+func (s *Server) serveLogin(w http.ResponseWriter, r *http.Request, authBackend AuthenticationBackend) {
 	setTLSHeader(w, r)
 	if r.Method == "POST" {
 		r.ParseForm()
 		loginForm, passwordForm := r.Form["username"], r.Form["password"]
 		if len(loginForm) != 0 && len(passwordForm) != 0 {
-			login, password := loginForm[0], passwordForm[0]
-			if token, err := s.Auth.Authenticate(login, password); err == nil {
-				if token != "" {
-					http.SetCookie(w, &http.Cookie{
-						Name:  "authtok",
-						Value: token,
-					})
-				}
+			username, password := loginForm[0], passwordForm[0]
 
-				jsonPerms, _ := json.Marshal(rbac.GetPermissionsForUser(login))
-				http.SetCookie(w, &http.Cookie{
-					Name:  "permissions",
-					Value: base64.StdEncoding.EncodeToString([]byte(jsonPerms)),
-				})
-
+			if _, err := authenticate(authBackend, w, username, password); err == nil {
 				w.WriteHeader(http.StatusOK)
-			} else {
-				unauthorized(w, r)
+
+				roles := rbac.GetUserRoles(username)
+				logging.GetLogger().Infof("User %s authenticated with %s backend with roles %s", username, authBackend.Name(), roles)
+				return
 			}
+
+			unauthorized(w, r)
 		} else {
 			unauthorized(w, r)
 		}
@@ -278,13 +285,39 @@ func (s *Server) serveLogin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) serveLoginHandlerFunc(authBackend AuthenticationBackend) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.serveLogin(w, r, authBackend)
+	}
+}
+
 func unauthorized(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusUnauthorized)
 	w.Write([]byte("401 Unauthorized\n"))
 }
 
-func (s *Server) HandleFunc(path string, f auth.AuthenticatedHandlerFunc) {
-	s.Router.HandleFunc(path, s.Auth.Wrap(f))
+// HandleFunc specifies the handler function and the authentication backend used for a given path
+func (s *Server) HandleFunc(path string, f auth.AuthenticatedHandlerFunc, authBackend AuthenticationBackend) {
+	postAuthHandler := func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+		// re-add user to its group
+		if roles := rbac.GetUserRoles(r.Username); len(roles) == 0 {
+			rbac.AddRoleForUser(r.Username, authBackend.DefaultUserRole(r.Username))
+		}
+
+		// re-send the permissions
+		setPermissionsCookie(w, r.Username)
+
+		f(w, r)
+	}
+
+	preAuthHandler := authBackend.Wrap(postAuthHandler)
+
+	s.Router.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		// set tls headers first
+		setTLSHeader(w, r)
+
+		preAuthHandler(w, r)
+	})
 }
 
 func (s *Server) loadExtraAssets(folder, prefix string) {
@@ -335,7 +368,7 @@ func (s *Server) AddGlobalVar(key string, v interface{}) {
 	s.Unlock()
 }
 
-func NewServer(host string, serviceType common.ServiceType, addr string, port int, auth AuthenticationBackend, assetsFolder string) *Server {
+func NewServer(host string, serviceType common.ServiceType, addr string, port int, assetsFolder string) *Server {
 	router := mux.NewRouter().StrictSlash(true)
 	router.Headers("X-Host-ID", host, "X-Service-Type", serviceType.String())
 
@@ -345,7 +378,6 @@ func NewServer(host string, serviceType common.ServiceType, addr string, port in
 		Router:      router,
 		Addr:        addr,
 		Port:        port,
-		Auth:        auth,
 		extraAssets: make(map[string]ExtraAsset),
 		globalVars:  make(map[string]interface{}),
 	}
@@ -356,30 +388,19 @@ func NewServer(host string, serviceType common.ServiceType, addr string, port in
 
 	router.PathPrefix("/statics").HandlerFunc(server.serveStatics)
 	router.PathPrefix(ExtraAssetPrefix).HandlerFunc(server.serveStatics)
-	router.HandleFunc("/login", server.serveLogin)
-	router.PathPrefix("/topology").HandlerFunc(server.serveIndex)
-	router.PathPrefix("/conversation").HandlerFunc(server.serveIndex)
-	router.PathPrefix("/discovery").HandlerFunc(server.serveIndex)
-	router.PathPrefix("/preference").HandlerFunc(server.serveIndex)
-	router.PathPrefix("/status").HandlerFunc(server.serveIndex)
-	router.HandleFunc("/", server.serveIndex)
+	router.HandleFunc("/", NoAuthenticationWrap(server.ServeIndex))
 
 	return server
 }
 
 func NewServerFromConfig(serviceType common.ServiceType) (*Server, error) {
-	auth, err := NewAuthenticationBackendFromConfig()
-	if err != nil {
-		return nil, err
-	}
-
 	sa, err := common.ServiceAddressFromString(config.GetString(serviceType.String() + ".listen"))
 	if err != nil {
-		return nil, errors.New("Configuration error: " + err.Error())
+		return nil, fmt.Errorf("Configuration error: %s", err)
 	}
 
 	host := config.GetString("host_id")
 	assets := config.GetString("ui.extra_assets")
 
-	return NewServer(host, serviceType, sa.Addr, sa.Port, auth, assets), nil
+	return NewServer(host, serviceType, sa.Addr, sa.Port, assets), nil
 }

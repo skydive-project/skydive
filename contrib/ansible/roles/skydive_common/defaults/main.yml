@@ -1,7 +1,6 @@
 ---
 skydive_release: v0.18.0
 skydive_docker_registry: docker.io
-skydive_docker_image: "skydive/skydive"
 skydive_docker_image_tag: latest
 skydive_config_file: /etc/skydive/skydive.yml
 skydive_binary_location: /usr/bin/skydive
@@ -13,12 +12,16 @@ skydive_flow_protocol: udp
 
 skydive_auth_type:
 skydive_username: skydive
-skydive_password: skydive
+skydive_password: secret
 
 skydive_os_auth_url:
-skydive_os_service_username: skydive
-skydive_os_service_password: skydive
+skydive_os_service_username: skydive.service
+skydive_os_service_password: secret
 skydive_os_service_tenant_name: service
 skydive_os_service_domain_name: Default
 skydive_os_service_region_name: RegionOne
 skydive_os_service_endpoint_type: internal
+skydive_os_service_insecure: true
+
+skydive_cluster_username: skydive
+skydive_cluster_password: secret

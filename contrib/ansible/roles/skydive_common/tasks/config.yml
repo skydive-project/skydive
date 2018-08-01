@@ -4,15 +4,7 @@
     path: "{{ skydive_config_file | dirname }}"
     state: directory
 
-- name: Download default config file
-  get_url:
-    url: https://raw.githubusercontent.com/skydive-project/skydive/{{ skydive_release }}/etc/skydive.yml.default
-    dest: "{{ skydive_config_file }}"
-    mode: 0600
-    force: no
-  ignore_errors: yes
-
-- name: Create empty config file if needed
+- name: Create empty config file is needed
   copy:
     content: ""
     dest: "{{ skydive_config_file }}"
@@ -36,28 +28,6 @@
     src: "{{ skydive_config_file }}"
     key: "flow.protocol"
     value: "{{ skydive_flow_protocol }}"
-
-- name: Define basic auth parameters
-  yedit:
-    src: "{{ skydive_config_file }}"
-    edits:
-        - key: "auth.analyzer_username"
-          value: "{{ skydive_username }}"
-        - key: "auth.analyzer_password"
-          value: "{{ skydive_password }}"
-    state: present
-  when: skydive_auth_type == "basic"
-
-- name: Define Keystone parameters
-  yedit:
-    src: "{{ skydive_config_file }}"
-    edits:
-        - key: "auth.analyzer_username"
-          value: "{{ skydive_os_service_username }}"
-        - key: "auth.analyzer_password"
-          value: "{{ skydive_os_service_password }}"
-    state: present
-  when: skydive_auth_type == "keystone"
 
 - name: Set extra config vars
   yedit:

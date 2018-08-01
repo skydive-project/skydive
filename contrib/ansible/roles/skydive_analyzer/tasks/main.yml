@@ -19,8 +19,17 @@
         {%- else -%}
           {{ hostvars[inventory_hostname].ansible_default_ipv4.address }}
         {%- endif -%}
+  tags:
+    - config
 
 - include: config.yml
+  tags:
+    - config
+
+- include: keystone.yml
+  when: skydive_auth_type == "keystone"
+  tags:
+    - keystone
 
 - include: docker.yml
   when: skydive_deployment_mode == "container"
@@ -30,8 +39,5 @@
 
 - include: binary.yml
   when: skydive_deployment_mode == "binary"
-
-- include: keystone.yml
-  when: skydive_auth_type == "keystone"
 
 - include: tests.yml

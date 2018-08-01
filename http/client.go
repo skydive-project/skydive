@@ -39,9 +39,9 @@ import (
 )
 
 type RestClient struct {
-	authClient *AuthenticationClient
-	client     *http.Client
-	url        *url.URL
+	authOpts *AuthenticationOpts
+	client   *http.Client
+	url      *url.URL
 }
 
 type CrudClient struct {
@@ -69,17 +69,15 @@ func getHttpClient() (*http.Client, error) {
 	return client, nil
 }
 
-func NewRestClient(url *url.URL, authOptions *AuthenticationOpts) (*RestClient, error) {
+func NewRestClient(url *url.URL, authOpts *AuthenticationOpts) (*RestClient, error) {
 	client, err := getHttpClient()
 	if err != nil {
 		return nil, err
 	}
 	rc := &RestClient{
-		client: client,
-		url:    url,
-	}
-	if authOptions.Username != "" {
-		rc.authClient = NewAuthenticationClient(url, authOptions)
+		client:   client,
+		url:      url,
+		authOpts: authOpts,
 	}
 	return rc, nil
 }
@@ -89,16 +87,14 @@ func (c *RestClient) debug() bool {
 }
 
 func (c *RestClient) Request(method, path string, body io.Reader, header http.Header) (*http.Response, error) {
-	if c.authClient != nil && !c.authClient.Authenticated() {
-		if err := c.authClient.Authenticate(); err != nil {
-			return nil, err
-		}
-	}
-
 	url := c.url.ResolveReference(&url.URL{Path: path})
 	req, err := http.NewRequest(method, url.String(), body)
 	if err != nil {
 		return nil, err
+	}
+
+	if c.authOpts != nil {
+		SetAuthHeaders(&req.Header, c.authOpts)
 	}
 
 	if header != nil {
@@ -106,8 +102,6 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Add("Accept-Encoding", "gzip")
-
-	setCookies(&req.Header, c.authClient)
 
 	if c.debug() {
 		if buf, err := httputil.DumpRequest(req, true); err == nil {

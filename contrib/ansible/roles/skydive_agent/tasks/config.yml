@@ -1,4 +1,15 @@
 ---
+- name: Define cluster agent auth parameters
+  yedit:
+    src: "{{ skydive_config_file }}"
+    edits:
+        - key: "agent.auth.cluster.username"
+          value: "{{ skydive_cluster_username }}"
+        - key: "agent.auth.cluster.password"
+          value: "{{ skydive_cluster_password }}"
+    state: present
+  when: skydive_cluster_username is not none
+
 - name: Setup probes
   yedit:
     src: "{{ skydive_config_file }}"
@@ -24,4 +35,6 @@
           value: "{{ skydive_os_service_password }}"
         - key: "agent.topology.neutron.endpoint_type"
           value: "{{ skydive_os_service_endpoint_type }}"
+        - key: "agent.topology.neutron.ssl_insecure"
+          value: "{{ skydive_os_service_insecure }}"
     state: present

@@ -36,7 +36,7 @@ func TestSocketsIndexer(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	g := graph.NewGraphFromConfig(b, common.ExternalService)
+	g := graph.NewGraphFromConfig(b, common.UnknownService)
 	indexer := NewSocketIndexer(g)
 	indexer.Start()
 

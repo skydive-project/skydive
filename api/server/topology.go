@@ -198,7 +198,7 @@ func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 	}
 }
 
-func (t *TopologyAPI) registerEndpoints(r *shttp.Server) {
+func (t *TopologyAPI) registerEndpoints(r *shttp.Server, authBackend shttp.AuthenticationBackend) {
 	routes := []shttp.Route{
 		{
 			Name:        "TopologiesIndex",
@@ -214,15 +214,15 @@ func (t *TopologyAPI) registerEndpoints(r *shttp.Server) {
 		},
 	}
 
-	r.RegisterRoutes(routes)
+	r.RegisterRoutes(routes, authBackend)
 }
 
 // RegisterTopologyAPI registers a new topology query API
-func RegisterTopologyAPI(r *shttp.Server, g *graph.Graph, parser *traversal.GremlinTraversalParser) {
+func RegisterTopologyAPI(r *shttp.Server, g *graph.Graph, parser *traversal.GremlinTraversalParser, authBackend shttp.AuthenticationBackend) {
 	t := &TopologyAPI{
 		gremlinParser: parser,
 		graph:         g,
 	}
 
-	t.registerEndpoints(r)
+	t.registerEndpoints(r, authBackend)
 }

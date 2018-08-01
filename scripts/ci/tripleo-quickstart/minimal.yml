@@ -9,6 +9,7 @@
 # configured public-vip and admin-vip.
 undercloud_generate_service_certificate: true
 ssl_overcloud: true
+overcloud_templates_path: /usr/share/openstack-tripleo-heat-templates
 step_introspect: true
 
 # This enables container deployements after Pike
@@ -34,11 +35,10 @@ telemetry_args: >-
    {% endif %}
 
 extra_args: >-
-  --ntp-server pool.ntp.org
-  {% if release not in ['newton', 'ocata', 'pike'] %}
-  -e {{ working_dir }}/skydive.yaml
-  -e {{ working_dir }}/tripleo-heat-templates/environments/services/skydive-environment.yaml
-  {% endif %}
+   {% if release not in ['newton', 'ocata', 'pike'] %}
+   -e {{ overcloud_templates_path }}/environments/services/skydive-environment.yaml
+   -e {{ working_dir }}/skydive.yaml
+   {% endif %}
 
 # keep the doc gen settings at the bottom of the config file.
 # options below direct automatic doc generation by tripleo-collect-logs
@@ -63,4 +63,10 @@ deploy_steps_ansible_workflow: >-
   true
   {%- else -%}
   false
+  {%- endif -%}
+config_download_args: >-
+  {% if release in ['queens'] -%}
+  -e /usr/share/openstack-tripleo-heat-templates/environments/config-download-environment.yaml
+  --config-download
+  --verbose
   {%- endif -%}

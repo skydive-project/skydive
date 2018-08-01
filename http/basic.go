@@ -24,11 +24,11 @@ package http
 
 import (
 	"encoding/base64"
+	"errors"
 	"net/http"
 	"os"
 
 	"github.com/abbot/go-http-auth"
-	"github.com/gorilla/context"
 	"github.com/skydive-project/skydive/config"
 )
 
@@ -38,14 +38,32 @@ const (
 
 type BasicAuthenticationBackend struct {
 	*auth.BasicAuth
+	name string
+	role string
+}
+
+// Name returns the name of the backend
+func (b *BasicAuthenticationBackend) Name() string {
+	return b.name
+}
+
+// DefaultUserRole returns the default user role
+func (b *BasicAuthenticationBackend) DefaultUserRole(user string) string {
+	return b.role
+}
+
+// SetDefaultUserRole defines the default user role
+func (b *BasicAuthenticationBackend) SetDefaultUserRole(role string) {
+	b.role = role
 }
 
 func (b *BasicAuthenticationBackend) Authenticate(username string, password string) (string, error) {
-	request := &http.Request{Header: make(map[string][]string)}
+	request := &http.Request{Header: make(http.Header)}
 	creds := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
 	request.Header.Set("Authorization", "Basic "+creds)
 
-	if username := b.CheckAuth(request); username == "" {
+	username = b.CheckAuth(request)
+	if username == "" {
 		return "", ErrWrongCredentials
 	}
 
@@ -54,43 +72,49 @@ func (b *BasicAuthenticationBackend) Authenticate(username string, password stri
 
 func (b *BasicAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		setTLSHeader(w, r)
-
-		// force to use cookie and the login page to retrieve the token.
-		// We do not use basic auth as classic http basic auth. We only use basic auth
-		// as auth backend.
-		cookie, err := r.Cookie("authtok")
-		if err == nil {
-			r.Header.Set("Authorization", "Basic "+cookie.Value)
-		} else {
-			// delete Authorization in order to avoid authentication without using cookie
-			r.Header.Del("Authorization")
+		token, err := authenticateWithHeaders(b, w, r)
+		if err != nil {
+			unauthorized(w, r)
+			return
 		}
+
+		// add "fake" header to let the basic auth library do the authentication
+		r.Header.Set("Authorization", "Basic "+token)
 
 		if username := b.CheckAuth(r); username == "" {
 			unauthorized(w, r)
 		} else {
-			ar := &auth.AuthenticatedRequest{Request: *r, Username: username}
-			copyRequestVars(r, &ar.Request)
-			wrapped(w, ar)
-			context.Clear(&ar.Request)
+			authCallWrapped(w, r, username, wrapped)
 		}
 	}
 }
 
-func NewBasicAuthenticationBackend(file string) (*BasicAuthenticationBackend, error) {
-	if _, err := os.Stat(file); err != nil {
-		return nil, err
-	}
-
-	// TODO(safchain) add more providers
-	h := auth.HtpasswdFileProvider(file)
+func NewBasicAuthenticationBackend(name string, provider auth.SecretProvider, role string) (*BasicAuthenticationBackend, error) {
 	return &BasicAuthenticationBackend{
-		auth.NewBasicAuthenticator(basicAuthRealm, h),
+		BasicAuth: auth.NewBasicAuthenticator(basicAuthRealm, provider),
+		name:      name,
+		role:      role,
 	}, nil
 }
 
-func NewBasicAuthenticationBackendFromConfig() (*BasicAuthenticationBackend, error) {
-	f := config.GetString("auth.basic.file")
-	return NewBasicAuthenticationBackend(f)
+func NewBasicAuthenticationBackendFromConfig(name string) (*BasicAuthenticationBackend, error) {
+	role := config.GetString("auth." + name + ".role")
+	if role == "" {
+		role = defaultUserRole
+	}
+
+	var provider auth.SecretProvider
+	if file := config.GetString("auth." + name + ".file"); file != "" {
+		if _, err := os.Stat(file); err != nil {
+			return nil, err
+		}
+
+		provider = auth.HtpasswdFileProvider(file)
+	} else if users := config.GetStringMapString("auth." + name + ".users"); users != nil && len(users) > 0 {
+		provider = NewHtpasswdMapProvider(users).SecretProvider()
+	} else {
+		return nil, errors.New("No htpassword provider set, you set either file or inline sections")
+	}
+
+	return NewBasicAuthenticationBackend(name, provider, role)
 }

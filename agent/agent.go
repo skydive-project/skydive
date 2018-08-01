@@ -71,7 +71,7 @@ func NewAnalyzerWSStructClientPool(authOptions *shttp.AuthenticationOpts) (*shtt
 
 	addresses, err := config.GetAnalyzerServiceAddresses()
 	if err != nil {
-		return nil, fmt.Errorf("Unable to get the analyzers list: %s", err.Error())
+		return nil, fmt.Errorf("Unable to get the analyzers list: %s", err)
 	}
 
 	if len(addresses) == 0 {
@@ -80,8 +80,7 @@ func NewAnalyzerWSStructClientPool(authOptions *shttp.AuthenticationOpts) (*shtt
 	}
 
 	for _, sa := range addresses {
-		authClient := shttp.NewAuthenticationClient(config.GetURL("http", sa.Addr, sa.Port, ""), authOptions)
-		c := shttp.NewWSClientFromConfig(common.AgentService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/agent"), authClient, nil)
+		c := shttp.NewWSClientFromConfig(common.AgentService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/agent"), authOptions, nil)
 		pool.AddClient(c)
 	}
 
@@ -172,20 +171,28 @@ func NewAgent() (*Agent, error) {
 	tm := topology.NewTIDMapper(g)
 	tm.Start()
 
+	apiAuthBackendName := config.GetString("agent.auth.api.backend")
+	apiAuthBackend, err := shttp.NewAuthenticationBackendByName(apiAuthBackendName)
+	if err != nil {
+		return nil, err
+	}
+
 	hserver, err := shttp.NewServerFromConfig(common.AgentService)
 	if err != nil {
 		return nil, err
 	}
 
+	hserver.RegisterLoginRoute(apiAuthBackend)
+
 	if err := hserver.Listen(); err != nil {
 		return nil, err
 	}
 
-	if _, err = api.NewAPI(hserver, nil, common.AgentService); err != nil {
+	if _, err = api.NewAPI(hserver, nil, common.AgentService, apiAuthBackend); err != nil {
 		return nil, err
 	}
 
-	wsServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/subscriber"))
+	wsServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
 
 	// declare all extension available throught API and filtering
 	tr := traversal.NewGremlinTraversalParser()
@@ -198,13 +205,16 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	api.RegisterTopologyAPI(hserver, g, tr)
+	api.RegisterTopologyAPI(hserver, g, tr, apiAuthBackend)
 
-	authOptions := analyzer.NewAnalyzerAuthenticationOpts()
+	clusterAuthOptions := &shttp.AuthenticationOpts{
+		Username: config.GetString("agent.auth.cluster.username"),
+		Password: config.GetString("agent.auth.cluster.password"),
+	}
 
 	topologyEndpoint := topology.NewTopologySubscriberEndpoint(wsServer, g, tr)
 
-	analyzerClientPool, err := NewAnalyzerWSStructClientPool(authOptions)
+	analyzerClientPool, err := NewAnalyzerWSStructClientPool(clusterAuthOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +249,7 @@ func NewAgent() (*Agent, error) {
 
 	onDemandProbeServer, err := ondemand.NewOnDemandProbeServer(flowProbeBundle, g, analyzerClientPool)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to initialize on-demand flow probe %s", err.Error())
+		return nil, fmt.Errorf("Unable to initialize on-demand flow probe %s", err)
 	}
 
 	agent := &Agent{
@@ -259,7 +269,7 @@ func NewAgent() (*Agent, error) {
 		topologyForwarder:   tforwarder,
 	}
 
-	api.RegisterStatusAPI(hserver, agent)
+	api.RegisterStatusAPI(hserver, agent, apiAuthBackend)
 
 	return agent, nil
 }

@@ -16,12 +16,15 @@
         {%- if not loop.last -%},{%- endif -%}
       {%- endfor %}
   tags:
+    - config
     - tests
+
+- include: config.yml
+  tags:
+    - config
 
 - include: binary.yml
   when: skydive_deployment_mode == "binary"
 
 - include: package.yml
   when: skydive_deployment_mode == "package"
-
-- include: config.yml

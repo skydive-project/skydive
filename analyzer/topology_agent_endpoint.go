@@ -43,7 +43,11 @@ type TopologyAgentEndpoint struct {
 
 // OnDisconnected called when an agent disconnected.
 func (t *TopologyAgentEndpoint) OnDisconnected(c shttp.WSSpeaker) {
-	host := c.GetHost()
+	host := c.GetRemoteHost()
+	if host == "" {
+		return
+	}
+
 	t.Graph.Lock()
 	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources %s", host)
 	t.Graph.DelHostGraph(host)
@@ -54,7 +58,7 @@ func (t *TopologyAgentEndpoint) OnDisconnected(c shttp.WSSpeaker) {
 func (t *TopologyAgentEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
 	msgType, obj, err := graph.UnmarshalWSMessage(msg)
 	if err != nil {
-		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err.Error())
+		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
 		return
 	}
 
@@ -96,7 +100,7 @@ func (t *TopologyAgentEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.
 }
 
 // NewTopologyAgentEndpoint returns a new server that handles messages from the agents
-func NewTopologyAgentEndpoint(pool shttp.WSStructSpeakerPool, auth *shttp.AuthenticationOpts, cached *graph.CachedBackend, g *graph.Graph) (*TopologyAgentEndpoint, error) {
+func NewTopologyAgentEndpoint(pool shttp.WSStructSpeakerPool, cached *graph.CachedBackend, g *graph.Graph) (*TopologyAgentEndpoint, error) {
 	t := &TopologyAgentEndpoint{
 		Graph:  g,
 		pool:   pool,

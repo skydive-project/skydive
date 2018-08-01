@@ -26,6 +26,7 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/api/types"
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -67,7 +68,7 @@ func (m *UserMetadataAPIHandler) Create(r types.Resource) error {
 }
 
 //RegisterUserMetadataAPI registers a new user metadata api handler
-func RegisterUserMetadataAPI(apiServer *Server, g *graph.Graph) (*UserMetadataAPIHandler, error) {
+func RegisterUserMetadataAPI(apiServer *Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*UserMetadataAPIHandler, error) {
 	userMetadataAPIHandler := &UserMetadataAPIHandler{
 		BasicAPIHandler: BasicAPIHandler{
 			ResourceHandler: &UserMetadataResourceHandler{},
@@ -75,7 +76,7 @@ func RegisterUserMetadataAPI(apiServer *Server, g *graph.Graph) (*UserMetadataAP
 		},
 		Graph: g,
 	}
-	if err := apiServer.RegisterAPIHandler(userMetadataAPIHandler); err != nil {
+	if err := apiServer.RegisterAPIHandler(userMetadataAPIHandler, authBackend); err != nil {
 		return nil, err
 	}
 	return userMetadataAPIHandler, nil

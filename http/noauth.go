@@ -32,8 +32,18 @@ import (
 type NoAuthenticationBackend struct {
 }
 
-func (h *NoAuthenticationBackend) AuthType() string {
-	return "NoAuth"
+// Name returns the name of the backend
+func (h *NoAuthenticationBackend) Name() string {
+	return "noauth"
+}
+
+// DefaultUserRole returns the name of the backend
+func (h *NoAuthenticationBackend) DefaultUserRole(user string) string {
+	return defaultUserRole
+}
+
+// SetDefaultUserRole defines the default user role
+func (b *NoAuthenticationBackend) SetDefaultUserRole(role string) {
 }
 
 func (h *NoAuthenticationBackend) Authenticate(username string, password string) (string, error) {
@@ -52,4 +62,8 @@ func (h *NoAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc) ht
 
 func NewNoAuthenticationBackend() *NoAuthenticationBackend {
 	return &NoAuthenticationBackend{}
+}
+
+func NoAuthenticationWrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
+	return NewNoAuthenticationBackend().Wrap(wrapped)
 }

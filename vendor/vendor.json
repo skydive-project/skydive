@@ -3,6 +3,30 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "VyTWDfmf9jOJWlwjNJ91LMHl71Y=",
+			"path": "github.com/GehirnInc/crypt",
+			"revision": "5a3fafaa7c86150c096504f50630ca6ac8cff681",
+			"revisionTime": "2017-04-04T12:02:57Z"
+		},
+		{
+			"checksumSHA1": "k2fhXJbC0QBsUK/ZsBUeYwAKnPc=",
+			"path": "github.com/GehirnInc/crypt/common",
+			"revision": "5a3fafaa7c86150c096504f50630ca6ac8cff681",
+			"revisionTime": "2017-04-04T12:02:57Z"
+		},
+		{
+			"checksumSHA1": "kBDdeaEiwuM2gAtqiqNwLFxxfW4=",
+			"path": "github.com/GehirnInc/crypt/internal",
+			"revision": "5a3fafaa7c86150c096504f50630ca6ac8cff681",
+			"revisionTime": "2017-04-04T12:02:57Z"
+		},
+		{
+			"checksumSHA1": "XpLLYUuBM3jJWdktVvtf4JoVZoc=",
+			"path": "github.com/GehirnInc/crypt/md5_crypt",
+			"revision": "5a3fafaa7c86150c096504f50630ca6ac8cff681",
+			"revisionTime": "2017-04-04T12:02:57Z"
+		},
+		{
 			"checksumSHA1": "oyXJxS8qqy5TCkqvndCD1c7Lkg4=",
 			"path": "github.com/Knetic/govaluate",
 			"revision": "9aa49832a739dcd78a5542ff189fb82c3e423116",

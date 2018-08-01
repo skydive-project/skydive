@@ -29,7 +29,7 @@ skydive_os_service_user_role: admin
 
 skydive_os_auth_url:
 
-# TODO(safchain) change to admin once the agents and users authentication will be
-# handled separately
-skydive_auth_os_tenant_name: service
+skydive_auth_os_tenant_name: skydive
 skydive_auth_os_domain_name: Default
+skydive_auth_os_domain_id: default
+skydive_auth_os_user_role: admin

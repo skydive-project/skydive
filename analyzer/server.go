@@ -76,12 +76,13 @@ func (s *Server) GetStatus() interface{} {
 		Incomers: make(map[string]shttp.WSConnStatus),
 		Outgoers: make(map[string]shttp.WSConnStatus),
 	}
-	for host, peer := range s.replicationEndpoint.conns {
-		if host == peer.GetHost() {
-			peersStatus.Incomers[host] = peer.GetStatus()
-		} else {
-			peersStatus.Outgoers[host] = peer.GetStatus()
-		}
+
+	for _, speaker := range s.replicationEndpoint.in.GetSpeakers() {
+		peersStatus.Incomers[speaker.GetRemoteHost()] = speaker.GetStatus()
+	}
+
+	for _, speaker := range s.replicationEndpoint.out.GetSpeakers() {
+		peersStatus.Outgoers[speaker.GetRemoteHost()] = speaker.GetStatus()
 	}
 
 	return &types.AnalyzerStatus{
@@ -190,7 +191,7 @@ func NewServerFromConfig() (*Server, error) {
 	for {
 		host := config.GetString("host_id")
 		if err = etcdClient.SetInt64(fmt.Sprintf("/analyzer:%s/start-time", host), time.Now().Unix()); err != nil {
-			logging.GetLogger().Errorf("Etcd server not ready: %s", err.Error())
+			logging.GetLogger().Errorf("Etcd server not ready: %s", err)
 			time.Sleep(time.Second)
 		} else {
 			break
@@ -228,22 +229,33 @@ func NewServerFromConfig() (*Server, error) {
 
 	g := graph.NewGraphFromConfig(cached, common.AnalyzerService)
 
-	authOptions := NewAnalyzerAuthenticationOpts()
+	clusterAuthOptions := AnalyzerClusterAuthenticationOpts()
 
-	agentWSServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/agent"))
-	_, err = NewTopologyAgentEndpoint(agentWSServer, authOptions, cached, g)
+	clusterAuthBackendName := config.GetString("analyzer.auth.cluster.backend")
+	clusterAuthBackend, err := shttp.NewAuthenticationBackendByName(clusterAuthBackendName)
+	if err != nil {
+		return nil, err
+	}
+	// force admin user for the cluster backend to ensure that all the user connection through
+	// "cluster" endpoints will be admin
+	clusterAuthBackend.SetDefaultUserRole("admin")
+
+	apiAuthBackendName := config.GetString("analyzer.auth.api.backend")
+	apiAuthBackend, err := shttp.NewAuthenticationBackendByName(apiAuthBackendName)
 	if err != nil {
 		return nil, err
 	}
 
-	publisherWSServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/publisher"))
-	_, err = NewTopologyPublisherEndpoint(publisherWSServer, authOptions, g)
+	hserver.RegisterLoginRoute(apiAuthBackend)
+
+	agentWSServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/agent", clusterAuthBackend))
+	_, err = NewTopologyAgentEndpoint(agentWSServer, cached, g)
 	if err != nil {
 		return nil, err
 	}
 
-	replicationWSServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/replication"))
-	replicationEndpoint, err := NewTopologyReplicationEndpoint(replicationWSServer, authOptions, cached, g)
+	publisherWSServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/publisher", apiAuthBackend))
+	_, err = NewTopologyPublisherEndpoint(publisherWSServer, g)
 	if err != nil {
 		return nil, err
 	}
@@ -251,11 +263,14 @@ func NewServerFromConfig() (*Server, error) {
 	tableClient := flow.NewTableClient(agentWSServer)
 
 	storage, err := storage.NewStorageFromConfig(etcdClient)
+
+	replicationWSServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/replication", clusterAuthBackend))
+	replicationEndpoint, err := NewTopologyReplicationEndpoint(replicationWSServer, clusterAuthOptions, cached, g)
 	if err != nil {
 		return nil, err
 	}
 
-	// declare all extension available throught API and filtering
+	// declare all extension available through API and filtering
 	tr := traversal.NewGremlinTraversalParser()
 	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewRawPacketsTraversalExtension())
@@ -263,7 +278,7 @@ func NewServerFromConfig() (*Server, error) {
 	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
 
-	subscriberWSServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/subscriber"))
+	subscriberWSServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
 	topology.NewTopologySubscriberEndpoint(subscriberWSServer, g, tr)
 
 	probeBundle, err := NewTopologyProbeBundleFromConfig(g)
@@ -271,32 +286,32 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	apiServer, err := api.NewAPI(hserver, etcdClient.KeysAPI, common.AnalyzerService)
+	apiServer, err := api.NewAPI(hserver, etcdClient.KeysAPI, common.AnalyzerService, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
 
-	captureAPIHandler, err := api.RegisterCaptureAPI(apiServer, g)
+	captureAPIHandler, err := api.RegisterCaptureAPI(apiServer, g, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
 
-	metadataAPIHandler, err := api.RegisterUserMetadataAPI(apiServer, g)
+	metadataAPIHandler, err := api.RegisterUserMetadataAPI(apiServer, g, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
 
-	piAPIHandler, err := api.RegisterPacketInjectorAPI(g, apiServer)
+	piAPIHandler, err := api.RegisterPacketInjectorAPI(g, apiServer, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
 	piClient := packet_injector.NewPacketInjectorClient(agentWSServer, etcdClient, piAPIHandler, g)
 
-	if _, err = api.RegisterAlertAPI(apiServer); err != nil {
+	if _, err = api.RegisterAlertAPI(apiServer, apiAuthBackend); err != nil {
 		return nil, err
 	}
 
-	if _, err := api.RegisterWorkflowAPI(apiServer); err != nil {
+	if _, err := api.RegisterWorkflowAPI(apiServer, apiAuthBackend); err != nil {
 		return nil, err
 	}
 
@@ -304,7 +319,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	metadataManager := metadata.NewUserMetadataManager(g, metadataAPIHandler)
 
-	flowServer, err := NewFlowServer(hserver, g, storage, probeBundle)
+	flowServer, err := NewFlowServer(hserver, g, storage, probeBundle, clusterAuthBackend)
 	if err != nil {
 		return nil, err
 	}
@@ -334,22 +349,34 @@ func NewServerFromConfig() (*Server, error) {
 
 	s.createStartupCapture(captureAPIHandler)
 
-	api.RegisterTopologyAPI(hserver, g, tr)
-	api.RegisterPcapAPI(hserver, storage)
-	api.RegisterConfigAPI(hserver)
-	api.RegisterStatusAPI(hserver, s)
+	api.RegisterTopologyAPI(hserver, g, tr, apiAuthBackend)
+	api.RegisterPcapAPI(hserver, storage, apiAuthBackend)
+	api.RegisterConfigAPI(hserver, apiAuthBackend)
+	api.RegisterStatusAPI(hserver, s, apiAuthBackend)
 
-	if err := dede.RegisterHandler("terminal", "/dede", hserver.Router); err != nil {
-		return nil, err
+	if config.GetBool("analyzer.ssh_enabled") {
+		if err := dede.RegisterHandler("terminal", "/dede", hserver.Router); err != nil {
+			return nil, err
+		}
 	}
+
+	// server index for the following url as the client side will redirect
+	// the user to the correct page
+	routes := []shttp.Route{
+		{Path: "/topology", Method: "GET", HandlerFunc: hserver.ServeIndex},
+		{Path: "/conversation", Method: "GET", HandlerFunc: hserver.ServeIndex},
+		{Path: "/discovery", Method: "GET", HandlerFunc: hserver.ServeIndex},
+		{Path: "/preference", Method: "GET", HandlerFunc: hserver.ServeIndex},
+		{Path: "/status", Method: "GET", HandlerFunc: hserver.ServeIndex},
+	}
+	hserver.RegisterRoutes(routes, shttp.NewNoAuthenticationBackend())
 
 	return s, nil
 }
 
-// NewAnalyzerAuthenticationOpts returns an object to authenticate to the analyzer
-func NewAnalyzerAuthenticationOpts() *shttp.AuthenticationOpts {
+func AnalyzerClusterAuthenticationOpts() *shttp.AuthenticationOpts {
 	return &shttp.AuthenticationOpts{
-		Username: config.GetString("auth.analyzer_username"),
-		Password: config.GetString("auth.analyzer_password"),
+		Username: config.GetString("analyzer.auth.cluster.username"),
+		Password: config.GetString("analyzer.auth.cluster.password"),
 	}
 }

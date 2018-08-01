@@ -9,11 +9,12 @@ skydive_deployment_mode=container
 
 skydive_auth_type=keystone
 
-os_auth_url=http://192.168.0.16
+os_auth_url=http://192.168.0.16/identity/v3
 os_username=admin
 os_password=secret
 os_tenant_name=admin
-os_domain_name=Default
+os_user_domain_name=Default
+os_project_domain_name=Default
 os_identity_api_version=3
 
 skydive_os_auth_url=http://192.168.0.16/identity/v3
@@ -30,4 +31,4 @@ localhost ansible_connection=local
 localhost ansible_connection=local
 
 [agents:vars]
-skydive_extra_config={'agent.topology.probes': ['docker','neutron']}
+skydive_extra_config={'agent.topology.probes': ['docker','neutron', 'ovsdb']}

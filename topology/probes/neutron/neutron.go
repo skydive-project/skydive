@@ -454,8 +454,8 @@ func (mapper *NeutronProbe) Stop() {
 func NewNeutronProbe(g *graph.Graph, authURL, username, password, tenantName, regionName, domainName string, availability gophercloud.Availability) (*NeutronProbe, error) {
 	// only looking for interfaces matching the following regex as nova, neutron interfaces match this pattern
 
-	intfRegexp := regexp.MustCompile(`((tap|qr-|qg-|qvo)[a-fA-F0-9]{8}-[a-fA-F0-9]{2})|(vnet[0-9]+)`)
-	nsRegexp := regexp.MustCompile(`(qrouter|qdhcp)-[a-fA-F0-9]{8}`)
+	intfRegexp := regexp.MustCompile(`((tap|qr-|qg-|qvo)[a-fA-F0-9\-]+)|(vnet[0-9]+)`)
+	nsRegexp := regexp.MustCompile(`(qrouter|qdhcp)-[a-fA-F0-9\-]+`)
 
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: authURL,

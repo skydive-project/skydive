@@ -65,10 +65,13 @@ func (t *TopologyPublisherEndpoint) OnDisconnected(c shttp.WSSpeaker) {
 	if policy == Persistent {
 		return
 	}
-	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources %s", c.GetHost())
+
+	host := c.GetRemoteHost()
+
+	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources %s", host)
 
 	t.Graph.Lock()
-	t.Graph.DelHostGraph(c.GetHost())
+	t.Graph.DelHostGraph(host)
 	t.Graph.Unlock()
 }
 
@@ -76,7 +79,7 @@ func (t *TopologyPublisherEndpoint) OnDisconnected(c shttp.WSSpeaker) {
 func (t *TopologyPublisherEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
 	msgType, obj, err := graph.UnmarshalWSMessage(msg)
 	if err != nil {
-		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err.Error())
+		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
 		return
 	}
 
@@ -143,7 +146,7 @@ func (t *TopologyPublisherEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *sh
 }
 
 // NewTopologyPublisherEndpoint returns a new server for external publishers.
-func NewTopologyPublisherEndpoint(pool shttp.WSStructSpeakerPool, auth *shttp.AuthenticationOpts, g *graph.Graph) (*TopologyPublisherEndpoint, error) {
+func NewTopologyPublisherEndpoint(pool shttp.WSStructSpeakerPool, g *graph.Graph) (*TopologyPublisherEndpoint, error) {
 	nodeSchema, err := statics.Asset("statics/schemas/node.schema")
 	if err != nil {
 		return nil, err

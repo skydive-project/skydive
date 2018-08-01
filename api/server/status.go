@@ -33,7 +33,7 @@ func (s *statusAPI) statusGet(w http.ResponseWriter, r *auth.AuthenticatedReques
 	}
 }
 
-func (s *statusAPI) registerEndpoints(r *shttp.Server) {
+func (s *statusAPI) registerEndpoints(r *shttp.Server, authBackend shttp.AuthenticationBackend) {
 	routes := []shttp.Route{
 		{
 			Name:        "StatusGet",
@@ -43,14 +43,14 @@ func (s *statusAPI) registerEndpoints(r *shttp.Server) {
 		},
 	}
 
-	r.RegisterRoutes(routes)
+	r.RegisterRoutes(routes, authBackend)
 }
 
 // RegisterStatusAPI registers the status API endpoint
-func RegisterStatusAPI(s *shttp.Server, r StatusReporter) {
+func RegisterStatusAPI(s *shttp.Server, r StatusReporter, authBackend shttp.AuthenticationBackend) {
 	a := &statusAPI{
 		reporter: r,
 	}
 
-	a.registerEndpoints(s)
+	a.registerEndpoints(s, authBackend)
 }

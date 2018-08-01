@@ -38,6 +38,13 @@ import (
 	"github.com/skydive-project/skydive/statics"
 )
 
+// Permission defines a permission
+type Permission struct {
+	Object  string
+	Action  string
+	Allowed bool
+}
+
 var enforcer *casbin.Enforcer
 
 func loadSection(model model.Model, key string, sec string) {
@@ -110,6 +117,7 @@ func Init(kapi etcd.KeysAPI) error {
 		return err
 	}
 	loadConfigPolicy(model)
+	casbinEnforcer.BuildRoleLinks()
 
 	watcher := NewEtcdWatcher(kapi)
 
@@ -122,6 +130,7 @@ func Init(kapi etcd.KeysAPI) error {
 	})
 
 	enforcer = casbinEnforcer
+
 	return nil
 }
 
@@ -134,11 +143,45 @@ func Enforce(sub, obj, act string) bool {
 	return enforcer.Enforce(sub, obj, act)
 }
 
+func AddRoleForUser(user, role string) bool {
+	if enforcer == nil {
+		return false
+	}
+
+	return enforcer.AddRoleForUser(user, role)
+}
+
+func GetUserRoles(user string) []string {
+	if enforcer == nil {
+		return []string{}
+	}
+
+	return enforcer.GetRolesForUser(user)
+}
+
 // GetPermissionsForUser returns all the allow and deny permissions for a user
-func GetPermissionsForUser(user string) [][]string {
+func GetPermissionsForUser(user string) []Permission {
 	if enforcer == nil {
 		return nil
 	}
 
-	return enforcer.GetPermissionsForUser(user)
+	subjects := enforcer.GetRolesForUser(user)
+	subjects = append(subjects, user)
+
+	mperms := make(map[string]Permission)
+	for _, subject := range subjects {
+		for _, p := range enforcer.GetPermissionsForUser(subject) {
+			permission := Permission{Object: p[1], Action: p[2], Allowed: p[3] == "allow"}
+
+			key := permission.Object + permission.Action
+			mperms[key] = permission
+		}
+	}
+
+	var permissions []Permission
+	for _, permission := range mperms {
+		permissions = append(permissions, permission)
+	}
+
+	return permissions
 }

@@ -82,6 +82,7 @@ type FlowServerWebSocketConn struct {
 	timeOfLastLostFlowsLog time.Time
 	numOfLostFlows         int
 	maxFlowBufferSize      int
+	auth                   shttp.AuthenticationBackend
 }
 
 // FlowServer describes a flow server with pipeline enhancers mechanism
@@ -96,6 +97,7 @@ type FlowServer struct {
 	bulkInsertDeadline     time.Duration
 	ch                     chan *flow.Flow
 	quit                   chan struct{}
+	auth                   shttp.AuthenticationBackend
 }
 
 // OnMessage event
@@ -122,7 +124,7 @@ func (c *FlowServerWebSocketConn) OnMessage(client shttp.WSSpeaker, m shttp.WSMe
 // Serve starts a WebSocket flow server
 func (c *FlowServerWebSocketConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sync.WaitGroup) {
 	c.ch = ch
-	server := shttp.NewWSServer(c.server, "/ws/flow")
+	server := shttp.NewWSServer(c.server, "/ws/flow", c.auth)
 	server.AddEventHandler(c)
 	go func() {
 		server.Start()
@@ -132,9 +134,9 @@ func (c *FlowServerWebSocketConn) Serve(ch chan *flow.Flow, quit chan struct{}, 
 }
 
 // NewFlowServerWebSocketConn returns a new WebSocket flow server
-func NewFlowServerWebSocketConn(server *shttp.Server) (*FlowServerWebSocketConn, error) {
+func NewFlowServerWebSocketConn(server *shttp.Server, auth shttp.AuthenticationBackend) (*FlowServerWebSocketConn, error) {
 	flowsMax := config.GetConfig().GetInt("analyzer.flow.max_buffer_size")
-	return &FlowServerWebSocketConn{server: server, maxFlowBufferSize: flowsMax}, nil
+	return &FlowServerWebSocketConn{server: server, maxFlowBufferSize: flowsMax, auth: auth}, nil
 }
 
 // Serve UDP connections
@@ -273,7 +275,7 @@ func (s *FlowServer) setupBulkConfigFromBackend() error {
 }
 
 // NewFlowServer creates a new flow server listening at address/port, based on configuration
-func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe *probe.ProbeBundle) (*FlowServer, error) {
+func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe *probe.ProbeBundle, auth shttp.AuthenticationBackend) (*FlowServer, error) {
 	pipeline := flow.NewEnhancerPipeline(enhancers.NewGraphFlowEnhancer(g))
 
 	// check that the neutron probe is loaded if so add the neutron flow enhancer
@@ -281,15 +283,15 @@ func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe
 		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(g))
 	}
 
-	var err error
 	var conn FlowServerConn
 	protocol := strings.ToLower(config.GetString("flow.protocol"))
 
+	var err error
 	switch protocol {
 	case "udp":
 		conn, err = NewFlowServerUDPConn(s.Addr, s.Port)
 	case "websocket":
-		conn, err = NewFlowServerWebSocketConn(s)
+		conn, err = NewFlowServerWebSocketConn(s, auth)
 	default:
 		err = fmt.Errorf("Invalid protocol %s", protocol)
 	}
@@ -304,6 +306,7 @@ func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe
 		enhancerPipelineConfig: flow.NewEnhancerPipelineConfig(),
 		conn: conn,
 		quit: make(chan struct{}, 2),
+		auth: auth,
 	}
 	err = fs.setupBulkConfigFromBackend()
 	if err != nil {
