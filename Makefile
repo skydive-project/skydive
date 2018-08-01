@@ -17,15 +17,12 @@ eval ' \
 '
 endef
 
-define VENDOR_BUILD
+define VENDOR_RUN
 ln -s vendor src || mv vendor src; \
 cd src/$1; \
 (unset GOARCH; unset CC; GOPATH=$$GOPATH/src/${SKYDIVE_GITHUB} go build $1); \
 cd -; \
 unlink src || mv src vendor
-endef
-
-define VENDOR_RUN
 PATH=$${GOPATH}/src/${SKYDIVE_GITHUB}/vendor/$1:$$PATH
 endef
 
@@ -40,9 +37,6 @@ SKYDIVE_PATH:=$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/
 SKYDIVE_GITHUB_VERSION:=$(SKYDIVE_GITHUB)/version.Version=${VERSION}
 GO_BINDATA_GITHUB:=github.com/jteeuwen/go-bindata/go-bindata
 PROTOC_GEN_GO_GITHUB:=github.com/golang/protobuf/protoc-gen-go
-FLOW_PROTO_FILES=flow/flow.proto flow/set.proto flow/request.proto
-FILTERS_PROTO_FILES=filters/filters.proto
-HTTP_PROTO_FILES=http/wsstructmessage.proto
 EASYJSON_GITHUB:=github.com/mailru/easyjson/easyjson
 EASYJSON_FILES_ALL=flow/flow.pb.go
 EASYJSON_FILES_TAG=\
@@ -193,39 +187,56 @@ debug.agent:
 debug.analyzer:
 	$(call skydive_debug,analyzer)
 
-.PHONY: .proto
-.proto: builddep ${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES} ${HTTP_PROTO_FILES}
-	$(call VENDOR_RUN,${PROTOC_GEN_GO_GITHUB}) protoc --go_out . ${FLOW_PROTO_FILES}
-	$(call VENDOR_RUN,${PROTOC_GEN_GO_GITHUB}) protoc --go_out . ${FILTERS_PROTO_FILES}
-	$(call VENDOR_RUN,${PROTOC_GEN_GO_GITHUB}) protoc --go_out . ${HTTP_PROTO_FILES}
+%.pb.go: %.proto
+	$(call VENDOR_RUN,${PROTOC_GEN_GO_GITHUB}) protoc --go_out . $<
+
+flow/flow.pb.go: flow/flow.proto
+	$(call VENDOR_RUN,${PROTOC_GEN_GO_GITHUB}) protoc --go_out . $<
 	# always export flow.ParentUUID as we need to store this information to know
 	# if it's a Outer or Inner packet.
 	sed -e 's/ParentUUID\(.*\),omitempty\(.*\)/ParentUUID\1\2/' \
 		-e 's/Protocol\(.*\),omitempty\(.*\)/Protocol\1\2/' \
 		-e 's/ICMPType\(.*\),omitempty\(.*\)/ICMPType\1\2/' \
 		-e 's/int64\(.*\),omitempty\(.*\)/int64\1\2/' \
-		-i.bak flow/flow.pb.go
+		-i.bak $@
 	# do not export LastRawPackets used internally
-	sed -e 's/json:"LastRawPackets,omitempty"/json:"-"/g' -i.bak flow/flow.pb.go
+	sed -e 's/json:"LastRawPackets,omitempty"/json:"-"/g' -i.bak $@
 	# add flowState to flow generated struct
-	sed -e 's/type Flow struct {/type Flow struct { XXX_state flowState `json:"-"`/' -i.bak flow/flow.pb.go
-	gofmt -s -w flow/flow.pb.go
+	sed -e 's/type Flow struct {/type Flow struct { XXX_state flowState `json:"-"`/' -i.bak $@
+	gofmt -s -w $@
 
-.PHONY: .easyjson.all
-.easyjson.all: builddep .proto ${EASYJSON_FILES_ALL}
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -all ${EASYJSON_FILES_ALL}
+.proto: govendor flow/flow.pb.go filters/filters.pb.go http/wsstructmessage.pb.go
 
-.PHONY: .easyjson.tag
-.easyjson.tag: builddep ${EASYJSON_FILES_TAG}
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson ${EASYJSON_FILES_TAG}
+.PHONY: .proto.clean
+.proto.clean:
+	find . \( -name *.pb.go ! -path './vendor/*' \) -exec rm {} \;
 
-.PHONY: .easyjson.tag.linux
-.easyjson.tag.linux: builddep ${EASYJSON_FILES_TAG_LINUX}
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags linux ${EASYJSON_FILES_TAG_LINUX}
+GEN_EASYJSON_FILES_ALL := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_ALL))
+GEN_EASYJSON_FILES_TAG := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_TAG))
+GEN_EASYJSON_FILES_TAG_LINUX := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_TAG_LINUX))
+GEN_EASYJSON_FILES_TAG_OPENCONTRAIL := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_TAG_OPENCONTRAIL))
 
-.PHONY: .easyjson.tag.opencontrail
-.easyjson.tag.opencontrail: builddep ${EASYJSON_FILES_TAG_OPENCONTRAIL}
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags "opencontrail" ${EASYJSON_FILES_TAG_OPENCONTRAIL}
+%_easyjson.go: %.go
+	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson $<
+
+flow/flow.pb_easyjson.go: flow/flow.pb.go
+	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -all $<
+
+topology/probes/netlink/netlink_easyjson.go: topology/probes/netlink/netlink.go
+	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags linux $<
+
+topology/probes/socketinfo/connection_easyjson.go: topology/probes/socketinfo/connection.go
+	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags linux $<
+
+topology/probes/opencontrail/routing_table_easyjson.go: $(EASYJSON_FILES_TAG_OPENCONTRAIL)
+	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags opencontrail $<
+
+.PHONY: .easyjson
+.easyjson: flow/flow.pb_easyjson.go $(GEN_EASYJSON_FILES_TAG) $(GEN_EASYJSON_FILES_TAG_LINUX) $(GEN_EASYJSON_FILES_TAG_OPENCONTRAIL)
+
+.PHONY: .easyjson.clean
+.easyjson.clean:
+	find . \( -name *_easyjson.go ! -path './vendor/*' \) -exec rm {} \;
 
 BINDATA_DIRS := \
 	js/*.js \
@@ -244,12 +255,18 @@ BINDATA_DIRS := \
 npm.install:
 	cd js && npm install
 
-.PHONY: typescript
-typescript: npm.install
+.PHONY: .typescript
+.typescript: npm.install
 	cd js && PATH=`npm bin`:$$PATH make all
 
+.PHONY: .typescript.clean
+.typescript.clean: npm.install
+	cd js && PATH=`npm bin`:$$PATH make clean
+
 .PHONY: .bindata
-.bindata: builddep ebpf.build typescript
+.bindata: statics/bindata.go
+
+statics/bindata.go: .typescript ebpf.build $(shell find statics -type f \( ! -iname "bindata.go" \))
 	$(call VENDOR_RUN,${GO_BINDATA_GITHUB}) go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go $(BINDATA_DIRS)
 	gofmt -w -s statics/bindata.go
 
@@ -328,10 +345,6 @@ ebpf.clean:
 .PHONY: test.functionals.clean
 test.functionals.clean:
 	rm -f tests/functionals
-
-.PHONY: easyjson.clean
-easyjson.clean:
-	find . -name "*_easyjson.go" -exec rm {} \;
 
 .PHONY: test.functionals.compile
 test.functionals.compile: govendor genlocalfiles
@@ -449,18 +462,11 @@ lint: gometalinter
 	@echo "+ $@"
 	@gometalinter --disable=gotype --vendor -e '.*\.pb.go' --skip=statics/... --deadline 10m --sort=path ./... --json | tee lint.json || true
 
-# dependency package need for building the project
-.PHONY: builddep
-builddep: govendor
-	$(call VENDOR_BUILD,${PROTOC_GEN_GO_GITHUB})
-	$(call VENDOR_BUILD,${GO_BINDATA_GITHUB})
-	$(call VENDOR_BUILD,${EASYJSON_GITHUB})
-
 .PHONY: genlocalfiles
-genlocalfiles: .proto .bindata .easyjson.all .easyjson.tag .easyjson.tag.linux .easyjson.tag.opencontrail
+genlocalfiles: .proto .bindata .easyjson
 
 .PHONY: clean
-clean: skydive.clean test.functionals.clean dpdk.clean contribs.clean ebpf.clean easyjson.clean
+clean: skydive.clean test.functionals.clean dpdk.clean contribs.clean ebpf.clean .easyjson.clean .proto.clean .typescript.clean
 	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
 
 .PHONY: srpm
@@ -477,14 +483,18 @@ docker-image: static
 	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} -f contrib/docker/Dockerfile contrib/docker/
 
 SKYDIVE_PROTO_FILES:= \
-	${FLOW_PROTO_FILES} \
-	${FILTERS_PROTO_FILES} \
-	${HTTP_PROTO_FILES}
+	flow/flow.proto \
+	filters/filters.proto \
+	http/wsstructmessage.proto
 
 SKYDIVE_TAR_INPUT:= \
 	vendor \
 	statics/bindata.go \
-	$(patsubst %.proto,%.pb.go,$(SKYDIVE_PROTO_FILES))
+	$(patsubst %.proto,%.pb.go,$(SKYDIVE_PROTO_FILES)) \
+	$(GEN_EASYJSON_FILES_ALL) \
+	$(GEN_EASYJSON_FILES_TAG) \
+	$(GEN_EASYJSON_FILES_TAG_LINUX) \
+	$(GEN_EASYJSON_FILES_TAG_OPENCONTRAIL)
 
 SKYDIVE_TAR:=${DESTDIR}/$(SKYDIVE_PKG).tar
 
