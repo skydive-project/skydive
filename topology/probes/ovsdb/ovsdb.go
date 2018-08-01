@@ -321,6 +321,8 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 	}
 
 	if itype != "" {
+		fmt.Printf(">>>>>>>>>>>>>>>>>>> FROM OVSDB >>>: %s", itype)
+
 		tr.AddMetadata("Type", itype)
 	}
 

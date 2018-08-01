@@ -480,6 +480,8 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 		if intf != nil {
 			if tp, _ := intf.GetFieldString("Type"); tp != "" {
 				metadata["Type"] = tp
+
+				fmt.Printf(">>>>>>>>>>>>>>>>>>> FROM OVS >>>: %+v", metadata)
 			}
 		} else {
 			intf = u.addGenericLinkToTopology(link, metadata)
@@ -493,6 +495,8 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 	u.Lock()
 	u.links[attrs.Name] = intf
 	u.Unlock()
+
+	fmt.Printf(">>>>>>>>>>>>>>>>>>> NETLINK MERGE >>>: %+v", metadata)
 
 	// merge metadata
 	tr := u.Graph.StartMetadataTransaction(intf)
