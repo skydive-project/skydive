@@ -35,6 +35,7 @@ import (
 	"time"
 
 	uuid "github.com/nu7hatch/gouuid"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -131,14 +132,14 @@ func fillIn(components []string, rule *Rule, event *Event) {
 				if err == nil {
 					rule.Table = int(table)
 				} else {
-					logging.GetLogger().Errorf("Error while parsing table of rule: %s", err.Error())
+					logging.GetLogger().Errorf("Error while parsing table of rule: %s", err)
 				}
 			case "cookie":
 				v, err := strconv.ParseUint(value, 0, 64)
 				if err == nil {
 					rule.Cookie = v
 				} else {
-					logging.GetLogger().Errorf("Error while parsing cookie of rule: %s", err.Error())
+					logging.GetLogger().Errorf("Error while parsing cookie of rule: %s", err)
 				}
 			}
 		}
@@ -161,7 +162,7 @@ func extractPriority(rule *Rule) {
 				if err == nil {
 					rule.Priority = int(priority)
 				} else {
-					logging.GetLogger().Errorf("Error while parsing priority of rule: %s", err.Error())
+					logging.GetLogger().Errorf("Error while parsing priority of rule: %s", err)
 				}
 			}
 		}
@@ -297,31 +298,38 @@ func launchContinuousOnSwitch(ctx context.Context, cmd []string) (<-chan string,
 
 	go func() {
 		for ctx.Err() == nil {
-		retry:
-			out, err := executor.ExecCommandPipe(ctx, cmd[0], cmd[1:]...)
-			if err != nil {
-				logging.GetLogger().Errorf("Can't execute command %v", cmd)
-				close(cout)
-				return
-			}
-			reader := bufio.NewReader(out)
-			var line string
-			for ctx.Err() == nil {
-				line, err = reader.ReadString('\n')
-				if err == io.EOF {
-					break
-				} else if err != nil {
-					logging.GetLogger().Errorf("IO Error on command %v: %s", cmd, err.Error())
-				} else {
-					if strings.Contains(line, "is not a bridge or a socket") {
-						reader.Discard(int(^uint(0) >> 1))
-						goto retry
-					}
-					cout <- line
+			retry := func() error {
+				out, err := executor.ExecCommandPipe(ctx, cmd[0], cmd[1:]...)
+				if err != nil {
+					logging.GetLogger().Errorf("Can't execute command %v", cmd)
+					return nil
 				}
+				reader := bufio.NewReader(out)
+				var line string
+				for ctx.Err() == nil {
+					line, err = reader.ReadString('\n')
+					if err == io.EOF {
+						break
+					} else if err != nil {
+						logging.GetLogger().Errorf("IO Error on command %v: %s", cmd, err)
+						break
+					} else {
+						if strings.Contains(line, "is not a bridge or a socket") {
+							reader.Discard(int(^uint(0) >> 1))
+
+							return errors.New("Not a bridge or a socket")
+						}
+						cout <- line
+					}
+				}
+				logging.GetLogger().Debugf("Closing command: %v", cmd)
+
+				return nil
 			}
-			logging.GetLogger().Debugf("Closing command: %v", cmd)
-			time.Sleep(time.Second)
+			if err := common.Retry(retry, 100, 10*time.Millisecond); err != nil {
+				logging.GetLogger().Error(err)
+				break
+			}
 		}
 		close(cout)
 		logging.GetLogger().Debugf("Terminating command: %v", cmd)
@@ -362,7 +370,7 @@ func completeEvent(ctx context.Context, o *OvsOfProbe, event *Event, prefix stri
 	}
 	lines, err := launchOnSwitch(command)
 	if err != nil && ctx.Err() == nil {
-		return fmt.Errorf("Cannot launch ovs-ofctl dump-flows on %s@%s with filter %s: %s", bridge, o.Host, filter, err.Error())
+		return fmt.Errorf("Cannot launch ovs-ofctl dump-flows on %s@%s with filter %s: %s", bridge, o.Host, filter, err)
 	}
 	for _, line := range strings.Split(lines, "\n") {
 		rule, err2 := parseRule(line)
@@ -465,7 +473,7 @@ func (probe *BridgeOfProbe) monitor(ctx context.Context) error {
 				}
 			} else {
 				if _, ok := err.(*noEventError); !ok {
-					logging.GetLogger().Errorf("Error while monitoring %s@%s: %s", probe.Bridge, probe.Host, err.Error())
+					logging.GetLogger().Errorf("Error while monitoring %s@%s: %s", probe.Bridge, probe.Host, err)
 				}
 			}
 
