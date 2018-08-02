@@ -370,7 +370,7 @@ func (c *WSConn) Connect() {
 // Disconnect the WSSpeakers without waiting for termination.
 func (c *WSConn) Disconnect() {
 	c.running.Store(false)
-	if atomic.LoadInt32((*int32)(c.State)) == common.RunningState {
+	if atomic.CompareAndSwapInt32((*int32)(c.State), common.RunningState, common.StoppingState) {
 		c.quit <- true
 	}
 }

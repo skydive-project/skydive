@@ -113,7 +113,7 @@ func (t *TopologySubscriberEndpoint) OnDisconnected(c shttp.WSSpeaker) {
 func (t *TopologySubscriberEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
 	msgType, obj, err := graph.UnmarshalWSMessage(msg)
 	if err != nil {
-		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err.Error())
+		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
 		return
 	}
 
@@ -126,7 +126,7 @@ func (t *TopologySubscriberEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *s
 		g, err := t.Graph.CloneWithContext(syncMsg.GraphContext)
 		var result interface{} = g
 		if err != nil {
-			logging.GetLogger().Errorf("unable to get a graph with context %+v: %s", syncMsg, err.Error())
+			logging.GetLogger().Errorf("unable to get a graph with context %+v: %s", syncMsg, err)
 			result, status = nil, http.StatusBadRequest
 		}
 
