@@ -42,6 +42,8 @@ function vagrant_cleanup {
     vagrant ssh agent1 -c 'sudo journalctl -xe | grep skydive'
     echo "===== journalctl analyzer1"
     vagrant ssh analyzer1 -c 'sudo journalctl -xe | grep skydive'
+    echo "===== journalctl analyzer2"
+    vagrant ssh analyzer2 -c 'sudo journalctl -xe | grep skydive'
     vagrant destroy --force
 }
 [ "$KEEP_RESOURCES" = "true" ] || trap vagrant_cleanup EXIT
@@ -98,6 +100,7 @@ do
 
   if [ "$mode" = "package" ]; then
       install_skydive_selinux_enforcing analyzer1
+      install_skydive_selinux_enforcing analyzer2
       install_skydive_selinux_enforcing agent1
   fi
 
@@ -144,9 +147,10 @@ do
   fi
 
   echo "================== external functional test suite ==============================="
-  $root/scripts/test.sh -a 192.168.50.10:8082 -e $AGENT_COUNT -c -i
+  $root/scripts/test.sh -a 192.168.50.10:8082 -e `expr $AGENT_COUNT + $ANALYZER_COUNT` -c -i
 
   vagrant ssh analyzer1 -- sudo journalctl -n 200 -u skydive-analyzer
+  vagrant ssh analyzer2 -- sudo journalctl -n 200 -u skydive-analyzer
   vagrant ssh agent1 -- sudo journalctl -n 200 -u skydive-agent
 
   if [ "$mode" = "package" ]; then
@@ -169,6 +173,7 @@ do
   fi
 
   vagrant ssh analyzer1 -- sudo journalctl -n 200 -u skydive-analyzer
+  vagrant ssh analyzer2 -- sudo journalctl -n 200 -u skydive-analyzer
   vagrant ssh agent1 -- sudo journalctl -n 200 -u skydive-agent
 
   vagrant destroy --force

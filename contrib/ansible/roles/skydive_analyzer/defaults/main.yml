@@ -3,11 +3,11 @@ skydive_analyzer_docker_extra_env:
 skydive_analyzer_docker_image: skydive/skydive
 skydive_analyzer_docker_command: analyzer
 skydive_analyzer_docker_image_tag:
-skydive_etcd_embedded: yes
+skydive_etcd_embedded: true
 skydive_etcd_port: 12379
 skydive_etcd_scheme: http
 skydive_etcd_servers:
-skydive_auto_fabric: yes
+skydive_auto_fabric: true
 skydive_fabric_default_interface: eth0
 skydive_fabric_tor_name: tor1
 skydive_fabric_tor_mtu: 1500
@@ -33,7 +33,7 @@ skydive_auth_os_domain_name: Default
 skydive_auth_os_domain_id: default
 skydive_auth_os_user_role: admin
 
-skydive_deployment_test: yes
+skydive_deployment_test: true
 
 skydive_iptables_rules: false
 
