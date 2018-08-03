@@ -53,6 +53,7 @@ type OvsOfProbe struct {
 	PrivateKey   string                    // Path of the private key authenticating the probe.
 	CA           string                    // Path of the certicate of the Certificate authority used for authenticated communication with bridges
 	sslOk        bool                      // cert private key and ca are provisionned.
+	ctx          context.Context
 }
 
 // BridgeOfProbe is the type of the probe retrieving Openflow rules on a Bridge.
@@ -273,12 +274,15 @@ func (r RealExecute) ExecCommandPipe(ctx context.Context, com string, args ...st
 	/* #nosec */
 	command := exec.CommandContext(ctx, com, args...)
 	out, err := command.StdoutPipe()
-	command.Stderr = command.Stdout
 	if err != nil {
-		return out, err
+		return nil, err
 	}
 
-	err = command.Start()
+	command.Stderr = command.Stdout
+	if err := command.Start(); err != nil {
+		return nil, err
+	}
+
 	return out, err
 }
 
@@ -304,10 +308,10 @@ func launchContinuousOnSwitch(ctx context.Context, cmd []string) (<-chan string,
 					logging.GetLogger().Errorf("Can't execute command %v", cmd)
 					return nil
 				}
+
 				reader := bufio.NewReader(out)
-				var line string
 				for ctx.Err() == nil {
-					line, err = reader.ReadString('\n')
+					line, err := reader.ReadString('\n')
 					if err == io.EOF {
 						break
 					} else if err != nil {
@@ -316,13 +320,11 @@ func launchContinuousOnSwitch(ctx context.Context, cmd []string) (<-chan string,
 					} else {
 						if strings.Contains(line, "is not a bridge or a socket") {
 							reader.Discard(int(^uint(0) >> 1))
-
 							return errors.New("Not a bridge or a socket")
 						}
 						cout <- line
 					}
 				}
-				logging.GetLogger().Debugf("Closing command: %v", cmd)
 
 				return nil
 			}
@@ -332,7 +334,6 @@ func launchContinuousOnSwitch(ctx context.Context, cmd []string) (<-chan string,
 			}
 		}
 		close(cout)
-		logging.GetLogger().Debugf("Terminating command: %v", cmd)
 	}()
 
 	return cout, nil
@@ -484,7 +485,7 @@ func (probe *BridgeOfProbe) monitor(ctx context.Context) error {
 
 // NewBridgeProbe creates a probe and launch the active process
 func (o *OvsOfProbe) NewBridgeProbe(host string, bridge string, uuid string, bridgeNode *graph.Node) (*BridgeOfProbe, error) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(o.ctx)
 	address, ok := o.Translation[bridge]
 	if !ok {
 		address = bridge
@@ -498,16 +499,14 @@ func (o *OvsOfProbe) NewBridgeProbe(host string, bridge string, uuid string, bri
 		OvsOfProbe: o,
 		Rules:      make(map[string][]*Rule),
 		cancel:     cancel}
-	err := probe.monitor(ctx)
-	return probe, err
+
+	return probe, probe.monitor(ctx)
 }
 
 func (o *OvsOfProbe) makeCommand(commands []string, bridge string, args ...string) ([]string, error) {
-	commandLine := []string{}
-	commandLine = append(commandLine, commands...)
 	if strings.HasPrefix(bridge, "ssl:") {
 		if o.sslOk {
-			commandLine = append(commandLine,
+			commands = append(commands,
 				bridge,
 				"--certificate", o.Certificate,
 				"--ca-cert", o.CA, "--private-key", o.PrivateKey)
@@ -515,23 +514,23 @@ func (o *OvsOfProbe) makeCommand(commands []string, bridge string, args ...strin
 			return commands, errors.New("Certificate, CA and private keys are necessary for communication with switch over SSL")
 		}
 	} else {
-		commandLine = append(commandLine, bridge)
+		commands = append(commands, bridge)
 	}
-	commandLine = append(commandLine, args...)
-	return commandLine, nil
+	return append(commands, args...), nil
 }
 
 // OnOvsBridgeAdd is called when a bridge is added
 func (o *OvsOfProbe) OnOvsBridgeAdd(bridgeNode *graph.Node) {
 	o.Lock()
 	defer o.Unlock()
-	metadata := bridgeNode.Metadata()
-	bridgeName := metadata["Name"].(string)
-	uuid := metadata["UUID"].(string)
-	hostName := o.Host
+
+	uuid, _ := bridgeNode.GetFieldString("UUID")
 	if _, ok := o.BridgeProbes[uuid]; ok {
 		return
 	}
+
+	hostName := o.Host
+	bridgeName, _ := bridgeNode.GetFieldString("Name")
 	bridgeProbe, err := o.NewBridgeProbe(hostName, bridgeName, uuid, bridgeNode)
 	if err == nil {
 		logging.GetLogger().Infof("Probe added for %s on %s (%s)", bridgeName, hostName, uuid)
@@ -545,6 +544,7 @@ func (o *OvsOfProbe) OnOvsBridgeAdd(bridgeNode *graph.Node) {
 func (o *OvsOfProbe) OnOvsBridgeDel(uuid string, bridgeNode *graph.Node) {
 	o.Lock()
 	defer o.Unlock()
+
 	if bridgeProbe, ok := o.BridgeProbes[uuid]; ok {
 		bridgeProbe.cancel()
 		delete(o.BridgeProbes, uuid)
@@ -560,11 +560,11 @@ func (o *OvsOfProbe) OnOvsBridgeDel(uuid string, bridgeNode *graph.Node) {
 }
 
 // NewOvsOfProbe creates a new probe associated to a given graph, root node and host.
-func NewOvsOfProbe(g *graph.Graph, root *graph.Node, host string) *OvsOfProbe {
-	enable := config.GetBool("ovs.oflow.enable")
-	if !enable {
+func NewOvsOfProbe(ctx context.Context, g *graph.Graph, root *graph.Node, host string) *OvsOfProbe {
+	if !config.GetBool("ovs.oflow.enable") {
 		return nil
 	}
+
 	logging.GetLogger().Infof("Adding OVS probe on %s", host)
 	translate := config.GetStringMapString("ovs.oflow.address")
 	cert := config.GetString("ovs.oflow.cert")
@@ -581,6 +581,7 @@ func NewOvsOfProbe(g *graph.Graph, root *graph.Node, host string) *OvsOfProbe {
 		PrivateKey:   pk,
 		CA:           ca,
 		sslOk:        sslOk,
+		ctx:          ctx,
 	}
 	return o
 }
