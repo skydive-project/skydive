@@ -298,6 +298,7 @@ func (mapper *OpenContrailProbe) rtMonitor() {
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		logging.GetLogger().Debug(err)
+		return
 	}
 	stdoutBuf := bufio.NewReader(stdout)
 
@@ -330,6 +331,7 @@ func (mapper *OpenContrailProbe) rtMonitor() {
 
 	if err := cmd.Start(); err != nil {
 		logging.GetLogger().Debug(err)
+		return
 	}
 	go mapper.routingTableUpdater()
 	go rtMonitorConsumer()
