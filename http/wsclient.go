@@ -71,6 +71,7 @@ type WSSpeaker interface {
 	GetURL() *url.URL
 	IsConnected() bool
 	SendMessage(m WSMessage) error
+	SendRaw(r []byte) error
 	Connect()
 	Disconnect()
 	AddEventHandler(WSSpeakerEventHandler)
@@ -370,7 +371,7 @@ func (c *WSConn) Connect() {
 // Disconnect the WSSpeakers without waiting for termination.
 func (c *WSConn) Disconnect() {
 	c.running.Store(false)
-	if atomic.LoadInt32((*int32)(c.State)) == common.RunningState {
+	if atomic.CompareAndSwapInt32((*int32)(c.State), common.RunningState, common.StoppingState) {
 		c.quit <- true
 	}
 }

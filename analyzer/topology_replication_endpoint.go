@@ -171,6 +171,12 @@ func (t *TopologyReplicationEndpoint) DisconnectPeers() {
 
 // OnWSStructMessage is triggered by message coming from an other peer.
 func (t *TopologyReplicationEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
+	host := c.GetRemoteHost()
+	if host == config.GetString("host_id") {
+		logging.GetLogger().Debugf("Ignore message from myself(%s), %s", c.GetURL().String())
+		return
+	}
+
 	msgType, obj, err := graph.UnmarshalWSMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
