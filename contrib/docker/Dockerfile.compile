@@ -1,5 +1,7 @@
 FROM ubuntu:18.04
 
+ARG UID=1000
+
 VOLUME /root/go/src/github.com/skydive-project/skydive
 VOLUME /root/go/.cache/govendor
 
@@ -26,7 +28,6 @@ RUN arch="$(dpkg --print-architecture)" \
     && wget --no-verbose -O /gosu "https://github.com/tianon/gosu/releases/download/1.10/gosu-${arch##*-}" \
     && chmod a+x /gosu
 
-ARG UID=1000
 ENV UID=$UID
 
 RUN chown -R $UID /root/

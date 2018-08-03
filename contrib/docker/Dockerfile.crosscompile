@@ -1,5 +1,10 @@
 FROM ubuntu:18.04
 
+ARG TARGET_ARCH=s390x
+ARG TARGET_GOARCH=$TARGET_ARCH
+ARG DEBARCH=$TARGET_GOARCH
+ARG UID=1000
+
 VOLUME /root/go/src/github.com/skydive-project/skydive
 VOLUME /root/go/.cache/govendor
 
@@ -8,11 +13,18 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get -y update \
     && apt-get -y install software-properties-common \
     && add-apt-repository -y ppa:ubuntu-toolchain-r/ppa \
-    && apt-get -y update \
-    && apt-get -y install git make flex bison wget unzip golang npm
-
-# EBPF would require llvm-6.0 clang-6.0 however static compulation packages uninstall clang dependancies
-# libstdc++-5-dev and libc6-dev
+    && dpkg --add-architecture $DEBARCH \
+    && echo "deb [arch=$DEBARCH] http://ports.ubuntu.com/ubuntu-ports bionic main universe" >> /etc/apt/sources.list \
+    && apt-get -y update; \
+    apt-get -y install git make flex bison wget unzip golang npm \
+                   zlib1g-dev:$DEBARCH \
+                   liblzma-dev:$DEBARCH \
+                   libc++-dev:$DEBARCH \
+                   libc-dev:$DEBARCH \
+                   libpcap0.8-dev:$DEBARCH \
+                   linux-libc-dev:$DEBARCH \
+                   gcc-${TARGET_ARCH}-linux-gnu \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN PROTOC_VER=3.5.1; \
     wget --no-verbose https://github.com/google/protobuf/releases/download/v${PROTOC_VER}/protoc-${PROTOC_VER}-linux-$(uname -m).zip \
@@ -26,26 +38,6 @@ RUN arch="$(dpkg --print-architecture)" \
     && wget --no-verbose -O /gosu "https://github.com/tianon/gosu/releases/download/1.10/gosu-${arch##*-}" \
     && chmod a+x /gosu
 
-# Arch dependence
-ARG TARGET_ARCH=s390x
-ARG TARGET_GOARCH=$TARGET_ARCH
-ARG DEBARCH=$TARGET_GOARCH
-
-# Install package for static compilation
-RUN dpkg --add-architecture $DEBARCH \
-    && echo "deb [arch=$DEBARCH] http://ports.ubuntu.com/ubuntu-ports bionic main universe" >> /etc/apt/sources.list \
-    && apt-get -y update; \
-    apt-get -y install \
-                   gcc-${TARGET_ARCH}-linux-gnu \
-                   zlib1g-dev:$DEBARCH \
-                   liblzma-dev:$DEBARCH \
-                   libc++-dev:$DEBARCH \
-                   libc-dev:$DEBARCH \
-                   libpcap0.8-dev:$DEBARCH \
-                   linux-libc-dev:$DEBARCH \
-    && rm -rf /var/lib/apt/lists/*
-
-ARG UID=1000
 ENV UID=$UID
 RUN chown -R $UID /root/
 

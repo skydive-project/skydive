@@ -497,7 +497,7 @@ docker-build:
 		skydive-compile
 	docker cp skydive-compile-build:/root/go/bin/skydive contrib/docker/skydive.$$(uname -m)
 	docker rm skydive-compile-build
-	cp /bin/true contrib/docker/qemu-$$(uname -m)-static
+	touch contrib/docker/qemu-$$(uname -m)-static
 	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} \
 		--build-arg ARCH=$$(uname -m) \
 		-f contrib/docker/Dockerfile contrib/docker/
