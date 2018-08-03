@@ -123,8 +123,6 @@ func init() {
 	cfg.SetDefault("http.rest.debug", false)
 	cfg.SetDefault("http.ws.ping_delay", 2)
 	cfg.SetDefault("http.ws.pong_timeout", 5)
-	cfg.SetDefault("http.ws.bulk_maxmsgs", 100)
-	cfg.SetDefault("http.ws.bulk_maxdelay", 1)
 	cfg.SetDefault("http.ws.queue_size", 10000)
 	cfg.SetDefault("http.ws.enable_write_compression", true)
 

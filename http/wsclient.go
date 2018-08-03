@@ -71,6 +71,7 @@ type WSSpeaker interface {
 	GetURL() *url.URL
 	IsConnected() bool
 	SendMessage(m WSMessage) error
+	SendRaw(r []byte) error
 	Connect()
 	Disconnect()
 	AddEventHandler(WSSpeakerEventHandler)

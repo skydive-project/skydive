@@ -27,10 +27,8 @@ import (
 	"reflect"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -44,19 +42,12 @@ type WSSpeakerPool interface {
 	PickConnectedSpeaker() WSSpeaker
 	BroadcastMessage(m WSMessage)
 	SendMessageTo(m WSMessage, host string) error
-	QueueBroadcastMessage(m WSMessage)
 }
 
 // WSPool is a connection container. It embed a list of WSSpeaker.
 type WSPool struct {
 	common.RWMutex
 	name              string
-	quit              chan bool
-	broadcast         chan WSMessage
-	bulkMaxMsgs       int
-	bulkMaxDelay      time.Duration
-	eventBuffer       []WSMessage
-	eventBufferLock   common.RWMutex
 	wg                sync.WaitGroup
 	running           atomic.Value
 	eventHandlers     []WSSpeakerEventHandler
@@ -140,6 +131,7 @@ func (s *WSPool) OnMessage(c WSSpeaker, m WSMessage) {
 	s.eventHandlersLock.RUnlock()
 }
 
+// RemoveClient removes client from the pool
 func (s *WSPool) RemoveClient(c WSSpeaker) bool {
 	s.Lock()
 	defer s.Unlock()
@@ -218,15 +210,6 @@ func (s *WSPool) DisconnectAll() {
 	s.RUnlock()
 }
 
-func (s *WSPool) broadcastMessage(m WSMessage) {
-	s.RLock()
-	defer s.RUnlock()
-
-	for _, c := range s.speakers {
-		c.SendMessage(m)
-	}
-}
-
 // GetSpeakersByType returns WSSpeakers matching the given type.
 func (s *WSPool) GetSpeakersByType(serviceType common.ServiceType) (speakers []WSSpeaker) {
 	s.RLock()
@@ -262,30 +245,14 @@ func (s *WSPool) SendMessageTo(m WSMessage, host string) error {
 
 // BroadcastMessage broadcasts the given message.
 func (s *WSPool) BroadcastMessage(m WSMessage) {
-	s.broadcast <- m
-}
+	s.RLock()
+	defer s.RUnlock()
 
-func (s *WSPool) flushMessages() (ms []WSMessage) {
-	ms = make([]WSMessage, len(s.eventBuffer))
-	copy(ms, s.eventBuffer)
-	s.eventBuffer = s.eventBuffer[:0]
-	return
-}
-
-// QueueBroadcastMessage enqueues a broadcast message.
-func (s *WSPool) QueueBroadcastMessage(m WSMessage) {
-	s.eventBufferLock.Lock()
-	s.eventBuffer = append(s.eventBuffer, m)
-	if len(s.eventBuffer) == s.bulkMaxMsgs {
-		ms := s.flushMessages()
-		defer s.broadcastMessages(ms)
-	}
-	s.eventBufferLock.Unlock()
-}
-
-func (s *WSPool) broadcastMessages(ms []WSMessage) {
-	for _, m := range ms {
-		s.BroadcastMessage(m)
+	for _, c := range s.speakers {
+		r := m.Bytes(c.GetClientProtocol())
+		if err := c.SendRaw(r); err != nil {
+			logging.GetLogger().Errorf("Unable to send raw message: %s", err)
+		}
 	}
 }
 
@@ -296,48 +263,13 @@ func (s *WSPool) AddEventHandler(h WSSpeakerEventHandler) {
 	s.eventHandlersLock.Unlock()
 }
 
-// Run starts the pool.
-func (s *WSPool) Run() {
-	s.wg.Add(1)
-	defer s.wg.Done()
-
-	s.running.Store(true)
-
-	bulkTicker := time.NewTicker(s.bulkMaxDelay)
-	defer bulkTicker.Stop()
-
-	for {
-		select {
-		case <-s.quit:
-			s.DisconnectAll()
-			return
-		case m := <-s.broadcast:
-			s.broadcastMessage(m)
-		case <-bulkTicker.C:
-			s.eventBufferLock.Lock()
-			ms := s.flushMessages()
-			s.eventBufferLock.Unlock()
-			if len(ms) > 0 {
-				s.broadcastMessages(ms)
-			}
-		}
-	}
-}
-
 // Start starts the pool in a goroutine.
 func (s *WSPool) Start() {
-	if s.running.Load() != true {
-		go s.Run()
-	}
 }
 
 // Stop stops the pool and wait until stopped.
 func (s *WSPool) Stop() {
-	s.quit <- true
-	if s.running.Load() == true {
-		s.wg.Wait()
-	}
-	s.running.Store(false)
+	s.DisconnectAll()
 }
 
 // ConnectAll calls connect to all the wSSpeakers of the pool.
@@ -352,15 +284,8 @@ func (s *WSClientPool) ConnectAll() {
 }
 
 func newWSPool(name string) *WSPool {
-	bulkMaxMsgs := config.GetInt("http.ws.bulk_maxmsgs")
-	bulkMaxDelay := config.GetInt("http.ws.bulk_maxdelay")
-
 	return &WSPool{
-		name:         name,
-		broadcast:    make(chan WSMessage, 100000),
-		quit:         make(chan bool, 2),
-		bulkMaxMsgs:  bulkMaxMsgs,
-		bulkMaxDelay: time.Duration(bulkMaxDelay) * time.Second,
+		name: name,
 	}
 }
 
