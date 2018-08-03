@@ -137,7 +137,9 @@ func init() {
 
 	cfg.SetDefault("netns.run_path", "/var/run/netns")
 
+	cfg.SetDefault("opencontrail.host", "localhost")
 	cfg.SetDefault("opencontrail.mpls_udp_port", 51234)
+	cfg.SetDefault("opencontrail.port", 8085)
 
 	cfg.SetDefault("ovs.ovsdb", "unix:///var/run/openvswitch/db.sock")
 	cfg.SetDefault("ovs.oflow.enable", false)

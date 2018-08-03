@@ -24,7 +24,6 @@ func TestOpenContrailTopology(t *testing.T) {
 		mode: Replay,
 
 		checks: []CheckFunction{func(c *CheckContext) error {
-			gh := c.gh
 			gremlin := c.gremlin.V().Has("Contrail")
 
 			nodes, err := c.gh.GetNodes(gremlin)
