@@ -44,7 +44,13 @@ func dumpPersistentVolumeClaim(pvc *v1.PersistentVolumeClaim) string {
 }
 
 func (p *persistentVolumeClaimProbe) newMetadata(pvc *v1.PersistentVolumeClaim) graph.Metadata {
-	return newMetadata("persistentvolumeclaim", pvc.Namespace, pvc.GetName(), pvc)
+	m := newMetadata("persistentvolumeclaim", pvc.Namespace, pvc.GetName(), pvc)
+	m.SetFieldAndNormalize("AccessModes", persistentVolumeAccessModes(pvc.Spec.AccessModes))
+	m.SetFieldAndNormalize("VolumeName", pvc.Spec.VolumeName)             // FIXME: replace by link to PersistentVolume
+	m.SetFieldAndNormalize("StorageClassName", pvc.Spec.StorageClassName) // FIXME: replace by link to StorageClass
+	m.SetFieldAndNormalize("VolumeMode", pvc.Spec.VolumeMode)
+	m.SetFieldAndNormalize("Status", pvc.Status.Phase)
+	return m
 }
 
 func persistentVolumeClaimUID(pvc *v1.PersistentVolumeClaim) graph.Identifier {

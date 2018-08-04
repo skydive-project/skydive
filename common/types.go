@@ -267,6 +267,10 @@ func NormalizeValue(obj interface{}) interface{} {
 		for i, val := range v {
 			v[i] = NormalizeValue(val)
 		}
+	case string:
+		return v
+	case nil:
+		return ""
 	}
 	return deepcopy.Copy(obj)
 }
