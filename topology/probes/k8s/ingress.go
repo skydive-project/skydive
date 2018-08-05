@@ -40,11 +40,15 @@ type ingressProbe struct {
 }
 
 func dumpIngress(ingress *v1beta1.Ingress) string {
-	return fmt.Sprintf("ingress{Name: %s}", ingress.GetName())
+	return fmt.Sprintf("ingress{Namespace: %s, Name: %s}", ingress.Namespace, ingress.Name)
 }
 
 func (p *ingressProbe) newMetadata(ingress *v1beta1.Ingress) graph.Metadata {
-	return newMetadata("ingress", ingress.Namespace, ingress.GetName(), ingress)
+	m := newMetadata("ingress", ingress.Namespace, ingress.Name, ingress)
+	m.SetFieldAndNormalize("Backend", ingress.Spec.Backend)
+	m.SetFieldAndNormalize("TLS", ingress.Spec.TLS)
+	m.SetFieldAndNormalize("Rules", ingress.Spec.Rules)
+	return m
 }
 
 func ingressUID(ingress *v1beta1.Ingress) graph.Identifier {
@@ -66,8 +70,8 @@ func (p *ingressProbe) OnUpdate(oldObj, newObj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		if nsNode := p.graph.GetNode(ingressUID(ingress)); nsNode != nil {
-			addMetadata(p.graph, nsNode, ingress)
+		if ingressNode := p.graph.GetNode(ingressUID(ingress)); ingressNode != nil {
+			addMetadata(p.graph, ingressNode, ingress)
 			logging.GetLogger().Debugf("Updated %s", dumpIngress(ingress))
 		}
 	}
@@ -78,8 +82,8 @@ func (p *ingressProbe) OnDelete(obj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		if nsNode := p.graph.GetNode(ingressUID(ingress)); nsNode != nil {
-			p.graph.DelNode(nsNode)
+		if ingressNode := p.graph.GetNode(ingressUID(ingress)); ingressNode != nil {
+			p.graph.DelNode(ingressNode)
 			logging.GetLogger().Debugf("Deleted %s", dumpIngress(ingress))
 		}
 	}

@@ -175,7 +175,7 @@ func TestK8sDeploymentNode(t *testing.T) {
 }
 
 func TestK8sIngressNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "ingress", objName+"-ingress")
+	testNodeCreationFromConfig(t, "ingress", objName+"-ingress", "Backend", "TLS", "Rules")
 }
 
 func TestK8sJobNode(t *testing.T) {
