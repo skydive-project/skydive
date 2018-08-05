@@ -232,7 +232,7 @@ func TestK8sReplicationControllerNode(t *testing.T) {
 }
 
 func TestK8sServiceNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "service", objName+"-service")
+	testNodeCreationFromConfig(t, "service", objName+"-service", "Ports", "ClusterIP", "ServiceType", "SessionAffinity", "LoadBalancerIP", "ExternalName")
 }
 
 func TestK8sStatefulSetNode(t *testing.T) {
