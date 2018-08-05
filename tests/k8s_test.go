@@ -179,7 +179,7 @@ func TestK8sIngressNode(t *testing.T) {
 }
 
 func TestK8sJobNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "job", objName+"-job")
+	testNodeCreationFromConfig(t, "job", objName+"-job", "Parallelism", "Completions", "Active", "Succeeded", "Failed")
 }
 
 func TestK8sNamespaceNode(t *testing.T) {

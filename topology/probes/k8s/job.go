@@ -40,11 +40,17 @@ type jobProbe struct {
 }
 
 func dumpJob(job *batchv1.Job) string {
-	return fmt.Sprintf("job{Name: %s}", job.GetName())
+	return fmt.Sprintf("job{Namespace: %s, Name: %s}", job.Namespace, job.Name)
 }
 
 func (p *jobProbe) newMetadata(job *batchv1.Job) graph.Metadata {
-	return newMetadata("job", job.Namespace, job.GetName(), job)
+	m := newMetadata("job", job.Namespace, job.Name, job)
+	m.SetField("Parallelism", job.Spec.Parallelism)
+	m.SetField("Completions", job.Spec.Completions)
+	m.SetField("Active", job.Status.Active)
+	m.SetField("Succeeded", job.Status.Succeeded)
+	m.SetField("Failed", job.Status.Failed)
+	return m
 }
 
 func jobUID(job *batchv1.Job) graph.Identifier {
@@ -66,8 +72,8 @@ func (p *jobProbe) OnUpdate(oldObj, newObj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		if node := p.graph.GetNode(jobUID(job)); node != nil {
-			addMetadata(p.graph, node, job)
+		if jobNode := p.graph.GetNode(jobUID(job)); jobNode != nil {
+			addMetadata(p.graph, jobNode, job)
 			logging.GetLogger().Debugf("Updated %s", dumpJob(job))
 		}
 	}
@@ -78,8 +84,8 @@ func (p *jobProbe) OnDelete(obj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		if node := p.graph.GetNode(jobUID(job)); node != nil {
-			p.graph.DelNode(node)
+		if jobNode := p.graph.GetNode(jobUID(job)); jobNode != nil {
+			p.graph.DelNode(jobNode)
 			logging.GetLogger().Debugf("Deleted %s", dumpJob(job))
 		}
 	}
