@@ -40,11 +40,18 @@ type serviceProbe struct {
 }
 
 func dumpService(srv *v1.Service) string {
-	return fmt.Sprintf("service{Name: %s}", srv.GetName())
+	return fmt.Sprintf("service{Namespace: %s, Name: %s}", srv.Namespace, srv.Name)
 }
 
 func (p *serviceProbe) newMetadata(srv *v1.Service) graph.Metadata {
-	return newMetadata("service", srv.Namespace, srv.GetName(), srv)
+	m := newMetadata("service", srv.Namespace, srv.Name, srv)
+	m.SetFieldAndNormalize("Ports", srv.Spec.Ports)
+	m.SetFieldAndNormalize("ClusterIP", srv.Spec.ClusterIP)
+	m.SetFieldAndNormalize("ServiceType", srv.Spec.Type)
+	m.SetFieldAndNormalize("SessionAffinity", srv.Spec.SessionAffinity)
+	m.SetFieldAndNormalize("LoadBalancerIP", srv.Spec.LoadBalancerIP)
+	m.SetFieldAndNormalize("ExternalName", srv.Spec.ExternalName)
+	return m
 }
 
 func serviceUID(srv *v1.Service) graph.Identifier {
@@ -66,8 +73,8 @@ func (p *serviceProbe) OnUpdate(oldObj, newObj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		if nsNode := p.graph.GetNode(serviceUID(srv)); nsNode != nil {
-			addMetadata(p.graph, nsNode, srv)
+		if srvNode := p.graph.GetNode(serviceUID(srv)); srvNode != nil {
+			addMetadata(p.graph, srvNode, srv)
 			logging.GetLogger().Debugf("Updated %s", dumpService(srv))
 		}
 	}
@@ -78,8 +85,8 @@ func (p *serviceProbe) OnDelete(obj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		if nsNode := p.graph.GetNode(serviceUID(srv)); nsNode != nil {
-			p.graph.DelNode(nsNode)
+		if srvNode := p.graph.GetNode(serviceUID(srv)); srvNode != nil {
+			p.graph.DelNode(srvNode)
 			logging.GetLogger().Debugf("Deleted %s", dumpService(srv))
 		}
 	}
