@@ -51,6 +51,9 @@ func (f *Filter) Eval(g Getter) bool {
 	if f.TermInt64Filter != nil {
 		return f.TermInt64Filter.Eval(g)
 	}
+	if f.TermBoolFilter != nil {
+		return f.TermBoolFilter.Eval(g)
+	}
 	if f.GtInt64Filter != nil {
 		return f.GtInt64Filter.Eval(g)
 	}
@@ -191,6 +194,33 @@ func (t *TermInt64Filter) Eval(g Getter) bool {
 			}
 		}
 	case int64:
+		if field == t.Value {
+			return true
+		}
+	}
+	return false
+}
+
+// Eval evaluates a bool type filter
+func (t *TermBoolFilter) Eval(g Getter) bool {
+	field, err := g.GetField(t.Key)
+	if err != nil {
+		return false
+	}
+	switch field := field.(type) {
+	case []interface{}:
+		for _, intf := range field {
+			if b, ok := intf.(bool); ok && b == t.Value {
+				return true
+			}
+		}
+	case []bool:
+		for _, v := range field {
+			if v == t.Value {
+				return true
+			}
+		}
+	case bool:
 		if field == t.Value {
 			return true
 		}
@@ -358,6 +388,11 @@ func NewTermInt64Filter(key string, value int64) *Filter {
 // NewTermStringFilter creates a new string filter
 func NewTermStringFilter(key string, value string) *Filter {
 	return &Filter{TermStringFilter: &TermStringFilter{Key: key, Value: value}}
+}
+
+// NewTermBoolFilter creates a new bool filter
+func NewTermBoolFilter(key string, value bool) *Filter {
+	return &Filter{TermBoolFilter: &TermBoolFilter{Key: key, Value: value}}
 }
 
 // NewNullFilter creates a new null filter

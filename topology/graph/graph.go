@@ -324,6 +324,8 @@ func (m Metadata) Filter() (*filters.Filter, error) {
 			termFilters = append(termFilters, filters.NewTermInt64Filter(k, v))
 		case string:
 			termFilters = append(termFilters, filters.NewTermStringFilter(k, v))
+		case bool:
+			termFilters = append(termFilters, filters.NewTermBoolFilter(k, v))
 		case map[string]interface{}:
 			sm := Metadata(v)
 			filters, err := sm.Filter()

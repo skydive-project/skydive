@@ -125,6 +125,8 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 		switch t := v.value.(type) {
 		case string:
 			return filters.NewNotFilter(filters.NewTermStringFilter(k, t)), nil
+		case bool:
+			return filters.NewTermBoolFilter(k, !t), nil
 		default:
 			i, err := common.ToInt64(t)
 			if err != nil {
@@ -208,6 +210,8 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 		return filters.NewTermStringFilter(k, v), nil
 	case int64:
 		return filters.NewTermInt64Filter(k, v), nil
+	case bool:
+		return filters.NewTermBoolFilter(k, v), nil
 	case *IPV4RangeGraphElementMatcher:
 		cidr, ok := v.value.(string)
 		if !ok {
