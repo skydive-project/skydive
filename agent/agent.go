@@ -110,7 +110,8 @@ func (a *Agent) GetStatus() interface{} {
 	}
 
 	analyzers := make(map[string]AnalyzerConnStatus)
-	for id, status := range a.analyzerClientPool.GetStatus() {
+	for _, status := range a.analyzerClientPool.GetStatus() {
+		id := fmt.Sprintf("%s:%d", status.Addr, status.Port)
 		analyzers[id] = AnalyzerConnStatus{
 			WSConnStatus: status,
 			IsMaster:     status.Addr == masterAddr && status.Port == masterPort,
