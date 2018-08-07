@@ -36,7 +36,6 @@ import (
 
 type podProbe struct {
 	defaultKubeCacheEventHandler
-	graph.DefaultGraphListener
 	*kubeCache
 	graph            *graph.Graph
 	containerIndexer *graph.MetadataIndexer
@@ -172,17 +171,13 @@ func linkPodToNode(g *graph.Graph, node, pod *graph.Node) {
 }
 
 func (p *podProbe) Start() {
-	p.containerIndexer.AddEventListener(p)
 	p.containerIndexer.Start()
-	p.nodeIndexer.AddEventListener(p)
 	p.nodeIndexer.Start()
 	p.kubeCache.Start()
 }
 
 func (p *podProbe) Stop() {
-	p.containerIndexer.RemoveEventListener(p)
 	p.containerIndexer.Stop()
-	p.nodeIndexer.RemoveEventListener(p)
 	p.nodeIndexer.Stop()
 	p.kubeCache.Stop()
 }

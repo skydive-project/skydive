@@ -25,6 +25,7 @@ package agent
 import (
 	"errors"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/shirou/gopsutil/cpu"
@@ -54,7 +55,11 @@ type CPUInfo struct {
 // createRootNode creates a graph.Node based on the host properties and aims to have an unique ID
 func createRootNode(g *graph.Graph) (*graph.Node, error) {
 	hostID := config.GetString("host_id")
-	m := graph.Metadata{"Name": hostID, "Type": "host"}
+	hostname, err := os.Hostname()
+	if err != nil {
+		return nil, err
+	}
+	m := graph.Metadata{"Name": hostID, "Type": "host", "Hostname": hostname}
 
 	// Fill the metadata from the configuration file
 	if configMetadata := config.Get("agent.metadata"); configMetadata != nil {
