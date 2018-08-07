@@ -66,29 +66,29 @@ func newEdgeMetadata() graph.Metadata {
 	return m
 }
 
-func dumpGraphLink(parent, child *graph.Node) string {
-	return fmt.Sprintf("%s -> %s", dumpGraphNode(parent), dumpGraphNode(child))
+func dumpGraphLink(parent, child *graph.Node, m graph.Metadata) string {
+	return fmt.Sprintf("%s -> %s: %s", dumpGraphNode(parent), dumpGraphNode(child), m)
 }
 
-func addLink(g *graph.Graph, parent, child *graph.Node) *graph.Edge {
-	m := newEdgeMetadata()
+func addLink(g *graph.Graph, parent, child *graph.Node, m graph.Metadata) *graph.Edge {
 	if e := g.GetFirstLink(parent, child, m); e != nil {
-		logging.GetLogger().Debugf("Adding link: %s: exists - skipping", dumpGraphLink(parent, child))
+		logging.GetLogger().Debugf("Adding link: %s: exists - skipping", dumpGraphLink(parent, child, m))
 		return e
 	}
 
-	logging.GetLogger().Debugf("Adding link: %s", dumpGraphLink(parent, child))
+	logging.GetLogger().Debugf("Adding link: %s", dumpGraphLink(parent, child, m))
 	return g.Link(parent, child, m, hostID)
 }
 
-func delLink(g *graph.Graph, parent, child *graph.Node) {
-	m := newEdgeMetadata()
-	if e := g.GetFirstLink(parent, child, m); e == nil {
-		logging.GetLogger().Debugf("Deleting link: %s: missing - skipping", dumpGraphLink(parent, child))
+func delLink(g *graph.Graph, parent, child *graph.Node, m graph.Metadata) {
+	e := g.GetFirstLink(parent, child, m)
+	if e == nil {
+		logging.GetLogger().Debugf("Deleting link: %s: missing - skipping", dumpGraphLink(parent, child, m))
 		return
 	}
-	logging.GetLogger().Debugf("Deleting link: %s", dumpGraphLink(parent, child))
-	g.Unlink(parent, child)
+
+	logging.GetLogger().Debugf("Deleting link: %s", dumpGraphLink(parent, child, m))
+	g.DelEdge(e)
 }
 
 func addOwnershipLink(g *graph.Graph, parent, child *graph.Node) *graph.Edge {
@@ -98,16 +98,8 @@ func addOwnershipLink(g *graph.Graph, parent, child *graph.Node) *graph.Edge {
 	if e := topology.GetOwnershipLink(g, parent, child); e != nil {
 		return e
 	}
-	logging.GetLogger().Debugf("Adding ownership: %s", dumpGraphLink(parent, child))
+	logging.GetLogger().Debugf("Adding ownership: %s", dumpGraphLink(parent, child, m))
 	return topology.AddOwnershipLink(g, parent, child, m, hostID)
-}
-
-func syncLink(g *graph.Graph, parent, child *graph.Node, toAdd bool) {
-	if !toAdd {
-		delLink(g, parent, child)
-	} else {
-		addLink(g, parent, child)
-	}
 }
 
 func newNode(g *graph.Graph, i graph.Identifier, m graph.Metadata) *graph.Node {

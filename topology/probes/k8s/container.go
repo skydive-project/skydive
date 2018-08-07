@@ -113,7 +113,7 @@ func (c *containerProbe) linkContainerToDocker(pod *v1.Pod, container *v1.Contai
 		return
 	}
 
-	addLink(c.graph, containerNode, dockerNodes[0])
+	addLink(c.graph, containerNode, dockerNodes[0], newEdgeMetadata())
 }
 
 func (c *containerProbe) onContainerAdd(pod *v1.Pod, container *v1.Container) {

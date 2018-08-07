@@ -66,7 +66,7 @@ func (c *nodeProbe) newMetadata(node *v1.Node) graph.Metadata {
 }
 
 func linkNodeToHost(g *graph.Graph, host, node *graph.Node) {
-	addLink(g, host, node)
+	addLink(g, host, node, newEdgeMetadata())
 }
 
 func nodeUID(node *v1.Node) graph.Identifier {

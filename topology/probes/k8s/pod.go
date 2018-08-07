@@ -168,7 +168,7 @@ func linkPodsToNode(g *graph.Graph, host *graph.Node, pods []*graph.Node) {
 }
 
 func linkPodToNode(g *graph.Graph, node, pod *graph.Node) {
-	addLink(g, node, pod)
+	addLink(g, node, pod, newEdgeMetadata())
 }
 
 func (p *podProbe) Start() {
