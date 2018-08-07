@@ -248,6 +248,35 @@ func TestK8sStorageClassNode(t *testing.T) {
 }
 
 /* -- test multi-node scenarios -- */
+func TestK8sIngressScenario1(t *testing.T) {
+	file := "ingress1"
+	name := objName + "-" + file
+	testRunner(
+		t,
+		setupFromConfigFile(file),
+		tearDownFromConfigFile(file),
+		[]CheckFunction{
+			func(c *CheckContext) error {
+				ingress, err := checkNodeCreation(t, c, "ingress", "Name", name)
+				if err != nil {
+					return err
+				}
+
+				service, err := checkNodeCreation(t, c, "service", "Name", name)
+				if err != nil {
+					return err
+				}
+
+				if err = checkEdge(t, c, ingress, service, "ingress"); err != nil {
+					return err
+				}
+
+				return nil
+			},
+		},
+	)
+}
+
 func TestHelloNodeScenario(t *testing.T) {
 	testRunner(
 		t,
