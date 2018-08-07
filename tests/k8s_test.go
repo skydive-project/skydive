@@ -236,7 +236,7 @@ func TestK8sServiceNode(t *testing.T) {
 }
 
 func TestK8sStatefulSetNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "statefulset", objName+"-statefulset")
+	testNodeCreationFromConfig(t, "statefulset", objName+"-statefulset", "DesiredReplicas", "ServiceName", "Replicas", "ReadyReplicas", "CurrentReplicas", "UpdatedReplicas", "CurrentRevision", "UpdateRevision")
 }
 
 func TestK8sStorageClassNode(t *testing.T) {

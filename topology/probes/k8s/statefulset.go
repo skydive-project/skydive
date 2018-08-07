@@ -40,11 +40,20 @@ type statefulSetProbe struct {
 }
 
 func dumpStatefulSet(ss *v1beta1.StatefulSet) string {
-	return fmt.Sprintf("statefulset{Name: %s}", ss.GetName())
+	return fmt.Sprintf("statefulset{Namespace: %s, Name: %s}", ss.Namespace, ss.Name)
 }
 
 func (p *statefulSetProbe) newMetadata(ss *v1beta1.StatefulSet) graph.Metadata {
-	return newMetadata("statefulset", ss.Namespace, ss.GetName(), ss)
+	m := newMetadata("statefulset", ss.Namespace, ss.Name, ss)
+	m.SetField("DesiredReplicas", int32ValueOrDefault(ss.Spec.Replicas, 1))
+	m.SetField("ServiceName", ss.Spec.ServiceName) // FIXME: replace by link to Service
+	m.SetField("Replicas", ss.Status.Replicas)
+	m.SetField("ReadyReplicas", ss.Status.ReadyReplicas)
+	m.SetField("CurrentReplicas", ss.Status.CurrentReplicas)
+	m.SetField("UpdatedReplicas", ss.Status.UpdatedReplicas)
+	m.SetField("CurrentRevision", ss.Status.CurrentRevision)
+	m.SetField("UpdateRevision", ss.Status.UpdateRevision)
+	return m
 }
 
 func statefulSetUID(ss *v1beta1.StatefulSet) graph.Identifier {
