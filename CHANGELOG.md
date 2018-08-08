@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.19.0] - 2018-08-08
+### Added
+- Gremlin:
+  - Add `descendants` to retrieve both parents and children
+  - Add `As` and `Select` steps to get the union of a set of nodes
+  - Allow queries on booleans
+- New JavaScript API
+  - Support for browsers, NPM or the Skydive embedded JS engine
+  - Convert command line shell to JavaScript
+- Add API to upload and execute workflows
+- Add support for Power architecture:
+  - Build Docker images
+  - Test architecture on our CI
+- Retrieve OpenContrail routing tables
+
+### Changed
+- Improved Elasticseach backend:
+  - Add support for rolling indices
+  - Bump minimal version to 5.5
+- Retrieve more Kubernetes metadata and create dedicated section on the Web UI for it
+- Performance improvements using `easyjson`
+- Allow using different authentication backends for API and for internal communications
+- TripleO: move to config-download mechanism
+
 ## [0.18.0] - 2018-06-18
 ### Added
 - Add `RBAC` mechanism
