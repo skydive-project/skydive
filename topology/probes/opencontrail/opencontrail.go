@@ -25,6 +25,7 @@
 package opencontrail
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -54,6 +55,8 @@ type OpenContrailProbe struct {
 	mplsUDPPort             int
 	routingTables           map[int]*RoutingTable
 	routingTableUpdaterChan chan RoutingTableUpdate
+	ctx                     context.Context
+	cancel                  context.CancelFunc
 }
 
 // OpenContrailMdata metadata
@@ -308,37 +311,36 @@ func (mapper *OpenContrailProbe) OnNodeDeleted(n *graph.Node) {
 	if interfaceUUID != "" {
 		mapper.OnInterfaceDeleted(interfaceUUID)
 	}
-
 }
 
 // Start the probe
 func (mapper *OpenContrailProbe) Start() {
-	mapper.rtMonitor()
+	mapper.graph.AddEventListener(mapper)
 	go mapper.nodeUpdater()
+	go mapper.rtMonitor()
 }
 
 // Stop the probe
 func (mapper *OpenContrailProbe) Stop() {
+	mapper.cancel()
 	mapper.graph.RemoveEventListener(mapper)
 	close(mapper.nodeUpdaterChan)
 }
 
 // NewOpenContrailProbeFromConfig creates a new OpenContrail probe based on configuration
 func NewOpenContrailProbeFromConfig(g *graph.Graph, r *graph.Node) (*OpenContrailProbe, error) {
-	host := config.GetString("opencontrail.host")
-	port := config.GetInt("opencontrail.port")
-	mplsUDPPort := config.GetInt("opencontrail.mpls_udp_port")
-	if host == "" {
-		host = "localhost"
-	}
-	if port == 0 {
-		port = 8085
-	}
+	ctx, cancel := context.WithCancel(context.Background())
 
-	mapper := &OpenContrailProbe{graph: g, root: r, agentHost: host, agentPort: port, mplsUDPPort: mplsUDPPort}
-	mapper.nodeUpdaterChan = make(chan graph.Identifier, 500)
-	mapper.routingTables = make(map[int]*RoutingTable)
-	mapper.routingTableUpdaterChan = make(chan RoutingTableUpdate, 500)
-	g.AddEventListener(mapper)
-	return mapper, nil
+	return &OpenContrailProbe{
+		ctx:                     ctx,
+		cancel:                  cancel,
+		graph:                   g,
+		root:                    r,
+		agentHost:               config.GetString("opencontrail.host"),
+		agentPort:               config.GetInt("opencontrail.port"),
+		mplsUDPPort:             config.GetInt("opencontrail.mpls_udp_port"),
+		nodeUpdaterChan:         make(chan graph.Identifier, 500),
+		routingTables:           make(map[int]*RoutingTable),
+		routingTableUpdaterChan: make(chan RoutingTableUpdate, 500),
+	}, nil
 }

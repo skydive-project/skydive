@@ -23,6 +23,7 @@
 package ovsdb
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -55,6 +56,7 @@ type OvsdbProbe struct {
 	intfToPort   map[string]*graph.Node
 	portToIntf   map[string]*graph.Node
 	portToBridge map[string]*graph.Node
+	cancel       context.CancelFunc
 }
 
 func isOvsInterfaceType(t string) bool {
@@ -571,12 +573,14 @@ func (o *OvsdbProbe) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *l
 
 // Start the probe
 func (o *OvsdbProbe) Start() {
+	o.OvsMon.AddMonitorHandler(o)
 	o.OvsMon.StartMonitoring()
 }
 
 // Stop the probe
 func (o *OvsdbProbe) Stop() {
 	o.OvsMon.StopMonitoring()
+	o.cancel()
 }
 
 // NewOvsdbProbe creates a new graph OVS database probe
@@ -585,6 +589,7 @@ func NewOvsdbProbe(g *graph.Graph, n *graph.Node, p string, t string) *OvsdbProb
 	mon.ExcludeColumn("*", "statistics")
 	mon.IncludeColumn("Interface", "statistics")
 
+	ctx, cancel := context.WithCancel(context.Background())
 	o := &OvsdbProbe{
 		Graph:        g,
 		Root:         n,
@@ -594,9 +599,9 @@ func NewOvsdbProbe(g *graph.Graph, n *graph.Node, p string, t string) *OvsdbProb
 		portToIntf:   make(map[string]*graph.Node),
 		portToBridge: make(map[string]*graph.Node),
 		OvsMon:       mon,
-		OvsOfProbe:   NewOvsOfProbe(g, n, mon.Target),
+		OvsOfProbe:   NewOvsOfProbe(ctx, g, n, mon.Target),
+		cancel:       cancel,
 	}
-	o.OvsMon.AddMonitorHandler(o)
 
 	return o
 }

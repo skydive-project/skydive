@@ -44,6 +44,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -111,7 +112,8 @@ func (mapper *OpenContrailProbe) routingTableUpdater() {
 	var vrfId int
 	logging.GetLogger().Debug("Starting routingTableUpdater...")
 	for a := range mapper.routingTableUpdaterChan {
-		if a.action == AddRoute {
+		switch a.action {
+		case AddRoute:
 			ocRoute := OpenContrailRoute{
 				Protocol: OpenContrailRouteProtocol,
 				Prefix:   fmt.Sprintf("%s/%d", a.route.Address, a.route.Prefix),
@@ -119,7 +121,7 @@ func (mapper *OpenContrailProbe) routingTableUpdater() {
 				NhId:     a.route.NhId}
 			mapper.addRoute(a.route.VrfId, ocRoute)
 			vrfId = a.route.VrfId
-		} else if a.action == DelRoute {
+		case DelRoute:
 			ocRoute := OpenContrailRoute{
 				Protocol: OpenContrailRouteProtocol,
 				Prefix:   fmt.Sprintf("%s/%d", a.route.Address, a.route.Prefix),
@@ -127,11 +129,10 @@ func (mapper *OpenContrailProbe) routingTableUpdater() {
 				NhId:     a.route.NhId}
 			mapper.delRoute(a.route.VrfId, ocRoute)
 			vrfId = a.route.VrfId
-		} else if a.action == AddInterface {
+		case AddInterface:
 			mapper.addInterface(a.intf.VrfId, a.intf.InterfaceUUID)
 			vrfId = a.intf.VrfId
-
-		} else if a.action == DelInterface {
+		case DelInterface:
 			var err error
 			if vrfId, err = mapper.deleteInterface(a.intf.InterfaceUUID); err != nil {
 				continue
@@ -145,25 +146,28 @@ func (mapper *OpenContrailProbe) getOrCreateRoutingTable(vrfId int) *RoutingTabl
 	vrf, exists := mapper.routingTables[vrfId]
 	if !exists {
 		logging.GetLogger().Debugf("Creating a new VRF with ID %d", vrfId)
-		itfs := []string{}
-		vrf = &RoutingTable{InterfacesUUID: itfs}
-		mapper.routingTables[vrfId] = vrf
-		err := mapper.vrfInit(vrfId)
-		if err != nil {
+
+		var err error
+		if vrf, err = mapper.vrfInit(vrfId); err != nil {
 			logging.GetLogger().Error(err)
+			return nil
 		}
 	}
 	return vrf
 }
 
 func (mapper *OpenContrailProbe) addInterface(vrfId int, interfaceUUID string) {
-	vrf := mapper.getOrCreateRoutingTable(vrfId)
-	logging.GetLogger().Debugf("Appending interface %s to VRF %d...", interfaceUUID, vrfId)
-	vrf.InterfacesUUID = append(vrf.InterfacesUUID, interfaceUUID)
+	if vrf := mapper.getOrCreateRoutingTable(vrfId); vrf != nil {
+		logging.GetLogger().Debugf("Appending interface %s to VRF %d...", interfaceUUID, vrfId)
+		vrf.InterfacesUUID = append(vrf.InterfacesUUID, interfaceUUID)
+	}
 }
 
 func (mapper *OpenContrailProbe) OnInterfaceAdded(vrfId int, interfaceUUID string) {
-	mapper.routingTableUpdaterChan <- RoutingTableUpdate{action: AddInterface, intf: interfaceUpdate{InterfaceUUID: interfaceUUID, VrfId: vrfId}}
+	mapper.routingTableUpdaterChan <- RoutingTableUpdate{
+		action: AddInterface,
+		intf:   interfaceUpdate{InterfaceUUID: interfaceUUID, VrfId: vrfId},
+	}
 }
 
 // deleteInterface removes interfaces from Vrf. If a Vrf no longer has
@@ -191,7 +195,10 @@ func (mapper *OpenContrailProbe) deleteInterface(interfaceUUID string) (vrfId in
 }
 
 func (mapper *OpenContrailProbe) OnInterfaceDeleted(interfaceUUID string) {
-	mapper.routingTableUpdaterChan <- RoutingTableUpdate{action: DelInterface, intf: interfaceUpdate{InterfaceUUID: interfaceUUID}}
+	mapper.routingTableUpdaterChan <- RoutingTableUpdate{
+		action: DelInterface,
+		intf:   interfaceUpdate{InterfaceUUID: interfaceUUID},
+	}
 }
 
 // onRouteChanged writes the Contrail routing table into the
@@ -216,39 +223,44 @@ func (mapper *OpenContrailProbe) onRouteChanged(vrfId int) {
 }
 
 func (mapper *OpenContrailProbe) addRoute(vrfId int, route OpenContrailRoute) {
-	vrf := mapper.getOrCreateRoutingTable(vrfId)
-	logging.GetLogger().Debugf("Adding route %v to vrf %d", route, vrfId)
-	for _, r := range vrf.Routes {
-		if r == route {
-			return
+	if vrf := mapper.getOrCreateRoutingTable(vrfId); vrf != nil {
+		logging.GetLogger().Debugf("Adding route %v to vrf %d", route, vrfId)
+		for _, r := range vrf.Routes {
+			if r == route {
+				return
+			}
 		}
+		vrf.Routes = append(vrf.Routes, route)
 	}
-	vrf.Routes = append(vrf.Routes, route)
 }
 
 func (mapper *OpenContrailProbe) delRoute(vrfId int, route OpenContrailRoute) {
-	vrf := mapper.getOrCreateRoutingTable(vrfId)
-	for i, r := range vrf.Routes {
-		if r.Prefix == route.Prefix {
-			logging.GetLogger().Debugf("Removing route %s from vrf %d ", r.Prefix, vrfId)
-			vrf.Routes[i] = vrf.Routes[len(vrf.Routes)-1]
-			vrf.Routes = vrf.Routes[:len(vrf.Routes)-1]
-			return
+	if vrf := mapper.getOrCreateRoutingTable(vrfId); vrf != nil {
+		for i, r := range vrf.Routes {
+			if r.Prefix == route.Prefix {
+				logging.GetLogger().Debugf("Removing route %s from vrf %d ", r.Prefix, vrfId)
+				vrf.Routes[i] = vrf.Routes[len(vrf.Routes)-1]
+				vrf.Routes = vrf.Routes[:len(vrf.Routes)-1]
+				return
+			}
 		}
+		logging.GetLogger().Errorf("Can not remove route %v from vrf %d because route has not been found", route, vrfId)
 	}
-	logging.GetLogger().Errorf("Can not remove route %v from vrf %d because route has not been found", route, vrfId)
 }
 
 // vrfInit uses the Contrail binary rt --dump to get all routes of a VRF.
-func (mapper *OpenContrailProbe) vrfInit(vrfId int) error {
-	logging.GetLogger().Debugf("Initialisation of VRF %d...", vrfId)
+func (mapper *OpenContrailProbe) vrfInit(vrfId int) (*RoutingTable, error) {
+	logging.GetLogger().Debugf("Initialization of VRF %d...", vrfId)
 
 	cmd := exec.Command("rt", "--dump", fmt.Sprint(vrfId))
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	cmd.Start()
+
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
 	defer cmd.Wait()
 
 	scanner := bufio.NewScanner(stdout)
@@ -259,6 +271,7 @@ func (mapper *OpenContrailProbe) vrfInit(vrfId int) error {
 	scanner.Scan()
 	scanner.Scan()
 
+	vrf := &RoutingTable{}
 	for scanner.Scan() {
 		s := separator.Split(scanner.Text(), -1)
 		// Ignore non complete entries
@@ -266,10 +279,9 @@ func (mapper *OpenContrailProbe) vrfInit(vrfId int) error {
 			continue
 		}
 
-		prefix := s[0]
 		nhId, err := strconv.Atoi(s[4])
 		if err != nil {
-			return err
+			return nil, err
 		}
 		// These are not interesting routes
 		if nhId == 0 || nhId == 1 {
@@ -277,13 +289,16 @@ func (mapper *OpenContrailProbe) vrfInit(vrfId int) error {
 		}
 
 		// TODO add family
-		mapper.addRoute(vrfId, OpenContrailRoute{
+		vrf.Routes = append(vrf.Routes, OpenContrailRoute{
 			Protocol: OpenContrailRouteProtocol,
-			Prefix:   prefix,
+			Prefix:   s[0],
 			NhId:     nhId,
-			Family:   afInetFamily})
+			Family:   afInetFamily,
+		})
 	}
-	return nil
+
+	mapper.routingTables[vrfId] = vrf
+	return vrf, nil
 }
 
 // We use the binary program "rt" that comes with Contrail to get
@@ -293,46 +308,47 @@ func (mapper *OpenContrailProbe) vrfInit(vrfId int) error {
 // messages are encoded with Sandesh which is bound to the Contrail
 // version. This is why we read the stdout of the "rt" tools.
 func (mapper *OpenContrailProbe) rtMonitor() {
-	logging.GetLogger().Debugf("Starting OpenContrail route monitor...")
-	cmd := exec.Command("rt", "--monitor")
+	cmd := exec.CommandContext(mapper.ctx, "rt", "--monitor")
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		logging.GetLogger().Debug(err)
+		logging.GetLogger().Error(err)
 		return
 	}
 	stdoutBuf := bufio.NewReader(stdout)
 
-	rtMonitorConsumer := func() (err error) {
-		var route rtMonitorRoute
-		for {
-			line, err := stdoutBuf.ReadString('\n')
-			if err != nil {
-				logging.GetLogger().Errorf("Failed to read 'rt --monitor' output: %s", err)
-				return err
-			}
-			if err := json.Unmarshal([]byte(line), &route); err != nil {
-				logging.GetLogger().Error(err)
-				continue
-			}
-			// We currently only support IPV4 routes
-			if route.Family != afInetFamily {
-				continue
-			}
-			if route.Operation == "add" || route.Operation == "delete" {
-				logging.GetLogger().Debugf("Route add %v", route)
-				mapper.routingTableUpdaterChan <- RoutingTableUpdate{action: AddRoute, route: route}
-			} else if route.Operation == "delete" {
-				logging.GetLogger().Debugf("Route delete %v", route)
-				mapper.routingTableUpdaterChan <- RoutingTableUpdate{action: DelRoute, route: route}
-			}
-		}
-		return
-	}
-
+	logging.GetLogger().Debugf("Starting OpenContrail route monitor")
 	if err := cmd.Start(); err != nil {
-		logging.GetLogger().Debug(err)
+		logging.GetLogger().Error(err)
 		return
 	}
+	defer logging.GetLogger().Debugf("Stopping OpenContrail route monitor")
+
 	go mapper.routingTableUpdater()
-	go rtMonitorConsumer()
+
+	var route rtMonitorRoute
+	for {
+		line, err := stdoutBuf.ReadString('\n')
+		if err != nil {
+			if err != io.EOF {
+				logging.GetLogger().Errorf("Failed to read 'rt --monitor' output: %s", err)
+			}
+			return
+		}
+		if err := json.Unmarshal([]byte(line), &route); err != nil {
+			logging.GetLogger().Error(err)
+			continue
+		}
+		// We currently only support IPV4 routes
+		if route.Family != afInetFamily {
+			continue
+		}
+		switch route.Operation {
+		case "add":
+			logging.GetLogger().Debugf("Route add %v", route)
+			mapper.routingTableUpdaterChan <- RoutingTableUpdate{action: AddRoute, route: route}
+		case "delete":
+			logging.GetLogger().Debugf("Route delete %v", route)
+			mapper.routingTableUpdaterChan <- RoutingTableUpdate{action: DelRoute, route: route}
+		}
+	}
 }
