@@ -60,12 +60,11 @@ docker login -u "${DOCKER_USERNAME}" -p "${DOCKER_PASSWORD}"
 
 for arch in $ARCHES
 do
-    docker tag ${DOCKER_IMAGE}:${arch}-${DOCKER_TAG} ${DOCKER_IMAGE}:${arch}-latest
     docker push ${DOCKER_IMAGE}:${arch}-${DOCKER_TAG}
     [ -z "${platforms}" ] && platforms=linux/$arch || platforms=${platforms},linux/$arch
 done
 
-manifest-tool --debug push from-args --platforms $platforms --template skydive/skydive:ARCH-latest --target skydive/skydive:latest
+manifest-tool --debug push from-args --platforms $platforms --template skydive/skydive:ARCH-${DOCKER_TAG} --target skydive/skydive:${DOCKER_TAG}
 
 token=$(curl -X POST \
   -H "Content-Type: application/json" \
