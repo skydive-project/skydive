@@ -1,8 +1,11 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+VMNAME = ENV.fetch("VMNAME", "dev")
+MEMORY = ENV.fetch("MEMORY", "4096")
 PREPARE_BOX = ENV.fetch("PREPARE_BOX", "") == "true" ? true : false
 PROVISION_BOX = ENV.fetch("PROVISION_BOX", ENV.fetch("PREPARE_BOX", "")) == "true" ? true : false
+PRIVATE_IP = ENV.fetch("PRIVATE_IP", "192.168.10.10")
 
 if PREPARE_BOX and Vagrant::Util::Platform.windows? then
   require 'vagrant-vbguest'
@@ -11,7 +14,7 @@ end
 DEVMODE_ROOT = "../.."
 GOPATH = "/home/vagrant"
 
-SKYDIVE_SYNC_FOLDER = ENV.fetch("SKYDIVE_SYNC_FOLDER", "true") == "true" ? true : false
+SKYDIVE_SYNC_FOLDER = ENV.fetch("SKYDIVE_SYNC_FOLDER", "false") == "true" ? true : false
 SKYDIVE_GITHUB = "github.com/skydive-project/skydive"
 SKYDIVE_DIR = "/src/#{SKYDIVE_GITHUB}"
 SKYDIVE_HOST = ENV.has_key?("GOPATH") ? ENV.fetch("GOPATH") + SKYDIVE_DIR : DEVMODE_ROOT
@@ -31,6 +34,7 @@ $skydive_extra_config = {
 }
 
 $skydive_git_clone = <<SCRIPT
+sudo dnf -y install git
 mkdir -p #{SKYDIVE_GUEST}
 cd #{SKYDIVE_GUEST}
 git clone https://#{SKYDIVE_GITHUB} .
@@ -135,7 +139,7 @@ def dev_synced_folders(override, type)
 end
 
 Vagrant.configure(2) do |config|
-  config.vm.define "dev" do |dev|
+  config.vm.define VMNAME do |dev|
     dev.vm.hostname = "dev"
     dev.vm.synced_folder ".", "/vagrant", disabled: true
     dev.vm.box = "skydive/skydive-dev"
@@ -174,8 +178,8 @@ Vagrant.configure(2) do |config|
 
     dev.vm.provider :virtualbox do |vb, override|
       vb.gui = false
-      vb.memory = "4096"
-      override.vm.network "private_network", ip: "192.168.100.10"
+      vb.memory = MEMORY
+      override.vm.network "private_network", ip: PRIVATE_IP
       dev_synced_folders(override, "virtualbox")
 
       if PREPARE_BOX then
@@ -188,9 +192,9 @@ Vagrant.configure(2) do |config|
     end
 
     dev.vm.provider :libvirt do |domain, override|
-      domain.memory = 4096
+      domain.memory = MEMORY
       domain.graphics_type = "none"
-      override.vm.network "private_network", ip: "192.168.10.10"
+      override.vm.network "private_network", ip: PRIVATE_IP
       dev_synced_folders(override, "nfs")
 
       if PREPARE_BOX then
