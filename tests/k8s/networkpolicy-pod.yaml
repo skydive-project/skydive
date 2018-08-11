@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: skydive-test-networkpolicy2
+  name: skydive-test-networkpolicy-pod
   labels:
-    app: skydive-test-networkpolicy2
+    app: skydive-test-networkpolicy-pod
 spec:
   containers:
   - name: nginx
@@ -14,8 +14,10 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: skydive-test-networkpolicy2
+  name: skydive-test-networkpolicy-pod
 spec:
   podSelector:
     matchLabels:
-      app: skydive-test-networkpolicy2
+      app: skydive-test-networkpolicy-pod
+  ingress:
+  - {}
