@@ -268,16 +268,16 @@ var TopologyGraphLayout = function(vm, selector) {
     .call(this.zoom)
     .on("dblclick.zoom", null);
 
-  var defsMarker = function(type, target) {
-    let id = "arrowhead-"+type+"-"+target
+  var defsMarker = function(type, target, point) {
+    let id = "arrowhead-"+type+"-"+target+"-"+point;
 
     let refX = 1.65
     let pathD = "M0,0 L0,0.3 L0.5,0.15 Z"
-    if (type === "egress") {
+    if (type === "egress" || point === "end") {
       pathD = "M0.5,0 L0.5,0.3 L0,0.15 Z"
     }
 
-    let color = "rgb(60, 179, 113, 0.4)"
+    let color = "rgb(159, 218, 64, 0.4)"
     if (target === "deny") {
       color = "rgba(255, 99, 71, 0.4)"
     }
@@ -295,10 +295,14 @@ var TopologyGraphLayout = function(vm, selector) {
         .attr("d", pathD);
   }
 
-  defsMarker("ingress", "deny");
-  defsMarker("ingress", "allow");
-  defsMarker("egress", "deny");
-  defsMarker("egress", "allow");
+  defsMarker("ingress", "deny", "begin");
+  defsMarker("ingress", "deny", "end");
+  defsMarker("ingress", "allow", "begin");
+  defsMarker("ingress", "allow", "end");
+  defsMarker("egress", "deny", "begin");
+  defsMarker("egress", "deny", "end");
+  defsMarker("egress", "allow", "begin");
+  defsMarker("egress", "allow", "end");
 
   this.g = this.svg.append("g");
 
@@ -1526,7 +1530,7 @@ TopologyGraphLayout.prototype = {
     if (link.metadata.RelationType !== "networkpolicy") {
       return "url(#arrowhead-none)";
     }
-    return "url(#arrowhead-"+link.metadata.PolicyType+"-"+link.metadata.PolicyTarget+")";
+    return "url(#arrowhead-"+link.metadata.PolicyType+"-"+link.metadata.PolicyTarget+"-"+link.metadata.PolicyPoint+")";
   },
 
   update: function() {
