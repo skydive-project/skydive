@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: skydive-test-service-pod
+spec:
+  selector:
+    app: skydive-test-service-pod
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 9376
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: skydive-test-service-pod
+  labels:
+    app: skydive-test-service-pod
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 9376

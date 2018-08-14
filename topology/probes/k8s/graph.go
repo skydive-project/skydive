@@ -26,6 +26,7 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -40,6 +41,10 @@ const (
 	detailsField  = "K8s"
 	nodeNameField = detailsField + ".Spec.NodeName"
 )
+
+func lookupChildren(g *graph.Graph, parent, childFilter *graph.Node, edgeFilter graph.Metadata) []*graph.Node {
+	return g.LookupChildren(parent, childFilter.Metadata(), edgeFilter)
+}
 
 func newMetadata(ty, namespace, name string, details interface{}) graph.Metadata {
 	m := graph.Metadata{
@@ -111,4 +116,25 @@ func dumpGraphNode(n *graph.Node) string {
 	namespace, _ := n.GetFieldString("Namespace")
 	name, _ := n.GetFieldString("Name")
 	return fmt.Sprintf("%s{Namespace: %s, Name: %s}", ty, namespace, name)
+}
+
+func newObjectIndexerByNamespace(g *graph.Graph, ty string) *graph.MetadataIndexer {
+	filter := filters.NewAndFilter(
+		filters.NewTermStringFilter("Manager", managerValue),
+		filters.NewTermStringFilter("Type", ty),
+		filters.NewNotNullFilter("Namespace"),
+	)
+	m := graph.NewGraphElementFilter(filter)
+	return graph.NewMetadataIndexer(g, m, "Namespace")
+}
+
+func newObjectIndexerByNamespaceAndName(g *graph.Graph, ty string) *graph.MetadataIndexer {
+	filter := filters.NewAndFilter(
+		filters.NewTermStringFilter("Manager", managerValue),
+		filters.NewTermStringFilter("Type", ty),
+		filters.NewNotNullFilter("Namespace"),
+		filters.NewNotNullFilter("Name"),
+	)
+	m := graph.NewGraphElementFilter(filter)
+	return graph.NewMetadataIndexer(g, m, "Namespace", "Name")
 }
