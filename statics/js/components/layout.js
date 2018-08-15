@@ -30,6 +30,7 @@ var nodeImgMap = setupFixedImages({
   "cronjob": "cronjob",
   "daemonset": "daemonset",
   "deployment": "deployment",
+  "endpoints": "endpoints",
   "ingress": "ingress",
   "job": "job",
   "node": "host",
