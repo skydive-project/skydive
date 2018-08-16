@@ -212,11 +212,11 @@ func TestK8sNodeNode(t *testing.T) {
 }
 
 func TestK8sPersistentVolumeNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "persistentvolume", objName+"-persistentvolume")
+	testNodeCreationFromConfig(t, "persistentvolume", objName+"-persistentvolume", "Capacity", "AccessModes", "VolumeMode", "ClaimRef", "StorageClassName", "Status")
 }
 
 func TestK8sPersistentVolumeClaimNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "persistentvolumeclaim", objName+"-persistentvolumeclaim")
+	testNodeCreationFromConfig(t, "persistentvolumeclaim", objName+"-persistentvolumeclaim", "AccessModes", "VolumeName", "StorageClassName", "VolumeMode", "Status")
 }
 
 func TestK8sPodNode(t *testing.T) {

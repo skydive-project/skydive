@@ -40,11 +40,33 @@ type persistentVolumeProbe struct {
 }
 
 func dumpPersistentVolume(pv *v1.PersistentVolume) string {
-	return fmt.Sprintf("persistentvolume{Name: %s}", pv.GetName())
+	return fmt.Sprintf("persistentvolume{Name: %s}", pv.Name)
+}
+
+func persistentVolumeAccessModes(accessModes []v1.PersistentVolumeAccessMode) string {
+	if len(accessModes) > 0 {
+		return string(accessModes[0])
+	}
+	return ""
+}
+
+func persistentVolumeClaimRef(claimRef *v1.ObjectReference) string {
+	if claimRef != nil {
+		return claimRef.Name
+	}
+	return ""
 }
 
 func (p *persistentVolumeProbe) newMetadata(pv *v1.PersistentVolume) graph.Metadata {
-	return newMetadata("persistentvolume", pv.Namespace, pv.GetName(), pv)
+	m := newMetadata("persistentvolume", pv.Namespace, pv.Name, pv)
+	m.SetFieldAndNormalize("Capacity", pv.Spec.Capacity)
+
+	m.SetFieldAndNormalize("AccessModes", persistentVolumeAccessModes(pv.Spec.AccessModes))
+	m.SetFieldAndNormalize("VolumeMode", pv.Spec.VolumeMode)
+	m.SetFieldAndNormalize("ClaimRef", persistentVolumeClaimRef(pv.Spec.ClaimRef)) // FIXME: replace by link to PersistentVolumeClaim
+	m.SetFieldAndNormalize("StorageClassName", pv.Spec.StorageClassName)           // FIXME: replace by link to StorageClass
+	m.SetFieldAndNormalize("Status", pv.Status.Phase)
+	return m
 }
 
 func persistentVolumeUID(pv *v1.PersistentVolume) graph.Identifier {
