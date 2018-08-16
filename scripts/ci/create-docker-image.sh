@@ -16,7 +16,7 @@ set -e
 : ${DOCKER_USERNAME:=skydiveproject}
 
 TAG=${REF##*/}
-VERSION=${TAG//[a-z]/}
+VERSION=${TAG#v}
 
 [ -n "$VERSION" ] && DOCKER_TAG=$VERSION || DOCKER_TAG=latest
 
