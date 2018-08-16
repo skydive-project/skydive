@@ -405,3 +405,32 @@ func TestK8sNetworkPolicyDenyEgressScenario(t *testing.T) {
 func TestK8sNetworkPolicyAllowEgressScenario(t *testing.T) {
 	testK8sNetworkPolicyDefaultScenario(t, k8s.PolicyTypeEgress, k8s.PolicyTargetAllow)
 }
+
+func TestK8sServicePodScenario(t *testing.T) {
+	file := "service-pod"
+	name := objName + "-" + file
+	testRunner(
+		t,
+		setupFromConfigFile(file),
+		tearDownFromConfigFile(file),
+		[]CheckFunction{
+			func(c *CheckContext) error {
+				service, err := checkNodeCreation(t, c, "service", "Name", name)
+				if err != nil {
+					return err
+				}
+
+				pod, err := checkNodeCreation(t, c, "pod", "Name", name)
+				if err != nil {
+					return err
+				}
+
+				if err = checkEdge(t, c, service, pod, "service"); err != nil {
+					return err
+				}
+
+				return nil
+			},
+		},
+	)
+}
