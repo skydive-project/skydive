@@ -402,6 +402,7 @@ k8s:
   - container
   - cronjob
   - deployment
+  - endpoints
   - ingress
   - job
   - namespace

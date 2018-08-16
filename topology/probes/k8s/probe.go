@@ -61,6 +61,7 @@ func makeProbeBundle(g *graph.Graph) *probe.ProbeBundle {
 		"cronjob":               newCronJobProbe,
 		"daemonset":             newDaemonSetProbe,
 		"deployment":            newDeploymentProbe,
+		"endpoints":             newEndpointsProbe,
 		"ingress":               newIngressProbe,
 		"job":                   newJobProbe,
 		"namespace":             newNamespaceProbe,
