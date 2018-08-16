@@ -123,8 +123,8 @@ func checkEdgeLink(t *testing.T, c *CheckContext, from, to *graph.Node, edgeArgs
 	return checkEdge(t, c, from, to, "association", edgeArgs...)
 }
 
-func checkEdgeNetworkPolicy(t *testing.T, c *CheckContext, from, to *graph.Node, edgeArgs ...interface{}) error {
-	return checkEdge(t, c, from, to, "networkpolicy", edgeArgs...)
+func checkEdgeNetworkPolicy(t *testing.T, c *CheckContext, from, to *graph.Node, ty k8s.PolicyType, target k8s.PolicyTarget, point k8s.PolicyPoint) error {
+	return checkEdge(t, c, from, to, "networkpolicy", "PolicyType", ty, "PolicyTarget", target, "PolicyPoint", point)
 }
 
 func checkEdgeOwnership(t *testing.T, c *CheckContext, from, to *graph.Node, edgeArgs ...interface{}) error {
@@ -204,7 +204,7 @@ func TestK8sDaemonSetNode(t *testing.T) {
 }
 
 func TestK8sNetworkPolicyNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "networkpolicy", objName+"-networkpolicy", "Labels", "PodSelector")
+	testNodeCreationFromConfig(t, "networkpolicy", objName+"-networkpolicy")
 }
 
 func TestK8sNodeNode(t *testing.T) {
@@ -304,7 +304,7 @@ func TestHelloNodeScenario(t *testing.T) {
 }
 
 func TestK8sNetworkPolicyScenario1(t *testing.T) {
-	file := "networkpolicy1"
+	file := "networkpolicy-namespace"
 	name := objName + "-" + file
 	testRunner(
 		t,
@@ -322,7 +322,7 @@ func TestK8sNetworkPolicyScenario1(t *testing.T) {
 					return err
 				}
 
-				if err = checkEdgeNetworkPolicy(t, c, networkpolicy, namespace); err != nil {
+				if err = checkEdgeNetworkPolicy(t, c, networkpolicy, namespace, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, k8s.PolicyPointBegin); err != nil {
 					return err
 				}
 
@@ -333,7 +333,7 @@ func TestK8sNetworkPolicyScenario1(t *testing.T) {
 }
 
 func TestK8sNetworkPolicyScenario2(t *testing.T) {
-	file := "networkpolicy2"
+	file := "networkpolicy-pod"
 	name := objName + "-" + file
 	testRunner(
 		t,
@@ -351,7 +351,7 @@ func TestK8sNetworkPolicyScenario2(t *testing.T) {
 					return err
 				}
 
-				if err = checkEdgeNetworkPolicy(t, c, networkpolicy, pod); err != nil {
+				if err = checkEdgeNetworkPolicy(t, c, networkpolicy, pod, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, k8s.PolicyPointBegin); err != nil {
 					return err
 				}
 
@@ -380,7 +380,7 @@ func testK8sNetworkPolicyDefaultScenario(t *testing.T, policyType k8s.PolicyType
 					return err
 				}
 
-				if err = checkEdgeNetworkPolicy(t, c, np, ns, "PolicyType", policyType, "PolicyTarget", policyTarget); err != nil {
+				if err = checkEdgeNetworkPolicy(t, c, np, ns, policyType, policyTarget, k8s.PolicyPointBegin); err != nil {
 					return err
 				}
 
@@ -404,6 +404,48 @@ func TestK8sNetworkPolicyDenyEgressScenario(t *testing.T) {
 
 func TestK8sNetworkPolicyAllowEgressScenario(t *testing.T) {
 	testK8sNetworkPolicyDefaultScenario(t, k8s.PolicyTypeEgress, k8s.PolicyTargetAllow)
+}
+
+func testK8sNetworkPolicyObjectToObjectScenario(t *testing.T, policyType k8s.PolicyType, policyTarget k8s.PolicyTarget, resourceType string) {
+	file := fmt.Sprintf("networkpolicy-%s-%s-%s", policyType, policyTarget, resourceType)
+	name := objName + "-" + file
+	testRunner(
+		t,
+		setupFromConfigFile(file),
+		tearDownFromConfigFile(file),
+		[]CheckFunction{
+			func(c *CheckContext) error {
+				np, err := checkNodeCreation(t, c, "networkpolicy", "Name", name)
+				if err != nil {
+					return err
+				}
+
+				begin, err := checkNodeCreation(t, c, resourceType, "Name", name+"-begin")
+				if err != nil {
+					return err
+				}
+
+				end, err := checkNodeCreation(t, c, resourceType, "Name", name+"-end")
+				if err != nil {
+					return err
+				}
+
+				if err = checkEdgeNetworkPolicy(t, c, np, begin, policyType, policyTarget, k8s.PolicyPointBegin); err != nil {
+					return err
+				}
+
+				if err = checkEdgeNetworkPolicy(t, c, np, end, policyType, policyTarget, k8s.PolicyPointEnd); err != nil {
+					return err
+				}
+
+				return nil
+			},
+		},
+	)
+}
+
+func TestK8sNetworkPolicyAllowIngressPodToPodScenario(t *testing.T) {
+	testK8sNetworkPolicyObjectToObjectScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, "pod")
 }
 
 func TestK8sServicePodScenario(t *testing.T) {
