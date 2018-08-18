@@ -480,7 +480,6 @@ rpm:
 .PHONY: docker-image
 docker-image: static
 	cp $$GOPATH/bin/skydive contrib/docker/skydive.$$(uname -m)
-	touch contrib/docker/qemu-$$(uname -m)-static
 	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} --build-arg ARCH=$$(uname -m) -f contrib/docker/Dockerfile contrib/docker/
 
 .PHONY: docker-build
@@ -497,7 +496,6 @@ docker-build:
 		skydive-compile
 	docker cp skydive-compile-build:/root/go/bin/skydive contrib/docker/skydive.$$(uname -m)
 	docker rm skydive-compile-build
-	touch contrib/docker/qemu-$$(uname -m)-static
 	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} \
 		--build-arg ARCH=$$(uname -m) \
 		-f contrib/docker/Dockerfile contrib/docker/
@@ -519,11 +517,10 @@ docker-cross-build: ebpf.build
 		skydive-crosscompile-${TARGET_GOARCH}
 	docker cp skydive-crosscompile-build-${TARGET_GOARCH}:/root/go/bin/linux_${TARGET_GOARCH}/skydive contrib/docker/skydive.${TARGET_GOARCH}
 	docker rm skydive-crosscompile-build-${TARGET_GOARCH}
-	cp /usr/bin/qemu-${TARGET_GOARCH}-static contrib/docker || cp /bin/true contrib/docker/qemu-${TARGET_GOARCH}-static
 	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} \
 		--build-arg ARCH=${TARGET_GOARCH} \
 		$${BASE:+--build-arg BASE=$${BASE}} \
-		-f contrib/docker/Dockerfile contrib/docker/
+		-f contrib/docker/Dockerfile.static contrib/docker/
 
 SKYDIVE_PROTO_FILES:= \
 	flow/flow.proto \
