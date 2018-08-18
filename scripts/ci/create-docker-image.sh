@@ -1,10 +1,5 @@
 #!/bin/sh
 
-if [ -z "$REF" ]; then
-    echo "The environment variable REF needs to be defined"
-    exit 1
-fi
-
 set -v
 set -x
 set -e
@@ -14,6 +9,7 @@ set -e
 # arm64 waiting on  golang 1.11 (https://github.com/skydive-project/skydive/pull/1188#discussion_r204336060)
 : ${DOCKER_IMAGE:=skydive/skydive}
 : ${DOCKER_USERNAME:=skydiveproject}
+: ${REF:=latest}
 
 TAG=${REF##*/}
 VERSION=${TAG#v}
