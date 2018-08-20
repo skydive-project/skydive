@@ -1,0 +1,18 @@
+kind: Ingress
+apiVersion: extensions/v1beta1
+metadata:
+  name: skydive-test-ingress1
+spec:
+  backend:
+    serviceName: skydive-test-ingress1
+    servicePort: 1080
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: skydive-test-ingress1
+spec:
+  ports:
+  - protocol: TCP
+    port: 1080
+    targetPort: 9376
