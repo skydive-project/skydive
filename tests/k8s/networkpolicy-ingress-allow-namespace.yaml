@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: skydive-test-networkpolicy-ingress-allow-namespace-to
+  labels:
+    app: skydive-test-networkpolicy-ingress-allow-namespace-to
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: skydive-test-networkpolicy-ingress-allow-namespace-from
+  labels:
+    app: skydive-test-networkpolicy-ingress-allow-namespace-from
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: skydive-test-networkpolicy-ingress-allow-namespace
+  namespace: skydive-test-networkpolicy-ingress-allow-namespace-to
+spec:
+  podSelector:
+    matchLabels:
+  ingress:
+  - from:
+      - namespaceSelector:
+          matchLabels:
+            app: skydive-test-networkpolicy-ingress-allow-namespace-from
