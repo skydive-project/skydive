@@ -24,6 +24,7 @@ package k8s
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
@@ -398,6 +399,38 @@ func (n *networkPolicyProbe) listObjectsConnectedToEnd(np *v1beta1.NetworkPolicy
 	return []*graph.Node{}
 }
 
+func (n *networkPolicyProbe) fmtFieldPorts(ports []v1beta1.NetworkPolicyPort) string {
+	strPorts := []string{}
+	for _, p := range ports {
+		proto := ""
+		if p.Protocol != nil && *p.Protocol != corev1.ProtocolTCP {
+			proto = "/" + string(*p.Protocol)
+		}
+		strPorts = append(strPorts, fmt.Sprintf(":%s%s", p.Port, proto))
+	}
+	return strings.Join(strPorts, ";")
+}
+
+func (n *networkPolicyProbe) addFieldPorts(m graph.Metadata, np *v1beta1.NetworkPolicy, ty PolicyType) graph.Metadata {
+	// TODO extend logic to be able to extract the correct (per Pod object)
+	// port filter, for now all we can do is extract the ports in the case
+	// that there is only a single Ingress/egress rule (in which case we
+	// *know* the port filter applies to the specific edge).
+	ports := []v1beta1.NetworkPolicyPort{}
+	switch ty {
+	case PolicyTypeIngress:
+		if len(np.Spec.Ingress) == 1 {
+			ports = np.Spec.Ingress[0].Ports
+		}
+	case PolicyTypeEgress:
+		if len(np.Spec.Egress) == 1 {
+			ports = np.Spec.Egress[0].Ports
+		}
+	}
+	m.SetFieldAndNormalize("Ports", n.fmtFieldPorts(ports))
+	return m
+}
+
 func (n *networkPolicyProbe) newEdgeMetadata(ty PolicyType, target PolicyTarget, point PolicyPoint) graph.Metadata {
 	m := newEdgeMetadata()
 	m.SetField("RelationType", "networkpolicy")
@@ -443,7 +476,8 @@ func (n *networkPolicyProbe) updateLinksForTypeTargetPoint(np *v1beta1.NetworkPo
 
 	for _, objNode := range selected {
 		if filterNode == nil || filterNode.ID == objNode.ID {
-			addLink(n.graph, npNode, objNode, m)
+			newM := n.addFieldPorts(m, np, ty)
+			addLink(n.graph, npNode, objNode, newM)
 		}
 	}
 }

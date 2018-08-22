@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: skydive-test-networkpolicy-ingress-allow-ports-to
+  labels:
+    app: skydive-test-networkpolicy-ingress-allow-ports-to
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: skydive-test-networkpolicy-ingress-allow-ports-from
+  labels:
+    app: skydive-test-networkpolicy-ingress-allow-ports-from
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
+---
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: skydive-test-networkpolicy-ingress-allow-ports
+spec:
+  podSelector:
+    matchLabels:
+      app: skydive-test-networkpolicy-ingress-allow-ports-to
+  ingress:
+  - from:
+      - podSelector:
+          matchLabels:
+            app: skydive-test-networkpolicy-ingress-allow-ports-from
+    ports:
+      - port: 80
