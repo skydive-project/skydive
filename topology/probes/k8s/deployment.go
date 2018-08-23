@@ -34,8 +34,8 @@ import (
 )
 
 type deployProbe struct {
-	defaultKubeCacheEventHandler
-	*kubeCache
+	DefaultKubeCacheEventHandler
+	*KubeCache
 	graph *graph.Graph
 }
 
@@ -44,7 +44,7 @@ func dumpDeployment(deploy *v1beta1.Deployment) string {
 }
 
 func (p *deployProbe) newMetadata(deploy *v1beta1.Deployment) graph.Metadata {
-	m := newMetadata("deployment", deploy.Namespace, deploy.Name, deploy)
+	m := NewMetadata(Manager, "deployment", deploy.Namespace, deploy.Name, deploy)
 	m.SetFieldAndNormalize("Selector", deploy.Spec.Selector)
 	m.SetField("DesiredReplicas", int32ValueOrDefault(deploy.Spec.Replicas, 1))
 	m.SetField("Replicas", deploy.Status.Replicas)
@@ -63,7 +63,7 @@ func (p *deployProbe) OnAdd(obj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		newNode(p.graph, deployUID(deploy), p.newMetadata(deploy))
+		NewNode(p.graph, deployUID(deploy), p.newMetadata(deploy))
 		logging.GetLogger().Debugf("Added %s", dumpDeployment(deploy))
 	}
 }
@@ -74,7 +74,7 @@ func (p *deployProbe) OnUpdate(oldObj, newObj interface{}) {
 		defer p.graph.Unlock()
 
 		if deployNode := p.graph.GetNode(deployUID(deploy)); deployNode != nil {
-			addMetadata(p.graph, deployNode, deploy)
+			AddMetadata(p.graph, deployNode, deploy)
 			logging.GetLogger().Debugf("Updated %s", dumpDeployment(deploy))
 		}
 	}
@@ -93,21 +93,21 @@ func (p *deployProbe) OnDelete(obj interface{}) {
 }
 
 func (p *deployProbe) Start() {
-	p.kubeCache.Start()
+	p.KubeCache.Start()
 }
 
 func (p *deployProbe) Stop() {
-	p.kubeCache.Stop()
+	p.KubeCache.Stop()
 }
 
-func newDeploymentKubeCache(handler cache.ResourceEventHandler) *kubeCache {
-	return newKubeCache(getClientset().ExtensionsV1beta1().RESTClient(), &v1beta1.Deployment{}, "deployments", handler)
+func newDeploymentKubeCache(handler cache.ResourceEventHandler) *KubeCache {
+	return NewKubeCache(getClientset().ExtensionsV1beta1().RESTClient(), &v1beta1.Deployment{}, "deployments", handler)
 }
 
 func newDeploymentProbe(g *graph.Graph) probe.Probe {
 	p := &deployProbe{
 		graph: g,
 	}
-	p.kubeCache = newDeploymentKubeCache(p)
+	p.KubeCache = newDeploymentKubeCache(p)
 	return p
 }

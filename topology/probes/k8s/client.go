@@ -74,17 +74,17 @@ func getClientset() *kubernetes.Clientset {
 	return clientset
 }
 
-type kubeCache struct {
+type KubeCache struct {
 	cache          cache.Store
 	controller     cache.Controller
 	stopController chan (struct{})
 }
 
-func (c *kubeCache) list() []interface{} {
+func (c *KubeCache) list() []interface{} {
 	return c.cache.List()
 }
 
-func (c *kubeCache) listByNamespace(namespace string) (objList []interface{}) {
+func (c *KubeCache) listByNamespace(namespace string) (objList []interface{}) {
 	if namespace == api.NamespaceAll {
 		return c.list()
 	}
@@ -97,7 +97,7 @@ func (c *kubeCache) listByNamespace(namespace string) (objList []interface{}) {
 	return
 }
 
-func (c *kubeCache) getByKey(namespace, name string) interface{} {
+func (c *KubeCache) getByKey(namespace, name string) interface{} {
 	key := ""
 	if len(namespace) > 0 {
 		key += namespace + "/"
@@ -109,19 +109,19 @@ func (c *kubeCache) getByKey(namespace, name string) interface{} {
 	return nil
 }
 
-type defaultKubeCacheEventHandler struct {
+type DefaultKubeCacheEventHandler struct {
 }
 
-func (d *defaultKubeCacheEventHandler) OnAdd(obj interface{}) {
+func (d *DefaultKubeCacheEventHandler) OnAdd(obj interface{}) {
 }
 
-func (d *defaultKubeCacheEventHandler) OnUpdate(old, new interface{}) {
+func (d *DefaultKubeCacheEventHandler) OnUpdate(old, new interface{}) {
 }
 
-func (d *defaultKubeCacheEventHandler) OnDelete(obj interface{}) {
+func (d *DefaultKubeCacheEventHandler) OnDelete(obj interface{}) {
 }
 
-func newKubeCache(restClient rest.Interface, objType runtime.Object, resources string, handler cache.ResourceEventHandler) *kubeCache {
+func NewKubeCache(restClient rest.Interface, objType runtime.Object, resources string, handler cache.ResourceEventHandler) *KubeCache {
 	watchlist := cache.NewListWatchFromClient(restClient, resources, api.NamespaceAll, fields.Everything())
 
 	cacheHandler := cache.ResourceEventHandlerFuncs{}
@@ -131,16 +131,16 @@ func newKubeCache(restClient rest.Interface, objType runtime.Object, resources s
 		cacheHandler.DeleteFunc = handler.OnDelete
 	}
 
-	c := &kubeCache{stopController: make(chan struct{})}
+	c := &KubeCache{stopController: make(chan struct{})}
 	c.cache, c.controller = cache.NewInformer(watchlist, objType, 30*time.Minute, cacheHandler)
 	return c
 }
 
-func (c *kubeCache) Start() {
+func (c *KubeCache) Start() {
 	c.cache.Resync()
 	go c.controller.Run(c.stopController)
 }
 
-func (c *kubeCache) Stop() {
+func (c *KubeCache) Stop() {
 	c.stopController <- struct{}{}
 }

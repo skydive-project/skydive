@@ -34,8 +34,8 @@ import (
 )
 
 type endpointsProbe struct {
-	defaultKubeCacheEventHandler
-	*kubeCache
+	DefaultKubeCacheEventHandler
+	*KubeCache
 	graph *graph.Graph
 }
 
@@ -44,7 +44,7 @@ func dumpEndpoints(srv *v1.Endpoints) string {
 }
 
 func (p *endpointsProbe) newMetadata(srv *v1.Endpoints) graph.Metadata {
-	return newMetadata("endpoints", srv.Namespace, srv.GetName(), srv)
+	return NewMetadata(Manager, "endpoints", srv.Namespace, srv.GetName(), srv)
 }
 
 func endpointsUID(srv *v1.Endpoints) graph.Identifier {
@@ -56,7 +56,7 @@ func (p *endpointsProbe) OnAdd(obj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		newNode(p.graph, endpointsUID(srv), p.newMetadata(srv))
+		NewNode(p.graph, endpointsUID(srv), p.newMetadata(srv))
 		logging.GetLogger().Debugf("Added %s", dumpEndpoints(srv))
 	}
 }
@@ -67,7 +67,7 @@ func (p *endpointsProbe) OnUpdate(oldObj, newObj interface{}) {
 		defer p.graph.Unlock()
 
 		if nsNode := p.graph.GetNode(endpointsUID(srv)); nsNode != nil {
-			addMetadata(p.graph, nsNode, srv)
+			AddMetadata(p.graph, nsNode, srv)
 			logging.GetLogger().Debugf("Updated %s", dumpEndpoints(srv))
 		}
 	}
@@ -86,21 +86,21 @@ func (p *endpointsProbe) OnDelete(obj interface{}) {
 }
 
 func (p *endpointsProbe) Start() {
-	p.kubeCache.Start()
+	p.KubeCache.Start()
 }
 
 func (p *endpointsProbe) Stop() {
-	p.kubeCache.Stop()
+	p.KubeCache.Stop()
 }
 
-func newEndpointsKubeCache(handler cache.ResourceEventHandler) *kubeCache {
-	return newKubeCache(getClientset().Core().RESTClient(), &v1.Endpoints{}, "endpoints", handler)
+func newEndpointsKubeCache(handler cache.ResourceEventHandler) *KubeCache {
+	return NewKubeCache(getClientset().Core().RESTClient(), &v1.Endpoints{}, "endpoints", handler)
 }
 
 func newEndpointsProbe(g *graph.Graph) probe.Probe {
 	p := &endpointsProbe{
 		graph: g,
 	}
-	p.kubeCache = newEndpointsKubeCache(p)
+	p.KubeCache = newEndpointsKubeCache(p)
 	return p
 }

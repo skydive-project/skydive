@@ -39,12 +39,12 @@ import (
 )
 
 type networkPolicyProbe struct {
-	defaultKubeCacheEventHandler
+	DefaultKubeCacheEventHandler
 	graph.DefaultGraphListener
-	*kubeCache
+	*KubeCache
 	graph          *graph.Graph
-	podCache       *kubeCache
-	namespaceCache *kubeCache
+	podCache       *KubeCache
+	namespaceCache *KubeCache
 	objIndexer     *graph.MetadataIndexer
 }
 
@@ -55,7 +55,7 @@ func newObjectIndexerByNetworkPolicy(g *graph.Graph) *graph.MetadataIndexer {
 	)
 
 	filter := filters.NewAndFilter(
-		filters.NewTermStringFilter("Manager", managerValue),
+		filters.NewTermStringFilter("Manager", Manager),
 		ownedByFilter,
 	)
 	m := graph.NewGraphElementFilter(filter)
@@ -63,7 +63,7 @@ func newObjectIndexerByNetworkPolicy(g *graph.Graph) *graph.MetadataIndexer {
 }
 
 func (n *networkPolicyProbe) newMetadata(np *v1beta1.NetworkPolicy) graph.Metadata {
-	return newMetadata("networkpolicy", np.Namespace, np.Name, np)
+	return NewMetadata(Manager, "networkpolicy", np.Namespace, np.Name, np)
 }
 
 func networkPolicyUID(np *v1beta1.NetworkPolicy) graph.Identifier {
@@ -78,7 +78,7 @@ func (n *networkPolicyProbe) OnAdd(obj interface{}) {
 	if np, ok := obj.(*v1beta1.NetworkPolicy); ok {
 		logging.GetLogger().Debugf("Adding %s", dumpNetworkPolicy(np))
 		n.graph.Lock()
-		npNode := newNode(n.graph, networkPolicyUID(np), n.newMetadata(np))
+		npNode := NewNode(n.graph, networkPolicyUID(np), n.newMetadata(np))
 		n.updateLinks(npNode, np, nil)
 		n.graph.Unlock()
 	}
@@ -89,7 +89,7 @@ func (n *networkPolicyProbe) OnUpdate(oldObj, newObj interface{}) {
 		logging.GetLogger().Debugf("Updating %s", dumpNetworkPolicy(np))
 		n.graph.Lock()
 		if npNode := n.graph.GetNode(networkPolicyUID(np)); npNode != nil {
-			addMetadata(n.graph, npNode, np)
+			AddMetadata(n.graph, npNode, np)
 			n.updateLinks(npNode, np, nil)
 		}
 		n.graph.Unlock()
@@ -432,7 +432,7 @@ func (n *networkPolicyProbe) addFieldPorts(m graph.Metadata, np *v1beta1.Network
 }
 
 func (n *networkPolicyProbe) newEdgeMetadata(ty PolicyType, target PolicyTarget, point PolicyPoint) graph.Metadata {
-	m := newEdgeMetadata()
+	m := NewEdgeMetadata(Manager)
 	m.SetField("RelationType", "networkpolicy")
 	m.SetField("PolicyType", string(ty))
 	m.SetField("PolicyTarget", string(target))
@@ -442,7 +442,7 @@ func (n *networkPolicyProbe) newEdgeMetadata(ty PolicyType, target PolicyTarget,
 
 func (n *networkPolicyProbe) lookupChildren(npNode *graph.Node, m graph.Metadata) []*graph.Node {
 	childFilter := graph.Metadata{
-		"Manager": managerValue,
+		"Manager": Manager,
 	}
 	return n.graph.LookupChildren(npNode, childFilter, m)
 }
@@ -470,14 +470,14 @@ func (n *networkPolicyProbe) updateLinksForTypeTargetPoint(np *v1beta1.NetworkPo
 
 	for _, childNode := range staleChilderen {
 		if filterNode == nil || filterNode.ID == childNode.ID {
-			delLink(n.graph, npNode, childNode, m)
+			DelLinkTry(n.graph, npNode, childNode, m)
 		}
 	}
 
 	for _, objNode := range selected {
 		if filterNode == nil || filterNode.ID == objNode.ID {
 			newM := n.addFieldPorts(m, np, ty)
-			addLink(n.graph, npNode, objNode, newM)
+			AddLinkTry(n.graph, npNode, objNode, newM)
 		}
 	}
 }
@@ -505,7 +505,7 @@ func (n *networkPolicyProbe) updateLinks(npNode *graph.Node, np *v1beta1.Network
 }
 
 func (n *networkPolicyProbe) getObjByNode(node *graph.Node) interface{} {
-	var cache *kubeCache
+	var cache *KubeCache
 
 	ty, _ := node.GetFieldString("Type")
 	switch ty {
@@ -524,16 +524,16 @@ func (n *networkPolicyProbe) getObjByNode(node *graph.Node) interface{} {
 }
 
 func (n *networkPolicyProbe) onNodeUpdated(objNode *graph.Node) {
-	logging.GetLogger().Debugf("refreshing: %s", dumpGraphNode(objNode))
+	logging.GetLogger().Debugf("refreshing: %s", DumpNode(objNode))
 	obj := n.getObjByNode(objNode)
 	if obj == nil {
-		logging.GetLogger().Debugf("can't find %s", dumpGraphNode(objNode))
+		logging.GetLogger().Debugf("can't find %s", DumpNode(objNode))
 		return
 	}
 
-	for _, np := range n.kubeCache.list() {
+	for _, np := range n.KubeCache.list() {
 		np := np.(*v1beta1.NetworkPolicy)
-		logging.GetLogger().Debugf("refreshing: %s --> %s", dumpNetworkPolicy(np), dumpGraphNode(objNode))
+		logging.GetLogger().Debugf("refreshing: %s --> %s", dumpNetworkPolicy(np), DumpNode(objNode))
 		npNode := n.graph.GetNode(networkPolicyUID(np))
 		if npNode == nil {
 			logging.GetLogger().Debugf("can't find %s", dumpNetworkPolicy(np))
@@ -554,7 +554,7 @@ func (n *networkPolicyProbe) OnNodeUpdated(node *graph.Node) {
 func (n *networkPolicyProbe) Start() {
 	n.objIndexer.AddEventListener(n)
 	n.objIndexer.Start()
-	n.kubeCache.Start()
+	n.KubeCache.Start()
 	n.podCache.Start()
 	n.namespaceCache.Start()
 }
@@ -562,13 +562,13 @@ func (n *networkPolicyProbe) Start() {
 func (n *networkPolicyProbe) Stop() {
 	n.objIndexer.RemoveEventListener(n)
 	n.objIndexer.Stop()
-	n.kubeCache.Stop()
+	n.KubeCache.Stop()
 	n.podCache.Stop()
 	n.namespaceCache.Stop()
 }
 
-func newNetworkPolicyKubeCache(handler cache.ResourceEventHandler) *kubeCache {
-	return newKubeCache(getClientset().ExtensionsV1beta1().RESTClient(), &v1beta1.NetworkPolicy{}, "networkpolicies", handler)
+func newNetworkPolicyKubeCache(handler cache.ResourceEventHandler) *KubeCache {
+	return NewKubeCache(getClientset().ExtensionsV1beta1().RESTClient(), &v1beta1.NetworkPolicy{}, "networkpolicies", handler)
 }
 
 func newNetworkPolicyProbe(g *graph.Graph) probe.Probe {
@@ -578,6 +578,6 @@ func newNetworkPolicyProbe(g *graph.Graph) probe.Probe {
 		namespaceCache: newNamespaceKubeCache(nil),
 		objIndexer:     newObjectIndexerByNetworkPolicy(g),
 	}
-	n.kubeCache = newNetworkPolicyKubeCache(n)
+	n.KubeCache = newNetworkPolicyKubeCache(n)
 	return n
 }

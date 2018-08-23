@@ -34,8 +34,8 @@ import (
 )
 
 type cronJobProbe struct {
-	defaultKubeCacheEventHandler
-	*kubeCache
+	DefaultKubeCacheEventHandler
+	*KubeCache
 	graph *graph.Graph
 }
 
@@ -44,7 +44,7 @@ func dumpCronJob(cj *v1beta1.CronJob) string {
 }
 
 func (p *cronJobProbe) newMetadata(cj *v1beta1.CronJob) graph.Metadata {
-	m := newMetadata("cronjob", cj.Namespace, cj.Name, cj)
+	m := NewMetadata(Manager, "cronjob", cj.Namespace, cj.Name, cj)
 	m.SetField("Schedule", cj.Spec.Schedule)
 	m.SetField("Suspended", cj.Spec.Suspend != nil && *cj.Spec.Suspend)
 	return m
@@ -59,7 +59,7 @@ func (p *cronJobProbe) OnAdd(obj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		newNode(p.graph, cronJobUID(cj), p.newMetadata(cj))
+		NewNode(p.graph, cronJobUID(cj), p.newMetadata(cj))
 		logging.GetLogger().Debugf("Added %s", dumpCronJob(cj))
 	}
 }
@@ -70,7 +70,7 @@ func (p *cronJobProbe) OnUpdate(oldObj, newObj interface{}) {
 		defer p.graph.Unlock()
 
 		if node := p.graph.GetNode(cronJobUID(cj)); node != nil {
-			addMetadata(p.graph, node, cj)
+			AddMetadata(p.graph, node, cj)
 			logging.GetLogger().Debugf("Updated %s", dumpCronJob(cj))
 		}
 	}
@@ -89,21 +89,21 @@ func (p *cronJobProbe) OnDelete(obj interface{}) {
 }
 
 func (p *cronJobProbe) Start() {
-	p.kubeCache.Start()
+	p.KubeCache.Start()
 }
 
 func (p *cronJobProbe) Stop() {
-	p.kubeCache.Stop()
+	p.KubeCache.Stop()
 }
 
-func newCronJobKubeCache(handler cache.ResourceEventHandler) *kubeCache {
-	return newKubeCache(getClientset().BatchV1beta1().RESTClient(), &v1beta1.CronJob{}, "cronjobs", handler)
+func newCronJobKubeCache(handler cache.ResourceEventHandler) *KubeCache {
+	return NewKubeCache(getClientset().BatchV1beta1().RESTClient(), &v1beta1.CronJob{}, "cronjobs", handler)
 }
 
 func newCronJobProbe(g *graph.Graph) probe.Probe {
 	p := &cronJobProbe{
 		graph: g,
 	}
-	p.kubeCache = newCronJobKubeCache(p)
+	p.KubeCache = newCronJobKubeCache(p)
 	return p
 }
