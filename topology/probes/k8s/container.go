@@ -34,9 +34,9 @@ import (
 )
 
 type containerProbe struct {
-	defaultKubeCacheEventHandler
+	DefaultKubeCacheEventHandler
 	graph.DefaultGraphListener
-	*kubeCache
+	*KubeCache
 	graph            *graph.Graph
 	podIndexer       *graph.MetadataIndexer
 	containerIndexer *graph.MetadataIndexer
@@ -74,7 +74,7 @@ func newContainerIndexer(g *graph.Graph) *graph.MetadataIndexer {
 }
 
 func (c *containerProbe) newMetadata(pod *v1.Pod, container *v1.Container) graph.Metadata {
-	m := newMetadata("container", pod.Namespace, container.Name, container)
+	m := NewMetadata(Manager, "container", pod.Namespace, container.Name, container)
 	m.SetField("Pod", pod.Name)
 	m.SetFieldAndNormalize("Labels", pod.Labels)
 	m.SetField("Image", container.Image)
@@ -102,7 +102,7 @@ func (c *containerProbe) linkContainerToPod(pod *v1.Pod, container *v1.Container
 	}
 
 	logging.GetLogger().Debugf("Linking %s to %s", dumpContainer(pod, container), dumpPod(pod))
-	addOwnershipLink(c.graph, podNodes[0], containerNode)
+	AddOwnershipLink(Manager, c.graph, podNodes[0], containerNode)
 }
 
 func (c *containerProbe) linkContainerToDocker(pod *v1.Pod, container *v1.Container, containerNode *graph.Node) {
@@ -113,7 +113,7 @@ func (c *containerProbe) linkContainerToDocker(pod *v1.Pod, container *v1.Contai
 		return
 	}
 
-	addLink(c.graph, containerNode, dockerNodes[0], newEdgeMetadata())
+	AddLinkTry(c.graph, containerNode, dockerNodes[0], NewEdgeMetadata(Manager))
 }
 
 func (c *containerProbe) onContainerAdd(pod *v1.Pod, container *v1.Container) {
@@ -124,10 +124,10 @@ func (c *containerProbe) onContainerAdd(pod *v1.Pod, container *v1.Container) {
 	containerNode := c.graph.GetNode(uid)
 	if containerNode == nil {
 		logging.GetLogger().Debugf("Adding %s", dumpContainer(pod, container))
-		containerNode = newNode(c.graph, uid, c.newMetadata(pod, container))
+		containerNode = NewNode(c.graph, uid, c.newMetadata(pod, container))
 	} else {
 		logging.GetLogger().Debugf("Updating %s (as it already exists)", dumpContainer(pod, container))
-		addMetadata(c.graph, containerNode, container)
+		AddMetadata(c.graph, containerNode, container)
 	}
 
 	c.linkContainerToPod(pod, container, containerNode)
@@ -181,7 +181,7 @@ func (c *containerProbe) Start() {
 	c.dockerIndexer.Start()
 	c.podIndexer.AddEventListener(c)
 	c.podIndexer.Start()
-	c.kubeCache.Start()
+	c.KubeCache.Start()
 }
 
 func (c *containerProbe) Stop() {
@@ -191,7 +191,7 @@ func (c *containerProbe) Stop() {
 	c.dockerIndexer.Stop()
 	c.podIndexer.RemoveEventListener(c)
 	c.podIndexer.Stop()
-	c.kubeCache.Stop()
+	c.KubeCache.Stop()
 }
 
 func newContainerProbe(g *graph.Graph) probe.Probe {
@@ -201,6 +201,6 @@ func newContainerProbe(g *graph.Graph) probe.Probe {
 		containerIndexer: newContainerIndexer(g),
 		dockerIndexer:    newDockerIndexer(g),
 	}
-	c.kubeCache = newPodKubeCache(c)
+	c.KubeCache = newPodKubeCache(c)
 	return c
 }

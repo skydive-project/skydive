@@ -34,8 +34,8 @@ import (
 )
 
 type persistentVolumeClaimProbe struct {
-	defaultKubeCacheEventHandler
-	*kubeCache
+	DefaultKubeCacheEventHandler
+	*KubeCache
 	graph *graph.Graph
 }
 
@@ -44,7 +44,7 @@ func dumpPersistentVolumeClaim(pvc *v1.PersistentVolumeClaim) string {
 }
 
 func (p *persistentVolumeClaimProbe) newMetadata(pvc *v1.PersistentVolumeClaim) graph.Metadata {
-	m := newMetadata("persistentvolumeclaim", pvc.Namespace, pvc.GetName(), pvc)
+	m := NewMetadata(Manager, "persistentvolumeclaim", pvc.Namespace, pvc.GetName(), pvc)
 	m.SetFieldAndNormalize("AccessModes", persistentVolumeAccessModes(pvc.Spec.AccessModes))
 	m.SetFieldAndNormalize("VolumeName", pvc.Spec.VolumeName)             // FIXME: replace by link to PersistentVolume
 	m.SetFieldAndNormalize("StorageClassName", pvc.Spec.StorageClassName) // FIXME: replace by link to StorageClass
@@ -62,7 +62,7 @@ func (p *persistentVolumeClaimProbe) OnAdd(obj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		newNode(p.graph, persistentVolumeClaimUID(pvc), p.newMetadata(pvc))
+		NewNode(p.graph, persistentVolumeClaimUID(pvc), p.newMetadata(pvc))
 		logging.GetLogger().Debugf("Added %s", dumpPersistentVolumeClaim(pvc))
 	}
 }
@@ -73,7 +73,7 @@ func (p *persistentVolumeClaimProbe) OnUpdate(oldObj, newObj interface{}) {
 		defer p.graph.Unlock()
 
 		if node := p.graph.GetNode(persistentVolumeClaimUID(pvc)); node != nil {
-			addMetadata(p.graph, node, pvc)
+			AddMetadata(p.graph, node, pvc)
 			logging.GetLogger().Debugf("Updated %s", dumpPersistentVolumeClaim(pvc))
 		}
 	}
@@ -92,21 +92,21 @@ func (p *persistentVolumeClaimProbe) OnDelete(obj interface{}) {
 }
 
 func (p *persistentVolumeClaimProbe) Start() {
-	p.kubeCache.Start()
+	p.KubeCache.Start()
 }
 
 func (p *persistentVolumeClaimProbe) Stop() {
-	p.kubeCache.Stop()
+	p.KubeCache.Stop()
 }
 
-func newPersistentVolumeClaimKubeCache(handler cache.ResourceEventHandler) *kubeCache {
-	return newKubeCache(getClientset().CoreV1().RESTClient(), &v1.PersistentVolumeClaim{}, "persistentvolumeclaims", handler)
+func newPersistentVolumeClaimKubeCache(handler cache.ResourceEventHandler) *KubeCache {
+	return NewKubeCache(getClientset().CoreV1().RESTClient(), &v1.PersistentVolumeClaim{}, "persistentvolumeclaims", handler)
 }
 
 func newPersistentVolumeClaimProbe(g *graph.Graph) probe.Probe {
 	p := &persistentVolumeClaimProbe{
 		graph: g,
 	}
-	p.kubeCache = newPersistentVolumeClaimKubeCache(p)
+	p.KubeCache = newPersistentVolumeClaimKubeCache(p)
 	return p
 }

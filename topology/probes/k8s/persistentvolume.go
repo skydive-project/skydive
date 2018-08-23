@@ -34,8 +34,8 @@ import (
 )
 
 type persistentVolumeProbe struct {
-	defaultKubeCacheEventHandler
-	*kubeCache
+	DefaultKubeCacheEventHandler
+	*KubeCache
 	graph *graph.Graph
 }
 
@@ -58,7 +58,7 @@ func persistentVolumeClaimRef(claimRef *v1.ObjectReference) string {
 }
 
 func (p *persistentVolumeProbe) newMetadata(pv *v1.PersistentVolume) graph.Metadata {
-	m := newMetadata("persistentvolume", pv.Namespace, pv.Name, pv)
+	m := NewMetadata(Manager, "persistentvolume", pv.Namespace, pv.Name, pv)
 	m.SetFieldAndNormalize("Capacity", pv.Spec.Capacity)
 
 	m.SetFieldAndNormalize("AccessModes", persistentVolumeAccessModes(pv.Spec.AccessModes))
@@ -78,7 +78,7 @@ func (p *persistentVolumeProbe) OnAdd(obj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		newNode(p.graph, persistentVolumeUID(pv), p.newMetadata(pv))
+		NewNode(p.graph, persistentVolumeUID(pv), p.newMetadata(pv))
 		logging.GetLogger().Debugf("Added %s", dumpPersistentVolume(pv))
 	}
 }
@@ -89,7 +89,7 @@ func (p *persistentVolumeProbe) OnUpdate(oldObj, newObj interface{}) {
 		defer p.graph.Unlock()
 
 		if node := p.graph.GetNode(persistentVolumeUID(pv)); node != nil {
-			addMetadata(p.graph, node, pv)
+			AddMetadata(p.graph, node, pv)
 			logging.GetLogger().Debugf("Updated %s", dumpPersistentVolume(pv))
 		}
 	}
@@ -108,21 +108,21 @@ func (p *persistentVolumeProbe) OnDelete(obj interface{}) {
 }
 
 func (p *persistentVolumeProbe) Start() {
-	p.kubeCache.Start()
+	p.KubeCache.Start()
 }
 
 func (p *persistentVolumeProbe) Stop() {
-	p.kubeCache.Stop()
+	p.KubeCache.Stop()
 }
 
-func newPersistentVolumeKubeCache(handler cache.ResourceEventHandler) *kubeCache {
-	return newKubeCache(getClientset().CoreV1().RESTClient(), &v1.PersistentVolume{}, "persistentvolumes", handler)
+func newPersistentVolumeKubeCache(handler cache.ResourceEventHandler) *KubeCache {
+	return NewKubeCache(getClientset().CoreV1().RESTClient(), &v1.PersistentVolume{}, "persistentvolumes", handler)
 }
 
 func newPersistentVolumeProbe(g *graph.Graph) probe.Probe {
 	p := &persistentVolumeProbe{
 		graph: g,
 	}
-	p.kubeCache = newPersistentVolumeKubeCache(p)
+	p.KubeCache = newPersistentVolumeKubeCache(p)
 	return p
 }

@@ -35,9 +35,9 @@ import (
 )
 
 type ingressProbe struct {
-	defaultKubeCacheEventHandler
+	DefaultKubeCacheEventHandler
 	graph.DefaultGraphListener
-	*kubeCache
+	*KubeCache
 	graph          *graph.Graph
 	serviceIndexer *graph.MetadataIndexer
 }
@@ -47,7 +47,7 @@ func dumpIngress(ingress *v1beta1.Ingress) string {
 }
 
 func (p *ingressProbe) newMetadata(ingress *v1beta1.Ingress) graph.Metadata {
-	m := newMetadata("ingress", ingress.Namespace, ingress.Name, ingress)
+	m := NewMetadata(Manager, "ingress", ingress.Namespace, ingress.Name, ingress)
 	m.SetFieldAndNormalize("Backend", ingress.Spec.Backend)
 	m.SetFieldAndNormalize("TLS", ingress.Spec.TLS)
 	m.SetFieldAndNormalize("Rules", ingress.Spec.Rules)
@@ -59,7 +59,7 @@ func ingressUID(ingress *v1beta1.Ingress) graph.Identifier {
 }
 
 func (p *ingressProbe) newEdgeMetadata(serviceName string, servicePort intstr.IntOrString) graph.Metadata {
-	m := newEdgeMetadata()
+	m := NewEdgeMetadata(Manager)
 	m.SetField("RelationType", "ingress")
 	m.SetField("ServiceName", serviceName)
 	m.SetField("ServicePort", servicePort)
@@ -76,7 +76,7 @@ func (p *ingressProbe) updateLinksForService(ingress *v1beta1.Ingress, ingressNo
 	}
 
 	edge := p.newEdgeMetadata(ingress.Spec.Backend.ServiceName, ingress.Spec.Backend.ServicePort)
-	addLink(p.graph, ingressNode, srvNode, edge)
+	AddLinkTry(p.graph, ingressNode, srvNode, edge)
 
 	// TODO: handle deletion of stale links
 	// TODO: support backends defined in ingress.Spec.Rules
@@ -94,7 +94,7 @@ func (p *ingressProbe) OnAdd(obj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		ingressNode := newNode(p.graph, ingressUID(ingress), p.newMetadata(ingress))
+		ingressNode := NewNode(p.graph, ingressUID(ingress), p.newMetadata(ingress))
 		logging.GetLogger().Debugf("Added %s", dumpIngress(ingress))
 		p.updateLinks(ingress, ingressNode)
 	}
@@ -106,7 +106,7 @@ func (p *ingressProbe) OnUpdate(oldObj, newObj interface{}) {
 		defer p.graph.Unlock()
 
 		if ingressNode := p.graph.GetNode(ingressUID(ingress)); ingressNode != nil {
-			addMetadata(p.graph, ingressNode, ingress)
+			AddMetadata(p.graph, ingressNode, ingress)
 			logging.GetLogger().Debugf("Updated %s", dumpIngress(ingress))
 			p.updateLinks(ingress, ingressNode)
 		}
@@ -126,9 +126,9 @@ func (p *ingressProbe) OnDelete(obj interface{}) {
 }
 
 func (p *ingressProbe) onNodeUpdated(srvNode *graph.Node) {
-	logging.GetLogger().Debugf("update links: %s", dumpGraphNode(srvNode))
+	logging.GetLogger().Debugf("update links: %s", DumpNode(srvNode))
 
-	for _, ingress := range p.kubeCache.list() {
+	for _, ingress := range p.KubeCache.list() {
 		ingress := ingress.(*v1beta1.Ingress)
 		logging.GetLogger().Debugf("refreshing %s", dumpIngress(ingress))
 		ingressNode := p.graph.GetNode(ingressUID(ingress))
@@ -149,26 +149,26 @@ func (p *ingressProbe) OnNodeUpdated(node *graph.Node) {
 }
 
 func (p *ingressProbe) Start() {
-	p.kubeCache.Start()
+	p.KubeCache.Start()
 	p.serviceIndexer.AddEventListener(p)
 	p.serviceIndexer.Start()
 }
 
 func (p *ingressProbe) Stop() {
-	p.kubeCache.Stop()
+	p.KubeCache.Stop()
 	p.serviceIndexer.RemoveEventListener(p)
 	p.serviceIndexer.Stop()
 }
 
-func newIngressKubeCache(handler cache.ResourceEventHandler) *kubeCache {
-	return newKubeCache(getClientset().ExtensionsV1beta1().RESTClient(), &v1beta1.Ingress{}, "ingresses", handler)
+func newIngressKubeCache(handler cache.ResourceEventHandler) *KubeCache {
+	return NewKubeCache(getClientset().ExtensionsV1beta1().RESTClient(), &v1beta1.Ingress{}, "ingresses", handler)
 }
 
 func newIngressProbe(g *graph.Graph) probe.Probe {
 	p := &ingressProbe{
 		graph:          g,
-		serviceIndexer: newObjectIndexerByNamespace(g, "service"),
+		serviceIndexer: NewObjectIndexerByNamespace(Manager, g, "service"),
 	}
-	p.kubeCache = newIngressKubeCache(p)
+	p.KubeCache = newIngressKubeCache(p)
 	return p
 }
