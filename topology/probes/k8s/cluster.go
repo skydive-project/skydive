@@ -31,7 +31,7 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-const clusterName = "cluster"
+const ClusterName = "cluster"
 
 type clusterProbe struct {
 	graph.DefaultGraphListener
@@ -95,7 +95,7 @@ func (p *clusterProbe) delNode(name string) {
 
 func (p *clusterProbe) OnNodeAdded(objNode *graph.Node) {
 	logging.GetLogger().Debugf("Got event on adding %s", DumpNode(objNode))
-	clusterNodes, _ := p.clusterIndexer.Get(clusterName)
+	clusterNodes, _ := p.clusterIndexer.Get(ClusterName)
 	if len(clusterNodes) > 0 {
 		p.linkObject(objNode, clusterNodes[0])
 	}
@@ -103,7 +103,7 @@ func (p *clusterProbe) OnNodeAdded(objNode *graph.Node) {
 
 func (p *clusterProbe) OnNodeUpdated(objNode *graph.Node) {
 	logging.GetLogger().Debugf("Got event on updating %s", DumpNode(objNode))
-	clusterNodes, _ := p.clusterIndexer.Get(clusterName)
+	clusterNodes, _ := p.clusterIndexer.Get(ClusterName)
 	if len(clusterNodes) > 0 {
 		p.linkObject(objNode, clusterNodes[0])
 	}
@@ -113,11 +113,11 @@ func (p *clusterProbe) Start() {
 	p.clusterIndexer.Start()
 	p.objectIndexer.AddEventListener(p)
 	p.objectIndexer.Start()
-	p.addNode(clusterName)
+	p.addNode(ClusterName)
 }
 
 func (p *clusterProbe) Stop() {
-	p.delNode(clusterName)
+	p.delNode(ClusterName)
 	p.clusterIndexer.Stop()
 	p.objectIndexer.RemoveEventListener(p)
 	p.objectIndexer.Stop()
