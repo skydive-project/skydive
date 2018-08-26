@@ -1,36 +1,25 @@
 #!/bin/bash
 
 set -v
+set -e
 
-dir="$(dirname "$0")"
+DIR="$(dirname "$0")"
 
-go get -f -u github.com/tebeka/go2xunit
+k8s_setup() {
+        . "$DIR/install-minikube.sh" install
+        . "$DIR/install-minikube.sh" start
+}
 
-. "${dir}/install-minikube.sh" install
-. "${dir}/install-minikube.sh" start
+k8s_teardown() {
+        [ "$KEEP_RESOURCES" = "true" ] || . "$DIR/install-minikube.sh" stop
+}
 
-sudo iptables -F
-sudo iptables -P FORWARD ACCEPT
-for i in $(find /proc/sys/net/bridge/ -type f) ; do echo 0 | sudo tee $i ; done
-
-cd ${GOPATH}/src/github.com/skydive-project/skydive
-
-if [ "$COVERAGE" != "true" -a "$(uname -m)" != "ppc64le" ]; then
-    GOFLAGS="-race"
-fi
-
-BACKEND="memory"
-ARGS="-analyzer.topology.backend $BACKEND -analyzer.flow.backend $BACKEND"
-
-make test.functionals.batch GOFLAGS="$GOFLAGS" TAGS="${TAGS}" GORACE="history_size=5" WITH_EBPF=true WITH_K8S=true VERBOSE=true TIMEOUT=20m COVERAGE=$COVERAGE ARGS="$ARGS -graph.output ascii -standalone" TEST_PATTERN=K8s 2>&1 | tee $WORKSPACE/output.log
-go2xunit -fail -fail-on-race -suite-name-prefix tests -input $WORKSPACE/output.log -output $WORKSPACE/tests.xml
-retcode=$?
-sed -i 's/\x1b\[[0-9;]*m//g' $WORKSPACE/tests.xml
-
-if [ -e functionals.cover ]; then
-    mv functionals.cover functionals-${BACKEND}.cover
-fi
-
-[ "$KEEP_RESOURCES" = "true" ] || . "${dir}/install-minikube.sh" stop
-
-exit $retcode
+. "$DIR/run-tests-utils.sh"
+k8s_setup
+network_setup
+WITH_EBPF=true
+WITH_K8S=true
+TEST_PATTERN=K8s
+tests_run
+k8s_teardown
+exit $RETCODE

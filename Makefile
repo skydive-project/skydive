@@ -56,7 +56,8 @@ ifeq ($(VERBOSE), false)
   VERBOSE_TESTS_FLAGS:=
 endif
 ifeq ($(COVERAGE), true)
-  EXTRA_ARGS+= -test.coverprofile=../functionals.cover
+  TEST_COVERPROFILE?=../functionals.cover
+  EXTRA_ARGS+= -test.coverprofile=${TEST_COVERPROFILE}
 endif
 TIMEOUT?=1m
 TEST_PATTERN?=
@@ -136,6 +137,11 @@ endif
 ifeq ($(WITH_K8S), true)
   BUILD_TAGS+=k8s
   EXTRA_ARGS+=-analyzer.topology.probes=k8s
+endif
+
+ifeq ($(WITH_ISTIO), true)
+  BUILD_TAGS+=k8s istio
+  EXTRA_ARGS+=-analyzer.topology.probes=istio
 endif
 
 ifeq ($(WITH_HELM), true)

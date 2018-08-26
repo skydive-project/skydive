@@ -42,11 +42,9 @@ func k8sConfigFile(name string) string {
 }
 
 const (
-	clusterName = "cluster"
-	k8sRetry    = 3
-	k8sDelay    = 10 * time.Second
-	manager     = "k8s"
-	objName     = "skydive-test"
+	k8sRetry = 3
+	k8sDelay = 10 * time.Second
+	objName  = "skydive-test"
 )
 
 var nodeName, _ = os.Hostname()
@@ -64,8 +62,8 @@ func tearDownFromConfigFile(file string) []helper.Cmd {
 	}
 }
 
-func makeHasArgsType(ty interface{}, args1 ...interface{}) []interface{} {
-	args := []interface{}{"Manager", "k8s", "Type", ty}
+func makeHasArgsType(mngr, ty interface{}, args1 ...interface{}) []interface{} {
+	args := []interface{}{"Manager", mngr, "Type", ty}
 	args = append(args, args1...)
 	return args
 }
@@ -74,7 +72,7 @@ func makeHasArgsNode(node *graph.Node, args1 ...interface{}) []interface{} {
 	m := node.Metadata()
 	args := []interface{}{"Namespace", m["Namespace"], "Name", m["Name"]}
 	args = append(args, args1...)
-	return makeHasArgsType(m["Type"], args...)
+	return makeHasArgsType(m["Manager"], m["Type"], args...)
 }
 
 func queryNodeCreation(t *testing.T, c *CheckContext, query g.QueryString) (node *graph.Node, err error) {
@@ -104,8 +102,8 @@ func queryNodeCreation(t *testing.T, c *CheckContext, query g.QueryString) (node
 	return
 }
 
-func checkNodeCreation(t *testing.T, c *CheckContext, ty string, values ...interface{}) (*graph.Node, error) {
-	args := makeHasArgsType(ty, values...)
+func checkNodeCreation(t *testing.T, c *CheckContext, mngr, ty string, values ...interface{}) (*graph.Node, error) {
+	args := makeHasArgsType(mngr, ty, values...)
 	query := c.gremlin.V().Has(args...)
 	return queryNodeCreation(t, c, query)
 }
@@ -147,10 +145,10 @@ func testRunner(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, checks []Che
 	RunTest(t, test)
 }
 
-func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, typ, name string, fields ...string) {
+func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, mngr, typ, name string, fields ...string) {
 	testRunner(t, setupCmds, tearDownCmds, []CheckFunction{
 		func(c *CheckContext) error {
-			obj, err := checkNodeCreation(t, c, typ, "Name", name)
+			obj, err := checkNodeCreation(t, c, mngr, typ, "Name", name)
 			if err != nil {
 				return err
 			}
@@ -167,88 +165,88 @@ func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, typ, n
 	})
 }
 
-func testNodeCreationFromConfig(t *testing.T, ty, name string, fields ...string) {
+func testNodeCreationFromConfig(t *testing.T, mngr, ty, name string, fields ...string) {
 	file := ty
 	setup := setupFromConfigFile(file)
 	tearDown := tearDownFromConfigFile(file)
-	testNodeCreation(t, setup, tearDown, ty, name, fields...)
+	testNodeCreation(t, setup, tearDown, mngr, ty, name, fields...)
 }
 
 /* -- test creation of single resource -- */
 func TestK8sClusterNode(t *testing.T) {
-	testNodeCreation(t, nil, nil, "cluster", clusterName)
+	testNodeCreation(t, nil, nil, k8s.Manager, "cluster", k8s.ClusterName)
 }
 
 func TestK8sContainerNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "container", objName+"-container", "Image", "Labels", "Pod")
+	testNodeCreationFromConfig(t, k8s.Manager, "container", objName+"-container", "Image", "Labels", "Pod")
 }
 
 func TestK8sCronJobNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "cronjob", objName+"-cronjob")
+	testNodeCreationFromConfig(t, k8s.Manager, "cronjob", objName+"-cronjob")
 }
 
 func TestK8sDeploymentNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "deployment", objName+"-deployment", "Selector", "DesiredReplicas", "Replicas", "ReadyReplicas", "AvailableReplicas", "UnavailableReplicas")
+	testNodeCreationFromConfig(t, k8s.Manager, "deployment", objName+"-deployment", "Selector", "DesiredReplicas", "Replicas", "ReadyReplicas", "AvailableReplicas", "UnavailableReplicas")
 }
 
 func TestK8sEndpointsNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "endpoints", objName+"-endpoints")
+	testNodeCreationFromConfig(t, k8s.Manager, "endpoints", objName+"-endpoints")
 }
 
 func TestK8sIngressNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "ingress", objName+"-ingress", "Backend", "TLS", "Rules")
+	testNodeCreationFromConfig(t, k8s.Manager, "ingress", objName+"-ingress", "Backend", "TLS", "Rules")
 }
 
 func TestK8sJobNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "job", objName+"-job", "Parallelism", "Completions", "Active", "Succeeded", "Failed")
+	testNodeCreationFromConfig(t, k8s.Manager, "job", objName+"-job", "Parallelism", "Completions", "Active", "Succeeded", "Failed")
 }
 
 func TestK8sNamespaceNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "namespace", objName+"-namespace", "Cluster", "Labels", "Status")
+	testNodeCreationFromConfig(t, k8s.Manager, "namespace", objName+"-namespace", "Cluster", "Labels", "Status")
 }
 
 func TestK8sDaemonSetNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "daemonset", objName+"-daemonset", "Labels", "DesiredNumberScheduled", "CurrentNumberScheduled", "NumberMisscheduled")
+	testNodeCreationFromConfig(t, k8s.Manager, "daemonset", objName+"-daemonset", "Labels", "DesiredNumberScheduled", "CurrentNumberScheduled", "NumberMisscheduled")
 }
 
 func TestK8sNetworkPolicyNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "networkpolicy", objName+"-networkpolicy")
+	testNodeCreationFromConfig(t, k8s.Manager, "networkpolicy", objName+"-networkpolicy")
 }
 
 func TestK8sNodeNode(t *testing.T) {
-	testNodeCreation(t, nil, nil, "node", nodeName, "Arch", "Cluster", "Hostname", "InternalIP", "Labels", "OS")
+	testNodeCreation(t, nil, nil, k8s.Manager, "node", nodeName, "Arch", "Cluster", "Hostname", "InternalIP", "Labels", "OS")
 }
 
 func TestK8sPersistentVolumeNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "persistentvolume", objName+"-persistentvolume", "Capacity", "AccessModes", "VolumeMode", "ClaimRef", "StorageClassName", "Status")
+	testNodeCreationFromConfig(t, k8s.Manager, "persistentvolume", objName+"-persistentvolume", "Capacity", "AccessModes", "VolumeMode", "ClaimRef", "StorageClassName", "Status")
 }
 
 func TestK8sPersistentVolumeClaimNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "persistentvolumeclaim", objName+"-persistentvolumeclaim", "AccessModes", "VolumeName", "StorageClassName", "VolumeMode", "Status")
+	testNodeCreationFromConfig(t, k8s.Manager, "persistentvolumeclaim", objName+"-persistentvolumeclaim", "AccessModes", "VolumeName", "StorageClassName", "VolumeMode", "Status")
 }
 
 func TestK8sPodNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "pod", objName+"-pod", "Node", "Status")
+	testNodeCreationFromConfig(t, k8s.Manager, "pod", objName+"-pod", "Node", "Status")
 }
 
 func TestK8sReplicaSetNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "replicaset", objName+"-replicaset")
+	testNodeCreationFromConfig(t, k8s.Manager, "replicaset", objName+"-replicaset")
 }
 
 func TestK8sReplicationControllerNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "replicationcontroller", objName+"-replicationcontroller")
+	testNodeCreationFromConfig(t, k8s.Manager, "replicationcontroller", objName+"-replicationcontroller")
 }
 
 func TestK8sServiceNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "service", objName+"-service", "Ports", "ClusterIP", "ServiceType", "SessionAffinity", "LoadBalancerIP", "ExternalName")
+	testNodeCreationFromConfig(t, k8s.Manager, "service", objName+"-service", "Ports", "ClusterIP", "ServiceType", "SessionAffinity", "LoadBalancerIP", "ExternalName")
 }
 
 func TestK8sStatefulSetNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "statefulset", objName+"-statefulset", "DesiredReplicas", "ServiceName", "Replicas", "ReadyReplicas", "CurrentReplicas", "UpdatedReplicas", "CurrentRevision", "UpdateRevision")
+	testNodeCreationFromConfig(t, k8s.Manager, "statefulset", objName+"-statefulset", "DesiredReplicas", "ServiceName", "Replicas", "ReadyReplicas", "CurrentReplicas", "UpdatedReplicas", "CurrentRevision", "UpdateRevision")
 }
 
 func TestK8sStorageClassNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "storageclass", objName+"-storageclass")
+	testNodeCreationFromConfig(t, k8s.Manager, "storageclass", objName+"-storageclass")
 }
 
 /* -- test multi-node scenarios -- */
@@ -261,12 +259,12 @@ func TestK8sIngressScenario1(t *testing.T) {
 		tearDownFromConfigFile(file),
 		[]CheckFunction{
 			func(c *CheckContext) error {
-				ingress, err := checkNodeCreation(t, c, "ingress", "Name", name)
+				ingress, err := checkNodeCreation(t, c, k8s.Manager, "ingress", "Name", name)
 				if err != nil {
 					return err
 				}
 
-				service, err := checkNodeCreation(t, c, "service", "Name", name)
+				service, err := checkNodeCreation(t, c, k8s.Manager, "service", "Name", name)
 				if err != nil {
 					return err
 				}
@@ -293,27 +291,27 @@ func TestHelloNodeScenario(t *testing.T) {
 		[]CheckFunction{
 			func(c *CheckContext) error {
 				// check nodes exist
-				cluster, err := checkNodeCreation(t, c, "cluster")
+				cluster, err := checkNodeCreation(t, c, k8s.Manager, "cluster")
 				if err != nil {
 					return err
 				}
 
-				container, err := checkNodeCreation(t, c, "container", "Name", "hello-node")
+				container, err := checkNodeCreation(t, c, k8s.Manager, "container", "Name", "hello-node")
 				if err != nil {
 					return err
 				}
 
-				deployment, err := checkNodeCreation(t, c, "deployment", "Name", "hello-node")
+				deployment, err := checkNodeCreation(t, c, k8s.Manager, "deployment", "Name", "hello-node")
 				if err != nil {
 					return err
 				}
 
-				namespace, err := checkNodeCreation(t, c, "namespace", "Name", "default")
+				namespace, err := checkNodeCreation(t, c, k8s.Manager, "namespace", "Name", "default")
 				if err != nil {
 					return err
 				}
 
-				pod, err := checkNodeCreation(t, c, "pod", "Name", g.Regex("%s-.*", "hello-node"))
+				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", "Name", g.Regex("%s-.*", "hello-node"))
 				if err != nil {
 					return err
 				}
@@ -349,12 +347,12 @@ func TestK8sNetworkPolicyScenario1(t *testing.T) {
 		tearDownFromConfigFile(file),
 		[]CheckFunction{
 			func(c *CheckContext) error {
-				networkpolicy, err := checkNodeCreation(t, c, "networkpolicy", "Name", name)
+				networkpolicy, err := checkNodeCreation(t, c, k8s.Manager, "networkpolicy", "Name", name)
 				if err != nil {
 					return err
 				}
 
-				namespace, err := checkNodeCreation(t, c, "namespace", "Name", name)
+				namespace, err := checkNodeCreation(t, c, k8s.Manager, "namespace", "Name", name)
 				if err != nil {
 					return err
 				}
@@ -378,12 +376,12 @@ func TestK8sNetworkPolicyScenario2(t *testing.T) {
 		tearDownFromConfigFile(file),
 		[]CheckFunction{
 			func(c *CheckContext) error {
-				networkpolicy, err := checkNodeCreation(t, c, "networkpolicy", "Name", name)
+				networkpolicy, err := checkNodeCreation(t, c, k8s.Manager, "networkpolicy", "Name", name)
 				if err != nil {
 					return err
 				}
 
-				pod, err := checkNodeCreation(t, c, "pod", "Name", name)
+				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", "Name", name)
 				if err != nil {
 					return err
 				}
@@ -407,12 +405,12 @@ func testK8sNetworkPolicyDefaultScenario(t *testing.T, policyType k8s.PolicyType
 		tearDownFromConfigFile(file),
 		[]CheckFunction{
 			func(c *CheckContext) error {
-				np, err := checkNodeCreation(t, c, "networkpolicy", "Name", name)
+				np, err := checkNodeCreation(t, c, k8s.Manager, "networkpolicy", "Name", name)
 				if err != nil {
 					return err
 				}
 
-				ns, err := checkNodeCreation(t, c, "namespace", "Name", "default")
+				ns, err := checkNodeCreation(t, c, k8s.Manager, "namespace", "Name", "default")
 				if err != nil {
 					return err
 				}
@@ -452,17 +450,17 @@ func testK8sNetworkPolicyObjectToObjectScenario(t *testing.T, policyType k8s.Pol
 		tearDownFromConfigFile(file),
 		[]CheckFunction{
 			func(c *CheckContext) error {
-				np, err := checkNodeCreation(t, c, "networkpolicy", "Name", name)
+				np, err := checkNodeCreation(t, c, k8s.Manager, "networkpolicy", "Name", name)
 				if err != nil {
 					return err
 				}
 
-				begin, err := checkNodeCreation(t, c, resourceType, "Name", name+"-to")
+				begin, err := checkNodeCreation(t, c, k8s.Manager, resourceType, "Name", name+"-to")
 				if err != nil {
 					return err
 				}
 
-				end, err := checkNodeCreation(t, c, resourceType, "Name", name+"-from")
+				end, err := checkNodeCreation(t, c, k8s.Manager, resourceType, "Name", name+"-from")
 				if err != nil {
 					return err
 				}
@@ -502,12 +500,12 @@ func TestK8sServicePodScenario(t *testing.T) {
 		tearDownFromConfigFile(file),
 		[]CheckFunction{
 			func(c *CheckContext) error {
-				service, err := checkNodeCreation(t, c, "service", "Name", name)
+				service, err := checkNodeCreation(t, c, k8s.Manager, "service", "Name", name)
 				if err != nil {
 					return err
 				}
 
-				pod, err := checkNodeCreation(t, c, "pod", "Name", name)
+				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", "Name", name)
 				if err != nil {
 					return err
 				}
