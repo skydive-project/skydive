@@ -192,7 +192,7 @@ func NewGremlinAlert(alert *types.Alert, g *graph.Graph, p *traversal.GremlinTra
 // evaluates to true
 type Server struct {
 	common.RWMutex
-	*etcd.MasterElector
+	common.MasterElection
 	Graph         *graph.Graph
 	Pool          ws.StructSpeakerPool
 	AlertHandler  api.Handler
@@ -400,13 +400,11 @@ func (a *Server) Start() {
 
 // Stop the alerting server
 func (a *Server) Stop() {
-	a.MasterElector.Stop()
+	a.MasterElection.Stop()
 }
 
 // NewServer creates a new alerting server
 func NewServer(apiServer *api.Server, pool ws.StructSpeakerPool, graph *graph.Graph, parser *traversal.GremlinTraversalParser, etcdClient *etcd.Client) (*Server, error) {
-	elector := etcd.NewMasterElectorFromConfig(common.AnalyzerService, "alert-server", etcdClient)
-
 	runtime, err := js.NewRuntime()
 	if err != nil {
 		return nil, err
@@ -416,15 +414,15 @@ func NewServer(apiServer *api.Server, pool ws.StructSpeakerPool, graph *graph.Gr
 	runtime.RegisterAPIServer(graph, parser, apiServer)
 
 	as := &Server{
-		MasterElector: elector,
-		Pool:          pool,
-		AlertHandler:  apiServer.GetHandler("alert"),
-		Graph:         graph,
-		graphAlerts:   make(map[string]*GremlinAlert),
-		alertTimers:   make(map[string]chan bool),
-		gremlinParser: parser,
-		apiServer:     apiServer,
-		runtime:       runtime,
+		MasterElection: etcdClient.NewElection("alert-server"),
+		Pool:           pool,
+		AlertHandler:   apiServer.GetHandler("alert"),
+		Graph:          graph,
+		graphAlerts:    make(map[string]*GremlinAlert),
+		alertTimers:    make(map[string]chan bool),
+		gremlinParser:  parser,
+		apiServer:      apiServer,
+		runtime:        runtime,
 	}
 
 	return as, nil

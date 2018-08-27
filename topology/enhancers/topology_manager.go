@@ -39,7 +39,7 @@ import (
 
 // TopologyManager describes topology manager
 type TopologyManager struct {
-	*etcd.MasterElector
+	common.MasterElection
 	graph.DefaultGraphListener
 	watcher1    apiServer.StoppableWatcher
 	watcher2    apiServer.StoppableWatcher
@@ -277,7 +277,7 @@ func (tm *TopologyManager) OnNodeUpdated(n *graph.Node) {
 
 // Start start the topology manager
 func (tm *TopologyManager) Start() {
-	tm.MasterElector.StartAndWait()
+	tm.MasterElection.StartAndWait()
 
 	tm.watcher1 = tm.nodeHandler.AsyncWatch(tm.onAPIWatcherEvent)
 	tm.watcher2 = tm.edgeHandler.AsyncWatch(tm.onAPIWatcherEvent)
@@ -290,23 +290,21 @@ func (tm *TopologyManager) Stop() {
 	tm.watcher1.Stop()
 	tm.watcher2.Stop()
 
-	tm.MasterElector.Stop()
+	tm.MasterElection.Stop()
 
 	tm.graph.RemoveEventListener(tm)
 }
 
 // NewTopologyManager returns new topology manager
 func NewTopologyManager(etcdClient *etcd.Client, nodeHandler *apiServer.NodeRuleAPI, edgeHandler *apiServer.EdgeRuleAPI, g *graph.Graph) *TopologyManager {
-	elector := etcd.NewMasterElectorFromConfig(common.AnalyzerService, "topology-manager", etcdClient)
-
 	tm := &TopologyManager{
-		MasterElector: elector,
-		nodeHandler:   nodeHandler,
-		edgeHandler:   edgeHandler,
-		graph:         g,
+		nodeHandler: nodeHandler,
+		edgeHandler: edgeHandler,
+		graph:       g,
 	}
 
-	elector.AddEventListener(tm)
+	tm.MasterElection = etcdClient.NewElection("topology-manager")
+	tm.MasterElection.AddEventListener(tm)
 
 	tm.graph.Lock()
 	tm.syncTopology()

@@ -113,10 +113,11 @@ func init() {
 	cfg.SetDefault("docker.url", "unix:///var/run/docker.sock")
 	cfg.SetDefault("docker.netns.run_path", "/var/run/docker/netns")
 
+	cfg.SetDefault("etcd.client_timeout", 5)
 	cfg.SetDefault("etcd.data_dir", "/var/lib/skydive/etcd")
 	cfg.SetDefault("etcd.embedded", true)
-	cfg.SetDefault("etcd.name", host)
 	cfg.SetDefault("etcd.listen", fmt.Sprintf("127.0.0.1:%d", etcdDefaultPort))
+	cfg.SetDefault("etcd.name", host)
 
 	cfg.SetDefault("flow.expire", 600)
 	cfg.SetDefault("flow.update", 60)
