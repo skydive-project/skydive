@@ -1,4 +1,9 @@
-FROM gcr.io/distroless/base
-COPY skydive /usr/bin/skydive
+ARG  BASE=ubuntu:18.04
+FROM $BASE
+ARG  ARCH=x86_64
+RUN apt-get -y update \
+    && apt-get -y install openvswitch-common libpcap0.8 libxml2 \
+    && rm -rf /var/lib/apt/lists/*
+COPY skydive.$ARCH /usr/bin/skydive
 COPY skydive.yml /etc/skydive.yml
 ENTRYPOINT ["/usr/bin/skydive", "--conf", "/etc/skydive.yml"]

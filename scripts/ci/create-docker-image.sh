@@ -1,81 +1,79 @@
 #!/bin/sh
 
-if [ -z "$REF" ]; then
-    echo "The environment variable REF needs to be defined"
-    exit 1
-fi
-
 set -v
+set -x
 set -e
 
-ARCHES="amd64 ppc64le"
-TAG=`echo $REF | awk -F '/' '{print $NF}'`
-VERSION=`echo $TAG | tr -d [a-z]`
-DOCKER_IMAGE=skydive/skydive
-DOCKER_EMAIL=skydivesoftware@gmail.com
-DOCKER_USERNAME=skydiveproject
+# Arches are the docker arch names
+: ${ARCHES:=amd64 ppc64le s390x}
+# arm64 waiting on  golang 1.11 (https://github.com/skydive-project/skydive/pull/1188#discussion_r204336060)
+: ${DOCKER_IMAGE:=skydive/skydive}
+: ${DOCKER_USERNAME:=skydiveproject}
+: ${REF:=latest}
+
+TAG=${REF##*/}
+VERSION=${TAG#v}
+
 [ -n "$VERSION" ] && DOCKER_TAG=$VERSION || DOCKER_TAG=latest
 
-function cleanup {
-    docker rm -f skydive-crosscompile
-}
+# See if a server forms part of DOCKER_IMAGE, e.g. DOCKER_IMAGE=registry.ng.bluemix.net:8080/skydive/skydive
+if [[ "$DOCKER_IMAGE" =~ /[^/]*/[^/]* ]]; then
+    DOCKER_SERVER=${DOCKER_IMAGE%/[^/]*/[^/]*}
+fi
 
-function cross_compile() {
-    docker pull ubuntu:18.04
-    docker run -tid --name skydive-crosscompile -v `pwd`:/root/go/src/github.com/skydive-project/skydive -v $GOPATH/.cache/govendor:/root/go/.cache/govendor ubuntu:18.04 /bin/bash
-    trap cleanup ERR
-    docker exec ${http_proxy:+--env http_proxy=$http_proxy} skydive-crosscompile /root/go/src/github.com/skydive-project/skydive/scripts/ci/create-docker-multiarch-image.sh $1 $2 $3
-    docker build -t ${DOCKER_IMAGE}:${arch}-${DOCKER_TAG} -f contrib/docker/Dockerfile.${arch} contrib/docker/
-    docker rm -f skydive-crosscompile
-}
-
-for arch in $ARCHES
-do
-  case $arch in
-    amd64)
-      # x86_64 image
-      make docker-image WITH_EBPF=true DOCKER_IMAGE=${DOCKER_IMAGE} DOCKER_TAG=amd64-${DOCKER_TAG}
-      ;;
-    ppc64le)
-      cross_compile powerpc64le ppc64le ppc64el
-      ;;
-    \?)
-      echo "Unsupported architecture $arch" >&2
-      exit 1
-      ;;
-  esac
-done
+if [ -n "$PUSH_RUN" ]; then
+    echo "Running in push run mode. Skipping build."
+else
+    for arch in $ARCHES
+    do
+        case $arch in
+          amd64)
+            # x86_64 image
+            make docker-build DOCKER_IMAGE=${DOCKER_IMAGE} DOCKER_TAG=amd64-${DOCKER_TAG} ${BASE:+BASE=$BASE}
+            ;;
+          ppc64le)
+            make docker-cross-build WITH_EBPF=true TARGET_ARCH=powerpc64le TARGET_GOARCH=ppc64le DEBARCH=ppc64el DOCKER_IMAGE=${DOCKER_IMAGE} BASE=${BASE:-${arch}/ubuntu} DOCKER_TAG=$arch-${DOCKER_TAG}
+            ;;
+          arm64)
+            make docker-cross-build WITH_EBPF=true TARGET_ARCH=aarch64 TARGET_GOARCH=arm64 DOCKER_IMAGE=${DOCKER_IMAGE} BASE=${BASE:-aarch64/ubuntu} DOCKER_TAG=$arch-${DOCKER_TAG}
+            ;;
+          s390x)
+            make docker-cross-build WITH_EBPF=true TARGET_ARCH=s390x TARGET_GOARCH=s390x DOCKER_IMAGE=${DOCKER_IMAGE} BASE=${BASE:-${arch}/ubuntu} DOCKER_TAG=$arch-${DOCKER_TAG}
+            ;;
+          *)
+            make docker-cross-build WITH_EBPF=true TARGET_ARCH=$arch TARGET_GOARCH=$arch DOCKER_IMAGE=${DOCKER_IMAGE} BASE=${BASE:-${arch}/ubuntu} DOCKER_TAG=$arch-${DOCKER_TAG}
+            ;;
+        esac
+    done
+fi
 
 if [ -n "$DRY_RUN" ]; then
     echo "Running in dry run mode. Exiting."
     exit 0
 fi
 
+set +x
 if [ -z "$DOCKER_PASSWORD" ]; then
     echo "The environment variable DOCKER_PASSWORD needs to be defined"
     exit 1
 fi
 
-docker login -u "${DOCKER_USERNAME}" -p "${DOCKER_PASSWORD}"
+echo "${DOCKER_PASSWORD}" | docker login  --username "${DOCKER_USERNAME}" --password-stdin ${DOCKER_SERVER}
+set -x
 
+platforms=""
 for arch in $ARCHES
 do
     docker push ${DOCKER_IMAGE}:${arch}-${DOCKER_TAG}
-    [ -z "${platforms}" ] && platforms=linux/$arch || platforms=${platforms},linux/$arch
+    platforms="${platforms} ${DOCKER_IMAGE}:${arch}-${DOCKER_TAG}"
 done
 
-manifest-tool --debug push from-args --platforms $platforms --template skydive/skydive:ARCH-${DOCKER_TAG} --target skydive/skydive:${DOCKER_TAG}
-
-token=$(curl -X POST \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json" \
-  -d "{\"username\":\"${DOCKER_USERNAME}\",\"password\":\"${DOCKER_PASSWORD}\"}" \
-  https://hub.docker.com/v2/users/login/ | jq .token | tr -d '"')
+docker manifest create --amend "${DOCKER_IMAGE}:${DOCKER_TAG}" ${platforms}
 
 for arch in $ARCHES
 do
-    curl -i -X DELETE \
-      -H "Accept: application/json" \
-      -H "Authorization: JWT $token" \
-      https://hub.docker.com/v2/repositories/skydive/skydive/tags/${arch}-${DOCKER_TAG}/
+    docker manifest annotate --arch $arch "${DOCKER_IMAGE}:${DOCKER_TAG}" ${DOCKER_IMAGE}:${arch}-${DOCKER_TAG}
 done
+
+docker manifest inspect "${DOCKER_IMAGE}:${DOCKER_TAG}"
+docker manifest push    "${DOCKER_IMAGE}:${DOCKER_TAG}"
