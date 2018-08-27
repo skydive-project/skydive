@@ -27,7 +27,7 @@ vagrant plugin install vagrant-reload
 function vagrant_cleanup {
     vagrant destroy --force
 }
-trap vagrant_cleanup EXIT
+[ "$KEEP_RESOURCES" = "true" ] || trap vagrant_cleanup EXIT
 
 set -v
 set -e
@@ -35,7 +35,7 @@ set -e
 [ -z "$PROVIDERS" ] && PROVIDERS="libvirt virtualbox"
 for provider in $PROVIDERS
 do
-    PREPARE_BOX=true vagrant up --provider=$provider
+    PREPARE_BOX=true vagrant up --provider=$provider ${KEEP_RESOURCES:+--no-destroy-on-error}
     [ "$provider" = "libvirt" ] && sudo chmod a+r /var/lib/libvirt/images/dev_dev.img || true
 
     # skydive testing
