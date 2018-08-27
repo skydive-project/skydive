@@ -251,12 +251,7 @@ func NewServerFromConfig() (*Server, error) {
 	uiServer.AddGlobalVar("interface-metric-keys", (&topology.InterfaceMetric{}).GetFields())
 	uiServer.AddGlobalVar("probes", config.Get("analyzer.topology.probes"))
 
-	name := config.GetString("analyzer.topology.backend")
-	if len(name) == 0 {
-		name = "memory"
-	}
-
-	persistent, err := graph.NewBackendByName(name, etcdClient)
+	persistent, err := newGraphBackendFromConfig(etcdClient)
 	if err != nil {
 		return nil, err
 	}
@@ -266,7 +261,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	g := graph.NewGraphFromConfig(cached, common.AnalyzerService)
+	g := graph.NewGraph(host, cached, service.Type)
 
 	clusterAuthOptions := ClusterAuthenticationOpts()
 
@@ -301,7 +296,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	tableClient := flow.NewWSTableClient(agentWSServer)
 
-	storage, err := storage.NewStorageFromConfig(etcdClient)
+	storage, err := newFlowBackendFromConfig(etcdClient)
 	if err != nil {
 		return nil, err
 	}

@@ -103,7 +103,7 @@ func newElasticsearchGraph(t *testing.T) (*Graph, *fakeESClient) {
 		t.Error(err.Error())
 	}
 
-	return NewGraphFromConfig(b, common.UnknownService), client
+	return NewGraph("host1", b, common.UnknownService), client
 }
 
 func TestElasticsearchNode(t *testing.T) {

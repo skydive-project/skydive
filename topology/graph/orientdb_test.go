@@ -116,7 +116,7 @@ func newOrientDBGraph(t *testing.T) (*Graph, *fakeOrientDBClient) {
 		t.Error(err.Error())
 	}
 
-	return NewGraphFromConfig(b, common.UnknownService), client
+	return NewGraph("host1", b, common.UnknownService), client
 }
 
 func metadataToJSONRawMessage(t *testing.T, metadata Metadata) json.RawMessage {

@@ -29,7 +29,6 @@ import (
 	"time"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/storage/orientdb"
@@ -398,14 +397,4 @@ func NewOrientDBBackend(addr string, database string, username string, password 
 	}
 
 	return newOrientDBBackend(client)
-}
-
-// NewOrientDBBackendFromConfig creates a new OrientDB database client based on configuration
-func NewOrientDBBackendFromConfig(backend string) (*OrientDBBackend, error) {
-	path := "storage." + backend
-	addr := config.GetString(path + ".addr")
-	database := config.GetString(path + ".database")
-	username := config.GetString(path + ".username")
-	password := config.GetString(path + ".password")
-	return NewOrientDBBackend(addr, database, username, password)
 }

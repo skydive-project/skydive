@@ -565,10 +565,8 @@ func NewElasticSearchBackendFromClient(client es.ClientInterface) (*ElasticSearc
 	}, nil
 }
 
-// NewElasticSearchBackendFromConfig creates a new graph backend based on configuration file parameters
-func NewElasticSearchBackendFromConfig(backend string, electionService common.MasterElectionService) (*ElasticSearchBackend, error) {
-	cfg := es.NewConfig(backend)
-
+// NewElasticSearchBackendFromConfig creates a new graph backend from an ES configuration structure
+func NewElasticSearchBackendFromConfig(cfg es.Config, electionService common.MasterElectionService) (*ElasticSearchBackend, error) {
 	indices := []es.Index{
 		topologyLiveIndex,
 		topologyArchiveIndex,

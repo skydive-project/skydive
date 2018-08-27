@@ -24,16 +24,10 @@ package storage
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/flow/storage/elasticsearch"
-	"github.com/skydive-project/skydive/flow/storage/orientdb"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // ErrNoStorageConfigured error no storage has been configured
@@ -49,36 +43,4 @@ type Storage interface {
 	SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]common.Metric, error)
 	SearchRawPackets(fsq filters.SearchQuery, packetFilter *filters.Filter) (map[string]*flow.RawPackets, error)
 	Stop()
-}
-
-// NewStorage creates a new flow storage based on the backend
-func NewStorage(backend string, etcdClient *etcd.Client) (s Storage, err error) {
-	driver := config.GetString("storage." + backend + ".driver")
-	switch driver {
-	case "elasticsearch":
-		s, err = elasticsearch.New(backend, etcdClient)
-		if err != nil {
-			err = fmt.Errorf("Can't connect to ElasticSearch server: %v", err)
-			return
-		}
-	case "orientdb":
-		s, err = orientdb.New(backend)
-		if err != nil {
-			err = fmt.Errorf("Can't connect to OrientDB server: %v", err)
-			return
-		}
-	case "memory":
-		return
-	default:
-		err = fmt.Errorf("Flow backend driver '%s' not supported", driver)
-		return
-	}
-
-	logging.GetLogger().Infof("Using %s as storage", backend)
-	return
-}
-
-// NewStorageFromConfig creates a new storage based configuration
-func NewStorageFromConfig(etcdClient *etcd.Client) (s Storage, err error) {
-	return NewStorage(config.GetString("analyzer.flow.backend"), etcdClient)
 }

@@ -172,7 +172,7 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	g := graph.NewGraphFromConfig(backend, common.AgentService)
+	g := graph.NewGraph(config.GetString("host_id"), backend, common.AgentService)
 
 	tm := topology.NewTIDMapper(g)
 	tm.Start()
