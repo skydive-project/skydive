@@ -36,8 +36,8 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/k8s"
 )
 
-func k8sConfigFile(name string) string {
-	return "./k8s/" + name + ".yaml"
+func k8sConfigFile(mngr, name string) string {
+	return fmt.Sprintf("./%s/%s.yaml", mngr, name)
 }
 
 const (
@@ -46,16 +46,16 @@ const (
 	objName  = "skydive-test"
 )
 
-func setupFromConfigFile(file string) []helper.Cmd {
+func setupFromConfigFile(mngr, file string) []helper.Cmd {
 	return []helper.Cmd{
-		{"kubectl create -f " + k8sConfigFile(file), true},
+		{"kubectl create -f " + k8sConfigFile(mngr, file), true},
 	}
 }
 
-func tearDownFromConfigFile(file string) []helper.Cmd {
+func tearDownFromConfigFile(mngr, file string) []helper.Cmd {
 	return []helper.Cmd{
-		{"kubectl delete --grace-period=0 --force -f " + k8sConfigFile(file), false},
-		{"sleep 2", true},
+		{"kubectl delete --grace-period=0 --force -f " + k8sConfigFile(mngr, file), false},
+		{"sleep 5", true},
 	}
 }
 
@@ -176,8 +176,8 @@ func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, mngr, 
 
 func testNodeCreationFromConfig(t *testing.T, mngr, ty, name string, fields ...string) {
 	file := ty
-	setup := setupFromConfigFile(file)
-	tearDown := tearDownFromConfigFile(file)
+	setup := setupFromConfigFile(mngr, file)
+	tearDown := tearDownFromConfigFile(mngr, file)
 	testNodeCreation(t, setup, tearDown, mngr, ty, name, fields...)
 }
 
@@ -264,8 +264,8 @@ func TestK8sIngressScenario1(t *testing.T) {
 	name := objName + "-" + file
 	testRunner(
 		t,
-		setupFromConfigFile(file),
-		tearDownFromConfigFile(file),
+		setupFromConfigFile(k8s.Manager, file),
+		tearDownFromConfigFile(k8s.Manager, file),
 		[]CheckFunction{
 			func(c *CheckContext) error {
 				ingress, err := checkNodeCreation(t, c, k8s.Manager, "ingress", "Name", name)
@@ -325,12 +325,12 @@ func TestHelloNodeScenario(t *testing.T) {
 					return err
 				}
 
-				replicaset, err := checkNodeCreation(t, k8s.Manager, c, "replicaset", "Name", g.Regex("%s-.*", "hello-node"))
+				replicaset, err := checkNodeCreation(t, c, k8s.Manager, "replicaset", "Name", g.Regex("%s-.*", "hello-node"))
 				if err != nil {
 					return err
 				}
 
-				node, err := checkNodeCreation(t, c, k8s.Manager, "node", "Name", nodeName)
+				_, err = checkNodeCreation(t, c, k8s.Manager, "node")
 				if err != nil {
 					return err
 				}
@@ -376,8 +376,8 @@ func TestK8sNetworkPolicyScenario1(t *testing.T) {
 	name := objName + "-" + file
 	testRunner(
 		t,
-		setupFromConfigFile(file),
-		tearDownFromConfigFile(file),
+		setupFromConfigFile(k8s.Manager, file),
+		tearDownFromConfigFile(k8s.Manager, file),
 		[]CheckFunction{
 			func(c *CheckContext) error {
 				networkpolicy, err := checkNodeCreation(t, c, k8s.Manager, "networkpolicy", "Name", name)
@@ -405,8 +405,8 @@ func TestK8sNetworkPolicyScenario2(t *testing.T) {
 	name := objName + "-" + file
 	testRunner(
 		t,
-		setupFromConfigFile(file),
-		tearDownFromConfigFile(file),
+		setupFromConfigFile(k8s.Manager, file),
+		tearDownFromConfigFile(k8s.Manager, file),
 		[]CheckFunction{
 			func(c *CheckContext) error {
 				networkpolicy, err := checkNodeCreation(t, c, k8s.Manager, "networkpolicy", "Name", name)
@@ -434,8 +434,8 @@ func testK8sNetworkPolicyDefaultScenario(t *testing.T, policyType k8s.PolicyType
 	name := objName + "-" + file
 	testRunner(
 		t,
-		setupFromConfigFile(file),
-		tearDownFromConfigFile(file),
+		setupFromConfigFile(k8s.Manager, file),
+		tearDownFromConfigFile(k8s.Manager, file),
 		[]CheckFunction{
 			func(c *CheckContext) error {
 				np, err := checkNodeCreation(t, c, k8s.Manager, "networkpolicy", "Name", name)
@@ -479,8 +479,8 @@ func testK8sNetworkPolicyObjectToObjectScenario(t *testing.T, policyType k8s.Pol
 	name := objName + "-" + file
 	testRunner(
 		t,
-		setupFromConfigFile(file),
-		tearDownFromConfigFile(file),
+		setupFromConfigFile(k8s.Manager, file),
+		tearDownFromConfigFile(k8s.Manager, file),
 		[]CheckFunction{
 			func(c *CheckContext) error {
 				np, err := checkNodeCreation(t, c, k8s.Manager, "networkpolicy", "Name", name)
@@ -529,8 +529,8 @@ func TestK8sServicePodScenario(t *testing.T) {
 	name := objName + "-" + file
 	testRunner(
 		t,
-		setupFromConfigFile(file),
-		tearDownFromConfigFile(file),
+		setupFromConfigFile(k8s.Manager, file),
+		tearDownFromConfigFile(k8s.Manager, file),
 		[]CheckFunction{
 			func(c *CheckContext) error {
 				service, err := checkNodeCreation(t, c, k8s.Manager, "service", "Name", name)

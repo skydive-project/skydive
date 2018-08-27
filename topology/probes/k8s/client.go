@@ -39,9 +39,9 @@ import (
 
 var clientset *kubernetes.Clientset
 
-func newClientset() (*kubernetes.Clientset, error) {
-	kubeconfig := config.GetString("k8s.config_file")
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+func NewConfig() (*rest.Config, error) {
+	file := config.GetString("k8s.config_file")
+	config, err := clientcmd.BuildConfigFromFlags("", file)
 	if err != nil {
 		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 
@@ -52,6 +52,15 @@ func newClientset() (*kubernetes.Clientset, error) {
 		if err != nil {
 			return nil, fmt.Errorf("Failed to load Kubernetes config: %s", err.Error())
 		}
+	}
+
+	return config, err
+}
+
+func newClientset() (*kubernetes.Clientset, error) {
+	config, err := NewConfig()
+	if err != nil {
+		return nil, err
 	}
 
 	clntset, err := kubernetes.NewForConfig(config)

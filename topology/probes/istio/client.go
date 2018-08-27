@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 IBM Corp.
+ * Copyright (C) 2018 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -23,18 +23,25 @@
 package istio
 
 import (
-	"github.com/skydive-project/skydive/topology/graph"
+	kiali "github.com/hunchback/kiali/kubernetes"
+
 	"github.com/skydive-project/skydive/topology/probes/k8s"
 )
 
-// NewProbe create the Probe for tracking istio events
-func NewProbe(g *graph.Graph) (*k8s.Probe, error) {
-	if err := initClient(); err != nil {
-		return nil, err
+var client *kiali.IstioClient
+
+func initClient() (err error) {
+	config, err := k8s.NewConfig()
+	if err != nil {
+		return
 	}
-	name2ctor := k8s.ProbeMap{
-		"cluster":         newClusterProbe,
-		"destinationrule": newDestinationRuleProbe,
+	client, err = kiali.NewClientFromConfig(config)
+	return
+}
+
+func getClient() *kiali.IstioClient {
+	if client == nil {
+		panic("client was not initialized, aborting!")
 	}
-	return k8s.NewProbeHelper(g, "istio", &name2ctor)
+	return client
 }

@@ -25,6 +25,8 @@ var nodeImgMap = setupFixedImages({
   "netns": "ns",
   "veth": "veth",
   "bond": "port",
+  "default": "intf",
+  // k8s
   "cluster": "cluster",
   "container": "container",
   "cronjob": "cronjob",
@@ -44,7 +46,8 @@ var nodeImgMap = setupFixedImages({
   "service": "service",
   "statefulset": "statefulset",
   "storageclass": "storageclass",
-  "default": "intf",
+  // istio
+  "destinationrule": "destinationrule",
 });
 
 var managerImgMap = setupFixedImages({

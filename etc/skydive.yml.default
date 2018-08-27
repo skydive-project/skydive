@@ -423,6 +423,7 @@ istio:
   # on production systems
   probes:
   - cluster
+  - destinationrule
 
 ui:
   # Specify the extra assets folder. Javascript and CSS files present in this
