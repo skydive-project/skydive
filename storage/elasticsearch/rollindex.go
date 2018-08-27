@@ -34,7 +34,6 @@ import (
 	"github.com/spaolacci/murmur3"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -51,8 +50,7 @@ type rollIndexService struct {
 	indices     []Index
 	triggerRoll chan bool
 	quit        chan bool
-	etcdClient  *etcd.Client
-	elector     *etcd.MasterElector
+	election    common.MasterElection
 }
 
 func (r *rollIndexService) cleanup(index Index) {
@@ -144,7 +142,7 @@ func (r *rollIndexService) run() {
 		case <-r.triggerRoll:
 			r.roll(true)
 		case <-timer.C:
-			if r.elector == nil || r.elector.IsMaster() {
+			if r.election == nil || r.election.IsMaster() {
 				r.roll(false)
 			}
 		case <-r.quit:
@@ -153,20 +151,9 @@ func (r *rollIndexService) run() {
 	}
 }
 
-func (r *rollIndexService) indicesUUID() string {
-	hasher := murmur3.New64()
-	for _, index := range r.indices {
-		hasher.Write([]byte(index.Name))
-	}
-
-	return hex.EncodeToString(hasher.Sum(nil))[0:8]
-}
-
 func (r *rollIndexService) start() {
-	if r.etcdClient != nil {
-		key := fmt.Sprintf("es-rolling-index:%s", r.indicesUUID())
-		r.elector = etcd.NewMasterElectorFromConfig(common.AnalyzerService, key, r.etcdClient)
-		r.elector.StartAndWait()
+	if r.election != nil {
+		r.election.StartAndWait()
 	}
 
 	go r.run()
@@ -184,13 +171,21 @@ func SetRollingRate(rate time.Duration) {
 	rollingRateLock.Unlock()
 }
 
-func newRollIndexService(client *Client, indices []Index, cfg Config, etcdClient *etcd.Client) *rollIndexService {
+func newRollIndexService(client *Client, indices []Index, cfg Config, electionService common.MasterElectionService) *rollIndexService {
+	hasher := murmur3.New64()
+	for _, index := range indices {
+		hasher.Write([]byte(index.Name))
+	}
+	hash := hex.EncodeToString(hasher.Sum(nil))[0:8]
+	key := fmt.Sprintf("es-rolling-index:%s", hash)
+	election := electionService.NewElection(key)
+
 	return &rollIndexService{
 		client:      client,
 		config:      cfg,
 		quit:        make(chan bool, 1),
 		triggerRoll: make(chan bool, 1),
 		indices:     indices,
-		etcdClient:  etcdClient,
+		election:    election,
 	}
 }

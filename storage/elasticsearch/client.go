@@ -39,7 +39,6 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 )
@@ -445,7 +444,7 @@ func (c *Client) GetClient() *elastic.Client {
 }
 
 // NewClient creates a new ElasticSearch client based on configuration
-func NewClient(indices []Index, cfg Config, etcdClient *etcd.Client) (*Client, error) {
+func NewClient(indices []Index, cfg Config, electionService common.MasterElectionService) (*Client, error) {
 	url, err := urlFromHost(cfg.ElasticHost)
 	if err != nil {
 		return nil, err
@@ -469,7 +468,7 @@ func NewClient(indices []Index, cfg Config, etcdClient *etcd.Client) (*Client, e
 	}
 
 	if len(rollIndices) > 0 {
-		client.rollService = newRollIndexService(client, rollIndices, cfg, etcdClient)
+		client.rollService = newRollIndexService(client, rollIndices, cfg, electionService)
 	}
 
 	client.started.Store(false)

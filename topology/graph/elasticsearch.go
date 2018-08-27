@@ -28,7 +28,7 @@ import (
 
 	"github.com/olivere/elastic"
 
-	"github.com/skydive-project/skydive/etcd"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	es "github.com/skydive-project/skydive/storage/elasticsearch"
@@ -560,7 +560,7 @@ func NewElasticSearchBackendFromClient(client es.ClientInterface) (*ElasticSearc
 }
 
 // NewElasticSearchBackendFromConfig creates a new graph backend based on configuration file parameters
-func NewElasticSearchBackendFromConfig(backend string, etcdClient *etcd.Client) (*ElasticSearchBackend, error) {
+func NewElasticSearchBackendFromConfig(backend string, electionService common.MasterElectionService) (*ElasticSearchBackend, error) {
 	cfg := es.NewConfig(backend)
 
 	indices := []es.Index{
@@ -568,7 +568,7 @@ func NewElasticSearchBackendFromConfig(backend string, etcdClient *etcd.Client) 
 		topologyArchiveIndex,
 	}
 
-	client, err := es.NewClient(indices, cfg, etcdClient)
+	client, err := es.NewClient(indices, cfg, electionService)
 	if err != nil {
 		return nil, err
 	}

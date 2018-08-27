@@ -198,23 +198,35 @@ func (s *Server) Stop() {
 // NewServerFromConfig creates a new empty server
 func NewServerFromConfig() (*Server, error) {
 	embedEtcd := config.GetBool("etcd.embedded")
+	host := config.GetString("host_id")
 
 	var embeddedEtcd *etcd.EmbeddedEtcd
 	var err error
 	if embedEtcd {
-		if embeddedEtcd, err = etcd.NewEmbeddedEtcdFromConfig(); err != nil {
+		name := config.GetString("etcd.name")
+		dataDir := config.GetString("etcd.data_dir")
+		listen := config.GetString("etcd.listen")
+		maxWalFiles := uint(config.GetInt("etcd.max_wal_files"))
+		maxSnapFiles := uint(config.GetInt("etcd.max_snap_files"))
+		debug := config.GetBool("etcd.debug")
+		peers := config.GetStringMapString("etcd.peers")
+
+		if embeddedEtcd, err = etcd.NewEmbeddedEtcd(name, listen, peers, dataDir, maxWalFiles, maxSnapFiles, debug); err != nil {
 			return nil, err
 		}
 	}
 
-	etcdClient, err := etcd.NewClientFromConfig()
+	service := common.Service{ID: host, Type: common.AnalyzerService}
+
+	etcdServers := config.GetEtcdServerAddrs()
+	etcdTimeout := config.GetInt("etcd.client_timeout")
+	etcdClient, err := etcd.NewClient(service, etcdServers, time.Duration(etcdTimeout)*time.Second)
 	if err != nil {
 		return nil, err
 	}
 
 	// wait for etcd to be ready
 	for {
-		host := config.GetString("host_id")
 		if err = etcdClient.SetInt64(fmt.Sprintf("/analyzer:%s/start-time", host), time.Now().Unix()); err != nil {
 			logging.GetLogger().Errorf("Etcd server not ready: %s", err)
 			time.Sleep(time.Second)
@@ -227,7 +239,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	hserver, err := config.NewHTTPServer(common.AnalyzerService)
+	hserver, err := config.NewHTTPServer(service.Type)
 	if err != nil {
 		return nil, err
 	}
@@ -331,7 +343,7 @@ func NewServerFromConfig() (*Server, error) {
 	flowSubscriberWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/subscriber/flow", apiAuthBackend))
 	flowSubscriberEndpoint := NewFlowSubscriberEndpoint(flowSubscriberWSServer)
 
-	apiServer, err := api.NewAPI(hserver, etcdClient.KeysAPI, common.AnalyzerService, apiAuthBackend)
+	apiServer, err := api.NewAPI(hserver, etcdClient.KeysAPI, service.Type, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
