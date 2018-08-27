@@ -36,7 +36,7 @@ func newGraph(t *testing.T) *graph.Graph {
 		t.Error(err)
 	}
 
-	return graph.NewGraphFromConfig(b, common.UnknownService)
+	return graph.NewGraph("testhost", b, common.UnknownService)
 }
 
 func newTransversalGraph(t *testing.T) *graph.Graph {

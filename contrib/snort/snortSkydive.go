@@ -38,6 +38,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 
+	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
@@ -237,7 +238,7 @@ func newSnortFlowEnhancer() *SnortFlowEnhancer {
 
 	indices := []es.Index{snortIndex}
 
-	cfg := es.NewConfig()
+	cfg := analyzer.NewESConfig()
 	client, err := es.NewClient(indices, cfg, &fakeMasterElection{})
 	if err != nil {
 		if err != io.EOF {

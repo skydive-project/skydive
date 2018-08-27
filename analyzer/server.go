@@ -47,7 +47,6 @@ import (
 	"github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
-	"github.com/skydive-project/skydive/topology/probes/netlink"
 	"github.com/skydive-project/skydive/ui"
 	ws "github.com/skydive-project/skydive/websocket"
 )
@@ -252,21 +251,7 @@ func NewServerFromConfig() (*Server, error) {
 	uiServer.AddGlobalVar("interface-metric-keys", (&topology.InterfaceMetric{}).GetFieldKeys())
 	uiServer.AddGlobalVar("probes", config.Get("analyzer.topology.probes"))
 
-	name := config.GetString("analyzer.topology.backend")
-	if len(name) == 0 {
-		name = "memory"
-	}
-
-	// add decoders for specific metadata keys, this aims to keep the same
-	// object type between the agent and the analyzer
-	// Decoder will be used while unmarshal the metadata
-	graph.NodeMetadataDecoders["RoutingTables"] = netlink.RoutingTablesMetadataDecoder
-	graph.NodeMetadataDecoders["FDB"] = netlink.NeighborMetadataDecoder
-	graph.NodeMetadataDecoders["Neighbors"] = netlink.NeighborMetadataDecoder
-	graph.NodeMetadataDecoders["Metric"] = topology.InterfaceMetricMetadataDecoder
-	graph.NodeMetadataDecoders["LastUpdateMetric"] = topology.InterfaceMetricMetadataDecoder
-
-	persistent, err := graph.NewBackendByName(name, etcdClient)
+	persistent, err := newGraphBackendFromConfig(etcdClient)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +261,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	g := graph.NewGraphFromConfig(cached, common.AnalyzerService)
+	g := graph.NewGraph(host, cached, service.Type)
 
 	clusterAuthOptions := ClusterAuthenticationOpts()
 
@@ -311,7 +296,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	tableClient := flow.NewWSTableClient(agentWSServer)
 
-	storage, err := storage.NewStorageFromConfig(etcdClient)
+	storage, err := newFlowBackendFromConfig(etcdClient)
 	if err != nil {
 		return nil, err
 	}
