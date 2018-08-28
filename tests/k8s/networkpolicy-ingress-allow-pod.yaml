@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: skydive-test-networkpolicy-ingress-allow-pod-begin
+  name: skydive-test-networkpolicy-ingress-allow-pod-to
   labels:
-    app: skydive-test-networkpolicy-ingress-allow-pod-begin
+    app: skydive-test-networkpolicy-ingress-allow-pod-to
 spec:
   containers:
   - name: nginx
@@ -14,9 +14,9 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: skydive-test-networkpolicy-ingress-allow-pod-end
+  name: skydive-test-networkpolicy-ingress-allow-pod-from
   labels:
-    app: skydive-test-networkpolicy-ingress-allow-pod-end
+    app: skydive-test-networkpolicy-ingress-allow-pod-from
 spec:
   containers:
   - name: nginx
@@ -31,9 +31,9 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app: skydive-test-networkpolicy-ingress-allow-pod-begin
+      app: skydive-test-networkpolicy-ingress-allow-pod-to
   ingress:
   - from:
       - podSelector:
           matchLabels:
-            app: skydive-test-networkpolicy-ingress-allow-pod-end
+            app: skydive-test-networkpolicy-ingress-allow-pod-from

@@ -106,7 +106,7 @@ func (n *networkPolicyProbe) OnDelete(obj interface{}) {
 	}
 }
 
-func (n *networkPolicyProbe) filterPodByLabels(in []interface{}, podSelector *metav1.LabelSelector, namespace string) (out []interface{}) {
+func (n *networkPolicyProbe) filterPodByPodSelector(in []interface{}, podSelector *metav1.LabelSelector, namespace string) (out []interface{}) {
 	selector, _ := metav1.LabelSelectorAsSelector(podSelector)
 	for _, pod := range in {
 		pod := pod.(*corev1.Pod)
@@ -117,7 +117,7 @@ func (n *networkPolicyProbe) filterPodByLabels(in []interface{}, podSelector *me
 	return
 }
 
-func (n *networkPolicyProbe) filterNamespaceByLabels(in []interface{}, podSelector *metav1.LabelSelector, namespace string) (out []interface{}) {
+func (n *networkPolicyProbe) filterNamespaceByPodSelector(in []interface{}, podSelector *metav1.LabelSelector, namespace string) (out []interface{}) {
 	selector, _ := metav1.LabelSelectorAsSelector(podSelector)
 	if !selector.Empty() {
 		return
@@ -132,9 +132,20 @@ func (n *networkPolicyProbe) filterNamespaceByLabels(in []interface{}, podSelect
 	return
 }
 
+func (n *networkPolicyProbe) filterNamespaceByNamespaceSelector(in []interface{}, namespaceSelector *metav1.LabelSelector) (out []interface{}) {
+	selector, _ := metav1.LabelSelectorAsSelector(namespaceSelector)
+	for _, ns := range in {
+		ns := ns.(*corev1.Namespace)
+		if selector.Matches(labels.Set(ns.Labels)) {
+			out = append(out, ns)
+		}
+	}
+	return
+}
+
 func (n *networkPolicyProbe) selectedPods(podSelector *metav1.LabelSelector, namespace string) (nodes []*graph.Node) {
 	pods := n.podCache.list()
-	pods = n.filterPodByLabels(pods, podSelector, namespace)
+	pods = n.filterPodByPodSelector(pods, podSelector, namespace)
 	podNodes := n.podsToNodes(pods)
 	nodes = append(nodes, podNodes...)
 	logging.GetLogger().Debugf("found %d pods", len(nodes))
@@ -143,9 +154,8 @@ func (n *networkPolicyProbe) selectedPods(podSelector *metav1.LabelSelector, nam
 
 func (n *networkPolicyProbe) selectedNamespaces(podSelector *metav1.LabelSelector, namespace string) (nodes []*graph.Node) {
 	nss := n.namespaceCache.list()
-	nss = n.filterNamespaceByLabels(nss, podSelector, namespace)
-	nsNodes := n.namespacesToNodes(nss)
-	nodes = append(nodes, nsNodes...)
+	nss = n.filterNamespaceByPodSelector(nss, podSelector, namespace)
+	nodes = n.namespacesToNodes(nss)
 	logging.GetLogger().Debugf("found %d namespaces", len(nodes))
 	return
 }
@@ -157,11 +167,11 @@ func (n *networkPolicyProbe) listObjectsConnectedToBegin(np *v1beta1.NetworkPoli
 }
 
 func (n *networkPolicyProbe) isPodSelected(np *v1beta1.NetworkPolicy, pod *corev1.Pod) bool {
-	return len(n.filterPodByLabels([]interface{}{pod}, &np.Spec.PodSelector, np.Namespace)) == 1
+	return len(n.filterPodByPodSelector([]interface{}{pod}, &np.Spec.PodSelector, np.Namespace)) == 1
 }
 
 func (n *networkPolicyProbe) isNamespaceSelected(np *v1beta1.NetworkPolicy, ns *corev1.Namespace) bool {
-	return len(n.filterNamespaceByLabels([]interface{}{ns}, &np.Spec.PodSelector, np.Namespace)) == 1
+	return len(n.filterNamespaceByPodSelector([]interface{}{ns}, &np.Spec.PodSelector, np.Namespace)) == 1
 }
 
 func (n *networkPolicyProbe) isSelected(np *v1beta1.NetworkPolicy, obj interface{}) bool {
@@ -264,18 +274,37 @@ func (n *networkPolicyProbe) isIngressTarget(np *v1beta1.NetworkPolicy, target P
 	return false
 }
 
-func (n *networkPolicyProbe) getIngressAllow(np *v1beta1.NetworkPolicy) []*graph.Node {
-	out := []*graph.Node{}
+func (n *networkPolicyProbe) appendPods(podNodes []*graph.Node, podSelector *metav1.LabelSelector, namespace string) (out []*graph.Node) {
+	pods := n.filterPodByPodSelector(n.podCache.list(), podSelector, namespace)
+	podTemp := n.podsToNodes(pods)
+	return append(podNodes, podTemp...)
+}
+
+func (n *networkPolicyProbe) appendNamespaces(nsNodes []*graph.Node, nsSelector *metav1.LabelSelector) (out []*graph.Node) {
+	nss := n.filterNamespaceByNamespaceSelector(n.namespaceCache.list(), nsSelector)
+	nsTemp := n.namespacesToNodes(nss)
+	return append(nsNodes, nsTemp...)
+}
+
+func (n *networkPolicyProbe) getIngressAllowPod(np *v1beta1.NetworkPolicy) []*graph.Node {
+	podNodes := []*graph.Node{}
 	for _, rule := range np.Spec.Ingress {
 		for _, from := range rule.From {
-			pods := n.filterPodByLabels(n.podCache.list(), from.PodSelector, np.Namespace)
-			podNodes := n.podsToNodes(pods)
-			out = append(out, podNodes...)
+			podNodes = n.appendPods(podNodes, from.PodSelector, np.Namespace)
 		}
 		// TODO: add handling of rule.Ports
 	}
-	// TODO: missing namespace object
-	return out
+	return podNodes
+}
+
+func (n *networkPolicyProbe) getIngressAllowNamespace(np *v1beta1.NetworkPolicy) []*graph.Node {
+	nmNodes := []*graph.Node{}
+	for _, rule := range np.Spec.Ingress {
+		for _, from := range rule.From {
+			nmNodes = n.appendNamespaces(nmNodes, from.NamespaceSelector)
+		}
+	}
+	return nmNodes
 }
 
 func (n *networkPolicyProbe) isEgressDeny(np *v1beta1.NetworkPolicy) bool {
@@ -319,17 +348,33 @@ func (n *networkPolicyProbe) namespacesToNodes(namespaces []interface{}) []*grap
 	return nodes
 }
 
-func (n *networkPolicyProbe) getEgressAllow(np *v1beta1.NetworkPolicy) []*graph.Node {
+func (n *networkPolicyProbe) mergePodsAndNamespaces(pods, namespaces []*graph.Node) []*graph.Node {
+	// NetworkPolicy version v1beta1 does not support mixxing of pods
+	// and namespaces, but future versions are expected to change this.
+	if len(pods) > 0 {
+		return pods
+	}
+	return namespaces
+}
+
+func (n *networkPolicyProbe) getEgressAllowPod(np *v1beta1.NetworkPolicy) []*graph.Node {
 	out := []*graph.Node{}
 	for _, rule := range np.Spec.Egress {
 		for _, to := range rule.To {
-			pods := n.filterPodByLabels(n.podCache.list(), to.PodSelector, np.Namespace)
-			podNodes := n.podsToNodes(pods)
-			out = append(out, podNodes...)
+			out = n.appendPods(out, to.PodSelector, np.Namespace)
 		}
 		// TODO: add handling of rule.Ports
 	}
-	// TODO: missing namespace object
+	return out
+}
+
+func (n *networkPolicyProbe) getEgressAllowNamespace(np *v1beta1.NetworkPolicy) []*graph.Node {
+	out := []*graph.Node{}
+	for _, rule := range np.Spec.Egress {
+		for _, to := range rule.To {
+			out = n.appendNamespaces(out, to.NamespaceSelector)
+		}
+	}
 	return out
 }
 
@@ -346,9 +391,9 @@ func (n *networkPolicyProbe) isPolicyTarget(np *v1beta1.NetworkPolicy, ty Policy
 func (n *networkPolicyProbe) listObjectsConnectedToEnd(np *v1beta1.NetworkPolicy, ty PolicyType) []*graph.Node {
 	switch ty {
 	case PolicyTypeIngress:
-		return n.getIngressAllow(np)
+		return n.mergePodsAndNamespaces(n.getIngressAllowPod(np), n.getIngressAllowNamespace(np))
 	case PolicyTypeEgress:
-		return n.getEgressAllow(np)
+		return n.mergePodsAndNamespaces(n.getEgressAllowPod(np), n.getIngressAllowNamespace(np))
 	}
 	return []*graph.Node{}
 }

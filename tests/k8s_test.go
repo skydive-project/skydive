@@ -453,12 +453,12 @@ func testK8sNetworkPolicyObjectToObjectScenario(t *testing.T, policyType k8s.Pol
 					return err
 				}
 
-				begin, err := checkNodeCreation(t, c, resourceType, "Name", name+"-begin")
+				begin, err := checkNodeCreation(t, c, resourceType, "Name", name+"-to")
 				if err != nil {
 					return err
 				}
 
-				end, err := checkNodeCreation(t, c, resourceType, "Name", name+"-end")
+				end, err := checkNodeCreation(t, c, resourceType, "Name", name+"-from")
 				if err != nil {
 					return err
 				}
@@ -479,6 +479,10 @@ func testK8sNetworkPolicyObjectToObjectScenario(t *testing.T, policyType k8s.Pol
 
 func TestK8sNetworkPolicyAllowIngressPodToPodScenario(t *testing.T) {
 	testK8sNetworkPolicyObjectToObjectScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, "pod")
+}
+
+func TestK8sNetworkPolicyAllowIngressNamespaceToNamepsaceScenario(t *testing.T) {
+	testK8sNetworkPolicyObjectToObjectScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, "namespace")
 }
 
 func TestK8sServicePodScenario(t *testing.T) {
