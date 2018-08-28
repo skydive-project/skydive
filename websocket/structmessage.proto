@@ -27,9 +27,9 @@ syntax = "proto3";
 
 package websocket;
 
-// WSStructMessage is a Protobuf based message on top of WSMessage.
-// It implements WSMessage interface and can be sent with via a WSSpeaker.
-message WSStructMessageProtobuf {
+// StructMessage is a Protobuf based message on top of Message.
+// It implements Message interface and can be sent with via a Speaker.
+message StructMessageProtobuf {
   string Namespace = 1;
   string Type = 2;
   string UUID = 3;

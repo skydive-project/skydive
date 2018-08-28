@@ -77,7 +77,7 @@ type FlowServerUDPConn struct {
 
 // FlowServerWebSocketConn describes a WebSocket flow server connection
 type FlowServerWebSocketConn struct {
-	ws.DefaultWSSpeakerEventHandler
+	ws.DefaultSpeakerEventHandler
 	server                 *shttp.Server
 	ch                     chan *flow.Flow
 	timeOfLastLostFlowsLog time.Time
@@ -102,7 +102,7 @@ type FlowServer struct {
 }
 
 // OnMessage event
-func (c *FlowServerWebSocketConn) OnMessage(client ws.WSSpeaker, m ws.WSMessage) {
+func (c *FlowServerWebSocketConn) OnMessage(client ws.Speaker, m ws.Message) {
 	f, err := flow.FromData(m.Bytes(client.GetClientProtocol()))
 	if err != nil {
 		logging.GetLogger().Errorf("Error while parsing flow: %s", err.Error())
@@ -125,7 +125,7 @@ func (c *FlowServerWebSocketConn) OnMessage(client ws.WSSpeaker, m ws.WSMessage)
 // Serve starts a WebSocket flow server
 func (c *FlowServerWebSocketConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sync.WaitGroup) {
 	c.ch = ch
-	server := ws.NewWSServer(c.server, "/ws/flow", c.auth)
+	server := ws.NewServer(c.server, "/ws/flow", c.auth)
 	server.AddEventHandler(c)
 	go func() {
 		server.Start()

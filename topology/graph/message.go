@@ -62,8 +62,8 @@ type SyncMsg struct {
 	Edges []*Edge
 }
 
-// UnmarshalWSMessage deserialize the websocket message
-func UnmarshalWSMessage(msg *ws.WSStructMessage) (string, interface{}, error) {
+// UnmarshalMessage deserialize the websocket message
+func UnmarshalMessage(msg *ws.StructMessage) (string, interface{}, error) {
 	var obj interface{}
 	if err := msg.DecodeObj(&obj); err != nil {
 		return "", msg, err

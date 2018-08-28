@@ -40,7 +40,7 @@ import (
 // FlowClientPool describes a flow client pool.
 type FlowClientPool struct {
 	common.RWMutex
-	ws.DefaultWSSpeakerEventHandler
+	ws.DefaultSpeakerEventHandler
 	flowClients []*FlowClient
 }
 
@@ -66,9 +66,9 @@ type FlowClientUDPConn struct {
 
 // FlowClientWebSocketConn describes WebSocket client connection
 type FlowClientWebSocketConn struct {
-	ws.DefaultWSSpeakerEventHandler
+	ws.DefaultSpeakerEventHandler
 	url      *url.URL
-	wsClient *ws.WSClient
+	wsClient *ws.Client
 }
 
 // Close the connection
@@ -108,7 +108,7 @@ func (c *FlowClientWebSocketConn) Close() error {
 // Connect to the WebSocket flow server
 func (c *FlowClientWebSocketConn) Connect() error {
 	authOptions := AnalyzerClusterAuthenticationOpts()
-	c.wsClient = ws.NewWSClientFromConfig(common.AgentService, c.url, authOptions, nil)
+	c.wsClient = ws.NewClientFromConfig(common.AgentService, c.url, authOptions, nil)
 	c.wsClient.Connect()
 	c.wsClient.AddEventHandler(c)
 
@@ -195,7 +195,7 @@ func NewFlowClient(addr string, port int) (*FlowClient, error) {
 }
 
 // OnConnected websocket event handler
-func (p *FlowClientPool) OnConnected(c ws.WSSpeaker) {
+func (p *FlowClientPool) OnConnected(c ws.Speaker) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -219,7 +219,7 @@ func (p *FlowClientPool) OnConnected(c ws.WSSpeaker) {
 }
 
 // OnDisconnected websocket event handler
-func (p *FlowClientPool) OnDisconnected(c ws.WSSpeaker) {
+func (p *FlowClientPool) OnDisconnected(c ws.Speaker) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -256,7 +256,7 @@ func (p *FlowClientPool) Close() {
 // NewFlowClientPool returns a new FlowClientPool using the websocket connections
 // to maintain the pool of client up to date according to the websocket connections
 // status.
-func NewFlowClientPool(pool ws.WSSpeakerPool) *FlowClientPool {
+func NewFlowClientPool(pool ws.SpeakerPool) *FlowClientPool {
 	p := &FlowClientPool{
 		flowClients: make([]*FlowClient, 0),
 	}

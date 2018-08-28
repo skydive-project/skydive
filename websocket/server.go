@@ -35,21 +35,21 @@ import (
 	"github.com/skydive-project/skydive/rbac"
 )
 
-// WSIncomerHandler incoming client handler interface.
-type WSIncomerHandler func(*websocket.Conn, *auth.AuthenticatedRequest) WSSpeaker
+// IncomerHandler incoming client handler interface.
+type IncomerHandler func(*websocket.Conn, *auth.AuthenticatedRequest) Speaker
 
-// WSServer implements a websocket server. It owns a WSPool of incoming WSSpeakers.
-type WSServer struct {
+// Server implements a websocket server. It owns a Pool of incoming Speakers.
+type Server struct {
 	common.RWMutex
-	*wsIncomerPool
+	*incomerPool
 	server         *shttp.Server
-	incomerHandler WSIncomerHandler
+	incomerHandler IncomerHandler
 }
 
 func defaultIncomerHandler(conn *websocket.Conn, r *auth.AuthenticatedRequest) *wsIncomingClient {
 	logging.GetLogger().Infof("New WebSocket Connection from %s : URI path %s", conn.RemoteAddr().String(), r.URL.Path)
 
-	c := newIncomingWSClient(conn, r)
+	c := newIncomingClient(conn, r)
 	c.start()
 
 	return c
@@ -63,7 +63,7 @@ func getRequestParameter(r *http.Request, name string) string {
 	return param
 }
 
-func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+func (s *Server) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	logging.GetLogger().Debugf("Enforcing websocket for %s, %s", s.name, r.Username)
 	if rbac.Enforce(r.Username, "websocket", s.name) == false {
 		w.Header().Set("Connection", "close")
@@ -78,9 +78,9 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 	}
 	logging.GetLogger().Debugf("Serving messages for client %s for pool %s", host, s.GetName())
 
-	s.wsIncomerPool.RLock()
+	s.incomerPool.RLock()
 	c := s.GetSpeakerByRemoteHost(host)
-	s.wsIncomerPool.RUnlock()
+	s.incomerPool.RUnlock()
 	if c != nil {
 		logging.GetLogger().Errorf("host_id(%s) conflict, same host_id used by %s", host, r.RemoteAddr)
 		w.Header().Set("Connection", "close")
@@ -98,21 +98,21 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 		return
 	}
 
-	// call the incomerHandler that will create the WSSpeaker
+	// call the incomerHandler that will create the Speaker
 	c = s.incomerHandler(conn, r)
 
-	// add the new WSSpeaker to the server pool
+	// add the new Speaker to the server pool
 	s.AddClient(c)
 
 	// notify the pool listeners that the speaker is connected
 	s.OnConnected(c)
 }
 
-// NewWSServer returns a new WSServer. The given auth backend will validate the credentials
-func NewWSServer(server *shttp.Server, endpoint string, authBackend shttp.AuthenticationBackend) *WSServer {
-	s := &WSServer{
-		wsIncomerPool: newWSIncomerPool(endpoint), // server inherites from a WSSpeaker pool
-		incomerHandler: func(c *websocket.Conn, a *auth.AuthenticatedRequest) WSSpeaker {
+// NewServer returns a new Server. The given auth backend will validate the credentials
+func NewServer(server *shttp.Server, endpoint string, authBackend shttp.AuthenticationBackend) *Server {
+	s := &Server{
+		incomerPool: newIncomerPool(endpoint), // server inherites from a Speaker pool
+		incomerHandler: func(c *websocket.Conn, a *auth.AuthenticatedRequest) Speaker {
 			return defaultIncomerHandler(c, a)
 		},
 		server: server,

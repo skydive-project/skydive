@@ -27,7 +27,7 @@ import (
 	"net/http"
 	"testing"
 
-	shttp "github.com/skydive-project/skydive/http"
+	ws "github.com/skydive-project/skydive/websocket"
 )
 
 func TestNullNodesEdges(t *testing.T) {
@@ -35,8 +35,8 @@ func TestNullNodesEdges(t *testing.T) {
 
 	raw := json.RawMessage(nodesNull)
 
-	msg := &shttp.WSStructMessage{
-		Protocol:  shttp.JsonProtocol,
+	msg := &ws.StructMessage{
+		Protocol:  ws.JSONProtocol,
 		Namespace: Namespace,
 		Type:      SyncMsgType,
 		UUID:      "aaa",
@@ -44,7 +44,7 @@ func TestNullNodesEdges(t *testing.T) {
 		JsonObj:   &raw,
 	}
 
-	if _, _, err := UnmarshalWSMessage(msg); err != nil {
+	if _, _, err := UnmarshalMessage(msg); err != nil {
 		t.Error("Should not raise error if Nodes is null")
 	}
 
@@ -52,8 +52,8 @@ func TestNullNodesEdges(t *testing.T) {
 
 	raw = json.RawMessage(edgesNull)
 
-	msg = &shttp.WSStructMessage{
-		Protocol:  shttp.JsonProtocol,
+	msg = &ws.StructMessage{
+		Protocol:  ws.JSONProtocol,
 		Namespace: Namespace,
 		Type:      SyncMsgType,
 		UUID:      "bbb",
@@ -61,7 +61,7 @@ func TestNullNodesEdges(t *testing.T) {
 		JsonObj:   &raw,
 	}
 
-	if _, _, err := UnmarshalWSMessage(msg); err != nil {
+	if _, _, err := UnmarshalMessage(msg); err != nil {
 		t.Errorf("Should not raise error if Nodes is null: %s", err.Error())
 	}
 }
@@ -71,8 +71,8 @@ func TestID(t *testing.T) {
 
 	raw := json.RawMessage(idMissing)
 
-	msg := &shttp.WSStructMessage{
-		Protocol:  shttp.JsonProtocol,
+	msg := &ws.StructMessage{
+		Protocol:  ws.JSONProtocol,
 		Namespace: Namespace,
 		Type:      SyncMsgType,
 		UUID:      "aaa",
@@ -80,7 +80,7 @@ func TestID(t *testing.T) {
 		JsonObj:   &raw,
 	}
 
-	if _, _, err := UnmarshalWSMessage(msg); err == nil {
+	if _, _, err := UnmarshalMessage(msg); err == nil {
 		t.Error("Should raise an error")
 	}
 
@@ -88,8 +88,8 @@ func TestID(t *testing.T) {
 
 	raw = json.RawMessage(idWrongType)
 
-	msg = &shttp.WSStructMessage{
-		Protocol:  shttp.JsonProtocol,
+	msg = &ws.StructMessage{
+		Protocol:  ws.JSONProtocol,
 		Namespace: Namespace,
 		Type:      SyncMsgType,
 		UUID:      "aaa",
@@ -97,7 +97,7 @@ func TestID(t *testing.T) {
 		JsonObj:   &raw,
 	}
 
-	if _, _, err := UnmarshalWSMessage(msg); err == nil {
+	if _, _, err := UnmarshalMessage(msg); err == nil {
 		t.Error("Should raise an error")
 	}
 }
@@ -107,8 +107,8 @@ func TestHost(t *testing.T) {
 
 	raw := json.RawMessage(hostWrongType)
 
-	msg := &shttp.WSStructMessage{
-		Protocol:  shttp.JsonProtocol,
+	msg := &ws.StructMessage{
+		Protocol:  ws.JSONProtocol,
 		Namespace: Namespace,
 		Type:      SyncMsgType,
 		UUID:      "aaa",
@@ -116,7 +116,7 @@ func TestHost(t *testing.T) {
 		JsonObj:   &raw,
 	}
 
-	if _, _, err := UnmarshalWSMessage(msg); err == nil {
+	if _, _, err := UnmarshalMessage(msg); err == nil {
 		t.Error("Should raise an error")
 	}
 }

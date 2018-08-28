@@ -32,43 +32,43 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-// WSSpeakerPool is the interface that WSSpeaker pools have to implement.
-type WSSpeakerPool interface {
-	AddClient(c WSSpeaker) error
-	RemoveClient(c WSSpeaker) bool
-	AddEventHandler(h WSSpeakerEventHandler)
-	GetSpeakers() []WSSpeaker
-	GetSpeakerByRemoteHost(host string) WSSpeaker
-	PickConnectedSpeaker() WSSpeaker
-	BroadcastMessage(m WSMessage)
-	SendMessageTo(m WSMessage, host string) error
+// SpeakerPool is the interface that Speaker pools have to implement.
+type SpeakerPool interface {
+	AddClient(c Speaker) error
+	RemoveClient(c Speaker) bool
+	AddEventHandler(h SpeakerEventHandler)
+	GetSpeakers() []Speaker
+	GetSpeakerByRemoteHost(host string) Speaker
+	PickConnectedSpeaker() Speaker
+	BroadcastMessage(m Message)
+	SendMessageTo(m Message, host string) error
 }
 
-// WSPool is a connection container. It embed a list of WSSpeaker.
-type WSPool struct {
+// Pool is a connection container. It embed a list of Speaker.
+type Pool struct {
 	common.RWMutex
 	name              string
 	wg                sync.WaitGroup
 	running           atomic.Value
-	eventHandlers     []WSSpeakerEventHandler
+	eventHandlers     []SpeakerEventHandler
 	eventHandlersLock common.RWMutex
-	speakers          []WSSpeaker
+	speakers          []Speaker
 }
 
-// WSClientPool is a pool of out going WSSpeaker meaning connection to a remote
-// WSServer.
-type WSClientPool struct {
-	*WSPool
+// ClientPool is a pool of out going Speaker meaning connection to a remote
+// Server.
+type ClientPool struct {
+	*Pool
 }
 
-// wsIncomerPool is used to store incoming WSSpeaker meaning remote client connected
-// to a local WSSpeaker.
-type wsIncomerPool struct {
-	*WSPool
+// incomerPool is used to store incoming Speaker meaning remote client connected
+// to a local Speaker.
+type incomerPool struct {
+	*Pool
 }
 
 // OnConnected forwards the OnConnected event to event listeners of the pool.
-func (s *WSPool) OnConnected(c WSSpeaker) {
+func (s *Pool) OnConnected(c Speaker) {
 	s.eventHandlersLock.RLock()
 	for _, h := range s.eventHandlers {
 		h.OnConnected(c)
@@ -80,7 +80,7 @@ func (s *WSPool) OnConnected(c WSSpeaker) {
 }
 
 // OnDisconnected forwards the OnConnected event to event listeners of the pool.
-func (s *WSPool) OnDisconnected(c WSSpeaker) {
+func (s *Pool) OnDisconnected(c Speaker) {
 	logging.GetLogger().Debugf("OnDisconnected %s for pool %s ", c.GetRemoteHost(), s.GetName())
 	s.eventHandlersLock.RLock()
 	for _, h := range s.eventHandlers {
@@ -90,40 +90,40 @@ func (s *WSPool) OnDisconnected(c WSSpeaker) {
 }
 
 // OnDisconnected forwards the OnConnected event to event listeners of the pool.
-func (s *wsIncomerPool) OnDisconnected(c WSSpeaker) {
-	s.WSPool.OnDisconnected(c)
+func (s *incomerPool) OnDisconnected(c Speaker) {
+	s.Pool.OnDisconnected(c)
 
 	s.RemoveClient(c)
 }
 
-// AddClient adds the given WSSpeaker to the pool.
-func (s *WSPool) AddClient(c WSSpeaker) error {
+// AddClient adds the given Speaker to the pool.
+func (s *Pool) AddClient(c Speaker) error {
 	logging.GetLogger().Debugf("AddClient %s for pool %s", c.GetRemoteHost(), s.GetName())
 	s.Lock()
 	s.speakers = append(s.speakers, c)
 	s.Unlock()
 
-	// This is to call WSSpeakerPool.On{Message,Disconnected}
+	// This is to call SpeakerPool.On{Message,Disconnected}
 	c.AddEventHandler(s)
 
 	return nil
 }
 
-// AddClient adds the given WSSpeaker to the wsIncomerPool.
-func (s *wsIncomerPool) AddClient(c WSSpeaker) error {
+// AddClient adds the given Speaker to the incomerPool.
+func (s *incomerPool) AddClient(c Speaker) error {
 	logging.GetLogger().Debugf("AddClient %s for pool %s", c.GetRemoteHost(), s.GetName())
 	s.Lock()
 	s.speakers = append(s.speakers, c)
 	s.Unlock()
 
-	// This is to call WSSpeakerPool.On{Message,Disconnected}
+	// This is to call SpeakerPool.On{Message,Disconnected}
 	c.AddEventHandler(s)
 
 	return nil
 }
 
 // OnMessage forwards the OnMessage event to event listeners of the pool.
-func (s *WSPool) OnMessage(c WSSpeaker, m WSMessage) {
+func (s *Pool) OnMessage(c Speaker, m Message) {
 	s.eventHandlersLock.RLock()
 	for _, h := range s.eventHandlers {
 		h.OnMessage(c, m)
@@ -132,7 +132,7 @@ func (s *WSPool) OnMessage(c WSSpeaker, m WSMessage) {
 }
 
 // RemoveClient removes client from the pool
-func (s *WSPool) RemoveClient(c WSSpeaker) bool {
+func (s *Pool) RemoveClient(c Speaker) bool {
 	s.Lock()
 	defer s.Unlock()
 
@@ -150,7 +150,7 @@ func (s *WSPool) RemoveClient(c WSSpeaker) bool {
 }
 
 // GetStatus returns the states of the WebSocket clients
-func (s *WSPool) GetStatus() map[string]ConnStatus {
+func (s *Pool) GetStatus() map[string]ConnStatus {
 	clients := make(map[string]ConnStatus)
 	for _, client := range s.GetSpeakers() {
 		clients[client.GetRemoteHost()] = client.GetStatus()
@@ -159,20 +159,20 @@ func (s *WSPool) GetStatus() map[string]ConnStatus {
 }
 
 // GetName returns the name of the pool
-func (s *WSPool) GetName() string {
+func (s *Pool) GetName() string {
 	return s.name + " type : [" + (reflect.TypeOf(s).String()) + "]"
 }
 
-// GetSpeakers returns the WSSpeakers of the pool.
-func (s *WSPool) GetSpeakers() (speakers []WSSpeaker) {
+// GetSpeakers returns the Speakers of the pool.
+func (s *Pool) GetSpeakers() (speakers []Speaker) {
 	s.RLock()
 	speakers = append(speakers, s.speakers...)
 	s.RUnlock()
 	return
 }
 
-// PickConnectedSpeaker returns randomly a connected WSSpeaker
-func (s *WSPool) PickConnectedSpeaker() WSSpeaker {
+// PickConnectedSpeaker returns randomly a connected Speaker
+func (s *Pool) PickConnectedSpeaker() Speaker {
 	s.RLock()
 	defer s.RUnlock()
 
@@ -197,8 +197,8 @@ func (s *WSPool) PickConnectedSpeaker() WSSpeaker {
 	return nil
 }
 
-// DisconnectAll disconnects all the WSSpeaker
-func (s *WSPool) DisconnectAll() {
+// DisconnectAll disconnects all the Speaker
+func (s *Pool) DisconnectAll() {
 	s.eventHandlersLock.Lock()
 	s.eventHandlers = s.eventHandlers[:0]
 	s.eventHandlersLock.Unlock()
@@ -210,8 +210,8 @@ func (s *WSPool) DisconnectAll() {
 	s.RUnlock()
 }
 
-// GetSpeakersByType returns WSSpeakers matching the given type.
-func (s *WSPool) GetSpeakersByType(serviceType common.ServiceType) (speakers []WSSpeaker) {
+// GetSpeakersByType returns Speakers matching the given type.
+func (s *Pool) GetSpeakersByType(serviceType common.ServiceType) (speakers []Speaker) {
 	s.RLock()
 	for _, c := range s.speakers {
 		if c.GetServiceType() == serviceType {
@@ -222,8 +222,8 @@ func (s *WSPool) GetSpeakersByType(serviceType common.ServiceType) (speakers []W
 	return
 }
 
-// GetSpeakerByRemoteHost returns the WSSpeaker for the given remote host.
-func (s *WSPool) GetSpeakerByRemoteHost(host string) WSSpeaker {
+// GetSpeakerByRemoteHost returns the Speaker for the given remote host.
+func (s *Pool) GetSpeakerByRemoteHost(host string) Speaker {
 	for _, c := range s.speakers {
 		if c.GetRemoteHost() == host {
 			return c
@@ -232,8 +232,8 @@ func (s *WSPool) GetSpeakerByRemoteHost(host string) WSSpeaker {
 	return nil
 }
 
-// SendMessageTo sends message to WSSpeaker for the given remote host.
-func (s *WSPool) SendMessageTo(m WSMessage, host string) error {
+// SendMessageTo sends message to Speaker for the given remote host.
+func (s *Pool) SendMessageTo(m Message, host string) error {
 	c := s.GetSpeakerByRemoteHost(host)
 	if c == nil {
 		return common.ErrNotFound
@@ -244,7 +244,7 @@ func (s *WSPool) SendMessageTo(m WSMessage, host string) error {
 }
 
 // BroadcastMessage broadcasts the given message.
-func (s *WSPool) BroadcastMessage(m WSMessage) {
+func (s *Pool) BroadcastMessage(m Message) {
 	s.RLock()
 	defer s.RUnlock()
 
@@ -257,23 +257,23 @@ func (s *WSPool) BroadcastMessage(m WSMessage) {
 }
 
 // AddEventHandler registers a new event handler.
-func (s *WSPool) AddEventHandler(h WSSpeakerEventHandler) {
+func (s *Pool) AddEventHandler(h SpeakerEventHandler) {
 	s.eventHandlersLock.Lock()
 	s.eventHandlers = append(s.eventHandlers, h)
 	s.eventHandlersLock.Unlock()
 }
 
 // Start starts the pool in a goroutine.
-func (s *WSPool) Start() {
+func (s *Pool) Start() {
 }
 
 // Stop stops the pool and wait until stopped.
-func (s *WSPool) Stop() {
+func (s *Pool) Stop() {
 	s.DisconnectAll()
 }
 
 // ConnectAll calls connect to all the wSSpeakers of the pool.
-func (s *WSClientPool) ConnectAll() {
+func (s *ClientPool) ConnectAll() {
 	s.RLock()
 	// shuffle connections to avoid election of the same client as master
 	indexes := rand.Perm(len(s.speakers))
@@ -283,22 +283,22 @@ func (s *WSClientPool) ConnectAll() {
 	s.RUnlock()
 }
 
-func newWSPool(name string) *WSPool {
-	return &WSPool{
+func newPool(name string) *Pool {
+	return &Pool{
 		name: name,
 	}
 }
 
-func newWSIncomerPool(name string) *wsIncomerPool {
-	return &wsIncomerPool{
-		WSPool: newWSPool(name),
+func newIncomerPool(name string) *incomerPool {
+	return &incomerPool{
+		Pool: newPool(name),
 	}
 }
 
-// NewWSClientPool returns a new WSClientPool meaning a pool of outgoing WSClient.
-func NewWSClientPool(name string) *WSClientPool {
-	s := &WSClientPool{
-		WSPool: newWSPool(name),
+// NewClientPool returns a new ClientPool meaning a pool of outgoing Client.
+func NewClientPool(name string) *ClientPool {
+	s := &ClientPool{
+		Pool: newPool(name),
 	}
 
 	s.Start()

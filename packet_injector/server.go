@@ -42,7 +42,7 @@ type PacketInjectorServer struct {
 	Channels *channels
 }
 
-func (pis *PacketInjectorServer) stopPI(msg *ws.WSStructMessage) error {
+func (pis *PacketInjectorServer) stopPI(msg *ws.StructMessage) error {
 	var uuid string
 	if err := msg.DecodeObj(&uuid); err != nil {
 		return err
@@ -57,7 +57,7 @@ func (pis *PacketInjectorServer) stopPI(msg *ws.WSStructMessage) error {
 	return fmt.Errorf("No PI running on this ID: %s", uuid)
 }
 
-func (pis *PacketInjectorServer) injectPacket(msg *ws.WSStructMessage) (string, error) {
+func (pis *PacketInjectorServer) injectPacket(msg *ws.StructMessage) (string, error) {
 	var params PacketInjectionParams
 	if err := msg.DecodeObj(&params); err != nil {
 		return "", fmt.Errorf("Unable to decode packet inject param message %v", msg)
@@ -71,11 +71,11 @@ func (pis *PacketInjectorServer) injectPacket(msg *ws.WSStructMessage) (string, 
 	return trackingID, nil
 }
 
-// OnWSMessage event, websocket PIRequest message
-func (pis *PacketInjectorServer) OnWSStructMessage(c ws.WSSpeaker, msg *ws.WSStructMessage) {
+// OnMessage event, websocket PIRequest message
+func (pis *PacketInjectorServer) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	switch msg.Type {
 	case "PIRequest":
-		var reply *ws.WSStructMessage
+		var reply *ws.StructMessage
 		trackingID, err := pis.injectPacket(msg)
 		replyObj := &PacketInjectorReply{TrackingID: trackingID}
 		if err != nil {
@@ -89,7 +89,7 @@ func (pis *PacketInjectorServer) OnWSStructMessage(c ws.WSSpeaker, msg *ws.WSStr
 
 		c.SendMessage(reply)
 	case "PIStopRequest":
-		var reply *ws.WSStructMessage
+		var reply *ws.StructMessage
 		err := pis.stopPI(msg)
 		replyObj := &PacketInjectorReply{}
 		if err != nil {
@@ -103,7 +103,7 @@ func (pis *PacketInjectorServer) OnWSStructMessage(c ws.WSSpeaker, msg *ws.WSStr
 }
 
 // NewServer creates a new packet injector server API based on websocket server
-func NewServer(graph *graph.Graph, pool ws.WSStructSpeakerPool) *PacketInjectorServer {
+func NewServer(graph *graph.Graph, pool ws.StructSpeakerPool) *PacketInjectorServer {
 	s := &PacketInjectorServer{
 		Graph:    graph,
 		Channels: &channels{Pipes: make(map[string](chan bool))},

@@ -38,7 +38,7 @@ type TableServer struct {
 }
 
 // OnTableQuery event
-func (s *TableServer) OnTableQuery(c ws.WSSpeaker, msg *ws.WSStructMessage) {
+func (s *TableServer) OnTableQuery(c ws.Speaker, msg *ws.StructMessage) {
 	var query TableQuery
 	if err := msg.UnmarshalObj(&query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode search flow message %v", msg)
@@ -50,8 +50,8 @@ func (s *TableServer) OnTableQuery(c ws.WSSpeaker, msg *ws.WSStructMessage) {
 	c.SendMessage(reply)
 }
 
-// OnWSStructMessage TableQuery
-func (s *TableServer) OnWSStructMessage(c ws.WSSpeaker, msg *ws.WSStructMessage) {
+// OnStructMessage TableQuery
+func (s *TableServer) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	switch msg.Type {
 	case "TableQuery":
 		s.OnTableQuery(c, msg)
@@ -59,7 +59,7 @@ func (s *TableServer) OnWSStructMessage(c ws.WSSpeaker, msg *ws.WSStructMessage)
 }
 
 // NewServer creates a new flow table query server based on websocket
-func NewServer(allocator *TableAllocator, pool ws.WSStructSpeakerPool) *TableServer {
+func NewServer(allocator *TableAllocator, pool ws.StructSpeakerPool) *TableServer {
 	s := &TableServer{
 		TableAllocator: allocator,
 	}

@@ -91,22 +91,22 @@ func (s *ConnState) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// WSMessage is the interface of a message to send over the wire
-type WSMessage interface {
+// Message is the interface of a message to send over the wire
+type Message interface {
 	Bytes(protocol string) []byte
 }
 
-// WSRawMessage represents a raw message (array of bytes)
-type WSRawMessage []byte
+// RawMessage represents a raw message (array of bytes)
+type RawMessage []byte
 
 // Bytes returns the string representation of the raw message
-func (m WSRawMessage) Bytes(protocol string) []byte {
+func (m RawMessage) Bytes(protocol string) []byte {
 	return m
 }
 
-// WSSpeaker is the interface for a websocket speaking client. It is used for outgoing
+// Speaker is the interface for a websocket speaking client. It is used for outgoing
 // or incoming connections.
-type WSSpeaker interface {
+type Speaker interface {
 	GetStatus() ConnStatus
 	GetHost() string
 	GetAddrPort() (string, int)
@@ -115,17 +115,17 @@ type WSSpeaker interface {
 	GetHeaders() http.Header
 	GetURL() *url.URL
 	IsConnected() bool
-	SendMessage(m WSMessage) error
+	SendMessage(m Message) error
 	SendRaw(r []byte) error
 	Connect()
 	Disconnect()
-	AddEventHandler(WSSpeakerEventHandler)
+	AddEventHandler(SpeakerEventHandler)
 	GetRemoteHost() string
 	GetRemoteServiceType() common.ServiceType
 }
 
-// WSConn is the connection object of a WSSpeaker
-type WSConn struct {
+// Conn is the connection object of a Speaker
+type Conn struct {
 	common.RWMutex
 	ConnStatus
 	send          chan []byte
@@ -135,68 +135,68 @@ type WSConn struct {
 	conn          *websocket.Conn
 	running       atomic.Value
 	pingTicker    *time.Ticker // only used by incoming connections
-	eventHandlers []WSSpeakerEventHandler
-	wsSpeaker     WSSpeaker // speaker owning the connection
+	eventHandlers []SpeakerEventHandler
+	wsSpeaker     Speaker // speaker owning the connection
 }
 
-// wsIncomingClient is only used internally to handle incoming client. It embeds a WSConn.
+// wsIncomingClient is only used internally to handle incoming client. It embeds a Conn.
 type wsIncomingClient struct {
-	*WSConn
+	*Conn
 }
 
-// WSClient is a outgoint client meaning a client connected to a remote websocket server.
-// It embeds a WSConn.
-type WSClient struct {
-	*WSConn
+// Client is a outgoint client meaning a client connected to a remote websocket server.
+// It embeds a Conn.
+type Client struct {
+	*Conn
 	Path     string
 	AuthOpts *shttp.AuthenticationOpts
 }
 
-// WSSpeakerEventHandler is the interface to be implement by the client events listeners.
-type WSSpeakerEventHandler interface {
-	OnMessage(c WSSpeaker, m WSMessage)
-	OnConnected(c WSSpeaker)
-	OnDisconnected(c WSSpeaker)
+// SpeakerEventHandler is the interface to be implement by the client events listeners.
+type SpeakerEventHandler interface {
+	OnMessage(c Speaker, m Message)
+	OnConnected(c Speaker)
+	OnDisconnected(c Speaker)
 }
 
-// DefaultWSSpeakerEventHandler implements stubs for the wsIncomingClientEventHandler interface
-type DefaultWSSpeakerEventHandler struct {
+// DefaultSpeakerEventHandler implements stubs for the wsIncomingClientEventHandler interface
+type DefaultSpeakerEventHandler struct {
 }
 
 // OnMessage is called when a message is received.
-func (d *DefaultWSSpeakerEventHandler) OnMessage(c WSSpeaker, m WSMessage) {
+func (d *DefaultSpeakerEventHandler) OnMessage(c Speaker, m Message) {
 }
 
 // OnConnected is called when the connection is established.
-func (d *DefaultWSSpeakerEventHandler) OnConnected(c WSSpeaker) {
+func (d *DefaultSpeakerEventHandler) OnConnected(c Speaker) {
 }
 
 // OnDisconnected is called when the connection is closed or lost.
-func (d *DefaultWSSpeakerEventHandler) OnDisconnected(c WSSpeaker) {
+func (d *DefaultSpeakerEventHandler) OnDisconnected(c Speaker) {
 }
 
 // GetHost returns the hostname/host-id of the connection.
-func (c *WSConn) GetHost() string {
+func (c *Conn) GetHost() string {
 	return c.Host
 }
 
 // GetAddrPort returns the address and the port of the remote end.
-func (c *WSConn) GetAddrPort() (string, int) {
+func (c *Conn) GetAddrPort() (string, int) {
 	return c.Addr, c.Port
 }
 
 // GetURL returns the URL of the connection
-func (c *WSConn) GetURL() *url.URL {
+func (c *Conn) GetURL() *url.URL {
 	return c.URL
 }
 
 // IsConnected returns the connection status.
-func (c *WSConn) IsConnected() bool {
+func (c *Conn) IsConnected() bool {
 	return atomic.LoadInt32((*int32)(c.State)) == common.RunningState
 }
 
 // GetStatus returns the status of a WebSocket connection
-func (c *WSConn) GetStatus() ConnStatus {
+func (c *Conn) GetStatus() ConnStatus {
 	c.RLock()
 	defer c.RUnlock()
 
@@ -206,13 +206,13 @@ func (c *WSConn) GetStatus() ConnStatus {
 	return c.ConnStatus
 }
 
-// WSSpeakerStructMessageHandler interface used to receive Struct messages.
-type WSSpeakerStructMessageHandler interface {
-	OnWSStructMessage(c WSSpeaker, m *WSStructMessage)
+// SpeakerStructMessageHandler interface used to receive Struct messages.
+type SpeakerStructMessageHandler interface {
+	OnStructMessage(c Speaker, m *StructMessage)
 }
 
 // SendMessage adds a message to sending queue.
-func (c *WSConn) SendMessage(m WSMessage) error {
+func (c *Conn) SendMessage(m Message) error {
 	if !c.IsConnected() {
 		return errors.New("Not connected")
 	}
@@ -223,7 +223,7 @@ func (c *WSConn) SendMessage(m WSMessage) error {
 }
 
 // SendRaw adds raw bytes to sending queue.
-func (c *WSConn) SendRaw(b []byte) error {
+func (c *Conn) SendRaw(b []byte) error {
 	if !c.IsConnected() {
 		return errors.New("Not connected")
 	}
@@ -234,32 +234,32 @@ func (c *WSConn) SendRaw(b []byte) error {
 }
 
 // GetServiceType returns the client type.
-func (c *WSConn) GetServiceType() common.ServiceType {
+func (c *Conn) GetServiceType() common.ServiceType {
 	return c.ServiceType
 }
 
 // GetClientProtocol returns the websocket protocol.
-func (c *WSConn) GetClientProtocol() string {
+func (c *Conn) GetClientProtocol() string {
 	return c.ClientProtocol
 }
 
 // GetHeaders returns the client HTTP headers.
-func (c *WSConn) GetHeaders() http.Header {
+func (c *Conn) GetHeaders() http.Header {
 	return c.Headers
 }
 
 // GetRemoteHost returns the hostname/host-id of the remote side of the connection.
-func (c *WSConn) GetRemoteHost() string {
+func (c *Conn) GetRemoteHost() string {
 	return c.RemoteHost
 }
 
 // GetRemoteServiceType returns the remote service type.
-func (c *WSConn) GetRemoteServiceType() common.ServiceType {
+func (c *Conn) GetRemoteServiceType() common.ServiceType {
 	return c.RemoteServiceType
 }
 
 // SendMessage sends a message directly over the wire.
-func (c *WSConn) write(msg []byte) error {
+func (c *Conn) write(msg []byte) error {
 	if !c.IsConnected() {
 		return errors.New("Not connected")
 	}
@@ -278,13 +278,13 @@ func (c *WSConn) write(msg []byte) error {
 	return w.Close()
 }
 
-func (c *WSConn) start() {
+func (c *Conn) start() {
 	c.wg.Add(1)
 	go c.run()
 }
 
 // main loop to read and send messages
-func (c *WSConn) run() {
+func (c *Conn) run() {
 	defer c.wg.Done()
 
 	go func() {
@@ -344,7 +344,7 @@ func (c *WSConn) run() {
 		case m := <-c.read:
 			c.RLock()
 			for _, l := range c.eventHandlers {
-				l.OnMessage(c.wsSpeaker, WSRawMessage(m))
+				l.OnMessage(c.wsSpeaker, RawMessage(m))
 			}
 			c.RUnlock()
 		}
@@ -353,37 +353,37 @@ func (c *WSConn) run() {
 
 // sendPing is used for remote connections by the server to send PingMessage
 // to remote client.
-func (c *WSConn) sendPing() error {
+func (c *Conn) sendPing() error {
 	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 	return c.conn.WriteMessage(websocket.PingMessage, []byte{})
 }
 
 // AddEventHandler registers a new event handler
-func (c *WSConn) AddEventHandler(h WSSpeakerEventHandler) {
+func (c *Conn) AddEventHandler(h SpeakerEventHandler) {
 	c.Lock()
 	c.eventHandlers = append(c.eventHandlers, h)
 	c.Unlock()
 }
 
 // Connect default implementation doing nothing as for incoming connection it is not used.
-func (c *WSConn) Connect() {
+func (c *Conn) Connect() {
 }
 
-// Disconnect the WSSpeakers without waiting for termination.
-func (c *WSConn) Disconnect() {
+// Disconnect the Speakers without waiting for termination.
+func (c *Conn) Disconnect() {
 	c.running.Store(false)
 	if atomic.CompareAndSwapInt32((*int32)(c.State), common.RunningState, common.StoppingState) {
 		c.quit <- true
 	}
 }
 
-func newWSConn(host string, clientType common.ServiceType, clientProtocol string, url *url.URL, headers http.Header, queueSize int) *WSConn {
+func newConn(host string, clientType common.ServiceType, clientProtocol string, url *url.URL, headers http.Header, queueSize int) *Conn {
 	if headers == nil {
 		headers = http.Header{}
 	}
 
 	port, _ := strconv.Atoi(url.Port())
-	c := &WSConn{
+	c := &Conn{
 		ConnStatus: ConnStatus{
 			Host:           host,
 			ServiceType:    clientType,
@@ -405,14 +405,14 @@ func newWSConn(host string, clientType common.ServiceType, clientProtocol string
 	return c
 }
 
-func (c *WSClient) scheme() string {
+func (c *Client) scheme() string {
 	if config.IsTLSenabled() == true {
 		return "wss://"
 	}
 	return "ws://"
 }
 
-func (c *WSClient) connect() {
+func (c *Client) connect() {
 	var err error
 	endpoint := c.URL.String()
 	headers := http.Header{
@@ -468,7 +468,7 @@ func (c *WSClient) connect() {
 
 	// notify connected
 	c.RLock()
-	var eventHandlers []WSSpeakerEventHandler
+	var eventHandlers []SpeakerEventHandler
 	eventHandlers = append(eventHandlers, c.eventHandlers...)
 	c.RUnlock()
 
@@ -486,7 +486,7 @@ func (c *WSClient) connect() {
 }
 
 // Connect to the server - and reconnect if necessary
-func (c *WSClient) Connect() {
+func (c *Client) Connect() {
 	go func() {
 		for c.running.Load() == true {
 			c.connect()
@@ -495,26 +495,26 @@ func (c *WSClient) Connect() {
 	}()
 }
 
-// NewWSClient returns a WSClient with a new connection.
-func NewWSClient(host string, clientType common.ServiceType, url *url.URL, authOpts *shttp.AuthenticationOpts, headers http.Header, queueSize int) *WSClient {
-	wsconn := newWSConn(host, clientType, ProtobufProtocol, url, headers, queueSize)
-	c := &WSClient{
-		WSConn:   wsconn,
+// NewClient returns a Client with a new connection.
+func NewClient(host string, clientType common.ServiceType, url *url.URL, authOpts *shttp.AuthenticationOpts, headers http.Header, queueSize int) *Client {
+	wsconn := newConn(host, clientType, ProtobufProtocol, url, headers, queueSize)
+	c := &Client{
+		Conn:     wsconn,
 		AuthOpts: authOpts,
 	}
 	wsconn.wsSpeaker = c
 	return c
 }
 
-// NewWSClientFromConfig creates a WSClient based on the configuration
-func NewWSClientFromConfig(clientType common.ServiceType, url *url.URL, authOpts *shttp.AuthenticationOpts, headers http.Header) *WSClient {
+// NewClientFromConfig creates a Client based on the configuration
+func NewClientFromConfig(clientType common.ServiceType, url *url.URL, authOpts *shttp.AuthenticationOpts, headers http.Header) *Client {
 	host := config.GetString("host_id")
 	queueSize := config.GetInt("http.ws.queue_size")
-	return NewWSClient(host, clientType, url, authOpts, headers, queueSize)
+	return NewClient(host, clientType, url, authOpts, headers, queueSize)
 }
 
-// newIncomingWSClient is called by the server for incoming connections
-func newIncomingWSClient(conn *websocket.Conn, r *auth.AuthenticatedRequest) *wsIncomingClient {
+// newIncomingClient is called by the server for incoming connections
+func newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRequest) *wsIncomingClient {
 	clientType := common.ServiceType(getRequestParameter(&r.Request, "X-Client-Type"))
 	if clientType == "" {
 		clientType = common.UnknownService
@@ -530,7 +530,7 @@ func newIncomingWSClient(conn *websocket.Conn, r *auth.AuthenticatedRequest) *ws
 	svc, _ := common.ServiceAddressFromString(conn.RemoteAddr().String())
 	url := config.GetURL("http", svc.Addr, svc.Port, r.URL.Path+"?"+r.URL.RawQuery)
 
-	wsconn := newWSConn(host, clientType, clientProtocol, url, r.Header, queueSize)
+	wsconn := newConn(host, clientType, clientProtocol, url, r.Header, queueSize)
 	wsconn.conn = conn
 	wsconn.RemoteHost = getRequestParameter(&r.Request, "X-Host-ID")
 
@@ -551,7 +551,7 @@ func newIncomingWSClient(conn *websocket.Conn, r *auth.AuthenticatedRequest) *ws
 	})
 
 	c := &wsIncomingClient{
-		WSConn: wsconn,
+		Conn: wsconn,
 	}
 	wsconn.wsSpeaker = c
 

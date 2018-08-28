@@ -572,11 +572,11 @@ func TestOVSOwnershipLink(t *testing.T) {
 }
 
 type TopologyInjecter struct {
-	ws.DefaultWSSpeakerEventHandler
+	ws.DefaultSpeakerEventHandler
 	connected int32
 }
 
-func (t *TopologyInjecter) OnConnected(c ws.WSSpeaker) {
+func (t *TopologyInjecter) OnConnected(c ws.Speaker) {
 	atomic.StoreInt32(&t.connected, 1)
 }
 
@@ -590,13 +590,13 @@ func TestQueryMetadata(t *testing.T) {
 			}
 
 			hostname, _ := os.Hostname()
-			wspool := ws.NewWSStructClientPool("TestQueryMetadata")
+			wspool := ws.NewStructClientPool("TestQueryMetadata")
 			for _, sa := range addresses {
-				client := ws.NewWSClient(hostname+"-cli", common.UnknownService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher"), authOptions, http.Header{}, 1000)
+				client := ws.NewClient(hostname+"-cli", common.UnknownService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher"), authOptions, http.Header{}, 1000)
 				wspool.AddClient(client)
 			}
 
-			masterElection := ws.NewWSMasterElection(wspool)
+			masterElection := ws.NewMasterElection(wspool)
 
 			eventHandler := &TopologyInjecter{}
 			wspool.AddEventHandler(eventHandler)
@@ -634,12 +634,12 @@ func TestQueryMetadata(t *testing.T) {
 			n.Decode(m)
 
 			// The first message should be rejected as it has no 'Type' attribute
-			msg := ws.NewWSStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
+			msg := ws.NewStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
 			masterElection.SendMessageToMaster(msg)
 
 			m["Metadata"].(map[string]interface{})["Type"] = "external"
 			n.Decode(m)
-			msg = ws.NewWSStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
+			msg = ws.NewStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
 			masterElection.SendMessageToMaster(msg)
 
 			return nil

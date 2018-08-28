@@ -205,7 +205,7 @@ flow/flow.pb.go: flow/flow.proto
 	sed -e 's/type Flow struct {/type Flow struct { XXX_state flowState `json:"-"`/' -i $@
 	gofmt -s -w $@
 
-.proto: govendor flow/flow.pb.go filters/filters.pb.go websocket/wsstructmessage.pb.go
+.proto: govendor flow/flow.pb.go filters/filters.pb.go websocket/structmessage.pb.go
 
 .PHONY: .proto.clean
 .proto.clean:
@@ -525,7 +525,7 @@ docker-cross-build: ebpf.build
 SKYDIVE_PROTO_FILES:= \
 	flow/flow.proto \
 	filters/filters.proto \
-	websocket/wsstructmessage.proto
+	websocket/structmessage.proto
 
 SKYDIVE_TAR_INPUT:= \
 	vendor \

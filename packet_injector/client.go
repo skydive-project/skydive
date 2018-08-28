@@ -55,7 +55,7 @@ type PacketInjectorReply struct {
 // PacketInjectorClient describes a packet injector client
 type PacketInjectorClient struct {
 	*etcd.MasterElector
-	pool      ws.WSStructSpeakerPool
+	pool      ws.StructSpeakerPool
 	watcher   apiServer.StoppableWatcher
 	graph     *graph.Graph
 	piHandler *apiServer.PacketInjectorAPI
@@ -63,7 +63,7 @@ type PacketInjectorClient struct {
 
 // StopInjection cancels a running packet injection
 func (pc *PacketInjectorClient) StopInjection(host string, uuid string) error {
-	msg := ws.NewWSStructMessage(Namespace, "PIStopRequest", uuid)
+	msg := ws.NewStructMessage(Namespace, "PIStopRequest", uuid)
 
 	resp, err := pc.pool.Request(host, msg, ws.DefaultRequestTimeout)
 	if err != nil {
@@ -85,7 +85,7 @@ func (pc *PacketInjectorClient) StopInjection(host string, uuid string) error {
 // InjectPackets issues a packet injection request and returns the expected
 // tracking id
 func (pc *PacketInjectorClient) InjectPackets(host string, pp *PacketInjectionParams) (string, error) {
-	msg := ws.NewWSStructMessage(Namespace, "PIRequest", pp)
+	msg := ws.NewStructMessage(Namespace, "PIRequest", pp)
 
 	resp, err := pc.pool.Request(host, msg, ws.DefaultRequestTimeout)
 	if err != nil {
@@ -314,7 +314,7 @@ func (pc *PacketInjectorClient) setTimeouts() {
 }
 
 // NewPacketInjectorClient returns a new packet injector client
-func NewPacketInjectorClient(pool ws.WSStructSpeakerPool, etcdClient *etcd.Client, piHandler *apiServer.PacketInjectorAPI, g *graph.Graph) *PacketInjectorClient {
+func NewPacketInjectorClient(pool ws.StructSpeakerPool, etcdClient *etcd.Client, piHandler *apiServer.PacketInjectorAPI, g *graph.Graph) *PacketInjectorClient {
 	elector := etcd.NewMasterElectorFromConfig(common.AnalyzerService, "pi-client", etcdClient)
 
 	pic := &PacketInjectorClient{

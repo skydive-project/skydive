@@ -50,8 +50,8 @@ const (
 // an external program that interacts with the Skydive graph.
 type TopologyPublisherEndpoint struct {
 	common.RWMutex
-	ws.DefaultWSSpeakerEventHandler
-	pool          ws.WSStructSpeakerPool
+	ws.DefaultSpeakerEventHandler
+	pool          ws.StructSpeakerPool
 	Graph         *graph.Graph
 	cached        *graph.CachedBackend
 	nodeSchema    gojsonschema.JSONLoader
@@ -61,7 +61,7 @@ type TopologyPublisherEndpoint struct {
 }
 
 // OnDisconnected called when a publisher got disconnected.
-func (t *TopologyPublisherEndpoint) OnDisconnected(c ws.WSSpeaker) {
+func (t *TopologyPublisherEndpoint) OnDisconnected(c ws.Speaker) {
 	policy := PersistencePolicy(c.GetHeaders().Get("X-Persistence-Policy"))
 	if policy == Persistent {
 		return
@@ -76,9 +76,9 @@ func (t *TopologyPublisherEndpoint) OnDisconnected(c ws.WSSpeaker) {
 	t.Graph.Unlock()
 }
 
-// OnWSStructMessage is triggered by message coming from a publisher.
-func (t *TopologyPublisherEndpoint) OnWSStructMessage(c ws.WSSpeaker, msg *ws.WSStructMessage) {
-	msgType, obj, err := graph.UnmarshalWSMessage(msg)
+// OnStructMessage is triggered by message coming from a publisher.
+func (t *TopologyPublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
+	msgType, obj, err := graph.UnmarshalMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
 		return
@@ -147,7 +147,7 @@ func (t *TopologyPublisherEndpoint) OnWSStructMessage(c ws.WSSpeaker, msg *ws.WS
 }
 
 // NewTopologyPublisherEndpoint returns a new server for external publishers.
-func NewTopologyPublisherEndpoint(pool ws.WSStructSpeakerPool, g *graph.Graph) (*TopologyPublisherEndpoint, error) {
+func NewTopologyPublisherEndpoint(pool ws.StructSpeakerPool, g *graph.Graph) (*TopologyPublisherEndpoint, error) {
 	nodeSchema, err := statics.Asset("statics/schemas/node.schema")
 	if err != nil {
 		return nil, err

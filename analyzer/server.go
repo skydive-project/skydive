@@ -76,10 +76,10 @@ type Status struct {
 // Server describes an Analyzer servers mechanism like http, websocket, topology, ondemand probes, ...
 type Server struct {
 	httpServer          *shttp.Server
-	agentWSServer       *ws.WSStructServer
-	publisherWSServer   *ws.WSStructServer
-	replicationWSServer *ws.WSStructServer
-	subscriberWSServer  *ws.WSStructServer
+	agentWSServer       *ws.StructServer
+	publisherWSServer   *ws.StructServer
+	replicationWSServer *ws.StructServer
+	subscriberWSServer  *ws.StructServer
 	replicationEndpoint *TopologyReplicationEndpoint
 	alertServer         *alert.Server
 	onDemandClient      *ondemand.OnDemandProbeClient
@@ -274,13 +274,13 @@ func NewServerFromConfig() (*Server, error) {
 
 	hserver.RegisterLoginRoute(apiAuthBackend)
 
-	agentWSServer := ws.NewWSStructServer(ws.NewWSServer(hserver, "/ws/agent", clusterAuthBackend))
+	agentWSServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/agent", clusterAuthBackend))
 	_, err = NewTopologyAgentEndpoint(agentWSServer, cached, g)
 	if err != nil {
 		return nil, err
 	}
 
-	publisherWSServer := ws.NewWSStructServer(ws.NewWSServer(hserver, "/ws/publisher", apiAuthBackend))
+	publisherWSServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/publisher", apiAuthBackend))
 	_, err = NewTopologyPublisherEndpoint(publisherWSServer, g)
 	if err != nil {
 		return nil, err
@@ -290,7 +290,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	storage, err := storage.NewStorageFromConfig(etcdClient)
 
-	replicationWSServer := ws.NewWSStructServer(ws.NewWSServer(hserver, "/ws/replication", clusterAuthBackend))
+	replicationWSServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/replication", clusterAuthBackend))
 	replicationEndpoint, err := NewTopologyReplicationEndpoint(replicationWSServer, clusterAuthOptions, cached, g)
 	if err != nil {
 		return nil, err
@@ -304,7 +304,7 @@ func NewServerFromConfig() (*Server, error) {
 	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
 
-	subscriberWSServer := ws.NewWSStructServer(ws.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
+	subscriberWSServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/subscriber", apiAuthBackend))
 	topology.NewTopologySubscriberEndpoint(subscriberWSServer, g, tr)
 
 	probeBundle, err := NewTopologyProbeBundleFromConfig(g)

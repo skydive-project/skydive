@@ -46,8 +46,8 @@ type OnDemandProbeClient struct {
 	graph.DefaultGraphListener
 	graph                *graph.Graph
 	captureHandler       *api.CaptureAPIHandler
-	agentPool            ws.WSStructSpeakerPool
-	subscriberPool       ws.WSStructSpeakerPool
+	agentPool            ws.StructSpeakerPool
+	subscriberPool       ws.StructSpeakerPool
 	captures             map[string]*types.Capture
 	watcher              api.StoppableWatcher
 	registeredNodes      map[string]string
@@ -61,8 +61,8 @@ type nodeProbe struct {
 	capture *types.Capture
 }
 
-// OnWSStructMessage event, valid message type : CaptureStartReply or CaptureStopReply message
-func (o *OnDemandProbeClient) OnWSStructMessage(c ws.WSSpeaker, m *ws.WSStructMessage) {
+// OnStructMessage event, valid message type : CaptureStartReply or CaptureStopReply message
+func (o *OnDemandProbeClient) OnStructMessage(c ws.Speaker, m *ws.StructMessage) {
 	var query ondemand.CaptureQuery
 	if err := m.UnmarshalObj(&query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode capture %v", m)
@@ -80,7 +80,7 @@ func (o *OnDemandProbeClient) OnWSStructMessage(c ws.WSSpeaker, m *ws.WSStructMe
 		} else {
 			logging.GetLogger().Debugf("Capture start request succeeded %v", m.Debug())
 		}
-		o.subscriberPool.BroadcastMessage(ws.NewWSStructMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", query.Capture.UUID))
+		o.subscriberPool.BroadcastMessage(ws.NewStructMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", query.Capture.UUID))
 	case "CaptureStopReply":
 		if m.Status == http.StatusOK {
 			logging.GetLogger().Debugf("Capture stop request succeeded %v", m.Debug())
@@ -156,7 +156,7 @@ func (o *OnDemandProbeClient) registerProbe(np nodeProbe) bool {
 		Capture: *np.capture,
 	}
 
-	msg := ws.NewWSStructMessage(ondemand.Namespace, "CaptureStart", cq)
+	msg := ws.NewStructMessage(ondemand.Namespace, "CaptureStart", cq)
 
 	if err := o.agentPool.SendMessageTo(msg, np.host); err != nil {
 		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", np.host, err.Error())
@@ -175,7 +175,7 @@ func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node, capture *types.C
 		Capture: *capture,
 	}
 
-	msg := ws.NewWSStructMessage(ondemand.Namespace, "CaptureStop", cq)
+	msg := ws.NewStructMessage(ondemand.Namespace, "CaptureStop", cq)
 
 	if _, err := node.GetFieldString("Capture.ID"); err != nil {
 		return false
@@ -253,7 +253,7 @@ func (o *OnDemandProbeClient) OnNodeUpdated(n *graph.Node) {
 func (o *OnDemandProbeClient) OnNodeDeleted(n *graph.Node) {
 	o.RLock()
 	if uuid, ok := o.registeredNodes[string(n.ID)]; ok {
-		o.subscriberPool.BroadcastMessage(ws.NewWSStructMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", uuid))
+		o.subscriberPool.BroadcastMessage(ws.NewStructMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", uuid))
 	}
 	o.RUnlock()
 }
@@ -356,10 +356,10 @@ func (o *OnDemandProbeClient) onAPIWatcherEvent(action string, id string, resour
 	capture := resource.(*types.Capture)
 	switch action {
 	case "init", "create", "set", "update":
-		o.subscriberPool.BroadcastMessage(ws.NewWSStructMessage(ondemand.NotificationNamespace, "CaptureAdded", capture))
+		o.subscriberPool.BroadcastMessage(ws.NewStructMessage(ondemand.NotificationNamespace, "CaptureAdded", capture))
 		o.onCaptureAdded(capture)
 	case "expire", "delete":
-		o.subscriberPool.BroadcastMessage(ws.NewWSStructMessage(ondemand.NotificationNamespace, "CaptureDeleted", capture))
+		o.subscriberPool.BroadcastMessage(ws.NewStructMessage(ondemand.NotificationNamespace, "CaptureDeleted", capture))
 		o.onCaptureDeleted(capture)
 	}
 }
@@ -382,7 +382,7 @@ func (o *OnDemandProbeClient) Stop() {
 }
 
 // NewOnDemandProbeClient creates a new ondemand probe client based on Capture API, graph and websocket
-func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, agentPool ws.WSStructSpeakerPool, subscriberPool ws.WSStructSpeakerPool, etcdClient *etcd.Client) *OnDemandProbeClient {
+func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, agentPool ws.StructSpeakerPool, subscriberPool ws.StructSpeakerPool, etcdClient *etcd.Client) *OnDemandProbeClient {
 	resources := ch.Index()
 	captures := make(map[string]*types.Capture)
 	for _, resource := range resources {

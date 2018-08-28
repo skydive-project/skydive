@@ -53,7 +53,7 @@ const (
 // DefaultRequestTimeout default timeout used for Request/Reply JSON message.
 var DefaultRequestTimeout = 10 * time.Second
 
-type WSStructMessageJSON struct {
+type StructMessageJSON struct {
 	Namespace string
 	Type      string
 	UUID      string
@@ -61,7 +61,7 @@ type WSStructMessageJSON struct {
 	Obj       *json.RawMessage
 }
 
-type WSStructMessage struct {
+type StructMessage struct {
 	Protocol  string
 	Namespace string
 	Type      string
@@ -75,8 +75,8 @@ type WSStructMessage struct {
 	protobufSerialized []byte
 }
 
-// Debug representation of the struct WSStructMessage
-func (g *WSStructMessage) Debug() string {
+// Debug representation of the struct StructMessage
+func (g *StructMessage) Debug() string {
 	if g.Protocol == JSONProtocol {
 		return fmt.Sprintf("Namespace %s Type %s UUID %s Status %d Obj JSON (%d) : %q",
 			g.Namespace, g.Type, g.UUID, g.Status, len(*g.JsonObj), string(*g.JsonObj))
@@ -85,32 +85,32 @@ func (g *WSStructMessage) Debug() string {
 		g.Namespace, g.Type, g.UUID, g.Status, len(g.ProtobufObj))
 }
 
-// Marshal serializes the WSStructMessage into a JSON string.
-func (g *WSStructMessageJSON) Marshal() []byte {
+// Marshal serializes the StructMessage into a JSON string.
+func (g *StructMessageJSON) Marshal() []byte {
 	j, err := json.Marshal(g)
 	if err != nil {
-		panic("JSON Marshal WSStructMessage encode failed")
+		panic("JSON Marshal StructMessage encode failed")
 	}
 	return j
 }
 
-func (g *WSStructMessageProtobuf) Marshal() []byte {
+func (g *StructMessageProtobuf) Marshal() []byte {
 	b, err := proto.Marshal(g)
 	if err != nil {
-		panic("Protobuf Marshal WSStructMessage encode failed")
+		panic("Protobuf Marshal StructMessage encode failed")
 	}
 	return b
 }
 
 // Bytes see Marshal
-func (g WSStructMessage) Bytes(protocol string) []byte {
+func (g StructMessage) Bytes(protocol string) []byte {
 	g.Protocol = protocol
 	if g.Protocol == ProtobufProtocol {
 		if len(g.protobufSerialized) > 0 {
 			return g.protobufSerialized
 		}
 		g.marshalObj()
-		msgProto := &WSStructMessageProtobuf{
+		msgProto := &StructMessageProtobuf{
 			Namespace: g.Namespace,
 			Type:      g.Type,
 			UUID:      g.UUID,
@@ -125,7 +125,7 @@ func (g WSStructMessage) Bytes(protocol string) []byte {
 		return g.jsonSerialized
 	}
 	g.marshalObj()
-	msgJSON := &WSStructMessageJSON{
+	msgJSON := &StructMessageJSON{
 		Namespace: g.Namespace,
 		Type:      g.Type,
 		UUID:      g.UUID,
@@ -136,7 +136,7 @@ func (g WSStructMessage) Bytes(protocol string) []byte {
 	return g.jsonSerialized
 }
 
-func (g *WSStructMessage) marshalObj() {
+func (g *StructMessage) marshalObj() {
 	if g.Protocol == JSONProtocol {
 		b, err := json.Marshal(g.value)
 		if err != nil {
@@ -156,7 +156,7 @@ func (g *WSStructMessage) marshalObj() {
 	}
 }
 
-func (g *WSStructMessage) DecodeObj(obj interface{}) error {
+func (g *StructMessage) DecodeObj(obj interface{}) error {
 	if g.Protocol == JSONProtocol {
 		if err := common.JSONDecode(bytes.NewReader([]byte(*g.JsonObj)), obj); err != nil {
 			return err
@@ -170,7 +170,7 @@ func (g *WSStructMessage) DecodeObj(obj interface{}) error {
 	return nil
 }
 
-func (g *WSStructMessage) UnmarshalObj(obj interface{}) error {
+func (g *StructMessage) UnmarshalObj(obj interface{}) error {
 	if g.Protocol == JSONProtocol {
 		if err := json.Unmarshal(*g.JsonObj, obj); err != nil {
 			return err
@@ -184,9 +184,9 @@ func (g *WSStructMessage) UnmarshalObj(obj interface{}) error {
 	return nil
 }
 
-// NewWSStructMessage creates a new WSStructMessage with the given namespace, type, value
+// NewStructMessage creates a new StructMessage with the given namespace, type, value
 // and optionally the UUID.
-func NewWSStructMessage(ns string, tp string, v interface{}, uuids ...string) *WSStructMessage {
+func NewStructMessage(ns string, tp string, v interface{}, uuids ...string) *StructMessage {
 	var u string
 	if len(uuids) != 0 {
 		u = uuids[0]
@@ -195,7 +195,7 @@ func NewWSStructMessage(ns string, tp string, v interface{}, uuids ...string) *W
 		u = v4.String()
 	}
 
-	msg := &WSStructMessage{
+	msg := &StructMessage{
 		Namespace: ns,
 		Type:      tp,
 		UUID:      u,
@@ -206,9 +206,9 @@ func NewWSStructMessage(ns string, tp string, v interface{}, uuids ...string) *W
 }
 
 // Reply returns a reply message with the given value, type and status.
-// Basically it return a new WSStructMessage with the correct Namespace and UUID.
-func (g *WSStructMessage) Reply(v interface{}, kind string, status int) *WSStructMessage {
-	msg := &WSStructMessage{
+// Basically it return a new StructMessage with the correct Namespace and UUID.
+func (g *StructMessage) Reply(v interface{}, kind string, status int) *StructMessage {
+	msg := &StructMessage{
 		Namespace: g.Namespace,
 		Type:      kind,
 		UUID:      g.UUID,
@@ -218,29 +218,29 @@ func (g *WSStructMessage) Reply(v interface{}, kind string, status int) *WSStruc
 	return msg
 }
 
-// WSSpeakerStructMessageDispatcher interface is used to dispatch OnWSStructMessage events.
-type WSSpeakerStructMessageDispatcher interface {
-	AddStructMessageHandler(h WSSpeakerStructMessageHandler, namespaces []string)
+// SpeakerStructMessageDispatcher interface is used to dispatch OnStructMessage events.
+type SpeakerStructMessageDispatcher interface {
+	AddStructMessageHandler(h SpeakerStructMessageHandler, namespaces []string)
 }
 
-type wsStructSpeakerEventDispatcher struct {
+type structSpeakerEventDispatcher struct {
 	eventHandlersLock common.RWMutex
-	nsEventHandlers   map[string][]WSSpeakerStructMessageHandler
+	nsEventHandlers   map[string][]SpeakerStructMessageHandler
 }
 
-func newWSStructSpeakerEventDispatcher() *wsStructSpeakerEventDispatcher {
-	return &wsStructSpeakerEventDispatcher{
-		nsEventHandlers: make(map[string][]WSSpeakerStructMessageHandler),
+func newStructSpeakerEventDispatcher() *structSpeakerEventDispatcher {
+	return &structSpeakerEventDispatcher{
+		nsEventHandlers: make(map[string][]SpeakerStructMessageHandler),
 	}
 }
 
 // AddStructMessageHandler adds a new listener for Struct messages.
-func (a *wsStructSpeakerEventDispatcher) AddStructMessageHandler(h WSSpeakerStructMessageHandler, namespaces []string) {
+func (a *structSpeakerEventDispatcher) AddStructMessageHandler(h SpeakerStructMessageHandler, namespaces []string) {
 	a.eventHandlersLock.Lock()
 	// add this handler per namespace
 	for _, ns := range namespaces {
 		if _, ok := a.nsEventHandlers[ns]; !ok {
-			a.nsEventHandlers[ns] = []WSSpeakerStructMessageHandler{h}
+			a.nsEventHandlers[ns] = []SpeakerStructMessageHandler{h}
 		} else {
 			a.nsEventHandlers[ns] = append(a.nsEventHandlers[ns], h)
 		}
@@ -248,7 +248,7 @@ func (a *wsStructSpeakerEventDispatcher) AddStructMessageHandler(h WSSpeakerStru
 	a.eventHandlersLock.Unlock()
 }
 
-func (a *wsStructSpeakerEventDispatcher) dispatchMessage(c *WSStructSpeaker, m *WSStructMessage) {
+func (a *structSpeakerEventDispatcher) dispatchMessage(c *StructSpeaker, m *StructMessage) {
 	// check whether it is a reply
 	if c.onReply(m) {
 		return
@@ -256,38 +256,38 @@ func (a *wsStructSpeakerEventDispatcher) dispatchMessage(c *WSStructSpeaker, m *
 
 	a.eventHandlersLock.RLock()
 	for _, l := range a.nsEventHandlers[m.Namespace] {
-		l.OnWSStructMessage(c, m)
+		l.OnStructMessage(c, m)
 	}
 	for _, l := range a.nsEventHandlers[WildcardNamespace] {
-		l.OnWSStructMessage(c, m)
+		l.OnStructMessage(c, m)
 	}
 	a.eventHandlersLock.RUnlock()
 }
 
 // OnDisconnected is implemented here to avoid infinite loop since the default
 // implemtation is triggering OnDisconnected too.
-func (p *wsStructSpeakerEventDispatcher) OnDisconnected(c WSSpeaker) {
+func (p *structSpeakerEventDispatcher) OnDisconnected(c Speaker) {
 }
 
 // OnConnected is implemented here to avoid infinite loop since the default
 // implemtation is triggering OnDisconnected too.
-func (p *wsStructSpeakerEventDispatcher) OnConnected(c WSSpeaker) {
+func (p *structSpeakerEventDispatcher) OnConnected(c Speaker) {
 }
 
-type wsStructSpeakerPoolEventDispatcher struct {
-	dispatcher *wsStructSpeakerEventDispatcher
-	pool       WSSpeakerPool
+type structSpeakerPoolEventDispatcher struct {
+	dispatcher *structSpeakerEventDispatcher
+	pool       SpeakerPool
 }
 
 // AddStructMessageHandler adds a new listener for Struct messages.
-func (d *wsStructSpeakerPoolEventDispatcher) AddStructMessageHandler(h WSSpeakerStructMessageHandler, namespaces []string) {
+func (d *structSpeakerPoolEventDispatcher) AddStructMessageHandler(h SpeakerStructMessageHandler, namespaces []string) {
 	d.dispatcher.AddStructMessageHandler(h, namespaces)
 	for _, client := range d.pool.GetSpeakers() {
-		client.(*WSStructSpeaker).AddStructMessageHandler(h, namespaces)
+		client.(*StructSpeaker).AddStructMessageHandler(h, namespaces)
 	}
 }
 
-func (d *wsStructSpeakerPoolEventDispatcher) AddStructSpeaker(c *WSStructSpeaker) {
+func (d *structSpeakerPoolEventDispatcher) AddStructSpeaker(c *StructSpeaker) {
 	d.dispatcher.eventHandlersLock.RLock()
 	for ns, handlers := range d.dispatcher.nsEventHandlers {
 		for _, handler := range handlers {
@@ -297,25 +297,25 @@ func (d *wsStructSpeakerPoolEventDispatcher) AddStructSpeaker(c *WSStructSpeaker
 	d.dispatcher.eventHandlersLock.RUnlock()
 }
 
-func newWSStructSpeakerPoolEventDispatcher(pool WSSpeakerPool) *wsStructSpeakerPoolEventDispatcher {
-	return &wsStructSpeakerPoolEventDispatcher{
-		dispatcher: newWSStructSpeakerEventDispatcher(),
+func newStructSpeakerPoolEventDispatcher(pool SpeakerPool) *structSpeakerPoolEventDispatcher {
+	return &structSpeakerPoolEventDispatcher{
+		dispatcher: newStructSpeakerEventDispatcher(),
 		pool:       pool,
 	}
 }
 
-// WSStructSpeaker is a WSSpeaker able to handle Struct Message and Request/Reply calls.
-type WSStructSpeaker struct {
-	WSSpeaker
-	*wsStructSpeakerEventDispatcher
+// StructSpeaker is a Speaker able to handle Struct Message and Request/Reply calls.
+type StructSpeaker struct {
+	Speaker
+	*structSpeakerEventDispatcher
 	nsSubscribed   map[string]bool
 	replyChanMutex common.RWMutex
-	replyChan      map[string]chan *WSStructMessage
+	replyChan      map[string]chan *StructMessage
 }
 
 // Send sends a message according to the namespace.
-func (s *WSStructSpeaker) Send(m WSMessage) {
-	if msg, ok := m.(WSStructMessage); ok {
+func (s *StructSpeaker) Send(m Message) {
+	if msg, ok := m.(StructMessage); ok {
 		if _, ok := s.nsSubscribed[msg.Namespace]; !ok {
 			if _, ok := s.nsSubscribed[WildcardNamespace]; !ok {
 				return
@@ -323,10 +323,10 @@ func (s *WSStructSpeaker) Send(m WSMessage) {
 		}
 	}
 
-	s.WSSpeaker.SendMessage(m)
+	s.Speaker.SendMessage(m)
 }
 
-func (s *WSStructSpeaker) onReply(m *WSStructMessage) bool {
+func (s *StructSpeaker) onReply(m *StructMessage) bool {
 	s.replyChanMutex.RLock()
 	ch, ok := s.replyChan[m.UUID]
 	if ok {
@@ -338,8 +338,8 @@ func (s *WSStructSpeaker) onReply(m *WSStructMessage) bool {
 }
 
 // Request sends a Struct message request waiting for a reply using the given timeout.
-func (s *WSStructSpeaker) Request(m *WSStructMessage, timeout time.Duration) (*WSStructMessage, error) {
-	ch := make(chan *WSStructMessage, 1)
+func (s *StructSpeaker) Request(m *StructMessage, timeout time.Duration) (*StructMessage, error) {
+	ch := make(chan *StructMessage, 1)
 
 	s.replyChanMutex.Lock()
 	s.replyChan[m.UUID] = ch
@@ -362,17 +362,17 @@ func (s *WSStructSpeaker) Request(m *WSStructMessage, timeout time.Duration) (*W
 	}
 }
 
-// OnMessage checks that the WSMessage comes from a WSStructSpeaker. It parses
+// OnMessage checks that the Message comes from a StructSpeaker. It parses
 // the Struct message and then dispatch the message to the proper listeners according
 // to the namespace.
-func (s *WSStructSpeaker) OnMessage(c WSSpeaker, m WSMessage) {
-	if c, ok := c.(*WSStructSpeaker); ok {
-		msg := WSStructMessage{}
+func (s *StructSpeaker) OnMessage(c Speaker, m Message) {
+	if c, ok := c.(*StructSpeaker); ok {
+		msg := StructMessage{}
 		if c.GetClientProtocol() == ProtobufProtocol {
-			mProtobuf := WSStructMessageProtobuf{}
+			mProtobuf := StructMessageProtobuf{}
 			b := m.Bytes(ProtobufProtocol)
 			if err := proto.Unmarshal(b, &mProtobuf); err != nil {
-				logging.GetLogger().Errorf("Error while decoding Protobuf WSStructMessage %s\n%s", err.Error(), hex.Dump(b))
+				logging.GetLogger().Errorf("Error while decoding Protobuf StructMessage %s\n%s", err.Error(), hex.Dump(b))
 				return
 			}
 			msg.Protocol = ProtobufProtocol
@@ -382,10 +382,10 @@ func (s *WSStructSpeaker) OnMessage(c WSSpeaker, m WSMessage) {
 			msg.Status = mProtobuf.Status
 			msg.ProtobufObj = mProtobuf.Obj
 		} else {
-			mJSON := WSStructMessageJSON{}
+			mJSON := StructMessageJSON{}
 			b := m.Bytes(JSONProtocol)
 			if err := json.Unmarshal(b, &mJSON); err != nil {
-				logging.GetLogger().Errorf("Error while decoding JSON WSStructMessage %s\n%s", err.Error(), hex.Dump(b))
+				logging.GetLogger().Errorf("Error while decoding JSON StructMessage %s\n%s", err.Error(), hex.Dump(b))
 				return
 			}
 			msg.Protocol = JSONProtocol
@@ -395,129 +395,129 @@ func (s *WSStructSpeaker) OnMessage(c WSSpeaker, m WSMessage) {
 			msg.Status = mJSON.Status
 			msg.JsonObj = mJSON.Obj
 		}
-		s.wsStructSpeakerEventDispatcher.dispatchMessage(c, &msg)
+		s.structSpeakerEventDispatcher.dispatchMessage(c, &msg)
 	}
 }
 
-func newWSStructSpeaker(c WSSpeaker) *WSStructSpeaker {
-	s := &WSStructSpeaker{
-		WSSpeaker:                      c,
-		wsStructSpeakerEventDispatcher: newWSStructSpeakerEventDispatcher(),
-		nsSubscribed:                   make(map[string]bool),
-		replyChan:                      make(map[string]chan *WSStructMessage),
+func newStructSpeaker(c Speaker) *StructSpeaker {
+	s := &StructSpeaker{
+		Speaker: c,
+		structSpeakerEventDispatcher: newStructSpeakerEventDispatcher(),
+		nsSubscribed:                 make(map[string]bool),
+		replyChan:                    make(map[string]chan *StructMessage),
 	}
 
-	// subscribing to itself so that the WSStructSpeaker can get WSMessage and can convert them
-	// to WSStructMessage and then forward them to its own even listeners.
+	// subscribing to itself so that the StructSpeaker can get Message and can convert them
+	// to StructMessage and then forward them to its own even listeners.
 	s.AddEventHandler(s)
 	return s
 }
 
-func (c *WSClient) UpgradeToWSStructSpeaker() *WSStructSpeaker {
-	s := newWSStructSpeaker(c)
+func (c *Client) UpgradeToStructSpeaker() *StructSpeaker {
+	s := newStructSpeaker(c)
 	c.Lock()
 	c.wsSpeaker = s
 	c.Unlock()
 	return s
 }
 
-func (c *wsIncomingClient) upgradeToWSStructSpeaker() *WSStructSpeaker {
-	s := newWSStructSpeaker(c)
+func (c *wsIncomingClient) upgradeToStructSpeaker() *StructSpeaker {
+	s := newStructSpeaker(c)
 	c.Lock()
 	c.wsSpeaker = s
 	c.Unlock()
 	return s
 }
 
-// WSStructSpeakerPool is the interface of a pool of WSStructSpeakers.
-type WSStructSpeakerPool interface {
-	WSSpeakerPool
-	WSSpeakerStructMessageDispatcher
-	Request(host string, request *WSStructMessage, timeout time.Duration) (*WSStructMessage, error)
+// StructSpeakerPool is the interface of a pool of StructSpeakers.
+type StructSpeakerPool interface {
+	SpeakerPool
+	SpeakerStructMessageDispatcher
+	Request(host string, request *StructMessage, timeout time.Duration) (*StructMessage, error)
 }
 
-// WSStructClientPool is a WSClientPool able to send WSStructMessage.
-type WSStructClientPool struct {
-	*WSClientPool
-	*wsStructSpeakerPoolEventDispatcher
+// StructClientPool is a ClientPool able to send StructMessage.
+type StructClientPool struct {
+	*ClientPool
+	*structSpeakerPoolEventDispatcher
 }
 
-// AddClient adds a WSClient to the pool.
-func (a *WSStructClientPool) AddClient(c WSSpeaker) error {
-	if wc, ok := c.(*WSClient); ok {
-		speaker := wc.UpgradeToWSStructSpeaker()
-		a.WSClientPool.AddClient(speaker)
-		a.wsStructSpeakerPoolEventDispatcher.AddStructSpeaker(speaker)
+// AddClient adds a Client to the pool.
+func (a *StructClientPool) AddClient(c Speaker) error {
+	if wc, ok := c.(*Client); ok {
+		speaker := wc.UpgradeToStructSpeaker()
+		a.ClientPool.AddClient(speaker)
+		a.structSpeakerPoolEventDispatcher.AddStructSpeaker(speaker)
 	} else {
 		return errors.New("wrong client type")
 	}
 	return nil
 }
 
-// Request sends a Request Struct message to the WSSpeaker of the given remote host.
-func (s *WSStructClientPool) Request(host string, request *WSStructMessage, timeout time.Duration) (*WSStructMessage, error) {
-	c := s.WSClientPool.GetSpeakerByRemoteHost(host)
+// Request sends a Request Struct message to the Speaker of the given remote host.
+func (s *StructClientPool) Request(host string, request *StructMessage, timeout time.Duration) (*StructMessage, error) {
+	c := s.ClientPool.GetSpeakerByRemoteHost(host)
 	if c == nil {
 		return nil, common.ErrNotFound
 	}
 
-	return c.(*WSStructSpeaker).Request(request, timeout)
+	return c.(*StructSpeaker).Request(request, timeout)
 }
 
-// NewWSStructClientPool returns a new WSStructClientPool.
-func NewWSStructClientPool(name string) *WSStructClientPool {
-	pool := NewWSClientPool(name)
-	return &WSStructClientPool{
-		WSClientPool:                       pool,
-		wsStructSpeakerPoolEventDispatcher: newWSStructSpeakerPoolEventDispatcher(pool),
+// NewStructClientPool returns a new StructClientPool.
+func NewStructClientPool(name string) *StructClientPool {
+	pool := NewClientPool(name)
+	return &StructClientPool{
+		ClientPool:                       pool,
+		structSpeakerPoolEventDispatcher: newStructSpeakerPoolEventDispatcher(pool),
 	}
 }
 
-// WSStructServer is a WSServer able to handle WSStructSpeaker.
-type WSStructServer struct {
-	*WSServer
-	*wsStructSpeakerPoolEventDispatcher
+// StructServer is a Server able to handle StructSpeaker.
+type StructServer struct {
+	*Server
+	*structSpeakerPoolEventDispatcher
 }
 
-// Request sends a Request Struct message to the WSSpeaker of the given remote host.
-func (s *WSStructServer) Request(host string, request *WSStructMessage, timeout time.Duration) (*WSStructMessage, error) {
-	c := s.WSServer.GetSpeakerByRemoteHost(host)
+// Request sends a Request Struct message to the Speaker of the given remote host.
+func (s *StructServer) Request(host string, request *StructMessage, timeout time.Duration) (*StructMessage, error) {
+	c := s.Server.GetSpeakerByRemoteHost(host)
 	if c == nil {
 		return nil, common.ErrNotFound
 	}
 
-	return c.(*WSStructSpeaker).Request(request, timeout)
+	return c.(*StructSpeaker).Request(request, timeout)
 }
 
 // OnMessage websocket event.
-func (s *WSStructServer) OnMessage(c WSSpeaker, m WSMessage) {
+func (s *StructServer) OnMessage(c Speaker, m Message) {
 }
 
 // OnConnected websocket event.
-func (s *WSStructServer) OnConnected(c WSSpeaker) {
+func (s *StructServer) OnConnected(c Speaker) {
 }
 
-// OnDisconnected removes the WSSpeaker from the incomer pool.
-func (s *WSStructServer) OnDisconnected(c WSSpeaker) {
-	s.WSServer.wsIncomerPool.RemoveClient(c)
+// OnDisconnected removes the Speaker from the incomer pool.
+func (s *StructServer) OnDisconnected(c Speaker) {
+	s.Server.incomerPool.RemoveClient(c)
 }
 
-// NewWSStructServer returns a new WSStructServer
-func NewWSStructServer(server *WSServer) *WSStructServer {
-	s := &WSStructServer{
-		WSServer: server,
-		wsStructSpeakerPoolEventDispatcher: newWSStructSpeakerPoolEventDispatcher(server),
+// NewStructServer returns a new StructServer
+func NewStructServer(server *Server) *StructServer {
+	s := &StructServer{
+		Server: server,
+		structSpeakerPoolEventDispatcher: newStructSpeakerPoolEventDispatcher(server),
 	}
 
-	s.WSServer.wsIncomerPool.AddEventHandler(s)
+	s.Server.incomerPool.AddEventHandler(s)
 
-	// This incomerHandler upgrades the incomers to WSStructSpeaker thus being able to parse StructMessage.
-	// The server set also the WSJsonSpeaker with the proper namspaces it subscribes to thanks to the
+	// This incomerHandler upgrades the incomers to StructSpeaker thus being able to parse StructMessage.
+	// The server set also the StructSpeaker with the proper namspaces it subscribes to thanks to the
 	// headers.
-	s.WSServer.incomerHandler = func(conn *websocket.Conn, r *auth.AuthenticatedRequest) WSSpeaker {
-		// the default incomer handler creates a standard wsIncomerClient that we upgrade to a WSStructSpeaker
+	s.Server.incomerHandler = func(conn *websocket.Conn, r *auth.AuthenticatedRequest) Speaker {
+		// the default incomer handler creates a standard wsIncomingClient that we upgrade to a StructSpeaker
 		// being able to handle the StructMessage
-		c := defaultIncomerHandler(conn, r).upgradeToWSStructSpeaker()
+		c := defaultIncomerHandler(conn, r).upgradeToStructSpeaker()
 
 		// from headers
 		if namespaces, ok := r.Header["X-Websocket-Namespace"]; ok {
@@ -538,7 +538,7 @@ func NewWSStructServer(server *WSServer) *WSStructServer {
 			c.nsSubscribed[WildcardNamespace] = true
 		}
 
-		s.wsStructSpeakerPoolEventDispatcher.AddStructSpeaker(c)
+		s.structSpeakerPoolEventDispatcher.AddStructSpeaker(c)
 
 		return c
 	}
