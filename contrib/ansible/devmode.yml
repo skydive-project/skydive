@@ -2,6 +2,9 @@
 - name: Deploy Skydive development machine
   hosts: dev
   become: yes
+  pre_tasks:
+  - selinux: state=disabled
+  - shell: setenforce 0
   roles:
   - role: elasticsearch
   - role: orientdb
