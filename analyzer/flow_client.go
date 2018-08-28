@@ -33,14 +33,14 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	ws "github.com/skydive-project/skydive/websocket"
 )
 
 // FlowClientPool describes a flow client pool.
 type FlowClientPool struct {
 	common.RWMutex
-	shttp.DefaultWSSpeakerEventHandler
+	ws.DefaultWSSpeakerEventHandler
 	flowClients []*FlowClient
 }
 
@@ -66,9 +66,9 @@ type FlowClientUDPConn struct {
 
 // FlowClientWebSocketConn describes WebSocket client connection
 type FlowClientWebSocketConn struct {
-	shttp.DefaultWSSpeakerEventHandler
+	ws.DefaultWSSpeakerEventHandler
 	url      *url.URL
-	wsClient *shttp.WSClient
+	wsClient *ws.WSClient
 }
 
 // Close the connection
@@ -108,7 +108,7 @@ func (c *FlowClientWebSocketConn) Close() error {
 // Connect to the WebSocket flow server
 func (c *FlowClientWebSocketConn) Connect() error {
 	authOptions := AnalyzerClusterAuthenticationOpts()
-	c.wsClient = shttp.NewWSClientFromConfig(common.AgentService, c.url, authOptions, nil)
+	c.wsClient = ws.NewWSClientFromConfig(common.AgentService, c.url, authOptions, nil)
 	c.wsClient.Connect()
 	c.wsClient.AddEventHandler(c)
 
@@ -195,7 +195,7 @@ func NewFlowClient(addr string, port int) (*FlowClient, error) {
 }
 
 // OnConnected websocket event handler
-func (p *FlowClientPool) OnConnected(c shttp.WSSpeaker) {
+func (p *FlowClientPool) OnConnected(c ws.WSSpeaker) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -219,7 +219,7 @@ func (p *FlowClientPool) OnConnected(c shttp.WSSpeaker) {
 }
 
 // OnDisconnected websocket event handler
-func (p *FlowClientPool) OnDisconnected(c shttp.WSSpeaker) {
+func (p *FlowClientPool) OnDisconnected(c ws.WSSpeaker) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -256,7 +256,7 @@ func (p *FlowClientPool) Close() {
 // NewFlowClientPool returns a new FlowClientPool using the websocket connections
 // to maintain the pool of client up to date according to the websocket connections
 // status.
-func NewFlowClientPool(pool shttp.WSSpeakerPool) *FlowClientPool {
+func NewFlowClientPool(pool ws.WSSpeakerPool) *FlowClientPool {
 	p := &FlowClientPool{
 		flowClients: make([]*FlowClient, 0),
 	}

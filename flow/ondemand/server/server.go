@@ -30,10 +30,10 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow/ondemand"
 	"github.com/skydive-project/skydive/flow/probes"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
+	ws "github.com/skydive-project/skydive/websocket"
 )
 
 type activeProbe struct {
@@ -47,10 +47,10 @@ type activeProbe struct {
 type OnDemandProbeServer struct {
 	common.RWMutex
 	graph.DefaultGraphListener
-	shttp.DefaultWSSpeakerEventHandler
+	ws.DefaultWSSpeakerEventHandler
 	Graph              *graph.Graph
 	Probes             *probe.ProbeBundle
-	WSStructClientPool *shttp.WSStructClientPool
+	WSStructClientPool *ws.WSStructClientPool
 	activeProbes       map[graph.Identifier]*activeProbe
 }
 
@@ -160,7 +160,7 @@ func (p *activeProbe) OnStopped() {
 }
 
 // OnWSStructMessage websocket message, valid message type are CaptureStart, CaptureStop
-func (o *OnDemandProbeServer) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
+func (o *OnDemandProbeServer) OnWSStructMessage(c ws.WSSpeaker, msg *ws.WSStructMessage) {
 	var query ondemand.CaptureQuery
 	if err := msg.UnmarshalObj(&query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode capture %v", msg)
@@ -247,7 +247,7 @@ func (o *OnDemandProbeServer) Stop() {
 }
 
 // NewOnDemandProbeServer creates a new Ondemand probes server based on graph and websocket
-func NewOnDemandProbeServer(fb *probe.ProbeBundle, g *graph.Graph, pool *shttp.WSStructClientPool) (*OnDemandProbeServer, error) {
+func NewOnDemandProbeServer(fb *probe.ProbeBundle, g *graph.Graph, pool *ws.WSStructClientPool) (*OnDemandProbeServer, error) {
 	return &OnDemandProbeServer{
 		Graph:              g,
 		Probes:             fb,

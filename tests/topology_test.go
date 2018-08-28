@@ -40,6 +40,7 @@ import (
 	"github.com/skydive-project/skydive/tests/helper"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
+	ws "github.com/skydive-project/skydive/websocket"
 )
 
 func TestBridgeOVS(t *testing.T) {
@@ -571,11 +572,11 @@ func TestOVSOwnershipLink(t *testing.T) {
 }
 
 type TopologyInjecter struct {
-	shttp.DefaultWSSpeakerEventHandler
+	ws.DefaultWSSpeakerEventHandler
 	connected int32
 }
 
-func (t *TopologyInjecter) OnConnected(c shttp.WSSpeaker) {
+func (t *TopologyInjecter) OnConnected(c ws.WSSpeaker) {
 	atomic.StoreInt32(&t.connected, 1)
 }
 
@@ -589,13 +590,13 @@ func TestQueryMetadata(t *testing.T) {
 			}
 
 			hostname, _ := os.Hostname()
-			wspool := shttp.NewWSStructClientPool("TestQueryMetadata")
+			wspool := ws.NewWSStructClientPool("TestQueryMetadata")
 			for _, sa := range addresses {
-				client := shttp.NewWSClient(hostname+"-cli", common.UnknownService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher"), authOptions, http.Header{}, 1000)
+				client := ws.NewWSClient(hostname+"-cli", common.UnknownService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher"), authOptions, http.Header{}, 1000)
 				wspool.AddClient(client)
 			}
 
-			masterElection := shttp.NewWSMasterElection(wspool)
+			masterElection := ws.NewWSMasterElection(wspool)
 
 			eventHandler := &TopologyInjecter{}
 			wspool.AddEventHandler(eventHandler)
@@ -633,12 +634,12 @@ func TestQueryMetadata(t *testing.T) {
 			n.Decode(m)
 
 			// The first message should be rejected as it has no 'Type' attribute
-			msg := shttp.NewWSStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
+			msg := ws.NewWSStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
 			masterElection.SendMessageToMaster(msg)
 
 			m["Metadata"].(map[string]interface{})["Type"] = "external"
 			n.Decode(m)
-			msg = shttp.NewWSStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
+			msg = ws.NewWSStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
 			masterElection.SendMessageToMaster(msg)
 
 			return nil

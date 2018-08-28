@@ -20,7 +20,7 @@
  *
  */
 
-package http
+package websocket
 
 import (
 	"math/rand"
@@ -150,8 +150,8 @@ func (s *WSPool) RemoveClient(c WSSpeaker) bool {
 }
 
 // GetStatus returns the states of the WebSocket clients
-func (s *WSPool) GetStatus() map[string]WSConnStatus {
-	clients := make(map[string]WSConnStatus)
+func (s *WSPool) GetStatus() map[string]ConnStatus {
+	clients := make(map[string]ConnStatus)
 	for _, client := range s.GetSpeakers() {
 		clients[client.GetRemoteHost()] = client.GetStatus()
 	}

@@ -20,7 +20,7 @@
  *
  */
 
-package http
+package websocket
 
 import (
 	"errors"
@@ -31,6 +31,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -99,12 +100,12 @@ func (f *fakeWSMessageClientSubscriptionHandler) OnWSStructMessage(c WSSpeaker, 
 
 func TestWSMessageSubscription(t *testing.T) {
 	logging.InitLogging()
-	httpserver := NewServer("myhost", common.AnalyzerService, "localhost", 59999, "")
+	httpserver := shttp.NewServer("myhost", common.AnalyzerService, "localhost", 59999, "")
 
 	go httpserver.ListenAndServe()
 	defer httpserver.Stop()
 
-	wsserver := NewWSStructServer(NewWSServer(httpserver, "/wstest", NewNoAuthenticationBackend()))
+	wsserver := NewWSStructServer(NewWSServer(httpserver, "/wstest", shttp.NewNoAuthenticationBackend()))
 
 	serverHandler := &fakeWSMessageServerSubscriptionHandler{t: t, server: wsserver, received: make(map[string]bool)}
 	wsserver.AddEventHandler(serverHandler)

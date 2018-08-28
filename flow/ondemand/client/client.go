@@ -34,9 +34,9 @@ import (
 	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow/ondemand"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
+	ws "github.com/skydive-project/skydive/websocket"
 )
 
 // OnDemandProbeClient describes an ondemand probe client based on a websocket
@@ -46,8 +46,8 @@ type OnDemandProbeClient struct {
 	graph.DefaultGraphListener
 	graph                *graph.Graph
 	captureHandler       *api.CaptureAPIHandler
-	agentPool            shttp.WSStructSpeakerPool
-	subscriberPool       shttp.WSStructSpeakerPool
+	agentPool            ws.WSStructSpeakerPool
+	subscriberPool       ws.WSStructSpeakerPool
 	captures             map[string]*types.Capture
 	watcher              api.StoppableWatcher
 	registeredNodes      map[string]string
@@ -62,7 +62,7 @@ type nodeProbe struct {
 }
 
 // OnWSStructMessage event, valid message type : CaptureStartReply or CaptureStopReply message
-func (o *OnDemandProbeClient) OnWSStructMessage(c shttp.WSSpeaker, m *shttp.WSStructMessage) {
+func (o *OnDemandProbeClient) OnWSStructMessage(c ws.WSSpeaker, m *ws.WSStructMessage) {
 	var query ondemand.CaptureQuery
 	if err := m.UnmarshalObj(&query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode capture %v", m)
@@ -80,7 +80,7 @@ func (o *OnDemandProbeClient) OnWSStructMessage(c shttp.WSSpeaker, m *shttp.WSSt
 		} else {
 			logging.GetLogger().Debugf("Capture start request succeeded %v", m.Debug())
 		}
-		o.subscriberPool.BroadcastMessage(shttp.NewWSStructMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", query.Capture.UUID))
+		o.subscriberPool.BroadcastMessage(ws.NewWSStructMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", query.Capture.UUID))
 	case "CaptureStopReply":
 		if m.Status == http.StatusOK {
 			logging.GetLogger().Debugf("Capture stop request succeeded %v", m.Debug())
@@ -156,7 +156,7 @@ func (o *OnDemandProbeClient) registerProbe(np nodeProbe) bool {
 		Capture: *np.capture,
 	}
 
-	msg := shttp.NewWSStructMessage(ondemand.Namespace, "CaptureStart", cq)
+	msg := ws.NewWSStructMessage(ondemand.Namespace, "CaptureStart", cq)
 
 	if err := o.agentPool.SendMessageTo(msg, np.host); err != nil {
 		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", np.host, err.Error())
@@ -175,7 +175,7 @@ func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node, capture *types.C
 		Capture: *capture,
 	}
 
-	msg := shttp.NewWSStructMessage(ondemand.Namespace, "CaptureStop", cq)
+	msg := ws.NewWSStructMessage(ondemand.Namespace, "CaptureStop", cq)
 
 	if _, err := node.GetFieldString("Capture.ID"); err != nil {
 		return false
@@ -253,7 +253,7 @@ func (o *OnDemandProbeClient) OnNodeUpdated(n *graph.Node) {
 func (o *OnDemandProbeClient) OnNodeDeleted(n *graph.Node) {
 	o.RLock()
 	if uuid, ok := o.registeredNodes[string(n.ID)]; ok {
-		o.subscriberPool.BroadcastMessage(shttp.NewWSStructMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", uuid))
+		o.subscriberPool.BroadcastMessage(ws.NewWSStructMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", uuid))
 	}
 	o.RUnlock()
 }
@@ -356,10 +356,10 @@ func (o *OnDemandProbeClient) onAPIWatcherEvent(action string, id string, resour
 	capture := resource.(*types.Capture)
 	switch action {
 	case "init", "create", "set", "update":
-		o.subscriberPool.BroadcastMessage(shttp.NewWSStructMessage(ondemand.NotificationNamespace, "CaptureAdded", capture))
+		o.subscriberPool.BroadcastMessage(ws.NewWSStructMessage(ondemand.NotificationNamespace, "CaptureAdded", capture))
 		o.onCaptureAdded(capture)
 	case "expire", "delete":
-		o.subscriberPool.BroadcastMessage(shttp.NewWSStructMessage(ondemand.NotificationNamespace, "CaptureDeleted", capture))
+		o.subscriberPool.BroadcastMessage(ws.NewWSStructMessage(ondemand.NotificationNamespace, "CaptureDeleted", capture))
 		o.onCaptureDeleted(capture)
 	}
 }
@@ -382,7 +382,7 @@ func (o *OnDemandProbeClient) Stop() {
 }
 
 // NewOnDemandProbeClient creates a new ondemand probe client based on Capture API, graph and websocket
-func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, agentPool shttp.WSStructSpeakerPool, subscriberPool shttp.WSStructSpeakerPool, etcdClient *etcd.Client) *OnDemandProbeClient {
+func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, agentPool ws.WSStructSpeakerPool, subscriberPool ws.WSStructSpeakerPool, etcdClient *etcd.Client) *OnDemandProbeClient {
 	resources := ch.Index()
 	captures := make(map[string]*types.Capture)
 	for _, resource := range resources {

@@ -27,7 +27,7 @@ import (
 	"errors"
 
 	"github.com/skydive-project/skydive/common"
-	shttp "github.com/skydive-project/skydive/http"
+	ws "github.com/skydive-project/skydive/websocket"
 )
 
 // Graph message type
@@ -63,7 +63,7 @@ type SyncMsg struct {
 }
 
 // UnmarshalWSMessage deserialize the websocket message
-func UnmarshalWSMessage(msg *shttp.WSStructMessage) (string, interface{}, error) {
+func UnmarshalWSMessage(msg *ws.WSStructMessage) (string, interface{}, error) {
 	var obj interface{}
 	if err := msg.DecodeObj(&obj); err != nil {
 		return "", msg, err

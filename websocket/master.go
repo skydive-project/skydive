@@ -20,7 +20,7 @@
  *
  */
 
-package http
+package websocket
 
 import "github.com/skydive-project/skydive/common"
 

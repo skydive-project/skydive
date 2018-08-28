@@ -20,15 +20,17 @@
  *
  */
 
-package http
+package websocket
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/abbot/go-http-auth"
 	"github.com/gorilla/websocket"
 
 	"github.com/skydive-project/skydive/common"
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/rbac"
 )
@@ -40,7 +42,7 @@ type WSIncomerHandler func(*websocket.Conn, *auth.AuthenticatedRequest) WSSpeake
 type WSServer struct {
 	common.RWMutex
 	*wsIncomerPool
-	server         *Server
+	server         *shttp.Server
 	incomerHandler WSIncomerHandler
 }
 
@@ -51,6 +53,14 @@ func defaultIncomerHandler(conn *websocket.Conn, r *auth.AuthenticatedRequest) *
 	c.start()
 
 	return c
+}
+
+func getRequestParameter(r *http.Request, name string) string {
+	param := r.Header.Get(name)
+	if param == "" {
+		param = r.URL.Query().Get(strings.ToLower(name))
+	}
+	return param
 }
 
 func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
@@ -99,7 +109,7 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 }
 
 // NewWSServer returns a new WSServer. The given auth backend will validate the credentials
-func NewWSServer(server *Server, endpoint string, authBackend AuthenticationBackend) *WSServer {
+func NewWSServer(server *shttp.Server, endpoint string, authBackend shttp.AuthenticationBackend) *WSServer {
 	s := &WSServer{
 		wsIncomerPool: newWSIncomerPool(endpoint), // server inherites from a WSSpeaker pool
 		incomerHandler: func(c *websocket.Conn, a *auth.AuthenticatedRequest) WSSpeaker {

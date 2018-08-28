@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/skydive-project/skydive/analyzer"
 	gclient "github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
@@ -42,9 +43,10 @@ import (
 	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
+	"github.com/skydive-project/skydive/websocket"
 )
 
-func getAnalyzerStatus(client *shttp.CrudClient) (status types.AnalyzerStatus, err error) {
+func getAnalyzerStatus(client *shttp.CrudClient) (status analyzer.Status, err error) {
 	resp, err := client.Request("GET", "status", nil, nil)
 	if err != nil {
 		return status, err
@@ -96,7 +98,7 @@ func checkHostNodes(client *shttp.CrudClient, gh *gclient.GremlinQueryHelper, no
 	return common.Retry(retry, 10, 5*time.Second)
 }
 
-func checkPeers(client *shttp.CrudClient, peersExpected int, state shttp.WSConnState) error {
+func checkPeers(client *shttp.CrudClient, peersExpected int, state websocket.ConnState) error {
 	status, err := getAnalyzerStatus(client)
 	if err != nil {
 		return err

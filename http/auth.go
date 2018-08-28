@@ -48,6 +48,8 @@ const (
 	tokenName       = "authtok"
 )
 
+// AuthenticationOpts describes the elements used by a client to authenticate
+// to an HTTP server. It can be either a username/password couple or a token
 type AuthenticationOpts struct {
 	Username string
 	Password string

@@ -26,23 +26,23 @@ import (
 	"sync"
 
 	"github.com/skydive-project/skydive/common"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
+	ws "github.com/skydive-project/skydive/websocket"
 )
 
 // TopologyAgentEndpoint serves the graph for agents.
 type TopologyAgentEndpoint struct {
 	common.RWMutex
-	shttp.DefaultWSSpeakerEventHandler
-	pool   shttp.WSStructSpeakerPool
+	ws.DefaultWSSpeakerEventHandler
+	pool   ws.WSStructSpeakerPool
 	Graph  *graph.Graph
 	cached *graph.CachedBackend
 	wg     sync.WaitGroup
 }
 
 // OnDisconnected called when an agent disconnected.
-func (t *TopologyAgentEndpoint) OnDisconnected(c shttp.WSSpeaker) {
+func (t *TopologyAgentEndpoint) OnDisconnected(c ws.WSSpeaker) {
 	host := c.GetRemoteHost()
 	if host == "" {
 		return
@@ -55,7 +55,7 @@ func (t *TopologyAgentEndpoint) OnDisconnected(c shttp.WSSpeaker) {
 }
 
 // OnWSStructMessage is triggered when a message from the agent is received.
-func (t *TopologyAgentEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
+func (t *TopologyAgentEndpoint) OnWSStructMessage(c ws.WSSpeaker, msg *ws.WSStructMessage) {
 	msgType, obj, err := graph.UnmarshalWSMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
@@ -100,7 +100,7 @@ func (t *TopologyAgentEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.
 }
 
 // NewTopologyAgentEndpoint returns a new server that handles messages from the agents
-func NewTopologyAgentEndpoint(pool shttp.WSStructSpeakerPool, cached *graph.CachedBackend, g *graph.Graph) (*TopologyAgentEndpoint, error) {
+func NewTopologyAgentEndpoint(pool ws.WSStructSpeakerPool, cached *graph.CachedBackend, g *graph.Graph) (*TopologyAgentEndpoint, error) {
 	t := &TopologyAgentEndpoint{
 		Graph:  g,
 		pool:   pool,

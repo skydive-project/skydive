@@ -26,7 +26,6 @@ import (
 	"errors"
 	"time"
 
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -69,17 +68,6 @@ func NewAlert() *Alert {
 	}
 }
 
-// AnalyzerStatus describes the status of an analyzer
-type AnalyzerStatus struct {
-	Agents      map[string]shttp.WSConnStatus
-	Peers       PeersStatus
-	Publishers  map[string]shttp.WSConnStatus
-	Subscribers map[string]shttp.WSConnStatus
-	Alerts      ElectionStatus
-	Captures    ElectionStatus
-	Probes      []string
-}
-
 // Capture describes a capture API
 type Capture struct {
 	BasicResource
@@ -107,9 +95,47 @@ func NewCapture(query string, bpfFilter string) *Capture {
 	}
 }
 
-// ElectionStatus describes the status of an election
-type ElectionStatus struct {
-	IsMaster bool
+// EdgeRule describes a edge rule
+type EdgeRule struct {
+	UUID         string
+	Name         string
+	Description  string
+	Src          string `valid:"isGremlinExpr"`
+	Dst          string `valid:"isGremlinExpr"`
+	RelationType string `valid:"regexp=^(layer2|ownership|both)$"`
+	Metadata     graph.Metadata
+}
+
+// ID returns the edge rule ID
+func (e *EdgeRule) ID() string {
+	return e.UUID
+}
+
+// SetID set ID
+func (e *EdgeRule) SetID(id string) {
+	e.UUID = id
+}
+
+// NodeRule describes a node rule
+type NodeRule struct {
+	UUID        string
+	Name        string
+	Description string
+	NodeType    string
+	NodeName    string
+	Metadata    graph.Metadata
+	Action      string `valid:"regexp=^(create|update)$"`
+	Query       string `valid:"isGremlinOrEmpty"`
+}
+
+// ID returns the node rule ID
+func (n *NodeRule) ID() string {
+	return n.UUID
+}
+
+// SetID set ID
+func (n *NodeRule) SetID(id string) {
+	n.UUID = id
 }
 
 // PacketInjection packet injector API parameters
@@ -140,12 +166,6 @@ func (pi *PacketInjection) Validate() error {
 		return errors.New("given type is not supported")
 	}
 	return nil
-}
-
-// PeersStatus describes the state of a peer
-type PeersStatus struct {
-	Incomers map[string]shttp.WSConnStatus
-	Outgoers map[string]shttp.WSConnStatus
 }
 
 // TopologyParam topology API parameter
@@ -190,47 +210,4 @@ type Workflow struct {
 	Description   string          `yaml:"description"`
 	Parameters    []WorkflowParam `yaml:"parameters"`
 	Source        string          `valid:"isValidWorkflow" yaml:"source"`
-}
-
-// NodeRule describes a node rule
-type NodeRule struct {
-	UUID        string
-	Name        string
-	Description string
-	NodeType    string
-	NodeName    string
-	Metadata    graph.Metadata
-	Action      string `valid:"regexp=^(create|update)$"`
-	Query       string `valid:"isGremlinOrEmpty"`
-}
-
-// ID returns the node rule ID
-func (n *NodeRule) ID() string {
-	return n.UUID
-}
-
-// SetID set ID
-func (n *NodeRule) SetID(id string) {
-	n.UUID = id
-}
-
-// EdgeRule describes a edge rule
-type EdgeRule struct {
-	UUID         string
-	Name         string
-	Description  string
-	Src          string `valid:"isGremlinExpr"`
-	Dst          string `valid:"isGremlinExpr"`
-	RelationType string `valid:"regexp=^(layer2|ownership|both)$"`
-	Metadata     graph.Metadata
-}
-
-// ID returns the edge rule ID
-func (e *EdgeRule) ID() string {
-	return e.UUID
-}
-
-// SetID set ID
-func (e *EdgeRule) SetID(id string) {
-	e.UUID = id
 }

@@ -41,6 +41,7 @@ import (
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
+	ws "github.com/skydive-project/skydive/websocket"
 )
 
 const (
@@ -76,7 +77,7 @@ type FlowServerUDPConn struct {
 
 // FlowServerWebSocketConn describes a WebSocket flow server connection
 type FlowServerWebSocketConn struct {
-	shttp.DefaultWSSpeakerEventHandler
+	ws.DefaultWSSpeakerEventHandler
 	server                 *shttp.Server
 	ch                     chan *flow.Flow
 	timeOfLastLostFlowsLog time.Time
@@ -101,7 +102,7 @@ type FlowServer struct {
 }
 
 // OnMessage event
-func (c *FlowServerWebSocketConn) OnMessage(client shttp.WSSpeaker, m shttp.WSMessage) {
+func (c *FlowServerWebSocketConn) OnMessage(client ws.WSSpeaker, m ws.WSMessage) {
 	f, err := flow.FromData(m.Bytes(client.GetClientProtocol()))
 	if err != nil {
 		logging.GetLogger().Errorf("Error while parsing flow: %s", err.Error())
@@ -124,7 +125,7 @@ func (c *FlowServerWebSocketConn) OnMessage(client shttp.WSSpeaker, m shttp.WSMe
 // Serve starts a WebSocket flow server
 func (c *FlowServerWebSocketConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sync.WaitGroup) {
 	c.ch = ch
-	server := shttp.NewWSServer(c.server, "/ws/flow", c.auth)
+	server := ws.NewWSServer(c.server, "/ws/flow", c.auth)
 	server.AddEventHandler(c)
 	go func() {
 		server.Start()

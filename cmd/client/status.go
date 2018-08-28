@@ -27,8 +27,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api/client"
-	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 
@@ -59,7 +59,7 @@ var StatusCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		var status types.AnalyzerStatus
+		var status analyzer.Status
 		if err := common.JSONDecode(resp.Body, &status); err != nil {
 			logging.GetLogger().Error(err.Error())
 			os.Exit(1)

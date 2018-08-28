@@ -25,7 +25,7 @@ syntax = "proto3";
    o proto3 fields are optional by default
    o required fields are not allowed in proto3 */
 
-package http;
+package websocket;
 
 // WSStructMessage is a Protobuf based message on top of WSMessage.
 // It implements WSMessage interface and can be sent with via a WSSpeaker.

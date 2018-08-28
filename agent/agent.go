@@ -43,14 +43,15 @@ import (
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
+	ws "github.com/skydive-project/skydive/websocket"
 )
 
 // Agent object started on each hosts/namespaces
 type Agent struct {
-	shttp.DefaultWSSpeakerEventHandler
+	ws.DefaultWSSpeakerEventHandler
 	graph               *graph.Graph
-	wsServer            *shttp.WSStructServer
-	analyzerClientPool  *shttp.WSStructClientPool
+	wsServer            *ws.WSStructServer
+	analyzerClientPool  *ws.WSStructClientPool
 	topologyEndpoint    *topology.TopologySubscriberEndpoint
 	rootNode            *graph.Node
 	topologyProbeBundle *probe.ProbeBundle
@@ -66,8 +67,8 @@ type Agent struct {
 
 // NewAnalyzerWSStructClientPool creates a new http WebSocket client Pool
 // with authentification
-func NewAnalyzerWSStructClientPool(authOptions *shttp.AuthenticationOpts) (*shttp.WSStructClientPool, error) {
-	pool := shttp.NewWSStructClientPool("AnalyzerClientPool")
+func NewAnalyzerWSStructClientPool(authOptions *shttp.AuthenticationOpts) (*ws.WSStructClientPool, error) {
+	pool := ws.NewWSStructClientPool("AnalyzerClientPool")
 
 	addresses, err := config.GetAnalyzerServiceAddresses()
 	if err != nil {
@@ -80,7 +81,7 @@ func NewAnalyzerWSStructClientPool(authOptions *shttp.AuthenticationOpts) (*shtt
 	}
 
 	for _, sa := range addresses {
-		c := shttp.NewWSClientFromConfig(common.AgentService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/agent"), authOptions, nil)
+		c := ws.NewWSClientFromConfig(common.AgentService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/agent"), authOptions, nil)
 		pool.AddClient(c)
 	}
 
@@ -89,13 +90,13 @@ func NewAnalyzerWSStructClientPool(authOptions *shttp.AuthenticationOpts) (*shtt
 
 // AnalyzerConnStatus represents the status of a connection to an analyzer
 type AnalyzerConnStatus struct {
-	shttp.WSConnStatus
+	ws.ConnStatus
 	IsMaster bool
 }
 
 // AgentStatus represents the status of an agent
 type AgentStatus struct {
-	Clients        map[string]shttp.WSConnStatus
+	Clients        map[string]ws.ConnStatus
 	Analyzers      map[string]AnalyzerConnStatus
 	TopologyProbes []string
 	FlowProbes     []string
@@ -112,8 +113,8 @@ func (a *Agent) GetStatus() interface{} {
 	analyzers := make(map[string]AnalyzerConnStatus)
 	for id, status := range a.analyzerClientPool.GetStatus() {
 		analyzers[id] = AnalyzerConnStatus{
-			WSConnStatus: status,
-			IsMaster:     status.Addr == masterAddr && status.Port == masterPort,
+			ConnStatus: status,
+			IsMaster:   status.Addr == masterAddr && status.Port == masterPort,
 		}
 	}
 
@@ -192,7 +193,7 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	wsServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
+	wsServer := ws.NewWSStructServer(ws.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
 
 	// declare all extension available throught API and filtering
 	tr := traversal.NewGremlinTraversalParser()

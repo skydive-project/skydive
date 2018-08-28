@@ -20,12 +20,12 @@
  *
  */
 
-package http
+package websocket
 
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
+	fmt "fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -38,6 +38,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -45,6 +46,50 @@ const (
 	maxMessageSize = 0
 	writeWait      = 10 * time.Second
 )
+
+// ConnState describes the connection state
+type ConnState int32
+
+// WSConnStatus describes the status of a WebSocket connection
+type ConnStatus struct {
+	ServiceType       common.ServiceType
+	ClientProtocol    string
+	Addr              string
+	Port              int
+	Host              string      `json:"-"`
+	State             *ConnState  `json:"IsConnected"`
+	URL               *url.URL    `json:"-"`
+	Headers           http.Header `json:"-"`
+	ConnectTime       time.Time
+	RemoteHost        string             `json:",omitempty"`
+	RemoteServiceType common.ServiceType `json:",omitempty"`
+}
+
+func (s *ConnState) MarshalJSON() ([]byte, error) {
+	switch *s {
+	case common.RunningState:
+		return []byte("true"), nil
+	case common.StoppedState:
+		return []byte("false"), nil
+	}
+	return nil, fmt.Errorf("Invalid state: %d", s)
+}
+
+// UnmarshalJSON deserialize a connection state
+func (s *ConnState) UnmarshalJSON(b []byte) error {
+	var state bool
+	if err := json.Unmarshal(b, &state); err != nil {
+		return err
+	}
+
+	if state {
+		*s = common.RunningState
+	} else {
+		*s = common.StoppedState
+	}
+
+	return nil
+}
 
 // WSMessage is the interface of a message to send over the wire
 type WSMessage interface {
@@ -62,7 +107,7 @@ func (m WSRawMessage) Bytes(protocol string) []byte {
 // WSSpeaker is the interface for a websocket speaking client. It is used for outgoing
 // or incoming connections.
 type WSSpeaker interface {
-	GetStatus() WSConnStatus
+	GetStatus() ConnStatus
 	GetHost() string
 	GetAddrPort() (string, int)
 	GetServiceType() common.ServiceType
@@ -79,54 +124,10 @@ type WSSpeaker interface {
 	GetRemoteServiceType() common.ServiceType
 }
 
-// WSConnState describes the connection state
-type WSConnState int32
-
-// WSConnStatus describes the status of a WebSocket connection
-type WSConnStatus struct {
-	ServiceType       common.ServiceType
-	ClientProtocol    string
-	Addr              string
-	Port              int
-	Host              string       `json:"-"`
-	State             *WSConnState `json:"IsConnected"`
-	URL               *url.URL     `json:"-"`
-	headers           http.Header
-	ConnectTime       time.Time
-	RemoteHost        string             `json:",omitempty"`
-	RemoteServiceType common.ServiceType `json:",omitempty"`
-}
-
-func (s *WSConnState) MarshalJSON() ([]byte, error) {
-	switch *s {
-	case common.RunningState:
-		return []byte("true"), nil
-	case common.StoppedState:
-		return []byte("false"), nil
-	}
-	return nil, fmt.Errorf("Invalid state: %d", s)
-}
-
-// UnmarshalJSON deserialize a connection state
-func (s *WSConnState) UnmarshalJSON(b []byte) error {
-	var state bool
-	if err := json.Unmarshal(b, &state); err != nil {
-		return err
-	}
-
-	if state {
-		*s = common.RunningState
-	} else {
-		*s = common.StoppedState
-	}
-
-	return nil
-}
-
 // WSConn is the connection object of a WSSpeaker
 type WSConn struct {
 	common.RWMutex
-	WSConnStatus
+	ConnStatus
 	send          chan []byte
 	read          chan []byte
 	quit          chan bool
@@ -148,7 +149,7 @@ type wsIncomingClient struct {
 type WSClient struct {
 	*WSConn
 	Path     string
-	AuthOpts *AuthenticationOpts
+	AuthOpts *shttp.AuthenticationOpts
 }
 
 // WSSpeakerEventHandler is the interface to be implement by the client events listeners.
@@ -195,14 +196,14 @@ func (c *WSConn) IsConnected() bool {
 }
 
 // GetStatus returns the status of a WebSocket connection
-func (c *WSConn) GetStatus() WSConnStatus {
+func (c *WSConn) GetStatus() ConnStatus {
 	c.RLock()
 	defer c.RUnlock()
 
-	status := c.WSConnStatus
-	status.State = new(WSConnState)
-	*status.State = WSConnState(atomic.LoadInt32((*int32)(c.State)))
-	return c.WSConnStatus
+	status := c.ConnStatus
+	status.State = new(ConnState)
+	*status.State = ConnState(atomic.LoadInt32((*int32)(c.State)))
+	return c.ConnStatus
 }
 
 // WSSpeakerStructMessageHandler interface used to receive Struct messages.
@@ -244,7 +245,7 @@ func (c *WSConn) GetClientProtocol() string {
 
 // GetHeaders returns the client HTTP headers.
 func (c *WSConn) GetHeaders() http.Header {
-	return c.headers
+	return c.Headers
 }
 
 // GetRemoteHost returns the hostname/host-id of the remote side of the connection.
@@ -383,15 +384,15 @@ func newWSConn(host string, clientType common.ServiceType, clientProtocol string
 
 	port, _ := strconv.Atoi(url.Port())
 	c := &WSConn{
-		WSConnStatus: WSConnStatus{
+		ConnStatus: ConnStatus{
 			Host:           host,
 			ServiceType:    clientType,
 			ClientProtocol: clientProtocol,
 			Addr:           url.Hostname(),
 			Port:           port,
-			State:          new(WSConnState),
+			State:          new(ConnState),
 			URL:            url,
-			headers:        headers,
+			Headers:        headers,
 			ConnectTime:    time.Now(),
 		},
 		send:       make(chan []byte, queueSize),
@@ -423,7 +424,7 @@ func (c *WSClient) connect() {
 	}
 
 	if c.AuthOpts != nil {
-		SetAuthHeaders(&headers, c.AuthOpts)
+		shttp.SetAuthHeaders(&headers, c.AuthOpts)
 	}
 
 	d := websocket.Dialer{
@@ -431,7 +432,7 @@ func (c *WSClient) connect() {
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 	}
-	d.TLSClientConfig, err = getTLSConfig(false)
+	d.TLSClientConfig, err = shttp.GetTLSConfig(false)
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err)
 		return
@@ -495,7 +496,7 @@ func (c *WSClient) Connect() {
 }
 
 // NewWSClient returns a WSClient with a new connection.
-func NewWSClient(host string, clientType common.ServiceType, url *url.URL, authOpts *AuthenticationOpts, headers http.Header, queueSize int) *WSClient {
+func NewWSClient(host string, clientType common.ServiceType, url *url.URL, authOpts *shttp.AuthenticationOpts, headers http.Header, queueSize int) *WSClient {
 	wsconn := newWSConn(host, clientType, ProtobufProtocol, url, headers, queueSize)
 	c := &WSClient{
 		WSConn:   wsconn,
@@ -506,7 +507,7 @@ func NewWSClient(host string, clientType common.ServiceType, url *url.URL, authO
 }
 
 // NewWSClientFromConfig creates a WSClient based on the configuration
-func NewWSClientFromConfig(clientType common.ServiceType, url *url.URL, authOpts *AuthenticationOpts, headers http.Header) *WSClient {
+func NewWSClientFromConfig(clientType common.ServiceType, url *url.URL, authOpts *shttp.AuthenticationOpts, headers http.Header) *WSClient {
 	host := config.GetString("host_id")
 	queueSize := config.GetInt("http.ws.queue_size")
 	return NewWSClient(host, clientType, url, authOpts, headers, queueSize)
@@ -520,7 +521,7 @@ func newIncomingWSClient(conn *websocket.Conn, r *auth.AuthenticatedRequest) *ws
 	}
 	clientProtocol := getRequestParameter(&r.Request, "X-Client-Protocol")
 	if clientProtocol != ProtobufProtocol {
-		clientProtocol = JsonProtocol
+		clientProtocol = JSONProtocol
 	}
 
 	host := config.GetString("host_id")

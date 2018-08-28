@@ -27,11 +27,12 @@ import (
 	"sync"
 
 	"github.com/skydive-project/skydive/common"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/statics"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
+	ws "github.com/skydive-project/skydive/websocket"
+
 	"github.com/xeipuuv/gojsonschema"
 )
 
@@ -49,8 +50,8 @@ const (
 // an external program that interacts with the Skydive graph.
 type TopologyPublisherEndpoint struct {
 	common.RWMutex
-	shttp.DefaultWSSpeakerEventHandler
-	pool          shttp.WSStructSpeakerPool
+	ws.DefaultWSSpeakerEventHandler
+	pool          ws.WSStructSpeakerPool
 	Graph         *graph.Graph
 	cached        *graph.CachedBackend
 	nodeSchema    gojsonschema.JSONLoader
@@ -60,7 +61,7 @@ type TopologyPublisherEndpoint struct {
 }
 
 // OnDisconnected called when a publisher got disconnected.
-func (t *TopologyPublisherEndpoint) OnDisconnected(c shttp.WSSpeaker) {
+func (t *TopologyPublisherEndpoint) OnDisconnected(c ws.WSSpeaker) {
 	policy := PersistencePolicy(c.GetHeaders().Get("X-Persistence-Policy"))
 	if policy == Persistent {
 		return
@@ -76,7 +77,7 @@ func (t *TopologyPublisherEndpoint) OnDisconnected(c shttp.WSSpeaker) {
 }
 
 // OnWSStructMessage is triggered by message coming from a publisher.
-func (t *TopologyPublisherEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
+func (t *TopologyPublisherEndpoint) OnWSStructMessage(c ws.WSSpeaker, msg *ws.WSStructMessage) {
 	msgType, obj, err := graph.UnmarshalWSMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
@@ -146,7 +147,7 @@ func (t *TopologyPublisherEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *sh
 }
 
 // NewTopologyPublisherEndpoint returns a new server for external publishers.
-func NewTopologyPublisherEndpoint(pool shttp.WSStructSpeakerPool, g *graph.Graph) (*TopologyPublisherEndpoint, error) {
+func NewTopologyPublisherEndpoint(pool ws.WSStructSpeakerPool, g *graph.Graph) (*TopologyPublisherEndpoint, error) {
 	nodeSchema, err := statics.Asset("statics/schemas/node.schema")
 	if err != nil {
 		return nil, err

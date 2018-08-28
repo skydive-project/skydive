@@ -44,8 +44,8 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	ws "github.com/skydive-project/skydive/websocket"
 )
 
 type Cmd struct {
@@ -246,13 +246,13 @@ func WSClose(ws *websocket.Conn) error {
 	return ws.Close()
 }
 
-func DecodeWSStructMessageJSON(b []byte) *shttp.WSStructMessage {
-	mJSON := shttp.WSStructMessageJSON{}
+func DecodeWSStructMessageJSON(b []byte) *ws.WSStructMessage {
+	mJSON := ws.WSStructMessageJSON{}
 	if err := json.Unmarshal(b, &mJSON); err != nil {
 		return nil
 	}
-	msg := &shttp.WSStructMessage{
-		Protocol:  shttp.JsonProtocol,
+	msg := &ws.WSStructMessage{
+		Protocol:  ws.JSONProtocol,
 		Namespace: mJSON.Namespace,
 		Type:      mJSON.Type,
 		UUID:      mJSON.UUID,

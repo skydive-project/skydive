@@ -48,15 +48,38 @@ import (
 	"github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
+	ws "github.com/skydive-project/skydive/websocket"
 )
+
+// ElectionStatus describes the status of an election
+type ElectionStatus struct {
+	IsMaster bool
+}
+
+// PeersStatus describes the state of a peer
+type PeersStatus struct {
+	Incomers map[string]ws.ConnStatus
+	Outgoers map[string]ws.ConnStatus
+}
+
+// Status describes the status of an analyzer
+type Status struct {
+	Agents      map[string]ws.ConnStatus
+	Peers       PeersStatus
+	Publishers  map[string]ws.ConnStatus
+	Subscribers map[string]ws.ConnStatus
+	Alerts      ElectionStatus
+	Captures    ElectionStatus
+	Probes      []string
+}
 
 // Server describes an Analyzer servers mechanism like http, websocket, topology, ondemand probes, ...
 type Server struct {
 	httpServer          *shttp.Server
-	agentWSServer       *shttp.WSStructServer
-	publisherWSServer   *shttp.WSStructServer
-	replicationWSServer *shttp.WSStructServer
-	subscriberWSServer  *shttp.WSStructServer
+	agentWSServer       *ws.WSStructServer
+	publisherWSServer   *ws.WSStructServer
+	replicationWSServer *ws.WSStructServer
+	subscriberWSServer  *ws.WSStructServer
 	replicationEndpoint *TopologyReplicationEndpoint
 	alertServer         *alert.Server
 	onDemandClient      *ondemand.OnDemandProbeClient
@@ -73,9 +96,9 @@ type Server struct {
 
 // GetStatus returns the status of an analyzer
 func (s *Server) GetStatus() interface{} {
-	peersStatus := types.PeersStatus{
-		Incomers: make(map[string]shttp.WSConnStatus),
-		Outgoers: make(map[string]shttp.WSConnStatus),
+	peersStatus := PeersStatus{
+		Incomers: make(map[string]ws.ConnStatus),
+		Outgoers: make(map[string]ws.ConnStatus),
 	}
 
 	for _, speaker := range s.replicationEndpoint.in.GetSpeakers() {
@@ -86,13 +109,13 @@ func (s *Server) GetStatus() interface{} {
 		peersStatus.Outgoers[speaker.GetRemoteHost()] = speaker.GetStatus()
 	}
 
-	return &types.AnalyzerStatus{
+	return &Status{
 		Agents:      s.agentWSServer.GetStatus(),
 		Peers:       peersStatus,
 		Publishers:  s.publisherWSServer.GetStatus(),
 		Subscribers: s.subscriberWSServer.GetStatus(),
-		Alerts:      types.ElectionStatus{IsMaster: s.alertServer.IsMaster()},
-		Captures:    types.ElectionStatus{IsMaster: s.onDemandClient.IsMaster()},
+		Alerts:      ElectionStatus{IsMaster: s.alertServer.IsMaster()},
+		Captures:    ElectionStatus{IsMaster: s.onDemandClient.IsMaster()},
 		Probes:      s.probeBundle.ActiveProbes(),
 	}
 }
@@ -251,13 +274,13 @@ func NewServerFromConfig() (*Server, error) {
 
 	hserver.RegisterLoginRoute(apiAuthBackend)
 
-	agentWSServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/agent", clusterAuthBackend))
+	agentWSServer := ws.NewWSStructServer(ws.NewWSServer(hserver, "/ws/agent", clusterAuthBackend))
 	_, err = NewTopologyAgentEndpoint(agentWSServer, cached, g)
 	if err != nil {
 		return nil, err
 	}
 
-	publisherWSServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/publisher", apiAuthBackend))
+	publisherWSServer := ws.NewWSStructServer(ws.NewWSServer(hserver, "/ws/publisher", apiAuthBackend))
 	_, err = NewTopologyPublisherEndpoint(publisherWSServer, g)
 	if err != nil {
 		return nil, err
@@ -267,7 +290,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	storage, err := storage.NewStorageFromConfig(etcdClient)
 
-	replicationWSServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/replication", clusterAuthBackend))
+	replicationWSServer := ws.NewWSStructServer(ws.NewWSServer(hserver, "/ws/replication", clusterAuthBackend))
 	replicationEndpoint, err := NewTopologyReplicationEndpoint(replicationWSServer, clusterAuthOptions, cached, g)
 	if err != nil {
 		return nil, err
@@ -281,7 +304,7 @@ func NewServerFromConfig() (*Server, error) {
 	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
 
-	subscriberWSServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
+	subscriberWSServer := ws.NewWSStructServer(ws.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
 	topology.NewTopologySubscriberEndpoint(subscriberWSServer, g, tr)
 
 	probeBundle, err := NewTopologyProbeBundleFromConfig(g)

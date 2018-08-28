@@ -20,7 +20,7 @@
  *
  */
 
-package http
+package websocket
 
 import (
 	"bytes"
@@ -43,8 +43,11 @@ import (
 const (
 	// WildcardNamespace is the namespace used as wildcard. It is used by listeners to filter callbacks.
 	WildcardNamespace = "*"
-	ProtobufProtocol  = "protobuf"
-	JsonProtocol      = "json"
+
+	// ProtobufProtocol is used for protobuf encoded messages
+	ProtobufProtocol = "protobuf"
+	// JSONProtocol is used for JSON encoded messages
+	JSONProtocol = "json"
 )
 
 // DefaultRequestTimeout default timeout used for Request/Reply JSON message.
@@ -74,7 +77,7 @@ type WSStructMessage struct {
 
 // Debug representation of the struct WSStructMessage
 func (g *WSStructMessage) Debug() string {
-	if g.Protocol == JsonProtocol {
+	if g.Protocol == JSONProtocol {
 		return fmt.Sprintf("Namespace %s Type %s UUID %s Status %d Obj JSON (%d) : %q",
 			g.Namespace, g.Type, g.UUID, g.Status, len(*g.JsonObj), string(*g.JsonObj))
 	}
@@ -134,7 +137,7 @@ func (g WSStructMessage) Bytes(protocol string) []byte {
 }
 
 func (g *WSStructMessage) marshalObj() {
-	if g.Protocol == JsonProtocol {
+	if g.Protocol == JSONProtocol {
 		b, err := json.Marshal(g.value)
 		if err != nil {
 			logging.GetLogger().Error("Json Marshal encode value failed", err)
@@ -154,7 +157,7 @@ func (g *WSStructMessage) marshalObj() {
 }
 
 func (g *WSStructMessage) DecodeObj(obj interface{}) error {
-	if g.Protocol == JsonProtocol {
+	if g.Protocol == JSONProtocol {
 		if err := common.JSONDecode(bytes.NewReader([]byte(*g.JsonObj)), obj); err != nil {
 			return err
 		}
@@ -168,7 +171,7 @@ func (g *WSStructMessage) DecodeObj(obj interface{}) error {
 }
 
 func (g *WSStructMessage) UnmarshalObj(obj interface{}) error {
-	if g.Protocol == JsonProtocol {
+	if g.Protocol == JSONProtocol {
 		if err := json.Unmarshal(*g.JsonObj, obj); err != nil {
 			return err
 		}
@@ -380,12 +383,12 @@ func (s *WSStructSpeaker) OnMessage(c WSSpeaker, m WSMessage) {
 			msg.ProtobufObj = mProtobuf.Obj
 		} else {
 			mJSON := WSStructMessageJSON{}
-			b := m.Bytes(JsonProtocol)
+			b := m.Bytes(JSONProtocol)
 			if err := json.Unmarshal(b, &mJSON); err != nil {
 				logging.GetLogger().Errorf("Error while decoding JSON WSStructMessage %s\n%s", err.Error(), hex.Dump(b))
 				return
 			}
-			msg.Protocol = JsonProtocol
+			msg.Protocol = JSONProtocol
 			msg.Namespace = mJSON.Namespace
 			msg.Type = mJSON.Type
 			msg.UUID = mJSON.UUID

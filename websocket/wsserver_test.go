@@ -20,7 +20,7 @@
  *
  */
 
-package http
+package websocket
 
 import (
 	"errors"
@@ -31,6 +31,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	shttp "github.com/skydive-project/skydive/http"
 )
 
 type fakeServerSubscriptionHandler struct {
@@ -88,29 +89,29 @@ func (f *fakeClientSubscriptionHandler) OnMessage(c WSSpeaker, m WSMessage) {
 }
 
 func TestSubscription(t *testing.T) {
-	httpserver := NewServer("myhost", common.AnalyzerService, "localhost", 59999, "")
+	httpServer := shttp.NewServer("myhost", common.AnalyzerService, "localhost", 59999, "")
 
-	go httpserver.ListenAndServe()
-	defer httpserver.Stop()
+	go httpServer.ListenAndServe()
+	defer httpServer.Stop()
 
-	wsserver := NewWSServer(httpserver, "/wstest", NewNoAuthenticationBackend())
+	wsServer := NewWSServer(httpServer, "/wstest", shttp.NewNoAuthenticationBackend())
 
-	serverHandler := &fakeServerSubscriptionHandler{t: t, server: wsserver, connected: 0, received: 0}
-	wsserver.AddEventHandler(serverHandler)
+	serverHandler := &fakeServerSubscriptionHandler{t: t, server: wsServer, connected: 0, received: 0}
+	wsServer.AddEventHandler(serverHandler)
 
-	wsserver.Start()
-	defer wsserver.Stop()
+	wsServer.Start()
+	defer wsServer.Stop()
 
-	wsclient := NewWSClient("myhost", common.AgentService, config.GetURL("ws", "localhost", 59999, "/wstest"), nil, http.Header{}, 1000)
-	wspool := NewWSClientPool("TestSubscription")
+	wsClient := NewWSClient("myhost", common.AgentService, config.GetURL("ws", "localhost", 59999, "/wstest"), nil, http.Header{}, 1000)
+	wsPool := NewWSClientPool("TestSubscription")
 
-	wspool.AddClient(wsclient)
+	wsPool.AddClient(wsClient)
 
 	clientHandler := &fakeClientSubscriptionHandler{t: t, received: 0}
-	wsclient.AddEventHandler(clientHandler)
-	wspool.AddEventHandler(clientHandler)
-	wsclient.Connect()
-	defer wsclient.Disconnect()
+	wsClient.AddEventHandler(clientHandler)
+	wsPool.AddEventHandler(clientHandler)
+	wsClient.Connect()
+	defer wsClient.Disconnect()
 
 	err := common.Retry(func() error {
 		clientHandler.Lock()
