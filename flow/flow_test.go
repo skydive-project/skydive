@@ -1096,6 +1096,24 @@ func TestGetFieldInterface(t *testing.T) {
 	}
 }
 
+func TestGetField(t *testing.T) {
+	f := &Flow{}
+
+	field1, err := f.GetFieldInterface("Metric")
+	if err != nil {
+		t.Error(err)
+	}
+
+	field2, err := f.GetFieldInterface("metric")
+	if err != nil {
+		t.Error(err)
+	}
+
+	if field1 != field2 {
+		t.Error("Both values should be equal")
+	}
+}
+
 func TestVxlanIcmpv4Truncated(t *testing.T) {
 	expected := []*Flow{
 		{

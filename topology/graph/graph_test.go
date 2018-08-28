@@ -87,6 +87,40 @@ func TestAreLinkedWithMetadata(t *testing.T) {
 	}
 }
 
+func TestGetField(t *testing.T) {
+	g := newGraph(t)
+
+	n1 := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
+
+	val1, e := n1.GetFieldString("Type")
+	if e != nil {
+		t.Error("should get value without error")
+	}
+
+	val2, e := n1.GetFieldString("type")
+	if e != nil {
+		t.Error("should get value without error")
+	}
+
+	if val1 != val2 {
+		t.Error("both values should be equal")
+	}
+
+	val3, e := n1.GetFieldInt64("Value")
+	if e != nil {
+		t.Error("should get value without error")
+	}
+
+	val4, e := n1.GetFieldInt64("value")
+	if e != nil {
+		t.Error("should get value without error")
+	}
+
+	if val3 != val4 {
+		t.Error("both values should be equal")
+	}
+}
+
 func TestFirstLinkDoesExist(t *testing.T) {
 	g := newGraph(t)
 

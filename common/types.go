@@ -361,9 +361,9 @@ func DelField(obj map[string]interface{}, k string) bool {
 func GetField(obj map[string]interface{}, k string) (interface{}, error) {
 	components := strings.Split(k, ".")
 	for n, component := range components {
-		i, ok := obj[component]
+		i, ok := getVal(obj, component)
 		if !ok {
-			return nil, ErrFieldNotFound
+			return i, ErrFieldNotFound
 		}
 
 		if n == len(components)-1 {
@@ -389,6 +389,16 @@ func GetField(obj map[string]interface{}, k string) (interface{}, error) {
 	}
 
 	return obj, nil
+}
+
+func getVal(obj map[string]interface{}, k string) (interface{}, bool) {
+	k = strings.ToLower(k)
+	for key, value := range obj {
+		if strings.ToLower(key) == k {
+			return value, true
+		}
+	}
+	return nil, false
 }
 
 func getFields(obj map[string]interface{}, path string) ([]string, error) {

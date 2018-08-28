@@ -23,6 +23,8 @@
 package flow
 
 import (
+	"strings"
+
 	"github.com/skydive-project/skydive/common"
 )
 
@@ -78,14 +80,15 @@ func (tm *TCPMetric) Copy() *TCPMetric {
 
 // GetFieldInt64 returns the field value
 func (fm *FlowMetric) GetFieldInt64(field string) (int64, error) {
+	field = strings.ToLower(field)
 	switch field {
-	case "ABPackets":
+	case "abpackets":
 		return fm.ABPackets, nil
-	case "ABBytes":
+	case "abbytes":
 		return fm.ABBytes, nil
-	case "BAPackets":
+	case "bapackets":
 		return fm.BAPackets, nil
-	case "BABytes":
+	case "babytes":
 		return fm.BABytes, nil
 	}
 	return 0, common.ErrFieldNotFound

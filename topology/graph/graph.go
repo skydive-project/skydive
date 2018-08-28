@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/nu7hatch/gouuid"
@@ -388,20 +389,21 @@ func (e *graphElement) GetFieldString(field string) (_ string, err error) {
 }
 
 func (e *graphElement) GetField(name string) (interface{}, error) {
+	name = strings.ToLower(name)
 	switch name {
-	case "ID":
+	case "id":
 		return string(e.ID), nil
-	case "Host":
+	case "host":
 		return e.host, nil
-	case "CreatedAt":
+	case "createdat":
 		return common.UnixMillis(e.createdAt), nil
-	case "UpdatedAt":
+	case "updatedat":
 		return common.UnixMillis(e.updatedAt), nil
-	case "DeletedAt":
+	case "deletedat":
 		return common.UnixMillis(e.deletedAt), nil
-	case "Revision":
+	case "revision":
 		return e.revision, nil
-	case "Origin":
+	case "origin":
 		return e.origin, nil
 	default:
 		return common.GetField(e.metadata, name)
