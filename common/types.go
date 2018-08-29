@@ -333,27 +333,28 @@ func SetField(obj map[string]interface{}, k string, v interface{}) bool {
 }
 
 // DelField detete a value in a tree based on dot key
-func DelField(obj map[string]interface{}, k string) interface{} {
+func DelField(obj map[string]interface{}, k string) bool {
 	components := strings.Split(k, ".")
 	o, ok := obj[components[0]]
 	if !ok {
-		return obj
+		return false
 	}
 	if len(components) == 1 {
+		oldLength := len(obj)
 		delete(obj, k)
-		return obj
+		return oldLength != len(obj)
 	}
 
 	object, ok := o.(map[string]interface{})
 	if !ok {
-		return obj
+		return false
 	}
-	r := DelField(object, strings.SplitN(k, ".", 2)[1])
-	if len(r.(map[string]interface{})) == 0 {
+	removed := DelField(object, strings.SplitN(k, ".", 2)[1])
+	if removed && len(object) == 0 {
 		delete(obj, components[0])
 	}
 
-	return obj
+	return removed
 }
 
 // GetField retrieves a value from a tree from the dot key like "a.b.c.d"

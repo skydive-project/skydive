@@ -136,3 +136,72 @@ func TestNormalizeMapKeys(t *testing.T) {
 		t.Errorf("Expected %+v actual %+v", expected, actual)
 	}
 }
+
+func TestSetField(t *testing.T) {
+	actual := map[string]interface{}{
+		"a": map[string]interface{}{
+			"b": true,
+		},
+	}
+
+	expected := map[string]interface{}{
+		"a": map[string]interface{}{
+			"b": false,
+			"d": map[string]interface{}{
+				"c": true,
+			},
+		},
+	}
+
+	if SetField(actual, "a.b.c", true) {
+		t.Errorf("Expected SetField to not overwrite any key")
+	}
+
+	if !SetField(actual, "a.b", false) {
+		t.Errorf("Expected SetField to overwrite a.b")
+	}
+
+	if !SetField(actual, "a.d.c", true) {
+		t.Errorf("Expected SetField to create a.d.c key")
+	}
+
+	if !reflect.DeepEqual(expected, actual) {
+		t.Errorf("Expected %+v actual %+v", expected, actual)
+	}
+}
+
+func TestDelField(t *testing.T) {
+	actual := map[string]interface{}{
+		"a": map[string]interface{}{
+			"b": map[string]interface{}{
+				"c": true,
+			},
+		},
+		"d": map[string]interface{}{
+			"e": true,
+			"f": false,
+		},
+	}
+
+	expected := map[string]interface{}{
+		"d": map[string]interface{}{
+			"f": false,
+		},
+	}
+
+	if !DelField(actual, "a.b.c") {
+		t.Errorf("Expected DelField to remove a.b.c")
+	}
+
+	if !DelField(actual, "d.e") {
+		t.Errorf("Expected DelField to remove d.e")
+	}
+
+	if DelField(actual, "d.g") {
+		t.Errorf("Expected DelField to return false")
+	}
+
+	if !reflect.DeepEqual(expected, actual) {
+		t.Errorf("Expected %+v actual %+v", expected, actual)
+	}
+}
