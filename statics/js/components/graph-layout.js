@@ -272,9 +272,18 @@ var TopologyGraphLayout = function(vm, selector) {
     let id = "arrowhead-"+type+"-"+target+"-"+point;
 
     let refX = 1.65
+    let refY = 0.15
     let pathD = "M0,0 L0,0.3 L0.5,0.15 Z"
     if (type === "egress" || point === "end") {
       pathD = "M0.5,0 L0.5,0.3 L0,0.15 Z"
+    }
+
+    if (target === "deny") {
+      refX = 1.85
+      refY = 0.3
+      a = "M0.1,0 L0.6,0.5 L0.5,0.6 L0,0.1 Z"
+      b = "M0,0.5 L0.1,0.6 L0.6,0.1 L0.5,0 Z"
+      pathD = a + " " + b
     }
 
     let color = "rgb(159, 218, 64, 0.4)"
@@ -285,7 +294,7 @@ var TopologyGraphLayout = function(vm, selector) {
     self.svg.append("defs").append("marker")
       .attr("id", id)
       .attr("refX", refX)
-      .attr("refY", 0.15)
+      .attr("refY", refY)
       .attr("markerWidth", 1)
       .attr("markerHeight", 1)
       .attr("orient", "auto")
