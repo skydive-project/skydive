@@ -174,7 +174,7 @@ Vagrant.configure(2) do |config|
 
     dev.vm.provider :virtualbox do |vb, override|
       vb.gui = false
-      vb.memory = "3072"
+      vb.memory = "4096"
       override.vm.network "private_network", ip: "192.168.100.10"
       dev_synced_folders(override, "virtualbox")
 
@@ -188,7 +188,7 @@ Vagrant.configure(2) do |config|
     end
 
     dev.vm.provider :libvirt do |domain, override|
-      domain.memory = 3072
+      domain.memory = 4096
       domain.graphics_type = "none"
       override.vm.network "private_network", ip: "192.168.10.10"
       dev_synced_folders(override, "nfs")
