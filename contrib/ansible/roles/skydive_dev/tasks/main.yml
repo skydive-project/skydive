@@ -9,6 +9,7 @@
     name: "{{ item }}"
     state: present
   with_items:
+     - iptables-1.6.1                   # iptables-1.6.2 not compatible with minikube-0.25.2
      - git
      - wget
      - unzip
