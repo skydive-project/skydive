@@ -54,6 +54,7 @@ EOF
 
   virsh net-destroy vagrant0
   virsh net-destroy vagrant-libvirt
+  systemctl restart libvirtd
 
   rm -rf /tmp/skydive_agent* /tmp/skydive-etcd
 
