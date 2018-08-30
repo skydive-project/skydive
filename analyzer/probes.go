@@ -28,6 +28,7 @@ import (
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/probes/fabric"
+	"github.com/skydive-project/skydive/topology/probes/istio"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
 	"github.com/skydive-project/skydive/topology/probes/peering"
 )
@@ -51,6 +52,14 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.ProbeBundle, error
 			probes[t], err = k8s.NewProbe(g)
 			if err != nil {
 				logging.GetLogger().Errorf("Failed to initialize K8S probe: %s", err.Error())
+				return nil, err
+			}
+
+		case "istio":
+			var err error
+			probes[t], err = istio.NewProbe(g)
+			if err != nil {
+				logging.GetLogger().Errorf("Failed to initialize istio probe: %s", err.Error())
 				return nil, err
 			}
 

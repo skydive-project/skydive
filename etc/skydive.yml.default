@@ -103,6 +103,7 @@ analyzer:
     # list of probes used by the analyzers
     probes:
       # - k8s
+      # - istio
 
   replication:
     # debug: false
@@ -416,6 +417,12 @@ k8s:
   - service
   - statefulset
   - storageclass
+
+istio:
+  # EXPERIMENTAL: istio probe is still under development and should not be used
+  # on production systems
+  probes:
+  - cluster
 
 ui:
   # Specify the extra assets folder. Javascript and CSS files present in this

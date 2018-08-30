@@ -5,27 +5,26 @@ set -e
 
 DIR="$(dirname "$0")"
 
-helm_setup() {
+istio_setup() {
         . "$DIR/install-minikube.sh" install
         . "$DIR/install-minikube.sh" stop
         . "$DIR/install-minikube.sh" start
 
-        . "$DIR/install-helm.sh" install
-        . "$DIR/install-helm.sh" stop
-        . "$DIR/install-helm.sh" start
+        . "$DIR/install-istio.sh" install
+        . "$DIR/install-istio.sh" stop
+        . "$DIR/install-istio.sh" start
 }
 
-helm_teardown() {
-        [ "$KEEP_RESOURCES" = "true" ] || . "$DIR/install-helm.sh" stop
+istio_teardown() {
+        [ "$KEEP_RESOURCES" = "true" ] || . "$DIR/install-istio.sh" stop
         [ "$KEEP_RESOURCES" = "true" ] || . "$DIR/install-minikube.sh" stop
 }
 
-. "$DIR/install-go.sh"
 . "$DIR/run-tests-utils.sh"
 network_setup
-helm_setup
-WITH_HELM=true
-TEST_PATTERN=Helm
+istio_setup
+WITH_ISTIO=true
+TEST_PATTERN=Istio
 tests_run
-helm_teardown
+istio_teardown
 exit $RETCODE

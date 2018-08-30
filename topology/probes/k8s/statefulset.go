@@ -34,8 +34,8 @@ import (
 )
 
 type statefulSetProbe struct {
-	defaultKubeCacheEventHandler
-	*kubeCache
+	DefaultKubeCacheEventHandler
+	*KubeCache
 	graph *graph.Graph
 }
 
@@ -44,7 +44,7 @@ func dumpStatefulSet(ss *v1beta1.StatefulSet) string {
 }
 
 func (p *statefulSetProbe) newMetadata(ss *v1beta1.StatefulSet) graph.Metadata {
-	m := newMetadata("statefulset", ss.Namespace, ss.Name, ss)
+	m := NewMetadata(Manager, "statefulset", ss.Namespace, ss.Name, ss)
 	m.SetField("DesiredReplicas", int32ValueOrDefault(ss.Spec.Replicas, 1))
 	m.SetField("ServiceName", ss.Spec.ServiceName) // FIXME: replace by link to Service
 	m.SetField("Replicas", ss.Status.Replicas)
@@ -65,7 +65,7 @@ func (p *statefulSetProbe) OnAdd(obj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		newNode(p.graph, statefulSetUID(ss), p.newMetadata(ss))
+		NewNode(p.graph, statefulSetUID(ss), p.newMetadata(ss))
 		logging.GetLogger().Debugf("Added %s", dumpStatefulSet(ss))
 	}
 }
@@ -76,7 +76,7 @@ func (p *statefulSetProbe) OnUpdate(oldObj, newObj interface{}) {
 		defer p.graph.Unlock()
 
 		if node := p.graph.GetNode(statefulSetUID(ss)); node != nil {
-			addMetadata(p.graph, node, ss)
+			AddMetadata(p.graph, node, ss)
 			logging.GetLogger().Debugf("Updated %s", dumpStatefulSet(ss))
 		}
 	}
@@ -95,21 +95,21 @@ func (p *statefulSetProbe) OnDelete(obj interface{}) {
 }
 
 func (p *statefulSetProbe) Start() {
-	p.kubeCache.Start()
+	p.KubeCache.Start()
 }
 
 func (p *statefulSetProbe) Stop() {
-	p.kubeCache.Stop()
+	p.KubeCache.Stop()
 }
 
-func newStatefulSetKubeCache(handler cache.ResourceEventHandler) *kubeCache {
-	return newKubeCache(getClientset().AppsV1beta1().RESTClient(), &v1beta1.StatefulSet{}, "statefulsets", handler)
+func newStatefulSetKubeCache(handler cache.ResourceEventHandler) *KubeCache {
+	return NewKubeCache(getClientset().AppsV1beta1().RESTClient(), &v1beta1.StatefulSet{}, "statefulsets", handler)
 }
 
 func newStatefulSetProbe(g *graph.Graph) probe.Probe {
 	p := &statefulSetProbe{
 		graph: g,
 	}
-	p.kubeCache = newStatefulSetKubeCache(p)
+	p.KubeCache = newStatefulSetKubeCache(p)
 	return p
 }

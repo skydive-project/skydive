@@ -14,7 +14,7 @@ install() {
 }
 
 stop() {
-	$helm reset --force
+	$helm reset --force || true
 }
 
 start() {
