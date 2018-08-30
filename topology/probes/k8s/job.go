@@ -34,8 +34,8 @@ import (
 )
 
 type jobProbe struct {
-	defaultKubeCacheEventHandler
-	*kubeCache
+	DefaultKubeCacheEventHandler
+	*KubeCache
 	graph *graph.Graph
 }
 
@@ -44,7 +44,7 @@ func dumpJob(job *batchv1.Job) string {
 }
 
 func (p *jobProbe) newMetadata(job *batchv1.Job) graph.Metadata {
-	m := newMetadata("job", job.Namespace, job.Name, job)
+	m := NewMetadata(Manager, "job", job.Namespace, job.Name, job)
 	m.SetField("Parallelism", job.Spec.Parallelism)
 	m.SetField("Completions", job.Spec.Completions)
 	m.SetField("Active", job.Status.Active)
@@ -62,7 +62,7 @@ func (p *jobProbe) OnAdd(obj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		newNode(p.graph, jobUID(job), p.newMetadata(job))
+		NewNode(p.graph, jobUID(job), p.newMetadata(job))
 		logging.GetLogger().Debugf("Added %s", dumpJob(job))
 	}
 }
@@ -73,7 +73,7 @@ func (p *jobProbe) OnUpdate(oldObj, newObj interface{}) {
 		defer p.graph.Unlock()
 
 		if jobNode := p.graph.GetNode(jobUID(job)); jobNode != nil {
-			addMetadata(p.graph, jobNode, job)
+			AddMetadata(p.graph, jobNode, job)
 			logging.GetLogger().Debugf("Updated %s", dumpJob(job))
 		}
 	}
@@ -92,21 +92,21 @@ func (p *jobProbe) OnDelete(obj interface{}) {
 }
 
 func (p *jobProbe) Start() {
-	p.kubeCache.Start()
+	p.KubeCache.Start()
 }
 
 func (p *jobProbe) Stop() {
-	p.kubeCache.Stop()
+	p.KubeCache.Stop()
 }
 
-func newJobKubeCache(handler cache.ResourceEventHandler) *kubeCache {
-	return newKubeCache(getClientset().BatchV1().RESTClient(), &batchv1.Job{}, "jobs", handler)
+func newJobKubeCache(handler cache.ResourceEventHandler) *KubeCache {
+	return NewKubeCache(getClientset().BatchV1().RESTClient(), &batchv1.Job{}, "jobs", handler)
 }
 
 func newJobProbe(g *graph.Graph) probe.Probe {
 	p := &jobProbe{
 		graph: g,
 	}
-	p.kubeCache = newJobKubeCache(p)
+	p.KubeCache = newJobKubeCache(p)
 	return p
 }

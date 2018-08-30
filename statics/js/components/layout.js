@@ -52,4 +52,5 @@ var managerImgMap = setupFixedImages({
   "lxd": "lxd",
   "neutron": "openstack",
   "k8s": "k8s",
+  "istio": "istio",
 });

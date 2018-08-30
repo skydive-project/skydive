@@ -34,8 +34,8 @@ import (
 )
 
 type replicationControllerProbe struct {
-	defaultKubeCacheEventHandler
-	*kubeCache
+	DefaultKubeCacheEventHandler
+	*KubeCache
 	graph *graph.Graph
 }
 
@@ -44,7 +44,7 @@ func dumpReplicationController(rc *v1.ReplicationController) string {
 }
 
 func (p *replicationControllerProbe) newMetadata(rc *v1.ReplicationController) graph.Metadata {
-	return newMetadata("replicationcontroller", rc.Namespace, rc.GetName(), rc)
+	return NewMetadata(Manager, "replicationcontroller", rc.Namespace, rc.GetName(), rc)
 }
 
 func replicationControllerUID(rc *v1.ReplicationController) graph.Identifier {
@@ -56,7 +56,7 @@ func (p *replicationControllerProbe) OnAdd(obj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		newNode(p.graph, replicationControllerUID(rc), p.newMetadata(rc))
+		NewNode(p.graph, replicationControllerUID(rc), p.newMetadata(rc))
 		logging.GetLogger().Debugf("Added %s", dumpReplicationController(rc))
 	}
 }
@@ -67,7 +67,7 @@ func (p *replicationControllerProbe) OnUpdate(oldObj, newObj interface{}) {
 		defer p.graph.Unlock()
 
 		if node := p.graph.GetNode(replicationControllerUID(rc)); node != nil {
-			addMetadata(p.graph, node, rc)
+			AddMetadata(p.graph, node, rc)
 			logging.GetLogger().Debugf("Updated %s", dumpReplicationController(rc))
 		}
 	}
@@ -86,21 +86,21 @@ func (p *replicationControllerProbe) OnDelete(obj interface{}) {
 }
 
 func (p *replicationControllerProbe) Start() {
-	p.kubeCache.Start()
+	p.KubeCache.Start()
 }
 
 func (p *replicationControllerProbe) Stop() {
-	p.kubeCache.Stop()
+	p.KubeCache.Stop()
 }
 
-func newReplicationControllerKubeCache(handler cache.ResourceEventHandler) *kubeCache {
-	return newKubeCache(getClientset().CoreV1().RESTClient(), &v1.ReplicationController{}, "replicationcontrollers", handler)
+func newReplicationControllerKubeCache(handler cache.ResourceEventHandler) *KubeCache {
+	return NewKubeCache(getClientset().CoreV1().RESTClient(), &v1.ReplicationController{}, "replicationcontrollers", handler)
 }
 
 func newReplicationControllerProbe(g *graph.Graph) probe.Probe {
 	p := &replicationControllerProbe{
 		graph: g,
 	}
-	p.kubeCache = newReplicationControllerKubeCache(p)
+	p.KubeCache = newReplicationControllerKubeCache(p)
 	return p
 }

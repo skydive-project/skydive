@@ -34,8 +34,8 @@ import (
 )
 
 type storageClassProbe struct {
-	defaultKubeCacheEventHandler
-	*kubeCache
+	DefaultKubeCacheEventHandler
+	*KubeCache
 	graph *graph.Graph
 }
 
@@ -44,7 +44,7 @@ func dumpStorageClass(sc *v1.StorageClass) string {
 }
 
 func (p *storageClassProbe) newMetadata(sc *v1.StorageClass) graph.Metadata {
-	m := newMetadata("storageclass", sc.Namespace, sc.Name, sc)
+	m := NewMetadata(Manager, "storageclass", sc.Namespace, sc.Name, sc)
 	m.SetField("Provisioner", sc.Provisioner)
 	return m
 }
@@ -58,7 +58,7 @@ func (p *storageClassProbe) OnAdd(obj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		newNode(p.graph, storageClassUID(sc), p.newMetadata(sc))
+		NewNode(p.graph, storageClassUID(sc), p.newMetadata(sc))
 		logging.GetLogger().Debugf("Added %s", dumpStorageClass(sc))
 	}
 }
@@ -69,7 +69,7 @@ func (p *storageClassProbe) OnUpdate(oldObj, newObj interface{}) {
 		defer p.graph.Unlock()
 
 		if node := p.graph.GetNode(storageClassUID(sc)); node != nil {
-			addMetadata(p.graph, node, sc)
+			AddMetadata(p.graph, node, sc)
 			logging.GetLogger().Debugf("Updated %s", dumpStorageClass(sc))
 		}
 	}
@@ -88,21 +88,21 @@ func (p *storageClassProbe) OnDelete(obj interface{}) {
 }
 
 func (p *storageClassProbe) Start() {
-	p.kubeCache.Start()
+	p.KubeCache.Start()
 }
 
 func (p *storageClassProbe) Stop() {
-	p.kubeCache.Stop()
+	p.KubeCache.Stop()
 }
 
-func newStorageClassKubeCache(handler cache.ResourceEventHandler) *kubeCache {
-	return newKubeCache(getClientset().StorageV1().RESTClient(), &v1.StorageClass{}, "storageclasses", handler)
+func newStorageClassKubeCache(handler cache.ResourceEventHandler) *KubeCache {
+	return NewKubeCache(getClientset().StorageV1().RESTClient(), &v1.StorageClass{}, "storageclasses", handler)
 }
 
 func newStorageClassProbe(g *graph.Graph) probe.Probe {
 	p := &storageClassProbe{
 		graph: g,
 	}
-	p.kubeCache = newStorageClassKubeCache(p)
+	p.KubeCache = newStorageClassKubeCache(p)
 	return p
 }

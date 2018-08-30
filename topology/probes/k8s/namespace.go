@@ -35,9 +35,9 @@ import (
 )
 
 type namespaceProbe struct {
-	defaultKubeCacheEventHandler
+	DefaultKubeCacheEventHandler
 	graph.DefaultGraphListener
-	*kubeCache
+	*KubeCache
 	graph            *graph.Graph
 	objectIndexer    *graph.MetadataIndexer
 	namespaceIndexer *graph.MetadataIndexer
@@ -61,7 +61,7 @@ func newObjectIndexer(g *graph.Graph) *graph.MetadataIndexer {
 	)
 
 	filter := filters.NewAndFilter(
-		filters.NewTermStringFilter("Manager", managerValue),
+		filters.NewTermStringFilter("Manager", Manager),
 		ownedByNamespaceFilter,
 	)
 	m := graph.NewGraphElementFilter(filter)
@@ -70,7 +70,7 @@ func newObjectIndexer(g *graph.Graph) *graph.MetadataIndexer {
 
 func newNamespaceIndexerByName(g *graph.Graph) *graph.MetadataIndexer {
 	filter := filters.NewAndFilter(
-		filters.NewTermStringFilter("Manager", managerValue),
+		filters.NewTermStringFilter("Manager", Manager),
 		filters.NewTermStringFilter("Type", "namespace"),
 		filters.NewNotNullFilter("Name"),
 	)
@@ -83,7 +83,7 @@ func dumpNamespace(ns *v1.Namespace) string {
 }
 
 func (p *namespaceProbe) newMetadata(ns *v1.Namespace) graph.Metadata {
-	m := newMetadata("namespace", "", ns.GetName(), ns)
+	m := NewMetadata(Manager, "namespace", "", ns.GetName(), ns)
 	m.SetFieldAndNormalize("Labels", ns.Labels)
 	m.SetField("Cluster", ns.ClusterName)
 	m.SetField("Status", ns.Status.Phase)
@@ -95,7 +95,7 @@ func namespaceUID(ns *v1.Namespace) graph.Identifier {
 }
 
 func (p *namespaceProbe) linkObject(objNode, nsNode *graph.Node) {
-	addOwnershipLink(p.graph, nsNode, objNode)
+	AddOwnershipLink(Manager, p.graph, nsNode, objNode)
 }
 
 func (p *namespaceProbe) OnAdd(obj interface{}) {
@@ -103,7 +103,7 @@ func (p *namespaceProbe) OnAdd(obj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		nsNode := newNode(p.graph, namespaceUID(ns), p.newMetadata(ns))
+		nsNode := NewNode(p.graph, namespaceUID(ns), p.newMetadata(ns))
 		logging.GetLogger().Debugf("Added %s", dumpNamespace(ns))
 
 		objNodes, _ := p.objectIndexer.Get(ns.GetName())
@@ -119,7 +119,7 @@ func (p *namespaceProbe) OnUpdate(oldObj, newObj interface{}) {
 		defer p.graph.Unlock()
 
 		if nsNode := p.graph.GetNode(namespaceUID(ns)); nsNode != nil {
-			addMetadata(p.graph, nsNode, ns)
+			AddMetadata(p.graph, nsNode, ns)
 			logging.GetLogger().Debugf("Updated %s", dumpNamespace(ns))
 		}
 	}
@@ -138,7 +138,7 @@ func (p *namespaceProbe) OnDelete(obj interface{}) {
 }
 
 func (p *namespaceProbe) OnNodeAdded(objNode *graph.Node) {
-	logging.GetLogger().Debugf("Got event on adding %s", dumpGraphNode(objNode))
+	logging.GetLogger().Debugf("Got event on adding %s", DumpNode(objNode))
 	objNamespace, _ := objNode.GetFieldString("Namespace")
 	nsNodes, _ := p.namespaceIndexer.Get(objNamespace)
 	if len(nsNodes) > 0 {
@@ -147,7 +147,7 @@ func (p *namespaceProbe) OnNodeAdded(objNode *graph.Node) {
 }
 
 func (p *namespaceProbe) OnNodeUpdated(objNode *graph.Node) {
-	logging.GetLogger().Debugf("Got event on updating %s", dumpGraphNode(objNode))
+	logging.GetLogger().Debugf("Got event on updating %s", DumpNode(objNode))
 	objNamespace, _ := objNode.GetFieldString("Namespace")
 	nsNodes, _ := p.namespaceIndexer.Get(objNamespace)
 	if len(nsNodes) > 0 {
@@ -156,21 +156,21 @@ func (p *namespaceProbe) OnNodeUpdated(objNode *graph.Node) {
 }
 
 func (p *namespaceProbe) Start() {
-	p.kubeCache.Start()
+	p.KubeCache.Start()
 	p.namespaceIndexer.Start()
 	p.objectIndexer.AddEventListener(p)
 	p.objectIndexer.Start()
 }
 
 func (p *namespaceProbe) Stop() {
-	p.kubeCache.Stop()
+	p.KubeCache.Stop()
 	p.namespaceIndexer.Stop()
 	p.objectIndexer.RemoveEventListener(p)
 	p.objectIndexer.Stop()
 }
 
-func newNamespaceKubeCache(handler cache.ResourceEventHandler) *kubeCache {
-	return newKubeCache(getClientset().Core().RESTClient(), &v1.Namespace{}, "namespaces", handler)
+func newNamespaceKubeCache(handler cache.ResourceEventHandler) *KubeCache {
+	return NewKubeCache(getClientset().Core().RESTClient(), &v1.Namespace{}, "namespaces", handler)
 }
 
 func newNamespaceProbe(g *graph.Graph) probe.Probe {
@@ -179,6 +179,6 @@ func newNamespaceProbe(g *graph.Graph) probe.Probe {
 		objectIndexer:    newObjectIndexer(g),
 		namespaceIndexer: newNamespaceIndexerByName(g),
 	}
-	p.kubeCache = newNamespaceKubeCache(p)
+	p.KubeCache = newNamespaceKubeCache(p)
 	return p
 }

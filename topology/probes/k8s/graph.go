@@ -33,22 +33,18 @@ import (
 )
 
 const (
-	managerValue = "k8s"
 	hostID       = ""
-)
-
-const (
-	detailsField  = "K8s"
-	nodeNameField = detailsField + ".Spec.NodeName"
+	detailsField = "K8s"
+	Manager      = "k8s"
 )
 
 func lookupChildren(g *graph.Graph, parent, childFilter *graph.Node, edgeFilter graph.Metadata) []*graph.Node {
 	return g.LookupChildren(parent, childFilter.Metadata(), edgeFilter)
 }
 
-func newMetadata(ty, namespace, name string, details interface{}) graph.Metadata {
+func NewMetadata(manager, ty, namespace, name string, details interface{}) graph.Metadata {
 	m := graph.Metadata{
-		"Manager":    managerValue,
+		"Manager":    manager,
 		"Type":       ty,
 		"Namespace":  namespace,
 		"Name":       name,
@@ -57,70 +53,38 @@ func newMetadata(ty, namespace, name string, details interface{}) graph.Metadata
 	return m
 }
 
-func addMetadata(g *graph.Graph, n *graph.Node, details interface{}) {
+func AddMetadata(g *graph.Graph, n *graph.Node, details interface{}) {
 	tr := g.StartMetadataTransaction(n)
 	tr.AddMetadata(detailsField, common.NormalizeValue(details))
 	tr.Commit()
 }
 
-func newEdgeMetadata() graph.Metadata {
+func NewEdgeMetadata(manager string) graph.Metadata {
 	m := graph.Metadata{
-		"Manager":      managerValue,
+		"Manager":      manager,
 		"RelationType": "association",
 	}
 	return m
 }
 
-func dumpGraphLink(parent, child *graph.Node, m graph.Metadata) string {
-	return fmt.Sprintf("%s -> %s: %s", dumpGraphNode(parent), dumpGraphNode(child), m)
-}
-
-func addLink(g *graph.Graph, parent, child *graph.Node, m graph.Metadata) *graph.Edge {
-	if e := g.GetFirstLink(parent, child, m); e != nil {
-		logging.GetLogger().Debugf("Adding link: %s: exists - skipping", dumpGraphLink(parent, child, m))
-		return e
-	}
-
-	logging.GetLogger().Debugf("Adding link: %s", dumpGraphLink(parent, child, m))
-	return g.Link(parent, child, m, hostID)
-}
-
-func delLink(g *graph.Graph, parent, child *graph.Node, m graph.Metadata) {
-	e := g.GetFirstLink(parent, child, m)
-	if e == nil {
-		logging.GetLogger().Debugf("Deleting link: %s: missing - skipping", dumpGraphLink(parent, child, m))
-		return
-	}
-
-	logging.GetLogger().Debugf("Deleting link: %s", dumpGraphLink(parent, child, m))
-	g.DelEdge(e)
-}
-
-func addOwnershipLink(g *graph.Graph, parent, child *graph.Node) *graph.Edge {
+func AddOwnershipLink(manager string, g *graph.Graph, parent, child *graph.Node) *graph.Edge {
 	m := graph.Metadata{
-		"Manager": managerValue,
+		"Manager": manager,
 	}
 	if e := topology.GetOwnershipLink(g, parent, child); e != nil {
 		return e
 	}
-	logging.GetLogger().Debugf("Adding ownership: %s", dumpGraphLink(parent, child, m))
+	logging.GetLogger().Debugf("Adding ownership: %s", DumpLink(parent, child, m))
 	return topology.AddOwnershipLink(g, parent, child, m, hostID)
 }
 
-func newNode(g *graph.Graph, i graph.Identifier, m graph.Metadata) *graph.Node {
+func NewNode(g *graph.Graph, i graph.Identifier, m graph.Metadata) *graph.Node {
 	return g.NewNode(i, m, hostID)
 }
 
-func dumpGraphNode(n *graph.Node) string {
-	ty, _ := n.GetFieldString("Type")
-	namespace, _ := n.GetFieldString("Namespace")
-	name, _ := n.GetFieldString("Name")
-	return fmt.Sprintf("%s{Namespace: %s, Name: %s}", ty, namespace, name)
-}
-
-func newObjectIndexerByNamespace(g *graph.Graph, ty string) *graph.MetadataIndexer {
+func NewObjectIndexerByNamespace(manager string, g *graph.Graph, ty string) *graph.MetadataIndexer {
 	filter := filters.NewAndFilter(
-		filters.NewTermStringFilter("Manager", managerValue),
+		filters.NewTermStringFilter("Manager", manager),
 		filters.NewTermStringFilter("Type", ty),
 		filters.NewNotNullFilter("Namespace"),
 	)
@@ -128,13 +92,60 @@ func newObjectIndexerByNamespace(g *graph.Graph, ty string) *graph.MetadataIndex
 	return graph.NewMetadataIndexer(g, m, "Namespace")
 }
 
-func newObjectIndexerByNamespaceAndName(g *graph.Graph, ty string) *graph.MetadataIndexer {
+func NewObjectIndexerByNamespaceAndName(manager string, g *graph.Graph, ty string) *graph.MetadataIndexer {
 	filter := filters.NewAndFilter(
-		filters.NewTermStringFilter("Manager", managerValue),
+		filters.NewTermStringFilter("Manager", manager),
 		filters.NewTermStringFilter("Type", ty),
 		filters.NewNotNullFilter("Namespace"),
 		filters.NewNotNullFilter("Name"),
 	)
 	m := graph.NewGraphElementFilter(filter)
 	return graph.NewMetadataIndexer(g, m, "Namespace", "Name")
+}
+
+func NewObjectIndexerByName(manager string, g *graph.Graph, ty string) *graph.MetadataIndexer {
+	filter := filters.NewAndFilter(
+		filters.NewTermStringFilter("Manager", manager),
+		filters.NewTermStringFilter("Type", ty),
+		filters.NewNotNullFilter("Name"),
+	)
+	m := graph.NewGraphElementFilter(filter)
+	return graph.NewMetadataIndexer(g, m, "Name")
+}
+
+// DumpNode dumps major node fields
+func DumpNode(n *graph.Node) string {
+	manager, _ := n.GetFieldString("Manager")
+	ty, _ := n.GetFieldString("Type")
+	namespace, _ := n.GetFieldString("Namespace")
+	name, _ := n.GetFieldString("Name")
+	return fmt.Sprintf("%s:%s{Namespace: %s, Name: %s}", manager, ty, namespace, name)
+}
+
+// DumpLink dumps the link and parent, child nodes
+func DumpLink(parent, child *graph.Node, m graph.Metadata) string {
+	return fmt.Sprintf("%s -> %s: %s", DumpNode(parent), DumpNode(child), m)
+}
+
+// AddLinkTry if the link does not already exist then add it
+func AddLinkTry(g *graph.Graph, parent, child *graph.Node, m graph.Metadata) *graph.Edge {
+	if e := g.GetFirstLink(parent, child, m); e != nil {
+		logging.GetLogger().Debugf("Adding link: %s: exists - skipping", DumpLink(parent, child, m))
+		return e
+	}
+
+	logging.GetLogger().Debugf("Adding link: %s", DumpLink(parent, child, m))
+	return g.Link(parent, child, m, parent.Host())
+}
+
+// DelLinkTry if the link exists then delete it
+func DelLinkTry(g *graph.Graph, parent, child *graph.Node, m graph.Metadata) {
+	e := g.GetFirstLink(parent, child, m)
+	if e == nil {
+		logging.GetLogger().Debugf("Deleting link: %s: missing - skipping", DumpLink(parent, child, m))
+		return
+	}
+
+	logging.GetLogger().Debugf("Deleting link: %s", DumpLink(parent, child, m))
+	g.DelEdge(e)
 }
