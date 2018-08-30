@@ -123,8 +123,12 @@ func checkEdgeLink(t *testing.T, c *CheckContext, from, to *graph.Node, edgeArgs
 	return checkEdge(t, c, from, to, "association", edgeArgs...)
 }
 
-func checkEdgeNetworkPolicy(t *testing.T, c *CheckContext, from, to *graph.Node, ty k8s.PolicyType, target k8s.PolicyTarget, point k8s.PolicyPoint) error {
-	return checkEdge(t, c, from, to, "networkpolicy", "PolicyType", ty, "PolicyTarget", target, "PolicyPoint", point)
+func checkEdgeNetworkPolicy(t *testing.T, c *CheckContext, from, to *graph.Node, ty k8s.PolicyType, target k8s.PolicyTarget, point k8s.PolicyPoint, edgeArgs ...interface{}) error {
+	edgeArgs = append([]interface{}{
+		"PolicyType", ty,
+		"PolicyTarget", target,
+		"PolicyPoint", point}, edgeArgs...)
+	return checkEdge(t, c, from, to, "networkpolicy", edgeArgs...)
 }
 
 func checkEdgeOwnership(t *testing.T, c *CheckContext, from, to *graph.Node, edgeArgs ...interface{}) error {
@@ -439,8 +443,8 @@ func TestK8sNetworkPolicyAllowEgressScenario(t *testing.T) {
 	testK8sNetworkPolicyDefaultScenario(t, k8s.PolicyTypeEgress, k8s.PolicyTargetAllow)
 }
 
-func testK8sNetworkPolicyObjectToObjectScenario(t *testing.T, policyType k8s.PolicyType, policyTarget k8s.PolicyTarget, resourceType string) {
-	file := fmt.Sprintf("networkpolicy-%s-%s-%s", policyType, policyTarget, resourceType)
+func testK8sNetworkPolicyObjectToObjectScenario(t *testing.T, policyType k8s.PolicyType, policyTarget k8s.PolicyTarget, resourceType, fileSuffix string, edgeArgs ...interface{}) {
+	file := fmt.Sprintf("networkpolicy-%s-%s-%s", policyType, policyTarget, fileSuffix)
 	name := objName + "-" + file
 	testRunner(
 		t,
@@ -467,7 +471,7 @@ func testK8sNetworkPolicyObjectToObjectScenario(t *testing.T, policyType k8s.Pol
 					return err
 				}
 
-				if err = checkEdgeNetworkPolicy(t, c, np, end, policyType, policyTarget, k8s.PolicyPointEnd); err != nil {
+				if err = checkEdgeNetworkPolicy(t, c, np, end, policyType, policyTarget, k8s.PolicyPointEnd, edgeArgs...); err != nil {
 					return err
 				}
 
@@ -478,11 +482,15 @@ func testK8sNetworkPolicyObjectToObjectScenario(t *testing.T, policyType k8s.Pol
 }
 
 func TestK8sNetworkPolicyAllowIngressPodToPodScenario(t *testing.T) {
-	testK8sNetworkPolicyObjectToObjectScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, "pod")
+	testK8sNetworkPolicyObjectToObjectScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, "pod", "pod")
 }
 
 func TestK8sNetworkPolicyAllowIngressNamespaceToNamepsaceScenario(t *testing.T) {
-	testK8sNetworkPolicyObjectToObjectScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, "namespace")
+	testK8sNetworkPolicyObjectToObjectScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, "namespace", "namespace")
+}
+
+func TestK8sNetworkPolicyAllowIngressPodToPodPortsScenario(t *testing.T) {
+	testK8sNetworkPolicyObjectToObjectScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, "pod", "ports", "Ports", ":80")
 }
 
 func TestK8sServicePodScenario(t *testing.T) {
