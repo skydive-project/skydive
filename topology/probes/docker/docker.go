@@ -184,7 +184,7 @@ func (probe *DockerProbe) connect() error {
 	}
 	defer probe.hostNs.Close()
 
-	for id, _ := range probe.containerMap {
+	for id := range probe.containerMap {
 		probe.unregisterContainer(id)
 	}
 
