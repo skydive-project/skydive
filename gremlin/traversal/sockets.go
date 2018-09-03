@@ -190,7 +190,7 @@ func NewSocketIndexer(g *graph.Graph) *graph.GraphIndexer {
 		return kv
 	}
 
-	graphIndexer := graph.NewGraphIndexer(g, hashNode, true)
+	graphIndexer := graph.NewGraphIndexer(g, g, hashNode, true)
 	socketFilter := graph.NewGraphElementFilter(filters.NewNotNullFilter("Sockets"))
 	for _, node := range g.GetNodes(socketFilter) {
 		graphIndexer.OnNodeAdded(node)
