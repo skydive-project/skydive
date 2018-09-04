@@ -202,6 +202,8 @@
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
+      - inject:
+          properties-content: MINIKUBE_DRIVER=virtualbox
     scm:
       - skydive-github:
           repository: "${REPOSITORY}"
