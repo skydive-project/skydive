@@ -27,6 +27,7 @@ import (
 	"time"
 
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/topology/graph"
 )
 
 // Resource used as interface resources for each API
@@ -189,4 +190,43 @@ type Workflow struct {
 	Description   string          `yaml:"description"`
 	Parameters    []WorkflowParam `yaml:"parameters"`
 	Source        string          `valid:"isValidWorkflow" yaml:"source"`
+}
+
+// NodeRule describes a node rule
+type NodeRule struct {
+	UUID     string
+	Type     string `valid:"nonzero"`
+	Name     string `valid:"nonzero"`
+	Metadata graph.Metadata
+	Action   string `valid:"regexp=^(create|update)$"`
+	Query    string
+}
+
+// ID returns the node rule ID
+func (n *NodeRule) ID() string {
+	return n.UUID
+}
+
+// SetID set ID
+func (n *NodeRule) SetID(id string) {
+	n.UUID = id
+}
+
+// EdgeRule describes a edge rule
+type EdgeRule struct {
+	UUID         string
+	Src          string `valid:"isGremlinExpr"`
+	Dst          string `valid:"isGremlinExpr"`
+	RelationType string `valid:"regexp=^(layer2|ownership|both)$"`
+	Metadata     graph.Metadata
+}
+
+// ID returns the edge rule ID
+func (e *EdgeRule) ID() string {
+	return e.UUID
+}
+
+// SetID set ID
+func (e *EdgeRule) SetID(id string) {
+	e.UUID = id
 }
