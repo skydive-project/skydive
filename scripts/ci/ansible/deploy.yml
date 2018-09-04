@@ -59,6 +59,7 @@
         - build-timeout
         - timestamper
         - jenkins-multijob-plugin
+        - envinject
 
 - name: Install requirements
   hosts: jenkins_master, slaves
