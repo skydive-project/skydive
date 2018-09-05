@@ -26,7 +26,6 @@ package tests
 
 import (
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -48,8 +47,6 @@ const (
 	manager     = "k8s"
 	objName     = "skydive-test"
 )
-
-var nodeName, _ = os.Hostname()
 
 func setupFromConfigFile(file string) []helper.Cmd {
 	return []helper.Cmd{
@@ -146,7 +143,11 @@ func testRunner(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, checks []Che
 func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, typ, name string, fields ...string) {
 	testRunner(t, setupCmds, tearDownCmds, []CheckFunction{
 		func(c *CheckContext) error {
-			obj, err := checkNodeCreation(t, c, typ, "Name", name)
+			var values []interface{}
+			if name != "" {
+				values = append(values, "Name", name)
+			}
+			obj, err := checkNodeCreation(t, c, typ, values...)
 			if err != nil {
 				return err
 			}
@@ -212,7 +213,7 @@ func TestK8sNetworkPolicyNode(t *testing.T) {
 }
 
 func TestK8sNodeNode(t *testing.T) {
-	testNodeCreation(t, nil, nil, "node", nodeName, "Arch", "Cluster", "Hostname", "InternalIP", "Labels", "OS")
+	testNodeCreation(t, nil, nil, "node", "", "Arch", "Cluster", "Hostname", "InternalIP", "Labels", "OS")
 }
 
 func TestK8sPersistentVolumeNode(t *testing.T) {
