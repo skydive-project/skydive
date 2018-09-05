@@ -399,7 +399,6 @@ k8s:
   # list of (sub) probes comprising k8s probe.
   # if list is empty then will resolve to all existing (sub) probes.
   probes:
-  - cluster
   - container
   - cronjob
   - deployment
