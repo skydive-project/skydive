@@ -12,7 +12,7 @@ MINIKUBE_URL="https://github.com/kubernetes/minikube/releases/download/$MINIKUBE
 KUBECTL_VERSION="v1.9.4"
 KUBECTL_URL="https://storage.googleapis.com/kubernetes-release/release/$KUBECTL_VERSION/bin/$OS/$ARCH/kubectl"
 
-WITH_CALICO=true
+WITH_CALICO=false
 
 CALICO_SITE="https://docs.projectcalico.org"
 CALICO_VER="v1.5"
