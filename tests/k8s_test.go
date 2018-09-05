@@ -186,7 +186,7 @@ func TestK8sClusterNode(t *testing.T) {
 }
 
 func TestK8sContainerNode(t *testing.T) {
-	testNodeCreationFromConfig(t, k8s.Manager, "container", objName+"-container", "Image", "Labels", "Pod")
+	testNodeCreationFromConfig(t, k8s.Manager, "container", objName+"-container", "Image", "Pod")
 }
 
 func TestK8sCronJobNode(t *testing.T) {
@@ -226,7 +226,7 @@ func TestK8sNodeNode(t *testing.T) {
 }
 
 func TestK8sPersistentVolumeNode(t *testing.T) {
-	testNodeCreationFromConfig(t, k8s.Manager, "persistentvolume", objName+"-persistentvolume", "Capacity", "AccessModes", "VolumeMode", "ClaimRef", "StorageClassName", "Status")
+	testNodeCreationFromConfig(t, k8s.Manager, "persistentvolume", objName+"-persistentvolume", "Capacity", "AccessModes", "VolumeMode", "StorageClassName", "Status")
 }
 
 func TestK8sPersistentVolumeClaimNode(t *testing.T) {
@@ -329,7 +329,7 @@ func TestHelloNodeScenario(t *testing.T) {
 					return err
 				}
 
-				_, err = checkNodeCreation(t, c, k8s.Manager, "node")
+				node, err := checkNodeCreation(t, c, k8s.Manager, "node")
 				if err != nil {
 					return err
 				}
@@ -364,6 +364,9 @@ func TestHelloNodeScenario(t *testing.T) {
 					return err
 				}
 
+				if err = checkEdgeAssociation(t, c, node, pod); err != nil {
+					return err
+				}
 				return nil
 			},
 		},
@@ -384,12 +387,12 @@ func TestK8sNetworkPolicyScenario1(t *testing.T) {
 					return err
 				}
 
-				namespace, err := checkNodeCreation(t, c, k8s.Manager, "namespace", "Name", name)
+				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", "Name", name)
 				if err != nil {
 					return err
 				}
 
-				if err = checkEdgeNetworkPolicy(t, c, networkpolicy, namespace, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, k8s.PolicyPointBegin); err != nil {
+				if err = checkEdgeNetworkPolicy(t, c, networkpolicy, pod, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, k8s.PolicyPointBegin); err != nil {
 					return err
 				}
 
@@ -442,12 +445,12 @@ func testK8sNetworkPolicyDefaultScenario(t *testing.T, policyType k8s.PolicyType
 					return err
 				}
 
-				ns, err := checkNodeCreation(t, c, k8s.Manager, "namespace", "Name", "default")
+				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", "Name", name)
 				if err != nil {
 					return err
 				}
 
-				if err = checkEdgeNetworkPolicy(t, c, np, ns, policyType, policyTarget, k8s.PolicyPointBegin); err != nil {
+				if err = checkEdgeNetworkPolicy(t, c, np, pod, policyType, policyTarget, k8s.PolicyPointBegin); err != nil {
 					return err
 				}
 
@@ -473,7 +476,7 @@ func TestK8sNetworkPolicyAllowEgressScenario(t *testing.T) {
 	testK8sNetworkPolicyDefaultScenario(t, k8s.PolicyTypeEgress, k8s.PolicyTargetAllow)
 }
 
-func testK8sNetworkPolicyObjectToObjectScenario(t *testing.T, policyType k8s.PolicyType, policyTarget k8s.PolicyTarget, resourceType, fileSuffix string, edgeArgs ...interface{}) {
+func testK8sNetworkPolicyObjectToObjectScenario(t *testing.T, policyType k8s.PolicyType, policyTarget k8s.PolicyTarget, fileSuffix string, edgeArgs ...interface{}) {
 	file := fmt.Sprintf("networkpolicy-%s-%s-%s", policyType, policyTarget, fileSuffix)
 	name := objName + "-" + file
 	testRunner(
@@ -487,12 +490,12 @@ func testK8sNetworkPolicyObjectToObjectScenario(t *testing.T, policyType k8s.Pol
 					return err
 				}
 
-				begin, err := checkNodeCreation(t, c, k8s.Manager, resourceType, "Name", name+"-to")
+				begin, err := checkNodeCreation(t, c, k8s.Manager, "pod", "Name", name+"-to")
 				if err != nil {
 					return err
 				}
 
-				end, err := checkNodeCreation(t, c, k8s.Manager, resourceType, "Name", name+"-from")
+				end, err := checkNodeCreation(t, c, k8s.Manager, "pod", "Name", name+"-from")
 				if err != nil {
 					return err
 				}
@@ -512,15 +515,15 @@ func testK8sNetworkPolicyObjectToObjectScenario(t *testing.T, policyType k8s.Pol
 }
 
 func TestK8sNetworkPolicyAllowIngressPodToPodScenario(t *testing.T) {
-	testK8sNetworkPolicyObjectToObjectScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, "pod", "pod")
+	testK8sNetworkPolicyObjectToObjectScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, "pod")
 }
 
-func TestK8sNetworkPolicyAllowIngressNamespaceToNamepsaceScenario(t *testing.T) {
-	testK8sNetworkPolicyObjectToObjectScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, "namespace", "namespace")
+func TestK8sNetworkPolicyAllowIngressNamespaceToNamespaceScenario(t *testing.T) {
+	testK8sNetworkPolicyObjectToObjectScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, "namespace")
 }
 
 func TestK8sNetworkPolicyAllowIngressPodToPodPortsScenario(t *testing.T) {
-	testK8sNetworkPolicyObjectToObjectScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, "pod", "ports", "Ports", ":80")
+	testK8sNetworkPolicyObjectToObjectScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, "ports", "Ports", ":80")
 }
 
 func TestK8sServicePodScenario(t *testing.T) {

@@ -111,8 +111,9 @@ func (probe *DockerProbe) registerContainer(id string) {
 
 	probe.Graph.Lock()
 	metadata := graph.Metadata{
-		"Type": "container",
-		"Name": info.Name[1:],
+		"Type":    "container",
+		"Name":    info.Name[1:],
+		"Manager": "docker",
 		"Docker": map[string]interface{}{
 			"ContainerID":   info.ID,
 			"ContainerName": info.Name,

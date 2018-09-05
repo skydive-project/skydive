@@ -1,9 +1,20 @@
+
 kind: Namespace
 apiVersion: v1
 metadata:
   name: skydive-test-networkpolicy-namespace
-  labels:
-    name: skydive-test-networkpolicy-namespace
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: skydive-test-networkpolicy-namespace
+  namespace: skydive-test-networkpolicy-namespace
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
 ---
 kind: NetworkPolicy
 apiVersion: networking.k8s.io/v1
