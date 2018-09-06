@@ -36,11 +36,13 @@ import (
 )
 
 var (
-	nodeName string
-	nodeType string
-	metadata string
-	query    string
-	action   string
+	name        string
+	description string
+	nodeName    string
+	nodeType    string
+	metadata    string
+	query       string
+	action      string
 )
 
 // NodeRuleCmd skydive node rule root command
@@ -72,11 +74,13 @@ var NodeRuleCreate = &cobra.Command{
 		}
 
 		node := &api.NodeRule{
-			Type:     nodeType,
-			Name:     nodeName,
-			Metadata: m,
-			Query:    query,
-			Action:   action,
+			Name:        name,
+			Description: description,
+			NodeType:    nodeType,
+			NodeName:    nodeName,
+			Metadata:    m,
+			Query:       query,
+			Action:      action,
 		}
 
 		if err = validator.Validate(node); err != nil {
@@ -175,8 +179,10 @@ var NodeRuleDelete = &cobra.Command{
 }
 
 func addCreateNodeRuleFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&nodeName, "name", "", "", "node name")
-	cmd.Flags().StringVarP(&nodeType, "type", "", "", "node type")
+	cmd.Flags().StringVarP(&name, "name", "", "", "rule name")
+	cmd.Flags().StringVarP(&description, "description", "", "", "rule description")
+	cmd.Flags().StringVarP(&nodeName, "node-name", "", "", "node name")
+	cmd.Flags().StringVarP(&nodeType, "node-type", "", "", "node type")
 	cmd.Flags().StringVarP(&metadata, "metadata", "", "", "node metadata, key value pairs. 'k1=v1, k2=v2'")
 	cmd.Flags().StringVarP(&query, "query", "", "", "gremlin query")
 	cmd.Flags().StringVarP(&action, "action", "", "", "action: create or update")
