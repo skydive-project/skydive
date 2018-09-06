@@ -103,6 +103,14 @@ func isGremlinExpr(v interface{}, param string) error {
 	return nil
 }
 
+func isGremlinOrEmpty(v interface{}, param string) error {
+	query, ok := v.(string)
+	if ok && strings.TrimSpace(query) == "" {
+		return nil
+	}
+	return isGremlinExpr(v, param)
+}
+
 func isBPFFilter(v interface{}, param string) error {
 	bpfFilter, ok := v.(string)
 	if !ok {
@@ -176,6 +184,7 @@ func Validate(value interface{}) error {
 func init() {
 	skydiveValidator.SetValidationFunc("isIP", isIP)
 	skydiveValidator.SetValidationFunc("isGremlinExpr", isGremlinExpr)
+	skydiveValidator.SetValidationFunc("isGremlinOrEmpty", isGremlinOrEmpty)
 	skydiveValidator.SetValidationFunc("isBPFFilter", isBPFFilter)
 	skydiveValidator.SetValidationFunc("isValidCaptureHeaderSize", isValidCaptureHeaderSize)
 	skydiveValidator.SetValidationFunc("isValidRawPacketLimit", isValidRawPacketLimit)
