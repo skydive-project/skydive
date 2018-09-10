@@ -270,6 +270,10 @@
     builders:
       - skydive-test:
           test: scripts/ci/run-k8s-tests.sh
+    publishers:
+      - junit:
+          results: tests.xml
+      - chuck-norris
 
 - job:
     name: skydive-helm-tests
@@ -285,6 +289,10 @@
     builders:
       - skydive-test:
           test: scripts/ci/run-helm-tests.sh
+    publishers:
+      - junit:
+          results: tests.xml
+      - chuck-norris
 
 - job:
     name: skydive-opencontrail-tests
