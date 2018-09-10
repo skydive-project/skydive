@@ -194,12 +194,14 @@ type Workflow struct {
 
 // NodeRule describes a node rule
 type NodeRule struct {
-	UUID     string
-	Type     string `valid:"nonzero"`
-	Name     string `valid:"nonzero"`
-	Metadata graph.Metadata
-	Action   string `valid:"regexp=^(create|update)$"`
-	Query    string
+	UUID        string
+	Name        string
+	Description string
+	NodeType    string
+	NodeName    string
+	Metadata    graph.Metadata
+	Action      string `valid:"regexp=^(create|update)$"`
+	Query       string `valid:"isGremlinOrEmpty"`
 }
 
 // ID returns the node rule ID
@@ -215,6 +217,8 @@ func (n *NodeRule) SetID(id string) {
 // EdgeRule describes a edge rule
 type EdgeRule struct {
 	UUID         string
+	Name         string
+	Description  string
 	Src          string `valid:"isGremlinExpr"`
 	Dst          string `valid:"isGremlinExpr"`
 	RelationType string `valid:"regexp=^(layer2|ownership|both)$"`

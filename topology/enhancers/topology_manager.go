@@ -132,12 +132,12 @@ func (tm *TopologyManager) createEdge(edge *types.EdgeRule) error {
 }
 
 func (tm *TopologyManager) createNode(node *types.NodeRule) error {
-	u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(node.Type+node.Name))
+	u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(node.NodeType+node.NodeName))
 	id := graph.Identifier(u.String())
 	common.SetField(node.Metadata, "TID", id)
 
 	if _, ok := node.Metadata["Name"]; !ok {
-		common.SetField(node.Metadata, "Name", node.Name)
+		common.SetField(node.Metadata, "Name", node.NodeName)
 	}
 
 	//check node already exist
@@ -145,8 +145,8 @@ func (tm *TopologyManager) createNode(node *types.NodeRule) error {
 		return nil
 	}
 
-	if node.Type == "fabric" {
-		common.SetField(node.Metadata, "Probe", node.Type)
+	if node.NodeType == "fabric" {
+		common.SetField(node.Metadata, "Probe", node.NodeType)
 	}
 
 	tm.graph.NewNode(id, node.Metadata, "")
@@ -218,7 +218,7 @@ func (tm *TopologyManager) handleNodeRuleRequest(action string, resource types.R
 	case "delete":
 		switch strings.ToLower(node.Action) {
 		case "create":
-			u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(node.Type+node.Name))
+			u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(node.NodeType+node.NodeName))
 			id := graph.Identifier(u.String())
 			if n := tm.graph.GetNode(id); n != nil {
 				tm.graph.DelNode(n)
