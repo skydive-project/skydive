@@ -90,12 +90,12 @@ func (p *podProbe) newMetadata(pod *v1.Pod) graph.Metadata {
 	return m
 }
 
-func (p *podProbe) linkPodToNode(pod *v1.Pod, podNode *graph.Node) {
+func (p *podProbe) linkNodeToPod(pod *v1.Pod, podNode *graph.Node) {
 	nodeNodes, _ := p.nodeIndexer.Get(pod.Spec.NodeName)
 	if len(nodeNodes) == 0 {
 		return
 	}
-	linkPodToNode(p.graph, nodeNodes[0], podNode)
+	linkNodeToPod(p.graph, nodeNodes[0], podNode)
 }
 
 func (p *podProbe) onAdd(obj interface{}) {
@@ -111,7 +111,7 @@ func (p *podProbe) onAdd(obj interface{}) {
 		addOwnershipLink(p.graph, podNode, containerNode)
 	}
 
-	p.linkPodToNode(pod, podNode)
+	p.linkNodeToPod(pod, podNode)
 }
 
 func (p *podProbe) OnAdd(obj interface{}) {
@@ -142,7 +142,7 @@ func (p *podProbe) OnUpdate(oldObj, newObj interface{}) {
 	}
 
 	if oldPod.Spec.NodeName == "" && newPod.Spec.NodeName != "" {
-		p.linkPodToNode(newPod, podNode)
+		p.linkNodeToPod(newPod, podNode)
 	}
 
 	addMetadata(p.graph, podNode, newPod)
@@ -162,11 +162,11 @@ func (p *podProbe) OnDelete(obj interface{}) {
 
 func linkPodsToNode(g *graph.Graph, host *graph.Node, pods []*graph.Node) {
 	for _, pod := range pods {
-		linkPodToNode(g, host, pod)
+		linkNodeToPod(g, host, pod)
 	}
 }
 
-func linkPodToNode(g *graph.Graph, node, pod *graph.Node) {
+func linkNodeToPod(g *graph.Graph, node, pod *graph.Node) {
 	addLink(g, node, pod, newEdgeMetadata())
 }
 

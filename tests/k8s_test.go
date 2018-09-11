@@ -132,6 +132,14 @@ func checkEdgeOwnership(t *testing.T, c *CheckContext, from, to *graph.Node, edg
 	return checkEdge(t, c, from, to, "ownership", edgeArgs...)
 }
 
+func checkEdgeAssociation(t *testing.T, c *CheckContext, from, to *graph.Node, edgeArgs ...interface{}) error {
+	return checkEdge(t, c, from, to, "association", edgeArgs...)
+}
+
+func checkEdgeService(t *testing.T, c *CheckContext, from, to *graph.Node, edgeArgs ...interface{}) error {
+	return checkEdge(t, c, from, to, "service", edgeArgs...)
+}
+
 func testRunner(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, checks []CheckFunction) {
 	test := &Test{
 		mode:         Replay,
@@ -314,6 +322,21 @@ func TestHelloNodeScenario(t *testing.T) {
 					return err
 				}
 
+				service, err := checkNodeCreation(t, c, "service", "Name", "kubernetes")
+				if err != nil {
+					return err
+				}
+
+				replicaset, err := checkNodeCreation(t, c, "replicaset", "Name", g.Regex("%s-.*", "hello-node"))
+				if err != nil {
+					return err
+				}
+
+				node, err := checkNodeCreation(t, c, "node", "Name", nodeName)
+				if err != nil {
+					return err
+				}
+
 				pod, err := checkNodeCreation(t, c, "pod", "Name", g.Regex("%s-.*", "hello-node"))
 				if err != nil {
 					return err
@@ -328,6 +351,10 @@ func TestHelloNodeScenario(t *testing.T) {
 					return err
 				}
 
+				if err = checkEdgeOwnership(t, c, namespace, replicaset); err != nil {
+					return err
+				}
+
 				if err = checkEdgeOwnership(t, c, namespace, pod); err != nil {
 					return err
 				}
@@ -335,7 +362,16 @@ func TestHelloNodeScenario(t *testing.T) {
 				if err = checkEdgeOwnership(t, c, pod, container); err != nil {
 					return err
 				}
+
+				if err = checkEdgeService(t, c, service, pod); err != nil {
+					return err
+				}
+
+				if err = checkEdgeAssociation(t, c, node, pod); err != nil {
+					return err
+				}
 				return nil
+
 			},
 		},
 	)
