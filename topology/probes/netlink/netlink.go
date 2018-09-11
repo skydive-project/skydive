@@ -397,9 +397,15 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 		"Type":      linkType,
 		"EncapType": attrs.EncapType,
 		"IfIndex":   int64(attrs.Index),
-		"MAC":       attrs.HardwareAddr.String(),
-		"MTU":       int64(attrs.MTU),
 		"Driver":    driver,
+	}
+
+	if attrs.MTU != 0 {
+		metadata["MTU"] = int64(attrs.MTU)
+	}
+
+	if mac := attrs.HardwareAddr.String(); mac != "" {
+		metadata["MAC"] = mac
 	}
 
 	if attrs.MasterIndex != 0 {
