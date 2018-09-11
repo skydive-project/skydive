@@ -35,18 +35,18 @@ import (
 )
 
 // InterfaceMetrics returns a Metrics step from interface metric metadata
-func InterfaceMetrics(tv *traversal.GraphTraversalV) *MetricsTraversalStep {
+func InterfaceMetrics(ctx traversal.StepContext, tv *traversal.GraphTraversalV) *MetricsTraversalStep {
 	if tv.Error() != nil {
 		return NewMetricsTraversalStepFromError(tv.Error())
 	}
 
-	tv = tv.Dedup("ID", "LastUpdateMetric.Start").Sort(common.SortAscending, "LastUpdateMetric.Start")
+	tv = tv.Dedup(ctx, "ID", "LastUpdateMetric.Start").Sort(ctx, common.SortAscending, "LastUpdateMetric.Start")
 	if tv.Error() != nil {
 		return NewMetricsTraversalStepFromError(tv.Error())
 	}
 
 	metrics := make(map[string][]common.Metric)
-	it := tv.GraphTraversal.CurrentStepContext().PaginationRange.Iterator()
+	it := ctx.PaginationRange.Iterator()
 	gslice := tv.GraphTraversal.Graph.GetContext().TimeSlice
 
 	tv.GraphTraversal.RLock()
@@ -79,12 +79,12 @@ nodeloop:
 }
 
 // Sockets returns a sockets step from host/namespace sockets
-func Sockets(tv *traversal.GraphTraversalV) *SocketsTraversalStep {
+func Sockets(ctx traversal.StepContext, tv *traversal.GraphTraversalV) *SocketsTraversalStep {
 	if tv.Error() != nil {
 		return &SocketsTraversalStep{error: tv.Error()}
 	}
 
-	it := tv.GraphTraversal.CurrentStepContext().PaginationRange.Iterator()
+	it := ctx.PaginationRange.Iterator()
 
 	tv.GraphTraversal.RLock()
 	defer tv.GraphTraversal.RUnlock()

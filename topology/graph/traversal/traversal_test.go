@@ -58,11 +58,12 @@ func newTransversalGraph(t *testing.T) *graph.Graph {
 
 func TestBasicTraversal(t *testing.T) {
 	g := newTransversalGraph(t)
+	ctx := StepContext{}
 
 	tr := NewGraphTraversal(g, false)
 
 	// next traversal test
-	tv := tr.V().Has("Value", 1)
+	tv := tr.V(ctx).Has(ctx, "Value", 1)
 	if tv.Error() != nil {
 		t.Fatal(tv.Error())
 	}
@@ -72,7 +73,7 @@ func TestBasicTraversal(t *testing.T) {
 	}
 
 	// next traversal test
-	tv = tr.V().Has("Type", "intf")
+	tv = tr.V(ctx).Has(ctx, "Type", "intf")
 	if tv.Error() != nil {
 		t.Fatal(tv.Error())
 	}
@@ -82,7 +83,7 @@ func TestBasicTraversal(t *testing.T) {
 	}
 
 	// next traversal test
-	tv = tr.V().Has("List", "111")
+	tv = tr.V(ctx).Has(ctx, "List", "111")
 	if tv.Error() != nil {
 		t.Fatal(tv.Error())
 	}
@@ -92,7 +93,7 @@ func TestBasicTraversal(t *testing.T) {
 	}
 
 	// next traversal test
-	tv = tr.V().Has("Indexes", 6)
+	tv = tr.V(ctx).Has(ctx, "Indexes", 6)
 	if tv.Error() != nil {
 		t.Fatal(tv.Error())
 	}
@@ -102,7 +103,7 @@ func TestBasicTraversal(t *testing.T) {
 	}
 
 	// next traversal test
-	tv = tr.V().Has("Value", 1).Out().Has("Value", 2).OutE().Has("Direction", "Left").OutV().Out()
+	tv = tr.V(ctx).Has(ctx, "Value", 1).Out(ctx).Has(ctx, "Value", 2).OutE(ctx).Has(ctx, "Direction", "Left").OutV(ctx).Out(ctx)
 	if tv.Error() != nil {
 		t.Fatal(tv.Error())
 	}
@@ -117,7 +118,7 @@ func TestBasicTraversal(t *testing.T) {
 	}
 
 	// next traversal test
-	te := tr.V().Has("Value", 3).BothE()
+	te := tr.V(ctx).Has(ctx, "Value", 3).BothE(ctx)
 	if te.Error() != nil {
 		t.Fatal(te.Error())
 	}
@@ -127,7 +128,7 @@ func TestBasicTraversal(t *testing.T) {
 	}
 
 	// next traversal test
-	tv = tr.V().Has("Value", 1).Out().Has("Value", 4)
+	tv = tr.V(ctx).Has(ctx, "Value", 1).Out(ctx).Has(ctx, "Value", 4)
 	if tv.Error() != nil {
 		t.Fatal(tv.Error())
 	}
@@ -137,7 +138,7 @@ func TestBasicTraversal(t *testing.T) {
 	}
 
 	// next traversal test
-	tv = tr.V().Has("Value", 1).OutE().Has("Mode", "Slow").OutV()
+	tv = tr.V(ctx).Has(ctx, "Value", 1).OutE(ctx).Has(ctx, "Mode", "Slow").OutV(ctx)
 	if tv.Error() != nil {
 		t.Fatal(tv.Error())
 	}
@@ -147,7 +148,7 @@ func TestBasicTraversal(t *testing.T) {
 	}
 
 	// next traversal test
-	tv = tr.V().Has("Value", 1).OutE().Has("Mode", "Direct").OutV()
+	tv = tr.V(ctx).Has(ctx, "Value", 1).OutE(ctx).Has(ctx, "Mode", "Direct").OutV(ctx)
 	if tv.Error() != nil {
 		t.Fatal(tv.Error())
 	}
@@ -162,27 +163,27 @@ func TestBasicTraversal(t *testing.T) {
 	}
 
 	// next traversal test
-	tv = tr.V().Has("Type")
+	tv = tr.V(ctx).Has(ctx, "Type")
 	if len(tv.Values()) != 2 {
 		t.Fatalf("Should return 2 nodes, returned: %v", tv.Values())
 	}
 
-	props := tr.V().PropertyKeys()
+	props := tr.V(ctx).PropertyKeys(ctx)
 	if len(props.Values()) != 15 {
 		t.Fatalf("Should return 15 properties, returned: %s", props.Values())
 	}
 
-	res := tr.V().PropertyValues("Type")
+	res := tr.V(ctx).PropertyValues(ctx, "Type")
 	if len(res.Values()) != 2 {
 		t.Fatalf("Should return 2 nodes, returned: %v", res.Values())
 	}
 
-	res = tr.V().PropertyValues("Map")
+	res = tr.V(ctx).PropertyValues(ctx, "Map")
 	if len(res.Values()) != 1 {
 		t.Fatalf("Should return 1 nodes, returned: %v", res.Values())
 	}
 
-	sum := tr.V().Sum("Bytes")
+	sum := tr.V(ctx).Sum(ctx, "Bytes")
 	bytes, ok := sum.Values()[0].(float64)
 	if ok {
 		if bytes != 7072 {
@@ -195,10 +196,11 @@ func TestBasicTraversal(t *testing.T) {
 
 func TestTraversalWithin(t *testing.T) {
 	g := newTransversalGraph(t)
+	ctx := StepContext{}
 
 	tr := NewGraphTraversal(g, false)
 
-	tv := tr.V().Has("Value", Within(1, 2, 4))
+	tv := tr.V(ctx).Has(ctx, "Value", Within(1, 2, 4))
 	if len(tv.Values()) != 3 {
 		t.Fatalf("Should return 3 nodes, returned: %v", tv.Values())
 	}
@@ -206,10 +208,11 @@ func TestTraversalWithin(t *testing.T) {
 
 func TestTraversalLt(t *testing.T) {
 	g := newTransversalGraph(t)
+	ctx := StepContext{}
 
 	tr := NewGraphTraversal(g, false)
 
-	tv := tr.V().Has("Value", Lt(3))
+	tv := tr.V(ctx).Has(ctx, "Value", Lt(3))
 	if len(tv.Values()) != 2 {
 		t.Fatalf("Should return 2 nodes, returned: %v", tv.Values())
 	}
@@ -217,10 +220,11 @@ func TestTraversalLt(t *testing.T) {
 
 func TestTraversalGt(t *testing.T) {
 	g := newTransversalGraph(t)
+	ctx := StepContext{}
 
 	tr := NewGraphTraversal(g, false)
 
-	tv := tr.V().Has("Value", Gt(3))
+	tv := tr.V(ctx).Has(ctx, "Value", Gt(3))
 	if len(tv.Values()) != 1 {
 		t.Fatalf("Should return 1 nodes, returned: %v", tv.Values())
 	}
@@ -228,10 +232,11 @@ func TestTraversalGt(t *testing.T) {
 
 func TestTraversalLte(t *testing.T) {
 	g := newTransversalGraph(t)
+	ctx := StepContext{}
 
 	tr := NewGraphTraversal(g, false)
 
-	tv := tr.V().Has("Value", Lte(3))
+	tv := tr.V(ctx).Has(ctx, "Value", Lte(3))
 	if len(tv.Values()) != 3 {
 		t.Fatalf("Should return 3 nodes, returned: %v", tv.Values())
 	}
@@ -239,10 +244,11 @@ func TestTraversalLte(t *testing.T) {
 
 func TestTraversalGte(t *testing.T) {
 	g := newTransversalGraph(t)
+	ctx := StepContext{}
 
 	tr := NewGraphTraversal(g, false)
 
-	tv := tr.V().Has("Value", Gte(3))
+	tv := tr.V(ctx).Has(ctx, "Value", Gte(3))
 	if len(tv.Values()) != 2 {
 		t.Fatalf("Should return 2 nodes, returned: %v", tv.Values())
 	}
@@ -250,10 +256,11 @@ func TestTraversalGte(t *testing.T) {
 
 func TestTraversalInside(t *testing.T) {
 	g := newTransversalGraph(t)
+	ctx := StepContext{}
 
 	tr := NewGraphTraversal(g, false)
 
-	tv := tr.V().Has("Value", Inside(1, 4))
+	tv := tr.V(ctx).Has(ctx, "Value", Inside(1, 4))
 	if len(tv.Values()) != 2 {
 		t.Fatalf("Should return 2 nodes, returned: %v", tv.Values())
 	}
@@ -261,10 +268,11 @@ func TestTraversalInside(t *testing.T) {
 
 func TestTraversalBetween(t *testing.T) {
 	g := newTransversalGraph(t)
+	ctx := StepContext{}
 
 	tr := NewGraphTraversal(g, false)
 
-	tv := tr.V().Has("Value", Between(1, 4))
+	tv := tr.V(ctx).Has(ctx, "Value", Between(1, 4))
 	if len(tv.Values()) != 3 {
 		t.Fatalf("Should return 3 nodes, returned: %v", tv.Values())
 	}
@@ -272,17 +280,18 @@ func TestTraversalBetween(t *testing.T) {
 
 func TestTraversalNe(t *testing.T) {
 	g := newTransversalGraph(t)
+	ctx := StepContext{}
 
 	tr := NewGraphTraversal(g, false)
 
 	// next test
-	tv := tr.V().Has("Value", Ne(1))
+	tv := tr.V(ctx).Has(ctx, "Value", Ne(1))
 	if len(tv.Values()) != 3 {
 		t.Fatalf("Should return 3 nodes, returned: %v", tv.Values())
 	}
 
 	// next test
-	tv = tr.V().Has("Type", Ne("intf"))
+	tv = tr.V(ctx).Has(ctx, "Type", Ne("intf"))
 	if len(tv.Values()) != 2 {
 		t.Fatalf("Should return 2 nodes, returned: %v", tv.Values())
 	}
@@ -290,21 +299,22 @@ func TestTraversalNe(t *testing.T) {
 
 func TestTraversalHasKey(t *testing.T) {
 	g := newTransversalGraph(t)
+	ctx := StepContext{}
 
 	tr := NewGraphTraversal(g, false)
 
 	// next test
-	tv := tr.V().HasKey("Name")
+	tv := tr.V(ctx).HasKey(ctx, "Name")
 	if len(tv.Values()) != 1 {
 		t.Fatalf("Should return 1 node, returned: %v", tv.Values())
 	}
 
-	tv = tr.V().HasKey("Unknown")
+	tv = tr.V(ctx).HasKey(ctx, "Unknown")
 	if len(tv.Values()) != 0 {
 		t.Fatalf("Should return 0 node, returned: %v", tv.Values())
 	}
 
-	tv = tr.V().HasKey("List")
+	tv = tr.V(ctx).HasKey(ctx, "List")
 	if len(tv.Values()) != 1 {
 		t.Fatalf("Should return 1 node, returned: %v", tv.Values())
 	}
@@ -312,11 +322,12 @@ func TestTraversalHasKey(t *testing.T) {
 
 func TestTraversalHasNot(t *testing.T) {
 	g := newTransversalGraph(t)
+	ctx := StepContext{}
 
 	tr := NewGraphTraversal(g, false)
 
 	// next test
-	tv := tr.V().HasNot("Name")
+	tv := tr.V(ctx).HasNot(ctx, "Name")
 	if len(tv.Values()) != 3 {
 		t.Fatalf("Should return 3 nodes, returned: %v", tv.Values())
 	}
@@ -324,17 +335,18 @@ func TestTraversalHasNot(t *testing.T) {
 
 func TestTraversalRegex(t *testing.T) {
 	g := newTransversalGraph(t)
+	ctx := StepContext{}
 
 	tr := NewGraphTraversal(g, false)
 
 	// next test
-	tv := tr.V().Has("Name", Regex(".*ode.*"))
+	tv := tr.V(ctx).Has(ctx, "Name", Regex(".*ode.*"))
 	if len(tv.Values()) != 1 {
 		t.Fatalf("Should return 1 node, returned: %v", tv.Values())
 	}
 
 	// next test
-	tv = tr.V().Has("Name", Regex("ode5"))
+	tv = tr.V(ctx).Has(ctx, "Name", Regex("ode5"))
 	if len(tv.Values()) != 0 {
 		t.Fatalf("Shouldn't return node, returned: %v", tv.Values())
 	}
@@ -342,40 +354,41 @@ func TestTraversalRegex(t *testing.T) {
 
 func TestTraversalIpv4Range(t *testing.T) {
 	g := newTransversalGraph(t)
+	ctx := StepContext{}
 
 	tr := NewGraphTraversal(g, false)
 
 	// next test
-	tv := tr.V().Has("IPV4", IPV4Range("192.168.0.0/24"))
+	tv := tr.V(ctx).Has(ctx, "IPV4", IPV4Range("192.168.0.0/24"))
 	if len(tv.Values()) != 1 {
 		t.Fatalf("Should return 1 node, returned: %v", tv.Values())
 	}
 
 	// next test
-	tv = tr.V().Has("IPV4", IPV4Range("192.168.0.0/16"))
+	tv = tr.V(ctx).Has(ctx, "IPV4", IPV4Range("192.168.0.0/16"))
 	if len(tv.Values()) != 2 {
 		t.Fatalf("Should return 2 nodes, returned: %v", tv.Values())
 	}
 
-	tv = tr.V().Has("IPV4", IPV4Range("192.168.0.0/26"))
+	tv = tr.V(ctx).Has(ctx, "IPV4", IPV4Range("192.168.0.0/26"))
 	if len(tv.Values()) != 1 {
 		t.Fatalf("Should return 1 node, returned: %v", tv.Values())
 	}
 
 	// next test
-	tv = tr.V().Has("IPV4", IPV4Range("192.168.0.77/26"))
+	tv = tr.V(ctx).Has(ctx, "IPV4", IPV4Range("192.168.0.77/26"))
 	if len(tv.Values()) != 0 {
 		t.Fatalf("Shouldn't return node, returned: %v", tv.Values())
 	}
 
 	// next test
-	tv = tr.V().Has("IPV4", IPV4Range("192.168.2.0/24"))
+	tv = tr.V(ctx).Has(ctx, "IPV4", IPV4Range("192.168.2.0/24"))
 	if len(tv.Values()) != 0 {
 		t.Fatalf("Shouldn't return node, returned: %v", tv.Values())
 	}
 
 	// next test
-	tv = tr.V().Has("IPV4", IPV4Range("10.0.0.0/24"))
+	tv = tr.V(ctx).Has(ctx, "IPV4", IPV4Range("10.0.0.0/24"))
 	if len(tv.Values()) != 1 {
 		t.Fatalf("Should return 1 node, returned: %v", tv.Values())
 	}
@@ -383,11 +396,12 @@ func TestTraversalIpv4Range(t *testing.T) {
 
 func TestTraversalBoth(t *testing.T) {
 	g := newTransversalGraph(t)
+	ctx := StepContext{}
 
 	tr := NewGraphTraversal(g, false)
 
 	// next test
-	tv := tr.V().Has("Value", 2).Both()
+	tv := tr.V(ctx).Has(ctx, "Value", 2).Both(ctx)
 	if len(tv.Values()) != 2 {
 		t.Fatalf("Should return 2 nodes, returned: %v", tv.Values())
 	}
@@ -395,11 +409,12 @@ func TestTraversalBoth(t *testing.T) {
 
 func TestTraversalCount(t *testing.T) {
 	g := newTransversalGraph(t)
+	ctx := StepContext{}
 
 	tr := NewGraphTraversal(g, false)
 
 	// next test
-	tv := tr.V().Count()
+	tv := tr.V(ctx).Count(ctx)
 	if tv.Values()[0] != 4 {
 		t.Fatalf("Should return 4 nodes, returned: %v", tv.Values())
 	}
@@ -407,10 +422,11 @@ func TestTraversalCount(t *testing.T) {
 
 func TestTraversalShortestPathTo(t *testing.T) {
 	g := newTransversalGraph(t)
+	ctx := StepContext{}
 
 	tr := NewGraphTraversal(g, false)
 
-	tv := tr.V().Has("Value", int64(1)).ShortestPathTo(graph.Metadata{"Value": int64(3)}, nil)
+	tv := tr.V(ctx).Has(ctx, "Value", int64(1)).ShortestPathTo(ctx, graph.Metadata{"Value": int64(3)}, nil)
 	if len(tv.Values()) != 1 {
 		t.Fatalf("Should return 1 path, returned: %v", tv.Values())
 	}
@@ -421,7 +437,7 @@ func TestTraversalShortestPathTo(t *testing.T) {
 	}
 
 	// next test
-	tv = tr.V().Has("Value", Within(int64(1), int64(2))).ShortestPathTo(graph.Metadata{"Value": int64(3)}, nil)
+	tv = tr.V(ctx).Has(ctx, "Value", Within(int64(1), int64(2))).ShortestPathTo(ctx, graph.Metadata{"Value": int64(3)}, nil)
 	if len(tv.Values()) != 2 {
 		t.Fatalf("Should return 2 paths, returned: %v", tv.Values())
 	}
@@ -432,7 +448,7 @@ func TestTraversalShortestPathTo(t *testing.T) {
 	}
 
 	// next test
-	tv = tr.V().Has("Value", int64(1)).ShortestPathTo(graph.Metadata{"Value": int64(3)}, graph.Metadata{"Direction": "Left"})
+	tv = tr.V(ctx).Has(ctx, "Value", int64(1)).ShortestPathTo(ctx, graph.Metadata{"Value": int64(3)}, graph.Metadata{"Direction": "Left"})
 	if len(tv.Values()) != 1 {
 		t.Fatalf("Should return 1 path, returned: %v", tv.Values())
 	}
@@ -445,11 +461,12 @@ func TestTraversalShortestPathTo(t *testing.T) {
 
 func TestTraversalBothV(t *testing.T) {
 	g := newTransversalGraph(t)
+	ctx := StepContext{}
 
 	tr := NewGraphTraversal(g, false)
 
 	// next test
-	tv := tr.E().Has("Name", "e3").BothV()
+	tv := tr.E(ctx).Has(ctx, "Name", "e3").BothV(ctx)
 	if len(tv.Values()) != 2 {
 		t.Fatalf("Should return 2 nodes, returned: %v", tv.Values())
 	}
@@ -457,25 +474,26 @@ func TestTraversalBothV(t *testing.T) {
 
 func TestTraversalSubGraph(t *testing.T) {
 	g := newTransversalGraph(t)
+	ctx := StepContext{}
 
 	tr := NewGraphTraversal(g, false)
 
-	tv := tr.E().Has("Direction", "Left").SubGraph().V()
+	tv := tr.E(ctx).Has(ctx, "Direction", "Left").SubGraph(ctx).V(ctx)
 	if len(tv.Values()) != 3 {
 		t.Fatalf("Should return 3 nodes, returned: %v", tv.Values())
 	}
 
-	te := tr.E().Has("Direction", "Left").SubGraph().E()
+	te := tr.E(ctx).Has(ctx, "Direction", "Left").SubGraph(ctx).E(ctx)
 	if len(te.Values()) != 2 {
 		t.Fatalf("Should return 2 edges, returned: %v", te.Values())
 	}
 
-	tv = tr.V().Has("Type", "intf").SubGraph().V()
+	tv = tr.V(ctx).Has(ctx, "Type", "intf").SubGraph(ctx).V(ctx)
 	if len(tv.Values()) != 2 {
 		t.Fatalf("Should return 2 nodes, returned: %v", tv.Values())
 	}
 
-	te = tr.V().Has("Type", "intf").SubGraph().E()
+	te = tr.V(ctx).Has(ctx, "Type", "intf").SubGraph(ctx).E(ctx)
 	if len(te.Values()) != 1 {
 		t.Fatalf("Should return 1 edge, returned: %v", te.Values())
 	}

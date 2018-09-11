@@ -39,7 +39,7 @@ type RawPacketsTraversalExtension struct {
 
 // RawPacketsGremlinTraversalStep rawpackets step
 type RawPacketsGremlinTraversalStep struct {
-	context traversal.GremlinTraversalContext
+	traversal.GremlinTraversalContext
 }
 
 // RawPacketsTraversalStep rawpackets step
@@ -69,7 +69,7 @@ func (e *RawPacketsTraversalExtension) ScanIdent(s string) (traversal.Token, boo
 func (e *RawPacketsTraversalExtension) ParseStep(t traversal.Token, p traversal.GremlinTraversalContext) (traversal.GremlinTraversalStep, error) {
 	switch t {
 	case e.RawPacketsToken:
-		return &RawPacketsGremlinTraversalStep{context: p}, nil
+		return &RawPacketsGremlinTraversalStep{GremlinTraversalContext: p}, nil
 	}
 	return nil, nil
 }
@@ -79,7 +79,7 @@ func (r *RawPacketsGremlinTraversalStep) Exec(last traversal.GraphTraversalStep)
 	switch last.(type) {
 	case *FlowTraversalStep:
 		fs := last.(*FlowTraversalStep)
-		return fs.RawPackets(), nil
+		return fs.RawPackets(r.StepContext), nil
 	}
 
 	return nil, traversal.ErrExecutionError
@@ -92,7 +92,7 @@ func (r *RawPacketsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalS
 
 // Context RawPackets step
 func (r *RawPacketsGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
-	return &r.context
+	return &r.GremlinTraversalContext
 }
 
 // Values returns list of raw packets
@@ -117,7 +117,7 @@ func (r *RawPacketsTraversalStep) Error() error {
 }
 
 // BPF returns only the raw packets that matches the specified BPF filter
-func (r *RawPacketsTraversalStep) BPF(s ...interface{}) *RawPacketsTraversalStep {
+func (r *RawPacketsTraversalStep) BPF(ctx traversal.StepContext, s ...interface{}) *RawPacketsTraversalStep {
 	if r.error != nil {
 		return &RawPacketsTraversalStep{error: r.error}
 	}
