@@ -7,6 +7,8 @@ if [ -z "$WORKSPACE" ]; then
         exit 1
 fi
 
+go get -f -u github.com/tebeka/go2xunit
+
 DIR="$(dirname "$0")"
 
 BACKEND="memory"
