@@ -1192,7 +1192,10 @@ func (g *Graph) GetNode(i Identifier) *Node {
 }
 
 func newNode(i Identifier, m Metadata, t time.Time, h string, s common.ServiceType) *Node {
-	o := string(s) + "." + h
+	o := string(s)
+	if len(h) > 0 {
+		o += "." + h
+	}
 	n := &Node{
 		graphElement: graphElement{
 			ID:        i,
