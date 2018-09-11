@@ -332,11 +332,6 @@ func TestHelloNodeScenario(t *testing.T) {
 					return err
 				}
 
-				node, err := checkNodeCreation(t, c, "node", "Name", nodeName)
-				if err != nil {
-					return err
-				}
-
 				pod, err := checkNodeCreation(t, c, "pod", "Name", g.Regex("%s-.*", "hello-node"))
 				if err != nil {
 					return err
@@ -367,11 +362,7 @@ func TestHelloNodeScenario(t *testing.T) {
 					return err
 				}
 
-				if err = checkEdgeAssociation(t, c, node, pod); err != nil {
-					return err
-				}
 				return nil
-
 			},
 		},
 	)
