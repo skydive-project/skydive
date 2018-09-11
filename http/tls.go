@@ -37,7 +37,7 @@ func setTLSHeader(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getTLSConfig(setupRootCA bool) (*tls.Config, error) {
+func GetTLSConfig(setupRootCA bool) (*tls.Config, error) {
 	certPEM := config.GetString("agent.X509_cert")
 	keyPEM := config.GetString("agent.X509_key")
 	var tlsConfig *tls.Config

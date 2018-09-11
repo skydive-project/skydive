@@ -27,22 +27,22 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
+	ws "github.com/skydive-project/skydive/websocket"
 )
 
 // TableClient describes a mechanism to Query a flow table via flowSet in JSON
 type TableClient struct {
-	WSStructServer *shttp.WSStructServer
+	structServer *ws.StructServer
 }
 
 func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearchQuery filters.SearchQuery) {
 	obj, _ := proto.Marshal(&flowSearchQuery)
 	tq := TableQuery{Type: "SearchQuery", Obj: obj}
-	msg := shttp.NewWSStructMessage(Namespace, "TableQuery", tq)
+	msg := ws.NewStructMessage(Namespace, "TableQuery", tq)
 
-	resp, err := f.WSStructServer.Request(host, msg, shttp.DefaultRequestTimeout)
+	resp, err := f.structServer.Request(host, msg, ws.DefaultRequestTimeout)
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", host, err.Error())
 		flowset <- NewFlowSet()
@@ -76,7 +76,7 @@ func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearch
 
 // LookupFlows query flow table based on a filter search query
 func (f *TableClient) LookupFlows(flowSearchQuery filters.SearchQuery) (*FlowSet, error) {
-	speakers := f.WSStructServer.GetSpeakersByType(common.AgentService)
+	speakers := f.structServer.GetSpeakersByType(common.AgentService)
 	ch := make(chan *FlowSet, len(speakers))
 
 	for _, c := range speakers {
@@ -133,6 +133,6 @@ func (f *TableClient) LookupFlowsByNodes(hnmap topology.HostNodeTIDMap, flowSear
 }
 
 // NewTableClient creates a new table client based on websocket
-func NewTableClient(w *shttp.WSStructServer) *TableClient {
-	return &TableClient{WSStructServer: w}
+func NewTableClient(w *ws.StructServer) *TableClient {
+	return &TableClient{structServer: w}
 }

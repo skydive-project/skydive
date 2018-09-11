@@ -26,9 +26,9 @@ import (
 	"fmt"
 	"net/http"
 
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
+	ws "github.com/skydive-project/skydive/websocket"
 )
 
 const (
@@ -42,7 +42,7 @@ type PacketInjectorServer struct {
 	Channels *channels
 }
 
-func (pis *PacketInjectorServer) stopPI(msg *shttp.WSStructMessage) error {
+func (pis *PacketInjectorServer) stopPI(msg *ws.StructMessage) error {
 	var uuid string
 	if err := msg.DecodeObj(&uuid); err != nil {
 		return err
@@ -57,7 +57,7 @@ func (pis *PacketInjectorServer) stopPI(msg *shttp.WSStructMessage) error {
 	return fmt.Errorf("No PI running on this ID: %s", uuid)
 }
 
-func (pis *PacketInjectorServer) injectPacket(msg *shttp.WSStructMessage) (string, error) {
+func (pis *PacketInjectorServer) injectPacket(msg *ws.StructMessage) (string, error) {
 	var params PacketInjectionParams
 	if err := msg.DecodeObj(&params); err != nil {
 		return "", fmt.Errorf("Unable to decode packet inject param message %v", msg)
@@ -71,11 +71,11 @@ func (pis *PacketInjectorServer) injectPacket(msg *shttp.WSStructMessage) (strin
 	return trackingID, nil
 }
 
-// OnWSMessage event, websocket PIRequest message
-func (pis *PacketInjectorServer) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
+// OnMessage event, websocket PIRequest message
+func (pis *PacketInjectorServer) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	switch msg.Type {
 	case "PIRequest":
-		var reply *shttp.WSStructMessage
+		var reply *ws.StructMessage
 		trackingID, err := pis.injectPacket(msg)
 		replyObj := &PacketInjectorReply{TrackingID: trackingID}
 		if err != nil {
@@ -89,7 +89,7 @@ func (pis *PacketInjectorServer) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp
 
 		c.SendMessage(reply)
 	case "PIStopRequest":
-		var reply *shttp.WSStructMessage
+		var reply *ws.StructMessage
 		err := pis.stopPI(msg)
 		replyObj := &PacketInjectorReply{}
 		if err != nil {
@@ -103,7 +103,7 @@ func (pis *PacketInjectorServer) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp
 }
 
 // NewServer creates a new packet injector server API based on websocket server
-func NewServer(graph *graph.Graph, pool shttp.WSStructSpeakerPool) *PacketInjectorServer {
+func NewServer(graph *graph.Graph, pool ws.StructSpeakerPool) *PacketInjectorServer {
 	s := &PacketInjectorServer{
 		Graph:    graph,
 		Channels: &channels{Pipes: make(map[string](chan bool))},

@@ -35,10 +35,10 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/etcd"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/validator"
+	ws "github.com/skydive-project/skydive/websocket"
 )
 
 const (
@@ -55,7 +55,7 @@ type PacketInjectorReply struct {
 // PacketInjectorClient describes a packet injector client
 type PacketInjectorClient struct {
 	*etcd.MasterElector
-	pool      shttp.WSStructSpeakerPool
+	pool      ws.StructSpeakerPool
 	watcher   apiServer.StoppableWatcher
 	graph     *graph.Graph
 	piHandler *apiServer.PacketInjectorAPI
@@ -63,9 +63,9 @@ type PacketInjectorClient struct {
 
 // StopInjection cancels a running packet injection
 func (pc *PacketInjectorClient) StopInjection(host string, uuid string) error {
-	msg := shttp.NewWSStructMessage(Namespace, "PIStopRequest", uuid)
+	msg := ws.NewStructMessage(Namespace, "PIStopRequest", uuid)
 
-	resp, err := pc.pool.Request(host, msg, shttp.DefaultRequestTimeout)
+	resp, err := pc.pool.Request(host, msg, ws.DefaultRequestTimeout)
 	if err != nil {
 		return fmt.Errorf("Unable to send message to agent %s: %s", host, err.Error())
 	}
@@ -85,9 +85,9 @@ func (pc *PacketInjectorClient) StopInjection(host string, uuid string) error {
 // InjectPackets issues a packet injection request and returns the expected
 // tracking id
 func (pc *PacketInjectorClient) InjectPackets(host string, pp *PacketInjectionParams) (string, error) {
-	msg := shttp.NewWSStructMessage(Namespace, "PIRequest", pp)
+	msg := ws.NewStructMessage(Namespace, "PIRequest", pp)
 
-	resp, err := pc.pool.Request(host, msg, shttp.DefaultRequestTimeout)
+	resp, err := pc.pool.Request(host, msg, ws.DefaultRequestTimeout)
 	if err != nil {
 		return "", fmt.Errorf("Unable to send message to agent %s: %s", host, err.Error())
 	}
@@ -314,7 +314,7 @@ func (pc *PacketInjectorClient) setTimeouts() {
 }
 
 // NewPacketInjectorClient returns a new packet injector client
-func NewPacketInjectorClient(pool shttp.WSStructSpeakerPool, etcdClient *etcd.Client, piHandler *apiServer.PacketInjectorAPI, g *graph.Graph) *PacketInjectorClient {
+func NewPacketInjectorClient(pool ws.StructSpeakerPool, etcdClient *etcd.Client, piHandler *apiServer.PacketInjectorAPI, g *graph.Graph) *PacketInjectorClient {
 	elector := etcd.NewMasterElectorFromConfig(common.AnalyzerService, "pi-client", etcdClient)
 
 	pic := &PacketInjectorClient{

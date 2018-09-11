@@ -24,16 +24,16 @@ package agent
 
 import (
 	"github.com/skydive-project/skydive/config"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
+	ws "github.com/skydive-project/skydive/websocket"
 )
 
 // TopologyForwarder forwards the topology to only one master server.
 // When switching from one analyzer to another one the agent does a full
 // re-sync since some messages could have been lost.
 type TopologyForwarder struct {
-	masterElection *shttp.WSMasterElection
+	masterElection *ws.MasterElection
 	graph          *graph.Graph
 	host           string
 }
@@ -45,15 +45,15 @@ func (t *TopologyForwarder) triggerResync() {
 	defer t.graph.RUnlock()
 
 	// request for deletion of everything belonging this host
-	t.masterElection.SendMessageToMaster(shttp.NewWSStructMessage(graph.Namespace, graph.HostGraphDeletedMsgType, t.host))
+	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.HostGraphDeletedMsgType, t.host))
 
 	// re-add all the nodes and edges
-	t.masterElection.SendMessageToMaster(shttp.NewWSStructMessage(graph.Namespace, graph.SyncMsgType, t.graph))
+	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.SyncMsgType, t.graph))
 }
 
 // OnNewMaster is called by the master election mechanism when a new master is elected. In
 // such case a "Re-sync" is triggerd in order to be in sync with the new master.
-func (t *TopologyForwarder) OnNewMaster(c shttp.WSSpeaker) {
+func (t *TopologyForwarder) OnNewMaster(c ws.Speaker) {
 	if c == nil {
 		logging.GetLogger().Warn("Lost connection to master")
 	} else {
@@ -65,43 +65,43 @@ func (t *TopologyForwarder) OnNewMaster(c shttp.WSSpeaker) {
 
 // OnNodeUpdated graph node updated event. Implements the GraphEventListener interface.
 func (t *TopologyForwarder) OnNodeUpdated(n *graph.Node) {
-	t.masterElection.SendMessageToMaster(shttp.NewWSStructMessage(graph.Namespace, graph.NodeUpdatedMsgType, n))
+	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.NodeUpdatedMsgType, n))
 }
 
 // OnNodeAdded graph node added event. Implements the GraphEventListener interface.
 func (t *TopologyForwarder) OnNodeAdded(n *graph.Node) {
-	t.masterElection.SendMessageToMaster(shttp.NewWSStructMessage(graph.Namespace, graph.NodeAddedMsgType, n))
+	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.NodeAddedMsgType, n))
 }
 
 // OnNodeDeleted graph node deleted event. Implements the GraphEventListener interface.
 func (t *TopologyForwarder) OnNodeDeleted(n *graph.Node) {
-	t.masterElection.SendMessageToMaster(shttp.NewWSStructMessage(graph.Namespace, graph.NodeDeletedMsgType, n))
+	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.NodeDeletedMsgType, n))
 }
 
 // OnEdgeUpdated graph edge updated event. Implements the GraphEventListener interface.
 func (t *TopologyForwarder) OnEdgeUpdated(e *graph.Edge) {
-	t.masterElection.SendMessageToMaster(shttp.NewWSStructMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e))
+	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e))
 }
 
 // OnEdgeAdded graph edge added event. Implements the GraphEventListener interface.
 func (t *TopologyForwarder) OnEdgeAdded(e *graph.Edge) {
-	t.masterElection.SendMessageToMaster(shttp.NewWSStructMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
+	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
 }
 
 // OnEdgeDeleted graph edge deleted event. Implements the GraphEventListener interface.
 func (t *TopologyForwarder) OnEdgeDeleted(e *graph.Edge) {
-	t.masterElection.SendMessageToMaster(shttp.NewWSStructMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
+	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
 }
 
 // GetMaster returns the current analyzer the agent is sending its events to
-func (t *TopologyForwarder) GetMaster() shttp.WSSpeaker {
+func (t *TopologyForwarder) GetMaster() ws.Speaker {
 	return t.masterElection.GetMaster()
 }
 
 // NewTopologyForwarder returns a new Graph forwarder which forwards event of the given graph
 // to the given WebSocket JSON speakers.
-func NewTopologyForwarder(host string, g *graph.Graph, pool shttp.WSStructSpeakerPool) *TopologyForwarder {
-	masterElection := shttp.NewWSMasterElection(pool)
+func NewTopologyForwarder(host string, g *graph.Graph, pool ws.StructSpeakerPool) *TopologyForwarder {
+	masterElection := ws.NewMasterElection(pool)
 
 	t := &TopologyForwarder{
 		masterElection: masterElection,
@@ -116,7 +116,7 @@ func NewTopologyForwarder(host string, g *graph.Graph, pool shttp.WSStructSpeake
 }
 
 // NewTopologyForwarderFromConfig creates a TopologyForwarder from configuration
-func NewTopologyForwarderFromConfig(g *graph.Graph, pool shttp.WSStructSpeakerPool) *TopologyForwarder {
+func NewTopologyForwarderFromConfig(g *graph.Graph, pool ws.StructSpeakerPool) *TopologyForwarder {
 	host := config.GetString("host_id")
 	return NewTopologyForwarder(host, g, pool)
 }

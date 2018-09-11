@@ -29,10 +29,10 @@ import (
 	"sync"
 
 	"github.com/skydive-project/skydive/common"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
+	ws "github.com/skydive-project/skydive/websocket"
 )
 
 type topologySubscriber struct {
@@ -44,8 +44,8 @@ type topologySubscriber struct {
 // TopologySubscriberEndpoint sends all the modifications to its subscribers.
 type TopologySubscriberEndpoint struct {
 	common.RWMutex
-	shttp.DefaultWSSpeakerEventHandler
-	pool          shttp.WSStructSpeakerPool
+	ws.DefaultSpeakerEventHandler
+	pool          ws.StructSpeakerPool
 	Graph         *graph.Graph
 	wg            sync.WaitGroup
 	gremlinParser *traversal.GremlinTraversalParser
@@ -81,7 +81,7 @@ func (t *TopologySubscriberEndpoint) newTopologySubscriber(host string, gremlinF
 }
 
 // OnConnected called when a subscriber got connected.
-func (t *TopologySubscriberEndpoint) OnConnected(c shttp.WSSpeaker) {
+func (t *TopologySubscriberEndpoint) OnConnected(c ws.Speaker) {
 	gremlinFilter := c.GetHeaders().Get("X-Gremlin-Filter")
 	if gremlinFilter == "" {
 		gremlinFilter = c.GetURL().Query().Get("x-gremlin-filter")
@@ -102,16 +102,16 @@ func (t *TopologySubscriberEndpoint) OnConnected(c shttp.WSSpeaker) {
 }
 
 // OnDisconnected called when a subscriber got disconnected.
-func (t *TopologySubscriberEndpoint) OnDisconnected(c shttp.WSSpeaker) {
+func (t *TopologySubscriberEndpoint) OnDisconnected(c ws.Speaker) {
 	t.Lock()
 	delete(t.subscribers, c.GetRemoteHost())
 	t.Unlock()
 }
 
-// OnWSStructMessage is triggered when receiving a message from a subscriber.
+// OnStructMessage is triggered when receiving a message from a subscriber.
 // It only responds to SyncRequestMsgType messages
-func (t *TopologySubscriberEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
-	msgType, obj, err := graph.UnmarshalWSMessage(msg)
+func (t *TopologySubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
+	msgType, obj, err := graph.UnmarshalMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
 		return
@@ -156,7 +156,7 @@ func (t *TopologySubscriberEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *s
 // notifyClients forwards local graph modification to subscribers. If a subscriber
 // specified a Gremlin filter, a 'Diff' is applied between the previous graph state
 // for this subscriber and the current graph state.
-func (t *TopologySubscriberEndpoint) notifyClients(msg *shttp.WSStructMessage) {
+func (t *TopologySubscriberEndpoint) notifyClients(msg *ws.StructMessage) {
 	for _, c := range t.pool.GetSpeakers() {
 		t.RLock()
 		subscriber, found := t.subscribers[c.GetRemoteHost()]
@@ -172,19 +172,19 @@ func (t *TopologySubscriberEndpoint) notifyClients(msg *shttp.WSStructMessage) {
 			addedNodes, removedNodes, addedEdges, removedEdges := subscriber.graph.Diff(g)
 
 			for _, n := range addedNodes {
-				c.SendMessage(shttp.NewWSStructMessage(graph.Namespace, graph.NodeAddedMsgType, n))
+				c.SendMessage(ws.NewStructMessage(graph.Namespace, graph.NodeAddedMsgType, n))
 			}
 
 			for _, n := range removedNodes {
-				c.SendMessage(shttp.NewWSStructMessage(graph.Namespace, graph.NodeDeletedMsgType, n))
+				c.SendMessage(ws.NewStructMessage(graph.Namespace, graph.NodeDeletedMsgType, n))
 			}
 
 			for _, e := range addedEdges {
-				c.SendMessage(shttp.NewWSStructMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
+				c.SendMessage(ws.NewStructMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
 			}
 
 			for _, e := range removedEdges {
-				c.SendMessage(shttp.NewWSStructMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
+				c.SendMessage(ws.NewStructMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
 			}
 
 			subscriber.graph = g
@@ -196,37 +196,37 @@ func (t *TopologySubscriberEndpoint) notifyClients(msg *shttp.WSStructMessage) {
 
 // OnNodeUpdated graph node updated event. Implements the GraphEventListener interface.
 func (t *TopologySubscriberEndpoint) OnNodeUpdated(n *graph.Node) {
-	t.notifyClients(shttp.NewWSStructMessage(graph.Namespace, graph.NodeUpdatedMsgType, n))
+	t.notifyClients(ws.NewStructMessage(graph.Namespace, graph.NodeUpdatedMsgType, n))
 }
 
 // OnNodeAdded graph node added event. Implements the GraphEventListener interface.
 func (t *TopologySubscriberEndpoint) OnNodeAdded(n *graph.Node) {
-	t.notifyClients(shttp.NewWSStructMessage(graph.Namespace, graph.NodeAddedMsgType, n))
+	t.notifyClients(ws.NewStructMessage(graph.Namespace, graph.NodeAddedMsgType, n))
 }
 
 // OnNodeDeleted graph node deleted event. Implements the GraphEventListener interface.
 func (t *TopologySubscriberEndpoint) OnNodeDeleted(n *graph.Node) {
-	t.notifyClients(shttp.NewWSStructMessage(graph.Namespace, graph.NodeDeletedMsgType, n))
+	t.notifyClients(ws.NewStructMessage(graph.Namespace, graph.NodeDeletedMsgType, n))
 }
 
 // OnEdgeUpdated graph edge updated event. Implements the GraphEventListener interface.
 func (t *TopologySubscriberEndpoint) OnEdgeUpdated(e *graph.Edge) {
-	t.notifyClients(shttp.NewWSStructMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e))
+	t.notifyClients(ws.NewStructMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e))
 }
 
 // OnEdgeAdded graph edge added event. Implements the GraphEventListener interface.
 func (t *TopologySubscriberEndpoint) OnEdgeAdded(e *graph.Edge) {
-	t.notifyClients(shttp.NewWSStructMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
+	t.notifyClients(ws.NewStructMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
 }
 
 // OnEdgeDeleted graph edge deleted event. Implements the GraphEventListener interface.
 func (t *TopologySubscriberEndpoint) OnEdgeDeleted(e *graph.Edge) {
-	t.notifyClients(shttp.NewWSStructMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
+	t.notifyClients(ws.NewStructMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
 }
 
 // NewTopologySubscriberEndpoint returns a new server to be used by external subscribers,
 // for instance the WebUI.
-func NewTopologySubscriberEndpoint(pool shttp.WSStructSpeakerPool, g *graph.Graph, tr *traversal.GremlinTraversalParser) *TopologySubscriberEndpoint {
+func NewTopologySubscriberEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, tr *traversal.GremlinTraversalParser) *TopologySubscriberEndpoint {
 	t := &TopologySubscriberEndpoint{
 		Graph:         g,
 		pool:          pool,

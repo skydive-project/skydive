@@ -23,8 +23,8 @@
 package flow
 
 import (
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	ws "github.com/skydive-project/skydive/websocket"
 )
 
 // Namespace "Flow"
@@ -38,7 +38,7 @@ type TableServer struct {
 }
 
 // OnTableQuery event
-func (s *TableServer) OnTableQuery(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
+func (s *TableServer) OnTableQuery(c ws.Speaker, msg *ws.StructMessage) {
 	var query TableQuery
 	if err := msg.UnmarshalObj(&query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode search flow message %v", msg)
@@ -50,8 +50,8 @@ func (s *TableServer) OnTableQuery(c shttp.WSSpeaker, msg *shttp.WSStructMessage
 	c.SendMessage(reply)
 }
 
-// OnWSStructMessage TableQuery
-func (s *TableServer) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
+// OnStructMessage TableQuery
+func (s *TableServer) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	switch msg.Type {
 	case "TableQuery":
 		s.OnTableQuery(c, msg)
@@ -59,7 +59,7 @@ func (s *TableServer) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMe
 }
 
 // NewServer creates a new flow table query server based on websocket
-func NewServer(allocator *TableAllocator, pool shttp.WSStructSpeakerPool) *TableServer {
+func NewServer(allocator *TableAllocator, pool ws.StructSpeakerPool) *TableServer {
 	s := &TableServer{
 		TableAllocator: allocator,
 	}

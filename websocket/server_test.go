@@ -20,7 +20,7 @@
  *
  */
 
-package http
+package websocket
 
 import (
 	"errors"
@@ -31,26 +31,27 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	shttp "github.com/skydive-project/skydive/http"
 )
 
 type fakeServerSubscriptionHandler struct {
 	common.RWMutex
-	DefaultWSSpeakerEventHandler
+	DefaultSpeakerEventHandler
 	t         *testing.T
-	server    *WSServer
+	server    *Server
 	received  int
 	connected int
 }
 
 type fakeClientSubscriptionHandler struct {
 	common.RWMutex
-	DefaultWSSpeakerEventHandler
+	DefaultSpeakerEventHandler
 	t         *testing.T
 	received  int
 	connected int
 }
 
-func (f *fakeServerSubscriptionHandler) OnConnected(c WSSpeaker) {
+func (f *fakeServerSubscriptionHandler) OnConnected(c Speaker) {
 	f.Lock()
 	f.connected++
 	f.Unlock()
@@ -61,56 +62,56 @@ func (f *fakeServerSubscriptionHandler) OnConnected(c WSSpeaker) {
 		if f.received == 0 {
 			return errors.New("Client not ready")
 		}
-		c.SendMessage(WSRawMessage{})
+		c.SendMessage(RawMessage{})
 
 		return nil
 	}
 	go common.Retry(fnc, 5, time.Second)
 }
 
-func (f *fakeServerSubscriptionHandler) OnMessage(c WSSpeaker, m WSMessage) {
+func (f *fakeServerSubscriptionHandler) OnMessage(c Speaker, m Message) {
 	f.Lock()
 	f.received++
 	f.Unlock()
 }
 
-func (f *fakeClientSubscriptionHandler) OnConnected(c WSSpeaker) {
+func (f *fakeClientSubscriptionHandler) OnConnected(c Speaker) {
 	f.Lock()
 	f.connected++
 	f.Unlock()
-	c.SendMessage(WSRawMessage{})
+	c.SendMessage(RawMessage{})
 }
 
-func (f *fakeClientSubscriptionHandler) OnMessage(c WSSpeaker, m WSMessage) {
+func (f *fakeClientSubscriptionHandler) OnMessage(c Speaker, m Message) {
 	f.Lock()
 	f.received++
 	f.Unlock()
 }
 
 func TestSubscription(t *testing.T) {
-	httpserver := NewServer("myhost", common.AnalyzerService, "localhost", 59999, "")
+	httpServer := shttp.NewServer("myhost", common.AnalyzerService, "localhost", 59999, "")
 
-	go httpserver.ListenAndServe()
-	defer httpserver.Stop()
+	go httpServer.ListenAndServe()
+	defer httpServer.Stop()
 
-	wsserver := NewWSServer(httpserver, "/wstest", NewNoAuthenticationBackend())
+	wsServer := NewServer(httpServer, "/wstest", shttp.NewNoAuthenticationBackend())
 
-	serverHandler := &fakeServerSubscriptionHandler{t: t, server: wsserver, connected: 0, received: 0}
-	wsserver.AddEventHandler(serverHandler)
+	serverHandler := &fakeServerSubscriptionHandler{t: t, server: wsServer, connected: 0, received: 0}
+	wsServer.AddEventHandler(serverHandler)
 
-	wsserver.Start()
-	defer wsserver.Stop()
+	wsServer.Start()
+	defer wsServer.Stop()
 
-	wsclient := NewWSClient("myhost", common.AgentService, config.GetURL("ws", "localhost", 59999, "/wstest"), nil, http.Header{}, 1000)
-	wspool := NewWSClientPool("TestSubscription")
+	wsClient := NewClient("myhost", common.AgentService, config.GetURL("ws", "localhost", 59999, "/wstest"), nil, http.Header{}, 1000)
+	wsPool := NewClientPool("TestSubscription")
 
-	wspool.AddClient(wsclient)
+	wsPool.AddClient(wsClient)
 
 	clientHandler := &fakeClientSubscriptionHandler{t: t, received: 0}
-	wsclient.AddEventHandler(clientHandler)
-	wspool.AddEventHandler(clientHandler)
-	wsclient.Connect()
-	defer wsclient.Disconnect()
+	wsClient.AddEventHandler(clientHandler)
+	wsPool.AddEventHandler(clientHandler)
+	wsClient.Connect()
+	defer wsClient.Disconnect()
 
 	err := common.Retry(func() error {
 		clientHandler.Lock()
@@ -120,27 +121,27 @@ func TestSubscription(t *testing.T) {
 
 		if clientHandler.connected != 2 {
 			// clientHandler should be notified twice:
-			// - by wsclient (WSAsyncClient)
-			// - by wspool (WSClientPool)
+			// - by client (Client)
+			// - by pool (ClientPool)
 			return fmt.Errorf("Client should have received 2 OnConnected events: %v", clientHandler.connected)
 		}
 
 		if clientHandler.received != 2 {
 			// clientHandler should be notified twice:
-			// - by wsclient (WSAsyncClient)
-			// - by wspool (WSClientPool)
+			// - by client (Client)
+			// - by pool (ClientPool)
 			// only one time, because only one message should be sent by the server
 			return fmt.Errorf("Client should have received 2 OnMessage events: %v", clientHandler.received)
 		}
 
 		// serverHandler should be notified once:
-		// - by wsserver (WSServer)
+		// - by server (Server)
 		if serverHandler.connected != 1 {
 			return fmt.Errorf("Server should have received 1 OnConnected event: %v", serverHandler.connected)
 		}
 
 		// serverHandler should be notified by:
-		// - by wsserver (WSServer)
+		// - by server (Server)
 		// 2 times, as there are 2 messages sent by the client
 		if serverHandler.received != 2 {
 			return fmt.Errorf("Server should have received 2 OnMessage event: %v", serverHandler.received)

@@ -100,14 +100,6 @@ func copyRequestVars(old, new *http.Request) {
 	}
 }
 
-func getRequestParameter(r *http.Request, name string) string {
-	param := r.Header.Get(name)
-	if param == "" {
-		param = r.URL.Query().Get(strings.ToLower(name))
-	}
-	return param
-}
-
 func (s *Server) RegisterRoutes(routes []Route, auth AuthenticationBackend) {
 	for _, route := range routes {
 		r := s.Router.

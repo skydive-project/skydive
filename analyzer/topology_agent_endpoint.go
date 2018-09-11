@@ -26,23 +26,23 @@ import (
 	"sync"
 
 	"github.com/skydive-project/skydive/common"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
+	ws "github.com/skydive-project/skydive/websocket"
 )
 
 // TopologyAgentEndpoint serves the graph for agents.
 type TopologyAgentEndpoint struct {
 	common.RWMutex
-	shttp.DefaultWSSpeakerEventHandler
-	pool   shttp.WSStructSpeakerPool
+	ws.DefaultSpeakerEventHandler
+	pool   ws.StructSpeakerPool
 	Graph  *graph.Graph
 	cached *graph.CachedBackend
 	wg     sync.WaitGroup
 }
 
 // OnDisconnected called when an agent disconnected.
-func (t *TopologyAgentEndpoint) OnDisconnected(c shttp.WSSpeaker) {
+func (t *TopologyAgentEndpoint) OnDisconnected(c ws.Speaker) {
 	host := c.GetRemoteHost()
 	if host == "" {
 		return
@@ -54,9 +54,9 @@ func (t *TopologyAgentEndpoint) OnDisconnected(c shttp.WSSpeaker) {
 	t.Graph.Unlock()
 }
 
-// OnWSStructMessage is triggered when a message from the agent is received.
-func (t *TopologyAgentEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
-	msgType, obj, err := graph.UnmarshalWSMessage(msg)
+// OnStructMessage is triggered when a message from the agent is received.
+func (t *TopologyAgentEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
+	msgType, obj, err := graph.UnmarshalMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
 		return
@@ -100,7 +100,7 @@ func (t *TopologyAgentEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.
 }
 
 // NewTopologyAgentEndpoint returns a new server that handles messages from the agents
-func NewTopologyAgentEndpoint(pool shttp.WSStructSpeakerPool, cached *graph.CachedBackend, g *graph.Graph) (*TopologyAgentEndpoint, error) {
+func NewTopologyAgentEndpoint(pool ws.StructSpeakerPool, cached *graph.CachedBackend, g *graph.Graph) (*TopologyAgentEndpoint, error) {
 	t := &TopologyAgentEndpoint{
 		Graph:  g,
 		pool:   pool,

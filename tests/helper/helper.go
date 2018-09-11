@@ -44,8 +44,8 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	ws "github.com/skydive-project/skydive/websocket"
 )
 
 type Cmd struct {
@@ -178,7 +178,7 @@ func FilterIPv6AddrAnd(flows []*flow.Flow, A, B string) (r []*flow.Flow) {
 	return r
 }
 
-func newWSClient(endpoint string) (*websocket.Conn, error) {
+func newClient(endpoint string) (*websocket.Conn, error) {
 	conn, err := net.Dial("tcp", endpoint)
 	if err != nil {
 		return nil, err
@@ -202,7 +202,7 @@ func newWSClient(endpoint string) (*websocket.Conn, error) {
 	return wsConn, nil
 }
 
-func WSConnect(endpoint string, timeout int, onReady func(*websocket.Conn)) (*websocket.Conn, error) {
+func Connect(endpoint string, timeout int, onReady func(*websocket.Conn)) (*websocket.Conn, error) {
 	var ws *websocket.Conn
 	var err error
 
@@ -212,7 +212,7 @@ func WSConnect(endpoint string, timeout int, onReady func(*websocket.Conn)) (*we
 			return nil, errors.New("Connection to Agent : timeout reached")
 		}
 
-		ws, err = newWSClient(endpoint)
+		ws, err = newClient(endpoint)
 		if err == nil {
 			break
 		}
@@ -246,13 +246,13 @@ func WSClose(ws *websocket.Conn) error {
 	return ws.Close()
 }
 
-func DecodeWSStructMessageJSON(b []byte) *shttp.WSStructMessage {
-	mJSON := shttp.WSStructMessageJSON{}
+func DecodeStructMessageJSON(b []byte) *ws.StructMessage {
+	mJSON := ws.StructMessageJSON{}
 	if err := json.Unmarshal(b, &mJSON); err != nil {
 		return nil
 	}
-	msg := &shttp.WSStructMessage{
-		Protocol:  shttp.JsonProtocol,
+	msg := &ws.StructMessage{
+		Protocol:  ws.JSONProtocol,
 		Namespace: mJSON.Namespace,
 		Type:      mJSON.Type,
 		UUID:      mJSON.UUID,

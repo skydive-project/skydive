@@ -265,7 +265,7 @@ func TestAlertWithTimer(t *testing.T) {
 		},
 
 		setupFunction: func(c *TestContext) error {
-			ws, err = helper.WSConnect(config.GetStringSlice("analyzers")[0], 5, nil)
+			ws, err = helper.Connect(config.GetStringSlice("analyzers")[0], 5, nil)
 			if err != nil {
 				return err
 			}
@@ -297,7 +297,7 @@ func TestAlertWithTimer(t *testing.T) {
 					return err
 				}
 
-				msg := helper.DecodeWSStructMessageJSON(m)
+				msg := helper.DecodeStructMessageJSON(m)
 				if msg == nil {
 					t.Fatal("Failed to unmarshal message")
 				}
@@ -337,7 +337,7 @@ func TestMultipleTriggering(t *testing.T) {
 		},
 
 		setupFunction: func(c *TestContext) error {
-			ws, err = helper.WSConnect(config.GetStringSlice("analyzers")[0], 5, nil)
+			ws, err = helper.Connect(config.GetStringSlice("analyzers")[0], 5, nil)
 			if err != nil {
 				return err
 			}
@@ -378,7 +378,7 @@ func TestMultipleTriggering(t *testing.T) {
 					return err
 				}
 
-				msg := helper.DecodeWSStructMessageJSON(m)
+				msg := helper.DecodeStructMessageJSON(m)
 				if msg == nil {
 					t.Fatal("Failed to unmarshal message")
 				}

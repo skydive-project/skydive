@@ -30,10 +30,10 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow/ondemand"
 	"github.com/skydive-project/skydive/flow/probes"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
+	ws "github.com/skydive-project/skydive/websocket"
 )
 
 type activeProbe struct {
@@ -47,11 +47,11 @@ type activeProbe struct {
 type OnDemandProbeServer struct {
 	common.RWMutex
 	graph.DefaultGraphListener
-	shttp.DefaultWSSpeakerEventHandler
-	Graph              *graph.Graph
-	Probes             *probe.ProbeBundle
-	WSStructClientPool *shttp.WSStructClientPool
-	activeProbes       map[graph.Identifier]*activeProbe
+	ws.DefaultSpeakerEventHandler
+	Graph        *graph.Graph
+	Probes       *probe.ProbeBundle
+	clientPool   *ws.StructClientPool
+	activeProbes map[graph.Identifier]*activeProbe
 }
 
 func (o *OnDemandProbeServer) getProbe(n *graph.Node, capture *types.Capture) (probes.FlowProbe, error) {
@@ -159,8 +159,8 @@ func (p *activeProbe) OnStopped() {
 	p.graph.Unlock()
 }
 
-// OnWSStructMessage websocket message, valid message type are CaptureStart, CaptureStop
-func (o *OnDemandProbeServer) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
+// OnStructMessage websocket message, valid message type are CaptureStart, CaptureStop
+func (o *OnDemandProbeServer) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	var query ondemand.CaptureQuery
 	if err := msg.UnmarshalObj(&query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode capture %v", msg)
@@ -229,7 +229,7 @@ func (o *OnDemandProbeServer) OnNodeDeleted(n *graph.Node) {
 // Start the probe
 func (o *OnDemandProbeServer) Start() error {
 	o.Graph.AddEventListener(o)
-	o.WSStructClientPool.AddStructMessageHandler(o, []string{ondemand.Namespace})
+	o.clientPool.AddStructMessageHandler(o, []string{ondemand.Namespace})
 
 	return nil
 }
@@ -247,11 +247,11 @@ func (o *OnDemandProbeServer) Stop() {
 }
 
 // NewOnDemandProbeServer creates a new Ondemand probes server based on graph and websocket
-func NewOnDemandProbeServer(fb *probe.ProbeBundle, g *graph.Graph, pool *shttp.WSStructClientPool) (*OnDemandProbeServer, error) {
+func NewOnDemandProbeServer(fb *probe.ProbeBundle, g *graph.Graph, pool *ws.StructClientPool) (*OnDemandProbeServer, error) {
 	return &OnDemandProbeServer{
-		Graph:              g,
-		Probes:             fb,
-		WSStructClientPool: pool,
-		activeProbes:       make(map[graph.Identifier]*activeProbe),
+		Graph:        g,
+		Probes:       fb,
+		clientPool:   pool,
+		activeProbes: make(map[graph.Identifier]*activeProbe),
 	}, nil
 }

@@ -59,7 +59,7 @@ func readBody(resp *http.Response) string {
 func getHttpClient() (*http.Client, error) {
 	client := &http.Client{}
 	if config.IsTLSenabled() {
-		tlsConfig, err := getTLSConfig(true)
+		tlsConfig, err := GetTLSConfig(true)
 		if err != nil {
 			return nil, err
 		}
