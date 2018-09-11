@@ -27,8 +27,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/nu7hatch/gouuid"
-
 	apiServer "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
@@ -111,7 +109,7 @@ func (tm *TopologyManager) createEdge(edge *types.EdgeRule) error {
 		return errors.New("Source or Destination node not found")
 	}
 
-	switch edge.RelationType {
+	switch edge.Metadata["RelationType"] {
 	case "layer2":
 		if !topology.HaveLayer2Link(tm.graph, src[0], dst[0]) {
 			topology.AddLayer2Link(tm.graph, src[0], dst[0], edge.Metadata)
@@ -131,22 +129,21 @@ func (tm *TopologyManager) createEdge(edge *types.EdgeRule) error {
 	return nil
 }
 
-func (tm *TopologyManager) createNode(node *types.NodeRule) error {
-	u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(node.NodeType+node.NodeName))
-	id := graph.Identifier(u.String())
-	common.SetField(node.Metadata, "TID", id)
+func (tm *TopologyManager) nodeID(node *types.NodeRule) graph.Identifier {
+	return graph.GenID(node.Metadata["Type"].(string), node.Metadata["Name"].(string))
+}
 
-	if _, ok := node.Metadata["Name"]; !ok {
-		common.SetField(node.Metadata, "Name", node.NodeName)
-	}
+func (tm *TopologyManager) createNode(node *types.NodeRule) error {
+	id := tm.nodeID(node)
+	common.SetField(node.Metadata, "TID", id)
 
 	//check node already exist
 	if n := tm.graph.GetNode(id); n != nil {
 		return nil
 	}
 
-	if node.NodeType == "fabric" {
-		common.SetField(node.Metadata, "Probe", node.NodeType)
+	if node.Metadata["Type"] == "fabric" {
+		common.SetField(node.Metadata, "Probe", "fabric")
 	}
 
 	tm.graph.NewNode(id, node.Metadata, "")
@@ -218,8 +215,7 @@ func (tm *TopologyManager) handleNodeRuleRequest(action string, resource types.R
 	case "delete":
 		switch strings.ToLower(node.Action) {
 		case "create":
-			u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(node.NodeType+node.NodeName))
-			id := graph.Identifier(u.String())
+			id := tm.nodeID(node)
 			if n := tm.graph.GetNode(id); n != nil {
 				tm.graph.DelNode(n)
 			}
@@ -242,7 +238,7 @@ func (tm *TopologyManager) handleEdgeRuleRequest(action string, resource types.R
 			logging.GetLogger().Errorf("Source or Destination node not found")
 			return
 		}
-		if link := tm.graph.GetFirstLink(src[0], dst[0], graph.Metadata{"RelationType": edge.RelationType}); link != nil {
+		if link := tm.graph.GetFirstLink(src[0], dst[0], edge.Metadata); link != nil {
 			tm.graph.DelEdge(link)
 		}
 	}

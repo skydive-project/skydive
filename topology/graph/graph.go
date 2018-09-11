@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/nu7hatch/gouuid"
@@ -286,9 +287,13 @@ func NewGraphEventHandler(maxEvents int) *GraphEventHandler {
 }
 
 // GenID helper generate a node Identifier
-func GenID() Identifier {
-	u, _ := uuid.NewV4()
+func GenID(s ...string) Identifier {
+	if len(s) > 0 {
+		u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(strings.Join(s, "/")))
+		return Identifier(u.String())
+	}
 
+	u, _ := uuid.NewV4()
 	return Identifier(u.String())
 }
 
@@ -1191,7 +1196,7 @@ func (g *Graph) GetNode(i Identifier) *Node {
 	return nil
 }
 
-func newNode(i Identifier, m Metadata, t time.Time, h string, s common.ServiceType) *Node {
+func CreateNode(i Identifier, m Metadata, t time.Time, h string, s common.ServiceType) *Node {
 	o := string(s)
 	if len(h) > 0 {
 		o += "." + h
@@ -1216,27 +1221,25 @@ func newNode(i Identifier, m Metadata, t time.Time, h string, s common.ServiceTy
 	return n
 }
 
-func (g *Graph) newNode(i Identifier, m Metadata, t time.Time, h ...string) *Node {
+func (g *Graph) CreateNode(i Identifier, m Metadata, t time.Time, h ...string) *Node {
 	hostname := g.host
 	if len(h) > 0 {
 		hostname = h[0]
 	}
 
-	n := newNode(i, m, t, hostname, g.service)
-
-	if !g.AddNode(n) {
-		return nil
-	}
-
-	return n
+	return CreateNode(i, m, t, hostname, g.service)
 }
 
 // NewNode creates a new node in the graph with attached metadata
 func (g *Graph) NewNode(i Identifier, m Metadata, h ...string) *Node {
-	return g.newNode(i, m, time.Now().UTC(), h...)
+	if n := g.CreateNode(i, m, time.Now().UTC(), h...); g.AddNode(n) {
+		return n
+	}
+
+	return nil
 }
 
-func newEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Time, h string, s common.ServiceType) *Edge {
+func CreateEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Time, h string, s common.ServiceType) *Edge {
 	o := string(s) + "." + h
 	e := &Edge{
 		parent: p.ID,
@@ -1260,24 +1263,22 @@ func newEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Time, h string, 
 	return e
 }
 
-func (g *Graph) newEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Time, h ...string) *Edge {
+func (g *Graph) CreateEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Time, h ...string) *Edge {
 	hostname := g.host
 	if len(h) > 0 {
 		hostname = h[0]
 	}
 
-	e := newEdge(i, p, c, m, t, hostname, g.service)
-
-	if !g.AddEdge(e) {
-		return nil
-	}
-
-	return e
+	return CreateEdge(i, p, c, m, t, hostname, g.service)
 }
 
 // NewEdge creates a new edge in the graph based on Identifier, parent, child nodes and metadata
 func (g *Graph) NewEdge(i Identifier, p *Node, c *Node, m Metadata, h ...string) *Edge {
-	return g.newEdge(i, p, c, m, time.Now().UTC(), h...)
+	if e := g.CreateEdge(i, p, c, m, time.Now().UTC(), h...); g.AddEdge(e) {
+		return e
+	}
+
+	return nil
 }
 
 // EdgeDeleted event

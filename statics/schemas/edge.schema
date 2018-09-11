@@ -20,10 +20,23 @@
         },
         "UpdatedAt": {
           "type": "integer"
+        },
+        "Metadata": {
+          "allOf": [
+            {
+              "properties": {
+                "RelationType": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [ "RelationType" ]
+            }
+          ]
         }
       },
       "required": [
-        "ID"
+        "ID", "Metadata"
       ]
     }
   },

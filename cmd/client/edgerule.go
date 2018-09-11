@@ -55,7 +55,12 @@ var EdgeRuleCreate = &cobra.Command{
 	Short:        "create",
 	Long:         "create",
 	SilenceUsage: false,
-
+	PreRun: func(cmd *cobra.Command, args []string) {
+		if relationType == "" {
+			logging.GetLogger().Error("--relationtype is a required parameter")
+			os.Exit(1)
+		}
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
@@ -63,23 +68,23 @@ var EdgeRuleCreate = &cobra.Command{
 			os.Exit(1)
 		}
 
-		m, err := usertopology.DefToMetadata(metadata, graph.Metadata{"RelationType": relationType})
+		m, err := usertopology.DefToMetadata(metadata, graph.Metadata{})
 		if err != nil {
 			logging.GetLogger().Error(err.Error())
 			os.Exit(1)
 		}
+		m["RelationType"] = relationType
 
 		edge := &api.EdgeRule{
-			Name:         name,
-			Description:  description,
-			Src:          src,
-			Dst:          dst,
-			RelationType: relationType,
-			Metadata:     m,
+			Name:        name,
+			Description: description,
+			Src:         src,
+			Dst:         dst,
+			Metadata:    m,
 		}
 
 		if err = validator.Validate(edge); err != nil {
-			logging.GetLogger().Error(err.Error())
+			logging.GetLogger().Errorf("Error while validating edge rule: %s", err)
 			os.Exit(1)
 		}
 

@@ -136,7 +136,8 @@ func TestLocalHistory(t *testing.T) {
 		{"value": json.Number("1")},
 	}
 
-	node := g.newNode("aaa", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
+	node := g.CreateNode("aaa", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
+	g.AddNode(node)
 	g.addMetadata(node, "MTU", 1510, time.Unix(2, 0))
 
 	origin := common.UnknownService.String() + ".host1"

@@ -28,12 +28,10 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/statics"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 	ws "github.com/skydive-project/skydive/websocket"
-
-	"github.com/xeipuuv/gojsonschema"
 )
 
 // PersistencePolicy defines Persistent policy for publishers
@@ -51,13 +49,12 @@ const (
 type TopologyPublisherEndpoint struct {
 	common.RWMutex
 	ws.DefaultSpeakerEventHandler
-	pool          ws.StructSpeakerPool
-	Graph         *graph.Graph
-	cached        *graph.CachedBackend
-	nodeSchema    gojsonschema.JSONLoader
-	edgeSchema    gojsonschema.JSONLoader
-	wg            sync.WaitGroup
-	gremlinParser *traversal.GremlinTraversalParser
+	pool            ws.StructSpeakerPool
+	Graph           *graph.Graph
+	cached          *graph.CachedBackend
+	schemaValidator *topology.SchemaValidator
+	wg              sync.WaitGroup
+	gremlinParser   *traversal.GremlinTraversalParser
 }
 
 // OnDisconnected called when a publisher got disconnected.
@@ -84,26 +81,16 @@ func (t *TopologyPublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Struct
 		return
 	}
 
-	// We use JSON schema to validate the message
-	loader := gojsonschema.NewGoLoader(obj)
-
-	var schema gojsonschema.JSONLoader
 	switch msgType {
 	case graph.NodeAddedMsgType, graph.NodeUpdatedMsgType, graph.NodeDeletedMsgType:
-		schema = t.nodeSchema
+		err = t.schemaValidator.ValidateNode(obj.(*graph.Node))
 	case graph.EdgeAddedMsgType, graph.EdgeUpdatedMsgType, graph.EdgeDeletedMsgType:
-		schema = t.edgeSchema
+		err = t.schemaValidator.ValidateEdge(obj.(*graph.Edge))
 	}
 
-	if schema != nil {
-		result, err := gojsonschema.Validate(schema, loader)
-		if err != nil {
-			logging.GetLogger().Errorf("Error while validating message: %s", err)
-			return
-		} else if !result.Valid() {
-			logging.GetLogger().Errorf("Invalid message %s", msgType)
-			return
-		}
+	if err != nil {
+		logging.GetLogger().Error(err)
+		return
 	}
 
 	t.Graph.Lock()
@@ -148,22 +135,16 @@ func (t *TopologyPublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Struct
 
 // NewTopologyPublisherEndpoint returns a new server for external publishers.
 func NewTopologyPublisherEndpoint(pool ws.StructSpeakerPool, g *graph.Graph) (*TopologyPublisherEndpoint, error) {
-	nodeSchema, err := statics.Asset("statics/schemas/node.schema")
-	if err != nil {
-		return nil, err
-	}
-
-	edgeSchema, err := statics.Asset("statics/schemas/edge.schema")
+	schemaValidator, err := topology.NewSchemaValidator()
 	if err != nil {
 		return nil, err
 	}
 
 	t := &TopologyPublisherEndpoint{
-		Graph:         g,
-		pool:          pool,
-		nodeSchema:    gojsonschema.NewBytesLoader(nodeSchema),
-		edgeSchema:    gojsonschema.NewBytesLoader(edgeSchema),
-		gremlinParser: traversal.NewGremlinTraversalParser(),
+		Graph:           g,
+		pool:            pool,
+		schemaValidator: schemaValidator,
+		gremlinParser:   traversal.NewGremlinTraversalParser(),
 	}
 
 	pool.AddEventHandler(t)

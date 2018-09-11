@@ -26,8 +26,12 @@ import (
 	"errors"
 	"time"
 
+	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 )
+
+var schemaValidator *topology.SchemaValidator
 
 // Resource used as interface resources for each API
 type Resource interface {
@@ -97,13 +101,12 @@ func NewCapture(query string, bpfFilter string) *Capture {
 
 // EdgeRule describes a edge rule
 type EdgeRule struct {
-	UUID         string
-	Name         string
-	Description  string
-	Src          string `valid:"isGremlinExpr"`
-	Dst          string `valid:"isGremlinExpr"`
-	RelationType string `valid:"regexp=^(layer2|ownership|both)$"`
-	Metadata     graph.Metadata
+	UUID        string
+	Name        string
+	Description string
+	Src         string `valid:"isGremlinExpr"`
+	Dst         string `valid:"isGremlinExpr"`
+	Metadata    graph.Metadata
 }
 
 // ID returns the edge rule ID
@@ -116,13 +119,19 @@ func (e *EdgeRule) SetID(id string) {
 	e.UUID = id
 }
 
+// Validate verifies the nodedgee rule does not create invalid edges
+func (e *EdgeRule) Validate() error {
+	n1 := graph.CreateNode(graph.GenID(), nil, time.Now(), "", common.UnknownService)
+	n2 := graph.CreateNode(graph.GenID(), nil, time.Now(), "", common.UnknownService)
+	edge := graph.CreateEdge(graph.GenID(), n1, n2, e.Metadata, time.Now(), "", common.UnknownService)
+	return schemaValidator.ValidateEdge(edge)
+}
+
 // NodeRule describes a node rule
 type NodeRule struct {
 	UUID        string
 	Name        string
 	Description string
-	NodeType    string
-	NodeName    string
 	Metadata    graph.Metadata
 	Action      string `valid:"regexp=^(create|update)$"`
 	Query       string `valid:"isGremlinOrEmpty"`
@@ -136,6 +145,22 @@ func (n *NodeRule) ID() string {
 // SetID set ID
 func (n *NodeRule) SetID(id string) {
 	n.UUID = id
+}
+
+// Validate verifies the node rule does not create invalid node or change
+// important attributes of an existing node
+func (n *NodeRule) Validate() error {
+	switch n.Action {
+	case "create":
+		// TODO: we should modify the JSON schema so that we can validate only the metadata
+		node := graph.CreateNode(graph.GenID(), n.Metadata, time.Now(), "", common.UnknownService)
+		return schemaValidator.ValidateNode(node)
+	case "update":
+		if n.Metadata["Type"] != nil || n.Metadata["Name"] != nil {
+			return errors.New("Name and Type fields can not be changed")
+		}
+	}
+	return nil
 }
 
 // PacketInjection packet injector API parameters
@@ -210,4 +235,11 @@ type Workflow struct {
 	Description   string          `yaml:"description"`
 	Parameters    []WorkflowParam `yaml:"parameters"`
 	Source        string          `valid:"isValidWorkflow" yaml:"source"`
+}
+
+func init() {
+	var err error
+	if schemaValidator, err = topology.NewSchemaValidator(); err != nil {
+		panic(err)
+	}
 }

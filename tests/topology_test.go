@@ -638,6 +638,7 @@ func TestQueryMetadata(t *testing.T) {
 			masterElection.SendMessageToMaster(msg)
 
 			m["Metadata"].(map[string]interface{})["Type"] = "external"
+			m["Metadata"].(map[string]interface{})["Name"] = "testNode"
 			n.Decode(m)
 			msg = ws.NewStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
 			masterElection.SendMessageToMaster(msg)

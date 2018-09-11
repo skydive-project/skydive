@@ -109,7 +109,8 @@ func newElasticsearchGraph(t *testing.T) (*Graph, *fakeESClient) {
 func TestElasticsearchNode(t *testing.T) {
 	g, client := newElasticsearchGraph(t)
 
-	node := g.newNode("aaa", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
+	node := g.CreateNode("aaa", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
+	g.AddNode(node)
 	g.addMetadata(node, "MTU", 1510, time.Unix(2, 0))
 
 	origin := common.UnknownService.String() + ".host1"
@@ -268,10 +269,13 @@ func TestElasticsearchNode(t *testing.T) {
 func TestElasticsearchEdge(t *testing.T) {
 	g, client := newElasticsearchGraph(t)
 
-	node1 := g.newNode("aaa", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
-	node2 := g.newNode("bbb", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
+	node1 := g.CreateNode("aaa", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
+	node2 := g.CreateNode("bbb", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
+	g.AddNode(node1)
+	g.AddNode(node2)
 
-	edge := g.newEdge("eee", node1, node2, Metadata{"Name": "eee"}, time.Unix(1, 0), "host1")
+	edge := g.CreateEdge("eee", node1, node2, Metadata{"Name": "eee"}, time.Unix(1, 0), "host1")
+	g.AddEdge(edge)
 	g.addMetadata(edge, "Type", "veth", time.Unix(2, 0))
 
 	origin := common.UnknownService.String() + ".host1"
