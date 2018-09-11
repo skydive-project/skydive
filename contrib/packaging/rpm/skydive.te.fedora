@@ -86,6 +86,7 @@ require {
         type skydive_agent_sflow_ports_t;
         type skydive_agent_pcapsocket_ports_t;
         type unconfined_t;
+        type commplex_main_port_t;
         class system module_load;
         class file { getattr map open read };
         class capability { dac_override dac_read_search net_raw sys_admin };
@@ -152,6 +153,7 @@ allow skydive_t us_cli_port_t:udp_socket name_bind;
 allow skydive_t skydive_analyzer_db_connect_ports_t:tcp_socket name_connect;
 allow skydive_t skydive_agent_sflow_ports_t:udp_socket name_bind;
 allow skydive_t skydive_agent_pcapsocket_ports_t:tcp_socket name_bind;
+allow skydive_t commplex_main_port_t:tcp_socket name_connect;
 
 cloudform_read_lib_lnk_files(skydive_t)
 container_manage_lib_files(skydive_t)

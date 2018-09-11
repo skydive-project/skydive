@@ -3,7 +3,7 @@
   package:
     name: python2-shade
     state: present
-  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_os_family == "RedHat"
 
 - name: Install Keystone requirements
   package:
