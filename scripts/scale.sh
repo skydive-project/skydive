@@ -457,6 +457,14 @@ function start_inotify() {
 	sudo mkdir -p /var/run/netns
 
 	cat <<EOF > $TEMP_DIR/inotify.sh
+link() {
+	src=\$1
+	dst=\$2
+
+	/usr/bin/sleep 1
+	/usr/bin/sudo ln -s \$src \$dst
+}
+
 inotifywait -m -r -e create -e delete /var/run/netns | while read PATH EVENT FOLDER; do
   if [[ \$FOLDER =~ agent-[0-9] ]]; then
     AGENT=\`echo -n \$FOLDER | /usr/bin/cut -d "-" -f -2\`
@@ -464,8 +472,7 @@ inotifywait -m -r -e create -e delete /var/run/netns | while read PATH EVENT FOL
 
     case "\$EVENT" in
     CREATE)
-      /usr/bin/sleep 3
-      /usr/bin/sudo ln -s /var/run/netns/\$FOLDER $TEMP_DIR/\$AGENT-netns/\$NS
+      link /var/run/netns/\$FOLDER $TEMP_DIR/\$AGENT-netns/\$NS &
       ;;
     DELETE)
       /usr/bin/rm $TEMP_DIR/\$AGENT-netns/\$NS
