@@ -114,7 +114,13 @@ start() {
                 args="$args --network-plugin=cni --host-only-cidr=20.0.0.0/16"
         fi
 
-        minikube start $args
+	# FIXME: using '|| true' to overcome following:
+        # FIXME: Error cluster status: getting status: running command: sudo systemctl is-active kubelet
+        minikube start $args || true
+
+	# give minikube time to come up
+	sleep 5
+
         minikube status
         export no_proxy=$no_proxy,$(minikube ip)
         kubectl config use-context minikube
