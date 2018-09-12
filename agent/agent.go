@@ -244,7 +244,7 @@ func NewAgent() (*Agent, error) {
 
 	packet_injector.NewServer(g, analyzerClientPool)
 
-	flowClientPool := analyzer.NewFlowClientPool(analyzerClientPool)
+	flowClientPool := analyzer.NewFlowClientPool(analyzerClientPool, clusterAuthOptions)
 
 	flowProbeBundle := fprobes.NewFlowProbeBundle(topologyProbeBundle, g, flowTableAllocator, flowClientPool)
 

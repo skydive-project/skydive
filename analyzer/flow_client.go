@@ -33,6 +33,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	ws "github.com/skydive-project/skydive/websocket"
 )
@@ -42,6 +43,7 @@ type FlowClientPool struct {
 	common.RWMutex
 	ws.DefaultSpeakerEventHandler
 	flowClients []*FlowClient
+	authOpts    *shttp.AuthenticationOpts
 }
 
 // FlowClient describes a flow client connection
@@ -69,6 +71,7 @@ type FlowClientWebSocketConn struct {
 	ws.DefaultSpeakerEventHandler
 	url      *url.URL
 	wsClient *ws.Client
+	authOpts *shttp.AuthenticationOpts
 }
 
 // Close the connection
@@ -107,8 +110,7 @@ func (c *FlowClientWebSocketConn) Close() error {
 
 // Connect to the WebSocket flow server
 func (c *FlowClientWebSocketConn) Connect() error {
-	authOptions := AnalyzerClusterAuthenticationOpts()
-	c.wsClient = ws.NewClientFromConfig(common.AgentService, c.url, authOptions, nil)
+	c.wsClient = ws.NewClientFromConfig(common.AgentService, c.url, c.authOpts, nil)
 	c.wsClient.Connect()
 	c.wsClient.AddEventHandler(c)
 
@@ -122,20 +124,20 @@ func (c *FlowClientWebSocketConn) Send(data []byte) error {
 }
 
 // NewFlowClientWebSocketConn returns a new WebSocket flow client
-func NewFlowClientWebSocketConn(url *url.URL) (*FlowClientWebSocketConn, error) {
-	return &FlowClientWebSocketConn{url: url}, nil
+func NewFlowClientWebSocketConn(url *url.URL, authOpts *shttp.AuthenticationOpts) (*FlowClientWebSocketConn, error) {
+	return &FlowClientWebSocketConn{url: url, authOpts: authOpts}, nil
 }
 
 func (c *FlowClient) connect() {
 	if err := c.flowClientConn.Connect(); err != nil {
-		logging.GetLogger().Errorf("Connection error to %s:%d : %s", c.addr, c.port, err.Error())
+		logging.GetLogger().Errorf("Connection error to %s:%d : %s", c.addr, c.port, err)
 		time.Sleep(200 * time.Millisecond)
 	}
 }
 
 func (c *FlowClient) close() {
 	if err := c.flowClientConn.Close(); err != nil {
-		logging.GetLogger().Errorf("Error while closing flow connection: %s", err.Error())
+		logging.GetLogger().Errorf("Error while closing flow connection: %s", err)
 	}
 }
 
@@ -149,7 +151,7 @@ func (c *FlowClient) SendFlow(f *flow.Flow) error {
 retry:
 	err = c.flowClientConn.Send(data)
 	if err != nil {
-		logging.GetLogger().Errorf("flows connection to analyzer error %s : try to reconnect", err.Error())
+		logging.GetLogger().Errorf("flows connection to analyzer error %s : try to reconnect", err)
 		c.close()
 		c.connect()
 		goto retry
@@ -163,13 +165,13 @@ func (c *FlowClient) SendFlows(flows []*flow.Flow) {
 	for _, flow := range flows {
 		err := c.SendFlow(flow)
 		if err != nil {
-			logging.GetLogger().Errorf("Unable to send flow: %s", err.Error())
+			logging.GetLogger().Errorf("Unable to send flow: %s", err)
 		}
 	}
 }
 
 // NewFlowClient creates a flow client and creates a new connection to the server
-func NewFlowClient(addr string, port int) (*FlowClient, error) {
+func NewFlowClient(addr string, port int, authOpts *shttp.AuthenticationOpts) (*FlowClient, error) {
 	var (
 		connection FlowClientConn
 		err        error
@@ -179,7 +181,8 @@ func NewFlowClient(addr string, port int) (*FlowClient, error) {
 	case "udp":
 		connection, err = NewFlowClientUDPConn(common.NormalizeAddrForURL(addr), port)
 	case "websocket":
-		connection, err = NewFlowClientWebSocketConn(config.GetURL("ws", common.NormalizeAddrForURL(addr), port, "/ws/flow"))
+		endpoint := config.GetURL("ws", common.NormalizeAddrForURL(addr), port, "/ws/flow")
+		connection, err = NewFlowClientWebSocketConn(endpoint, authOpts)
 	default:
 		return nil, fmt.Errorf("Invalid protocol %s", protocol)
 	}
@@ -209,7 +212,7 @@ func (p *FlowClientPool) OnConnected(c ws.Speaker) {
 		}
 	}
 
-	flowClient, err := NewFlowClient(addr, port)
+	flowClient, err := NewFlowClient(addr, port, p.authOpts)
 	if err != nil {
 		logging.GetLogger().Error(err)
 		return
@@ -256,9 +259,10 @@ func (p *FlowClientPool) Close() {
 // NewFlowClientPool returns a new FlowClientPool using the websocket connections
 // to maintain the pool of client up to date according to the websocket connections
 // status.
-func NewFlowClientPool(pool ws.SpeakerPool) *FlowClientPool {
+func NewFlowClientPool(pool ws.SpeakerPool, authOpts *shttp.AuthenticationOpts) *FlowClientPool {
 	p := &FlowClientPool{
 		flowClients: make([]*FlowClient, 0),
+		authOpts:    authOpts,
 	}
 	pool.AddEventHandler(p)
 	return p
