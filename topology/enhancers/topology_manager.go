@@ -238,8 +238,13 @@ func (tm *TopologyManager) handleEdgeRuleRequest(action string, resource types.R
 			logging.GetLogger().Errorf("Source or Destination node not found")
 			return
 		}
-		if link := tm.graph.GetFirstLink(src[0], dst[0], edge.Metadata); link != nil {
-			tm.graph.DelEdge(link)
+
+		for {
+			if link := tm.graph.GetFirstLink(src[0], dst[0], edge.Metadata); link != nil {
+				tm.graph.DelEdge(link)
+			} else {
+				return
+			}
 		}
 	}
 }
