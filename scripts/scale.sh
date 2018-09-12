@@ -191,6 +191,10 @@ agent:
       - netns
       - ovsdb
       - socketinfo
+  auth:
+    cluster:
+      username: agent-${IDX}
+      password: agent-password-${IDX}
 flow:
   expire: 600
   update: 5
@@ -275,7 +279,7 @@ function create_analyzer() {
 
 	mkdir -p $TEMP_DIR/$NAME-etcd
 
-  echo "analyzers:" > $TEMP_DIR/$NAME.yml
+    echo "analyzers:" > $TEMP_DIR/$NAME.yml
 	for ANALYZER_I in $( seq $ANALYZER_NUM ); do
 		PORT=$(( $ANALYZER_PORT + ($ANALYZER_I - 1) * 2 ))
 		echo "  - localhost:$PORT" >> $TEMP_DIR/$NAME.yml
@@ -325,6 +329,13 @@ analyzer:
   listen: 0.0.0.0:$CURR_ANALYZER_PORT
   X509_cert: $ANALYZER_CRT
   X509_key: $ANALYZER_KEY
+  auth:
+    api:
+      backend: scaleapi
+    cluster:
+      backend: scalecluster
+      username: analyzer-${IDX}
+      password: analyzer-password-${IDX}
   flow:
     backend: $STORAGE
   topology:
@@ -333,9 +344,28 @@ analyzer:
 EOF
 
 	TOTAL_AGENT=$(( $AGENT_NUM + $AGENT_STOCK ))
-  for AGENT_I in $( seq $TOTAL_AGENT ); do
+	for AGENT_I in $( seq $TOTAL_AGENT ); do
 		echo "      - TOR -> TOR_PORT_$AGENT_I" >> $TEMP_DIR/$NAME.yml
 		echo "      - TOR_PORT_$AGENT_I --> *[Name=agent-$AGENT_I]/eth0" >> $TEMP_DIR/$NAME.yml
+	done
+
+	cat <<EOF >> $TEMP_DIR/$NAME.yml
+auth:
+  scaleapi:
+    type: basic
+    users:
+      admin: password
+  scalecluster:
+    type: basic
+    users:
+EOF
+
+	for AGENT_I in $( seq $TOTAL_AGENT ); do
+		echo "      agent-$AGENT_I: agent-password-$AGENT_I" >> $TEMP_DIR/$NAME.yml
+	done
+
+	for ANALYZER_I in $( seq $ANALYZER_NUM ); do
+		echo "      analyzer-$ANALYZER_I: analyzer-password-$ANALYZER_I" >> $TEMP_DIR/$NAME.yml
 	done
 
 	COVERFILE="$TEMP_DIR/$NAME.cover"

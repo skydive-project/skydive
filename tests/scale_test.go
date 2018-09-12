@@ -305,7 +305,7 @@ func TestScaleHA(t *testing.T) {
 
 	// Load Agent-1 as default config for our client
 	config.InitConfig("file", []string{"/tmp/skydive-scale/agent-1.yml"})
-	authOptions := &shttp.AuthenticationOpts{}
+	authOptions := &shttp.AuthenticationOpts{Username: "admin", Password: "password"}
 
 	client, err := gclient.NewCrudClientFromConfig(authOptions)
 	if err != nil {
