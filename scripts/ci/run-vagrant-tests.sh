@@ -105,9 +105,6 @@ do
   vagrant ssh analyzer1 -- sudo journalctl -n 100 -u skydive-analyzer
   vagrant ssh agent1 -- sudo journalctl -n 100 -u skydive-agent
 
-  echo "================== curl test ==============================="
-  vagrant ssh analyzer1 -- curl http://localhost:8082
-
   if [ "$mode" = "container" ]; then
       install_skydive_from_docker_image analyzer1
       install_skydive_from_docker_image agent1
@@ -118,8 +115,8 @@ do
       install_skydive_selinux_enforcing agent1
   fi
 
-  echo "================== gremlin test ==============================="
-  vagrant ssh analyzer1 -c 'set -e; skydive client query "g.V()"'
+  echo "================== external functional test suite ==============================="
+  $root/scripts/test.sh -a 192.168.50.10:8082 -e $AGENT_COUNT -c -i
 
   if [ "$mode" != "container" ]; then
       sleep 10
