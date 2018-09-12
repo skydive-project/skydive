@@ -28,15 +28,13 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/skydive-project/skydive/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 type logger struct {
 	*zap.Logger
-	config zap.Config
-	id     string
+	id string
 }
 
 var currentLogger *logger
@@ -193,8 +191,7 @@ func shortCallerWithClassFunctionEncoder(caller zapcore.EntryCaller, enc zapcore
 	enc.AppendString(path)
 }
 
-func newEncoderConfig() zapcore.EncoderConfig {
-	color := config.GetBool("logging.color")
+func newEncoderConfig(color bool) zapcore.EncoderConfig {
 	encoder := zapcore.EncoderConfig{
 		// Keys can be anything except the empty string.
 		TimeKey:        "ts",
@@ -215,103 +212,104 @@ func newEncoderConfig() zapcore.EncoderConfig {
 	return encoder
 }
 
-func newConfig() zap.Config {
+func newConfig(encoderConfig zapcore.EncoderConfig) zap.Config {
 	return zap.Config{
 		Level:            zap.NewAtomicLevelAt(zap.DebugLevel),
 		Development:      false,
 		Encoding:         "console",
-		EncoderConfig:    newEncoderConfig(),
+		EncoderConfig:    encoderConfig,
 		OutputPaths:      []string{"stderr"},
 		ErrorOutputPaths: []string{"stderr"},
 	}
 }
 
-func initLogger() (err error) {
-	cfg := config.GetConfig()
-	backendLevel := getZapLevel(cfg.GetString("logging.level"))
+type Backend interface {
+	Core(msgPriority zap.LevelEnablerFunc, encoder zapcore.Encoder) zapcore.Core
+}
 
-	defaultEncoder := zapcore.NewConsoleEncoder(newEncoderConfig())
-	if cfg.GetString("logging.encoder") == "json" {
-		defaultEncoder = zapcore.NewJSONEncoder(newEncoderConfig())
+type Logger struct {
+	backend  Backend
+	logLevel string
+	encoding string
+}
+
+func NewLogger(backend Backend, logLevel string, encoding string) *Logger {
+	return &Logger{backend: backend, logLevel: logLevel, encoding: encoding}
+}
+
+type fileBackend struct {
+	file *os.File
+}
+
+func (b *fileBackend) Core(msgPriority zap.LevelEnablerFunc, encoder zapcore.Encoder) zapcore.Core {
+	return zapcore.NewCore(encoder, zapcore.Lock(b.file), msgPriority)
+}
+
+func NewFileBackend(filename string) (Backend, error) {
+	file, err := os.Create(filename)
+	if err != nil {
+		return nil, err
 	}
-	msgPriority := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
-		return lvl >= backendLevel
-	})
+	return &fileBackend{file: file}, nil
+}
 
-	var backends []zapcore.Core
-	for _, name := range cfg.GetStringSlice("logging.backends") {
-		switch name {
-		case "file":
-			filename := cfg.GetString("logging.file.path")
-			file, err := os.Create(filename)
-			if err != nil {
-				return err
-			}
-			encoder := defaultEncoder
-			if cfg.GetString("logging.file.encoder") == "json" {
-				encoder = zapcore.NewJSONEncoder(newEncoderConfig())
-			}
-			backends = append(backends, zapcore.NewCore(encoder, zapcore.Lock(file), msgPriority))
-		case "syslog":
-			encoder := defaultEncoder
-			if cfg.GetString("logging.syslog.encoder") == "json" {
-				encoder = zapcore.NewJSONEncoder(newEncoderConfig())
-			}
-			syslogTag := cfg.GetString("logging.syslog.tag")
-			backends, err = addSyslogBackend(backends, msgPriority, encoder, syslogTag)
-			if err != nil {
-				return err
-			}
-		case "stderr":
-			encoder := defaultEncoder
-			if cfg.GetString("logging.stderr.encoder") == "json" {
-				encoder = zapcore.NewJSONEncoder(newEncoderConfig())
-			}
-			backends = append(backends, zapcore.NewCore(encoder, zapcore.Lock(os.Stderr), msgPriority))
-		case "stdout":
-			encoder := defaultEncoder
-			if cfg.GetString("logging.stdout.encoder") == "json" {
-				encoder = zapcore.NewJSONEncoder(newEncoderConfig())
-			}
-			backends = append(backends, zapcore.NewCore(encoder, zapcore.Lock(os.Stdout), msgPriority))
+func NewStdioBackend(file *os.File) Backend {
+	return &fileBackend{file: file}
+}
+
+func InitLogging(id string, color bool, loggers []*Logger) (err error) {
+	getMessagePriority := func(backendLevel zapcore.Level) zap.LevelEnablerFunc {
+		return zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
+			return lvl >= backendLevel
+		})
+	}
+
+	encoderConfig := newEncoderConfig(color)
+	consoleEncoder := zapcore.NewConsoleEncoder(encoderConfig)
+	jsonEncoder := zapcore.NewJSONEncoder(encoderConfig)
+
+	var cores []zapcore.Core
+	for _, logger := range loggers {
+		var encoder zapcore.Encoder
+		switch logger.encoding {
+		case "json":
+			encoder = jsonEncoder
 		default:
-			return fmt.Errorf("Invalid logging backend: %s", name)
+			encoder = consoleEncoder
 		}
+		backendLevel := getZapLevel(logger.logLevel)
+		cores = append(cores, logger.backend.Core(getMessagePriority(backendLevel), encoder))
 	}
 
 	newCore := zap.WrapCore(func(zapcore.Core) zapcore.Core {
-		return zapcore.NewTee(backends...)
+		return zapcore.NewTee(cores...)
 	})
 
-	c := newConfig()
-	c.Level.SetLevel(backendLevel)
-	z, _ := c.Build(
+	c := newConfig(encoderConfig)
+	z, err := c.Build(
 		newCore,
 		zap.AddCallerSkip(2),
 		// uncomment the following line to get stacktrace on error messages
 		// zap.AddStacktrace(zapcore.ErrorLevel),
 		zap.AddStacktrace(zapcore.DPanicLevel),
 	)
-	currentLogger = &logger{
-		Logger: z,
-		config: c,
-		id:     cfg.GetString("host_id") + ":" + cfg.GetString("logging.id"),
+	if err != nil {
+		return err
 	}
 
+	currentLogger = &logger{
+		Logger: z,
+		id:     id,
+	}
 	return nil
 }
 
 // GetLogger returns the current logger instance
 func GetLogger() (log *logger) {
-	if currentLogger == nil {
-		if err := initLogger(); err != nil {
-			panic(err)
-		}
-	}
 	return currentLogger
 }
 
-// InitLogging initialize the logger
-func InitLogging() (err error) {
-	return initLogger()
+func init() {
+	hostname, _ := os.Hostname()
+	InitLogging(hostname, false, []*Logger{NewLogger(NewStdioBackend(os.Stderr), "DEBUG", "")})
 }

@@ -32,7 +32,6 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
 )
 
 type fakeMessageServerSubscriptionHandler struct {
@@ -99,7 +98,7 @@ func (f *fakeMessageClientSubscriptionHandler) OnStructMessage(c Speaker, m *Str
 }
 
 func TestMessageSubscription(t *testing.T) {
-	logging.InitLogging()
+	config.InitLogging()
 	httpserver := shttp.NewServer("myhost", common.AnalyzerService, "localhost", 59999)
 
 	go httpserver.ListenAndServe()
