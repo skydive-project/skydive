@@ -3,7 +3,7 @@
   package:
     name: https://buildlogs.centos.org/centos/7/opstools/x86_64/common/centos-release-opstools-1-4.el7.noarch.rpm
     state: present
-  when: ansible_os_family == "RedHat" and skydive_package_location is not defined
+  when: ansible_distribution == 'CentOS' and skydive_package_location is not defined
 
 - name: Install skydive package
   package:

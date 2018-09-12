@@ -11,6 +11,11 @@
     mode: 0600
     force: no
 
+- name: Set config file mode
+  file:
+    path: "{{ skydive_config_file }}"
+    mode: 0600
+
 - name: Set host ID
   yedit:
     src: "{{ skydive_config_file }}"
