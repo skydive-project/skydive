@@ -56,7 +56,6 @@ func RegisterClientCommands(cmd *cobra.Command) {
 	cmd.AddCommand(ShellCmd)
 	cmd.AddCommand(StatusCmd)
 	cmd.AddCommand(TopologyCmd)
-	cmd.AddCommand(UserMetadataCmd)
 	cmd.AddCommand(WorkflowCmd)
 	cmd.AddCommand(NodeRuleCmd)
 	cmd.AddCommand(EdgeRuleCmd)

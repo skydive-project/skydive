@@ -679,20 +679,24 @@ func TestQueryMetadata(t *testing.T) {
 	RunTest(t, test)
 }
 
-//TestUserMetadata tests user metadata functionality
-func TestUserMetadata(t *testing.T) {
-	umd := types.NewUserMetadata(g.G.V().Has("Name", "br-umd", "Type", "ovsbridge").String(), "testKey", "testValue")
+func TestNodeRuleUpdate(t *testing.T) {
+	nodeRule := &types.NodeRule{
+		Action:   "update",
+		Query:    "G.V().Has('Name', 'br-umd', 'Type', 'ovsbridge')",
+		Metadata: graph.Metadata{"testKey": "testValue"},
+	}
+
 	test := &Test{
 		setupCmds: []helper.Cmd{
 			{"ovs-vsctl add-br br-umd", true},
 		},
 
 		setupFunction: func(c *TestContext) error {
-			return c.client.Create("usermetadata", umd)
+			return c.client.Create("noderule", nodeRule)
 		},
 
 		tearDownFunction: func(c *TestContext) error {
-			c.client.Delete("usermetadata", umd.ID())
+			c.client.Delete("noderule", nodeRule.ID())
 			return nil
 		},
 
@@ -712,7 +716,7 @@ func TestUserMetadata(t *testing.T) {
 			},
 
 			func(c *CheckContext) error {
-				c.client.Delete("usermetadata", umd.ID())
+				c.client.Delete("noderule", nodeRule.ID())
 
 				if node, err := c.gh.GetNode(c.gremlin.V().Has("UserMetadata.testKey", "testValue")); err != common.ErrNotFound {
 					return fmt.Errorf("Node %+v was found with metadata UserMetadata.testKey", node)

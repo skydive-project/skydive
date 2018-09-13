@@ -84,7 +84,6 @@ type Server struct {
 	alertServer         *alert.Server
 	onDemandClient      *ondemand.OnDemandProbeClient
 	piClient            *packet_injector.PacketInjectorClient
-	metadataManager     *usertopology.UserMetadataManager
 	topologyManager     *usertopology.TopologyManager
 	flowServer          *FlowServer
 	probeBundle         *probe.ProbeBundle
@@ -150,7 +149,6 @@ func (s *Server) Start() error {
 	s.onDemandClient.Start()
 	s.piClient.Start()
 	s.alertServer.Start()
-	s.metadataManager.Start()
 	s.topologyManager.Start()
 	s.flowServer.Start()
 	s.agentWSServer.Start()
@@ -185,7 +183,6 @@ func (s *Server) Stop() {
 	s.onDemandClient.Stop()
 	s.piClient.Stop()
 	s.alertServer.Stop()
-	s.metadataManager.Stop()
 	s.topologyManager.Stop()
 	s.etcdClient.Stop()
 	s.wgServers.Wait()
@@ -322,11 +319,6 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	metadataAPIHandler, err := api.RegisterUserMetadataAPI(apiServer, g, apiAuthBackend)
-	if err != nil {
-		return nil, err
-	}
-
 	piAPIHandler, err := api.RegisterPacketInjectorAPI(g, apiServer, apiAuthBackend)
 	if err != nil {
 		return nil, err
@@ -353,8 +345,6 @@ func NewServerFromConfig() (*Server, error) {
 
 	onDemandClient := ondemand.NewOnDemandProbeClient(g, captureAPIHandler, agentWSServer, subscriberWSServer, etcdClient)
 
-	metadataManager := usertopology.NewUserMetadataManager(g, metadataAPIHandler)
-
 	flowServer, err := NewFlowServer(hserver, g, storage, probeBundle, clusterAuthBackend)
 	if err != nil {
 		return nil, err
@@ -377,7 +367,6 @@ func NewServerFromConfig() (*Server, error) {
 		etcdClient:          etcdClient,
 		onDemandClient:      onDemandClient,
 		piClient:            piClient,
-		metadataManager:     metadataManager,
 		topologyManager:     topologyManager,
 		storage:             storage,
 		flowServer:          flowServer,
