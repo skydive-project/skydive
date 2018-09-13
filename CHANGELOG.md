@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.19.1] - 2018-09-13
+### Added
+- Add node/edge rules API to register nodes and edges
+- Add Ansible library to create nodes and edges
+
+### Changed
+- Bug fixes:
+  - Fix WebSocket flow authentication
+  - Fix deployment on RHEL using Ansible
+  - Fix SElinux policy to connect to Keystone
+  - Change Docker base image to Ubuntu
+  - Add origin field in python api
+
 ## [0.19.0] - 2018-08-08
 ### Added
 - Gremlin:
