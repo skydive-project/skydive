@@ -74,7 +74,7 @@ func (b *BasicAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc)
 	return func(w http.ResponseWriter, r *http.Request) {
 		token, err := authenticateWithHeaders(b, w, r)
 		if err != nil {
-			unauthorized(w, r)
+			Unauthorized(w, r)
 			return
 		}
 
@@ -82,7 +82,7 @@ func (b *BasicAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc)
 		r.Header.Set("Authorization", "Basic "+token)
 
 		if username := b.CheckAuth(r); username == "" {
-			unauthorized(w, r)
+			Unauthorized(w, r)
 		} else {
 			authCallWrapped(w, r, username, wrapped)
 		}

@@ -43,6 +43,7 @@ import (
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
+	"github.com/skydive-project/skydive/ui"
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
@@ -183,7 +184,8 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	hserver.RegisterLoginRoute(apiAuthBackend)
+	uiServer := ui.NewServer(hserver, config.GetString("ui.extra_assets"))
+	uiServer.RegisterLoginRoute(apiAuthBackend)
 
 	if err := hserver.Listen(); err != nil {
 		return nil, err
