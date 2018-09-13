@@ -378,8 +378,8 @@ func TestSFlowSrcDstPath(t *testing.T) {
 		},
 
 		injections: []TestInjection{{
-			from:  g.G.V().Has("Name", "ssdp-intf1", "Type", "internal"),
-			to:    g.G.V().Has("Name", "ssdp-intf2", "Type", "internal"),
+			from:  g.G.V().Has("Name", "ssdp-vm1", "Type", "netns").Out().Has("Name", "ssdp-intf1"),
+			to:    g.G.V().Has("Name", "ssdp-vm2", "Type", "netns").Out().Has("Name", "ssdp-intf2"),
 			count: 5,
 		}},
 
