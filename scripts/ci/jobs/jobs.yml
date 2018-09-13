@@ -359,7 +359,7 @@
           test: FLOW_PROTOCOL=udp scripts/ci/run-scale.sh
       - skydive-cleanup
       - skydive-test:
-          test: scripts/ci/run-scale.sh
+          test: FLOW_PROTOCOL=websocket scripts/ci/run-scale.sh
 
 - job:
     name: skydive-cdd-overview-tests
