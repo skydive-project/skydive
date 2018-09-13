@@ -931,6 +931,12 @@
 			"revision": "5d2041e26a699eaca682e2ea41c8f891e1060444"
 		},
 		{
+			"checksumSHA1": "D2Aijfk0Ccbw5ftQF3RVTTSPQbk=",
+			"path": "github.com/dselans/dmidecode",
+			"revision": "65c3f9d819108e993ede783bdecbc7d28748cbd9",
+			"revisionTime": "2018-08-14T05:30:09Z"
+		},
+		{
 			"checksumSHA1": "g3z4plpw9F/ho3hdJb+X/bN/OgE=",
 			"path": "github.com/emicklei/go-restful",
 			"revision": "68c9750c36bb8cb433f1b88c807b4b30df4acc40",

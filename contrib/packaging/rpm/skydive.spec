@@ -85,6 +85,7 @@ Requires:         %{name} = %{version}-%{release}
 Requires(post):   systemd %{selinux_semanage_pkg}
 Requires(preun):  systemd
 Requires(postun): systemd %{selinux_semanage_pkg}
+Requires:         dmidecode
 
 %description agent
 The Skydive agent has to be started on each node where the topology and

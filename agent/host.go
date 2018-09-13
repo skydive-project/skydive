@@ -28,6 +28,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/dselans/dmidecode"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/host"
 
@@ -132,6 +133,53 @@ func createRootNode(g *graph.Graph) (*graph.Node, error) {
 	}
 	if hostInfo.VirtualizationRole != "" {
 		m.SetField("VirtualizationRole", hostInfo.VirtualizationRole)
+	}
+
+	dmi := dmidecode.New()
+	if err := dmi.Run(); err == nil {
+		// If we have a valid DMI table
+		dmi_data := map[string]interface{}{}
+
+		// Let's scan every DMI type
+		for type_number := 0; type_number < 128; type_number++ {
+			// For each DMI type
+			byTypeData, byTypeErr := dmi.SearchByType(type_number)
+
+			// Only consider the populated types
+			if byTypeErr == nil {
+				// For each entry of that type
+				for _, typeData := range byTypeData {
+					// The structure will represent that type
+					dmi_data_array := []map[string]interface{}{}
+
+					// For every entry of that type
+					for dmi_label, dmi_value := range typeData {
+						// Some value are sub fields like the Characteristics in Type 0
+						// Values are splitted by tabulations
+						dmi_value_array := strings.Split(dmi_value, string(9)+string(9))
+
+						if len(dmi_value_array) > 1 {
+							// Extract all sub fields if any
+							// Compute the sub dynamic structure label : value
+							dmi_data_array = append(dmi_data_array, map[string]interface{}{
+								dmi_label: dmi_value_array,
+							})
+						} else {
+							// Compute the dynamic structure like label : value
+							dmi_data_array = append(dmi_data_array, map[string]interface{}{
+								dmi_label: dmi_value,
+							})
+						}
+					}
+					// Add the computed value for the given type
+					//DMIName represent the human readable name of the current type
+					// Like "Bios Information" for type 0
+					dmi_data[typeData["DMIName"]] = dmi_data_array
+				}
+				// Adding all types to the main DMI item
+				m.SetField("DMI", dmi_data)
+			}
+		}
 	}
 
 	return g.NewNode(graph.GenID(), m), nil
