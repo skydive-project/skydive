@@ -69,7 +69,7 @@ func (t *TopologyAPI) graphToDot(w http.ResponseWriter, g *graph.Graph) {
 		label := title
 		for k, v := range n.Metadata() {
 			switch k {
-			case "Type", "IfIndex", "State", "TID":
+			case "Type", "IfIndex", "State", "TID", "IPV4", "IPV6":
 				label += fmt.Sprintf("\\n%s = %v", k, v)
 			}
 		}
