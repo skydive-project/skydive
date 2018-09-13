@@ -53,10 +53,10 @@ SKYDIVE_OVSDB_REMOTE_PORT=${SKYDIVE_OVSDB_REMOTE_PORT:-}
 SKYDIVE_LOGLEVEL=${SKYDIVE_LOGLEVEL:-INFO}
 
 # Storage used by the analyzer to store flows
-SKYDIVE_FLOWS_STORAGE=${SKYDIVE_FLOWS_STORAGE:-"elasticsearch"}
+SKYDIVE_FLOWS_STORAGE=${SKYDIVE_FLOWS_STORAGE:-"memory"}
 
 # Storage used by the analyzer to store the graph
-SKYDIVE_GRAPH_STORAGE=${SKYDIVE_GRAPH_STORAGE:-"elasticsearch"}
+SKYDIVE_GRAPH_STORAGE=${SKYDIVE_GRAPH_STORAGE:-"memory"}
 
 # List of public interfaces for the agents to register in fabric
 # ex: "devstack1/eth0 devstack2/eth1"
