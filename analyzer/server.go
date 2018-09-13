@@ -43,7 +43,6 @@ import (
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/packet_injector"
 	"github.com/skydive-project/skydive/probe"
-	"github.com/skydive-project/skydive/rbac"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -221,7 +220,7 @@ func NewServerFromConfig() (*Server, error) {
 		}
 	}
 
-	if err := rbac.Init(etcdClient.KeysAPI); err != nil {
+	if err := config.InitRBAC(etcdClient.KeysAPI); err != nil {
 		return nil, err
 	}
 
