@@ -1187,8 +1187,6 @@ func (tv *GraphTraversalV) Out(ctx StepContext, s ...interface{}) *GraphTraversa
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
 	it := ctx.PaginationRange.Iterator()
 
-	fmt.Printf("AHAHAH: %+v\n", ctx.PaginationRange)
-
 	tv.GraphTraversal.RLock()
 	defer tv.GraphTraversal.RUnlock()
 
@@ -1229,7 +1227,7 @@ nodeloop:
 			if e.GetParent() == n.ID {
 				if it.Done() {
 					break nodeloop
-				} else {
+				} else if it.Next() {
 					nte.edges = append(nte.edges, e)
 				}
 			}
@@ -1283,8 +1281,6 @@ func (tv *GraphTraversalV) In(ctx StepContext, s ...interface{}) *GraphTraversal
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
 	it := ctx.PaginationRange.Iterator()
-
-	fmt.Printf("AHAHAH: %+v\n", ctx.PaginationRange)
 
 	tv.GraphTraversal.RLock()
 	defer tv.GraphTraversal.RUnlock()

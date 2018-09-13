@@ -33,7 +33,7 @@ import (
 func newGraph(t *testing.T) *graph.Graph {
 	b, err := graph.NewMemoryBackend()
 	if err != nil {
-		t.Error(err.Error())
+		t.Error(err)
 	}
 
 	return graph.NewGraphFromConfig(b, common.UnknownService)
@@ -502,12 +502,12 @@ func TestTraversalSubGraph(t *testing.T) {
 func execTraversalQuery(t *testing.T, g *graph.Graph, query string) GraphTraversalStep {
 	ts, err := NewGremlinTraversalParser().Parse(strings.NewReader(query))
 	if err != nil {
-		t.Fatalf("%s: %s", query, err.Error())
+		t.Fatalf("%s: %s", query, err)
 	}
 
 	res, err := ts.Exec(g, false)
 	if err != nil {
-		t.Fatalf("%s: %s", query, err.Error())
+		t.Fatalf("%s: %s", query, err)
 	}
 
 	return res
@@ -673,5 +673,75 @@ func TestTraversalParser(t *testing.T) {
 	res = execTraversalQuery(t, g, query)
 	if len(res.Values()) != 1 {
 		t.Fatalf("Should return 1 node, returned: %v", res.Values())
+	}
+}
+
+func TestLimit(t *testing.T) {
+	g := newTransversalGraph(t)
+
+	query := `G.V().Has("Value", NE("ZZZ")).Limit(1)`
+	res := execTraversalQuery(t, g, query)
+	if len(res.Values()) != 1 {
+		t.Fatalf("Should return 1 result, returned: %v", res.Values())
+	}
+	query = `G.V().HasNot("ZZZ").Limit(1)`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 1 {
+		t.Fatalf("Should return 1 result, returned: %v", res.Values())
+	}
+	query = `G.V().HasKey("Value").Limit(1)`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 1 {
+		t.Fatalf("Should return 1 result, returned: %v", res.Values())
+	}
+	query = `G.V().HasKey("Value").Limit(1)`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 1 {
+		t.Fatalf("Should return 1 result, returned: %v", res.Values())
+	}
+	query = `G.V().Out().Limit(1)`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 1 {
+		t.Fatalf("Should return 1 result, returned: %v", res.Values())
+	}
+	query = `G.V().In().Limit(1)`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 1 {
+		t.Fatalf("Should return 1 result, returned: %v", res.Values())
+	}
+	query = `G.V().Both().Limit(1)`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 1 {
+		t.Fatalf("Should return 1 result, returned: %v", res.Values())
+	}
+	query = `G.V().Dedup().Limit(1)`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 1 {
+		t.Fatalf("Should return 1 result, returned: %v", res.Values())
+	}
+	query = `G.V().OutE().Limit(1)`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 1 {
+		t.Fatalf("Should return 1 result, returned: %v", res.Values())
+	}
+	query = `G.V().InE().Limit(1)`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 1 {
+		t.Fatalf("Should return 1 result, returned: %v", res.Values())
+	}
+	query = `G.V().BothE().Limit(1)`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 1 {
+		t.Fatalf("Should return 1 result, returned: %v", res.Values())
+	}
+	query = `G.V().BothE().InV().Limit(1)`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 1 {
+		t.Fatalf("Should return 1 result, returned: %v", res.Values())
+	}
+	query = `G.V().BothE().OutV().Limit(1)`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 1 {
+		t.Fatalf("Should return 1 result, returned: %v", res.Values())
 	}
 }

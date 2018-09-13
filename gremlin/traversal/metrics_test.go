@@ -49,7 +49,7 @@ func testMetric(t *testing.T, metrics, expected map[string][]common.Metric, tm t
 
 	step := NewMetricsTraversalStep(gt, metrics)
 
-	got := step.Aggregates(int64(10))
+	got := step.Aggregates(traversal.StepContext{}, int64(10))
 
 	exp := NewMetricsTraversalStep(gt, expected)
 	if !reflect.DeepEqual(exp.Values(), got.Values()) {
@@ -617,9 +617,7 @@ func testMetricSum(t *testing.T, metrics map[string][]common.Metric, expected co
 
 	step := NewMetricsTraversalStep(gt, metrics)
 
-	//	fmt.Printf("############# %+v\n", step.Aggregates(int64(10)).metrics)
-
-	got := step.Aggregates(int64(10)).Sum().Values()[0]
+	got := step.Aggregates(traversal.StepContext{}, int64(10)).Sum().Values()[0]
 
 	if !reflect.DeepEqual(expected, got) {
 		t.Errorf("Metrics mismatch, expected: \n\n%s\n\ngot: \n\n%s", expected, got)

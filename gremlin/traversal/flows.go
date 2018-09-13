@@ -119,10 +119,15 @@ func (f *FlowTraversalStep) Out(ctx traversal.StepContext, s ...interface{}) *tr
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
 
+	it := ctx.PaginationRange.Iterator()
+
 	f.GraphTraversal.RLock()
 	defer f.GraphTraversal.RUnlock()
 
 	for _, flow := range f.flowset.Flows {
+		if it.Done() {
+			break
+		}
 		if flow.Link.B != "" {
 			filter1, err := traversal.MapToFilter(m)
 			if err != nil {
@@ -140,7 +145,7 @@ func (f *FlowTraversalStep) Out(ctx traversal.StepContext, s ...interface{}) *tr
 			filter2 := filters.NewOrFilter(f1, f2)
 			matcher := graph.NewGraphElementFilter(filters.NewAndFilter(filter1, filter2))
 
-			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 				nodes = append(nodes, node)
 			}
 		}
@@ -162,10 +167,16 @@ func (f *FlowTraversalStep) In(ctx traversal.StepContext, s ...interface{}) *tra
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
 
+	it := ctx.PaginationRange.Iterator()
+
 	f.GraphTraversal.RLock()
 	defer f.GraphTraversal.RUnlock()
 
 	for _, flow := range f.flowset.Flows {
+		if it.Done() {
+			break
+		}
+
 		if flow.Link.A != "" {
 			filter1, err := traversal.MapToFilter(m)
 			if err != nil {
@@ -183,7 +194,7 @@ func (f *FlowTraversalStep) In(ctx traversal.StepContext, s ...interface{}) *tra
 			filter2 := filters.NewOrFilter(f1, f2)
 			matcher := graph.NewGraphElementFilter(filters.NewAndFilter(filter1, filter2))
 
-			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 				nodes = append(nodes, node)
 			}
 		}
@@ -205,10 +216,16 @@ func (f *FlowTraversalStep) Both(ctx traversal.StepContext, s ...interface{}) *t
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
 
+	it := ctx.PaginationRange.Iterator()
+
 	f.GraphTraversal.RLock()
 	defer f.GraphTraversal.RUnlock()
 
 	for _, flow := range f.flowset.Flows {
+		if it.Done() {
+			break
+		}
+
 		if flow.Link.A != "" {
 			filter1, err := traversal.MapToFilter(m)
 			if err != nil {
@@ -227,7 +244,7 @@ func (f *FlowTraversalStep) Both(ctx traversal.StepContext, s ...interface{}) *t
 
 			matcher := graph.NewGraphElementFilter(filters.NewAndFilter(filter1, filter2))
 
-			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 				nodes = append(nodes, node)
 			}
 		}
@@ -247,7 +264,7 @@ func (f *FlowTraversalStep) Both(ctx traversal.StepContext, s ...interface{}) *t
 			filter2 := filters.NewOrFilter(f1, f2)
 			matcher := graph.NewGraphElementFilter(filters.NewAndFilter(filter1, filter2))
 
-			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 				nodes = append(nodes, node)
 			}
 		}
@@ -269,10 +286,16 @@ func (f *FlowTraversalStep) Nodes(ctx traversal.StepContext, s ...interface{}) *
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
 
+	it := ctx.PaginationRange.Iterator()
+
 	f.GraphTraversal.RLock()
 	defer f.GraphTraversal.RUnlock()
 
 	for _, flow := range f.flowset.Flows {
+		if it.Done() {
+			break
+		}
+
 		if flow.NodeTID != "" && flow.NodeTID != "*" {
 			m["TID"] = flow.NodeTID
 
@@ -281,7 +304,7 @@ func (f *FlowTraversalStep) Nodes(ctx traversal.StepContext, s ...interface{}) *
 				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 			}
 
-			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 				nodes = append(nodes, node)
 			}
 		}
@@ -295,7 +318,7 @@ func (f *FlowTraversalStep) Nodes(ctx traversal.StepContext, s ...interface{}) *
 				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 			}
 
-			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 				nodes = append(nodes, node)
 			}
 		}
@@ -307,7 +330,7 @@ func (f *FlowTraversalStep) Nodes(ctx traversal.StepContext, s ...interface{}) *
 				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 			}
 
-			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 				nodes = append(nodes, node)
 			}
 		}
@@ -328,10 +351,16 @@ func (f *FlowTraversalStep) Hops(ctx traversal.StepContext, s ...interface{}) *t
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
 
+	it := ctx.PaginationRange.Iterator()
+
 	f.GraphTraversal.RLock()
 	defer f.GraphTraversal.RUnlock()
 
 	for _, fl := range f.flowset.Flows {
+		if it.Done() {
+			break
+		}
+
 		m["TID"] = fl.NodeTID
 
 		matcher, err := traversal.MapToMetadataFilter(m)
@@ -339,7 +368,7 @@ func (f *FlowTraversalStep) Hops(ctx traversal.StepContext, s ...interface{}) *t
 			return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 		}
 
-		if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
+		if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 			nodes = append(nodes, node)
 		}
 	}
@@ -449,10 +478,16 @@ func (f *FlowTraversalStep) CaptureNode(ctx traversal.StepContext, s ...interfac
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
 
+	it := ctx.PaginationRange.Iterator()
+
 	f.GraphTraversal.RLock()
 	defer f.GraphTraversal.RUnlock()
 
 	for _, fl := range f.flowset.Flows {
+		if it.Done() {
+			break
+		}
+
 		m["TID"] = fl.NodeTID
 
 		matcher, err := traversal.MapToMetadataFilter(m)
@@ -460,7 +495,7 @@ func (f *FlowTraversalStep) CaptureNode(ctx traversal.StepContext, s ...interfac
 			return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 		}
 
-		if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
+		if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 			nodes = append(nodes, node)
 		}
 	}
