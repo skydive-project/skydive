@@ -48,10 +48,28 @@ type seleniumHelper struct {
 	activeTabID      string
 	t                *testing.T
 	currVideoName    string
+	authOptions      *shttp.AuthenticationOpts
 }
 
 func (s *seleniumHelper) connect() error {
 	return s.webdriver.Get(fmt.Sprintf("http://%s:%d", s.addr, s.port))
+}
+
+func (s *seleniumHelper) login() error {
+	if err := s.fillTextBoxByID("username", s.authOptions.Username); err != nil {
+		return err
+	}
+
+	if err := s.fillTextBoxByID("password", s.authOptions.Password); err != nil {
+		return err
+	}
+
+	signin, err := s.findElement(selenium.ByID, "signin")
+	if err != nil {
+		return err
+	}
+
+	return signin.Click()
 }
 
 func (s *seleniumHelper) findElement(selection, xpath string) (el selenium.WebElement, err error) {
@@ -89,9 +107,7 @@ func (s *seleniumHelper) zoomFit() error {
 	if err != nil {
 		return err
 	}
-	fit.Click()
-
-	return nil
+	return fit.Click()
 }
 
 func (s *seleniumHelper) zoomOut() error {
@@ -549,7 +565,7 @@ func (s *seleniumHelper) quit() {
 	helper.ExecCmds(s.t, tearDownCmds...)
 }
 
-func newSeleniumHelper(t *testing.T, analyzerAddr string, analyzerPort int) (*seleniumHelper, error) {
+func newSeleniumHelper(t *testing.T, analyzerAddr string, analyzerPort int, authOptions *shttp.AuthenticationOpts) (*seleniumHelper, error) {
 	setupCmds := []helper.Cmd{
 		{"docker pull skydive/cdd-docker-selenium", true},
 		{"docker run -d --name=grid -p 4444:24444 -p 5900:25900 -e --shm-size=1g -p 6080:26080 -e SCREEN_WIDTH=1600 -e SCREEN_HEIGHT=1000 -e NOVNC=true -e VIDEO_FILE_NAME=cdd skydive/cdd-docker-selenium", true},
@@ -567,7 +583,6 @@ func newSeleniumHelper(t *testing.T, analyzerAddr string, analyzerPort int) (*se
 
 	os.Setenv("SKYDIVE_ANALYZERS", fmt.Sprintf("%s:%d", analyzerAddr, analyzerPort))
 
-	authOptions := &shttp.AuthenticationOpts{}
 	gh := gclient.NewGremlinQueryHelper(authOptions)
 
 	sh := &seleniumHelper{
@@ -577,6 +592,7 @@ func newSeleniumHelper(t *testing.T, analyzerAddr string, analyzerPort int) (*se
 		gh:          gh,
 		activeTabID: "Captures",
 		t:           t,
+		authOptions: authOptions,
 	}
 
 	return sh, nil

@@ -33,6 +33,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	g "github.com/skydive-project/skydive/gremlin"
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
 	"github.com/tebeka/selenium"
 )
@@ -63,7 +64,8 @@ func TestOverview(t *testing.T) {
 		return
 	}
 
-	sh, err := newSeleniumHelper(t, sa.Addr, sa.Port)
+	authOptions := &shttp.AuthenticationOpts{Username: "admin", Password: "password"}
+	sh, err := newSeleniumHelper(t, sa.Addr, sa.Port, authOptions)
 	if err != nil {
 		t.Error(err)
 		return
@@ -83,6 +85,11 @@ func TestOverview(t *testing.T) {
 	// start recording
 	sh.startVideoRecord("overview")
 	defer sh.stopVideoRecord()
+
+	if err = delaySec(5, sh.login()); err != nil {
+		t.Error(err)
+		return
+	}
 
 	if err = delaySec(5, sh.expand()); err != nil {
 		t.Error(err)
