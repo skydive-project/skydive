@@ -708,8 +708,8 @@ func TestNodeRuleUpdate(t *testing.T) {
 
 		checks: []CheckFunction{
 			func(c *CheckContext) error {
-				if _, err := c.gh.GetNode(c.gremlin.V().Has("UserMetadata.testKey", "testValue")); err != nil {
-					return fmt.Errorf("Failed to find a node with UserMetadata.testKey metadata")
+				if _, err := c.gh.GetNode(c.gremlin.V().Has("testKey", "testValue")); err != nil {
+					return fmt.Errorf("Failed to find a node with testKey metadata")
 				}
 
 				return nil
@@ -718,8 +718,8 @@ func TestNodeRuleUpdate(t *testing.T) {
 			func(c *CheckContext) error {
 				c.client.Delete("noderule", nodeRule.ID())
 
-				if node, err := c.gh.GetNode(c.gremlin.V().Has("UserMetadata.testKey", "testValue")); err != common.ErrNotFound {
-					return fmt.Errorf("Node %+v was found with metadata UserMetadata.testKey", node)
+				if node, err := c.gh.GetNode(c.gremlin.V().Has("testKey", "testValue")); err != common.ErrNotFound {
+					return fmt.Errorf("Node %+v was found with metadata testKey", node)
 				}
 
 				return nil
