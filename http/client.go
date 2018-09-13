@@ -25,6 +25,7 @@ package http
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -45,7 +46,7 @@ type RestClient struct {
 }
 
 type CrudClient struct {
-	RestClient
+	*RestClient
 }
 
 func readBody(resp *http.Response) string {
@@ -56,30 +57,21 @@ func readBody(resp *http.Response) string {
 	return string(data)
 }
 
-func getHttpClient() (*http.Client, error) {
+func getHttpClient(tlsConfig *tls.Config) *http.Client {
 	client := &http.Client{}
-	if config.IsTLSenabled() {
-		tlsConfig, err := GetTLSConfig(true)
-		if err != nil {
-			return nil, err
-		}
+	if tlsConfig != nil {
 		tr := &http.Transport{TLSClientConfig: tlsConfig}
 		client = &http.Client{Transport: tr}
 	}
-	return client, nil
+	return client
 }
 
-func NewRestClient(url *url.URL, authOpts *AuthenticationOpts) (*RestClient, error) {
-	client, err := getHttpClient()
-	if err != nil {
-		return nil, err
-	}
-	rc := &RestClient{
-		client:   client,
+func NewRestClient(url *url.URL, authOpts *AuthenticationOpts, tlsConfig *tls.Config) *RestClient {
+	return &RestClient{
+		client:   getHttpClient(tlsConfig),
 		url:      url,
 		authOpts: authOpts,
 	}
-	return rc, nil
 }
 
 func (c *RestClient) debug() bool {
@@ -137,14 +129,10 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 	return resp, nil
 }
 
-func NewCrudClient(url *url.URL, authOpts *AuthenticationOpts) (*CrudClient, error) {
-	restClient, err := NewRestClient(url, authOpts)
-	if err != nil {
-		return nil, err
-	}
+func NewCrudClient(url *url.URL, authOpts *AuthenticationOpts, tlsConfig *tls.Config) *CrudClient {
 	return &CrudClient{
-		RestClient: *restClient,
-	}, nil
+		RestClient: NewRestClient(url, authOpts, tlsConfig),
+	}
 }
 
 func (c *CrudClient) List(resource string, values interface{}) error {

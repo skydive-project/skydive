@@ -23,6 +23,7 @@
 package websocket
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	fmt "fmt"
@@ -148,8 +149,9 @@ type wsIncomingClient struct {
 // It embeds a Conn.
 type Client struct {
 	*Conn
-	Path     string
-	AuthOpts *shttp.AuthenticationOpts
+	Path      string
+	AuthOpts  *shttp.AuthenticationOpts
+	tlsConfig *tls.Config
 }
 
 // SpeakerEventHandler is the interface to be implement by the client events listeners.
@@ -432,7 +434,7 @@ func (c *Client) connect() {
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 	}
-	d.TLSClientConfig, err = shttp.GetTLSConfig(false)
+	d.TLSClientConfig = c.tlsConfig
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err)
 		return
@@ -496,21 +498,27 @@ func (c *Client) Connect() {
 }
 
 // NewClient returns a Client with a new connection.
-func NewClient(host string, clientType common.ServiceType, url *url.URL, authOpts *shttp.AuthenticationOpts, headers http.Header, queueSize int) *Client {
+func NewClient(host string, clientType common.ServiceType, url *url.URL, authOpts *shttp.AuthenticationOpts, headers http.Header, queueSize int, tlsConfig *tls.Config) *Client {
 	wsconn := newConn(host, clientType, ProtobufProtocol, url, headers, queueSize)
 	c := &Client{
-		Conn:     wsconn,
-		AuthOpts: authOpts,
+		Conn:      wsconn,
+		AuthOpts:  authOpts,
+		tlsConfig: tlsConfig,
 	}
 	wsconn.wsSpeaker = c
 	return c
 }
 
 // NewClientFromConfig creates a Client based on the configuration
-func NewClientFromConfig(clientType common.ServiceType, url *url.URL, authOpts *shttp.AuthenticationOpts, headers http.Header) *Client {
+func NewClientFromConfig(clientType common.ServiceType, url *url.URL, authOpts *shttp.AuthenticationOpts, headers http.Header) (*Client, error) {
 	host := config.GetString("host_id")
 	queueSize := config.GetInt("http.ws.queue_size")
-	return NewClient(host, clientType, url, authOpts, headers, queueSize)
+	tlsConfig, err := config.GetTLSConfig(true)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewClient(host, clientType, url, authOpts, headers, queueSize, tlsConfig), nil
 }
 
 // newIncomingClient is called by the server for incoming connections

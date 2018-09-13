@@ -80,7 +80,10 @@ func NewAnalyzerStructClientPool(authOptions *shttp.AuthenticationOpts) (*ws.Str
 	}
 
 	for _, sa := range addresses {
-		c := ws.NewClientFromConfig(common.AgentService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/agent"), authOptions, nil)
+		c, err := ws.NewClientFromConfig(common.AgentService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/agent"), authOptions, nil)
+		if err != nil {
+			return nil, err
+		}
 		pool.AddClient(c)
 	}
 

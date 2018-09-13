@@ -591,7 +591,7 @@ func TestQueryMetadata(t *testing.T) {
 			hostname, _ := os.Hostname()
 			wspool := ws.NewStructClientPool("TestQueryMetadata")
 			for _, sa := range addresses {
-				client := ws.NewClient(hostname+"-cli", common.UnknownService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher"), authOptions, http.Header{}, 1000)
+				client := ws.NewClient(hostname+"-cli", common.UnknownService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher"), authOptions, http.Header{}, 1000, true, nil)
 				wspool.AddClient(client)
 			}
 

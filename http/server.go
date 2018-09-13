@@ -82,6 +82,12 @@ func copyRequestVars(old, new *http.Request) {
 	}
 }
 
+func SetTLSHeader(w http.ResponseWriter, r *http.Request) {
+	if r.TLS != nil {
+		w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+	}
+}
+
 func (s *Server) RegisterRoutes(routes []Route, auth AuthenticationBackend) {
 	for _, route := range routes {
 		r := s.Router.

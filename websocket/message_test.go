@@ -113,7 +113,7 @@ func TestMessageSubscription(t *testing.T) {
 	wsserver.Start()
 	defer wsserver.Stop()
 
-	wsclient := NewClient("myhost", common.AgentService, config.GetURL("ws", "localhost", 59999, "/wstest"), nil, http.Header{}, 1000)
+	wsclient := NewClient("myhost", common.AgentService, config.GetURL("ws", "localhost", 59999, "/wstest"), nil, http.Header{}, 1000, nil)
 
 	wspool := NewStructClientPool("TestMessageSubscription")
 	wspool.AddClient(wsclient)
