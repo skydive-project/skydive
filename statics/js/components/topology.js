@@ -164,6 +164,9 @@ var TopologyComponent = {
           <tab-pane title="Workflows">\
             <workflow-call></workflow-call>\
           </tab-pane>\
+          <tab-pane title="Topology rules" v-if="topologyMode === \'live\'">\
+            <topology-rules></topology-rules>\
+          </tab-pane>\
         </tabs>\
         <panel id="node-metadata" v-if="currentNodeMetadata"\
                :collapsed="false"\
