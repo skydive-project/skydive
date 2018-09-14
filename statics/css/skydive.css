@@ -178,25 +178,25 @@ label {
   background: #529DE1;
 }
 
-ul.capture-list, ul.injector-list, ul.alert-list {
+ul.capture-list, ul.injector-list, ul.alert-list, ul.rule-list {
   list-style-type: none;
   padding: 0px;
 }
 
-li.capture-item, li.injector-item, li.alert-item {
+li.capture-item, li.injector-item, li.alert-item, li.rule-item {
   padding: 0px;
   padding-bottom: 10px;
 }
 
-.capture-item dl, .injector-item dl, .alert-item dl {
+.capture-item dl, .injector-item dl, .alert-item dl, .rule-item dl {
   margin-bottom: 0px;
 }
 
-.capture-item dt, .injector-item dt, .alert-item dt {
+.capture-item dt, .injector-item dt, .alert-item dt, .rule-item dt {
   width: 100px;
 }
 
-.capture-item dd, .injector-item dd, .alert-item dd {
+.capture-item dd, .injector-item dd, .alert-item dd, .rule-item dd {
   margin-left: 110px;
   margin-bottom: 5px;
 }
@@ -210,12 +210,12 @@ li.capture-item, li.injector-item, li.alert-item {
   cursor: pointer;
 }
 
-.capture-title, .injector-title, .alert-title {
+.capture-title, .injector-title, .alert-title, .rule-title {
   font-weight: bold;
   padding-bottom: 5px;
 }
 
-.capture-action, .injector-action, .alert-action {
+.capture-action, .injector-action, .alert-action, .rule-action {
   float: right;
   cursor: pointer;
   font-size: 1.2em;
@@ -224,7 +224,7 @@ li.capture-item, li.injector-item, li.alert-item {
   padding-left: 10px;
 }
 
-.capture-delete, .injector-delete, .alert-delete {
+.capture-delete, .injector-delete, .alert-delete, .rule-delete {
   color: #a94442 !important;
 }
 
