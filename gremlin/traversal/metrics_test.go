@@ -614,10 +614,11 @@ func testMetricSum(t *testing.T, metrics map[string][]common.Metric, expected co
 
 	gt := traversal.NewGraphTraversal(g, false)
 	gt = gt.Context(tm, dr)
+	ctx := traversal.StepContext{}
 
 	step := NewMetricsTraversalStep(gt, metrics)
 
-	got := step.Aggregates(traversal.StepContext{}, int64(10)).Sum().Values()[0]
+	got := step.Aggregates(ctx, int64(10)).Sum(ctx).Values()[0]
 
 	if !reflect.DeepEqual(expected, got) {
 		t.Errorf("Metrics mismatch, expected: \n\n%s\n\ngot: \n\n%s", expected, got)
