@@ -21,9 +21,6 @@ sed -i -e 's/retries = 3/retries = 10/' /tmp/tripleo-quickstart/ansible.cfg
 
 pushd $QUICKSTART
 
-# because of this https://review.openstack.org/#/c/587384
-git checkout 37c7361faaf25a45e82bd9d9cc38339998cc0e1f
-
 bash quickstart.sh -R master --no-clone --tags all \
 	--requirements quickstart-extras-requirements.txt \
 	--config $CONFIG \
@@ -37,6 +34,7 @@ popd
 scp -F ~/.quickstart/ssh.config.ansible -r ../skydive undercloud:skydive.git
 
 scp -F ~/.quickstart/ssh.config.ansible -r ${GOPATH}/bin/skydive undercloud:
+ssh -F ~/.quickstart/ssh.config.ansible undercloud "sudo cp skydive /usr/bin"
 
 ssh -F ~/.quickstart/ssh.config.ansible undercloud "sudo cp -R /home/stack/skydive.git/contrib/ansible /usr/share/ansible/skydive-ansible"
 
@@ -80,4 +78,6 @@ bash quickstart.sh -R master --no-clone --tags all \
 	-I --teardown none -p quickstart-extras-overcloud.yml $VHOST
 popd
 
-ssh -F ~/.quickstart/ssh.config.ansible undercloud "bash -x skydive.git/scripts/ci/tripleo-tests.sh"
+# test the deployment
+ssh -F ~/.quickstart/ssh.config.ansible undercloud "cp skydive.git/scripts/test.sh ~/skydive-test.sh"
+ssh -F ~/.quickstart/ssh.config.ansible undercloud "bash skydive.git/scripts/ci/tripleo-tests.sh"

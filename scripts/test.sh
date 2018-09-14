@@ -153,6 +153,22 @@ test_ovs() {
     fi
 }
 
+test_neutron() {
+    count=$( $skydive client query "G.V().HasKey('Neutron')" | jq '. | length' )
+    if [ $? -ne 0 ]; then
+        failed "neutron node request error"
+    else
+        success "neutron node request succeed"
+    fi
+
+    if [ -z "$count" ] || [ $count -eq 0 ]; then
+        failed "no neutron node found"
+    else
+        success "$count neutron node found"
+    fi
+}
+
+
 usage() {
     echo "$0 -a <analyzer address>"
     echo "options:"
@@ -161,7 +177,8 @@ usage() {
     echo "  -e, --agents <num>  number of expected agents"
     echo "  -c, --capture       test flow capture"
     echo "  -i, --injection     test packet injection"
-    echo "  -o, --ovs           test openvswitch reported"
+    echo "  -o, --ovs           test OpenvSwitch reported"
+    echo "  -n, --neutron       test OpenStack Neutron reported"
 }
 
 # tests status
@@ -175,6 +192,7 @@ agents=0
 capture=0
 injection=0
 ovs=0
+neutron=0
 
 while [ "$1" != "" ]; do
     case $1 in
@@ -205,6 +223,10 @@ while [ "$1" != "" ]; do
             ;;
         -o | --ovs )
             ovs=1
+            tests=$(( $tests + 2 ))
+            ;;
+        -n | --neutron )
+            neutron=1
             tests=$(( $tests + 2 ))
             ;;
         -h | --help )           
@@ -252,6 +274,10 @@ fi
 
 if [ $ovs -ne 0 ]; then
     test_ovs
+fi
+
+if [ $neutron -ne 0 ]; then
+    test_neutron
 fi
 
 # summarize
