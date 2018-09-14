@@ -283,7 +283,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	tableClient := flow.NewTableClient(agentWSServer)
+	tableClient := flow.NewWSTableClient(agentWSServer)
 
 	storage, err := storage.NewStorageFromConfig(etcdClient)
 

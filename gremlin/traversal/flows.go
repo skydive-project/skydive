@@ -53,13 +53,13 @@ type FlowTraversalExtension struct {
 	CaptureNodeToken traversal.Token
 	AggregatesToken  traversal.Token
 	BpfToken         traversal.Token
-	TableClient      *flow.TableClient
+	TableClient      flow.TableClient
 	Storage          storage.Storage
 }
 
 // FlowGremlinTraversalStep a flow Gremlin language step
 type FlowGremlinTraversalStep struct {
-	TableClient        *flow.TableClient
+	TableClient        flow.TableClient
 	Storage            storage.Storage
 	context            traversal.GremlinTraversalContext
 	hasParams          []interface{}
@@ -724,7 +724,7 @@ func (f *FlowTraversalStep) Error() error {
 }
 
 // NewFlowTraversalExtension creates a new flow traversal extension for Gremlin parser
-func NewFlowTraversalExtension(client *flow.TableClient, storage storage.Storage) *FlowTraversalExtension {
+func NewFlowTraversalExtension(client flow.TableClient, storage storage.Storage) *FlowTraversalExtension {
 	return &FlowTraversalExtension{
 		FlowToken:        traversalFlowToken,
 		HopsToken:        traversalHopsToken,

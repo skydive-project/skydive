@@ -240,7 +240,7 @@ func NewAgent() (*Agent, error) {
 	flowTableAllocator := flow.NewTableAllocator(updateTime, expireTime, pipeline)
 
 	// exposes a flow server through the client connections
-	flow.NewServer(flowTableAllocator, analyzerClientPool)
+	flow.NewWSTableServer(flowTableAllocator, analyzerClientPool)
 
 	packet_injector.NewServer(g, analyzerClientPool)
 
