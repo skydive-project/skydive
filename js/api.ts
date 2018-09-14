@@ -171,7 +171,16 @@ export class Alert extends APIObject {
 export class Capture extends APIObject {
 }
 
+export class EdgeRule extends APIObject {
+}
+
+export class NodeRule extends APIObject {
+}
+
 export class PacketInjection extends APIObject {
+}
+
+export class Workflow extends APIObject {
 }
 
 export class API<T extends APIObject> {
@@ -221,9 +230,9 @@ export class API<T extends APIObject> {
             })
     }
 
-    delete(UUID: string) {
+    delete(id: string) {
         let resource = this.Resource;
-        return this.client.request('/api/' + resource + "/" + UUID, "DELETE", "", { "dataType": "" })
+        return this.client.request('/api/' + resource + "/" + id, "DELETE", "", { "dataType": "" })
     }
 }
 
@@ -887,6 +896,10 @@ export class Client {
     cookie: string
     alerts: API<Alert>
     captures: API<Capture>
+    edgeRules: API<EdgeRule>
+    nodeRules: API<NodeRule>
+    packetInjections: API<PacketInjection>
+    workflows: API<Workflow>
     gremlin: GremlinAPI
     G: G
 
@@ -899,6 +912,10 @@ export class Client {
 
         this.alerts = new API(this, "alert", Alert);
         this.captures = new API(this, "capture", Capture);
+        this.packetInjections = new API(this, "injectpacket", PacketInjection);
+        this.nodeRules = new API(this, "noderule", NodeRule);
+        this.edgeRules = new API(this, "edgerule", EdgeRule);
+        this.workflows = new API(this, "workflow", Workflow);
         this.gremlin = new GremlinAPI(this);
         this.G = this.gremlin.G();
     }
@@ -920,4 +937,8 @@ export class Client {
         }
         return makeRequest(this, url, method, data, opts);
     }
+}
+
+export function sleep(time) {
+    return new Promise(function(resolve) { return setTimeout(resolve, time); })
 }

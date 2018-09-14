@@ -222,7 +222,7 @@ func (pc *PacketInjectorClient) requestToParams(pi *types.PacketInjection) (stri
 	}
 
 	if errs := validator.Validate(pip); errs != nil {
-		return "", nil, errors.New("All the parms not set properly")
+		return "", nil, fmt.Errorf("All the params were not set properly: %s", errs)
 	}
 
 	return srcNode.Host(), pip, nil

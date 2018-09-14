@@ -35,3 +35,5 @@ function require(m) {
     }
     return {}
 }
+
+Promise.prototype.finally = Promise.prototype.done
