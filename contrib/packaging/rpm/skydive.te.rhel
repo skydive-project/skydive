@@ -87,15 +87,18 @@ require {
         type skydive_agent_pcapsocket_ports_t;
         type unconfined_t;
         type commplex_main_port_t;
+        type neutron_port_t;
+        type cloud_var_lib_t;
         class system module_load;
         class file { getattr map open read };
-        class capability { dac_override dac_read_search net_raw sys_admin };
+        class capability { dac_override dac_read_search net_raw sys_admin sys_ptrace };
         class packet_socket { bind create getopt ioctl map setopt };
         class unix_dgram_socket ioctl;
         class netlink_route_socket nlmsg_write;
         class dir { add_name read remove_name search write };
         class lnk_file read;
         class sock_file { create unlink write };
+        class tcp_socket name_connect;
 }
 
 #============= skydive_t ==============
@@ -108,12 +111,13 @@ allow skydive_t devlog_t:lnk_file read;
 allow skydive_t devlog_t:sock_file write;
 allow skydive_t openvswitch_var_run_t:dir { add_name remove_name write };
 allow skydive_t openvswitch_var_run_t:sock_file { create unlink };
-allow skydive_t self:capability { dac_override dac_read_search net_raw net_admin sys_admin };
+allow skydive_t self:capability { dac_override dac_read_search net_raw net_admin sys_admin sys_ptrace };
 allow skydive_t self:netlink_route_socket nlmsg_write;
 allow skydive_t self:packet_socket { create_socket_perms bind create getopt ioctl map setopt };
 allow skydive_t self:unix_dgram_socket ioctl;
 allow skydive_t skydive_exec_t:file map;
 allow skydive_t skydive_var_lib_t:file map;
+allow skydive_t cloud_var_lib_t:file read;
 
 allow skydive_t self:process { setcap signal_perms };
 allow skydive_t self:netlink_route_socket create_netlink_socket_perms;
@@ -154,6 +158,7 @@ allow skydive_t skydive_analyzer_db_connect_ports_t:tcp_socket name_connect;
 allow skydive_t skydive_agent_sflow_ports_t:udp_socket name_bind;
 allow skydive_t skydive_agent_pcapsocket_ports_t:tcp_socket name_bind;
 allow skydive_t commplex_main_port_t:tcp_socket name_connect;
+allow skydive_t neutron_port_t:tcp_socket name_connect;
 
 cloudform_read_lib_lnk_files(skydive_t)
 container_manage_lib_files(skydive_t)
