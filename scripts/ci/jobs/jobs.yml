@@ -664,6 +664,9 @@
             - name: skydive-create-vagrant-boxes
               current-parameters: true
               git-revision: true
+    publishers:
+      - email:
+          recipients: skydivesoftware@gmail.com
 
 - job:
     name: skydive-tripleo-tests
@@ -678,8 +681,6 @@
     builders:
       - skydive-test:
           test: scripts/ci/run-tripleo-tests.sh
-    wrappers:
-      - skydive-wrappers
 
 - job:
     name: skydive-ppc64le-tests
