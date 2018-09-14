@@ -430,6 +430,10 @@ func NewJSRE() (*JSRE, error) {
 		return nil, err
 	}
 
+	if err := jsre.runEmbededScript("js/promise-done-7.0.4.min.js"); err != nil {
+		return nil, err
+	}
+
 	if err := jsre.runEmbededScript("js/api.js"); err != nil {
 		return nil, err
 	}
