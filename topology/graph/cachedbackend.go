@@ -26,7 +26,7 @@ import (
 	"sync/atomic"
 )
 
-// Define the running cache mode, memory and/or persisent
+// Define the running cache mode, memory and/or persistent
 const (
 	CacheOnlyMode int = iota
 	PersistentOnlyMode
@@ -231,6 +231,8 @@ func NewCachedBackend(persistent GraphBackend) (*CachedBackend, error) {
 		persistent: persistent,
 		memory:     memory,
 	}
+
+	sb.cacheMode.Store(DefaultMode)
 
 	return sb, nil
 }

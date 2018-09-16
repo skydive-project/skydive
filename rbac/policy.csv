@@ -9,8 +9,6 @@ p, admin, injectpacket, write, allow
 p, admin, pcap, write, allow
 p, admin, status, read, allow
 p, admin, topology, read, allow
-p, admin, usermetadata, read, allow
-p, admin, usermetadata, write, allow
 p, admin, workflow, read, allow
 p, admin, workflow, write, allow
 p, admin, websocket, /ws/agent, allow
@@ -34,8 +32,6 @@ p, guest, injectpacket, write, deny
 p, guest, pcap, write, deny
 p, guest, status, read, allow
 p, guest, topology, read, allow
-p, guest, usermetadata, read, allow
-p, guest, usermetadata, write, deny
 p, guest, workflow, read, deny
 p, guest, workflow, write, deny
 p, guest, websocket, /ws/agent, deny

@@ -158,7 +158,7 @@ func (tm *TopologyManager) updateMetadata(query string, mdata graph.Metadata) er
 	for _, n := range nodes {
 		mt := tm.graph.StartMetadataTransaction(n)
 		for k, v := range mdata {
-			mt.AddMetadata("UserMetadata."+k, v)
+			mt.AddMetadata(k, v)
 		}
 		mt.Commit()
 	}
@@ -170,7 +170,7 @@ func (tm *TopologyManager) deleteMetadata(query string, mdata graph.Metadata) er
 	for _, n := range nodes {
 		mt := tm.graph.StartMetadataTransaction(n)
 		for k := range mdata {
-			mt.DelMetadata("UserMetadata." + k)
+			mt.DelMetadata(k)
 		}
 		mt.Commit()
 	}

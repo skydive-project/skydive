@@ -922,7 +922,7 @@ func (t *MetadataTransaction) Commit() {
 	e.updatedAt = time.Now().UTC()
 	e.revision++
 
-	if !t.graph.backend.MetadataUpdated(e) {
+	if !t.graph.backend.MetadataUpdated(t.graphElement) {
 		return
 	}
 

@@ -173,23 +173,6 @@ type TopologyParam struct {
 	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr"`
 }
 
-// UserMetadata describes a user metadata
-type UserMetadata struct {
-	BasicResource
-	GremlinQuery string `valid:"isGremlinExpr"`
-	Key          string `valid:"nonzero"`
-	Value        string `valid:"nonzero"`
-}
-
-// NewUserMetadata creates a new user metadata
-func NewUserMetadata(query string, key string, value string) *UserMetadata {
-	return &UserMetadata{
-		GremlinQuery: query,
-		Key:          key,
-		Value:        value,
-	}
-}
-
 type WorkflowChoice struct {
 	Value       string `yaml:"value"`
 	Description string `yaml:"description"`
