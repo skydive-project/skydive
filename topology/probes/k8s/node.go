@@ -31,9 +31,9 @@ import (
 )
 
 type nodeProbe struct {
-	defaultKubeCacheEventHandler
+	DefaultKubeCacheEventHandler
 	graph.DefaultGraphListener
-	*kubeCache
+	*KubeCache
 	graph       *graph.Graph
 	nodeIndexer *graph.MetadataIndexer
 	hostIndexer *graph.MetadataIndexer
@@ -49,7 +49,7 @@ func newHostIndexer(g *graph.Graph) *graph.MetadataIndexer {
 }
 
 func (c *nodeProbe) newMetadata(node *v1.Node) graph.Metadata {
-	m := newMetadata("node", node.Namespace, node.Name, node)
+	m := NewMetadata(Manager, "node", node.Namespace, node.Name, node)
 	m.SetFieldAndNormalize("Labels", node.Labels)
 	m.SetField("Cluster", node.ClusterName)
 	for _, a := range node.Status.Addresses {
@@ -66,7 +66,7 @@ func (c *nodeProbe) newMetadata(node *v1.Node) graph.Metadata {
 }
 
 func linkNodeToHost(g *graph.Graph, host, node *graph.Node) {
-	addLink(g, host, node, newEdgeMetadata())
+	AddLinkTry(g, host, node, NewEdgeMetadata(Manager))
 }
 
 func nodeUID(node *v1.Node) graph.Identifier {
@@ -83,10 +83,10 @@ func (c *nodeProbe) onAdd(obj interface{}) {
 	nodeNodes, _ := c.nodeIndexer.Get(hostName)
 	var nodeNode *graph.Node
 	if len(nodeNodes) == 0 {
-		nodeNode = newNode(c.graph, nodeUID(node), c.newMetadata(node))
+		nodeNode = NewNode(c.graph, nodeUID(node), c.newMetadata(node))
 	} else {
 		nodeNode = nodeNodes[0]
-		addMetadata(c.graph, nodeNode, node)
+		AddMetadata(c.graph, nodeNode, node)
 	}
 
 	podNodes, _ := c.podIndexer.Get(hostName)
@@ -126,7 +126,7 @@ func (c *nodeProbe) OnNodeAdded(n *graph.Node) {
 }
 
 func (c *nodeProbe) Start() {
-	c.kubeCache.Start()
+	c.KubeCache.Start()
 	c.nodeIndexer.Start()
 	c.hostIndexer.AddEventListener(c)
 	c.hostIndexer.Start()
@@ -134,14 +134,14 @@ func (c *nodeProbe) Start() {
 }
 
 func (c *nodeProbe) Stop() {
-	c.kubeCache.Stop()
+	c.KubeCache.Stop()
 	c.nodeIndexer.Stop()
 	c.hostIndexer.Stop()
 	c.podIndexer.Stop()
 }
 
-func newNodeKubeCache(handler cache.ResourceEventHandler) *kubeCache {
-	return newKubeCache(getClientset().Core().RESTClient(), &v1.Node{}, "nodes", handler)
+func newNodeKubeCache(handler cache.ResourceEventHandler) *KubeCache {
+	return NewKubeCache(getClientset().Core().RESTClient(), &v1.Node{}, "nodes", handler)
 }
 
 func newNodeProbe(g *graph.Graph) probe.Probe {
@@ -151,6 +151,6 @@ func newNodeProbe(g *graph.Graph) probe.Probe {
 		nodeIndexer: newNodeIndexer(g),
 		podIndexer:  newPodIndexerByHost(g),
 	}
-	c.kubeCache = newNodeKubeCache(c)
+	c.KubeCache = newNodeKubeCache(c)
 	return c
 }

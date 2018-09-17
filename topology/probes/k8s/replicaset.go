@@ -34,8 +34,8 @@ import (
 )
 
 type replicaSetProbe struct {
-	defaultKubeCacheEventHandler
-	*kubeCache
+	DefaultKubeCacheEventHandler
+	*KubeCache
 	graph *graph.Graph
 }
 
@@ -44,7 +44,7 @@ func dumpReplicaSet(rs *v1beta1.ReplicaSet) string {
 }
 
 func (p *replicaSetProbe) newMetadata(rs *v1beta1.ReplicaSet) graph.Metadata {
-	return newMetadata("replicaset", rs.Namespace, rs.GetName(), rs)
+	return NewMetadata(Manager, "replicaset", rs.Namespace, rs.GetName(), rs)
 }
 
 func replicaSetUID(rs *v1beta1.ReplicaSet) graph.Identifier {
@@ -56,7 +56,7 @@ func (p *replicaSetProbe) OnAdd(obj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		newNode(p.graph, replicaSetUID(rs), p.newMetadata(rs))
+		NewNode(p.graph, replicaSetUID(rs), p.newMetadata(rs))
 		logging.GetLogger().Debugf("Added %s", dumpReplicaSet(rs))
 	}
 }
@@ -67,7 +67,7 @@ func (p *replicaSetProbe) OnUpdate(oldObj, newObj interface{}) {
 		defer p.graph.Unlock()
 
 		if node := p.graph.GetNode(replicaSetUID(rs)); node != nil {
-			addMetadata(p.graph, node, rs)
+			AddMetadata(p.graph, node, rs)
 			logging.GetLogger().Debugf("Updated %s", dumpReplicaSet(rs))
 		}
 	}
@@ -86,21 +86,21 @@ func (p *replicaSetProbe) OnDelete(obj interface{}) {
 }
 
 func (p *replicaSetProbe) Start() {
-	p.kubeCache.Start()
+	p.KubeCache.Start()
 }
 
 func (p *replicaSetProbe) Stop() {
-	p.kubeCache.Stop()
+	p.KubeCache.Stop()
 }
 
-func newReplicaSetKubeCache(handler cache.ResourceEventHandler) *kubeCache {
-	return newKubeCache(getClientset().ExtensionsV1beta1().RESTClient(), &v1beta1.ReplicaSet{}, "replicasets", handler)
+func newReplicaSetKubeCache(handler cache.ResourceEventHandler) *KubeCache {
+	return NewKubeCache(getClientset().ExtensionsV1beta1().RESTClient(), &v1beta1.ReplicaSet{}, "replicasets", handler)
 }
 
 func newReplicaSetProbe(g *graph.Graph) probe.Probe {
 	p := &replicaSetProbe{
 		graph: g,
 	}
-	p.kubeCache = newReplicaSetKubeCache(p)
+	p.KubeCache = newReplicaSetKubeCache(p)
 	return p
 }

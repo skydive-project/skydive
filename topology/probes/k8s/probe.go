@@ -54,8 +54,55 @@ type Probe struct {
 	bundle *probe.ProbeBundle
 }
 
-func makeProbeBundle(g *graph.Graph) *probe.ProbeBundle {
-	name2ctor := map[string](func(*graph.Graph) probe.Probe){
+type ProbeHandler func(g *graph.Graph) probe.Probe
+type ProbeMap map[string]ProbeHandler
+
+// ProcessProbeBundle using config will create the runtime probes map
+func (m *ProbeMap) newProbeBundle(g *graph.Graph, context string) *probe.ProbeBundle {
+	configProbes := config.GetStringSlice(context + ".probes")
+	if len(configProbes) == 0 {
+		for name := range *m {
+			configProbes = append(configProbes, name)
+		}
+	}
+	logging.GetLogger().Infof("%s probes: %v", context, configProbes)
+
+	probes := make(map[string]probe.Probe)
+	for _, name := range configProbes {
+		if ctor, ok := (*m)[name]; ok {
+			probes[name] = ctor(g)
+		} else {
+			logging.GetLogger().Errorf("skipping unsupported %s probe %v", context, name)
+		}
+	}
+	return probe.NewProbeBundle(probes)
+}
+
+// Start k8s probe
+func (p *Probe) Start() {
+	p.bundle.Start()
+}
+
+// Stop k8s probe
+func (p *Probe) Stop() {
+	p.bundle.Stop()
+}
+
+// NewProbeHelper create the Probe for tracking events
+func NewProbeHelper(g *graph.Graph, context string, m *ProbeMap) (*Probe, error) {
+	return &Probe{
+		bundle: m.newProbeBundle(g, context),
+	}, nil
+}
+
+// NewProbe create the Probe for tracking k8s events
+func NewProbe(g *graph.Graph) (*Probe, error) {
+	err := initClientset()
+	if err != nil {
+		return nil, err
+	}
+
+	name2ctor := ProbeMap{
 		"cluster":               newClusterProbe,
 		"container":             newContainerProbe,
 		"cronjob":               newCronJobProbe,
@@ -76,44 +123,5 @@ func makeProbeBundle(g *graph.Graph) *probe.ProbeBundle {
 		"statefulset":           newStatefulSetProbe,
 		"storageclass":          newStorageClassProbe,
 	}
-
-	configProbes := config.GetStringSlice("k8s.probes")
-	if len(configProbes) == 0 {
-		for name := range name2ctor {
-			configProbes = append(configProbes, name)
-		}
-	}
-	logging.GetLogger().Infof("K8s probes: %v", configProbes)
-
-	probes := make(map[string]probe.Probe)
-	for _, name := range configProbes {
-		if ctor, ok := name2ctor[name]; ok {
-			probes[name] = ctor(g)
-		} else {
-			logging.GetLogger().Errorf("skipping unsupported K8s probe %v", name)
-		}
-	}
-	return probe.NewProbeBundle(probes)
-}
-
-// Start k8s probe
-func (p *Probe) Start() {
-	p.bundle.Start()
-}
-
-// Stop k8s probe
-func (p *Probe) Stop() {
-	p.bundle.Stop()
-}
-
-// NewProbe create the Probe for tracking k8s events
-func NewProbe(g *graph.Graph) (*Probe, error) {
-	err := initClientset()
-	if err != nil {
-		return nil, err
-	}
-
-	return &Probe{
-		bundle: makeProbeBundle(g),
-	}, nil
+	return NewProbeHelper(g, "k8s", &name2ctor)
 }

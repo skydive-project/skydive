@@ -1466,6 +1466,14 @@
 			"revisionTime": "2017-01-09T16:22:49Z"
 		},
 		{
+			"checksumSHA1": "uhSK1n1Mi/6VOD87WUaZ+Ka0fZA=",
+			"path": "github.com/hunchback/kiali/kubernetes",
+			"revision": "e7788894a8c7a1269d8a9fc2e4be260836376c8f",
+			"revisionTime": "2018-08-28T12:39:20Z",
+			"version": "k8s-client-external",
+			"versionExact": "k8s-client-external"
+		},
+		{
 			"checksumSHA1": "N4Uk5GHnDyx7s2ru1m4dsCN9Jmc=",
 			"path": "github.com/hydrogen18/stoppableListener",
 			"revision": "dadc9ccc400c712e5a316107a5c462863919e579"
@@ -1641,6 +1649,24 @@
 			"path": "github.com/kardianos/osext",
 			"revision": "c2c54e542fb797ad986b31721e1baedf214ca413",
 			"revisionTime": "2016-08-11T00:15:26Z"
+		},
+		{
+			"checksumSHA1": "11gZeQ6XyPiXmnbaknOkzyoN/Xg=",
+			"path": "github.com/kiali/kiali/config",
+			"revision": "c87b65f0d41abfbf4ec634a673a9b5138bc597f1",
+			"revisionTime": "2018-09-05T10:54:18Z"
+		},
+		{
+			"checksumSHA1": "YEq52RGpdLoht5zOt4h27wzNJrk=",
+			"path": "github.com/kiali/kiali/config/security",
+			"revision": "c87b65f0d41abfbf4ec634a673a9b5138bc597f1",
+			"revisionTime": "2018-09-05T10:54:18Z"
+		},
+		{
+			"checksumSHA1": "+tvH02HmIgp0+9wBlN3QySEUM8c=",
+			"path": "github.com/kiali/kiali/log",
+			"revision": "c87b65f0d41abfbf4ec634a673a9b5138bc597f1",
+			"revisionTime": "2018-09-05T10:54:18Z"
 		},
 		{
 			"checksumSHA1": "KQhA4EQp4Ldwj9nJZnEURlE6aQw=",

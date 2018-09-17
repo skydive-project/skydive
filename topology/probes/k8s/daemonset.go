@@ -34,8 +34,8 @@ import (
 )
 
 type dsProbe struct {
-	defaultKubeCacheEventHandler
-	*kubeCache
+	DefaultKubeCacheEventHandler
+	*KubeCache
 	graph *graph.Graph
 }
 
@@ -44,7 +44,7 @@ func dumpDaemonSet(ds *v1beta1.DaemonSet) string {
 }
 
 func (p *dsProbe) newMetadata(ds *v1beta1.DaemonSet) graph.Metadata {
-	m := newMetadata("daemonset", ds.Namespace, ds.Name, ds)
+	m := NewMetadata(Manager, "daemonset", ds.Namespace, ds.Name, ds)
 	m.SetFieldAndNormalize("Labels", ds.Labels)
 	m.SetField("DesiredNumberScheduled", ds.Status.DesiredNumberScheduled)
 	m.SetField("CurrentNumberScheduled", ds.Status.CurrentNumberScheduled)
@@ -61,7 +61,7 @@ func (p *dsProbe) OnAdd(obj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		newNode(p.graph, dsUID(ds), p.newMetadata(ds))
+		NewNode(p.graph, dsUID(ds), p.newMetadata(ds))
 		logging.GetLogger().Debugf("Added %s", dumpDaemonSet(ds))
 	}
 }
@@ -72,7 +72,7 @@ func (p *dsProbe) OnUpdate(oldObj, newObj interface{}) {
 		defer p.graph.Unlock()
 
 		if nsNode := p.graph.GetNode(dsUID(ds)); nsNode != nil {
-			addMetadata(p.graph, nsNode, ds)
+			AddMetadata(p.graph, nsNode, ds)
 			logging.GetLogger().Debugf("Updated %s", dumpDaemonSet(ds))
 		}
 	}
@@ -91,21 +91,21 @@ func (p *dsProbe) OnDelete(obj interface{}) {
 }
 
 func (p *dsProbe) Start() {
-	p.kubeCache.Start()
+	p.KubeCache.Start()
 }
 
 func (p *dsProbe) Stop() {
-	p.kubeCache.Stop()
+	p.KubeCache.Stop()
 }
 
-func newDaemonSetKubeCache(handler cache.ResourceEventHandler) *kubeCache {
-	return newKubeCache(getClientset().ExtensionsV1beta1().RESTClient(), &v1beta1.DaemonSet{}, "daemonsets", handler)
+func newDaemonSetKubeCache(handler cache.ResourceEventHandler) *KubeCache {
+	return NewKubeCache(getClientset().ExtensionsV1beta1().RESTClient(), &v1beta1.DaemonSet{}, "daemonsets", handler)
 }
 
 func newDaemonSetProbe(g *graph.Graph) probe.Probe {
 	p := &dsProbe{
 		graph: g,
 	}
-	p.kubeCache = newDaemonSetKubeCache(p)
+	p.KubeCache = newDaemonSetKubeCache(p)
 	return p
 }

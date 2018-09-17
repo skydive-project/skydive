@@ -79,7 +79,7 @@ uninstall() {
 stop() {
         check_minikube
 
-        minikube delete
+        minikube delete || true
         sudo rm -rf $HOME/.minikube $HOME/.kube
         sudo rm -rf /root/.minikube /root/.kube
 
@@ -87,14 +87,14 @@ stop() {
                 sudo rm -rf /etc/kubernetes
                 sudo rm -rf /var/lib/localkube
 
-                sudo docker system prune -af
-                for i in $(sudo docker ps -aq --filter name=k8s); do
-                        sudo docker stop $i
-                        sudo docker rm $i
+                sudo docker system prune -af || true
+                for i in $(sudo docker ps -aq --filter name=k8s || true); do
+                        sudo docker stop $i || true
+                        sudo docker rm $i || true
                 done
 
-                sudo systemctl stop localkube
-                sudo systemctl disable localkube
+                sudo systemctl stop localkube || true
+                sudo systemctl disable localkube || true
         fi
 }
 
@@ -114,7 +114,13 @@ start() {
                 args="$args --network-plugin=cni --host-only-cidr=20.0.0.0/16"
         fi
 
-        minikube start $args
+	# FIXME: using '|| true' to overcome following:
+        # FIXME: Error cluster status: getting status: running command: sudo systemctl is-active kubelet
+        minikube start $args || true
+
+	# give minikube time to come up
+	sleep 5
+
         minikube status
         export no_proxy=$no_proxy,$(minikube ip)
         kubectl config use-context minikube

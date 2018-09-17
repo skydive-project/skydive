@@ -36,10 +36,10 @@ import (
 )
 
 type serviceProbe struct {
-	defaultKubeCacheEventHandler
+	DefaultKubeCacheEventHandler
 	graph.DefaultGraphListener
-	*kubeCache
-	podCache              *kubeCache
+	*KubeCache
+	podCache              *KubeCache
 	graph                 *graph.Graph
 	podIndexerByNamespace *graph.MetadataIndexer
 }
@@ -49,7 +49,7 @@ func dumpService(srv *v1.Service) string {
 }
 
 func (p *serviceProbe) newMetadata(srv *v1.Service) graph.Metadata {
-	m := newMetadata("service", srv.Namespace, srv.Name, srv)
+	m := NewMetadata(Manager, "service", srv.Namespace, srv.Name, srv)
 	m.SetFieldAndNormalize("Ports", srv.Spec.Ports)
 	m.SetFieldAndNormalize("ClusterIP", srv.Spec.ClusterIP)
 	m.SetFieldAndNormalize("ServiceType", srv.Spec.Type)
@@ -88,13 +88,13 @@ func (p *serviceProbe) selectedPods(srv *v1.Service) (nodes []*graph.Node) {
 }
 
 func (p *serviceProbe) newEdgeMetadata() graph.Metadata {
-	m := newEdgeMetadata()
+	m := NewEdgeMetadata(Manager)
 	m.SetField("RelationType", "service")
 	return m
 }
 
 func (p *serviceProbe) updateLinksForPod(srv *v1.Service, srvNode, podNode *graph.Node) {
-	addLink(p.graph, srvNode, podNode, p.newEdgeMetadata())
+	AddLinkTry(p.graph, srvNode, podNode, p.newEdgeMetadata())
 	// TODO: handle deletion of stale links
 	// TODO: support srv.Spec.Ports
 }
@@ -110,7 +110,7 @@ func (p *serviceProbe) OnAdd(obj interface{}) {
 		p.graph.Lock()
 		defer p.graph.Unlock()
 
-		srvNode := newNode(p.graph, serviceUID(srv), p.newMetadata(srv))
+		srvNode := NewNode(p.graph, serviceUID(srv), p.newMetadata(srv))
 		logging.GetLogger().Debugf("Added %s", dumpService(srv))
 		p.updateLinks(srv, srvNode)
 	}
@@ -122,7 +122,7 @@ func (p *serviceProbe) OnUpdate(oldObj, newObj interface{}) {
 		defer p.graph.Unlock()
 
 		if srvNode := p.graph.GetNode(serviceUID(srv)); srvNode != nil {
-			addMetadata(p.graph, srvNode, srv)
+			AddMetadata(p.graph, srvNode, srv)
 			logging.GetLogger().Debugf("Updated %s", dumpService(srv))
 			p.updateLinks(srv, srvNode)
 		}
@@ -142,9 +142,9 @@ func (p *serviceProbe) OnDelete(obj interface{}) {
 }
 
 func (p *serviceProbe) onNodeUpdated(podNode *graph.Node) {
-	logging.GetLogger().Debugf("update links: %s", dumpGraphNode(podNode))
+	logging.GetLogger().Debugf("update links: %s", DumpNode(podNode))
 
-	for _, srv := range p.kubeCache.list() {
+	for _, srv := range p.KubeCache.list() {
 		srv := srv.(*v1.Service)
 		logging.GetLogger().Debugf("refreshing %s", dumpService(srv))
 		srvNode := p.graph.GetNode(serviceUID(srv))
@@ -165,27 +165,27 @@ func (p *serviceProbe) OnNodeUpdated(node *graph.Node) {
 }
 
 func (p *serviceProbe) Start() {
-	p.kubeCache.Start()
+	p.KubeCache.Start()
 	p.podIndexerByNamespace.AddEventListener(p)
 	p.podIndexerByNamespace.Start()
 }
 
 func (p *serviceProbe) Stop() {
-	p.kubeCache.Stop()
+	p.KubeCache.Stop()
 	p.podIndexerByNamespace.RemoveEventListener(p)
 	p.podIndexerByNamespace.Stop()
 }
 
-func newServiceKubeCache(handler cache.ResourceEventHandler) *kubeCache {
-	return newKubeCache(getClientset().Core().RESTClient(), &v1.Service{}, "services", handler)
+func newServiceKubeCache(handler cache.ResourceEventHandler) *KubeCache {
+	return NewKubeCache(getClientset().Core().RESTClient(), &v1.Service{}, "services", handler)
 }
 
 func newServiceProbe(g *graph.Graph) probe.Probe {
 	p := &serviceProbe{
 		graph: g,
-		podIndexerByNamespace: newObjectIndexerByNamespace(g, "pod"),
+		podIndexerByNamespace: NewObjectIndexerByNamespace(Manager, g, "pod"),
 	}
-	p.kubeCache = newServiceKubeCache(p)
+	p.KubeCache = newServiceKubeCache(p)
 	p.podCache = newPodKubeCache(p)
 	return p
 }

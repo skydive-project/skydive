@@ -20,15 +20,15 @@
  *
  */
 
-package k8s
+package istio
 
 import (
 	"fmt"
 
-	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/topology/probes/k8s"
 )
 
 const ClusterName = "cluster"
@@ -37,23 +37,6 @@ type clusterProbe struct {
 	graph.DefaultGraphListener
 	graph          *graph.Graph
 	clusterIndexer *graph.MetadataIndexer
-	objectIndexer  *graph.MetadataIndexer
-}
-
-func newClusterLinkedObjectIndexer(g *graph.Graph) *graph.MetadataIndexer {
-	filter := filters.NewAndFilter(
-		filters.NewTermStringFilter("Manager", Manager),
-		filters.NewOrFilter(
-			filters.NewTermStringFilter("Type", "namespace"),
-			filters.NewTermStringFilter("Type", "networkpolicy"),
-			filters.NewTermStringFilter("Type", "node"),
-			filters.NewTermStringFilter("Type", "persistentvolume"),
-			filters.NewTermStringFilter("Type", "persistentvolumeclaim"),
-			filters.NewTermStringFilter("Type", "endpoints"),
-		),
-	)
-	m := graph.NewGraphElementFilter(filter)
-	return graph.NewMetadataIndexer(g, m)
 }
 
 func dumpCluster(name string) string {
@@ -61,23 +44,14 @@ func dumpCluster(name string) string {
 }
 
 func (p *clusterProbe) newMetadata(name string) graph.Metadata {
-	return NewMetadata(Manager, "cluster", "", name, nil)
-}
-
-func (p *clusterProbe) linkObject(objNode, clusterNode *graph.Node) {
-	AddOwnershipLink(Manager, p.graph, clusterNode, objNode)
+	return k8s.NewMetadata(Manager, "cluster", "", name, nil)
 }
 
 func (p *clusterProbe) addNode(name string) {
 	p.graph.Lock()
 	defer p.graph.Unlock()
 
-	clusterNode := NewNode(p.graph, graph.GenID(), p.newMetadata(name))
-	objNodes, _ := p.objectIndexer.Get()
-	for _, objNode := range objNodes {
-		p.linkObject(objNode, clusterNode)
-	}
-
+	k8s.NewNode(p.graph, graph.GenID(), p.newMetadata(name))
 	logging.GetLogger().Debugf("Added %s", dumpCluster(name))
 }
 
@@ -93,41 +67,20 @@ func (p *clusterProbe) delNode(name string) {
 	logging.GetLogger().Debugf("Deleted %s", dumpCluster(name))
 }
 
-func (p *clusterProbe) OnNodeAdded(objNode *graph.Node) {
-	logging.GetLogger().Debugf("Got event on adding %s", DumpNode(objNode))
-	clusterNodes, _ := p.clusterIndexer.Get(ClusterName)
-	if len(clusterNodes) > 0 {
-		p.linkObject(objNode, clusterNodes[0])
-	}
-}
-
-func (p *clusterProbe) OnNodeUpdated(objNode *graph.Node) {
-	logging.GetLogger().Debugf("Got event on updating %s", DumpNode(objNode))
-	clusterNodes, _ := p.clusterIndexer.Get(ClusterName)
-	if len(clusterNodes) > 0 {
-		p.linkObject(objNode, clusterNodes[0])
-	}
-}
-
 func (p *clusterProbe) Start() {
 	p.clusterIndexer.Start()
-	p.objectIndexer.AddEventListener(p)
-	p.objectIndexer.Start()
 	p.addNode(ClusterName)
 }
 
 func (p *clusterProbe) Stop() {
 	p.delNode(ClusterName)
 	p.clusterIndexer.Stop()
-	p.objectIndexer.RemoveEventListener(p)
-	p.objectIndexer.Stop()
 }
 
 func newClusterProbe(g *graph.Graph) probe.Probe {
 	p := &clusterProbe{
 		graph:          g,
-		clusterIndexer: NewObjectIndexerByName(Manager, g, "cluster"),
-		objectIndexer:  newClusterLinkedObjectIndexer(g),
+		clusterIndexer: k8s.NewObjectIndexerByName(Manager, g, "cluster"),
 	}
 	return p
 }
