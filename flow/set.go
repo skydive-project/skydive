@@ -43,14 +43,16 @@ func NewFlowSet() *FlowSet {
 	}
 }
 
-func getDedupField(flow *Flow, field string) (string, error) {
+func getDedupField(flow *Flow, field string) (interface{}, error) {
 	if field == "" {
 		return flow.TrackingID, nil
 	}
 
-	// only flow string field are support for dedup as only few make sense
-	// for dedup like NodeTID, etc.
-	return flow.GetFieldString(field)
+	if v, err := flow.GetFieldString(field); err != nil {
+		return flow.GetFieldInt64(field)
+	} else {
+		return v, nil
+	}
 }
 
 func compareByField(lf, rf *Flow, field string) (bool, error) {
