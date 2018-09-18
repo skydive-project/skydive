@@ -97,6 +97,8 @@ type TPacket struct {
 	// getTPacketHeader, and we don't want to allocate a v3wrapper every time,
 	// so we leave it in the TPacket object and return a pointer to it.
 	v3 v3wrapper
+	// resume after poll timeout
+	pollResume bool
 }
 
 func (s SocketStatsV3) Packets() uint64 {
@@ -407,14 +409,16 @@ func (h *TPacket) getTPacketHeader() header {
 
 func (h *TPacket) pollForFirstPacket(hdr header) error {
 	tm := C.int(h.opts.pollTimeout / time.Millisecond)
-	for hdr.getStatus()&C.TP_STATUS_USER == 0 {
+	for h.pollResume || hdr.getStatus()&C.TP_STATUS_USER == 0 {
 		h.pollset.fd = h.fd
 		h.pollset.events = C.POLLIN
 		h.pollset.revents = 0
 		n, err := C.poll(&h.pollset, 1, tm)
 		if n == 0 {
+			h.pollResume = true
 			return ErrTimeout
 		}
+		h.pollResume = false
 
 		h.stats.Polls++
 		if h.pollset.revents&C.POLLERR > 0 {
