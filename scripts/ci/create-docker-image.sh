@@ -17,8 +17,8 @@ VERSION=${TAG#v}
 [ -n "$VERSION" ] && DOCKER_TAG=$VERSION || DOCKER_TAG=latest
 
 # See if a server forms part of DOCKER_IMAGE, e.g. DOCKER_IMAGE=registry.ng.bluemix.net:8080/skydive/skydive
-if [[ "$DOCKER_IMAGE" =~ /[^/]*/[^/]* ]]; then
-    DOCKER_SERVER=${DOCKER_IMAGE%/[^/]*/[^/]*}
+if [ "${DOCKER_IMAGE%/*/*}" != "${DOCKER_IMAGE}" ]; then
+    DOCKER_SERVER=${DOCKER_IMAGE%/*/*}
 fi
 
 if [ -n "$PUSH_RUN" ]; then
