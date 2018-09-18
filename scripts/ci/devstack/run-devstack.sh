@@ -78,6 +78,10 @@ enable_service skydive-analyzer skydive-agent
 
 SKYDIVE_ANALYZER_LISTEN=0.0.0.0:8082
 SKYDIVE_AGENT_LISTEN=0.0.0.0:8081
+
+SKYDIVE_FLOWS_STORAGE=elasticsearch
+SKYDIVE_GRAPH_STORAGE=elasticsearch
+
 EOF
 
 ./stack.sh
