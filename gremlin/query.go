@@ -177,6 +177,16 @@ func (q QueryString) InV() QueryString {
 	return q.newQueryString("InV")
 }
 
+// BothE append a BothE() operation to query
+func (q QueryString) BothE() QueryString {
+	return q.newQueryString("BothE")
+}
+
+// BothV append a BothV() operation to query
+func (q QueryString) BothV() QueryString {
+	return q.newQueryString("BothV")
+}
+
 // Metrics append a Metrics() operation to query
 func (q QueryString) Metrics() QueryString {
 	return q.newQueryString("Metrics")
