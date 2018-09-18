@@ -29,16 +29,12 @@ Vue.component('item', {
     <template v-else-if="Type == 'group'">
       <item v-for="i in item" v-bind="i" :key="i.Name"></item>
     </template>
-  </div>`,
-
-  created: function() {
-    this.formData[this.Name] = this.Default
-  }
+  </div>`
 })
 
 Vue.component('workflow-params', {
   props: [
-      'workflow'
+    'workflow'
   ],
 
   data() {
@@ -49,8 +45,8 @@ Vue.component('workflow-params', {
   },
 
   provide() {
-  	return {
-        formData: this.formData
+    return {
+      formData: this.formData
     }
   },
 
@@ -69,35 +65,35 @@ Vue.component('workflow-params', {
   methods: {
 
     submit: function() {
-      var self = this
-      var source = "(" + this.workflow.Source + ")"
-      var f = eval(source)
+      var self = this;
+      var source = "(" + this.workflow.Source + ")";
+      var f = eval(source);
       if (typeof f !== "function") {
-        throw "Source is not a function"
+        throw "Source is not a function";
       }
-      var args = []
+      var args = [];
       for (var i in this.workflow.Parameters) {
-        var param = this.workflow.Parameters[i]
-        args.push(this.formData[param.Name])
+        var param = this.workflow.Parameters[i];
+        args.push(this.formData[param.Name]);
       }
-      var promise = f.apply({}, args)
+      var promise = f.apply({}, args);
       promise.then(function (result) {
-        self.result.value = result
+        self.result.value = result;
         if (typeof result == "object") {
           if (result.nodes && result.edges) {
-            var g = topologyComponent.graph
+            var g = topologyComponent.graph;
             for (var n in result.nodes) {
-              var node = result.nodes[n]
-              g.addNode(node.ID, node.Host, node.Metadata)
+              var node = result.nodes[n];
+              g.addNode(node.ID, node.Host, node.Metadata);
             }
             for (var e in result.edges) {
-              var edge = result.edges[e]
-              g.addEdge(edge.ID, edge.Host, edge.Metadata, g.nodes[edge.Parent], g.nodes[edge.Child])
+              var edge = result.edges[e];
+              g.addEdge(edge.ID, edge.Host, edge.Metadata, g.nodes[edge.Parent], g.nodes[edge.Child]);
             }
           }
         }
       }).catch(function (e) {
-        self.result.value = e.toString()
+        self.result.value = e.toString();
       })
     }
   }
@@ -117,8 +113,8 @@ Vue.component('workflow-call', {
   },
 
   provide() {
-  	return {
-        result: this.result
+    return {
+      result: this.result
     }
   },
 
@@ -156,6 +152,12 @@ Vue.component('workflow-call', {
     self.workflowAPI.list()
       .then(function(data) {
         self.workflows = data;
+
+        // setting default
+        for (var i in this.workflow.Parameters) {
+          var param = this.workflow.Parameters[i];
+          param.Values = param.Default;
+        }
       })
       .catch(function (e) {
         if (e.status === 405) { // not allowed
