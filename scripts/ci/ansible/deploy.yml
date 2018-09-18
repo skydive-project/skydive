@@ -84,6 +84,18 @@
       dest: /etc/sudoers.d/jenkins
       owner: root
       group: root
+  - copy:
+      content: |
+        Cmnd_Alias VAGRANT_EXPORTS_CHOWN = /bin/chown 0\:0 /tmp/*
+        Cmnd_Alias VAGRANT_EXPORTS_MV = /bin/mv -f /tmp/* /etc/exports
+        Cmnd_Alias VAGRANT_NFSD_CHECK = /usr/bin/systemctl status --no-pager nfs-server.service
+        Cmnd_Alias VAGRANT_NFSD_START = /usr/bin/systemctl start nfs-server.service
+        Cmnd_Alias VAGRANT_NFSD_APPLY = /usr/sbin/exportfs -ar
+        %vagrant ALL=(root) NOPASSWD: VAGRANT_EXPORTS_CHOWN, VAGRANT_EXPORTS_MV, VAGRANT_NFSD_CHECK, VAGRANT_NFSD_START, VAGRANT_NFSD_APPLY
+      mode: 0440
+      dest: /etc/sudoers.d/vagrant-syncedfolders
+      owner: root
+      group: root
   - lineinfile:
       dest: /etc/hosts
       line: "{{ hostvars['jenkins_master']['private_ip'] }} {{ jenkins_public_hostname }}"
@@ -194,10 +206,13 @@
   - group:
       name: lxd
       state: present
+  - group:
+      name: vagrant
+      state: present
   - user:
       name: jenkins
       group: jenkins
-      groups: jenkins,libvirt,docker,lxd,mock
+      groups: jenkins,libvirt,docker,lxd,mock,vagrant
       home: /var/lib/jenkins
   - service:
       name: "{{ item }}"
