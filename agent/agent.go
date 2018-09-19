@@ -80,7 +80,7 @@ func NewAnalyzerStructClientPool(authOptions *shttp.AuthenticationOpts) (*ws.Str
 	}
 
 	for _, sa := range addresses {
-		c, err := ws.NewClientFromConfig(common.AgentService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/agent"), authOptions, nil)
+		c, err := config.NewWSClient(common.AgentService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/agent"), authOptions, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -195,7 +195,7 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	wsServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/subscriber", apiAuthBackend))
+	wsServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
 
 	// declare all extension available throught API and filtering
 	tr := traversal.NewGremlinTraversalParser()

@@ -110,7 +110,7 @@ func (p *TopologyReplicatorPeer) connect(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	logging.GetLogger().Infof("Connecting to peer: %s", p.URL.String())
-	wsClient, err := ws.NewClientFromConfig(common.AnalyzerService, p.URL, p.AuthOptions, http.Header{})
+	wsClient, err := config.NewWSClient(common.AnalyzerService, p.URL, p.AuthOptions, http.Header{})
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to create client: %s", err)
 		return

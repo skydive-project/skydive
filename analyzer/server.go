@@ -274,13 +274,13 @@ func NewServerFromConfig() (*Server, error) {
 
 	uiServer.RegisterLoginRoute(apiAuthBackend)
 
-	agentWSServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/agent", clusterAuthBackend))
+	agentWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/agent", clusterAuthBackend))
 	_, err = NewTopologyAgentEndpoint(agentWSServer, cached, g)
 	if err != nil {
 		return nil, err
 	}
 
-	publisherWSServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/publisher", apiAuthBackend))
+	publisherWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/publisher", apiAuthBackend))
 	_, err = NewTopologyPublisherEndpoint(publisherWSServer, g)
 	if err != nil {
 		return nil, err
@@ -290,7 +290,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	storage, err := storage.NewStorageFromConfig(etcdClient)
 
-	replicationWSServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/replication", clusterAuthBackend))
+	replicationWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/replication", clusterAuthBackend))
 	replicationEndpoint, err := NewTopologyReplicationEndpoint(replicationWSServer, clusterAuthOptions, cached, g)
 	if err != nil {
 		return nil, err
@@ -304,7 +304,7 @@ func NewServerFromConfig() (*Server, error) {
 	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
 
-	subscriberWSServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/subscriber", apiAuthBackend))
+	subscriberWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
 	topology.NewTopologySubscriberEndpoint(subscriberWSServer, g, tr)
 
 	probeBundle, err := NewTopologyProbeBundleFromConfig(g)

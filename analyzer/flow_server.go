@@ -122,7 +122,7 @@ func (c *FlowServerWebSocketConn) OnMessage(client ws.Speaker, m ws.Message) {
 // Serve starts a WebSocket flow server
 func (c *FlowServerWebSocketConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sync.WaitGroup) {
 	c.ch = ch
-	server := ws.NewServer(c.server, "/ws/flow", c.auth)
+	server := config.NewWSServer(c.server, "/ws/flow", c.auth)
 	server.AddEventHandler(c)
 	go func() {
 		server.Start()
