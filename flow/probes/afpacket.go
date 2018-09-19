@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/google/gopacket"
-	//"github.com/google/gopacket/afpacket"
+
 	"github.com/skydive-project/skydive/flow/probes/afpacket"
 )
 
@@ -53,6 +53,7 @@ func NewAFPacketHandle(ifName string, snaplen int32) (*AFPacketHandle, error) {
 		afpacket.OptInterface(ifName),
 		afpacket.OptFrameSize(snaplen),
 		afpacket.OptPollTimeout(1*time.Second),
+		afpacket.OptAddVLANHeader(true),
 	)
 
 	if err != nil {

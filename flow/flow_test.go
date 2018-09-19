@@ -1298,8 +1298,8 @@ func TestVxlanSrcPort(t *testing.T) {
 func TestGeneve(t *testing.T) {
 	expected := []*Flow{
 		{
-			LayersPath:  "Ethernet/IPv4/UDP",
-			Application: "UDP",
+			LayersPath:  "Ethernet/IPv4/UDP/Geneve",
+			Application: "Geneve",
 			Link: &FlowLayer{
 				Protocol: FlowProtocol_ETHERNET,
 				A:        "00:1b:21:3c:ab:64",
@@ -1310,7 +1310,7 @@ func TestGeneve(t *testing.T) {
 				Protocol: FlowProtocol_IPV4,
 				A:        "20.0.0.1",
 				B:        "20.0.0.2",
-				ID:       0,
+				ID:       10,
 			},
 			Transport: &TransportLayer{
 				Protocol: FlowProtocol_UDP,
@@ -1319,8 +1319,8 @@ func TestGeneve(t *testing.T) {
 				ID:       0,
 			},
 			Metric: &FlowMetric{
-				ABPackets: 3,
-				ABBytes:   468,
+				ABPackets: 19,
+				ABBytes:   5027,
 				BAPackets: 0,
 				BABytes:   0,
 			},
@@ -1381,6 +1381,33 @@ func TestGeneve(t *testing.T) {
 			},
 		},
 		{
+			LayersPath:  "Ethernet/IPv4/ICMPv4",
+			Application: "ICMPv4",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "b6:9e:d2:49:51:48",
+				B:        "fe:71:d8:83:72:4f",
+				ID:       0,
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "30.0.0.1",
+				B:        "30.0.0.2",
+				ID:       0,
+			},
+			ICMP: &ICMPLayer{
+				Type: ICMPType_ECHO,
+				Code: 0,
+				ID:   10578,
+			},
+			Metric: &FlowMetric{
+				ABPackets: 3,
+				ABBytes:   294,
+				BAPackets: 0,
+				BABytes:   0,
+			},
+		},
+		{
 			LayersPath:  "Ethernet/IPv4/TCP",
 			Application: "TCP",
 			Link: &FlowLayer{
@@ -1404,34 +1431,6 @@ func TestGeneve(t *testing.T) {
 			Metric: &FlowMetric{
 				ABPackets: 17,
 				ABBytes:   2959,
-				BAPackets: 0,
-				BABytes:   0,
-			},
-		},
-		{
-			LayersPath:  "Ethernet/IPv4/UDP",
-			Application: "UDP",
-			Link: &FlowLayer{
-				Protocol: FlowProtocol_ETHERNET,
-				A:        "00:1b:21:3c:ab:64",
-				B:        "00:1b:21:3c:ac:30",
-				ID:       0,
-			},
-			Network: &FlowLayer{
-				Protocol: FlowProtocol_IPV4,
-				A:        "20.0.0.1",
-				B:        "20.0.0.2",
-				ID:       0,
-			},
-			Transport: &TransportLayer{
-				Protocol: FlowProtocol_UDP,
-				A:        22540,
-				B:        6081,
-				ID:       0,
-			},
-			Metric: &FlowMetric{
-				ABPackets: 16,
-				ABBytes:   4559,
 				BAPackets: 0,
 				BABytes:   0,
 			},

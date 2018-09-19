@@ -94,7 +94,7 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *types.Captur
 	fprobe, err := o.getProbe(n, capture)
 	if fprobe == nil {
 		if err != nil {
-			logging.GetLogger().Error(err.Error())
+			logging.GetLogger().Error(err)
 		}
 		return false
 	}
@@ -114,7 +114,7 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *types.Captur
 	}
 
 	if err := fprobe.RegisterProbe(n, capture, activeProbe); err != nil {
-		logging.GetLogger().Debugf("Failed to register flow probe: %s", err.Error())
+		logging.GetLogger().Debugf("Failed to register flow probe: %s", err)
 		return false
 	}
 
@@ -134,8 +134,16 @@ func (o *OnDemandProbeServer) unregisterProbe(n *graph.Node) bool {
 		return false
 	}
 
+	name, _ := n.GetFieldString("Name")
+	if name == "" {
+		logging.GetLogger().Debugf("Unable to register flow probe, name of node unknown %s", n.ID)
+		return false
+	}
+
+	logging.GetLogger().Debugf("Attempting to unregister probe on node %s", name)
+
 	if err := probe.fprobe.UnregisterProbe(n, probe); err != nil {
-		logging.GetLogger().Debugf("Failed to unregister flow probe: %s", err.Error())
+		logging.GetLogger().Debugf("Failed to unregister flow probe: %s", err)
 	}
 
 	o.Lock()
