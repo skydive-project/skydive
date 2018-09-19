@@ -64,7 +64,7 @@ func (g *GremlinQueryHelper) Request(query interface{}, header http.Header) (*ht
 	return client.Request("POST", "topology", contentReader, header)
 }
 
-// Query the topology API
+// QueryRaw queries the topology API and returns the raw result
 func (g *GremlinQueryHelper) QueryRaw(query interface{}) ([]byte, error) {
 	resp, err := g.Request(query, nil)
 	if err != nil {
@@ -84,7 +84,7 @@ func (g *GremlinQueryHelper) QueryRaw(query interface{}) ([]byte, error) {
 	return data, nil
 }
 
-// QueryObject the topology API and deserialize into value
+// QueryObject queries the topology API and deserialize into value
 func (g *GremlinQueryHelper) QueryObject(query interface{}, value interface{}) error {
 	resp, err := g.Request(query, nil)
 	if err != nil {

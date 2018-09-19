@@ -93,8 +93,8 @@ type AnalyzerConnStatus struct {
 	IsMaster bool
 }
 
-// AgentStatus represents the status of an agent
-type AgentStatus struct {
+// Status represents the status of an agent
+type Status struct {
 	Clients        map[string]ws.ConnStatus
 	Analyzers      map[string]AnalyzerConnStatus
 	TopologyProbes []string
@@ -117,7 +117,7 @@ func (a *Agent) GetStatus() interface{} {
 		}
 	}
 
-	return &AgentStatus{
+	return &Status{
 		Clients:        a.wsServer.GetStatus(),
 		Analyzers:      analyzers,
 		TopologyProbes: a.topologyProbeBundle.ActiveProbes(),
@@ -183,7 +183,7 @@ func NewAgent() (*Agent, error) {
 	uiServer := ui.NewServer(hserver, config.GetString("ui.extra_assets"))
 	uiServer.RegisterLoginRoute(apiAuthBackend)
 
-	if err := hserver.Listen(); err != nil {
+	if err = hserver.Listen(); err != nil {
 		return nil, err
 	}
 

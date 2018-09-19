@@ -47,7 +47,7 @@ const (
 	// FlowBulkInsertDefault maximum number of flows aggregated between two data store inserts
 	FlowBulkInsertDefault int = 100
 
-	// FlowBulkDeadlineDefault deadline of each bulk insert in second
+	// FlowBulkInsertDeadlineDefault deadline of each bulk insert in second
 	FlowBulkInsertDeadlineDefault int = 5
 
 	// FlowBulkMaxDelayDefault delay between two bulk

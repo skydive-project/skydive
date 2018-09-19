@@ -47,8 +47,6 @@ type TopologyReplicatorPeer struct {
 	AuthOptions *shttp.AuthenticationOpts
 	wsspeaker   ws.Speaker
 	endpoint    *TopologyReplicationEndpoint
-	host        string
-	ephemeral   bool
 }
 
 // TopologyReplicationEndpoint serves the local Graph and send local modification to its peers.

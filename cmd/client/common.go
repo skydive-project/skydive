@@ -29,7 +29,6 @@ import (
 
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/spf13/cobra"
 )
 
 // AuthenticationOpts Authentication options
@@ -44,10 +43,4 @@ func printJSON(obj interface{}) {
 		os.Exit(1)
 	}
 	fmt.Println(string(s))
-}
-
-func setFromFlag(cmd *cobra.Command, flag string, value *string) {
-	if flag := cmd.LocalFlags().Lookup(flag); flag.Changed {
-		*value = flag.Value.String()
-	}
 }

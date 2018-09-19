@@ -23,8 +23,6 @@
 package analyzer
 
 import (
-	"sync"
-
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -38,7 +36,6 @@ type TopologyAgentEndpoint struct {
 	pool   ws.StructSpeakerPool
 	Graph  *graph.Graph
 	cached *graph.CachedBackend
-	wg     sync.WaitGroup
 }
 
 // OnDisconnected called when an agent disconnected.

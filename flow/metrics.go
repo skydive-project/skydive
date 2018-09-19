@@ -139,7 +139,7 @@ func (fm *FlowMetric) applyRatio(ratio float64) *FlowMetric {
 	}
 }
 
-// Slice splits a Metric into two parts
+// Split a metric into two parts
 func (fm *FlowMetric) Split(cut int64) (common.Metric, common.Metric) {
 	if cut < fm.Start {
 		return nil, fm
