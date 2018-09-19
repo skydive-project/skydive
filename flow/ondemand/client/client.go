@@ -32,6 +32,7 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/etcd"
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow/ondemand"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	"github.com/skydive-project/skydive/logging"
@@ -159,7 +160,7 @@ func (o *OnDemandProbeClient) registerProbe(np nodeProbe) bool {
 	msg := ws.NewStructMessage(ondemand.Namespace, "CaptureStart", cq)
 
 	if err := o.agentPool.SendMessageTo(msg, np.host); err != nil {
-		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", np.host, err.Error())
+		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", np.host, err)
 		return false
 	}
 	o.Lock()
@@ -182,7 +183,7 @@ func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node, capture *types.C
 	}
 
 	if err := o.agentPool.SendMessageTo(msg, node.Host()); err != nil {
-		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", node.Host(), err.Error())
+		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", node.Host(), err)
 		return false
 	}
 
@@ -192,7 +193,7 @@ func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node, capture *types.C
 func (o *OnDemandProbeClient) applyGremlinExpr(query string) []interface{} {
 	res, err := ge.TopologyGremlinQuery(o.graph, query)
 	if err != nil {
-		logging.GetLogger().Errorf("Gremlin %s error: %s", query, err.Error())
+		logging.GetLogger().Errorf("Gremlin %s error: %s", query, err)
 		return nil
 	}
 	return res.Values()
@@ -286,8 +287,8 @@ func (o *OnDemandProbeClient) onCaptureAdded(capture *types.Capture) {
 }
 
 func (o *OnDemandProbeClient) unregisterCapture(capture *types.Capture) {
-	o.graph.Lock()
-	defer o.graph.Unlock()
+	o.graph.RLock()
+	defer o.graph.RUnlock()
 
 	o.deletedNodeCache.Delete(capture.UUID)
 
@@ -295,21 +296,10 @@ func (o *OnDemandProbeClient) unregisterCapture(capture *types.Capture) {
 	delete(o.captures, capture.UUID)
 	o.Unlock()
 
-	res, err := ge.TopologyGremlinQuery(o.graph, capture.GremlinQuery)
-	if err != nil {
-		logging.GetLogger().Errorf("Gremlin error: %s", err.Error())
-		return
-	}
-
-	for _, value := range res.Values() {
-		switch e := value.(type) {
-		case *graph.Node:
-			o.unregisterProbe(e, capture)
-		case []*graph.Node:
-			for _, node := range e {
-				o.unregisterProbe(node, capture)
-			}
-		}
+	filter := filters.NewTermStringFilter("Capture.ID", capture.UUID)
+	nodes := o.graph.GetNodes(graph.NewGraphElementFilter(filter))
+	for _, node := range nodes {
+		o.unregisterProbe(node, capture)
 	}
 }
 
