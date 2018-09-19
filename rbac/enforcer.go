@@ -23,19 +23,9 @@
 package rbac
 
 import (
-	"bufio"
-	"bytes"
-	"io"
-	"strconv"
-	"strings"
-
 	"github.com/casbin/casbin"
 	"github.com/casbin/casbin/model"
-	"github.com/casbin/casbin/persist"
 	etcd "github.com/coreos/etcd/client"
-
-	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/statics"
 )
 
 // Permission defines a permission
@@ -47,64 +37,12 @@ type Permission struct {
 
 var enforcer *casbin.Enforcer
 
-func loadSection(model model.Model, key string, sec string) {
-	getKey := func(i int) string {
-		if i == 0 {
-			return sec
-		}
-		return sec + strconv.Itoa(i)
-	}
-
-	entries := config.GetStringSlice("rbac.model." + key)
-	for i, entry := range entries {
-		model.AddDef(sec, getKey(i), entry)
-	}
-}
-
-func loadPolicy(content []byte, model model.Model) error {
-	buf := bufio.NewReader(bytes.NewReader([]byte(content)))
-	for {
-		line, err := buf.ReadString('\n')
-		line = strings.TrimSpace(line)
-		persist.LoadPolicyLine(line, model)
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-	}
-}
-
-func loadStaticPolicy(model model.Model) error {
-	content, err := statics.Asset("rbac/policy.csv")
-	if err != nil {
-		return err
-	}
-
-	return loadPolicy(content, model)
-}
-
-func loadConfigPolicy(model model.Model) {
-	policies := config.GetStringSlice("rbac.policy")
-	for _, line := range policies {
-		persist.LoadPolicyLine(line, model)
-	}
-}
-
 // Init loads the model from the configuration file then the policies.
 // 3 policies are applied, in that order :
 // - the policy uploaded in etcd and shared by all analyzers
 // - a policy bundled into the binary
 // - a policy specified in the configuration file
-func Init(kapi etcd.KeysAPI) error {
-	model := model.Model{}
-	loadSection(model, "request_definition", "r")
-	loadSection(model, "policy_definition", "p")
-	loadSection(model, "policy_effect", "e")
-	loadSection(model, "matchers", "m")
-	loadSection(model, "role_definition", "g")
-
+func Init(model model.Model, kapi etcd.KeysAPI, loadPolicy func(model.Model) error) error {
 	etcdAdapter, err := NewEtcdAdapter(kapi)
 	if err != nil {
 		return err
@@ -113,18 +51,20 @@ func Init(kapi etcd.KeysAPI) error {
 	casbinEnforcer := casbin.NewEnforcer()
 	casbinEnforcer.InitWithModelAndAdapter(model, etcdAdapter)
 
-	if err := loadStaticPolicy(model); err != nil {
-		return err
+	if loadPolicy != nil {
+		if err := loadPolicy(model); err != nil {
+			return err
+		}
 	}
-	loadConfigPolicy(model)
 	casbinEnforcer.BuildRoleLinks()
 
 	watcher := NewEtcdWatcher(kapi)
 
 	watcher.SetUpdateCallback(func(string) {
 		casbinEnforcer.LoadPolicy()
-		loadStaticPolicy(model)
-		loadConfigPolicy(model)
+		if loadPolicy != nil {
+			loadPolicy(model)
+		}
 		model.PrintPolicy()
 		casbinEnforcer.BuildRoleLinks()
 	})
