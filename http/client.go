@@ -31,12 +31,9 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/logging"
 )
 
 type RestClient struct {
@@ -74,10 +71,6 @@ func NewRestClient(url *url.URL, authOpts *AuthenticationOpts, tlsConfig *tls.Co
 	}
 }
 
-func (c *RestClient) debug() bool {
-	return config.GetBool("http.rest.debug")
-}
-
 func (c *RestClient) Request(method, path string, body io.Reader, header http.Header) (*http.Response, error) {
 	url := c.url.ResolveReference(&url.URL{Path: path})
 	req, err := http.NewRequest(method, url.String(), body)
@@ -95,12 +88,6 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Add("Accept-Encoding", "gzip")
 
-	if c.debug() {
-		if buf, err := httputil.DumpRequest(req, true); err == nil {
-			logging.GetLogger().Debugf("Request:\n%s", buf)
-		}
-	}
-
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return resp, err
@@ -114,16 +101,6 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	if c.debug() {
-		buf, err := httputil.DumpResponse(resp, true)
-		if err == nil {
-			logging.GetLogger().Debugf("Response:\n%s", buf)
-		} else {
-			logging.GetLogger().Debugf("Response (error):\n%s", err)
-		}
-
 	}
 
 	return resp, nil

@@ -99,7 +99,7 @@ func (f *fakeMessageClientSubscriptionHandler) OnStructMessage(c Speaker, m *Str
 
 func TestMessageSubscription(t *testing.T) {
 	config.InitLogging()
-	httpserver := shttp.NewServer("myhost", common.AnalyzerService, "localhost", 59999)
+	httpserver := shttp.NewServer("myhost", common.AnalyzerService, "localhost", 59999, nil)
 
 	go httpserver.ListenAndServe()
 	defer httpserver.Stop()

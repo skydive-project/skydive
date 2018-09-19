@@ -173,13 +173,14 @@ func NewAgent() (*Agent, error) {
 	tm.Start()
 
 	apiAuthBackendName := config.GetString("agent.auth.api.backend")
-	apiAuthBackend, err := shttp.NewAuthenticationBackendByName(apiAuthBackendName)
+	apiAuthBackend, err := config.NewAuthenticationBackendByName(apiAuthBackendName)
 	if err != nil {
 		return nil, err
 	}
 
-	hserver, err := shttp.NewServerFromConfig(common.AgentService)
+	hserver, err := config.NewHTTPServer(common.AgentService)
 	if err != nil {
+
 		return nil, err
 	}
 
@@ -212,6 +213,7 @@ func NewAgent() (*Agent, error) {
 	clusterAuthOptions := &shttp.AuthenticationOpts{
 		Username: config.GetString("agent.auth.cluster.username"),
 		Password: config.GetString("agent.auth.cluster.password"),
+		Cookie:   config.GetStringMapString("http.cookie"),
 	}
 
 	topologyEndpoint := topology.NewTopologySubscriberEndpoint(wsServer, g, tr)

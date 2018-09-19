@@ -110,7 +110,7 @@ var AllInOneCmd = &cobra.Command{
 
 		authOptions := analyzer.AnalyzerClusterAuthenticationOpts()
 		svcAddr, _ := common.ServiceAddressFromString(config.GetString("analyzer.listen"))
-		tlsConfig, err := config.GetTLSConfig(true)
+		tlsConfig, err := config.GetTLSClientConfig(true)
 		if err != nil {
 			logging.GetLogger().Errorf("Can't start Skydive analyzer: %v", err)
 			os.Exit(1)

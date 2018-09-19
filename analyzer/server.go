@@ -226,7 +226,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	hserver, err := shttp.NewServerFromConfig(common.AnalyzerService)
+	hserver, err := config.NewHTTPServer(common.AnalyzerService)
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +258,7 @@ func NewServerFromConfig() (*Server, error) {
 	clusterAuthOptions := AnalyzerClusterAuthenticationOpts()
 
 	clusterAuthBackendName := config.GetString("analyzer.auth.cluster.backend")
-	clusterAuthBackend, err := shttp.NewAuthenticationBackendByName(clusterAuthBackendName)
+	clusterAuthBackend, err := config.NewAuthenticationBackendByName(clusterAuthBackendName)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +267,7 @@ func NewServerFromConfig() (*Server, error) {
 	clusterAuthBackend.SetDefaultUserRole("admin")
 
 	apiAuthBackendName := config.GetString("analyzer.auth.api.backend")
-	apiAuthBackend, err := shttp.NewAuthenticationBackendByName(apiAuthBackendName)
+	apiAuthBackend, err := config.NewAuthenticationBackendByName(apiAuthBackendName)
 	if err != nil {
 		return nil, err
 	}
@@ -396,5 +396,6 @@ func AnalyzerClusterAuthenticationOpts() *shttp.AuthenticationOpts {
 	return &shttp.AuthenticationOpts{
 		Username: config.GetString("analyzer.auth.cluster.username"),
 		Password: config.GetString("analyzer.auth.cluster.password"),
+		Cookie:   config.GetStringMapString("http.cookie"),
 	}
 }

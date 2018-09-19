@@ -30,7 +30,7 @@ import (
 
 // NewCrudClientFromConfig creates a new REST client on /api
 func NewCrudClientFromConfig(authOptions *shttp.AuthenticationOpts) (*shttp.CrudClient, error) {
-	tlsConfig, err := config.GetTLSConfig(true)
+	tlsConfig, err := config.GetTLSClientConfig(true)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func NewCrudClientFromConfig(authOptions *shttp.AuthenticationOpts) (*shttp.Crud
 
 // NewRestClientFromConfig creates a new REST client
 func NewRestClientFromConfig(authOptions *shttp.AuthenticationOpts) (*shttp.RestClient, error) {
-	tlsConfig, err := config.GetTLSConfig(true)
+	tlsConfig, err := config.GetTLSClientConfig(true)
 	if err != nil {
 		return nil, err
 	}

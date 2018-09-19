@@ -513,7 +513,7 @@ func NewClient(host string, clientType common.ServiceType, url *url.URL, authOpt
 func NewClientFromConfig(clientType common.ServiceType, url *url.URL, authOpts *shttp.AuthenticationOpts, headers http.Header) (*Client, error) {
 	host := config.GetString("host_id")
 	queueSize := config.GetInt("http.ws.queue_size")
-	tlsConfig, err := config.GetTLSConfig(true)
+	tlsConfig, err := config.GetTLSClientConfig(true)
 	if err != nil {
 		return nil, err
 	}

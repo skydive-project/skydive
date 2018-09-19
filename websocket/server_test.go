@@ -89,7 +89,7 @@ func (f *fakeClientSubscriptionHandler) OnMessage(c Speaker, m Message) {
 }
 
 func TestSubscription(t *testing.T) {
-	httpServer := shttp.NewServer("myhost", common.AnalyzerService, "localhost", 59999)
+	httpServer := shttp.NewServer("myhost", common.AnalyzerService, "localhost", 59999, nil)
 
 	go httpServer.ListenAndServe()
 	defer httpServer.Stop()

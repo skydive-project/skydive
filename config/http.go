@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Red Hat, Inc.
+ * Copyright (C) 2018 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -24,42 +24,25 @@ package config
 
 import (
 	"crypto/tls"
+	"fmt"
 
 	"github.com/skydive-project/skydive/common"
+	shttp "github.com/skydive-project/skydive/http"
 )
 
-func GetTLSClientConfig(setupRootCA bool) (*tls.Config, error) {
-	certPEM := GetString("agent.X509_cert")
-	keyPEM := GetString("agent.X509_key")
+func NewHTTPServer(serviceType common.ServiceType) (*shttp.Server, error) {
+	sa, err := common.ServiceAddressFromString(GetString(serviceType.String() + ".listen"))
+	if err != nil {
+		return nil, fmt.Errorf("Configuration error: %s", err)
+	}
+
 	var tlsConfig *tls.Config
-	if certPEM != "" && keyPEM != "" {
-		var err error
-		tlsConfig, err = common.SetupTLSClientConfig(certPEM, keyPEM)
+	if IsTLSEnabled() {
+		tlsConfig, err = GetTLSServerConfig(true)
 		if err != nil {
 			return nil, err
 		}
-		if setupRootCA {
-			analyzerCertPEM := GetString("analyzer.X509_cert")
-			tlsConfig.RootCAs, err = common.SetupTLSLoadCertificate(analyzerCertPEM)
-			if err != nil {
-				return nil, err
-			}
-		}
 	}
-	return tlsConfig, nil
-}
 
-func GetTLSServerConfig(setupRootCA bool) (*tls.Config, error) {
-	certPEM := GetString("analyzer.X509_cert")
-	keyPEM := GetString("analyzer.X509_key")
-	agentCertPEM := GetString("agent.X509_cert")
-	tlsConfig, err := common.SetupTLSServerConfig(certPEM, keyPEM)
-	if err != nil {
-		return nil, err
-	}
-	tlsConfig.ClientCAs, err = common.SetupTLSLoadCertificate(agentCertPEM)
-	if err != nil {
-		return nil, err
-	}
-	return tlsConfig, nil
+	return shttp.NewServer(GetString("host_id"), serviceType, sa.Addr, sa.Port, tlsConfig), nil
 }

@@ -39,7 +39,7 @@ func (h *NoAuthenticationBackend) Name() string {
 
 // DefaultUserRole returns the name of the backend
 func (h *NoAuthenticationBackend) DefaultUserRole(user string) string {
-	return defaultUserRole
+	return DefaultUserRole
 }
 
 // SetDefaultUserRole defines the default user role
