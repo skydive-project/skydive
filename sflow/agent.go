@@ -88,7 +88,7 @@ func (sfa *SFlowAgent) feedFlowTable() {
 		}
 
 		// TODO use gopacket.NoCopy ? instead of gopacket.Default
-		p := gopacket.NewPacket(buf[:n], layers.LayerTypeSFlow, gopacket.Default)
+		p := gopacket.NewPacket(buf[:n], layers.LayerTypeSFlow, gopacket.DecodeOptions{NoCopy: true})
 		sflowLayer := p.Layer(layers.LayerTypeSFlow)
 		sflowPacket, ok := sflowLayer.(*layers.SFlowDatagram)
 		if !ok {

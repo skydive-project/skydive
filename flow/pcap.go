@@ -99,7 +99,7 @@ func (p *PcapTableFeeder) feedFlowTable() {
 			return
 		}
 
-		packet := gopacket.NewPacket(data, p.handleRead.LinkType(), gopacket.NoCopy)
+		packet := gopacket.NewPacket(data, p.handleRead.LinkType(), gopacket.DecodeOptions{NoCopy: true})
 		packet.Metadata().CaptureInfo = ci
 		if p.replay {
 			intervalInCapture := ci.Timestamp.Sub(lastTS)

@@ -177,10 +177,10 @@ func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, up
 			ID:   uint32(id),
 		}
 		if f.Network != nil && f.Network.Protocol == flow.FlowProtocol_IPV4 {
-			f.ICMP.Type = flow.ICMPV4TypeToFlowICMPType(kind)
+			f.ICMP.Type = flow.ICMPv4TypeToFlowICMPType(kind)
 			f.LayersPath += "/ICMPv4"
 		} else {
-			f.ICMP.Type = flow.ICMPV6TypeToFlowICMPType(kind)
+			f.ICMP.Type = flow.ICMPv6TypeToFlowICMPType(kind)
 			f.LayersPath += "/ICMPv6"
 		}
 	}
