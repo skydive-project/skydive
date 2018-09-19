@@ -56,7 +56,6 @@ type Agent struct {
 	rootNode            *graph.Node
 	topologyProbeBundle *probe.ProbeBundle
 	flowProbeBundle     *probe.ProbeBundle
-	flowPipeline        *flow.EnhancerPipeline
 	flowTableAllocator  *flow.TableAllocator
 	flowClientPool      *analyzer.FlowClientPool
 	onDemandProbeServer *ondemand.OnDemandProbeServer
@@ -130,7 +129,6 @@ func (a *Agent) GetStatus() interface{} {
 func (a *Agent) Start() {
 	go a.httpServer.Serve()
 
-	a.flowPipeline.Start()
 	a.wsServer.Start()
 	a.topologyProbeBundle.Start()
 	a.flowProbeBundle.Start()
@@ -149,7 +147,6 @@ func (a *Agent) Stop() {
 	a.wsServer.Stop()
 	a.flowClientPool.Close()
 	a.onDemandProbeServer.Stop()
-	a.flowPipeline.Stop()
 
 	if tr, ok := http.DefaultTransport.(interface {
 		CloseIdleConnections()
@@ -231,9 +228,7 @@ func NewAgent() (*Agent, error) {
 	updateTime := time.Duration(config.GetInt("flow.update")) * time.Second
 	expireTime := time.Duration(config.GetInt("flow.expire")) * time.Second
 
-	pipeline := flow.NewEnhancerPipeline()
-
-	flowTableAllocator := flow.NewTableAllocator(updateTime, expireTime, pipeline)
+	flowTableAllocator := flow.NewTableAllocator(updateTime, expireTime)
 
 	// exposes a flow server through the client connections
 	flow.NewServer(flowTableAllocator, analyzerClientPool)
@@ -257,7 +252,6 @@ func NewAgent() (*Agent, error) {
 		rootNode:            rootNode,
 		topologyProbeBundle: topologyProbeBundle,
 		flowProbeBundle:     flowProbeBundle,
-		flowPipeline:        pipeline,
 		flowTableAllocator:  flowTableAllocator,
 		flowClientPool:      flowClientPool,
 		onDemandProbeServer: onDemandProbeServer,

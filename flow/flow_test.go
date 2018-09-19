@@ -391,7 +391,7 @@ func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType, bpf 
 		opt = opts[0]
 	}
 
-	table := NewTable(nil, nil, NewEnhancerPipeline(), "", opt)
+	table := NewTable(nil, nil, "", opt)
 	fillTableFromPCAP(t, table, filename, linkType, bpf)
 	validateAllParentChains(t, table)
 
@@ -883,7 +883,7 @@ func benchPacketList(b *testing.B, filename string, linkType layers.LinkType, ca
 	if err != nil {
 		b.Fatal("PCAP OpenOffline error (handle to read packet): ", err)
 	}
-	ft := NewTable(nil, nil, NewEnhancerPipeline(&fakeEnhancer{}), "", TableOpts{})
+	ft := NewTable(nil, nil, "", TableOpts{})
 	packets = 0
 
 	for {
