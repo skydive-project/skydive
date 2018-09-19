@@ -3,8 +3,6 @@ package tests
 import (
 	"fmt"
 	"testing"
-
-	"github.com/skydive-project/skydive/tests/helper"
 )
 
 type ruleCmd struct {
@@ -13,7 +11,7 @@ type ruleCmd struct {
 }
 
 func checkTest(t *testing.T) {
-	if helper.NoOFTests {
+	if noOFTests {
 		t.Skip("Don't run OpenFlows test as /usr/bin/ovs-ofctl didn't exist in agent process namespace")
 	}
 }
@@ -36,7 +34,7 @@ func verify(c *CheckContext, expected []int) error {
 
 func makeTest(t *testing.T, rules []ruleCmd, expected []int) {
 	checkTest(t)
-	setupCmds := []helper.Cmd{
+	setupCmds := []Cmd{
 		{"ovs-vsctl add-br br-testof1", true},
 		{"ovs-vsctl add-port br-testof1 intf1 -- set interface intf1 type=internal", true},
 		{"ovs-vsctl add-port br-testof1 intf2 -- set interface intf2 type=internal", true},
@@ -49,13 +47,13 @@ func makeTest(t *testing.T, rules []ruleCmd, expected []int) {
 		} else {
 			cmd = fmt.Sprintf("ovs-ofctl del-flows --strict br-testof1 %s", ruleCmd.rule)
 		}
-		setupCmds = append(setupCmds, helper.Cmd{Cmd: cmd, Check: true})
+		setupCmds = append(setupCmds, Cmd{Cmd: cmd, Check: true})
 	}
 
 	test := &Test{
 		setupCmds: setupCmds,
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"ovs-vsctl del-br br-testof1", true},
 		},
 
@@ -101,7 +99,7 @@ func TestSuperimposedOFRule(t *testing.T) {
 
 func TestDelRuleWithBridgeOFRule(t *testing.T) {
 	checkTest(t)
-	setupCmds := []helper.Cmd{
+	setupCmds := []Cmd{
 		{"ovs-vsctl add-br br-testof1", true},
 		{"ovs-vsctl add-port br-testof1 intf1 -- set interface intf1 type=internal", true},
 		{"ovs-vsctl add-port br-testof1 intf2 -- set interface intf2 type=internal", true},
@@ -114,7 +112,7 @@ func TestDelRuleWithBridgeOFRule(t *testing.T) {
 	test := &Test{
 		setupCmds: setupCmds,
 
-		tearDownCmds: []helper.Cmd{},
+		tearDownCmds: []Cmd{},
 
 		mode: Replay,
 

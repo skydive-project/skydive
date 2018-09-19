@@ -27,16 +27,15 @@ import (
 	"testing"
 
 	g "github.com/skydive-project/skydive/gremlin"
-	"github.com/skydive-project/skydive/tests/helper"
 )
 
 func TestDockerSimple(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"docker run -d -t -i --name test-skydive-docker-simple busybox", false},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"docker rm -f test-skydive-docker-simple", false},
 		},
 
@@ -64,12 +63,12 @@ func TestDockerSimple(t *testing.T) {
 
 func TestDockerShareNamespace(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"docker run -d -t -i --name test-skydive-docker-share-ns busybox", false},
 			{"docker run -d -t -i --name test-skydive-docker-share-ns2 --net=container:test-skydive-docker-share-ns busybox", false},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"docker rm -f test-skydive-docker-share-ns", false},
 			{"docker rm -f test-skydive-docker-share-ns2", false},
 		},
@@ -97,11 +96,11 @@ func TestDockerShareNamespace(t *testing.T) {
 
 func TestDockerNetHost(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"docker run -d -t -i --net=host --name test-skydive-docker-net-host busybox", false},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"docker rm -f test-skydive-docker-net-host", false},
 		},
 
@@ -136,11 +135,11 @@ func TestDockerNetHost(t *testing.T) {
 
 func TestDockerLabels(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"docker run -d -t -i --label a.b.c=123 --label a~b/c@d=456 --name test-skydive-docker-labels busybox", false},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"docker rm -f test-skydive-docker-labels", false},
 		},
 

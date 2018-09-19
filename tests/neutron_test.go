@@ -40,7 +40,6 @@ import (
 	"github.com/skydive-project/skydive/common"
 	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/tests/helper"
 )
 
 func TestNeutron(t *testing.T) {
@@ -134,17 +133,17 @@ func TestNeutron(t *testing.T) {
 	ovsctl := `ovs-vsctl add-port br-int %s -- set Interface %s external-ids:iface-id=%s`
 	ovsctl += ` external-ids:iface-status=active external-ids:attached-mac=%s external-ids:vm-uuid=skydive-vm type=internal`
 
-	setupCmds := []helper.Cmd{
+	setupCmds := []Cmd{
 		{fmt.Sprintf(ovsctl, dev, dev, port.ID, port.MACAddress), true},
 		{"sleep 1", true},
 		{fmt.Sprintf("ip link set %s up", dev), true},
 	}
 
-	tearDownCmds := []helper.Cmd{
+	tearDownCmds := []Cmd{
 		{fmt.Sprintf("ovs-vsctl del-port %s", dev), true},
 	}
-	helper.ExecCmds(t, setupCmds...)
-	defer helper.ExecCmds(t, tearDownCmds...)
+	execCmds(t, setupCmds...)
+	defer execCmds(t, tearDownCmds...)
 
 	gh := gclient.NewGremlinQueryHelper(authOptions)
 

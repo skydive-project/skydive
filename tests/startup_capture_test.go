@@ -8,14 +8,13 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/tests/helper"
 )
 
 func TestStartupCapture(t *testing.T) {
 	test := &Test{
 		mode: OneShot,
 
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"ovs-vsctl add-br br-startup", true},
 			{"ovs-vsctl add-port br-startup startup-intf2 -- set interface startup-intf2 type=internal", true},
 			{"ip netns add startup-vm2", true},
@@ -24,7 +23,7 @@ func TestStartupCapture(t *testing.T) {
 			{"ip netns exec startup-vm2 ip link set startup-intf2 up", true},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"ip netns del startup-vm2", true},
 			{"ovs-vsctl del-br br-startup", true},
 		},
@@ -49,7 +48,7 @@ func TestStartupCapture(t *testing.T) {
 				}
 			}
 			if capture == nil {
-				return fmt.Errorf("Preconfigured capture wasn't created!")
+				return fmt.Errorf("Preconfigured capture wasn't created")
 			}
 
 			gh := client.NewGremlinQueryHelper(&shttp.AuthenticationOpts{})

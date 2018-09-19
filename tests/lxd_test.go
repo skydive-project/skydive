@@ -27,8 +27,6 @@ import (
 	"os/exec"
 	"runtime"
 	"testing"
-
-	"github.com/skydive-project/skydive/tests/helper"
 )
 
 func TestLxdSimple(t *testing.T) {
@@ -43,11 +41,11 @@ func TestLxdSimple(t *testing.T) {
 	}
 
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"lxc launch images:fedora/27 test-skydive-lxd-simple", false},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"lxc delete --force test-skydive-lxd-simple", false},
 		},
 

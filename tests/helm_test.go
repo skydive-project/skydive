@@ -26,8 +26,6 @@ package tests
 
 import (
 	"testing"
-
-	"github.com/skydive-project/skydive/tests/helper"
 )
 
 const (
@@ -38,11 +36,11 @@ const (
 func TestHelmInstall(t *testing.T) {
 	test := &Test{
 		retries: 3,
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"helm delete --purge " + relName, false},
 			{"helm install --name " + relName + " " + chartPath, true},
 		},
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"helm delete --purge " + relName, true},
 		},
 		checks: []CheckFunction{
