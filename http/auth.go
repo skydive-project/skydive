@@ -109,7 +109,7 @@ func authCallWrapped(w http.ResponseWriter, r *http.Request, username string, wr
 	context.Clear(&ar.Request)
 }
 
-func authenticate(backend AuthenticationBackend, w http.ResponseWriter, username, password string) (string, error) {
+func Authenticate(backend AuthenticationBackend, w http.ResponseWriter, username, password string) (string, error) {
 	token, err := backend.Authenticate(username, password)
 	if err != nil {
 		return "", err
@@ -157,7 +157,7 @@ func authenticateWithHeaders(backend AuthenticationBackend, w http.ResponseWrite
 	}
 	username, password := pair[0], pair[1]
 
-	return authenticate(backend, w, username, password)
+	return Authenticate(backend, w, username, password)
 }
 
 // NewAuthenticationBackendByName creates a new auth backend based on the name

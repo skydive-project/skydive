@@ -165,7 +165,7 @@ func (b *KeystoneAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFu
 	return func(w http.ResponseWriter, r *http.Request) {
 		token, err := authenticateWithHeaders(b, w, r)
 		if err != nil {
-			unauthorized(w, r)
+			Unauthorized(w, r)
 			return
 		}
 
@@ -173,7 +173,7 @@ func (b *KeystoneAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFu
 			if err != nil {
 				logging.GetLogger().Warningf("Failed to check token: %s", err)
 			}
-			unauthorized(w, r)
+			Unauthorized(w, r)
 		} else {
 			authCallWrapped(w, r, username, wrapped)
 		}

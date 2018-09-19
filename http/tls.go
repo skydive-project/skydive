@@ -31,7 +31,7 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-func setTLSHeader(w http.ResponseWriter, r *http.Request) {
+func SetTLSHeader(w http.ResponseWriter, r *http.Request) {
 	if r.TLS != nil {
 		w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 	}

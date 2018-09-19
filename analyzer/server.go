@@ -48,6 +48,7 @@ import (
 	"github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
+	"github.com/skydive-project/skydive/ui"
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
@@ -76,6 +77,7 @@ type Status struct {
 // Server describes an Analyzer servers mechanism like http, websocket, topology, ondemand probes, ...
 type Server struct {
 	httpServer          *shttp.Server
+	uiServer            *ui.Server
 	agentWSServer       *ws.StructServer
 	publisherWSServer   *ws.StructServer
 	replicationWSServer *ws.StructServer
@@ -230,10 +232,12 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
+	uiServer := ui.NewServer(hserver, config.GetString("ui.extra_assets"))
+
 	// add some global vars
-	hserver.AddGlobalVar("ui", config.Get("ui"))
-	hserver.AddGlobalVar("flow-metric-keys", (&flow.FlowMetric{}).GetFields())
-	hserver.AddGlobalVar("interface-metric-keys", (&topology.InterfaceMetric{}).GetFields())
+	uiServer.AddGlobalVar("ui", config.Get("ui"))
+	uiServer.AddGlobalVar("flow-metric-keys", (&flow.FlowMetric{}).GetFields())
+	uiServer.AddGlobalVar("interface-metric-keys", (&topology.InterfaceMetric{}).GetFields())
 
 	name := config.GetString("analyzer.topology.backend")
 	if len(name) == 0 {
@@ -269,7 +273,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	hserver.RegisterLoginRoute(apiAuthBackend)
+	uiServer.RegisterLoginRoute(apiAuthBackend)
 
 	agentWSServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/agent", clusterAuthBackend))
 	_, err = NewTopologyAgentEndpoint(agentWSServer, cached, g)
@@ -385,17 +389,6 @@ func NewServerFromConfig() (*Server, error) {
 			return nil, err
 		}
 	}
-
-	// server index for the following url as the client side will redirect
-	// the user to the correct page
-	routes := []shttp.Route{
-		{Path: "/topology", Method: "GET", HandlerFunc: hserver.ServeIndex},
-		{Path: "/conversation", Method: "GET", HandlerFunc: hserver.ServeIndex},
-		{Path: "/discovery", Method: "GET", HandlerFunc: hserver.ServeIndex},
-		{Path: "/preference", Method: "GET", HandlerFunc: hserver.ServeIndex},
-		{Path: "/status", Method: "GET", HandlerFunc: hserver.ServeIndex},
-	}
-	hserver.RegisterRoutes(routes, shttp.NewNoAuthenticationBackend())
 
 	return s, nil
 }
