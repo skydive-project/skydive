@@ -20,7 +20,7 @@ if [ -n "$(${GOPATH}/bin/govendor list +u)" ]; then
    exit 1
 fi
 
-make lint
+make lint GOMETALINTER_FLAGS="--disable-all --enable=golint"
 nbnotcomment=$(grep '"linter":"golint"' lint.json | grep 'should have comment or be unexported' | wc -l)
 if [ $nbnotcomment -gt 134 ]; then
    cat lint.json
