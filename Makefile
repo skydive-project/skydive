@@ -122,10 +122,6 @@ ifeq ($(WITH_NEUTRON), true)
   BUILD_TAGS+=neutron
 endif
 
-ifeq ($(WITH_SELENIUM), true)
-  BUILD_TAGS+=selenium
-endif
-
 ifeq ($(WITH_CDD), true)
   BUILD_TAGS+=cdd
 endif
