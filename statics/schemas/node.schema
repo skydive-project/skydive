@@ -22,24 +22,32 @@
         }
       },
       "required": [
-        "ID"
+        "ID", "Metadata"
       ]
     },
     "nsMetadata": {
       "properties": {
         "Path": {
           "type": "string"
+        },
+        "Name": {
+          "type": "string",
+          "minLength": 1
         }
       },
-      "required": [ "Path" ]
+      "required": [ "Path", "Name" ]
     },
     "ovsMetadata": {
       "properties": {
         "UUID": {
           "type": "string"
+        },
+        "Name": {
+          "type": "string",
+          "minLength": 1
         }
       },
-      "required": [ "UUID" ]
+      "required": [ "UUID", "Name" ]
     }
   },
   "type": "object",
@@ -59,9 +67,13 @@
                       "type": "string",
                       "minLength": 1,
                       "not": { "enum": [ "netns", "ovsport" ] }
+                    },
+                    "Name": {
+                      "type": "string",
+                      "minLength": 1
                     }
                   },
-                  "required": [ "Type" ]
+                  "required": [ "Type", "Name" ]
                 }
               ]
             }

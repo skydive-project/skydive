@@ -73,18 +73,26 @@ var NodeRuleCreate = &cobra.Command{
 			os.Exit(1)
 		}
 
+		if action == "create" {
+			if nodeName == "" || nodeType == "" {
+				logging.GetLogger().Error("Both --node-name and --node-type are required for 'create' node rules")
+				os.Exit(1)
+			}
+
+			m["Name"] = nodeName
+			m["Type"] = nodeType
+		}
+
 		node := &api.NodeRule{
 			Name:        name,
 			Description: description,
-			NodeType:    nodeType,
-			NodeName:    nodeName,
 			Metadata:    m,
 			Query:       query,
 			Action:      action,
 		}
 
 		if err = validator.Validate(node); err != nil {
-			logging.GetLogger().Error(err.Error())
+			logging.GetLogger().Errorf("Error while validating node rule: %s", err)
 			os.Exit(1)
 		}
 
