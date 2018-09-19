@@ -2,6 +2,7 @@ parameter_defaults:
   ControllerServices:
     - OS::TripleO::Services::CACerts
     - OS::TripleO::Services::Clustercheck
+    - OS::TripleO::Services::ContainerImagePrepare
     - OS::TripleO::Services::Docker
     - OS::TripleO::Services::GlanceApi
     - OS::TripleO::Services::HAproxy
