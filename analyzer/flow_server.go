@@ -258,7 +258,7 @@ func (s *FlowServer) setupBulkConfigFromBackend() error {
 	s.bulkInsertDeadline = time.Duration(FlowBulkInsertDeadlineDefault) * time.Second
 
 	storage := fmt.Sprintf("storage.%s.", config.GetString("analyzer.flow.backend"))
-	if config.IsSet(storage + "driver") {
+	if config.InConfig(storage + "driver") {
 		bulkMaxDelay := config.GetInt(storage + "bulk_maxdelay")
 		if bulkMaxDelay < 0 {
 			return errors.New("bulk_maxdelay must be positive values")

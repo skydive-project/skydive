@@ -365,7 +365,7 @@ func IsTLSenabled() bool {
 }
 
 func realKey(key string) string {
-	if cfg.IsSet(key) {
+	if cfg.InConfig(key) {
 		return key
 	}
 
@@ -375,7 +375,7 @@ func realKey(key string) string {
 		return key
 	}
 	for _, depKey := range depKeys {
-		if cfg.IsSet(depKey) {
+		if cfg.InConfig(depKey) {
 			fmt.Fprintf(os.Stderr, "Config value '%s' is now deprecated. Please use '%s' instead\n", depKey, key)
 			return depKey
 		}
@@ -384,9 +384,9 @@ func realKey(key string) string {
 	return key
 }
 
-// IsSet returns wether a key is set
-func IsSet(key string) bool {
-	return cfg.IsSet(key)
+// InConfig returns wether a key is set
+func InConfig(key string) bool {
+	return cfg.InConfig(key)
 }
 
 // Get returns a value of the configuration as in interface
