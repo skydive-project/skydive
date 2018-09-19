@@ -32,7 +32,6 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/flow/enhancers"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/server"
 	fprobes "github.com/skydive-project/skydive/flow/probes"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
@@ -232,12 +231,7 @@ func NewAgent() (*Agent, error) {
 	updateTime := time.Duration(config.GetInt("flow.update")) * time.Second
 	expireTime := time.Duration(config.GetInt("flow.expire")) * time.Second
 
-	pipeline := flow.NewEnhancerPipeline(enhancers.NewGraphFlowEnhancer(g))
-
-	// check that the neutron probe if loaded if so add the neutron flow enhancer
-	if topologyProbeBundle.GetProbe("neutron") != nil {
-		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(g))
-	}
+	pipeline := flow.NewEnhancerPipeline()
 
 	flowTableAllocator := flow.NewTableAllocator(updateTime, expireTime, pipeline)
 

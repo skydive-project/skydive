@@ -35,7 +35,6 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/flow/enhancers"
 	"github.com/skydive-project/skydive/flow/storage"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -277,12 +276,7 @@ func (s *FlowServer) setupBulkConfigFromBackend() error {
 
 // NewFlowServer creates a new flow server listening at address/port, based on configuration
 func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe *probe.ProbeBundle, auth shttp.AuthenticationBackend) (*FlowServer, error) {
-	pipeline := flow.NewEnhancerPipeline(enhancers.NewGraphFlowEnhancer(g))
-
-	// check that the neutron probe is loaded if so add the neutron flow enhancer
-	if probe.GetProbe("neutron") != nil {
-		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(g))
-	}
+	pipeline := flow.NewEnhancerPipeline()
 
 	var conn FlowServerConn
 	protocol := strings.ToLower(config.GetString("flow.protocol"))
