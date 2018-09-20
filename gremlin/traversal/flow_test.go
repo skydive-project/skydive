@@ -119,7 +119,7 @@ func newTable(nodeID string) *flow.Table {
 	updHandler := flow.NewFlowHandler(func(f []*flow.Flow) {}, time.Second)
 	expHandler := flow.NewFlowHandler(func(f []*flow.Flow) {}, 300*time.Second)
 
-	return flow.NewTable(updHandler, expHandler, flow.NewEnhancerPipeline(), "", flow.TableOpts{})
+	return flow.NewTable(updHandler, expHandler, "", flow.TableOpts{})
 }
 
 func newFakeTableClient() *fakeTableClient {
