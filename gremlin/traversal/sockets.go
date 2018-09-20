@@ -39,7 +39,7 @@ type SocketsTraversalExtension struct {
 
 // SocketsGremlinTraversalStep describes the Sockets gremlin traversal step
 type SocketsGremlinTraversalStep struct {
-	context traversal.GremlinTraversalContext
+	traversal.GremlinTraversalContext
 }
 
 // NewSocketsTraversalExtension returns a new graph traversal extension
@@ -62,7 +62,7 @@ func (e *SocketsTraversalExtension) ScanIdent(s string) (traversal.Token, bool) 
 func (e *SocketsTraversalExtension) ParseStep(t traversal.Token, p traversal.GremlinTraversalContext) (traversal.GremlinTraversalStep, error) {
 	switch t {
 	case e.SocketsToken:
-		return &SocketsGremlinTraversalStep{context: p}, nil
+		return &SocketsGremlinTraversalStep{GremlinTraversalContext: p}, nil
 	}
 	return nil, nil
 }
@@ -71,9 +71,9 @@ func (e *SocketsTraversalExtension) ParseStep(t traversal.Token, p traversal.Gre
 func (s *SocketsGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
 	switch tv := last.(type) {
 	case *traversal.GraphTraversalV:
-		return Sockets(tv), nil
+		return Sockets(s.StepContext, tv), nil
 	case *FlowTraversalStep:
-		return tv.Sockets(), nil
+		return tv.Sockets(s.StepContext), nil
 	}
 	return nil, traversal.ErrExecutionError
 }
@@ -85,7 +85,7 @@ func (s *SocketsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep
 
 // Context sockets step
 func (s *SocketsGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
-	return &s.context
+	return &s.GremlinTraversalContext
 }
 
 // SocketsTraversalStep connections step
@@ -96,7 +96,7 @@ type SocketsTraversalStep struct {
 }
 
 // PropertyValues returns a flow field value
-func (s *SocketsTraversalStep) PropertyValues(keys ...interface{}) *traversal.GraphTraversalValue {
+func (s *SocketsTraversalStep) PropertyValues(ctx traversal.StepContext, keys ...interface{}) *traversal.GraphTraversalValue {
 	if s.error != nil {
 		return traversal.NewGraphTraversalValueFromError(s.error)
 	}
@@ -117,7 +117,7 @@ func (s *SocketsTraversalStep) PropertyValues(keys ...interface{}) *traversal.Gr
 }
 
 // Has step
-func (s *SocketsTraversalStep) Has(params ...interface{}) *SocketsTraversalStep {
+func (s *SocketsTraversalStep) Has(ctx traversal.StepContext, params ...interface{}) *SocketsTraversalStep {
 	if s.error != nil {
 		return s
 	}

@@ -42,7 +42,7 @@ type MetricsTraversalExtension struct {
 
 // MetricsGremlinTraversalStep describes the Metrics gremlin traversal step
 type MetricsGremlinTraversalStep struct {
-	context traversal.GremlinTraversalContext
+	traversal.GremlinTraversalContext
 }
 
 // NewMetricsTraversalExtension returns a new graph traversal extension
@@ -65,7 +65,7 @@ func (e *MetricsTraversalExtension) ScanIdent(s string) (traversal.Token, bool) 
 func (e *MetricsTraversalExtension) ParseStep(t traversal.Token, p traversal.GremlinTraversalContext) (traversal.GremlinTraversalStep, error) {
 	switch t {
 	case e.MetricsToken:
-		return &MetricsGremlinTraversalStep{context: p}, nil
+		return &MetricsGremlinTraversalStep{GremlinTraversalContext: p}, nil
 	}
 	return nil, nil
 }
@@ -74,9 +74,9 @@ func (e *MetricsTraversalExtension) ParseStep(t traversal.Token, p traversal.Gre
 func (s *MetricsGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
 	switch tv := last.(type) {
 	case *traversal.GraphTraversalV:
-		return InterfaceMetrics(tv), nil
+		return InterfaceMetrics(s.StepContext, tv), nil
 	case *FlowTraversalStep:
-		return tv.FlowMetrics(), nil
+		return tv.FlowMetrics(s.StepContext), nil
 	}
 	return nil, traversal.ErrExecutionError
 }
@@ -88,7 +88,7 @@ func (s *MetricsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep
 
 // Context metrics step
 func (s *MetricsGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
-	return &s.context
+	return &s.GremlinTraversalContext
 }
 
 // MetricsTraversalStep traversal step metric interface counters
@@ -99,7 +99,7 @@ type MetricsTraversalStep struct {
 }
 
 // Sum aggregates integer values mapped by 'key' cross flows
-func (m *MetricsTraversalStep) Sum(keys ...interface{}) *traversal.GraphTraversalValue {
+func (m *MetricsTraversalStep) Sum(ctx traversal.StepContext, keys ...interface{}) *traversal.GraphTraversalValue {
 	if m.error != nil {
 		return traversal.NewGraphTraversalValueFromError(m.error)
 	}
@@ -206,7 +206,7 @@ func aggregateMetrics(m []common.Metric, start, last int64, sliceLength int64, r
 
 // Aggregates merges multiple metrics array into one by summing overlapping
 // metrics. It returns a unique array will all the aggregated metrics.
-func (m *MetricsTraversalStep) Aggregates(s ...interface{}) *MetricsTraversalStep {
+func (m *MetricsTraversalStep) Aggregates(ctx traversal.StepContext, s ...interface{}) *MetricsTraversalStep {
 	if m.error != nil {
 		return NewMetricsTraversalStepFromError(m.error)
 	}
@@ -268,12 +268,12 @@ func (m *MetricsTraversalStep) Error() error {
 }
 
 // Count step
-func (m *MetricsTraversalStep) Count(s ...interface{}) *traversal.GraphTraversalValue {
+func (m *MetricsTraversalStep) Count(ctx traversal.StepContext, s ...interface{}) *traversal.GraphTraversalValue {
 	return traversal.NewGraphTraversalValue(m.GraphTraversal, len(m.metrics))
 }
 
 // PropertyKeys returns metric fields
-func (m *MetricsTraversalStep) PropertyKeys(keys ...interface{}) *traversal.GraphTraversalValue {
+func (m *MetricsTraversalStep) PropertyKeys(ctx traversal.StepContext, keys ...interface{}) *traversal.GraphTraversalValue {
 	if m.error != nil {
 		return traversal.NewGraphTraversalValueFromError(m.error)
 	}

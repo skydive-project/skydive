@@ -53,13 +53,13 @@ type FlowTraversalExtension struct {
 	CaptureNodeToken traversal.Token
 	AggregatesToken  traversal.Token
 	BpfToken         traversal.Token
-	TableClient      *flow.TableClient
+	TableClient      flow.TableClient
 	Storage          storage.Storage
 }
 
 // FlowGremlinTraversalStep a flow Gremlin language step
 type FlowGremlinTraversalStep struct {
-	TableClient        *flow.TableClient
+	TableClient        flow.TableClient
 	Storage            storage.Storage
 	context            traversal.GremlinTraversalContext
 	hasParams          []interface{}
@@ -83,31 +83,31 @@ type FlowTraversalStep struct {
 
 // HopsGremlinTraversalStep hops step
 type HopsGremlinTraversalStep struct {
-	context traversal.GremlinTraversalContext
+	traversal.GremlinTraversalContext
 }
 
 // NodesGremlinTraversalStep nodes step
 type NodesGremlinTraversalStep struct {
-	context traversal.GremlinTraversalContext
+	traversal.GremlinTraversalContext
 }
 
 // CaptureNodeGremlinTraversalStep capture step
 type CaptureNodeGremlinTraversalStep struct {
-	context traversal.GremlinTraversalContext
+	traversal.GremlinTraversalContext
 }
 
 // AggregatesGremlinTraversalStep aggregates step
 type AggregatesGremlinTraversalStep struct {
-	context traversal.GremlinTraversalContext
+	traversal.GremlinTraversalContext
 }
 
 // BpfGremlinTraversalStep step
 type BpfGremlinTraversalStep struct {
-	context traversal.GremlinTraversalContext
+	traversal.GremlinTraversalContext
 }
 
 // Out returns the B node
-func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
+func (f *FlowTraversalStep) Out(ctx traversal.StepContext, s ...interface{}) *traversal.GraphTraversalV {
 	var nodes []*graph.Node
 
 	if f.error != nil {
@@ -119,10 +119,15 @@ func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
 
+	it := ctx.PaginationRange.Iterator()
+
 	f.GraphTraversal.RLock()
 	defer f.GraphTraversal.RUnlock()
 
 	for _, flow := range f.flowset.Flows {
+		if it.Done() {
+			break
+		}
 		if flow.Link.B != "" {
 			filter1, err := traversal.MapToFilter(m)
 			if err != nil {
@@ -140,7 +145,7 @@ func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
 			filter2 := filters.NewOrFilter(f1, f2)
 			matcher := graph.NewGraphElementFilter(filters.NewAndFilter(filter1, filter2))
 
-			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 				nodes = append(nodes, node)
 			}
 		}
@@ -150,7 +155,7 @@ func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
 }
 
 // In returns the A node
-func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
+func (f *FlowTraversalStep) In(ctx traversal.StepContext, s ...interface{}) *traversal.GraphTraversalV {
 	var nodes []*graph.Node
 
 	if f.error != nil {
@@ -162,10 +167,16 @@ func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
 
+	it := ctx.PaginationRange.Iterator()
+
 	f.GraphTraversal.RLock()
 	defer f.GraphTraversal.RUnlock()
 
 	for _, flow := range f.flowset.Flows {
+		if it.Done() {
+			break
+		}
+
 		if flow.Link.A != "" {
 			filter1, err := traversal.MapToFilter(m)
 			if err != nil {
@@ -183,7 +194,7 @@ func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
 			filter2 := filters.NewOrFilter(f1, f2)
 			matcher := graph.NewGraphElementFilter(filters.NewAndFilter(filter1, filter2))
 
-			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 				nodes = append(nodes, node)
 			}
 		}
@@ -193,7 +204,7 @@ func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
 }
 
 // Both returns A and B nodes
-func (f *FlowTraversalStep) Both(s ...interface{}) *traversal.GraphTraversalV {
+func (f *FlowTraversalStep) Both(ctx traversal.StepContext, s ...interface{}) *traversal.GraphTraversalV {
 	var nodes []*graph.Node
 
 	if f.error != nil {
@@ -205,10 +216,16 @@ func (f *FlowTraversalStep) Both(s ...interface{}) *traversal.GraphTraversalV {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
 
+	it := ctx.PaginationRange.Iterator()
+
 	f.GraphTraversal.RLock()
 	defer f.GraphTraversal.RUnlock()
 
 	for _, flow := range f.flowset.Flows {
+		if it.Done() {
+			break
+		}
+
 		if flow.Link.A != "" {
 			filter1, err := traversal.MapToFilter(m)
 			if err != nil {
@@ -227,7 +244,7 @@ func (f *FlowTraversalStep) Both(s ...interface{}) *traversal.GraphTraversalV {
 
 			matcher := graph.NewGraphElementFilter(filters.NewAndFilter(filter1, filter2))
 
-			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 				nodes = append(nodes, node)
 			}
 		}
@@ -247,7 +264,7 @@ func (f *FlowTraversalStep) Both(s ...interface{}) *traversal.GraphTraversalV {
 			filter2 := filters.NewOrFilter(f1, f2)
 			matcher := graph.NewGraphElementFilter(filters.NewAndFilter(filter1, filter2))
 
-			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 				nodes = append(nodes, node)
 			}
 		}
@@ -257,7 +274,7 @@ func (f *FlowTraversalStep) Both(s ...interface{}) *traversal.GraphTraversalV {
 }
 
 // Nodes returns A, B and the capture nodes
-func (f *FlowTraversalStep) Nodes(s ...interface{}) *traversal.GraphTraversalV {
+func (f *FlowTraversalStep) Nodes(ctx traversal.StepContext, s ...interface{}) *traversal.GraphTraversalV {
 	var nodes []*graph.Node
 
 	if f.error != nil {
@@ -269,10 +286,16 @@ func (f *FlowTraversalStep) Nodes(s ...interface{}) *traversal.GraphTraversalV {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
 
+	it := ctx.PaginationRange.Iterator()
+
 	f.GraphTraversal.RLock()
 	defer f.GraphTraversal.RUnlock()
 
 	for _, flow := range f.flowset.Flows {
+		if it.Done() {
+			break
+		}
+
 		if flow.NodeTID != "" && flow.NodeTID != "*" {
 			m["TID"] = flow.NodeTID
 
@@ -281,7 +304,7 @@ func (f *FlowTraversalStep) Nodes(s ...interface{}) *traversal.GraphTraversalV {
 				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 			}
 
-			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 				nodes = append(nodes, node)
 			}
 		}
@@ -295,7 +318,7 @@ func (f *FlowTraversalStep) Nodes(s ...interface{}) *traversal.GraphTraversalV {
 				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 			}
 
-			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 				nodes = append(nodes, node)
 			}
 		}
@@ -307,7 +330,7 @@ func (f *FlowTraversalStep) Nodes(s ...interface{}) *traversal.GraphTraversalV {
 				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 			}
 
-			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 				nodes = append(nodes, node)
 			}
 		}
@@ -316,7 +339,7 @@ func (f *FlowTraversalStep) Nodes(s ...interface{}) *traversal.GraphTraversalV {
 }
 
 // Hops returns all the capture nodes where the flow was seen
-func (f *FlowTraversalStep) Hops(s ...interface{}) *traversal.GraphTraversalV {
+func (f *FlowTraversalStep) Hops(ctx traversal.StepContext, s ...interface{}) *traversal.GraphTraversalV {
 	var nodes []*graph.Node
 
 	if f.error != nil {
@@ -328,10 +351,16 @@ func (f *FlowTraversalStep) Hops(s ...interface{}) *traversal.GraphTraversalV {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
 
+	it := ctx.PaginationRange.Iterator()
+
 	f.GraphTraversal.RLock()
 	defer f.GraphTraversal.RUnlock()
 
 	for _, fl := range f.flowset.Flows {
+		if it.Done() {
+			break
+		}
+
 		m["TID"] = fl.NodeTID
 
 		matcher, err := traversal.MapToMetadataFilter(m)
@@ -339,7 +368,7 @@ func (f *FlowTraversalStep) Hops(s ...interface{}) *traversal.GraphTraversalV {
 			return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 		}
 
-		if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
+		if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 			nodes = append(nodes, node)
 		}
 	}
@@ -348,7 +377,7 @@ func (f *FlowTraversalStep) Hops(s ...interface{}) *traversal.GraphTraversalV {
 }
 
 // Count step
-func (f *FlowTraversalStep) Count(s ...interface{}) *traversal.GraphTraversalValue {
+func (f *FlowTraversalStep) Count(ctx traversal.StepContext, s ...interface{}) *traversal.GraphTraversalValue {
 	if f.error != nil {
 		return traversal.NewGraphTraversalValueFromError(f.error)
 	}
@@ -401,7 +430,7 @@ func paramsToFilter(params ...interface{}) (*filters.Filter, error) {
 }
 
 // Has step
-func (f *FlowTraversalStep) Has(s ...interface{}) *FlowTraversalStep {
+func (f *FlowTraversalStep) Has(ctx traversal.StepContext, s ...interface{}) *FlowTraversalStep {
 	if f.error != nil {
 		return f
 	}
@@ -415,7 +444,7 @@ func (f *FlowTraversalStep) Has(s ...interface{}) *FlowTraversalStep {
 }
 
 // Dedup deduplicate step
-func (f *FlowTraversalStep) Dedup(keys ...interface{}) *FlowTraversalStep {
+func (f *FlowTraversalStep) Dedup(ctx traversal.StepContext, keys ...interface{}) *FlowTraversalStep {
 	if f.error != nil {
 		return f
 	}
@@ -437,7 +466,7 @@ func (f *FlowTraversalStep) Dedup(keys ...interface{}) *FlowTraversalStep {
 }
 
 // CaptureNode step
-func (f *FlowTraversalStep) CaptureNode(s ...interface{}) *traversal.GraphTraversalV {
+func (f *FlowTraversalStep) CaptureNode(ctx traversal.StepContext, s ...interface{}) *traversal.GraphTraversalV {
 	var nodes []*graph.Node
 
 	if f.error != nil {
@@ -449,10 +478,16 @@ func (f *FlowTraversalStep) CaptureNode(s ...interface{}) *traversal.GraphTraver
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
 
+	it := ctx.PaginationRange.Iterator()
+
 	f.GraphTraversal.RLock()
 	defer f.GraphTraversal.RUnlock()
 
 	for _, fl := range f.flowset.Flows {
+		if it.Done() {
+			break
+		}
+
 		m["TID"] = fl.NodeTID
 
 		matcher, err := traversal.MapToMetadataFilter(m)
@@ -460,7 +495,7 @@ func (f *FlowTraversalStep) CaptureNode(s ...interface{}) *traversal.GraphTraver
 			return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 		}
 
-		if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
+		if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 			nodes = append(nodes, node)
 		}
 	}
@@ -468,7 +503,7 @@ func (f *FlowTraversalStep) CaptureNode(s ...interface{}) *traversal.GraphTraver
 }
 
 // Sort step
-func (f *FlowTraversalStep) Sort(keys ...interface{}) *FlowTraversalStep {
+func (f *FlowTraversalStep) Sort(ctx traversal.StepContext, keys ...interface{}) *FlowTraversalStep {
 	if f.error != nil {
 		return f
 	}
@@ -487,7 +522,7 @@ func (f *FlowTraversalStep) Sort(keys ...interface{}) *FlowTraversalStep {
 }
 
 // Sum aggregates integer values mapped by 'key' cross flows
-func (f *FlowTraversalStep) Sum(keys ...interface{}) *traversal.GraphTraversalValue {
+func (f *FlowTraversalStep) Sum(ctx traversal.StepContext, keys ...interface{}) *traversal.GraphTraversalValue {
 	if f.error != nil {
 		return traversal.NewGraphTraversalValueFromError(f.error)
 	}
@@ -518,7 +553,7 @@ func (f *FlowTraversalStep) Sum(keys ...interface{}) *traversal.GraphTraversalVa
 }
 
 // PropertyValues returns a flow field value
-func (f *FlowTraversalStep) PropertyValues(keys ...interface{}) *traversal.GraphTraversalValue {
+func (f *FlowTraversalStep) PropertyValues(ctx traversal.StepContext, keys ...interface{}) *traversal.GraphTraversalValue {
 	if f.error != nil {
 		return traversal.NewGraphTraversalValueFromError(f.error)
 	}
@@ -536,7 +571,7 @@ func (f *FlowTraversalStep) PropertyValues(keys ...interface{}) *traversal.Graph
 }
 
 // PropertyKeys returns flow fields
-func (f *FlowTraversalStep) PropertyKeys(keys ...interface{}) *traversal.GraphTraversalValue {
+func (f *FlowTraversalStep) PropertyKeys(ctx traversal.StepContext, keys ...interface{}) *traversal.GraphTraversalValue {
 	if f.error != nil {
 		return traversal.NewGraphTraversalValueFromError(f.error)
 	}
@@ -552,7 +587,7 @@ func (f *FlowTraversalStep) PropertyKeys(keys ...interface{}) *traversal.GraphTr
 }
 
 // FlowMetrics returns flow metric counters
-func (f *FlowTraversalStep) FlowMetrics() *MetricsTraversalStep {
+func (f *FlowTraversalStep) FlowMetrics(ctx traversal.StepContext) *MetricsTraversalStep {
 	if f.error != nil {
 		return NewMetricsTraversalStepFromError(f.error)
 	}
@@ -606,7 +641,7 @@ func (f *FlowTraversalStep) FlowMetrics() *MetricsTraversalStep {
 
 // RawPackets searches for RawPacket based on previous flow filter from
 // either agents or datastore.
-func (f *FlowTraversalStep) RawPackets() *RawPacketsTraversalStep {
+func (f *FlowTraversalStep) RawPackets(ctx traversal.StepContext) *RawPacketsTraversalStep {
 	if f.error != nil {
 		return &RawPacketsTraversalStep{error: f.error}
 	}
@@ -663,7 +698,7 @@ func (f *FlowTraversalStep) RawPackets() *RawPacketsTraversalStep {
 }
 
 // Sockets returns the sockets at both sides of the specified flows
-func (f *FlowTraversalStep) Sockets(s ...interface{}) *SocketsTraversalStep {
+func (f *FlowTraversalStep) Sockets(ctx traversal.StepContext, s ...interface{}) *SocketsTraversalStep {
 	if f.error != nil {
 		return &SocketsTraversalStep{error: f.error}
 	}
@@ -724,7 +759,7 @@ func (f *FlowTraversalStep) Error() error {
 }
 
 // NewFlowTraversalExtension creates a new flow traversal extension for Gremlin parser
-func NewFlowTraversalExtension(client *flow.TableClient, storage storage.Storage) *FlowTraversalExtension {
+func NewFlowTraversalExtension(client flow.TableClient, storage storage.Storage) *FlowTraversalExtension {
 	return &FlowTraversalExtension{
 		FlowToken:        traversalFlowToken,
 		HopsToken:        traversalHopsToken,
@@ -762,15 +797,15 @@ func (e *FlowTraversalExtension) ParseStep(t traversal.Token, p traversal.Gremli
 	case e.FlowToken:
 		return &FlowGremlinTraversalStep{TableClient: e.TableClient, Storage: e.Storage, context: p, hasParams: p.Params}, nil
 	case e.HopsToken:
-		return &HopsGremlinTraversalStep{context: p}, nil
+		return &HopsGremlinTraversalStep{GremlinTraversalContext: p}, nil
 	case e.NodesToken:
-		return &NodesGremlinTraversalStep{context: p}, nil
+		return &NodesGremlinTraversalStep{GremlinTraversalContext: p}, nil
 	case e.CaptureNodeToken:
-		return &CaptureNodeGremlinTraversalStep{context: p}, nil
+		return &CaptureNodeGremlinTraversalStep{GremlinTraversalContext: p}, nil
 	case e.AggregatesToken:
-		return &AggregatesGremlinTraversalStep{context: p}, nil
+		return &AggregatesGremlinTraversalStep{GremlinTraversalContext: p}, nil
 	case e.BpfToken:
-		return &BpfGremlinTraversalStep{context: p}, nil
+		return &BpfGremlinTraversalStep{GremlinTraversalContext: p}, nil
 	}
 
 	return nil, nil
@@ -986,7 +1021,7 @@ func (s *HopsGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 	switch last.(type) {
 	case *FlowTraversalStep:
 		fts := last.(*FlowTraversalStep)
-		return fts.Hops(s.context.Params...), nil
+		return fts.Hops(s.StepContext, s.Params...), nil
 	}
 
 	return nil, traversal.ErrExecutionError
@@ -995,7 +1030,7 @@ func (s *HopsGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 // Reduce hops step
 func (s *HopsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
 	if hasStep, ok := next.(*traversal.GremlinTraversalStepHas); ok {
-		s.context.Params = hasStep.Params
+		s.Params = hasStep.Params
 		return s
 	}
 	return next
@@ -1003,7 +1038,7 @@ func (s *HopsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) t
 
 // Context hops step
 func (s *HopsGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
-	return &s.context
+	return &s.GremlinTraversalContext
 }
 
 // Exec Nodes step
@@ -1011,7 +1046,7 @@ func (s *NodesGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (tra
 	switch last.(type) {
 	case *FlowTraversalStep:
 		fts := last.(*FlowTraversalStep)
-		return fts.Nodes(s.context.Params...), nil
+		return fts.Nodes(s.StepContext, s.Params...), nil
 	}
 	return nil, traversal.ErrExecutionError
 }
@@ -1019,7 +1054,7 @@ func (s *NodesGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (tra
 // Reduce Nodes step
 func (s *NodesGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
 	if hasStep, ok := next.(*traversal.GremlinTraversalStepHas); ok {
-		s.context.Params = hasStep.Params
+		s.Params = hasStep.Params
 		return s
 	}
 	return next
@@ -1027,7 +1062,7 @@ func (s *NodesGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) 
 
 // Context Nodes step
 func (s *NodesGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
-	return &s.context
+	return &s.GremlinTraversalContext
 }
 
 // Exec Capture step
@@ -1035,7 +1070,7 @@ func (s *CaptureNodeGremlinTraversalStep) Exec(last traversal.GraphTraversalStep
 	switch last.(type) {
 	case *FlowTraversalStep:
 		fs := last.(*FlowTraversalStep)
-		return fs.CaptureNode(s.context.Params...), nil
+		return fs.CaptureNode(s.StepContext, s.Params...), nil
 	}
 
 	return nil, traversal.ErrExecutionError
@@ -1044,7 +1079,7 @@ func (s *CaptureNodeGremlinTraversalStep) Exec(last traversal.GraphTraversalStep
 // Reduce Capture step
 func (s *CaptureNodeGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
 	if hasStep, ok := next.(*traversal.GremlinTraversalStepHas); ok {
-		s.context.Params = hasStep.Params
+		s.Params = hasStep.Params
 		return s
 	}
 	return next
@@ -1052,7 +1087,7 @@ func (s *CaptureNodeGremlinTraversalStep) Reduce(next traversal.GremlinTraversal
 
 // Context step
 func (s *CaptureNodeGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
-	return &s.context
+	return &s.GremlinTraversalContext
 }
 
 // Exec Aggregates step
@@ -1060,7 +1095,7 @@ func (a *AggregatesGremlinTraversalStep) Exec(last traversal.GraphTraversalStep)
 	switch last.(type) {
 	case *MetricsTraversalStep:
 		mts := last.(*MetricsTraversalStep)
-		return mts.Aggregates(a.context.Params...), nil
+		return mts.Aggregates(a.StepContext, a.Params...), nil
 	}
 
 	return nil, traversal.ErrExecutionError
@@ -1073,7 +1108,7 @@ func (a *AggregatesGremlinTraversalStep) Reduce(next traversal.GremlinTraversalS
 
 // Context Aggregates step
 func (a *AggregatesGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
-	return &a.context
+	return &a.GremlinTraversalContext
 }
 
 // Exec BPF step
@@ -1081,7 +1116,7 @@ func (s *BpfGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trave
 	switch last.(type) {
 	case *RawPacketsTraversalStep:
 		rs := last.(*RawPacketsTraversalStep)
-		return rs.BPF(s.context.Params...), nil
+		return rs.BPF(s.StepContext, s.Params...), nil
 	}
 	return nil, traversal.ErrExecutionError
 }
@@ -1093,5 +1128,5 @@ func (s *BpfGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) tr
 
 // Context of BPF step
 func (s *BpfGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
-	return &s.context
+	return &s.GremlinTraversalContext
 }

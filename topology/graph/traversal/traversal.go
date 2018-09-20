@@ -47,8 +47,8 @@ type GraphTraversalStep interface {
 	Error() error
 }
 
-// GraphStepContext a step within a context
-type GraphStepContext struct {
+// StepContext a step within a context
+type StepContext struct {
 	PaginationRange *GraphTraversalRange
 }
 
@@ -65,11 +65,10 @@ type GraphTraversalRange [2]int64
 
 // GraphTraversal describes multiple step within a graph
 type GraphTraversal struct {
-	Graph              *graph.Graph
-	error              error
-	currentStepContext GraphStepContext
-	lockGraph          bool
-	as                 map[string]*GraphTraversalAs
+	Graph     *graph.Graph
+	error     error
+	lockGraph bool
+	as        map[string]*GraphTraversalAs
 }
 
 // GraphTraversalV traversal steps on nodes
@@ -310,7 +309,7 @@ type WithinGraphElementMatcher struct {
 	List []interface{}
 }
 
-// Within step
+// Within predicate
 func Within(s ...interface{}) *WithinGraphElementMatcher {
 	return &WithinGraphElementMatcher{List: s}
 }
@@ -320,7 +319,7 @@ type WithoutGraphElementMatcher struct {
 	list []interface{}
 }
 
-// Without step
+// Without predicate
 func Without(s ...interface{}) *WithoutGraphElementMatcher {
 	return &WithoutGraphElementMatcher{list: s}
 }
@@ -330,7 +329,7 @@ type NEGraphElementMatcher struct {
 	value interface{}
 }
 
-// Ne step
+// Ne predicate
 func Ne(s interface{}) *NEGraphElementMatcher {
 	return &NEGraphElementMatcher{value: s}
 }
@@ -340,7 +339,7 @@ type LTGraphElementMatcher struct {
 	value interface{}
 }
 
-// Lt step
+// Lt predicate
 func Lt(s interface{}) *LTGraphElementMatcher {
 	return &LTGraphElementMatcher{value: s}
 }
@@ -350,7 +349,7 @@ type GTGraphElementMatcher struct {
 	value interface{}
 }
 
-// Gt step
+// Gt predicate
 func Gt(s interface{}) *GTGraphElementMatcher {
 	return &GTGraphElementMatcher{value: s}
 }
@@ -360,7 +359,7 @@ type LTEGraphElementMatcher struct {
 	value interface{}
 }
 
-// Lte step
+// Lte predicate
 func Lte(s interface{}) *LTEGraphElementMatcher {
 	return &LTEGraphElementMatcher{value: s}
 }
@@ -376,7 +375,7 @@ type GTEGraphElementMatcher struct {
 	value interface{}
 }
 
-// Gte step
+// Gte predicate
 func Gte(s interface{}) *GTEGraphElementMatcher {
 	return &GTEGraphElementMatcher{value: s}
 }
@@ -387,7 +386,7 @@ type InsideGraphElementMatcher struct {
 	to   interface{}
 }
 
-// Inside step
+// Inside predicate
 func Inside(from, to interface{}) *InsideGraphElementMatcher {
 	return &InsideGraphElementMatcher{from: from, to: to}
 }
@@ -398,7 +397,7 @@ type OutsideGraphElementMatcher struct {
 	to   interface{}
 }
 
-// Outside step
+// Outside predicate
 func Outside(from, to interface{}) *OutsideGraphElementMatcher {
 	return &OutsideGraphElementMatcher{from: from, to: to}
 }
@@ -409,7 +408,7 @@ type BetweenGraphElementMatcher struct {
 	to   interface{}
 }
 
-// Between step
+// Between predicate
 func Between(from interface{}, to interface{}) *BetweenGraphElementMatcher {
 	return &BetweenGraphElementMatcher{from: from, to: to}
 }
@@ -419,7 +418,7 @@ type RegexGraphElementMatcher struct {
 	regex string
 }
 
-// Regex step
+// Regex predicate
 func Regex(regex string) *RegexGraphElementMatcher {
 	return &RegexGraphElementMatcher{regex: regex}
 }
@@ -429,7 +428,7 @@ type IPV4RangeGraphElementMatcher struct {
 	value interface{}
 }
 
-// IPV4Range step
+// IPV4Range predicate
 func IPV4Range(s interface{}) *IPV4RangeGraphElementMatcher {
 	return &IPV4RangeGraphElementMatcher{value: s}
 }
@@ -446,10 +445,6 @@ func NewGraphTraversal(g *graph.Graph, lockGraph bool) *GraphTraversal {
 		lockGraph: lockGraph,
 		as:        make(map[string]*GraphTraversalAs),
 	}
-}
-
-func (t *GraphTraversal) CurrentStepContext() GraphStepContext {
-	return t.currentStepContext
 }
 
 // RLock reads lock the graph
@@ -498,11 +493,11 @@ func parseTimeContext(param string) (time.Time, error) {
 	return time.Time{}, errors.New("Time must be in RFC1123 or in Go Duration format")
 }
 
-func (t *GraphTraversal) getPaginationRange() (filter *filters.Range) {
-	if t.currentStepContext.PaginationRange != nil {
+func (t *GraphTraversal) getPaginationRange(ctx *StepContext) (filter *filters.Range) {
+	if ctx.PaginationRange != nil {
 		filter = &filters.Range{
-			From: t.currentStepContext.PaginationRange[0],
-			To:   t.currentStepContext.PaginationRange[1],
+			From: ctx.PaginationRange[0],
+			To:   ctx.PaginationRange[1],
 		}
 	}
 	return
@@ -540,7 +535,7 @@ func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
 }
 
 // V step : [node ID]
-func (t *GraphTraversal) V(s ...interface{}) *GraphTraversalV {
+func (t *GraphTraversal) V(ctx StepContext, s ...interface{}) *GraphTraversalV {
 	var nodes []*graph.Node
 	var matcher graph.GraphElementMatcher
 	var err error
@@ -572,9 +567,9 @@ func (t *GraphTraversal) V(s ...interface{}) *GraphTraversalV {
 		nodes = t.Graph.GetNodes(matcher)
 	}
 
-	if t.currentStepContext.PaginationRange != nil {
+	if ctx.PaginationRange != nil {
 		var nodeRange []*graph.Node
-		it := t.currentStepContext.PaginationRange.Iterator()
+		it := ctx.PaginationRange.Iterator()
 		for _, node := range nodes {
 			if it.Done() {
 				break
@@ -632,7 +627,7 @@ func (tv *GraphTraversalV) GetNodes() (nodes []*graph.Node) {
 }
 
 // PropertyValues returns at this step, the values of each metadata selected by the first key
-func (tv *GraphTraversalV) PropertyValues(k ...interface{}) *GraphTraversalValue {
+func (tv *GraphTraversalV) PropertyValues(ctx StepContext, k ...interface{}) *GraphTraversalValue {
 	if tv.error != nil {
 		return NewGraphTraversalValueFromError(tv.error)
 	}
@@ -660,7 +655,7 @@ func (tv *GraphTraversalV) PropertyValues(k ...interface{}) *GraphTraversalValue
 }
 
 // PropertyKeys returns at this step, all the metadata keys of each metadata
-func (tv *GraphTraversalV) PropertyKeys(keys ...interface{}) *GraphTraversalValue {
+func (tv *GraphTraversalV) PropertyKeys(ctx StepContext, keys ...interface{}) *GraphTraversalValue {
 	if tv.error != nil {
 		return NewGraphTraversalValueFromError(tv.error)
 	}
@@ -689,7 +684,7 @@ func (tv *GraphTraversalV) PropertyKeys(keys ...interface{}) *GraphTraversalValu
 
 // Sum step : key
 // returns the sum of the metadata values of the first argument key
-func (tv *GraphTraversalV) Sum(keys ...interface{}) *GraphTraversalValue {
+func (tv *GraphTraversalV) Sum(ctx StepContext, keys ...interface{}) *GraphTraversalValue {
 	if tv.error != nil {
 		return NewGraphTraversalValueFromError(tv.error)
 	}
@@ -723,7 +718,7 @@ func (tv *GraphTraversalV) Sum(keys ...interface{}) *GraphTraversalValue {
 }
 
 // As stores the result of the previous step using the given key
-func (tv *GraphTraversalV) As(keys ...interface{}) *GraphTraversalV {
+func (tv *GraphTraversalV) As(ctx StepContext, keys ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
 	}
@@ -746,7 +741,7 @@ func (tv *GraphTraversalV) G() *GraphTraversal {
 	return tv.GraphTraversal
 }
 
-func (tv *GraphTraversalV) Select(keys ...interface{}) *GraphTraversalV {
+func (tv *GraphTraversalV) Select(ctx StepContext, keys ...interface{}) *GraphTraversalV {
 	if len(keys) == 0 {
 		return &GraphTraversalV{error: errors.New("Select requires at least one key")}
 	}
@@ -770,7 +765,7 @@ func (tv *GraphTraversalV) Select(keys ...interface{}) *GraphTraversalV {
 }
 
 // E step : [edge ID]
-func (t *GraphTraversal) E(s ...interface{}) *GraphTraversalE {
+func (t *GraphTraversal) E(ctx StepContext, s ...interface{}) *GraphTraversalE {
 	var edges []*graph.Edge
 	var matcher graph.GraphElementMatcher
 	var err error
@@ -802,9 +797,9 @@ func (t *GraphTraversal) E(s ...interface{}) *GraphTraversalE {
 		edges = t.Graph.GetEdges(matcher)
 	}
 
-	if t.currentStepContext.PaginationRange != nil {
+	if ctx.PaginationRange != nil {
 		var edgeRange []*graph.Edge
-		it := t.currentStepContext.PaginationRange.Iterator()
+		it := ctx.PaginationRange.Iterator()
 		for _, edge := range edges {
 			if it.Done() {
 				break
@@ -883,7 +878,7 @@ func ParseSortParameter(keys ...interface{}) (order common.SortOrder, sortBy str
 }
 
 // Sort step
-func (tv *GraphTraversalV) Sort(keys ...interface{}) *GraphTraversalV {
+func (tv *GraphTraversalV) Sort(ctx StepContext, keys ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
 	}
@@ -903,7 +898,7 @@ func (tv *GraphTraversalV) Sort(keys ...interface{}) *GraphTraversalV {
 }
 
 // Dedup step : deduplicate output
-func (tv *GraphTraversalV) Dedup(s ...interface{}) *GraphTraversalV {
+func (tv *GraphTraversalV) Dedup(ctx StepContext, s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
 	}
@@ -920,7 +915,7 @@ func (tv *GraphTraversalV) Dedup(s ...interface{}) *GraphTraversalV {
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
-	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+	it := ctx.PaginationRange.Iterator()
 
 	visited := make(map[interface{}]bool)
 	var kvisited interface{}
@@ -1002,7 +997,7 @@ func (sp *GraphTraversalShortestPath) GetNodes() []*graph.Node {
 }
 
 // ShortestPathTo step
-func (tv *GraphTraversalV) ShortestPathTo(m graph.Metadata, e graph.Metadata) *GraphTraversalShortestPath {
+func (tv *GraphTraversalV) ShortestPathTo(ctx StepContext, m graph.Metadata, e graph.Metadata) *GraphTraversalShortestPath {
 	if tv.error != nil {
 		return &GraphTraversalShortestPath{error: tv.error}
 	}
@@ -1025,7 +1020,7 @@ func (tv *GraphTraversalV) ShortestPathTo(m graph.Metadata, e graph.Metadata) *G
 }
 
 // Has step
-func (tv *GraphTraversalV) Has(s ...interface{}) *GraphTraversalV {
+func (tv *GraphTraversalV) Has(ctx StepContext, s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
 	}
@@ -1049,7 +1044,7 @@ func (tv *GraphTraversalV) Has(s ...interface{}) *GraphTraversalV {
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
-	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+	it := ctx.PaginationRange.Iterator()
 
 	tv.GraphTraversal.RLock()
 	defer tv.GraphTraversal.RUnlock()
@@ -1067,19 +1062,19 @@ func (tv *GraphTraversalV) Has(s ...interface{}) *GraphTraversalV {
 }
 
 // HasKey step
-func (tv *GraphTraversalV) HasKey(s string) *GraphTraversalV {
-	return tv.Has(s)
+func (tv *GraphTraversalV) HasKey(ctx StepContext, s string) *GraphTraversalV {
+	return tv.Has(ctx, s)
 }
 
 // HasNot step
-func (tv *GraphTraversalV) HasNot(s string) *GraphTraversalV {
+func (tv *GraphTraversalV) HasNot(ctx StepContext, s string) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
 	}
 
 	filter := filters.NewNullFilter(s)
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
-	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+	it := ctx.PaginationRange.Iterator()
 
 	tv.GraphTraversal.RLock()
 	defer tv.GraphTraversal.RUnlock()
@@ -1097,7 +1092,7 @@ func (tv *GraphTraversalV) HasNot(s string) *GraphTraversalV {
 }
 
 // Both step
-func (tv *GraphTraversalV) Both(s ...interface{}) *GraphTraversalV {
+func (tv *GraphTraversalV) Both(ctx StepContext, s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
 	}
@@ -1108,7 +1103,7 @@ func (tv *GraphTraversalV) Both(s ...interface{}) *GraphTraversalV {
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
-	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+	it := ctx.PaginationRange.Iterator()
 
 	tv.GraphTraversal.RLock()
 	defer tv.GraphTraversal.RUnlock()
@@ -1137,7 +1132,7 @@ nodeloop:
 }
 
 // Count step
-func (tv *GraphTraversalV) Count(s ...interface{}) *GraphTraversalValue {
+func (tv *GraphTraversalV) Count(ctx StepContext, s ...interface{}) *GraphTraversalValue {
 	if tv.error != nil {
 		return NewGraphTraversalValueFromError(tv.error)
 	}
@@ -1146,7 +1141,7 @@ func (tv *GraphTraversalV) Count(s ...interface{}) *GraphTraversalValue {
 }
 
 // Range step
-func (tv *GraphTraversalV) Range(s ...interface{}) *GraphTraversalV {
+func (tv *GraphTraversalV) Range(ctx StepContext, s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
 	}
@@ -1174,12 +1169,12 @@ func (tv *GraphTraversalV) Range(s ...interface{}) *GraphTraversalV {
 }
 
 // Limit step
-func (tv *GraphTraversalV) Limit(s ...interface{}) *GraphTraversalV {
-	return tv.Range(int64(0), s[0])
+func (tv *GraphTraversalV) Limit(ctx StepContext, s ...interface{}) *GraphTraversalV {
+	return tv.Range(ctx, int64(0), s[0])
 }
 
 // Out step : out of a node step
-func (tv *GraphTraversalV) Out(s ...interface{}) *GraphTraversalV {
+func (tv *GraphTraversalV) Out(ctx StepContext, s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
 	}
@@ -1190,7 +1185,7 @@ func (tv *GraphTraversalV) Out(s ...interface{}) *GraphTraversalV {
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
-	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+	it := ctx.PaginationRange.Iterator()
 
 	tv.GraphTraversal.RLock()
 	defer tv.GraphTraversal.RUnlock()
@@ -1210,7 +1205,7 @@ nodeloop:
 }
 
 // OutE step : out of an edge
-func (tv *GraphTraversalV) OutE(s ...interface{}) *GraphTraversalE {
+func (tv *GraphTraversalV) OutE(ctx StepContext, s ...interface{}) *GraphTraversalE {
 	if tv.error != nil {
 		return &GraphTraversalE{error: tv.error}
 	}
@@ -1221,7 +1216,7 @@ func (tv *GraphTraversalV) OutE(s ...interface{}) *GraphTraversalE {
 	}
 
 	nte := &GraphTraversalE{GraphTraversal: tv.GraphTraversal, edges: []*graph.Edge{}}
-	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+	it := ctx.PaginationRange.Iterator()
 
 	tv.GraphTraversal.RLock()
 	defer tv.GraphTraversal.RUnlock()
@@ -1232,7 +1227,7 @@ nodeloop:
 			if e.GetParent() == n.ID {
 				if it.Done() {
 					break nodeloop
-				} else {
+				} else if it.Next() {
 					nte.edges = append(nte.edges, e)
 				}
 			}
@@ -1243,7 +1238,7 @@ nodeloop:
 }
 
 // BothE : both are edges
-func (tv *GraphTraversalV) BothE(s ...interface{}) *GraphTraversalE {
+func (tv *GraphTraversalV) BothE(ctx StepContext, s ...interface{}) *GraphTraversalE {
 	if tv.error != nil {
 		return &GraphTraversalE{error: tv.error}
 	}
@@ -1254,7 +1249,7 @@ func (tv *GraphTraversalV) BothE(s ...interface{}) *GraphTraversalE {
 	}
 
 	nte := &GraphTraversalE{GraphTraversal: tv.GraphTraversal, edges: []*graph.Edge{}}
-	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+	it := ctx.PaginationRange.Iterator()
 
 	tv.GraphTraversal.RLock()
 	defer tv.GraphTraversal.RUnlock()
@@ -1274,7 +1269,7 @@ nodeloop:
 }
 
 // In node step
-func (tv *GraphTraversalV) In(s ...interface{}) *GraphTraversalV {
+func (tv *GraphTraversalV) In(ctx StepContext, s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
 	}
@@ -1285,7 +1280,7 @@ func (tv *GraphTraversalV) In(s ...interface{}) *GraphTraversalV {
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
-	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+	it := ctx.PaginationRange.Iterator()
 
 	tv.GraphTraversal.RLock()
 	defer tv.GraphTraversal.RUnlock()
@@ -1295,7 +1290,7 @@ nodeloop:
 		for _, parent := range tv.GraphTraversal.Graph.LookupParents(n, metadata, nil) {
 			if it.Done() {
 				break nodeloop
-			} else {
+			} else if it.Next() {
 				ntv.nodes = append(ntv.nodes, parent)
 			}
 		}
@@ -1305,7 +1300,7 @@ nodeloop:
 }
 
 // InE step of an node
-func (tv *GraphTraversalV) InE(s ...interface{}) *GraphTraversalE {
+func (tv *GraphTraversalV) InE(ctx StepContext, s ...interface{}) *GraphTraversalE {
 	if tv.error != nil {
 		return &GraphTraversalE{error: tv.error}
 	}
@@ -1316,7 +1311,7 @@ func (tv *GraphTraversalV) InE(s ...interface{}) *GraphTraversalE {
 	}
 
 	nte := &GraphTraversalE{GraphTraversal: tv.GraphTraversal, edges: []*graph.Edge{}}
-	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+	it := ctx.PaginationRange.Iterator()
 
 	tv.GraphTraversal.RLock()
 	defer tv.GraphTraversal.RUnlock()
@@ -1338,7 +1333,7 @@ nodeloop:
 }
 
 // SubGraph step, node/edge out
-func (tv *GraphTraversalV) SubGraph(s ...interface{}) *GraphTraversal {
+func (tv *GraphTraversalV) SubGraph(ctx StepContext, s ...interface{}) *GraphTraversal {
 	if tv.error != nil {
 		return &GraphTraversal{error: tv.error}
 	}
@@ -1373,7 +1368,7 @@ func (tv *GraphTraversalV) SubGraph(s ...interface{}) *GraphTraversal {
 }
 
 // SubGraph step, node/edge out
-func (sp *GraphTraversalShortestPath) SubGraph(s ...interface{}) *GraphTraversal {
+func (sp *GraphTraversalShortestPath) SubGraph(ctx StepContext, s ...interface{}) *GraphTraversal {
 	if sp.error != nil {
 		return &GraphTraversal{error: sp.error}
 	}
@@ -1409,7 +1404,7 @@ func (sp *GraphTraversalShortestPath) SubGraph(s ...interface{}) *GraphTraversal
 }
 
 // Count step
-func (te *GraphTraversalE) Count(s ...interface{}) *GraphTraversalValue {
+func (te *GraphTraversalE) Count(ctx StepContext, s ...interface{}) *GraphTraversalValue {
 	if te.error != nil {
 		return NewGraphTraversalValueFromError(te.error)
 	}
@@ -1418,7 +1413,7 @@ func (te *GraphTraversalE) Count(s ...interface{}) *GraphTraversalValue {
 }
 
 // Range step
-func (te *GraphTraversalE) Range(s ...interface{}) *GraphTraversalE {
+func (te *GraphTraversalE) Range(ctx StepContext, s ...interface{}) *GraphTraversalE {
 	if te.error != nil {
 		return te
 	}
@@ -1445,16 +1440,16 @@ func (te *GraphTraversalE) Range(s ...interface{}) *GraphTraversalE {
 }
 
 // Limit step
-func (te *GraphTraversalE) Limit(s ...interface{}) *GraphTraversalE {
+func (te *GraphTraversalE) Limit(ctx StepContext, s ...interface{}) *GraphTraversalE {
 	if te.error != nil {
 		return te
 	}
 
-	return te.Range(int64(0), s[0])
+	return te.Range(ctx, int64(0), s[0])
 }
 
 // Dedup step : deduplicate
-func (te *GraphTraversalE) Dedup(keys ...interface{}) *GraphTraversalE {
+func (te *GraphTraversalE) Dedup(ctx StepContext, keys ...interface{}) *GraphTraversalE {
 	if te.error != nil {
 		return te
 	}
@@ -1492,7 +1487,7 @@ func (te *GraphTraversalE) Dedup(keys ...interface{}) *GraphTraversalE {
 }
 
 // Has step
-func (te *GraphTraversalE) Has(s ...interface{}) *GraphTraversalE {
+func (te *GraphTraversalE) Has(ctx StepContext, s ...interface{}) *GraphTraversalE {
 	if te.error != nil {
 		return te
 	}
@@ -1516,7 +1511,7 @@ func (te *GraphTraversalE) Has(s ...interface{}) *GraphTraversalE {
 	}
 
 	nte := &GraphTraversalE{GraphTraversal: te.GraphTraversal, edges: []*graph.Edge{}}
-	it := te.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+	it := ctx.PaginationRange.Iterator()
 
 	te.GraphTraversal.RLock()
 	defer te.GraphTraversal.RUnlock()
@@ -1534,19 +1529,19 @@ func (te *GraphTraversalE) Has(s ...interface{}) *GraphTraversalE {
 }
 
 // HasKey step
-func (te *GraphTraversalE) HasKey(s string) *GraphTraversalE {
-	return te.Has(s)
+func (te *GraphTraversalE) HasKey(ctx StepContext, s string) *GraphTraversalE {
+	return te.Has(ctx, s)
 }
 
 // HasNot step
-func (te *GraphTraversalE) HasNot(s string) *GraphTraversalE {
+func (te *GraphTraversalE) HasNot(ctx StepContext, s string) *GraphTraversalE {
 	if te.error != nil {
 		return te
 	}
 
 	filter := filters.NewNullFilter(s)
 	nte := &GraphTraversalE{GraphTraversal: te.GraphTraversal, edges: []*graph.Edge{}}
-	it := te.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+	it := ctx.PaginationRange.Iterator()
 
 	te.GraphTraversal.RLock()
 	defer te.GraphTraversal.RUnlock()
@@ -1564,7 +1559,7 @@ func (te *GraphTraversalE) HasNot(s string) *GraphTraversalE {
 }
 
 // InV step, node in
-func (te *GraphTraversalE) InV(s ...interface{}) *GraphTraversalV {
+func (te *GraphTraversalE) InV(ctx StepContext, s ...interface{}) *GraphTraversalV {
 	if te.error != nil {
 		return &GraphTraversalV{error: te.error}
 	}
@@ -1575,7 +1570,7 @@ func (te *GraphTraversalE) InV(s ...interface{}) *GraphTraversalV {
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: te.GraphTraversal, nodes: []*graph.Node{}}
-	it := te.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+	it := ctx.PaginationRange.Iterator()
 
 	te.GraphTraversal.RLock()
 	defer te.GraphTraversal.RUnlock()
@@ -1595,7 +1590,7 @@ func (te *GraphTraversalE) InV(s ...interface{}) *GraphTraversalV {
 }
 
 // OutV step, node out
-func (te *GraphTraversalE) OutV(s ...interface{}) *GraphTraversalV {
+func (te *GraphTraversalE) OutV(ctx StepContext, s ...interface{}) *GraphTraversalV {
 	if te.error != nil {
 		return &GraphTraversalV{error: te.error}
 	}
@@ -1606,7 +1601,7 @@ func (te *GraphTraversalE) OutV(s ...interface{}) *GraphTraversalV {
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: te.GraphTraversal, nodes: []*graph.Node{}}
-	it := te.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+	it := ctx.PaginationRange.Iterator()
 
 	te.GraphTraversal.RLock()
 	defer te.GraphTraversal.RUnlock()
@@ -1626,7 +1621,7 @@ func (te *GraphTraversalE) OutV(s ...interface{}) *GraphTraversalV {
 }
 
 // BothV step, nodes in/out
-func (te *GraphTraversalE) BothV(s ...interface{}) *GraphTraversalV {
+func (te *GraphTraversalE) BothV(ctx StepContext, s ...interface{}) *GraphTraversalV {
 	if te.error != nil {
 		return &GraphTraversalV{error: te.error}
 	}
@@ -1637,7 +1632,7 @@ func (te *GraphTraversalE) BothV(s ...interface{}) *GraphTraversalV {
 	}
 
 	ntv := NewGraphTraversalV(te.GraphTraversal, []*graph.Node{})
-	it := te.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+	it := ctx.PaginationRange.Iterator()
 
 	te.GraphTraversal.RLock()
 	defer te.GraphTraversal.RUnlock()
@@ -1664,7 +1659,7 @@ func (te *GraphTraversalE) BothV(s ...interface{}) *GraphTraversalV {
 }
 
 // SubGraph step, node/edge out
-func (te *GraphTraversalE) SubGraph(s ...interface{}) *GraphTraversal {
+func (te *GraphTraversalE) SubGraph(ctx StepContext, s ...interface{}) *GraphTraversal {
 	if te.error != nil {
 		return &GraphTraversal{error: te.error}
 	}
@@ -1745,7 +1740,7 @@ func (t *GraphTraversalValue) Error() error {
 }
 
 // Dedup step : deduplicate
-func (t *GraphTraversalValue) Dedup(keys ...interface{}) *GraphTraversalValue {
+func (t *GraphTraversalValue) Dedup(ctx StepContext, keys ...interface{}) *GraphTraversalValue {
 	if t.error != nil {
 		return t
 	}

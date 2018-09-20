@@ -32,12 +32,17 @@ import (
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
-// TableClient describes a mechanism to Query a flow table via flowSet in JSON
-type TableClient struct {
+type TableClient interface {
+	LookupFlows(flowSearchQuery filters.SearchQuery) (*FlowSet, error)
+	LookupFlowsByNodes(hnmap topology.HostNodeTIDMap, flowSearchQuery filters.SearchQuery) (*FlowSet, error)
+}
+
+// WSTableClient describes a mechanism to Query a flow table via flowSet in JSON
+type WSTableClient struct {
 	structServer *ws.StructServer
 }
 
-func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearchQuery filters.SearchQuery) {
+func (f *WSTableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearchQuery filters.SearchQuery) {
 	obj, _ := proto.Marshal(&flowSearchQuery)
 	tq := TableQuery{Type: "SearchQuery", Obj: obj}
 	msg := ws.NewStructMessage(Namespace, "TableQuery", tq)
@@ -75,7 +80,7 @@ func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearch
 }
 
 // LookupFlows query flow table based on a filter search query
-func (f *TableClient) LookupFlows(flowSearchQuery filters.SearchQuery) (*FlowSet, error) {
+func (f *WSTableClient) LookupFlows(flowSearchQuery filters.SearchQuery) (*FlowSet, error) {
 	speakers := f.structServer.GetSpeakersByType(common.AgentService)
 	ch := make(chan *FlowSet, len(speakers))
 
@@ -103,7 +108,7 @@ func (f *TableClient) LookupFlows(flowSearchQuery filters.SearchQuery) (*FlowSet
 }
 
 // LookupFlowsByNodes query flow table based on multiple nodes
-func (f *TableClient) LookupFlowsByNodes(hnmap topology.HostNodeTIDMap, flowSearchQuery filters.SearchQuery) (*FlowSet, error) {
+func (f *WSTableClient) LookupFlowsByNodes(hnmap topology.HostNodeTIDMap, flowSearchQuery filters.SearchQuery) (*FlowSet, error) {
 	ch := make(chan *FlowSet, len(hnmap))
 
 	// We conserve the original filter to reuse it for each host
@@ -132,7 +137,7 @@ func (f *TableClient) LookupFlowsByNodes(hnmap topology.HostNodeTIDMap, flowSear
 	return flowset, nil
 }
 
-// NewTableClient creates a new table client based on websocket
-func NewTableClient(w *ws.StructServer) *TableClient {
-	return &TableClient{structServer: w}
+// NewWSTableClient creates a new table client based on websocket
+func NewWSTableClient(w *ws.StructServer) *WSTableClient {
+	return &WSTableClient{structServer: w}
 }

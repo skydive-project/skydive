@@ -32,13 +32,13 @@ const (
 	Namespace = "Flow"
 )
 
-// TableServer describes a mechanism to Query a flow table via Websocket
-type TableServer struct {
+// WSTableServer describes a mechanism to Query a flow table via Websocket
+type WSTableServer struct {
 	TableAllocator *TableAllocator
 }
 
 // OnTableQuery event
-func (s *TableServer) OnTableQuery(c ws.Speaker, msg *ws.StructMessage) {
+func (s *WSTableServer) OnTableQuery(c ws.Speaker, msg *ws.StructMessage) {
 	var query TableQuery
 	if err := msg.UnmarshalObj(&query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode search flow message %v", msg)
@@ -51,16 +51,16 @@ func (s *TableServer) OnTableQuery(c ws.Speaker, msg *ws.StructMessage) {
 }
 
 // OnStructMessage TableQuery
-func (s *TableServer) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
+func (s *WSTableServer) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	switch msg.Type {
 	case "TableQuery":
 		s.OnTableQuery(c, msg)
 	}
 }
 
-// NewServer creates a new flow table query server based on websocket
-func NewServer(allocator *TableAllocator, pool ws.StructSpeakerPool) *TableServer {
-	s := &TableServer{
+// NewWSTableServer creates a new flow table query server based on websocket
+func NewWSTableServer(allocator *TableAllocator, pool ws.StructSpeakerPool) *WSTableServer {
+	s := &WSTableServer{
 		TableAllocator: allocator,
 	}
 	pool.AddStructMessageHandler(s, []string{Namespace})

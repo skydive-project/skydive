@@ -304,7 +304,7 @@ func (ft *Table) onQuery(query *TableQuery) *TableReply {
 	case "SearchQuery":
 		var fsq filters.SearchQuery
 		if err := proto.Unmarshal(query.Obj, &fsq); err != nil {
-			logging.GetLogger().Errorf("Unable to decode the flow search query: %s", err.Error())
+			logging.GetLogger().Errorf("Unable to decode the flow search query: %s", err)
 			break
 		}
 
@@ -406,6 +406,11 @@ func (ft *Table) processFlow(fl *Flow) {
 
 		fl.XXX_state = prev.XXX_state
 	}
+}
+
+// State returns the state of the flow table, stopped, running...
+func (ft *Table) State() int64 {
+	return atomic.LoadInt64(&ft.state)
 }
 
 // Run background jobs, like update/expire entries event
