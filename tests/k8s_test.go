@@ -31,7 +31,6 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	g "github.com/skydive-project/skydive/gremlin"
-	"github.com/skydive-project/skydive/tests/helper"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
 )
@@ -46,14 +45,14 @@ const (
 	objName  = "skydive-test"
 )
 
-func setupFromConfigFile(mngr, file string) []helper.Cmd {
-	return []helper.Cmd{
+func setupFromConfigFile(mngr, file string) []Cmd {
+	return []Cmd{
 		{"kubectl create -f " + k8sConfigFile(mngr, file), true},
 	}
 }
 
-func tearDownFromConfigFile(mngr, file string) []helper.Cmd {
-	return []helper.Cmd{
+func tearDownFromConfigFile(mngr, file string) []Cmd {
+	return []Cmd{
 		{"kubectl delete --grace-period=0 --force -f " + k8sConfigFile(mngr, file), false},
 		{"sleep 5", true},
 	}
@@ -138,7 +137,7 @@ func checkEdgeService(t *testing.T, c *CheckContext, from, to *graph.Node, edgeA
 	return checkEdge(t, c, from, to, "service", edgeArgs...)
 }
 
-func testRunner(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, checks []CheckFunction) {
+func testRunner(t *testing.T, setupCmds, tearDownCmds []Cmd, checks []CheckFunction) {
 	test := &Test{
 		mode:         Replay,
 		retries:      1,
@@ -150,7 +149,7 @@ func testRunner(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, checks []Che
 	RunTest(t, test)
 }
 
-func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, mngr, typ, name string, fields ...string) {
+func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []Cmd, mngr, typ, name string, fields ...string) {
 	testRunner(t, setupCmds, tearDownCmds, []CheckFunction{
 		func(c *CheckContext) error {
 			var values []interface{}
@@ -291,10 +290,10 @@ func TestK8sIngressScenario1(t *testing.T) {
 func TestHelloNodeScenario(t *testing.T) {
 	testRunner(
 		t,
-		[]helper.Cmd{
+		[]Cmd{
 			{"kubectl run hello-node --image=hello-node:v1 --port=8080", true},
 		},
-		[]helper.Cmd{
+		[]Cmd{
 			{"kubectl delete --grace-period=0 --force deploy hello-node", false},
 		},
 		[]CheckFunction{

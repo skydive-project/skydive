@@ -32,7 +32,6 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	es "github.com/skydive-project/skydive/storage/elasticsearch"
-	"github.com/skydive-project/skydive/tests/helper"
 )
 
 func delTestIndex(name string) error {
@@ -71,7 +70,7 @@ func getClient(t *testing.T, indices []es.Index, cfg es.Config) (*es.Client, err
 }
 
 func TestRollingSimple(t *testing.T) {
-	if helper.TopologyBackend != "elasticsearch" && helper.FlowBackend != "elasticsearch" {
+	if topologyBackend != "elasticsearch" && flowBackend != "elasticsearch" {
 		t.Skip("Elasticsearch is used neither for topology nor flows")
 	}
 

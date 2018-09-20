@@ -37,7 +37,6 @@ import (
 	"github.com/skydive-project/skydive/config"
 	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/tests/helper"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	ws "github.com/skydive-project/skydive/websocket"
@@ -45,11 +44,11 @@ import (
 
 func TestBridgeOVS(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"ovs-vsctl add-br br-testbovs1", true},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"ovs-vsctl del-br br-testbovs1", true},
 		},
 
@@ -83,7 +82,7 @@ func TestBridgeOVS(t *testing.T) {
 
 func TestPatchOVS(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"ovs-vsctl add-br br-testpaovs1", true},
 			{"ovs-vsctl add-br br-testpaovs2", true},
 			{"ovs-vsctl add-port br-testpaovs1 patch-br-testpaovs2 -- set interface patch-br-testpaovs2 type=patch", true},
@@ -92,7 +91,7 @@ func TestPatchOVS(t *testing.T) {
 			{"ovs-vsctl set interface patch-br-testpaovs1 option:peer=patch-br-testpaovs2", true},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"ovs-vsctl del-br br-testpaovs1", true},
 			{"ovs-vsctl del-br br-testpaovs2", true},
 		},
@@ -132,12 +131,12 @@ func TestPatchOVS(t *testing.T) {
 
 func TestInterfaceOVS(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"ovs-vsctl add-br br-test1", true},
 			{"ovs-vsctl add-port br-test1 intf1 -- set interface intf1 type=internal", true},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"ovs-vsctl del-br br-test1", true},
 		},
 
@@ -175,11 +174,11 @@ func TestInterfaceOVS(t *testing.T) {
 
 func TestVeth(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"ip l add vm1-veth0 type veth peer name vm1-veth1", true},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"ip link del vm1-veth0", true},
 		},
 
@@ -205,13 +204,13 @@ func TestVeth(t *testing.T) {
 
 func TestBridge(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"brctl addbr br-test", true},
 			{"ip tuntap add mode tap dev intf1", true},
 			{"brctl addif br-test intf1", true},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"brctl delbr br-test", true},
 			{"ip link del intf1", true},
 		},
@@ -240,13 +239,13 @@ func TestBridge(t *testing.T) {
 
 func TestMacNameUpdate(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"ip l add vm1-veth0 type veth peer name vm1-veth1", true},
 			{"ip l set vm1-veth1 name vm1-veth2", true},
 			{"ip l set vm1-veth2 address 00:00:00:00:00:aa", true},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"ip link del vm1-veth0", true},
 		},
 
@@ -279,11 +278,11 @@ func TestMacNameUpdate(t *testing.T) {
 
 func TestNameSpace(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"ip netns add ns1", true},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"ip netns del ns1", true},
 		},
 
@@ -311,12 +310,12 @@ func TestNameSpace(t *testing.T) {
 
 func TestNameSpaceVeth(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"ip netns add ns1", true},
 			{"ip l add vm1-veth0 type veth peer name vm1-veth1 netns ns1", true},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"ip link del vm1-veth0", true},
 			{"ip netns del ns1", true},
 		},
@@ -345,14 +344,14 @@ func TestNameSpaceVeth(t *testing.T) {
 
 func TestNameSpaceOVSInterface(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"ip netns add ns1", true},
 			{"ovs-vsctl add-br br-test1", true},
 			{"ovs-vsctl add-port br-test1 intf1 -- set interface intf1 type=internal", true},
 			{"ip l set intf1 netns ns1", true},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"ovs-vsctl del-br br-test1", true},
 			{"ip netns del ns1", true},
 		},
@@ -392,13 +391,13 @@ func TestInterfaceUpdate(t *testing.T) {
 	start := time.Now()
 
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"ip netns add iu", true},
 			{"sleep 5", false},
 			{"ip netns exec iu ip link set lo up", true},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"ip netns del iu", true},
 		},
 
@@ -443,21 +442,21 @@ func TestInterfaceUpdate(t *testing.T) {
 
 func TestInterfaceMetrics(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"ip netns add im", true},
 			{"ip netns exec im ip link set lo up", true},
 			{"sleep 2", false},
 		},
 
 		setupFunction: func(c *TestContext) error {
-			helper.ExecCmds(t,
-				helper.Cmd{Cmd: "ip netns exec im ping -c 15 127.0.0.1", Check: true},
-				helper.Cmd{Cmd: "sleep 5", Check: false},
+			execCmds(t,
+				Cmd{Cmd: "ip netns exec im ping -c 15 127.0.0.1", Check: true},
+				Cmd{Cmd: "sleep 5", Check: false},
 			)
 			return nil
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"ip netns del im", true},
 		},
 
@@ -520,7 +519,7 @@ func TestInterfaceMetrics(t *testing.T) {
 
 func TestOVSOwnershipLink(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"ovs-vsctl add-br br-owner", true},
 			{"ovs-vsctl add-port br-owner patch-br-owner -- set interface patch-br-owner type=patch", true},
 			{"ovs-vsctl add-port br-owner gre-br-owner -- set interface gre-br-owner type=gre", true},
@@ -529,7 +528,7 @@ func TestOVSOwnershipLink(t *testing.T) {
 			{"ovs-vsctl add-port br-owner intf-owner -- set interface intf-owner type=internal", true},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"ovs-vsctl del-br br-owner", true},
 		},
 
@@ -688,7 +687,7 @@ func TestNodeRuleUpdate(t *testing.T) {
 	}
 
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"ovs-vsctl add-br br-umd", true},
 		},
 
@@ -701,7 +700,7 @@ func TestNodeRuleUpdate(t *testing.T) {
 			return nil
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"ovs-vsctl del-br br-umd", true},
 		},
 
@@ -753,7 +752,7 @@ func TestAgentMetadata(t *testing.T) {
 //TestRouteTable tests route table update
 func TestRouteTable(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"ovs-vsctl add-br br-rt", true},
 			{"ip netns add rt-vm1", true},
 			{"ip link add rt-vm1-eth0 type veth peer name rt-eth-src netns rt-vm1", true},
@@ -769,7 +768,7 @@ func TestRouteTable(t *testing.T) {
 			{"ovs-vsctl add-port br-rt rt-vm2-eth0", true},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"ovs-vsctl del-br br-rt", true},
 			{"ip link del rt-vm1-eth0", true},
 			{"ip netns del rt-vm1", true},
@@ -791,9 +790,9 @@ func TestRouteTable(t *testing.T) {
 				routingTable := node.Metadata()["RoutingTable"].([]interface{})
 				noOfRoutingTable := len(routingTable)
 
-				helper.ExecCmds(t,
-					helper.Cmd{Cmd: "ip netns exec rt-vm1 ip route add 124.65.92.0/24 via 124.65.91.42 table 2", Check: true},
-					helper.Cmd{Cmd: "sleep 5", Check: false},
+				execCmds(t,
+					Cmd{Cmd: "ip netns exec rt-vm1 ip route add 124.65.92.0/24 via 124.65.91.42 table 2", Check: true},
+					Cmd{Cmd: "sleep 5", Check: false},
 				)
 
 				node, err = c.gh.GetNode(prefix.V().Has("IPV4", "124.65.91.42/24"))
@@ -804,9 +803,9 @@ func TestRouteTable(t *testing.T) {
 				routingTable = node.Metadata()["RoutingTable"].([]interface{})
 				newNoOfRoutingTable := len(routingTable)
 
-				helper.ExecCmds(t,
-					helper.Cmd{Cmd: "ip netns exec rt-vm1 ip route del 124.65.92.0/24 via 124.65.91.42 table 2", Check: true},
-					helper.Cmd{Cmd: "sleep 5", Check: false},
+				execCmds(t,
+					Cmd{Cmd: "ip netns exec rt-vm1 ip route del 124.65.92.0/24 via 124.65.91.42 table 2", Check: true},
+					Cmd{Cmd: "sleep 5", Check: false},
 				)
 				if newNoOfRoutingTable <= noOfRoutingTable {
 					return fmt.Errorf("Failed to add Route")
@@ -821,7 +820,7 @@ func TestRouteTable(t *testing.T) {
 //TestRouteTableHistory tests route table update available in history
 func TestRouteTableHistory(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"ovs-vsctl add-br br-rth", true},
 			{"ip netns add rth-vm1", true},
 			{"ip link add rth-vm1-eth0 type veth peer name rth-eth-src netns rth-vm1", true},
@@ -839,7 +838,7 @@ func TestRouteTableHistory(t *testing.T) {
 			{"ip netns exec rth-vm1 ip route add 124.65.75.0/24 via 124.65.75.42 table 2", true},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"ovs-vsctl del-br br-rth", true},
 			{"ip link del rth-vm1-eth0", true},
 			{"ip netns del rth-vm1", true},
@@ -877,11 +876,11 @@ func TestRouteTableHistory(t *testing.T) {
 
 func TestInterfaceFeatures(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"brctl addbr br-features", true},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"brctl delbr br-features", true},
 		},
 

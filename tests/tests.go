@@ -23,10 +23,15 @@
 package tests
 
 import (
+	"bytes"
+	"encoding/json"
+	"flag"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -37,14 +42,19 @@ import (
 	gclient "github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/flow"
 	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/tests/helper"
 )
 
 const (
+	// OneShot is used for tests that do not support history.
 	OneShot = iota
+	// Replay should be used for tests that can be replayed:
+	// checks are executed in live. In case of success, the timestamps are recorded.
+	// Checks are then replayed against the history with the recorded timestamps.
 	Replay
 )
 
@@ -116,6 +126,15 @@ etcd:
     - {{.EtcdServer}}
 `
 
+// Cmd describes a command line to execute and whether it result code should be checked
+type Cmd struct {
+	Cmd   string
+	Check bool
+}
+
+type helperParams map[string]interface{}
+
+// TestContext holds the context (client, captures, injections, timestamp, ...) of a test
 type TestContext struct {
 	gh         *gclient.GremlinQueryHelper
 	client     *shttp.CrudClient
@@ -125,6 +144,7 @@ type TestContext struct {
 	data       map[string]interface{}
 }
 
+// TestCapture describes a capture to be created in tests
 type TestCapture struct {
 	gremlin    g.QueryString
 	kind       string
@@ -133,6 +153,7 @@ type TestCapture struct {
 	port       int
 }
 
+// TestInjection describes a packet injection to be created in tests
 type TestInjection struct {
 	intf      g.QueryString
 	from      g.QueryString
@@ -148,8 +169,10 @@ type TestInjection struct {
 	payload   string
 }
 
+// CheckFunction describes a function that actually does a check and returns an error if needed
 type CheckFunction func(c *CheckContext) error
 
+// CheckContext describes the context (gremlin prefix, timestamps... )of one check of a test
 type CheckContext struct {
 	*TestContext
 	gremlin     g.QueryString
@@ -158,11 +181,18 @@ type CheckContext struct {
 	time        time.Time
 }
 
+// Test describes a test. It contains:
+// - the list of commands and functions to be executed at startup
+// - the list of commands and functions to be executed at cleanup
+// - the list of captures to be created
+// - the list of packet injections to be created
+// - the number of retries
+// - a list of checks
 type Test struct {
-	setupCmds        []helper.Cmd
+	setupCmds        []Cmd
 	setupFunction    func(c *TestContext) error
 	settleFunction   func(c *TestContext) error
-	tearDownCmds     []helper.Cmd
+	tearDownCmds     []Cmd
 	tearDownFunction func(c *TestContext) error
 	captures         []TestCapture
 	injections       []TestInjection
@@ -173,13 +203,114 @@ type Test struct {
 	checkContexts    []*CheckContext
 }
 
+var (
+	agentTestsOnly    bool
+	analyzerListen    string
+	analyzerProbes    string
+	etcdServer        string
+	flowBackend       string
+	graphOutputFormat string
+	noOFTests         bool
+	standalone        bool
+	topologyBackend   string
+)
+
+func initConfig(conf string, params ...helperParams) error {
+	f, err := ioutil.TempFile("", "skydive_agent")
+	if err != nil {
+		return err
+	}
+
+	if len(params) == 0 {
+		params = []helperParams{make(helperParams)}
+	}
+
+	sa, err := common.ServiceAddressFromString(analyzerListen)
+	if err != nil {
+		return err
+	}
+	params[0]["AnalyzerAddr"] = sa.Addr
+	params[0]["AnalyzerPort"] = sa.Port
+	params[0]["AgentAddr"] = sa.Addr
+	params[0]["AgentPort"] = sa.Port - 1
+
+	if testing.Verbose() {
+		params[0]["LogLevel"] = "DEBUG"
+	} else {
+		params[0]["LogLevel"] = "INFO"
+	}
+	if etcdServer != "" {
+		params[0]["EmbeddedEtcd"] = "false"
+		params[0]["EtcdServer"] = etcdServer
+	} else {
+		params[0]["EmbeddedEtcd"] = "true"
+		params[0]["EtcdServer"] = "http://localhost:12379"
+	}
+	if flowBackend != "" {
+		params[0]["FlowBackend"] = flowBackend
+	}
+	if flowBackend == "orientdb" || topologyBackend == "orientdb" {
+		orientDBPassword := os.Getenv("ORIENTDB_ROOT_PASSWORD")
+		if orientDBPassword == "" {
+			orientDBPassword = "root"
+		}
+		params[0]["OrientDBRootPassword"] = orientDBPassword
+	}
+	if topologyBackend != "" {
+		params[0]["TopologyBackend"] = topologyBackend
+	}
+	if analyzerProbes != "" {
+		params[0]["AnalyzerProbes"] = strings.Split(analyzerProbes, ",")
+	}
+
+	tmpl, err := template.New("config").Parse(conf)
+	if err != nil {
+		return err
+	}
+	buff := bytes.NewBufferString("")
+	tmpl.Execute(buff, params[0])
+
+	f.Write(buff.Bytes())
+	f.Close()
+
+	fmt.Printf("Config: %s\n", string(buff.Bytes()))
+
+	return config.InitConfig("file", []string{f.Name()})
+}
+
+func execCmds(t *testing.T, cmds ...Cmd) (e error) {
+	for _, cmd := range cmds {
+		args := strings.Split(cmd.Cmd, " ")
+		command := exec.Command(args[0], args[1:]...)
+		logging.GetLogger().Debugf("Executing command %+v", args)
+		stdouterr, err := command.CombinedOutput()
+		if stdouterr != nil {
+			logging.GetLogger().Debugf("Command returned %s", string(stdouterr))
+		}
+		if err != nil {
+			if cmd.Check {
+				t.Fatal("cmd : ("+cmd.Cmd+") returned ", err.Error(), string(stdouterr))
+			}
+			e = err
+		}
+	}
+	return
+}
+
+func flowsToString(flows []*flow.Flow) string {
+	s := fmt.Sprintf("%d flows:\n", len(flows))
+	b, _ := json.MarshalIndent(flows, "", "\t")
+	s += string(b) + "\n"
+	return s
+}
+
 func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 	gremlin := g.G
 	if !at.IsZero() {
 		gremlin = gremlin.Context(at)
 	}
 
-	switch helper.GraphOutputFormat {
+	switch graphOutputFormat {
 	case "ascii":
 		header := make(http.Header)
 		header.Set("Accept", "vnd.graphviz")
@@ -249,19 +380,29 @@ func (c *TestContext) getAllFlows(t *testing.T, at time.Time) string {
 		return ""
 	}
 
-	return helper.FlowsToString(flows)
+	return flowsToString(flows)
 }
 
 func (c *TestContext) getSystemState(t *testing.T) {
-	stateCmds := []helper.Cmd{
+	stateCmds := []Cmd{
 		{"ip addr", false},
 		{"ip netns list", false},
 		{"ovs-vsctl show", false},
 		{"brctl show", false},
 	}
-	helper.ExecCmds(t, stateCmds...)
+	execCmds(t, stateCmds...)
 }
 
+// RunTest executes a test. It executes the following steps:
+// - create all the captures
+// - execute all the setup commands
+// - checks the created captures are active
+// - checks the topology has settled
+// - execute all the setup functions
+// - create all the packet injections
+// - run all the tests in live mode
+// - execute the cleanup functions and commands
+// - replay the tests against the history with the recorded timestamps
 func RunTest(t *testing.T, test *Test) {
 	client, err := gclient.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
 	if err != nil {
@@ -290,9 +431,9 @@ func RunTest(t *testing.T, test *Test) {
 
 	t.Log("Executing setup commands")
 	if test.preCleanup {
-		helper.ExecCmds(t, test.tearDownCmds...)
+		execCmds(t, test.tearDownCmds...)
 	}
-	helper.ExecCmds(t, test.setupCmds...)
+	execCmds(t, test.setupCmds...)
 
 	context := &TestContext{
 		gh:       gclient.NewGremlinQueryHelper(&shttp.AuthenticationOpts{}),
@@ -342,7 +483,7 @@ func RunTest(t *testing.T, test *Test) {
 
 	if err != nil {
 		g := context.getWholeGraph(t, time.Now())
-		helper.ExecCmds(t, test.tearDownCmds...)
+		execCmds(t, test.tearDownCmds...)
 		context.getSystemState(t)
 		t.Fatalf("Failed to setup captures: %s, graph: %s", err, g)
 	}
@@ -363,7 +504,7 @@ func RunTest(t *testing.T, test *Test) {
 		if err != nil {
 			g := context.getWholeGraph(t, settleTime)
 			f := context.getAllFlows(t, settleTime)
-			helper.ExecCmds(t, test.tearDownCmds...)
+			execCmds(t, test.tearDownCmds...)
 			context.getSystemState(t)
 			t.Errorf("Test failed to settle: %s, graph: %s, flows: %s", err, g, f)
 			return
@@ -380,7 +521,7 @@ func RunTest(t *testing.T, test *Test) {
 		if err = test.setupFunction(context); err != nil {
 			g := context.getWholeGraph(t, time.Time{})
 			f := context.getAllFlows(t, time.Time{})
-			helper.ExecCmds(t, test.tearDownCmds...)
+			execCmds(t, test.tearDownCmds...)
 			context.getSystemState(t)
 			t.Fatalf("Failed to setup test: %s, graph: %s, flows: %s", err, g, f)
 		}
@@ -426,7 +567,7 @@ func RunTest(t *testing.T, test *Test) {
 	if err != nil {
 		g := context.getWholeGraph(t, time.Time{})
 		f := context.getAllFlows(t, time.Time{})
-		helper.ExecCmds(t, test.tearDownCmds...)
+		execCmds(t, test.tearDownCmds...)
 		context.getSystemState(t)
 		t.Fatalf("Failed to setup test: %s, graph: %s, flows: %s", err, g, f)
 	}
@@ -475,7 +616,7 @@ func RunTest(t *testing.T, test *Test) {
 		if err := pingRequest(t, context, packet); err != nil {
 			g := context.getWholeGraph(t, time.Time{})
 			f := context.getAllFlows(t, time.Time{})
-			helper.ExecCmds(t, test.tearDownCmds...)
+			execCmds(t, test.tearDownCmds...)
 			context.getSystemState(t)
 			t.Errorf("Packet injection failed: %s, graph: %s, flows: %s", err, g, f)
 			return
@@ -509,7 +650,7 @@ func RunTest(t *testing.T, test *Test) {
 		if err != nil {
 			g := checkContext.getWholeGraph(t, time.Time{})
 			f := checkContext.getAllFlows(t, time.Time{})
-			helper.ExecCmds(t, test.tearDownCmds...)
+			execCmds(t, test.tearDownCmds...)
 			context.getSystemState(t)
 			t.Errorf("Test failed: %s, graph: %s, flows: %s", err, g, f)
 			return
@@ -519,16 +660,16 @@ func RunTest(t *testing.T, test *Test) {
 	t.Log("Running tear down commands")
 	if test.tearDownFunction != nil {
 		if err = test.tearDownFunction(context); err != nil {
-			helper.ExecCmds(t, test.tearDownCmds...)
+			execCmds(t, test.tearDownCmds...)
 			context.getSystemState(t)
 			t.Fatalf("Fail to tear test down: %s", err)
 		}
 	}
 
-	helper.ExecCmds(t, test.tearDownCmds...)
+	execCmds(t, test.tearDownCmds...)
 
-	if test.mode == Replay && helper.AgentTestsOnly == false {
-		if helper.TopologyBackend != "memory" {
+	if test.mode == Replay && agentTestsOnly == false {
+		if topologyBackend != "memory" {
 			for i, check := range test.checks {
 				checkContext := test.checkContexts[i]
 				checkContext.gremlin = checkContext.gremlin.Context(checkContext.time)
@@ -617,10 +758,21 @@ func delaySec(sec int, err ...error) error {
 }
 
 func init() {
+	flag.BoolVar(&standalone, "standalone", false, "Start an analyzer and an agent")
+	flag.BoolVar(&agentTestsOnly, "agenttestsonly", false, "run agent test only")
+	flag.BoolVar(&noOFTests, "nooftests", false, "dont't run OpenFlow tests")
+	flag.StringVar(&etcdServer, "etcd.server", "", "Etcd server")
+	flag.StringVar(&topologyBackend, "analyzer.topology.backend", "memory", "Specify the graph storage backend used")
+	flag.StringVar(&graphOutputFormat, "graph.output", "", "Graph output format (json, dot or ascii)")
+	flag.StringVar(&flowBackend, "analyzer.flow.backend", "", "Specify the flow storage backend used")
+	flag.StringVar(&analyzerListen, "analyzer.listen", "0.0.0.0:64500", "Specify the analyzer listen address")
+	flag.StringVar(&analyzerProbes, "analyzer.topology.probes", "", "Specify the analyzer probes to enable")
+	flag.Parse()
+
 	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 100
 
-	if helper.Standalone {
-		if err := helper.InitConfig(testConfig); err != nil {
+	if standalone {
+		if err := initConfig(testConfig); err != nil {
 			panic(fmt.Sprintf("Failed to initialize config: %s", err))
 		}
 

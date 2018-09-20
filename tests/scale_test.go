@@ -42,7 +42,6 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/tests/helper"
 	"github.com/skydive-project/skydive/websocket"
 )
 
@@ -150,7 +149,7 @@ func _checkICMPv4Flows(gh *gclient.GremlinQueryHelper, nodeSel g.QueryString, fl
 		}
 
 		if !cmp(len(flows), flowExpected) {
-			return fmt.Errorf("Should get %d ICMPv4 flow with prefix(%s) got %s", flowExpected, prefix, helper.FlowsToString(flows))
+			return fmt.Errorf("Should get %d ICMPv4 flow with prefix(%s) got %s", flowExpected, prefix, flowsToString(flows))
 		}
 
 		return nil
@@ -186,7 +185,7 @@ func checkIPerfFlows(gh *gclient.GremlinQueryHelper, flowExpected int) error {
 			if flowsTCP, err = gh.GetFlows(g.G.Flows().Has("LayersPath", "Ethernet/IPv4/TCP").Sort()); err != nil {
 				return err
 			}
-			return fmt.Errorf("Should get %d iperf(tcp/5001) flows, got %s", flowExpected, helper.FlowsToString(flowsTCP))
+			return fmt.Errorf("Should get %d iperf(tcp/5001) flows, got %s", flowExpected, flowsToString(flowsTCP))
 		}
 
 		return nil
@@ -207,7 +206,7 @@ func checkIPerfFlows(gh *gclient.GremlinQueryHelper, flowExpected int) error {
 			if flowsTCP, err = gh.GetFlows(g.G.At("-1s", 300).Flows().Has("LayersPath", "Ethernet/IPv4/TCP").Sort()); err != nil {
 				return err
 			}
-			return fmt.Errorf("Should get %d iperf(tcp/5001) flow from datastore got %s", flowExpected, helper.FlowsToString(flowsTCP))
+			return fmt.Errorf("Should get %d iperf(tcp/5001) flow from datastore got %s", flowExpected, flowsToString(flowsTCP))
 		}
 
 		maps, err := gh.GetSockets(g.G.At("-1s", 300).Flows().Has("LayersPath", "Ethernet/IPv4/TCP").Sockets())
@@ -274,10 +273,10 @@ func genICMPv4(t *testing.T, scale, src string, dst string, count int) error {
 	// generate some packet and wait for seeing them, to be sure that the capture is started
 	var seen int
 	pingFnc := func() error {
-		setupCmds := []helper.Cmd{
+		setupCmds := []Cmd{
 			{fmt.Sprintf("%s ping %s %s -c 1", scale, src, dst), false},
 		}
-		if err := helper.ExecCmds(t, setupCmds...); err == nil {
+		if err := execCmds(t, setupCmds...); err == nil {
 			seen++
 			if seen == count {
 				return nil
@@ -292,16 +291,16 @@ func TestScaleHA(t *testing.T) {
 	gopath := os.Getenv("GOPATH")
 	scale := gopath + "/src/github.com/skydive-project/skydive/scripts/scale.sh"
 
-	setupCmds := []helper.Cmd{
+	setupCmds := []Cmd{
 		{fmt.Sprintf("%s start 2 2 2", scale), true},
 		{"sleep 30", false},
 	}
-	helper.ExecCmds(t, setupCmds...)
+	execCmds(t, setupCmds...)
 
-	tearDownCmds := []helper.Cmd{
+	tearDownCmds := []Cmd{
 		{fmt.Sprintf("%s stop 2 4 2", scale), false},
 	}
-	defer helper.ExecCmds(t, tearDownCmds...)
+	defer execCmds(t, tearDownCmds...)
 
 	// Load Agent-1 as default config for our client
 	config.InitConfig("file", []string{"/tmp/skydive-scale/agent-1.yml"})
@@ -319,13 +318,13 @@ func TestScaleHA(t *testing.T) {
 
 	// expected 2 for because of 1 incoming and 1 outgoer
 	if err = common.Retry(func() error { return checkPeers(client, 2, common.RunningState) }, 5, time.Second); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// test if we have our 2 hosts
 	if err = checkHostNodes(client, gh, 2); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
@@ -333,61 +332,61 @@ func TestScaleHA(t *testing.T) {
 	capture := types.NewCapture(g.G.V().Has("Type", "netns", "Name", "vm1").Out().Has("Name", "eth0").String(), "")
 	capture.Type = "pcap"
 	if err = client.Create("capture", capture); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// check that we have 2 captures, one per vm1
 	if err = checkCaptures(gh, 2); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// generate some icmpv4
 	if err = genICMPv4(t, scale, "agent-1-vm1", "agent-2-vm1", 30); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// 30 flows
 	node1 := g.G.V().Has("Name", "agent-1").Out().Has("Type", "netns", "Name", "vm1").Out().Has("Name", "eth0")
 	if err = checkICMPv4Flows(gh, node1, 30, func(seen, exp int) bool { return seen == exp }, checkBoth); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 	node2 := g.G.V().Has("Name", "agent-2").Out().Has("Type", "netns", "Name", "vm1").Out().Has("Name", "eth0")
 	if err = checkICMPv4Flows(gh, node2, 30, func(seen, exp int) bool { return seen == exp }, checkBoth); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// increase the agent number
-	setupCmds = []helper.Cmd{
+	setupCmds = []Cmd{
 		{fmt.Sprintf("%s start 2 4 2", scale), false},
 	}
-	helper.ExecCmds(t, setupCmds...)
+	execCmds(t, setupCmds...)
 
 	// test if we have now 4 hosts
 	if err = checkHostNodes(client, gh, 4); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// check that we have 4 captures, one per vm1
 	if err = checkCaptures(gh, 4); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// kill the last agent
-	setupCmds = []helper.Cmd{
+	setupCmds = []Cmd{
 		{fmt.Sprintf("%s stop-agent 4", scale), false},
 	}
-	helper.ExecCmds(t, setupCmds...)
+	execCmds(t, setupCmds...)
 
 	// test if we have now 3 hosts
 	if err = checkHostNodes(client, gh, 3); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
@@ -400,93 +399,93 @@ func TestScaleHA(t *testing.T) {
 
 	// test if we have still 3 hosts
 	if err = checkHostNodes(client, gh, 3); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// destroy the second analyzer
-	setupCmds = []helper.Cmd{
+	setupCmds = []Cmd{
 		{fmt.Sprintf("%s stop-analyzer 2", scale), false},
 		{"sleep 5", false},
 	}
-	helper.ExecCmds(t, setupCmds...)
+	execCmds(t, setupCmds...)
 
 	if err = checkPeers(client, 0, common.RunningState); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// test if the remaining analyzer have a correct graph
 	if err = checkHostNodes(client, gh, 3); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// generate more icmp traffic
 	if err = genICMPv4(t, scale, "agent-3-vm1", "agent-1-vm1", 30); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	node3 := g.G.V().Has("Name", "agent-3").Out().Has("Type", "netns", "Name", "vm1").Out().Has("Name", "eth0")
 	if err = checkICMPv4Flows(gh, node3, 30, func(seen, exp int) bool { return seen == exp }, checkBoth); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// iperf test  10 sec, 1Mbits/s
-	setupCmds = []helper.Cmd{
+	setupCmds = []Cmd{
 		{fmt.Sprintf("%s iperf agent-3-vm1 agent-1-vm1", scale), false},
 	}
-	helper.ExecCmds(t, setupCmds...)
+	execCmds(t, setupCmds...)
 	if err = checkIPerfFlows(gh, 2); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// delete the capture to check that all captures will be delete at the agent side
 	client.Delete("capture", capture.ID())
 	if err = checkCaptures(gh, 0); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// restore the second analyzer
-	setupCmds = []helper.Cmd{
+	setupCmds = []Cmd{
 		{fmt.Sprintf("%s start 2 3 2", scale), false},
 		{"sleep 5", false},
 	}
-	helper.ExecCmds(t, setupCmds...)
+	execCmds(t, setupCmds...)
 
 	if err = common.Retry(func() error {
 		return checkPeers(client, 2, common.RunningState)
 	}, 15, time.Second); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// delete an agent
-	setupCmds = []helper.Cmd{
+	setupCmds = []Cmd{
 		{fmt.Sprintf("%s stop-agent 1", scale), false},
 	}
-	helper.ExecCmds(t, setupCmds...)
+	execCmds(t, setupCmds...)
 
 	// test if we have now 2 hosts
 	if err = checkHostNodes(client, gh, 2); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// restart the agent 1 to check that flows are still forwarded to analyzer
-	setupCmds = []helper.Cmd{
+	setupCmds = []Cmd{
 		{fmt.Sprintf("%s start 2 3 2", scale), false},
 		{"sleep 5", false},
 	}
-	helper.ExecCmds(t, setupCmds...)
+	execCmds(t, setupCmds...)
 
 	// test if we have now 2 hosts
 	if err = checkHostNodes(client, gh, 3); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
@@ -499,24 +498,24 @@ func TestScaleHA(t *testing.T) {
 
 	// check that we have 3 captures, one per vm1
 	if err = checkCaptures(gh, 3); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	if err = genICMPv4(t, scale, "agent-1-vm1", "agent-2-vm1", 30); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// check that we have 30 flow in live as the oldest has been deleted by agent stop
 	if err = checkICMPv4Flows(gh, node1, 30, func(seen, exp int) bool { return seen == exp }, checkLive); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// check that we have > 30 flow in histo the ones before stop and the ones just generated
 	if err = checkICMPv4Flows(gh, node1, 40, func(seen, exp int) bool { return seen >= exp }, checkHisto); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
+		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 }

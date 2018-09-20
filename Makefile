@@ -122,10 +122,6 @@ ifeq ($(WITH_NEUTRON), true)
   BUILD_TAGS+=neutron
 endif
 
-ifeq ($(WITH_SELENIUM), true)
-  BUILD_TAGS+=selenium
-endif
-
 ifeq ($(WITH_CDD), true)
   BUILD_TAGS+=cdd
 endif
@@ -466,7 +462,7 @@ gometalinter: $(LINTER_COMMANDS)
 .PHONY: lint
 lint: gometalinter
 	@echo "+ $@"
-	@gometalinter --disable=gotype --vendor -e '.*\.pb.go' --skip=statics/... --deadline 10m --sort=path ./... --json | tee lint.json || true
+	gometalinter --disable=gotype ${GOMETALINTER_FLAGS} --vendor -e '.*\.pb.go' -e '.*\._easyjson.go' -e 'statics/bindata.go' --skip=statics/... --deadline 10m --sort=path ./... --json | tee lint.json || true
 
 .PHONY: genlocalfiles
 genlocalfiles: .proto .bindata .easyjson

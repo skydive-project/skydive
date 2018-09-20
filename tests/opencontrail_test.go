@@ -5,18 +5,16 @@ package tests
 import (
 	"fmt"
 	"testing"
-
-	"github.com/skydive-project/skydive/tests/helper"
 )
 
 func TestOpenContrailTopology(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"contrail-create-network.py default-domain:default-project:vn1", true},
 			{"netns-daemon-start -n default-domain:default-project:vn1 vm1", true},
 		},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			// We should delete the net
 			{"netns-daemon-stop vm1", true},
 		},
@@ -44,11 +42,11 @@ func TestOpenContrailTopology(t *testing.T) {
 
 func TestOpenContrailRoutingTable(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"contrail-create-network.py default-domain:default-project:vn1", true},
 			{"netns-daemon-start -n default-domain:default-project:vn1 vm1", true},
 		},
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			// We should delete the net
 			{"netns-daemon-stop vm1", true},
 		},

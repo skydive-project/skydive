@@ -29,12 +29,11 @@ import (
 	"testing"
 
 	g "github.com/skydive-project/skydive/gremlin"
-	"github.com/skydive-project/skydive/tests/helper"
 )
 
 func TestFlowsEBPF(t *testing.T) {
 	test := &Test{
-		setupCmds: []helper.Cmd{
+		setupCmds: []Cmd{
 			{"ovs-vsctl add-br br-ebpf", true},
 
 			{"ip netns add src-vm", true},
@@ -59,7 +58,7 @@ func TestFlowsEBPF(t *testing.T) {
 			count: 10,
 		}},
 
-		tearDownCmds: []helper.Cmd{
+		tearDownCmds: []Cmd{
 			{"ovs-vsctl del-br br-ebpf", true},
 			{"ip link del dst-vm-eth0", true},
 			{"ip link del src-vm-eth0", true},
