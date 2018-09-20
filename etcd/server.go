@@ -42,16 +42,14 @@ import (
 )
 
 const (
-	memberName   = "skydive"
 	startTimeout = 10 * time.Second
 )
 
 // EmbeddedEtcd provides a single node etcd server.
 type EmbeddedEtcd struct {
-	Port    int
-	config  *embed.Config
-	etcd    *embed.Etcd
-	dataDir string
+	Port   int
+	config *embed.Config
+	etcd   *embed.Etcd
 }
 
 // NewEmbeddedEtcd creates a new embedded ETCD server

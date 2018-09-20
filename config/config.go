@@ -192,14 +192,6 @@ func checkPositiveInt(key string) error {
 	return nil
 }
 
-func checkStrictRangeFloat(key string, min, max float64) error {
-	if value := cfg.GetFloat64(key); value <= min || value > max {
-		return fmt.Errorf("invalid value for %s (%f)", key, value)
-	}
-
-	return nil
-}
-
 func checkConfig() error {
 	if err := checkStrictPositiveInt("flow.expire"); err != nil {
 		return err
@@ -214,15 +206,6 @@ func checkConfig() error {
 	}
 
 	return checkPositiveInt("etcd.max_snap_files")
-}
-
-func checkViperSupportedExts(ext string) bool {
-	for _, e := range viper.SupportedExts {
-		if e == ext {
-			return true
-		}
-	}
-	return false
 }
 
 func setStorageDefaults() {

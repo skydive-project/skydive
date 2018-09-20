@@ -24,7 +24,6 @@ package analyzer
 
 import (
 	"net/http"
-	"sync"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
@@ -51,9 +50,7 @@ type TopologyPublisherEndpoint struct {
 	ws.DefaultSpeakerEventHandler
 	pool            ws.StructSpeakerPool
 	Graph           *graph.Graph
-	cached          *graph.CachedBackend
 	schemaValidator *topology.SchemaValidator
-	wg              sync.WaitGroup
 	gremlinParser   *traversal.GremlinTraversalParser
 }
 

@@ -49,7 +49,7 @@ var (
 	analyzerUID uint32
 )
 
-// AllInOne skydive allinone root command
+// AllInOneCmd describes the allinone root command
 var AllInOneCmd = &cobra.Command{
 	Use:          "allinone",
 	Short:        "Skydive All-In-One",

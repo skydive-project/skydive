@@ -45,7 +45,7 @@ import (
 )
 
 const (
-	// Alert websocket namespace
+	// Namespace is the alerting WebSocket namespace
 	Namespace = "Alert"
 )
 
@@ -54,7 +54,7 @@ const (
 	actionScript
 )
 
-// GreminAlert represents an alert that will be triggered if its associated
+// GremlinAlert represents an alert that will be triggered if its associated
 // Gremlin expression returns a non empty result.
 type GremlinAlert struct {
 	*types.Alert
@@ -403,7 +403,7 @@ func (a *Server) Stop() {
 	a.MasterElector.Stop()
 }
 
-// Returns a new alerting server
+// NewServer creates a new alerting server
 func NewServer(apiServer *api.Server, pool ws.StructSpeakerPool, graph *graph.Graph, parser *traversal.GremlinTraversalParser, etcdClient *etcd.Client) (*Server, error) {
 	elector := etcd.NewMasterElectorFromConfig(common.AnalyzerService, "alert-server", etcdClient)
 

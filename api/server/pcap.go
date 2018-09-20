@@ -59,7 +59,7 @@ func (p *PcapAPI) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest
 	updateHandler := flow.NewFlowHandler(p.flowExpireUpdate, time.Second*time.Duration(update))
 	expireHandler := flow.NewFlowHandler(p.flowExpireUpdate, time.Second*time.Duration(expire))
 
-	flowtable := flow.NewTable(updateHandler, expireHandler, flow.NewEnhancerPipeline(), "", flow.TableOpts{})
+	flowtable := flow.NewTable(updateHandler, expireHandler, "", flow.TableOpts{})
 	packetSeqChan, _ := flowtable.Start()
 
 	feeder, err := flow.NewPcapTableFeeder(r.Body, packetSeqChan, false, "")

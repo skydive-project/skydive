@@ -32,10 +32,9 @@ import (
 // TableAllocator aims to create/allocate a new flow table
 type TableAllocator struct {
 	common.RWMutex
-	update   time.Duration
-	expire   time.Duration
-	tables   map[*Table]bool
-	pipeline *EnhancerPipeline
+	update time.Duration
+	expire time.Duration
+	tables map[*Table]bool
 }
 
 // Expire returns the expire parameter used by allocated tables
@@ -89,7 +88,7 @@ func (a *TableAllocator) Alloc(flowCallBack ExpireUpdateFunc, nodeTID string, op
 
 	updateHandler := NewFlowHandler(flowCallBack, a.update)
 	expireHandler := NewFlowHandler(flowCallBack, a.expire)
-	t := NewTable(updateHandler, expireHandler, a.pipeline, nodeTID, opts)
+	t := NewTable(updateHandler, expireHandler, nodeTID, opts)
 	a.tables[t] = true
 
 	return t
@@ -103,11 +102,10 @@ func (a *TableAllocator) Release(t *Table) {
 }
 
 // NewTableAllocator creates a new flow table
-func NewTableAllocator(update, expire time.Duration, pipeline *EnhancerPipeline) *TableAllocator {
+func NewTableAllocator(update, expire time.Duration) *TableAllocator {
 	return &TableAllocator{
-		update:   update,
-		expire:   expire,
-		tables:   make(map[*Table]bool),
-		pipeline: pipeline,
+		update: update,
+		expire: expire,
+		tables: make(map[*Table]bool),
 	}
 }

@@ -76,10 +76,9 @@ type Packet struct {
 	Length   int64            // length of the original packet meaning layers + payload
 	IPMetric *IPMetric
 
-	linkLayer        gopacket.LinkLayer        // fast access to link layer
-	networkLayer     gopacket.NetworkLayer     // fast access to network layer
-	transportLayer   gopacket.TransportLayer   // fast access to transport layer
-	applicationLayer gopacket.ApplicationLayer // fast access to application layer
+	linkLayer      gopacket.LinkLayer      // fast access to link layer
+	networkLayer   gopacket.NetworkLayer   // fast access to network layer
+	transportLayer gopacket.TransportLayer // fast access to transport layer
 }
 
 // PacketSequence represents a suite of parent/child Packet

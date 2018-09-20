@@ -76,7 +76,7 @@ func (a *Server) RegisterAPIHandler(handler Handler, authBackend shttp.Authentic
 			Method: "GET",
 			Path:   "/api/" + name,
 			HandlerFunc: func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-				if rbac.Enforce(r.Username, name, "read") == false {
+				if !rbac.Enforce(r.Username, name, "read") {
 					w.WriteHeader(http.StatusMethodNotAllowed)
 					return
 				}
@@ -99,7 +99,7 @@ func (a *Server) RegisterAPIHandler(handler Handler, authBackend shttp.Authentic
 			Method: "GET",
 			Path:   shttp.PathPrefix(fmt.Sprintf("/api/%s/", name)),
 			HandlerFunc: func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-				if rbac.Enforce(r.Username, name, "read") == false {
+				if !rbac.Enforce(r.Username, name, "read") {
 					w.WriteHeader(http.StatusMethodNotAllowed)
 					return
 				}
@@ -128,7 +128,7 @@ func (a *Server) RegisterAPIHandler(handler Handler, authBackend shttp.Authentic
 			Method: "POST",
 			Path:   "/api/" + name,
 			HandlerFunc: func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-				if rbac.Enforce(r.Username, name, "write") == false {
+				if !rbac.Enforce(r.Username, name, "write") {
 					w.WriteHeader(http.StatusMethodNotAllowed)
 					return
 				}
@@ -168,7 +168,7 @@ func (a *Server) RegisterAPIHandler(handler Handler, authBackend shttp.Authentic
 			Method: "DELETE",
 			Path:   shttp.PathPrefix(fmt.Sprintf("/api/%s/", name)),
 			HandlerFunc: func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-				if rbac.Enforce(r.Username, name, "write") == false {
+				if !rbac.Enforce(r.Username, name, "write") {
 					w.WriteHeader(http.StatusMethodNotAllowed)
 					return
 				}

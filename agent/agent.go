@@ -32,7 +32,6 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/flow/enhancers"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/server"
 	fprobes "github.com/skydive-project/skydive/flow/probes"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
@@ -57,7 +56,6 @@ type Agent struct {
 	rootNode            *graph.Node
 	topologyProbeBundle *probe.ProbeBundle
 	flowProbeBundle     *probe.ProbeBundle
-	flowPipeline        *flow.EnhancerPipeline
 	flowTableAllocator  *flow.TableAllocator
 	flowClientPool      *analyzer.FlowClientPool
 	onDemandProbeServer *ondemand.OnDemandProbeServer
@@ -95,8 +93,8 @@ type AnalyzerConnStatus struct {
 	IsMaster bool
 }
 
-// AgentStatus represents the status of an agent
-type AgentStatus struct {
+// Status represents the status of an agent
+type Status struct {
 	Clients        map[string]ws.ConnStatus
 	Analyzers      map[string]AnalyzerConnStatus
 	TopologyProbes []string
@@ -119,7 +117,7 @@ func (a *Agent) GetStatus() interface{} {
 		}
 	}
 
-	return &AgentStatus{
+	return &Status{
 		Clients:        a.wsServer.GetStatus(),
 		Analyzers:      analyzers,
 		TopologyProbes: a.topologyProbeBundle.ActiveProbes(),
@@ -131,7 +129,6 @@ func (a *Agent) GetStatus() interface{} {
 func (a *Agent) Start() {
 	go a.httpServer.Serve()
 
-	a.flowPipeline.Start()
 	a.wsServer.Start()
 	a.topologyProbeBundle.Start()
 	a.flowProbeBundle.Start()
@@ -150,7 +147,6 @@ func (a *Agent) Stop() {
 	a.wsServer.Stop()
 	a.flowClientPool.Close()
 	a.onDemandProbeServer.Stop()
-	a.flowPipeline.Stop()
 
 	if tr, ok := http.DefaultTransport.(interface {
 		CloseIdleConnections()
@@ -187,7 +183,7 @@ func NewAgent() (*Agent, error) {
 	uiServer := ui.NewServer(hserver, config.GetString("ui.extra_assets"))
 	uiServer.RegisterLoginRoute(apiAuthBackend)
 
-	if err := hserver.Listen(); err != nil {
+	if err = hserver.Listen(); err != nil {
 		return nil, err
 	}
 
@@ -232,14 +228,7 @@ func NewAgent() (*Agent, error) {
 	updateTime := time.Duration(config.GetInt("flow.update")) * time.Second
 	expireTime := time.Duration(config.GetInt("flow.expire")) * time.Second
 
-	pipeline := flow.NewEnhancerPipeline(enhancers.NewGraphFlowEnhancer(g))
-
-	// check that the neutron probe if loaded if so add the neutron flow enhancer
-	if topologyProbeBundle.GetProbe("neutron") != nil {
-		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(g))
-	}
-
-	flowTableAllocator := flow.NewTableAllocator(updateTime, expireTime, pipeline)
+	flowTableAllocator := flow.NewTableAllocator(updateTime, expireTime)
 
 	// exposes a flow server through the client connections
 	flow.NewServer(flowTableAllocator, analyzerClientPool)
@@ -263,7 +252,6 @@ func NewAgent() (*Agent, error) {
 		rootNode:            rootNode,
 		topologyProbeBundle: topologyProbeBundle,
 		flowProbeBundle:     flowProbeBundle,
-		flowPipeline:        pipeline,
 		flowTableAllocator:  flowTableAllocator,
 		flowClientPool:      flowClientPool,
 		onDemandProbeServer: onDemandProbeServer,

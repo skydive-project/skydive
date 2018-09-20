@@ -35,7 +35,6 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/flow/enhancers"
 	"github.com/skydive-project/skydive/flow/storage"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -48,7 +47,7 @@ const (
 	// FlowBulkInsertDefault maximum number of flows aggregated between two data store inserts
 	FlowBulkInsertDefault int = 100
 
-	// FlowBulkDeadlineDefault deadline of each bulk insert in second
+	// FlowBulkInsertDeadlineDefault deadline of each bulk insert in second
 	FlowBulkInsertDeadlineDefault int = 5
 
 	// FlowBulkMaxDelayDefault delay between two bulk
@@ -86,19 +85,17 @@ type FlowServerWebSocketConn struct {
 	auth                   shttp.AuthenticationBackend
 }
 
-// FlowServer describes a flow server with pipeline enhancers mechanism
+// FlowServer describes a flow server
 type FlowServer struct {
-	storage                storage.Storage
-	enhancerPipeline       *flow.EnhancerPipeline
-	enhancerPipelineConfig *flow.EnhancerPipelineConfig
-	conn                   FlowServerConn
-	state                  int64
-	wgServer               sync.WaitGroup
-	bulkInsert             int
-	bulkInsertDeadline     time.Duration
-	ch                     chan *flow.Flow
-	quit                   chan struct{}
-	auth                   shttp.AuthenticationBackend
+	storage            storage.Storage
+	conn               FlowServerConn
+	state              int64
+	wgServer           sync.WaitGroup
+	bulkInsert         int
+	bulkInsertDeadline time.Duration
+	ch                 chan *flow.Flow
+	quit               chan struct{}
+	auth               shttp.AuthenticationBackend
 }
 
 // OnMessage event
@@ -277,13 +274,6 @@ func (s *FlowServer) setupBulkConfigFromBackend() error {
 
 // NewFlowServer creates a new flow server listening at address/port, based on configuration
 func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe *probe.ProbeBundle, auth shttp.AuthenticationBackend) (*FlowServer, error) {
-	pipeline := flow.NewEnhancerPipeline(enhancers.NewGraphFlowEnhancer(g))
-
-	// check that the neutron probe is loaded if so add the neutron flow enhancer
-	if probe.GetProbe("neutron") != nil {
-		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(g))
-	}
-
 	var conn FlowServerConn
 	protocol := strings.ToLower(config.GetString("flow.protocol"))
 
@@ -302,12 +292,10 @@ func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe
 	}
 
 	fs := &FlowServer{
-		storage:                store,
-		enhancerPipeline:       pipeline,
-		enhancerPipelineConfig: flow.NewEnhancerPipelineConfig(),
-		conn: conn,
-		quit: make(chan struct{}, 2),
-		auth: auth,
+		storage: store,
+		conn:    conn,
+		quit:    make(chan struct{}, 2),
+		auth:    auth,
 	}
 	err = fs.setupBulkConfigFromBackend()
 	if err != nil {

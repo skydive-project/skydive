@@ -175,11 +175,8 @@ func (h *BasicAPIHandler) Create(resource types.Resource) error {
 func (h *BasicAPIHandler) Delete(id string) error {
 	etcdPath := fmt.Sprintf("/%s/%s", h.ResourceHandler.Name(), id)
 
-	if _, err := h.EtcdKeyAPI.Delete(context.Background(), etcdPath, nil); err != nil {
-		return err
-	}
-
-	return nil
+	_, err := h.EtcdKeyAPI.Delete(context.Background(), etcdPath, nil)
+	return err
 }
 
 // Update a resource

@@ -43,7 +43,7 @@ var (
 	workflowPath string
 )
 
-// WorkflowCmd workflow root command
+// WorkflowCmd describe the "workflow" root command
 var WorkflowCmd = &cobra.Command{
 	Use:          "workflow",
 	Short:        "Manage workflows",
@@ -74,7 +74,7 @@ func loadWorklow(path string) (*types.Workflow, error) {
 	return workflow, nil
 }
 
-// WorkflowCreate workflow create command
+// WorkflowCreate describes the "workflow create" command
 var WorkflowCreate = &cobra.Command{
 	Use:          "create",
 	Short:        "create workflow",
@@ -103,7 +103,7 @@ var WorkflowCreate = &cobra.Command{
 	},
 }
 
-// WorkflowDelete workflow delete command
+// WorkflowDelete describes the "workflow delete" command
 var WorkflowDelete = &cobra.Command{
 	Use:          "delete",
 	Short:        "delete workflow",
@@ -130,7 +130,7 @@ var WorkflowDelete = &cobra.Command{
 	},
 }
 
-// Workflow workflow list command
+// WorkflowList describes the "workflow list" command
 var WorkflowList = &cobra.Command{
 	Use:          "list",
 	Short:        "List workflows",
@@ -152,7 +152,7 @@ var WorkflowList = &cobra.Command{
 	},
 }
 
-// Workflow workflow call command
+// WorkflowCall describes the "workflow call" command
 var WorkflowCall = &cobra.Command{
 	Use:          "call workflow",
 	Short:        "Call workflow",
