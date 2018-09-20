@@ -22,7 +22,10 @@
 
 package common
 
-import "time"
+import (
+	"math/rand"
+	"time"
+)
 
 // Retry tries to execute the given function until a success applying a delay
 // between each try
@@ -47,4 +50,15 @@ func retry(fnc func() error, try int, baseDelay time.Duration, factor int64) err
 		delay = time.Duration(factor * int64(delay))
 	}
 	return err
+}
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+// RandString generates random string
+func RandString(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
 }
