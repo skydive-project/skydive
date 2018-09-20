@@ -37,10 +37,10 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/etcd"
+	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/js"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology/graph"
-	"github.com/skydive-project/skydive/topology/graph/traversal"
 	ws "github.com/skydive-project/skydive/websocket"
 )
 

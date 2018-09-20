@@ -23,10 +23,10 @@
 package k8s
 
 import (
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 // ClusterName is the name of the k8s cluster

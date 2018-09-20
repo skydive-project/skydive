@@ -30,7 +30,7 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
-	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
 // PcapPacketProbe describes a libpcap based packet probe

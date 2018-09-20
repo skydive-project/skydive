@@ -34,10 +34,10 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/ovs"
 	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 var (

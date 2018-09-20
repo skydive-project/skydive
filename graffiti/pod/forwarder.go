@@ -20,12 +20,11 @@
  *
  */
 
-package agent
+package pod
 
 import (
-	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology/graph"
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
@@ -113,10 +112,4 @@ func NewTopologyForwarder(host string, g *graph.Graph, pool ws.StructSpeakerPool
 	g.AddEventListener(t)
 
 	return t
-}
-
-// NewTopologyForwarderFromConfig creates a TopologyForwarder from configuration
-func NewTopologyForwarderFromConfig(g *graph.Graph, pool ws.StructSpeakerPool) *TopologyForwarder {
-	host := config.GetString("host_id")
-	return NewTopologyForwarder(host, g, pool)
 }

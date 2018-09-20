@@ -40,7 +40,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
 var tcpStates = []string{

@@ -27,8 +27,8 @@ import (
 
 	"github.com/nu7hatch/gouuid"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 // ErrNetworkPathNotFound

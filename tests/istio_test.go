@@ -25,11 +25,12 @@
 package tests
 
 import (
+	"testing"
+
+	"github.com/skydive-project/skydive/graffiti/graph"
 	g "github.com/skydive-project/skydive/gremlin"
-	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/probes/istio"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
-	"testing"
 )
 
 const (

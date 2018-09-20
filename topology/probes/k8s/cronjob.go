@@ -25,7 +25,7 @@ package k8s
 import (
 	"fmt"
 
-	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/graffiti/graph"
 
 	"k8s.io/api/batch/v1beta1"
 	"k8s.io/client-go/kubernetes"

@@ -23,12 +23,12 @@
 package istio
 
 import (
-	kiali "github.com/kiali/kiali/kubernetes"
-
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
-	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
+
+	kiali "github.com/kiali/kiali/kubernetes"
 )
 
 // Probe describes the Istio probe in charge of importing

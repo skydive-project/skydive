@@ -26,10 +26,10 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/graph"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"

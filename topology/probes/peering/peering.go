@@ -23,8 +23,8 @@
 package peering
 
 import (
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 // Probe describes graph peering based on MAC address and graph events

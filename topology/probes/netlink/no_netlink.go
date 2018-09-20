@@ -26,7 +26,7 @@ package netlink
 
 import (
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
 // Probe describes a list NetLink NameSpace probe to enhance the graph

@@ -26,8 +26,8 @@ import (
 	"github.com/nu7hatch/gouuid"
 
 	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 // EdgeRuleResourceHandler describes a edge rule resource handler

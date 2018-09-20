@@ -28,7 +28,7 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/topology/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 )
 
 const (

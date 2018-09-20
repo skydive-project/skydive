@@ -32,6 +32,7 @@ type MasterElectionListener interface {
 	OnSwitchToSlave()
 }
 
+// MasterElection describes the master election mechanism
 type MasterElection interface {
 	Start()
 	StartAndWait()
@@ -41,6 +42,7 @@ type MasterElection interface {
 	TTL() time.Duration
 }
 
+// MasterElectionService describes the election service mechanism
 type MasterElectionService interface {
 	NewElection(key string) MasterElection
 }

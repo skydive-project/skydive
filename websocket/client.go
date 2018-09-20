@@ -484,16 +484,13 @@ func (c *Client) Connect() error {
 		WriteBufferSize: 1024,
 	}
 	d.TLSClientConfig = c.tlsConfig
-	if err != nil {
-		return fmt.Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err)
-	}
 
 	var resp *http.Response
 	c.conn, resp, err = d.Dial(endpoint, headers)
-
 	if err != nil {
 		return fmt.Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err)
 	}
+
 	c.conn.SetPingHandler(nil)
 	c.conn.EnableWriteCompression(c.writeCompression)
 

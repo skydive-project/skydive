@@ -30,9 +30,9 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow/ondemand"
 	"github.com/skydive-project/skydive/flow/probes"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
-	"github.com/skydive-project/skydive/topology/graph"
 	ws "github.com/skydive-project/skydive/websocket"
 )
 

@@ -30,9 +30,9 @@ import (
 	"github.com/skydive-project/skydive/flow/storage"
 	"github.com/skydive-project/skydive/flow/storage/elasticsearch"
 	"github.com/skydive-project/skydive/flow/storage/orientdb"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	es "github.com/skydive-project/skydive/storage/elasticsearch"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 // NewESConfig returns a new elasticsearch configution for the given backend name

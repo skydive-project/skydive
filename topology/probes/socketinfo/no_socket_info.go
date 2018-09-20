@@ -25,7 +25,7 @@
 package socketinfo
 
 import (
-	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
 // SocketInfoProbe describes a probe that collects active connections

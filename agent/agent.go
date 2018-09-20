@@ -35,14 +35,15 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/server"
 	fprobes "github.com/skydive-project/skydive/flow/probes"
+	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/pod"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/graph"
-	"github.com/skydive-project/skydive/topology/graph/traversal"
 	"github.com/skydive-project/skydive/ui"
 	ws "github.com/skydive-project/skydive/websocket"
 )
@@ -50,8 +51,8 @@ import (
 // Agent object started on each hosts/namespaces
 type Agent struct {
 	ws.DefaultSpeakerEventHandler
+	pod                 *pod.Pod
 	graph               *graph.Graph
-	wsServer            *ws.StructServer
 	analyzerClientPool  *ws.StructClientPool
 	topologyEndpoint    *topology.SubscriberEndpoint
 	rootNode            *graph.Node
@@ -62,7 +63,6 @@ type Agent struct {
 	onDemandProbeServer *ondemand.OnDemandProbeServer
 	httpServer          *shttp.Server
 	tidMapper           *topology.TIDMapper
-	topologyForwarder   *TopologyForwarder
 }
 
 // NewAnalyzerStructClientPool creates a new http WebSocket client Pool
@@ -91,39 +91,21 @@ func NewAnalyzerStructClientPool(authOptions *shttp.AuthenticationOpts) (*ws.Str
 	return pool, nil
 }
 
-// AnalyzerConnStatus represents the status of a connection to an analyzer
-type AnalyzerConnStatus struct {
-	ws.ConnStatus
-	IsMaster bool
-}
-
 // Status represents the status of an agent
 type Status struct {
 	Clients        map[string]ws.ConnStatus
-	Analyzers      map[string]AnalyzerConnStatus
+	Analyzers      map[string]pod.ConnStatus
 	TopologyProbes []string
 	FlowProbes     []string
 }
 
 // GetStatus returns the status of an agent
 func (a *Agent) GetStatus() interface{} {
-	var masterAddr string
-	var masterPort int
-	if master := a.topologyForwarder.GetMaster(); master != nil {
-		masterAddr, masterPort = master.GetAddrPort()
-	}
-
-	analyzers := make(map[string]AnalyzerConnStatus)
-	for id, status := range a.analyzerClientPool.GetStatus() {
-		analyzers[id] = AnalyzerConnStatus{
-			ConnStatus: status,
-			IsMaster:   status.Addr == masterAddr && status.Port == masterPort,
-		}
-	}
+	podStatus := a.pod.GetStatus()
 
 	return &Status{
-		Clients:        a.wsServer.GetStatus(),
-		Analyzers:      analyzers,
+		Clients:        podStatus.Subscribers,
+		Analyzers:      podStatus.Hubs,
 		TopologyProbes: a.topologyProbeBundle.ActiveProbes(),
 		FlowProbes:     a.flowProbeBundle.ActiveProbes(),
 	}
@@ -137,7 +119,6 @@ func (a *Agent) Start() {
 
 	go a.httpServer.Serve()
 
-	a.wsServer.Start()
 	a.topologyProbeBundle.Start()
 	a.flowProbeBundle.Start()
 	a.onDemandProbeServer.Start()
@@ -152,7 +133,6 @@ func (a *Agent) Stop() {
 	a.analyzerClientPool.Stop()
 	a.topologyProbeBundle.Stop()
 	a.httpServer.Stop()
-	a.wsServer.Stop()
 	a.flowClientPool.Close()
 	a.onDemandProbeServer.Stop()
 
@@ -172,7 +152,10 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	g := graph.NewGraph(config.GetString("host_id"), backend, common.AgentService)
+	hostID := config.GetString("host_id")
+	service := common.Service{ID: hostID, Type: common.AgentService}
+
+	g := graph.NewGraph(hostID, backend, service.Type)
 
 	tm := topology.NewTIDMapper(g)
 	tm.Start()
@@ -183,9 +166,8 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	hserver, err := config.NewHTTPServer(common.AgentService)
+	hserver, err := config.NewHTTPServer(service.Type)
 	if err != nil {
-
 		return nil, err
 	}
 
@@ -196,11 +178,10 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	if _, err = api.NewAPI(hserver, nil, common.AgentService, apiAuthBackend); err != nil {
+	apiServer, err := api.NewAPI(hserver, nil, service, apiAuthBackend)
+	if err != nil {
 		return nil, err
 	}
-
-	wsServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
 
 	// declare all extension available throught API and filtering
 	tr := traversal.NewGremlinTraversalParser()
@@ -222,14 +203,15 @@ func NewAgent() (*Agent, error) {
 		Cookie:   config.GetStringMapString("http.cookie"),
 	}
 
-	topologyEndpoint := topology.NewSubscriberEndpoint(wsServer, g, tr)
-
 	analyzerClientPool, err := NewAnalyzerStructClientPool(clusterAuthOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	tforwarder := NewTopologyForwarderFromConfig(g, analyzerClientPool)
+	pod, err := pod.NewPod(apiServer, analyzerClientPool, g, apiAuthBackend, clusterAuthOptions, tr, true, 10000, 2*time.Second, 5*time.Second)
+	if err != nil {
+		return nil, err
+	}
 
 	topologyProbeBundle, err := NewTopologyProbeBundleFromConfig(g, rootNode)
 	if err != nil {
@@ -256,10 +238,9 @@ func NewAgent() (*Agent, error) {
 	}
 
 	agent := &Agent{
+		pod:                 pod,
 		graph:               g,
-		wsServer:            wsServer,
 		analyzerClientPool:  analyzerClientPool,
-		topologyEndpoint:    topologyEndpoint,
 		rootNode:            rootNode,
 		topologyProbeBundle: topologyProbeBundle,
 		flowProbeBundle:     flowProbeBundle,
@@ -268,7 +249,6 @@ func NewAgent() (*Agent, error) {
 		onDemandProbeServer: onDemandProbeServer,
 		httpServer:          hserver,
 		tidMapper:           tm,
-		topologyForwarder:   tforwarder,
 	}
 
 	api.RegisterStatusAPI(hserver, agent, apiAuthBackend)
