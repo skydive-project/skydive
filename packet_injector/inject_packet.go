@@ -74,6 +74,12 @@ type channels struct {
 
 func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC net.HardwareAddr, srcIP, dstIP net.IP, srcPort, dstPort int64, ID int64, data string) ([]byte, gopacket.Packet, error) {
 	var l []gopacket.SerializableLayer
+
+	// use same size as ping when no payload specified
+	if len(data) == 0 {
+		data = common.RandString(56)
+	}
+
 	payload := gopacket.Payload([]byte(data))
 
 	if layerType == layers.LayerTypeEthernet {
