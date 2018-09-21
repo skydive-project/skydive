@@ -6,7 +6,36 @@ html, body {
 body {
   margin: auto;
   padding-top: 50px;
-  background-color: #333;
+  background-color: #1b1e23;
+}
+
+.navbar .container {
+  width: 100%;
+}
+
+.navbar-inverse {
+  background-color: #1b1e23;
+  border-color: #1b1e23;
+}
+
+.navbar-inverse .navbar-brand {
+  color: #659cad;
+  padding-right: 50px;
+}
+
+.navbar-inverse .navbar-nav>.active>a, .navbar-inverse .navbar-nav>.active>a:focus, .navbar-inverse .navbar-nav>.active>a:hover {
+  background-color: #292e34;
+}
+
+.navbar .container {
+  padding-right: 15px;
+  padding-left: 30px;
+  margin-right: 0;
+  margin-left: 0;
+}
+
+.navbar-fixed-top {
+  border-width: 0;
 }
 
 #app {
@@ -23,8 +52,8 @@ label {
 
 .mode {
   color: white;
-  font-size: 0.6em;
-  vertical-align: super;
+  font-size: 0.8em;
+  padding-left: 26px;
 }
 
 .topology, .conversation, .discovery {
@@ -36,6 +65,8 @@ label {
   width: 100%;
   text-align: center;
   outline: none;
+  background-color: #292e34;
+  border-radius: 4px;
 }
 
 .topology-d3 {
@@ -60,6 +91,20 @@ label {
   stroke: #fff;
 }
 
+.panel .btn {
+  border-radius: 24px;
+  padding: 10px 20px;
+}
+
+.panel-actions .btn {
+  background-color: #292e34;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #fff;
+  border: 0;
+  font-size: 16px;
+}
+
 .cont {
   width:100%;
   height: 100%
@@ -72,11 +117,10 @@ label {
 }
 
 .sidebar, .status {
-  border-left: 5px #222 solid;
   color: #fff;
-  padding-top: 5px;
   overflow-y: auto;
   overflow-x: hidden;
+  height: 100%;
 }
 
 .statustab {
@@ -89,6 +133,10 @@ label {
   height: 100%;
 }
 
+.panel {
+  background-color: #292e34;
+}
+
 .ui-resizable {
   position: relative;
 }
@@ -98,7 +146,8 @@ label {
 }
 
 .ui-resizable-e {
-  right: 0px;
+  right: 0px;  
+  width: 20px;
 }
 
 .left-cont {
@@ -108,10 +157,10 @@ label {
 }
 
 .panel {
-  border-radius: 5px;
-  background-color: #222;
+  border-radius: 4px;
+  background-color: #292e34;
   margin-top: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 0px;
   border: 0;
 }
 
@@ -120,7 +169,7 @@ label {
 }
 
 .panel-content h1 {
-  font-size: 1.1em;
+  font-size: 1.2em;
   font-weight: bold;
   border-bottom: 1px solid #777;
   padding-bottom: 5px;
@@ -152,10 +201,9 @@ label {
 
 .panel-actions {
   text-align: right;
-  background: #282828;
+  background-color: #292e34;
   padding: 5px;
   border-radius: 0 0 5px 5px;
-  border-top: 1px dotted #444;
 }
 
 .sub-panel {
@@ -336,33 +384,60 @@ circle.manager {
   position: absolute;
   bottom: 20px;
   left: 20px;
-  background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   padding: 10px;
 }
 
+.topology-controls .btn {
+  border-color: #141519;
+  border-radius: 4px;
+  padding: 8px 16px;
+}
+
+.topology-controls .btn-primary {
+    background-color: #141519;
+}
+
 .flow-ops-panel {
-  margin-top: 10px;
+  background-color: #292e34;
+  border-radius: 4px;
 }
 
 .flow-ops-panel .tab-content {
   color : white;
-  background-color: #222;
   border-radius: 5px;
   border-top-left-radius: 0px;
 }
 
-.flow-ops-panel .nav>li>a {
-  color : white;
+.flow-ops-panel .nav {
+  border-bottom: 1px solid #1b1e23;
 }
 
-.flow-ops-panel .nav-pills > li > a {
-  background-color: #111;
-  border-radius: 0;
+.flow-ops-panel .nav>li>a {
+  color : #84878c;
+}
+
+.nav>li>a:focus, .nav>li>a:hover {
+  background-color: #292e34;
+}
+
+.flow-ops-panel .nav-pills > li > a, .flow-ops-panel .nav-pills > li {
+  border-radius: 4px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.flow-ops-panel .nav-pills .active > a {
+  color: #fff;
+}
+
+.flow-ops-panel .nav-pills > li {
+  background-color: #292e34; 
 }
 
 .flow-ops-panel .nav-pills>li.active>a, .flow-ops-panel .nav-pills>li.active>a:focus, .flow-ops-panel .nav-pills>li.active>a:hover {
-  background-color: #222;
+  background-color: #292e34;
+  border-bottom: 2px solid #347ab6;
 }
 
 .flow-ops-panel .left-cont {
@@ -370,8 +445,13 @@ circle.manager {
 }
 
 .dynamic-table {
-  border-radius: 5px;
-  border: 2px solid #666;
+  border-radius: 4px;
+  border: 3px solid #666;
+}
+
+.dynamic-table .btn {
+  padding: 1px 5px;
+  border-radius: 3px;
 }
 
 .dynamic-table .dynamic-table-wrapper {

@@ -1579,10 +1579,22 @@ TopologyGraphLayout.prototype = {
       .attr("height", "24")
       .attr("xlink:href", this.nodeImg);
 
+    // node rectangle
+    nodeEnter.append("rect")
+      .attr("class", "node-text-rect")
+      .attr("width", function(d) { return self.nodeTitle(d).length * 10 + 10; })
+      .attr("height", 25)
+      .attr("x", function(d) {
+        return self.nodeSize(d) * 1.6 - 5;
+      })
+      .attr("y", -8)
+      .attr("rx", 4)
+      .attr("ry", 4);
+
     // node title
     nodeEnter.append("text")
       .attr("dx", function(d) {
-        return self.nodeSize(d) + 5;
+        return self.nodeSize(d) * 1.6;
       })
       .attr("dy", 10)
       .text(this.nodeTitle);
