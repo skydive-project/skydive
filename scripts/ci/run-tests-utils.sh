@@ -16,12 +16,13 @@ tests_run() {
         LOGFILE=$WORKSPACE/output.log
         TESTFILE=$WORKSPACE/tests.xml
 
-        BACKEND="memory"
-        ARGS=" -analyzer.topology.backend $BACKEND -analyzer.flow.backend $BACKEND -graph.output ascii -standalone"
+        BACKEND=${BACKEND:-memory}
+        ARGS="-graph.output ascii -standalone -analyzer.topology.backend $BACKEND -analyzer.flow.backend $BACKEND"
+        export ORIENTDB_ROOT_PASSWORD=root
 
         if [ "$COVERAGE" != "true" -a "$(uname -m)" != "ppc64le" ]; then
-            GOFLAGS="-race"
-              export TEST_COVERPROFILE=../functionals-$BACKEND.cover
+                GOFLAGS="-race"
+                export TEST_COVERPROFILE=../functionals-$BACKEND.cover
         fi
 
         make test.functionals.batch \
@@ -34,4 +35,8 @@ tests_run() {
         go2xunit -fail -fail-on-race -suite-name-prefix tests \
                 -input $LOGFILE -output $TESTFILE
         sed -i 's/\x1b\[[0-9;]*m//g' $TESTFILE
+
+        if [ -e functionals.cover ]; then
+                mv functionals.cover $TEST_COVERPROFILE
+        fi
 }

@@ -269,7 +269,7 @@
           cancel-builds-on-update: true
     builders:
       - skydive-test:
-          test: scripts/ci/run-k8s-tests.sh
+          test: BACKEND=elasticsearch scripts/ci/run-k8s-tests.sh
     publishers:
       - junit:
           results: tests.xml
