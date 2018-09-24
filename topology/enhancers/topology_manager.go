@@ -135,7 +135,7 @@ func (tm *TopologyManager) nodeID(node *types.NodeRule) graph.Identifier {
 
 func (tm *TopologyManager) createNode(node *types.NodeRule) error {
 	id := tm.nodeID(node)
-	common.SetField(node.Metadata, "TID", id)
+	common.SetField(node.Metadata, "TID", string(id))
 
 	//check node already exist
 	if n := tm.graph.GetNode(id); n != nil {
