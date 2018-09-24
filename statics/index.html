@@ -82,8 +82,6 @@
   <script src="/statics/js/components/layout.js"></script>
   <script src="/statics/js/components/graph-layout.js"></script>
   <script src="/statics/js/components/topology.js"></script>
-  <script src="/statics/js/components/conversation.js"></script>
-  <script src="/statics/js/components/discovery.js"></script>
 
   <!-- UI config -->
   <script>
@@ -146,12 +144,6 @@
           <ul class="nav navbar-nav" style="visibility: hidden">
             <router-link tag="li" to="/topology">
               <a>Topology</a>
-            </router-link>
-            <router-link v-if="service == 'Analyzer'" tag="li" to="/conversation">
-              <a>Conversation</a>
-            </router-link>
-            <router-link v-if="service == 'Analyzer'" tag="li" to="/discovery">
-              <a>Discovery</a>
             </router-link>
           </ul>
           <ul class="nav navbar-nav navbar-right">

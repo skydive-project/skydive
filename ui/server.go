@@ -231,8 +231,6 @@ func NewServer(server *shttp.Server, assetsFolder string) *Server {
 	// the user to the correct page
 	routes := []shttp.Route{
 		{Path: "/topology", Method: "GET", HandlerFunc: s.ServeIndex},
-		{Path: "/conversation", Method: "GET", HandlerFunc: s.ServeIndex},
-		{Path: "/discovery", Method: "GET", HandlerFunc: s.ServeIndex},
 		{Path: "/preference", Method: "GET", HandlerFunc: s.ServeIndex},
 		{Path: "/status", Method: "GET", HandlerFunc: s.ServeIndex},
 	}

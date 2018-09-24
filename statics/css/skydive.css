@@ -56,12 +56,12 @@ label {
   padding-left: 26px;
 }
 
-.topology, .conversation, .discovery {
+.topology{
   width: 100%;
   height: 100%;
 }
 
-.topology-d3, .conversation-d3, .discovery-d3 {
+.topology-d3 {
   width: 100%;
   text-align: center;
   outline: none;
