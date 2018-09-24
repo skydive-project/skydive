@@ -776,7 +776,7 @@ func init() {
 			panic(fmt.Sprintf("Failed to initialize config: %s", err))
 		}
 
-		if err := logging.InitLogging(); err != nil {
+		if err := config.InitLogging(); err != nil {
 			panic(fmt.Sprintf("Failed to initialize logging system: %s", err))
 		}
 
