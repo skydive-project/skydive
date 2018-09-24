@@ -269,7 +269,7 @@
           cancel-builds-on-update: true
     builders:
       - skydive-test:
-          test: scripts/ci/run-istio-tests.sh
+          test: BACKEND=memory scripts/ci/run-istio-tests.sh
     publishers:
       - junit:
           results: tests.xml
