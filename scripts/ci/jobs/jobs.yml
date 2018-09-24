@@ -281,7 +281,7 @@
           slave-name: baremetal
     builders:
       - skydive-test:
-          test: BACKEND=memory scripts/ci/run-istio-tests.sh
+          test: BACKEND=elasticsearch scripts/ci/run-istio-tests.sh
     publishers:
       - junit:
           results: tests.xml
