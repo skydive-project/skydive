@@ -211,7 +211,7 @@ func parseEvent(line string, bridge string, prefix string) (Event, error) {
 // Generates a unique UUID for the rule
 // prefix is a unique string per bridge using bridge and host names.
 func fillUUID(rule *Rule, prefix string) {
-	id := prefix + rule.Filter + "-" + string(rule.Table) + "-" + string(rule.Cookie)
+	id := prefix + rule.Filter + "-" + string(rule.Table)
 	u, err := uuid.NewV5(uuid.NamespaceOID, []byte(id))
 	if err == nil {
 		rule.UUID = u.String()
@@ -234,6 +234,7 @@ func parseRule(line string) (*Rule, error) {
 	}
 	fillIn(components, &rule, nil)
 	tail := components[len(components)-1]
+	tail = strings.TrimPrefix(tail, "reset_counts ")
 	components = strings.Split(tail, " actions=")
 	if len(components) == 2 {
 		rule.Filter = components[0]
@@ -404,6 +405,21 @@ func (probe *BridgeOfProbe) addRule(rule *Rule) {
 	g.Link(bridgeNode, ruleNode, graph.Metadata{"RelationType": "ownership"})
 }
 
+func (probe *BridgeOfProbe) modRule(rule *Rule) {
+	logging.GetLogger().Infof("Rule %v modified", rule.UUID)
+	g := probe.OvsOfProbe.Graph
+	g.Lock()
+	defer g.Unlock()
+
+	ruleNode := g.LookupFirstNode(graph.Metadata{"UUID": rule.UUID})
+	if ruleNode != nil {
+		tr := g.StartMetadataTransaction(ruleNode)
+		defer tr.Commit()
+		tr.AddMetadata("actions", rule.Actions)
+		tr.AddMetadata("cookie", rule.Cookie)
+	}
+}
+
 // delRule deletes a rule from the the graph.
 func (probe *BridgeOfProbe) delRule(rule *Rule) {
 	logging.GetLogger().Infof("Rule %v deleted", rule.UUID)
@@ -417,13 +433,13 @@ func (probe *BridgeOfProbe) delRule(rule *Rule) {
 	}
 }
 
-func containsRule(rules []*Rule, searched *Rule) bool {
+func containsRule(rules []*Rule, searched *Rule) *Rule {
 	for _, rule := range rules {
 		if rule.UUID == searched.UUID {
-			return true
+			return rule
 		}
 	}
-	return false
+	return nil
 }
 
 // monitor monitors the openflow rules of a bridge by launching a goroutine. The context is used to control the execution of the routine.
@@ -452,17 +468,24 @@ func (probe *BridgeOfProbe) monitor(ctx context.Context) error {
 				rawUUID := event.RawRule.UUID
 				oldRules := probe.Rules[rawUUID]
 				switch event.Action {
-				case "ADDED":
+				case "ADDED", "MODIFIED":
 					for _, rule := range event.Rules {
-						if !containsRule(oldRules, rule) {
+						found := containsRule(oldRules, rule)
+						if found == nil {
 							oldRules = append(oldRules, rule)
 							probe.addRule(rule)
+						} else {
+							if found.Actions != rule.Actions || found.Cookie != rule.Cookie {
+								found.Actions = rule.Actions
+								found.Cookie = rule.Cookie
+								probe.modRule(rule)
+							}
 						}
 					}
 					probe.Rules[rawUUID] = oldRules
 				case "DELETED":
 					for _, oldRule := range oldRules {
-						if !containsRule(event.Rules, oldRule) {
+						if containsRule(event.Rules, oldRule) == nil {
 							probe.delRule(oldRule)
 						}
 					}
