@@ -266,6 +266,7 @@ var BridgeLayout = (function () {
   BridgeLayout.prototype.extract = function () {
     var itfs = {};
     var rules = [];
+    var rulesUUID = new Set();
     var children = this.graph.getTargets(this.bridge);
     for (var i = 0; i < children.length; i++) {
       var c = children[i];
@@ -279,10 +280,12 @@ var BridgeLayout = (function () {
           var rule = c.metadata;
           summarize(rule);
           rules.push(rule);
+          rulesUUID.add(rule.UUID);
       }
     }
     this.rules = rules;
     this.interfaces = itfs;
+    this.rulesUUID = rulesUUID;
   };
 
   /** Structure the information on the rules, classifying by tables and ports. */
@@ -570,9 +573,15 @@ Vue.component('rule-detail', {
         self.memoBridgeLayout = null;
       }
     };
+    var handleUpdate = function(n) {
+      if (n.metadata.Type == 'ofrule' && self.memoBridgeLayout.rulesUUID.has(n.metadata.UUID)) {
+        self.memoBridgeLayout = null;
+      }
+    };
     this.handler = {
       onEdgeAdded: handle,
-      onEdgeDeleted: handle
+      onEdgeDeleted: handle,
+      onNodeUpdated:handleUpdate
     };
     this.graph.addHandler(this.handler);
     this.unwatch = this.$store.watch(
