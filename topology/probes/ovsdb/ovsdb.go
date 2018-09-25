@@ -90,8 +90,6 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 	name := row.New.Fields["name"].(string)
 
 	o.Graph.Lock()
-	defer o.Graph.Unlock()
-
 	bridge := o.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
 	if bridge == nil {
 		bridge = o.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "UUID": uuid, "Type": "ovsbridge"})
@@ -129,6 +127,7 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 			}
 		}
 	}
+	o.Graph.Unlock()
 	if o.OvsOfProbe != nil {
 		o.OvsOfProbe.OnOvsBridgeAdd(bridge)
 	}
@@ -136,13 +135,13 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 
 // OnOvsBridgeDel event
 func (o *OvsdbProbe) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+
+	if o.OvsOfProbe != nil {
+		o.OvsOfProbe.OnOvsBridgeDel(uuid)
+	}
 	o.Graph.Lock()
 	defer o.Graph.Unlock()
-
 	bridge := o.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
-	if o.OvsOfProbe != nil {
-		o.OvsOfProbe.OnOvsBridgeDel(uuid, bridge)
-	}
 	if bridge != nil {
 		o.Graph.DelNode(bridge)
 	}
