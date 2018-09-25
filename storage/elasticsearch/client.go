@@ -437,7 +437,7 @@ func NewClient(indices []Index, cfg Config, etcdClient *etcd.Client) (*Client, e
 			if response.Errors {
 				logging.GetLogger().Errorf("Failed to insert %d entries", len(response.Failed()))
 				for i, fail := range response.Failed() {
-					logging.GetLogger().Errorf("Failed to insert entry %d: %s", i, fail.Error.Reason)
+					logging.GetLogger().Errorf("Failed to insert entry %d: %v", i, fail.Error)
 				}
 			}
 		}).
