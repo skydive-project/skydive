@@ -61,7 +61,11 @@ func dumpCluster(name string) string {
 }
 
 func (p *clusterProbe) newMetadata(name string) graph.Metadata {
-	return NewMetadata(Manager, "cluster", "", name, nil)
+	return graph.Metadata{
+		"Manager": Manager,
+		"Type":    "cluster",
+		"Name":    name,
+	}
 }
 
 func (p *clusterProbe) linkObject(objNode, clusterNode *graph.Node) {
