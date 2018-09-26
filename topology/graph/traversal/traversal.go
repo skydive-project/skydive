@@ -1638,7 +1638,7 @@ func (te *GraphTraversalE) BothV(ctx StepContext, s ...interface{}) *GraphTraver
 	defer te.GraphTraversal.RUnlock()
 
 	for _, e := range te.edges {
-		parents, children := te.GraphTraversal.Graph.GetEdgeNodes(e, metadata, metadata)
+		parents, _ := te.GraphTraversal.Graph.GetEdgeNodes(e, metadata, nil)
 		for _, parent := range parents {
 			if it.Done() {
 				break
@@ -1646,6 +1646,8 @@ func (te *GraphTraversalE) BothV(ctx StepContext, s ...interface{}) *GraphTraver
 				ntv.nodes = append(ntv.nodes, parent)
 			}
 		}
+
+		_, children := te.GraphTraversal.Graph.GetEdgeNodes(e, nil, metadata)
 		for _, child := range children {
 			if it.Done() {
 				break
