@@ -1,11 +1,11 @@
 #!/bin/bash
 
 set -v
+set -eo pipefail
 
 dir="$(dirname "$0")"
 
 go get -f -u github.com/tebeka/go2xunit
-
 
 GOFLAGS=-race
 if [ "$(uname -m)" = "ppc64le" ] ; then
