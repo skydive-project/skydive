@@ -26,11 +26,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
 )
 
@@ -94,7 +94,7 @@ func TestSubscription(t *testing.T) {
 	go httpServer.ListenAndServe()
 	defer httpServer.Stop()
 
-	wsServer := NewServer(httpServer, "/wstest", shttp.NewNoAuthenticationBackend())
+	wsServer := NewServer(httpServer, "/wstest", shttp.NewNoAuthenticationBackend(), true, 100, 2*time.Second, 5*time.Second)
 
 	serverHandler := &fakeServerSubscriptionHandler{t: t, server: wsServer, connected: 0, received: 0}
 	wsServer.AddEventHandler(serverHandler)
@@ -102,7 +102,9 @@ func TestSubscription(t *testing.T) {
 	wsServer.Start()
 	defer wsServer.Stop()
 
-	wsClient := NewClient("myhost", common.AgentService, config.GetURL("ws", "localhost", 59999, "/wstest"), nil, http.Header{}, 1000, nil)
+	u, _ := url.Parse("ws://localhost:59999/wstest")
+
+	wsClient := NewClient("myhost", common.AgentService, u, nil, http.Header{}, 1000, true, nil)
 	wsPool := NewClientPool("TestSubscription")
 
 	wsPool.AddClient(wsClient)
