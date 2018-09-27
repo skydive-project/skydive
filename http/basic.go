@@ -24,12 +24,9 @@ package http
 
 import (
 	"encoding/base64"
-	"errors"
 	"net/http"
-	"os"
 
 	"github.com/abbot/go-http-auth"
-	"github.com/skydive-project/skydive/config"
 )
 
 const (
@@ -95,26 +92,4 @@ func NewBasicAuthenticationBackend(name string, provider auth.SecretProvider, ro
 		name:      name,
 		role:      role,
 	}, nil
-}
-
-func NewBasicAuthenticationBackendFromConfig(name string) (*BasicAuthenticationBackend, error) {
-	role := config.GetString("auth." + name + ".role")
-	if role == "" {
-		role = defaultUserRole
-	}
-
-	var provider auth.SecretProvider
-	if file := config.GetString("auth." + name + ".file"); file != "" {
-		if _, err := os.Stat(file); err != nil {
-			return nil, err
-		}
-
-		provider = auth.HtpasswdFileProvider(file)
-	} else if users := config.GetStringMapString("auth." + name + ".users"); users != nil && len(users) > 0 {
-		provider = NewHtpasswdMapProvider(users).SecretProvider()
-	} else {
-		return nil, errors.New("No htpassword provider set, you set either file or inline sections")
-	}
-
-	return NewBasicAuthenticationBackend(name, provider, role)
 }

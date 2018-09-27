@@ -80,7 +80,10 @@ func NewAnalyzerStructClientPool(authOptions *shttp.AuthenticationOpts) (*ws.Str
 	}
 
 	for _, sa := range addresses {
-		c := ws.NewClientFromConfig(common.AgentService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/agent"), authOptions, nil)
+		c, err := config.NewWSClient(common.AgentService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/agent"), authOptions, nil)
+		if err != nil {
+			return nil, err
+		}
 		pool.AddClient(c)
 	}
 
@@ -170,13 +173,14 @@ func NewAgent() (*Agent, error) {
 	tm.Start()
 
 	apiAuthBackendName := config.GetString("agent.auth.api.backend")
-	apiAuthBackend, err := shttp.NewAuthenticationBackendByName(apiAuthBackendName)
+	apiAuthBackend, err := config.NewAuthenticationBackendByName(apiAuthBackendName)
 	if err != nil {
 		return nil, err
 	}
 
-	hserver, err := shttp.NewServerFromConfig(common.AgentService)
+	hserver, err := config.NewHTTPServer(common.AgentService)
 	if err != nil {
+
 		return nil, err
 	}
 
@@ -191,7 +195,7 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	wsServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/subscriber", apiAuthBackend))
+	wsServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
 
 	// declare all extension available throught API and filtering
 	tr := traversal.NewGremlinTraversalParser()
@@ -209,6 +213,7 @@ func NewAgent() (*Agent, error) {
 	clusterAuthOptions := &shttp.AuthenticationOpts{
 		Username: config.GetString("agent.auth.cluster.username"),
 		Password: config.GetString("agent.auth.cluster.password"),
+		Cookie:   config.GetStringMapString("http.cookie"),
 	}
 
 	topologyEndpoint := topology.NewTopologySubscriberEndpoint(wsServer, g, tr)

@@ -30,22 +30,32 @@ import (
 
 // NewCrudClientFromConfig creates a new REST client on /api
 func NewCrudClientFromConfig(authOptions *shttp.AuthenticationOpts) (*shttp.CrudClient, error) {
+	tlsConfig, err := config.GetTLSClientConfig(true)
+	if err != nil {
+		return nil, err
+	}
+
 	sa, err := config.GetOneAnalyzerServiceAddress()
 	if err != nil && err != config.ErrNoAnalyzerSpecified {
 		logging.GetLogger().Errorf("Unable to parse analyzer client %s", err.Error())
 		return nil, err
 	}
 
-	return shttp.NewCrudClient(config.GetURL("http", sa.Addr, sa.Port, "/api/"), authOptions)
+	return shttp.NewCrudClient(config.GetURL("http", sa.Addr, sa.Port, "/api/"), authOptions, tlsConfig), nil
 }
 
 // NewRestClientFromConfig creates a new REST client
 func NewRestClientFromConfig(authOptions *shttp.AuthenticationOpts) (*shttp.RestClient, error) {
+	tlsConfig, err := config.GetTLSClientConfig(true)
+	if err != nil {
+		return nil, err
+	}
+
 	sa, err := config.GetOneAnalyzerServiceAddress()
 	if err != nil && err != config.ErrNoAnalyzerSpecified {
 		logging.GetLogger().Errorf("Unable to parse analyzer client %s", err.Error())
 		return nil, err
 	}
 
-	return shttp.NewRestClient(config.GetURL("http", sa.Addr, sa.Port, "/api/"), authOptions)
+	return shttp.NewRestClient(config.GetURL("http", sa.Addr, sa.Port, "/api/"), authOptions, tlsConfig), nil
 }

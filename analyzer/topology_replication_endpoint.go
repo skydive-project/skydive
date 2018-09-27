@@ -110,15 +110,20 @@ func (p *TopologyReplicatorPeer) connect(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	logging.GetLogger().Infof("Connecting to peer: %s", p.URL.String())
-	wsClient := ws.NewClientFromConfig(common.AnalyzerService, p.URL, p.AuthOptions, http.Header{}).UpgradeToStructSpeaker()
+	wsClient, err := config.NewWSClient(common.AnalyzerService, p.URL, p.AuthOptions, http.Header{})
+	if err != nil {
+		logging.GetLogger().Errorf("Failed to create client: %s", err)
+		return
+	}
 
+	structClient := wsClient.UpgradeToStructSpeaker()
 	// will trigger shttp.SpeakerEventHandler, so OnConnected
-	wsClient.AddEventHandler(p)
+	structClient.AddEventHandler(p)
 
 	// subscribe to the graph messages
-	wsClient.AddStructMessageHandler(p.endpoint, []string{graph.Namespace})
+	structClient.AddStructMessageHandler(p.endpoint, []string{graph.Namespace})
 
-	p.wsspeaker = wsClient
+	p.wsspeaker = structClient
 	p.wsspeaker.Connect()
 }
 

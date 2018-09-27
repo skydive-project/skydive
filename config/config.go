@@ -333,8 +333,8 @@ func GetEtcdServerAddrs() []string {
 	return []string{fmt.Sprintf("http://localhost:%d", port)}
 }
 
-// IsTLSenabled returns true is the analyzer certificates are set
-func IsTLSenabled() bool {
+// IsTLSEnabled returns true is the analyzer certificates are set
+func IsTLSEnabled() bool {
 	certPEM := GetString("analyzer.X509_cert")
 	keyPEM := GetString("analyzer.X509_key")
 	if len(certPEM) > 0 && len(keyPEM) > 0 {
@@ -413,7 +413,7 @@ func BindPFlag(key string, flag *pflag.Flag) error {
 func GetURL(protocol string, addr string, port int, path string) *url.URL {
 	u, _ := url.Parse(fmt.Sprintf("%s://%s:%d%s", protocol, addr, port, path))
 
-	if (protocol == "http" || protocol == "ws") && IsTLSenabled() == true {
+	if (protocol == "http" || protocol == "ws") && IsTLSEnabled() == true {
 		u.Scheme += "s"
 	}
 

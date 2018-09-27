@@ -89,7 +89,7 @@ func (f *fakeClientSubscriptionHandler) OnMessage(c Speaker, m Message) {
 }
 
 func TestSubscription(t *testing.T) {
-	httpServer := shttp.NewServer("myhost", common.AnalyzerService, "localhost", 59999)
+	httpServer := shttp.NewServer("myhost", common.AnalyzerService, "localhost", 59999, nil)
 
 	go httpServer.ListenAndServe()
 	defer httpServer.Stop()
@@ -102,7 +102,7 @@ func TestSubscription(t *testing.T) {
 	wsServer.Start()
 	defer wsServer.Stop()
 
-	wsClient := NewClient("myhost", common.AgentService, config.GetURL("ws", "localhost", 59999, "/wstest"), nil, http.Header{}, 1000)
+	wsClient := NewClient("myhost", common.AgentService, config.GetURL("ws", "localhost", 59999, "/wstest"), nil, http.Header{}, 1000, nil)
 	wsPool := NewClientPool("TestSubscription")
 
 	wsPool.AddClient(wsClient)

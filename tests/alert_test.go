@@ -108,7 +108,7 @@ func newClient(endpoint string) (*websocket.Conn, error) {
 	}
 
 	scheme := "ws"
-	if config.IsTLSenabled() == true {
+	if config.IsTLSEnabled() == true {
 		scheme = "wss"
 	}
 	endpoint = fmt.Sprintf("%s://%s/ws/subscriber", scheme, endpoint)

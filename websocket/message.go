@@ -517,7 +517,7 @@ func NewStructServer(server *Server) *StructServer {
 	s.Server.incomerHandler = func(conn *websocket.Conn, r *auth.AuthenticatedRequest) Speaker {
 		// the default incomer handler creates a standard wsIncomingClient that we upgrade to a StructSpeaker
 		// being able to handle the StructMessage
-		c := defaultIncomerHandler(conn, r).upgradeToStructSpeaker()
+		c := s.Server.newIncomingClient(conn, r).upgradeToStructSpeaker()
 
 		// from headers
 		if namespaces, ok := r.Header["X-Websocket-Namespace"]; ok {

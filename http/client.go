@@ -25,17 +25,15 @@ package http
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/logging"
 )
 
 type RestClient struct {
@@ -45,7 +43,7 @@ type RestClient struct {
 }
 
 type CrudClient struct {
-	RestClient
+	*RestClient
 }
 
 func readBody(resp *http.Response) string {
@@ -56,34 +54,21 @@ func readBody(resp *http.Response) string {
 	return string(data)
 }
 
-func getHttpClient() (*http.Client, error) {
+func getHttpClient(tlsConfig *tls.Config) *http.Client {
 	client := &http.Client{}
-	if config.IsTLSenabled() {
-		tlsConfig, err := GetTLSConfig(true)
-		if err != nil {
-			return nil, err
-		}
+	if tlsConfig != nil {
 		tr := &http.Transport{TLSClientConfig: tlsConfig}
 		client = &http.Client{Transport: tr}
 	}
-	return client, nil
+	return client
 }
 
-func NewRestClient(url *url.URL, authOpts *AuthenticationOpts) (*RestClient, error) {
-	client, err := getHttpClient()
-	if err != nil {
-		return nil, err
-	}
-	rc := &RestClient{
-		client:   client,
+func NewRestClient(url *url.URL, authOpts *AuthenticationOpts, tlsConfig *tls.Config) *RestClient {
+	return &RestClient{
+		client:   getHttpClient(tlsConfig),
 		url:      url,
 		authOpts: authOpts,
 	}
-	return rc, nil
-}
-
-func (c *RestClient) debug() bool {
-	return config.GetBool("http.rest.debug")
 }
 
 func (c *RestClient) Request(method, path string, body io.Reader, header http.Header) (*http.Response, error) {
@@ -103,12 +88,6 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Add("Accept-Encoding", "gzip")
 
-	if c.debug() {
-		if buf, err := httputil.DumpRequest(req, true); err == nil {
-			logging.GetLogger().Debugf("Request:\n%s", buf)
-		}
-	}
-
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return resp, err
@@ -124,27 +103,13 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 		}
 	}
 
-	if c.debug() {
-		buf, err := httputil.DumpResponse(resp, true)
-		if err == nil {
-			logging.GetLogger().Debugf("Response:\n%s", buf)
-		} else {
-			logging.GetLogger().Debugf("Response (error):\n%s", err)
-		}
-
-	}
-
 	return resp, nil
 }
 
-func NewCrudClient(url *url.URL, authOpts *AuthenticationOpts) (*CrudClient, error) {
-	restClient, err := NewRestClient(url, authOpts)
-	if err != nil {
-		return nil, err
-	}
+func NewCrudClient(url *url.URL, authOpts *AuthenticationOpts, tlsConfig *tls.Config) *CrudClient {
 	return &CrudClient{
-		RestClient: *restClient,
-	}, nil
+		RestClient: NewRestClient(url, authOpts, tlsConfig),
+	}
 }
 
 func (c *CrudClient) List(resource string, values interface{}) error {

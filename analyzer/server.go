@@ -226,7 +226,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	hserver, err := shttp.NewServerFromConfig(common.AnalyzerService)
+	hserver, err := config.NewHTTPServer(common.AnalyzerService)
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +258,7 @@ func NewServerFromConfig() (*Server, error) {
 	clusterAuthOptions := AnalyzerClusterAuthenticationOpts()
 
 	clusterAuthBackendName := config.GetString("analyzer.auth.cluster.backend")
-	clusterAuthBackend, err := shttp.NewAuthenticationBackendByName(clusterAuthBackendName)
+	clusterAuthBackend, err := config.NewAuthenticationBackendByName(clusterAuthBackendName)
 	if err != nil {
 		return nil, err
 	}
@@ -267,20 +267,20 @@ func NewServerFromConfig() (*Server, error) {
 	clusterAuthBackend.SetDefaultUserRole("admin")
 
 	apiAuthBackendName := config.GetString("analyzer.auth.api.backend")
-	apiAuthBackend, err := shttp.NewAuthenticationBackendByName(apiAuthBackendName)
+	apiAuthBackend, err := config.NewAuthenticationBackendByName(apiAuthBackendName)
 	if err != nil {
 		return nil, err
 	}
 
 	uiServer.RegisterLoginRoute(apiAuthBackend)
 
-	agentWSServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/agent", clusterAuthBackend))
+	agentWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/agent", clusterAuthBackend))
 	_, err = NewTopologyAgentEndpoint(agentWSServer, cached, g)
 	if err != nil {
 		return nil, err
 	}
 
-	publisherWSServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/publisher", apiAuthBackend))
+	publisherWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/publisher", apiAuthBackend))
 	_, err = NewTopologyPublisherEndpoint(publisherWSServer, g)
 	if err != nil {
 		return nil, err
@@ -290,7 +290,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	storage, err := storage.NewStorageFromConfig(etcdClient)
 
-	replicationWSServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/replication", clusterAuthBackend))
+	replicationWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/replication", clusterAuthBackend))
 	replicationEndpoint, err := NewTopologyReplicationEndpoint(replicationWSServer, clusterAuthOptions, cached, g)
 	if err != nil {
 		return nil, err
@@ -304,7 +304,7 @@ func NewServerFromConfig() (*Server, error) {
 	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
 
-	subscriberWSServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/subscriber", apiAuthBackend))
+	subscriberWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
 	topology.NewTopologySubscriberEndpoint(subscriberWSServer, g, tr)
 
 	probeBundle, err := NewTopologyProbeBundleFromConfig(g)
@@ -396,5 +396,6 @@ func AnalyzerClusterAuthenticationOpts() *shttp.AuthenticationOpts {
 	return &shttp.AuthenticationOpts{
 		Username: config.GetString("analyzer.auth.cluster.username"),
 		Password: config.GetString("analyzer.auth.cluster.password"),
+		Cookie:   config.GetStringMapString("http.cookie"),
 	}
 }

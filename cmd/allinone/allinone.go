@@ -110,11 +110,12 @@ var AllInOneCmd = &cobra.Command{
 
 		authOptions := analyzer.AnalyzerClusterAuthenticationOpts()
 		svcAddr, _ := common.ServiceAddressFromString(config.GetString("analyzer.listen"))
-		restClient, err := http.NewRestClient(config.GetURL("http", svcAddr.Addr, svcAddr.Port, ""), authOptions)
+		tlsConfig, err := config.GetTLSClientConfig(true)
 		if err != nil {
-			logging.GetLogger().Errorf("Failed to start Skydive analyzer: %v", err)
+			logging.GetLogger().Errorf("Can't start Skydive analyzer: %v", err)
 			os.Exit(1)
 		}
+		restClient := http.NewRestClient(config.GetURL("http", svcAddr.Addr, svcAddr.Port, ""), authOptions, tlsConfig)
 
 		err = common.Retry(func() error {
 			_, err := restClient.Request("GET", "/api", nil, nil)

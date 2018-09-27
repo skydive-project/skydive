@@ -33,7 +33,6 @@ import (
 	tokens2 "github.com/gophercloud/gophercloud/openstack/identity/v2/tokens"
 	tokens3 "github.com/gophercloud/gophercloud/openstack/identity/v3/tokens"
 	"github.com/mitchellh/mapstructure"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -196,17 +195,4 @@ func NewKeystoneBackend(name string, authURL string, tenant string, domain strin
 		name:    name,
 		role:    role,
 	}, nil
-}
-
-func NewKeystoneAuthenticationBackendFromConfig(name string) (*KeystoneAuthenticationBackend, error) {
-	authURL := config.GetString("auth." + name + ".auth_url")
-	domain := config.GetString("auth." + name + ".domain_name")
-	tenant := config.GetString("auth." + name + ".tenant_name")
-
-	role := config.GetString("auth." + name + ".role")
-	if role == "" {
-		role = defaultUserRole
-	}
-
-	return NewKeystoneBackend(name, authURL, tenant, domain, role)
 }
