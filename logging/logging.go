@@ -311,5 +311,5 @@ func GetLogger() (log *logger) {
 
 func init() {
 	hostname, _ := os.Hostname()
-	InitLogging(hostname, false, []*Logger{NewLogger(NewStdioBackend(os.Stderr), "DEBUG", "")})
+	InitLogging(hostname, false, []*Logger{NewLogger(NewStdioBackend(os.Stderr), "INFO", "")})
 }
