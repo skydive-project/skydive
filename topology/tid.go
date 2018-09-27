@@ -105,7 +105,7 @@ func (t *TIDMapper) onNodeEvent(n *graph.Node) {
 				if probe, _ := n.GetFieldString("Probe"); probe == "fabric" {
 					t.Graph.AddMetadata(n, "TID", string(n.ID))
 				} else {
-					parents := t.Graph.LookupParents(n, nil, OwnershipMetadata)
+					parents := t.Graph.LookupParents(n, nil, OwnershipMetadata())
 					if len(parents) > 1 {
 						logging.GetLogger().Errorf("A should always only have one ownership parent: %v", n)
 					} else if len(parents) == 1 {
