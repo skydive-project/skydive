@@ -550,6 +550,10 @@ Vue.component('rule-detail', {
     bridge: {
       type: Object,
       required: true
+    },
+    realgraph: {
+      type: Object,
+      required: true
     }
   },
 
@@ -609,6 +613,27 @@ Vue.component('rule-detail', {
   },
 
   mounted: function () {
+    var self = this;
+
+    var handle = function(e) {
+      if (! self.bridge) return;
+      if (e.target.metadata.Type === 'ofrule' && e.source.id == self.bridge.id ) {
+        self.getRules();
+      }
+    };
+    var handleUpdate = function(n) {
+      if (n.metadata.Type == 'ofrule') {
+        self.getRules();
+      }
+    };
+
+    this.handler = {
+      onEdgeAdded: handle,
+      onEdgeDeleted: handle,
+      onNodeUpdated:handleUpdate
+    };
+    this.realgraph.addHandler(this.handler);
+
     this.getRules();
 
     var self = this;

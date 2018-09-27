@@ -196,7 +196,7 @@ var TopologyComponent = {
         </panel>\
         <panel id="ovs-rules" v-if="currentNodeMetadata && currentNodeMetadata.Type == \'ovsbridge\'"\
                title="Rules">\
-          <rule-detail :bridge="currentNode" :graph="graph"></rule-detail>\
+          <rule-detail :bridge="currentNode" :realgraph="graph"></rule-detail>\
         </panel>\
         <panel id="total-metric" v-if="currentNodeMetric"\
                title="Metrics">\
