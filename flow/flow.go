@@ -195,15 +195,20 @@ func (p *Packet) TransportLayer() gopacket.TransportLayer {
 
 // ApplicationFlow returns first application flow
 func (p *Packet) ApplicationFlow() (gopacket.Flow, error) {
+	value32 := make([]byte, 4)
 	if layer := p.Layer(layers.LayerTypeICMPv4); layer != nil {
-		l := layer.(*ICMPv4)
-		value32 := make([]byte, 4)
-		binary.BigEndian.PutUint32(value32, uint32(l.Type)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.Id))
+		l := layer.(*layers.ICMPv4)
+		t := ICMPv4TypeToFlowICMPType(l.TypeCode.Type())
+		binary.BigEndian.PutUint32(value32, uint32(t)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.Id))
+		return gopacket.NewFlow(0, value32, nil), nil
+	} else if layer := p.Layer(layers.LayerTypeICMPv6Echo); layer != nil {
+		l := layer.(*layers.ICMPv6Echo)
+		binary.BigEndian.PutUint32(value32, uint32(ICMPType_ECHO)<<24|uint32(l.Identifier))
 		return gopacket.NewFlow(0, value32, nil), nil
 	} else if layer := p.Layer(layers.LayerTypeICMPv6); layer != nil {
-		l := layer.(*ICMPv6)
-		value32 := make([]byte, 4)
-		binary.BigEndian.PutUint32(value32, uint32(l.Type)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.ID))
+		l := layer.(*layers.ICMPv6)
+		t := ICMPv6TypeToFlowICMPType(l.TypeCode.Type())
+		binary.BigEndian.PutUint32(value32, uint32(t)<<24|uint32(l.TypeCode.Code())<<16)
 		return gopacket.NewFlow(0, value32, nil), nil
 	}
 
@@ -608,11 +613,11 @@ func (f *Flow) newNetworkLayer(packet *Packet) error {
 		f.IPMetric = packet.IPMetric
 
 		icmpLayer := packet.Layer(layers.LayerTypeICMPv4)
-		if layer, ok := icmpLayer.(*ICMPv4); ok {
+		if icmp, ok := icmpLayer.(*layers.ICMPv4); ok {
 			f.ICMP = &ICMPLayer{
-				Code: uint32(layer.TypeCode.Code()),
-				Type: layer.Type,
-				ID:   uint32(layer.Id),
+				Type: ICMPv4TypeToFlowICMPType(icmp.TypeCode.Type()),
+				Code: uint32(icmp.TypeCode.Code()),
+				ID:   uint32(icmp.Id),
 			}
 		}
 		return nil
@@ -628,11 +633,18 @@ func (f *Flow) newNetworkLayer(packet *Packet) error {
 		}
 
 		icmpLayer := packet.Layer(layers.LayerTypeICMPv6)
-		if layer, ok := icmpLayer.(*ICMPv6); ok {
+		if icmp, ok := icmpLayer.(*layers.ICMPv6); ok {
+			t := ICMPv6TypeToFlowICMPType(icmp.TypeCode.Type())
 			f.ICMP = &ICMPLayer{
-				Code: uint32(layer.TypeCode.Code()),
-				Type: layer.Type,
-				ID:   uint32(layer.ID),
+				Type: t,
+				Code: uint32(icmp.TypeCode.Code()),
+			}
+
+			if t == ICMPType_ECHO {
+				echoLayer := packet.Layer(layers.LayerTypeICMPv6Echo)
+				if echo, ok := echoLayer.(*layers.ICMPv6Echo); ok {
+					f.ICMP.ID = uint32(echo.Identifier)
+				}
 			}
 		}
 		return nil
