@@ -186,7 +186,7 @@ agent:
   topology:
     # Probes used to capture topology information like interfaces,
     # bridges, namespaces, etc...
-    # Available: ovsdb, docker, neutron, opencontrail, socketinfo, lxd
+    # Available: ovsdb, docker, neutron, opencontrail, socketinfo, lxd, lldp
     probes:
       # - ovsdb
       # - docker
@@ -194,6 +194,7 @@ agent:
       # - opencontrail
       # - socketinfo
       # - lxd
+      # - lldp
 
     netlink:
       # delay in seconds between two metric updates
@@ -212,6 +213,12 @@ agent:
 
       # The endpoint_type value must be 'public', 'internal' or 'admin'
       # endpoint_type: public
+
+    lldp:
+      # Interfaces to listen for LLDP frames. If no list is specified,
+      # use all interfaces
+      interfaces:
+        # - eth0
 
   capture:
     # Period in second to get capture stats from the probe. Note this

@@ -110,6 +110,11 @@ circle.emphasized  {
   stroke-width: 2;
 }
 
+.links path.lldp {
+  stroke: #eee;
+  stroke-width: 2;
+}
+
 .links path.networkpolicy {
   stroke-dasharray: 5;
   stroke-dashoffset: 80;
@@ -135,6 +140,11 @@ circle.emphasized  {
 }
 
 .groups .fabric {
+  fill: #FAC24D;
+  stroke: #FAC24D;
+}
+
+.groups .lldp {
   fill: #FAC24D;
   stroke: #FAC24D;
 }

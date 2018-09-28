@@ -41,6 +41,11 @@ func (h *AFPacketHandle) ReadPacketData() ([]byte, gopacket.CaptureInfo, error) 
 	return h.tpacket.ReadPacketData()
 }
 
+// TPacket returns the afpacket TPacket instance
+func (h *AFPacketHandle) TPacket() *afpacket.TPacket {
+	return h.tpacket
+}
+
 // Close the AF packet handle
 func (h *AFPacketHandle) Close() {
 	h.tpacket.Close()

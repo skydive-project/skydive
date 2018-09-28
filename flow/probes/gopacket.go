@@ -155,7 +155,7 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *types.Captur
 		return
 	}
 
-	firstLayerType, linkType := getGoPacketFirstLayerType(n)
+	firstLayerType, linkType := GoPacketFirstLayerType(n)
 
 	nscontext, err := topology.NewNetNSContextByNode(g, n)
 	g.RUnlock()
@@ -268,16 +268,12 @@ func (p *GoPacketProbe) stop() {
 	atomic.StoreInt64(&p.state, common.StoppingState)
 }
 
-func getGoPacketFirstLayerType(n *graph.Node) (gopacket.LayerType, layers.LinkType) {
-	name, _ := n.GetFieldString("Name")
-	if name == "" {
-		return layers.LayerTypeEthernet, layers.LinkTypeEthernet
-	}
-
+func GoPacketFirstLayerType(n *graph.Node) (gopacket.LayerType, layers.LinkType) {
 	if encapType, err := n.GetFieldString("EncapType"); err == nil {
 		return flow.GetFirstLayerType(encapType)
 	}
 
+	name, _ := n.GetFieldString("Name")
 	logging.GetLogger().Warningf("EncapType not found on link %s, defaulting to Ethernet", name)
 	return layers.LayerTypeEthernet, layers.LinkTypeEthernet
 }
