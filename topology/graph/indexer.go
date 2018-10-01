@@ -36,13 +36,14 @@ type NodeHasher func(n *Node) map[string]interface{}
 // multiple hash,value pairs. A hash can also be mapped to multiple nodes.
 type GraphIndexer struct {
 	common.RWMutex
-	eventHandler *GraphEventHandler
 	DefaultGraphListener
-	graph        *Graph
-	hashNode     NodeHasher
-	appendOnly   bool
-	hashToValues map[string]map[Identifier]interface{}
-	nodeToHashes map[Identifier]map[string]bool
+	graph           *Graph
+	eventHandler    *GraphEventHandler
+	listenerHandler GraphListenerHandler
+	hashNode        NodeHasher
+	appendOnly      bool
+	hashToValues    map[string]map[Identifier]interface{}
+	nodeToHashes    map[Identifier]map[string]bool
 }
 
 func (i *GraphIndexer) index(id Identifier, h string, value interface{}) {
@@ -72,7 +73,7 @@ func (i *GraphIndexer) cacheNode(n *Node, kv map[string]interface{}) {
 			i.index(n.ID, k, v)
 		}
 
-		i.eventHandler.notifyEvent(graphEvent{element: n, kind: nodeAdded})
+		i.eventHandler.NotifyEvent(NodeAdded, n)
 	} else {
 		// Node already was in the cache
 		if !i.appendOnly {
@@ -87,7 +88,7 @@ func (i *GraphIndexer) cacheNode(n *Node, kv map[string]interface{}) {
 			i.index(n.ID, k, v)
 		}
 
-		i.eventHandler.notifyEvent(graphEvent{element: n, kind: nodeUpdated})
+		i.eventHandler.NotifyEvent(NodeUpdated, n)
 	}
 }
 
@@ -102,7 +103,7 @@ func (i *GraphIndexer) forgetNode(n *Node) {
 			delete(i.hashToValues[h], n.ID)
 		}
 
-		i.eventHandler.notifyEvent(graphEvent{element: n, kind: nodeDeleted})
+		i.eventHandler.NotifyEvent(NodeDeleted, n)
 	}
 }
 
@@ -140,12 +141,12 @@ func (i *GraphIndexer) FromHash(hash string) (nodes []*Node, values []interface{
 
 // Start registers the graph indexer as a graph listener
 func (i *GraphIndexer) Start() {
-	i.graph.AddEventListener(i)
+	i.listenerHandler.AddEventListener(i)
 }
 
 // Stop removes the graph indexer from the graph listeners
 func (i *GraphIndexer) Stop() {
-	i.graph.RemoveEventListener(i)
+	i.listenerHandler.RemoveEventListener(i)
 }
 
 // AddEventListener subscibe a new graph listener
@@ -159,14 +160,15 @@ func (i *GraphIndexer) RemoveEventListener(l GraphEventListener) {
 }
 
 // NewGraphIndexer returns a new graph indexer with the associated hashing callback
-func NewGraphIndexer(g *Graph, hashNode NodeHasher, appendOnly bool) *GraphIndexer {
+func NewGraphIndexer(g *Graph, listenerHandler GraphListenerHandler, hashNode NodeHasher, appendOnly bool) *GraphIndexer {
 	indexer := &GraphIndexer{
-		eventHandler: NewGraphEventHandler(maxEvents),
-		graph:        g,
-		hashNode:     hashNode,
-		hashToValues: make(map[string]map[Identifier]interface{}),
-		nodeToHashes: make(map[Identifier]map[string]bool),
-		appendOnly:   appendOnly,
+		graph:           g,
+		eventHandler:    NewGraphEventHandler(maxEvents),
+		listenerHandler: listenerHandler,
+		hashNode:        hashNode,
+		hashToValues:    make(map[string]map[Identifier]interface{}),
+		nodeToHashes:    make(map[Identifier]map[string]bool),
+		appendOnly:      appendOnly,
 	}
 	return indexer
 }
@@ -196,26 +198,19 @@ func (m *MetadataIndexer) Get(values ...interface{}) ([]*Node, []interface{}) {
 
 // NewMetadataIndexer returns a new metadata graph indexer for the nodes
 // matching the graph filter `m`, indexing the metadata with `indexes`
-func NewMetadataIndexer(g *Graph, m GraphElementMatcher, indexes ...string) (indexer *MetadataIndexer) {
+func NewMetadataIndexer(g *Graph, listenerHandler GraphListenerHandler, m GraphElementMatcher, indexes ...string) (indexer *MetadataIndexer) {
 	indexer = &MetadataIndexer{
 		indexes: indexes,
-		GraphIndexer: NewGraphIndexer(g, func(n *Node) (kv map[string]interface{}) {
+		GraphIndexer: NewGraphIndexer(g, listenerHandler, func(n *Node) (kv map[string]interface{}) {
 			if match := n.MatchMetadata(m); match {
 				switch len(indexes) {
 				case 0:
 					return map[string]interface{}{string(n.ID): nil}
 				default:
 					kv = make(map[string]interface{})
-					values := make([]interface{}, len(indexes))
-					for i, index := range indexes {
-						v, err := n.GetField(index)
-						if err != nil {
-							return
-						}
-						values[i] = v
+					if values, err := getFieldsAsArray(n, indexes); err == nil {
+						kv[indexer.Hash(values...)] = values
 					}
-
-					kv[indexer.Hash(values...)] = values
 				}
 			}
 			return

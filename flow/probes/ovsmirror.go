@@ -573,8 +573,8 @@ func NewOvsMirrorProbesHandler(g *graph.Graph, tb, fb *probe.ProbeBundle) (*OvsM
 		Graph:       g,
 		ovsClient:   p.OvsMon.OvsClient,
 		probeBundle: fb,
-		intfIndexer: graph.NewMetadataIndexer(g, graph.Metadata{"Type": "internal"}, "ExtID.skydive-probe-id"),
-		portIndexer: graph.NewMetadataIndexer(g, graph.Metadata{"Type": "ovsport"}, "ExtID.skydive-probe-id"),
+		intfIndexer: graph.NewMetadataIndexer(g, g, graph.Metadata{"Type": "internal"}, "ExtID.skydive-probe-id"),
+		portIndexer: graph.NewMetadataIndexer(g, g, graph.Metadata{"Type": "ovsport"}, "ExtID.skydive-probe-id"),
 	}
 
 	o.intfHandler = &ovsMirrorInterfaceHandler{oph: o}

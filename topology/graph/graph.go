@@ -47,12 +47,12 @@ const (
 type graphEventType int
 
 const (
-	nodeUpdated graphEventType = iota + 1
-	nodeAdded
-	nodeDeleted
-	edgeUpdated
-	edgeAdded
-	edgeDeleted
+	NodeUpdated graphEventType = iota + 1
+	NodeAdded
+	NodeDeleted
+	EdgeUpdated
+	EdgeAdded
+	EdgeDeleted
 )
 
 // Identifier graph ID
@@ -76,7 +76,7 @@ type graphEvent struct {
 
 // GraphElementMatcher defines an interface used to match an element
 type GraphElementMatcher interface {
-	Match(e *graphElement) bool
+	Match(g filters.Getter) bool
 	Filter() (*filters.Filter, error)
 }
 
@@ -202,6 +202,11 @@ func (c *DefaultGraphListener) OnEdgeAdded(e *Edge) {
 func (c *DefaultGraphListener) OnEdgeDeleted(e *Edge) {
 }
 
+type GraphListenerHandler interface {
+	AddEventListener(l GraphEventListener)
+	RemoveEventListener(l GraphEventListener)
+}
+
 type GraphEventHandler struct {
 	common.RWMutex
 	eventListeners       []GraphEventListener
@@ -222,26 +227,27 @@ func (g *GraphEventHandler) notifyListeners(ge graphEvent) {
 		}
 
 		switch ge.kind {
-		case nodeAdded:
+		case NodeAdded:
 			g.currentEventListener.OnNodeAdded(ge.element.(*Node))
-		case nodeUpdated:
+		case NodeUpdated:
 			g.currentEventListener.OnNodeUpdated(ge.element.(*Node))
-		case nodeDeleted:
+		case NodeDeleted:
 			g.currentEventListener.OnNodeDeleted(ge.element.(*Node))
-		case edgeAdded:
+		case EdgeAdded:
 			g.currentEventListener.OnEdgeAdded(ge.element.(*Edge))
-		case edgeUpdated:
+		case EdgeUpdated:
 			g.currentEventListener.OnEdgeUpdated(ge.element.(*Edge))
-		case edgeDeleted:
+		case EdgeDeleted:
 			g.currentEventListener.OnEdgeDeleted(ge.element.(*Edge))
 		}
 	}
 }
 
-func (g *GraphEventHandler) notifyEvent(ge graphEvent) {
+func (g *GraphEventHandler) NotifyEvent(kind graphEventType, element interface{}) {
 	// push event to chan so that nested notification will be sent in the
 	// right order. Associate the event with the current event listener so
 	// we can avoid loop by not triggering event for the current listener.
+	ge := graphEvent{kind: kind, element: element}
 	ge.listener = g.currentEventListener
 	g.eventChan <- ge
 
@@ -297,24 +303,16 @@ func GenID(s ...string) Identifier {
 	return Identifier(u.String())
 }
 
-// GenIDNameBased helper generate a node Identifier
-func GenIDNameBased(namespace, name string) Identifier {
-	ns, _ := uuid.ParseHex(namespace)
-	u, _ := uuid.NewV5(ns, []byte(name))
-
-	return Identifier(u.String())
-}
-
 func (m Metadata) String() string {
 	j, _ := json.Marshal(m)
 	return string(j)
 }
 
 // Match returns true if the the given element matches the metadata.
-func (m Metadata) Match(e *graphElement) bool {
+func (m Metadata) Match(g filters.Getter) bool {
 	for k, v := range m {
-		nv, ok := e.metadata[k]
-		if !ok || !reflect.DeepEqual(nv, v) {
+		nv, err := g.GetField(k)
+		if err != nil || !reflect.DeepEqual(nv, v) {
 			return false
 		}
 	}
@@ -351,8 +349,8 @@ func (m Metadata) Filter() (*filters.Filter, error) {
 }
 
 // Match returns true if the given element matches the filter.
-func (mf *GraphElementFilter) Match(e *graphElement) bool {
-	return mf.filter.Eval(e)
+func (mf *GraphElementFilter) Match(g filters.Getter) bool {
+	return mf.filter.Eval(g)
 }
 
 // Filter returns the filter
@@ -614,15 +612,22 @@ func (n *Node) Decode(i interface{}) error {
 	return n.graphElement.Decode(i)
 }
 
-// GetFieldString returns the associated Field name
-func (e *Edge) GetFieldString(name string) (string, error) {
+func (e *Edge) MatchMetadata(f GraphElementMatcher) bool {
+	if f == nil {
+		return true
+	}
+	return f.Match(e)
+}
+
+// GetField returns the associated Field name
+func (e *Edge) GetField(name string) (interface{}, error) {
 	switch name {
 	case "Parent":
 		return string(e.parent), nil
 	case "Child":
 		return string(e.child), nil
 	default:
-		return e.graphElement.GetFieldString(name)
+		return e.graphElement.GetField(name)
 	}
 }
 
@@ -749,7 +754,7 @@ func (g *Graph) NodeUpdated(n *Node) bool {
 			return false
 		}
 
-		g.eventHandler.notifyEvent(graphEvent{kind: nodeUpdated, element: node})
+		g.eventHandler.NotifyEvent(NodeUpdated, node)
 		return true
 	}
 	return false
@@ -765,7 +770,7 @@ func (g *Graph) EdgeUpdated(e *Edge) bool {
 			return false
 		}
 
-		g.eventHandler.notifyEvent(graphEvent{kind: edgeUpdated, element: edge})
+		g.eventHandler.NotifyEvent(EdgeUpdated, edge)
 		return true
 	}
 	return false
@@ -774,15 +779,15 @@ func (g *Graph) EdgeUpdated(e *Edge) bool {
 // SetMetadata associate metadata to an edge or node
 func (g *Graph) SetMetadata(i interface{}, m Metadata) bool {
 	var e *graphElement
-	ge := graphEvent{element: i}
+	var kind graphEventType
 
 	switch i := i.(type) {
 	case *Node:
 		e = &i.graphElement
-		ge.kind = nodeUpdated
+		kind = NodeUpdated
 	case *Edge:
 		e = &i.graphElement
-		ge.kind = edgeUpdated
+		kind = EdgeUpdated
 	}
 
 	if reflect.DeepEqual(m, e.metadata) {
@@ -797,22 +802,22 @@ func (g *Graph) SetMetadata(i interface{}, m Metadata) bool {
 		return false
 	}
 
-	g.eventHandler.notifyEvent(ge)
+	g.eventHandler.NotifyEvent(kind, i)
 	return true
 }
 
 // DelMetadata delete a metadata to an associated edge or node
 func (g *Graph) DelMetadata(i interface{}, k string) bool {
 	var e *graphElement
-	ge := graphEvent{element: i}
+	var kind graphEventType
 
 	switch i.(type) {
 	case *Node:
 		e = &i.(*Node).graphElement
-		ge.kind = nodeUpdated
+		kind = NodeUpdated
 	case *Edge:
 		e = &i.(*Edge).graphElement
-		ge.kind = edgeUpdated
+		kind = EdgeUpdated
 	}
 
 	if updated := common.DelField(e.metadata, k); !updated {
@@ -826,7 +831,7 @@ func (g *Graph) DelMetadata(i interface{}, k string) bool {
 		return false
 	}
 
-	g.eventHandler.notifyEvent(ge)
+	g.eventHandler.NotifyEvent(kind, i)
 	return true
 }
 
@@ -842,15 +847,15 @@ func (m *Metadata) SetFieldAndNormalize(k string, v interface{}) bool {
 
 func (g *Graph) addMetadata(i interface{}, k string, v interface{}, t time.Time) bool {
 	var e *graphElement
-	ge := graphEvent{element: i}
+	var kind graphEventType
 
 	switch i.(type) {
 	case *Node:
 		e = &i.(*Node).graphElement
-		ge.kind = nodeUpdated
+		kind = NodeUpdated
 	case *Edge:
 		e = &i.(*Edge).graphElement
-		ge.kind = edgeUpdated
+		kind = EdgeUpdated
 	}
 
 	if o, ok := e.metadata[k]; ok && reflect.DeepEqual(o, v) {
@@ -868,7 +873,7 @@ func (g *Graph) addMetadata(i interface{}, k string, v interface{}, t time.Time)
 		return false
 	}
 
-	g.eventHandler.notifyEvent(ge)
+	g.eventHandler.NotifyEvent(kind, i)
 	return true
 }
 
@@ -895,15 +900,15 @@ func (t *MetadataTransaction) DelMetadata(k string) {
 // Commit the current transaction to the graph
 func (t *MetadataTransaction) Commit() {
 	var e *graphElement
-	ge := graphEvent{element: t.graphElement}
+	var kind graphEventType
 
 	switch t.graphElement.(type) {
 	case *Node:
 		e = &t.graphElement.(*Node).graphElement
-		ge.kind = nodeUpdated
+		kind = NodeUpdated
 	case *Edge:
 		e = &t.graphElement.(*Edge).graphElement
-		ge.kind = edgeUpdated
+		kind = EdgeUpdated
 	}
 
 	var updated bool
@@ -931,7 +936,7 @@ func (t *MetadataTransaction) Commit() {
 		return
 	}
 
-	t.graph.eventHandler.notifyEvent(ge)
+	t.graph.eventHandler.NotifyEvent(kind, t.graphElement)
 }
 
 // StartMetadataTransaction start a new transaction
@@ -1157,7 +1162,7 @@ func (g *Graph) AddEdge(e *Edge) bool {
 	if !g.backend.EdgeAdded(e) {
 		return false
 	}
-	g.eventHandler.notifyEvent(graphEvent{element: e, kind: edgeAdded})
+	g.eventHandler.NotifyEvent(EdgeAdded, e)
 
 	return true
 }
@@ -1183,7 +1188,7 @@ func (g *Graph) AddNode(n *Node) bool {
 	if !g.backend.NodeAdded(n) {
 		return false
 	}
-	g.eventHandler.notifyEvent(graphEvent{element: n, kind: nodeAdded})
+	g.eventHandler.NotifyEvent(NodeAdded, n)
 
 	return true
 }
@@ -1269,6 +1274,11 @@ func (g *Graph) CreateEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Ti
 		hostname = h[0]
 	}
 
+	if i == "" {
+		u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(p.ID+c.ID))
+		i = Identifier(u.String())
+	}
+
 	return CreateEdge(i, p, c, m, t, hostname, g.service)
 }
 
@@ -1284,14 +1294,14 @@ func (g *Graph) NewEdge(i Identifier, p *Node, c *Node, m Metadata, h ...string)
 // EdgeDeleted event
 func (g *Graph) EdgeDeleted(e *Edge) {
 	if g.backend.EdgeDeleted(e) {
-		g.eventHandler.notifyEvent(graphEvent{element: e, kind: edgeDeleted})
+		g.eventHandler.NotifyEvent(EdgeDeleted, e)
 	}
 }
 
 func (g *Graph) delEdge(e *Edge, t time.Time) (success bool) {
 	e.deletedAt = t
 	if success = g.backend.EdgeDeleted(e); success {
-		g.eventHandler.notifyEvent(graphEvent{element: e, kind: edgeDeleted})
+		g.eventHandler.NotifyEvent(EdgeDeleted, e)
 	}
 	return
 }
@@ -1304,7 +1314,7 @@ func (g *Graph) DelEdge(e *Edge) bool {
 // NodeDeleted event
 func (g *Graph) NodeDeleted(n *Node) {
 	if g.backend.NodeDeleted(n) {
-		g.eventHandler.notifyEvent(graphEvent{element: n, kind: nodeDeleted})
+		g.eventHandler.NotifyEvent(NodeDeleted, n)
 	}
 }
 
@@ -1315,7 +1325,7 @@ func (g *Graph) delNode(n *Node, t time.Time) (success bool) {
 
 	n.deletedAt = t
 	if success = g.backend.NodeDeleted(n); success {
-		g.eventHandler.notifyEvent(graphEvent{element: n, kind: nodeDeleted})
+		g.eventHandler.NotifyEvent(NodeDeleted, n)
 	}
 	return
 }

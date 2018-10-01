@@ -95,7 +95,7 @@ func getDescendants(g *graph.Graph, parents []*graph.Node, descendants *[]*graph
 
 	if maxDepth == 0 || currDepth < maxDepth {
 		for _, parent := range parents {
-			children := g.LookupChildren(parent, nil, topology.OwnershipMetadata)
+			children := g.LookupChildren(parent, nil, topology.OwnershipMetadata())
 			getDescendants(g, children, descendants, currDepth+1, maxDepth, visited)
 		}
 	}
