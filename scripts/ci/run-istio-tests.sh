@@ -24,7 +24,7 @@ istio_teardown() {
 network_setup
 istio_setup
 WITH_ISTIO=true
-TEST_PATTERN=Istio
+TEST_PATTERN='\(Istio\|K8s\)'
 tests_run
 istio_teardown
 exit $RETCODE
