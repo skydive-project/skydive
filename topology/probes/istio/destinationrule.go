@@ -25,7 +25,7 @@ package istio
 import (
 	"fmt"
 
-	kiali "github.com/hunchback/kiali/kubernetes"
+	kiali "github.com/kiali/kiali/kubernetes"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
 )

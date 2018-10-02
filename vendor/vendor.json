@@ -1466,14 +1466,6 @@
 			"revisionTime": "2017-01-09T16:22:49Z"
 		},
 		{
-			"checksumSHA1": "uhSK1n1Mi/6VOD87WUaZ+Ka0fZA=",
-			"path": "github.com/hunchback/kiali/kubernetes",
-			"revision": "e7788894a8c7a1269d8a9fc2e4be260836376c8f",
-			"revisionTime": "2018-08-28T12:39:20Z",
-			"version": "k8s-client-external",
-			"versionExact": "k8s-client-external"
-		},
-		{
 			"checksumSHA1": "N4Uk5GHnDyx7s2ru1m4dsCN9Jmc=",
 			"path": "github.com/hydrogen18/stoppableListener",
 			"revision": "dadc9ccc400c712e5a316107a5c462863919e579"
@@ -1651,22 +1643,28 @@
 			"revisionTime": "2016-08-11T00:15:26Z"
 		},
 		{
-			"checksumSHA1": "11gZeQ6XyPiXmnbaknOkzyoN/Xg=",
+			"checksumSHA1": "C7yvER9JhLMqv404MVb+PILiGVw=",
 			"path": "github.com/kiali/kiali/config",
-			"revision": "c87b65f0d41abfbf4ec634a673a9b5138bc597f1",
-			"revisionTime": "2018-09-05T10:54:18Z"
+			"revision": "f86edc2d20df8a3d9c3f239b7fa40d06e9f460d2",
+			"revisionTime": "2018-10-02T10:20:28Z"
 		},
 		{
 			"checksumSHA1": "YEq52RGpdLoht5zOt4h27wzNJrk=",
 			"path": "github.com/kiali/kiali/config/security",
-			"revision": "c87b65f0d41abfbf4ec634a673a9b5138bc597f1",
-			"revisionTime": "2018-09-05T10:54:18Z"
+			"revision": "f86edc2d20df8a3d9c3f239b7fa40d06e9f460d2",
+			"revisionTime": "2018-10-02T10:20:28Z"
+		},
+		{
+			"checksumSHA1": "Ce0O8Hx/IOKb+oEkdGX+qrko5jk=",
+			"path": "github.com/kiali/kiali/kubernetes",
+			"revision": "f86edc2d20df8a3d9c3f239b7fa40d06e9f460d2",
+			"revisionTime": "2018-10-02T10:20:28Z"
 		},
 		{
 			"checksumSHA1": "+tvH02HmIgp0+9wBlN3QySEUM8c=",
 			"path": "github.com/kiali/kiali/log",
-			"revision": "c87b65f0d41abfbf4ec634a673a9b5138bc597f1",
-			"revisionTime": "2018-09-05T10:54:18Z"
+			"revision": "f86edc2d20df8a3d9c3f239b7fa40d06e9f460d2",
+			"revisionTime": "2018-10-02T10:20:28Z"
 		},
 		{
 			"checksumSHA1": "KQhA4EQp4Ldwj9nJZnEURlE6aQw=",
@@ -1890,6 +1888,12 @@
 			"path": "github.com/opencontainers/runc/libcontainer/user",
 			"revision": "8fa5343b0058459296399a89bc532aa5508de28d",
 			"revisionTime": "2016-03-30T02:39:07Z"
+		},
+		{
+			"checksumSHA1": "aaGxJeYZxM1cbxVEac4vO4XeUys=",
+			"path": "github.com/openshift/api/project/v1",
+			"revision": "cc577cdc22a21a372000477f72df3d4409197ea8",
+			"revisionTime": "2018-09-26T07:47:13Z"
 		},
 		{
 			"checksumSHA1": "hdyVmbhZdcRLU8ZmYgE2GqmewBo=",
@@ -2193,7 +2197,7 @@
 			"revision": "604eaf189ee867d8c147fafc28def2394e878d25"
 		},
 		{
-			"checksumSHA1": "2jmj7l5rSw0yVb/vlWAYkK/YBwk=",
+			"checksumSHA1": "rFSw9cpg4vxtZD7dlOtKx25h4kI=",
 			"path": "github.com/weaveworks/tcptracer-bpf",
 			"revision": "e080bd747dc6b62d4ed3ed2b7f0be4801bef8faf",
 			"revisionTime": "2017-08-17T15:53:01Z",

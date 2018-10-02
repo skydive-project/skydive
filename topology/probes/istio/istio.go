@@ -23,7 +23,7 @@
 package istio
 
 import (
-	kiali "github.com/hunchback/kiali/kubernetes"
+	kiali "github.com/kiali/kiali/kubernetes"
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/topology/graph"
