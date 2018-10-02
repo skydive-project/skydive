@@ -237,6 +237,7 @@ func NewServerFromConfig() (*Server, error) {
 	uiServer.AddGlobalVar("ui", config.Get("ui"))
 	uiServer.AddGlobalVar("flow-metric-keys", (&flow.FlowMetric{}).GetFields())
 	uiServer.AddGlobalVar("interface-metric-keys", (&topology.InterfaceMetric{}).GetFields())
+	uiServer.AddGlobalVar("probes", config.Get("analyzer.topology.probes"))
 
 	name := config.GetString("analyzer.topology.backend")
 	if len(name) == 0 {

@@ -238,6 +238,7 @@ var TopologyComponent = {
 
   data: function() {
     return {
+      dynamicFilter: [],
       topologyTimeContext: 0,
       topologyTime: null,
       topologyDate: '',
@@ -346,6 +347,10 @@ var TopologyComponent = {
         self.topologyFilterQuery();
       }
     });
+
+    if (self.isK8SEnabled()) {
+      self.setk8sNamespacesFilter();
+    }
   },
 
   beforeDestroy: function() {
@@ -467,6 +472,10 @@ var TopologyComponent = {
       return app.getConfigValue('ssh_enabled');
     },
 
+    isK8SEnabled: function() {
+      return (globalVars["probes"].indexOf("k8s") >= 0);
+    },
+
     metadataLinks: function(m) {
       var self = this;
 
@@ -525,10 +534,29 @@ var TopologyComponent = {
        return str.indexOf(suffix, str.length - suffix.length) !== -1;
     },
 
+    setk8sNamespacesFilter: function() {
+      var self = this;
+      // get k8s namespaces using API
+      this.$topologyQuery("G.V().Has('Manager','k8s','Type', 'namespace')")
+        .then(function(data) {
+          var namespacesAsJsonFilter = '{"Name":"k8s namespace", "Type":"combobox", "value":{'
+          data.forEach(function(namespace) {
+            var namespaceName = namespace["Metadata"]["Name"]
+            var namespaceGremlin = 'G.V().Has(\'Namespace\',\'' + namespaceName + '\')'
+            namespacesAsJsonFilter += '"' + namespaceName + '":"' + namespaceGremlin + '",'
+            })
+          namespacesAsJsonFilter = namespacesAsJsonFilter.slice(0, -1);
+          namespacesAsJsonFilter += '}}'
+          self.dynamicFilter.push(namespacesAsJsonFilter)
+          self.setGremlinFavoritesFromConfig()
+         })
+        .catch(function() {});
+    },
+
     setGremlinFavoritesFromConfig: function() {
       var self = this;
       var options = $(".topology-gremlin-favorites");
-
+      options.children().remove();
       if (typeof(Storage) !== "undefined" && localStorage.preferences) {
         var favorites = JSON.parse(localStorage.preferences).favorites;
         if (favorites) {
@@ -544,6 +572,13 @@ var TopologyComponent = {
       $.each(favorites, function(key, value) {
         options.append($("<option/>").text(key).val(value));
       });
+
+      for (var i = 0, len = self.dynamicFilter.length; i < len; i++) {
+        filter = JSON.parse(self.dynamicFilter[i])
+        $.each(filter["value"], function(key, value) {
+          options.append($("<option/>").text(filter["Name"] + ": " + key).val(value));
+        });
+      }
 
       var default_filter = app.getConfigValue('topology.default_filter');
       if (default_filter) {
