@@ -43,7 +43,7 @@ func (h *daemonSetHandler) Dump(obj interface{}) string {
 func (h *daemonSetHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	ds := obj.(*v1beta1.DaemonSet)
 
-	m := newMetadata("daemonset", ds.Namespace, ds.Name, ds)
+	m := NewMetadata(Manager, "daemonset", ds, ds.Name, ds.Namespace)
 	m.SetFieldAndNormalize("Labels", ds.Labels)
 	m.SetField("DesiredNumberScheduled", ds.Status.DesiredNumberScheduled)
 	m.SetField("CurrentNumberScheduled", ds.Status.CurrentNumberScheduled)

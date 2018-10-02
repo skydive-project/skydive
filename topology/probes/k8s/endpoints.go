@@ -35,18 +35,14 @@ type endpointsHandler struct {
 	DefaultResourceHandler
 }
 
-func (h *endpointsHandler) IsTopLevel() bool {
-	return true
-}
-
 func (h *endpointsHandler) Dump(obj interface{}) string {
 	endpoints := obj.(*v1.Endpoints)
-	return fmt.Sprintf("endpoints{Name: %s}", endpoints.GetName())
+	return fmt.Sprintf("endpoints{Namespace: %s, Name: %s}", endpoints.Namespace, endpoints.Name)
 }
 
 func (h *endpointsHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	endpoints := obj.(*v1.Endpoints)
-	m := newMetadata("endpoints", endpoints.Namespace, endpoints.GetName(), endpoints)
+	m := NewMetadata(Manager, "endpoints", endpoints, endpoints.Name, endpoints.Namespace)
 	return graph.Identifier(endpoints.GetUID()), m
 }
 

@@ -66,7 +66,12 @@ func makeHasArgsType(mngr, ty interface{}, args1 ...interface{}) []interface{} {
 
 func makeHasArgsNode(node *graph.Node, args1 ...interface{}) []interface{} {
 	m := node.Metadata()
-	args := []interface{}{"Namespace", m["Namespace"], "Name", m["Name"]}
+	args := []interface{}{}
+	for _, key := range []string{"Namespace", "Name"} {
+		if val, ok := m[key]; ok {
+			args = append(args, key, val)
+		}
+	}
 	args = append(args, args1...)
 	return makeHasArgsType(m["Manager"], m["Type"], args...)
 }

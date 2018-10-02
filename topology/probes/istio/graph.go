@@ -22,22 +22,7 @@
 
 package istio
 
-import (
-	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/topology/graph"
-)
-
 const (
 	Manager      = "istio"
 	detailsField = "Istio"
 )
-
-func newMetadata(ty, namespace, name string, details interface{}) graph.Metadata {
-	return graph.Metadata{
-		"Manager":    Manager,
-		"Type":       ty,
-		"Namespace":  namespace,
-		"Name":       name,
-		detailsField: common.NormalizeValue(details),
-	}
-}

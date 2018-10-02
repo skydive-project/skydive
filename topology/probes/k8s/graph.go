@@ -35,14 +35,21 @@ const (
 	detailsField = "K8s"
 )
 
-func newMetadata(ty, namespace, name string, details interface{}) graph.Metadata {
-	return graph.Metadata{
-		"Manager":    Manager,
-		"Type":       ty,
-		"Namespace":  namespace,
-		"Name":       name,
-		detailsField: common.NormalizeValue(details),
+// NewMetadata creates a k8s node base metadata struct
+func NewMetadata(manager, ty, details interface{}, name string, namespace ...string) graph.Metadata {
+	m := graph.Metadata{}
+	m["Manager"] = manager
+	m["Type"] = ty
+
+	if len(namespace) == 1 {
+		m["Namespace"] = namespace[0]
 	}
+	m["Name"] = name
+
+	if details != nil {
+		m[detailsField] = common.NormalizeValue(details)
+	}
+	return m
 }
 
 func newEdgeMetadata() graph.Metadata {

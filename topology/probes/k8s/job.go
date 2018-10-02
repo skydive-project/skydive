@@ -43,7 +43,7 @@ func (h *jobHandler) Dump(obj interface{}) string {
 func (h *jobHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	job := obj.(*batchv1.Job)
 
-	m := newMetadata("job", job.Namespace, job.Name, job)
+	m := NewMetadata(Manager, "job", job, job.Name, job.Namespace)
 	m.SetField("Parallelism", job.Spec.Parallelism)
 	m.SetField("Completions", job.Spec.Completions)
 	m.SetField("Active", job.Status.Active)

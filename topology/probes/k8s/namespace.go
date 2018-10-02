@@ -44,13 +44,13 @@ func (h *namespaceHandler) IsTopLevel() bool {
 
 func (h *namespaceHandler) Dump(obj interface{}) string {
 	ns := obj.(*v1.Namespace)
-	return fmt.Sprintf("namespace{Name: %s}", ns.GetName())
+	return fmt.Sprintf("namespace{Name: %s}", ns.Name)
 }
 
 func (h *namespaceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	ns := obj.(*v1.Namespace)
 
-	m := newMetadata("namespace", "", ns.GetName(), ns)
+	m := NewMetadata(Manager, "namespace", ns, ns.Name)
 	m.SetFieldAndNormalize("Labels", ns.Labels)
 	m.SetField("Cluster", ns.ClusterName)
 	m.SetField("Status", ns.Status.Phase)
@@ -81,6 +81,7 @@ func newNamespaceLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Pro
 		filters.NewTermStringFilter("Type", "cronjob"),
 		filters.NewTermStringFilter("Type", "deployment"),
 		filters.NewTermStringFilter("Type", "daemonset"),
+		filters.NewTermStringFilter("Type", "endpoints"),
 		filters.NewTermStringFilter("Type", "ingress"),
 		filters.NewTermStringFilter("Type", "job"),
 		filters.NewTermStringFilter("Type", "pod"),

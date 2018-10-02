@@ -42,7 +42,7 @@ func (h *replicationControllerHandler) Dump(obj interface{}) string {
 
 func (h *replicationControllerHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	rc := obj.(*v1.ReplicationController)
-	return graph.Identifier(rc.GetUID()), newMetadata("replicationcontroller", rc.Namespace, rc.GetName(), rc)
+	return graph.Identifier(rc.GetUID()), NewMetadata(Manager, "replicationcontroller", rc, rc.Name, rc.Namespace)
 }
 
 func newReplicationControllerProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {

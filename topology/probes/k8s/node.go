@@ -52,7 +52,7 @@ func (h *nodeHandler) Dump(obj interface{}) string {
 func (h *nodeHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	node := obj.(*v1.Node)
 
-	m := newMetadata("node", node.Namespace, node.Name, node)
+	m := NewMetadata(Manager, "node", node, node.Name)
 	m.SetFieldAndNormalize("Labels", node.Labels)
 	m.SetField("Cluster", node.ClusterName)
 	for _, a := range node.Status.Addresses {
