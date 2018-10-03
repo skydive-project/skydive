@@ -1833,20 +1833,20 @@
 		{
 			"checksumSHA1": "NY/yQ26e4WcmK6+IxMR6TWK0X2U=",
 			"path": "github.com/nlewo/contrail-introspect-cli/collection",
-			"revision": "e4df28ccf9801abbe32edd5ddaba31a7a62b61b6",
-			"revisionTime": "2017-12-22T11:11:37Z"
+			"revision": "0407b60f2edd766ca0406b923f076f9e0b9db2ab",
+			"revisionTime": "2018-10-03T13:52:17Z"
 		},
 		{
-			"checksumSHA1": "7u0S2rH4jUAsSk4A1mH0DjepDrA=",
+			"checksumSHA1": "FyyqphRJoezUWIO8wunV5Q911/4=",
 			"path": "github.com/nlewo/contrail-introspect-cli/descriptions",
-			"revision": "e4df28ccf9801abbe32edd5ddaba31a7a62b61b6",
-			"revisionTime": "2017-12-22T11:11:37Z"
+			"revision": "0407b60f2edd766ca0406b923f076f9e0b9db2ab",
+			"revisionTime": "2018-10-03T13:52:17Z"
 		},
 		{
 			"checksumSHA1": "dc8PNRlEB9pbEJiJHjitlcJvH2I=",
 			"path": "github.com/nlewo/contrail-introspect-cli/utils",
-			"revision": "e4df28ccf9801abbe32edd5ddaba31a7a62b61b6",
-			"revisionTime": "2017-12-22T11:11:37Z"
+			"revision": "0407b60f2edd766ca0406b923f076f9e0b9db2ab",
+			"revisionTime": "2018-10-03T13:52:17Z"
 		},
 		{
 			"checksumSHA1": "gcLub3oB+u4QrOJZcYmk/y2AP4k=",
