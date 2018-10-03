@@ -25,9 +25,12 @@
 package tests
 
 import (
-	"testing"
-
 	"github.com/skydive-project/skydive/topology/probes/istio"
+	"testing"
+)
+
+const (
+	bookinfo = "https://raw.githubusercontent.com/istio/istio/release-1.0/samples/bookinfo"
 )
 
 /* -- test creation of single resource -- */
@@ -37,4 +40,42 @@ func TestIstioClusterNode(t *testing.T) {
 
 func TestIstioDestinationRuleNode(t *testing.T) {
 	testNodeCreationFromConfig(t, istio.Manager, "destinationrule", objName+"-destinationrule")
+}
+
+func TestBookInfoScenario(t *testing.T) {
+	testRunner(
+		t,
+		[]Cmd{
+			{"kubectl apply -f " + bookinfo + "/networking/destination-rule-all.yaml", true},
+		},
+		[]Cmd{
+			{"kubectl apply -f " + bookinfo + "/platform/kube/cleanup.sh", false},
+		},
+		[]CheckFunction{
+			func(c *CheckContext) error {
+				// check nodes exist
+				_, err := checkNodeCreation(t, c, istio.Manager, "destinationrule", "Name", "details")
+				if err != nil {
+					return err
+				}
+
+				_, err = checkNodeCreation(t, c, istio.Manager, "destinationrule", "Name", "productpage")
+				if err != nil {
+					return err
+				}
+
+				_, err = checkNodeCreation(t, c, istio.Manager, "destinationrule", "Name", "ratings")
+				if err != nil {
+					return err
+				}
+
+				_, err = checkNodeCreation(t, c, istio.Manager, "destinationrule", "Name", "reviews")
+				if err != nil {
+					return err
+				}
+
+				return nil
+			},
+		},
+	)
 }
