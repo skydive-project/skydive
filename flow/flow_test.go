@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -990,6 +991,28 @@ func BenchmarkPacketsParsing(b *testing.B) {
 
 func BenchmarkPacketsFlowTable(b *testing.B) {
 	benchmarkPacketsFlowTable(b, "pcaptraces/201801011400.small.pcap", layers.LinkTypeEthernet)
+}
+
+// Bench creation of flow and connection tracking, via FlowTable
+func BenchmarkQueryFlowTable(b *testing.B) {
+	t := NewTable(nil, nil, "")
+
+	for i := 0; i != 10; i++ {
+		f := &Flow{
+			ICMP: &ICMPLayer{
+				ID: uint32(i),
+			},
+		}
+		t.table[strconv.Itoa(i)] = f
+	}
+
+	query := &filters.SearchQuery{
+		Filter: filters.NewTermInt64Filter("ICMP.ID", 4444),
+	}
+
+	for n := 0; n != b.N; n++ {
+		t.getFlows(query)
+	}
 }
 
 func TestGREMPLS(t *testing.T) {

@@ -48,6 +48,7 @@ var (
 	ipDefrag           bool
 	reassembleTCP      bool
 	layerKeyMode       string
+	extraLayers        []string
 )
 
 // CaptureCmd skdyive capture root command
@@ -75,7 +76,13 @@ var CaptureCreate = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Critical(err.Error())
+			logging.GetLogger().Critical(err)
+			os.Exit(1)
+		}
+
+		var layers flow.ExtraLayers
+		if err := layers.Parse(extraLayers...); err != nil {
+			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
 
@@ -90,6 +97,7 @@ var CaptureCreate = &cobra.Command{
 		capture.ReassembleTCP = reassembleTCP
 		capture.LayerKeyMode = layerKeyMode
 		capture.RawPacketLimit = rawPacketLimit
+		capture.ExtraLayers = layers
 
 		if err := validator.Validate(capture); err != nil {
 			logging.GetLogger().Error(err)
@@ -113,7 +121,7 @@ var CaptureList = &cobra.Command{
 		var captures map[string]api.Capture
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Critical(err.Error())
+			logging.GetLogger().Critical(err)
 			os.Exit(1)
 		}
 
@@ -140,7 +148,7 @@ var CaptureGet = &cobra.Command{
 		var capture api.Capture
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Critical(err.Error())
+			logging.GetLogger().Critical(err)
 			os.Exit(1)
 		}
 
@@ -166,7 +174,7 @@ var CaptureDelete = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Critical(err.Error())
+			logging.GetLogger().Critical(err)
 			os.Exit(1)
 		}
 
@@ -203,6 +211,7 @@ func addCaptureFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&ipDefrag, "ip-defrag", "", false, "Defragment IPv4 packets, default: false")
 	cmd.Flags().BoolVarP(&reassembleTCP, "reassamble-tcp", "", false, "Reassemble TCP packets, default: false")
 	cmd.Flags().StringVarP(&layerKeyMode, "layer-key-mode", "", "L2", "Defines the first layer used by flow key calculation, L2 or L3")
+	cmd.Flags().StringArrayVarP(&extraLayers, "extra-layer", "", []string{}, fmt.Sprintf("List of extra layers to be added to the flow, available: %s", flow.ExtraLayers(flow.ALLLayer)))
 }
 
 func init() {

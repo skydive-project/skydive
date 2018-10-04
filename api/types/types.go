@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 )
@@ -75,20 +76,21 @@ func NewAlert() *Alert {
 // Capture describes a capture API
 type Capture struct {
 	BasicResource
-	GremlinQuery   string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr"`
-	BPFFilter      string `json:"BPFFilter,omitempty" valid:"isBPFFilter"`
-	Name           string `json:"Name,omitempty"`
-	Description    string `json:"Description,omitempty"`
-	Type           string `json:"Type,omitempty"`
-	Count          int    `json:"Count"`
-	PCAPSocket     string `json:"PCAPSocket,omitempty"`
-	Port           int    `json:"Port,omitempty"`
-	RawPacketLimit int    `json:"RawPacketLimit,omitempty" valid:"isValidRawPacketLimit"`
-	HeaderSize     int    `json:"HeaderSize,omitempty" valid:"isValidCaptureHeaderSize"`
-	ExtraTCPMetric bool   `json:"ExtraTCPMetric"`
-	IPDefrag       bool   `json:"IPDefrag"`
-	ReassembleTCP  bool   `json:"ReassembleTCP"`
-	LayerKeyMode   string `json:"LayerKeyMode,omitempty" valid:"isValidLayerKeyMode"`
+	GremlinQuery   string           `json:"GremlinQuery,omitempty" valid:"isGremlinExpr"`
+	BPFFilter      string           `json:"BPFFilter,omitempty" valid:"isBPFFilter"`
+	Name           string           `json:"Name,omitempty"`
+	Description    string           `json:"Description,omitempty"`
+	Type           string           `json:"Type,omitempty"`
+	Count          int              `json:"Count"`
+	PCAPSocket     string           `json:"PCAPSocket,omitempty"`
+	Port           int              `json:"Port,omitempty"`
+	RawPacketLimit int              `json:"RawPacketLimit,omitempty" valid:"isValidRawPacketLimit"`
+	HeaderSize     int              `json:"HeaderSize,omitempty" valid:"isValidCaptureHeaderSize"`
+	ExtraTCPMetric bool             `json:"ExtraTCPMetric"`
+	IPDefrag       bool             `json:"IPDefrag"`
+	ReassembleTCP  bool             `json:"ReassembleTCP"`
+	LayerKeyMode   string           `json:"LayerKeyMode,omitempty" valid:"isValidLayerKeyMode"`
+	ExtraLayers    flow.ExtraLayers `json:"ExtraLayers,omitempty"`
 }
 
 // NewCapture creates a new capture

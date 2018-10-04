@@ -157,6 +157,6 @@ func TestMessageSubscription(t *testing.T) {
 	}, 5, time.Second)
 
 	if err != nil {
-		t.Error(err.Error())
+		t.Error(err)
 	}
 }
