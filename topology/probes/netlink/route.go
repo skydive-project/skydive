@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"reflect"
 	"strings"
 
 	"github.com/skydive-project/skydive/common"
@@ -39,24 +40,44 @@ type RoutingTables []*RoutingTable
 // easyjson:json
 type RoutingTable struct {
 	ID     int64    `json:"ID"`
-	Src    net.IP   `json:"Src,omitempty"`
-	Routes []*Route `json:"Routes,omitempty"`
+	Src    net.IP   `json:"Src"`
+	Routes []*Route `json:"Routes"`
+}
+
+// Prefix describes prefix
+type Prefix struct {
+	net.IPNet
 }
 
 // Route describes a route
 // easyjson:json
 type Route struct {
-	Protocol int64      `json:"Protocol,omitempty"`
-	Prefix   string     `json:"Prefix,omitempty"`
-	NextHops []*NextHop `json:"NextHops,omitempty"`
+	Protocol int64      `json:"Protocol"`
+	Prefix   Prefix     `json:"Prefix"`
+	NextHops []*NextHop `json:"NextHops"`
 }
 
 // NextHop describes a next hop
 // easyjson:json
 type NextHop struct {
-	Priority int64  `json:"Priority,omitempty"`
+	Priority int64  `json:"Priority"`
 	IP       net.IP `json:"IP,omitempty"`
-	IfIndex  int64  `json:"IfIndex,omitempty"`
+	IfIndex  int64  `json:"IfIndex"`
+}
+
+var (
+	// IPv4DefaultRoute default IPv4 route
+	IPv4DefaultRoute    = net.IPNet{IP: net.IPv4zero, Mask: net.CIDRMask(0, 8*net.IPv4len)}
+	ipv4DefaultRouteStr = IPv4DefaultRoute.String()
+	// IPv6DefaultRoute default IPv6 route
+	IPv6DefaultRoute    = net.IPNet{IP: net.IPv6zero, Mask: net.CIDRMask(0, 8*net.IPv6len)}
+	ipv6DefaultRouteStr = IPv6DefaultRoute.String()
+)
+
+// IsDefaultRoute return whether the given cidr is a default route
+func (p *Prefix) IsDefaultRoute() bool {
+	s := p.String()
+	return s == ipv4DefaultRouteStr || s == ipv6DefaultRouteStr
 }
 
 // RoutingTablesMetadataDecoder implements a json message raw decoder
@@ -69,10 +90,31 @@ func RoutingTablesMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
 	return &rt, nil
 }
 
+// MarshalJSON custom marshal function
+func (p *Prefix) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + p.String() + `"`), nil
+}
+
+// UnmarshalJSON custom unmarshal function
+func (p *Prefix) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	_, cidr, err := net.ParseCIDR(s)
+	if err != nil {
+		return err
+	}
+	*p = Prefix{*cidr}
+
+	return nil
+}
+
 // GetRoute returns route for the given protocol and prefix
-func (rt *RoutingTable) GetRoute(protocol int64, prefix string) *Route {
+func (rt *RoutingTable) GetRoute(protocol int64, prefix net.IPNet) *Route {
 	for _, r := range rt.Routes {
-		if r.Protocol == protocol && r.Prefix == prefix {
+		if r.Protocol == protocol && reflect.DeepEqual(r.Prefix, Prefix{prefix}) {
 			return r
 		}
 	}
@@ -80,13 +122,13 @@ func (rt *RoutingTable) GetRoute(protocol int64, prefix string) *Route {
 }
 
 // GetOrCreateRoute creates if not existing a new route and returns it
-func (rt *RoutingTable) GetOrCreateRoute(protocol int64, prefix string) *Route {
+func (rt *RoutingTable) GetOrCreateRoute(protocol int64, prefix net.IPNet) *Route {
 	if r := rt.GetRoute(protocol, prefix); r != nil {
 		return r
 	}
 	r := &Route{
 		Protocol: protocol,
-		Prefix:   prefix,
+		Prefix:   Prefix{prefix},
 	}
 	rt.Routes = append(rt.Routes, r)
 	return r
@@ -144,7 +186,7 @@ func (r *Route) getFieldString(keys ...string) ([]string, error) {
 	}
 
 	if len(keys) == 1 && keys[0] == "Prefix" {
-		return []string{r.Prefix}, nil
+		return []string{r.Prefix.String()}, nil
 	}
 
 	if len(keys) < 2 {

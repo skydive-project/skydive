@@ -94,6 +94,7 @@ func isGremlinExpr(v interface{}, param string) error {
 	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewRawPacketsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
 
 	if _, err := tr.Parse(strings.NewReader(query)); err != nil {
 		return GremlinNotValid(err)

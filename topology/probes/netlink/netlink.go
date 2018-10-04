@@ -315,7 +315,7 @@ func (u *NetNsProbe) getNeighbors(index, family int) *Neighbors {
 				VNI:     int64(neigh.VNI),
 			})
 			if neigh.IP != nil {
-				neighbors[i].IP = neigh.IP.String()
+				neighbors[i].IP = neigh.IP
 			}
 		}
 	}
@@ -514,9 +514,15 @@ func (u *NetNsProbe) getRoutingTables(link netlink.Link, table int) *RoutingTabl
 			routingTable = &RoutingTable{ID: int64(r.Table), Src: r.Src}
 		}
 
-		protocol, prefix := int64(r.Protocol), ""
+		protocol, prefix := int64(r.Protocol), net.IPNet{}
 		if r.Dst != nil {
-			prefix = (*r.Dst).String()
+			prefix = *r.Dst
+		} else {
+			if len(r.Gw) == net.IPv4len {
+				prefix = IPv4DefaultRoute
+			} else {
+				prefix = IPv6DefaultRoute
+			}
 		}
 
 		route := routingTable.GetOrCreateRoute(protocol, prefix)

@@ -317,6 +317,7 @@ func NewServerFromConfig() (*Server, error) {
 	tr.AddTraversalExtension(ge.NewFlowTraversalExtension(tableClient, storage))
 	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
 
 	subscriberWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
 	topology.NewSubscriberEndpoint(subscriberWSServer, g, tr)

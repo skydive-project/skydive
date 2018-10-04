@@ -25,6 +25,7 @@ package netlink
 import (
 	json "encoding/json"
 	"fmt"
+	"net"
 
 	"github.com/skydive-project/skydive/common"
 )
@@ -38,7 +39,7 @@ type Neighbors []*Neighbor
 type Neighbor struct {
 	Flags   []string `json:"Flags,omitempty"`
 	MAC     string
-	IP      string   `json:"IP,omitempty"`
+	IP      net.IP   `json:"IP,omitempty"`
 	State   []string `json:"State,omitempty"`
 	Vlan    int64    `json:"Vlan,omitempty"`
 	VNI     int64    `json:"VNI,omitempty"`
@@ -67,7 +68,10 @@ func (nbs *Neighbors) GetFieldString(key string) (string, error) {
 		case "MAC":
 			return nb.MAC, nil
 		case "IP":
-			return nb.IP, nil
+			if nb.IP != nil {
+				return nb.IP.String(), nil
+			}
+			return "", nil
 		case "State":
 			if len(nb.State) == 0 {
 				return "", nil

@@ -207,6 +207,7 @@ func NewAgent() (*Agent, error) {
 	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
 
 	rootNode, err := createRootNode(g)
 	if err != nil {
