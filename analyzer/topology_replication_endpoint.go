@@ -203,9 +203,9 @@ func (t *TopologyReplicationEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Stru
 	case graph.SyncRequestMsgType:
 		reply := msg.Reply(t.Graph, graph.SyncReplyMsgType, http.StatusOK)
 		c.SendMessage(reply)
-	case graph.HostGraphDeletedMsgType:
-		logging.GetLogger().Debugf("Got %s message for host %s", graph.HostGraphDeletedMsgType, obj.(string))
-		t.Graph.DelHostGraph(obj.(string))
+	case graph.OriginGraphDeletedMsgType:
+		logging.GetLogger().Debugf("Got %s message for origin %s", graph.OriginGraphDeletedMsgType, obj.(string))
+		t.Graph.DelOriginGraph(obj.(string))
 	case graph.SyncMsgType, graph.SyncReplyMsgType:
 		r := obj.(*graph.SyncMsg)
 		for _, n := range r.Nodes {

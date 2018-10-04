@@ -371,6 +371,10 @@ func (e *graphElement) Origin() string {
 	return e.origin
 }
 
+func (e *graphElement) SetOrigin(origin string) {
+	e.origin = origin
+}
+
 func (e *graphElement) GetFieldInt64(field string) (_ int64, err error) {
 	f, err := e.GetField(field)
 	if err != nil {
@@ -1335,11 +1339,11 @@ func (g *Graph) DelNode(n *Node) bool {
 	return g.delNode(n, time.Now().UTC())
 }
 
-// DelHostGraph delete the associated node with the hostname host
-func (g *Graph) DelHostGraph(host string) {
+// DelOriginGraph delete the associated node with the origin
+func (g *Graph) DelOriginGraph(origin string) {
 	t := time.Now().UTC()
 	for _, node := range g.GetNodes(nil) {
-		if node.host == host {
+		if node.origin == origin {
 			g.delNode(node, t)
 		}
 	}
@@ -1368,6 +1372,16 @@ func (g *Graph) GetNodeEdges(n *Node, m GraphElementMatcher) []*Edge {
 func (g *Graph) String() string {
 	j, _ := json.Marshal(g)
 	return string(j)
+}
+
+// Origin returns service type with host name
+func (g *Graph) Origin() string {
+
+	o := string(g.service)
+	if len(g.host) > 0 {
+		o += "." + g.host
+	}
+	return o
 }
 
 // MarshalJSON serialize the graph in JSON

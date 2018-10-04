@@ -41,13 +41,15 @@ type TopologyAgentEndpoint struct {
 // OnDisconnected called when an agent disconnected.
 func (t *TopologyAgentEndpoint) OnDisconnected(c ws.Speaker) {
 	host := c.GetRemoteHost()
-	if host == "" {
-		return
+
+	origin := string(c.GetServiceType())
+	if len(host) > 0 {
+		origin += "." + host
 	}
 
 	t.Graph.Lock()
-	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources %s", host)
-	t.Graph.DelHostGraph(host)
+	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources %s", origin)
+	t.Graph.DelOriginGraph(origin)
 	t.Graph.Unlock()
 }
 
@@ -63,12 +65,12 @@ func (t *TopologyAgentEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMess
 	defer t.Graph.Unlock()
 
 	switch msgType {
-	case graph.HostGraphDeletedMsgType:
-		// HostGraphDeletedMsgType is handled specifically as we need to be sure to not use the
+	case graph.OriginGraphDeletedMsgType:
+		// OriginGraphDeletedMsgType is handled specifically as we need to be sure to not use the
 		// cache while deleting otherwise the delete mechanism is using the cache to walk through
 		// the graph.
-		logging.GetLogger().Debugf("Got %s message for host %s", graph.HostGraphDeletedMsgType, obj.(string))
-		t.Graph.DelHostGraph(obj.(string))
+		logging.GetLogger().Debugf("Got %s message for host %s", graph.OriginGraphDeletedMsgType, obj.(string))
+		t.Graph.DelOriginGraph(obj.(string))
 	case graph.SyncMsgType, graph.SyncReplyMsgType:
 		r := obj.(*graph.SyncMsg)
 		for _, n := range r.Nodes {
