@@ -3,7 +3,4 @@
 all: snortSkydive
 
 snortSkydive: snortSkydive.go
-	govendor build snortSkydive.go
-
-clean:
-	rm -f snortSkydive
+	govendor build -o $$GOPATH/bin/snort-skydive snortSkydive.go

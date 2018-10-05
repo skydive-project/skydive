@@ -18,12 +18,13 @@ eval ' \
 endef
 
 define VENDOR_RUN
+mv ${BUILD_TOOLS} bin || true; \
 ln -s vendor src || mv vendor src; \
 cd src/$1; \
-(unset GOARCH; unset CC; GOPATH=$$GOPATH/src/${SKYDIVE_GITHUB} go build $1); \
+(unset GOARCH; unset CC; GOPATH=$$GOPATH/src/${SKYDIVE_GITHUB} go install $1); \
 cd -; \
-unlink src || mv src vendor
-PATH=$${GOPATH}/src/${SKYDIVE_GITHUB}/vendor/$1:$$PATH
+mv bin ${BUILD_TOOLS}; \
+unlink src || mv src vendor;
 endef
 
 VERSION?=$(shell $(VERSION_CMD))
@@ -35,6 +36,7 @@ SKYDIVE_GITHUB:=github.com/skydive-project/skydive
 SKYDIVE_PKG:=skydive-${VERSION}
 SKYDIVE_PATH:=$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/
 SKYDIVE_GITHUB_VERSION:=$(SKYDIVE_GITHUB)/version.Version=${VERSION}
+BUILD_TOOLS:=${GOPATH}/.skydive-build-tool
 GO_BINDATA_GITHUB:=github.com/jteeuwen/go-bindata/go-bindata
 PROTOC_GEN_GO_GITHUB:=github.com/golang/protobuf/protoc-gen-go
 EASYJSON_GITHUB:=github.com/mailru/easyjson/easyjson
@@ -75,6 +77,8 @@ BOOTSTRAP_ARGS?=
 BUILD_TAGS?=$(TAGS)
 WITH_LXD?=true
 WITH_OPENCONTRAIL?=true
+
+export PATH:=$(BUILD_TOOLS):$(PATH)
 
 STATIC_DIR?=
 STATIC_LIBS?=
