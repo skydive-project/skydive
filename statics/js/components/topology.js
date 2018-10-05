@@ -409,7 +409,7 @@ var TopologyComponent = {
     currentNodeMetadata: function() {
       if (!this.currentNode) return null;
       return this.extractMetadata(this.currentNode.metadata,
-        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'RoutingTable', 'Features', 'K8s']);
+        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'RoutingTable', 'Features', 'K8s', 'Docker']);
     },
 
     currentNodeFlowsQuery: function() {
