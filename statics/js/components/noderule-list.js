@@ -69,6 +69,7 @@ Vue.component('noderule-list', {
   data: function() {
     return {
       noderules: {},
+      intervalID: "",
     };
   },
 
@@ -80,11 +81,15 @@ Vue.component('noderule-list', {
 
   created: function() {
     var self = this;
-    setInterval(this.getNodeRuleList.bind(this), 30000);
+    this.intervalID = setInterval(this.getNodeRuleList.bind(this), 30000);
     this.getNodeRuleList();
     app.$on("refresh-noderule-list", function() {
       self.getNodeRuleList();
     });
+  },
+
+  destroyed: function() {
+    clearInterval(this.intervalID);
   },
 
   methods: {

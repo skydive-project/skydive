@@ -65,6 +65,7 @@ Vue.component('edgerule-list', {
   data: function() {
     return {
       edgerules: {},
+      intervalID: "",
     };
   },
 
@@ -76,11 +77,15 @@ Vue.component('edgerule-list', {
 
   created: function() {
     var self = this;
-    setInterval(this.getEdgeRuleList.bind(this), 30000);
+    this.intervalID = setInterval(this.getEdgeRuleList.bind(this), 30000);
     this.getEdgeRuleList();
     app.$on("refresh-edgerule-list", function() {
       self.getEdgeRuleList();
     });
+  },
+
+  destroyed: function() {
+    clearInterval(this.intervalID);
   },
 
   methods: {
