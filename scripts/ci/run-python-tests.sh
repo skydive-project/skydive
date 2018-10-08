@@ -52,10 +52,13 @@ agent:
 
 analyzer:
   listen: 0.0.0.0:8082
+  auth:
+    api:
+      backend: basic
 
 auth:
-  type: basic
   basic:
+    type: basic
     file: /etc/skydive.htpasswd
 EOF
 PASSWD=$(mktemp /tmp/skydive.passwd.XXXXXX)
