@@ -28,8 +28,7 @@ import (
 	"time"
 
 	"github.com/google/gopacket"
-
-	"github.com/skydive-project/skydive/flow/probes/afpacket"
+	"github.com/google/gopacket/afpacket"
 )
 
 // AFPacketHandle describes a AF network kernel packets
