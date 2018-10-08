@@ -304,7 +304,7 @@ func TestHelloNodeScenario(t *testing.T) {
 		[]CheckFunction{
 			func(c *CheckContext) error {
 				// check nodes exist
-				cluster, err := checkNodeCreation(t, c, k8s.Manager, "cluster")
+				cluster, err := checkNodeCreation(t, c, k8s.Manager, "cluster", "Name", k8s.ClusterName)
 				if err != nil {
 					return err
 				}

@@ -37,11 +37,6 @@ const (
 )
 
 type nodeHandler struct {
-	DefaultResourceHandler
-}
-
-func (h *nodeHandler) IsTopLevel() bool {
-	return true
 }
 
 func (h *nodeHandler) Dump(obj interface{}) string {

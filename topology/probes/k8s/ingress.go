@@ -33,7 +33,6 @@ import (
 )
 
 type ingressHandler struct {
-	DefaultResourceHandler
 }
 
 func (h *ingressHandler) Dump(obj interface{}) string {

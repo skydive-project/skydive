@@ -34,10 +34,6 @@ const (
 )
 
 /* -- test creation of single resource -- */
-func TestIstioClusterNode(t *testing.T) {
-	testNodeCreation(t, nil, nil, istio.Manager, "cluster", istio.ClusterName)
-}
-
 func TestIstioDestinationRuleNode(t *testing.T) {
 	testNodeCreationFromConfig(t, istio.Manager, "destinationrule", objName+"-destinationrule")
 }

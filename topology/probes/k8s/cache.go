@@ -41,16 +41,6 @@ import (
 type ResourceHandler interface {
 	Map(obj interface{}) (graph.Identifier, graph.Metadata)
 	Dump(obj interface{}) string
-	IsTopLevel() bool
-}
-
-// DefaultResourceHandler defines a default Kubernetes resource handler
-type DefaultResourceHandler struct {
-}
-
-// IsTopLevel returns whether the resource is top level (no parent)
-func (h *DefaultResourceHandler) IsTopLevel() bool {
-	return false
 }
 
 // ResourceCache describes a cache for a specific kind of Kubernetes resource.

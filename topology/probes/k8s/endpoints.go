@@ -32,7 +32,6 @@ import (
 )
 
 type endpointsHandler struct {
-	DefaultResourceHandler
 }
 
 func (h *endpointsHandler) Dump(obj interface{}) string {

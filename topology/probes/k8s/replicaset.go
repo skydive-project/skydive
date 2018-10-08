@@ -32,7 +32,6 @@ import (
 )
 
 type replicaSetHandler struct {
-	DefaultResourceHandler
 }
 
 func (h *replicaSetHandler) Dump(obj interface{}) string {

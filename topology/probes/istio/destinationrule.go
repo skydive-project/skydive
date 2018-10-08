@@ -30,10 +30,7 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/k8s"
 )
 
-type destinationRuleHandler struct{}
-
-func (h *destinationRuleHandler) IsTopLevel() bool {
-	return true
+type destinationRuleHandler struct {
 }
 
 func (h *destinationRuleHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {

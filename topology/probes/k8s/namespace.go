@@ -35,11 +35,6 @@ import (
 )
 
 type namespaceHandler struct {
-	DefaultResourceHandler
-}
-
-func (h *namespaceHandler) IsTopLevel() bool {
-	return true
 }
 
 func (h *namespaceHandler) Dump(obj interface{}) string {
