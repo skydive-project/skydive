@@ -32,7 +32,6 @@ import (
 )
 
 type storageClassHandler struct {
-	DefaultResourceHandler
 }
 
 func (h *storageClassHandler) Dump(obj interface{}) string {

@@ -35,7 +35,6 @@ import (
 )
 
 type serviceHandler struct {
-	DefaultResourceHandler
 }
 
 func (h *serviceHandler) Dump(obj interface{}) string {

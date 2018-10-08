@@ -32,7 +32,6 @@ import (
 )
 
 type jobHandler struct {
-	DefaultResourceHandler
 }
 
 func (h *jobHandler) Dump(obj interface{}) string {

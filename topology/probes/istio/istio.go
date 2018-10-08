@@ -30,9 +30,6 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/k8s"
 )
 
-// ClusterName is the name to give to the probe cluster node
-const ClusterName = "cluster"
-
 // Probe describes the Istio probe in charge of importing
 // Istio resources into the graph
 type Probe struct {
@@ -56,5 +53,8 @@ func NewIstioProbe(g *graph.Graph) (*k8s.Probe, error) {
 		"destinationrule": newDestinationRuleProbe(client, g),
 	}
 
-	return k8s.NewProbe("istio", ClusterName, g, subprobes, nil)
+	linkedToCluster := []string{
+		"destinationrule",
+	}
+	return k8s.NewProbe(g, Manager, subprobes, nil, linkedToCluster)
 }

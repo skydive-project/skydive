@@ -32,11 +32,6 @@ import (
 )
 
 type persistentVolumeClaimHandler struct {
-	DefaultResourceHandler
-}
-
-func (h *persistentVolumeClaimHandler) IsTopLevel() bool {
-	return true
 }
 
 func (h *persistentVolumeClaimHandler) Dump(obj interface{}) string {

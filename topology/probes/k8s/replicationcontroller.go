@@ -32,7 +32,6 @@ import (
 )
 
 type replicationControllerHandler struct {
-	DefaultResourceHandler
 }
 
 func (h *replicationControllerHandler) Dump(obj interface{}) string {

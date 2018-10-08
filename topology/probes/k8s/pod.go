@@ -32,7 +32,6 @@ import (
 )
 
 type podHandler struct {
-	DefaultResourceHandler
 	graph.DefaultGraphListener
 	graph *graph.Graph
 	cache *ResourceCache

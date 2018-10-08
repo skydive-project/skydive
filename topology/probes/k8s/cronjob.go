@@ -32,7 +32,6 @@ import (
 )
 
 type cronJobHandler struct {
-	DefaultResourceHandler
 }
 
 func (h *cronJobHandler) Dump(obj interface{}) string {

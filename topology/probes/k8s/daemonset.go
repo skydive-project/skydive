@@ -32,7 +32,6 @@ import (
 )
 
 type daemonSetHandler struct {
-	DefaultResourceHandler
 }
 
 func (h *daemonSetHandler) Dump(obj interface{}) string {

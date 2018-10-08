@@ -32,7 +32,6 @@ import (
 )
 
 type deploymentHandler struct {
-	DefaultResourceHandler
 }
 
 func (h *deploymentHandler) Dump(obj interface{}) string {
