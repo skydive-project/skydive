@@ -147,8 +147,6 @@ var routes = [
     }
   },
   { path: '/topology', component: TopologyComponent, props: (route) => ({ query: route.query }) },
-  { path: '/conversation', component: ConversationComponent },
-  { path: '/discovery', component: DiscoveryComponent },
   { path: '/preference', component: PreferenceComponent },
   { path: '/status', component: StatusComponent },
   { path: '*', redirect: '/topology' }

@@ -99,7 +99,7 @@ var TopologyComponent = {
           <div style="margin-top: 10px">\
             <div class="trigger">\
               <button @mouseenter="showTopologyOptions" @mouseleave="clearTopologyTimeout" @click="hideTopologyOptions">\
-                <span :class="[\'glyphicon\', isTopologyOptionsVisible ? \'glyphicon-remove\' : \'glyphicon-align-justify\']" aria-hidden="true"></span>\
+                <span :class="[\'glyphicon\', isTopologyOptionsVisible ? \'glyphicon-remove\' : \'glyphicon-filter\']" aria-hidden="true"></span>\
               </button>\
             </div>\
           </div>\
@@ -144,7 +144,7 @@ var TopologyComponent = {
           </button>\
         </div>\
       </div>\
-      <div id="info-panel" class="col-sm-5 fill sidebar">\
+      <div id="info-panel" class="col-sm-5 sidebar">\
         <tabs v-if="isAnalyzer" :active="!canReadCaptures ? 2 : 0">\
           <tab-pane title="Captures" v-if="canReadCaptures">\
             <capture-list></capture-list>\

@@ -1,5 +1,5 @@
 body {
-  background-color: #fff;
+  background-color: #f7f7f7;
 }
 
 label {
@@ -10,13 +10,12 @@ label {
   color: #337ab7;
 }
 
-.sidebar {
-  border-left: 5px #eee solid;
-  color: #111;
+.topology-d3 {
+    background-color: #eee;
 }
 
 .panel {
-  background-color: #ddd;
+  background-color: #eee;
 }
 
 .panel h1 a, .panel h1 a:hover {
@@ -28,7 +27,7 @@ label {
 }
 
 .panel-actions {
-  background-color: #c2c2c2;
+  background-color: #eee;
 }
 
 .sub-panel {
@@ -53,11 +52,16 @@ label {
 
 .flow-ops-panel .tab-content {
   color : black;
-  background-color: #ddd;
+  background-color: #eee;
+}
+
+
+.flow-ops-panel .nav {
+  border-bottom: 1px solid #f7f7f7;
 }
 
 .flow-ops-panel .nav>li>a {
-  color : black;
+  color : #444;
 }
 
 .flow-ops-panel .nav-pills > li > a {
@@ -65,7 +69,8 @@ label {
 }
 
 .flow-ops-panel .nav-pills>li.active>a, .flow-ops-panel .nav-pills>li.active>a:focus, .flow-ops-panel .nav-pills>li.active>a:hover {
-  background-color: #ddd;
+  background-color: #eee;
+  color: #000;
 }
 
 .dynamic-table {
@@ -112,10 +117,35 @@ label {
   background: #8e8e8e;
 }
 
-.topology-controls {
-  background: rgba(0, 0, 0, 0.14);
-}
-
 #navbar {
   background-color: #f7f7f7;
+}
+
+.nav>li>a:focus, .nav>li>a:hover {
+  background-color: #f7f7f7;
+}
+
+.navbar-nav>.active>a, .navbar-inverse .navbar-nav>.active>a:focus, .navbar-inverse .navbar-nav>.active>a:hover {
+  background-color: #eee !important;
+}
+
+.flow-ops-panel {
+  background-color: #eee;
+  border-radius: 4px;
+}
+
+.sidebar, .status {
+  color: #000;
+}
+
+.topology-controls .btn-primary {
+  background-color: #337ab7;
+}
+
+.topology-controls .btn {
+  border-color: #337ab7;
+}
+
+.flow-ops-panel .nav-pills > li {
+  background-color: #ddd;
 }

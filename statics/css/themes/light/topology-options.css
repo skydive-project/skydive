@@ -1,5 +1,5 @@
 #topology-options-panel {
-  background: rgba(77, 124, 138, 0.61);
+  background: #969ea09c;
 }
 
 #topology-options .trigger {
@@ -12,4 +12,9 @@
 
 #topology-options .trigger button span {
     color: #fff;
+}
+
+.panel-actions .btn {
+  background-color: #eee;
+  color: #000;
 }

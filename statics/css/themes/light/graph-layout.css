@@ -1,7 +1,11 @@
 text {
-  fill: #111;
+  fill: #fff;
 }
  
+.node rect {
+  fill: #3e5482;
+}
+
 .links path.fabric {
   stroke: #111;
 }
@@ -15,13 +19,13 @@ text {
 }
 
 .group {
-  fill: #E7E7E7; /* light grey */
-  stroke: #E7E7E7;
+  fill: #d0d0d0; /* light grey */
+  stroke: #d0d0d0;
 }
 
 .groups .netns {
-  fill: #dac1f6; /* light purple */
-  stroke: #dac1f6;
+  fill: #b293d6; /* light purple */
+  stroke: #b293d6;
 }
 
 .groups .ovsbridge {
