@@ -71,6 +71,7 @@ Vue.component('alert-list', {
   data: function() {
     return {
       alerts: {},
+      intervalID: "",
     };
   },
 
@@ -82,11 +83,15 @@ Vue.component('alert-list', {
 
   created: function() {
     var self = this;
-    setInterval(this.getAlertList.bind(this), 30000);
+    this.intervalID = setInterval(this.getAlertList.bind(this), 30000);
     this.getAlertList();
     app.$on("refresh-alert-list", function() {
       self.getAlertList();
     });
+  },
+
+  destroyed: function() {
+    clearInterval(this.intervalID);
   },
 
   methods: {
