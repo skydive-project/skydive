@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.20.0] - 2018-10-08
+### Changed
+- Switch to gopacket master branch
+- Revamp Web UI
+- Remove user metadata API
+- Disable elasticsearch by default in devstack plugin
+- Bug fixes:
+  - Fix Limit for topology Gremlin steps
+  - Fix packets missed to due timeout when using afpacket
+  - Use Capture.ID instead of capture gremlin expression
+  - Fix IPv6 connection state when using eBPF
+  - Fix openflow rule modification
+
 ## [0.19.1] - 2018-09-13
 ### Added
 - Add node/edge rules API to register nodes and edges
