@@ -43,7 +43,7 @@ func (h *deploymentHandler) Dump(obj interface{}) string {
 func (h *deploymentHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	deployment := obj.(*v1beta1.Deployment)
 
-	m := newMetadata("deployment", deployment.Namespace, deployment.Name, deployment)
+	m := NewMetadata(Manager, "deployment", deployment, deployment.Name, deployment.Namespace)
 	m.SetFieldAndNormalize("Selector", deployment.Spec.Selector)
 	m.SetField("DesiredReplicas", int32ValueOrDefault(deployment.Spec.Replicas, 1))
 	m.SetField("Replicas", deployment.Status.Replicas)

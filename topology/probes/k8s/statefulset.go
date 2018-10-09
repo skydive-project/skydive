@@ -43,7 +43,7 @@ func (h *statefulSetHandler) Dump(obj interface{}) string {
 func (h *statefulSetHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	ss := obj.(*v1beta1.StatefulSet)
 
-	m := newMetadata("statefulset", ss.Namespace, ss.Name, ss)
+	m := NewMetadata(Manager, "statefulset", ss, ss.Name, ss.Namespace)
 	m.SetField("DesiredReplicas", int32ValueOrDefault(ss.Spec.Replicas, 1))
 	m.SetField("ServiceName", ss.Spec.ServiceName) // FIXME: replace by link to Service
 	m.SetField("Replicas", ss.Status.Replicas)

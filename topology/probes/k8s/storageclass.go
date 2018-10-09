@@ -43,7 +43,7 @@ func (h *storageClassHandler) Dump(obj interface{}) string {
 func (h *storageClassHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	sc := obj.(*v1.StorageClass)
 
-	m := newMetadata("storageclass", sc.Namespace, sc.Name, sc)
+	m := NewMetadata(Manager, "storageclass", sc, sc.Name, sc.Namespace)
 	m.SetField("Provisioner", sc.Provisioner)
 
 	return graph.Identifier(sc.GetUID()), m

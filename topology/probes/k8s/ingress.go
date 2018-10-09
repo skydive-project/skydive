@@ -44,7 +44,7 @@ func (h *ingressHandler) Dump(obj interface{}) string {
 func (h *ingressHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	ingress := obj.(*v1beta1.Ingress)
 
-	m := newMetadata("ingress", ingress.Namespace, ingress.Name, ingress)
+	m := NewMetadata(Manager, "ingress", ingress, ingress.Name, ingress.Namespace)
 	m.SetFieldAndNormalize("Backend", ingress.Spec.Backend)
 	m.SetFieldAndNormalize("TLS", ingress.Spec.TLS)
 	m.SetFieldAndNormalize("Rules", ingress.Spec.Rules)

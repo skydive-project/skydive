@@ -46,7 +46,7 @@ func (h *persistentVolumeHandler) Dump(obj interface{}) string {
 
 func (h *persistentVolumeHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	pv := obj.(*v1.PersistentVolume)
-	m := newMetadata("persistentvolume", pv.Namespace, pv.Name, pv)
+	m := NewMetadata(Manager, "persistentvolume", pv, pv.Name, pv.Namespace)
 	m.SetFieldAndNormalize("Capacity", pv.Spec.Capacity)
 	m.SetFieldAndNormalize("VolumeMode", pv.Spec.VolumeMode)
 	m.SetFieldAndNormalize("StorageClassName", pv.Spec.StorageClassName) // FIXME: replace by link to StorageClass

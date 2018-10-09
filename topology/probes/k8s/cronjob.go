@@ -42,7 +42,7 @@ func (h *cronJobHandler) Dump(obj interface{}) string {
 
 func (h *cronJobHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	cj := obj.(*v1beta1.CronJob)
-	m := newMetadata("cronjob", cj.Namespace, cj.Name, cj)
+	m := NewMetadata(Manager, "cronjob", cj, cj.Name, cj.Namespace)
 	m.SetField("Schedule", cj.Spec.Schedule)
 	m.SetField("Suspended", cj.Spec.Suspend != nil && *cj.Spec.Suspend)
 	return graph.Identifier(cj.GetUID()), m

@@ -38,7 +38,7 @@ func (h *destinationRuleHandler) IsTopLevel() bool {
 
 func (h *destinationRuleHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	dr := obj.(*kiali.DestinationRule)
-	return graph.Identifier(dr.GetUID()), newMetadata("destinationrule", dr.Namespace, dr.Name, dr)
+	return graph.Identifier(dr.GetUID()), k8s.NewMetadata(Manager, "destinationrule", dr, dr.Name, dr.Namespace)
 }
 
 func (h *destinationRuleHandler) Dump(obj interface{}) string {

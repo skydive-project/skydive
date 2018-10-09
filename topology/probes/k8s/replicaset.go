@@ -42,7 +42,7 @@ func (h *replicaSetHandler) Dump(obj interface{}) string {
 
 func (h *replicaSetHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	rs := obj.(*v1beta1.ReplicaSet)
-	return graph.Identifier(rs.GetUID()), newMetadata("replicaset", rs.Namespace, rs.GetName(), rs)
+	return graph.Identifier(rs.GetUID()), NewMetadata(Manager, "replicaset", rs, rs.Name, rs.Namespace)
 }
 
 func newReplicaSetProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {

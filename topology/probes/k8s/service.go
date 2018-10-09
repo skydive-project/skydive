@@ -46,7 +46,7 @@ func (h *serviceHandler) Dump(obj interface{}) string {
 func (h *serviceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	srv := obj.(*v1.Service)
 
-	m := newMetadata("service", srv.Namespace, srv.Name, srv)
+	m := NewMetadata(Manager, "service", srv, srv.Name, srv.Namespace)
 	m.SetFieldAndNormalize("Ports", srv.Spec.Ports)
 	m.SetFieldAndNormalize("ClusterIP", srv.Spec.ClusterIP)
 	m.SetFieldAndNormalize("ServiceType", srv.Spec.Type)

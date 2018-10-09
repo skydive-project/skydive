@@ -73,7 +73,7 @@ func (p *Probe) Stop() {
 
 // NewProbe creates the probe for tracking k8s events
 func NewProbe(manager, clusterName string, g *graph.Graph, subprobes map[string]Subprobe, linkers []probe.Probe) (*Probe, error) {
-	clusterNode := g.NewNode(graph.GenID(), graph.Metadata{"Manager": manager, "Type": "cluster", "Name": clusterName}, "")
+	clusterNode := g.NewNode(graph.GenID(), NewMetadata(manager, "cluster", nil, clusterName), "")
 	for _, subprobe := range subprobes {
 		if cache, ok := subprobe.(*ResourceCache); ok {
 			if cache.handler.IsTopLevel() {

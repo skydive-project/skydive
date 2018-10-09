@@ -46,7 +46,7 @@ type containerProbe struct {
 func (p *containerProbe) getContainerMetadata(podNode *graph.Node, containerName string, container map[string]interface{}) graph.Metadata {
 	podName, _ := podNode.GetFieldString("Name")
 	podNamespace, _ := podNode.GetFieldString("Namespace")
-	m := newMetadata("container", podNamespace, containerName, container)
+	m := NewMetadata(Manager, "container", container, containerName, podNamespace)
 	m.SetField("Pod", podName)
 	m.SetField("Image", container["Image"])
 	return m

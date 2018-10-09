@@ -46,7 +46,7 @@ func (h *persistentVolumeClaimHandler) Dump(obj interface{}) string {
 
 func (h *persistentVolumeClaimHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	pvc := obj.(*v1.PersistentVolumeClaim)
-	m := newMetadata("persistentvolumeclaim", pvc.Namespace, pvc.GetName(), pvc)
+	m := NewMetadata(Manager, "persistentvolumeclaim", pvc, pvc.Name, pvc.Namespace)
 	m.SetFieldAndNormalize("AccessModes", pvc.Spec.AccessModes)
 	m.SetFieldAndNormalize("VolumeName", pvc.Spec.VolumeName)             // FIXME: replace by link to PersistentVolume
 	m.SetFieldAndNormalize("StorageClassName", pvc.Spec.StorageClassName) // FIXME: replace by link to StorageClass
