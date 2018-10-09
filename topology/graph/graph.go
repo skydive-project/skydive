@@ -1249,7 +1249,10 @@ func (g *Graph) NewNode(i Identifier, m Metadata, h ...string) *Node {
 }
 
 func CreateEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Time, h string, s common.ServiceType) *Edge {
-	o := string(s) + "." + h
+	o := string(s)
+	if len(h) > 0 {
+		o += "." + h
+	}
 	e := &Edge{
 		parent: p.ID,
 		child:  c.ID,
