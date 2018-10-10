@@ -38,6 +38,7 @@ import (
 
 // PcapSocketProbe describes a TCP packet listener that inject packets in a flowtable
 type PcapSocketProbe struct {
+	graph     *graph.Graph
 	node      *graph.Node
 	state     int64
 	flowTable *flow.Table
@@ -111,6 +112,7 @@ func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, capture *types.Cap
 	ft := p.fpta.Alloc(tid, opts)
 
 	probe := &PcapSocketProbe{
+		graph:     p.graph,
 		node:      n,
 		state:     common.StoppedState,
 		flowTable: ft,

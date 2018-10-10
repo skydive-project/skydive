@@ -184,6 +184,7 @@ type PacketInjection struct {
 	Interval   int64
 	Increment  bool
 	StartTime  time.Time
+	Pcap       []byte
 }
 
 // Validate verifies the packet injection type is supported

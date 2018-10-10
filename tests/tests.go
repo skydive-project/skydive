@@ -167,6 +167,7 @@ type TestInjection struct {
 	id        int64
 	increment bool
 	payload   string
+	pcap      string
 }
 
 // CheckFunction describes a function that actually does a check and returns an error if needed

@@ -23,6 +23,7 @@
 package client
 
 import (
+	"io/ioutil"
 	"os"
 
 	"github.com/skydive-project/skydive/api/client"
@@ -44,6 +45,7 @@ var (
 	dstMAC     string
 	packetType string
 	payload    string
+	pcap       string
 	id         int64
 	count      int64
 	interval   int64
@@ -70,6 +72,19 @@ var PacketInjectionCreate = &cobra.Command{
 			exitOnError(err)
 		}
 
+		var pcapContent []byte
+		if pcap != "" {
+			f, err := os.Open(pcap)
+			if err != nil {
+				exitOnError(err)
+			}
+
+			pcapContent, err = ioutil.ReadAll(f)
+			if err != nil {
+				exitOnError(err)
+			}
+		}
+
 		packet := &api.PacketInjection{
 			Src:       srcNode,
 			Dst:       dstNode,
@@ -81,6 +96,7 @@ var PacketInjectionCreate = &cobra.Command{
 			DstPort:   dstPort,
 			Type:      packetType,
 			Payload:   payload,
+			Pcap:      pcapContent,
 			ICMPID:    id,
 			Count:     count,
 			Interval:  interval,
@@ -88,13 +104,11 @@ var PacketInjectionCreate = &cobra.Command{
 		}
 
 		if err = validator.Validate(packet); err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		if err := client.Create("injectpacket", &packet); err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		printJSON(packet)
@@ -181,6 +195,7 @@ func addInjectPacketFlags(cmd *cobra.Command) {
 	cmd.Flags().Int64VarP(&dstPort, "dstPort", "", 0, "destination port for TCP packet")
 	cmd.Flags().StringVarP(&packetType, "type", "", "icmp4", "packet type: icmp4, icmp6, tcp4, tcp6, udp4 and udp6")
 	cmd.Flags().StringVarP(&payload, "payload", "", "", "payload")
+	cmd.Flags().StringVar(&pcap, "pcap", "", "PCAP file")
 	cmd.Flags().Int64VarP(&id, "id", "", 0, "ICMP identification")
 	cmd.Flags().BoolVarP(&increment, "increment", "", false, "increment ICMP id for each packet")
 	cmd.Flags().Int64VarP(&count, "count", "", 1, "number of packets to be generated")
