@@ -67,8 +67,7 @@ var PacketInjectionCreate = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Critical(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		packet := &api.PacketInjection{
@@ -117,13 +116,11 @@ var PacketInjectionGet = &cobra.Command{
 		var injection api.PacketInjection
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Critical(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		if err := client.Get("injectpacket", args[0], &injection); err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 		printJSON(&injection)
 	},
@@ -138,13 +135,11 @@ var PacketInjectionList = &cobra.Command{
 		var injections map[string]api.PacketInjection
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Critical(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		if err := client.List("injectpacket", &injections); err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 		printJSON(injections)
 	},
@@ -164,13 +159,12 @@ var PacketInjectionDelete = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Critical(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		for _, id := range args {
 			if err := client.Delete("injectpacket", id); err != nil {
-				logging.GetLogger().Error(err.Error())
+				logging.GetLogger().Error(err)
 			}
 		}
 	},

@@ -23,6 +23,7 @@
 package client
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/skydive-project/skydive/api/client"
@@ -64,14 +65,12 @@ var EdgeRuleCreate = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		m, err := usertopology.DefToMetadata(metadata, graph.Metadata{})
 		if err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 		m["RelationType"] = relationType
 
@@ -84,13 +83,11 @@ var EdgeRuleCreate = &cobra.Command{
 		}
 
 		if err = validator.Validate(edge); err != nil {
-			logging.GetLogger().Errorf("Error while validating edge rule: %s", err)
-			os.Exit(1)
+			exitOnError(fmt.Errorf("Error while validating edge rule: %s", err))
 		}
 
 		if err = client.Create("edgerule", &edge); err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		printJSON(edge)
@@ -115,12 +112,10 @@ var EdgeRuleGet = &cobra.Command{
 		var edge api.EdgeRule
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 		if err := client.Get("edgerule", args[0], &edge); err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 		printJSON(&edge)
 	},
@@ -137,13 +132,11 @@ var EdgeRuleList = &cobra.Command{
 		var edges map[string]api.EdgeRule
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		if err := client.List("edgerule", &edges); err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 		printJSON(edges)
 	},
@@ -166,8 +159,7 @@ var EdgeRuleDelete = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		for _, id := range args {
