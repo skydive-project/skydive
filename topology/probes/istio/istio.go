@@ -56,5 +56,8 @@ func NewIstioProbe(g *graph.Graph) (*k8s.Probe, error) {
 	linkedToCluster := []string{
 		"destinationrule",
 	}
-	return k8s.NewProbe(g, Manager, subprobes, nil, linkedToCluster)
+
+	linkedToNamespace := []string{}
+
+	return k8s.NewProbe(g, Manager, subprobes, nil, linkedToCluster, linkedToNamespace)
 }

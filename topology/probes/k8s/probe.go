@@ -72,10 +72,16 @@ func (p *Probe) Stop() {
 }
 
 // NewProbe creates the probe for tracking k8s events
-func NewProbe(g *graph.Graph, manager string, subprobes map[string]Subprobe, linkers []probe.Probe, linkedToCluster []string) (*Probe, error) {
+func NewProbe(g *graph.Graph, manager string, subprobes map[string]Subprobe, linkers []probe.Probe, linkedToCluster, linkedToNamespace []string) (*Probe, error) {
 	for _, ty := range linkedToCluster {
 		if clusterLinker := newClusterLinker(g, subprobes, manager, ty); clusterLinker != nil {
 			linkers = append(linkers, clusterLinker)
+		}
+	}
+
+	for _, ty := range linkedToNamespace {
+		if namespaceLinker := newNamespaceLinker(g, subprobes, manager, ty); namespaceLinker != nil {
+			linkers = append(linkers, namespaceLinker)
 		}
 	}
 
