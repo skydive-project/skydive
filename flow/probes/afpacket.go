@@ -25,10 +25,15 @@
 package probes
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/afpacket"
+	"github.com/google/gopacket/layers"
+	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/topology/graph"
+	"golang.org/x/net/bpf"
 )
 
 // AFPacketHandle describes a AF network kernel packets
@@ -65,4 +70,61 @@ func NewAFPacketHandle(ifName string, snaplen int32) (*AFPacketHandle, error) {
 	}
 
 	return &AFPacketHandle{tpacket: tpacket}, err
+}
+
+// AfpacketPacketProbe describes an afpacket based packet probe
+type AfpacketPacketProbe struct {
+	handle       *AFPacketHandle
+	packetSource *gopacket.PacketSource
+	layerType    gopacket.LayerType
+	linkType     layers.LinkType
+	headerSize   uint32
+}
+
+// Close the probe
+func (a *AfpacketPacketProbe) Close() {
+	a.handle.Close()
+}
+
+// Stats returns statistics about captured packets
+func (a *AfpacketPacketProbe) Stats() (graph.Metadata, error) {
+	_, v3, e := a.handle.tpacket.SocketStats()
+	if e != nil {
+		return nil, fmt.Errorf("Cannot get afpacket capture stats")
+	}
+	return graph.Metadata{
+		"PacketsReceived": v3.Packets(),
+		"PacketsDropped":  v3.Drops(),
+	}, nil
+}
+
+// SetBPFFilter applies a BPF filter to the probe
+func (a *AfpacketPacketProbe) SetBPFFilter(filter string) error {
+	var rawBPF []bpf.RawInstruction
+	rawBPF, err := flow.BPFFilterToRaw(a.linkType, a.headerSize, filter)
+	if err != nil {
+		return err
+	}
+	return a.handle.tpacket.SetBPF(rawBPF)
+}
+
+// PacketSource returns the Gopacket packet source for the probe
+func (a *AfpacketPacketProbe) PacketSource() *gopacket.PacketSource {
+	return a.packetSource
+}
+
+// NewAfpacketPacketProbe returns a new afpacket capture probe
+func NewAfpacketPacketProbe(ifName string, headerSize int, layerType gopacket.LayerType, linkType layers.LinkType) (*AfpacketPacketProbe, error) {
+	handle, err := NewAFPacketHandle(ifName, int32(headerSize))
+	if err != nil {
+		return nil, fmt.Errorf("Error while opening device %s: %s", ifName, err)
+	}
+
+	return &AfpacketPacketProbe{
+		handle:       handle,
+		packetSource: gopacket.NewPacketSource(handle, layerType),
+		layerType:    layerType,
+		linkType:     linkType,
+		headerSize:   uint32(headerSize),
+	}, nil
 }
