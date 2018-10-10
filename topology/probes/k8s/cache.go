@@ -147,11 +147,16 @@ func (c *ResourceCache) Stop() {
 
 // NewResourceCache returns a new cache using the associed Kubernetes
 // client and with the handler for the resource that this cache manages.
-func NewResourceCache(restClient rest.Interface, objType runtime.Object, resources string, g *graph.Graph, handler ResourceHandler) *ResourceCache {
+func NewResourceCache(restClient rest.Interface, objType runtime.Object, resources string, g *graph.Graph, handler ResourceHandler, optionalEventHandler ...*graph.EventHandler) *ResourceCache {
 	watchlist := cache.NewListWatchFromClient(restClient, resources, api.NamespaceAll, fields.Everything())
 
+	eventHandler := graph.NewEventHandler(100)
+	if len(optionalEventHandler) == 1 {
+		eventHandler = optionalEventHandler[0]
+	}
+
 	c := &ResourceCache{
-		EventHandler:   graph.NewEventHandler(100),
+		EventHandler:   eventHandler,
 		graph:          g,
 		handler:        handler,
 		stopController: make(chan struct{}),

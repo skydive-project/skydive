@@ -112,7 +112,6 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		newHostNodeLinker,
 		newNodePodLinker,
 		newIngressServiceLinker,
-		newNamespaceLinker,
 		newNetworkPolicyLinker,
 		newServicePodLinker,
 	}
@@ -126,11 +125,26 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 
 	linkedToCluster := []string{
 		"namespace",
-		"networkpolicy",
 		"node",
 		"persistentvolume",
 		"persistentvolumeclaim",
+		"storageclass",
 	}
 
-	return NewProbe(g, Manager, subprobes, linkers, linkedToCluster)
+	linkedToNamespace := []string{
+		"cronjob",
+		"deployment",
+		"daemonset",
+		"endpoints",
+		"ingress",
+		"job",
+		"networkpolicy",
+		"pod",
+		"replicaset",
+		"replicationcontroller",
+		"service",
+		"statefulset",
+	}
+
+	return NewProbe(g, Manager, subprobes, linkers, linkedToCluster, linkedToNamespace)
 }
