@@ -94,7 +94,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 			}
 			probes[t] = lldpProbe
 		case "neutron":
-			neutron, err := neutron.NewNeutronProbeFromConfig(g)
+			neutron, err := neutron.NewProbeFromConfig(g)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to initialize Neutron probe: %s", err)
 			}
