@@ -566,7 +566,7 @@ func NewOvsMirrorProbesHandler(g *graph.Graph, tb, fb *probe.ProbeBundle) (*OvsM
 	if probe == nil {
 		return nil, errors.New("Agent.ovssflow probe depends on agent.ovsdb topology probe: agent.ovssflow probe can't start properly")
 	}
-	p := probe.(*op.OvsdbProbe)
+	p := probe.(*op.Probe)
 
 	o := &OvsMirrorProbesHandler{
 		probes:      make(map[string]*ovsMirrorProbe),

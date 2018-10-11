@@ -71,7 +71,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 
 		switch t {
 		case "ovsdb":
-			probes[t] = ovsdb.NewOvsdbProbeFromConfig(g, hostNode)
+			probes[t] = ovsdb.NewProbeFromConfig(g, hostNode)
 		case "lxd":
 			lxdURL := config.GetConfig().GetString("lxd.url")
 			lxdProbe, err := lxd.NewLxdProbe(nsProbe, lxdURL)

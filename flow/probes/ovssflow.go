@@ -269,7 +269,7 @@ func NewOvsSFlowProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator, tb 
 	if probe == nil {
 		return nil, errors.New("Agent.ovssflow probe depends on agent.ovsdb topology probe: agent.ovssflow probe can't start properly")
 	}
-	p := probe.(*ovsprobe.OvsdbProbe)
+	p := probe.(*ovsprobe.Probe)
 
 	allocator, err := sflow.NewSFlowAgentAllocator()
 	if err != nil {
