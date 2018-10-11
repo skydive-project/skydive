@@ -39,32 +39,6 @@ import (
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
-func newGraph(t *testing.T) *graph.Graph {
-	b, err := graph.NewMemoryBackend()
-	if err != nil {
-		t.Error(err)
-	}
-
-	return graph.NewGraphFromConfig(b, common.UnknownService)
-}
-
-func newTransversalGraph(t *testing.T) *graph.Graph {
-	g := newGraph(t)
-
-	n1 := g.NewNode(graph.GenID(), graph.Metadata{"Value": int64(1), "Type": "intf", "Bytes": int64(1024), "List": []string{"111", "222"}, "Map": map[string]int64{"a": 1}})
-	n2 := g.NewNode(graph.GenID(), graph.Metadata{"Value": int64(2), "Type": "intf", "Bytes": int64(2024), "IPV4": []string{"10.0.0.1", "10.0.1.2"}})
-	n3 := g.NewNode(graph.GenID(), graph.Metadata{"Value": int64(3), "IPV4": "192.168.0.34/24", "Map": map[string]int64{}})
-	n4 := g.NewNode(graph.GenID(), graph.Metadata{"Value": int64(4), "Name": "Node4", "Bytes": int64(4024), "IPV4": "192.168.1.34", "Indexes": []int64{5, 6}})
-
-	g.Link(n1, n2, graph.Metadata{"Direction": "Left", "Name": "e1"})
-	g.Link(n2, n3, graph.Metadata{"Direction": "Left", "Name": "e2"})
-	g.Link(n3, n4, graph.Metadata{"Name": "e3"})
-	g.Link(n1, n4, graph.Metadata{"Name": "e4"})
-	g.Link(n1, n3, graph.Metadata{"Mode": "Direct", "Name": "e5"})
-
-	return g
-}
-
 type fakeTableClient struct {
 	g *graph.Graph
 	t *flow.Table
