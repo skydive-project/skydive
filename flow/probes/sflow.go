@@ -74,8 +74,7 @@ func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHand
 	return nil
 }
 
-// RegisterProbe registers a probe in the graph
-func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+func (d *SFlowProbesHandler) registerProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 	var tid string
 	if tid, _ = n.GetFieldString("TID"); tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
@@ -121,6 +120,15 @@ func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture
 	d.Graph.AddMetadata(n, "Capture.SflowSocket", addr.String())
 
 	return nil
+}
+
+// RegisterProbe registers a probe in the graph
+func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+	err := d.registerProbe(n, capture, e)
+	if err != nil {
+		go e.OnError(err)
+	}
+	return err
 }
 
 // Start a probe

@@ -83,9 +83,7 @@ func (p *PcapSocketProbe) run() {
 	}
 }
 
-// RegisterProbe registers a new probe in the graph
-func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
-
+func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
@@ -139,6 +137,15 @@ func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Cap
 	}()
 
 	return nil
+}
+
+// RegisterProbe registers a new probe in the graph
+func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+	err := p.registerProbe(n, capture, e)
+	if err != nil {
+		go e.OnError(err)
+	}
+	return err
 }
 
 // UnregisterProbe a probe

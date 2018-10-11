@@ -223,8 +223,7 @@ func isOvsBridge(n *graph.Node) bool {
 	return false
 }
 
-// RegisterProbe registers a probe on a graph node
-func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+func (o *OvsSFlowProbesHandler) registerProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
@@ -239,6 +238,15 @@ func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capt
 		}
 	}
 	return nil
+}
+
+// RegisterProbe registers a probe on a graph node
+func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+	err := o.registerProbe(n, capture, e)
+	if err != nil {
+		go e.OnError(err)
+	}
+	return err
 }
 
 // UnregisterProbe at the graph node

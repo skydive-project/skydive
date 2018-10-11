@@ -114,7 +114,7 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *types.Captur
 	}
 
 	if err := fprobe.RegisterProbe(n, capture, activeProbe); err != nil {
-		logging.GetLogger().Debugf("Failed to register flow probe: %s", err)
+		logging.GetLogger().Errorf("Failed to register flow probe: %s", err)
 		return false
 	}
 
@@ -146,6 +146,9 @@ func (o *OnDemandProbeServer) unregisterProbe(n *graph.Node) bool {
 		logging.GetLogger().Debugf("Failed to unregister flow probe: %s", err)
 	}
 
+	// in any case notify that the capture stopped even if it was in error
+	go probe.OnStopped()
+
 	o.Lock()
 	delete(o.activeProbes, n.ID)
 	o.Unlock()
@@ -157,6 +160,16 @@ func (o *OnDemandProbeServer) unregisterProbe(n *graph.Node) bool {
 func (p *activeProbe) OnStarted() {
 	p.graph.Lock()
 	p.graph.AddMetadata(p.node, "Capture.State", "active")
+	p.graph.Unlock()
+}
+
+// OnError FlowProbeEventHandler implementation
+func (p *activeProbe) OnError(err error) {
+	p.graph.Lock()
+	tr := p.graph.StartMetadataTransaction(p.node)
+	tr.AddMetadata("Capture.State", "error")
+	tr.AddMetadata("Capture.Error", err.Error())
+	tr.Commit()
 	p.graph.Unlock()
 }
 

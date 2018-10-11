@@ -298,7 +298,7 @@ func (p *EBPFProbe) stop() {
 	p.quit <- true
 }
 
-func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+func (p *EBPFProbesHandler) registerProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 	if _, ok := p.probes[n.ID]; ok {
 		return nil
 	}
@@ -380,6 +380,14 @@ func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture,
 		e.OnStopped()
 	}()
 	return nil
+}
+
+func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+	err := p.registerProbe(n, capture, e)
+	if err != nil {
+		go e.OnError(err)
+	}
+	return err
 }
 
 func (p *EBPFProbesHandler) unregisterProbe(id graph.Identifier) error {

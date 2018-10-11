@@ -47,6 +47,7 @@ type FlowProbe interface {
 type FlowProbeEventHandler interface {
 	OnStarted()
 	OnStopped()
+	OnError(err error)
 }
 
 // FlowProbeTableAllocator allocates table and set the table update callback
