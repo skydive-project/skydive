@@ -31,6 +31,7 @@ import (
 )
 
 const (
+	// Manager is the manager value for Kubernetes
 	Manager      = "k8s"
 	detailsField = "K8s"
 )

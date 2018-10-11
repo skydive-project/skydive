@@ -44,9 +44,11 @@ type ResourceHandler interface {
 	IsTopLevel() bool
 }
 
+// DefaultResourceHandler defines a default Kubernetes resource handler
 type DefaultResourceHandler struct {
 }
 
+// IsTopLevel returns whether the resource is top level (no parent)
 func (h *DefaultResourceHandler) IsTopLevel() bool {
 	return false
 }
