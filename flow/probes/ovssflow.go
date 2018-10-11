@@ -58,7 +58,7 @@ type OvsSFlowProbesHandler struct {
 	Graph        *graph.Graph
 	fpta         *FlowProbeTableAllocator
 	ovsClient    *ovsdb.OvsClient
-	allocator    *sflow.SFlowAgentAllocator
+	allocator    *sflow.AgentAllocator
 	eventHandler FlowProbeEventHandler
 }
 
@@ -271,7 +271,7 @@ func NewOvsSFlowProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator, tb 
 	}
 	p := probe.(*ovsprobe.Probe)
 
-	allocator, err := sflow.NewSFlowAgentAllocator()
+	allocator, err := sflow.NewAgentAllocator()
 	if err != nil {
 		return nil, err
 	}

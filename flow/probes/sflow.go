@@ -43,7 +43,7 @@ type SFlowProbesHandler struct {
 	fpta        *FlowProbeTableAllocator
 	probes      map[string]*flow.Table
 	probesLock  common.RWMutex
-	allocator   *sflow.SFlowAgentAllocator
+	allocator   *sflow.AgentAllocator
 	staticPorts map[string]string
 }
 
@@ -139,7 +139,7 @@ func (d *SFlowProbesHandler) Stop() {
 
 // NewSFlowProbesHandler creates a new SFlow probe in the graph
 func NewSFlowProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*SFlowProbesHandler, error) {
-	allocator, err := sflow.NewSFlowAgentAllocator()
+	allocator, err := sflow.NewAgentAllocator()
 	if err != nil {
 		return nil, err
 	}
