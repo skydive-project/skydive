@@ -95,22 +95,23 @@ type RawPackets struct {
 // LayerKeyMode defines what are the layers used for the flow key calculation
 type LayerKeyMode int
 
+// Flow key calculation modes
 const (
 	DefaultLayerKeyMode              = L2KeyMode // default mode
 	L2KeyMode           LayerKeyMode = 0         // uses Layer2 and Layer3 for hash computation, default mode
 	L3PreferedKeyMode   LayerKeyMode = 1         // uses Layer3 only and layer2 if no Layer3
 )
 
-// FlowOpts describes options that can be used to process flows
-type FlowOpts struct {
+// Opts describes options that can be used to process flows
+type Opts struct {
 	TCPMetric    bool
 	IPDefrag     bool
 	LayerKeyMode LayerKeyMode
 	AppPortMap   *ApplicationPortMap
 }
 
-// FlowUUIDs describes UUIDs that can be applied to flows
-type FlowUUIDs struct {
+// UUIDs describes UUIDs that can be applied to flows
+type UUIDs struct {
 	ParentUUID string
 	L2ID       int64
 	L3ID       int64
@@ -123,6 +124,7 @@ func (l LayerKeyMode) String() string {
 	return "L3"
 }
 
+// LayerKeyModeByName converts a string to a layer key mode
 func LayerKeyModeByName(name string) (LayerKeyMode, error) {
 	switch name {
 	case "L2":
@@ -133,6 +135,7 @@ func LayerKeyModeByName(name string) (LayerKeyMode, error) {
 	return L2KeyMode, errors.New("LayerKeyMode unknown")
 }
 
+// DefaultLayerKeyModeName returns the default layer key mode
 func DefaultLayerKeyModeName() string {
 	mode := config.GetString("flow.default_layer_key_mode")
 	if mode == "" {
@@ -247,7 +250,7 @@ func (p *Packet) TransportFlow() (gopacket.Flow, error) {
 
 // Key returns the unique flow key
 // The unique key is calculated based on parentUUID, network, transport and applicable layers
-func (p *Packet) Key(parentUUID string, opts FlowOpts) string {
+func (p *Packet) Key(parentUUID string, opts Opts) string {
 	var uuid uint64
 
 	// uses L2 is requested or if there is no network layer
@@ -383,7 +386,7 @@ func NewFlow() *Flow {
 }
 
 // NewFlowFromGoPacket creates a new flow from the given gopacket
-func NewFlowFromGoPacket(p gopacket.Packet, nodeTID string, uuids FlowUUIDs, opts FlowOpts) *Flow {
+func NewFlowFromGoPacket(p gopacket.Packet, nodeTID string, uuids UUIDs, opts Opts) *Flow {
 	f := NewFlow()
 
 	var length int64
@@ -404,7 +407,7 @@ func NewFlowFromGoPacket(p gopacket.Packet, nodeTID string, uuids FlowUUIDs, opt
 }
 
 // UpdateUUID updates the flow UUID based on protocotols layers path and layers IDs
-func (f *Flow) UpdateUUID(key string, opts FlowOpts) {
+func (f *Flow) UpdateUUID(key string, opts Opts) {
 	layersPath := strings.Replace(f.LayersPath, "Dot1Q/", "", -1)
 
 	hasher := murmur3.New64()
@@ -476,7 +479,7 @@ func (f *Flow) LinkType() (layers.LinkType, error) {
 }
 
 // Init initializes the flow with the given Timestamp, nodeTID and related UUIDs
-func (f *Flow) Init(now int64, nodeTID string, uuids FlowUUIDs) {
+func (f *Flow) Init(now int64, nodeTID string, uuids UUIDs) {
 	f.Start = now
 	f.Last = now
 
@@ -488,7 +491,7 @@ func (f *Flow) Init(now int64, nodeTID string, uuids FlowUUIDs) {
 }
 
 // initFromPacket initializes the flow based on packet data, flow key and ids
-func (f *Flow) initFromPacket(key string, packet *Packet, nodeTID string, uuids FlowUUIDs, opts FlowOpts) {
+func (f *Flow) initFromPacket(key string, packet *Packet, nodeTID string, uuids UUIDs, opts Opts) {
 	now := common.UnixMillis(packet.GoPacket.Metadata().CaptureInfo.Timestamp)
 	f.Init(now, nodeTID, uuids)
 
@@ -509,7 +512,7 @@ func (f *Flow) initFromPacket(key string, packet *Packet, nodeTID string, uuids 
 }
 
 // Update a flow metrics and latency
-func (f *Flow) Update(packet *Packet, opts FlowOpts) {
+func (f *Flow) Update(packet *Packet, opts Opts) {
 	now := common.UnixMillis(packet.GoPacket.Metadata().CaptureInfo.Timestamp)
 	f.Last = now
 	f.Metric.Last = now
@@ -783,7 +786,7 @@ func (f *Flow) updateTCPMetrics(packet *Packet) error {
 	return nil
 }
 
-func (f *Flow) newTransportLayer(packet *Packet, opts FlowOpts) error {
+func (f *Flow) newTransportLayer(packet *Packet, opts Opts) error {
 	if layer := packet.Layer(layers.LayerTypeTCP); layer != nil {
 		f.Transport = &TransportLayer{Protocol: FlowProtocol_TCP}
 
