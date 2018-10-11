@@ -321,6 +321,17 @@ func compareFlow(expected, tested *Flow) bool {
 	return true
 }
 
+func checkGoPacketSanity(t *testing.T, p gopacket.Packet) {
+	if errLayer := p.ErrorLayer(); errLayer != nil {
+		if l := p.Layer(gopacket.LayerTypeDecodeFailure); l != nil {
+			df := l.(*gopacket.DecodeFailure)
+			if len(df.Dump()) > 0 {
+				t.Fatalf("packet made gopacket panic : %s %s", p.Dump(), df.Dump())
+			}
+		}
+	}
+}
+
 func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType layers.LinkType, bpf *BPF) {
 	handleRead, err := pcap.OpenOffline(filename)
 	if err != nil {
@@ -337,6 +348,7 @@ func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType lay
 		} else {
 			p := gopacket.NewPacket(data, linkType, gopacket.Default)
 			p.Metadata().CaptureInfo = ci
+			checkGoPacketSanity(t, p)
 
 			ps := PacketSeqFromGoPacket(p, 0, bpf, table.IPDefragger())
 			table.processPacketSeq(ps)
