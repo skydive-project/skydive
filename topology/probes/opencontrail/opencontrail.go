@@ -42,8 +42,8 @@ import (
 	"github.com/nlewo/contrail-introspect-cli/descriptions"
 )
 
-// OpenContrailProbe describes a probe that reads OpenContrail database and updates the graph
-type OpenContrailProbe struct {
+// Probe describes a probe that reads OpenContrail database and updates the graph
+type Probe struct {
 	graph.DefaultGraphListener
 	graph                   *graph.Graph
 	root                    *graph.Node
@@ -68,7 +68,7 @@ type OpenContrailMdata struct {
 	LocalIP string
 }
 
-func (mapper *OpenContrailProbe) retrieveMetadata(metadata graph.Metadata, itf collection.Element) (*OpenContrailMdata, error) {
+func (mapper *Probe) retrieveMetadata(metadata graph.Metadata, itf collection.Element) (*OpenContrailMdata, error) {
 	name := metadata["Name"].(string)
 
 	logging.GetLogger().Debugf("Retrieving metadata from OpenContrail for Name: %s", name)
@@ -155,7 +155,7 @@ func getVrfIdFromIntrospect(host string, port int, vrfName string) (vrfId int, e
 	return
 }
 
-func (mapper *OpenContrailProbe) onVhostAdded(node *graph.Node, itf collection.Element) {
+func (mapper *Probe) onVhostAdded(node *graph.Node, itf collection.Element) {
 	phyItf, _ := itf.GetField("physical_interface")
 	if phyItf == "" {
 		logging.GetLogger().Errorf("Physical interface not found")
@@ -185,7 +185,7 @@ func (mapper *OpenContrailProbe) onVhostAdded(node *graph.Node, itf collection.E
 	mapper.graph.AddMetadata(nodes[0], "MPLSUDPPort", mapper.mplsUDPPort)
 }
 
-func (mapper *OpenContrailProbe) linkToVhost(node *graph.Node) {
+func (mapper *Probe) linkToVhost(node *graph.Node) {
 	if mapper.vHost != nil {
 		if !topology.HaveLayer2Link(mapper.graph, node, mapper.vHost) {
 			logging.GetLogger().Debugf("Link %s to %s", node.String(), mapper.vHost.String())
@@ -197,7 +197,7 @@ func (mapper *OpenContrailProbe) linkToVhost(node *graph.Node) {
 	}
 }
 
-func (mapper *OpenContrailProbe) nodeUpdater() {
+func (mapper *Probe) nodeUpdater() {
 	body := func(nodeID graph.Identifier) {
 		mapper.graph.RLock()
 		node := mapper.graph.GetNode(nodeID)
@@ -260,7 +260,7 @@ func (mapper *OpenContrailProbe) nodeUpdater() {
 	logging.GetLogger().Debugf("Stopping OpenContrail updater")
 }
 
-func (mapper *OpenContrailProbe) updateNode(node *graph.Node, mdata *OpenContrailMdata) {
+func (mapper *Probe) updateNode(node *graph.Node, mdata *OpenContrailMdata) {
 	tr := mapper.graph.StartMetadataTransaction(node)
 	defer tr.Commit()
 
@@ -271,7 +271,7 @@ func (mapper *OpenContrailProbe) updateNode(node *graph.Node, mdata *OpenContrai
 	tr.AddMetadata("Contrail.LocalIP", mdata.LocalIP)
 }
 
-func (mapper *OpenContrailProbe) enhanceNode(node *graph.Node) {
+func (mapper *Probe) enhanceNode(node *graph.Node) {
 	// To break update loops
 	if attachedMAC, _ := node.GetFieldString("ExtID.attached-mac"); attachedMAC != "" {
 		return
@@ -288,17 +288,17 @@ func (mapper *OpenContrailProbe) enhanceNode(node *graph.Node) {
 }
 
 // OnNodeUpdated event
-func (mapper *OpenContrailProbe) OnNodeUpdated(n *graph.Node) {
+func (mapper *Probe) OnNodeUpdated(n *graph.Node) {
 	return
 }
 
 // OnNodeAdded event
-func (mapper *OpenContrailProbe) OnNodeAdded(n *graph.Node) {
+func (mapper *Probe) OnNodeAdded(n *graph.Node) {
 	mapper.enhanceNode(n)
 }
 
 // OnNodeDeleted event
-func (mapper *OpenContrailProbe) OnNodeDeleted(n *graph.Node) {
+func (mapper *Probe) OnNodeDeleted(n *graph.Node) {
 	name, _ := n.GetFieldString("Name")
 	if name == "" {
 		return
@@ -314,24 +314,24 @@ func (mapper *OpenContrailProbe) OnNodeDeleted(n *graph.Node) {
 }
 
 // Start the probe
-func (mapper *OpenContrailProbe) Start() {
+func (mapper *Probe) Start() {
 	mapper.graph.AddEventListener(mapper)
 	go mapper.nodeUpdater()
 	go mapper.rtMonitor()
 }
 
 // Stop the probe
-func (mapper *OpenContrailProbe) Stop() {
+func (mapper *Probe) Stop() {
 	mapper.cancel()
 	mapper.graph.RemoveEventListener(mapper)
 	close(mapper.nodeUpdaterChan)
 }
 
-// NewOpenContrailProbeFromConfig creates a new OpenContrail probe based on configuration
-func NewOpenContrailProbeFromConfig(g *graph.Graph, r *graph.Node) (*OpenContrailProbe, error) {
+// NewProbeFromConfig creates a new OpenContrail probe based on configuration
+func NewProbeFromConfig(g *graph.Graph, r *graph.Node) (*Probe, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	return &OpenContrailProbe{
+	return &Probe{
 		ctx:                     ctx,
 		cancel:                  cancel,
 		graph:                   g,

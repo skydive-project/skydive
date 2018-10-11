@@ -100,7 +100,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 			}
 			probes["neutron"] = neutron
 		case "opencontrail":
-			opencontrail, err := opencontrail.NewOpenContrailProbeFromConfig(g, hostNode)
+			opencontrail, err := opencontrail.NewProbeFromConfig(g, hostNode)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to initialize OpenContrail probe: %s", err)
 			}
