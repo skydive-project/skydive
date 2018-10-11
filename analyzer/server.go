@@ -256,7 +256,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	g := graph.NewGraphFromConfig(cached, common.AnalyzerService)
 
-	clusterAuthOptions := AnalyzerClusterAuthenticationOpts()
+	clusterAuthOptions := ClusterAuthenticationOpts()
 
 	clusterAuthBackendName := config.GetString("analyzer.auth.cluster.backend")
 	clusterAuthBackend, err := config.NewAuthenticationBackendByName(clusterAuthBackendName)
@@ -393,7 +393,9 @@ func NewServerFromConfig() (*Server, error) {
 	return s, nil
 }
 
-func AnalyzerClusterAuthenticationOpts() *shttp.AuthenticationOpts {
+// ClusterAuthenticationOpts returns auth info to connect to an analyzer
+// from the configuration
+func ClusterAuthenticationOpts() *shttp.AuthenticationOpts {
 	return &shttp.AuthenticationOpts{
 		Username: config.GetString("analyzer.auth.cluster.username"),
 		Password: config.GetString("analyzer.auth.cluster.password"),
