@@ -96,7 +96,7 @@ func getCompletions(vm *otto.Otto, line string) (results []string) {
 	})
 
 	// Append opening parenthesis (for functions) or dot (for objects)
-	// if the line itjsre is the only completion.
+	// if the line itRuntime is the only completion.
 	if len(results) == 1 && results[0] == line {
 		obj, _ := vm.Object(line)
 		if obj != nil {

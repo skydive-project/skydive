@@ -57,8 +57,8 @@ type jsTimer struct {
 	call     otto.FunctionCall
 }
 
-// JSRE is a Skydive JavaScript runtime environment
-type JSRE struct {
+// Runtime is a Skydive JavaScript runtime environment
+type Runtime struct {
 	*otto.Otto
 	evalQueue     chan *evalReq
 	stopEventLoop chan bool
@@ -67,37 +67,38 @@ type JSRE struct {
 	timerReady    chan *jsTimer
 }
 
-// RegisterAPIServer
-func (jsre *JSRE) RegisterAPIServer(g *graph.Graph, gremlinParser *traversal.GremlinTraversalParser, server *server.Server) {
+// RegisterAPIServer exports Go functions required by the API
+// to run inside the JS VM
+func (r *Runtime) RegisterAPIServer(g *graph.Graph, gremlinParser *traversal.GremlinTraversalParser, server *server.Server) {
 	queryGremlin := func(query string) otto.Value {
 		ts, err := gremlinParser.Parse(strings.NewReader(query))
 		if err != nil {
-			return jsre.MakeCustomError("ParseError", err.Error())
+			return r.MakeCustomError("ParseError", err.Error())
 		}
 
 		result, err := ts.Exec(g, false)
 		if err != nil {
-			return jsre.MakeCustomError("ExecuteError", err.Error())
+			return r.MakeCustomError("ExecuteError", err.Error())
 		}
 
 		source, err := result.MarshalJSON()
 		if err != nil {
-			return jsre.MakeCustomError("MarshalError", err.Error())
+			return r.MakeCustomError("MarshalError", err.Error())
 		}
 
-		jsonObj, err := jsre.Object("obj = " + string(source))
+		jsonObj, err := r.Object("obj = " + string(source))
 		if err != nil {
-			return jsre.MakeCustomError("JSONError", err.Error())
+			return r.MakeCustomError("JSONError", err.Error())
 		}
 
 		logging.GetLogger().Infof("Gremlin returned %+v (from %s, query %s)", jsonObj, source, query)
-		r, _ := jsre.ToValue(jsonObj)
+		r, _ := r.ToValue(jsonObj)
 		return r
 	}
 
-	jsre.Set("Gremlin", func(call otto.FunctionCall) otto.Value {
+	r.Set("Gremlin", func(call otto.FunctionCall) otto.Value {
 		if len(call.ArgumentList) < 1 || !call.Argument(0).IsString() {
-			return jsre.MakeCustomError("MissingQueryArgument", "Gremlin requires a string parameter")
+			return r.MakeCustomError("MissingQueryArgument", "Gremlin requires a string parameter")
 		}
 
 		query := call.Argument(0).String()
@@ -105,9 +106,9 @@ func (jsre *JSRE) RegisterAPIServer(g *graph.Graph, gremlinParser *traversal.Gre
 		return queryGremlin(query)
 	})
 
-	jsre.Set("request", func(call otto.FunctionCall) otto.Value {
+	r.Set("request", func(call otto.FunctionCall) otto.Value {
 		if len(call.ArgumentList) < 3 || !call.Argument(0).IsString() || !call.Argument(1).IsString() || !call.Argument(2).IsString() {
-			return jsre.MakeCustomError("WrongArguments", "Import requires 3 string parameters")
+			return r.MakeCustomError("WrongArguments", "Import requires 3 string parameters")
 		}
 
 		url := call.Argument(0).String()
@@ -116,7 +117,7 @@ func (jsre *JSRE) RegisterAPIServer(g *graph.Graph, gremlinParser *traversal.Gre
 
 		subs := strings.Split(url, "/") // filepath.Base(url)
 		if len(subs) < 3 {
-			return jsre.MakeCustomError("WrongArgument", fmt.Sprintf("Malformed URL %s", url))
+			return r.MakeCustomError("WrongArgument", fmt.Sprintf("Malformed URL %s", url))
 		}
 		resource := subs[2]
 
@@ -124,7 +125,7 @@ func (jsre *JSRE) RegisterAPIServer(g *graph.Graph, gremlinParser *traversal.Gre
 		if resource == "topology" {
 			query := types.TopologyParam{}
 			if err := json.Unmarshal(data, &query); err != nil {
-				return jsre.MakeCustomError("WrongArgument", fmt.Sprintf("Invalid query %s", string(data)))
+				return r.MakeCustomError("WrongArgument", fmt.Sprintf("Invalid query %s", string(data)))
 			}
 
 			return queryGremlin(query.GremlinQuery)
@@ -140,17 +141,17 @@ func (jsre *JSRE) RegisterAPIServer(g *graph.Graph, gremlinParser *traversal.Gre
 		case "POST":
 			res := handler.New()
 			if err := json.Unmarshal([]byte(data), res); err != nil {
-				return jsre.MakeCustomError("UnmarshalError", err.Error())
+				return r.MakeCustomError("UnmarshalError", err.Error())
 			}
 			if err := handler.Create(res); err != nil {
-				return jsre.MakeCustomError("CreateError", err.Error())
+				return r.MakeCustomError("CreateError", err.Error())
 			}
 			b, _ := json.Marshal(res)
 			content = string(b)
 
 		case "DELETE":
 			if len(subs) < 4 {
-				return jsre.MakeCustomError("WrongArgument", "No ID specified")
+				return r.MakeCustomError("WrongArgument", "No ID specified")
 			}
 			handler.Delete(subs[3])
 
@@ -163,7 +164,7 @@ func (jsre *JSRE) RegisterAPIServer(g *graph.Graph, gremlinParser *traversal.Gre
 				id := subs[3]
 				obj, found := handler.Get(id)
 				if !found {
-					return jsre.MakeCustomError("NotFound", fmt.Sprintf("%s %s could not be found", resource, id))
+					return r.MakeCustomError("NotFound", fmt.Sprintf("%s %s could not be found", resource, id))
 				}
 				b, _ := json.Marshal(obj)
 				content = string(b)
@@ -172,17 +173,18 @@ func (jsre *JSRE) RegisterAPIServer(g *graph.Graph, gremlinParser *traversal.Gre
 
 		value, err := otto.ToValue(content)
 		if err != nil {
-			return jsre.MakeCustomError("WrongValue", err.Error())
+			return r.MakeCustomError("WrongValue", err.Error())
 		}
 
 		return value
 	})
 }
 
-func (jsre *JSRE) RegisterAPIClient(client *shttp.CrudClient) {
-	jsre.Set("request", func(call otto.FunctionCall) otto.Value {
+// RegisterAPIClient exports Go function required by the API to run inside the client JS VM
+func (r *Runtime) RegisterAPIClient(client *shttp.CrudClient) {
+	r.Set("request", func(call otto.FunctionCall) otto.Value {
 		if len(call.ArgumentList) < 3 || !call.Argument(0).IsString() || !call.Argument(1).IsString() || !call.Argument(2).IsString() {
-			return jsre.MakeCustomError("WrongArguments", "Import requires 3 string parameters")
+			return r.MakeCustomError("WrongArguments", "Import requires 3 string parameters")
 		}
 
 		url := call.Argument(0).String()
@@ -191,18 +193,18 @@ func (jsre *JSRE) RegisterAPIClient(client *shttp.CrudClient) {
 
 		resp, err := client.Request(method, url, bytes.NewReader(data), nil)
 		if err != nil {
-			return jsre.MakeCustomError("WrongRequest", err.Error())
+			return r.MakeCustomError("WrongRequest", err.Error())
 		}
 		defer resp.Body.Close()
 
 		content, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return jsre.MakeCustomError("WrongResponse", err.Error())
+			return r.MakeCustomError("WrongResponse", err.Error())
 		}
 
 		value, err := otto.ToValue(string(content))
 		if err != nil {
-			return jsre.MakeCustomError("WrongValue", err.Error())
+			return r.MakeCustomError("WrongValue", err.Error())
 		}
 
 		return value
@@ -210,47 +212,48 @@ func (jsre *JSRE) RegisterAPIClient(client *shttp.CrudClient) {
 }
 
 // RunScript executes the specified script
-func (jsre *JSRE) RunScript(path string) otto.Value {
+func (r *Runtime) RunScript(path string) otto.Value {
 	file, err := os.Open(path)
 
 	if err != nil {
-		return jsre.MakeCustomError("FileNotFound", fmt.Sprintf("File %s could not be found", path))
+		return r.MakeCustomError("FileNotFound", fmt.Sprintf("File %s could not be found", path))
 	}
 
 	b, err := ioutil.ReadAll(file)
 	if err != nil {
-		return jsre.MakeCustomError("CouldNotRead", fmt.Sprintf("File %s could not be read", path))
+		return r.MakeCustomError("CouldNotRead", fmt.Sprintf("File %s could not be read", path))
 	}
 
-	_, err = jsre.Exec(string(b))
+	_, err = r.Exec(string(b))
 	if err != nil {
-		return jsre.MakeCustomError("FailedToRun", fmt.Sprintf("Failed to run %s: %s", path, err))
+		return r.MakeCustomError("FailedToRun", fmt.Sprintf("Failed to run %s: %s", path, err))
 	}
 
 	return otto.UndefinedValue()
 }
 
-func (jsre *JSRE) runEmbededScript(path string) error {
-	if content, err := statics.Asset(path); err != nil {
+func (r *Runtime) runEmbededScript(path string) error {
+	content, err := statics.Asset(path)
+	if err != nil {
 		return fmt.Errorf("Failed to load %s asset: %s)", path, err)
-	} else {
-		if _, err = jsre.Run(string(content)); err != nil {
-			return fmt.Errorf("Failed to run %s: %s", path, err)
-		}
+	}
+
+	if _, err := r.Run(string(content)); err != nil {
+		return fmt.Errorf("Failed to run %s: %s", path, err)
 	}
 	return nil
 }
 
-func (jsre *JSRE) registerStandardLibray() {
-	jsre.Run(`exports = {};`)
-	jsre.Run(`function require() { }`)
+func (r *Runtime) registerStandardLibray() {
+	r.Run(`exports = {};`)
+	r.Run(`function require() { }`)
 
-	jsre.Set("run", func(call otto.FunctionCall) otto.Value {
+	r.Set("run", func(call otto.FunctionCall) otto.Value {
 		if len(call.ArgumentList) < 1 || !call.Argument(0).IsString() {
-			return jsre.MakeCustomError("MissingQueryArgument", "run requires a string parameter")
+			return r.MakeCustomError("MissingQueryArgument", "run requires a string parameter")
 		}
 		path := call.Argument(0).String()
-		return jsre.RunScript(path)
+		return r.RunScript(path)
 	})
 
 	newTimer := func(call otto.FunctionCall, interval bool) (*jsTimer, otto.Value) {
@@ -263,10 +266,10 @@ func (jsre *JSRE) registerStandardLibray() {
 			call:     call,
 			interval: interval,
 		}
-		jsre.timers[timer] = timer
+		r.timers[timer] = timer
 
 		timer.timer = time.AfterFunc(timer.duration, func() {
-			jsre.timerReady <- timer
+			r.timerReady <- timer
 		})
 
 		value, err := call.Otto.ToValue(timer)
@@ -290,38 +293,38 @@ func (jsre *JSRE) registerStandardLibray() {
 		timer, _ := call.Argument(0).Export()
 		if timer, ok := timer.(*jsTimer); ok {
 			timer.timer.Stop()
-			delete(jsre.timers, timer)
+			delete(r.timers, timer)
 		}
 		return otto.UndefinedValue()
 	}
 
-	jsre.Set("_setTimeout", setTimeout)
-	jsre.Set("_setInterval", setInterval)
-	jsre.Run(`var setTimeout = function(args) {
+	r.Set("_setTimeout", setTimeout)
+	r.Set("_setInterval", setInterval)
+	r.Run(`var setTimeout = function(args) {
 		if (arguments.length < 1) {
 			throw TypeError("Failed to execute 'setTimeout': 1 argument required, but only 0 present.");
 		}
 		return _setTimeout.apply(this, arguments);
 	}`)
-	jsre.Run(`var setInterval = function(args) {
+	r.Run(`var setInterval = function(args) {
 		if (arguments.length < 1) {
 			throw TypeError("Failed to execute 'setInterval': 1 argument required, but only 0 present.");
 		}
 		return _setInterval.apply(this, arguments);
 	}`)
-	jsre.Set("clearTimeout", clearTimeout)
-	jsre.Set("clearInterval", clearTimeout)
+	r.Set("clearTimeout", clearTimeout)
+	r.Set("clearInterval", clearTimeout)
 }
 
-func (jsre *JSRE) runEventLoop() {
-	defer close(jsre.closed)
+func (r *Runtime) runEventLoop() {
+	defer close(r.closed)
 
 	var waitForCallbacks bool
 
 loop:
 	for {
 		select {
-		case timer := <-jsre.timerReady:
+		case timer := <-r.timerReady:
 			var arguments []interface{}
 			if len(timer.call.ArgumentList) > 2 {
 				tmp := timer.call.ArgumentList[2:]
@@ -333,79 +336,79 @@ loop:
 				arguments = make([]interface{}, 1)
 			}
 			arguments[0] = timer.call.ArgumentList[0]
-			_, err := jsre.Call(`Function.call.call`, nil, arguments...)
+			_, err := r.Call(`Function.call.call`, nil, arguments...)
 			if err != nil {
 				logging.GetLogger().Errorf("JavaScript error: %s", err)
 			}
 
-			_, inreg := jsre.timers[timer]
+			_, inreg := r.timers[timer]
 			if timer.interval && inreg {
 				timer.timer.Reset(timer.duration)
 			} else {
-				delete(jsre.timers, timer)
-				if waitForCallbacks && (len(jsre.timers) == 0) {
+				delete(r.timers, timer)
+				if waitForCallbacks && (len(r.timers) == 0) {
 					break loop
 				}
 			}
 
-		case req := <-jsre.evalQueue:
+		case req := <-r.evalQueue:
 			// run the code, send the result back
-			req.fn(jsre.Otto)
+			req.fn(r.Otto)
 			close(req.done)
-			if waitForCallbacks && (len(jsre.timers) == 0) {
+			if waitForCallbacks && (len(r.timers) == 0) {
 				break loop
 			}
 
-		case waitForCallbacks = <-jsre.stopEventLoop:
-			if !waitForCallbacks || (len(jsre.timers) == 0) {
+		case waitForCallbacks = <-r.stopEventLoop:
+			if !waitForCallbacks || (len(r.timers) == 0) {
 				break loop
 			}
 		}
 	}
 
-	for _, timer := range jsre.timers {
+	for _, timer := range r.timers {
 		timer.timer.Stop()
-		delete(jsre.timers, timer)
+		delete(r.timers, timer)
 	}
 }
 
 // CompleteKeywords returns potential continuations for the given line.
 // Since line is evaluated, callers need to make sure that evaluating line
 // does not have side effects.
-func (jsre *JSRE) CompleteKeywords(line string) []string {
+func (r *Runtime) CompleteKeywords(line string) []string {
 	var results []string
-	jsre.Do(func(vm *otto.Otto) {
+	r.Do(func(vm *otto.Otto) {
 		results = getCompletions(vm, line)
 	})
 	return results
 }
 
 // Do executes the `fn` in the event loop
-func (jsre *JSRE) Do(fn func(*otto.Otto)) {
+func (r *Runtime) Do(fn func(*otto.Otto)) {
 	done := make(chan bool)
 	req := &evalReq{fn, done}
-	jsre.evalQueue <- req
+	r.evalQueue <- req
 	<-done
 }
 
 // Exec executes some JavaScript code
-func (jsre *JSRE) Exec(code string) (v otto.Value, err error) {
-	jsre.Do(func(vm *otto.Otto) { v, err = vm.Run(code) })
+func (r *Runtime) Exec(code string) (v otto.Value, err error) {
+	r.Do(func(vm *otto.Otto) { v, err = vm.Run(code) })
 	return v, err
 }
 
 // Start the runtime evaluation loop
-func (jsre *JSRE) Start() {
-	go jsre.runEventLoop()
+func (r *Runtime) Start() {
+	go r.runEventLoop()
 }
 
 // Stop the runtime evaluation loop
-func (jsre *JSRE) Stop() {
+func (r *Runtime) Stop() {
 }
 
-// NewJSRE returns a new JavaScript runtime environment
-func NewJSRE() (*JSRE, error) {
-	jsre := &JSRE{
+// NewRuntime returns a new JavaScript runtime environment
+func NewRuntime() (*Runtime, error) {
+	r := &Runtime{
 		Otto:          otto.New(),
 		closed:        make(chan struct{}),
 		evalQueue:     make(chan *evalReq, 20),
@@ -414,7 +417,7 @@ func NewJSRE() (*JSRE, error) {
 		timerReady:    make(chan *jsTimer),
 	}
 
-	jsre.registerStandardLibray()
+	r.registerStandardLibray()
 
 	bytes := make([]byte, 8)
 	seed := time.Now().UnixNano()
@@ -423,28 +426,28 @@ func NewJSRE() (*JSRE, error) {
 	}
 
 	src := rand.NewSource(seed)
-	r := rand.New(src)
-	jsre.SetRandomSource(r.Float64)
+	rnd := rand.New(src)
+	r.SetRandomSource(rnd.Float64)
 
-	if err := jsre.runEmbededScript("js/promise-7.0.4.min.js"); err != nil {
+	if err := r.runEmbededScript("js/promise-7.0.4.min.js"); err != nil {
 		return nil, err
 	}
 
-	if err := jsre.runEmbededScript("js/promise-done-7.0.4.min.js"); err != nil {
+	if err := r.runEmbededScript("js/promise-done-7.0.4.min.js"); err != nil {
 		return nil, err
 	}
 
-	if err := jsre.runEmbededScript("js/api.js"); err != nil {
+	if err := r.runEmbededScript("js/api.js"); err != nil {
 		return nil, err
 	}
 
-	if err := jsre.runEmbededScript("js/otto.js"); err != nil {
+	if err := r.runEmbededScript("js/otto.js"); err != nil {
 		return nil, err
 	}
 
-	if err := jsre.runEmbededScript("statics/js/vendor/pure-uuid.js"); err != nil {
+	if err := r.runEmbededScript("statics/js/vendor/pure-uuid.js"); err != nil {
 		return nil, err
 	}
 
-	return jsre, nil
+	return r, nil
 }

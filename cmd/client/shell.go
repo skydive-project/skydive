@@ -50,7 +50,7 @@ var (
 // Session describes a shell session
 type Session struct {
 	authenticationOpts shttp.AuthenticationOpts
-	jsre               *js.JSRE
+	runtime            *js.Runtime
 	rl                 *contLiner
 	historyFile        string
 }
@@ -72,7 +72,7 @@ func (s *Session) completeWord(line string, pos int) (string, []string, string) 
 		start++
 		break
 	}
-	return line[:start], s.jsre.CompleteKeywords(line[start:pos]), line[pos:]
+	return line[:start], s.runtime.CompleteKeywords(line[start:pos]), line[pos:]
 }
 
 func (s *Session) loadHistory() error {
@@ -80,19 +80,18 @@ func (s *Session) loadHistory() error {
 	home, err := homeDir()
 	if err != nil {
 		return fmt.Errorf("Failed to retrieve home directory: %s", err)
-	} else {
-		historyFile = filepath.Join(home, "history")
+	}
 
-		f, err := os.Open(historyFile)
+	historyFile = filepath.Join(home, "history")
+	f, err := os.Open(historyFile)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+	} else {
+		_, err := s.rl.ReadHistory(f)
 		if err != nil {
-			if !os.IsNotExist(err) {
-				return err
-			}
-		} else {
-			_, err := s.rl.ReadHistory(f)
-			if err != nil {
-				return err
-			}
+			return err
 		}
 	}
 
@@ -108,18 +107,15 @@ func (s *Session) saveHistory() error {
 	err := os.MkdirAll(filepath.Dir(s.historyFile), 0755)
 	if err != nil {
 		return err
-	} else {
-		f, err := os.Create(s.historyFile)
-		if err != nil {
-			return err
-		} else {
-			_, err := s.rl.WriteHistory(f)
-			if err != nil {
-				return err
-			}
-		}
 	}
-	return nil
+
+	f, err := os.Create(s.historyFile)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.rl.WriteHistory(f)
+	return err
 }
 
 func (s *Session) prompt() error {
@@ -168,14 +164,14 @@ func homeDir() (home string, err error) {
 
 // NewSession creates a new shell session
 func NewSession() (*Session, error) {
-	jsre, err := js.NewJSRE()
+	runtime, err := js.NewRuntime()
 	if err != nil {
 		return nil, err
 	}
 
 	s := &Session{
 		authenticationOpts: AuthenticationOpts,
-		jsre:               jsre,
+		runtime:            runtime,
 		rl:                 newContLiner(),
 	}
 
@@ -184,8 +180,8 @@ func NewSession() (*Session, error) {
 		return nil, err
 	}
 
-	s.jsre.Start()
-	s.jsre.RegisterAPIClient(client)
+	s.runtime.Start()
+	s.runtime.RegisterAPIClient(client)
 
 	if err := s.loadHistory(); err != nil {
 		return nil, fmt.Errorf("while reading history: %s", err)
@@ -198,7 +194,7 @@ func NewSession() (*Session, error) {
 
 // Eval evaluation a input expression
 func (s *Session) eval(in string) error {
-	_, err := s.jsre.Exec(in)
+	_, err := s.runtime.Exec(in)
 	if err != nil {
 		return fmt.Errorf("Error while executing Javascript '%s': %s", in, err.Error())
 	}
@@ -225,7 +221,7 @@ var ShellCmd = &cobra.Command{
 		defer s.Close()
 
 		if shellScript != "" {
-			result := s.jsre.RunScript(shellScript)
+			result := s.runtime.RunScript(shellScript)
 			if result.IsDefined() {
 				logging.GetLogger().Errorf("Error while executing script %s: %s", shellScript, result.String())
 			}
