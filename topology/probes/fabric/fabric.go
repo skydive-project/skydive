@@ -40,15 +40,15 @@ type fabricLink struct {
 	linkMetadata   graph.Metadata
 }
 
-// FabricProbe describes a topology probe
-type FabricProbe struct {
+// Probe describes a topology probe
+type Probe struct {
 	graph.DefaultGraphListener
 	Graph *graph.Graph
 	links map[*graph.Node][]fabricLink
 }
 
 // OnEdgeAdded event
-func (fb *FabricProbe) OnEdgeAdded(e *graph.Edge) {
+func (fb *Probe) OnEdgeAdded(e *graph.Edge) {
 	parents, children := fb.Graph.GetEdgeNodes(e, nil, nil)
 	if len(parents) == 0 || len(children) == 0 {
 		return
@@ -65,14 +65,14 @@ func (fb *FabricProbe) OnEdgeAdded(e *graph.Edge) {
 }
 
 // OnNodeDeleted event
-func (fb *FabricProbe) OnNodeDeleted(n *graph.Node) {
+func (fb *Probe) OnNodeDeleted(n *graph.Node) {
 	if probe, _ := n.GetFieldString("Probe"); probe != "fabric" {
 		delete(fb.links, n)
 	}
 }
 
 // LinkNodes link the parent and child (layer 2) if there not linked already
-func (fb *FabricProbe) LinkNodes(parent *graph.Node, child *graph.Node, linkMetadata *graph.Metadata) {
+func (fb *Probe) LinkNodes(parent *graph.Node, child *graph.Node, linkMetadata *graph.Metadata) {
 	if !topology.HaveLayer2Link(fb.Graph, child, parent) {
 		topology.AddLayer2Link(fb.Graph, parent, child, *linkMetadata)
 	}
@@ -118,7 +118,7 @@ func nodeDefToMetadata(nodeDef string) (string, graph.Metadata, error) {
 	return f[0], metadata, err
 }
 
-func (fb *FabricProbe) getOrCreateFabricNodeFromDef(nodeDef string) (*graph.Node, error) {
+func (fb *Probe) getOrCreateFabricNodeFromDef(nodeDef string) (*graph.Node, error) {
 	nodeName, metadata, err := nodeDefToMetadata(nodeDef)
 	if err != nil {
 		return nil, err
@@ -141,16 +141,16 @@ func (fb *FabricProbe) getOrCreateFabricNodeFromDef(nodeDef string) (*graph.Node
 }
 
 // Start the probe
-func (fb *FabricProbe) Start() {
+func (fb *Probe) Start() {
 }
 
 // Stop the probe
-func (fb *FabricProbe) Stop() {
+func (fb *Probe) Stop() {
 }
 
-// NewFabricProbe creates a new probe to enhance the graph
-func NewFabricProbe(g *graph.Graph) *FabricProbe {
-	fb := &FabricProbe{
+// NewProbe creates a new probe to enhance the graph
+func NewProbe(g *graph.Graph) *Probe {
+	fb := &Probe{
 		Graph: g,
 		links: make(map[*graph.Node][]fabricLink),
 	}
@@ -169,7 +169,7 @@ func NewFabricProbe(g *graph.Graph) *FabricProbe {
 		} else {
 			pc = strings.Split(link, "->")
 			if len(pc) != 2 {
-				logging.GetLogger().Errorf("FabricProbe link definition should have two endpoints: %s", link)
+				logging.GetLogger().Errorf("Fabric link definition should have two endpoints: %s", link)
 				continue
 			}
 		}
@@ -189,7 +189,7 @@ func NewFabricProbe(g *graph.Graph) *FabricProbe {
 		}
 
 		if strings.HasPrefix(parentDef, "*") {
-			logging.GetLogger().Error("FabricProbe doesn't support wildcard node as parent node")
+			logging.GetLogger().Error("Fabric probe doesn't support wildcard node as parent node")
 			continue
 		}
 
