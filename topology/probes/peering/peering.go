@@ -28,14 +28,14 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-// PeeringProbe describes graph peering based on MAC address and graph events
-type PeeringProbe struct {
+// Probe describes graph peering based on MAC address and graph events
+type Probe struct {
 	graph.DefaultGraphListener
 	graph *graph.Graph
 	peers map[string]*graph.Node
 }
 
-func (p *PeeringProbe) onNodeEvent(n *graph.Node) {
+func (p *Probe) onNodeEvent(n *graph.Node) {
 	if mac, _ := n.GetFieldString("MAC"); mac != "" {
 		if node, ok := p.peers[mac]; ok {
 			if !topology.HaveLayer2Link(p.graph, node, n) {
@@ -62,17 +62,17 @@ func (p *PeeringProbe) onNodeEvent(n *graph.Node) {
 }
 
 // OnNodeUpdated event
-func (p *PeeringProbe) OnNodeUpdated(n *graph.Node) {
+func (p *Probe) OnNodeUpdated(n *graph.Node) {
 	p.onNodeEvent(n)
 }
 
 // OnNodeAdded event
-func (p *PeeringProbe) OnNodeAdded(n *graph.Node) {
+func (p *Probe) OnNodeAdded(n *graph.Node) {
 	p.onNodeEvent(n)
 }
 
 // OnNodeDeleted event
-func (p *PeeringProbe) OnNodeDeleted(n *graph.Node) {
+func (p *Probe) OnNodeDeleted(n *graph.Node) {
 	for mac, node := range p.peers {
 		if n.ID == node.ID {
 			delete(p.peers, mac)
@@ -81,17 +81,17 @@ func (p *PeeringProbe) OnNodeDeleted(n *graph.Node) {
 }
 
 // Start the MAC peering resolver probe
-func (p *PeeringProbe) Start() {
+func (p *Probe) Start() {
 }
 
 // Stop the probe
-func (p *PeeringProbe) Stop() {
+func (p *Probe) Stop() {
 	p.graph.RemoveEventListener(p)
 }
 
-// NewPeeringProbe creates a new graph node peering probe
-func NewPeeringProbe(g *graph.Graph) *PeeringProbe {
-	probe := &PeeringProbe{
+// NewProbe creates a new graph node peering probe
+func NewProbe(g *graph.Graph) *Probe {
+	probe := &Probe{
 		graph: g,
 		peers: make(map[string]*graph.Node),
 	}
