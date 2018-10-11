@@ -52,7 +52,7 @@ type Agent struct {
 	graph               *graph.Graph
 	wsServer            *ws.StructServer
 	analyzerClientPool  *ws.StructClientPool
-	topologyEndpoint    *topology.TopologySubscriberEndpoint
+	topologyEndpoint    *topology.SubscriberEndpoint
 	rootNode            *graph.Node
 	topologyProbeBundle *probe.ProbeBundle
 	flowProbeBundle     *probe.ProbeBundle
@@ -216,7 +216,7 @@ func NewAgent() (*Agent, error) {
 		Cookie:   config.GetStringMapString("http.cookie"),
 	}
 
-	topologyEndpoint := topology.NewTopologySubscriberEndpoint(wsServer, g, tr)
+	topologyEndpoint := topology.NewSubscriberEndpoint(wsServer, g, tr)
 
 	analyzerClientPool, err := NewAnalyzerStructClientPool(clusterAuthOptions)
 	if err != nil {

@@ -31,20 +31,23 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-// Describe the relation type between nodes
+// ErrNetworkPathNotFound
 const (
 	OwnershipLink = "ownership"
 	Layer2Link    = "layer2"
 )
 
 var (
-	ErrNetworkPathNotFound = func(name string) error { return fmt.Errorf("Failed to determine network namespace path for %s", name) }
+	// ErrNoPathToHost is called when no host could be found as the parent of a node
+	ErrNoPathToHost = func(name string) error { return fmt.Errorf("Failed to determine network namespace path for %s", name) }
 )
 
+// OwnershipMetadata returns metadata for an ownership link
 func OwnershipMetadata() graph.Metadata {
 	return graph.Metadata{"RelationType": OwnershipLink}
 }
 
+// Layer2Metadata returns metadata for a layer2 link
 func Layer2Metadata() graph.Metadata {
 	return graph.Metadata{"RelationType": Layer2Link}
 }
@@ -58,7 +61,7 @@ func NamespaceFromNode(g *graph.Graph, n *graph.Node) (string, string, error) {
 
 	nodes := g.LookupShortestPath(n, graph.Metadata{"Type": "host"}, OwnershipMetadata())
 	if len(nodes) == 0 {
-		return "", "", ErrNetworkPathNotFound(name)
+		return "", "", ErrNoPathToHost(name)
 	}
 
 	for _, node := range nodes {

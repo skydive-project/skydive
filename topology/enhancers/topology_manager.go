@@ -48,6 +48,7 @@ type TopologyManager struct {
 	graph       *graph.Graph
 }
 
+// DefToMetadata converts a string in k1=v1,k2=v2,... format to a metadata object
 func DefToMetadata(def string, metadata graph.Metadata) (graph.Metadata, error) {
 	if def == "" {
 		return metadata, nil

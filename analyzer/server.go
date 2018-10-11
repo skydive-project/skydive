@@ -306,7 +306,7 @@ func NewServerFromConfig() (*Server, error) {
 	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
 
 	subscriberWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
-	topology.NewTopologySubscriberEndpoint(subscriberWSServer, g, tr)
+	topology.NewSubscriberEndpoint(subscriberWSServer, g, tr)
 
 	probeBundle, err := NewTopologyProbeBundleFromConfig(g)
 	if err != nil {
