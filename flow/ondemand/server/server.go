@@ -49,7 +49,7 @@ type OnDemandProbeServer struct {
 	graph.DefaultGraphListener
 	ws.DefaultSpeakerEventHandler
 	Graph        *graph.Graph
-	Probes       *probe.ProbeBundle
+	Probes       *probe.Bundle
 	clientPool   *ws.StructClientPool
 	activeProbes map[graph.Identifier]*activeProbe
 }
@@ -255,7 +255,7 @@ func (o *OnDemandProbeServer) Stop() {
 }
 
 // NewOnDemandProbeServer creates a new Ondemand probes server based on graph and websocket
-func NewOnDemandProbeServer(fb *probe.ProbeBundle, g *graph.Graph, pool *ws.StructClientPool) (*OnDemandProbeServer, error) {
+func NewOnDemandProbeServer(fb *probe.Bundle, g *graph.Graph, pool *ws.StructClientPool) (*OnDemandProbeServer, error) {
 	return &OnDemandProbeServer{
 		Graph:        g,
 		Probes:       fb,

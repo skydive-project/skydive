@@ -54,8 +54,8 @@ type Agent struct {
 	analyzerClientPool  *ws.StructClientPool
 	topologyEndpoint    *topology.SubscriberEndpoint
 	rootNode            *graph.Node
-	topologyProbeBundle *probe.ProbeBundle
-	flowProbeBundle     *probe.ProbeBundle
+	topologyProbeBundle *probe.Bundle
+	flowProbeBundle     *probe.Bundle
 	flowTableAllocator  *flow.TableAllocator
 	flowClientPool      *analyzer.FlowClientPool
 	onDemandProbeServer *ondemand.OnDemandProbeServer

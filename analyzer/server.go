@@ -87,7 +87,7 @@ type Server struct {
 	piClient            *packetinjector.Client
 	topologyManager     *usertopology.TopologyManager
 	flowServer          *FlowServer
-	probeBundle         *probe.ProbeBundle
+	probeBundle         *probe.Bundle
 	storage             storage.Storage
 	embeddedEtcd        *etcd.EmbeddedEtcd
 	etcdClient          *etcd.Client

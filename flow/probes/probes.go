@@ -61,7 +61,7 @@ func (a *FlowProbeTableAllocator) Alloc(nodeTID string, opts flow.TableOpts) *fl
 }
 
 // NewFlowProbeBundle returns a new bundle of flow probes
-func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) *probe.ProbeBundle {
+func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) *probe.Bundle {
 	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket", "dpdk", "ebpf", "ovsmirror"}
 	logging.GetLogger().Infof("Flow probes: %v", list)
 
@@ -74,7 +74,7 @@ func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAl
 		fcpool:         fcpool,
 	}
 
-	fb := probe.NewProbeBundle(make(map[string]probe.Probe))
+	fb := probe.NewBundle(make(map[string]probe.Probe))
 
 	for _, t := range list {
 		if fb.GetProbe(t) != nil {

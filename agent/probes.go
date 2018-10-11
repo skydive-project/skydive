@@ -41,13 +41,13 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
 )
 
-// NewTopologyProbeBundleFromConfig creates a new topology probe.ProbeBundle based on the configuration
-func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*probe.ProbeBundle, error) {
+// NewTopologyProbeBundleFromConfig creates a new topology probe.Bundle based on the configuration
+func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*probe.Bundle, error) {
 	list := config.GetStringSlice("agent.topology.probes")
 	logging.GetLogger().Infof("Topology probes: %v", list)
 
 	probes := make(map[string]probe.Probe)
-	bundle := probe.NewProbeBundle(probes)
+	bundle := probe.NewBundle(probes)
 
 	var nsProbe *netns.Probe
 	if runtime.GOOS == "linux" {

@@ -30,14 +30,14 @@ type Probe interface {
 	Stop()
 }
 
-// ProbeBundle describes a bundle of probes (topology of flow)
-type ProbeBundle struct {
+// Bundle describes a bundle of probes (topology of flow)
+type Bundle struct {
 	common.RWMutex
 	probes map[string]Probe
 }
 
 // Start a bundle of probes
-func (p *ProbeBundle) Start() {
+func (p *Bundle) Start() {
 	p.RLock()
 	defer p.RUnlock()
 
@@ -47,7 +47,7 @@ func (p *ProbeBundle) Start() {
 }
 
 // Stop a bundle of probes
-func (p *ProbeBundle) Stop() {
+func (p *Bundle) Stop() {
 	p.RLock()
 	defer p.RUnlock()
 
@@ -57,7 +57,7 @@ func (p *ProbeBundle) Stop() {
 }
 
 // GetProbe retrieve a specific probe name
-func (p *ProbeBundle) GetProbe(name string) Probe {
+func (p *Bundle) GetProbe(name string) Probe {
 	p.RLock()
 	defer p.RUnlock()
 
@@ -68,7 +68,7 @@ func (p *ProbeBundle) GetProbe(name string) Probe {
 }
 
 //ActiveProbes returns all active probes name
-func (p *ProbeBundle) ActiveProbes() []string {
+func (p *Bundle) ActiveProbes() []string {
 	p.RLock()
 	defer p.RUnlock()
 
@@ -80,16 +80,16 @@ func (p *ProbeBundle) ActiveProbes() []string {
 }
 
 // AddProbe adds a probe to the bundle
-func (p *ProbeBundle) AddProbe(name string, probe Probe) {
+func (p *Bundle) AddProbe(name string, probe Probe) {
 	p.RLock()
 	defer p.RUnlock()
 
 	p.probes[name] = probe
 }
 
-// NewProbeBundle creates a new probe bundle
-func NewProbeBundle(p map[string]Probe) *ProbeBundle {
-	return &ProbeBundle{
+// NewBundle creates a new probe bundle
+func NewBundle(p map[string]Probe) *Bundle {
+	return &Bundle{
 		probes: p,
 	}
 }
