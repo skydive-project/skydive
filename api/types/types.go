@@ -198,11 +198,13 @@ type TopologyParam struct {
 	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr"`
 }
 
+// WorkflowChoice describes one value within a choice
 type WorkflowChoice struct {
 	Value       string `yaml:"value"`
 	Description string `yaml:"description"`
 }
 
+// WorkflowParam describes a workflow parameter
 type WorkflowParam struct {
 	Name        string
 	Description string
