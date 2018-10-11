@@ -52,6 +52,7 @@ type ovsMirrorProbe struct {
 
 // OvsMirrorProbesHandler describes a flow probe in running in the graph
 type OvsMirrorProbesHandler struct {
+	ovsdb.DefaultOvsMonitorHandler
 	probes      map[string]*ovsMirrorProbe
 	probeBundle *probe.Bundle
 	probesLock  common.RWMutex
@@ -414,6 +415,7 @@ func (o *OvsMirrorProbesHandler) cleanupOvsMirrors() {
 	if _, err = o.ovsClient.Exec(operations...); err != nil {
 		logging.GetLogger().Errorf("OvsMirror cleanup error: %s", err)
 	}
+	logging.GetLogger().Info("OvsMirror cleanup previous mirrors")
 }
 
 // OnStarted FlowProbeEventHandler implementation
@@ -528,10 +530,13 @@ func (o *ovsMirrorInterfaceHandler) OnNodeDeleted(n *graph.Node) {
 	}
 }
 
+// OnConnected ovsdb event
+func (o *OvsMirrorProbesHandler) OnConnected(monitor *ovsdb.OvsMonitor) {
+	o.cleanupOvsMirrors()
+}
+
 // Start the probe
 func (o *OvsMirrorProbesHandler) Start() {
-	o.cleanupOvsMirrors()
-
 	o.intfIndexer.AddEventListener(o.intfHandler)
 	o.portIndexer.AddEventListener(o.portHandler)
 	o.intfIndexer.Start()
@@ -576,6 +581,9 @@ func NewOvsMirrorProbesHandler(g *graph.Graph, tb, fb *probe.Bundle) (*OvsMirror
 		intfIndexer: graph.NewMetadataIndexer(g, g, graph.Metadata{"Type": "internal"}, "ExtID.skydive-probe-id"),
 		portIndexer: graph.NewMetadataIndexer(g, g, graph.Metadata{"Type": "ovsport"}, "ExtID.skydive-probe-id"),
 	}
+
+	// monitor connection/disconnection
+	p.OvsMon.AddMonitorHandler(o)
 
 	o.intfHandler = &ovsMirrorInterfaceHandler{oph: o}
 	o.portHandler = &ovsMirrorPortHandler{oph: o}

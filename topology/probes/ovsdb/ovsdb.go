@@ -77,6 +77,14 @@ func isOvsDrivenInterface(intf *graph.Node) bool {
 	return isOvsInterfaceType(t)
 }
 
+// OnConnected event
+func (o *Probe) OnConnected(monitor *ovsdb.OvsMonitor) {
+}
+
+// OnDisconnected event
+func (o *Probe) OnDisconnected(monitor *ovsdb.OvsMonitor) {
+}
+
 // OnOvsBridgeUpdate event
 func (o *Probe) OnOvsBridgeUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.OnOvsBridgeAdd(monitor, uuid, row)
