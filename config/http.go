@@ -30,6 +30,7 @@ import (
 	shttp "github.com/skydive-project/skydive/http"
 )
 
+// NewHTTPServer returns a new HTTP server based on the configuration
 func NewHTTPServer(serviceType common.ServiceType) (*shttp.Server, error) {
 	sa, err := common.ServiceAddressFromString(GetString(serviceType.String() + ".listen"))
 	if err != nil {
