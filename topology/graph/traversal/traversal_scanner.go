@@ -45,8 +45,8 @@ const (
 	// Misc characters
 	COMMA
 	DOT
-	LEFT_PARENTHESIS
-	RIGHT_PARENTHESIS
+	LEFTPARENTHESIS
+	RIGHTPARENTHESIS
 	STRING
 	NUMBER
 
@@ -137,9 +137,9 @@ func (s *GremlinTraversalScanner) Scan() (tok Token, lit string) {
 	case eof:
 		return EOF, ""
 	case '(':
-		return LEFT_PARENTHESIS, string(ch)
+		return LEFTPARENTHESIS, string(ch)
 	case ')':
-		return RIGHT_PARENTHESIS, string(ch)
+		return RIGHTPARENTHESIS, string(ch)
 	case ',':
 		return COMMA, string(ch)
 	case '.':
