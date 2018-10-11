@@ -336,7 +336,7 @@ func newNetworkPolicyLinker(g *graph.Graph, subprobes map[string]Subprobe) probe
 			filters.NewTermStringFilter("Type", "pod"),
 		),
 	)
-	podNamespaceIndexer := graph.NewMetadataIndexer(g, g, graph.NewGraphElementFilter(filter))
+	podNamespaceIndexer := graph.NewMetadataIndexer(g, g, graph.NewElementFilter(filter))
 	podNamespaceIndexer.Start()
 
 	linker := &networkPolicyLinker{

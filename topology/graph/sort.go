@@ -29,6 +29,7 @@ import (
 	"github.com/skydive-project/skydive/filters"
 )
 
+// Sort criterias
 const (
 	SortByInt64 int = iota + 1
 	SortByString
@@ -127,10 +128,12 @@ func sortSlice(items slice, length int, sortBy string, sortOrder common.SortOrde
 	})
 }
 
+// SortNodes sorts a set of nodes
 func SortNodes(nodes []*Node, sortBy string, sortOrder common.SortOrder) {
 	sortSlice(sortableNodeSlice{nodes: nodes}, len(nodes), sortBy, sortOrder)
 }
 
+// SortEdges sorts a set of edges
 func SortEdges(edges []*Edge, sortBy string, sortOrder common.SortOrder) {
 	sortSlice(sortableEdgeSlice{edges: edges}, len(edges), sortBy, sortOrder)
 }

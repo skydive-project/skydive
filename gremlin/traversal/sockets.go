@@ -180,7 +180,7 @@ func getSockets(n *graph.Node) (sockets []*socketinfo.ConnectionInfo) {
 }
 
 // NewSocketIndexer returns a new socket graph indexer
-func NewSocketIndexer(g *graph.Graph) *graph.GraphIndexer {
+func NewSocketIndexer(g *graph.Graph) *graph.Indexer {
 	hashNode := func(n *graph.Node) map[string]interface{} {
 		sockets := getSockets(n)
 		kv := make(map[string]interface{}, len(sockets))
@@ -190,8 +190,8 @@ func NewSocketIndexer(g *graph.Graph) *graph.GraphIndexer {
 		return kv
 	}
 
-	graphIndexer := graph.NewGraphIndexer(g, g, hashNode, true)
-	socketFilter := graph.NewGraphElementFilter(filters.NewNotNullFilter("Sockets"))
+	graphIndexer := graph.NewIndexer(g, g, hashNode, true)
+	socketFilter := graph.NewElementFilter(filters.NewNotNullFilter("Sockets"))
 	for _, node := range g.GetNodes(socketFilter) {
 		graphIndexer.OnNodeAdded(node)
 	}

@@ -59,7 +59,7 @@ func (l *metadataLinker) GetBALinks(n *Node) (edges []*Edge) {
 	filter := filters.NewAndFilter(
 		filters.NewTermStringFilter("Name", "host1"),
 	)
-	m := NewGraphElementFilter(filter)
+	m := NewElementFilter(filter)
 	nodes := l.g.GetNodes(m)
 
 	for _, node := range nodes {
@@ -105,7 +105,7 @@ func TestSimpleLinker(t *testing.T) {
 		filters.NewTermStringFilter("Parent", "node1"),
 		filters.NewTermStringFilter("Child", "node2"),
 	)
-	m := NewGraphElementFilter(filter)
+	m := NewElementFilter(filter)
 
 	if l := len(g.GetEdges(m)); l != 1 {
 		t.Errorf("there should be only one node between node1 and node2, got %d", l)
@@ -175,11 +175,11 @@ func TestMetadataIndexerLinker(t *testing.T) {
 		"ParentHost": "host1",
 	}
 
-	hasNameFilter := NewGraphElementFilter(filters.NewNotNullFilter("Name"))
+	hasNameFilter := NewElementFilter(filters.NewNotNullFilter("Name"))
 	indexer1 := NewMetadataIndexer(g, g, hasNameFilter, "Name")
 	indexer1.Start()
 
-	hasParentNameFilter := NewGraphElementFilter(filters.NewNotNullFilter("ParentHost"))
+	hasParentNameFilter := NewElementFilter(filters.NewNotNullFilter("ParentHost"))
 	indexer2 := NewMetadataIndexer(g, g, hasParentNameFilter, "ParentHost")
 	indexer2.Start()
 

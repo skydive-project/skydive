@@ -37,7 +37,7 @@ import (
 
 // OrientDBBackend describes an OrientDB backend
 type OrientDBBackend struct {
-	GraphBackend
+	Backend
 	client orientdb.ClientInterface
 }
 
@@ -71,7 +71,7 @@ func metadataToOrientDBSetString(m Metadata) string {
 	return ""
 }
 
-func metadataToOrientDBSelectString(m GraphElementMatcher) string {
+func metadataToOrientDBSelectString(m ElementMatcher) string {
 	if m == nil {
 		return ""
 	}
@@ -158,7 +158,7 @@ func (o *OrientDBBackend) createNode(n *Node) bool {
 	return true
 }
 
-func (o *OrientDBBackend) searchNodes(t GraphContext, where string) (nodes []*Node) {
+func (o *OrientDBBackend) searchNodes(t Context, where string) (nodes []*Node) {
 	query := "SELECT FROM Node WHERE " + where
 	if !t.TimePoint {
 		query += " ORDER BY UpdatedAt"
@@ -182,7 +182,7 @@ func (o *OrientDBBackend) searchNodes(t GraphContext, where string) (nodes []*No
 	return
 }
 
-func (o *OrientDBBackend) searchEdges(t GraphContext, where string) (edges []*Edge) {
+func (o *OrientDBBackend) searchEdges(t Context, where string) (edges []*Edge) {
 	query := "SELECT FROM Link WHERE " + where
 	if !t.TimePoint {
 		query += " ORDER BY UpdatedAt"
@@ -217,7 +217,7 @@ func (o *OrientDBBackend) NodeDeleted(n *Node) bool {
 }
 
 // GetNode get a node within a time slice
-func (o *OrientDBBackend) GetNode(i Identifier, t GraphContext) (nodes []*Node) {
+func (o *OrientDBBackend) GetNode(i Identifier, t Context) (nodes []*Node) {
 	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
 	query += fmt.Sprintf(" AND ID = '%s' ORDER BY Revision", i)
 	if t.TimePoint {
@@ -227,7 +227,7 @@ func (o *OrientDBBackend) GetNode(i Identifier, t GraphContext) (nodes []*Node) 
 }
 
 // GetNodeEdges returns a list of a node edges within time slice
-func (o *OrientDBBackend) GetNodeEdges(n *Node, t GraphContext, m GraphElementMatcher) (edges []*Edge) {
+func (o *OrientDBBackend) GetNodeEdges(n *Node, t Context, m ElementMatcher) (edges []*Edge) {
 	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
 	query += fmt.Sprintf(" AND (Parent = '%s' OR Child = '%s')", n.ID, n.ID)
 	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
@@ -260,7 +260,7 @@ func (o *OrientDBBackend) EdgeDeleted(e *Edge) bool {
 }
 
 // GetEdge get an edge within a time slice
-func (o *OrientDBBackend) GetEdge(i Identifier, t GraphContext) []*Edge {
+func (o *OrientDBBackend) GetEdge(i Identifier, t Context) []*Edge {
 	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
 	query += fmt.Sprintf(" AND ID = '%s' ORDER BY Revision", i)
 	if t.TimePoint {
@@ -270,7 +270,7 @@ func (o *OrientDBBackend) GetEdge(i Identifier, t GraphContext) []*Edge {
 }
 
 // GetEdgeNodes returns the parents and child nodes of an edge within time slice, matching metadata
-func (o *OrientDBBackend) GetEdgeNodes(e *Edge, t GraphContext, parentMetadata, childMetadata GraphElementMatcher) (parents []*Node, children []*Node) {
+func (o *OrientDBBackend) GetEdgeNodes(e *Edge, t Context, parentMetadata, childMetadata ElementMatcher) (parents []*Node, children []*Node) {
 	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
 	query += fmt.Sprintf(" AND ID in [\"%s\", \"%s\"]", e.parent, e.child)
 
@@ -308,7 +308,7 @@ func (o *OrientDBBackend) MetadataUpdated(i interface{}) bool {
 }
 
 // GetNodes returns a list of nodes within time slice, matching metadata
-func (o *OrientDBBackend) GetNodes(t GraphContext, m GraphElementMatcher) (nodes []*Node) {
+func (o *OrientDBBackend) GetNodes(t Context, m ElementMatcher) (nodes []*Node) {
 	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
 	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
 		query += " AND " + metadataQuery
@@ -319,7 +319,7 @@ func (o *OrientDBBackend) GetNodes(t GraphContext, m GraphElementMatcher) (nodes
 }
 
 // GetEdges returns a list of edges within time slice, matching metadata
-func (o *OrientDBBackend) GetEdges(t GraphContext, m GraphElementMatcher) (edges []*Edge) {
+func (o *OrientDBBackend) GetEdges(t Context, m ElementMatcher) (edges []*Edge) {
 	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
 	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
 		query += " AND " + metadataQuery

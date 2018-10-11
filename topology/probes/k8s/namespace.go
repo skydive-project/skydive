@@ -74,7 +74,7 @@ func newNamespaceLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Pro
 		filters.NewNotNullFilter("Name"),
 	)
 
-	namespaceIndexer := graph.NewMetadataIndexer(g, nsSubprobe, graph.NewGraphElementFilter(filter), "Name")
+	namespaceIndexer := graph.NewMetadataIndexer(g, nsSubprobe, graph.NewElementFilter(filter), "Name")
 	namespaceIndexer.Start()
 
 	ownedByNamespaceFilter := filters.NewOrFilter(
@@ -98,7 +98,7 @@ func newNamespaceLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Pro
 		filters.NewTermStringFilter("Manager", Manager),
 		ownedByNamespaceFilter,
 	)
-	objectIndexer := graph.NewMetadataIndexer(g, g, graph.NewGraphElementFilter(filter), "Namespace")
+	objectIndexer := graph.NewMetadataIndexer(g, g, graph.NewElementFilter(filter), "Namespace")
 	objectIndexer.Start()
 
 	return graph.NewMetadataIndexerLinker(g, namespaceIndexer, objectIndexer, topology.OwnershipMetadata())

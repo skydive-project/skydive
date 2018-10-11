@@ -60,14 +60,14 @@ func newEdgeMetadata() graph.Metadata {
 	return m
 }
 
-func newObjectIndexer(g *graph.Graph, h graph.GraphListenerHandler, nodeType string, indexes ...string) *graph.MetadataIndexer {
+func newObjectIndexer(g *graph.Graph, h graph.ListenerHandler, nodeType string, indexes ...string) *graph.MetadataIndexer {
 	filter := filters.NewAndFilter(
 		filters.NewTermStringFilter("Manager", Manager),
 		filters.NewTermStringFilter("Type", nodeType),
 		filters.NewNotNullFilter("Namespace"),
 		filters.NewNotNullFilter("Name"),
 	)
-	m := graph.NewGraphElementFilter(filter)
+	m := graph.NewElementFilter(filter)
 	return graph.NewMetadataIndexer(g, h, m, indexes...)
 }
 
