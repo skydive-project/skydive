@@ -40,7 +40,6 @@ import (
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -210,7 +209,6 @@ func (s *ProcSocketInfoProbe) scanProc() error {
 
 			conn, err := parseNetEntry(line)
 			if err != nil {
-				logging.GetLogger().Debugf("Failed to parse entry: %s", err.Error())
 				continue
 			}
 			conn.Protocol = protocol
