@@ -51,7 +51,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 
 	var nsProbe *netns.NetNSProbe
 	if runtime.GOOS == "linux" {
-		nlProbe, err := netlink.NewNetLinkProbe(g, hostNode)
+		nlProbe, err := netlink.NewProbe(g, hostNode)
 		if err != nil {
 			return nil, err
 		}
