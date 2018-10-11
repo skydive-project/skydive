@@ -81,11 +81,11 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 			probes[t] = lxdProbe
 		case "docker":
 			dockerURL := config.GetString("docker.url")
-			dockerProbe, err := docker.NewDockerProbe(nsProbe, dockerURL)
+			Probe, err := docker.NewProbe(nsProbe, dockerURL)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to initialize Docker probe: %s", err)
 			}
-			probes[t] = dockerProbe
+			probes[t] = Probe
 		case "lldp":
 			interfaces := config.GetStringSlice("agent.topology.lldp.interfaces")
 			lldpProbe, err := lldp.NewProbe(g, hostNode, interfaces)
