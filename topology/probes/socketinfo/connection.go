@@ -78,7 +78,7 @@ func (c *ConnectionInfo) GetFieldInt64(name string) (int64, error) {
 	}
 }
 
-// GetFieldInt64 returns the value of a connection field of type string
+// GetFieldString returns the value of a connection field of type string
 func (c *ConnectionInfo) GetFieldString(name string) (string, error) {
 	switch name {
 	case "Process":
@@ -107,6 +107,7 @@ func (c *ConnectionInfo) GetField(field string) (interface{}, error) {
 	return c.GetFieldString(field)
 }
 
+// Decode an JSON object to connection info
 func (c *ConnectionInfo) Decode(obj interface{}) error {
 	objMap, ok := obj.(map[string]interface{})
 	if !ok {
@@ -169,6 +170,7 @@ func (c *ConnectionCache) Remove(protocol flow.FlowProtocol, srcAddr, dstAddr *n
 	c.Cache.Delete(hash)
 }
 
+// Map a flow to a process
 func (c *ConnectionCache) Map(protocol flow.FlowProtocol, srcIP net.IP, srcPort int, dstIP net.IP, dstPort int) (a *ProcessInfo, b *ProcessInfo) {
 	if conn, _ := c.Get(protocol, srcIP, srcPort, dstIP, dstPort); conn != nil {
 		a = &conn.(*ConnectionInfo).ProcessInfo
@@ -184,7 +186,7 @@ func (c *ConnectionCache) MapTCP(srcAddr, dstAddr *net.TCPAddr) (a *ProcessInfo,
 	return c.Map(flow.FlowProtocol_TCP, srcAddr.IP, srcAddr.Port, dstAddr.IP, dstAddr.Port)
 }
 
-// MapTCP returns the sending and receiving processes for a pair of TCP addresses
+// MapUDP returns the sending and receiving processes for a pair of UDP addresses
 func (c *ConnectionCache) MapUDP(srcAddr, dstAddr *net.UDPAddr) (a *ProcessInfo, b *ProcessInfo) {
 	return c.Map(flow.FlowProtocol_UDP, srcAddr.IP, srcAddr.Port, dstAddr.IP, dstAddr.Port)
 }
