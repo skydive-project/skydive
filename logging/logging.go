@@ -32,15 +32,17 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-type logger struct {
+// Logger describes an identifier logger
+type Logger struct {
 	*zap.Logger
 	id string
 }
 
-var currentLogger *logger
+var currentLogger *Logger
 
 type level int
 
+// Logging levels
 const (
 	CRITICAL level = iota
 	ERROR
@@ -50,7 +52,7 @@ const (
 	DEBUG
 )
 
-func (l *logger) log(level level, format *string, args ...interface{}) {
+func (l *Logger) log(level level, format *string, args ...interface{}) {
 	s := l.Sugar()
 	fmt := l.id
 	if format != nil {
@@ -97,86 +99,86 @@ func getZapLevel(level string) zapcore.Level {
 }
 
 // Fatal is equivalent to l.Critical(fmt.Sprint()) followed by a call to os.Exit(1).
-func (l *logger) Fatal(args ...interface{}) {
+func (l *Logger) Fatal(args ...interface{}) {
 	l.log(CRITICAL, nil, args...)
 	os.Exit(1)
 }
 
 // Fatalf is equivalent to l.Critical followed by a call to os.Exit(1).
-func (l *logger) Fatalf(format string, args ...interface{}) {
+func (l *Logger) Fatalf(format string, args ...interface{}) {
 	l.log(CRITICAL, &format, args...)
 	os.Exit(1)
 }
 
 // Panic is equivalent to l.Critical(fmt.Sprint()) followed by a call to panic().
-func (l *logger) Panic(args ...interface{}) {
+func (l *Logger) Panic(args ...interface{}) {
 	l.log(CRITICAL, nil, args...)
 	panic(fmt.Sprint(args...))
 }
 
 // Panicf is equivalent to l.Critical followed by a call to panic().
-func (l *logger) Panicf(format string, args ...interface{}) {
+func (l *Logger) Panicf(format string, args ...interface{}) {
 	l.log(CRITICAL, &format, args...)
 	panic(fmt.Sprintf(format, args...))
 }
 
 // Critical logs a message using CRITICAL as log level.
-func (l *logger) Critical(args ...interface{}) {
+func (l *Logger) Critical(args ...interface{}) {
 	l.log(CRITICAL, nil, args...)
 }
 
 // Criticalf logs a message using CRITICAL as log level.
-func (l *logger) Criticalf(format string, args ...interface{}) {
+func (l *Logger) Criticalf(format string, args ...interface{}) {
 	l.log(CRITICAL, &format, args...)
 }
 
 // Error logs a message using ERROR as log level.
-func (l *logger) Error(args ...interface{}) {
+func (l *Logger) Error(args ...interface{}) {
 	l.log(ERROR, nil, args...)
 }
 
 // Errorf logs a message using ERROR as log level.
-func (l *logger) Errorf(format string, args ...interface{}) {
+func (l *Logger) Errorf(format string, args ...interface{}) {
 	l.log(ERROR, &format, args...)
 }
 
 // Warning logs a message using WARNING as log level.
-func (l *logger) Warning(args ...interface{}) {
+func (l *Logger) Warning(args ...interface{}) {
 	l.log(WARNING, nil, args...)
 }
 
 // Warningf logs a message using WARNING as log level.
-func (l *logger) Warningf(format string, args ...interface{}) {
+func (l *Logger) Warningf(format string, args ...interface{}) {
 	l.log(WARNING, &format, args...)
 }
 
 // Notice logs a message using NOTICE as log level.
-func (l *logger) Notice(args ...interface{}) {
+func (l *Logger) Notice(args ...interface{}) {
 	l.log(NOTICE, nil, args...)
 }
 
 // Noticef logs a message using NOTICE as log level.
-func (l *logger) Noticef(format string, args ...interface{}) {
+func (l *Logger) Noticef(format string, args ...interface{}) {
 	l.log(NOTICE, &format, args...)
 }
 
 // Info logs a message using INFO as log level.
-func (l *logger) Info(args ...interface{}) {
+func (l *Logger) Info(args ...interface{}) {
 	l.log(INFO, nil, args...)
 }
 
 // Infof logs a message using INFO as log level.
-func (l *logger) Infof(format string, args ...interface{}) {
+func (l *Logger) Infof(format string, args ...interface{}) {
 	l.log(INFO, &format, args...)
 }
 
 // Debug logs a message using DEBUG as log level.
-func (l *logger) Debug(args ...interface{}) {
+func (l *Logger) Debug(args ...interface{}) {
 	l.log(DEBUG, nil, args...)
 }
 
 // Debugf logs a message using DEBUG as log level.
-func (l *logger) Debugf(format string, args ...interface{}) {
+func (l *Logger) Debugf(format string, args ...interface{}) {
 	l.log(DEBUG, &format, args...)
 }
 
@@ -223,28 +225,33 @@ func newConfig(encoderConfig zapcore.EncoderConfig) zap.Config {
 	}
 }
 
+// Backend describes a logging backend
 type Backend interface {
 	Core(msgPriority zap.LevelEnablerFunc, encoder zapcore.Encoder) zapcore.Core
 }
 
-type Logger struct {
+// LoggerConfig describes a logger configuration such as backend, log level or an encoding
+type LoggerConfig struct {
 	backend  Backend
 	logLevel string
 	encoding string
 }
 
-func NewLogger(backend Backend, logLevel string, encoding string) *Logger {
-	return &Logger{backend: backend, logLevel: logLevel, encoding: encoding}
+// NewLoggerConfig returns a logger configuration with the associated logging backend, log level and encoding
+func NewLoggerConfig(backend Backend, logLevel string, encoding string) *LoggerConfig {
+	return &LoggerConfig{backend: backend, logLevel: logLevel, encoding: encoding}
 }
 
 type fileBackend struct {
 	file *os.File
 }
 
+// Core returns a zap core
 func (b *fileBackend) Core(msgPriority zap.LevelEnablerFunc, encoder zapcore.Encoder) zapcore.Core {
 	return zapcore.NewCore(encoder, zapcore.Lock(b.file), msgPriority)
 }
 
+// NewFileBackend returns a logging backend that outputs to a file
 func NewFileBackend(filename string) (Backend, error) {
 	file, err := os.Create(filename)
 	if err != nil {
@@ -253,11 +260,14 @@ func NewFileBackend(filename string) (Backend, error) {
 	return &fileBackend{file: file}, nil
 }
 
+// NewStdioBackend returns a logging backend that outputs to the standard output
 func NewStdioBackend(file *os.File) Backend {
 	return &fileBackend{file: file}
 }
 
-func InitLogging(id string, color bool, loggers []*Logger) (err error) {
+// InitLogging initializes logging system with an identifier for the log messages,
+// whether the output should be in colored mode and a set of logger configs.
+func InitLogging(id string, color bool, loggers []*LoggerConfig) (err error) {
 	getMessagePriority := func(backendLevel zapcore.Level) zap.LevelEnablerFunc {
 		return zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
 			return lvl >= backendLevel
@@ -297,7 +307,7 @@ func InitLogging(id string, color bool, loggers []*Logger) (err error) {
 		return err
 	}
 
-	currentLogger = &logger{
+	currentLogger = &Logger{
 		Logger: z,
 		id:     id,
 	}
@@ -305,11 +315,11 @@ func InitLogging(id string, color bool, loggers []*Logger) (err error) {
 }
 
 // GetLogger returns the current logger instance
-func GetLogger() (log *logger) {
+func GetLogger() (log *Logger) {
 	return currentLogger
 }
 
 func init() {
 	hostname, _ := os.Hostname()
-	InitLogging(hostname, false, []*Logger{NewLogger(NewStdioBackend(os.Stderr), "INFO", "")})
+	InitLogging(hostname, false, []*LoggerConfig{NewLoggerConfig(NewStdioBackend(os.Stderr), "INFO", "")})
 }
