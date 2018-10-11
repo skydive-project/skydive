@@ -37,7 +37,7 @@ import (
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/packet_injector"
+	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -238,7 +238,7 @@ func NewAgent() (*Agent, error) {
 	// exposes a flow server through the client connections
 	flow.NewWSTableServer(flowTableAllocator, analyzerClientPool)
 
-	packet_injector.NewServer(g, analyzerClientPool)
+	packetinjector.NewServer(g, analyzerClientPool)
 
 	flowClientPool := analyzer.NewFlowClientPool(analyzerClientPool, clusterAuthOptions)
 

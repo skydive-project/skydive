@@ -41,7 +41,7 @@ import (
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/packet_injector"
+	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/enhancers"
@@ -84,7 +84,7 @@ type Server struct {
 	replicationEndpoint *TopologyReplicationEndpoint
 	alertServer         *alert.Server
 	onDemandClient      *ondemand.OnDemandProbeClient
-	piClient            *packet_injector.PacketInjectorClient
+	piClient            *packetinjector.Client
 	topologyManager     *usertopology.TopologyManager
 	flowServer          *FlowServer
 	probeBundle         *probe.ProbeBundle
@@ -327,7 +327,7 @@ func NewServerFromConfig() (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	piClient := packet_injector.NewPacketInjectorClient(agentWSServer, etcdClient, piAPIHandler, g)
+	piClient := packetinjector.NewClient(agentWSServer, etcdClient, piAPIHandler, g)
 
 	nodeAPIHandler, err := api.RegisterNodeRuleAPI(apiServer, g, apiAuthBackend)
 	if err != nil {
