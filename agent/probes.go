@@ -74,11 +74,11 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 			probes[t] = ovsdb.NewProbeFromConfig(g, hostNode)
 		case "lxd":
 			lxdURL := config.GetConfig().GetString("lxd.url")
-			lxdProbe, err := lxd.NewLxdProbe(nsProbe, lxdURL)
+			Probe, err := lxd.NewProbe(nsProbe, lxdURL)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to initialize LXD probe: %s", err)
 			}
-			probes[t] = lxdProbe
+			probes[t] = Probe
 		case "docker":
 			dockerURL := config.GetString("docker.url")
 			Probe, err := docker.NewProbe(nsProbe, dockerURL)
