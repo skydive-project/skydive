@@ -42,6 +42,7 @@ var (
 )
 
 const (
+	// DefaultUserRole is the default role to assign to a user
 	DefaultUserRole = "admin"
 	tokenName       = "authtok"
 )
@@ -108,6 +109,9 @@ func authCallWrapped(w http.ResponseWriter, r *http.Request, username string, wr
 	context.Clear(&ar.Request)
 }
 
+// Authenticate checks a couple of username and password against an authentication backend.
+// If it succeeds, it set a token as a HTTP cookie. It then retrieves the roles for the
+// authenticated user from the backend.
 func Authenticate(backend AuthenticationBackend, w http.ResponseWriter, username, password string) (string, error) {
 	token, err := backend.Authenticate(username, password)
 	if err != nil {

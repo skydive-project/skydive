@@ -41,8 +41,11 @@ import (
 	"github.com/skydive-project/skydive/rbac"
 )
 
+// PathPrefix describes the prefix of the path of an URL
 type PathPrefix string
 
+// Route describes an HTTP route with a name, a HTTP verb,
+// a path protected by an authentication backend
 type Route struct {
 	Name        string
 	Method      string
@@ -50,15 +53,7 @@ type Route struct {
 	HandlerFunc auth.AuthenticatedHandlerFunc
 }
 
-type ConnectionType int
-
-const (
-	// TCP connection
-	TCP ConnectionType = 1 + iota
-	// TLS secure connection
-	TLS
-)
-
+// Server describes a HTTP server for a service that dispatches requests to routes
 type Server struct {
 	sync.RWMutex
 	http.Server
@@ -67,10 +62,8 @@ type Server struct {
 	Router      *mux.Router
 	Addr        string
 	Port        int
-	AuthBackend AuthenticationBackend
 	lock        sync.Mutex
 	listener    net.Listener
-	CnxType     ConnectionType
 	wg          sync.WaitGroup
 }
 
@@ -81,12 +74,14 @@ func copyRequestVars(old, new *http.Request) {
 	}
 }
 
+// SetTLSHeader set TLS specific headers in the response
 func SetTLSHeader(w http.ResponseWriter, r *http.Request) {
 	if r.TLS != nil {
 		w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 	}
 }
 
+// RegisterRoutes registers a set of routes protected by an authentication backend
 func (s *Server) RegisterRoutes(routes []Route, auth AuthenticationBackend) {
 	for _, route := range routes {
 		r := s.Router.
@@ -102,6 +97,7 @@ func (s *Server) RegisterRoutes(routes []Route, auth AuthenticationBackend) {
 	}
 }
 
+// Listen starts listening for TCP requests
 func (s *Server) Listen() error {
 	listenAddrPort := fmt.Sprintf("%s:%d", s.Addr, s.Port)
 	ln, err := net.Listen("tcp", listenAddrPort)
@@ -114,6 +110,7 @@ func (s *Server) Listen() error {
 	return nil
 }
 
+// ListenAndServe starts listening and serving HTTP requests
 func (s *Server) ListenAndServe() {
 	if err := s.Listen(); err != nil {
 		logging.GetLogger().Critical(err)
@@ -122,6 +119,7 @@ func (s *Server) ListenAndServe() {
 	go s.Serve()
 }
 
+// Serve HTTP request
 func (s *Server) Serve() {
 	defer s.wg.Done()
 	s.wg.Add(1)
@@ -141,11 +139,13 @@ func (s *Server) Serve() {
 	logging.GetLogger().Errorf("Failed to serve on %s:%d: %s", s.Addr, s.Port, err)
 }
 
+// Unauthorized returns a 401 response
 func Unauthorized(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusUnauthorized)
 	w.Write([]byte("401 Unauthorized\n"))
 }
 
+// Stop the server
 func (s *Server) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -180,6 +180,7 @@ func (s *Server) HandleFunc(path string, f auth.AuthenticatedHandlerFunc, authBa
 	})
 }
 
+// NewServer returns a new HTTP service for a service
 func NewServer(host string, serviceType common.ServiceType, addr string, port int, tlsConfig *tls.Config) *Server {
 	router := mux.NewRouter().StrictSlash(true)
 	router.Headers("X-Host-ID", host, "X-Service-Type", serviceType.String())
