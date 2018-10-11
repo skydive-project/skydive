@@ -31,6 +31,7 @@ import (
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/probes/docker"
+	"github.com/skydive-project/skydive/topology/probes/lldp"
 	"github.com/skydive-project/skydive/topology/probes/lxd"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
 	"github.com/skydive-project/skydive/topology/probes/netns"
@@ -41,7 +42,7 @@ import (
 )
 
 // NewTopologyProbeBundleFromConfig creates a new topology probe.ProbeBundle based on the configuration
-func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.ProbeBundle, error) {
+func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*probe.ProbeBundle, error) {
 	list := config.GetStringSlice("agent.topology.probes")
 	logging.GetLogger().Infof("Topology probes: %v", list)
 
@@ -50,13 +51,13 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.Pro
 
 	var nsProbe *netns.NetNSProbe
 	if runtime.GOOS == "linux" {
-		nlProbe, err := netlink.NewNetLinkProbe(g, n)
+		nlProbe, err := netlink.NewNetLinkProbe(g, hostNode)
 		if err != nil {
 			return nil, err
 		}
 		probes["netlink"] = nlProbe
 
-		nsProbe, err = netns.NewNetNSProbe(g, n, nlProbe)
+		nsProbe, err = netns.NewNetNSProbe(g, hostNode, nlProbe)
 		if err != nil {
 			return nil, err
 		}
@@ -70,7 +71,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.Pro
 
 		switch t {
 		case "ovsdb":
-			probes[t] = ovsdb.NewOvsdbProbeFromConfig(g, n)
+			probes[t] = ovsdb.NewOvsdbProbeFromConfig(g, hostNode)
 		case "lxd":
 			lxdURL := config.GetConfig().GetString("lxd.url")
 			lxdProbe, err := lxd.NewLxdProbe(nsProbe, lxdURL)
@@ -85,6 +86,13 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.Pro
 				return nil, fmt.Errorf("Failed to initialize Docker probe: %s", err)
 			}
 			probes[t] = dockerProbe
+		case "lldp":
+			interfaces := config.GetStringSlice("agent.topology.lldp.interfaces")
+			lldpProbe, err := lldp.NewProbe(g, hostNode, interfaces)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to initialize LLDP probe: %s", err)
+			}
+			probes[t] = lldpProbe
 		case "neutron":
 			neutron, err := neutron.NewNeutronProbeFromConfig(g)
 			if err != nil {
@@ -92,13 +100,13 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.Pro
 			}
 			probes["neutron"] = neutron
 		case "opencontrail":
-			opencontrail, err := opencontrail.NewOpenContrailProbeFromConfig(g, n)
+			opencontrail, err := opencontrail.NewOpenContrailProbeFromConfig(g, hostNode)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to initialize OpenContrail probe: %s", err)
 			}
 			probes[t] = opencontrail
 		case "socketinfo":
-			probes[t] = socketinfo.NewSocketInfoProbe(g, n)
+			probes[t] = socketinfo.NewSocketInfoProbe(g, hostNode)
 		default:
 			logging.GetLogger().Errorf("unknown probe type %s", t)
 		}

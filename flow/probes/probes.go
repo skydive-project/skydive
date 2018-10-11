@@ -33,6 +33,7 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+// ErrProbeNotCompiled is thrown when a flow probe was not compiled within the binary
 var ErrProbeNotCompiled = fmt.Errorf("probe is not compiled within skydive")
 
 // FlowProbe defines flow probe mechanism
@@ -59,6 +60,7 @@ func (a *FlowProbeTableAllocator) Alloc(nodeTID string, opts flow.TableOpts) *fl
 	return a.TableAllocator.Alloc(a.fcpool.SendFlows, nodeTID, opts)
 }
 
+// NewFlowProbeBundle returns a new bundle of flow probes
 func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) *probe.ProbeBundle {
 	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket", "dpdk", "ebpf", "ovsmirror"}
 	logging.GetLogger().Infof("Flow probes: %v", list)
