@@ -23,6 +23,7 @@
 package istio
 
 const (
+	// Manager is the manager value for Istio
 	Manager      = "istio"
 	detailsField = "Istio"
 )

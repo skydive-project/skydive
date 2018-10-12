@@ -242,7 +242,7 @@ func (t *TopologyReplicationEndpoint) notifyPeers(msg *ws.StructMessage) {
 	t.out.BroadcastMessage(msg)
 }
 
-// OnNodeUpdated graph node updated event. Implements the GraphEventListener interface.
+// OnNodeUpdated graph node updated event. Implements the EventListener interface.
 func (t *TopologyReplicationEndpoint) OnNodeUpdated(n *graph.Node) {
 	if t.replicateMsg.Load() == true {
 		msg := ws.NewStructMessage(graph.Namespace, graph.NodeUpdatedMsgType, n)
@@ -250,7 +250,7 @@ func (t *TopologyReplicationEndpoint) OnNodeUpdated(n *graph.Node) {
 	}
 }
 
-// OnNodeAdded graph node added event. Implements the GraphEventListener interface.
+// OnNodeAdded graph node added event. Implements the EventListener interface.
 func (t *TopologyReplicationEndpoint) OnNodeAdded(n *graph.Node) {
 	if t.replicateMsg.Load() == true {
 		msg := ws.NewStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
@@ -258,7 +258,7 @@ func (t *TopologyReplicationEndpoint) OnNodeAdded(n *graph.Node) {
 	}
 }
 
-// OnNodeDeleted graph node deleted event. Implements the GraphEventListener interface.
+// OnNodeDeleted graph node deleted event. Implements the EventListener interface.
 func (t *TopologyReplicationEndpoint) OnNodeDeleted(n *graph.Node) {
 	if t.replicateMsg.Load() == true {
 		msg := ws.NewStructMessage(graph.Namespace, graph.NodeDeletedMsgType, n)
@@ -266,7 +266,7 @@ func (t *TopologyReplicationEndpoint) OnNodeDeleted(n *graph.Node) {
 	}
 }
 
-// OnEdgeUpdated graph edge updated event. Implements the GraphEventListener interface.
+// OnEdgeUpdated graph edge updated event. Implements the EventListener interface.
 func (t *TopologyReplicationEndpoint) OnEdgeUpdated(e *graph.Edge) {
 	if t.replicateMsg.Load() == true {
 		msg := ws.NewStructMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e)
@@ -274,7 +274,7 @@ func (t *TopologyReplicationEndpoint) OnEdgeUpdated(e *graph.Edge) {
 	}
 }
 
-// OnEdgeAdded graph edge added event. Implements the GraphEventListener interface.
+// OnEdgeAdded graph edge added event. Implements the EventListener interface.
 func (t *TopologyReplicationEndpoint) OnEdgeAdded(e *graph.Edge) {
 	if t.replicateMsg.Load() == true {
 		msg := ws.NewStructMessage(graph.Namespace, graph.EdgeAddedMsgType, e)
@@ -282,7 +282,7 @@ func (t *TopologyReplicationEndpoint) OnEdgeAdded(e *graph.Edge) {
 	}
 }
 
-// OnEdgeDeleted graph edge deleted event. Implements the GraphEventListener interface.
+// OnEdgeDeleted graph edge deleted event. Implements the EventListener interface.
 func (t *TopologyReplicationEndpoint) OnEdgeDeleted(e *graph.Edge) {
 	if t.replicateMsg.Load() == true {
 		msg := ws.NewStructMessage(graph.Namespace, graph.EdgeDeletedMsgType, e)

@@ -35,6 +35,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// StatusCmd implents the skydive 'status' command that
+// return the status of an analyzer by quering its API
 var StatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show analyzer status",

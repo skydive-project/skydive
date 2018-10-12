@@ -32,12 +32,13 @@ import (
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
+// TableClient describes a mechanism to query a flow table
 type TableClient interface {
 	LookupFlows(flowSearchQuery filters.SearchQuery) (*FlowSet, error)
 	LookupFlowsByNodes(hnmap topology.HostNodeTIDMap, flowSearchQuery filters.SearchQuery) (*FlowSet, error)
 }
 
-// WSTableClient describes a mechanism to Query a flow table via flowSet in JSON
+// WSTableClient implements a flow table client using WebSocket
 type WSTableClient struct {
 	structServer *ws.StructServer
 }

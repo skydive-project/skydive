@@ -273,7 +273,7 @@ func (s *FlowServer) setupBulkConfigFromBackend() error {
 }
 
 // NewFlowServer creates a new flow server listening at address/port, based on configuration
-func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe *probe.ProbeBundle, auth shttp.AuthenticationBackend) (*FlowServer, error) {
+func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe *probe.Bundle, auth shttp.AuthenticationBackend) (*FlowServer, error) {
 	var conn FlowServerConn
 	protocol := strings.ToLower(config.GetString("flow.protocol"))
 

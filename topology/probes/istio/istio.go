@@ -30,6 +30,7 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/k8s"
 )
 
+// ClusterName is the name to give to the probe cluster node
 const ClusterName = "cluster"
 
 // Probe describes the Istio probe in charge of importing

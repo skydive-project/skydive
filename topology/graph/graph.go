@@ -46,6 +46,7 @@ const (
 
 type graphEventType int
 
+// Graph events
 const (
 	NodeUpdated graphEventType = iota + 1
 	NodeAdded
@@ -58,8 +59,8 @@ const (
 // Identifier graph ID
 type Identifier string
 
-// GraphEventListener describes the graph events interface mechanism
-type GraphEventListener interface {
+// EventListener describes the graph events interface mechanism
+type EventListener interface {
 	OnNodeUpdated(n *Node)
 	OnNodeAdded(n *Node)
 	OnNodeDeleted(n *Node)
@@ -71,21 +72,21 @@ type GraphEventListener interface {
 type graphEvent struct {
 	kind     graphEventType
 	element  interface{}
-	listener GraphEventListener
+	listener EventListener
 }
 
-// GraphElementMatcher defines an interface used to match an element
-type GraphElementMatcher interface {
+// ElementMatcher defines an interface used to match an element
+type ElementMatcher interface {
 	Match(g filters.Getter) bool
 	Filter() (*filters.Filter, error)
 }
 
-// GraphElementFilter implements GraphElementMatcher interface based on filter
-type GraphElementFilter struct {
+// ElementFilter implements ElementMatcher interface based on filter
+type ElementFilter struct {
 	filter *filters.Filter
 }
 
-// Metadata describes the graph node metadata type. It implements GraphElementMatcher
+// Metadata describes the graph node metadata type. It implements ElementMatcher
 // based only on Metadata.
 type Metadata map[string]interface{}
 
@@ -120,41 +121,41 @@ type Edge struct {
 	child  Identifier
 }
 
-// GraphBackend interface mechanism used as storage
-type GraphBackend interface {
+// Backend interface mechanism used as storage
+type Backend interface {
 	NodeAdded(n *Node) bool
 	NodeDeleted(n *Node) bool
-	GetNode(i Identifier, at GraphContext) []*Node
-	GetNodeEdges(n *Node, at GraphContext, m GraphElementMatcher) []*Edge
+	GetNode(i Identifier, at Context) []*Node
+	GetNodeEdges(n *Node, at Context, m ElementMatcher) []*Edge
 
 	EdgeAdded(e *Edge) bool
 	EdgeDeleted(e *Edge) bool
-	GetEdge(i Identifier, at GraphContext) []*Edge
-	GetEdgeNodes(e *Edge, at GraphContext, parentMetadata, childMetadata GraphElementMatcher) ([]*Node, []*Node)
+	GetEdge(i Identifier, at Context) []*Edge
+	GetEdgeNodes(e *Edge, at Context, parentMetadata, childMetadata ElementMatcher) ([]*Node, []*Node)
 
 	MetadataUpdated(e interface{}) bool
 
-	GetNodes(t GraphContext, m GraphElementMatcher) []*Node
-	GetEdges(t GraphContext, m GraphElementMatcher) []*Edge
+	GetNodes(t Context, m ElementMatcher) []*Node
+	GetEdges(t Context, m ElementMatcher) []*Edge
 
 	IsHistorySupported() bool
 }
 
-// GraphContext describes within time slice
-type GraphContext struct {
+// Context describes within time slice
+type Context struct {
 	TimeSlice *common.TimeSlice
 	TimePoint bool
 }
 
-var liveContext = GraphContext{TimePoint: true}
+var liveContext = Context{TimePoint: true}
 
 // Graph describes the graph object based on events and context mechanism
 // An associated backend is used as storage
 type Graph struct {
 	common.RWMutex
-	eventHandler *GraphEventHandler
-	backend      GraphBackend
-	context      GraphContext
+	eventHandler *EventHandler
+	backend      Backend
+	context      Context
 	host         string
 	service      common.ServiceType
 }
@@ -202,20 +203,22 @@ func (c *DefaultGraphListener) OnEdgeAdded(e *Edge) {
 func (c *DefaultGraphListener) OnEdgeDeleted(e *Edge) {
 }
 
-type GraphListenerHandler interface {
-	AddEventListener(l GraphEventListener)
-	RemoveEventListener(l GraphEventListener)
+// ListenerHandler describes an other that manages a set of event listeners
+type ListenerHandler interface {
+	AddEventListener(l EventListener)
+	RemoveEventListener(l EventListener)
 }
 
-type GraphEventHandler struct {
+// EventHandler describes an object that notifies listeners with graph events
+type EventHandler struct {
 	common.RWMutex
-	eventListeners       []GraphEventListener
+	eventListeners       []EventListener
 	eventChan            chan graphEvent
 	eventConsumed        bool
-	currentEventListener GraphEventListener
+	currentEventListener EventListener
 }
 
-func (g *GraphEventHandler) notifyListeners(ge graphEvent) {
+func (g *EventHandler) notifyListeners(ge graphEvent) {
 	// notify only once per listener as if more than once we are in a recursion
 	// and we wont to notify a listener which generated a graph element
 	g.RLock()
@@ -243,7 +246,9 @@ func (g *GraphEventHandler) notifyListeners(ge graphEvent) {
 	}
 }
 
-func (g *GraphEventHandler) NotifyEvent(kind graphEventType, element interface{}) {
+// NotifyEvent notifies all the listeners of an event. NotifyEvent
+// makes sure that we don't enter a notify endless loop.
+func (g *EventHandler) NotifyEvent(kind graphEventType, element interface{}) {
 	// push event to chan so that nested notification will be sent in the
 	// right order. Associate the event with the current event listener so
 	// we can avoid loop by not triggering event for the current listener.
@@ -266,7 +271,7 @@ func (g *GraphEventHandler) NotifyEvent(kind graphEventType, element interface{}
 }
 
 // AddEventListener subscibe a new graph listener
-func (g *GraphEventHandler) AddEventListener(l GraphEventListener) {
+func (g *EventHandler) AddEventListener(l EventListener) {
 	g.Lock()
 	defer g.Unlock()
 
@@ -274,7 +279,7 @@ func (g *GraphEventHandler) AddEventListener(l GraphEventListener) {
 }
 
 // RemoveEventListener unsubscribe a graph listener
-func (g *GraphEventHandler) RemoveEventListener(l GraphEventListener) {
+func (g *EventHandler) RemoveEventListener(l EventListener) {
 	g.Lock()
 	defer g.Unlock()
 
@@ -286,8 +291,9 @@ func (g *GraphEventHandler) RemoveEventListener(l GraphEventListener) {
 	}
 }
 
-func NewGraphEventHandler(maxEvents int) *GraphEventHandler {
-	return &GraphEventHandler{
+// NewEventHandler instanciate a new event handler
+func NewEventHandler(maxEvents int) *EventHandler {
+	return &EventHandler{
 		eventChan: make(chan graphEvent, maxEvents),
 	}
 }
@@ -349,18 +355,18 @@ func (m Metadata) Filter() (*filters.Filter, error) {
 }
 
 // Match returns true if the given element matches the filter.
-func (mf *GraphElementFilter) Match(g filters.Getter) bool {
+func (mf *ElementFilter) Match(g filters.Getter) bool {
 	return mf.filter.Eval(g)
 }
 
 // Filter returns the filter
-func (mf *GraphElementFilter) Filter() (*filters.Filter, error) {
+func (mf *ElementFilter) Filter() (*filters.Filter, error) {
 	return mf.filter, nil
 }
 
-// NewGraphElementFilter returns a new GraphElementFilter
-func NewGraphElementFilter(f *filters.Filter) *GraphElementFilter {
-	return &GraphElementFilter{filter: f}
+// NewElementFilter returns a new ElementFilter
+func NewElementFilter(f *filters.Filter) *ElementFilter {
+	return &ElementFilter{filter: f}
 }
 
 func (e *graphElement) Host() string {
@@ -455,7 +461,8 @@ func (e *graphElement) Metadata() Metadata {
 	return e.metadata
 }
 
-func (e *graphElement) MatchMetadata(f GraphElementMatcher) bool {
+// MatchMetadata returns whether a graph element matches with the provided filter or metadata
+func (e *graphElement) MatchMetadata(f ElementMatcher) bool {
 	if f == nil {
 		return true
 	}
@@ -616,14 +623,15 @@ func (n *Node) Decode(i interface{}) error {
 	return n.graphElement.Decode(i)
 }
 
-func (e *Edge) MatchMetadata(f GraphElementMatcher) bool {
+// MatchMetadata returns when an edge matches a specified filter or metadata
+func (e *Edge) MatchMetadata(f ElementMatcher) bool {
 	if f == nil {
 		return true
 	}
 	return f.Match(e)
 }
 
-// GetField returns the associated Field name
+// GetField returns the associated field name
 func (e *Edge) GetField(name string) (interface{}, error) {
 	switch name {
 	case "Parent":
@@ -954,7 +962,7 @@ func (g *Graph) StartMetadataTransaction(i interface{}) *MetadataTransaction {
 	return &t
 }
 
-func (g *Graph) getNeighborNodes(n *Node, em GraphElementMatcher) (nodes []*Node) {
+func (g *Graph) getNeighborNodes(n *Node, em ElementMatcher) (nodes []*Node) {
 	for _, e := range g.backend.GetNodeEdges(n, g.context, em) {
 		parents, childrens := g.backend.GetEdgeNodes(e, g.context, nil, nil)
 		nodes = append(nodes, parents...)
@@ -963,7 +971,7 @@ func (g *Graph) getNeighborNodes(n *Node, em GraphElementMatcher) (nodes []*Node
 	return nodes
 }
 
-func (g *Graph) findNodeMatchMetadata(nodesMap map[Identifier]*Node, m GraphElementMatcher) *Node {
+func (g *Graph) findNodeMatchMetadata(nodesMap map[Identifier]*Node, m ElementMatcher) *Node {
 	for _, n := range nodesMap {
 		if n.MatchMetadata(m) {
 			return n
@@ -997,7 +1005,7 @@ func getNodeMinDistance(nodesMap map[Identifier]*Node, distance map[Identifier]u
 }
 
 // GetNodesMap returns a map of nodes within a time slice
-func (g *Graph) GetNodesMap(t GraphContext) map[Identifier]*Node {
+func (g *Graph) GetNodesMap(t Context) map[Identifier]*Node {
 	nodes := g.backend.GetNodes(t, nil)
 	nodesMap := make(map[Identifier]*Node, len(nodes))
 	for _, n := range nodes {
@@ -1007,7 +1015,7 @@ func (g *Graph) GetNodesMap(t GraphContext) map[Identifier]*Node {
 }
 
 // LookupShortestPath based on Dijkstra algorithm
-func (g *Graph) LookupShortestPath(n *Node, m GraphElementMatcher, em GraphElementMatcher) []*Node {
+func (g *Graph) LookupShortestPath(n *Node, m ElementMatcher, em ElementMatcher) []*Node {
 	nodesMap := g.GetNodesMap(g.context)
 	target := g.findNodeMatchMetadata(nodesMap, m)
 	if target == nil {
@@ -1056,7 +1064,7 @@ func (g *Graph) LookupShortestPath(n *Node, m GraphElementMatcher, em GraphEleme
 }
 
 // LookupParents returns the associated parents edge of a node
-func (g *Graph) LookupParents(n *Node, f GraphElementMatcher, em GraphElementMatcher) (nodes []*Node) {
+func (g *Graph) LookupParents(n *Node, f ElementMatcher, em ElementMatcher) (nodes []*Node) {
 	for _, e := range g.backend.GetNodeEdges(n, g.context, em) {
 		if e.GetChild() == n.ID {
 			parents, _ := g.backend.GetEdgeNodes(e, g.context, f, nil)
@@ -1070,7 +1078,7 @@ func (g *Graph) LookupParents(n *Node, f GraphElementMatcher, em GraphElementMat
 }
 
 // LookupFirstChild returns the child
-func (g *Graph) LookupFirstChild(n *Node, f GraphElementMatcher) *Node {
+func (g *Graph) LookupFirstChild(n *Node, f ElementMatcher) *Node {
 	nodes := g.LookupChildren(n, f, nil)
 	if len(nodes) > 0 {
 		return nodes[0]
@@ -1079,7 +1087,7 @@ func (g *Graph) LookupFirstChild(n *Node, f GraphElementMatcher) *Node {
 }
 
 // LookupChildren returns a list of children nodes
-func (g *Graph) LookupChildren(n *Node, f GraphElementMatcher, em GraphElementMatcher) (nodes []*Node) {
+func (g *Graph) LookupChildren(n *Node, f ElementMatcher, em ElementMatcher) (nodes []*Node) {
 	for _, e := range g.backend.GetNodeEdges(n, g.context, em) {
 		if e.GetParent() == n.ID {
 			_, children := g.backend.GetEdgeNodes(e, g.context, nil, f)
@@ -1093,7 +1101,7 @@ func (g *Graph) LookupChildren(n *Node, f GraphElementMatcher, em GraphElementMa
 }
 
 // AreLinked returns true if nodes n1, n2 are linked
-func (g *Graph) AreLinked(n1 *Node, n2 *Node, m GraphElementMatcher) bool {
+func (g *Graph) AreLinked(n1 *Node, n2 *Node, m ElementMatcher) bool {
 	for _, e := range g.backend.GetNodeEdges(n1, g.context, m) {
 		parents, children := g.backend.GetEdgeNodes(e, g.context, nil, nil)
 		if len(parents) == 0 || len(children) == 0 {
@@ -1144,7 +1152,7 @@ func (g *Graph) GetFirstLink(parent, child *Node, metadata Metadata) *Edge {
 }
 
 // LookupFirstNode returns the fist node matching metadata
-func (g *Graph) LookupFirstNode(m GraphElementMatcher) *Node {
+func (g *Graph) LookupFirstNode(m ElementMatcher) *Node {
 	nodes := g.GetNodes(m)
 	if len(nodes) > 0 {
 		return nodes[0]
@@ -1205,6 +1213,7 @@ func (g *Graph) GetNode(i Identifier) *Node {
 	return nil
 }
 
+// CreateNode returns a new node not bound to a graph
 func CreateNode(i Identifier, m Metadata, t time.Time, h string, s common.ServiceType) *Node {
 	o := string(s)
 	if len(h) > 0 {
@@ -1230,6 +1239,7 @@ func CreateNode(i Identifier, m Metadata, t time.Time, h string, s common.Servic
 	return n
 }
 
+// CreateNode creates a new node and adds it to the graph
 func (g *Graph) CreateNode(i Identifier, m Metadata, t time.Time, h ...string) *Node {
 	hostname := g.host
 	if len(h) > 0 {
@@ -1248,6 +1258,7 @@ func (g *Graph) NewNode(i Identifier, m Metadata, h ...string) *Node {
 	return nil
 }
 
+// CreateEdge returns a new edge not bound to any graph
 func CreateEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Time, h string, s common.ServiceType) *Edge {
 	o := string(s)
 	if len(h) > 0 {
@@ -1275,6 +1286,7 @@ func CreateEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Time, h strin
 	return e
 }
 
+// CreateEdge creates a new edge and adds it to the graph
 func (g *Graph) CreateEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Time, h ...string) *Edge {
 	hostname := g.host
 	if len(h) > 0 {
@@ -1353,22 +1365,22 @@ func (g *Graph) DelOriginGraph(origin string) {
 }
 
 // GetNodes returns a list of nodes
-func (g *Graph) GetNodes(m GraphElementMatcher) []*Node {
+func (g *Graph) GetNodes(m ElementMatcher) []*Node {
 	return g.backend.GetNodes(g.context, m)
 }
 
 // GetEdges returns a list of edges
-func (g *Graph) GetEdges(m GraphElementMatcher) []*Edge {
+func (g *Graph) GetEdges(m ElementMatcher) []*Edge {
 	return g.backend.GetEdges(g.context, m)
 }
 
 // GetEdgeNodes returns a list of nodes of an edge
-func (g *Graph) GetEdgeNodes(e *Edge, parentMetadata, childMetadata GraphElementMatcher) ([]*Node, []*Node) {
+func (g *Graph) GetEdgeNodes(e *Edge, parentMetadata, childMetadata ElementMatcher) ([]*Node, []*Node) {
 	return g.backend.GetEdgeNodes(e, g.context, parentMetadata, childMetadata)
 }
 
 // GetNodeEdges returns a list of edges of a node
-func (g *Graph) GetNodeEdges(n *Node, m GraphElementMatcher) []*Edge {
+func (g *Graph) GetNodeEdges(n *Node, m ElementMatcher) []*Edge {
 	return g.backend.GetNodeEdges(n, g.context, m)
 }
 
@@ -1407,7 +1419,7 @@ func (g *Graph) MarshalJSON() ([]byte, error) {
 }
 
 // CloneWithContext creates a new graph based on the given one and the given context
-func (g *Graph) CloneWithContext(context GraphContext) (*Graph, error) {
+func (g *Graph) CloneWithContext(context Context) (*Graph, error) {
 	ng := NewGraph(g.host, g.backend, g.service)
 	if context.TimeSlice != nil && !g.backend.IsHistorySupported() {
 		return nil, errors.New("Backend does not support history")
@@ -1418,7 +1430,7 @@ func (g *Graph) CloneWithContext(context GraphContext) (*Graph, error) {
 }
 
 // GetContext returns the current context
-func (g *Graph) GetContext() GraphContext {
+func (g *Graph) GetContext() Context {
 	return g.context
 }
 
@@ -1457,35 +1469,35 @@ func (g *Graph) Diff(newGraph *Graph) (addedNodes []*Node, removedNodes []*Node,
 }
 
 // AddEventListener subscibe a new graph listener
-func (g *Graph) AddEventListener(l GraphEventListener) {
+func (g *Graph) AddEventListener(l EventListener) {
 	g.eventHandler.AddEventListener(l)
 }
 
 // RemoveEventListener unsubscribe a graph listener
-func (g *Graph) RemoveEventListener(l GraphEventListener) {
+func (g *Graph) RemoveEventListener(l EventListener) {
 	g.eventHandler.RemoveEventListener(l)
 }
 
 // NewGraph creates a new graph based on the backend
-func NewGraph(host string, backend GraphBackend, service common.ServiceType) *Graph {
+func NewGraph(host string, backend Backend, service common.ServiceType) *Graph {
 	return &Graph{
-		eventHandler: NewGraphEventHandler(maxEvents),
+		eventHandler: NewEventHandler(maxEvents),
 		backend:      backend,
 		host:         host,
-		context:      GraphContext{TimePoint: true},
+		context:      Context{TimePoint: true},
 		service:      service,
 	}
 }
 
 // NewGraphFromConfig creates a new graph based on configuration
-func NewGraphFromConfig(backend GraphBackend, service common.ServiceType) *Graph {
+func NewGraphFromConfig(backend Backend, service common.ServiceType) *Graph {
 	host := config.GetString("host_id")
 	return NewGraph(host, backend, service)
 }
 
 // NewBackendByName creates a new graph backend based on the name
 // memory, orientdb, elasticsearch backend are supported
-func NewBackendByName(name string, etcdClient *etcd.Client) (backend GraphBackend, err error) {
+func NewBackendByName(name string, etcdClient *etcd.Client) (backend Backend, err error) {
 	driver := config.GetString("storage." + name + ".driver")
 	switch driver {
 	case "memory":

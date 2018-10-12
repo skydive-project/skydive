@@ -81,6 +81,11 @@ func loadStaticPolicy(model model.Model) error {
 	return loadPolicy(content, model)
 }
 
+// InitRBAC inits the RBAC mechanism. It load
+// - the model from the configuration
+// - a policy on etcd
+// - a policy bundled in the executable
+// - additional policy rules from the configuration
 func InitRBAC(kapi etcd.KeysAPI) error {
 	m := model.Model{}
 	loadSection(m, "request_definition", "r")

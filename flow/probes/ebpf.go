@@ -85,7 +85,7 @@ type EBPFProbesHandler struct {
 
 func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, updatedAt int64) *flow.Flow {
 	f := flow.NewFlow()
-	f.Init(common.UnixMillis(ebpfFlow.start), p.probeNodeTID, flow.FlowUUIDs{})
+	f.Init(common.UnixMillis(ebpfFlow.start), p.probeNodeTID, flow.UUIDs{})
 	f.Last = common.UnixMillis(ebpfFlow.last)
 
 	layersFlag := uint8(kernFlow.layers)
@@ -203,7 +203,7 @@ func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, up
 	hasher.Write(C.GoBytes(unsafe.Pointer(&kernFlow.key), C.sizeof___u64))
 	key := hex.EncodeToString(hasher.Sum(nil))
 
-	f.UpdateUUID(key, flow.FlowOpts{})
+	f.UpdateUUID(key, flow.Opts{})
 
 	return f
 }

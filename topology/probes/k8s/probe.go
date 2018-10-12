@@ -37,16 +37,19 @@ func int32ValueOrDefault(value *int32, defaultValue int32) int32 {
 	return *value
 }
 
-type Subprobe interface {
-	probe.Probe
-	graph.GraphListenerHandler
-}
-
 // Probe for tracking k8s events
 type Probe struct {
 	manager   string
 	subprobes map[string]Subprobe
 	linkers   []probe.Probe
+}
+
+// Subprobe describes a probe for a specific Kubernetes resource
+// It must implement the ListenerHandler interface so that you
+// listen for creation/update/removal of a resource
+type Subprobe interface {
+	probe.Probe
+	graph.ListenerHandler
 }
 
 // Start k8s probe

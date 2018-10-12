@@ -83,6 +83,7 @@ func Enforce(sub, obj, act string) bool {
 	return enforcer.Enforce(sub, obj, act)
 }
 
+// AddRoleForUser registers a role for a user
 func AddRoleForUser(user, role string) bool {
 	if enforcer == nil {
 		return false
@@ -91,6 +92,7 @@ func AddRoleForUser(user, role string) bool {
 	return enforcer.AddRoleForUser(user, role)
 }
 
+// GetUserRoles returns the roles of a user
 func GetUserRoles(user string) []string {
 	if enforcer == nil {
 		return []string{}

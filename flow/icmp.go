@@ -24,7 +24,7 @@ package flow
 
 import "github.com/google/gopacket/layers"
 
-// icmpv4TypeToFlowICMPType converts an ICMP type to a Flow ICMPType
+// ICMPv4TypeToFlowICMPType converts an ICMP type to a Flow ICMPType
 func ICMPv4TypeToFlowICMPType(kind uint8) ICMPType {
 	switch kind {
 	case layers.ICMPv4TypeEchoRequest, layers.ICMPv4TypeEchoReply:
@@ -52,7 +52,7 @@ func ICMPv4TypeToFlowICMPType(kind uint8) ICMPType {
 	return ICMPType_UNKNOWN
 }
 
-// icmpv6TypeToFlowICMPType converts an ICMP type to a Flow ICMPType
+// ICMPv6TypeToFlowICMPType converts an ICMP type to a Flow ICMPType
 func ICMPv6TypeToFlowICMPType(kind uint8) ICMPType {
 	switch kind {
 	case layers.ICMPv6TypeEchoRequest, layers.ICMPv6TypeEchoReply:

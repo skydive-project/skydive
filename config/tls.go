@@ -28,6 +28,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 )
 
+// GetTLSClientConfig returns TLS config to be used by a server
 func GetTLSClientConfig(setupRootCA bool) (*tls.Config, error) {
 	certPEM := GetString("agent.X509_cert")
 	keyPEM := GetString("agent.X509_key")
@@ -49,6 +50,7 @@ func GetTLSClientConfig(setupRootCA bool) (*tls.Config, error) {
 	return tlsConfig, nil
 }
 
+// GetTLSServerConfig returns TLS config to be used by a server
 func GetTLSServerConfig(setupRootCA bool) (*tls.Config, error) {
 	certPEM := GetString("analyzer.X509_cert")
 	keyPEM := GetString("analyzer.X509_key")

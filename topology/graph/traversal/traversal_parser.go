@@ -890,12 +890,12 @@ func NewGremlinTraversalParser() *GremlinTraversalParser {
 
 func (p *GremlinTraversalParser) parseStepParams() ([]interface{}, error) {
 	tok, lit := p.scanIgnoreWhitespace()
-	if tok != LEFT_PARENTHESIS {
+	if tok != LEFTPARENTHESIS {
 		return nil, fmt.Errorf("Expected left parenthesis, got: %s", lit)
 	}
 
 	var params []interface{}
-	for tok, lit := p.scanIgnoreWhitespace(); tok != RIGHT_PARENTHESIS; {
+	for tok, lit := p.scanIgnoreWhitespace(); tok != RIGHTPARENTHESIS; {
 		switch tok {
 		case EOF:
 			return nil, errors.New("Expected right parenthesis")

@@ -20,7 +20,7 @@
  *
  */
 
-package packet_injector
+package packetinjector
 
 import (
 	"errors"
@@ -230,7 +230,7 @@ func InjectPackets(pp *PacketInjectionParams, g *graph.Graph, chnl *channels) (s
 
 	gopacket.NewPacket(packetData, layerType, gopacket.Default)
 
-	f := flow.NewFlowFromGoPacket(gpacket, tid, flow.FlowUUIDs{}, flow.FlowOpts{})
+	f := flow.NewFlowFromGoPacket(gpacket, tid, flow.UUIDs{}, flow.Opts{})
 
 	p := make(chan bool)
 	chnl.Lock()

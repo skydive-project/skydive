@@ -36,7 +36,7 @@ const (
 // CachedBackend describes a cache mechanism in memory and/or persistent database
 type CachedBackend struct {
 	memory     *MemoryBackend
-	persistent GraphBackend
+	persistent Backend
 	cacheMode  atomic.Value
 }
 
@@ -78,7 +78,7 @@ func (c *CachedBackend) NodeDeleted(n *Node) bool {
 }
 
 // GetNode retrieve a node from the cache within a time slice
-func (c *CachedBackend) GetNode(i Identifier, t GraphContext) []*Node {
+func (c *CachedBackend) GetNode(i Identifier, t Context) []*Node {
 	mode := c.cacheMode.Load()
 
 	if t.TimeSlice == nil && mode != PersistentOnlyMode {
@@ -93,7 +93,7 @@ func (c *CachedBackend) GetNode(i Identifier, t GraphContext) []*Node {
 }
 
 // GetNodeEdges retrieve a list of edges from a node within a time slice, matching metadata
-func (c *CachedBackend) GetNodeEdges(n *Node, t GraphContext, m GraphElementMatcher) (edges []*Edge) {
+func (c *CachedBackend) GetNodeEdges(n *Node, t Context, m ElementMatcher) (edges []*Edge) {
 	mode := c.cacheMode.Load()
 
 	if t.TimeSlice == nil && mode != PersistentOnlyMode {
@@ -140,7 +140,7 @@ func (c *CachedBackend) EdgeDeleted(e *Edge) bool {
 }
 
 // GetEdge retrieve an edge within a time slice
-func (c *CachedBackend) GetEdge(i Identifier, t GraphContext) []*Edge {
+func (c *CachedBackend) GetEdge(i Identifier, t Context) []*Edge {
 	mode := c.cacheMode.Load()
 
 	if t.TimeSlice == nil && mode != PersistentOnlyMode {
@@ -155,7 +155,7 @@ func (c *CachedBackend) GetEdge(i Identifier, t GraphContext) []*Edge {
 }
 
 // GetEdgeNodes retrieve a list of nodes from an edge within a time slice, matching metadata
-func (c *CachedBackend) GetEdgeNodes(e *Edge, t GraphContext, parentMetadata, childMetadata GraphElementMatcher) ([]*Node, []*Node) {
+func (c *CachedBackend) GetEdgeNodes(e *Edge, t Context, parentMetadata, childMetadata ElementMatcher) ([]*Node, []*Node) {
 	mode := c.cacheMode.Load()
 
 	if t.TimeSlice == nil && mode != PersistentOnlyMode {
@@ -186,7 +186,7 @@ func (c *CachedBackend) MetadataUpdated(i interface{}) bool {
 }
 
 // GetNodes returns a list of nodes with a time slice, matching metadata
-func (c *CachedBackend) GetNodes(t GraphContext, m GraphElementMatcher) []*Node {
+func (c *CachedBackend) GetNodes(t Context, m ElementMatcher) []*Node {
 	mode := c.cacheMode.Load()
 
 	if t.TimeSlice == nil && mode != PersistentOnlyMode {
@@ -201,7 +201,7 @@ func (c *CachedBackend) GetNodes(t GraphContext, m GraphElementMatcher) []*Node 
 }
 
 // GetEdges returns a list of edges with a time slice, matching metadata
-func (c *CachedBackend) GetEdges(t GraphContext, m GraphElementMatcher) []*Edge {
+func (c *CachedBackend) GetEdges(t Context, m ElementMatcher) []*Edge {
 	mode := c.cacheMode.Load()
 
 	if t.TimeSlice == nil && mode != PersistentOnlyMode {
@@ -221,7 +221,7 @@ func (c *CachedBackend) IsHistorySupported() bool {
 }
 
 // NewCachedBackend creates new graph cache mechanism
-func NewCachedBackend(persistent GraphBackend) (*CachedBackend, error) {
+func NewCachedBackend(persistent Backend) (*CachedBackend, error) {
 	memory, err := NewMemoryBackend()
 	if err != nil {
 		return nil, err

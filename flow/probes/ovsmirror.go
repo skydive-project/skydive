@@ -53,7 +53,7 @@ type ovsMirrorProbe struct {
 // OvsMirrorProbesHandler describes a flow probe in running in the graph
 type OvsMirrorProbesHandler struct {
 	probes      map[string]*ovsMirrorProbe
-	probeBundle *probe.ProbeBundle
+	probeBundle *probe.Bundle
 	probesLock  common.RWMutex
 	Graph       *graph.Graph
 	ovsClient   *ovsdb.OvsClient
@@ -561,12 +561,12 @@ func (o *OvsMirrorProbesHandler) Stop() {
 }
 
 // NewOvsMirrorProbesHandler creates a new OVS Mirror probes
-func NewOvsMirrorProbesHandler(g *graph.Graph, tb, fb *probe.ProbeBundle) (*OvsMirrorProbesHandler, error) {
+func NewOvsMirrorProbesHandler(g *graph.Graph, tb, fb *probe.Bundle) (*OvsMirrorProbesHandler, error) {
 	probe := tb.GetProbe("ovsdb")
 	if probe == nil {
 		return nil, errors.New("Agent.ovssflow probe depends on agent.ovsdb topology probe: agent.ovssflow probe can't start properly")
 	}
-	p := probe.(*op.OvsdbProbe)
+	p := probe.(*op.Probe)
 
 	o := &OvsMirrorProbesHandler{
 		probes:      make(map[string]*ovsMirrorProbe),

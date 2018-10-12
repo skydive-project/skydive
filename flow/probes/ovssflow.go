@@ -58,7 +58,7 @@ type OvsSFlowProbesHandler struct {
 	Graph        *graph.Graph
 	fpta         *FlowProbeTableAllocator
 	ovsClient    *ovsdb.OvsClient
-	allocator    *sflow.SFlowAgentAllocator
+	allocator    *sflow.AgentAllocator
 	eventHandler FlowProbeEventHandler
 }
 
@@ -264,14 +264,14 @@ func (o *OvsSFlowProbesHandler) Stop() {
 }
 
 // NewOvsSFlowProbesHandler creates a new OVS SFlow porbes
-func NewOvsSFlowProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator, tb *probe.ProbeBundle) (*OvsSFlowProbesHandler, error) {
+func NewOvsSFlowProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator, tb *probe.Bundle) (*OvsSFlowProbesHandler, error) {
 	probe := tb.GetProbe("ovsdb")
 	if probe == nil {
 		return nil, errors.New("Agent.ovssflow probe depends on agent.ovsdb topology probe: agent.ovssflow probe can't start properly")
 	}
-	p := probe.(*ovsprobe.OvsdbProbe)
+	p := probe.(*ovsprobe.Probe)
 
-	allocator, err := sflow.NewSFlowAgentAllocator()
+	allocator, err := sflow.NewAgentAllocator()
 	if err != nil {
 		return nil, err
 	}

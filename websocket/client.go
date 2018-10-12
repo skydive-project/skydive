@@ -49,7 +49,7 @@ const (
 // ConnState describes the connection state
 type ConnState int32
 
-// WSConnStatus describes the status of a WebSocket connection
+// ConnStatus describes the status of a WebSocket connection
 type ConnStatus struct {
 	ServiceType       common.ServiceType
 	ClientProtocol    string
@@ -64,6 +64,7 @@ type ConnStatus struct {
 	RemoteServiceType common.ServiceType `json:",omitempty"`
 }
 
+// MarshalJSON marshal the connexion state to JSON
 func (s *ConnState) MarshalJSON() ([]byte, error) {
 	switch *s {
 	case common.RunningState:

@@ -38,8 +38,8 @@ import (
 	orient "github.com/skydive-project/skydive/storage/orientdb"
 )
 
-// OrientDBStorage describes a OrientDB database client
-type OrientDBStorage struct {
+// Storage describes a OrientDB database client
+type Storage struct {
 	client *orient.Client
 }
 
@@ -217,7 +217,7 @@ func documentToRawPacket(document orient.Document) (*flow.RawPacket, layers.Link
 }
 
 // StoreFlows pushes a set of flows in the database
-func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
+func (c *Storage) StoreFlows(flows []*flow.Flow) error {
 	// TODO: use batch of operations
 	for _, flow := range flows {
 		flowDoc, err := c.client.Upsert(flowToDocument(flow), "UUID")
@@ -260,7 +260,7 @@ func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 }
 
 // SearchFlows search flow matching filters in the database
-func (c *OrientDBStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error) {
+func (c *Storage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error) {
 	flowset := flow.NewFlowSet()
 
 	err := c.client.Query("Flow", &fsq, &flowset.Flows)
@@ -278,7 +278,7 @@ func (c *OrientDBStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, e
 }
 
 // SearchRawPackets searches flow raw packets matching filters in the database
-func (c *OrientDBStorage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filters.Filter) (map[string]*flow.RawPackets, error) {
+func (c *Storage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filters.Filter) (map[string]*flow.RawPackets, error) {
 	filter := fsq.Filter
 	sql := "SELECT LinkType, Timestamp, Index, Data, Flow.UUID FROM FlowRawPacket"
 
@@ -329,7 +329,7 @@ func (c *OrientDBStorage) SearchRawPackets(fsq filters.SearchQuery, packetFilter
 }
 
 // SearchMetrics searches flow metrics matching filters in the database
-func (c *OrientDBStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]common.Metric, error) {
+func (c *Storage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]common.Metric, error) {
 	filter := fsq.Filter
 	sql := "SELECT ABBytes, ABPackets, BABytes, BAPackets, Start, Last, Flow.UUID FROM FlowMetric"
 	sql += " WHERE " + orient.FilterToExpression(metricFilter, nil)
@@ -363,19 +363,19 @@ func (c *OrientDBStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *f
 }
 
 // Start the database client
-func (c *OrientDBStorage) Start() {
+func (c *Storage) Start() {
 }
 
 // Stop the database client
-func (c *OrientDBStorage) Stop() {
+func (c *Storage) Stop() {
 }
 
 // Close the database client
-func (c *OrientDBStorage) Close() {
+func (c *Storage) Close() {
 }
 
 // New creates a new OrientDB database client
-func New(backend string) (*OrientDBStorage, error) {
+func New(backend string) (*Storage, error) {
 	path := "storage." + backend
 	addr := config.GetString(path + ".addr")
 	database := config.GetString(path + ".database")
@@ -518,7 +518,7 @@ func New(backend string) (*OrientDBStorage, error) {
 	ipMetricFlowIndex := orient.Index{Name: "IPMetric.Flow", Fields: []string{"Flow"}, Type: "NOTUNIQUE"}
 	client.CreateIndex("IPMetric", ipMetricFlowIndex)
 
-	return &OrientDBStorage{
+	return &Storage{
 		client: client,
 	}, nil
 }

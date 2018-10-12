@@ -143,7 +143,7 @@ func (f *FlowTraversalStep) Out(ctx traversal.StepContext, s ...interface{}) *tr
 				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 			}
 			filter2 := filters.NewOrFilter(f1, f2)
-			matcher := graph.NewGraphElementFilter(filters.NewAndFilter(filter1, filter2))
+			matcher := graph.NewElementFilter(filters.NewAndFilter(filter1, filter2))
 
 			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 				nodes = append(nodes, node)
@@ -192,7 +192,7 @@ func (f *FlowTraversalStep) In(ctx traversal.StepContext, s ...interface{}) *tra
 				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 			}
 			filter2 := filters.NewOrFilter(f1, f2)
-			matcher := graph.NewGraphElementFilter(filters.NewAndFilter(filter1, filter2))
+			matcher := graph.NewElementFilter(filters.NewAndFilter(filter1, filter2))
 
 			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 				nodes = append(nodes, node)
@@ -242,7 +242,7 @@ func (f *FlowTraversalStep) Both(ctx traversal.StepContext, s ...interface{}) *t
 			}
 			filter2 := filters.NewOrFilter(f1, f2)
 
-			matcher := graph.NewGraphElementFilter(filters.NewAndFilter(filter1, filter2))
+			matcher := graph.NewElementFilter(filters.NewAndFilter(filter1, filter2))
 
 			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 				nodes = append(nodes, node)
@@ -262,7 +262,7 @@ func (f *FlowTraversalStep) Both(ctx traversal.StepContext, s ...interface{}) *t
 				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 			}
 			filter2 := filters.NewOrFilter(f1, f2)
-			matcher := graph.NewGraphElementFilter(filters.NewAndFilter(filter1, filter2))
+			matcher := graph.NewElementFilter(filters.NewAndFilter(filter1, filter2))
 
 			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil && it.Next() {
 				nodes = append(nodes, node)
@@ -872,7 +872,7 @@ func (s *FlowGremlinTraversalStep) addTimeFilter(fsq *filters.SearchQuery, timeC
 func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
 	var graphTraversal *traversal.GraphTraversal
 	var err error
-	var context graph.GraphContext
+	var context graph.Context
 	var nodes []*graph.Node
 
 	flowSearchQuery, err := s.makeSearchQuery()

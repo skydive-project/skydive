@@ -858,7 +858,7 @@ func benchmarkPacketParsing(b *testing.B, filename string, linkType layers.LinkT
 			b.Fatal("Failed to get PacketSeq: ", err)
 		}
 		for _, packet := range ps.Packets {
-			NewFlowFromGoPacket(packet.GoPacket, "", FlowUUIDs{}, FlowOpts{})
+			NewFlowFromGoPacket(packet.GoPacket, "", UUIDs{}, Opts{})
 		}
 	}
 }
@@ -928,7 +928,7 @@ func benchmarkPacketsParsing(b *testing.B, filename string, linkType layers.Link
 						b.Fatal("Failed to get PacketSeq")
 					}
 					for _, packet := range ps.Packets {
-						NewFlowFromGoPacket(packet.GoPacket, "", FlowUUIDs{}, FlowOpts{})
+						NewFlowFromGoPacket(packet.GoPacket, "", UUIDs{}, Opts{})
 					}
 				}
 			})

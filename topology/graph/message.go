@@ -52,7 +52,7 @@ var (
 
 // SyncRequestMsg describes a graph synchro request message
 type SyncRequestMsg struct {
-	GraphContext
+	Context
 	GremlinFilter string
 }
 

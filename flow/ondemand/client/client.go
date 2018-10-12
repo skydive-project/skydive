@@ -297,7 +297,7 @@ func (o *OnDemandProbeClient) unregisterCapture(capture *types.Capture) {
 	o.Unlock()
 
 	filter := filters.NewTermStringFilter("Capture.ID", capture.UUID)
-	nodes := o.graph.GetNodes(graph.NewGraphElementFilter(filter))
+	nodes := o.graph.GetNodes(graph.NewElementFilter(filter))
 	for _, node := range nodes {
 		o.unregisterProbe(node, capture)
 	}

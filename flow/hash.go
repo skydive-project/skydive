@@ -28,6 +28,7 @@ import (
 	"strings"
 )
 
+// Hash computes the hash of a ICMP layer
 func (fl *ICMPLayer) Hash(hasher hash.Hash) {
 	if fl == nil {
 		return
@@ -38,6 +39,7 @@ func (fl *ICMPLayer) Hash(hasher hash.Hash) {
 	hasher.Write(value32)
 }
 
+// Hash computes the hash of a transport layer
 func (tl *TransportLayer) Hash(hasher hash.Hash) {
 	if tl == nil {
 		return

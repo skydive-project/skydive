@@ -71,35 +71,45 @@ type networkPolicyLinker struct {
 	namespaceCache *ResourceCache
 }
 
+// PolicyType defines the policy type (ingress or egress)
 type PolicyType string
 
+// Policy types
 const (
 	PolicyTypeIngress PolicyType = "ingress"
 	PolicyTypeEgress  PolicyType = "egress"
 )
 
+// String returns the string representation of a policy type
 func (val PolicyType) String() string {
 	return string(val)
 }
 
+// PolicyTarget defines whether traffic is allowed or denied
 type PolicyTarget string
 
+// Policy targets
 const (
 	PolicyTargetDeny  PolicyTarget = "deny"
 	PolicyTargetAllow PolicyTarget = "allow"
 )
 
+// String returns the string representation of a policy target
 func (val PolicyTarget) String() string {
 	return string(val)
 }
 
+// PolicyPoint defines whether a policy applies to a of pods
+// or if it restricts access from a set of pods
 type PolicyPoint string
 
+// PolicyPoint values
 const (
 	PolicyPointBegin PolicyPoint = "begin"
 	PolicyPointEnd   PolicyPoint = "end"
 )
 
+// String returns the string representation of a PolicyPoint
 func (val PolicyPoint) String() string {
 	return string(val)
 }
@@ -311,11 +321,10 @@ func (npl *networkPolicyLinker) GetBALinks(objNode *graph.Node) (edges []*graph.
 		}
 		if nodeType, _ := objNode.GetFieldString("Type"); nodeType == "pod" {
 			return npl.getLinks(np, npNode, objNode)
-		} else {
-			// FIXME: for type "namespace" its' more efficient to
-			// loop through all related pods rather than pass nil
-			return npl.getLinks(np, npNode, nil)
 		}
+		// FIXME: for type "namespace" its' more efficient to
+		// loop through all related pods rather than pass nil
+		return npl.getLinks(np, npNode, nil)
 	}
 
 	return
@@ -336,7 +345,7 @@ func newNetworkPolicyLinker(g *graph.Graph, subprobes map[string]Subprobe) probe
 			filters.NewTermStringFilter("Type", "pod"),
 		),
 	)
-	podNamespaceIndexer := graph.NewMetadataIndexer(g, g, graph.NewGraphElementFilter(filter))
+	podNamespaceIndexer := graph.NewMetadataIndexer(g, g, graph.NewElementFilter(filter))
 	podNamespaceIndexer.Start()
 
 	linker := &networkPolicyLinker{

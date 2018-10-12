@@ -55,6 +55,7 @@ func (nrh *NodeRuleResourceHandler) New() types.Resource {
 	}
 }
 
+// Create a new node rule
 func (nra *NodeRuleAPI) Create(r types.Resource) error {
 	return nra.BasicAPIHandler.Create(r)
 }

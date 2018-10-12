@@ -99,7 +99,7 @@ type Table struct {
 	nodeTID       string
 	ipDefragger   *IPDefragger
 	tcpAssembler  *TCPAssembler
-	flowOpts      FlowOpts
+	flowOpts      Opts
 	appPortMap    *ApplicationPortMap
 }
 
@@ -124,7 +124,7 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, nodeTID string, op
 		t.Opts = opts[0]
 	}
 
-	t.flowOpts = FlowOpts{
+	t.flowOpts = Opts{
 		TCPMetric:    t.Opts.ExtraTCPMetric,
 		IPDefrag:     t.Opts.IPDefrag,
 		LayerKeyMode: t.Opts.LayerKeyMode,
@@ -354,7 +354,7 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
 	key := packet.Key(parentUUID, ft.flowOpts)
 	flow, new := ft.getOrCreateFlow(key)
 	if new {
-		uuids := FlowUUIDs{
+		uuids := UUIDs{
 			ParentUUID: parentUUID,
 		}
 

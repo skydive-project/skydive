@@ -35,6 +35,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// ClusterName is the name to give to the probe cluster node
 const ClusterName = "cluster"
 
 type resourceHandler func(clientset *kubernetes.Clientset, graph *graph.Graph) Subprobe

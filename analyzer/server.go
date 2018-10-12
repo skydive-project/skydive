@@ -41,7 +41,7 @@ import (
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/packet_injector"
+	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/enhancers"
@@ -84,10 +84,10 @@ type Server struct {
 	replicationEndpoint *TopologyReplicationEndpoint
 	alertServer         *alert.Server
 	onDemandClient      *ondemand.OnDemandProbeClient
-	piClient            *packet_injector.PacketInjectorClient
+	piClient            *packetinjector.Client
 	topologyManager     *usertopology.TopologyManager
 	flowServer          *FlowServer
-	probeBundle         *probe.ProbeBundle
+	probeBundle         *probe.Bundle
 	storage             storage.Storage
 	embeddedEtcd        *etcd.EmbeddedEtcd
 	etcdClient          *etcd.Client
@@ -256,7 +256,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	g := graph.NewGraphFromConfig(cached, common.AnalyzerService)
 
-	clusterAuthOptions := AnalyzerClusterAuthenticationOpts()
+	clusterAuthOptions := ClusterAuthenticationOpts()
 
 	clusterAuthBackendName := config.GetString("analyzer.auth.cluster.backend")
 	clusterAuthBackend, err := config.NewAuthenticationBackendByName(clusterAuthBackendName)
@@ -306,7 +306,7 @@ func NewServerFromConfig() (*Server, error) {
 	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
 
 	subscriberWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
-	topology.NewTopologySubscriberEndpoint(subscriberWSServer, g, tr)
+	topology.NewSubscriberEndpoint(subscriberWSServer, g, tr)
 
 	probeBundle, err := NewTopologyProbeBundleFromConfig(g)
 	if err != nil {
@@ -327,7 +327,7 @@ func NewServerFromConfig() (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	piClient := packet_injector.NewPacketInjectorClient(agentWSServer, etcdClient, piAPIHandler, g)
+	piClient := packetinjector.NewClient(agentWSServer, etcdClient, piAPIHandler, g)
 
 	nodeAPIHandler, err := api.RegisterNodeRuleAPI(apiServer, g, apiAuthBackend)
 	if err != nil {
@@ -393,7 +393,9 @@ func NewServerFromConfig() (*Server, error) {
 	return s, nil
 }
 
-func AnalyzerClusterAuthenticationOpts() *shttp.AuthenticationOpts {
+// ClusterAuthenticationOpts returns auth info to connect to an analyzer
+// from the configuration
+func ClusterAuthenticationOpts() *shttp.AuthenticationOpts {
 	return &shttp.AuthenticationOpts{
 		Username: config.GetString("analyzer.auth.cluster.username"),
 		Password: config.GetString("analyzer.auth.cluster.password"),

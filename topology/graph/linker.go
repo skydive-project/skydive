@@ -29,6 +29,8 @@ import (
 	"github.com/skydive-project/skydive/filters"
 )
 
+// Linker describes an object that returns incoming edges to a node
+// and outgoing edges from that node
 type Linker interface {
 	GetABLinks(node *Node) []*Edge
 	GetBALinks(node *Node) []*Edge
@@ -82,23 +84,29 @@ func (l *listener) OnNodeUpdated(node *Node) {
 	l.nodeEvent(node)
 }
 
+// DefaultLinker returns a linker that does nothing
 type DefaultLinker struct {
 }
 
+// GetABLinks returns all the outgoing links for a node
 func (dl *DefaultLinker) GetABLinks(node *Node) []*Edge {
 	return nil
 }
 
+// GetBALinks returns all the incoming links for a node
 func (dl *DefaultLinker) GetBALinks(node *Node) []*Edge {
 	return nil
 }
 
+// ResourceLinker returns a resource linker. It listens for events from
+// 2 graph events sources to determine if resources from one source should be
+// linked with resources of the other source.
 type ResourceLinker struct {
 	g          *Graph
 	abListener *listener
 	baListener *listener
-	glh1       GraphListenerHandler
-	glh2       GraphListenerHandler
+	glh1       ListenerHandler
+	glh2       ListenerHandler
 	linker     Linker
 	metadata   Metadata
 }
@@ -112,6 +120,7 @@ func (rl *ResourceLinker) getLinks(node *Node, direction string) []*Edge {
 	return rl.g.GetNodeEdges(node, metadata)
 }
 
+// Start linking resources by listening for graph events
 func (rl *ResourceLinker) Start() {
 	if rl.glh1 != nil {
 		rl.abListener = &listener{
@@ -138,6 +147,7 @@ func (rl *ResourceLinker) Start() {
 	}
 }
 
+// Stop linking resources
 func (rl *ResourceLinker) Stop() {
 	if rl.glh1 != nil {
 		rl.glh1.RemoveEventListener(rl.abListener)
@@ -148,7 +158,8 @@ func (rl *ResourceLinker) Stop() {
 	}
 }
 
-func NewResourceLinker(g *Graph, glh1 GraphListenerHandler, glh2 GraphListenerHandler, linker Linker, m Metadata) *ResourceLinker {
+// NewResourceLinker returns a new resource linker
+func NewResourceLinker(g *Graph, glh1 ListenerHandler, glh2 ListenerHandler, linker Linker, m Metadata) *ResourceLinker {
 	return &ResourceLinker{
 		g:        g,
 		glh1:     glh1,
@@ -171,6 +182,8 @@ func getFieldsAsArray(obj filters.Getter, fields []string) ([]interface{}, error
 	return values, nil
 }
 
+// MetadataIndexerLinker describes an object that links resources from one indexer
+// to resources from an other indexer.
 type MetadataIndexerLinker struct {
 	*ResourceLinker
 	indexer1     *MetadataIndexer
@@ -186,6 +199,7 @@ func (mil *MetadataIndexerLinker) genID(parent, child *Node) Identifier {
 	return GenID(args...)
 }
 
+// GetABLinks returns all the outgoing links for a node
 func (mil *MetadataIndexerLinker) GetABLinks(node *Node) (edges []*Edge) {
 	if fields, err := getFieldsAsArray(node, mil.indexer1.indexes); err == nil {
 		nodes, _ := mil.indexer2.Get(fields...)
@@ -196,6 +210,7 @@ func (mil *MetadataIndexerLinker) GetABLinks(node *Node) (edges []*Edge) {
 	return
 }
 
+// GetBALinks returns all the incoming links for a node
 func (mil *MetadataIndexerLinker) GetBALinks(node *Node) (edges []*Edge) {
 	if fields, err := getFieldsAsArray(node, mil.indexer2.indexes); err == nil {
 		nodes, _ := mil.indexer1.Get(fields...)
@@ -206,6 +221,7 @@ func (mil *MetadataIndexerLinker) GetBALinks(node *Node) (edges []*Edge) {
 	return
 }
 
+// NewMetadataIndexerLinker returns a new metadata based linker
 func NewMetadataIndexerLinker(g *Graph, indexer1, indexer2 *MetadataIndexer, edgeMetadata Metadata) *MetadataIndexerLinker {
 	mil := &MetadataIndexerLinker{
 		indexer1: indexer1,

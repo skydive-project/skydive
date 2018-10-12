@@ -38,7 +38,7 @@ const (
 )
 
 type containerProbe struct {
-	graph.GraphEventHandler
+	graph.EventHandler
 	graph.DefaultGraphListener
 	graph *graph.Graph
 }
@@ -116,7 +116,7 @@ func newContainerProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe
 }
 
 func newDockerIndexer(g *graph.Graph) *graph.MetadataIndexer {
-	m := graph.NewGraphElementFilter(filters.NewAndFilter(
+	m := graph.NewElementFilter(filters.NewAndFilter(
 		filters.NewTermStringFilter("Manager", "docker"),
 		filters.NewTermStringFilter("Type", "container"),
 		filters.NewNotNullFilter(dockerPodNamespaceField),

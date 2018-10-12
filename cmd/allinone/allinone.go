@@ -108,7 +108,7 @@ var AllInOneCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		authOptions := analyzer.AnalyzerClusterAuthenticationOpts()
+		authOptions := analyzer.ClusterAuthenticationOpts()
 		svcAddr, _ := common.ServiceAddressFromString(config.GetString("analyzer.listen"))
 		tlsConfig, err := config.GetTLSClientConfig(true)
 		if err != nil {

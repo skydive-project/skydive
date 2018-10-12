@@ -177,16 +177,16 @@ var WorkflowCall = &cobra.Command{
 			os.Exit(1)
 		}
 
-		jsre, err := js.NewJSRE()
+		runtime, err := js.NewRuntime()
 		if err != nil {
 			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
 
-		jsre.Start()
-		jsre.RegisterAPIClient(client)
+		runtime.Start()
+		runtime.RegisterAPIClient(client)
 
-		result, err := jsre.Exec("(" + workflow.Source + ")")
+		result, err := runtime.Exec("(" + workflow.Source + ")")
 		if err != nil {
 			logging.GetLogger().Errorf("Error while compile workflow %s: %s", workflow.Source, result.String())
 			os.Exit(1)
@@ -211,7 +211,7 @@ var WorkflowCall = &cobra.Command{
 		done := make(chan otto.Value)
 		promise := result.Object()
 
-		finally, err := jsre.ToValue(func(call otto.FunctionCall) otto.Value {
+		finally, err := runtime.ToValue(func(call otto.FunctionCall) otto.Value {
 			result := call.Argument(0)
 			done <- result
 			return result
@@ -223,8 +223,8 @@ var WorkflowCall = &cobra.Command{
 
 		result = <-done
 
-		jsre.Set("result", result)
-		jsre.Exec("console.log(JSON.stringify(result))")
+		runtime.Set("result", result)
+		runtime.Exec("console.log(JSON.stringify(result))")
 	},
 }
 

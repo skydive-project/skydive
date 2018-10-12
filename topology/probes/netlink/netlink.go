@@ -55,6 +55,7 @@ type pendingLink struct {
 	Metadata graph.Metadata
 }
 
+// Neighbor describes a member of the forwarding database
 // easyjson:json
 type Neighbor struct {
 	Flags   []string `json:"Flags,omitempty"`
@@ -66,8 +67,8 @@ type Neighbor struct {
 	IfIndex int64
 }
 
-// NetNsNetLinkProbe describes a topology probe based on netlink in a network namespace
-type NetNsNetLinkProbe struct {
+// NetNsProbe describes a topology probe based on netlink in a network namespace
+type NetNsProbe struct {
 	common.RWMutex
 	Graph                *graph.Graph
 	Root                 *graph.Node
@@ -83,12 +84,12 @@ type NetNsNetLinkProbe struct {
 	quit                 chan bool
 }
 
-// NetLinkProbe describes a list NetLink NameSpace probe to enhance the graph
-type NetLinkProbe struct {
+// Probe describes a list NetLink NameSpace probe to enhance the graph
+type Probe struct {
 	common.RWMutex
 	Graph   *graph.Graph
 	epollFd int
-	probes  map[int32]*NetNsNetLinkProbe
+	probes  map[int32]*NetNsProbe
 	state   int64
 	wg      sync.WaitGroup
 }
@@ -117,7 +118,7 @@ type NextHop struct {
 	IfIndex  int64  `json:"IfIndex,omitempty"`
 }
 
-func (u *NetNsNetLinkProbe) linkPendingChildren(intf *graph.Node, index int64) {
+func (u *NetNsProbe) linkPendingChildren(intf *graph.Node, index int64) {
 	// ignore ovs-system interface as it doesn't make any sense according to
 	// the following thread:
 	// http://openvswitch.org/pipermail/discuss/2013-October/011657.html
@@ -137,7 +138,7 @@ func (u *NetNsNetLinkProbe) linkPendingChildren(intf *graph.Node, index int64) {
 	}
 }
 
-func (u *NetNsNetLinkProbe) linkIntfToIndex(intf *graph.Node, index int64, m graph.Metadata) {
+func (u *NetNsProbe) linkIntfToIndex(intf *graph.Node, index int64, m graph.Metadata) {
 	// assuming we have only one master with this index
 	parent := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
 	if parent != nil {
@@ -157,7 +158,7 @@ func (u *NetNsNetLinkProbe) linkIntfToIndex(intf *graph.Node, index int64, m gra
 	}
 }
 
-func (u *NetNsNetLinkProbe) handleIntfIsChild(intf *graph.Node, link netlink.Link) {
+func (u *NetNsProbe) handleIntfIsChild(intf *graph.Node, link netlink.Link) {
 	// handle pending relationship
 	u.linkPendingChildren(intf, int64(link.Attrs().Index))
 
@@ -173,7 +174,7 @@ func (u *NetNsNetLinkProbe) handleIntfIsChild(intf *graph.Node, link netlink.Lin
 	}
 }
 
-func (u *NetNsNetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
+func (u *NetNsProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 	if link.Type() != "veth" {
 		return
 	}
@@ -230,7 +231,7 @@ func (u *NetNsNetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link
 	}
 }
 
-func (u *NetNsNetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
+func (u *NetNsProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
 	index := int64(link.Attrs().Index)
 
 	var intf *graph.Node
@@ -249,7 +250,7 @@ func (u *NetNsNetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.
 	return intf
 }
 
-func (u *NetNsNetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
+func (u *NetNsProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
 	index := int64(link.Attrs().Index)
 	intf := u.addGenericLinkToTopology(link, m)
 
@@ -258,7 +259,7 @@ func (u *NetNsNetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.M
 	return intf
 }
 
-func (u *NetNsNetLinkProbe) addOvsLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
+func (u *NetNsProbe) addOvsLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
 	name := link.Attrs().Name
 	attrs := link.Attrs()
 
@@ -271,7 +272,7 @@ func (u *NetNsNetLinkProbe) addOvsLinkToTopology(link netlink.Link, m graph.Meta
 		filters.NewNotNullFilter("UUID"),
 	)
 
-	intf := u.Graph.LookupFirstNode(graph.NewGraphElementFilter(filter))
+	intf := u.Graph.LookupFirstNode(graph.NewElementFilter(filter))
 	if intf != nil {
 		if !topology.HaveOwnershipLink(u.Graph, u.Root, intf) {
 			topology.AddOwnershipLink(u.Graph, u.Root, intf, nil)
@@ -281,7 +282,7 @@ func (u *NetNsNetLinkProbe) addOvsLinkToTopology(link netlink.Link, m graph.Meta
 	return intf
 }
 
-func (u *NetNsNetLinkProbe) getLinkIPs(link netlink.Link, family int) (ips []string) {
+func (u *NetNsProbe) getLinkIPs(link netlink.Link, family int) (ips []string) {
 	addrs, err := u.handle.AddrList(link, family)
 	if err != nil {
 		return
@@ -325,7 +326,7 @@ func getFlagsString(flags []string, state int) (a []string) {
 	return
 }
 
-func (u *NetNsNetLinkProbe) getNeighbors(index, family int) (neighbors []Neighbor) {
+func (u *NetNsProbe) getNeighbors(index, family int) (neighbors []Neighbor) {
 	neighList, err := u.handle.NeighList(index, family)
 	if err == nil && len(neighList) > 0 {
 		for i, neigh := range neighList {
@@ -378,7 +379,7 @@ func newInterfaceMetricsFromNetlink(link netlink.Link) *topology.InterfaceMetric
 	}
 }
 
-func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
+func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 	driver, _ := u.ethtool.DriverName(link.Attrs().Name)
 	if driver == "" && link.Type() == "bridge" {
 		driver = "bridge"
@@ -511,7 +512,7 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 	u.handleIntfIsVeth(intf, link)
 }
 
-func (u *NetNsNetLinkProbe) getRoutingTable(link netlink.Link, table int) []RoutingTable {
+func (u *NetNsProbe) getRoutingTable(link netlink.Link, table int) []RoutingTable {
 	routeTableList := make(map[int]RoutingTable)
 	routeFilter := &netlink.Route{
 		LinkIndex: link.Attrs().Index,
@@ -555,7 +556,7 @@ func (u *NetNsNetLinkProbe) getRoutingTable(link netlink.Link, table int) []Rout
 	return nil
 }
 
-func (u *NetNsNetLinkProbe) onLinkAdded(link netlink.Link) {
+func (u *NetNsProbe) onLinkAdded(link netlink.Link) {
 	if u.isRunning() == true {
 		// has been deleted
 		index := link.Attrs().Index
@@ -569,7 +570,7 @@ func (u *NetNsNetLinkProbe) onLinkAdded(link netlink.Link) {
 	}
 }
 
-func (u *NetNsNetLinkProbe) onLinkDeleted(link netlink.Link) {
+func (u *NetNsProbe) onLinkDeleted(link netlink.Link) {
 	index := int64(link.Attrs().Index)
 
 	u.Graph.Lock()
@@ -615,7 +616,7 @@ func getFamilyKey(family int) string {
 	return ""
 }
 
-func (u *NetNsNetLinkProbe) onRouteChanged(index int64, rt []RoutingTable) {
+func (u *NetNsProbe) onRouteChanged(index int64, rt []RoutingTable) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
@@ -632,7 +633,7 @@ func (u *NetNsNetLinkProbe) onRouteChanged(index int64, rt []RoutingTable) {
 	}
 }
 
-func (u *NetNsNetLinkProbe) onAddressAdded(addr netlink.Addr, family int, index int64) {
+func (u *NetNsProbe) onAddressAdded(addr netlink.Addr, family int, index int64) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
@@ -660,7 +661,7 @@ func (u *NetNsNetLinkProbe) onAddressAdded(addr netlink.Addr, family int, index 
 	u.Graph.AddMetadata(intf, key, append(ips, addr.IPNet.String()))
 }
 
-func (u *NetNsNetLinkProbe) onAddressDeleted(addr netlink.Addr, family int, index int64) {
+func (u *NetNsProbe) onAddressDeleted(addr netlink.Addr, family int, index int64) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
@@ -692,7 +693,7 @@ func (u *NetNsNetLinkProbe) onAddressDeleted(addr netlink.Addr, family int, inde
 	}
 }
 
-func (u *NetNsNetLinkProbe) initialize() {
+func (u *NetNsProbe) initialize() {
 	logging.GetLogger().Debugf("Initialize Netlink interfaces for %s", u.Root.ID)
 	links, err := u.handle.LinkList()
 	if err != nil {
@@ -710,7 +711,7 @@ func (u *NetNsNetLinkProbe) initialize() {
 	}
 }
 
-func (u *NetNsNetLinkProbe) getRoutingTables(m []byte) ([]RoutingTable, int, error) {
+func (u *NetNsProbe) getRoutingTables(m []byte) ([]RoutingTable, int, error) {
 	msg := nl.DeserializeRtMsg(m)
 	attrs, err := nl.ParseRouteAttr(m[msg.Len():])
 	if err != nil {
@@ -778,11 +779,11 @@ func parseAddr(m []byte) (addr netlink.Addr, family, index int, err error) {
 	return
 }
 
-func (u *NetNsNetLinkProbe) isRunning() bool {
+func (u *NetNsProbe) isRunning() bool {
 	return atomic.LoadInt64(&u.state) == common.RunningState
 }
 
-func (u *NetNsNetLinkProbe) cloneLinkNodes() map[string]*graph.Node {
+func (u *NetNsProbe) cloneLinkNodes() map[string]*graph.Node {
 	// do a copy of the original in order to avoid inter locks
 	// between graph lock and netlink lock while iterating
 	u.RLock()
@@ -795,7 +796,7 @@ func (u *NetNsNetLinkProbe) cloneLinkNodes() map[string]*graph.Node {
 	return links
 }
 
-func (u *NetNsNetLinkProbe) updateIntfMetric(now, last time.Time) {
+func (u *NetNsProbe) updateIntfMetric(now, last time.Time) {
 	for name, node := range u.cloneLinkNodes() {
 		if link, err := u.handle.LinkByName(name); err == nil {
 			currMetric := newInterfaceMetricsFromNetlink(link)
@@ -833,7 +834,7 @@ func (u *NetNsNetLinkProbe) updateIntfMetric(now, last time.Time) {
 	}
 }
 
-func (u *NetNsNetLinkProbe) updateIntfFeatures() {
+func (u *NetNsProbe) updateIntfFeatures() {
 	for name, node := range u.cloneLinkNodes() {
 		u.Graph.RLock()
 		driver, _ := node.GetFieldString("Driver")
@@ -856,11 +857,11 @@ func (u *NetNsNetLinkProbe) updateIntfFeatures() {
 	}
 }
 
-func (u *NetNsNetLinkProbe) start(nlProbe *NetLinkProbe) {
+func (u *NetNsProbe) start(nlProbe *Probe) {
 	u.wg.Add(1)
 	defer u.wg.Done()
 
-	// wait for NetLinkProbe ready
+	// wait for Probe ready
 Ready:
 	for {
 		switch atomic.LoadInt64(&nlProbe.state) {
@@ -907,7 +908,7 @@ Ready:
 	}
 }
 
-func (u *NetNsNetLinkProbe) onMessageAvailable() {
+func (u *NetNsProbe) onMessageAvailable() {
 	msgs, err := u.socket.Receive()
 	if err != nil {
 		if errno, ok := err.(syscall.Errno); !ok || !errno.Temporary() {
@@ -959,7 +960,7 @@ func (u *NetNsNetLinkProbe) onMessageAvailable() {
 	}
 }
 
-func (u *NetNsNetLinkProbe) closeFds() {
+func (u *NetNsProbe) closeFds() {
 	if u.handle != nil {
 		u.handle.Delete()
 	}
@@ -974,7 +975,7 @@ func (u *NetNsNetLinkProbe) closeFds() {
 	}
 }
 
-func (u *NetNsNetLinkProbe) stop() {
+func (u *NetNsProbe) stop() {
 	if atomic.CompareAndSwapInt64(&u.state, common.RunningState, common.StoppingState) {
 		u.quit <- true
 		u.wg.Wait()
@@ -982,8 +983,8 @@ func (u *NetNsNetLinkProbe) stop() {
 	u.closeFds()
 }
 
-func newNetNsNetLinkProbe(g *graph.Graph, root *graph.Node, nsPath string) (*NetNsNetLinkProbe, error) {
-	probe := &NetNsNetLinkProbe{
+func newNetNsProbe(g *graph.Graph, root *graph.Node, nsPath string) (*NetNsProbe, error) {
+	probe := &NetNsProbe{
 		Graph:                g,
 		Root:                 root,
 		NsPath:               nsPath,
@@ -995,7 +996,7 @@ func newNetNsNetLinkProbe(g *graph.Graph, root *graph.Node, nsPath string) (*Net
 	var context *common.NetNSContext
 	var err error
 
-	errFnc := func(err error) (*NetNsNetLinkProbe, error) {
+	errFnc := func(err error) (*NetNsProbe, error) {
 		probe.closeFds()
 		context.Close()
 
@@ -1034,8 +1035,8 @@ func newNetNsNetLinkProbe(g *graph.Graph, root *graph.Node, nsPath string) (*Net
 }
 
 // Register a new network netlink/namespace probe in the graph
-func (u *NetLinkProbe) Register(nsPath string, root *graph.Node) (*NetNsNetLinkProbe, error) {
-	probe, err := newNetNsNetLinkProbe(u.Graph, root, nsPath)
+func (u *Probe) Register(nsPath string, root *graph.Node) (*NetNsProbe, error) {
+	probe, err := newNetNsProbe(u.Graph, root, nsPath)
 	if err != nil {
 		return nil, err
 	}
@@ -1056,7 +1057,7 @@ func (u *NetLinkProbe) Register(nsPath string, root *graph.Node) (*NetNsNetLinkP
 }
 
 // Unregister a probe from a network namespace
-func (u *NetLinkProbe) Unregister(nsPath string) error {
+func (u *Probe) Unregister(nsPath string) error {
 	u.Lock()
 	defer u.Unlock()
 
@@ -1075,7 +1076,7 @@ func (u *NetLinkProbe) Unregister(nsPath string) error {
 	return fmt.Errorf("failed to unregister, probe not found for %s", nsPath)
 }
 
-func (u *NetLinkProbe) start() {
+func (u *Probe) start() {
 	u.wg.Add(1)
 	defer u.wg.Done()
 
@@ -1106,12 +1107,12 @@ func (u *NetLinkProbe) start() {
 }
 
 // Start the probe
-func (u *NetLinkProbe) Start() {
+func (u *Probe) Start() {
 	go u.start()
 }
 
 // Stop the probe
-func (u *NetLinkProbe) Stop() {
+func (u *Probe) Stop() {
 	if atomic.CompareAndSwapInt64(&u.state, common.RunningState, common.StoppingState) {
 		u.wg.Wait()
 
@@ -1128,17 +1129,17 @@ func (u *NetLinkProbe) Stop() {
 	}
 }
 
-// NewNetLinkProbe creates a new netlink probe
-func NewNetLinkProbe(g *graph.Graph, n *graph.Node) (*NetLinkProbe, error) {
+// NewProbe creates a new netlink probe
+func NewProbe(g *graph.Graph, n *graph.Node) (*Probe, error) {
 	epfd, err := syscall.EpollCreate1(0)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create epoll: %s", err)
 	}
 
-	nlProbe := &NetLinkProbe{
+	nlProbe := &Probe{
 		Graph:   g,
 		epollFd: epfd,
-		probes:  make(map[int32]*NetNsNetLinkProbe),
+		probes:  make(map[int32]*NetNsProbe),
 	}
 
 	nlProbe.Register("", n)

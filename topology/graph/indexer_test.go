@@ -31,7 +31,7 @@ import (
 func TestMetadataIndexer(t *testing.T) {
 	g := newGraph(t)
 
-	nodeFilter := NewGraphElementFilter(filters.NewAndFilter(
+	nodeFilter := NewElementFilter(filters.NewAndFilter(
 		filters.NewNotNullFilter("TID"),
 		filters.NewNotNullFilter("MAC"),
 	))
@@ -88,7 +88,7 @@ func TestMetadataIndexer(t *testing.T) {
 		filters.NewNotNullFilter("Docker.Labels.io.kubernetes.pod.name"),
 		filters.NewNotNullFilter("Docker.Labels.io.kubernetes.pod.namespace"),
 		filters.NewNotNullFilter("Docker.Labels.io.kubernetes.container.name"))
-	m := NewGraphElementFilter(filter)
+	m := NewElementFilter(filter)
 
 	dockerCache := NewMetadataIndexer(g, g, m, "Docker.Labels.io.kubernetes.pod.namespace", "Docker.Labels.io.kubernetes.pod.name", "Docker.Labels.io.kubernetes.container.name")
 	dockerCache.Start()

@@ -40,6 +40,7 @@ func (b *syslogBackend) Core(msgPriority zap.LevelEnablerFunc, encoder zapcore.E
 	return zapsyslog.NewCore(msgPriority, encoder, b.w)
 }
 
+// NewSyslogBackend returns a new backend that outputs to syslog
 func NewSyslogBackend(tag string) (Backend, error) {
 	w, err := syslog.New(syslog.LOG_CRIT, tag)
 	if err != nil {

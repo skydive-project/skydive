@@ -37,7 +37,7 @@ import (
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/packet_injector"
+	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -52,10 +52,10 @@ type Agent struct {
 	graph               *graph.Graph
 	wsServer            *ws.StructServer
 	analyzerClientPool  *ws.StructClientPool
-	topologyEndpoint    *topology.TopologySubscriberEndpoint
+	topologyEndpoint    *topology.SubscriberEndpoint
 	rootNode            *graph.Node
-	topologyProbeBundle *probe.ProbeBundle
-	flowProbeBundle     *probe.ProbeBundle
+	topologyProbeBundle *probe.Bundle
+	flowProbeBundle     *probe.Bundle
 	flowTableAllocator  *flow.TableAllocator
 	flowClientPool      *analyzer.FlowClientPool
 	onDemandProbeServer *ondemand.OnDemandProbeServer
@@ -216,7 +216,7 @@ func NewAgent() (*Agent, error) {
 		Cookie:   config.GetStringMapString("http.cookie"),
 	}
 
-	topologyEndpoint := topology.NewTopologySubscriberEndpoint(wsServer, g, tr)
+	topologyEndpoint := topology.NewSubscriberEndpoint(wsServer, g, tr)
 
 	analyzerClientPool, err := NewAnalyzerStructClientPool(clusterAuthOptions)
 	if err != nil {
@@ -238,7 +238,7 @@ func NewAgent() (*Agent, error) {
 	// exposes a flow server through the client connections
 	flow.NewWSTableServer(flowTableAllocator, analyzerClientPool)
 
-	packet_injector.NewServer(g, analyzerClientPool)
+	packetinjector.NewServer(g, analyzerClientPool)
 
 	flowClientPool := analyzer.NewFlowClientPool(analyzerClientPool, clusterAuthOptions)
 

@@ -47,6 +47,7 @@ var ClientCmd = &cobra.Command{
 	},
 }
 
+// RegisterClientCommands registers the 'client' CLI subcommands
 func RegisterClientCommands(cmd *cobra.Command) {
 	cmd.AddCommand(AlertCmd)
 	cmd.AddCommand(CaptureCmd)

@@ -39,7 +39,7 @@ func InitLogging() error {
 
 	var err error
 	var backend logging.Backend
-	var loggers []*logging.Logger
+	var loggers []*logging.LoggerConfig
 	for _, name := range cfg.GetStringSlice("logging.backends") {
 		switch name {
 		case "file":
@@ -72,7 +72,7 @@ func InitLogging() error {
 			logLevel = l
 		}
 
-		loggers = append(loggers, logging.NewLogger(backend, logLevel, encoder))
+		loggers = append(loggers, logging.NewLoggerConfig(backend, logLevel, encoder))
 	}
 
 	return logging.InitLogging(id, color, loggers)

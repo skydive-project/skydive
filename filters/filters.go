@@ -261,6 +261,7 @@ func (r *RegexFilter) Eval(g Getter) bool {
 	return false
 }
 
+// NewRegexFilter returns a new regular expression based filter
 func NewRegexFilter(key string, pattern string) (*RegexFilter, error) {
 	re, err := regexp.Compile(pattern)
 	if err != nil {
