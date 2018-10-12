@@ -61,18 +61,27 @@ fi
 echo "${DOCKER_PASSWORD}" | docker login  --username "${DOCKER_USERNAME}" --password-stdin ${DOCKER_SERVER}
 set -x
 
-platforms=""
+digests=""
 for arch in $ARCHES
 do
     docker push ${DOCKER_IMAGE}:${arch}-${DOCKER_TAG}
-    platforms="${platforms} ${DOCKER_IMAGE}:${arch}-${DOCKER_TAG}"
+
+    digest=$( docker inspect --format='{{index .Id}}' ${DOCKER_IMAGE}:${arch}-${DOCKER_TAG} )
+    digests="${digests} ${DOCKER_IMAGE}@$digest"
 done
 
-docker manifest create --amend "${DOCKER_IMAGE}:${DOCKER_TAG}" ${platforms}
+res=0
+for i in {1..6}
+do
+    docker manifest create --amend "${DOCKER_IMAGE}:${DOCKER_TAG}" ${digests} && break || res=$?
+    sleep 10
+done
+[ $res != 0 ] && exit $res
 
 for arch in $ARCHES
 do
-    docker manifest annotate --arch $arch "${DOCKER_IMAGE}:${DOCKER_TAG}" ${DOCKER_IMAGE}:${arch}-${DOCKER_TAG}
+    digest=$( docker inspect --format='{{index .Id}}' ${DOCKER_IMAGE}:${arch}-${DOCKER_TAG} )
+    docker manifest annotate --arch $arch "${DOCKER_IMAGE}:${DOCKER_TAG}" ${DOCKER_IMAGE}@$digest
 done
 
 docker manifest inspect "${DOCKER_IMAGE}:${DOCKER_TAG}"
