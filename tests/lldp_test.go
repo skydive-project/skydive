@@ -36,6 +36,7 @@ func TestLLDP(t *testing.T) {
 			{"ip link set lldp0 up", false},
 			{"ip link set multicast on dev lldp0", false},
 			{"ip addr add 10.10.20.1/24 dev lldp0", false},
+			{"sleep 3", false}, // give some time to the LLDP probe to start capturing packets
 		},
 
 		tearDownCmds: []Cmd{
@@ -47,7 +48,7 @@ func TestLLDP(t *testing.T) {
 			pcap: "pcaptraces/lldp-detailed.pcap",
 		}},
 
-		// mode: Replay,
+		mode: Replay,
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gremlin := c.gremlin.V().Has("Name", "lldp0").Both("Type", "switchport").HasKey("LLDP")

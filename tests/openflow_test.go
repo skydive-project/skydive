@@ -152,7 +152,7 @@ func verifyGroup(c *CheckContext, bridge string, expected int) error {
 		}
 		l := len(nodes)
 		if l != expected {
-			return fmt.Errorf("expected %d groups - %v", expected)
+			return fmt.Errorf("expected %d groups - %v", l, expected)
 		}
 		for _, node := range nodes {
 			m := node.Metadata()
