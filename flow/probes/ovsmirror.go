@@ -335,8 +335,7 @@ func isOvsPort(n *graph.Node) bool {
 	return false
 }
 
-// RegisterProbe registers a probe on a graph node
-func (o *OvsMirrorProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+func (o *OvsMirrorProbesHandler) registerProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 	if isOvsPort(n) {
 		if uuid, _ := n.GetFieldString("UUID"); uuid != "" {
 			if err := o.RegisterProbeOnPort(n, uuid, capture); err != nil {
@@ -347,6 +346,15 @@ func (o *OvsMirrorProbesHandler) RegisterProbe(n *graph.Node, capture *types.Cap
 		}
 	}
 	return nil
+}
+
+// RegisterProbe registers a probe on a graph node
+func (o *OvsMirrorProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+	err := o.registerProbe(n, capture, e)
+	if err != nil {
+		go e.OnError(err)
+	}
+	return err
 }
 
 // UnregisterProbe at the graph node
@@ -430,6 +438,16 @@ func (o *ovsMirrorProbe) OnStarted() {
 func (o *ovsMirrorProbe) OnStopped() {
 	o.graph.Lock()
 	o.graph.DelMetadata(o.mirrorNode, "Capture")
+	o.graph.Unlock()
+}
+
+// OnError FlowProbeEventHandler implementation
+func (o *ovsMirrorProbe) OnError(err error) {
+	o.graph.Lock()
+	tr := o.graph.StartMetadataTransaction(o.mirrorNode)
+	tr.AddMetadata("Capture.State", "error")
+	tr.AddMetadata("Capture.Error", err.Error())
+	tr.Commit()
 	o.graph.Unlock()
 }
 

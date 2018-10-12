@@ -803,7 +803,9 @@ TopologyGraphLayout.prototype = {
         }
       }
     }
-    if (node.metadata.Capture && !node._metadata.Capture) {
+
+    if (node.metadata.Capture && node.metadata.Capture.State === "active" && 
+        (!node._metadata.Capture || node._metadata.Capture.State !== "active")) {
       this.captureStarted(node);
     } else if (!node.metadata.Capture && node._metadata.Capture) {
       this.captureStopped(node);

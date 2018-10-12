@@ -25,6 +25,7 @@ package agent
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/skydive-project/skydive/analyzer"
@@ -130,6 +131,10 @@ func (a *Agent) GetStatus() interface{} {
 
 // Start the agent services
 func (a *Agent) Start() {
+	if uid := os.Geteuid(); uid != 0 {
+		logging.GetLogger().Warning("Agent needs root permissions for some feature like capture, network namespace introspection, some feature might not work as expected")
+	}
+
 	go a.httpServer.Serve()
 
 	a.wsServer.Start()

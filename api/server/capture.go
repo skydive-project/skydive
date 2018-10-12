@@ -69,7 +69,7 @@ func (c *CaptureAPIHandler) Decorate(resource types.Resource) {
 
 	res, err := ge.TopologyGremlinQuery(c.Graph, capture.GremlinQuery)
 	if err != nil {
-		logging.GetLogger().Errorf("Gremlin error: %s", err.Error())
+		logging.GetLogger().Errorf("Gremlin error: %s", err)
 		return
 	}
 
@@ -77,7 +77,7 @@ func (c *CaptureAPIHandler) Decorate(resource types.Resource) {
 		switch value.(type) {
 		case *graph.Node:
 			n := value.(*graph.Node)
-			if cuuid, _ := n.GetFieldString("Capture.ID"); cuuid != "" {
+			if state, _ := n.GetFieldString("Capture.State"); state == "active" {
 				count++
 			}
 			if p, _ := n.GetFieldString("Capture.PCAPSocket"); p != "" {

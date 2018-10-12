@@ -324,10 +324,6 @@ func (u *Probe) Exclude(paths ...string) {
 
 // NewProbe creates a new network namespace probe
 func NewProbe(g *graph.Graph, n *graph.Node, nlProbe *netlink.Probe) (*Probe, error) {
-	if uid := os.Geteuid(); uid != 0 {
-		return nil, errors.New("NetNS probe has to be run as root")
-	}
-
 	ns, err := netns.Get()
 	if err != nil {
 		return nil, errors.New("Failed to get root namespace")

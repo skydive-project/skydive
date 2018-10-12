@@ -133,7 +133,7 @@ func (p *GoPacketProbe) listen(packetCallback func(gopacket.Packet)) {
 
 // Run starts capturing packet, calling the passed callback for every packet
 // and notifying the flow probe handler when the capture has started
-func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e FlowProbeEventHandler) {
+func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e FlowProbeEventHandler) error {
 	atomic.StoreInt64(&p.state, common.RunningState)
 
 	var nsContext *common.NetNSContext
@@ -141,8 +141,7 @@ func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e FlowProbeEve
 	if p.nsPath != "" {
 		logging.GetLogger().Debugf("Switching to namespace (path: %s)", p.nsPath)
 		if nsContext, err = common.NewNetNsContext(p.nsPath); err != nil {
-			logging.GetLogger().Error(err)
-			return
+			return err
 		}
 	}
 	defer nsContext.Close()
@@ -151,8 +150,7 @@ func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e FlowProbeEve
 	case PCAP:
 		p.packetProbe, err = NewPcapPacketProbe(p.ifName, int(p.headerSize))
 		if err != nil {
-			logging.GetLogger().Error(err)
-			return
+			return err
 		}
 		logging.GetLogger().Infof("PCAP Capture started on %s with First layer: %s", p.ifName, p.layerType)
 	default:
@@ -160,8 +158,7 @@ func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e FlowProbeEve
 			p.packetProbe, err = NewAfpacketPacketProbe(p.ifName, int(p.headerSize), p.layerType, p.linkType)
 			return err
 		}, 2, 100*time.Millisecond); err != nil {
-			logging.GetLogger().Error(err)
-			return
+			return err
 		}
 		logging.GetLogger().Infof("AfPacket Capture started on %s with First layer: %s", p.ifName, p.layerType)
 	}
@@ -181,8 +178,7 @@ func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e FlowProbeEve
 	// manage BPF outside namespace because of syscall
 	if p.bpf != "" {
 		if err := p.packetProbe.SetBPFFilter(p.bpf); err != nil {
-			logging.GetLogger().Errorf("Failed to set BPF filter: %s", err)
-			return
+			return fmt.Errorf("Failed to set BPF filter: %s", err)
 		}
 	}
 
@@ -203,6 +199,8 @@ func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e FlowProbeEve
 
 	p.packetProbe.Close()
 	atomic.StoreInt64(&p.state, common.StoppedState)
+
+	return nil
 }
 
 // Stop capturing packets
@@ -238,8 +236,7 @@ func NewGoPacketProbe(g *graph.Graph, n *graph.Node, captureType string, bpf str
 	}, nil
 }
 
-// RegisterProbe registers a gopacket probe
-func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+func (p *GoPacketProbesHandler) registerProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 	name, _ := n.GetFieldString("Name")
 	if name == "" {
 		return fmt.Errorf("No name for node %v", n)
@@ -307,7 +304,7 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capt
 		defer flowTable.Stop()
 
 		count := 0
-		probe.Run(func(packet gopacket.Packet) {
+		err := probe.Run(func(packet gopacket.Packet) {
 			flowTable.FeedWithGoPacket(packet, bpfFilter)
 			// NOTE: bpf usperspace filter is applied to the few first packets in order to avoid
 			// to get unexpected packets between capture start and bpf applying
@@ -316,11 +313,25 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capt
 			}
 			count++
 		}, e)
+		if err != nil {
+			logging.GetLogger().Error(err)
 
-		e.OnStopped()
+			e.OnError(err)
+		} else {
+			e.OnStopped()
+		}
 	}()
 
 	return nil
+}
+
+// RegisterProbe registers a gopacket probe
+func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+	err := p.registerProbe(n, capture, e)
+	if err != nil {
+		go e.OnError(err)
+	}
+	return err
 }
 
 func (p *GoPacketProbesHandler) unregisterProbe(id string) error {
@@ -343,6 +354,7 @@ func (p *GoPacketProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventH
 	if err != nil {
 		return err
 	}
+	go e.OnStopped()
 
 	return nil
 }
