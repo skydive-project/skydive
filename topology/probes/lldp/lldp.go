@@ -25,6 +25,7 @@
 package lldp
 
 import (
+	"bytes"
 	"fmt"
 	"net"
 	"sync"
@@ -122,6 +123,10 @@ func (p *Probe) handlePacket(n *graph.Node, packet gopacket.Packet) {
 	if lldpLayer != nil {
 		lldpLayer := lldpLayer.(*layers.LinkLayerDiscovery)
 
+		bytesToString := func(b []byte) string {
+			return string(bytes.Trim(b, "\x00"))
+		}
+
 		chassisMetadata := graph.Metadata{
 			"LLDP": map[string]interface{}{
 				"ChassisIDType": lldpLayer.ChassisID.Subtype.String(),
@@ -135,7 +140,7 @@ func (p *Probe) handlePacket(n *graph.Node, packet gopacket.Packet) {
 		case layers.LLDPChassisIDSubTypeMACAddr:
 			chassisID = net.HardwareAddr(lldpLayer.ChassisID.ID).String()
 		default:
-			chassisID = string(lldpLayer.ChassisID.ID)
+			chassisID = bytesToString(lldpLayer.ChassisID.ID)
 		}
 		common.SetField(chassisMetadata, "LLDP.ChassisID", chassisID)
 		common.SetField(chassisMetadata, "Name", chassisID)
@@ -153,7 +158,7 @@ func (p *Probe) handlePacket(n *graph.Node, packet gopacket.Packet) {
 		case layers.LLDPPortIDSubtypeMACAddr:
 			portID = net.HardwareAddr(lldpLayer.PortID.ID).String()
 		default:
-			portID = string(lldpLayer.PortID.ID)
+			portID = bytesToString(lldpLayer.PortID.ID)
 		}
 		common.SetField(portMetadata, "LLDP.PortID", portID)
 		common.SetField(portMetadata, "Name", portID)
@@ -163,16 +168,16 @@ func (p *Probe) handlePacket(n *graph.Node, packet gopacket.Packet) {
 
 			if lldpLayerInfo.PortDescription != "" {
 				common.SetField(portMetadata, "LLDP.Description", lldpLayerInfo.PortDescription)
-				portMetadata["Name"] = lldpLayerInfo.PortDescription
+				portMetadata["Name"] = bytesToString([]byte(lldpLayerInfo.PortDescription))
 			}
 
 			if lldpLayerInfo.SysDescription != "" {
-				common.SetField(chassisMetadata, "LLDP.Description", lldpLayerInfo.SysDescription)
+				common.SetField(chassisMetadata, "LLDP.Description", bytesToString([]byte(lldpLayerInfo.SysDescription)))
 			}
 
-			if lldpLayerInfo.SysName != "" {
-				common.SetField(chassisMetadata, "LLDP.SysName", lldpLayerInfo.SysName)
-				chassisMetadata["Name"] = lldpLayerInfo.SysName
+			if sysName := bytesToString([]byte(lldpLayerInfo.SysName)); sysName != "" {
+				common.SetField(chassisMetadata, "LLDP.SysName", sysName)
+				chassisMetadata["Name"] = sysName
 			}
 
 			if lldp8201Q, err := lldpLayerInfo.Decode8021(); err == nil {
@@ -201,7 +206,7 @@ func (p *Probe) handlePacket(n *graph.Node, packet gopacket.Packet) {
 					for i, vlan := range lldp8201Q.VLANNames {
 						vlanNames[i] = map[string]interface{}{
 							"ID":   vlan.ID,
-							"Name": vlan.Name,
+							"Name": bytesToString([]byte(vlan.Name)),
 						}
 					}
 					common.SetField(portMetadata, "LLDP.VLANNames", vlanNames)
