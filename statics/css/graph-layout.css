@@ -116,11 +116,9 @@ circle.emphasized  {
 }
 
 .links path.networkpolicy {
-  stroke-dasharray: 5;
-  stroke-dashoffset: 80;
   stroke: rgb(102, 102, 51);
   stroke-width: 2;
-  opacity: 0.5;
+  opacity: 0.2;
 }
 
 .group {

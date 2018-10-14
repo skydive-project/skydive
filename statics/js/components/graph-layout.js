@@ -286,9 +286,9 @@ var TopologyGraphLayout = function(vm, selector) {
       pathD = a + " " + b
     }
 
-    let color = "rgb(159, 218, 64, 0.4)"
+    let color = "rgb(0, 128, 0, 0.8)"
     if (target === "deny") {
-      color = "rgba(255, 99, 71, 0.4)"
+      color = "rgba(255, 0, 0, 0.8)"
     }
 
     self.svg.append("defs").append("marker")
@@ -1538,9 +1538,20 @@ TopologyGraphLayout.prototype = {
   },
 
   arrowhead: function(link) {
-    if (link.metadata.RelationType !== "networkpolicy") {
-      return "url(#arrowhead-none)";
+    let none = "url(#arrowhead-none)";
+
+    if (link.source.metadata.Type !== "networkpolicy") {
+      return none
     }
+
+    if (link.target.metadata.Type !== "pod") {
+      return none
+    }
+
+    if (link.metadata.RelationType !== "networkpolicy") {
+      return none
+    }
+
     return "url(#arrowhead-"+link.metadata.PolicyType+"-"+link.metadata.PolicyTarget+"-"+link.metadata.PolicyPoint+")";
   },
 
