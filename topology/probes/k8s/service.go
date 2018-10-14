@@ -89,8 +89,15 @@ func (spl *servicePodLinker) GetABLinks(srvNode *graph.Node) (edges []*graph.Edg
 
 func (spl *servicePodLinker) GetBALinks(podNode *graph.Node) (edges []*graph.Edge) {
 	namespace, _ := podNode.GetFieldString("Namespace")
+	name, _ := podNode.GetFieldString("Name")
+	pod := spl.podCache.getByKey(namespace, name)
 	for _, srv := range spl.serviceCache.getByNamespace(namespace) {
-		if srvNode := spl.graph.GetNode(graph.Identifier(srv.(*v1.Service).GetUID())); srvNode != nil {
+		srv := srv.(*v1.Service)
+		labelSelector := &metav1.LabelSelector{MatchLabels: srv.Spec.Selector}
+		if len(filterObjectsBySelector([]interface{}{pod}, labelSelector)) != 1 {
+			continue
+		}
+		if srvNode := spl.graph.GetNode(graph.Identifier(srv.GetUID())); srvNode != nil {
 			edges = append(edges, spl.graph.CreateEdge("", srvNode, podNode, spl.newEdgeMetadata(), time.Now(), ""))
 		}
 	}
