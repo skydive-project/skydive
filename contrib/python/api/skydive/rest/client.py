@@ -28,6 +28,7 @@ except ImportError:
 
 from skydive.auth import Authenticate
 from skydive.graph import Node, Edge
+from skydive.rules import NodeRule, EdgeRule
 
 
 class BadRequest(Exception):
@@ -128,3 +129,41 @@ class RESTClient:
     def capture_delete(self, capture_id):
         path = "/api/capture/%s" % capture_id
         return self.request(path, method="DELETE")
+
+    def noderule_create(self, action, metadata=None, query=""):
+        data = json.dumps(
+            {
+                "Action": action,
+                "Metadata": metadata,
+                "Query": query
+            }
+        )
+        r = self.request("/api/noderule", method="POST", data=data)
+        return NodeRule.from_object(r)
+
+    def noderule_list(self):
+        objs = self.request("/api/noderule")
+        return [NodeRule.from_object(o) for o in objs]
+
+    def noderule_delete(self, rule_id):
+        path = "/api/noderule/%s" % rule_id
+        return self.request(path, method="DELETE")
+
+    def edgerule_create(self, src, dst, metadata):
+        data = json.dumps(
+            {
+                "Src": src,
+                "Dst": dst,
+                "Metadata": metadata
+            }
+        )
+        r = self.request("/api/edgerule", method="POST", data=data)
+        return EdgeRule.from_object(r)
+
+    def edgerule_list(self):
+        objs = self.request("/api/edgerule")
+        return [EdgeRule.from_object(o) for o in objs]
+
+    def edgerule_delete(self, rule_id):
+        path = "/api/edgerule/%s" % rule_id
+        self.request(path, method="DELETE")
