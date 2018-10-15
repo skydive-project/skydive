@@ -55,8 +55,6 @@ func (h *networkPolicyHandler) Dump(obj interface{}) string {
 func (h *networkPolicyHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	np := obj.(*v1beta1.NetworkPolicy)
 	m := NewMetadata(Manager, "networkpolicy", np, np.Name, np.Namespace)
-	m.SetFieldAndNormalize("Egress", np.Spec.Egress)
-	m.SetFieldAndNormalize("Ingress", np.Spec.Ingress)
 	return graph.Identifier(np.GetUID()), m
 }
 
