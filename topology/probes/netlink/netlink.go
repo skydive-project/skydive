@@ -103,30 +103,6 @@ type Probe struct {
 	wg      sync.WaitGroup
 }
 
-// RoutingTable describes a list of Routes
-// easyjson:json
-type RoutingTable struct {
-	ID     int64   `json:"Id"`
-	Src    net.IP  `json:"Src,omitempty"`
-	Routes []Route `json:"Routes,omitempty"`
-}
-
-// Route describes a route
-// easyjson:json
-type Route struct {
-	Protocol int64     `json:"Protocol,omitempty"`
-	Prefix   string    `json:"Prefix,omitempty"`
-	Nexthops []NextHop `json:"Nexthops,omitempty"`
-}
-
-// NextHop describes a next hop
-// easyjson:json
-type NextHop struct {
-	Priority int64  `json:"Priority,omitempty"`
-	IP       net.IP `json:"Src,omitempty"`
-	IfIndex  int64  `json:"IfIndex,omitempty"`
-}
-
 func (u *NetNsProbe) linkPendingChildren(intf *graph.Node, index int64) {
 	// ignore ovs-system interface as it doesn't make any sense according to
 	// the following thread:
@@ -526,47 +502,48 @@ func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 }
 
 func (u *NetNsProbe) getRoutingTable(link netlink.Link, table int) []RoutingTable {
-	routeTableList := make(map[int]RoutingTable)
 	routeFilter := &netlink.Route{
 		LinkIndex: link.Attrs().Index,
 		Table:     table,
 	}
 	routeList, err := u.handle.RouteListFiltered(netlink.FAMILY_ALL, routeFilter, netlink.RT_FILTER_OIF|netlink.RT_FILTER_TABLE)
-	if err == nil && len(routeList) > 0 {
-		for _, route := range routeList {
-			var routeTable RoutingTable
-			if rt, ok := routeTableList[route.Table]; ok {
-				routeTable = rt
-			} else {
-				routeTable = RoutingTable{ID: int64(route.Table), Src: route.Src}
-			}
-
-			r := Route{Protocol: int64(route.Protocol)}
-			if route.Dst != nil {
-				r.Prefix = (*route.Dst).String()
-			}
-			var nh []NextHop
-			if len(route.MultiPath) > 0 {
-				for _, nexthop := range route.MultiPath {
-					var nhop = NextHop{IP: nexthop.Gw, Priority: int64(route.Priority)}
-					nh = append(nh, nhop)
-				}
-			} else {
-				var nhop = NextHop{IP: route.Gw, Priority: int64(route.Priority), IfIndex: int64(route.LinkIndex)}
-				nh = append(nh, nhop)
-			}
-			r.Nexthops = nh
-			routeTable.Routes = append(routeTable.Routes, r)
-			routeTableList[route.Table] = routeTable
-		}
-
-		rt := []RoutingTable{}
-		for _, r := range routeTableList {
-			rt = append(rt, r)
-		}
-		return rt
+	if err != nil {
+		logging.GetLogger().Errorf("Unable to retrieve routing table: %s", err)
+		return nil
 	}
-	return nil
+
+	if len(routeList) == 0 {
+		return nil
+	}
+
+	routingTableList := make(map[int]RoutingTable)
+	for _, r := range routeList {
+		routingTable, ok := routingTableList[r.Table]
+		if !ok {
+			routingTable = RoutingTable{ID: int64(r.Table), Src: r.Src}
+		}
+
+		protocol, prefix := int64(r.Protocol), ""
+		if r.Dst != nil {
+			prefix = (*r.Dst).String()
+		}
+
+		route := routingTable.GetOrCreateRoute(protocol, prefix)
+		if len(r.MultiPath) > 0 {
+			for _, nh := range r.MultiPath {
+				route.GetOrCreateNexthop(nh.Gw, int64(nh.LinkIndex), int64(r.Priority))
+			}
+		} else {
+			route.GetOrCreateNexthop(r.Gw, int64(r.LinkIndex), int64(r.Priority))
+		}
+		routingTableList[r.Table] = routingTable
+	}
+
+	var result []RoutingTable
+	for _, r := range routingTableList {
+		result = append(result, r)
+	}
+	return result
 }
 
 func (u *NetNsProbe) onLinkAdded(link netlink.Link) {
