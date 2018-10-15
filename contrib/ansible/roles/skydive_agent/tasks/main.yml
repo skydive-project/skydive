@@ -1,4 +1,17 @@
 ---
+- name: Determine agent IP
+  set_fact:
+    skydive_agent_ip: >-
+        {%- if skydive_listen_ip is defined -%}
+          {{ skydive_listen_ip }}
+        {%- elif skydive_nic is defined -%}
+          {{ hostvars[inventory_hostname][skydive_nic].ipv4.address }}
+        {%- else -%}
+          {{ hostvars[inventory_hostname].ansible_default_ipv4.address }}
+        {%- endif -%}
+  tags:
+    - config
+
 - include: config.yml
   tags:
     - config
