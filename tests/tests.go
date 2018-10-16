@@ -530,7 +530,7 @@ func RunTest(t *testing.T, test *Test) {
 	// Wait for the interfaces to be ready for packet injection
 	err = common.Retry(func() error {
 		isReady := func(gremlin g.QueryString, ipv6 bool) error {
-			gremlin = gremlin.Has("State", "UP")
+			gremlin = gremlin.Has("LinkFlags", "UP")
 			if ipv6 {
 				gremlin = gremlin.HasKey("IPV6")
 			} else {

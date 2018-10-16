@@ -163,3 +163,14 @@ func AddLayer2Link(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, metadat
 	id, _ := uuid.NewV5(uuid.NamespaceOID, []byte(node1.ID+node2.ID+Layer2Link))
 	return g.NewEdge(graph.Identifier(id.String()), node1, node2, m)
 }
+
+// IsInterfaceUp returns whether an interface has the flag UP set
+func IsInterfaceUp(node *graph.Node) bool {
+	linkFlags, _ := node.GetFieldStringList("LinkFlags")
+	for _, flag := range linkFlags {
+		if flag == "UP" {
+			return true
+		}
+	}
+	return false
+}

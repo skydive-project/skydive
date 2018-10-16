@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -49,6 +50,14 @@ import (
 const (
 	maxEpollEvents = 32
 )
+
+var flagNames = []string{
+	"UP",
+	"BROADCAST",
+	"LOOPBACK",
+	"POINTTOPOINT",
+	"MULTICAST",
+}
 
 type pendingLink struct {
 	ID       graph.Identifier
@@ -466,11 +475,15 @@ func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 		}
 	}
 
-	if (attrs.Flags & net.FlagUp) > 0 {
-		metadata["State"] = "UP"
-	} else {
-		metadata["State"] = "DOWN"
+	metadata["State"] = strings.ToUpper(attrs.OperState.String())
+
+	var flags []string
+	for i, name := range flagNames {
+		if attrs.RawFlags&(1<<uint(i)) != 0 {
+			flags = append(flags, name)
+		}
 	}
+	metadata["LinkFlags"] = flags
 
 	if link.Type() == "bond" {
 		metadata["BondMode"] = link.(*netlink.Bond).Mode.String()
