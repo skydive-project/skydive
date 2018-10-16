@@ -47,9 +47,9 @@ spec:
         - containerPort: 12379
         - containerPort: 12380
         env:
-        - name: SKYDIVE_ANALYZER_STORAGE_BACKEND
+        - name: SKYDIVE_ANALYZER_FLOW_BACKEND
           value: elasticsearch
-        - name: SKYDIVE_GRAPH_BACKEND
+        - name: SKYDIVE_ANALYZER_TOPOLOGY_BACKEND
           value: elasticsearch
         - name: SKYDIVE_ETCD_LISTEN
           value: 0.0.0.0:12379
