@@ -158,6 +158,10 @@ class WSClient(WebSocketClientProtocol):
             self.cookies = None
         elif isinstance(cookie, list):
             self.cookies = cookie
+        elif isinstance(cookie, dict):
+            self.cookies = []
+            for k, v in cookie.items():
+                self.cookies.append("{}={}".format(k, v))
         else:
             self.cookies = [cookie, ]
         self.protocol = protocol
