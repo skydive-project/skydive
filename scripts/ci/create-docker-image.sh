@@ -66,8 +66,8 @@ for arch in $ARCHES
 do
     docker push ${DOCKER_IMAGE}:${arch}-${DOCKER_TAG}
 
-    digest=$( docker inspect --format='{{index .Id}}' ${DOCKER_IMAGE}:${arch}-${DOCKER_TAG} )
-    digests="${digests} ${DOCKER_IMAGE}@$digest"
+    digest=$( docker inspect --format='{{index .RepoDigests 0}}' ${DOCKER_IMAGE}:${arch}-${DOCKER_TAG} )
+    digests="${digests} $digest"
 done
 
 res=0

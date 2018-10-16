@@ -503,6 +503,7 @@ docker-build:
 	docker cp skydive-compile-build:/root/go/bin/skydive contrib/docker/skydive.$$(uname -m)
 	docker rm skydive-compile-build
 	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} \
+		--label "Version=${VERSION}" \
 		--build-arg ARCH=$$(uname -m) \
 		-f contrib/docker/Dockerfile contrib/docker/
 
@@ -524,6 +525,7 @@ docker-cross-build: ebpf.build
 	docker cp skydive-crosscompile-build-${TARGET_GOARCH}:/root/go/bin/linux_${TARGET_GOARCH}/skydive contrib/docker/skydive.${TARGET_GOARCH}
 	docker rm skydive-crosscompile-build-${TARGET_GOARCH}
 	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} \
+		--label "Version=${VERSION}" \
 		--build-arg ARCH=${TARGET_GOARCH} \
 		$${BASE:+--build-arg BASE=$${BASE}} \
 		-f contrib/docker/Dockerfile.static contrib/docker/
