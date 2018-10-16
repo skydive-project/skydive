@@ -92,8 +92,8 @@ flows informations will be captured.
 
 %package ansible
 Summary:          Skydive ansible recipes
-Requires:         %{name} = %{version}-%{release}
 Requires:         ansible
+BuildArch:        noarch
 
 %description ansible
 Ansible recipes to deploy Skydive
