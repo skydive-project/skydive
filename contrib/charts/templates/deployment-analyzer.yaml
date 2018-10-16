@@ -60,13 +60,13 @@ spec:
           value: 'infrastructure'
         - name: SKYDIVE_UI_THEME
           value: "light"
-        - name: SKYDIVE_ANALYZER_STORAGE_BACKEND
+        - name: SKYDIVE_ANALYZER_FLOW_BACKEND
           value: "elasticsearch"
-        - name: SKYDIVE_GRAPH_BACKEND
+        - name: SKYDIVE_ANALYZER_TOPOLOGY_BACKEND
           value: "elasticsearch"
         - name: SKYDIVE_STORAGE_ELASTICSEARCH_HOST
           value: {{ .Values.storage.elasticsearch.host }}
-        - name: SKYDIVE_EMBEDDED
+        - name: SKYDIVE_ETCD_EMBEDDED
           value: "true"
         - name: SKYDIVE_FLOW_PROTOCOL
           value: "websocket"
