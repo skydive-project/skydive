@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Red Hat, Inc.
+ * Copyright (C) 2018 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -20,27 +20,24 @@
  *
  */
 
-package client
+package layers
 
-import (
-	"encoding/json"
-	"fmt"
-	"os"
+import "github.com/google/gopacket/layers"
 
-	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
-)
+// LayerDHCPv4 wrapper to generate extra layer
+//proteus:generate
+type LayerDHCPv4 struct {
+	*layers.DHCPv4
+}
 
-// AuthenticationOpts Authentication options
-var (
-	AuthenticationOpts shttp.AuthenticationOpts
-)
+// LayerDNS wrapper to generate extra layer
+//proteus:generate
+type LayerDNS struct {
+	*layers.DNS
+}
 
-func printJSON(obj interface{}) {
-	s, err := json.MarshalIndent(obj, "", "  ")
-	if err != nil {
-		logging.GetLogger().Error(err)
-		os.Exit(1)
-	}
-	fmt.Println(string(s))
+// LayerVRRPv2 wrapper to generate extra layer
+//proteus:generate
+type LayerVRRPv2 struct {
+	*layers.VRRPv2
 }

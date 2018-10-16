@@ -75,6 +75,7 @@ type TableOpts struct {
 	IPDefrag       bool
 	ReassembleTCP  bool
 	LayerKeyMode   LayerKeyMode
+	ExtraLayers    ExtraLayers
 }
 
 // Table store the flow table and related metrics mechanism
@@ -129,6 +130,7 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, nodeTID string, op
 		IPDefrag:     t.Opts.IPDefrag,
 		LayerKeyMode: t.Opts.LayerKeyMode,
 		AppPortMap:   t.appPortMap,
+		ExtraLayers:  t.Opts.ExtraLayers,
 	}
 
 	t.updateVersion = 0

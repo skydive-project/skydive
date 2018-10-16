@@ -89,21 +89,8 @@ func (g *StructMessage) Debug() string {
 }
 
 // Marshal serializes the StructMessage into a JSON string.
-func (g *StructMessageJSON) Marshal() []byte {
-	j, err := json.Marshal(g)
-	if err != nil {
-		panic("JSON Marshal StructMessage encode failed")
-	}
-	return j
-}
-
-// Marshal a message to protobuf
-func (g *StructMessageProtobuf) Marshal() []byte {
-	b, err := proto.Marshal(g)
-	if err != nil {
-		panic("Protobuf Marshal StructMessage encode failed")
-	}
-	return b
+func (g *StructMessageJSON) Marshal() ([]byte, error) {
+	return json.Marshal(g)
 }
 
 // Bytes see Marshal
@@ -121,7 +108,7 @@ func (g StructMessage) Bytes(protocol string) []byte {
 			Status:    g.Status,
 			Obj:       g.ProtobufObj,
 		}
-		g.protobufSerialized = msgProto.Marshal()
+		g.protobufSerialized, _ = msgProto.Marshal()
 		return g.protobufSerialized
 	}
 
@@ -136,7 +123,7 @@ func (g StructMessage) Bytes(protocol string) []byte {
 		Status:    g.Status,
 		Obj:       g.JSONObj,
 	}
-	g.jsonSerialized = msgJSON.Marshal()
+	g.jsonSerialized, _ = msgJSON.Marshal()
 	return g.jsonSerialized
 }
 

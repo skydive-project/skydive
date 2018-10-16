@@ -27,6 +27,11 @@ mv bin ${BUILD_TOOLS}; \
 unlink src || mv src vendor;
 endef
 
+define PROTOC_GEN
+$(call VENDOR_RUN,${PROTOC_GEN_GOFAST_GITHUB})
+$(call VENDOR_RUN,${PROTOC_GEN_GO_GITHUB}) protoc -Ivendor -I. --plugin=${BUILD_TOOLS}/protoc-gen-gogofaster --gogofaster_out . $1
+endef
+
 VERSION?=$(shell $(VERSION_CMD))
 GO_GET:=CC= GOARCH= go get
 GOVENDOR:=${GOPATH}/bin/govendor
@@ -39,6 +44,8 @@ SKYDIVE_GITHUB_VERSION:=$(SKYDIVE_GITHUB)/version.Version=${VERSION}
 BUILD_TOOLS:=${GOPATH}/.skydive-build-tool
 GO_BINDATA_GITHUB:=github.com/jteeuwen/go-bindata/go-bindata
 PROTOC_GEN_GO_GITHUB:=github.com/golang/protobuf/protoc-gen-go
+PROTOC_GEN_GOFAST_GITHUB:=github.com/gogo/protobuf/protoc-gen-gogofaster
+PROTEUS_GITHUB:=gopkg.in/src-d/proteus.v1/cli/proteus
 EASYJSON_GITHUB:=github.com/mailru/easyjson/easyjson
 EASYJSON_FILES_ALL=flow/flow.pb.go
 EASYJSON_FILES_TAG=\
@@ -194,10 +201,11 @@ debug.analyzer:
 	$(call skydive_debug,analyzer)
 
 %.pb.go: %.proto
-	$(call VENDOR_RUN,${PROTOC_GEN_GO_GITHUB}) protoc --go_out . $<
+	$(call PROTOC_GEN,$<)
 
 flow/flow.pb.go: flow/flow.proto
-	$(call VENDOR_RUN,${PROTOC_GEN_GO_GITHUB}) protoc --go_out . $<
+	$(call PROTOC_GEN,$<)
+
 	# always export flow.ParentUUID as we need to store this information to know
 	# if it's a Outer or Inner packet.
 	sed -e 's/ParentUUID\(.*\),omitempty\(.*\)/ParentUUID\1\2/' \
@@ -209,9 +217,18 @@ flow/flow.pb.go: flow/flow.proto
 	sed -e 's/json:"LastRawPackets,omitempty"/json:"-"/g' -i $@
 	# add flowState to flow generated struct
 	sed -e 's/type Flow struct {/type Flow struct { XXX_state flowState `json:"-"`/' -i $@
+	# to fix generated layers import
+	sed -e 's/layers "flow\/layers"/layers "github.com\/skydive-project\/skydive\/flow\/layers"/' -i $@
 	gofmt -s -w $@
 
-.proto: govendor flow/flow.pb.go filters/filters.pb.go websocket/structmessage.pb.go
+flow/layers/generated.proto: flow/layers/layers.go
+	$(call VENDOR_RUN,${PROTEUS_GITHUB}) proteus proto -f $${GOPATH}/src -p github.com/skydive-project/skydive/flow/layers
+	sed -e 's/^package .*;/package layers;/' -i $@
+	sed -e 's/^message Layer/message /' -i $@
+	sed -e 's/option (gogoproto.typedecl) = false;//' -i $@
+	sed 's/\((gogoproto\.customname) = "\([^\"]*\)"\)/\1, (gogoproto.jsontag) = "\2,omitempty"/' -i $@
+
+.proto: govendor flow/layers/generated.pb.go flow/flow.pb.go filters/filters.pb.go websocket/structmessage.pb.go
 
 .PHONY: .proto.clean
 .proto.clean:
@@ -531,7 +548,8 @@ docker-cross-build: ebpf.build
 SKYDIVE_PROTO_FILES:= \
 	flow/flow.proto \
 	filters/filters.proto \
-	websocket/structmessage.proto
+	websocket/structmessage.proto \
+	flow/layers/layers.proto
 
 SKYDIVE_TAR_INPUT:= \
 	vendor \

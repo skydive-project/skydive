@@ -25,7 +25,10 @@ package flow
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	fmt "fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -37,6 +40,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	fl "github.com/skydive-project/skydive/flow/layers"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -102,12 +106,76 @@ const (
 	L3PreferedKeyMode   LayerKeyMode = 1         // uses Layer3 only and layer2 if no Layer3
 )
 
+// ExtraLayers defines extra layer to be pushed in flow
+type ExtraLayers int
+
+const (
+	// VRRPLayer extra layer
+	VRRPLayer ExtraLayers = 1
+	// DNSLayer extra layer
+	DNSLayer ExtraLayers = 2
+	// DHCPv4Layer extra layer
+	DHCPv4Layer ExtraLayers = 4
+	// ALLLayer all extra layers
+	ALLLayer ExtraLayers = 255
+)
+
+var extraLayersMap = map[string]ExtraLayers{
+	"VRRP":   VRRPLayer,
+	"DNS":    DNSLayer,
+	"DHCPv4": DHCPv4Layer,
+}
+
+// Parse set the ExtraLayers struct with the given list of protocol strings
+func (e *ExtraLayers) Parse(s ...string) error {
+	*e = 0
+	for _, v := range s {
+		if i, ok := extraLayersMap[v]; ok {
+			*e |= i
+		} else {
+			return fmt.Errorf("Extra layer not supported: %s", v)
+		}
+	}
+	return nil
+}
+
+// Extract returns a string list of the ExtraLayers protocol
+func (e ExtraLayers) Extract() []string {
+	var l []string
+	for k, v := range extraLayersMap {
+		if (e & v) > 0 {
+			l = append(l, k)
+		}
+	}
+	return l
+}
+
+// String returns a string of the list of the protocols
+func (e ExtraLayers) String() string {
+	return strings.Join(e.Extract(), "|")
+}
+
+// MarshalJSON serializes the ExtraLayers structure
+func (e ExtraLayers) MarshalJSON() ([]byte, error) {
+	return json.Marshal(e.Extract())
+}
+
+// UnmarshalJSON deserializes json input to ExtraLayers
+func (e *ExtraLayers) UnmarshalJSON(data []byte) error {
+	var a []string
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	return e.Parse(a...)
+}
+
 // Opts describes options that can be used to process flows
 type Opts struct {
 	TCPMetric    bool
 	IPDefrag     bool
 	LayerKeyMode LayerKeyMode
 	AppPortMap   *ApplicationPortMap
+	ExtraLayers  ExtraLayers
 }
 
 // UUIDs describes UUIDs that can be applied to flows
@@ -504,6 +572,9 @@ func (f *Flow) initFromPacket(key string, packet *Packet, nodeTID string, uuids 
 		f.newTransportLayer(packet, opts)
 	}
 
+	// add optional application layer
+	f.newApplicationLayer(packet, opts)
+
 	// need to have as most variable filled as possible to get correct UUID
 	f.UpdateUUID(key, opts)
 
@@ -824,6 +895,57 @@ func (f *Flow) newTransportLayer(packet *Packet, opts Opts) error {
 	return nil
 }
 
+func (f *Flow) newApplicationLayer(packet *Packet, opts Opts) error {
+	if (opts.ExtraLayers & DHCPv4Layer) != 0 {
+		if layer := packet.Layer(layers.LayerTypeDHCPv4); layer != nil {
+			d := layer.(*layers.DHCPv4)
+			f.DHCPv4 = &fl.DHCPv4{
+				File:         d.File,
+				Flags:        d.Flags,
+				HardwareLen:  d.HardwareLen,
+				HardwareOpts: d.HardwareOpts,
+				ServerName:   d.ServerName,
+				Secs:         d.Secs,
+			}
+			return nil
+		}
+	}
+
+	if (opts.ExtraLayers & DNSLayer) != 0 {
+		if layer := packet.Layer(layers.LayerTypeDNS); layer != nil {
+			d := layer.(*layers.DNS)
+			f.DNS = &fl.DNS{
+				AA:      d.AA,
+				ID:      d.ID,
+				QR:      d.QR,
+				RA:      d.RA,
+				RD:      d.RD,
+				TC:      d.TC,
+				ANCount: d.ANCount,
+				ARCount: d.ARCount,
+				NSCount: d.NSCount,
+				QDCount: d.QDCount,
+			}
+			return nil
+		}
+	}
+
+	if (opts.ExtraLayers & VRRPLayer) != 0 {
+		if layer := packet.Layer(layers.LayerTypeVRRP); layer != nil {
+			d := layer.(*layers.VRRPv2)
+			f.VRRPv2 = &fl.VRRPv2{
+				AdverInt:     d.AdverInt,
+				Priority:     d.Priority,
+				Version:      d.Version,
+				VirtualRtrID: d.VirtualRtrID,
+			}
+			return nil
+		}
+	}
+
+	return nil
+}
+
 // PacketSeqFromGoPacket split original packet into multiple packets in
 // case of encapsulation like GRE, VXLAN, etc.
 func PacketSeqFromGoPacket(packet gopacket.Packet, outerLength int64, bpf *BPF, defragger *IPDefragger) *PacketSequence {
@@ -931,7 +1053,7 @@ func PacketSeqFromGoPacket(packet gopacket.Packet, outerLength int64, bpf *BPF, 
 }
 
 // PacketSeqFromSFlowSample returns an array of Packets as a sample
-// contains mutlple records which generate a Packets each.
+// contains multiple records which generate a Packets each.
 func PacketSeqFromSFlowSample(sample *layers.SFlowFlowSample, bpf *BPF, defragger *IPDefragger) []*PacketSequence {
 	var pss []*PacketSequence
 
@@ -1163,6 +1285,14 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 	case "ETHERNET":
 		return f.Link.GetStringField(fields[1])
 	}
+
+	// check extra layers
+	if _, ok := extraLayersMap[name]; ok {
+		if value, ok := common.LookupPath(*f, field, reflect.String); ok {
+			return value.String(), nil
+		}
+	}
+
 	return "", common.ErrFieldNotFound
 }
 
@@ -1201,9 +1331,18 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 		return f.Transport.GetFieldInt64(fields[1])
 	case "RawPacketsCaptured":
 		return f.RawPacketsCaptured, nil
-	default:
-		return 0, common.ErrFieldNotFound
 	}
+
+	// check extra layers
+	if _, ok := extraLayersMap[name]; ok {
+		if value, ok := common.LookupPath(*f, field, reflect.Int); ok && value.IsValid() {
+			if i, err := common.ToInt64(value.Interface()); err == nil {
+				return i, nil
+			}
+		}
+	}
+
+	return 0, common.ErrFieldNotFound
 }
 
 // GetFieldInterface returns the value of a Flow field
@@ -1223,9 +1362,16 @@ func (f *Flow) GetFieldInterface(field string) (_ interface{}, err error) {
 		return f.ICMP, nil
 	case "Transport":
 		return f.Transport, nil
-	default:
-		return 0, common.ErrFieldNotFound
 	}
+
+	// check extra layers
+	if _, ok := extraLayersMap[field]; ok {
+		if value, ok := common.LookupPath(*f, field, reflect.Struct); ok && value.IsValid() {
+			return value.Interface(), nil
+		}
+	}
+
+	return 0, common.ErrFieldNotFound
 }
 
 // GetField returns the value of a field

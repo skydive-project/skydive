@@ -15,6 +15,7 @@
     unzip protoc-3.1.0-linux-x86_64.zip
     chmod +x bin/protoc
     mv bin/protoc /usr/bin/
+    mv include/google /usr/include
   when: ansible_architecture != "ppc64le"
 - shell: |
     mkdir -p /tmp/protoc
@@ -25,4 +26,7 @@
     ./autogen.sh
     ./configure --enable-static --disable-shared
     mv ./src/protoc /usr/bin/
+    wget https://github.com/google/protobuf/releases/download/v3.1.0/protoc-3.1.0-linux-x86_64.zip
+    unzip protoc-3.1.0-linux-x86_64.zip
+    mv include/google /usr/include
   when: ansible_architecture == "ppc64le"

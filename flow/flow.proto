@@ -21,11 +21,14 @@
  */
 
 syntax = "proto3";
-/* Notes :
-   o proto3 fields are optional by default
-   o required fields are not allowed in proto3 */
 
 package flow;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "flow/layers/generated.proto";
+
+option (gogoproto.protosizer_all) = true;
+option (gogoproto.sizer_all) = false;
 
 enum FlowProtocol {
   ETHERNET = 0;
@@ -138,6 +141,11 @@ message Flow {
   FlowLayer Network = 21;
   TransportLayer Transport = 22;
   ICMPLayer ICMP = 23;
+
+/* extra layers */
+  layers.DHCPv4 DHCPv4 = 1000;
+  layers.DNS DNS = 1001;
+  layers.VRRPv2 VRRPv2 = 1002;
 
 /* Data Flow Metric info from the 1st layer
    amount of data between two updates

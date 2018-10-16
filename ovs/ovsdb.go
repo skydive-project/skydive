@@ -547,9 +547,9 @@ func (o *OvsMonitor) StopMonitoring() {
 }
 
 // NewOvsMonitor creates a new monitoring probe agent on target
-func NewOvsMonitor(protcol string, target string) *OvsMonitor {
+func NewOvsMonitor(protocol string, target string) *OvsMonitor {
 	return &OvsMonitor{
-		Protocol:        protcol,
+		Protocol:        protocol,
 		Target:          target,
 		OvsClient:       &OvsClient{ovsdb: nil, connected: 0},
 		bridgeCache:     make(map[string]string),
