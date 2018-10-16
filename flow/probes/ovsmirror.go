@@ -36,6 +36,7 @@ import (
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/ovs"
 	"github.com/skydive-project/skydive/probe"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	op "github.com/skydive-project/skydive/topology/probes/ovsdb"
 )
@@ -471,7 +472,7 @@ func (o *ovsMirrorInterfaceHandler) onNodeEvent(n *graph.Node) {
 		return
 	}
 
-	if state, _ := n.GetFieldString("State"); state != "UP" {
+	if !topology.IsInterfaceUp(n) {
 		name, _ := n.GetFieldString("Name")
 		intf, err := netlink.LinkByName(name)
 		if err != nil {

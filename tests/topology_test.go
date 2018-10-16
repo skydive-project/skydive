@@ -421,12 +421,8 @@ func TestInterfaceUpdate(t *testing.T) {
 			hasDown := false
 			hasUp := false
 			for i := range nodes {
-				if !hasDown && nodes[i].Metadata()["State"].(string) == "DOWN" {
-					hasDown = true
-				}
-				if !hasUp && nodes[i].Metadata()["State"].(string) == "UP" {
-					hasUp = true
-				}
+				hasDown = hasDown || topology.IsInterfaceUp(nodes[i])
+				hasUp = hasUp || topology.IsInterfaceUp(nodes[i])
 			}
 
 			if !hasUp || !hasDown {
