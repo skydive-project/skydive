@@ -80,8 +80,8 @@ done
 
 for arch in $ARCHES
 do
-    digest=$( docker inspect --format='{{index .Id}}' ${DOCKER_IMAGE}:${arch}-${DOCKER_TAG} )
-    docker manifest annotate --arch $arch "${DOCKER_IMAGE}:${DOCKER_TAG}" ${DOCKER_IMAGE}@$digest
+    digest=$( docker inspect --format='{{index .RepoDigests 0}}' ${DOCKER_IMAGE}:${arch}-${DOCKER_TAG} )
+    docker manifest annotate --arch $arch "${DOCKER_IMAGE}:${DOCKER_TAG}" $digest
 done
 
 docker manifest inspect "${DOCKER_IMAGE}:${DOCKER_TAG}"
