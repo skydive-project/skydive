@@ -69,11 +69,12 @@ var TopologyComponent = {
                 <div class="form-group row">\
                   <label class="control-label" for="topology-filter">Filter</label>\
                   <div class="input">\
-                    <input list="topology-gremlin-favorites" placeholder="e.g. g.V().Has(,)" \
-                    id="topology-filter" type="text" style="width: 400px" \
-                    v-model="topologyFilter" @keyup.enter="topologyFilterQuery" \
-                    v-on:input="onFilterDatalistSelect" \
-                    class="input-sm form-control"></input>\
+                    <input list="topology-gremlin-favorites" placeholder="e.g. g.V().Has(,)"\
+                      id="topology-filter" type="text" style="width: 400px"\
+                      v-model="topologyFilter" @keyup.enter="topologyFilterQuery"\
+                      v-on:input="onFilterDatalistSelect"\
+                      class="input-sm form-control">\
+                    </input>\
                     <span class="clear-btn" @click.stop="topologyFilterClear">&times;</span>\
                     <datalist id="topology-gremlin-favorites" class="topology-gremlin-favorites">\
                     </datalist>\
@@ -554,6 +555,22 @@ var TopologyComponent = {
         .catch(function() {});
     },
 
+    addFilter: function(label, query) {
+      var options = $(".topology-gremlin-favorites");
+      options.append($("<option/>").text(label).val(query));
+    },
+
+    gremlinK8sTypes: function(types) {
+        return "G.V()"
+          + ".Has('Manager', Regex('k8s|istio'))" 
+          + ".Has('Namespace', Ne('kube-system')).Has('Namespace', Ne('istio-system'))"
+          + ".Has('Type', Regex('" + types.join("|") + "'))";
+    },
+
+    addFilterK8sTypes: function(label, types) {
+        this.addFilter("k8s " + label, this.gremlinK8sTypes(types));
+    },
+
     setGremlinFavoritesFromConfig: function() {
       var self = this;
       var options = $(".topology-gremlin-favorites");
@@ -562,22 +579,32 @@ var TopologyComponent = {
         var favorites = JSON.parse(localStorage.preferences).favorites;
         if (favorites) {
           $.each(favorites, function(i, f) {
-            options.append($("<option/>").text(f.name).val(f.expression));
+            self.addFilter(f.name, f.expression);
           });
         }
       }
 
       var favorites = app.getConfigValue('topology.favorites');
-      if (!favorites || favorites.length == 0) return;
+      if (favorites) {
+        $.each(favorites, function(key, value) {
+          self.addFilter(key, value);
+        });
+      }
 
-      $.each(favorites, function(key, value) {
-        options.append($("<option/>").text(key).val(value));
-      });
+      if (self.isK8SEnabled()) {
+        self.addFilterK8sTypes("all", []);
+        self.addFilterK8sTypes("compute", ["cluster", "container", "namespace", "node", "pod"]);
+        self.addFilterK8sTypes("deployment", ["cluster", "deployment", "job", "namespace", "node", "pod", "replicaset", "replicationcontroller", "statefulset"]);
+        self.addFilterK8sTypes("compute", ["cluster", "container", "namespace", "networkpolicy", "pod"]);
+        self.addFilterK8sTypes("service", ["cluster", "endpoints", "ingress",  "namespace", "node", "pod", "service"]);
+        self.addFilterK8sTypes("storage", ["cluster", "persistentvolume", "persistentvolumeclaim", "storageclass"]);
+      }
 
       for (var i = 0, len = self.dynamicFilter.length; i < len; i++) {
         filter = JSON.parse(self.dynamicFilter[i])
         $.each(filter["value"], function(key, value) {
-          options.append($("<option/>").text(filter["Name"] + ": " + key).val(value));
+          let label = filter["Name"] + ": " + key
+          self.addFilter(label, value);
         });
       }
 
