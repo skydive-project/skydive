@@ -447,10 +447,17 @@ func (o *ovsMirrorProbe) OnStopped() {
 // OnError FlowProbeEventHandler implementation
 func (o *ovsMirrorProbe) OnError(err error) {
 	o.graph.Lock()
-	tr := o.graph.StartMetadataTransaction(o.mirrorNode)
+	tr := o.graph.StartMetadataTransaction(o.node)
 	tr.AddMetadata("Capture.State", "error")
 	tr.AddMetadata("Capture.Error", err.Error())
 	tr.Commit()
+
+	if o.mirrorNode != nil {
+		tr := o.graph.StartMetadataTransaction(o.mirrorNode)
+		tr.AddMetadata("Capture.State", "error")
+		tr.AddMetadata("Capture.Error", err.Error())
+		tr.Commit()
+	}
 	o.graph.Unlock()
 }
 
