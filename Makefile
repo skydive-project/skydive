@@ -551,7 +551,7 @@ SKYDIVE_PROTO_FILES:= \
 	flow/flow.proto \
 	filters/filters.proto \
 	websocket/structmessage.proto \
-	flow/layers/layers.proto
+	flow/layers/generated.proto
 
 SKYDIVE_TAR_INPUT:= \
 	vendor \
