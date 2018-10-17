@@ -101,7 +101,7 @@ stop() {
 start() {
         check_minikube
 
-        local args="--kubernetes-version $K8S_VERSION"
+        local args="--kubernetes-version $K8S_VERSION --memory 4096"
         if [ "$MINIKUBE_DRIVER" == "none" ]; then
                 args="$args --vm-driver=none --bootstrapper=localkube"
                 local driver=$(sudo docker info --format '{{print .CgroupDriver}}')
@@ -116,13 +116,15 @@ start() {
 
 	# FIXME: using '|| true' to overcome following:
         # FIXME: Error cluster status: getting status: running command: sudo systemctl is-active kubelet
+        echo "Starting minikube with minikube start $args"
         minikube start $args || true
 
-	# give minikube time to come up
-	sleep 5
+        echo "Give minikube time to come up"
+        sleep 5
 
+        echo "Get minikube status"
         minikube status
-        export no_proxy=$no_proxy,$(minikube ip)
+
         kubectl config use-context minikube
 
         for i in .kube .minikube; do

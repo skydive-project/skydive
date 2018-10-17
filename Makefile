@@ -148,7 +148,7 @@ endif
 
 ifeq ($(WITH_ISTIO), true)
   BUILD_TAGS+=k8s istio
-  EXTRA_ARGS+=-analyzer.topology.probes=istio
+  EXTRA_ARGS+=-analyzer.topology.probes=k8s,istio
 endif
 
 ifeq ($(WITH_HELM), true)
