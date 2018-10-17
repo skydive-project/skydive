@@ -23,6 +23,7 @@
 package client
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -85,19 +86,16 @@ var WorkflowCreate = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		workflow, err := loadWorklow(workflowPath)
 		if err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		if err := client.Create("workflow", &workflow); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 		printJSON(workflow)
 	},
@@ -118,8 +116,7 @@ var WorkflowDelete = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Critical(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		for _, id := range args {
@@ -140,13 +137,11 @@ var WorkflowList = &cobra.Command{
 		var workflows map[string]types.Workflow
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		if err := client.List("workflow", &workflows); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 		printJSON(workflows)
 	},
@@ -168,19 +163,16 @@ var WorkflowCall = &cobra.Command{
 		var workflow types.Workflow
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		if err := client.Get("workflow", args[0], &workflow); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		runtime, err := js.NewRuntime()
 		if err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		runtime.Start()
@@ -188,8 +180,7 @@ var WorkflowCall = &cobra.Command{
 
 		result, err := runtime.Exec("(" + workflow.Source + ")")
 		if err != nil {
-			logging.GetLogger().Errorf("Error while compile workflow %s: %s", workflow.Source, result.String())
-			os.Exit(1)
+			exitOnError(fmt.Errorf("Error while compile workflow %s: %s", workflow.Source, result.String()))
 		}
 
 		params := make([]interface{}, len(args)-1)
@@ -199,13 +190,11 @@ var WorkflowCall = &cobra.Command{
 
 		result, err = result.Call(result, params...)
 		if err != nil {
-			logging.GetLogger().Errorf("Error while executing workflow: %s", result.String())
-			os.Exit(1)
+			exitOnError(fmt.Errorf("Error while executing workflow: %s", result.String()))
 		}
 
 		if !result.IsObject() {
-			logging.GetLogger().Errorf("Workflow is expected to return a promise, returned %s", result.Class())
-			os.Exit(1)
+			exitOnError(fmt.Errorf("Workflow is expected to return a promise, returned %s", result.Class()))
 		}
 
 		done := make(chan otto.Value)

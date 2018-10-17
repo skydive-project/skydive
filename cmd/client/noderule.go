@@ -23,6 +23,8 @@
 package client
 
 import (
+	"errors"
+	"fmt"
 	"os"
 
 	"github.com/skydive-project/skydive/api/client"
@@ -63,20 +65,17 @@ var NodeRuleCreate = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		m, err := usertopology.DefToMetadata(metadata, graph.Metadata{})
 		if err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		if action == "create" {
 			if nodeName == "" || nodeType == "" {
-				logging.GetLogger().Error("Both --node-name and --node-type are required for 'create' node rules")
-				os.Exit(1)
+				exitOnError(errors.New("Both --node-name and --node-type are required for 'create' node rules"))
 			}
 
 			m["Name"] = nodeName
@@ -92,13 +91,11 @@ var NodeRuleCreate = &cobra.Command{
 		}
 
 		if err = validator.Validate(node); err != nil {
-			logging.GetLogger().Errorf("Error while validating node rule: %s", err)
-			os.Exit(1)
+			exitOnError(fmt.Errorf("Error while validating node rule: %s", err))
 		}
 
 		if err = client.Create("noderule", &node); err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		printJSON(node)

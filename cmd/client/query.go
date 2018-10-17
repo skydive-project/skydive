@@ -26,6 +26,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -55,8 +56,7 @@ var QueryCmd = &cobra.Command{
 		case "json":
 			data, err := queryHelper.QueryRaw(gremlinQuery)
 			if err != nil {
-				logging.GetLogger().Error(err.Error())
-				os.Exit(1)
+				exitOnError(err)
 			}
 
 			var out bytes.Buffer
@@ -67,15 +67,13 @@ var QueryCmd = &cobra.Command{
 			header.Set("Accept", "vnd.graphviz")
 			resp, err := queryHelper.Request(gremlinQuery, header)
 			if err != nil {
-				logging.GetLogger().Error(err.Error())
-				os.Exit(1)
+				exitOnError(err)
 			}
 			defer resp.Body.Close()
 
 			if resp.StatusCode != http.StatusOK {
 				data, _ := ioutil.ReadAll(resp.Body)
-				logging.GetLogger().Errorf("%s: %s", resp.Status, string(data))
-				os.Exit(1)
+				exitOnError(fmt.Errorf("%s: %s", resp.Status, string(data)))
 			}
 			bufio.NewReader(resp.Body).WriteTo(os.Stdout)
 		case "pcap":
@@ -83,15 +81,13 @@ var QueryCmd = &cobra.Command{
 			header.Set("Accept", "vnd.tcpdump.pcap")
 			resp, err := queryHelper.Request(gremlinQuery, header)
 			if err != nil {
-				logging.GetLogger().Error(err.Error())
-				os.Exit(1)
+				exitOnError(err)
 			}
 			defer resp.Body.Close()
 
 			if resp.StatusCode != http.StatusOK {
 				data, _ := ioutil.ReadAll(resp.Body)
-				logging.GetLogger().Errorf("%s: %s", resp.Status, string(data))
-				os.Exit(1)
+				exitOnError(fmt.Errorf("%s: %s", resp.Status, string(data)))
 			}
 
 			bufio.NewReader(resp.Body).WriteTo(os.Stdout)

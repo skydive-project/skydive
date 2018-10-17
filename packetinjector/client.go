@@ -142,65 +142,67 @@ func (pc *Client) requestToParams(pi *types.PacketInjection) (string, *PacketInj
 		return "", nil, errors.New("Not able to find a source node")
 	}
 
-	ipField := "IPV4"
-	if pi.Type == "icmp6" || pi.Type == "tcp6" || pi.Type == "udp6" {
-		ipField = "IPV6"
-	}
-
-	if pi.SrcIP == "" {
-		ips, _ := srcNode.GetFieldStringList(ipField)
-		if len(ips) == 0 {
-			return "", nil, errors.New("No source IP in node and user input")
+	if len(pi.Pcap) == 0 {
+		ipField := "IPV4"
+		if pi.Type == "icmp6" || pi.Type == "tcp6" || pi.Type == "udp6" {
+			ipField = "IPV6"
 		}
-		pi.SrcIP = ips[0]
-	} else {
-		pi.SrcIP = pc.normalizeIP(pi.SrcIP, ipField)
-	}
 
-	if pi.DstIP == "" {
-		if dstNode != nil {
-			ips, _ := dstNode.GetFieldStringList(ipField)
+		if pi.SrcIP == "" {
+			ips, _ := srcNode.GetFieldStringList(ipField)
 			if len(ips) == 0 {
-				return "", nil, errors.New("No dest IP in node and user input")
+				return "", nil, errors.New("No source IP in node and user input")
 			}
-			pi.DstIP = ips[0]
+			pi.SrcIP = ips[0]
 		} else {
-			return "", nil, errors.New("Not able to find a dest node and dest IP also empty")
+			pi.SrcIP = pc.normalizeIP(pi.SrcIP, ipField)
 		}
-	} else {
-		pi.DstIP = pc.normalizeIP(pi.DstIP, ipField)
-	}
 
-	if pi.SrcMAC == "" {
-		if srcNode != nil {
-			mac, _ := srcNode.GetFieldString("MAC")
-			if mac == "" {
-				return "", nil, errors.New("No source MAC in node and user input")
+		if pi.DstIP == "" {
+			if dstNode != nil {
+				ips, _ := dstNode.GetFieldStringList(ipField)
+				if len(ips) == 0 {
+					return "", nil, errors.New("No dest IP in node and user input")
+				}
+				pi.DstIP = ips[0]
+			} else {
+				return "", nil, errors.New("Not able to find a dest node and dest IP also empty")
 			}
-			pi.SrcMAC = mac
 		} else {
-			return "", nil, errors.New("Not able to find a source node and source MAC also empty")
+			pi.DstIP = pc.normalizeIP(pi.DstIP, ipField)
 		}
-	}
 
-	if pi.DstMAC == "" {
-		if dstNode != nil {
-			mac, _ := dstNode.GetFieldString("MAC")
-			if mac == "" {
-				return "", nil, errors.New("No dest MAC in node and user input")
+		if pi.SrcMAC == "" {
+			if srcNode != nil {
+				mac, _ := srcNode.GetFieldString("MAC")
+				if mac == "" {
+					return "", nil, errors.New("No source MAC in node and user input")
+				}
+				pi.SrcMAC = mac
+			} else {
+				return "", nil, errors.New("Not able to find a source node and source MAC also empty")
 			}
-			pi.DstMAC = mac
-		} else {
-			return "", nil, errors.New("Not able to find a dest node and dest MAC also empty")
 		}
-	}
 
-	if pi.Type == "tcp4" || pi.Type == "tcp6" {
-		if pi.SrcPort == 0 {
-			pi.SrcPort = rand.Int63n(max-min) + min
+		if pi.DstMAC == "" {
+			if dstNode != nil {
+				mac, _ := dstNode.GetFieldString("MAC")
+				if mac == "" {
+					return "", nil, errors.New("No dest MAC in node and user input")
+				}
+				pi.DstMAC = mac
+			} else {
+				return "", nil, errors.New("Not able to find a dest node and dest MAC also empty")
+			}
 		}
-		if pi.DstPort == 0 {
-			pi.DstPort = rand.Int63n(max-min) + min
+
+		if pi.Type == "tcp4" || pi.Type == "tcp6" {
+			if pi.SrcPort == 0 {
+				pi.SrcPort = rand.Int63n(max-min) + min
+			}
+			if pi.DstPort == 0 {
+				pi.DstPort = rand.Int63n(max-min) + min
+			}
 		}
 	}
 
@@ -215,6 +217,7 @@ func (pc *Client) requestToParams(pi *types.PacketInjection) (string, *PacketInj
 		DstPort:   pi.DstPort,
 		Type:      pi.Type,
 		Payload:   pi.Payload,
+		Pcap:      pi.Pcap,
 		Count:     pi.Count,
 		Interval:  pi.Interval,
 		ID:        pi.ICMPID,
@@ -274,7 +277,9 @@ func (pc *Client) onAPIWatcherEvent(action string, id string, resource types.Res
 		pi.StartTime = time.Now()
 		pc.piHandler.BasicAPIHandler.Update(pi.UUID, pi)
 
-		go pc.expirePI(pi.UUID, time.Duration(pi.Count*pi.Interval)*time.Millisecond)
+		if len(pi.Pcap) == 0 {
+			go pc.expirePI(pi.UUID, time.Duration(pi.Count*pi.Interval)*time.Millisecond)
+		}
 	case "expire", "delete":
 		pc.graph.RLock()
 		srcNode := pc.getNode(pi.Src)
