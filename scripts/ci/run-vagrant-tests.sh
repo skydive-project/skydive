@@ -46,7 +46,7 @@ function vagrant_cleanup {
     vagrant ssh analyzer1 -c 'sudo journalctl -xe | grep skydive'
     vagrant destroy --force
 }
-trap vagrant_cleanup EXIT
+[ "$KEEP_RESOURCES" = "true" ] || trap vagrant_cleanup EXIT
 
 function run_functional_tests {
   vagrant ssh-config > vagrant-ssh-config
@@ -94,7 +94,7 @@ for mode in $MODES
 do
   echo "================== deploying mode $mode ==============================="
   DEPLOYMENT_MODE=$mode vagrant box update
-  DEPLOYMENT_MODE=$mode vagrant up --provision-with common
+  DEPLOYMENT_MODE=$mode vagrant up --provision-with common ${KEEP_RESOURCES:+--no-destroy-on-error}
   DEPLOYMENT_MODE=$mode vagrant provision
 
   vagrant ssh analyzer1 -- sudo ntpdate fr.pool.ntp.org
