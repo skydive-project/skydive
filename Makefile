@@ -51,7 +51,8 @@ EASYJSON_FILES_ALL=flow/flow.pb.go
 EASYJSON_FILES_TAG=\
 	flow/storage/elasticsearch/elasticsearch.go \
 	topology/graph/elasticsearch.go \
-	topology/metrics.go
+	topology/metrics.go \
+	topology/probes/netlink/route.go
 EASYJSON_FILES_TAG_LINUX=\
 	topology/probes/netlink/netlink.go \
 	topology/probes/socketinfo/connection.go
