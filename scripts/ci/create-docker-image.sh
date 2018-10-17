@@ -85,4 +85,4 @@ do
 done
 
 docker manifest inspect "${DOCKER_IMAGE}:${DOCKER_TAG}"
-docker manifest push    "${DOCKER_IMAGE}:${DOCKER_TAG}"
+docker manifest push --purge "${DOCKER_IMAGE}:${DOCKER_TAG}"
