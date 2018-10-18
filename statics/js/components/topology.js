@@ -190,6 +190,10 @@ var TopologyComponent = {
                title="Metadata">\
           <object-detail :object="currentEdge.metadata"></object-detail>\
         </panel>\
+        <panel id="docker-metadata" v-if="currentNodeDocker"\
+               title="Docker">\
+          <object-detail :object="currentNodeDocker"></object-detail>\
+        </panel>\
         <panel id="k8s-metadata" v-if="currentNodeK8s"\
                title="K8s">\
           <object-detail :object="currentNodeK8s"></object-detail>\
@@ -418,6 +422,11 @@ var TopologyComponent = {
       if (this.currentNodeMetadata && this.currentNode.isCaptureAllowed())
         return "G.Flows().Has('NodeTID', '" + this.currentNode.metadata.TID + "').Sort()";
       return null;
+    },
+
+    currentNodeDocker: function() {
+      if (!this.currentNodeMetadata || !this.currentNode.metadata.Docker) return null;
+      return this.currentNode.metadata.Docker;
     },
 
     currentNodeK8s: function() {
