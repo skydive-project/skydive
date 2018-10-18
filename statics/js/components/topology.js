@@ -564,9 +564,9 @@ var TopologyComponent = {
         .catch(function() {});
     },
 
-    addFilter: function(label, query) {
+    addFilter: function(label, gremlin) {
       var options = $(".topology-gremlin-favorites");
-      options.append($("<option/>").text(label).val(query));
+      options.append($("<option/>").val(label).attr('gremlin', gremlin));
     },
 
     gremlinK8sTypes: function(types) {
@@ -636,6 +636,7 @@ var TopologyComponent = {
       var opts = document.getElementById(listId).childNodes;
       for (var i = 0; i < opts.length; i++) {
         if (opts[i].value === val) {
+          this.topologyFilter = opts[i].getAttribute("gremlin");
           if (e.target.id === "topology-filter") {
             this.topologyFilterQuery();
           } else if (e.target.id === "topology-highlight") {
