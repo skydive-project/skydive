@@ -14,6 +14,12 @@ Install the template
 oc create -f skydive-template.yaml
 ```
 
+Apply the rbac
+
+```
+oc apply -f skydive-rbac.yaml
+```
+
 You need the DeploymentConfig to run in privileged:
 
 ```

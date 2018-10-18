@@ -68,6 +68,8 @@ objects:
             value: elasticsearch
           - name: SKYDIVE_ANALYZER_TOPOLOGY_BACKEND
             value: elasticsearch
+          - name: SKYDIVE_ANALYZER_TOPOLOGY_PROBES
+            value: k8s
           - name: SKYDIVE_ETCD_LISTEN
             value: 0.0.0.0:12379
           image: skydive/skydive
