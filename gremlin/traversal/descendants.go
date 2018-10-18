@@ -117,8 +117,8 @@ func (d *DescendantsGremlinTraversalStep) Exec(last traversal.GraphTraversalStep
 }
 
 // Reduce Descendants step
-func (d *DescendantsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
-	return next
+func (d *DescendantsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) (traversal.GremlinTraversalStep, error) {
+	return next, nil
 }
 
 // Context Descendants step

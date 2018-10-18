@@ -233,61 +233,8 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 	}
 }
 
-// ParamsToMetadataFilter converts a slice to a ElementMatcher
-func ParamsToMetadataFilter(s ...interface{}) (graph.ElementMatcher, error) {
-	m, err := ParamsToMap(s...)
-	if err != nil {
-		return nil, err
-	}
-
-	return MapToMetadataFilter(m)
-}
-
-// ParamsToMetadata converts a slice to a ElementMatcher
-func ParamsToMetadata(s ...interface{}) (graph.Metadata, error) {
-	m, err := ParamsToMap(s...)
-	if err != nil {
-		return nil, err
-	}
-
-	return graph.Metadata(m), nil
-}
-
-// ParamsToFilter converts a slice to a filter
-func ParamsToFilter(s ...interface{}) (*filters.Filter, error) {
-	m, err := ParamsToMap(s...)
-	if err != nil {
-		return nil, err
-	}
-
-	return MapToFilter(m)
-}
-
-// MapToFilter return a AND filter of the given map
-func MapToFilter(m map[string]interface{}) (*filters.Filter, error) {
-	var lf []*filters.Filter
-	for k, v := range m {
-		filter, err := KeyValueToFilter(k, v)
-		if err != nil {
-			return nil, err
-		}
-
-		lf = append(lf, filter)
-	}
-	return filters.NewBoolFilter(filters.BoolFilterOp_AND, lf...), nil
-}
-
-// MapToMetadataFilter converts a map to a ElementMatcher
-func MapToMetadataFilter(m map[string]interface{}) (graph.ElementMatcher, error) {
-	filter, err := MapToFilter(m)
-	if err != nil {
-		return nil, err
-	}
-	return graph.NewElementFilter(filter), nil
-}
-
-// ParamsToMap converts a slice to a map
-func ParamsToMap(s ...interface{}) (map[string]interface{}, error) {
+// ParamsToMetadata converts a slice to Metadata
+func paramsToMetadata(s ...interface{}) (graph.Metadata, error) {
 	if len(s)%2 != 0 {
 		return nil, fmt.Errorf("slice must be defined by pair k,v: %v", s)
 	}
@@ -302,7 +249,35 @@ func ParamsToMap(s ...interface{}) (map[string]interface{}, error) {
 		m[k] = s[i+1]
 	}
 
-	return m, nil
+	return graph.Metadata(m), nil
+}
+
+// ParamsToFilter converts a slice to a filter
+func ParamsToFilter(filterOp filters.BoolFilterOp, s ...interface{}) (*filters.Filter, error) {
+	var lf []*filters.Filter
+	for i := 0; i < len(s); i += 2 {
+		k, ok := s[i].(string)
+		if !ok {
+			return nil, errors.New("keys should be of string type")
+		}
+
+		f, err := KeyValueToFilter(k, s[i+1])
+		if err != nil {
+			return nil, err
+		}
+		lf = append(lf, f)
+	}
+
+	return filters.NewBoolFilter(filterOp, lf...), nil
+}
+
+// ParamsToMetadataFilter converts a slice to a ElementMatcher
+func ParamsToMetadataFilter(filterOp filters.BoolFilterOp, s ...interface{}) (graph.ElementMatcher, error) {
+	filter, err := ParamsToFilter(filterOp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return graph.NewElementFilter(filter), nil
 }
 
 // WithinElementMatcher describes a list of metadata that should match (within)
@@ -560,7 +535,7 @@ func (t *GraphTraversal) V(ctx StepContext, s ...interface{}) *GraphTraversalV {
 		}
 		nodes = []*graph.Node{node}
 	default:
-		if matcher, err = ParamsToMetadataFilter(s...); err != nil {
+		if matcher, err = ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...); err != nil {
 			return &GraphTraversalV{error: err}
 		}
 		fallthrough
@@ -791,7 +766,7 @@ func (t *GraphTraversal) E(ctx StepContext, s ...interface{}) *GraphTraversalE {
 		}
 		edges = []*graph.Edge{edge}
 	default:
-		if matcher, err = ParamsToMetadataFilter(s...); err != nil {
+		if matcher, err = ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...); err != nil {
 			return &GraphTraversalE{error: err}
 		}
 		fallthrough
@@ -1021,8 +996,8 @@ func (tv *GraphTraversalV) ShortestPathTo(ctx StepContext, m graph.Metadata, e g
 	return sp
 }
 
-// Has step
-func (tv *GraphTraversalV) Has(ctx StepContext, s ...interface{}) *GraphTraversalV {
+// has apply either and or or filter
+func (tv *GraphTraversalV) has(filterOp filters.BoolFilterOp, ctx StepContext, s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
 	}
@@ -1039,7 +1014,7 @@ func (tv *GraphTraversalV) Has(ctx StepContext, s ...interface{}) *GraphTraversa
 		}
 		filter = filters.NewNotNullFilter(k)
 	default:
-		filter, err = ParamsToFilter(s...)
+		filter, err = ParamsToFilter(filterOp, s...)
 		if err != nil {
 			return &GraphTraversalV{error: err}
 		}
@@ -1061,6 +1036,16 @@ func (tv *GraphTraversalV) Has(ctx StepContext, s ...interface{}) *GraphTraversa
 	}
 
 	return ntv
+}
+
+// Has step produces a AND filter
+func (tv *GraphTraversalV) Has(ctx StepContext, s ...interface{}) *GraphTraversalV {
+	return tv.has(filters.BoolFilterOp_AND, ctx, s...)
+}
+
+// HasEither step produces a OR filter
+func (tv *GraphTraversalV) HasEither(ctx StepContext, s ...interface{}) *GraphTraversalV {
+	return tv.has(filters.BoolFilterOp_OR, ctx, s...)
 }
 
 // HasKey step
@@ -1099,7 +1084,7 @@ func (tv *GraphTraversalV) Both(ctx StepContext, s ...interface{}) *GraphTravers
 		return tv
 	}
 
-	metadata, err := ParamsToMetadataFilter(s...)
+	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
 		return &GraphTraversalV{error: err}
 	}
@@ -1181,7 +1166,7 @@ func (tv *GraphTraversalV) Out(ctx StepContext, s ...interface{}) *GraphTraversa
 		return tv
 	}
 
-	metadata, err := ParamsToMetadataFilter(s...)
+	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
 		return &GraphTraversalV{error: err}
 	}
@@ -1212,7 +1197,7 @@ func (tv *GraphTraversalV) OutE(ctx StepContext, s ...interface{}) *GraphTravers
 		return &GraphTraversalE{error: tv.error}
 	}
 
-	metadata, err := ParamsToMetadataFilter(s...)
+	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
 		return &GraphTraversalE{error: err}
 	}
@@ -1245,7 +1230,7 @@ func (tv *GraphTraversalV) BothE(ctx StepContext, s ...interface{}) *GraphTraver
 		return &GraphTraversalE{error: tv.error}
 	}
 
-	metadata, err := ParamsToMetadataFilter(s...)
+	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
 		return &GraphTraversalE{GraphTraversal: tv.GraphTraversal, error: err}
 	}
@@ -1276,7 +1261,7 @@ func (tv *GraphTraversalV) In(ctx StepContext, s ...interface{}) *GraphTraversal
 		return tv
 	}
 
-	metadata, err := ParamsToMetadataFilter(s...)
+	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
 		return &GraphTraversalV{error: err}
 	}
@@ -1307,7 +1292,7 @@ func (tv *GraphTraversalV) InE(ctx StepContext, s ...interface{}) *GraphTraversa
 		return &GraphTraversalE{error: tv.error}
 	}
 
-	metadata, err := ParamsToMetadataFilter(s...)
+	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
 		return &GraphTraversalE{GraphTraversal: tv.GraphTraversal, error: err}
 	}
@@ -1488,8 +1473,7 @@ func (te *GraphTraversalE) Dedup(ctx StepContext, keys ...interface{}) *GraphTra
 	return ntv
 }
 
-// Has step
-func (te *GraphTraversalE) Has(ctx StepContext, s ...interface{}) *GraphTraversalE {
+func (te *GraphTraversalE) has(filterOp filters.BoolFilterOp, ctx StepContext, s ...interface{}) *GraphTraversalE {
 	if te.error != nil {
 		return te
 	}
@@ -1506,7 +1490,7 @@ func (te *GraphTraversalE) Has(ctx StepContext, s ...interface{}) *GraphTraversa
 		}
 		filter = filters.NewNotNullFilter(k)
 	default:
-		filter, err = ParamsToFilter(s...)
+		filter, err = ParamsToFilter(filterOp, s...)
 		if err != nil {
 			return &GraphTraversalE{error: err}
 		}
@@ -1528,6 +1512,16 @@ func (te *GraphTraversalE) Has(ctx StepContext, s ...interface{}) *GraphTraversa
 	}
 
 	return nte
+}
+
+// Has step
+func (te *GraphTraversalE) Has(ctx StepContext, s ...interface{}) *GraphTraversalE {
+	return te.has(filters.BoolFilterOp_AND, ctx, s...)
+}
+
+// HasEither step
+func (te *GraphTraversalE) HasEither(ctx StepContext, s ...interface{}) *GraphTraversalE {
+	return te.has(filters.BoolFilterOp_OR, ctx, s...)
 }
 
 // HasKey step
@@ -1566,7 +1560,7 @@ func (te *GraphTraversalE) InV(ctx StepContext, s ...interface{}) *GraphTraversa
 		return &GraphTraversalV{error: te.error}
 	}
 
-	metadata, err := ParamsToMetadataFilter(s...)
+	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
 		return &GraphTraversalV{error: err}
 	}
@@ -1597,7 +1591,7 @@ func (te *GraphTraversalE) OutV(ctx StepContext, s ...interface{}) *GraphTravers
 		return &GraphTraversalV{error: te.error}
 	}
 
-	metadata, err := ParamsToMetadataFilter(s...)
+	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
 		return &GraphTraversalV{error: err}
 	}
@@ -1628,7 +1622,7 @@ func (te *GraphTraversalE) BothV(ctx StepContext, s ...interface{}) *GraphTraver
 		return &GraphTraversalV{error: te.error}
 	}
 
-	metadata, err := ParamsToMetadataFilter(s...)
+	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
 		return &GraphTraversalV{error: err}
 	}

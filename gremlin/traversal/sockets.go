@@ -79,8 +79,8 @@ func (s *SocketsGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (t
 }
 
 // Reduce flow step
-func (s *SocketsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
-	return next
+func (s *SocketsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) (traversal.GremlinTraversalStep, error) {
+	return next, nil
 }
 
 // Context sockets step
@@ -116,13 +116,12 @@ func (s *SocketsTraversalStep) PropertyValues(ctx traversal.StepContext, keys ..
 	return traversal.NewGraphTraversalValue(s.GraphTraversal, values)
 }
 
-// Has step
-func (s *SocketsTraversalStep) Has(ctx traversal.StepContext, params ...interface{}) *SocketsTraversalStep {
+func (s *SocketsTraversalStep) has(filterOp filters.BoolFilterOp, ctx traversal.StepContext, params ...interface{}) *SocketsTraversalStep {
 	if s.error != nil {
 		return s
 	}
 
-	filter, err := paramsToFilter(params...)
+	filter, err := paramsToFilter(filterOp, params...)
 	if err != nil {
 		return &SocketsTraversalStep{error: err}
 	}
@@ -144,6 +143,16 @@ func (s *SocketsTraversalStep) Has(ctx traversal.StepContext, params ...interfac
 	}
 
 	return &SocketsTraversalStep{GraphTraversal: s.GraphTraversal, sockets: flowSockets}
+}
+
+// Has step
+func (s *SocketsTraversalStep) Has(ctx traversal.StepContext, params ...interface{}) *SocketsTraversalStep {
+	return s.has(filters.BoolFilterOp_AND, ctx, params...)
+}
+
+// HasEither step
+func (s *SocketsTraversalStep) HasEither(ctx traversal.StepContext, params ...interface{}) *SocketsTraversalStep {
+	return s.has(filters.BoolFilterOp_OR, ctx, params...)
 }
 
 // Values returns list of socket informations

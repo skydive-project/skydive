@@ -111,6 +111,7 @@ func newICMPFlow(id uint32) *flow.Flow {
 	icmp := flow.NewFlow()
 	icmp.UUID = strconv.Itoa(rand.Int())
 	icmp.ICMP = &flow.ICMPLayer{ID: id}
+	icmp.NodeTID = "node1"
 	return icmp
 }
 
@@ -141,6 +142,30 @@ func TestHasStep(t *testing.T) {
 	}
 
 	query = `G.Flows().Has("ICMP.ID", NE(555)).Limit(1)`
+	res = execTraversalQuery(t, tc, query)
+	if len(res.Values()) != 1 {
+		t.Fatalf("Should return 1 result, returned: %v", res.Values())
+	}
+
+	query = `G.Flows().HasEither("ICMP.ID", 222, "ICMP.ID", 444)`
+	res = execTraversalQuery(t, tc, query)
+	if len(res.Values()) != 2 {
+		t.Fatalf("Should return 2 result, returned: %v", res.Values())
+	}
+
+	query = `G.Flows().Has("NodeTID", "node1")`
+	res = execTraversalQuery(t, tc, query)
+	if len(res.Values()) != 2 {
+		t.Fatalf("Should return 2 result, returned: %v", res.Values())
+	}
+
+	query = `G.Flows().Has("NodeTID", "node1").Has("ICMP.ID", 222)`
+	res = execTraversalQuery(t, tc, query)
+	if len(res.Values()) != 1 {
+		t.Fatalf("Should return 1 result, returned: %v", res.Values())
+	}
+
+	query = `G.Flows().HasEither("NodeTID", "node1", "ICMP.ID", 444).Has("ICMP.ID", 222)`
 	res = execTraversalQuery(t, tc, query)
 	if len(res.Values()) != 1 {
 		t.Fatalf("Should return 1 result, returned: %v", res.Values())
