@@ -32,6 +32,7 @@
     name: local
     description: Local Skydive repository
     baseurl: "file:///tmp"
+    gpgcheck: no
   when: skydive_package_location is defined
 
 - name: Install skydive package
