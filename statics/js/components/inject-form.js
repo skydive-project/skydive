@@ -53,20 +53,25 @@ Vue.component('inject-form', {
       </div>\
       <div v-if="type === \'icmp4\' || type === \'icmp6\'">\
         <div class="form-group">\
-          <label for="inject-count">ICMP Identifier</label>\
+          <label for="inject-count">ICMP ID</label>\
           <input id="inject-id" type="number" class="form-control input-sm" v-model.number="id" min="0" />\
         </div>\
         <div class="form-group">\
-          <label for="inject-increment">Increment identifier at every packet</label>\
-          <input id="inject-increment" type="checkbox" class="form-check-input" v-model="increment" />\
+          <label class="form-check-label">\
+            <input id="inject-increment" type="checkbox" class="form-check-input" v-model="increment">\
+            Increment ID at every packet\
+            <span class="checkmark"></span>\
+          </label>\
         </div>\
       </div>\
-      <div class="form-group">\
+      <div class="form-group form-inline">\
         <label class="radio-inline">\
           <input type="radio" id="random" value="random" v-model="mode"> Payload Length\
+          <span class="checkmark"></span>\
         </label>\
         <label class="radio-inline">\
           <input type="radio" id="custom" value="custom" v-model="mode"> Payload\
+          <span class="checkmark"></span>\
         </label>\
       </div>\
       <div class="form-group" v-if="mode == \'random\'">\

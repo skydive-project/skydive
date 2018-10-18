@@ -9,6 +9,55 @@ body {
   background-color: #1b1e23;
 }
 
+.dark input, .dark textarea, .dark input.form-control[readonly], 
+.dark select, .dark select[disabled], .dark textarea[readonly], .dark textarea[disabled] {
+  background-color: #1b1e23;
+  border-radius: 0;
+  border: none;
+  color: #cacaca;
+}
+
+.form-signin-fields {
+  margin-bottom: 15px;
+}
+
+.dark .form-signin-fields input {
+  background-color: #131519;
+}
+
+.workflow-title {
+  font-size: 14px;
+}
+
+select:active, select:hover {
+  outline: none
+}
+
+.dark .form-control + .fa-crosshairs {
+  color: #fff;
+}
+
+.dark .advanced-options {
+  color: #0a75b9;
+  font-size: 14px;
+}
+
+.dark .form-control:focus {
+  border: none;
+  -webkit-box-shadow: none;
+  box-shadow: none;
+}
+
+.dark .input-group-addon {
+  background-color: #17181d;
+  color: white;
+  border: none;
+}
+
+.capture-form .pull-left {
+  padding-right: 15px;
+}
+
 .navbar .container {
   width: 100%;
 }
@@ -94,6 +143,7 @@ label {
 .panel .btn, .button-holder .btn {
   border-radius: 24px;
   padding: 10px 20px;
+  outline: none !important;
 }
 
 .panel-actions .btn {
@@ -131,10 +181,6 @@ label {
 
 .fill {
   height: 100%;
-}
-
-.panel {
-  background-color: #292e34;
 }
 
 .ui-resizable {
@@ -723,4 +769,124 @@ hr {
 
 .bool-value-false {
   color: #ff2020;
+}
+
+.radio-inline {
+  position: relative;
+  padding-left: 28px;
+  cursor: pointer;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  margin-right: 15px;
+  margin-left: 0;
+}
+
+.radio-inline input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.radio-inline .checkmark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 21px;
+  width: 21px;
+  background-color: #eee;
+  border-radius: 50%;
+}
+
+.radio-inline:hover input ~ .checkmark {
+  background-color: #ccc;
+}
+
+.radio-inline input:checked ~ .checkmark {
+  background-color: #2196F3;
+}
+
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+.radio-inline input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.radio-inline .checkmark:after {
+  top: 7px;
+  left: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: white;
+}
+
+.form-inline {
+  display: flex;
+}
+
+
+/* Customize the label (the container) */
+.form-check-label {
+  display: block;
+  position: relative;
+  padding-left: 35px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Hide the browser's default checkbox */
+.form-check-label input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+/* Create a custom checkbox */
+.form-check-label .checkmark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 21px;
+  width: 22px;
+  background-color: #eee;
+}
+
+/* On mouse-over, add a grey background color */
+.form-check-label:hover input ~ .checkmark {
+  background-color: #ccc;
+}
+
+/* When the checkbox is checked, add a blue background */
+.form-check-label input:checked ~ .checkmark {
+  background-color: #2196F3;
+}
+
+/* Show the checkmark when checked */
+.form-check-label input:checked ~ .checkmark:after {
+  display: block;
+}
+
+/* Style the checkmark/indicator */
+.form-check-label .checkmark:after {
+  left: 9px;
+  top: 5px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 3px 3px 0;
+  -webkit-transform: rotate(45deg);
+  -ms-transform: rotate(45deg);
+  transform: rotate(45deg);
 }
