@@ -172,6 +172,10 @@ ifeq ($(WITH_LXD), true)
   BUILD_TAGS+=lxd
 endif
 
+ifeq ($(WITH_LIBVIRT), true)
+  BUILD_TAGS+=libvirt
+endif
+
 STATIC_LIBS_ABS := $(addprefix $(STATIC_DIR)/,$(STATIC_LIBS))
 
 .PHONY: all install
