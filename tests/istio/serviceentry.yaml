@@ -1,0 +1,12 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: skydive-test-serviceentry
+spec:
+   hosts:
+   - external.extsvc.com
+   ports:
+   - number: 1443
+     name: extsvc-http
+     protocol: HTTP # not HTTPS.
+   resolution: DNS

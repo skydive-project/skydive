@@ -30,21 +30,21 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/k8s"
 )
 
-type destinationRuleHandler struct {
+type quotaSpecBindingHandler struct {
 }
 
 // Map graph node to k8s resource
-func (h *destinationRuleHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
-	dr := obj.(*kiali.DestinationRule)
-	return graph.Identifier(dr.GetUID()), k8s.NewMetadata(Manager, "destinationrule", dr, dr.Name, dr.Namespace)
+func (h *quotaSpecBindingHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
+	qsb := obj.(*kiali.QuotaSpecBinding)
+	return graph.Identifier(qsb.GetUID()), k8s.NewMetadata(Manager, "quotaspecbinding", qsb, qsb.Name, qsb.Namespace)
 }
 
 // Dump k8s resource
-func (h *destinationRuleHandler) Dump(obj interface{}) string {
-	dr := obj.(*kiali.DestinationRule)
-	return fmt.Sprintf("destinationrule{Namespace: %s, Name: %s}", dr.Namespace, dr.Name)
+func (h *quotaSpecBindingHandler) Dump(obj interface{}) string {
+	qsb := obj.(*kiali.QuotaSpecBinding)
+	return fmt.Sprintf("quotaspecbinding{Namespace: %s, Name: %s}", qsb.Namespace, qsb.Name)
 }
 
-func newDestinationRuleProbe(client *kiali.IstioClient, g *graph.Graph) k8s.Subprobe {
-	return k8s.NewResourceCache(client.GetIstioNetworkingApi(), &kiali.DestinationRule{}, "destinationrules", g, &destinationRuleHandler{})
+func newQuotaSpecBindingProbe(client *kiali.IstioClient, g *graph.Graph) k8s.Subprobe {
+	return k8s.NewResourceCache(client.GetIstioConfigApi(), &kiali.QuotaSpecBinding{}, "quotaspecbindings", g, &quotaSpecBindingHandler{})
 }
