@@ -123,15 +123,17 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		}
 	}
 
-	linkedToCluster := []string{
+	probe := NewProbe(g, Manager, subprobes, linkers)
+
+	probe.AppendClusterLinkers(
 		"namespace",
 		"node",
 		"persistentvolume",
 		"persistentvolumeclaim",
 		"storageclass",
-	}
+	)
 
-	linkedToNamespace := []string{
+	probe.AppendNamespaceLinkers(
 		"cronjob",
 		"deployment",
 		"daemonset",
@@ -144,7 +146,7 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		"replicationcontroller",
 		"service",
 		"statefulset",
-	}
+	)
 
-	return NewProbe(g, Manager, subprobes, linkers, linkedToCluster, linkedToNamespace)
+	return probe, nil
 }

@@ -30,21 +30,21 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/k8s"
 )
 
-type destinationRuleHandler struct {
+type virtualServiceHandler struct {
 }
 
 // Map graph node to k8s resource
-func (h *destinationRuleHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
-	dr := obj.(*kiali.DestinationRule)
-	return graph.Identifier(dr.GetUID()), k8s.NewMetadata(Manager, "destinationrule", dr, dr.Name, dr.Namespace)
+func (h *virtualServiceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
+	vs := obj.(*kiali.VirtualService)
+	return graph.Identifier(vs.GetUID()), k8s.NewMetadata(Manager, "virtualservice", vs, vs.Name, vs.Namespace)
 }
 
 // Dump k8s resource
-func (h *destinationRuleHandler) Dump(obj interface{}) string {
-	dr := obj.(*kiali.DestinationRule)
-	return fmt.Sprintf("destinationrule{Namespace: %s, Name: %s}", dr.Namespace, dr.Name)
+func (h *virtualServiceHandler) Dump(obj interface{}) string {
+	vs := obj.(*kiali.VirtualService)
+	return fmt.Sprintf("virtualservice{Namespace: %s, Name: %s}", vs.Namespace, vs.Name)
 }
 
-func newDestinationRuleProbe(client *kiali.IstioClient, g *graph.Graph) k8s.Subprobe {
-	return k8s.NewResourceCache(client.GetIstioNetworkingApi(), &kiali.DestinationRule{}, "destinationrules", g, &destinationRuleHandler{})
+func newVirtualServiceProbe(client *kiali.IstioClient, g *graph.Graph) k8s.Subprobe {
+	return k8s.NewResourceCache(client.GetIstioNetworkingApi(), &kiali.VirtualService{}, "virtualservices", g, &virtualServiceHandler{})
 }

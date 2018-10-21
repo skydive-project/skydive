@@ -38,6 +38,26 @@ func TestIstioDestinationRuleNode(t *testing.T) {
 	testNodeCreationFromConfig(t, istio.Manager, "destinationrule", objName+"-destinationrule")
 }
 
+func TestIstioGatewayNode(t *testing.T) {
+	testNodeCreationFromConfig(t, istio.Manager, "gateway", objName+"-gateway")
+}
+
+func TestIstioServiceEntryNode(t *testing.T) {
+	testNodeCreationFromConfig(t, istio.Manager, "serviceentry", objName+"-serviceentry")
+}
+
+func TestIstioQuotaSpecNode(t *testing.T) {
+	testNodeCreationFromConfig(t, istio.Manager, "quotaspec", objName+"-quotaspec")
+}
+
+func TestIstioQuotaSpecBindingNode(t *testing.T) {
+	testNodeCreationFromConfig(t, istio.Manager, "quotaspecbinding", objName+"-quotaspecbinding")
+}
+
+func TestIstioVirtualServiceNode(t *testing.T) {
+	testNodeCreationFromConfig(t, istio.Manager, "virtualservice", objName+"-virtualservice")
+}
+
 func TestBookInfoScenario(t *testing.T) {
 	testRunner(
 		t,

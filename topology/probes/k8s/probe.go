@@ -36,6 +36,7 @@ func int32ValueOrDefault(value *int32, defaultValue int32) int32 {
 
 // Probe for tracking k8s events
 type Probe struct {
+	graph     *graph.Graph
 	manager   string
 	subprobes map[string]Subprobe
 	linkers   []probe.Probe
@@ -71,22 +72,30 @@ func (p *Probe) Stop() {
 	}
 }
 
+// AppendClusterLinkers appends newly created cluster linker per type
+func (p *Probe) AppendClusterLinkers(types ...string) {
+	for _, ty := range types {
+		if clusterLinker := newClusterLinker(p.graph, p.subprobes, p.manager, ty); clusterLinker != nil {
+			p.linkers = append(p.linkers, clusterLinker)
+		}
+	}
+}
+
+// AppendNamespaceLinkers appends newly created namespace linker per type
+func (p *Probe) AppendNamespaceLinkers(types ...string) {
+	for _, ty := range types {
+		if namespaceLinker := newNamespaceLinker(p.graph, p.subprobes, p.manager, ty); namespaceLinker != nil {
+			p.linkers = append(p.linkers, namespaceLinker)
+		}
+	}
+}
+
 // NewProbe creates the probe for tracking k8s events
-func NewProbe(g *graph.Graph, manager string, subprobes map[string]Subprobe, linkers []probe.Probe, linkedToCluster, linkedToNamespace []string) (*Probe, error) {
-	for _, ty := range linkedToCluster {
-		if clusterLinker := newClusterLinker(g, subprobes, manager, ty); clusterLinker != nil {
-			linkers = append(linkers, clusterLinker)
-		}
-	}
-
-	for _, ty := range linkedToNamespace {
-		if namespaceLinker := newNamespaceLinker(g, subprobes, manager, ty); namespaceLinker != nil {
-			linkers = append(linkers, namespaceLinker)
-		}
-	}
-
+func NewProbe(g *graph.Graph, manager string, subprobes map[string]Subprobe, linkers []probe.Probe) *Probe {
 	return &Probe{
+		graph:     g,
+		manager:   manager,
 		subprobes: subprobes,
 		linkers:   linkers,
-	}, nil
+	}
 }
