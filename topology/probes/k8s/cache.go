@@ -37,6 +37,109 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+type k8sHandler interface {
+	OnAdd(obj interface{})
+	OnUpdate(oldObj, newObj interface{})
+	OnDelete(obj interface{})
+}
+
+// KubeCache describes a generic cache for Kubernetes resources.
+type KubeCache struct {
+	cache          cache.Indexer
+	controller     cache.Controller
+	stopController chan (struct{})
+	handler        k8sHandler
+}
+
+func (c *KubeCache) list() []interface{} {
+	return c.cache.List()
+}
+
+func (c *KubeCache) getByKey(namespace, name string) interface{} {
+	key := ""
+	if len(namespace) > 0 {
+		key = namespace + "/"
+	}
+	key += name
+	if obj, found, _ := c.cache.GetByKey(key); found {
+		return obj
+	}
+	return nil
+}
+
+func (c *KubeCache) getByNode(node *graph.Node) interface{} {
+	namespace, _ := node.GetFieldString("Namespace")
+	name, _ := node.GetFieldString("Name")
+	if name == "" {
+		return nil
+	}
+	return c.getByKey(namespace, name)
+}
+
+func (c *KubeCache) getByNamespace(namespace string) []interface{} {
+	if namespace == api.NamespaceAll {
+		return c.list()
+	}
+
+	objects, _ := c.cache.ByIndex("namespace", namespace)
+	return objects
+}
+
+func (c *KubeCache) getBySelector(g *graph.Graph, namespace string, selector *metav1.LabelSelector) []metav1.Object {
+	if objects := c.getByNamespace(namespace); len(objects) > 0 {
+		return filterObjectsBySelector(objects, selector)
+	}
+	return nil
+}
+
+// Start begin waiting on Kubernetes events
+func (c *KubeCache) Start() {
+	c.cache.Resync()
+	go c.controller.Run(c.stopController)
+}
+
+// Stop end waiting on Kubernetes events
+func (c *KubeCache) Stop() {
+	c.stopController <- struct{}{}
+}
+
+// NewKubeCache returns a new cache using the associed Kubernetes
+// client and with the handler for the resource that this cache manages.
+func NewKubeCache(restClient rest.Interface, objType runtime.Object, resources string, handler k8sHandler) *KubeCache {
+	watchlist := cache.NewListWatchFromClient(restClient, resources, api.NamespaceAll, fields.Everything())
+
+	c := &KubeCache{
+		handler:        handler,
+		stopController: make(chan struct{}),
+	}
+
+	cacheHandler := cache.ResourceEventHandlerFuncs{}
+	if handler != nil {
+		cacheHandler.AddFunc = c.handler.OnAdd
+		cacheHandler.UpdateFunc = c.handler.OnUpdate
+		cacheHandler.DeleteFunc = c.handler.OnDelete
+	}
+
+	indexers := cache.Indexers{"namespace": cache.MetaNamespaceIndexFunc}
+	c.cache, c.controller = cache.NewIndexerInformer(watchlist, objType, 30*time.Minute, cacheHandler, indexers)
+	return c
+}
+
+func matchSelector(obj metav1.Object, selector labels.Selector) bool {
+	return selector.Matches(labels.Set(obj.GetLabels()))
+}
+
+func filterObjectsBySelector(objects []interface{}, labelSelector *metav1.LabelSelector) (out []metav1.Object) {
+	selector, _ := metav1.LabelSelectorAsSelector(labelSelector)
+	for _, obj := range objects {
+		obj := obj.(metav1.Object)
+		if matchSelector(obj, selector) {
+			out = append(out, obj)
+		}
+	}
+	return
+}
+
 // ResourceHandler is used to map Kubernetes resources to objets in the graph
 type ResourceHandler interface {
 	Map(obj interface{}) (graph.Identifier, graph.Metadata)
@@ -49,52 +152,9 @@ type ResourceHandler interface {
 // the associated resource handler
 type ResourceCache struct {
 	*graph.EventHandler
-	cache          cache.Indexer
-	controller     cache.Controller
-	stopController chan (struct{})
-	handler        ResourceHandler
-	graph          *graph.Graph
-}
-
-func (c *ResourceCache) list() []interface{} {
-	return c.cache.List()
-}
-
-func (c *ResourceCache) getByKey(namespace, name string) interface{} {
-	key := ""
-	if len(namespace) > 0 {
-		key = namespace + "/"
-	}
-	key += name
-	if obj, found, _ := c.cache.GetByKey(key); found {
-		return obj
-	}
-	return nil
-}
-
-func (c *ResourceCache) getByNode(node *graph.Node) interface{} {
-	namespace, _ := node.GetFieldString("Namespace")
-	name, _ := node.GetFieldString("Name")
-	if name == "" {
-		return nil
-	}
-	return c.getByKey(namespace, name)
-}
-
-func (c *ResourceCache) getByNamespace(namespace string) []interface{} {
-	if namespace == api.NamespaceAll {
-		return c.list()
-	}
-
-	objects, _ := c.cache.ByIndex("namespace", namespace)
-	return objects
-}
-
-func (c *ResourceCache) getBySelector(g *graph.Graph, namespace string, selector *metav1.LabelSelector) []metav1.Object {
-	if objects := c.getByNamespace(namespace); len(objects) > 0 {
-		return filterObjectsBySelector(objects, selector)
-	}
-	return nil
+	*KubeCache
+	graph   *graph.Graph
+	handler ResourceHandler
 }
 
 // OnAdd is called when a new Kubernetes resource has been created
@@ -134,57 +194,19 @@ func (c *ResourceCache) OnDelete(obj interface{}) {
 	}
 }
 
-// Start begin waiting on Kubernetes events
-func (c *ResourceCache) Start() {
-	c.cache.Resync()
-	go c.controller.Run(c.stopController)
-}
-
-// Stop end waiting on Kubernetes events
-func (c *ResourceCache) Stop() {
-	c.stopController <- struct{}{}
-}
-
 // NewResourceCache returns a new cache using the associed Kubernetes
 // client and with the handler for the resource that this cache manages.
 func NewResourceCache(restClient rest.Interface, objType runtime.Object, resources string, g *graph.Graph, handler ResourceHandler, optionalEventHandler ...*graph.EventHandler) *ResourceCache {
-	watchlist := cache.NewListWatchFromClient(restClient, resources, api.NamespaceAll, fields.Everything())
-
 	eventHandler := graph.NewEventHandler(100)
 	if len(optionalEventHandler) == 1 {
 		eventHandler = optionalEventHandler[0]
 	}
 
 	c := &ResourceCache{
-		EventHandler:   eventHandler,
-		graph:          g,
-		handler:        handler,
-		stopController: make(chan struct{}),
+		EventHandler: eventHandler,
+		graph:        g,
+		handler:      handler,
 	}
-
-	cacheHandler := cache.ResourceEventHandlerFuncs{}
-	if handler != nil {
-		cacheHandler.AddFunc = c.OnAdd
-		cacheHandler.UpdateFunc = c.OnUpdate
-		cacheHandler.DeleteFunc = c.OnDelete
-	}
-
-	indexers := cache.Indexers{"namespace": cache.MetaNamespaceIndexFunc}
-	c.cache, c.controller = cache.NewIndexerInformer(watchlist, objType, 30*time.Minute, cacheHandler, indexers)
+	c.KubeCache = NewKubeCache(restClient, objType, resources, c)
 	return c
-}
-
-func matchSelector(obj metav1.Object, selector labels.Selector) bool {
-	return selector.Matches(labels.Set(obj.GetLabels()))
-}
-
-func filterObjectsBySelector(objects []interface{}, labelSelector *metav1.LabelSelector) (out []metav1.Object) {
-	selector, _ := metav1.LabelSelectorAsSelector(labelSelector)
-	for _, obj := range objects {
-		obj := obj.(metav1.Object)
-		if matchSelector(obj, selector) {
-			out = append(out, obj)
-		}
-	}
-	return
 }
