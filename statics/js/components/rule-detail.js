@@ -472,7 +472,7 @@ Vue.component('rule-table-detail', {
                   {{ splitLine(rule.filters) }}\
                 </td>\
                 <td v-if="rule.actionsSpan != -1" :rowspan="rule.actionsSpan">\
-                    <table>\
+                    <table class="inner-table">\
                         <tr v-for="act in rule.outAction">\
                             <td>\
                               <i :class="layout.clazz(act.action)"></i>\

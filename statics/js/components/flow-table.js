@@ -306,26 +306,38 @@ Vue.component('flow-table', {
         </tr>\
       </template>\
       <template slot="actions">\
-        <filter-selector :query="value"\
-                         :filters="filters"\
-                         @add="addFilter"\
-                         @remove="removeFilter"></filter-selector>\
-        <limit-button v-model="limit"></limit-button>\
-        <highlight-mode v-model="highlightMode"></highlight-mode>\
-        <button-state class="btn-xs pull-right"\
-                      v-model="autoRefresh"\
-                      enabled-text="Auto refresh on"\
-                      disabled-text="Auto refresh off"></button-state>\
-        <interval-button v-if="autoRefresh"\
-                         class="pull-right"\
-                         v-model="interval"></interval-button>\
-        <button class="btn btn-default btn-xs pull-right"\
-                type="button"\
-                @click="getFlows"\
-                title="Refresh flows"\
-                v-if="!autoRefresh">\
-          <i class="fa fa-refresh" aria-hidden="true"></i>\
-        </button>\
+        <div class="dynmic-table-actions-item">\
+          <filter-selector :query="value"\
+                          :filters="filters"\
+                          @add="addFilter"\
+                          @remove="removeFilter"></filter-selector>\
+        </div>\
+        <div class="dynmic-table-actions-item">\
+          <limit-button v-model="limit"></limit-button>\
+        </div>\
+        <div class="dynmic-table-actions-item">\
+          <highlight-mode v-model="highlightMode"></highlight-mode>\
+        </div>\
+        <div class="dynmic-table-actions-item">\
+          <button-state class="btn-xs pull-right"\
+                        v-model="autoRefresh"\
+                        enabled-text="Auto refresh on"\
+                        disabled-text="Auto refresh off"></button-state>\
+        </div>\
+        <div class="dynmic-table-actions-item">\
+          <interval-button v-if="autoRefresh"\
+                          class="pull-right"\
+                          v-model="interval"></interval-button>\
+        </div>\
+        <div class="dynmic-table-actions-item">\
+          <button class="btn btn-default btn-xs pull-right"\
+                  type="button"\
+                  @click="getFlows"\
+                  title="Refresh flows"\
+                  v-if="!autoRefresh">\
+            <i class="fa fa-refresh" aria-hidden="true"></i>\
+          </button>\
+        </div>\
       </template>\
     </dynamic-table>\
   ',

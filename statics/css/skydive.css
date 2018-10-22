@@ -238,7 +238,7 @@ label {
 }
 
 .panel-content .bg-warning {
-  background-color: #333;
+  background-color: #292e34;
 }
 
 .panel-content .text-warning {
@@ -254,7 +254,7 @@ label {
 
 .sub-panel {
   border-radius: 5px;
-  background-color: #111;
+  background-color: #131519;
   padding: 5px;
   margin-top: 10px;
   margin-bottom: 10px;
@@ -481,7 +481,8 @@ circle.manager {
   background-color: #292e34; 
 }
 
-.flow-ops-panel .nav-pills>li.active>a, .flow-ops-panel .nav-pills>li.active>a:focus, .flow-ops-panel .nav-pills>li.active>a:hover {
+.flow-ops-panel .nav-pills>li.active>a, .flow-ops-panel .nav-pills>li.active>a:focus, 
+.flow-ops-panel .nav-pills>li.active>a:hover {
   background-color: #292e34;
   border-bottom: 2px solid #347ab6;
 }
@@ -490,14 +491,18 @@ circle.manager {
   margin-top: 0px;
 }
 
-.dynamic-table {
-  border-radius: 4px;
-  border: 3px solid #666;
+.dynamic-table .fa-cog, .dynamic-table .btn, .dynamic-table .btn[active], .dynamic-table .btn[focus] {
+  border: none;
+  font-size: 16px;
+  outline: none !important;
+  padding: 1px 5px;
+  display: inline-block;
+  border-radius: 0;
 }
 
-.dynamic-table .btn {
-  padding: 1px 5px;
-  border-radius: 3px;
+.dark .dynamic-table .fa-cog, .dark .dynamic-table .btn, .dark .dynamic-table .btn[active], .dark .dynamic-table .btn[focus] {
+  color: white !important;
+  background-color: #1b1e23 !important;
 }
 
 .dynamic-table .dynamic-table-wrapper {
@@ -505,15 +510,28 @@ circle.manager {
 }
 
 .dynamic-table table {
-  font-size: small;
   border: hidden;
   margin-bottom: 0px;
 }
 
+.dynamic-table td {
+  padding: 7px;
+}
+
 .dynamic-table .dynamic-table-actions {
-  background: #666;
-  color: black;
-  padding: 5px 3px 3px 3px;
+  background: #292e34;
+  color: white;
+  padding: 3px 1px 1px 0px;
+  display: inline-flex;
+}
+
+.dynmic-table-actions-item {
+  display: inline-block;
+  margin-right: 1px;
+}
+
+.dark .dynmic-table-actions-item {
+  background: #1b1e23;
 }
 
 .dynamic-table .dynamic-table-actions .pull-right {
@@ -521,11 +539,11 @@ circle.manager {
 }
 
 .dynamic-table td, .dynamic-table thead th {
-  border-color: #666 !important;
+  border-color: #292e34 !important;
 }
 
 .dynamic-table thead {
-  background: #111;
+  background: #171b1e;
 }
 
 .dynamic-table thead th:hover {
@@ -533,20 +551,20 @@ circle.manager {
 }
 
 .dynamic-table tbody {
-  background: #333;
+  background: #1b1e23;
 }
 
 .dynamic-table tbody tr.flow-row:hover {
   cursor: pointer;
-  background: #444;
+  background: #292e34;
 }
 
 .dynamic-table tbody tr.flow-detail-row {
-  background: #333;
+  background: #171b1e;
 }
 
 .dynamic-table .flow-row.flow-detail {
-  background: #2e2e2e;
+  background: #171b1e;
   font-weight: bold;
 }
 
@@ -603,6 +621,10 @@ ul.dropdown-menu .fa.pull-right {
   cursor: pointer;
 }
 
+.rules-detail .inner-table td {
+  padding: 0;
+}
+
 .rules-detail .port-link {
   color: skyblue;
   cursor: pointer;
@@ -632,12 +654,6 @@ ul.dropdown-menu .fa.pull-right {
 
 .rules-detail .blue {
   color: #08c;
-}
-
-.rules-detail .rules {
-  padding: 5px;
-  background-color: #333;
-  border-radius: 5px;
 }
 
 .rules-detail .nav-pills>li.active>a, .rules-detail .nav-pills>li.active>a:focus, .rules-detail .nav-pills>li.active>a:hover {
@@ -795,8 +811,12 @@ hr {
   left: 0;
   height: 21px;
   width: 21px;
-  background-color: #eee;
+  background-color: #b1b1b1;
   border-radius: 50%;
+}
+
+.dark .radio-inline .checkmark {
+  background-color: #eee;
 }
 
 .radio-inline:hover input ~ .checkmark {
@@ -830,8 +850,6 @@ hr {
   display: flex;
 }
 
-
-/* Customize the label (the container) */
 .form-check-label {
   display: block;
   position: relative;
@@ -844,7 +862,6 @@ hr {
   user-select: none;
 }
 
-/* Hide the browser's default checkbox */
 .form-check-label input {
   position: absolute;
   opacity: 0;
@@ -853,32 +870,31 @@ hr {
   width: 0;
 }
 
-/* Create a custom checkbox */
 .form-check-label .checkmark {
   position: absolute;
   top: 0;
   left: 0;
   height: 21px;
   width: 22px;
+  background-color: #b1b1b1;
+}
+
+.dark .form-check-label .checkmark {
   background-color: #eee;
 }
 
-/* On mouse-over, add a grey background color */
 .form-check-label:hover input ~ .checkmark {
   background-color: #ccc;
 }
 
-/* When the checkbox is checked, add a blue background */
 .form-check-label input:checked ~ .checkmark {
   background-color: #2196F3;
 }
 
-/* Show the checkmark when checked */
 .form-check-label input:checked ~ .checkmark:after {
   display: block;
 }
 
-/* Style the checkmark/indicator */
 .form-check-label .checkmark:after {
   left: 9px;
   top: 5px;
