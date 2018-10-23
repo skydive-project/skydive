@@ -58,16 +58,12 @@ func newNamespaceProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe
 	return NewResourceCache(clientset.Core().RESTClient(), &v1.Namespace{}, "namespaces", g, &namespaceHandler{}, namespaceEventHandler)
 }
 
-func newNamespaceLinker(g *graph.Graph, subprobes map[string]Subprobe, manager, ty string) probe.Probe {
-	dstCache := subprobes[ty]
-	if dstCache == nil {
-		return nil
-	}
-
+func newNamespaceLinker(g *graph.Graph, manager string, types ...string) probe.Probe {
 	namespaceIndexer := graph.NewMetadataIndexer(g, namespaceEventHandler, graph.Metadata{"Manager": Manager, "Type": "namespace"}, "Name")
 	namespaceIndexer.Start()
 
-	objectIndexer := graph.NewMetadataIndexer(g, dstCache, graph.Metadata{"Manager": manager, "Type": ty}, "Namespace")
+	objectFilter := newTypesFilter(manager, types...)
+	objectIndexer := newObjectIndexerFromFilter(g, g, objectFilter, "Namespace")
 	objectIndexer.Start()
 
 	return graph.NewMetadataIndexerLinker(g, namespaceIndexer, objectIndexer, topology.OwnershipMetadata())

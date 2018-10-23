@@ -72,6 +72,27 @@ func newObjectIndexer(g *graph.Graph, h graph.ListenerHandler, nodeType string, 
 	return graph.NewMetadataIndexer(g, h, m, indexes...)
 }
 
+func newTypesFilter(manager string, types ...string) *filters.Filter {
+	filtersArray := make([]*filters.Filter, len(types))
+	for i, ty := range types {
+		filtersArray[i] = filters.NewTermStringFilter("Type", ty)
+	}
+	return filters.NewAndFilter(
+		filters.NewTermStringFilter("Manager", manager),
+		filters.NewOrFilter(filtersArray...),
+	)
+}
+
+func newObjectIndexerFromFilter(g *graph.Graph, h graph.ListenerHandler, filter *filters.Filter, indexes ...string) *graph.MetadataIndexer {
+	filtersArray := make([]*filters.Filter, len(indexes)+1)
+	filtersArray[0] = filter
+	for i, index := range indexes {
+		filtersArray[i+1] = filters.NewNotNullFilter(index)
+	}
+	m := graph.NewElementFilter(filters.NewAndFilter(filtersArray...))
+	return graph.NewMetadataIndexer(g, h, m, indexes...)
+}
+
 func newResourceLinker(g *graph.Graph, subprobes map[string]Subprobe, srcType string, srcAttrs []string, dstType string, dstAttrs []string, edgeMetadata graph.Metadata) probe.Probe {
 	srcCache := subprobes[srcType]
 	dstCache := subprobes[dstType]

@@ -61,16 +61,12 @@ func newClusterProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
 	}
 }
 
-func newClusterLinker(g *graph.Graph, subprobes map[string]Subprobe, manager, ty string) probe.Probe {
-	dstCache := subprobes[ty]
-	if dstCache == nil {
-		return nil
-	}
-
+func newClusterLinker(g *graph.Graph, manager string, types ...string) probe.Probe {
 	clusterIndexer := graph.NewMetadataIndexer(g, clusterEventHandler, graph.Metadata{"Manager": Manager, "Type": "cluster"})
 	clusterIndexer.Start()
 
-	objectIndexer := graph.NewMetadataIndexer(g, dstCache, graph.Metadata{"Manager": manager, "Type": ty})
+	objectFilter := newTypesFilter(manager, types...)
+	objectIndexer := newObjectIndexerFromFilter(g, g, objectFilter)
 	objectIndexer.Start()
 
 	return graph.NewMetadataIndexerLinker(g, clusterIndexer, objectIndexer, topology.OwnershipMetadata())

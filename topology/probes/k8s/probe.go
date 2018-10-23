@@ -74,19 +74,15 @@ func (p *Probe) Stop() {
 
 // AppendClusterLinkers appends newly created cluster linker per type
 func (p *Probe) AppendClusterLinkers(types ...string) {
-	for _, ty := range types {
-		if clusterLinker := newClusterLinker(p.graph, p.subprobes, p.manager, ty); clusterLinker != nil {
-			p.linkers = append(p.linkers, clusterLinker)
-		}
+	if clusterLinker := newClusterLinker(p.graph, p.manager, types...); clusterLinker != nil {
+		p.linkers = append(p.linkers, clusterLinker)
 	}
 }
 
 // AppendNamespaceLinkers appends newly created namespace linker per type
 func (p *Probe) AppendNamespaceLinkers(types ...string) {
-	for _, ty := range types {
-		if namespaceLinker := newNamespaceLinker(p.graph, p.subprobes, p.manager, ty); namespaceLinker != nil {
-			p.linkers = append(p.linkers, namespaceLinker)
-		}
+	if namespaceLinker := newNamespaceLinker(p.graph, p.manager, types...); namespaceLinker != nil {
+		p.linkers = append(p.linkers, namespaceLinker)
 	}
 }
 
