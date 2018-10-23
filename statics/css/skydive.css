@@ -9,7 +9,7 @@ body {
   background-color: #1b1e23;
 }
 
-.dark input, .dark textarea, .dark input.form-control[readonly], 
+.dark input, .dark textarea, .dark input.form-control[readonly],
 .dark select, .dark select[disabled], .dark textarea[readonly], .dark textarea[disabled] {
   background-color: #1b1e23;
   border-radius: 0;
@@ -494,7 +494,7 @@ circle.manager {
   background-color: #292e34; 
 }
 
-.flow-ops-panel .nav-pills>li.active>a, .flow-ops-panel .nav-pills>li.active>a:focus, 
+.flow-ops-panel .nav-pills>li.active>a, .flow-ops-panel .nav-pills>li.active>a:focus,
 .flow-ops-panel .nav-pills>li.active>a:hover {
   background-color: #292e34;
   border-bottom: 2px solid #347ab6;
@@ -953,4 +953,33 @@ hr {
 
 .copy-clipboard {
   cursor: copy;
+}
+
+input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+.custom-select {
+  display: inline-block;
+  width: 100%;
+  height: calc(2.25rem + 8px);
+  padding: .375rem 1.75rem .375rem .75rem;
+      padding-top: 0.375rem;
+      padding-bottom: 0.375rem;
+  line-height: 1.5;
+  color: #586169;
+  vertical-align: middle;
+  background: #fff url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'%3E%3Cpath fill='%23343a40' d='M2 0L0 2h4zm0 5L0 3h4z'/%3E%3C/svg%3E") no-repeat right .75rem center;
+      background-size: auto auto;
+  background-size: 8px 10px;
+  border: 1px solid #ced4da;
+  border-radius: .25rem;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+
 }

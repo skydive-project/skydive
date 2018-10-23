@@ -321,7 +321,7 @@ var app = new Vue({
         case 'light':
           $('body').addClass("light");
           $('body').removeClass("dark");
-          
+
           $("#navbar").removeClass("navbar-inverse");
           $("#navbar").addClass("navbar-light");
           break;

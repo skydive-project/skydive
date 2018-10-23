@@ -28,7 +28,7 @@ Vue.component('edgerule-form', {
         </div>\
         <div class="form-group">\
           <label for="type">Relationship type</label>\
-          <select id="type" v-model="type" class="form-control input-sm">\
+          <select id="type" v-model="type" class="form-control custom-select">\
             <option disabled value="">Select Relationship type</option>\
             <option value="layer2">Layer 2</option>\
             <option value="ownership">Ownership</option>\

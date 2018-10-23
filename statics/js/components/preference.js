@@ -10,7 +10,7 @@ var PreferenceComponent = {
     <form class="form-preference" @submit.prevent="save">\
       <div class="form-group preference-field">\
         <label for="theme">Theme</label>\
-        <select id="theme" v-model="preferences.theme" class="form-control input-sm">\
+        <select id="theme" v-model="preferences.theme" class="form-control custom-select">\
           <option value="dark">Dark</option>\
           <option value="light">Light</option>\
         </select>\
@@ -40,7 +40,7 @@ var PreferenceComponent = {
       <div class="form-group preference-field">\
         <label for="bw-threshold">Bandwidth Threshold</label>\
         <a><i class="fa fa-question help-text" aria-hidden="true" title="bandwidth threshold mode (relative/absolute)"></i></a>\
-        <select id="bw-threshold" v-model="preferences.bandwidthThreshold" class="form-control input-sm">\
+        <select id="bw-threshold" v-model="preferences.bandwidthThreshold" class="form-control custom-select">\
           <option value="absolute">Absolute</option>\
           <option value="relative">Relative</option>\
         </select>\

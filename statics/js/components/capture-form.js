@@ -59,7 +59,7 @@ Vue.component('capture-form', {
           <fieldset slot="collapse-body" class="form-group">\
             <div class="form-group">\
               <label for="capture-type">Capture Type</label>\
-              <select id="capture-type" v-model="captureType" class="form-control input-sm" :disabled="!typeAllowed">\
+              <select id="capture-type" v-model="captureType" class="form-control custom-select" :disabled="!typeAllowed">\
                 <option disabled value="">Select capture type</option>\
                 <option v-for="option in options" :value="option.type">{{ option.type }} ({{option.desc}})</option>\
               </select>\
@@ -70,7 +70,7 @@ Vue.component('capture-form', {
             </div>\
             <div class="form-group">\
               <label for="capture-layer-key-mode">Layers used for Flow Key</label>\
-              <select id="capture-layer-key-mode" v-model="captureLayerKeyMode" class="form-control input-sm">\
+              <select id="capture-layer-key-mode" v-model="captureLayerKeyMode" class="form-control custom-select">\
                 <option disabled value="">Select layers to be used</option>\
                 <option value="" selected>Default</option>\
                 <option value="L2">L2 (uses Layer 2 and beyond)</option>\

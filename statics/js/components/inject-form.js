@@ -8,7 +8,7 @@ Vue.component('inject-form', {
     <form @submit.prevent="inject">\
       <div class="form-group">\
         <label for="inject-type">Type</label>\
-        <select id="inject-type" v-model="type" class="form-control input-sm">\
+        <select id="inject-type" v-model="type" class="form-control custom-select">\
           <option value="icmp4">ICMPv4/Echo request</option>\
           <option value="icmp6">ICMPv6/Echo request</option>\
           <option value="tcp4">TCP/IPv4</option>\

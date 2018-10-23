@@ -41,7 +41,7 @@ Vue.component('item', {
     <div v-else-if="Type == 'choice'" class="form-group">
       <label :for="Name">{{Description}}</label>
       <template>
-        <select :id="Name" v-model="formData[Name]" class="form-control input-sm">
+        <select :id="Name" v-model="formData[Name]" class="form-control custom-select">
           <option v-for="(option, index) in Values" :value="option.Value">{{ option.Value }} ({{ option.Description }})</option>
         </select>
       </template>
@@ -145,7 +145,7 @@ Vue.component('workflow-call', {
     <div class="form-group">
       <div class="form-group">
         <label for="workflow">Workflows</label>
-        <select id="workflow" v-model="currentWorkflow" class="form-control input-sm">
+        <select id="workflow" v-model="currentWorkflow" class="form-control custom-select">
           <option selected :value="{}">Select a workflow</option>\
           <option v-for="(workflow, id) in workflows" :value="workflow">{{ workflow.Name }} ({{ workflow.Description }})</option>
         </select>
