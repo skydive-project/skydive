@@ -14,6 +14,8 @@ var PreferenceComponent = {
           <option value="dark">Dark</option>\
           <option value="light">Light</option>\
         </select>\
+      </div>\
+      <div class="form-group preference-field">\
         <label for="default-favorite">Favorite Gremlin Expressions</label>\
         <a><i class="fa fa-question help-text" aria-hidden="true" title="Filter and highlight gremlin queries, displayed in the left panel"></i></a>\
         <div v-for="favorite in preferences.favorites">\
@@ -104,8 +106,8 @@ var PreferenceComponent = {
         <button class="btn btn-lg btn-primary spl-btn" type="button" @click="saveToFile" title="download preferences to local file"> Export</button>\
         <input type="file" @change="openfile($event)" id="file_selector" style="display:none;">\
         <button class="btn btn-lg btn-primary btn-group-pref spl-btn" type="button" @click="uploadFile" title="upload preferences from local file"> Import</button>\
-        <button class="btn btn-lg btn-danger" type="button" @click="cancel"> Cancel</button>\
-        <button class="btn btn-lg btn-primary" type="submit" title="save in local storage">Save</button>\
+        <button class="btn btn-lg btn-primary" style="float: right" type="submit" title="save in local storage">Save</button>\
+        <button class="btn btn-lg btn-danger" style="float: right" type="button" @click="cancel"> Cancel</button>\
       </div>\
     </form>\
   ',

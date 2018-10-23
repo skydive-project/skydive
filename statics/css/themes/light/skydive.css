@@ -184,3 +184,11 @@ label {
 hr {
   border-color: #fff;
 }
+
+.form-signin h2 {
+  color: #3d7bb7;
+}
+
+.input-group-addon {
+  color: black;
+}

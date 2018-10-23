@@ -24,11 +24,11 @@ Vue.component('inject-form', {
                        id="inject-src"\
                        v-model="node1"></node-selector>\
         <div class="input-group">\
-          <span for="inject-src-ip" class="input-group-addon">IP: </span>\
+          <label for="inject-src-ip" class="input-group-addon inject-label">IP: </label>\
           <input id="inject-src-ip" class="form-control" v-model="srcIP" placeholder="Auto"/>\
         </div>\
         <div class="input-group">\
-          <span for="inject-src-mac" class="input-group-addon">MAC: </span>\
+          <label for="inject-src-mac" class="input-group-addon inject-label">MAC: </label>\
           <input id="inject-src-mac" class="form-control" v-model="srcMAC" placeholder="Auto"/>\
         </div>\
       </div>\
@@ -39,11 +39,11 @@ Vue.component('inject-form', {
                        id="inject-dst"\
                        v-model="node2"></node-selector>\
         <div class="input-group">\
-          <label for="inject-dst-ip" class="input-group-addon">IP: </label>\
+          <label for="inject-dst-ip" class="input-group-addon inject-label">IP: </label>\
           <input id="inject-dst-ip" class="form-control" v-model="dstIP" placeholder="Auto"/>\
         </div>\
         <div class="input-group">\
-          <span for="inject-dst-mac" class="input-group-addon">MAC: </span>\
+          <span for="inject-dst-mac" class="input-group-addon inject-label">MAC: </span>\
           <input id="inject-dst-mac" class="form-control" v-model="dstMAC" placeholder="Auto"/>\
         </div>\
       </div>\

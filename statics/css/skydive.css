@@ -49,9 +49,22 @@ select:active, select:hover {
 }
 
 .dark .input-group-addon {
-  background-color: #17181d;
+  background-color: #1b1e23;
+}
+
+.input-group-addon {
   color: white;
   border: none;
+  text-align: left;
+  border-radius: 0;
+}
+
+.input-group {
+  border-spacing: 1px;
+}
+
+.inject-label, .inject-label {
+  width: 60px;
 }
 
 .capture-form .pull-left {
@@ -705,19 +718,22 @@ ul.dropdown-menu .fa.pull-right {
 }
 
 .preference-field {
-  max-width: 450px;
-  margin-left: 38%;
+  max-width: 550px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .preference-field input, .preference-field select {
-  background-color: #111;
+  background-color: #1b1e23;
   color: #eee;
   border: none;
 }
 
 .preference-field label {
-  color: #ccc
+  color: #ccc;
+  margin-bottom: 10px;
 }
+
 .form-preference h2 {
   color: white;
   display: flex;
@@ -743,18 +759,24 @@ hr {
   color: #c00;
 }
 
-.btn-filter {
-  background-color: #111;
+.btn-filter, .btn-filter:active, .btn-filter:focus, .btn-filter:hover {
+  padding: 7px 12px !important;
+  border-radius: 0 !important;
+  margin-left: 1px !important;
 }
 
-.filter-field {
-  position: absolute;
-  left: 5px;
+.dark .btn-filter, .dark .btn-filter:active, .dark .btn-filter:focus, .dark .btn-filter:hover {
+  background-color: #1b1e23 !important;
 }
 
 .spl-btn {
-  background-color: #292e34;
   color: #347ab6;
+  padding: 0;
+  font-weight: bold;
+}
+
+.dark .spl-btn {
+  background-color: #292e34;
 }
 
 .preference-field button {
@@ -763,13 +785,23 @@ hr {
 
 .preference-field button:focus, .preference-field button:hover {
   outline: 0;
-  background-color: #292e34;
   color: #347ab6;
   font-weight: bold;
 }
 
+.dark .preference-field button:focus, .dark .preference-field button:hover {
+  background-color: #292e34;
+}
+
 .button-holder {
-  text-align: center;
+  max-width: 550px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.button-holder button {
+  margin-left: 5px;
+  margin-right: 5px;
 }
 
 .btn-round-xs {
