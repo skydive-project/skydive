@@ -484,7 +484,7 @@ var TopologyComponent = {
     },
 
     isK8SEnabled: function() {
-      return (globalVars["probes"].indexOf("k8s") >= 0);
+      return app.getConfigValue('k8s_enabled')
     },
 
     metadataLinks: function(m) {
