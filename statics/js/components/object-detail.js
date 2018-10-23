@@ -4,6 +4,8 @@ Vue.component('object-detail', {
 
   name: 'object-detail',
 
+  mixins: [notificationMixin],
+
   props: {
 
     object: {
@@ -49,7 +51,7 @@ Vue.component('object-detail', {
                   <object-detail :object="v" :pathPrefix="path(key)" :transformer="transformer" :collapsed="collapsed"></object-detail>\
                 </div>\
                 <div v-else class="object-sub-detail">\
-                  <div class="object-detail" :class="typeof(value)">- {{ transform(key, v) }}</div>\
+                  <div class="object-detail copy-clipboard" :class="typeof(value)" @click="copyToClipboard(v)">- {{ transform(key, v) }}</div>\
                 </div>\
               </div>\
             </div>\
@@ -61,7 +63,7 @@ Vue.component('object-detail', {
         </div>\
         <div v-else>\
           <span class="object-key">{{key}}</span> :\
-          <span class="object-value" :class="typeof(value)" v-html="transform(key, value)"></span>\
+          <span class="object-value copy-clipboard" :class="typeof(value)" v-html="transform(key, value)" @click="copyToClipboard(value)"></span>\
           <i v-if="links && links[key]" :class="links[key].class" @click="links[key].onClick" \
             @mouseover="links[key].onMouseOver" @mouseout="links[key].onMouseOut"></i>\
         </div>\
@@ -93,5 +95,15 @@ Vue.component('object-detail', {
       return true;
     },
 
+    copyToClipboard(value) {
+      var textArea = document.createElement("textarea");
+      textArea.value = value;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("Copy");
+      textArea.remove();
+
+      this.$success({message: 'Copied `' + value + '`'});
+    }
   }
 });

@@ -601,6 +601,14 @@ ul.dropdown-menu .fa.pull-right {
   color: yellow;
 }
 
+.object-value.string:hover  {
+  color: #ffa500;
+}
+
+.object-value.number:hover {
+  color: #ffa500;
+}
+
 .object-key-value.application .object-value,
 .object-key-value.a .object-value,
 .object-key-value.b .object-value {
@@ -614,6 +622,10 @@ ul.dropdown-menu .fa.pull-right {
 
 .object-sub-detail .object-detail {
   margin-left: 20px;
+}
+
+.object-sub-detail .object-detail:hover {
+  color: #ffa500;
 }
 
 .raw-packet-link {
@@ -905,4 +917,8 @@ hr {
   -webkit-transform: rotate(45deg);
   -ms-transform: rotate(45deg);
   transform: rotate(45deg);
+}
+
+.copy-clipboard {
+  cursor: copy;
 }
