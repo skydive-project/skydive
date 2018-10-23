@@ -23,11 +23,15 @@
 package k8s
 
 import (
+	"fmt"
+
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 
+	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -38,81 +42,91 @@ const (
 )
 
 type containerProbe struct {
-	graph.EventHandler
-	graph.DefaultGraphListener
-	graph *graph.Graph
+	*graph.EventHandler
+	*KubeCache
+	graph            *graph.Graph
+	containerIndexer *graph.MetadataIndexer
 }
 
-func (p *containerProbe) getContainerMetadata(podNode *graph.Node, containerName string, container map[string]interface{}) graph.Metadata {
-	podName, _ := podNode.GetFieldString("Name")
-	podNamespace, _ := podNode.GetFieldString("Namespace")
-	m := NewMetadata(Manager, "container", container, containerName, podNamespace)
-	m.SetField("Pod", podName)
-	m.SetField("Image", container["Image"])
+func (c *containerProbe) newMetadata(pod *v1.Pod, container *v1.Container) graph.Metadata {
+	m := NewMetadata(Manager, "container", container, container.Name, pod.Namespace)
+	m.SetField("Pod", pod.Name)
+	m.SetField("Image", container.Image)
 	return m
 }
 
-func (p *containerProbe) handleContainers(podNode *graph.Node) map[graph.Identifier]*graph.Node {
-	containers := make(map[graph.Identifier]*graph.Node)
-	specContainers, _ := podNode.GetField(detailsField + ".Spec.Containers")
-	if specContainers, ok := specContainers.([]interface{}); ok {
-		for _, container := range specContainers {
-			if container, ok := container.(map[string]interface{}); ok {
-				containerName := container["Name"].(string)
-				uid := graph.GenID(string(podNode.ID), containerName)
-				m := p.getContainerMetadata(podNode, containerName, container)
-				node := p.graph.GetNode(uid)
-				if node == nil {
-					node = p.graph.NewNode(uid, m)
-					p.graph.NewEdge(graph.GenID(), podNode, node, topology.OwnershipMetadata(), "")
-				} else {
-					p.graph.SetMetadata(node, m)
-				}
-				containers[uid] = node
+func (c *containerProbe) dump(pod *v1.Pod, name string) string {
+	return fmt.Sprintf("container{Namespace: %s, Pod: %s, Name: %s}", pod.GetNamespace(), pod.GetName(), name)
+}
+
+// OnAdd is called when a new Kubernetes resource has been created
+func (c *containerProbe) OnAdd(obj interface{}) {
+	if pod, ok := obj.(*v1.Pod); ok {
+		c.graph.Lock()
+		defer c.graph.Unlock()
+
+		wasUpdated := make(map[string]bool)
+
+		for _, container := range pod.Spec.Containers {
+			uid := graph.GenID(string(pod.GetUID()), container.Name)
+			m := c.newMetadata(pod, &container)
+			if node := c.graph.GetNode(uid); node == nil {
+				node = c.graph.NewNode(uid, m)
+				c.NotifyEvent(graph.NodeAdded, node)
+				logging.GetLogger().Debugf("Added %s", c.dump(pod, container.Name))
+			} else {
+				c.graph.SetMetadata(node, m)
+				c.NotifyEvent(graph.NodeUpdated, node)
+				logging.GetLogger().Debugf("Updated %s", c.dump(pod, container.Name))
+			}
+			wasUpdated[container.Name] = true
+		}
+
+		nodes, _ := c.containerIndexer.Get(pod.Namespace, pod.Name)
+		for _, node := range nodes {
+			name, _ := node.GetFieldString("Name")
+			if !wasUpdated[name] {
+				c.graph.DelNode(node)
+				c.NotifyEvent(graph.NodeDeleted, node)
+				logging.GetLogger().Debugf("Deleted %s", c.dump(pod, name))
 			}
 		}
 	}
-	return containers
 }
 
-func (p *containerProbe) OnNodeAdded(node *graph.Node) {
-	if nodeType, _ := node.GetFieldString("Type"); nodeType == "pod" {
-		p.handleContainers(node)
-	}
+// OnUpdate is called when a Kubernetes resource has been updated
+func (c *containerProbe) OnUpdate(oldObj, newObj interface{}) {
+	c.OnAdd(newObj)
 }
 
-func (p *containerProbe) OnNodeUpdated(node *graph.Node) {
-	if nodeType, _ := node.GetFieldString("Type"); nodeType == "pod" {
-		previousContainers := p.graph.LookupChildren(node, graph.Metadata{"Type": "container"}, topology.OwnershipMetadata())
-		containers := p.handleContainers(node)
+// OnDelete is called when a Kubernetes resource has been deleted
+func (c *containerProbe) OnDelete(obj interface{}) {
+	if pod, ok := obj.(*v1.Pod); ok {
+		c.graph.Lock()
+		defer c.graph.Unlock()
 
-		for _, container := range previousContainers {
-			if _, found := containers[container.ID]; !found {
-				p.graph.DelNode(container)
-			}
+		containerNodes, _ := c.containerIndexer.Get(pod.Namespace, pod.Name)
+		for _, containerNode := range containerNodes {
+			name, _ := containerNode.GetFieldString("Name")
+			c.graph.DelNode(containerNode)
+			c.NotifyEvent(graph.NodeDeleted, containerNode)
+			logging.GetLogger().Debugf("Deleted %s", c.dump(pod, name))
 		}
 	}
-}
-
-func (p *containerProbe) OnNodeDeleted(node *graph.Node) {
-	if nodeType, _ := node.GetFieldString("Type"); nodeType == "pod" {
-		containers := p.graph.LookupChildren(node, graph.Metadata{"Type": "container"}, topology.OwnershipMetadata())
-		for _, container := range containers {
-			p.graph.DelNode(container)
-		}
-	}
-}
-
-func (p *containerProbe) Start() {
-	p.graph.AddEventListener(p)
-}
-
-func (p *containerProbe) Stop() {
-	p.graph.RemoveEventListener(p)
 }
 
 func newContainerProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
-	return &containerProbe{graph: g}
+	c := &containerProbe{
+		EventHandler: graph.NewEventHandler(100),
+		graph:        g,
+	}
+	c.containerIndexer = newObjectIndexer(g, c.EventHandler, "container", "Namespace", "Pod")
+	c.KubeCache = NewKubeCache(clientset.CoreV1().RESTClient(), &v1.Pod{}, "pods", c)
+	return c
+}
+
+func newPodContainerLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe {
+	return newResourceLinker(g, subprobes, "pod", []string{"Namespace", "Name"}, "container", []string{"Namespace", "Pod"}, topology.OwnershipMetadata())
 }
 
 func newDockerIndexer(g *graph.Graph) *graph.MetadataIndexer {
@@ -126,17 +140,17 @@ func newDockerIndexer(g *graph.Graph) *graph.MetadataIndexer {
 	return graph.NewMetadataIndexer(g, g, m, dockerPodNamespaceField, dockerPodNameField, dockerContainerNameField)
 }
 
-func newContainerLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe {
-	podProbe := subprobes["pod"]
-	if podProbe == nil {
+func newContainerDockerLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe {
+	containerProbe := subprobes["container"]
+	if containerProbe == nil {
 		return nil
 	}
 
-	k8sIndexer := newObjectIndexer(g, g, "container", "Namespace", "Pod", "Name")
-	k8sIndexer.Start()
+	containerIndexer := newObjectIndexer(g, containerProbe, "container", "Namespace", "Pod", "Name")
+	containerIndexer.Start()
 
 	dockerIndexer := newDockerIndexer(g)
 	dockerIndexer.Start()
 
-	return graph.NewMetadataIndexerLinker(g, k8sIndexer, dockerIndexer, newEdgeMetadata())
+	return graph.NewMetadataIndexerLinker(g, containerIndexer, dockerIndexer, newEdgeMetadata())
 }
