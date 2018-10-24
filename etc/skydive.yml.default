@@ -470,6 +470,9 @@ ui:
   # Enable/disable ssh to hosts
   # ssh_enabled: false
 
+  # Enable/disable k8s related elements
+  # k8s_enabled: false
+
   bpf:
     # Pre-defined BPF filters
     favorites:
