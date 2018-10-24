@@ -602,7 +602,7 @@ TopologyGraphLayout.prototype = {
   },
 
   setGroupLevel: function(group) {
-    var level = 1, g = group;
+    var level = 0, g = group;
     while (g) {
       if (level > g.depth) g.depth = level;
       level++;
@@ -1349,7 +1349,7 @@ TopologyGraphLayout.prototype = {
       if (maxLevel === 0) {
         return false;
       }
-      if ((this.collapseLevel + 1) >= maxLevel) {
+      if ((this.collapseLevel) >= maxLevel) {
         return false;
       }
 
