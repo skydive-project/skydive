@@ -726,3 +726,130 @@ func ToJSONGroup(group string) (string, error) {
 	}
 	return string(jsBytes), nil
 }
+
+func writeAction(s *bytes.Buffer, a *Action) {
+	if a == nil {
+		return
+	}
+	if a.Key != "" {
+		s.WriteString(a.Key) // nolint: gas
+		s.Write([]byte("=")) // nolint: gas
+	}
+	if a.Action == "range" {
+		writeAction(s, a.Arguments[0])
+		s.Write([]byte("[")) // nolint: gas
+		switch len(a.Arguments) {
+		case 2:
+			writeAction(s, a.Arguments[1])
+		case 3:
+			writeAction(s, a.Arguments[1])
+			s.Write([]byte("..")) // nolint: gas
+			writeAction(s, a.Arguments[2])
+		}
+		s.Write([]byte("]")) // nolint: gas
+		return
+	}
+	if a.Action == "=" {
+		writeAction(s, a.Arguments[0])
+		// Design decision not to choose = as ovs which is pretty confusing.
+		s.Write([]byte(":=")) // nolint: gas
+		writeAction(s, a.Arguments[1])
+		return
+	}
+	s.WriteString(a.Action) // nolint: gas
+	if len(a.Arguments) > 0 {
+		s.Write([]byte("(")) // nolint: gas
+		for i, arg := range a.Arguments {
+			if i > 0 {
+				s.Write([]byte(",")) // nolint: gas
+			}
+			writeAction(s, arg)
+		}
+		s.Write([]byte(")")) // nolint: gas
+	}
+}
+
+// PrettyAST gives back a string from a AST
+//
+// The syntax is close to the one used by OVS but without the quirks.
+// The most significant differences are: move, load, set_field, enqueue
+// (as regular actions) and fields in learn actions (using := instead of =).
+func PrettyAST(ast *JSONRule) string {
+	// TODO: use string buffer when go minimal version bumps to 1.10
+	var s bytes.Buffer
+	s.Write([]byte("cookie=0x"))
+	s.WriteString(strconv.FormatUint(ast.Cookie, 16))
+	s.Write([]byte(", table="))
+	s.WriteString(strconv.Itoa(ast.Table))
+	s.Write([]byte(", "))
+	for _, meta := range ast.Meta {
+		s.WriteString(meta.Key)
+		if meta.Value != "" {
+			s.Write([]byte("="))
+			s.WriteString(meta.Value)
+		}
+		s.Write([]byte(", "))
+	}
+	s.Write([]byte("priority="))
+	s.WriteString(strconv.Itoa(ast.Priority))
+	for _, filter := range ast.Filters {
+		s.Write([]byte(","))
+		s.WriteString(filter.Key)
+		if filter.Value != "" {
+			s.Write([]byte("="))
+			s.WriteString(filter.Value)
+			if filter.Mask != "" {
+				s.Write([]byte("/"))
+				s.WriteString(filter.Mask)
+			}
+		}
+	}
+	s.Write([]byte(" actions="))
+	for i, action := range ast.Actions {
+		if i > 0 {
+			s.Write([]byte(","))
+		}
+		writeAction(&s, action)
+	}
+	return s.String()
+}
+
+// PrettyASTGroup gives back a string from a AST
+//
+// The syntax is close to the one used by OVS but without the quirks.
+func PrettyASTGroup(ast *JSONGroup) string {
+	// TODO: use string buffer when go minimal version bumps to 1.10
+	var s bytes.Buffer
+	s.Write([]byte("group_id="))
+	s.WriteString(strconv.FormatUint(uint64(ast.GroupID), 10))
+	s.Write([]byte(", type="))
+	s.WriteString(ast.Type)
+	for _, meta := range ast.Meta {
+		s.Write([]byte(", "))
+		s.WriteString(meta.Key)
+		if meta.Value != "" {
+			s.Write([]byte("="))
+			s.WriteString(meta.Value)
+		}
+	}
+	for _, bucket := range ast.Buckets {
+		s.Write([]byte(", bucket=bucket_id:"))
+		s.WriteString(strconv.FormatUint(uint64(bucket.ID), 10))
+		for _, meta := range bucket.Meta {
+			s.Write([]byte(","))
+			s.WriteString(meta.Key)
+			if meta.Value != "" {
+				s.Write([]byte(":"))
+				s.WriteString(meta.Value)
+			}
+		}
+		s.Write([]byte(",actions="))
+		for i, action := range bucket.Actions {
+			if i > 0 {
+				s.Write([]byte(","))
+			}
+			writeAction(&s, action)
+		}
+	}
+	return s.String()
+}
