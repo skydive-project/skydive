@@ -275,6 +275,14 @@ func (mapper *Probe) updateNode(node *graph.Node, attrs *attributes) {
 		return
 	}
 
+	if strings.HasPrefix(name, "tap") {
+		if attachedMac, _ := node.GetFieldString("ExtID.attached-mac"); attachedMac != "" {
+			tr := mapper.graph.StartMetadataTransaction(node)
+			tr.AddMetadata("PeerIntfMAC", attachedMac)
+			tr.Commit()
+		}
+	}
+
 	if !strings.HasPrefix(name, "qvo") {
 		return
 	}
