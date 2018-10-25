@@ -290,6 +290,9 @@ func NewServerFromConfig() (*Server, error) {
 	tableClient := flow.NewWSTableClient(agentWSServer)
 
 	storage, err := storage.NewStorageFromConfig(etcdClient)
+	if err != nil {
+		return nil, err
+	}
 
 	replicationWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/replication", clusterAuthBackend))
 	replicationEndpoint, err := NewTopologyReplicationEndpoint(replicationWSServer, clusterAuthOptions, cached, g)
