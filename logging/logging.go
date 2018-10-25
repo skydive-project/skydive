@@ -24,6 +24,7 @@ package logging
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"runtime"
 	"strings"
@@ -52,7 +53,7 @@ const (
 	DEBUG
 )
 
-func (l *Logger) log(level level, format *string, args ...interface{}) {
+func (l *Logger) logf(level level, format *string, args ...interface{}) {
 	s := l.Sugar()
 	fmt := l.id
 	if format != nil {
@@ -100,86 +101,93 @@ func getZapLevel(level string) zapcore.Level {
 
 // Fatal is equivalent to l.Critical(fmt.Sprint()) followed by a call to os.Exit(1).
 func (l *Logger) Fatal(args ...interface{}) {
-	l.log(CRITICAL, nil, args...)
+	l.logf(CRITICAL, nil, args...)
 	os.Exit(1)
 }
 
 // Fatalf is equivalent to l.Critical followed by a call to os.Exit(1).
 func (l *Logger) Fatalf(format string, args ...interface{}) {
-	l.log(CRITICAL, &format, args...)
+	l.logf(CRITICAL, &format, args...)
 	os.Exit(1)
 }
 
 // Panic is equivalent to l.Critical(fmt.Sprint()) followed by a call to panic().
 func (l *Logger) Panic(args ...interface{}) {
-	l.log(CRITICAL, nil, args...)
+	l.logf(CRITICAL, nil, args...)
 	panic(fmt.Sprint(args...))
 }
 
 // Panicf is equivalent to l.Critical followed by a call to panic().
 func (l *Logger) Panicf(format string, args ...interface{}) {
-	l.log(CRITICAL, &format, args...)
+	l.logf(CRITICAL, &format, args...)
 	panic(fmt.Sprintf(format, args...))
 }
 
 // Critical logs a message using CRITICAL as log level.
 func (l *Logger) Critical(args ...interface{}) {
-	l.log(CRITICAL, nil, args...)
+	l.logf(CRITICAL, nil, args...)
 }
 
 // Criticalf logs a message using CRITICAL as log level.
 func (l *Logger) Criticalf(format string, args ...interface{}) {
-	l.log(CRITICAL, &format, args...)
+	l.logf(CRITICAL, &format, args...)
 }
 
 // Error logs a message using ERROR as log level.
 func (l *Logger) Error(args ...interface{}) {
-	l.log(ERROR, nil, args...)
+	l.logf(ERROR, nil, args...)
 }
 
 // Errorf logs a message using ERROR as log level.
 func (l *Logger) Errorf(format string, args ...interface{}) {
-	l.log(ERROR, &format, args...)
+	l.logf(ERROR, &format, args...)
 }
 
 // Warning logs a message using WARNING as log level.
 func (l *Logger) Warning(args ...interface{}) {
-	l.log(WARNING, nil, args...)
+	l.logf(WARNING, nil, args...)
 }
 
 // Warningf logs a message using WARNING as log level.
 func (l *Logger) Warningf(format string, args ...interface{}) {
-	l.log(WARNING, &format, args...)
+	l.logf(WARNING, &format, args...)
 }
 
 // Notice logs a message using NOTICE as log level.
 func (l *Logger) Notice(args ...interface{}) {
-	l.log(NOTICE, nil, args...)
+	l.logf(NOTICE, nil, args...)
 }
 
 // Noticef logs a message using NOTICE as log level.
 func (l *Logger) Noticef(format string, args ...interface{}) {
-	l.log(NOTICE, &format, args...)
+	l.logf(NOTICE, &format, args...)
 }
 
 // Info logs a message using INFO as log level.
 func (l *Logger) Info(args ...interface{}) {
-	l.log(INFO, nil, args...)
+	l.logf(INFO, nil, args...)
 }
 
 // Infof logs a message using INFO as log level.
 func (l *Logger) Infof(format string, args ...interface{}) {
-	l.log(INFO, &format, args...)
+	l.logf(INFO, &format, args...)
 }
 
 // Debug logs a message using DEBUG as log level.
 func (l *Logger) Debug(args ...interface{}) {
-	l.log(DEBUG, nil, args...)
+	l.logf(DEBUG, nil, args...)
 }
 
 // Debugf logs a message using DEBUG as log level.
 func (l *Logger) Debugf(format string, args ...interface{}) {
-	l.log(DEBUG, &format, args...)
+	l.logf(DEBUG, &format, args...)
+}
+
+// Write implements the io.Writer interface
+func (l *Logger) Write(p []byte) (n int, err error) {
+	s := strings.TrimRight(string(p), "\n")
+	l.Debug(s)
+	return len(s), nil
 }
 
 func shortCallerWithClassFunctionEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
@@ -311,6 +319,9 @@ func InitLogging(id string, color bool, loggers []*LoggerConfig) (err error) {
 		Logger: z,
 		id:     id,
 	}
+
+	log.SetOutput(currentLogger)
+
 	return nil
 }
 
