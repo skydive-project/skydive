@@ -149,3 +149,46 @@ label {
 .flow-ops-panel .nav-pills > li {
   background-color: #ddd;
 }
+
+.form-preference {
+  background-color: #eee;
+}
+
+.preference-field input, .preference-field select {
+  background-color: #fff;
+  color: black;
+}
+
+.preference-field label {
+  color: black;
+}
+
+.filter-title {
+  background-color: #fff;
+}
+
+.btn-filter {
+  background-color: #fff;
+}
+
+.spl-btn {
+  background-color: #eee;
+  color: #347ab6;
+}
+
+.preference-field button:focus, .preference-field button:hover {
+  background-color: #eee;
+  color: #347ab6;
+}
+
+hr {
+  border-color: #fff;
+}
+
+.form-signin h2 {
+  color: #3d7bb7;
+}
+
+.input-group-addon {
+  color: black;
+}

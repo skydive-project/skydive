@@ -8,7 +8,7 @@ Vue.component('inject-form', {
     <form @submit.prevent="inject">\
       <div class="form-group">\
         <label for="inject-type">Type</label>\
-        <select id="inject-type" v-model="type" class="form-control input-sm">\
+        <select id="inject-type" v-model="type" class="form-control custom-select">\
           <option value="icmp4">ICMPv4/Echo request</option>\
           <option value="icmp6">ICMPv6/Echo request</option>\
           <option value="tcp4">TCP/IPv4</option>\
@@ -24,11 +24,11 @@ Vue.component('inject-form', {
                        id="inject-src"\
                        v-model="node1"></node-selector>\
         <div class="input-group">\
-          <span for="inject-src-ip" class="input-group-addon">IP: </span>\
+          <label for="inject-src-ip" class="input-group-addon inject-label">IP: </label>\
           <input id="inject-src-ip" class="form-control" v-model="srcIP" placeholder="Auto"/>\
         </div>\
         <div class="input-group">\
-          <span for="inject-src-mac" class="input-group-addon">MAC: </span>\
+          <label for="inject-src-mac" class="input-group-addon inject-label">MAC: </label>\
           <input id="inject-src-mac" class="form-control" v-model="srcMAC" placeholder="Auto"/>\
         </div>\
       </div>\
@@ -39,11 +39,11 @@ Vue.component('inject-form', {
                        id="inject-dst"\
                        v-model="node2"></node-selector>\
         <div class="input-group">\
-          <label for="inject-dst-ip" class="input-group-addon">IP: </label>\
+          <label for="inject-dst-ip" class="input-group-addon inject-label">IP: </label>\
           <input id="inject-dst-ip" class="form-control" v-model="dstIP" placeholder="Auto"/>\
         </div>\
         <div class="input-group">\
-          <span for="inject-dst-mac" class="input-group-addon">MAC: </span>\
+          <span for="inject-dst-mac" class="input-group-addon inject-label">MAC: </span>\
           <input id="inject-dst-mac" class="form-control" v-model="dstMAC" placeholder="Auto"/>\
         </div>\
       </div>\
@@ -53,20 +53,25 @@ Vue.component('inject-form', {
       </div>\
       <div v-if="type === \'icmp4\' || type === \'icmp6\'">\
         <div class="form-group">\
-          <label for="inject-count">ICMP Identifier</label>\
+          <label for="inject-count">ICMP ID</label>\
           <input id="inject-id" type="number" class="form-control input-sm" v-model.number="id" min="0" />\
         </div>\
         <div class="form-group">\
-          <label for="inject-increment">Increment identifier at every packet</label>\
-          <input id="inject-increment" type="checkbox" class="form-check-input" v-model="increment" />\
+          <label class="form-check-label">\
+            <input id="inject-increment" type="checkbox" class="form-check-input" v-model="increment">\
+            Increment ID at every packet\
+            <span class="checkmark"></span>\
+          </label>\
         </div>\
       </div>\
-      <div class="form-group">\
+      <div class="form-group form-inline">\
         <label class="radio-inline">\
           <input type="radio" id="random" value="random" v-model="mode"> Payload Length\
+          <span class="checkmark"></span>\
         </label>\
         <label class="radio-inline">\
           <input type="radio" id="custom" value="custom" v-model="mode"> Payload\
+          <span class="checkmark"></span>\
         </label>\
       </div>\
       <div class="form-group" v-if="mode == \'random\'">\

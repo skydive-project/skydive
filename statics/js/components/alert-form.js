@@ -25,9 +25,11 @@ Vue.component('alert-form', {
           <a><i class="fa fa-question help-text" aria-hidden="true" title="Event that triggers the alert evaluation"></i></a></br>\
           <label class="radio-inline">\
             <input type="radio" id="graph" name="trigger" value="graph" v-model="trigger"> Graph\
+            <span class="checkmark"></span>\
           </label>\
           <label class="radio-inline">\
             <input type="radio" id="periodic" name="trigger" value="periodic" v-model="trigger"> Periodic\
+            <span class="checkmark"></span>\
           </label>\
         </div>\
         <div class="form-group" v-if="trigger === \'periodic\'">\

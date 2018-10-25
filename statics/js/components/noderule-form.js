@@ -19,9 +19,11 @@ Vue.component('noderule-form', {
           <label>Action</label></br>\
           <label class="radio-inline">\
             <input type="radio" id="create" value="create" v-model="action"> Create\
+            <span class="checkmark"></span>\
           </label>\
           <label class="radio-inline">\
             <input type="radio" id="update" value="update" v-model="action"> Update\
+            <span class="checkmark"></span>\
           </label>\
         </div>\
         <div v-if="action === \'create\'">\

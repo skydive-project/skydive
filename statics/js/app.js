@@ -319,10 +319,16 @@ var app = new Vue({
     setTheme: function(theme) {
       switch (theme) {
         case 'light':
+          $('body').addClass("light");
+          $('body').removeClass("dark");
+
           $("#navbar").removeClass("navbar-inverse");
           $("#navbar").addClass("navbar-light");
           break;
         default:
+          $('body').addClass("dark");
+          $('body').removeClass("light");
+
           theme = 'dark';
           $("#navbar").addClass("navbar-inverse");
           $("#navbar").removeClass("navbar-light");
