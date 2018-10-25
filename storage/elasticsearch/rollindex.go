@@ -31,7 +31,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/olivere/elastic"
 	"github.com/spaolacci/murmur3"
 
 	"github.com/skydive-project/skydive/common"
@@ -47,7 +46,7 @@ var (
 )
 
 type rollIndexService struct {
-	client      *elastic.Client
+	client      *Client
 	config      Config
 	indices     []Index
 	triggerRoll chan bool
@@ -58,7 +57,7 @@ type rollIndexService struct {
 
 func (r *rollIndexService) cleanup(index Index) {
 	if r.config.IndicesLimit != 0 {
-		resp, err := r.client.IndexGet(index.IndexWildcard()).Do(context.Background())
+		resp, err := r.client.esClient.IndexGet(index.IndexWildcard()).Do(context.Background())
 		if err != nil {
 			logging.GetLogger().Errorf("Error while rolling index %s: %s", index.Alias(), err)
 			return
@@ -80,7 +79,7 @@ func (r *rollIndexService) cleanup(index Index) {
 		// need to reindex first, thus won't delete directly but after the task finished
 		if len(toDelete) > 0 {
 			logging.GetLogger().Infof("Deleted indices %s", strings.Join(toDelete, ", "))
-			if _, err := r.client.DeleteIndex(toDelete...).Do(context.Background()); err != nil {
+			if _, err := r.client.esClient.DeleteIndex(toDelete...).Do(context.Background()); err != nil {
 				logging.GetLogger().Errorf("Error while deleting indices: %s", err)
 			}
 		}
@@ -91,7 +90,7 @@ func (r *rollIndexService) roll(force bool) {
 	logging.GetLogger().Debug("Start rolling indices...")
 
 	for _, index := range r.indices {
-		ri := r.client.RolloverIndex(index.Alias())
+		ri := r.client.esClient.RolloverIndex(index.Alias())
 
 		needToRoll := false
 		if force {
@@ -185,7 +184,7 @@ func SetRollingRate(rate time.Duration) {
 	rollingRateLock.Unlock()
 }
 
-func newRollIndexService(client *elastic.Client, indices []Index, cfg Config, etcdClient *etcd.Client) *rollIndexService {
+func newRollIndexService(client *Client, indices []Index, cfg Config, etcdClient *etcd.Client) *rollIndexService {
 	return &rollIndexService{
 		client:      client,
 		config:      cfg,
