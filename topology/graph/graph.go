@@ -104,9 +104,9 @@ type graphElement struct {
 	Metadata  Metadata
 	Host      string
 	Origin    string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt time.Time
+	CreatedAt Time
+	UpdatedAt Time
+	DeletedAt Time
 	Revision  int64
 }
 
@@ -271,7 +271,7 @@ func (g *EventHandler) NotifyEvent(kind graphEventType, element interface{}) {
 	g.eventConsumed = false
 }
 
-// AddEventListener subscibe a new graph listener
+// AddEventListener subscribe a new graph listener
 func (g *EventHandler) AddEventListener(l EventListener) {
 	g.Lock()
 	defer g.Unlock()
@@ -397,11 +397,11 @@ func (e *graphElement) GetField(name string) (interface{}, error) {
 	case "Host":
 		return e.Host, nil
 	case "CreatedAt":
-		return common.UnixMillis(e.CreatedAt), nil
+		return e.CreatedAt.Unix(), nil
 	case "UpdatedAt":
-		return common.UnixMillis(e.UpdatedAt), nil
+		return e.UpdatedAt.Unix(), nil
 	case "DeletedAt":
-		return common.UnixMillis(e.DeletedAt), nil
+		return e.DeletedAt.Unix(), nil
 	case "Revision":
 		return e.Revision, nil
 	case "Origin":
@@ -525,15 +525,15 @@ func (e *graphElement) Decode(i interface{}) (err error) {
 		}
 	}
 	if createdAt, ok := objMap["CreatedAt"]; ok {
-		if e.CreatedAt, err = parseTime(createdAt); err != nil {
+		if err := e.CreatedAt.ParseTime(createdAt); err != nil {
 			return err
 		}
 	} else {
-		e.CreatedAt = time.Now().UTC()
+		e.CreatedAt = TimeUTC()
 	}
 
 	if updatedAt, ok := objMap["UpdatedAt"]; ok {
-		if e.UpdatedAt, err = parseTime(updatedAt); err != nil {
+		if err := e.UpdatedAt.ParseTime(updatedAt); err != nil {
 			return err
 		}
 	} else {
@@ -541,7 +541,7 @@ func (e *graphElement) Decode(i interface{}) (err error) {
 	}
 
 	if deletedAt, ok := objMap["DeletedAt"]; ok {
-		if e.DeletedAt, err = parseTime(deletedAt); err != nil {
+		if e.DeletedAt.ParseTime(deletedAt); err != nil {
 			return err
 		}
 	}
@@ -566,39 +566,11 @@ func (e *graphElement) Decode(i interface{}) (err error) {
 }
 
 func (n *Node) String() string {
-	b, err := n.MarshalJSON()
+	b, err := json.Marshal(n)
 	if err != nil {
 		return ""
 	}
 	return string(b)
-}
-
-// MarshalJSON serialize in JSON
-func (n *Node) MarshalJSON() ([]byte, error) {
-	deletedAt := int64(0)
-	if !n.DeletedAt.IsZero() {
-		deletedAt = common.UnixMillis(n.DeletedAt)
-	}
-
-	return json.Marshal(&struct {
-		ID        Identifier
-		Metadata  Metadata `json:",omitempty"`
-		Host      string
-		CreatedAt int64
-		UpdatedAt int64 `json:",omitempty"`
-		DeletedAt int64 `json:",omitempty"`
-		Revision  int64
-		Origin    string
-	}{
-		ID:        n.ID,
-		Metadata:  n.Metadata,
-		Host:      n.Host,
-		CreatedAt: common.UnixMillis(n.CreatedAt),
-		UpdatedAt: common.UnixMillis(n.UpdatedAt),
-		DeletedAt: deletedAt,
-		Revision:  n.Revision,
-		Origin:    n.Origin,
-	})
 }
 
 // Decode deserialize the node
@@ -627,41 +599,11 @@ func (e *Edge) GetField(name string) (interface{}, error) {
 }
 
 func (e *Edge) String() string {
-	b, err := e.MarshalJSON()
+	b, err := json.Marshal(e)
 	if err != nil {
 		return ""
 	}
 	return string(b)
-}
-
-// MarshalJSON serialize in JSON
-func (e *Edge) MarshalJSON() ([]byte, error) {
-	deletedAt := int64(0)
-	if !e.DeletedAt.IsZero() {
-		deletedAt = common.UnixMillis(e.DeletedAt)
-	}
-
-	return json.Marshal(&struct {
-		ID        Identifier
-		Metadata  Metadata `json:",omitempty"`
-		Parent    Identifier
-		Child     Identifier
-		Host      string
-		Origin    string
-		CreatedAt int64
-		UpdatedAt int64 `json:",omitempty"`
-		DeletedAt int64 `json:",omitempty"`
-	}{
-		ID:        e.ID,
-		Metadata:  e.Metadata,
-		Parent:    e.Parent,
-		Child:     e.Child,
-		Host:      e.Host,
-		Origin:    e.Origin,
-		CreatedAt: common.UnixMillis(e.CreatedAt),
-		UpdatedAt: common.UnixMillis(e.UpdatedAt),
-		DeletedAt: deletedAt,
-	})
 }
 
 // Decode deserialize the current edge
@@ -780,7 +722,7 @@ func (g *Graph) SetMetadata(i interface{}, m Metadata) bool {
 	}
 
 	e.Metadata = m
-	e.UpdatedAt = time.Now().UTC()
+	e.UpdatedAt = TimeUTC()
 	e.Revision++
 
 	if !g.backend.MetadataUpdated(i) {
@@ -809,7 +751,7 @@ func (g *Graph) DelMetadata(i interface{}, k string) bool {
 		return updated
 	}
 
-	e.UpdatedAt = time.Now().UTC()
+	e.UpdatedAt = TimeUTC()
 	e.Revision++
 
 	if !g.backend.MetadataUpdated(i) {
@@ -830,7 +772,7 @@ func (m *Metadata) SetFieldAndNormalize(k string, v interface{}) bool {
 	return common.SetField(*m, k, common.NormalizeValue(v))
 }
 
-func (g *Graph) addMetadata(i interface{}, k string, v interface{}, t time.Time) bool {
+func (g *Graph) addMetadata(i interface{}, k string, v interface{}, t Time) bool {
 	var e *graphElement
 	var kind graphEventType
 
@@ -869,7 +811,7 @@ func (g *Graph) updateMetadata(i interface{}, metadata Metadata, t time.Time) bo
 
 // AddMetadata add a metadata to an associated edge or node
 func (g *Graph) AddMetadata(i interface{}, k string, v interface{}) bool {
-	return g.addMetadata(i, k, v, time.Now().UTC())
+	return g.addMetadata(i, k, v, TimeUTC())
 }
 
 // AddMetadata in the current transaction
@@ -914,7 +856,7 @@ func (t *MetadataTransaction) Commit() {
 		return
 	}
 
-	e.UpdatedAt = time.Now().UTC()
+	e.UpdatedAt = TimeUTC()
 	e.Revision++
 
 	if !t.graph.backend.MetadataUpdated(t.graphElement) {
@@ -1187,7 +1129,7 @@ func (g *Graph) GetNode(i Identifier) *Node {
 }
 
 // CreateNode returns a new node not bound to a graph
-func CreateNode(i Identifier, m Metadata, t time.Time, h string, s common.ServiceType) *Node {
+func CreateNode(i Identifier, m Metadata, t Time, h string, s common.ServiceType) *Node {
 	o := string(s)
 	if len(h) > 0 {
 		o += "." + h
@@ -1213,7 +1155,7 @@ func CreateNode(i Identifier, m Metadata, t time.Time, h string, s common.Servic
 }
 
 // CreateNode creates a new node and adds it to the graph
-func (g *Graph) CreateNode(i Identifier, m Metadata, t time.Time, h ...string) *Node {
+func (g *Graph) CreateNode(i Identifier, m Metadata, t Time, h ...string) *Node {
 	hostname := g.host
 	if len(h) > 0 {
 		hostname = h[0]
@@ -1224,7 +1166,7 @@ func (g *Graph) CreateNode(i Identifier, m Metadata, t time.Time, h ...string) *
 
 // NewNode creates a new node in the graph with attached metadata
 func (g *Graph) NewNode(i Identifier, m Metadata, h ...string) *Node {
-	if n := g.CreateNode(i, m, time.Now().UTC(), h...); g.AddNode(n) {
+	if n := g.CreateNode(i, m, TimeUTC(), h...); g.AddNode(n) {
 		return n
 	}
 
@@ -1232,7 +1174,7 @@ func (g *Graph) NewNode(i Identifier, m Metadata, h ...string) *Node {
 }
 
 // CreateEdge returns a new edge not bound to any graph
-func CreateEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Time, h string, s common.ServiceType) *Edge {
+func CreateEdge(i Identifier, p *Node, c *Node, m Metadata, t Time, h string, s common.ServiceType) *Edge {
 	o := string(s)
 	if len(h) > 0 {
 		o += "." + h
@@ -1260,7 +1202,7 @@ func CreateEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Time, h strin
 }
 
 // CreateEdge creates a new edge and adds it to the graph
-func (g *Graph) CreateEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Time, h ...string) *Edge {
+func (g *Graph) CreateEdge(i Identifier, p *Node, c *Node, m Metadata, t Time, h ...string) *Edge {
 	hostname := g.host
 	if len(h) > 0 {
 		hostname = h[0]
@@ -1276,7 +1218,7 @@ func (g *Graph) CreateEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Ti
 
 // NewEdge creates a new edge in the graph based on Identifier, parent, child nodes and metadata
 func (g *Graph) NewEdge(i Identifier, p *Node, c *Node, m Metadata, h ...string) *Edge {
-	if e := g.CreateEdge(i, p, c, m, time.Now().UTC(), h...); g.AddEdge(e) {
+	if e := g.CreateEdge(i, p, c, m, TimeUTC(), h...); g.AddEdge(e) {
 		return e
 	}
 
@@ -1290,7 +1232,7 @@ func (g *Graph) EdgeDeleted(e *Edge) {
 	}
 }
 
-func (g *Graph) delEdge(e *Edge, t time.Time) (success bool) {
+func (g *Graph) delEdge(e *Edge, t Time) (success bool) {
 	e.DeletedAt = t
 	if success = g.backend.EdgeDeleted(e); success {
 		g.eventHandler.NotifyEvent(EdgeDeleted, e)
@@ -1300,7 +1242,7 @@ func (g *Graph) delEdge(e *Edge, t time.Time) (success bool) {
 
 // DelEdge delete an edge
 func (g *Graph) DelEdge(e *Edge) bool {
-	return g.delEdge(e, time.Now().UTC())
+	return g.delEdge(e, TimeUTC())
 }
 
 // NodeDeleted event
@@ -1310,7 +1252,7 @@ func (g *Graph) NodeDeleted(n *Node) {
 	}
 }
 
-func (g *Graph) delNode(n *Node, t time.Time) (success bool) {
+func (g *Graph) delNode(n *Node, t Time) (success bool) {
 	for _, e := range g.backend.GetNodeEdges(n, liveContext, nil) {
 		g.delEdge(e, t)
 	}
@@ -1324,12 +1266,12 @@ func (g *Graph) delNode(n *Node, t time.Time) (success bool) {
 
 // DelNode delete the node n in the graph
 func (g *Graph) DelNode(n *Node) bool {
-	return g.delNode(n, time.Now().UTC())
+	return g.delNode(n, TimeUTC())
 }
 
 // DelOriginGraph delete the associated node with the origin
 func (g *Graph) DelOriginGraph(origin string) {
-	t := time.Now().UTC()
+	t := TimeUTC()
 	for _, node := range g.GetNodes(nil) {
 		if node.Origin == origin {
 			g.delNode(node, t)

@@ -26,7 +26,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/olivere/elastic"
 
@@ -149,14 +148,14 @@ func graphElementToRaw(typ string, e *graphElement) (*rawData, error) {
 		ID:        string(e.ID),
 		Host:      e.Host,
 		Origin:    e.Origin,
-		CreatedAt: common.UnixMillis(e.CreatedAt),
-		UpdatedAt: common.UnixMillis(e.UpdatedAt),
+		CreatedAt: e.CreatedAt.Unix(),
+		UpdatedAt: e.UpdatedAt.Unix(),
 		Metadata:  json.RawMessage(data),
 		Revision:  e.Revision,
 	}
 
 	if !e.DeletedAt.IsZero() {
-		raw.DeletedAt = common.UnixMillis(e.DeletedAt)
+		raw.DeletedAt = e.DeletedAt.Unix()
 	}
 
 	return raw, nil
@@ -176,8 +175,8 @@ func edgeToRaw(e *Edge) (*rawData, error) {
 	return raw, nil
 }
 
-func (b *ElasticSearchBackend) archive(raw *rawData, at time.Time) bool {
-	raw.ArchivedAt = common.UnixMillis(at)
+func (b *ElasticSearchBackend) archive(raw *rawData, at Time) bool {
+	raw.ArchivedAt = at.Unix()
 
 	data, err := json.Marshal(raw)
 	if err != nil {

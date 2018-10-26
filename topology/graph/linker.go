@@ -24,7 +24,6 @@ package graph
 
 import (
 	"reflect"
-	"time"
 
 	"github.com/skydive-project/skydive/filters"
 )
@@ -200,7 +199,7 @@ func (mil *MetadataIndexerLinker) genID(parent, child *Node) Identifier {
 }
 
 func (mil *MetadataIndexerLinker) createEdge(node1, node2 *Node) *Edge {
-	return mil.g.CreateEdge(mil.genID(node1, node2), node1, node2, mil.edgeMetadata, time.Now(), "")
+	return mil.g.CreateEdge(mil.genID(node1, node2), node1, node2, mil.edgeMetadata, TimeUTC(), "")
 }
 
 // GetABLinks returns all the outgoing links for a node

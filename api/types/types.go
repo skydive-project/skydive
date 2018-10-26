@@ -123,9 +123,9 @@ func (e *EdgeRule) SetID(id string) {
 
 // Validate verifies the nodedgee rule does not create invalid edges
 func (e *EdgeRule) Validate() error {
-	n1 := graph.CreateNode(graph.GenID(), nil, time.Now(), "", common.UnknownService)
-	n2 := graph.CreateNode(graph.GenID(), nil, time.Now(), "", common.UnknownService)
-	edge := graph.CreateEdge(graph.GenID(), n1, n2, e.Metadata, time.Now(), "", common.UnknownService)
+	n1 := graph.CreateNode(graph.GenID(), nil, graph.TimeUTC(), "", common.UnknownService)
+	n2 := graph.CreateNode(graph.GenID(), nil, graph.TimeUTC(), "", common.UnknownService)
+	edge := graph.CreateEdge(graph.GenID(), n1, n2, e.Metadata, graph.TimeUTC(), "", common.UnknownService)
 	return schemaValidator.ValidateEdge(edge)
 }
 
@@ -155,7 +155,7 @@ func (n *NodeRule) Validate() error {
 	switch n.Action {
 	case "create":
 		// TODO: we should modify the JSON schema so that we can validate only the metadata
-		node := graph.CreateNode(graph.GenID(), n.Metadata, time.Now(), "", common.UnknownService)
+		node := graph.CreateNode(graph.GenID(), n.Metadata, graph.TimeUTC(), "", common.UnknownService)
 		return schemaValidator.ValidateNode(node)
 	case "update":
 		if n.Metadata["Type"] != nil || n.Metadata["Name"] != nil {

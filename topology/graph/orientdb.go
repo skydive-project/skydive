@@ -26,9 +26,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
@@ -43,7 +41,7 @@ type OrientDBBackend struct {
 
 type eventTime struct {
 	name string
-	t    time.Time
+	t    Time
 }
 
 func graphElementToOrientDBSetString(e graphElement) (s string) {
@@ -51,8 +49,8 @@ func graphElementToOrientDBSetString(e graphElement) (s string) {
 		fmt.Sprintf("ID = \"%s\"", string(e.ID)),
 		fmt.Sprintf("Host = \"%s\"", e.Host),
 		fmt.Sprintf("Origin = \"%s\"", e.Origin),
-		fmt.Sprintf("CreatedAt = %d", common.UnixMillis(e.CreatedAt)),
-		fmt.Sprintf("UpdatedAt = %d", common.UnixMillis(e.UpdatedAt)),
+		fmt.Sprintf("CreatedAt = %d", e.CreatedAt.Unix()),
+		fmt.Sprintf("UpdatedAt = %d", e.UpdatedAt.Unix()),
 		fmt.Sprintf("Revision = %d", e.Revision),
 	}
 	s = strings.Join(properties, ", ")
@@ -103,10 +101,10 @@ func graphElementToOrientDBDocument(e graphElement) (orientdb.Document, error) {
 	doc["Host"] = e.Host
 	doc["Origin"] = e.Origin
 	doc["Metadata"] = json.RawMessage(data)
-	doc["CreatedAt"] = common.UnixMillis(e.CreatedAt)
-	doc["UpdatedAt"] = common.UnixMillis(e.UpdatedAt)
+	doc["CreatedAt"] = e.CreatedAt.Unix()
+	doc["UpdatedAt"] = e.UpdatedAt.Unix()
 	if !e.DeletedAt.IsZero() {
-		doc["DeletedAt"] = common.UnixMillis(e.DeletedAt)
+		doc["DeletedAt"] = e.DeletedAt.Unix()
 	}
 	doc["Revision"] = e.Revision
 	return doc, nil
@@ -127,7 +125,7 @@ func orientDBDocumentToEdge(doc orientdb.Document) *Edge {
 func (o *OrientDBBackend) updateTimes(e string, id string, events ...eventTime) bool {
 	attrs := []string{}
 	for _, event := range events {
-		attrs = append(attrs, fmt.Sprintf("%s = %d", event.name, common.UnixMillis(event.t)))
+		attrs = append(attrs, fmt.Sprintf("%s = %d", event.name, event.t.Unix()))
 	}
 	query := fmt.Sprintf("UPDATE %s SET %s WHERE DeletedAt IS NULL AND ArchivedAt IS NULL AND ID = '%s'", e, strings.Join(attrs, ", "), id)
 	docs, err := o.client.Search(query)
