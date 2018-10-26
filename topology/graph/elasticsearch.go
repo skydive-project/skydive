@@ -23,13 +23,11 @@
 package graph
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 
 	"github.com/olivere/elastic"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
@@ -189,24 +187,6 @@ func (b *ElasticSearchBackend) archive(raw *rawData, at Time) bool {
 		return false
 	}
 	return true
-}
-
-func (b *ElasticSearchBackend) hitToNode(source *json.RawMessage, node *Node) error {
-	var obj map[string]interface{}
-	if err := common.JSONDecode(bytes.NewReader([]byte(*source)), &obj); err != nil {
-		return err
-	}
-
-	return node.Decode(obj)
-}
-
-func (b *ElasticSearchBackend) hitToEdge(source *json.RawMessage, edge *Edge) error {
-	var obj map[string]interface{}
-	if err := common.JSONDecode(bytes.NewReader([]byte(*source)), &obj); err != nil {
-		return err
-	}
-
-	return edge.Decode(obj)
 }
 
 func (b *ElasticSearchBackend) indexNode(n *Node) bool {
@@ -413,8 +393,9 @@ func (b *ElasticSearchBackend) searchNodes(tsq *TimedSearchQuery) (nodes []*Node
 	if out != nil && len(out.Hits.Hits) > 0 {
 		for _, d := range out.Hits.Hits {
 			var node Node
-			if err := b.hitToNode(d.Source, &node); err != nil {
-				logging.GetLogger().Debugf("Failed to unmarshal node: %+v", d.Source)
+			if err := json.Unmarshal(*d.Source, &node); err != nil {
+				logging.GetLogger().Errorf("Failed to unmarshal node %s: %s", err, string(*d.Source))
+				continue
 			}
 			nodes = append(nodes, &node)
 		}
@@ -434,8 +415,9 @@ func (b *ElasticSearchBackend) searchEdges(tsq *TimedSearchQuery) (edges []*Edge
 	if out != nil && len(out.Hits.Hits) > 0 {
 		for _, d := range out.Hits.Hits {
 			var edge Edge
-			if err := b.hitToEdge(d.Source, &edge); err != nil {
-				logging.GetLogger().Debugf("Failed to unmarshal edge: %+v", d.Source)
+			if err := json.Unmarshal(*d.Source, &edge); err != nil {
+				logging.GetLogger().Errorf("Failed to unmarshal edge %s: %s", err, string(*d.Source))
+				continue
 			}
 			edges = append(edges, &edge)
 		}

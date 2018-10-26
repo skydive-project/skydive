@@ -56,100 +56,64 @@ type SyncRequestMsg struct {
 	GremlinFilter string
 }
 
-// SyncMsg describes graph syncho message
+// SyncMsg describes graph synchro message
 type SyncMsg struct {
 	Nodes []*Node
 	Edges []*Edge
 }
 
-// UnmarshalMessage deserialize the websocket message
-func UnmarshalMessage(msg *ws.StructMessage) (string, interface{}, error) {
-	var obj interface{}
-	if err := msg.DecodeObj(&obj); err != nil {
-		return "", msg, err
+// UnmarshalJSON custom unmarshalling function
+func (s *SyncRequestMsg) UnmarshalJSON(b []byte) error {
+	raw := struct {
+		Time          int64
+		GremlinFilter string
+	}{}
+
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
 	}
 
+	if raw.Time != 0 {
+		s.TimeSlice = common.NewTimeSlice(raw.Time, raw.Time)
+	}
+	s.GremlinFilter = raw.GremlinFilter
+
+	return nil
+}
+
+// UnmarshalMessage unmarshall graph message
+func UnmarshalMessage(msg *ws.StructMessage) (string, interface{}, error) {
 	switch msg.Type {
 	case SyncRequestMsgType:
-		m, ok := obj.(map[string]interface{})
-		if !ok {
-			return "", msg, ErrSyncRequestMalFormed
-		}
-
 		var syncRequest SyncRequestMsg
-		switch v := m["Time"].(type) {
-		case json.Number:
-			i, err := v.Int64()
-			if err != nil {
-				return "", msg, err
-			}
-			syncRequest.TimeSlice = common.NewTimeSlice(i, i)
-		}
-
-		if s, ok := m["GremlinFilter"]; ok {
-			if gremlinFilter, _ := s.(string); gremlinFilter != "" {
-				syncRequest.GremlinFilter = gremlinFilter
-			}
-		}
-
-		return msg.Type, syncRequest, nil
-	case SyncMsgType, SyncReplyMsgType:
-		result := &SyncMsg{}
-
-		els, ok := obj.(map[string]interface{})
-		if !ok {
-			return "", msg, ErrSyncMsgMalFormed
-		}
-		inodes, ok := els["Nodes"]
-		if !ok || inodes == nil {
-			return msg.Type, result, nil
-		}
-		nodes, ok := inodes.([]interface{})
-		if !ok {
-			return "", msg, ErrSyncMsgMalFormed
-		}
-
-		for _, n := range nodes {
-			var node Node
-			if err := node.Decode(n); err != nil {
-				return "", msg, err
-			}
-			result.Nodes = append(result.Nodes, &node)
-		}
-
-		iedges, ok := els["Edges"]
-		if !ok || iedges == nil {
-			return msg.Type, result, nil
-		}
-
-		edges, ok := iedges.([]interface{})
-		if !ok {
-			return "", msg, ErrSyncMsgMalFormed
-		}
-		for _, e := range edges {
-			var edge Edge
-			if err := edge.Decode(e); err != nil {
-				return "", msg, err
-			}
-			result.Edges = append(result.Edges, &edge)
-		}
-
-		return msg.Type, result, nil
-	case OriginGraphDeletedMsgType:
-		return msg.Type, obj, nil
-	case NodeUpdatedMsgType, NodeDeletedMsgType, NodeAddedMsgType:
-		var node Node
-		if err := node.Decode(obj); err != nil {
+		if err := msg.DecodeObj(&syncRequest); err != nil {
 			return "", msg, err
 		}
 
+		return msg.Type, &syncRequest, nil
+	case SyncMsgType, SyncReplyMsgType:
+		var syncMsg SyncMsg
+		if err := msg.DecodeObj(&syncMsg); err != nil {
+			return "", msg, err
+		}
+		return msg.Type, &syncMsg, nil
+	case OriginGraphDeletedMsgType:
+		var origin string
+		if err := msg.DecodeObj(&origin); err != nil {
+			return "", msg, err
+		}
+		return msg.Type, origin, nil
+	case NodeUpdatedMsgType, NodeDeletedMsgType, NodeAddedMsgType:
+		var node Node
+		if err := msg.DecodeObj(&node); err != nil {
+			return "", msg, err
+		}
 		return msg.Type, &node, nil
 	case EdgeUpdatedMsgType, EdgeDeletedMsgType, EdgeAddedMsgType:
 		var edge Edge
-		if err := edge.Decode(obj); err != nil {
+		if err := msg.DecodeObj(&edge); err != nil {
 			return "", msg, err
 		}
-
 		return msg.Type, &edge, nil
 	}
 

@@ -122,7 +122,7 @@ func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage
 		t.Graph.RLock()
 		defer t.Graph.RUnlock()
 
-		syncMsg, status := obj.(graph.SyncRequestMsg), http.StatusOK
+		syncMsg, status := obj.(*graph.SyncRequestMsg), http.StatusOK
 		g, err := t.Graph.CloneWithContext(syncMsg.Context)
 		var result interface{} = g
 		if err != nil {

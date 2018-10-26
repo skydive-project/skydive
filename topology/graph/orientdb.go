@@ -112,13 +112,13 @@ func graphElementToOrientDBDocument(e graphElement) (orientdb.Document, error) {
 
 func orientDBDocumentToNode(doc orientdb.Document) *Node {
 	n := new(Node)
-	n.Decode(map[string]interface{}(doc))
+	//n.Decode(map[string]interface{}(doc))
 	return n
 }
 
 func orientDBDocumentToEdge(doc orientdb.Document) *Edge {
 	e := new(Edge)
-	e.Decode(map[string]interface{}(doc))
+	//e.Decode(map[string]interface{}(doc))
 	return e
 }
 

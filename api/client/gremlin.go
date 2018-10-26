@@ -111,18 +111,19 @@ func (g *GremlinQueryHelper) GetNodes(query interface{}) ([]*graph.Node, error) 
 	for _, obj := range values {
 		switch t := obj.(type) {
 		case []interface{}:
-			for _, node := range t {
+			/*for _, node := range t {
 				n := new(graph.Node)
 				if err := n.Decode(node); err != nil {
 					return nil, err
 				}
-				nodes = append(nodes, n)
-			}
+				nodes = append(nodes, ni)
+			}*/
+			_ = t
 		case interface{}:
 			n := new(graph.Node)
-			if err := n.Decode(t); err != nil {
+			/*if err := n.Decode(t); err != nil {
 				return nil, err
-			}
+			}*/
 			nodes = append(nodes, n)
 		}
 	}

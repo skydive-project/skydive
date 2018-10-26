@@ -310,6 +310,43 @@ func GenID(s ...string) Identifier {
 	return Identifier(u.String())
 }
 
+func normalizeRawMetadata(m map[string]interface{}) {
+	for field, value := range m {
+		switch v := value.(type) {
+		case json.Number:
+			var err error
+			if value, err = v.Int64(); err != nil {
+				if value, err = v.Float64(); err != nil {
+					value = v.String()
+				}
+			}
+			m[field] = value
+		case []interface{}:
+			for _, obj := range v {
+				if m, ok := obj.(map[string]interface{}); ok {
+					normalizeRawMetadata(m)
+				}
+			}
+		case map[string]interface{}:
+			normalizeRawMetadata(v)
+		default:
+			m[field] = value
+		}
+	}
+}
+
+// UnmarshalJSON custom unmarshalling function
+func (m *Metadata) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	normalizeRawMetadata(raw)
+	*m = raw
+
+	return nil
+}
+
 func (m Metadata) String() string {
 	j, _ := json.Marshal(m)
 	return string(j)
@@ -452,119 +489,6 @@ func (e *graphElement) MatchMetadata(f ElementMatcher) bool {
 	return f.Match(e)
 }
 
-func parseTime(i interface{}) (t time.Time, err error) {
-	var ms int64
-	switch i := i.(type) {
-	case int64:
-		ms = i
-	case json.Number:
-		ms, err = i.Int64()
-		if err != nil {
-			return t, err
-		}
-	default:
-		return t, fmt.Errorf("Invalid time: %+v", i)
-	}
-	return time.Unix(0, ms*int64(time.Millisecond)), err
-}
-
-func decodeMap(m map[string]interface{}) {
-	for field, value := range m {
-		switch v := value.(type) {
-		case json.Number:
-			var err error
-			if value, err = v.Int64(); err != nil {
-				if value, err = v.Float64(); err != nil {
-					value = v.String()
-				}
-			}
-			m[field] = value
-		case []interface{}:
-			for _, obj := range v {
-				if m, ok := obj.(map[string]interface{}); ok {
-					decodeMap(m)
-				}
-			}
-		case map[string]interface{}:
-			decodeMap(v)
-		default:
-			m[field] = value
-		}
-	}
-}
-
-func (e *graphElement) Decode(i interface{}) (err error) {
-	objMap, ok := i.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("Unable to decode graph element: %v, %+v", i, reflect.TypeOf(i))
-	}
-
-	if _, ok = objMap["ID"]; !ok {
-		return errors.New("No ID found for graph element")
-	}
-
-	id, ok := objMap["ID"].(string)
-	if !ok {
-		return errors.New("Wrong type for ID")
-	}
-	e.ID = Identifier(id)
-
-	if _, ok := objMap["Host"]; ok {
-		if host, ok := objMap["Host"].(string); ok {
-			e.Host = host
-		} else {
-			return errors.New("Wrong type for Host")
-		}
-	}
-
-	if _, ok := objMap["Origin"]; ok {
-		if origin, ok := objMap["Origin"].(string); ok {
-			e.Origin = origin
-		} else {
-			return errors.New("Wrong type for Origin")
-		}
-	}
-	if createdAt, ok := objMap["CreatedAt"]; ok {
-		if err := e.CreatedAt.ParseTime(createdAt); err != nil {
-			return err
-		}
-	} else {
-		e.CreatedAt = TimeUTC()
-	}
-
-	if updatedAt, ok := objMap["UpdatedAt"]; ok {
-		if err := e.UpdatedAt.ParseTime(updatedAt); err != nil {
-			return err
-		}
-	} else {
-		e.UpdatedAt = e.CreatedAt
-	}
-
-	if deletedAt, ok := objMap["DeletedAt"]; ok {
-		if e.DeletedAt.ParseTime(deletedAt); err != nil {
-			return err
-		}
-	}
-
-	if revision, ok := objMap["Revision"]; ok {
-		if r, ok := revision.(json.Number); ok {
-			if e.Revision, err = r.Int64(); err != nil {
-				return errors.New("Wrong type for Revision")
-			}
-		} else {
-			return errors.New("Wrong type for Revision")
-		}
-	}
-
-	if m, ok := objMap["Metadata"]; ok {
-		metadata := m.(map[string]interface{})
-		decodeMap(metadata)
-		e.Metadata = metadata
-	}
-
-	return nil
-}
-
 func (n *Node) String() string {
 	b, err := json.Marshal(n)
 	if err != nil {
@@ -573,9 +497,25 @@ func (n *Node) String() string {
 	return string(b)
 }
 
-// Decode deserialize the node
-func (n *Node) Decode(i interface{}) error {
-	return n.graphElement.Decode(i)
+// wrapper to avoid unmarshalling infinite loop
+type nodeWrapper Node
+
+// UnmarshalJSON custom unmarshalling function
+func (n *Node) UnmarshalJSON(b []byte) error {
+	var nw nodeWrapper
+	if err := json.Unmarshal(b, &nw); err != nil {
+		return err
+	}
+
+	if nw.CreatedAt.IsZero() {
+		nw.CreatedAt = TimeUTC()
+	}
+	if nw.UpdatedAt.IsZero() {
+		nw.UpdatedAt = TimeUTC()
+	}
+	*n = Node(nw)
+
+	return nil
 }
 
 // MatchMetadata returns when an edge matches a specified filter or metadata
@@ -606,32 +546,23 @@ func (e *Edge) String() string {
 	return string(b)
 }
 
-// Decode deserialize the current edge
-func (e *Edge) Decode(i interface{}) error {
-	if err := e.graphElement.Decode(i); err != nil {
+// wrapper to avoid unmarshalling infinite loop
+type edgeWrapper Edge
+
+// UnmarshalJSON custom unmarshalling function
+func (e *Edge) UnmarshalJSON(b []byte) error {
+	var ew edgeWrapper
+	if err := json.Unmarshal(b, &ew); err != nil {
 		return err
 	}
 
-	objMap := i.(map[string]interface{})
-	id, ok := objMap["Parent"]
-	if !ok {
-		return errors.New("parent ID missing")
+	if ew.CreatedAt.IsZero() {
+		ew.CreatedAt = TimeUTC()
 	}
-	parentID, ok := id.(string)
-	if !ok {
-		return errors.New("parent ID wrong format")
+	if ew.UpdatedAt.IsZero() {
+		ew.UpdatedAt = TimeUTC()
 	}
-	e.Parent = Identifier(parentID)
-
-	id, ok = objMap["Child"]
-	if !ok {
-		return errors.New("child ID missing")
-	}
-	childID, ok := id.(string)
-	if !ok {
-		return errors.New("child ID wrong format")
-	}
-	e.Child = Identifier(childID)
+	*e = Edge(ew)
 
 	return nil
 }
@@ -1306,7 +1237,6 @@ func (g *Graph) String() string {
 
 // Origin returns service type with host name
 func (g *Graph) Origin() string {
-
 	o := string(g.service)
 	if len(g.host) > 0 {
 		o += "." + g.host
@@ -1316,6 +1246,8 @@ func (g *Graph) Origin() string {
 
 // MarshalJSON serialize the graph in JSON
 func (g *Graph) MarshalJSON() ([]byte, error) {
+
+	// TODO(safchain) check if make here is required here
 	nodes := make([]*Node, 0)
 	nodes = append(nodes, g.GetNodes(nil)...)
 	SortNodes(nodes, "CreatedAt", common.SortAscending)
