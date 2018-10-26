@@ -107,7 +107,7 @@ func BuildHostNodeTIDMap(nodes []*graph.Node) HostNodeTIDMap {
 	hnmap := make(HostNodeTIDMap)
 	for _, node := range nodes {
 		if tid, _ := node.GetFieldString("TID"); tid != "" {
-			hnmap[node.Host()] = append(hnmap[node.Host()], tid)
+			hnmap[node.Host] = append(hnmap[node.Host], tid)
 		}
 	}
 	return hnmap
@@ -133,7 +133,7 @@ func GetOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node) *gr
 func AddOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, metadata graph.Metadata, h ...string) *graph.Edge {
 	// a child node can only have one parent of type ownership, so delete the previous link
 	for _, e := range g.GetNodeEdges(child, OwnershipMetadata()) {
-		if e.GetChild() == child.ID {
+		if e.Child == child.ID {
 			logging.GetLogger().Debugf("Delete previous ownership link: %v", e)
 			g.DelEdge(e)
 		}

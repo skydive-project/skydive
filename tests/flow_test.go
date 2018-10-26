@@ -77,13 +77,13 @@ func TestSFlowProbeNode(t *testing.T) {
 				return err
 			}
 
-			flows, err := c.gh.GetFlows(c.gremlin.Flows().Has("NodeTID", node.Metadata()["TID"], "LayersPath", "Ethernet/IPv4/ICMPv4"))
+			flows, err := c.gh.GetFlows(c.gremlin.Flows().Has("NodeTID", node.Metadata["TID"], "LayersPath", "Ethernet/IPv4/ICMPv4"))
 			if err != nil {
 				return err
 			}
 
 			if len(flows) != 1 {
-				return fmt.Errorf("Unable to find only one flow with the expected NodeTID %s", node.Metadata()["TID"])
+				return fmt.Errorf("Unable to find only one flow with the expected NodeTID %s", node.Metadata["TID"])
 			}
 
 			return nil
@@ -127,7 +127,7 @@ func TestSFlowNodeTIDOvsInternalNetNS(t *testing.T) {
 				return err
 			}
 
-			flows, err := c.gh.GetFlows(c.gremlin.Flows("NodeTID", node.Metadata()["TID"], "LayersPath", "Ethernet/IPv4/ICMPv4"))
+			flows, err := c.gh.GetFlows(c.gremlin.Flows("NodeTID", node.Metadata["TID"], "LayersPath", "Ethernet/IPv4/ICMPv4"))
 			if err != nil {
 				return err
 			}
@@ -346,7 +346,7 @@ func TestPCAPProbe(t *testing.T) {
 				return err
 			}
 
-			flows, err := c.gh.GetFlows(c.gremlin.Flows().Has("NodeTID", node.Metadata()["TID"]))
+			flows, err := c.gh.GetFlows(c.gremlin.Flows().Has("NodeTID", node.Metadata["TID"]))
 			if err != nil {
 				return err
 			}
@@ -836,7 +836,7 @@ func TestFlowHops(t *testing.T) {
 			}
 
 			found := false
-			m := nodes[0].Metadata()
+			m := nodes[0].Metadata
 			for _, n := range tnodes {
 				if n.MatchMetadata(m) == true {
 					found = true
@@ -946,7 +946,7 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 			}
 
 			found := false
-			m := nodes[0].Metadata()
+			m := nodes[0].Metadata
 			for _, n := range tnodes {
 				if n.MatchMetadata(m) == true {
 					found = true
@@ -1310,7 +1310,7 @@ func TestReplayCapture(t *testing.T) {
 				return err
 			}
 
-			gremlin = c.gremlin.Flows().Has("NodeTID", node.Metadata()["TID"])
+			gremlin = c.gremlin.Flows().Has("NodeTID", node.Metadata["TID"])
 			flows, err := c.gh.GetFlows(gremlin)
 			if err != nil {
 				return err
@@ -1668,7 +1668,7 @@ func TestFlowCaptureNodeStep(t *testing.T) {
 				return fmt.Errorf("Expected one node, got %+v", nodes)
 			}
 
-			nodeName := nodes[0].Metadata()["Name"].(string)
+			nodeName := nodes[0].Metadata["Name"].(string)
 			if nodeName != "br-fcn" {
 				return fmt.Errorf("we should get br-fcn node, got %s", nodeName)
 			}
@@ -1836,7 +1836,7 @@ func TestRawPackets(t *testing.T) {
 				return err
 			}
 
-			query := g.G.At("-1s").Flows().Has("NodeTID", node.Metadata()["TID"], "LayersPath", "Ethernet/IPv4/ICMPv4")
+			query := g.G.At("-1s").Flows().Has("NodeTID", node.Metadata["TID"], "LayersPath", "Ethernet/IPv4/ICMPv4")
 
 			flows, err := c.gh.GetFlows(query)
 			if err != nil {
@@ -1990,7 +1990,7 @@ func TestOvsMirror(t *testing.T) {
 				return fmt.Errorf("Unable to find expected Mirror information of %v on mirror node %v != %v", orig, node, aa)
 			}
 
-			flows, err := c.gh.GetFlows(c.gremlin.Flows("NodeTID", node.Metadata()["TID"], "LayersPath", "Ethernet/IPv4/ICMPv4"))
+			flows, err := c.gh.GetFlows(c.gremlin.Flows("NodeTID", node.Metadata["TID"], "LayersPath", "Ethernet/IPv4/ICMPv4"))
 			if err != nil {
 				return err
 			}
@@ -2050,7 +2050,7 @@ func TestSFlowCapture(t *testing.T) {
 				return err
 			}
 
-			flows, err := c.gh.GetFlows(c.gremlin.Flows("NodeTID", node.Metadata()["TID"]).Has("Network.A", "169.254.29.11"))
+			flows, err := c.gh.GetFlows(c.gremlin.Flows("NodeTID", node.Metadata["TID"]).Has("Network.A", "169.254.29.11"))
 			if err != nil {
 				return err
 			}

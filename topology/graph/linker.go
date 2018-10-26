@@ -58,14 +58,14 @@ func (l *listener) nodeEvent(node *Node) {
 
 	for id, newLink := range newLinks {
 		for k, v := range l.metadata {
-			newLink.metadata[k] = v
+			newLink.Metadata[k] = v
 		}
 
 		if oldLink, found := existingLinks[id]; !found {
 			l.graph.AddEdge(newLink)
 		} else {
-			if !reflect.DeepEqual(newLink.metadata, oldLink.metadata) {
-				l.graph.SetMetadata(oldLink, newLink.metadata)
+			if !reflect.DeepEqual(newLink.Metadata, oldLink.Metadata) {
+				l.graph.SetMetadata(oldLink, newLink.Metadata)
 			}
 			delete(existingLinks, id)
 		}

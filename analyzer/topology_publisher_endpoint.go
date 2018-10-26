@@ -87,10 +87,10 @@ func (t *TopologyPublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Struct
 
 	switch msgType {
 	case graph.NodeAddedMsgType, graph.NodeUpdatedMsgType, graph.NodeDeletedMsgType:
-		obj.(*graph.Node).SetOrigin(origin)
+		obj.(*graph.Node).Origin = origin
 		err = t.schemaValidator.ValidateNode(obj.(*graph.Node))
 	case graph.EdgeAddedMsgType, graph.EdgeUpdatedMsgType, graph.EdgeDeletedMsgType:
-		obj.(*graph.Edge).SetOrigin(origin)
+		obj.(*graph.Edge).Origin = origin
 		err = t.schemaValidator.ValidateEdge(obj.(*graph.Edge))
 	}
 

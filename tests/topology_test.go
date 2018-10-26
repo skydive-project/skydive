@@ -885,7 +885,7 @@ func TestRouteTable(t *testing.T) {
 					return fmt.Errorf("Failed to find a node with IP 124.65.91.42/24")
 				}
 
-				routingTable := node.Metadata()["RoutingTable"].([]interface{})
+				routingTable := node.Metadata["RoutingTable"].([]interface{})
 				noOfRoutingTable := len(routingTable)
 
 				execCmds(t,
@@ -898,7 +898,7 @@ func TestRouteTable(t *testing.T) {
 					return fmt.Errorf("Failed to find a node with IP 124.65.91.42/24")
 				}
 
-				routingTable = node.Metadata()["RoutingTable"].([]interface{})
+				routingTable = node.Metadata["RoutingTable"].([]interface{})
 				newNoOfRoutingTable := len(routingTable)
 
 				execCmds(t,
@@ -953,7 +953,7 @@ func TestRouteTableHistory(t *testing.T) {
 				if err != nil {
 					return fmt.Errorf("Failed to find a node with IP 124.65.75.42/24")
 				}
-				routingTable := node.Metadata()["RoutingTable"].([]interface{})
+				routingTable := node.Metadata["RoutingTable"].([]interface{})
 				foundNewTable := false
 				for _, obj := range routingTable {
 					rt := obj.(map[string]interface{})

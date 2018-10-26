@@ -119,7 +119,7 @@ func TestFirstLinkIsCorrect(t *testing.T) {
 		t.Error("nodes should be linked")
 	}
 
-	if actual := e.Metadata()["Field"]; actual != expected {
+	if actual := e.Metadata["Field"]; actual != expected {
 		t.Errorf("Wrong metadata['Direction'] expected '%s' got '%s'", expected, actual)
 	}
 }
@@ -367,11 +367,11 @@ func TestComplexPath(t *testing.T) {
 	nodeCollapse(g, []*Node{nprev[0]}, nend)
 	t.Log("nb nodes", len(g.GetNodes(nil)))
 
-	r := g.LookupShortestPath(nstart, nend.Metadata(), nil)
+	r := g.LookupShortestPath(nstart, nend.Metadata, nil)
 	if len(r) != 5 {
 		t.Errorf("Wrong nodes returned (start -> end): %d %v", len(r), r)
 	}
-	r = g.LookupShortestPath(nend, nstart.Metadata(), nil)
+	r = g.LookupShortestPath(nend, nstart.Metadata, nil)
 	if len(r) != 5 {
 		t.Errorf("Wrong nodes returned (end -> start): %d %v", len(r), r)
 	}
@@ -415,7 +415,7 @@ func TestMetadataTransaction(t *testing.T) {
 	tr := g.StartMetadataTransaction(n)
 	tr.AddMetadata("Name", "test123")
 
-	if _, ok := n.metadata["Name"]; ok {
+	if _, ok := n.Metadata["Name"]; ok {
 		t.Error("Name field should not be in the node metadata until commit")
 	}
 
@@ -428,8 +428,8 @@ func TestMetadataTransaction(t *testing.T) {
 
 	tr.Commit()
 
-	if len(n.metadata["Section"].([]string)) != 1 {
-		t.Errorf("Should only have one element, found: %+v\n", n.metadata["Section"])
+	if len(n.Metadata["Section"].([]string)) != 1 {
+		t.Errorf("Should only have one element, found: %+v\n", n.Metadata["Section"])
 	}
 
 	if _, err := n.GetFieldString("Label.List1"); err != nil {

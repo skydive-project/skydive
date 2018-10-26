@@ -155,7 +155,7 @@ func verifyGroup(c *CheckContext, bridge string, expected int) error {
 			return fmt.Errorf("expected %d groups - %v", l, expected)
 		}
 		for _, node := range nodes {
-			m := node.Metadata()
+			m := node.Metadata
 			if m["group_id"].(int64) != 123 {
 				return fmt.Errorf("Group_id set to %d", m["group_id"])
 			}

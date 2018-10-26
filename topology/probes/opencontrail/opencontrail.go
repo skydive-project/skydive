@@ -239,7 +239,7 @@ func (mapper *Probe) nodeUpdater() {
 			mapper.onVhostAdded(node, itf)
 		} else {
 			logging.GetLogger().Debugf("Retrieve extIDs for %s", name)
-			extIDs, err := mapper.retrieveMetadata(node.Metadata(), itf)
+			extIDs, err := mapper.retrieveMetadata(node.Metadata, itf)
 			if err != nil {
 				return
 			}
