@@ -39,6 +39,7 @@ import (
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/topology/probes/netlink"
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
@@ -885,8 +886,11 @@ func TestRouteTable(t *testing.T) {
 					return fmt.Errorf("Failed to find a node with IP 124.65.91.42/24")
 				}
 
-				routingTable := node.Metadata["RoutingTable"].([]interface{})
-				noOfRoutingTable := len(routingTable)
+				routingTables, ok := node.Metadata["RoutingTable"].([]netlink.RoutingTable)
+				if !ok {
+					return fmt.Errorf("Wrong metadata type for RoutingTable: %+v", node.Metadata["RoutingTable"])
+				}
+				noOfRoutingTable := len(routingTables)
 
 				execCmds(t,
 					Cmd{Cmd: "ip netns exec rt-vm1 ip route add 124.65.92.0/24 via 124.65.91.42 table 2", Check: true},
@@ -898,8 +902,11 @@ func TestRouteTable(t *testing.T) {
 					return fmt.Errorf("Failed to find a node with IP 124.65.91.42/24")
 				}
 
-				routingTable = node.Metadata["RoutingTable"].([]interface{})
-				newNoOfRoutingTable := len(routingTable)
+				routingTables, ok = node.Metadata["RoutingTable"].([]netlink.RoutingTable)
+				if !ok {
+					return fmt.Errorf("Wrong metadata type for RoutingTable: %+v", node.Metadata["RoutingTable"])
+				}
+				newNoOfRoutingTable := len(routingTables)
 
 				execCmds(t,
 					Cmd{Cmd: "ip netns exec rt-vm1 ip route del 124.65.92.0/24 via 124.65.91.42 table 2", Check: true},
@@ -953,11 +960,15 @@ func TestRouteTableHistory(t *testing.T) {
 				if err != nil {
 					return fmt.Errorf("Failed to find a node with IP 124.65.75.42/24")
 				}
-				routingTable := node.Metadata["RoutingTable"].([]interface{})
+
+				routingTables, ok := node.Metadata["RoutingTable"].([]netlink.RoutingTable)
+				if !ok {
+					return fmt.Errorf("Wrong metadata type for RoutingTable: %+v", node.Metadata["RoutingTable"])
+				}
+
 				foundNewTable := false
-				for _, obj := range routingTable {
-					rt := obj.(map[string]interface{})
-					if rt["Id"].(int64) == 2 {
+				for _, rt := range routingTables {
+					if rt.ID == 2 {
 						foundNewTable = true
 						break
 					}

@@ -45,7 +45,7 @@ func TestNullNodesEdges(t *testing.T) {
 	}
 
 	if _, _, err := UnmarshalMessage(msg); err != nil {
-		t.Error("Should not raise error if Nodes is null")
+		t.Errorf("Should not raise error if Nodes is null: %s", err)
 	}
 
 	edgesNull := []byte(`{"Nodes": [{"ID": "aaa"}], "Edges": null}`)
@@ -62,7 +62,7 @@ func TestNullNodesEdges(t *testing.T) {
 	}
 
 	if _, _, err := UnmarshalMessage(msg); err != nil {
-		t.Errorf("Should not raise error if Nodes is null: %s", err.Error())
+		t.Errorf("Should not raise error if Edges is null: %s", err)
 	}
 }
 

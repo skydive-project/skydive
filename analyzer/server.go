@@ -47,6 +47,7 @@ import (
 	"github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
+	"github.com/skydive-project/skydive/topology/probes/netlink"
 	"github.com/skydive-project/skydive/ui"
 	ws "github.com/skydive-project/skydive/websocket"
 )
@@ -243,6 +244,11 @@ func NewServerFromConfig() (*Server, error) {
 	if len(name) == 0 {
 		name = "memory"
 	}
+
+	// add decoders for specific metadata keys, this aims to keep the same
+	// object type between the agent and the analyzer
+	// Decoder will be used while unmarshal the metadata
+	graph.NodeMetadataDecoders["RoutingTable"] = netlink.RoutingTableMetadataDecoder
 
 	persistent, err := graph.NewBackendByName(name, etcdClient)
 	if err != nil {

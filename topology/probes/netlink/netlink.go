@@ -420,6 +420,7 @@ func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 	}
 
 	if rt := u.getRoutingTable(link, syscall.RTA_UNSPEC); rt != nil {
+		// TODO change by RoutingTables
 		metadata["RoutingTable"] = rt
 	}
 

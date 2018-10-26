@@ -106,7 +106,7 @@ type graphElement struct {
 	Origin    string
 	CreatedAt Time
 	UpdatedAt Time
-	DeletedAt Time
+	DeletedAt Time `json:"DeletedAt,omitempty"`
 	Revision  int64
 }
 
@@ -161,7 +161,18 @@ type Graph struct {
 	service      common.ServiceType
 }
 
+// RawMetadataDecoder defines a json rawmessage decoder
+type RawMetadataDecoder func(raw json.RawMessage) (interface{}, error)
+
+var (
+	// NodeMetadataDecoders is a map that owns special type metadata decoder
+	NodeMetadataDecoders = make(map[string]RawMetadataDecoder)
+	// EdgeMetadataDecoders is a map that owns special type metadata decoder
+	EdgeMetadataDecoders = make(map[string]RawMetadataDecoder)
+)
+
 // HostNodeTIDMap a map of host and node ID
+// TODO(safchain) need to move this to topology.go
 type HostNodeTIDMap map[string][]string
 
 // BuildHostNodeTIDMap creates a map filled with host and associated node.ID
@@ -310,43 +321,6 @@ func GenID(s ...string) Identifier {
 	return Identifier(u.String())
 }
 
-func normalizeRawMetadata(m map[string]interface{}) {
-	for field, value := range m {
-		switch v := value.(type) {
-		case json.Number:
-			var err error
-			if value, err = v.Int64(); err != nil {
-				if value, err = v.Float64(); err != nil {
-					value = v.String()
-				}
-			}
-			m[field] = value
-		case []interface{}:
-			for _, obj := range v {
-				if m, ok := obj.(map[string]interface{}); ok {
-					normalizeRawMetadata(m)
-				}
-			}
-		case map[string]interface{}:
-			normalizeRawMetadata(v)
-		default:
-			m[field] = value
-		}
-	}
-}
-
-// UnmarshalJSON custom unmarshalling function
-func (m *Metadata) UnmarshalJSON(b []byte) error {
-	var raw map[string]interface{}
-	if err := json.Unmarshal(b, &raw); err != nil {
-		return err
-	}
-	normalizeRawMetadata(raw)
-	*m = raw
-
-	return nil
-}
-
 func (m Metadata) String() string {
 	j, _ := json.Marshal(m)
 	return string(j)
@@ -489,6 +463,64 @@ func (e *graphElement) MatchMetadata(f ElementMatcher) bool {
 	return f.Match(e)
 }
 
+func normalizeNumbers(raw interface{}) interface{} {
+	switch t := raw.(type) {
+	case float64:
+		// float equal to its int version then convert it to int64
+		i := int64(t)
+		if float64(i) == t {
+			return i
+		}
+	case []interface{}:
+		for i, obj := range t {
+			t[i] = normalizeNumbers(obj)
+		}
+	case map[string]interface{}:
+		for k, v := range t {
+			t[k] = normalizeNumbers(v)
+		}
+		return t
+	}
+	return raw
+}
+
+// normalize the graph element after partial deserialization
+func (e *graphElement) normalize(metadata map[string]json.RawMessage, decoders map[string]RawMetadataDecoder) error {
+	// sanity checks
+	if e.ID == "" {
+		return errors.New("No ID found for graph element")
+	}
+
+	e.Metadata = make(Metadata)
+
+	if e.CreatedAt.IsZero() {
+		e.CreatedAt = TimeUTC()
+	}
+	if e.UpdatedAt.IsZero() {
+		e.UpdatedAt = TimeUTC()
+	}
+
+	for k, r := range metadata {
+		if decoder, ok := decoders[k]; ok {
+			v, err := decoder(r)
+			if err != nil {
+				return err
+			}
+			e.Metadata[k] = v
+			continue
+		}
+
+		var i interface{}
+		if err := json.Unmarshal(r, &i); err != nil {
+			return err
+		}
+
+		e.Metadata[k] = normalizeNumbers(i)
+	}
+
+	return nil
+}
+
 func (n *Node) String() string {
 	b, err := json.Marshal(n)
 	if err != nil {
@@ -497,23 +529,24 @@ func (n *Node) String() string {
 	return string(b)
 }
 
-// wrapper to avoid unmarshalling infinite loop
-type nodeWrapper Node
-
-// UnmarshalJSON custom unmarshalling function
+// UnmarshalJSON custom unmarshal function
 func (n *Node) UnmarshalJSON(b []byte) error {
-	var nw nodeWrapper
+	// wrapper to avoid unmarshal infinite loop
+	type nodeWrapper Node
+
+	nw := struct {
+		nodeWrapper
+		Metadata map[string]json.RawMessage
+	}{}
 	if err := json.Unmarshal(b, &nw); err != nil {
 		return err
 	}
+	*n = Node(nw.nodeWrapper)
 
-	if nw.CreatedAt.IsZero() {
-		nw.CreatedAt = TimeUTC()
+	// set time and unmarshal raw metadata
+	if err := n.normalize(nw.Metadata, NodeMetadataDecoders); err != nil {
+		return err
 	}
-	if nw.UpdatedAt.IsZero() {
-		nw.UpdatedAt = TimeUTC()
-	}
-	*n = Node(nw)
 
 	return nil
 }
@@ -546,23 +579,32 @@ func (e *Edge) String() string {
 	return string(b)
 }
 
-// wrapper to avoid unmarshalling infinite loop
-type edgeWrapper Edge
-
-// UnmarshalJSON custom unmarshalling function
+// UnmarshalJSON custom unmarshal function
 func (e *Edge) UnmarshalJSON(b []byte) error {
-	var ew edgeWrapper
+	// wrapper to avoid unmarshal infinite loop
+	type edgeWrapper Edge
+
+	ew := struct {
+		edgeWrapper
+		Metadata map[string]json.RawMessage
+	}{}
 	if err := json.Unmarshal(b, &ew); err != nil {
 		return err
 	}
+	*e = Edge(ew.edgeWrapper)
 
-	if ew.CreatedAt.IsZero() {
-		ew.CreatedAt = TimeUTC()
+	// sanity checks
+	if e.Parent == "" {
+		return errors.New("parent ID wrong format")
 	}
-	if ew.UpdatedAt.IsZero() {
-		ew.UpdatedAt = TimeUTC()
+	if e.Child == "" {
+		return errors.New("child ID wrong format")
 	}
-	*e = Edge(ew)
+
+	// set time and unmarshal raw metadata
+	if err := e.normalize(ew.Metadata, EdgeMetadataDecoders); err != nil {
+		return err
+	}
 
 	return nil
 }

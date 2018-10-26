@@ -22,7 +22,10 @@
 
 package netlink
 
-import "net"
+import (
+	"encoding/json"
+	"net"
+)
 
 // RoutingTable describes a list of Routes
 // easyjson:json
@@ -46,6 +49,16 @@ type NextHop struct {
 	Priority int64  `json:"Priority,omitempty"`
 	IP       net.IP `json:"Src,omitempty"`
 	IfIndex  int64  `json:"IfIndex,omitempty"`
+}
+
+// RoutingTableMetadataDecoder implements a json message raw decoder
+func RoutingTableMetadataDecoder(raw json.RawMessage) (interface{}, error) {
+	var rt []RoutingTable
+	if err := json.Unmarshal(raw, &rt); err != nil {
+		return nil, err
+	}
+
+	return rt, nil
 }
 
 // GetRoute returns route for the given protocol and prefix
