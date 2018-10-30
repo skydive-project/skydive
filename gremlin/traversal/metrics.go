@@ -222,8 +222,23 @@ func (m *MetricsTraversalStep) Aggregates(ctx traversal.StepContext, s ...interf
 
 	context := m.GraphTraversal.Graph.GetContext()
 
-	start := context.TimeSlice.Start
-	last := context.TimeSlice.Last
+	var start, last int64
+	if context.TimeSlice != nil {
+		start, last = context.TimeSlice.Start, context.TimeSlice.Last
+	} else {
+		// no time context then take min/max of the metrics
+		for _, array := range m.metrics {
+			for _, metric := range array {
+				if start == 0 || start > metric.GetStart() {
+					start = metric.GetStart()
+				}
+
+				if last < metric.GetLast() {
+					last = metric.GetLast()
+				}
+			}
+		}
+	}
 
 	steps := (last - start) / sliceLength
 	if (last-start)%sliceLength != 0 {
