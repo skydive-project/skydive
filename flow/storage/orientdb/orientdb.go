@@ -23,13 +23,11 @@
 package orientdb
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/google/gopacket/layers"
-	"github.com/mitchellh/mapstructure"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
@@ -43,214 +41,174 @@ type Storage struct {
 	client *orient.Client
 }
 
-func flowRawPacketToDocument(linkType layers.LinkType, rawpacket *flow.RawPacket) orient.Document {
-	return orient.Document{
-		"@class":    "FlowRawPacket",
-		"@type":     "d",
-		"LinkType":  linkType,
-		"Timestamp": rawpacket.Timestamp,
-		"Index":     rawpacket.Index,
-		"Data":      rawpacket.Data,
+// easyjson:json
+type flowDoc struct {
+	Class        string `json:"@class"`
+	UUID         *string
+	LayersPath   *string
+	Application  *string
+	Link         *flow.FlowLayer      `json:"Link,omitempty"`
+	Network      *flow.FlowLayer      `json:"Network,omitempty"`
+	Transport    *flow.TransportLayer `json:"Transport,omitempty"`
+	ICMP         *flow.ICMPLayer      `json:"ICMP,omitempty"`
+	TrackingID   *string
+	L3TrackingID *string
+	ParentUUID   *string
+	NodeTID      *string
+	Start        *int64
+	Last         *int64
+}
+
+// easyjson:json
+type rawpacketDoc struct {
+	Class     string `json:"@class"`
+	Type      string `json:"@type"`
+	Flow      string
+	LinkType  layers.LinkType
+	Timestamp int64
+	Index     int64
+	Data      []byte
+}
+
+// easyjson:json
+type metricDoc struct {
+	Class     string `json:"@class"`
+	Type      string `json:"@type"`
+	Flow      string
+	ABPackets int64
+	ABBytes   int64
+	BAPackets int64
+	BABytes   int64
+	Start     int64
+	Last      int64
+}
+
+func flowToDoc(f *flow.Flow) *flowDoc {
+	return &flowDoc{
+		Class:        "Flow",
+		UUID:         &f.UUID,
+		LayersPath:   &f.LayersPath,
+		Application:  &f.Application,
+		Link:         f.Link,
+		Network:      f.Network,
+		Transport:    f.Transport,
+		ICMP:         f.ICMP,
+		TrackingID:   &f.TrackingID,
+		L3TrackingID: &f.L3TrackingID,
+		ParentUUID:   &f.ParentUUID,
+		NodeTID:      &f.NodeTID,
+		Start:        &f.Start,
+		Last:         &f.Last,
 	}
 }
 
-func flowMetricToDocument(flow *flow.Flow, metric *flow.FlowMetric) orient.Document {
-	if metric != nil {
-		return orient.Document{
-			"@class":    "FlowMetric",
-			"@type":     "d",
-			"Start":     metric.Start,
-			"Last":      metric.Last,
-			"ABPackets": metric.ABPackets,
-			"ABBytes":   metric.ABBytes,
-			"BAPackets": metric.BAPackets,
-			"BABytes":   metric.BABytes,
-		}
-	}
-	return nil
-}
-
-func flowTCPMetricToDocument(flow *flow.Flow, tcpMetric *flow.TCPMetric) orient.Document {
-	if tcpMetric == nil {
-		return nil
-	}
-	return orient.Document{
-		"@class":                "TCPMetric",
-		"@type":                 "d",
-		"ABSynStart":            tcpMetric.ABSynStart,
-		"BASynStart":            tcpMetric.BASynStart,
-		"ABSynTTL":              tcpMetric.ABSynTTL,
-		"BASynTTL":              tcpMetric.BASynTTL,
-		"ABFinStart":            tcpMetric.ABFinStart,
-		"BAFinStart":            tcpMetric.BAFinStart,
-		"ABRstStart":            tcpMetric.ABRstStart,
-		"BARstStart":            tcpMetric.BARstStart,
-		"ABSegmentOutOfOrder":   tcpMetric.ABSegmentOutOfOrder,
-		"ABSegmentSkipped":      tcpMetric.ABSegmentSkipped,
-		"ABSegmentSkippedBytes": tcpMetric.ABSegmentSkippedBytes,
-		"ABPackets":             tcpMetric.ABPackets,
-		"ABBytes":               tcpMetric.ABBytes,
-		"ABSawStart":            tcpMetric.ABSawStart,
-		"ABSawEnd":              tcpMetric.ABSawEnd,
-		"BASegmentOutOfOrder":   tcpMetric.BASegmentOutOfOrder,
-		"BASegmentSkipped":      tcpMetric.BASegmentSkipped,
-		"BASegmentSkippedBytes": tcpMetric.BASegmentSkippedBytes,
-		"BAPackets":             tcpMetric.BAPackets,
-		"BABytes":               tcpMetric.BABytes,
-		"BASawStart":            tcpMetric.BASawStart,
-		"BASawEnd":              tcpMetric.BASawEnd,
+func metricToDoc(rid string, m *flow.FlowMetric) *metricDoc {
+	return &metricDoc{
+		Class:     "FlowMetric",
+		Type:      "d",
+		Flow:      rid,
+		ABBytes:   m.ABBytes,
+		ABPackets: m.ABPackets,
+		BABytes:   m.BABytes,
+		BAPackets: m.BAPackets,
+		Start:     m.Start,
+		Last:      m.Last,
 	}
 }
 
-func flowIPMetricToDocument(flow *flow.Flow, ipMetric *flow.IPMetric) orient.Document {
-	if ipMetric == nil {
-		return nil
-	}
-	return orient.Document{
-		"@class":         "IPMetric",
-		"@type":          "d",
-		"Fragments":      ipMetric.Fragments,
-		"FragmentErrors": ipMetric.FragmentErrors,
+func (m *metricDoc) metric() *flow.FlowMetric {
+	return &flow.FlowMetric{
+		ABBytes:   m.ABBytes,
+		ABPackets: m.ABPackets,
+		BABytes:   m.BABytes,
+		BAPackets: m.BAPackets,
+		Start:     m.Start,
+		Last:      m.Last,
 	}
 }
 
-func flowToDocument(flow *flow.Flow) orient.Document {
-	metricDoc := flowMetricToDocument(flow, flow.Metric)
-	lastMetricDoc := flowMetricToDocument(flow, flow.LastUpdateMetric)
-	tcpMetricDoc := flowTCPMetricToDocument(flow, flow.TCPMetric)
-	ipMetricDoc := flowIPMetricToDocument(flow, flow.IPMetric)
-	var flowDoc orient.Document
-	flowDoc = orient.Document{
-		"@class":             "Flow",
-		"UUID":               flow.UUID,
-		"LayersPath":         flow.LayersPath,
-		"Application":        flow.Application,
-		"Metric":             metricDoc,
-		"Start":              flow.Start,
-		"Last":               flow.Last,
-		"RTT":                flow.RTT,
-		"TrackingID":         flow.TrackingID,
-		"L3TrackingID":       flow.L3TrackingID,
-		"ParentUUID":         flow.ParentUUID,
-		"NodeTID":            flow.NodeTID,
-		"RawPacketsCaptured": flow.RawPacketsCaptured,
+func rawpacketToDoc(rid string, linkType layers.LinkType, r *flow.RawPacket) *rawpacketDoc {
+	return &rawpacketDoc{
+		Class:     "FlowRawPacket",
+		Type:      "d",
+		Flow:      rid,
+		LinkType:  linkType,
+		Index:     r.Index,
+		Timestamp: r.Timestamp,
+		Data:      r.Data,
 	}
-
-	if tcpMetricDoc != nil {
-		flowDoc["TCPMetric"] = tcpMetricDoc
-	}
-	if lastMetricDoc != nil {
-		flowDoc["LastUpdateMetric"] = lastMetricDoc
-	}
-	if flow.IPMetric != nil {
-		flowDoc["IPMetric"] = ipMetricDoc
-	}
-	if flow.Link != nil {
-		flowDoc["Link"] = orient.Document{
-			"Protocol": flow.Link.Protocol.String(),
-			"A":        flow.Link.A,
-			"B":        flow.Link.B,
-			"ID":       flow.Link.ID,
-		}
-	}
-	if flow.Network != nil {
-		flowDoc["Network"] = orient.Document{
-			"Protocol": flow.Network.Protocol.String(),
-			"A":        flow.Network.A,
-			"B":        flow.Network.B,
-			"ID":       flow.Network.ID,
-		}
-	}
-	if flow.ICMP != nil {
-		flowDoc["ICMP"] = orient.Document{
-			"Type": flow.ICMP.Type.String(),
-			"Code": flow.ICMP.Code,
-			"ID":   flow.ICMP.ID,
-		}
-	}
-	if flow.Transport != nil {
-		flowDoc["Transport"] = orient.Document{
-			"Protocol": flow.Transport.Protocol.String(),
-			"A":        flow.Transport.A,
-			"B":        flow.Transport.B,
-			"ID":       flow.Transport.ID,
-		}
-	}
-	return flowDoc
 }
 
-func documentToFlow(document orient.Document) (flow *flow.Flow, err error) {
-	if err = mapstructure.WeakDecode(document, &flow); err != nil {
-		return nil, err
+func (r *rawpacketDoc) rawpacket() *flow.RawPacket {
+	return &flow.RawPacket{
+		Index:     r.Index,
+		Timestamp: r.Timestamp,
+		Data:      r.Data,
 	}
-	return
-}
-
-func documentToMetric(document orient.Document) (common.Metric, error) {
-	flowMetric := new(flow.FlowMetric)
-	if err := mapstructure.WeakDecode(document, flowMetric); err != nil {
-		return nil, err
-	}
-
-	return flowMetric, nil
-}
-
-func documentToRawPacket(document orient.Document) (*flow.RawPacket, layers.LinkType, error) {
-	// decode base64 by hand as the json decoder used by orient db client just see a string
-	// and can not know that this is a array of byte as it only see interface{} as value
-	var err error
-	if document["Data"], err = base64.StdEncoding.DecodeString(document["Data"].(string)); err != nil {
-		return nil, layers.LinkType(0), err
-	}
-
-	rawpacket := new(flow.RawPacket)
-	if err = mapstructure.WeakDecode(document, rawpacket); err != nil {
-		return nil, layers.LinkType(0), err
-	}
-
-	l, err := document["LinkType"].(json.Number).Int64()
-	if err != nil {
-		return nil, layers.LinkType(0), err
-	}
-
-	return rawpacket, layers.LinkType(l), nil
 }
 
 // StoreFlows pushes a set of flows in the database
 func (c *Storage) StoreFlows(flows []*flow.Flow) error {
 	// TODO: use batch of operations
 	for _, flow := range flows {
-		flowDoc, err := c.client.Upsert(flowToDocument(flow), "UUID")
+		fd := flowToDoc(flow)
+		raw, err := json.Marshal(fd)
 		if err != nil {
-			logging.GetLogger().Errorf("Error while pushing flow %s: %s\n", flow.UUID, err.Error())
+			logging.GetLogger().Errorf("Error while pushing flow %s: %s", flow.UUID, err)
 			return err
 		}
 
-		flowID, ok := flowDoc["@rid"]
-		if !ok {
-			logging.GetLogger().Errorf("No @rid attribute for flow '%s'", flow.UUID)
+		result, err := c.client.Upsert("Flow", json.RawMessage(raw), "UUID", flow.UUID)
+		if err != nil {
+			logging.GetLogger().Errorf("Error while pushing flow %s: %s", flow.UUID, err)
+			return err
+		}
+
+		data := struct {
+			Result []struct {
+				RID string `json:"@rid"`
+			}
+		}{}
+
+		if err := json.Unmarshal(result.Body, &data); err != nil {
+			logging.GetLogger().Errorf("Error while decoding flow %s: %s", flow.UUID, err)
+			return err
+		}
+
+		if len(data.Result) == 0 {
+			logging.GetLogger().Errorf("Error while decoding flow %s: no result", flow.UUID)
 			return err
 		}
 
 		if flow.LastUpdateMetric != nil {
-			doc := flowMetricToDocument(flow, flow.LastUpdateMetric)
-			doc["Flow"] = flowID
-			if _, err = c.client.CreateDocument(doc); err != nil {
-				logging.GetLogger().Errorf("Error while pushing metric %+v: %s\n", flow.LastUpdateMetric, err.Error())
+			md := metricToDoc(data.Result[0].RID, flow.LastUpdateMetric)
+			raw, err := json.Marshal(md)
+			if err != nil {
+				logging.GetLogger().Errorf("Error while pushing metric %s: %s", flow.UUID, err)
+				return err
+			}
+
+			if _, err = c.client.CreateDocument(json.RawMessage(raw)); err != nil {
+				logging.GetLogger().Errorf("Error while pushing metric %+v: %s", flow.LastUpdateMetric, err)
 				continue
 			}
 		}
 
 		linkType, err := flow.LinkType()
 		if err != nil {
-			logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
+			logging.GetLogger().Errorf("Error while indexing: %s", err)
 			continue
 		}
 		for _, r := range flow.LastRawPackets {
-			doc := flowRawPacketToDocument(linkType, r)
-			doc["Flow"] = flowID
-			if _, err = c.client.CreateDocument(doc); err != nil {
-				logging.GetLogger().Errorf("Error while pushing raw packet %+v: %s\n", r, err.Error())
+			rd := rawpacketToDoc(data.Result[0].RID, linkType, r)
+			raw, err := json.Marshal(rd)
+			if err != nil {
+				logging.GetLogger().Errorf("Error while pushing raw packet %s: %s", flow.UUID, err)
+				return err
+			}
+
+			if _, err = c.client.CreateDocument(json.RawMessage(raw)); err != nil {
+				logging.GetLogger().Errorf("Error while pushing raw packet %+v: %s", r, err)
 				continue
 			}
 		}
@@ -261,12 +219,21 @@ func (c *Storage) StoreFlows(flows []*flow.Flow) error {
 
 // SearchFlows search flow matching filters in the database
 func (c *Storage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error) {
-	flowset := flow.NewFlowSet()
-
-	err := c.client.Query("Flow", &fsq, &flowset.Flows)
+	result, err := c.client.Query("Flow", &fsq)
 	if err != nil {
 		return nil, err
 	}
+
+	data := struct {
+		Result []*flow.Flow
+	}{}
+
+	if err := json.Unmarshal(result.Body, &data); err != nil {
+		logging.GetLogger().Errorf("Error while decoding flows %s, %s", err, string(result.Body))
+		return nil, err
+	}
+	flowset := flow.NewFlowSet()
+	flowset.Flows = data.Result
 
 	if fsq.Dedup {
 		if err := flowset.Dedup(fsq.DedupBy); err != nil {
@@ -302,24 +269,28 @@ func (c *Storage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filter
 		}
 	}
 
-	docs, err := c.client.Search(sql)
+	result, err := c.client.Search(sql)
 	if err != nil {
 		return nil, err
 	}
 
-	rawpackets := make(map[string]*flow.RawPackets)
-	for _, doc := range docs {
-		r, linkType, err := documentToRawPacket(doc)
-		if err != nil {
-			return nil, err
-		}
-		flowID := doc["Flow"].(string)
+	data := struct {
+		Result []*rawpacketDoc
+	}{}
 
-		if fr, ok := rawpackets[flowID]; ok {
+	if err := json.Unmarshal(result.Body, &data); err != nil {
+		logging.GetLogger().Errorf("Error while decoding flows %s, %s", err, string(result.Body))
+		return nil, err
+	}
+
+	rawpackets := make(map[string]*flow.RawPackets)
+	for _, doc := range data.Result {
+		r := doc.rawpacket()
+		if fr, ok := rawpackets[doc.Flow]; ok {
 			fr.RawPackets = append(fr.RawPackets, r)
 		} else {
-			rawpackets[flowID] = &flow.RawPackets{
-				LinkType:   linkType,
+			rawpackets[doc.Flow] = &flow.RawPackets{
+				LinkType:   doc.LinkType,
 				RawPackets: []*flow.RawPacket{r},
 			}
 		}
@@ -344,19 +315,23 @@ func (c *Storage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.F
 		}
 	}
 
-	docs, err := c.client.Search(sql)
+	result, err := c.client.Search(sql)
 	if err != nil {
 		return nil, err
 	}
 
+	data := struct {
+		Result []*metricDoc
+	}{}
+
+	if err := json.Unmarshal(result.Body, &data); err != nil {
+		logging.GetLogger().Errorf("Error while decoding flows %s, %s", err, string(result.Body))
+		return nil, err
+	}
+
 	metrics := make(map[string][]common.Metric)
-	for _, doc := range docs {
-		metric, err := documentToMetric(doc)
-		if err != nil {
-			return nil, err
-		}
-		flowID := doc["Flow"].(string)
-		metrics[flowID] = append(metrics[flowID], metric)
+	for _, md := range data.Result {
+		metrics[md.Flow] = append(metrics[md.Flow], md.metric())
 	}
 
 	return metrics, nil
@@ -401,7 +376,7 @@ func New(backend string) (*Storage, error) {
 			},
 		}
 		if err := client.CreateDocumentClass(class); err != nil {
-			return nil, fmt.Errorf("Failed to register class FlowRawPacket: %s", err.Error())
+			return nil, fmt.Errorf("Failed to register class FlowRawPacket: %s", err)
 		}
 	}
 
@@ -421,7 +396,7 @@ func New(backend string) (*Storage, error) {
 			},
 		}
 		if err := client.CreateDocumentClass(class); err != nil {
-			return nil, fmt.Errorf("Failed to register class FlowMetric: %s", err.Error())
+			return nil, fmt.Errorf("Failed to register class FlowMetric: %s", err)
 		}
 	}
 
@@ -457,7 +432,7 @@ func New(backend string) (*Storage, error) {
 			},
 		}
 		if err := client.CreateDocumentClass(class); err != nil {
-			return nil, fmt.Errorf("Failed to register class FlowMetric: %s", err.Error())
+			return nil, fmt.Errorf("Failed to register class FlowMetric: %s", err)
 		}
 	}
 
@@ -470,7 +445,7 @@ func New(backend string) (*Storage, error) {
 			},
 		}
 		if err := client.CreateDocumentClass(class); err != nil {
-			return nil, fmt.Errorf("Failed to register class IPMetric: %s", err.Error())
+			return nil, fmt.Errorf("Failed to register class IPMetric: %s", err)
 		}
 	}
 
@@ -500,7 +475,7 @@ func New(backend string) (*Storage, error) {
 			},
 		}
 		if err := client.CreateDocumentClass(class); err != nil {
-			return nil, fmt.Errorf("Failed to register class Flow: %s", err.Error())
+			return nil, fmt.Errorf("Failed to register class Flow: %s", err)
 		}
 	}
 
