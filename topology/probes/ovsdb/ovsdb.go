@@ -135,10 +135,10 @@ func (o *Probe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libo
 			}
 		}
 	}
-	o.Graph.Unlock()
 	if o.OvsOfProbe != nil {
 		o.OvsOfProbe.OnOvsBridgeAdd(bridge)
 	}
+	o.Graph.Unlock()
 }
 
 // OnOvsBridgeDel event
