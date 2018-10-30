@@ -23,7 +23,6 @@
 package tests
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -41,7 +40,6 @@ import (
 	"github.com/hydrogen18/stoppableListener"
 	"github.com/skydive-project/skydive/alert"
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/topology/graph"
 	ws "github.com/skydive-project/skydive/websocket"
@@ -53,23 +51,14 @@ func checkMessage(t *testing.T, b []byte, al *types.Alert, nsName string) (bool,
 	alertLock.Lock()
 	defer alertLock.Unlock()
 
-	var alertMsg alert.Message
-	if err := common.JSONDecode(bytes.NewReader(b), &alertMsg); err == nil {
+	var alertMsg struct {
+		alert.Message
+		ReasonData []*graph.Node
+	}
+	if err := json.Unmarshal(b, &alertMsg); err == nil {
 		if alertMsg.UUID == al.UUID {
-			var nodes []*graph.Node
-			switch arr := alertMsg.ReasonData.(type) {
-			case []interface{}:
-				for _, obj := range arr {
-					n := new(graph.Node)
-					if err := n.Decode(obj); err != nil {
-						return false, err
-					}
-					nodes = append(nodes, n)
-				}
-			}
-
-			if len(nodes) > 0 {
-				if name, _ := nodes[0].GetFieldString("Name"); name == nsName {
+			if len(alertMsg.ReasonData) > 0 {
+				if name, _ := alertMsg.ReasonData[0].GetFieldString("Name"); name == nsName {
 					return true, nil
 				}
 			}

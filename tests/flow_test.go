@@ -23,7 +23,6 @@
 package tests
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -467,10 +466,9 @@ func TestFlowGremlin(t *testing.T) {
 				return err
 			}
 
-			var count int64
-			c.gh.QueryObject(c.gremlin.V().Has("Name", "br-fg", "Type", "ovsbridge").Count(), &count)
-			if count != 1 {
-				return fmt.Errorf("Should return 1, got: %d", count)
+			count, err := c.gh.GetInt64(c.gremlin.V().Has("Name", "br-fg", "Type", "ovsbridge").Count())
+			if err != nil || count != 1 {
+				return fmt.Errorf("Should return 1, got: %d - %s", count, err)
 			}
 
 			tid, _ := node.GetFieldString("TID")
@@ -504,8 +502,8 @@ func TestFlowGremlin(t *testing.T) {
 				return fmt.Errorf("Should return one source node, got %d", len(nodes))
 			}
 
-			c.gh.QueryObject(flowsGremlin.Count(), &count)
-			if int(count) != len(flows) {
+			count, err = c.gh.GetInt64(flowsGremlin.Count())
+			if err != nil || int(count) != len(flows) {
 				return fmt.Errorf("Gremlin count doesn't correspond to the number of flows, got: %v, expected: %v", len(flows), count)
 			}
 
@@ -597,63 +595,74 @@ func TestFlowMetrics(t *testing.T) {
 				return fmt.Errorf("Layers bytes error, got: %v", icmp)
 			}
 
-			pingLen := icmp[0].Metric.ABBytes
-			metric, err := c.gh.GetFlowMetric(gremlin.Has("Metric.ABBytes", g.Gt(pingLen-1)))
-			if err != nil || metric.ABBytes < pingLen {
-				return fmt.Errorf("Number of bytes is wrong, got: %v (error: %+v)", metric, err)
+			getFirstFlowMetric := func(query interface{}) (*flow.FlowMetric, error) {
+				flows, err := c.gh.GetFlows(query)
+				if err != nil {
+					return nil, err
+				}
+				if len(flows) == 0 {
+					return nil, common.ErrNotFound
+				}
+				return flows[0].Metric, nil
 			}
 
-			metric, err = c.gh.GetFlowMetric(gremlin.Has("Metric.ABBytes", g.Gt(pingLen)))
+			pingLen := icmp[0].Metric.ABBytes
+			metric, err := getFirstFlowMetric(gremlin.Has("Metric.ABBytes", g.Gt(pingLen-1)))
+			if err != nil || metric.ABBytes < pingLen {
+				return fmt.Errorf("Number of bytes is wrong, got: %v (error: %s)", metric, err)
+			}
+
+			metric, err = getFirstFlowMetric(gremlin.Has("Metric.ABBytes", g.Gt(pingLen)))
 			if err != common.ErrNotFound {
 				return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 			}
 
-			metric, err = c.gh.GetFlowMetric(gremlin.Has("Metric.ABBytes", g.Gte(pingLen)))
-			if err != nil || metric == nil || metric.ABBytes < pingLen {
+			metric, err = getFirstFlowMetric(gremlin.Has("Metric.ABBytes", g.Gte(pingLen)))
+			if err != nil || metric.ABBytes < pingLen {
 				return fmt.Errorf("Number of bytes is wrong, got: %v", metric)
 			}
 
-			metric, err = c.gh.GetFlowMetric(gremlin.Has("Metric.ABBytes", g.Gte(pingLen+1)))
+			metric, err = getFirstFlowMetric(gremlin.Has("Metric.ABBytes", g.Gte(pingLen+1)))
 			if err != common.ErrNotFound {
 				return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 			}
 
-			metric, err = c.gh.GetFlowMetric(gremlin.Has("Metric.ABBytes", g.Lt(pingLen+1)))
+			metric, err = getFirstFlowMetric(gremlin.Has("Metric.ABBytes", g.Lt(pingLen+1)))
 			if err != nil || metric.ABBytes > pingLen {
 				return fmt.Errorf("Number of bytes is wrong, got: %v", metric)
 			}
 
-			metric, err = c.gh.GetFlowMetric(gremlin.Has("Metric.ABBytes", g.Lt(pingLen)))
+			metric, err = getFirstFlowMetric(gremlin.Has("Metric.ABBytes", g.Lt(pingLen)))
 			if err != common.ErrNotFound {
 				return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 			}
 
-			metric, err = c.gh.GetFlowMetric(gremlin.Has("Metric.ABBytes", g.Lte(pingLen)))
+			metric, err = getFirstFlowMetric(gremlin.Has("Metric.ABBytes", g.Lte(pingLen)))
 			if err != nil || metric == nil || metric.ABBytes > pingLen {
 				return fmt.Errorf("Number of bytes is wrong, got: %v", metric)
 			}
 
-			metric, err = c.gh.GetFlowMetric(gremlin.Has("Metric.ABBytes", g.Lte(pingLen-1)))
+			metric, err = getFirstFlowMetric(gremlin.Has("Metric.ABBytes", g.Lte(pingLen-1)))
 			if err != common.ErrNotFound {
 				return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 			}
 
-			metric, err = c.gh.GetFlowMetric(gremlin.Has("Metric.ABBytes", g.Inside(pingLen-1, pingLen+1)))
+			metric, err = getFirstFlowMetric(gremlin.Has("Metric.ABBytes", g.Inside(pingLen-1, pingLen+1)))
 			if err != nil || metric == nil || metric.ABBytes <= pingLen-1 || metric.ABBytes >= pingLen+1 {
 				return fmt.Errorf("Number of bytes is wrong, got: %v", metric)
 			}
 
-			metric, err = c.gh.GetFlowMetric(gremlin.Has("Metric.ABBytes", g.Inside(pingLen, pingLen+1)))
+			metric, err = getFirstFlowMetric(gremlin.Has("Metric.ABBytes", g.Inside(pingLen, pingLen+1)))
 			if err != common.ErrNotFound {
 				return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 			}
 
-			metric, err = c.gh.GetFlowMetric(gremlin.Has("Metric.ABBytes", g.Between(pingLen, pingLen+1)))
+			metric, err = getFirstFlowMetric(gremlin.Has("Metric.ABBytes", g.Between(pingLen, pingLen+1)))
 			if err != nil || metric == nil || metric.ABBytes <= pingLen-1 || metric.ABBytes >= pingLen+1 {
 				return fmt.Errorf("Number of bytes is wrong, got: %v", metric)
 			}
 
-			metric, err = c.gh.GetFlowMetric(gremlin.Has("Metric.ABBytes", g.Between(pingLen, pingLen)))
+			metric, err = getFirstFlowMetric(gremlin.Has("Metric.ABBytes", g.Between(pingLen, pingLen)))
 			if err != common.ErrNotFound {
 				return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 			}
@@ -708,19 +717,18 @@ func TestFlowMetricsStep(t *testing.T) {
 		}, func(c *CheckContext) error {
 			gremlin := g.G.Context(c.startTime, c.startTime.Unix()-c.setupTime.Unix()+5).V().Has("Name", "br-fms", "Type", "ovsbridge").Flows()
 
-			m, err := c.gh.GetMetric(gremlin.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics().Sum())
+			metric, err := c.gh.GetFlowMetric(gremlin.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics().Sum())
 			if err != nil {
 				flows, _ := c.gh.GetFlows(gremlin.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics())
-				return fmt.Errorf("Could not find metrics (%+v) for flows %s", m, flowsToString(flows))
+				return fmt.Errorf("Could not find metrics (%+v) for flows %s", metric, flowsToString(flows))
 			}
-			metric := m.(*flow.FlowMetric)
 
 			if metric.ABPackets != 15 || metric.BAPackets != 15 || metric.ABBytes < 15360 || metric.BABytes < 15360 {
 				flows, _ := c.gh.GetFlows(gremlin)
 				return fmt.Errorf("Wrong metric returned, got : %+v for flows %+v, request: %s", metric, flowsToString(flows), gremlin.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics().Sum())
 			}
 
-			checkMetricsOrder := func(metrics map[string][]common.Metric) error {
+			checkMetricsOrder := func(metrics map[string][]*flow.FlowMetric) error {
 				// check it's sorted
 				var start int64
 				for _, metricsOfID := range metrics {
@@ -739,7 +747,7 @@ func TestFlowMetricsStep(t *testing.T) {
 				return nil
 			}
 
-			metrics, err := c.gh.GetMetrics(gremlin.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics())
+			metrics, err := c.gh.GetFlowMetrics(gremlin.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics())
 			if err != nil || len(metrics) == 0 {
 				return fmt.Errorf("Could not find metrics (%+v)", metrics)
 			}
@@ -752,7 +760,7 @@ func TestFlowMetricsStep(t *testing.T) {
 				return err
 			}
 
-			metrics, err = c.gh.GetMetrics(gremlin.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics().Aggregates(10))
+			metrics, err = c.gh.GetFlowMetrics(gremlin.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics().Aggregates(10))
 			if err != nil || len(metrics) == 0 {
 				return fmt.Errorf("Could not find metrics (%+v)", metrics)
 			}
@@ -1604,11 +1612,10 @@ func TestFlowSumStep(t *testing.T) {
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gremlin := c.gremlin.V().Has("Name", "br-sum", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Sum("Metric.ABPackets")
 
-			var s interface{}
-			if err := c.gh.QueryObject(gremlin, &s); err != nil {
+			sum, err := c.gh.GetInt64(gremlin)
+			if err != nil {
 				return fmt.Errorf("Error while retriving SUM: %v", err)
 			}
-			sum, _ := s.(json.Number).Int64()
 			if sum != 10 {
 				return fmt.Errorf("Got wrong sum value, Expected 10 got %v", sum)
 			}

@@ -54,7 +54,7 @@ var QueryCmd = &cobra.Command{
 
 		switch outputFormat {
 		case "json":
-			data, err := queryHelper.QueryRaw(gremlinQuery)
+			data, err := queryHelper.Query(gremlinQuery)
 			if err != nil {
 				exitOnError(err)
 			}

@@ -26,7 +26,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/go-test/deep"
 	"github.com/olivere/elastic"
@@ -100,7 +99,7 @@ func newElasticsearchGraph(t *testing.T) (*Graph, *fakeESClient) {
 	client.searchResult.Hits = &elastic.SearchHits{}
 
 	if err != nil {
-		t.Error(err.Error())
+		t.Error(err)
 	}
 
 	return NewGraphFromConfig(b, common.UnknownService), client
@@ -109,9 +108,9 @@ func newElasticsearchGraph(t *testing.T) (*Graph, *fakeESClient) {
 func TestElasticsearchNode(t *testing.T) {
 	g, client := newElasticsearchGraph(t)
 
-	node := g.CreateNode("aaa", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
+	node := g.CreateNode("aaa", Metadata{"MTU": 1500}, Unix(1, 0), "host1")
 	g.AddNode(node)
-	g.addMetadata(node, "MTU", 1510, time.Unix(2, 0))
+	g.addMetadata(node, "MTU", 1510, Unix(2, 0))
 
 	origin := common.UnknownService.String() + ".host1"
 
@@ -156,7 +155,7 @@ func TestElasticsearchNode(t *testing.T) {
 	}
 
 	// generate another revision
-	g.addMetadata(node, "MTU", 1520, time.Unix(3, 0))
+	g.addMetadata(node, "MTU", 1520, Unix(3, 0))
 
 	expectedLive = map[string]interface{}{
 		"aaa": map[string]interface{}{
@@ -212,7 +211,7 @@ func TestElasticsearchNode(t *testing.T) {
 
 	// delete node, should be deleted from live and generate another
 	// archive
-	g.delNode(node, time.Unix(4, 0))
+	g.delNode(node, Unix(4, 0))
 
 	if _, ok := client.indices[topologyLiveIndex.Name].entries["aaa"]; ok {
 		t.Fatal("The entry should not be in the index after deletion")
@@ -269,14 +268,14 @@ func TestElasticsearchNode(t *testing.T) {
 func TestElasticsearchEdge(t *testing.T) {
 	g, client := newElasticsearchGraph(t)
 
-	node1 := g.CreateNode("aaa", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
-	node2 := g.CreateNode("bbb", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
+	node1 := g.CreateNode("aaa", Metadata{"MTU": 1500}, Unix(1, 0), "host1")
+	node2 := g.CreateNode("bbb", Metadata{"MTU": 1500}, Unix(1, 0), "host1")
 	g.AddNode(node1)
 	g.AddNode(node2)
 
-	edge := g.CreateEdge("eee", node1, node2, Metadata{"Name": "eee"}, time.Unix(1, 0), "host1")
+	edge := g.CreateEdge("eee", node1, node2, Metadata{"Name": "eee"}, Unix(1, 0), "host1")
 	g.AddEdge(edge)
-	g.addMetadata(edge, "Type", "veth", time.Unix(2, 0))
+	g.addMetadata(edge, "Type", "veth", Unix(2, 0))
 
 	origin := common.UnknownService.String() + ".host1"
 
@@ -349,7 +348,7 @@ func TestElasticsearchEdge(t *testing.T) {
 		t.Fatalf("Expected elasticsearch archived records not found: %s", diff)
 	}
 
-	g.delEdge(edge, time.Unix(3, 0))
+	g.delEdge(edge, Unix(3, 0))
 
 	if _, ok := client.indices[topologyLiveIndex.Name].entries["eee"]; ok {
 		t.Fatal("The entry should not be in the index after deletion")

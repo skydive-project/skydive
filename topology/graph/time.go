@@ -70,3 +70,8 @@ func (t Time) IsZero() bool {
 func TimeUTC() Time {
 	return Time(time.Now().UTC())
 }
+
+// Unix returns Time for given sec, nsec
+func Unix(sec int64, nsec int64) Time {
+	return Time(time.Unix(sec, nsec))
+}

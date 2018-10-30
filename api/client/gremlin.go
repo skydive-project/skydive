@@ -34,6 +34,7 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
 )
@@ -61,26 +62,6 @@ func (g *GremlinQueryHelper) Request(query interface{}, header http.Header) (*ht
 	return client.Request("POST", "topology", contentReader, header)
 }
 
-// QueryRaw queries the topology API and returns the raw result
-func (g *GremlinQueryHelper) QueryRaw(query interface{}) ([]byte, error) {
-	resp, err := g.Request(query, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error while reading response: %s", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s: %s (for query %s)", resp.Status, string(data), query)
-	}
-
-	return data, nil
-}
-
 // Query queries the topology API
 func (g *GremlinQueryHelper) Query(query interface{}) ([]byte, error) {
 	resp, err := g.Request(query, nil)
@@ -98,6 +79,21 @@ func (g *GremlinQueryHelper) Query(query interface{}) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+// GetInt64 parse the query result as int64
+func (g *GremlinQueryHelper) GetInt64(query interface{}) (int64, error) {
+	data, err := g.Query(query)
+	if err != nil {
+		return 0, err
+	}
+
+	var i int64
+	if err := json.Unmarshal(data, &i); err != nil {
+		return 0, err
+	}
+
+	return i, nil
 }
 
 // GetNodes from the Gremlin query
@@ -163,22 +159,27 @@ func (g *GremlinQueryHelper) GetFlows(query interface{}) ([]*flow.Flow, error) {
 	return flows, nil
 }
 
-// GetFlowMetric from Gremlin query
-func (g *GremlinQueryHelper) GetFlowMetric(query interface{}) (m *flow.FlowMetric, _ error) {
-	flows, err := g.GetFlows(query)
+// GetInterfaceMetrics from Gremlin query
+func (g *GremlinQueryHelper) GetInterfaceMetrics(query interface{}) (map[string][]*topology.InterfaceMetric, error) {
+	data, err := g.Query(query)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(flows) == 0 {
-		return nil, common.ErrNotFound
+	var result []map[string][]*topology.InterfaceMetric
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, err
 	}
 
-	return flows[0].Metric, nil
+	if len(result) == 0 {
+		return nil, nil
+	}
+
+	return result[0], nil
 }
 
-// GetMetrics from Gremlin query
-func (g *GremlinQueryHelper) GetMetrics(query interface{}) (map[string][]common.Metric, error) {
+// GetFlowMetrics from Gremlin query
+func (g *GremlinQueryHelper) GetFlowMetrics(query interface{}) (map[string][]*flow.FlowMetric, error) {
 	data, err := g.Query(query)
 	if err != nil {
 		return nil, err
@@ -190,18 +191,40 @@ func (g *GremlinQueryHelper) GetMetrics(query interface{}) (map[string][]common.
 	}
 
 	if len(result) == 0 {
-		return nil, nil
+		return nil, common.ErrNotFound
 	}
 
-	var metrics map[string][]common.Metric
-	for id, array := range result[0] {
-		metrics[id] = make([]common.Metric, len(metrics))
-		for i, metric := range array {
-			metrics[id][i] = metric
-		}
+	return result[0], nil
+}
+
+// GetFlowMetric from Gremlin query
+func (g *GremlinQueryHelper) GetFlowMetric(query interface{}) (*flow.FlowMetric, error) {
+	data, err := g.Query(query)
+	if err != nil {
+		return nil, err
 	}
 
-	return metrics, nil
+	var result flow.FlowMetric
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// GetInterfaceMetric from Gremlin query
+func (g *GremlinQueryHelper) GetInterfaceMetric(query interface{}) (*topology.InterfaceMetric, error) {
+	data, err := g.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	var result topology.InterfaceMetric
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
 }
 
 // GetSockets from the Gremlin query

@@ -29,15 +29,15 @@ import (
 func TestAddEdgeMissingNode(t *testing.T) {
 	b, err := NewMemoryBackend()
 	if err != nil {
-		t.Error(err.Error())
+		t.Error(err)
 	}
 
 	e := &Edge{
-		parent: "aaa",
-		child:  "bbb",
+		Parent: "aaa",
+		Child:  "bbb",
 		graphElement: graphElement{
 			ID:   GenID(),
-			host: "host",
+			Host: "host",
 		},
 	}
 

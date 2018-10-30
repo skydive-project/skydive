@@ -28,7 +28,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/nu7hatch/gouuid"
 
@@ -777,11 +776,6 @@ func (g *Graph) addMetadata(i interface{}, k string, v interface{}, t Time) bool
 	return true
 }
 
-func (g *Graph) updateMetadata(i interface{}, metadata Metadata, t time.Time) bool {
-
-	return true
-}
-
 // AddMetadata add a metadata to an associated edge or node
 func (g *Graph) AddMetadata(i interface{}, k string, v interface{}) bool {
 	return g.addMetadata(i, k, v, TimeUTC())
@@ -1107,6 +1101,7 @@ func CreateNode(i Identifier, m Metadata, t Time, h string, s common.ServiceType
 	if len(h) > 0 {
 		o += "." + h
 	}
+
 	n := &Node{
 		graphElement: graphElement{
 			ID:        i,

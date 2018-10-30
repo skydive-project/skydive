@@ -23,7 +23,6 @@
 package websocket
 
 import (
-	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -150,12 +149,12 @@ func (g *StructMessage) marshalObj() {
 // DecodeObj decodes an object either as protobuf or as JSON
 func (g *StructMessage) DecodeObj(obj interface{}) error {
 	if g.Protocol == JSONProtocol {
-		if err := common.JSONDecode(bytes.NewReader([]byte(*g.JSONObj)), obj); err != nil {
+		if err := json.Unmarshal(*g.JSONObj, obj); err != nil {
 			return err
 		}
 	}
 	if g.Protocol == ProtobufProtocol {
-		if err := common.JSONDecode(bytes.NewReader(g.ProtobufObj), obj); err != nil {
+		if err := json.Unmarshal(g.ProtobufObj, obj); err != nil {
 			return err
 		}
 	}

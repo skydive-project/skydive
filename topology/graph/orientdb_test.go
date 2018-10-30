@@ -28,7 +28,6 @@ import (
 	"net/http"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/davecgh/go-spew/spew"
 
@@ -43,8 +42,8 @@ type op struct {
 }
 
 type fakeOrientDBClient struct {
-	ops          []op
-	searchResult []orientdb.Document
+	ops    []op
+	result orientdb.Result
 }
 
 func (f *fakeOrientDBClient) getOps() []op {
@@ -57,14 +56,20 @@ func (f *fakeOrientDBClient) Request(method string, url string, body io.Reader) 
 func (f *fakeOrientDBClient) DeleteDocument(id string) error {
 	return nil
 }
-func (f *fakeOrientDBClient) GetDocument(id string) (orientdb.Document, error) {
+func (f *fakeOrientDBClient) GetDocument(id string) (*orientdb.Result, error) {
 	return nil, nil
 }
-func (f *fakeOrientDBClient) CreateDocument(doc orientdb.Document) (orientdb.Document, error) {
-	f.ops = append(f.ops, op{name: "CreateDocument", data: doc})
+func (f *fakeOrientDBClient) CreateDocument(doc interface{}) (*orientdb.Result, error) {
+	// reconvert data into map as it is in json.RawMessage
+	rd := make(map[string]interface{})
+	if err := json.Unmarshal([]byte(doc.(json.RawMessage)), &rd); err != nil {
+		return nil, err
+	}
+
+	f.ops = append(f.ops, op{name: "CreateDocument", data: rd})
 	return nil, nil
 }
-func (f *fakeOrientDBClient) Upsert(doc orientdb.Document, key string) (orientdb.Document, error) {
+func (f *fakeOrientDBClient) Upsert(class string, doc interface{}, idkey string, idval string) (*orientdb.Result, error) {
 	return nil, nil
 }
 func (f *fakeOrientDBClient) GetDocumentClass(name string) (*orientdb.DocumentClass, error) {
@@ -88,21 +93,21 @@ func (f *fakeOrientDBClient) CreateDocumentClass(class orientdb.ClassDefinition)
 func (f *fakeOrientDBClient) DeleteDocumentClass(name string) error {
 	return nil
 }
-func (f *fakeOrientDBClient) GetDatabase() (orientdb.Document, error) {
+func (f *fakeOrientDBClient) GetDatabase() (*orientdb.Result, error) {
 	return nil, nil
 }
-func (f *fakeOrientDBClient) CreateDatabase() (orientdb.Document, error) {
+func (f *fakeOrientDBClient) CreateDatabase() (*orientdb.Result, error) {
 	return nil, nil
 }
-func (f *fakeOrientDBClient) SQL(query string, result interface{}) error {
-	return nil
+func (f *fakeOrientDBClient) SQL(query string) (*orientdb.Result, error) {
+	return nil, nil
 }
-func (f *fakeOrientDBClient) Search(query string) ([]orientdb.Document, error) {
+func (f *fakeOrientDBClient) Search(query string) (*orientdb.Result, error) {
 	f.ops = append(f.ops, op{name: "Search", data: query})
-	return f.searchResult, nil
+	return &f.result, nil
 }
-func (f *fakeOrientDBClient) Query(obj string, query *filters.SearchQuery, result interface{}) error {
-	return nil
+func (f *fakeOrientDBClient) Query(obj string, query *filters.SearchQuery) (*orientdb.Result, error) {
+	return nil, nil
 }
 func (f *fakeOrientDBClient) Connect() error {
 	return nil
@@ -113,49 +118,39 @@ func newOrientDBGraph(t *testing.T) (*Graph, *fakeOrientDBClient) {
 	b, err := newOrientDBBackend(client)
 
 	if err != nil {
-		t.Error(err.Error())
-	}
-
-	return NewGraphFromConfig(b, common.UnknownService), client
-}
-
-func metadataToJSONRawMessage(t *testing.T, metadata Metadata) json.RawMessage {
-	data, err := json.Marshal(metadata)
-	if err != nil {
 		t.Error(err)
 	}
 
-	return json.RawMessage(data)
+	return NewGraphFromConfig(b, common.UnknownService), client
 }
 
 // test history when doing local modification
 func TestLocalHistory(t *testing.T) {
 	g, client := newOrientDBGraph(t)
 
-	client.searchResult = []orientdb.Document{
-		{"value": json.Number("1")},
-	}
+	client.result.Body = []byte(`{"result": [{"value": 1}]}`)
 
-	node := g.CreateNode("aaa", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
+	node := g.CreateNode("aaa", Metadata{"MTU": 1500}, Unix(1, 0), "host1")
 	g.AddNode(node)
-	g.addMetadata(node, "MTU", 1510, time.Unix(2, 0))
+	g.addMetadata(node, "MTU", 1510, Unix(2, 0))
 
 	origin := common.UnknownService.String() + ".host1"
 
 	expected := []op{
 		{
 			name: "CreateDocument",
-			data: orientdb.Document{
-				"UpdatedAt": int64(1000),
-				"CreatedAt": int64(1000),
-				"Revision":  int64(1),
+			data: map[string]interface{}{
+				"UpdatedAt": float64(1000),
+				"CreatedAt": float64(1000),
+				"DeletedAt": nil,
+				"Revision":  float64(1),
 				"@class":    "Node",
-				"ID":        Identifier("aaa"),
+				"ID":        "aaa",
 				"Host":      "host1",
 				"Origin":    origin,
-				"Metadata": metadataToJSONRawMessage(t, Metadata{
-					"MTU": 1500,
-				}),
+				"Metadata": map[string]interface{}{
+					"MTU": float64(1500),
+				},
 			},
 		},
 		{
@@ -164,17 +159,18 @@ func TestLocalHistory(t *testing.T) {
 		},
 		{
 			name: "CreateDocument",
-			data: orientdb.Document{
-				"UpdatedAt": int64(2000),
-				"CreatedAt": int64(1000),
-				"Revision":  int64(2),
+			data: map[string]interface{}{
+				"UpdatedAt": float64(2000),
+				"CreatedAt": float64(1000),
+				"DeletedAt": nil,
+				"Revision":  float64(2),
 				"@class":    "Node",
-				"ID":        Identifier("aaa"),
+				"ID":        "aaa",
 				"Host":      "host1",
 				"Origin":    origin,
-				"Metadata": metadataToJSONRawMessage(t, Metadata{
-					"MTU": 1510,
-				}),
+				"Metadata": map[string]interface{}{
+					"MTU": float64(1510),
+				},
 			},
 		},
 	}
@@ -183,22 +179,23 @@ func TestLocalHistory(t *testing.T) {
 		t.Fatalf("Expected orientdb records not found: \nexpected: %s\ngot: %s", spew.Sdump(expected), spew.Sdump(client.getOps()))
 	}
 
-	g.addMetadata(node, "MTU", 1520, time.Unix(3, 0))
+	g.addMetadata(node, "MTU", 1520, Unix(3, 0))
 
 	expected = []op{
 		{
 			name: "CreateDocument",
-			data: orientdb.Document{
-				"UpdatedAt": int64(1000),
-				"CreatedAt": int64(1000),
-				"Revision":  int64(1),
+			data: map[string]interface{}{
+				"UpdatedAt": float64(1000),
+				"CreatedAt": float64(1000),
+				"DeletedAt": nil,
+				"Revision":  float64(1),
 				"@class":    "Node",
-				"ID":        Identifier("aaa"),
+				"ID":        "aaa",
 				"Host":      "host1",
 				"Origin":    origin,
-				"Metadata": metadataToJSONRawMessage(t, Metadata{
-					"MTU": 1500,
-				}),
+				"Metadata": map[string]interface{}{
+					"MTU": float64(1500),
+				},
 			},
 		},
 		{
@@ -207,17 +204,18 @@ func TestLocalHistory(t *testing.T) {
 		},
 		{
 			name: "CreateDocument",
-			data: orientdb.Document{
-				"UpdatedAt": int64(2000),
-				"CreatedAt": int64(1000),
-				"Revision":  int64(2),
+			data: map[string]interface{}{
+				"UpdatedAt": float64(2000),
+				"CreatedAt": float64(1000),
+				"DeletedAt": nil,
+				"Revision":  float64(2),
 				"@class":    "Node",
-				"ID":        Identifier("aaa"),
+				"ID":        "aaa",
 				"Host":      "host1",
 				"Origin":    origin,
-				"Metadata": metadataToJSONRawMessage(t, Metadata{
-					"MTU": 1510,
-				}),
+				"Metadata": map[string]interface{}{
+					"MTU": float64(1510),
+				},
 			},
 		},
 		{
@@ -226,17 +224,18 @@ func TestLocalHistory(t *testing.T) {
 		},
 		{
 			name: "CreateDocument",
-			data: orientdb.Document{
-				"UpdatedAt": int64(3000),
-				"CreatedAt": int64(1000),
-				"Revision":  int64(3),
+			data: map[string]interface{}{
+				"UpdatedAt": float64(3000),
+				"CreatedAt": float64(1000),
+				"DeletedAt": nil,
+				"Revision":  float64(3),
 				"@class":    "Node",
-				"ID":        Identifier("aaa"),
+				"ID":        "aaa",
 				"Host":      "host1",
 				"Origin":    origin,
-				"Metadata": metadataToJSONRawMessage(t, Metadata{
-					"MTU": 1520,
-				}),
+				"Metadata": map[string]interface{}{
+					"MTU": float64(1520),
+				},
 			},
 		},
 	}
@@ -245,26 +244,25 @@ func TestLocalHistory(t *testing.T) {
 		t.Fatalf("Expected orientdb records not found: \nexpected: %s\ngot: %s", spew.Sdump(expected), spew.Sdump(client.getOps()))
 	}
 
-	client.searchResult = []orientdb.Document{
-		{"ID": "bbb"},
-	}
+	client.result.Body = []byte(`{"result": [{"ID": "bbb", "Parent": "123", "Child": "456"}]}`)
 
-	g.delNode(node, time.Unix(4, 0))
+	g.delNode(node, Unix(4, 0))
 
 	expected = []op{
 		{
 			name: "CreateDocument",
-			data: orientdb.Document{
-				"UpdatedAt": int64(1000),
-				"CreatedAt": int64(1000),
-				"Revision":  int64(1),
+			data: map[string]interface{}{
+				"UpdatedAt": float64(1000),
+				"CreatedAt": float64(1000),
+				"DeletedAt": nil,
+				"Revision":  float64(1),
 				"@class":    "Node",
-				"ID":        Identifier("aaa"),
+				"ID":        "aaa",
 				"Host":      "host1",
 				"Origin":    origin,
-				"Metadata": metadataToJSONRawMessage(t, Metadata{
-					"MTU": 1500,
-				}),
+				"Metadata": map[string]interface{}{
+					"MTU": float64(1500),
+				},
 			},
 		},
 		{
@@ -273,17 +271,18 @@ func TestLocalHistory(t *testing.T) {
 		},
 		{
 			name: "CreateDocument",
-			data: orientdb.Document{
-				"UpdatedAt": int64(2000),
-				"CreatedAt": int64(1000),
-				"Revision":  int64(2),
+			data: map[string]interface{}{
+				"UpdatedAt": float64(2000),
+				"CreatedAt": float64(1000),
+				"DeletedAt": nil,
+				"Revision":  float64(2),
 				"@class":    "Node",
-				"ID":        Identifier("aaa"),
+				"ID":        "aaa",
 				"Host":      "host1",
 				"Origin":    origin,
-				"Metadata": metadataToJSONRawMessage(t, Metadata{
-					"MTU": 1510,
-				}),
+				"Metadata": map[string]interface{}{
+					"MTU": float64(1510),
+				},
 			},
 		},
 		{
@@ -292,17 +291,18 @@ func TestLocalHistory(t *testing.T) {
 		},
 		{
 			name: "CreateDocument",
-			data: orientdb.Document{
-				"UpdatedAt": int64(3000),
-				"CreatedAt": int64(1000),
-				"Revision":  int64(3),
+			data: map[string]interface{}{
+				"UpdatedAt": float64(3000),
+				"CreatedAt": float64(1000),
+				"DeletedAt": nil,
+				"Revision":  float64(3),
 				"@class":    "Node",
-				"ID":        Identifier("aaa"),
+				"ID":        "aaa",
 				"Host":      "host1",
 				"Origin":    origin,
-				"Metadata": metadataToJSONRawMessage(t, Metadata{
-					"MTU": 1520,
-				}),
+				"Metadata": map[string]interface{}{
+					"MTU": float64(1520),
+				},
 			},
 		},
 		{
