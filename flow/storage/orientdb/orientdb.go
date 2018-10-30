@@ -32,6 +32,7 @@ import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
+	fl "github.com/skydive-project/skydive/flow/layers"
 	"github.com/skydive-project/skydive/logging"
 	orient "github.com/skydive-project/skydive/storage/orientdb"
 )
@@ -43,20 +44,27 @@ type Storage struct {
 
 // easyjson:json
 type flowDoc struct {
-	Class        string `json:"@class"`
-	UUID         *string
-	LayersPath   *string
-	Application  *string
-	Link         *flow.FlowLayer      `json:"Link,omitempty"`
-	Network      *flow.FlowLayer      `json:"Network,omitempty"`
-	Transport    *flow.TransportLayer `json:"Transport,omitempty"`
-	ICMP         *flow.ICMPLayer      `json:"ICMP,omitempty"`
-	TrackingID   *string
-	L3TrackingID *string
-	ParentUUID   *string
-	NodeTID      *string
-	Start        *int64
-	Last         *int64
+	Class              string `json:"@class"`
+	UUID               *string
+	LayersPath         *string
+	Application        *string
+	Link               *flow.FlowLayer      `json:"Link,omitempty"`
+	Network            *flow.FlowLayer      `json:"Network,omitempty"`
+	Transport          *flow.TransportLayer `json:"Transport,omitempty"`
+	ICMP               *flow.ICMPLayer      `json:"ICMP,omitempty"`
+	Metric             *flow.FlowMetric     `json:"Metric,omitempty"`
+	TCPMetric          *flow.TCPMetric      `json:"TCPMetric,omitempty"`
+	IPMetric           *flow.IPMetric       `json:"IPMetric,omitempty"`
+	DHCPv4             *fl.DHCPv4           `json:"DHCPv4,omitempty"`
+	DNS                *fl.DNS              `json:"DNS,omitempty"`
+	VRRPv2             *fl.VRRPv2           `json:"VRRPv2,omitempty"`
+	RawPacketsCaptured int64
+	TrackingID         *string
+	L3TrackingID       *string
+	ParentUUID         *string
+	NodeTID            *string
+	Start              int64
+	Last               int64
 }
 
 // easyjson:json
@@ -85,20 +93,27 @@ type metricDoc struct {
 
 func flowToDoc(f *flow.Flow) *flowDoc {
 	return &flowDoc{
-		Class:        "Flow",
-		UUID:         &f.UUID,
-		LayersPath:   &f.LayersPath,
-		Application:  &f.Application,
-		Link:         f.Link,
-		Network:      f.Network,
-		Transport:    f.Transport,
-		ICMP:         f.ICMP,
-		TrackingID:   &f.TrackingID,
-		L3TrackingID: &f.L3TrackingID,
-		ParentUUID:   &f.ParentUUID,
-		NodeTID:      &f.NodeTID,
-		Start:        &f.Start,
-		Last:         &f.Last,
+		Class:              "Flow",
+		UUID:               &f.UUID,
+		LayersPath:         &f.LayersPath,
+		Application:        &f.Application,
+		Link:               f.Link,
+		Network:            f.Network,
+		Transport:          f.Transport,
+		ICMP:               f.ICMP,
+		Metric:             f.Metric,
+		TCPMetric:          f.TCPMetric,
+		IPMetric:           f.IPMetric,
+		DHCPv4:             f.DHCPv4,
+		DNS:                f.DNS,
+		VRRPv2:             f.VRRPv2,
+		TrackingID:         &f.TrackingID,
+		L3TrackingID:       &f.L3TrackingID,
+		ParentUUID:         &f.ParentUUID,
+		NodeTID:            &f.NodeTID,
+		RawPacketsCaptured: f.RawPacketsCaptured,
+		Start:              f.Start,
+		Last:               f.Last,
 	}
 }
 
