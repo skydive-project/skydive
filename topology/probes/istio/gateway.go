@@ -20,30 +20,31 @@
  *
  */
 
-package k8s
+package istio
 
 import (
 	"fmt"
 
+	kiali "github.com/kiali/kiali/kubernetes"
 	"github.com/skydive-project/skydive/topology/graph"
-
-	"k8s.io/api/extensions/v1beta1"
-	"k8s.io/client-go/kubernetes"
+	"github.com/skydive-project/skydive/topology/probes/k8s"
 )
 
-type replicaSetHandler struct {
+type gatewayHandler struct {
 }
 
-func (h *replicaSetHandler) Dump(obj interface{}) string {
-	rs := obj.(*v1beta1.ReplicaSet)
-	return fmt.Sprintf("replicaset{Name: %s}", rs.GetName())
+// Map graph node to k8s resource
+func (h *gatewayHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
+	gw := obj.(*kiali.Gateway)
+	return graph.Identifier(gw.GetUID()), k8s.NewMetadata(Manager, "gateway", gw, gw.Name, gw.Namespace)
 }
 
-func (h *replicaSetHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
-	rs := obj.(*v1beta1.ReplicaSet)
-	return graph.Identifier(rs.GetUID()), NewMetadata(Manager, "replicaset", rs, rs.Name, rs.Namespace)
+// Dump k8s resource
+func (h *gatewayHandler) Dump(obj interface{}) string {
+	gw := obj.(*kiali.Gateway)
+	return fmt.Sprintf("gateway{Namespace: %s, Name: %s}", gw.Namespace, gw.Name)
 }
 
-func newReplicaSetProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
-	return NewResourceCache(clientset.ExtensionsV1beta1().RESTClient(), &v1beta1.ReplicaSet{}, "replicasets", g, &replicaSetHandler{})
+func newGatewayProbe(client *kiali.IstioClient, g *graph.Graph) k8s.Subprobe {
+	return k8s.NewResourceCache(client.GetIstioNetworkingApi(), &kiali.Gateway{}, "gateways", g, &gatewayHandler{})
 }

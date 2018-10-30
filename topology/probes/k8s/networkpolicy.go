@@ -40,11 +40,6 @@ import (
 )
 
 type networkPolicyHandler struct {
-	DefaultResourceHandler
-}
-
-func (h *networkPolicyHandler) IsTopLevel() bool {
-	return true
 }
 
 func (h *networkPolicyHandler) Dump(obj interface{}) string {

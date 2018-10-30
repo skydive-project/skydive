@@ -41,16 +41,6 @@ import (
 type ResourceHandler interface {
 	Map(obj interface{}) (graph.Identifier, graph.Metadata)
 	Dump(obj interface{}) string
-	IsTopLevel() bool
-}
-
-// DefaultResourceHandler defines a default Kubernetes resource handler
-type DefaultResourceHandler struct {
-}
-
-// IsTopLevel returns whether the resource is top level (no parent)
-func (h *DefaultResourceHandler) IsTopLevel() bool {
-	return false
 }
 
 // ResourceCache describes a cache for a specific kind of Kubernetes resource.
@@ -157,11 +147,16 @@ func (c *ResourceCache) Stop() {
 
 // NewResourceCache returns a new cache using the associed Kubernetes
 // client and with the handler for the resource that this cache manages.
-func NewResourceCache(restClient rest.Interface, objType runtime.Object, resources string, g *graph.Graph, handler ResourceHandler) *ResourceCache {
+func NewResourceCache(restClient rest.Interface, objType runtime.Object, resources string, g *graph.Graph, handler ResourceHandler, optionalEventHandler ...*graph.EventHandler) *ResourceCache {
 	watchlist := cache.NewListWatchFromClient(restClient, resources, api.NamespaceAll, fields.Everything())
 
+	eventHandler := graph.NewEventHandler(100)
+	if len(optionalEventHandler) == 1 {
+		eventHandler = optionalEventHandler[0]
+	}
+
 	c := &ResourceCache{
-		EventHandler:   graph.NewEventHandler(100),
+		EventHandler:   eventHandler,
 		graph:          g,
 		handler:        handler,
 		stopController: make(chan struct{}),

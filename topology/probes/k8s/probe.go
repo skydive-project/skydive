@@ -23,10 +23,7 @@
 package k8s
 
 import (
-	"time"
-
 	"github.com/skydive-project/skydive/probe"
-	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -39,6 +36,7 @@ func int32ValueOrDefault(value *int32, defaultValue int32) int32 {
 
 // Probe for tracking k8s events
 type Probe struct {
+	graph     *graph.Graph
 	manager   string
 	subprobes map[string]Subprobe
 	linkers   []probe.Probe
@@ -74,37 +72,26 @@ func (p *Probe) Stop() {
 	}
 }
 
-// NewProbe creates the probe for tracking k8s events
-func NewProbe(manager, clusterName string, g *graph.Graph, subprobes map[string]Subprobe, linkers []probe.Probe) (*Probe, error) {
-	clusterNode := g.NewNode(graph.GenID(), NewMetadata(manager, "cluster", nil, clusterName), "")
-	for _, subprobe := range subprobes {
-		if cache, ok := subprobe.(*ResourceCache); ok {
-			if cache.handler.IsTopLevel() {
-				if clusterLinker := newClusterLinker(g, clusterNode, cache); clusterLinker != nil {
-					linkers = append(linkers, clusterLinker)
-				}
-			}
-		}
+// AppendClusterLinkers appends newly created cluster linker per type
+func (p *Probe) AppendClusterLinkers(types ...string) {
+	if clusterLinker := newClusterLinker(p.graph, p.manager, types...); clusterLinker != nil {
+		p.linkers = append(p.linkers, clusterLinker)
 	}
+}
 
+// AppendNamespaceLinkers appends newly created namespace linker per type
+func (p *Probe) AppendNamespaceLinkers(types ...string) {
+	if namespaceLinker := newNamespaceLinker(p.graph, p.manager, types...); namespaceLinker != nil {
+		p.linkers = append(p.linkers, namespaceLinker)
+	}
+}
+
+// NewProbe creates the probe for tracking k8s events
+func NewProbe(g *graph.Graph, manager string, subprobes map[string]Subprobe, linkers []probe.Probe) *Probe {
 	return &Probe{
+		graph:     g,
+		manager:   manager,
 		subprobes: subprobes,
 		linkers:   linkers,
-	}, nil
-}
-
-type clusterLinker struct {
-	graph.DefaultLinker
-	graph       *graph.Graph
-	clusterNode *graph.Node
-}
-
-func (cl *clusterLinker) GetBALinks(node *graph.Node) []*graph.Edge {
-	id := graph.GenID(string(cl.clusterNode.ID), string(node.ID), "RelationType", topology.OwnershipLink)
-	return []*graph.Edge{cl.graph.CreateEdge(id, cl.clusterNode, node, topology.OwnershipMetadata(), time.Now(), "")}
-}
-
-func newClusterLinker(g *graph.Graph, clusterNode *graph.Node, cache *ResourceCache) *graph.ResourceLinker {
-	linker := &clusterLinker{graph: g, clusterNode: clusterNode}
-	return graph.NewResourceLinker(g, nil, cache, linker, topology.OwnershipMetadata())
+	}
 }

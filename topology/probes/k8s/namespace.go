@@ -25,7 +25,6 @@ package k8s
 import (
 	"fmt"
 
-	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -34,12 +33,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type namespaceHandler struct {
-	DefaultResourceHandler
-}
+var namespaceEventHandler = graph.NewEventHandler(100)
 
-func (h *namespaceHandler) IsTopLevel() bool {
-	return true
+type namespaceHandler struct {
 }
 
 func (h *namespaceHandler) Dump(obj interface{}) string {
@@ -59,46 +55,15 @@ func (h *namespaceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadat
 }
 
 func newNamespaceProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
-	return NewResourceCache(clientset.Core().RESTClient(), &v1.Namespace{}, "namespaces", g, &namespaceHandler{})
+	return NewResourceCache(clientset.Core().RESTClient(), &v1.Namespace{}, "namespaces", g, &namespaceHandler{}, namespaceEventHandler)
 }
 
-func newNamespaceLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe {
-	nsSubprobe := subprobes["namespace"]
-	if nsSubprobe == nil {
-		return nil
-	}
-
-	filter := filters.NewAndFilter(
-		filters.NewTermStringFilter("Manager", Manager),
-		filters.NewTermStringFilter("Type", "namespace"),
-		filters.NewNotNullFilter("Name"),
-	)
-
-	namespaceIndexer := graph.NewMetadataIndexer(g, nsSubprobe, graph.NewElementFilter(filter), "Name")
+func newNamespaceLinker(g *graph.Graph, manager string, types ...string) probe.Probe {
+	namespaceIndexer := graph.NewMetadataIndexer(g, namespaceEventHandler, graph.Metadata{"Manager": Manager, "Type": "namespace"}, "Name")
 	namespaceIndexer.Start()
 
-	ownedByNamespaceFilter := filters.NewOrFilter(
-		filters.NewTermStringFilter("Type", "cronjob"),
-		filters.NewTermStringFilter("Type", "deployment"),
-		filters.NewTermStringFilter("Type", "daemonset"),
-		filters.NewTermStringFilter("Type", "endpoints"),
-		filters.NewTermStringFilter("Type", "ingress"),
-		filters.NewTermStringFilter("Type", "job"),
-		filters.NewTermStringFilter("Type", "pod"),
-		filters.NewTermStringFilter("Type", "persistentvolume"),
-		filters.NewTermStringFilter("Type", "persistentvolumeclaim"),
-		filters.NewTermStringFilter("Type", "replicaset"),
-		filters.NewTermStringFilter("Type", "replicationcontroller"),
-		filters.NewTermStringFilter("Type", "service"),
-		filters.NewTermStringFilter("Type", "statefulset"),
-		filters.NewTermStringFilter("Type", "storageclass"),
-	)
-
-	filter = filters.NewAndFilter(
-		filters.NewTermStringFilter("Manager", Manager),
-		ownedByNamespaceFilter,
-	)
-	objectIndexer := graph.NewMetadataIndexer(g, g, graph.NewElementFilter(filter), "Namespace")
+	objectFilter := newTypesFilter(manager, types...)
+	objectIndexer := newObjectIndexerFromFilter(g, g, objectFilter, "Namespace")
 	objectIndexer.Start()
 
 	return graph.NewMetadataIndexerLinker(g, namespaceIndexer, objectIndexer, topology.OwnershipMetadata())

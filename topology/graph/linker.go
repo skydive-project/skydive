@@ -199,12 +199,16 @@ func (mil *MetadataIndexerLinker) genID(parent, child *Node) Identifier {
 	return GenID(args...)
 }
 
+func (mil *MetadataIndexerLinker) createEdge(node1, node2 *Node) *Edge {
+	return mil.g.CreateEdge(mil.genID(node1, node2), node1, node2, mil.edgeMetadata, time.Now(), "")
+}
+
 // GetABLinks returns all the outgoing links for a node
 func (mil *MetadataIndexerLinker) GetABLinks(node *Node) (edges []*Edge) {
 	if fields, err := getFieldsAsArray(node, mil.indexer1.indexes); err == nil {
 		nodes, _ := mil.indexer2.Get(fields...)
 		for _, n := range nodes {
-			edges = append(edges, mil.g.CreateEdge(mil.genID(node, n), node, n, mil.edgeMetadata, time.Now(), ""))
+			edges = append(edges, mil.createEdge(node, n))
 		}
 	}
 	return
@@ -215,7 +219,7 @@ func (mil *MetadataIndexerLinker) GetBALinks(node *Node) (edges []*Edge) {
 	if fields, err := getFieldsAsArray(node, mil.indexer2.indexes); err == nil {
 		nodes, _ := mil.indexer1.Get(fields...)
 		for _, n := range nodes {
-			edges = append(edges, mil.g.CreateEdge(mil.genID(n, node), n, node, mil.edgeMetadata, time.Now(), ""))
+			edges = append(edges, mil.createEdge(n, node))
 		}
 	}
 	return

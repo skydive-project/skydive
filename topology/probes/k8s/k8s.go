@@ -35,9 +35,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// ClusterName is the name to give to the probe cluster node
-const ClusterName = "cluster"
-
 type resourceHandler func(clientset *kubernetes.Clientset, graph *graph.Graph) Subprobe
 type linkHandler func(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe
 
@@ -74,6 +71,7 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 	}
 
 	resourceHandlers := map[string]resourceHandler{
+		"cluster":               newClusterProbe,
 		"container":             newContainerProbe,
 		"cronjob":               newCronJobProbe,
 		"daemonset":             newDaemonSetProbe,
@@ -114,7 +112,6 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		newHostNodeLinker,
 		newNodePodLinker,
 		newIngressServiceLinker,
-		newNamespaceLinker,
 		newNetworkPolicyLinker,
 		newServicePodLinker,
 	}
@@ -126,5 +123,30 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		}
 	}
 
-	return NewProbe("k8s", ClusterName, g, subprobes, linkers)
+	probe := NewProbe(g, Manager, subprobes, linkers)
+
+	probe.AppendClusterLinkers(
+		"namespace",
+		"node",
+		"persistentvolume",
+		"persistentvolumeclaim",
+		"storageclass",
+	)
+
+	probe.AppendNamespaceLinkers(
+		"cronjob",
+		"deployment",
+		"daemonset",
+		"endpoints",
+		"ingress",
+		"job",
+		"networkpolicy",
+		"pod",
+		"replicaset",
+		"replicationcontroller",
+		"service",
+		"statefulset",
+	)
+
+	return probe, nil
 }

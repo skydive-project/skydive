@@ -32,7 +32,6 @@ import (
 )
 
 type statefulSetHandler struct {
-	DefaultResourceHandler
 }
 
 func (h *statefulSetHandler) Dump(obj interface{}) string {

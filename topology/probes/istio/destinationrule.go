@@ -30,17 +30,16 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/k8s"
 )
 
-type destinationRuleHandler struct{}
-
-func (h *destinationRuleHandler) IsTopLevel() bool {
-	return true
+type destinationRuleHandler struct {
 }
 
+// Map graph node to k8s resource
 func (h *destinationRuleHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	dr := obj.(*kiali.DestinationRule)
 	return graph.Identifier(dr.GetUID()), k8s.NewMetadata(Manager, "destinationrule", dr, dr.Name, dr.Namespace)
 }
 
+// Dump k8s resource
 func (h *destinationRuleHandler) Dump(obj interface{}) string {
 	dr := obj.(*kiali.DestinationRule)
 	return fmt.Sprintf("destinationrule{Namespace: %s, Name: %s}", dr.Namespace, dr.Name)
