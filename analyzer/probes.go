@@ -46,21 +46,21 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.Bundle, error) {
 			continue
 		}
 
-		type newProbeFuncType func(*graph.Graph) (*k8s.Probe, error)
-		newProbeFuncMap := map[string]newProbeFuncType{
-			"k8s":   k8s.NewK8sProbe,
-			"istio": istio.NewIstioProbe,
+		var err error
+
+		switch t {
+		case "k8s":
+			probes[t], err = k8s.NewK8sProbe(g)
+		case "istio":
+			probes[t], err = istio.NewIstioProbe(g)
+		default:
+			logging.GetLogger().Errorf("unknown probe type: %s", t)
+			continue
 		}
 
-		if newProbeFunc, ok := newProbeFuncMap[t]; !ok {
-			logging.GetLogger().Errorf("unknown probe type: %s", t)
-		} else {
-			var err error
-			probes[t], err = newProbeFunc(g)
-			if err != nil {
-				logging.GetLogger().Errorf("failed to initialize probe %s: %s", t, err)
-				return nil, err
-			}
+		if err != nil {
+			logging.GetLogger().Errorf("failed to initialize probe %s: %s", t, err)
+			return nil, err
 		}
 	}
 
