@@ -41,7 +41,8 @@ func (h *replicaSetHandler) Dump(obj interface{}) string {
 
 func (h *replicaSetHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	rs := obj.(*v1beta1.ReplicaSet)
-	return graph.Identifier(rs.GetUID()), NewMetadata(Manager, "replicaset", rs, rs.Name, rs.Namespace)
+	m := NewMetadataFields(&rs.ObjectMeta)
+	return graph.Identifier(rs.GetUID()), NewMetadata(Manager, "replicaset", m, rs, rs.Name)
 }
 
 func newReplicaSetProbe(client interface{}, g *graph.Graph) Subprobe {

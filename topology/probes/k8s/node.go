@@ -32,10 +32,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const (
-	nodeNameField = detailsField + ".Spec.NodeName"
-)
-
 type nodeHandler struct {
 }
 
@@ -47,9 +43,7 @@ func (h *nodeHandler) Dump(obj interface{}) string {
 func (h *nodeHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	node := obj.(*v1.Node)
 
-	m := NewMetadata(Manager, "node", node, node.Name)
-	m.SetFieldAndNormalize("Labels", node.Labels)
-	m.SetField("Cluster", node.ClusterName)
+	m := NewMetadataFields(&node.ObjectMeta)
 	for _, a := range node.Status.Addresses {
 		if a.Type == "Hostname" || a.Type == "InternalIP" || a.Type == "ExternalIP" {
 			m.SetField(string(a.Type), a.Address)
@@ -59,7 +53,7 @@ func (h *nodeHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	m.SetField("Kernel", node.Status.NodeInfo.KernelVersion)
 	m.SetField("OS", node.Status.NodeInfo.OperatingSystem)
 
-	return graph.Identifier(node.GetUID()), m
+	return graph.Identifier(node.GetUID()), NewMetadata(Manager, "node", m, node, node.Name)
 }
 
 func newNodeProbe(client interface{}, g *graph.Graph) Subprobe {
@@ -75,12 +69,12 @@ func newHostNodeLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Prob
 	hostIndexer := graph.NewMetadataIndexer(g, g, graph.Metadata{"Type": "host"}, "Hostname")
 	hostIndexer.Start()
 
-	nodeIndexer := graph.NewMetadataIndexer(g, nodeProbe, graph.Metadata{"Type": "node"}, "Hostname")
+	nodeIndexer := graph.NewMetadataIndexer(g, nodeProbe, graph.Metadata{"Type": "node"}, MetadataField("Name"))
 	nodeIndexer.Start()
 
 	return graph.NewMetadataIndexerLinker(g, hostIndexer, nodeIndexer, newEdgeMetadata())
 }
 
 func newNodePodLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe {
-	return newResourceLinker(g, subprobes, "node", []string{"Hostname"}, "pod", []string{nodeNameField}, newEdgeMetadata())
+	return newResourceLinker(g, subprobes, "node", MetadataFields("Name"), "pod", MetadataFields("Node"), newEdgeMetadata())
 }

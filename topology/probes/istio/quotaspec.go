@@ -36,7 +36,8 @@ type quotaSpecHandler struct {
 // Map graph node to k8s resource
 func (h *quotaSpecHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	qs := obj.(*kiali.QuotaSpec)
-	return graph.Identifier(qs.GetUID()), k8s.NewMetadata(Manager, "quotaspec", qs, qs.Name, qs.Namespace)
+	m := k8s.NewMetadataFields(&qs.ObjectMeta)
+	return graph.Identifier(qs.GetUID()), k8s.NewMetadata(Manager, "quotaspec", m, qs, qs.Name)
 }
 
 // Dump k8s resource
