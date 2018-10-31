@@ -1268,14 +1268,10 @@ func (g *Graph) Origin() string {
 
 // MarshalJSON serialize the graph in JSON
 func (g *Graph) MarshalJSON() ([]byte, error) {
-
-	// TODO(safchain) check if make here is required here
-	nodes := make([]*Node, 0)
-	nodes = append(nodes, g.GetNodes(nil)...)
+	nodes := g.GetNodes(nil)
 	SortNodes(nodes, "CreatedAt", common.SortAscending)
 
-	edges := make([]*Edge, 0)
-	edges = append(edges, g.GetEdges(nil)...)
+	edges := g.GetEdges(nil)
 	SortEdges(edges, "CreatedAt", common.SortAscending)
 
 	return json.Marshal(&struct {
