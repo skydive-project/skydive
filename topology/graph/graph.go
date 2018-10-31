@@ -170,21 +170,6 @@ var (
 	EdgeMetadataDecoders = make(map[string]RawMetadataDecoder)
 )
 
-// HostNodeTIDMap a map of host and node ID
-// TODO(safchain) need to move this to topology.go
-type HostNodeTIDMap map[string][]string
-
-// BuildHostNodeTIDMap creates a map filled with host and associated node.ID
-func BuildHostNodeTIDMap(nodes []*Node) HostNodeTIDMap {
-	hnmap := make(HostNodeTIDMap)
-	for _, node := range nodes {
-		if node.Host != "" {
-			hnmap[node.Host] = append(hnmap[node.Host], string(node.ID))
-		}
-	}
-	return hnmap
-}
-
 // DefaultGraphListener default implementation of a graph listener, can be used when not implementing
 // the whole set of callbacks
 type DefaultGraphListener struct {
