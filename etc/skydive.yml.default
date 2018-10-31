@@ -307,6 +307,9 @@ ovs:
     # Enable the parsing of openflow rules (disabled by default)
     # enable: false
 
+    # Use OpenFlow protocol instead of ovs-ofctl
+    # native: false
+
     # Openflow versions used by ovs-ofctl when queries are made to the
     # switch. 1.0 should always be supported. 1.3 gives a nicer output and
     # it is recommended to add it if it is supported.

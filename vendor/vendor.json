@@ -2310,6 +2310,24 @@
 			"revisionTime": "2018-07-04T10:08:32Z"
 		},
 		{
+			"checksumSHA1": "ae6ZAxQzHrwVMuEBCjYTUiVqY1w=",
+			"origin": "github.com/lebauce/goloxi",
+			"path": "github.com/skydive-project/goloxi",
+			"revision": "7268eeb8e9772626eb082b5f813e565189168f03"
+		},
+		{
+			"checksumSHA1": "PXmoyOvWLTbgpCIiJheEUDwFX6w=",
+			"origin": "github.com/lebauce/goloxi/of10",
+			"path": "github.com/skydive-project/goloxi/of10",
+			"revision": "7268eeb8e9772626eb082b5f813e565189168f03"
+		},
+		{
+			"checksumSHA1": "OkSOgjXoHSo+/G9TtiDa4u3eJMM=",
+			"origin": "github.com/lebauce/goloxi/of14",
+			"path": "github.com/skydive-project/goloxi/of14",
+			"revision": "7268eeb8e9772626eb082b5f813e565189168f03"
+		},
+		{
 			"checksumSHA1": "/HwlJqv7kKCmWqX88A2rehLiOic=",
 			"comment": "v0.1-11-g5113f8f",
 			"path": "github.com/socketplane/libovsdb",

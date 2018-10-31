@@ -114,6 +114,9 @@ flow:
 ovs:
   oflow:
     enable: true
+    native: true
+    address:
+      br-test: tcp:127.0.0.1:16633
 
 storage:
   orientdb:

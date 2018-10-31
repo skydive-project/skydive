@@ -30,7 +30,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
-	ovsdb "github.com/skydive-project/skydive/ovs"
+	"github.com/skydive-project/skydive/ovs/ovsdb"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	op "github.com/skydive-project/skydive/topology/probes/ovsdb"

@@ -29,7 +29,7 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/ovs"
+	"github.com/skydive-project/skydive/ovs/ovsdb"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/sflow"
 	ovsprobe "github.com/skydive-project/skydive/topology/probes/ovsdb"

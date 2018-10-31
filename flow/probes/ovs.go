@@ -24,7 +24,7 @@ import (
 
 	"github.com/socketplane/libovsdb"
 
-	"github.com/skydive-project/skydive/ovs"
+	"github.com/skydive-project/skydive/ovs/ovsdb"
 )
 
 func ovsProbeID(i string) string {

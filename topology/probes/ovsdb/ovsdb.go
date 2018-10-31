@@ -32,7 +32,7 @@ import (
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
-	ovsdb "github.com/skydive-project/skydive/ovs"
+	"github.com/skydive-project/skydive/ovs/ovsdb"
 	"github.com/skydive-project/skydive/topology"
 )
 

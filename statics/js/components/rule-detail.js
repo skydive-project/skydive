@@ -61,22 +61,27 @@ function safePort(s) {
  * @param element the element of the
  */
 function computeAction(rule, element) {
-  var verb = element['Function'].toLowerCase();
+  var verb = (element['Function'] || element['Type']).toLowerCase();
   var args = element['Arguments'];
   function getNumArg(i) {
-    return safePort(args[i]?args[i]['Function']:'');
+    return safePort(args[i]?args[i]['Type']:'');
   }
   var action = actionTable[verb];
   if (action !== undefined) {
     var summary = { action: action };
     switch (verb) {
       case 'resubmit':
-        summary.port = getNumArg(0);
-        if (summary.port === ANY_PORT)
-          summary.port = SAME_PORT;
-        if (args.length > 1)
-          summary.table = getNumArg(1);
-        break;
+        if (args.length !== undefined) {
+          summary.port = getNumArg(0);
+          if (summary.port === ANY_PORT)
+            summary.port = SAME_PORT;
+          if (args.length > 1)
+            summary.table = getNumArg(1);
+          break;
+        } else {
+          summary.port = args.InPort;
+          summary.table = args.Table;
+        }
       case 'output':
       case 'enqueue':
         summary.port = getNumArg(0);
@@ -134,7 +139,7 @@ function summarizeFilter(rule) {
 function textFilters(filters) {
   function text(e) {
     var r = e['Value'] != '' ? ':' + e['Value'] + (e['Mask'] != undefined ? '/' + e['Mask']: '')  : '';
-    return e['Key'] + r
+    return (e['Key'] || e['Type']) + r
   }
   return !filters ? '' : filters.map(text).join(',');
 }
@@ -147,7 +152,7 @@ function textFilters(filters) {
 function textAction(a) {
   if (!a) return ''
   var args = a['Arguments'];
-  var f = a['Function'];
+  var f = a['Function'] || a['Type'];
   var r;
   switch(f) {
     case '=':
@@ -163,7 +168,15 @@ function textAction(a) {
       break;
     default:
       if (args != undefined) {
-        r = f + '(' + args.map(textAction).join(',') + ')';
+        if (args.map !== undefined) {
+          r = f + '(' + args.map(textAction).join(',') + ')';
+        } else {
+          var _args = new Array;
+          for(var key in args) {
+            _args.push(key + "=" + args[key]);
+          }
+          r = f + '(' + _args.join(',') + ')';
+        }
       } else {
         r = f;
       }
