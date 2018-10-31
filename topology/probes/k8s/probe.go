@@ -23,8 +23,14 @@
 package k8s
 
 import (
+	"sync"
+	"time"
+
+	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
+
+	"k8s.io/apimachinery/pkg/util/runtime"
 )
 
 func int32ValueOrDefault(value *int32, defaultValue int32) int32 {
@@ -94,4 +100,43 @@ func NewProbe(g *graph.Graph, manager string, subprobes map[string]Subprobe, lin
 		subprobes: subprobes,
 		linkers:   linkers,
 	}
+}
+
+func logOnError(err error) {
+	logging.GetLogger().Warning(err)
+}
+
+type errorThrottle struct {
+	period   time.Duration
+	lastLock sync.RWMutex
+	last     time.Time
+}
+
+func (r *errorThrottle) onError(error) {
+	r.lastLock.RLock()
+	d := time.Since(r.last)
+	r.lastLock.RUnlock()
+
+	if d < r.period {
+		time.Sleep(r.period - d)
+	}
+
+	r.lastLock.Lock()
+	r.last = time.Now()
+	r.lastLock.Unlock()
+}
+
+func muteInternalErrors() {
+	throttle := errorThrottle{
+		period: time.Second,
+		last:   time.Now(),
+	}
+	runtime.ErrorHandlers = []func(error){
+		logOnError,
+		throttle.onError,
+	}
+}
+
+func init() {
+	muteInternalErrors()
 }
