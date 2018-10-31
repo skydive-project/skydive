@@ -42,13 +42,12 @@ func (h *daemonSetHandler) Dump(obj interface{}) string {
 func (h *daemonSetHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	ds := obj.(*v1beta1.DaemonSet)
 
-	m := NewMetadata(Manager, "daemonset", ds, ds.Name, ds.Namespace)
-	m.SetFieldAndNormalize("Labels", ds.Labels)
+	m := NewMetadataFields(&ds.ObjectMeta)
 	m.SetField("DesiredNumberScheduled", ds.Status.DesiredNumberScheduled)
 	m.SetField("CurrentNumberScheduled", ds.Status.CurrentNumberScheduled)
 	m.SetField("NumberMisscheduled", ds.Status.NumberMisscheduled)
 
-	return graph.Identifier(ds.GetUID()), m
+	return graph.Identifier(ds.GetUID()), NewMetadata(Manager, "daemonset", m, ds, ds.Name)
 }
 
 func newDaemonSetProbe(client interface{}, g *graph.Graph) Subprobe {

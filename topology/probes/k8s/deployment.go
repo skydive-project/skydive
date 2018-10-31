@@ -42,15 +42,14 @@ func (h *deploymentHandler) Dump(obj interface{}) string {
 func (h *deploymentHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	deployment := obj.(*v1beta1.Deployment)
 
-	m := NewMetadata(Manager, "deployment", deployment, deployment.Name, deployment.Namespace)
-	m.SetFieldAndNormalize("Selector", deployment.Spec.Selector)
+	m := NewMetadataFields(&deployment.ObjectMeta)
 	m.SetField("DesiredReplicas", int32ValueOrDefault(deployment.Spec.Replicas, 1))
 	m.SetField("Replicas", deployment.Status.Replicas)
 	m.SetField("ReadyReplicas", deployment.Status.ReadyReplicas)
 	m.SetField("AvailableReplicas", deployment.Status.AvailableReplicas)
 	m.SetField("UnavailableReplicas", deployment.Status.UnavailableReplicas)
 
-	return graph.Identifier(deployment.GetUID()), m
+	return graph.Identifier(deployment.GetUID()), NewMetadata(Manager, "deployment", m, deployment, deployment.Name)
 }
 
 func newDeploymentProbe(client interface{}, g *graph.Graph) Subprobe {

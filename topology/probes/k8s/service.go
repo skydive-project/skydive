@@ -44,7 +44,7 @@ func (h *serviceHandler) Dump(obj interface{}) string {
 func (h *serviceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	srv := obj.(*v1.Service)
 
-	m := NewMetadata(Manager, "service", srv, srv.Name, srv.Namespace)
+	m := NewMetadataFields(&srv.ObjectMeta)
 	m.SetFieldAndNormalize("Ports", srv.Spec.Ports)
 	m.SetFieldAndNormalize("ClusterIP", srv.Spec.ClusterIP)
 	m.SetFieldAndNormalize("ServiceType", srv.Spec.Type)
@@ -52,7 +52,7 @@ func (h *serviceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata)
 	m.SetFieldAndNormalize("LoadBalancerIP", srv.Spec.LoadBalancerIP)
 	m.SetFieldAndNormalize("ExternalName", srv.Spec.ExternalName)
 
-	return graph.Identifier(srv.GetUID()), m
+	return graph.Identifier(srv.GetUID()), NewMetadata(Manager, "service", m, srv, srv.Name)
 }
 
 func newServiceProbe(client interface{}, g *graph.Graph) Subprobe {
@@ -86,8 +86,8 @@ func (spl *servicePodLinker) GetABLinks(srvNode *graph.Node) (edges []*graph.Edg
 }
 
 func (spl *servicePodLinker) GetBALinks(podNode *graph.Node) (edges []*graph.Edge) {
-	namespace, _ := podNode.GetFieldString("Namespace")
-	name, _ := podNode.GetFieldString("Name")
+	namespace, _ := podNode.GetFieldString(MetadataField("Namespace"))
+	name, _ := podNode.GetFieldString(MetadataField("Name"))
 	pod := spl.podCache.getByKey(namespace, name)
 	for _, srv := range spl.serviceCache.getByNamespace(namespace) {
 		srv := srv.(*v1.Service)

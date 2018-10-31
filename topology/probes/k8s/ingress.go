@@ -43,12 +43,12 @@ func (h *ingressHandler) Dump(obj interface{}) string {
 func (h *ingressHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	ingress := obj.(*v1beta1.Ingress)
 
-	m := NewMetadata(Manager, "ingress", ingress, ingress.Name, ingress.Namespace)
+	m := NewMetadataFields(&ingress.ObjectMeta)
 	m.SetFieldAndNormalize("Backend", ingress.Spec.Backend)
 	m.SetFieldAndNormalize("TLS", ingress.Spec.TLS)
 	m.SetFieldAndNormalize("Rules", ingress.Spec.Rules)
 
-	return graph.Identifier(ingress.GetUID()), m
+	return graph.Identifier(ingress.GetUID()), NewMetadata(Manager, "ingress", m, ingress, ingress.Name)
 }
 
 func newIngressProbe(client interface{}, g *graph.Graph) Subprobe {
@@ -56,5 +56,5 @@ func newIngressProbe(client interface{}, g *graph.Graph) Subprobe {
 }
 
 func newIngressServiceLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe {
-	return newResourceLinker(g, subprobes, "ingress", []string{"Namespace", "Backend.ServiceName"}, "service", []string{"Namespace", "Name"}, graph.Metadata{"RelationType": "ingress"})
+	return newResourceLinker(g, subprobes, "ingress", MetadataFields("Namespace", "Backend.ServiceName"), "service", MetadataFields("Namespace", "Name"), graph.Metadata{"RelationType": "ingress"})
 }
