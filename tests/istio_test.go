@@ -64,6 +64,7 @@ func TestBookInfoScenario(t *testing.T) {
 		[]Cmd{
 			{"kubectl apply -f " + bookinfo + "/networking/destination-rule-all.yaml", true},
 			{"kubectl apply -f " + bookinfo + "/networking/bookinfo-gateway.yaml", true},
+			{"kubectl apply -f " + bookinfo + "/platform/kube/bookinfo.yaml", true},
 		},
 		[]Cmd{
 			{"kubectl apply -f " + bookinfo + "/platform/kube/cleanup.sh", false},
@@ -92,6 +93,11 @@ func TestBookInfoScenario(t *testing.T) {
 				}
 
 				_, err = checkNodeCreation(t, c, istio.Manager, "gateway", "Name", "bookinfo-gateway")
+				if err != nil {
+					return err
+				}
+
+				_, err = checkNodeCreation(t, c, istio.Manager, "virtualservice", "Name", "bookinfo")
 				if err != nil {
 					return err
 				}
