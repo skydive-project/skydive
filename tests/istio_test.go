@@ -67,7 +67,10 @@ func TestBookInfoScenario(t *testing.T) {
 			{"kubectl apply -f " + bookinfo + "/platform/kube/bookinfo.yaml", true},
 		},
 		[]Cmd{
-			{"kubectl apply -f " + bookinfo + "/platform/kube/cleanup.sh", false},
+			{"istioctl delete virtualservice bookinfo", false},
+			{"istioctl delete gateway bookinfo-gateway", false},
+			{"istioctl delete destinationrule details productpage ratings reviews", false},
+			{"kubectl delete deployment details-v1 productpage-v1 ratings-v1 reviews-v1 reviews-v2 reviews-v3", false},
 		},
 		[]CheckFunction{
 			func(c *CheckContext) error {
