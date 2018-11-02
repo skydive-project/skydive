@@ -407,6 +407,7 @@ func (ft *Table) processFlow(fl *Flow) {
 		fl.LastUpdateMetric = prev.LastUpdateMetric
 
 		fl.XXX_state = prev.XXX_state
+		fl.XXX_state.updateVersion = ft.updateVersion + 1
 	}
 }
 
