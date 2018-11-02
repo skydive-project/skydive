@@ -104,6 +104,14 @@ func (o *Probe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libo
 		topology.AddOwnershipLink(o.Graph, o.Root, bridge, nil)
 	}
 
+	tr := o.Graph.StartMetadataTransaction(bridge)
+
+	otherConfig := row.New.Fields["other_config"].(libovsdb.OvsMap)
+	for k, v := range otherConfig.GoMap {
+		tr.AddMetadata("Ovs.OtherConfig."+k.(string), v.(string))
+	}
+	tr.Commit()
+
 	switch row.New.Fields["ports"].(type) {
 	case libovsdb.OvsSet:
 		set := row.New.Fields["ports"].(libovsdb.OvsSet)
@@ -489,6 +497,11 @@ func (o *Probe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovs
 	extIds := row.New.Fields["external_ids"].(libovsdb.OvsMap)
 	for k, v := range extIds.GoMap {
 		tr.AddMetadata("ExtID."+k.(string), v.(string))
+	}
+
+	otherConfig := row.New.Fields["other_config"].(libovsdb.OvsMap)
+	for k, v := range otherConfig.GoMap {
+		tr.AddMetadata("Ovs.OtherConfig."+k.(string), v.(string))
 	}
 
 	// vlan tag
