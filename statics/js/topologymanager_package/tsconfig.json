@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "noImplicitAny": true,
+    "module": "es6",
+    "target": "es6",
+    "allowJs": true,
+    "lib": ["es5", "es6", "dom"]
+  },
+  "exclude": [
+      "__tests__",
+      "node_modules"
+  ]
+}

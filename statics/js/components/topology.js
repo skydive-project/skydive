@@ -1233,7 +1233,11 @@ Graph.prototype = {
     var node, edge;
     switch(msg.Type) {
       case "SyncReply":
-        this.initFromSyncMessage(msg);
+        if (window.layoutConfig.getValue('useHardcodedData')) {
+          this.initFromSyncMessage(window.detailedTopology);
+        } else {
+          this.initFromSyncMessage(msg);
+        }
         break;
 
       case "Sync":

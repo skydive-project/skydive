@@ -1,0 +1,7 @@
+{
+  "indentSize": 4,
+  "tabSize": 4,
+  "insertSpaceAfterOpeningAndBeforeClosingTemplateStringBraces": false,
+  "placeOpenBraceOnNewLineForFunctions": false,
+  "placeOpenBraceOnNewLineForControlBlocks": false
+}
