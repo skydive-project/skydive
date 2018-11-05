@@ -377,13 +377,16 @@ function isUndefined(arg) {
 
 "use strict";
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__node__ = __webpack_require__(31);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "d", function() { return __WEBPACK_IMPORTED_MODULE_0__node__["a"]; });
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "e", function() { return __WEBPACK_IMPORTED_MODULE_0__node__["a"]; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__layout__ = __webpack_require__(34);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_1__layout__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__link__ = __webpack_require__(35);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_2__link__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__bridge__ = __webpack_require__(36);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_3__bridge__["a"]; });
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "d", function() { return __WEBPACK_IMPORTED_MODULE_1__layout__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__group__ = __webpack_require__(35);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_2__group__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__link__ = __webpack_require__(36);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_3__link__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__bridge__ = __webpack_require__(37);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_4__bridge__["a"]; });
+
 
 
 
@@ -834,7 +837,7 @@ function getHostFromSkydiveMessageWithOneNode(data) {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__strategy__ = __webpack_require__(38);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__strategy__ = __webpack_require__(39);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__strategy__["a"]; });
 
 
@@ -1555,7 +1558,7 @@ class HostTopologyDataSource {
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__config__["a"]; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__skydive_default_index__ = __webpack_require__(25);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_1__skydive_default_index__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__infra_index__ = __webpack_require__(39);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__infra_index__ = __webpack_require__(40);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_2__infra_index__["a"]; });
 
 
@@ -1907,12 +1910,13 @@ class SkydiveDefaultLayout {
         this.active = false;
         this.dataSources = new __WEBPACK_IMPORTED_MODULE_0__data_source_index__["a" /* DataSourceRegistry */]();
         this.selector = selector;
-        this.uiBridge = new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["b" /* LayoutBridgeUI */](selector);
+        this.uiBridge = new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["c" /* LayoutBridgeUI */](selector);
         this.uiBridge.useEventEmitter(this.e);
         this.uiBridge.useConfig(this.config);
-        this.uiBridge.useLayoutUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["c" /* LayoutUI */](selector));
+        this.uiBridge.useLayoutUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["d" /* LayoutUI */](selector));
         this.uiBridge.useDataManager(this.dataManager);
-        this.uiBridge.useNodeUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["d" /* NodeUI */]());
+        this.uiBridge.useNodeUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["e" /* NodeUI */]());
+        this.uiBridge.useGroupUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["b" /* GroupUI */]());
         this.uiBridge.useEdgeUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["a" /* EdgeUI */]());
         this.uiBridge.setCollapseLevel(1);
         this.uiBridge.setMinimumCollapseLevel(1);
@@ -2798,6 +2802,120 @@ class LayoutUI {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
+function cross(a, b, c) {
+    return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+}
+function computeUpperHullIndexes(points) {
+    let i;
+    let size = 2;
+    const n = points.length, indexes = [0, 1];
+    for (i = 2; i < n; ++i) {
+        while (size > 1 && cross(points[indexes[size - 2]], points[indexes[size - 1]], points[i]) <= 0)
+            --size;
+        indexes[size++] = i;
+    }
+    return indexes.slice(0, size);
+}
+class GroupUI {
+    useLayoutContext(layoutContext) {
+        this.layoutContext = layoutContext;
+    }
+    createRoot(g) {
+        this.g = g.append("g").attr('class', 'groups').selectAll(".group");
+    }
+    get root() {
+        return this.g;
+    }
+    tick() {
+        this.root.attrs((d) => {
+            if (d.Type !== "ownership")
+                return;
+            var hull = this.convexHull(d);
+            if (hull && hull.length) {
+                return {
+                    'd': hull ? "M" + hull.join("L") + "Z" : d.d,
+                    'stroke-width': 64 + d.depth * 50,
+                };
+            }
+            else {
+                return { 'd': '' };
+            }
+        });
+    }
+    update() {
+        this.g = this.g.data(this.layoutContext.dataManager.groupManager.getVisibleGroups(this.layoutContext.collapseLevel, this.layoutContext.isAutoExpand()), function (d) { return d.d3_id(); });
+        this.g.exit().remove();
+        const groupEnter = this.g.enter()
+            .append("path")
+            .attr("class", this.groupClass)
+            .attr("id", function (d) { return "group-" + d.d3_id(); });
+        this.g = groupEnter.merge(this.g).order();
+    }
+    groupClass(d) {
+        var clazz = "group " + d.owner.Metadata.Type;
+        if (d.owner.Metadata.Probe)
+            clazz += " " + d.owner.Metadata.Probe;
+        return clazz;
+    }
+    convexHull(g) {
+        const members = g.members.clone().nodes;
+        g.children.groups.forEach((g1) => {
+            members.push(g1.owner);
+        });
+        const memberIdToMember = members.reduce((accum, n) => {
+            accum[n.ID] = n;
+            return accum;
+        }, {});
+        let n = Object.keys(memberIdToMember).length;
+        if (n < 1)
+            return null;
+        if (n == 1) {
+            return members[0].x && members[0].y ? [[members[0].x, members[0].y], [members[0].x + 1, members[0].y + 1]] : null;
+        }
+        let i;
+        let node;
+        const sortedPoints = [], flippedPoints = [];
+        const memberIds = Object.keys(memberIdToMember);
+        for (i = 0; i < n; ++i) {
+            node = memberIdToMember[memberIds[i]];
+            if (node.getD3XCoord() && node.getD3YCoord())
+                sortedPoints.push([node.getD3XCoord(), node.getD3YCoord(), sortedPoints.length]);
+        }
+        n = sortedPoints.length;
+        if (n < 1) {
+            return null;
+        }
+        if (n === 1) {
+            return [[sortedPoints[0][0], sortedPoints[0][1]], [sortedPoints[0][0] + 1, sortedPoints[0][1] + 1]];
+        }
+        sortedPoints.sort(function (a, b) {
+            return a[0] - b[0] || a[1] - b[1];
+        });
+        for (i = 0; i < sortedPoints.length; ++i) {
+            flippedPoints[i] = [sortedPoints[i][0], -sortedPoints[i][1]];
+        }
+        const upperIndexes = computeUpperHullIndexes(sortedPoints), lowerIndexes = computeUpperHullIndexes(flippedPoints);
+        const skipLeft = lowerIndexes[0] === upperIndexes[0], skipRight = lowerIndexes[lowerIndexes.length - 1] === upperIndexes[upperIndexes.length - 1], hull = [];
+        for (i = upperIndexes.length - 1; i >= 0; --i) {
+            const coords = sortedPoints[upperIndexes[i]];
+            hull.push([coords[0], coords[1]]);
+        }
+        for (i = +skipLeft; i < lowerIndexes.length - skipRight; ++i) {
+            const coords = sortedPoints[lowerIndexes[i]];
+            hull.push([coords[0], coords[1]]);
+        }
+        return hull;
+    }
+}
+/* harmony export (immutable) */ __webpack_exports__["a"] = GroupUI;
+
+
+
+/***/ }),
+/* 36 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
 class EdgeUI {
     constructor() {
         this.previousVisibleEdgeIds = [];
@@ -3036,11 +3154,11 @@ class EdgeUI {
 
 
 /***/ }),
-/* 36 */
+/* 37 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__layout_context__ = __webpack_require__(37);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__layout_context__ = __webpack_require__(38);
 
 class LayoutBridgeUI {
     constructor(selector) {
@@ -3069,6 +3187,9 @@ class LayoutBridgeUI {
     useNodeUI(nodeUI) {
         this.nodeUI = nodeUI;
     }
+    useGroupUI(groupUI) {
+        this.groupUI = groupUI;
+    }
     useEdgeUI(edgeUI) {
         this.edgeUI = edgeUI;
     }
@@ -3085,6 +3206,8 @@ class LayoutBridgeUI {
         this.initialized = false;
         this.layoutUI.useLayoutContext(this.layoutContext);
         this.layoutUI.createRoot();
+        this.groupUI.useLayoutContext(this.layoutContext);
+        this.groupUI.createRoot(this.layoutUI.g);
         this.edgeUI.useLayoutContext(this.layoutContext);
         this.edgeUI.createRoot(this.layoutUI.g);
         this.nodeUI.useLayoutContext(this.layoutContext);
@@ -3098,6 +3221,7 @@ class LayoutBridgeUI {
         this.layoutContext.subscribeToEvent('ui.node.emphasize.byid', this.emphasizeNodeById.bind(this));
         this.layoutContext.subscribeToEvent('ui.node.deemphasize.byid', this.deemphasizeNodeById.bind(this));
         this.layoutContext.subscribeToEvent('edge.select', this.edgeSelected.bind(this));
+        this.layoutContext.subscribeToEvent('ui.group.collapse', this.groupCollapse.bind(this));
         this.layoutUI.start();
         this.intervalId = window.setInterval(() => {
             if (!this.invalidGraph) {
@@ -3128,13 +3252,17 @@ class LayoutBridgeUI {
         return context;
     }
     tick() {
+        this.edgeUI.tick();
         this.nodeUI.tick();
+        this.groupUI.tick();
     }
     update() {
         if (!this.initialized) {
             return;
         }
         this.nodeUI.update();
+        this.edgeUI.update();
+        this.groupUI.update();
         this.layoutUI.restartsimulation();
     }
     nodeSelected(d) {
@@ -3193,6 +3321,78 @@ class LayoutBridgeUI {
     invalidateGraph() {
         this.invalidGraph = true;
     }
+    // @todo to be moved ? simplified
+    groupCollapse(g) {
+        if (!g.collapsed) {
+            g.children.groups.forEach((g1) => {
+                if (!g1.collapsed) {
+                    this.groupCollapse(g1);
+                }
+                else {
+                    this.collapseNode(g1.owner, g1);
+                }
+            });
+            g.members.nodes.forEach((n) => {
+                this.collapseNode(n, g);
+            });
+            g.collapse();
+            this.nodeUI.collapseGroupLink(g.owner);
+        }
+        else {
+            g.members.nodes.forEach((n) => {
+                this.uncollapseNode(n, g);
+            });
+            g.uncollapse();
+            g.children.groups.forEach((g1) => {
+                this.uncollapseNode(g1.owner, g1);
+            });
+            this.nodeUI.collapseGroupLink(g.owner);
+        }
+    }
+    delGroup(g) {
+        this.dataManager.groupManager.removeById(g.ID);
+        this.dataManager.nodeManager.groupRemoved(g);
+        this.nodeUI.groupOwnerUnset(g.owner);
+    }
+    delGroupMember(g, node) {
+        while (g) {
+            g.members.removeNodeByID(node.id);
+            g = g.parent;
+        }
+    }
+    uncollapseGroupTree(g) {
+        g.members.nodes.forEach((n) => {
+            this.uncollapseNode(n, g);
+        });
+        g.collapsed = false;
+        g.children.groups.forEach((g1) => {
+            this.uncollapseGroupTree(g1);
+        });
+        this.nodeUI.collapseGroupLink(g.owner);
+    }
+    collapseGroupTree(g) {
+        g.children.groups.forEach((g1) => {
+            if (g1.collapsed) {
+                this.collapseGroupTree(g1);
+            }
+        });
+        g.members.nodes.forEach((n) => {
+            this.collapseNode(n, g);
+        });
+        g.collapsed = true;
+        this.nodeUI.collapseGroupLink(g.owner);
+    }
+    toggleExpandAll(d) {
+        if (d.isGroupOwner()) {
+            if (!d.group.collapsed) {
+                this.collapseGroupTree(d.group);
+            }
+            else {
+                this.uncollapseGroupTree(d.group);
+            }
+        }
+        this.e.emit('ui.update');
+    }
     showNode(d) {
         if (d.hasType("ofrule")) {
             return;
@@ -3218,7 +3418,7 @@ class LayoutBridgeUI {
 
 
 /***/ }),
-/* 37 */
+/* 38 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -3244,7 +3444,7 @@ class LayoutContext {
 
 
 /***/ }),
-/* 38 */
+/* 39 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -3462,7 +3662,7 @@ class BandwidthStrategy {
 
 
 /***/ }),
-/* 39 */
+/* 40 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -3486,13 +3686,14 @@ class SkydiveInfraLayout {
         this.active = false;
         this.dataSources = new __WEBPACK_IMPORTED_MODULE_0__data_source_index__["a" /* DataSourceRegistry */]();
         this.selector = selector;
-        this.uiBridge = new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["b" /* LayoutBridgeUI */](selector);
+        this.uiBridge = new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["c" /* LayoutBridgeUI */](selector);
         this.uiBridge.useEventEmitter(this.e);
         this.uiBridge.useConfig(this.config);
         this.uiBridge.useDataManager(this.dataManager);
-        this.uiBridge.useLayoutUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["c" /* LayoutUI */](selector));
-        this.uiBridge.useNodeUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["d" /* NodeUI */]());
+        this.uiBridge.useLayoutUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["d" /* LayoutUI */](selector));
+        this.uiBridge.useNodeUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["e" /* NodeUI */]());
         this.uiBridge.useEdgeUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["a" /* EdgeUI */]());
+        this.uiBridge.useGroupUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["b" /* GroupUI */]());
         this.dataManager.useLayoutContext(this.uiBridge.layoutContext);
     }
     initializer() {

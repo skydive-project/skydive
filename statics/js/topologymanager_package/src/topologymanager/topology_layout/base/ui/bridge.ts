@@ -3,6 +3,7 @@ import * as events from 'events';
 import DataManager from '../data_manager';
 import { LayoutUII, LayoutUI } from './layout';
 import { NodeUII, NodeUI } from './node';
+import { GroupUII, GroupUI } from './group';
 import { EdgeUII, EdgeUI } from './link';
 import LayoutConfig from '../../config';
 import { Node } from '../node/index';
@@ -19,10 +20,12 @@ export interface LayoutBridgeUII {
     dataManager: DataManager;
     layoutUI: LayoutUII;
     nodeUI: NodeUII;
+    groupUI: GroupUII;
     edgeUI: EdgeUII;
     linkLabelStrategy: any;
     useLayoutUI(layoutUI: LayoutUII): void;
     useNodeUI(nodeUI: NodeUII): void;
+    useGroupUI(groupUI: GroupUII): void;
     useEdgeUI(edgeUI: EdgeUII): void;
     useDataManager(dataManager: DataManager): void;
     useConfig(config: LayoutConfig): void;
@@ -43,6 +46,7 @@ export class LayoutBridgeUI implements LayoutBridgeUII {
     e: events.EventEmitter;
     selector: string;
     nodeUI: NodeUII;
+    groupUI: GroupUII;
     dataManager: DataManager;
     layoutUI: LayoutUII;
     config: LayoutConfig;
@@ -74,6 +78,9 @@ export class LayoutBridgeUI implements LayoutBridgeUII {
     useNodeUI(nodeUI: NodeUII) {
         this.nodeUI = nodeUI;
     }
+    useGroupUI(groupUI: GroupUII) {
+        this.groupUI = groupUI;
+    }
     useEdgeUI(edgeUI: EdgeUII) {
         this.edgeUI = edgeUI;
     }
@@ -90,6 +97,8 @@ export class LayoutBridgeUI implements LayoutBridgeUII {
         this.initialized = false;
         this.layoutUI.useLayoutContext(this.layoutContext);
         this.layoutUI.createRoot();
+        this.groupUI.useLayoutContext(this.layoutContext);
+        this.groupUI.createRoot(this.layoutUI.g);
         this.edgeUI.useLayoutContext(this.layoutContext);
         this.edgeUI.createRoot(this.layoutUI.g);
         this.nodeUI.useLayoutContext(this.layoutContext);
@@ -103,6 +112,7 @@ export class LayoutBridgeUI implements LayoutBridgeUII {
         this.layoutContext.subscribeToEvent('ui.node.emphasize.byid', this.emphasizeNodeById.bind(this));
         this.layoutContext.subscribeToEvent('ui.node.deemphasize.byid', this.deemphasizeNodeById.bind(this));
         this.layoutContext.subscribeToEvent('edge.select', this.edgeSelected.bind(this));
+        this.layoutContext.subscribeToEvent('ui.group.collapse', this.groupCollapse.bind(this));
         this.layoutUI.start();
         this.intervalId = window.setInterval(() => {
             if (!this.invalidGraph) {
@@ -133,13 +143,17 @@ export class LayoutBridgeUI implements LayoutBridgeUII {
         return context;
     }
     tick() {
+        this.edgeUI.tick();
         this.nodeUI.tick();
+        this.groupUI.tick();
     }
     update() {
         if (!this.initialized) {
             return;
         }
         this.nodeUI.update();
+        this.edgeUI.update();
+        this.groupUI.update();
         this.layoutUI.restartsimulation();
     }
     nodeSelected(d: Node) {
@@ -196,6 +210,75 @@ export class LayoutBridgeUI implements LayoutBridgeUII {
     }
     invalidateGraph() {
         this.invalidGraph = true;
+    }
+    // @todo to be moved ? simplified
+    groupCollapse(g: Group) {
+        if (!g.collapsed) {
+            g.children.groups.forEach((g1: Group) => {
+                if (!g1.collapsed) {
+                    this.groupCollapse(g1);
+                } else {
+                    this.collapseNode(g1.owner, g1);
+                }
+            });
+            g.members.nodes.forEach((n: Node) => {
+                this.collapseNode(n, g);
+            });
+            g.collapse();
+            this.nodeUI.collapseGroupLink(g.owner);
+        } else {
+            g.members.nodes.forEach((n: Node) => {
+                this.uncollapseNode(n, g);
+            });
+            g.uncollapse();
+            g.children.groups.forEach((g1: Group) => {
+                this.uncollapseNode(g1.owner, g1);
+            });
+            this.nodeUI.collapseGroupLink(g.owner);
+        }
+    }
+    delGroup(g: Group) {
+        this.dataManager.groupManager.removeById(g.ID);
+        this.dataManager.nodeManager.groupRemoved(g);
+        this.nodeUI.groupOwnerUnset(g.owner);
+    }
+    delGroupMember(g: Group, node: Node) {
+        while (g) {
+            g.members.removeNodeByID(node.id);
+            g = g.parent;
+        }
+    }
+    uncollapseGroupTree(g: Group) {
+        g.members.nodes.forEach((n: Node) => {
+            this.uncollapseNode(n, g);
+        })
+        g.collapsed = false;
+        g.children.groups.forEach((g1: Group) => {
+            this.uncollapseGroupTree(g1);
+        })
+        this.nodeUI.collapseGroupLink(g.owner);
+    }
+    collapseGroupTree(g: Group) {
+        g.children.groups.forEach((g1: Group) => {
+            if (g1.collapsed) {
+                this.collapseGroupTree(g1);
+            }
+        })
+        g.members.nodes.forEach((n: Node) => {
+            this.collapseNode(n, g);
+        })
+        g.collapsed = true;
+        this.nodeUI.collapseGroupLink(g.owner);
+    }
+    toggleExpandAll(d: Node) {
+        if (d.isGroupOwner()) {
+            if (!d.group.collapsed) {
+                this.collapseGroupTree(d.group);
+            } else {
+                this.uncollapseGroupTree(d.group);
+            }
+        }
+        this.e.emit('ui.update');
     }
     showNode(d: Node) {
         if (d.hasType("ofrule")) {

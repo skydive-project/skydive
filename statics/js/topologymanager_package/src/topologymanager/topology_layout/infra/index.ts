@@ -4,7 +4,7 @@ import LayoutConfig from '../config';
 import * as events from 'events';
 import { DataManager } from '../base/index';
 import { LayoutBridgeUI, LayoutBridgeUII } from '../base/ui/index';
-import { LayoutUI, EdgeUI, NodeUI } from '../base/ui/index';
+import { LayoutUI, EdgeUI, NodeUI, GroupUI } from '../base/ui/index';
 import { LabelRetrieveInformationStrategy } from '../base/edge/label/index';
 export default class SkydiveInfraLayout implements TopologyLayoutI {
     uiBridge: LayoutBridgeUII;
@@ -24,6 +24,7 @@ export default class SkydiveInfraLayout implements TopologyLayoutI {
         this.uiBridge.useLayoutUI(new LayoutUI(selector));
         this.uiBridge.useNodeUI(new NodeUI());
         this.uiBridge.useEdgeUI(new EdgeUI());
+        this.uiBridge.useGroupUI(new GroupUI());
         this.dataManager.useLayoutContext(this.uiBridge.layoutContext);
     }
     initializer() {
