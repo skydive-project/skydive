@@ -65,8 +65,8 @@ export default function parseSkydiveData(dataManager: DataManager, data: any): v
         g.parent.children.addGroup(g);
     });
     dataManager.groupManager.updateLevelAndDepth(
-        1,
-        false
+        dataManager.layoutContext.collapseLevel,
+        dataManager.layoutContext.isAutoExpand()
     );
     const hostToNode: any = dataManager.nodeManager.nodes.reduce((accum: any, n: Node) => {
         if (!n.hasType("host")) {

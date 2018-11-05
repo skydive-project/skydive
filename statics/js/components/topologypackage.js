@@ -767,7 +767,7 @@ function parseSkydiveData(dataManager, data) {
         }
         g.parent.children.addGroup(g);
     });
-    dataManager.groupManager.updateLevelAndDepth(1, false);
+    dataManager.groupManager.updateLevelAndDepth(dataManager.layoutContext.collapseLevel, dataManager.layoutContext.isAutoExpand());
     const hostToNode = dataManager.nodeManager.nodes.reduce((accum, n) => {
         if (!n.hasType("host")) {
             return accum;
@@ -1536,7 +1536,7 @@ class HostTopologyDataSource {
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__config__["a"]; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__skydive_default_index__ = __webpack_require__(24);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_1__skydive_default_index__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__infra_index__ = __webpack_require__(31);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__infra_index__ = __webpack_require__(32);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_2__infra_index__["a"]; });
 
 
@@ -1891,6 +1891,7 @@ class SkydiveDefaultLayout {
         this.uiBridge.useDataManager(this.dataManager);
         this.uiBridge.setCollapseLevel(1);
         this.uiBridge.setMinimumCollapseLevel(1);
+        this.dataManager.useLayoutContext(this.uiBridge.layoutContext);
     }
     initializer() {
         console.log("Try to initialize topology " + this.alias);
@@ -1978,6 +1979,9 @@ class DataManager {
         this.nodeManager = new __WEBPACK_IMPORTED_MODULE_0__node_index__["a" /* NodeRegistry */]();
         this.edgeManager = new __WEBPACK_IMPORTED_MODULE_1__edge_index__["a" /* EdgeRegistry */]();
         this.groupManager = new __WEBPACK_IMPORTED_MODULE_2__group_index__["a" /* GroupRegistry */]();
+    }
+    useLayoutContext(layoutContext) {
+        this.layoutContext = layoutContext;
     }
     addNodeFromData(dataType, data) {
         Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["d" /* parseSkydiveMessageWithOneNode */])(this, data);
@@ -2198,6 +2202,8 @@ function parseData(dataManager, dataType, data) {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__layout_context__ = __webpack_require__(31);
+
 class LayoutBridgeUI {
     constructor(selector) {
         this.initialized = false;
@@ -2233,6 +2239,17 @@ class LayoutBridgeUI {
     }
     remove() {
     }
+    get layoutContext() {
+        const context = new __WEBPACK_IMPORTED_MODULE_0__layout_context__["a" /* default */]();
+        context.getCollapseLevel = () => this.collapseLevel;
+        context.getMinimumCollapseLevel = () => this.minimumCollapseLevel;
+        context.isAutoExpand = () => this.autoExpand;
+        context.dataManager = this.dataManager;
+        context.e = this.e;
+        context.config = this.config;
+        context.linkLabelStrategy = this.linkLabelStrategy;
+        return context;
+    }
 }
 /* harmony export (immutable) */ __webpack_exports__["a"] = LayoutBridgeUI;
 
@@ -2240,6 +2257,32 @@ class LayoutBridgeUI {
 
 /***/ }),
 /* 31 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+class LayoutContext {
+    getCollapseLevel() {
+        return 1;
+    }
+    getMinimumCollapseLevel() {
+        return 1;
+    }
+    isAutoExpand() {
+        return false;
+    }
+    get collapseLevel() {
+        return Math.max(this.getCollapseLevel(), this.getMinimumCollapseLevel());
+    }
+    subscribeToEvent(eventName, cb) {
+        this.e.on(eventName, cb);
+    }
+}
+/* harmony export (immutable) */ __webpack_exports__["a"] = LayoutContext;
+
+
+
+/***/ }),
+/* 32 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -2264,6 +2307,7 @@ class SkydiveInfraLayout {
         this.uiBridge.useEventEmitter(this.e);
         this.uiBridge.useConfig(this.config);
         this.uiBridge.useDataManager(this.dataManager);
+        this.dataManager.useLayoutContext(this.uiBridge.layoutContext);
     }
     initializer() {
         console.log("Try to initialize topology " + this.alias);

@@ -87,7 +87,7 @@ Vue.component('app-topology', {
   },
   computed: {
     possibleToBuildHierarchiedTopology: function() {
-      return false;
+      return this.layout.dataManager.nodeManager.isThereAnyNodeWithType("libvirt");
     }
   }
 });

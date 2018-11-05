@@ -2,11 +2,13 @@ import * as events from 'events';
 
 import DataManager from '../data_manager';
 import LayoutConfig from '../../config';
+import LayoutContext from './layout_context';
 
 export interface LayoutBridgeUII {
     e: events.EventEmitter;
     config: LayoutConfig;
     useEventEmitter(e: events.EventEmitter): void;
+    layoutContext: LayoutContext;
     selector: string;
     dataManager: DataManager;
     linkLabelStrategy: any;
@@ -63,5 +65,16 @@ export class LayoutBridgeUI implements LayoutBridgeUII {
         this.initialized = true;
     }
     remove() {
+    }
+    get layoutContext(): LayoutContext {
+        const context = new LayoutContext();
+        context.getCollapseLevel = () => this.collapseLevel;
+        context.getMinimumCollapseLevel = () => this.minimumCollapseLevel;
+        context.isAutoExpand = () => this.autoExpand;
+        context.dataManager = this.dataManager;
+        context.e = this.e;
+        context.config = this.config;
+        context.linkLabelStrategy = this.linkLabelStrategy;
+        return context;
     }
 }

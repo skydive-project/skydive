@@ -22,6 +22,7 @@ export default class SkydiveDefaultLayout implements TopologyLayoutI {
         this.uiBridge.useDataManager(this.dataManager);
         this.uiBridge.setCollapseLevel(1);
         this.uiBridge.setMinimumCollapseLevel(1);
+        this.dataManager.useLayoutContext(this.uiBridge.layoutContext);
     }
     initializer() {
         console.log("Try to initialize topology " + this.alias);

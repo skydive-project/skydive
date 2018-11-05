@@ -19,6 +19,7 @@ export default class SkydiveInfraLayout implements TopologyLayoutI {
         this.uiBridge.useEventEmitter(this.e);
         this.uiBridge.useConfig(this.config);
         this.uiBridge.useDataManager(this.dataManager);
+        this.dataManager.useLayoutContext(this.uiBridge.layoutContext);
     }
     initializer() {
         console.log("Try to initialize topology " + this.alias);

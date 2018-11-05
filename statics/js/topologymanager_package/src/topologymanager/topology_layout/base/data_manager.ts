@@ -1,13 +1,17 @@
 import { NodeRegistry } from './node/index';
 import { EdgeRegistry } from './edge/index';
 import { GroupRegistry } from './group/index';
+import LayoutContext from './ui/layout_context';
 import { Node } from './node/index';
 import parseData, { parseSkydiveMessageWithOneNodeAndUpdateNode, parseSkydiveMessageWithOneNode, getNodeIDFromSkydiveMessageWithOneNode, getHostFromSkydiveMessageWithOneNode } from './parsers/index';
-
 export default class DataManager {
     nodeManager: NodeRegistry = new NodeRegistry();
     edgeManager: EdgeRegistry = new EdgeRegistry();
     groupManager: GroupRegistry = new GroupRegistry();
+    layoutContext: LayoutContext;
+    useLayoutContext(layoutContext: LayoutContext) {
+        this.layoutContext = layoutContext
+    }
     addNodeFromData(dataType: string, data: any) {
         parseSkydiveMessageWithOneNode(this, data);
     }
