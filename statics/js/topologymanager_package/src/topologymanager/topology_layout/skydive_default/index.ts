@@ -47,6 +47,40 @@ export default class SkydiveDefaultLayout implements TopologyLayoutI {
     }
     reactToDataSourceEvent(dataSource: DataSourceI, eventName: string, ...args: Array<any>) {
         console.log('Skydive default layout got an event', eventName, args);
+        switch (eventName) {
+            case "SyncReply":
+                if (this.config.getValue('useHardcodedData')) {
+                    this.dataManager.updateFromData(dataSource.sourceType, window.detailedTopology);
+                } else {
+                    this.dataManager.updateFromData(dataSource.sourceType, args[0]);
+                }
+                console.log('Built dataManager', this.dataManager);
+                $(this.selector).empty();
+                this.uiBridge.useDataManager(this.dataManager);
+                this.uiBridge.start();
+                this.e.emit('ui.update');
+                break;
+            // case "NodeAdded":
+            //     this.dataManager.addNodeFromData(dataSource.sourceType, args[0]);
+            //     console.log('Added node', args[0]);
+            //     this.e.emit('ui.update');
+            //     break;
+            // case "NodeDeleted":
+            //     this.dataManager.removeNodeFromData(dataSource.sourceType, args[0]);
+            //     console.log('Deleted node', args[0]);
+            //     this.e.emit('ui.update');
+            //     break;
+            // case "NodeUpdated":
+            //     const nodeOldAndNew = this.dataManager.updateNodeFromData(dataSource.sourceType, args[0]);
+            //     console.log('Updated node', args[0]);
+            //     this.e.emit('node.updated', nodeOldAndNew.oldNode, nodeOldAndNew.newNode);
+            //     break;
+            // case "HostGraphDeleted":
+            //     this.dataManager.removeAllNodesWhichBelongsToHostFromData(dataSource.sourceType, args[0]);
+            //     console.log('Removed host', args[0]);
+            //     this.e.emit('ui.updated');
+            //     break;
+        }
     }
     reactToTheUiEvent(eventName: string, ...args: Array<any>) {
         this.e.emit('ui.' + eventName, ...args);
