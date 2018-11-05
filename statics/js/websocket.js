@@ -73,7 +73,7 @@ WSHandler.prototype = {
   },
 
   disconnect: function() {
-    this.conn.close();
+    this.conn && this.conn.close();
   },
 
   addMsgHandler: function(namespace, callback) {

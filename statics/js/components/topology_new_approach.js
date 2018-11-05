@@ -13,6 +13,12 @@ function createHostLayout(hostName, selector, linkLabelType) {
     if (linkLabelType) {
       layout.useLinkLabelStrategy(linkLabelType);
     }
+    const dataSource = new window.TopologyORegistry.dataSources.hostTopology(hostName)
+    dataSource.subscribe();
+    dataSource.e.on('broadcastMessage', (type, msg) => {
+        layout.reactToDataSourceEvent.call(layout, dataSource, type, msg);
+    });
+    layout.addDataSource(dataSource, true);
     return layout;
 }
 
@@ -697,6 +703,23 @@ var TopologyComponentNewApproach = {
         var self = this;
         const skydiveInfraLayout = new window.TopologyORegistry.layouts.infra('.topology-d3-infra')
         if (!this.infraLayout) {
+            const infraTopologyDataSource = new window.TopologyORegistry.dataSources.infraTopology();
+            infraTopologyDataSource.subscribe();
+            infraTopologyDataSource.e.on('broadcastMessage', (type, msg) => {
+                if (type === 'SyncReply') {
+                    const hostSelectorData = [];
+                    msg.Obj.Nodes.forEach((node) => {
+                        if (node.Metadata.Type !== "host") {
+                            return;
+                        }
+                        hostSelectorData.push({name: node.Metadata.Name});
+                    });
+                    self.onUpdatedHosts(hostSelectorData);
+                };
+                self.infraLayout.reactToDataSourceEvent.call(self.infraLayout, infraTopologyDataSource, type, msg);
+                self.infraLayout.initializer();
+            });
+            skydiveInfraLayout.addDataSource(infraTopologyDataSource, true)
             skydiveInfraLayout.useConfig(layoutConfig);
             this.infraLayout = skydiveInfraLayout;
             this.infraLayout.e.on('node.select', this.onNodeSelected.bind(this));

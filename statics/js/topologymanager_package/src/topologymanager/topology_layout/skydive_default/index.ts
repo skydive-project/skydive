@@ -1,8 +1,10 @@
+import { DataSourceI, DataSourceRegistry } from "../../data_source/index";
 import { TopologyLayoutI } from "../index";
 import LayoutConfig from '../config';
 import * as events from 'events';
 import { DataManager } from '../base/index';
 import { LayoutBridgeUI, LayoutBridgeUII } from '../base/ui/index';
+
 export default class SkydiveDefaultLayout implements TopologyLayoutI {
     uiBridge: LayoutBridgeUII;
     dataManager: DataManager = new DataManager();
@@ -10,6 +12,7 @@ export default class SkydiveDefaultLayout implements TopologyLayoutI {
     alias: string = "skydive_default";
     active: boolean = false;
     config: LayoutConfig;
+    dataSources: DataSourceRegistry = new DataSourceRegistry();
     selector: string;
     constructor(selector: string) {
         this.selector = selector;
@@ -32,9 +35,18 @@ export default class SkydiveDefaultLayout implements TopologyLayoutI {
         this.uiBridge.useConfig(this.config);
     }
     remove() {
+        this.dataSources.sources.forEach((source: DataSourceI) => {
+            source.unsubscribe();
+        });
         this.active = false;
         this.uiBridge.remove();
         $(this.selector).empty();
+    }
+    addDataSource(dataSource: DataSourceI, defaultSource?: boolean) {
+        this.dataSources.addSource(dataSource, !!defaultSource);
+    }
+    reactToDataSourceEvent(dataSource: DataSourceI, eventName: string, ...args: Array<any>) {
+        console.log('Skydive default layout got an event', eventName, args);
     }
     reactToTheUiEvent(eventName: string, ...args: Array<any>) {
         this.e.emit('ui.' + eventName, ...args);

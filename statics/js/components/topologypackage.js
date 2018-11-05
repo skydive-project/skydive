@@ -60,32 +60,11 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 4);
+/******/ 	return __webpack_require__(__webpack_require__.s = 5);
 /******/ })
 /************************************************************************/
 /******/ ([
 /* 0 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-/*!
- * isobject <https://github.com/jonschlinkert/isobject>
- *
- * Copyright (c) 2014-2015, Jon Schlinkert.
- * Licensed under the MIT License.
- */
-
-
-
-var isArray = __webpack_require__(10);
-
-module.exports = function isObject(val) {
-  return val != null && typeof val === 'object' && isArray(val) === false;
-};
-
-
-/***/ }),
-/* 1 */
 /***/ (function(module, exports) {
 
 // Copyright Joyent, Inc. and other Node contributors.
@@ -393,13 +372,40 @@ function isUndefined(arg) {
 
 
 /***/ }),
-/* 2 */
+/* 1 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__data_manager__ = __webpack_require__(14);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__data_manager__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__registry__ = __webpack_require__(8);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__registry__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__infra_topology__ = __webpack_require__(9);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_1__infra_topology__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__host_topology__ = __webpack_require__(10);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_2__host_topology__["a"]; });
 
+
+
+
+
+/***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+/*!
+ * isobject <https://github.com/jonschlinkert/isobject>
+ *
+ * Copyright (c) 2014-2015, Jon Schlinkert.
+ * Licensed under the MIT License.
+ */
+
+
+
+var isArray = __webpack_require__(14);
+
+module.exports = function isObject(val) {
+  return val != null && typeof val === 'object' && isArray(val) === false;
+};
 
 
 /***/ }),
@@ -407,21 +413,31 @@ function isUndefined(arg) {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__bridge__ = __webpack_require__(15);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__bridge__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__data_manager__ = __webpack_require__(18);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__data_manager__["a"]; });
 
 
 
 /***/ }),
 /* 4 */
-/***/ (function(module, exports, __webpack_require__) {
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
 
-__webpack_require__(5);
-module.exports = __webpack_require__(6);
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__bridge__ = __webpack_require__(19);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__bridge__["a"]; });
+
 
 
 /***/ }),
 /* 5 */
+/***/ (function(module, exports, __webpack_require__) {
+
+__webpack_require__(6);
+module.exports = __webpack_require__(7);
+
+
+/***/ }),
+/* 6 */
 /***/ (function(module, exports) {
 
 (function (global) {
@@ -984,36 +1000,26 @@ module.exports = __webpack_require__(6);
 })(typeof global === "undefined" ? self : global);
 
 /***/ }),
-/* 6 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__topologymanager_topology_layout_index__ = __webpack_require__(7);
-
-window.TopologyORegistry = {
-    layouts: {
-        skydive_default: __WEBPACK_IMPORTED_MODULE_0__topologymanager_topology_layout_index__["b" /* SkydiveDefaultLayout */],
-        infra: __WEBPACK_IMPORTED_MODULE_0__topologymanager_topology_layout_index__["c" /* SkydiveInfraLayout */]
-    },
-    config: __WEBPACK_IMPORTED_MODULE_0__topologymanager_topology_layout_index__["a" /* LayoutConfig */]
-};
-
-
-/***/ }),
 /* 7 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__config__ = __webpack_require__(8);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__config__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__skydive_default_index__ = __webpack_require__(13);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_1__skydive_default_index__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__infra_index__ = __webpack_require__(16);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_2__infra_index__["a"]; });
+Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__topologymanager_data_source_index__ = __webpack_require__(1);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__topologymanager_topology_layout_index__ = __webpack_require__(11);
 
 
-
+window.TopologyORegistry = {
+    dataSources: {
+        infraTopology: __WEBPACK_IMPORTED_MODULE_0__topologymanager_data_source_index__["c" /* InfraTopologyDataSource */],
+        hostTopology: __WEBPACK_IMPORTED_MODULE_0__topologymanager_data_source_index__["b" /* HostTopologyDataSource */]
+    },
+    layouts: {
+        skydive_default: __WEBPACK_IMPORTED_MODULE_1__topologymanager_topology_layout_index__["b" /* SkydiveDefaultLayout */],
+        infra: __WEBPACK_IMPORTED_MODULE_1__topologymanager_topology_layout_index__["c" /* SkydiveInfraLayout */]
+    },
+    config: __WEBPACK_IMPORTED_MODULE_1__topologymanager_topology_layout_index__["a" /* LayoutConfig */]
+};
 
 
 /***/ }),
@@ -1021,8 +1027,137 @@ window.TopologyORegistry = {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-const get = __webpack_require__(9);
-const set = __webpack_require__(11);
+class DataSourceRegistry {
+    constructor() {
+        this.sources = [];
+    }
+    addSource(source, defaultSource) {
+        this.sources.push(source);
+    }
+}
+/* harmony export (immutable) */ __webpack_exports__["a"] = DataSourceRegistry;
+
+
+
+/***/ }),
+/* 9 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_events__ = __webpack_require__(0);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_events___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_events__);
+
+class InfraTopologyDataSource {
+    constructor() {
+        this.sourceType = "skydive";
+        this.dataSourceName = "infra_topology";
+        this.e = new __WEBPACK_IMPORTED_MODULE_0_events__["EventEmitter"]();
+        this.subscribable = true;
+        this.filterQuery = "G.V().Has('Type', 'host')";
+        this.onConnected = this.onConnected.bind(this);
+        this.processMessage = this.processMessage.bind(this);
+    }
+    subscribe() {
+        window.websocket.disconnect();
+        window.websocket.removeMsgHandler('Graph', this.processMessage);
+        window.websocket.addMsgHandler('Graph', this.processMessage);
+        window.websocket.addConnectHandler(this.onConnected, true);
+    }
+    unsubscribe() {
+        this.e.removeAllListeners();
+        window.websocket.removeMsgHandler('Graph', this.processMessage);
+        window.websocket.disconnect();
+    }
+    onConnected() {
+        console.log('Send sync request');
+        const obj = {};
+        if (this.time) {
+            obj.Time = this.time;
+        }
+        obj.GremlinFilter = this.filterQuery + ".SubGraph()";
+        const msg = { "Namespace": "Graph", "Type": "SyncRequest", "Obj": obj };
+        window.websocket.send(msg);
+    }
+    processMessage(msg) {
+        console.log('Got message from websocket', msg);
+        this.e.emit('broadcastMessage', msg.Type, msg);
+    }
+}
+/* harmony export (immutable) */ __webpack_exports__["a"] = InfraTopologyDataSource;
+
+
+
+/***/ }),
+/* 10 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_events__ = __webpack_require__(0);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_events___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_events__);
+
+class HostTopologyDataSource {
+    constructor(host) {
+        this.sourceType = "skydive";
+        this.dataSourceName = "infra_topology";
+        this.e = new __WEBPACK_IMPORTED_MODULE_0_events__["EventEmitter"]();
+        this.subscribable = true;
+        this.filterQuery = "";
+        this.filterQuery = "G.V().Has('Host', '" + host + "')";
+        this.onConnected = this.onConnected.bind(this);
+        this.processMessage = this.processMessage.bind(this);
+    }
+    subscribe() {
+        window.websocket.removeMsgHandler('Graph', this.processMessage);
+        window.websocket.addMsgHandler('Graph', this.processMessage);
+        window.websocket.addConnectHandler(this.onConnected, true);
+    }
+    unsubscribe() {
+        this.e.removeAllListeners();
+        window.websocket.removeMsgHandler('Graph', this.processMessage);
+    }
+    onConnected() {
+        console.log('Send sync request');
+        const obj = {};
+        if (this.time) {
+            obj.Time = this.time;
+        }
+        obj.GremlinFilter = this.filterQuery + ".SubGraph()";
+        const msg = { "Namespace": "Graph", "Type": "SyncRequest", "Obj": obj };
+        console.log('send msg', msg);
+        window.websocket.send(msg);
+    }
+    processMessage(msg) {
+        console.log('Got message from websocket', msg);
+        this.e.emit('broadcastMessage', msg.Type, msg);
+    }
+}
+/* harmony export (immutable) */ __webpack_exports__["a"] = HostTopologyDataSource;
+
+
+
+/***/ }),
+/* 11 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__config__ = __webpack_require__(12);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__config__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__skydive_default_index__ = __webpack_require__(17);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_1__skydive_default_index__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__infra_index__ = __webpack_require__(20);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_2__infra_index__["a"]; });
+
+
+
+
+
+/***/ }),
+/* 12 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+const get = __webpack_require__(13);
+const set = __webpack_require__(15);
 class LayoutConfig {
     constructor(configuration) {
         this.configuration = configuration;
@@ -1043,7 +1178,7 @@ class LayoutConfig {
 
 
 /***/ }),
-/* 9 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /*!
@@ -1053,7 +1188,7 @@ class LayoutConfig {
  * Released under the MIT License.
  */
 
-const isObject = __webpack_require__(0);
+const isObject = __webpack_require__(2);
 
 module.exports = function(target, path, options) {
   if (!isObject(options)) {
@@ -1159,7 +1294,7 @@ function isValidObject(val) {
 
 
 /***/ }),
-/* 10 */
+/* 14 */
 /***/ (function(module, exports) {
 
 var toString = {}.toString;
@@ -1170,7 +1305,7 @@ module.exports = Array.isArray || function (arr) {
 
 
 /***/ }),
-/* 11 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1183,7 +1318,7 @@ module.exports = Array.isArray || function (arr) {
 
 
 
-const isPlain = __webpack_require__(12);
+const isPlain = __webpack_require__(16);
 
 function set(target, path, value, options) {
   if (!isObject(target)) {
@@ -1293,7 +1428,7 @@ module.exports = set;
 
 
 /***/ }),
-/* 12 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1306,7 +1441,7 @@ module.exports = set;
 
 
 
-var isObject = __webpack_require__(0);
+var isObject = __webpack_require__(2);
 
 function isObjectObject(o) {
   return isObject(o) === true
@@ -1337,25 +1472,28 @@ module.exports = function isPlainObject(o) {
 
 
 /***/ }),
-/* 13 */
+/* 17 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_events__ = __webpack_require__(1);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_events___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_events__);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__base_index__ = __webpack_require__(2);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__base_ui_index__ = __webpack_require__(3);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__data_source_index__ = __webpack_require__(1);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_events__ = __webpack_require__(0);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_events___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_events__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__base_index__ = __webpack_require__(3);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__base_ui_index__ = __webpack_require__(4);
+
 
 
 
 class SkydiveDefaultLayout {
     constructor(selector) {
-        this.dataManager = new __WEBPACK_IMPORTED_MODULE_1__base_index__["a" /* DataManager */]();
-        this.e = new __WEBPACK_IMPORTED_MODULE_0_events__["EventEmitter"]();
+        this.dataManager = new __WEBPACK_IMPORTED_MODULE_2__base_index__["a" /* DataManager */]();
+        this.e = new __WEBPACK_IMPORTED_MODULE_1_events__["EventEmitter"]();
         this.alias = "skydive_default";
         this.active = false;
+        this.dataSources = new __WEBPACK_IMPORTED_MODULE_0__data_source_index__["a" /* DataSourceRegistry */]();
         this.selector = selector;
-        this.uiBridge = new __WEBPACK_IMPORTED_MODULE_2__base_ui_index__["a" /* LayoutBridgeUI */](selector);
+        this.uiBridge = new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["a" /* LayoutBridgeUI */](selector);
         this.uiBridge.useEventEmitter(this.e);
         this.uiBridge.useConfig(this.config);
         this.uiBridge.useDataManager(this.dataManager);
@@ -1374,9 +1512,18 @@ class SkydiveDefaultLayout {
         this.uiBridge.useConfig(this.config);
     }
     remove() {
+        this.dataSources.sources.forEach((source) => {
+            source.unsubscribe();
+        });
         this.active = false;
         this.uiBridge.remove();
         $(this.selector).empty();
+    }
+    addDataSource(dataSource, defaultSource) {
+        this.dataSources.addSource(dataSource, !!defaultSource);
+    }
+    reactToDataSourceEvent(dataSource, eventName, ...args) {
+        console.log('Skydive default layout got an event', eventName, args);
     }
     reactToTheUiEvent(eventName, ...args) {
         this.e.emit('ui.' + eventName, ...args);
@@ -1387,7 +1534,7 @@ class SkydiveDefaultLayout {
 
 
 /***/ }),
-/* 14 */
+/* 18 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -1398,7 +1545,7 @@ class DataManager {
 
 
 /***/ }),
-/* 15 */
+/* 19 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -1443,25 +1590,28 @@ class LayoutBridgeUI {
 
 
 /***/ }),
-/* 16 */
+/* 20 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_events__ = __webpack_require__(1);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_events___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_events__);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__base_index__ = __webpack_require__(2);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__base_ui_index__ = __webpack_require__(3);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__data_source_index__ = __webpack_require__(1);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_events__ = __webpack_require__(0);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_events___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_events__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__base_index__ = __webpack_require__(3);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__base_ui_index__ = __webpack_require__(4);
+
 
 
 
 class SkydiveInfraLayout {
     constructor(selector) {
-        this.dataManager = new __WEBPACK_IMPORTED_MODULE_1__base_index__["a" /* DataManager */]();
-        this.e = new __WEBPACK_IMPORTED_MODULE_0_events__["EventEmitter"]();
+        this.dataManager = new __WEBPACK_IMPORTED_MODULE_2__base_index__["a" /* DataManager */]();
+        this.e = new __WEBPACK_IMPORTED_MODULE_1_events__["EventEmitter"]();
         this.alias = "skydive_infra";
         this.active = false;
+        this.dataSources = new __WEBPACK_IMPORTED_MODULE_0__data_source_index__["a" /* DataSourceRegistry */]();
         this.selector = selector;
-        this.uiBridge = new __WEBPACK_IMPORTED_MODULE_2__base_ui_index__["a" /* LayoutBridgeUI */](selector);
+        this.uiBridge = new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["a" /* LayoutBridgeUI */](selector);
         this.uiBridge.useEventEmitter(this.e);
         this.uiBridge.useConfig(this.config);
         this.uiBridge.useDataManager(this.dataManager);
@@ -1479,9 +1629,18 @@ class SkydiveInfraLayout {
         this.uiBridge.useConfig(this.config);
     }
     remove() {
+        this.dataSources.sources.forEach((source) => {
+            source.unsubscribe();
+        });
         this.active = false;
         this.uiBridge.remove();
         $(this.selector).empty();
+    }
+    addDataSource(dataSource, defaultSource) {
+        this.dataSources.addSource(dataSource, !!defaultSource);
+    }
+    reactToDataSourceEvent(dataSource, eventName, ...args) {
+        console.log('Infra layout got an event', eventName, args);
     }
     reactToTheUiEvent(eventName, ...args) {
         this.e.emit('ui.' + eventName, ...args);
