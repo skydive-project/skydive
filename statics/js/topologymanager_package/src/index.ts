@@ -5,10 +5,12 @@ import * as events from 'events';
 declare let window: any;
 declare global {
     interface Window {
+        d3: any;
         TopologyORegistry: any;
         detailedTopology: any;
         websocket: any;
         apiMixin: any;
+        $: any;
     }
 }
 window.TopologyORegistry = {
