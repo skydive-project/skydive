@@ -81,6 +81,7 @@ func (w *WorkflowAPIHandler) loadWorkflowAsset(name string) (*types.Workflow, er
 	return &workflow, nil
 }
 
+// Get retrieves a workflow based on its id
 func (w *WorkflowAPIHandler) Get(id string) (types.Resource, bool) {
 	workflows := w.Index()
 	workflow, found := workflows[id]
@@ -90,6 +91,7 @@ func (w *WorkflowAPIHandler) Get(id string) (types.Resource, bool) {
 	return workflow.(*types.Workflow), true
 }
 
+// Index returns a map of workflows indexed by id
 func (w *WorkflowAPIHandler) Index() map[string]types.Resource {
 	resources := w.BasicAPIHandler.Index()
 	assets, err := statics.AssetDir(workflowAssetDir)

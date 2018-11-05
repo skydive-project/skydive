@@ -23,129 +23,101 @@
 package k8s
 
 import (
-	"fmt"
-
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
-	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
-	hostID       = ""
-	detailsField = "K8s"
+	// Manager is the manager value for Kubernetes
 	Manager      = "k8s"
+	detailsField = "K8s"
 )
 
-func lookupChildren(g *graph.Graph, parent, childFilter *graph.Node, edgeFilter graph.Metadata) []*graph.Node {
-	return g.LookupChildren(parent, childFilter.Metadata(), edgeFilter)
-}
+// NewMetadata creates a k8s node base metadata struct
+func NewMetadata(manager, ty, details interface{}, name string, namespace ...string) graph.Metadata {
+	m := graph.Metadata{}
+	m["Manager"] = manager
+	m["Type"] = ty
 
-func NewMetadata(manager, ty, namespace, name string, details interface{}) graph.Metadata {
-	m := graph.Metadata{
-		"Manager":    manager,
-		"Type":       ty,
-		"Namespace":  namespace,
-		"Name":       name,
-		detailsField: common.NormalizeValue(details),
+	if len(namespace) == 1 {
+		m["Namespace"] = namespace[0]
+	}
+	m["Name"] = name
+
+	if details != nil {
+		m[detailsField] = common.NormalizeValue(details)
 	}
 	return m
 }
 
-func AddMetadata(g *graph.Graph, n *graph.Node, details interface{}) {
-	tr := g.StartMetadataTransaction(n)
-	tr.AddMetadata(detailsField, common.NormalizeValue(details))
-	tr.Commit()
-}
-
-func NewEdgeMetadata(manager string) graph.Metadata {
+func newEdgeMetadata() graph.Metadata {
 	m := graph.Metadata{
-		"Manager":      manager,
+		"Manager":      Manager,
 		"RelationType": "association",
 	}
 	return m
 }
 
-func AddOwnershipLink(manager string, g *graph.Graph, parent, child *graph.Node) *graph.Edge {
-	m := graph.Metadata{
-		"Manager": manager,
-	}
-	if e := topology.GetOwnershipLink(g, parent, child); e != nil {
-		return e
-	}
-	logging.GetLogger().Debugf("Adding ownership: %s", DumpLink(parent, child, m))
-	return topology.AddOwnershipLink(g, parent, child, m, hostID)
-}
-
-func NewNode(g *graph.Graph, i graph.Identifier, m graph.Metadata) *graph.Node {
-	return g.NewNode(i, m, hostID)
-}
-
-func NewObjectIndexerByNamespace(manager string, g *graph.Graph, ty string) *graph.MetadataIndexer {
+func newObjectIndexer(g *graph.Graph, h graph.ListenerHandler, nodeType string, indexes ...string) *graph.MetadataIndexer {
 	filter := filters.NewAndFilter(
-		filters.NewTermStringFilter("Manager", manager),
-		filters.NewTermStringFilter("Type", ty),
-		filters.NewNotNullFilter("Namespace"),
-	)
-	m := graph.NewGraphElementFilter(filter)
-	return graph.NewMetadataIndexer(g, m, "Namespace")
-}
-
-func NewObjectIndexerByNamespaceAndName(manager string, g *graph.Graph, ty string) *graph.MetadataIndexer {
-	filter := filters.NewAndFilter(
-		filters.NewTermStringFilter("Manager", manager),
-		filters.NewTermStringFilter("Type", ty),
+		filters.NewTermStringFilter("Manager", Manager),
+		filters.NewTermStringFilter("Type", nodeType),
 		filters.NewNotNullFilter("Namespace"),
 		filters.NewNotNullFilter("Name"),
 	)
-	m := graph.NewGraphElementFilter(filter)
-	return graph.NewMetadataIndexer(g, m, "Namespace", "Name")
+	m := graph.NewElementFilter(filter)
+	return graph.NewMetadataIndexer(g, h, m, indexes...)
 }
 
-func NewObjectIndexerByName(manager string, g *graph.Graph, ty string) *graph.MetadataIndexer {
-	filter := filters.NewAndFilter(
+func newTypesFilter(manager string, types ...string) *filters.Filter {
+	filtersArray := make([]*filters.Filter, len(types))
+	for i, ty := range types {
+		filtersArray[i] = filters.NewTermStringFilter("Type", ty)
+	}
+	return filters.NewAndFilter(
 		filters.NewTermStringFilter("Manager", manager),
-		filters.NewTermStringFilter("Type", ty),
-		filters.NewNotNullFilter("Name"),
+		filters.NewOrFilter(filtersArray...),
 	)
-	m := graph.NewGraphElementFilter(filter)
-	return graph.NewMetadataIndexer(g, m, "Name")
 }
 
-// DumpNode dumps major node fields
-func DumpNode(n *graph.Node) string {
-	manager, _ := n.GetFieldString("Manager")
-	ty, _ := n.GetFieldString("Type")
-	namespace, _ := n.GetFieldString("Namespace")
-	name, _ := n.GetFieldString("Name")
-	return fmt.Sprintf("%s:%s{Namespace: %s, Name: %s}", manager, ty, namespace, name)
+func newObjectIndexerFromFilter(g *graph.Graph, h graph.ListenerHandler, filter *filters.Filter, indexes ...string) *graph.MetadataIndexer {
+	filtersArray := make([]*filters.Filter, len(indexes)+1)
+	filtersArray[0] = filter
+	for i, index := range indexes {
+		filtersArray[i+1] = filters.NewNotNullFilter(index)
+	}
+	m := graph.NewElementFilter(filters.NewAndFilter(filtersArray...))
+	return graph.NewMetadataIndexer(g, h, m, indexes...)
 }
 
-// DumpLink dumps the link and parent, child nodes
-func DumpLink(parent, child *graph.Node, m graph.Metadata) string {
-	return fmt.Sprintf("%s -> %s: %s", DumpNode(parent), DumpNode(child), m)
-}
-
-// AddLinkTry if the link does not already exist then add it
-func AddLinkTry(g *graph.Graph, parent, child *graph.Node, m graph.Metadata) *graph.Edge {
-	if e := g.GetFirstLink(parent, child, m); e != nil {
-		logging.GetLogger().Debugf("Adding link: %s: exists - skipping", DumpLink(parent, child, m))
-		return e
+func newResourceLinker(g *graph.Graph, subprobes map[string]Subprobe, srcType string, srcAttrs []string, dstType string, dstAttrs []string, edgeMetadata graph.Metadata) probe.Probe {
+	srcCache := subprobes[srcType]
+	dstCache := subprobes[dstType]
+	if srcCache == nil || dstCache == nil {
+		return nil
 	}
 
-	logging.GetLogger().Debugf("Adding link: %s", DumpLink(parent, child, m))
-	return g.Link(parent, child, m, parent.Host())
+	srcIndexer := graph.NewMetadataIndexer(g, srcCache, graph.Metadata{"Type": srcType}, srcAttrs...)
+	srcIndexer.Start()
+
+	dstIndexer := graph.NewMetadataIndexer(g, dstCache, graph.Metadata{"Type": dstType}, dstAttrs...)
+	dstIndexer.Start()
+
+	return graph.NewMetadataIndexerLinker(g, srcIndexer, dstIndexer, edgeMetadata)
 }
 
-// DelLinkTry if the link exists then delete it
-func DelLinkTry(g *graph.Graph, parent, child *graph.Node, m graph.Metadata) {
-	e := g.GetFirstLink(parent, child, m)
-	if e == nil {
-		logging.GetLogger().Debugf("Deleting link: %s: missing - skipping", DumpLink(parent, child, m))
-		return
-	}
+func objectToNode(g *graph.Graph, object metav1.Object) (node *graph.Node) {
+	return g.GetNode(graph.Identifier(object.GetUID()))
+}
 
-	logging.GetLogger().Debugf("Deleting link: %s", DumpLink(parent, child, m))
-	g.DelEdge(e)
+func objectsToNodes(g *graph.Graph, objects []metav1.Object) (nodes []*graph.Node) {
+	for _, obj := range objects {
+		if node := objectToNode(g, obj); node != nil {
+			nodes = append(nodes, node)
+		}
+	}
+	return
 }

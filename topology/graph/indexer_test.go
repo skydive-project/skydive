@@ -25,24 +25,18 @@ package graph
 import (
 	"testing"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 )
 
 func TestMetadataIndexer(t *testing.T) {
-	b, err := NewMemoryBackend()
-	if err != nil {
-		t.Error(err.Error())
-	}
+	g := newGraph(t)
 
-	g := NewGraphFromConfig(b, common.UnknownService)
-
-	nodeFilter := NewGraphElementFilter(filters.NewAndFilter(
+	nodeFilter := NewElementFilter(filters.NewAndFilter(
 		filters.NewNotNullFilter("TID"),
 		filters.NewNotNullFilter("MAC"),
 	))
 
-	tidCache := NewMetadataIndexer(g, nodeFilter, "MAC")
+	tidCache := NewMetadataIndexer(g, g, nodeFilter, "MAC")
 	tidCache.Start()
 
 	m1 := Metadata{
@@ -94,9 +88,9 @@ func TestMetadataIndexer(t *testing.T) {
 		filters.NewNotNullFilter("Docker.Labels.io.kubernetes.pod.name"),
 		filters.NewNotNullFilter("Docker.Labels.io.kubernetes.pod.namespace"),
 		filters.NewNotNullFilter("Docker.Labels.io.kubernetes.container.name"))
-	m := NewGraphElementFilter(filter)
+	m := NewElementFilter(filter)
 
-	dockerCache := NewMetadataIndexer(g, m, "Docker.Labels.io.kubernetes.pod.namespace", "Docker.Labels.io.kubernetes.pod.name", "Docker.Labels.io.kubernetes.container.name")
+	dockerCache := NewMetadataIndexer(g, g, m, "Docker.Labels.io.kubernetes.pod.namespace", "Docker.Labels.io.kubernetes.pod.name", "Docker.Labels.io.kubernetes.container.name")
 	dockerCache.Start()
 
 	m5 := Metadata{

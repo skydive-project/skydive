@@ -33,10 +33,11 @@ import (
 	tokens2 "github.com/gophercloud/gophercloud/openstack/identity/v2/tokens"
 	tokens3 "github.com/gophercloud/gophercloud/openstack/identity/v3/tokens"
 	"github.com/mitchellh/mapstructure"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 )
 
+// KeystoneAuthenticationBackend describes a Keystone based authentication backend.
+// It authenticates user against either V2 or V3 Keystone server.
 type KeystoneAuthenticationBackend struct {
 	AuthURL string
 	Tenant  string
@@ -45,6 +46,7 @@ type KeystoneAuthenticationBackend struct {
 	role    string
 }
 
+// User describes the 'user' structure returned by the Keystone API
 type User struct {
 	ID   string `mapstructure:"id"`
 	Name string `mapstructure:"name"`
@@ -117,6 +119,7 @@ func (b *KeystoneAuthenticationBackend) checkUserV3(client *gophercloud.ServiceC
 	return response.Token.User.Name, nil
 }
 
+// CheckUser returns the user authenticated by a token
 func (b *KeystoneAuthenticationBackend) CheckUser(token string) (string, error) {
 	provider, err := openstack.NewClient(b.AuthURL)
 	if err != nil {
@@ -136,6 +139,7 @@ func (b *KeystoneAuthenticationBackend) CheckUser(token string) (string, error) 
 	return b.checkUserV2(client, token)
 }
 
+// Authenticate the user and its password
 func (b *KeystoneAuthenticationBackend) Authenticate(username string, password string) (string, error) {
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: b.AuthURL,
@@ -161,6 +165,7 @@ func (b *KeystoneAuthenticationBackend) Authenticate(username string, password s
 	return provider.TokenID, nil
 }
 
+// Wrap an HTTP handler with Keystone authentication
 func (b *KeystoneAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token, err := authenticateWithHeaders(b, w, r)
@@ -180,6 +185,7 @@ func (b *KeystoneAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFu
 	}
 }
 
+// NewKeystoneBackend returns a new Keystone authentication backend
 func NewKeystoneBackend(name string, authURL string, tenant string, domain string, role string) (*KeystoneAuthenticationBackend, error) {
 	if authURL == "" {
 		return nil, errors.New("Authentication URL empty")
@@ -196,17 +202,4 @@ func NewKeystoneBackend(name string, authURL string, tenant string, domain strin
 		name:    name,
 		role:    role,
 	}, nil
-}
-
-func NewKeystoneAuthenticationBackendFromConfig(name string) (*KeystoneAuthenticationBackend, error) {
-	authURL := config.GetString("auth." + name + ".auth_url")
-	domain := config.GetString("auth." + name + ".domain_name")
-	tenant := config.GetString("auth." + name + ".tenant_name")
-
-	role := config.GetString("auth." + name + ".role")
-	if role == "" {
-		role = defaultUserRole
-	}
-
-	return NewKeystoneBackend(name, authURL, tenant, domain, role)
 }

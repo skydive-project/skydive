@@ -26,7 +26,6 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/logging"
 )
 
 const (
@@ -38,7 +37,7 @@ const (
 func LoadConfiguration(cfgBackend string, cfgFiles []string) error {
 	if len(cfgFiles) == 0 {
 		config.InitConfig(cfgBackend, []string{defaultConfigurationFile})
-		if err := logging.InitLogging(); err != nil {
+		if err := config.InitLogging(); err != nil {
 			return fmt.Errorf("Failed to initialize logging system: %s", err.Error())
 		}
 		return nil
@@ -48,7 +47,7 @@ func LoadConfiguration(cfgBackend string, cfgFiles []string) error {
 		return fmt.Errorf("Failed to initialize config: %s", err.Error())
 	}
 
-	if err := logging.InitLogging(); err != nil {
+	if err := config.InitLogging(); err != nil {
 		return fmt.Errorf("Failed to initialize logging system: %s", err.Error())
 	}
 

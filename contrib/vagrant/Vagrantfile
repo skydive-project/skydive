@@ -44,7 +44,7 @@ if DEVMODE then
   # default config from tests/tests.go:testConfig
   $skydive_extra_config["flow.expire"] = "600"
   $skydive_extra_config["flow.update"] = "10"
-  $skydive_extra_config["agent.topology.probes"] = "netlink netns ovsdb docker"
+  $skydive_extra_config["agent.topology.probes"] = "netlink netns ovsdb docker lldp"
   $skydive_extra_config["agent.topology.metrics_update"] = "5"
   $skydive_extra_config["agent.metadata.mydict.value"] = "123"
   $skydive_extra_config["analyzer.startup.capture_gremlin"] = "g.V().Has('Name','startup-vm2')"

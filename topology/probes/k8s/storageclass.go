@@ -25,84 +25,29 @@ package k8s
 import (
 	"fmt"
 
-	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 
 	"k8s.io/api/storage/v1"
-	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/kubernetes"
 )
 
-type storageClassProbe struct {
-	DefaultKubeCacheEventHandler
-	*KubeCache
-	graph *graph.Graph
+type storageClassHandler struct {
 }
 
-func dumpStorageClass(sc *v1.StorageClass) string {
+func (h *storageClassHandler) Dump(obj interface{}) string {
+	sc := obj.(*v1.StorageClass)
 	return fmt.Sprintf("storageclass{Namespace: %s, Name: %s}", sc.Namespace, sc.Name)
 }
 
-func (p *storageClassProbe) newMetadata(sc *v1.StorageClass) graph.Metadata {
-	m := NewMetadata(Manager, "storageclass", sc.Namespace, sc.Name, sc)
+func (h *storageClassHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
+	sc := obj.(*v1.StorageClass)
+
+	m := NewMetadata(Manager, "storageclass", sc, sc.Name, sc.Namespace)
 	m.SetField("Provisioner", sc.Provisioner)
-	return m
+
+	return graph.Identifier(sc.GetUID()), m
 }
 
-func storageClassUID(sc *v1.StorageClass) graph.Identifier {
-	return graph.Identifier(sc.GetUID())
-}
-
-func (p *storageClassProbe) OnAdd(obj interface{}) {
-	if sc, ok := obj.(*v1.StorageClass); ok {
-		p.graph.Lock()
-		defer p.graph.Unlock()
-
-		NewNode(p.graph, storageClassUID(sc), p.newMetadata(sc))
-		logging.GetLogger().Debugf("Added %s", dumpStorageClass(sc))
-	}
-}
-
-func (p *storageClassProbe) OnUpdate(oldObj, newObj interface{}) {
-	if sc, ok := newObj.(*v1.StorageClass); ok {
-		p.graph.Lock()
-		defer p.graph.Unlock()
-
-		if node := p.graph.GetNode(storageClassUID(sc)); node != nil {
-			AddMetadata(p.graph, node, sc)
-			logging.GetLogger().Debugf("Updated %s", dumpStorageClass(sc))
-		}
-	}
-}
-
-func (p *storageClassProbe) OnDelete(obj interface{}) {
-	if sc, ok := obj.(*v1.StorageClass); ok {
-		p.graph.Lock()
-		defer p.graph.Unlock()
-
-		if node := p.graph.GetNode(storageClassUID(sc)); node != nil {
-			p.graph.DelNode(node)
-			logging.GetLogger().Debugf("Deleted %s", dumpStorageClass(sc))
-		}
-	}
-}
-
-func (p *storageClassProbe) Start() {
-	p.KubeCache.Start()
-}
-
-func (p *storageClassProbe) Stop() {
-	p.KubeCache.Stop()
-}
-
-func newStorageClassKubeCache(handler cache.ResourceEventHandler) *KubeCache {
-	return NewKubeCache(getClientset().StorageV1().RESTClient(), &v1.StorageClass{}, "storageclasses", handler)
-}
-
-func newStorageClassProbe(g *graph.Graph) probe.Probe {
-	p := &storageClassProbe{
-		graph: g,
-	}
-	p.KubeCache = newStorageClassKubeCache(p)
-	return p
+func newStorageClassProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
+	return NewResourceCache(clientset.StorageV1().RESTClient(), &v1.StorageClass{}, "storageclasses", g, &storageClassHandler{})
 }

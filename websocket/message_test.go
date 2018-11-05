@@ -26,13 +26,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
 )
 
 type fakeMessageServerSubscriptionHandler struct {
@@ -99,13 +98,12 @@ func (f *fakeMessageClientSubscriptionHandler) OnStructMessage(c Speaker, m *Str
 }
 
 func TestMessageSubscription(t *testing.T) {
-	logging.InitLogging()
-	httpserver := shttp.NewServer("myhost", common.AnalyzerService, "localhost", 59999)
+	httpserver := shttp.NewServer("myhost", common.AnalyzerService, "localhost", 59999, nil)
 
 	go httpserver.ListenAndServe()
 	defer httpserver.Stop()
 
-	wsserver := NewStructServer(NewServer(httpserver, "/wstest", shttp.NewNoAuthenticationBackend()))
+	wsserver := NewStructServer(NewServer(httpserver, "/wstest", shttp.NewNoAuthenticationBackend(), true, 100, 2*time.Second, 5*time.Second))
 
 	serverHandler := &fakeMessageServerSubscriptionHandler{t: t, server: wsserver, received: make(map[string]bool)}
 	wsserver.AddEventHandler(serverHandler)
@@ -114,7 +112,9 @@ func TestMessageSubscription(t *testing.T) {
 	wsserver.Start()
 	defer wsserver.Stop()
 
-	wsclient := NewClient("myhost", common.AgentService, config.GetURL("ws", "localhost", 59999, "/wstest"), nil, http.Header{}, 1000)
+	u, _ := url.Parse("ws://localhost:59999/wstest")
+
+	wsclient := NewClient("myhost", common.AgentService, u, nil, http.Header{}, 1000, true, nil)
 
 	wspool := NewStructClientPool("TestMessageSubscription")
 	wspool.AddClient(wsclient)
@@ -157,6 +157,6 @@ func TestMessageSubscription(t *testing.T) {
 	}, 5, time.Second)
 
 	if err != nil {
-		t.Error(err.Error())
+		t.Error(err)
 	}
 }

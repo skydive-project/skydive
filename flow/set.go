@@ -48,11 +48,10 @@ func getDedupField(flow *Flow, field string) (interface{}, error) {
 		return flow.TrackingID, nil
 	}
 
-	if v, err := flow.GetFieldString(field); err != nil {
-		return flow.GetFieldInt64(field)
-	} else {
+	if v, err := flow.GetFieldString(field); err == nil {
 		return v, nil
 	}
+	return flow.GetFieldInt64(field)
 }
 
 func compareByField(lf, rf *Flow, field string) (bool, error) {

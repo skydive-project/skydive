@@ -31,33 +31,52 @@ import (
 	"sync/atomic"
 	"time"
 
-	"golang.org/x/net/bpf"
-
 	"github.com/google/gopacket"
+	"github.com/google/gopacket/afpacket"
 	"github.com/google/gopacket/layers"
-	"github.com/google/gopacket/pcap"
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/flow/probes/afpacket"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-type packetHandle interface {
+const (
+	// AFPacket probe type
+	AFPacket = "afpacket"
+	// PCAP probe type
+	PCAP = "pcap"
+)
+
+// PacketProbe describes a probe responsible for capturing packets
+type PacketProbe interface {
+	Stats() (graph.Metadata, error)
+	SetBPFFilter(bpf string) error
+	PacketSource() *gopacket.PacketSource
 	Close()
 }
 
 // GoPacketProbe describes a new probe that store packets from gopacket pcap library in a flowtable
 type GoPacketProbe struct {
-	handle       packetHandle
-	packetSource *gopacket.PacketSource
-	NodeTID      string
-	flowTable    *flow.Table
-	state        int64
+	graph       *graph.Graph
+	n           *graph.Node
+	packetProbe PacketProbe
+	state       int64
+	ifName      string
+	bpf         string
+	nsPath      string
+	captureType string
+	layerType   gopacket.LayerType
+	linkType    layers.LinkType
+	headerSize  uint32
+}
+
+type ftProbe struct {
+	flowTable *flow.Table
+	probe     *GoPacketProbe
 }
 
 // GoPacketProbesHandler describes a flow probe handle in the graph
@@ -65,24 +84,24 @@ type GoPacketProbesHandler struct {
 	graph      *graph.Graph
 	fpta       *FlowProbeTableAllocator
 	wg         sync.WaitGroup
-	probes     map[string]*GoPacketProbe
+	probes     map[string]*ftProbe
 	probesLock common.RWMutex
 }
 
-func (p *GoPacketProbe) pcapUpdateStats(g *graph.Graph, n *graph.Node, handle *pcap.Handle, ticker *time.Ticker, done chan bool, wg *sync.WaitGroup) {
+func (p *GoPacketProbe) updateStats(g *graph.Graph, n *graph.Node, ticker *time.Ticker, done chan bool, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for {
 		select {
 		case <-ticker.C:
-			if stats, e := handle.Stats(); e != nil {
-				logging.GetLogger().Errorf("Can not get pcap capture stats")
+			if stats, err := p.packetProbe.Stats(); err != nil {
+				logging.GetLogger().Error(err)
 			} else if atomic.LoadInt64(&p.state) == common.RunningState {
 				g.Lock()
 				t := g.StartMetadataTransaction(n)
-				t.AddMetadata("Capture.PacketsReceived", stats.PacketsReceived)
-				t.AddMetadata("Capture.PacketsDropped", stats.PacketsDropped)
-				t.AddMetadata("Capture.PacketsIfDropped", stats.PacketsIfDropped)
+				for k, v := range stats {
+					t.AddMetadata("Capture."+k, v)
+				}
 				t.Commit()
 				g.Unlock()
 			}
@@ -92,36 +111,16 @@ func (p *GoPacketProbe) pcapUpdateStats(g *graph.Graph, n *graph.Node, handle *p
 	}
 }
 
-func (p *GoPacketProbe) afpacketUpdateStats(g *graph.Graph, n *graph.Node, handle *AFPacketHandle, ticker *time.Ticker, done chan bool, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	for {
-		select {
-		case <-ticker.C:
-			if _, v3, e := handle.tpacket.SocketStats(); e != nil {
-				logging.GetLogger().Errorf("Can not get pcap capture stats")
-			} else if atomic.LoadInt64(&p.state) == common.RunningState {
-				g.Lock()
-				t := g.StartMetadataTransaction(n)
-				t.AddMetadata("Capture.PacketsReceived", v3.Packets())
-				t.AddMetadata("Capture.PacketsDropped", v3.Drops())
-				t.Commit()
-				g.Unlock()
-			}
-		case <-done:
-			return
-		}
-	}
-}
-
-func (p *GoPacketProbe) feedFlowTable(bpf *flow.BPF) {
-	var count int
+func (p *GoPacketProbe) listen(packetCallback func(gopacket.Packet)) {
+	packetSource := p.packetProbe.PacketSource()
 
 	for atomic.LoadInt64(&p.state) == common.RunningState {
-		packet, err := p.packetSource.NextPacket()
+		packet, err := packetSource.NextPacket()
 		switch err {
 		case nil:
-			p.flowTable.FeedWithGoPacket(packet, bpf)
+			if packetCallback != nil {
+				packetCallback(packet)
+			}
 		case io.EOF:
 			time.Sleep(20 * time.Millisecond)
 		case afpacket.ErrTimeout:
@@ -129,54 +128,43 @@ func (p *GoPacketProbe) feedFlowTable(bpf *flow.BPF) {
 		default:
 			time.Sleep(200 * time.Millisecond)
 		}
-
-		// NOTE: bpf usperspace filter is applied to the few first packets in order to avoid
-		// to get unexpected packets between capture start and bpf applying
-		if count > 50 {
-			bpf = nil
-		}
-		count++
 	}
 }
 
-func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) {
+// Run starts capturing packet, calling the passed callback for every packet
+// and notifying the flow probe handler when the capture has started
+func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e FlowProbeEventHandler) error {
 	atomic.StoreInt64(&p.state, common.RunningState)
 
-	headerSize := flow.DefaultCaptureLength
-	if capture.HeaderSize != 0 {
-		headerSize = uint32(capture.HeaderSize)
-	}
-
-	g.RLock()
-	ifName, _ := n.GetFieldString("Name")
-	if ifName == "" {
-		g.RUnlock()
-		logging.GetLogger().Errorf("No name for node %v", n)
-		return
-	}
-
-	firstLayerType, linkType := getGoPacketFirstLayerType(n)
-
-	nscontext, err := topology.NewNetNSContextByNode(g, n)
-	g.RUnlock()
-
-	defer nscontext.Close()
-
-	if err != nil {
-		logging.GetLogger().Error(err)
-		return
-	}
-
-	// Apply temporary the pbf in the userspace to prevent non expected packet
-	// between capture creation and the filter apply.
-	var bpfFilter *flow.BPF
-	if capture.BPFFilter != "" {
-		bpfFilter, err = flow.NewBPF(linkType, headerSize, capture.BPFFilter)
-		if err != nil {
-			logging.GetLogger().Error(err)
-			return
+	var nsContext *common.NetNSContext
+	var err error
+	if p.nsPath != "" {
+		logging.GetLogger().Debugf("Switching to namespace (path: %s)", p.nsPath)
+		if nsContext, err = common.NewNetNsContext(p.nsPath); err != nil {
+			return err
 		}
 	}
+	defer nsContext.Close()
+
+	switch p.captureType {
+	case PCAP:
+		p.packetProbe, err = NewPcapPacketProbe(p.ifName, int(p.headerSize))
+		if err != nil {
+			return err
+		}
+		logging.GetLogger().Infof("PCAP Capture started on %s with First layer: %s", p.ifName, p.layerType)
+	default:
+		if err = common.Retry(func() error {
+			p.packetProbe, err = NewAfpacketPacketProbe(p.ifName, int(p.headerSize), p.layerType, p.linkType)
+			return err
+		}, 2, 100*time.Millisecond); err != nil {
+			return err
+		}
+		logging.GetLogger().Infof("AfPacket Capture started on %s with First layer: %s", p.ifName, p.layerType)
+	}
+
+	// leave the namespace, stay lock in the current thread
+	nsContext.Quit()
 
 	var wg sync.WaitGroup
 	statsDone := make(chan bool)
@@ -185,111 +173,76 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *types.Captur
 	statsUpdate := config.GetInt("agent.capture.stats_update")
 	statsTicker := time.NewTicker(time.Duration(statsUpdate) * time.Second)
 
-	switch capture.Type {
-	case "pcap":
-		handle, err := pcap.OpenLive(ifName, int32(headerSize), true, time.Second)
-		if err != nil {
-			logging.GetLogger().Errorf("Error while opening device %s: %s", ifName, err)
-			return
-		}
-
-		p.handle = handle
-		p.packetSource = gopacket.NewPacketSource(handle, handle.LinkType())
-
-		wg.Add(1)
-		go p.pcapUpdateStats(g, n, handle, statsTicker, statsDone, &wg)
-
-		logging.GetLogger().Infof("PCAP Capture started on %s with First layer: %s", ifName, firstLayerType)
-	default:
-		var handle *AFPacketHandle
-		fnc := func() error {
-			handle, err = NewAFPacketHandle(ifName, int32(headerSize))
-			if err != nil {
-				return fmt.Errorf("Error while opening device %s: %s", ifName, err)
-			}
-			return nil
-		}
-
-		if err = common.Retry(fnc, 2, 100*time.Millisecond); err != nil {
-			logging.GetLogger().Error(err)
-			return
-		}
-
-		p.handle = handle
-		p.packetSource = gopacket.NewPacketSource(handle, firstLayerType)
-
-		wg.Add(1)
-		go p.afpacketUpdateStats(g, n, handle, statsTicker, statsDone, &wg)
-
-		logging.GetLogger().Infof("AfPacket Capture started on %s with First layer: %s", ifName, firstLayerType)
-	}
-
-	// leave the namespace, stay lock in the current thread
-	nscontext.Quit()
+	wg.Add(1)
 
 	// manage BPF outside namespace because of syscall
-	if capture.BPFFilter != "" {
-		switch capture.Type {
-		case "pcap":
-			h := p.handle.(*pcap.Handle)
-			err = h.SetBPFFilter(capture.BPFFilter)
-		default:
-			h := p.handle.(*AFPacketHandle)
-			var rawBPF []bpf.RawInstruction
-			if rawBPF, err = flow.BPFFilterToRaw(linkType, uint32(headerSize), capture.BPFFilter); err == nil {
-				err = h.tpacket.SetBPF(rawBPF)
-			}
-		}
-
-		if err != nil {
-			logging.GetLogger().Errorf("BPF Filter failed: %s", err)
-			return
+	if p.bpf != "" {
+		if err := p.packetProbe.SetBPFFilter(p.bpf); err != nil {
+			return fmt.Errorf("Failed to set BPF filter: %s", err)
 		}
 	}
 
-	p.flowTable.Start()
-	defer p.flowTable.Stop()
-
 	// notify active
-	e.OnStarted()
+	if e != nil {
+		go p.updateStats(p.graph, p.n, statsTicker, statsDone, &wg)
 
-	p.feedFlowTable(bpfFilter)
+		e.OnStarted()
+	}
+
+	p.listen(packetCallback)
 
 	if statsTicker != nil {
 		close(statsDone)
 		wg.Wait()
 		statsTicker.Stop()
 	}
-	p.handle.Close()
+
+	p.packetProbe.Close()
 	atomic.StoreInt64(&p.state, common.StoppedState)
+
+	return nil
 }
 
-func (p *GoPacketProbe) stop() {
+// Stop capturing packets
+func (p *GoPacketProbe) Stop() {
 	atomic.StoreInt64(&p.state, common.StoppingState)
 }
 
-func getGoPacketFirstLayerType(n *graph.Node) (gopacket.LayerType, layers.LinkType) {
-	name, _ := n.GetFieldString("Name")
-	if name == "" {
-		return layers.LayerTypeEthernet, layers.LinkTypeEthernet
+// NewGoPacketProbe returns a new Gopacket flow probe. It can use either `pcap` or `afpacket`
+func NewGoPacketProbe(g *graph.Graph, n *graph.Node, captureType string, bpf string, headerSize uint32) (*GoPacketProbe, error) {
+	ifName, _ := n.GetFieldString("Name")
+	if ifName == "" {
+		return nil, fmt.Errorf("No name for node %v", n)
 	}
 
-	if encapType, err := n.GetFieldString("EncapType"); err == nil {
-		return flow.GetFirstLayerType(encapType)
+	firstLayerType, linkType := GoPacketFirstLayerType(n)
+
+	_, nsPath, err := topology.NamespaceFromNode(g, n)
+	if err != nil {
+		return nil, err
 	}
 
-	logging.GetLogger().Warningf("EncapType not found on link %s, defaulting to Ethernet", name)
-	return layers.LayerTypeEthernet, layers.LinkTypeEthernet
+	return &GoPacketProbe{
+		graph:       g,
+		n:           n,
+		ifName:      ifName,
+		bpf:         bpf,
+		linkType:    linkType,
+		layerType:   firstLayerType,
+		headerSize:  headerSize,
+		state:       common.StoppedState,
+		nsPath:      nsPath,
+		captureType: captureType,
+	}, nil
 }
 
-// RegisterProbe registers a gopacket probe
-func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+func (p *GoPacketProbesHandler) registerProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 	name, _ := n.GetFieldString("Name")
 	if name == "" {
 		return fmt.Errorf("No name for node %v", n)
 	}
 
-	if state, _ := n.GetFieldString("State"); capture.Type == "pcap" && state != "UP" {
+	if capture.Type == "pcap" && !topology.IsInterfaceUp(n) {
 		return fmt.Errorf("Can't start pcap capture on node down %s", name)
 	}
 
@@ -317,34 +270,74 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capt
 	}
 
 	opts := tableOptsFromCapture(capture)
-	ft := p.fpta.Alloc(tid, opts)
+	flowTable := p.fpta.Alloc(tid, opts)
 
-	probe := &GoPacketProbe{
-		NodeTID:   tid,
-		state:     common.StoppedState,
-		flowTable: ft,
+	headerSize := flow.DefaultCaptureLength
+	if capture.HeaderSize != 0 {
+		headerSize = uint32(capture.HeaderSize)
+	}
+
+	probe, err := NewGoPacketProbe(p.graph, n, capture.Type, capture.BPFFilter, headerSize)
+	if err != nil {
+		return err
+	}
+
+	// Apply temporarely the BPF in userspace to prevent non expected packet
+	// between capture creation and the filter apply.
+	var bpfFilter *flow.BPF
+	if capture.BPFFilter != "" {
+		bpfFilter, err = flow.NewBPF(probe.linkType, probe.headerSize, probe.bpf)
+		if err != nil {
+			return err
+		}
 	}
 
 	p.probesLock.Lock()
-	p.probes[id] = probe
+	p.probes[id] = &ftProbe{probe: probe, flowTable: flowTable}
 	p.probesLock.Unlock()
 	p.wg.Add(1)
 
 	go func() {
 		defer p.wg.Done()
 
-		probe.run(p.graph, n, capture, e)
+		flowTable.Start()
+		defer flowTable.Stop()
 
-		e.OnStopped()
+		count := 0
+		err := probe.Run(func(packet gopacket.Packet) {
+			flowTable.FeedWithGoPacket(packet, bpfFilter)
+			// NOTE: bpf usperspace filter is applied to the few first packets in order to avoid
+			// to get unexpected packets between capture start and bpf applying
+			if count > 50 {
+				bpfFilter = nil
+			}
+			count++
+		}, e)
+		if err != nil {
+			logging.GetLogger().Error(err)
+
+			e.OnError(err)
+		} else {
+			e.OnStopped()
+		}
 	}()
 
 	return nil
 }
 
+// RegisterProbe registers a gopacket probe
+func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+	err := p.registerProbe(n, capture, e)
+	if err != nil {
+		go e.OnError(err)
+	}
+	return err
+}
+
 func (p *GoPacketProbesHandler) unregisterProbe(id string) error {
 	if probe, ok := p.probes[id]; ok {
 		logging.GetLogger().Debugf("Terminating gopacket capture on %s", id)
-		probe.stop()
+		probe.probe.Stop()
 		p.fpta.Release(probe.flowTable)
 		delete(p.probes, id)
 	}
@@ -361,6 +354,7 @@ func (p *GoPacketProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventH
 	if err != nil {
 		return err
 	}
+	go e.OnStopped()
 
 	return nil
 }
@@ -385,6 +379,15 @@ func NewGoPacketProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*G
 	return &GoPacketProbesHandler{
 		graph:  g,
 		fpta:   fpta,
-		probes: make(map[string]*GoPacketProbe),
+		probes: make(map[string]*ftProbe),
 	}, nil
+}
+
+// GoPacketFirstLayerType returns the first layer of an interface
+func GoPacketFirstLayerType(n *graph.Node) (gopacket.LayerType, layers.LinkType) {
+	if encapType, err := n.GetFieldString("EncapType"); err == nil {
+		return flow.GetFirstLayerType(encapType)
+	}
+
+	return layers.LayerTypeEthernet, layers.LinkTypeEthernet
 }

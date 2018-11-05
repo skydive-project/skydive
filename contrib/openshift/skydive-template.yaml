@@ -4,6 +4,23 @@ metadata:
   name: skydive
 objects:
 - apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    labels:
+      app: skydive-analyzer
+    name: skydive-analyzer-config
+  data:
+    SKYDIVE_ANALYZER_FLOW_BACKEND: elasticsearch
+    SKYDIVE_ANALYZER_TOPOLOGY_BACKEND: elasticsearch
+    SKYDIVE_ANALYZER_TOPOLOGY_PROBES: ""
+    SKYDIVE_ETCD_LISTEN: 0.0.0.0:12379
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    labels:
+      app: skydive-agent
+    name: skydive-agent-config
+- apiVersion: v1
   kind: Service
   metadata:
     labels:
@@ -63,13 +80,9 @@ objects:
         - args:
           - analyzer
           - --listen=0.0.0.0:8082
-          env:
-          - name: SKYDIVE_ANALYZER_STORAGE_BACKEND
-            value: elasticsearch
-          - name: SKYDIVE_GRAPH_BACKEND
-            value: elasticsearch
-          - name: SKYDIVE_ETCD_LISTEN
-            value: 0.0.0.0:12379
+          envFrom:
+          - configMapRef:
+              name: skydive-analyzer-config
           image: skydive/skydive
           imagePullPolicy: Always
           livenessProbe:
@@ -152,6 +165,9 @@ objects:
           env:
           - name: SKYDIVE_ANALYZERS
             value: $(SKYDIVE_ANALYZER_SERVICE_HOST):$(SKYDIVE_ANALYZER_SERVICE_PORT_API)
+          envFrom:
+          - configMapRef:
+              name: skydive-agent-config
           image: skydive/skydive
           imagePullPolicy: Always
           name: skydive-agent

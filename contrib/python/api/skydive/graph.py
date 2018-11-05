@@ -27,7 +27,7 @@ class GraphElement(object):
 
     def __init__(self, id, host,
                  created_at=0, updated_at=0, deleted_at=0, revision=0,
-                 metadata=None, origin=""):
+                 metadata=None):
         self.id = id
         self.host = host
         self.metadata = metadata
@@ -35,14 +35,12 @@ class GraphElement(object):
         self.updated_at = updated_at
         self.deleted_at = deleted_at
         self.revision = revision
-        self.origin = origin
 
     def repr_json(self):
         obj = {
             "ID": self.id,
             "Host": self.host,
             "Metadata": self.metadata,
-            "Origin": self.origin
         }
         if self.created_at:
             obj["CreatedAt"] = self.created_at
@@ -55,7 +53,6 @@ class GraphElement(object):
     @classmethod
     def from_object(self, obj):
         return self(obj["ID"], obj["Host"],
-                    origin=obj.get("Origin", ""),
                     created_at=obj.get("CreatedAt", 0),
                     updated_at=obj.get("UpdatedAt", 0),
                     deleted_at=obj.get("DeletedAt", 0),
@@ -78,13 +75,12 @@ class Edge(GraphElement):
 
     def __init__(self, id, host, parent, child,
                  created_at=0, updated_at=0, deleted_at=0, revision=0,
-                 metadata=None, origin=""):
+                 metadata=None):
         super(Edge, self).__init__(id, host,
                                    created_at=created_at,
                                    updated_at=updated_at,
                                    deleted_at=deleted_at,
-                                   metadata=metadata,
-                                   origin=origin)
+                                   metadata=metadata)
         self.parent = parent
         self.child = child
 
@@ -98,7 +94,6 @@ class Edge(GraphElement):
     def from_object(self, obj):
         return self(obj["ID"], obj["Host"],
                     obj["Parent"], obj["Child"],
-                    origin=obj.get("Origin", ""),
                     created_at=obj.get("CreatedAt", 0),
                     updated_at=obj.get("UpdatedAt", 0),
                     deleted_at=obj.get("DeletedAt", 0),

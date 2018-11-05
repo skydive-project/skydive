@@ -51,7 +51,7 @@ func (r *fakeResponseWriter) WriteHeader(status int) {
 func TestBasicAuthenticate(t *testing.T) {
 	provider := NewHtpasswdMapProvider(map[string]string{"user1": "pass1"})
 
-	basic, err := NewBasicAuthenticationBackend("basic", provider.SecretProvider(), defaultUserRole)
+	basic, err := NewBasicAuthenticationBackend("basic", provider.SecretProvider(), DefaultUserRole)
 	if err != nil {
 		t.Error(err)
 	}

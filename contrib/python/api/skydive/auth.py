@@ -39,12 +39,13 @@ except ImportError:
 class Authenticate:
 
     def __init__(self, endpoint, scheme="http",
-                 username="", password="",
+                 username="", password="", cookies={},
                  insecure=False, debug=0):
         self.endpoint = endpoint
         self.scheme = scheme
         self.username = username
         self.password = password
+        self.cookies = cookies
         self.insecure = insecure
         self.debug = debug
 
@@ -69,6 +70,8 @@ class Authenticate:
                                                  context=context))
 
         opener = request.build_opener(*handlers)
+        for k, v in self.cookies.items():
+            opener.append = (k, v)
 
         req = request.Request(url, data=urlencoder.urlencode(data).encode())
         opener.open(req)

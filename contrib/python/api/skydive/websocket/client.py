@@ -49,7 +49,7 @@ LOG = logging.getLogger(__name__)
 
 SyncRequestMsgType = "SyncRequest"
 SyncReplyMsgType = "SyncReply"
-HostGraphDeletedMsgType = "HostGraphDeleted"
+OriginGraphDeletedMsgType = "OriginGraphDeleted"
 NodeUpdatedMsgType = "NodeUpdated"
 NodeDeletedMsgType = "NodeDeleted"
 NodeAddedMsgType = "NodeAdded"
@@ -143,11 +143,11 @@ class WSClientDebugProtocol(WSClientDefaultProtocol):
 
 class WSClient(WebSocketClientProtocol):
 
-    def __init__(self, host_id, endpoint, type="",
+    def __init__(self, host_id, endpoint,
                  protocol=WSClientDefaultProtocol,
                  username="", password="", cookie=None,
                  sync="", filter="", persistent=True,
-                 insecure=False,
+                 insecure=False, type="skydive-python-client",
                  **kwargs):
         super(WSClient, self).__init__()
         self.host_id = host_id
@@ -158,6 +158,10 @@ class WSClient(WebSocketClientProtocol):
             self.cookies = None
         elif isinstance(cookie, list):
             self.cookies = cookie
+        elif isinstance(cookie, dict):
+            self.cookies = []
+            for k, v in cookie.items():
+                self.cookies.append("{}={}".format(k, v))
         else:
             self.cookies = [cookie, ]
         self.protocol = protocol

@@ -26,6 +26,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
 	"strings"
 	"sync"
@@ -102,7 +103,7 @@ type Index struct {
 // Client describes a ElasticSearch client connection
 type Client struct {
 	url           *url.URL
-	client        *elastic.Client
+	esClient      *elastic.Client
 	bulkProcessor *elastic.BulkProcessor
 	started       atomic.Value
 	quit          chan bool
@@ -140,7 +141,7 @@ func (i *Index) IndexWildcard() string {
 }
 
 func (c *Client) createAliases(index Index) error {
-	aliasServer := c.client.Alias()
+	aliasServer := c.esClient.Alias()
 	aliasServer.Add(index.FullName(), index.Alias())
 	if _, err := aliasServer.Do(context.Background()); err != nil {
 		return err
@@ -150,7 +151,7 @@ func (c *Client) createAliases(index Index) error {
 }
 
 func (c *Client) addMapping(index Index) error {
-	if _, err := c.client.PutMapping().Index(index.FullName()).Type(index.Type).BodyString(index.Mapping).Do(context.Background()); err != nil {
+	if _, err := c.esClient.PutMapping().Index(index.FullName()).Type(index.Type).BodyString(index.Mapping).Do(context.Background()); err != nil {
 		return fmt.Errorf("Unable to create %s mapping: %s", index.Mapping, err)
 	}
 	return nil
@@ -158,8 +159,8 @@ func (c *Client) addMapping(index Index) error {
 
 func (c *Client) createIndices() error {
 	for _, index := range c.indices {
-		if exists, _ := c.client.IndexExists(index.FullName()).Do(context.Background()); !exists {
-			if _, err := c.client.CreateIndex(index.FullName()).Do(context.Background()); err != nil {
+		if exists, _ := c.esClient.IndexExists(index.FullName()).Do(context.Background()); !exists {
+			if _, err := c.esClient.CreateIndex(index.FullName()).Do(context.Background()); err != nil {
 				return fmt.Errorf("Unable to create the skydive index: %s", err)
 			}
 
@@ -179,7 +180,40 @@ func (c *Client) createIndices() error {
 }
 
 func (c *Client) start() error {
-	vt, err := c.client.ElasticsearchVersion(c.url.String())
+	esConfig, err := esconfig.Parse(c.url.String())
+	if err != nil {
+		return err
+	}
+
+	esClient, err := elastic.NewClientFromConfig(esConfig)
+	if err != nil {
+		return err
+	}
+	c.esClient = esClient
+
+	bulkProcessor, err := esClient.BulkProcessor().
+		After(func(executionId int64, requests []elastic.BulkableRequest, response *elastic.BulkResponse, err error) {
+			if err != nil {
+				logging.GetLogger().Errorf("Failed to execute bulk query: %s", err)
+				return
+			}
+
+			if response.Errors {
+				logging.GetLogger().Errorf("Failed to insert %d entries", len(response.Failed()))
+				for i, fail := range response.Failed() {
+					logging.GetLogger().Errorf("Failed to insert entry %d: %v", i, fail.Error)
+				}
+			}
+		}).
+		FlushInterval(time.Duration(c.cfg.BulkMaxDelay) * time.Second).
+		Do(context.Background())
+	if err != nil {
+		return err
+	}
+
+	c.bulkProcessor = bulkProcessor
+
+	vt, err := esClient.ElasticsearchVersion(c.url.String())
 	if err != nil {
 		return fmt.Errorf("Unable to get the version: %s", vt)
 	}
@@ -298,7 +332,7 @@ func FormatFilter(filter *filters.Filter, mapKey string) elastic.Query {
 
 // Index returns the skydive index
 func (c *Client) Index(index Index, id string, data interface{}) error {
-	if _, err := c.client.Index().Index(index.Alias()).Type(index.Type).Id(id).BodyJson(data).Do(context.Background()); err != nil {
+	if _, err := c.esClient.Index().Index(index.Alias()).Type(index.Type).Id(id).BodyJson(data).Do(context.Background()); err != nil {
 		return err
 	}
 	return nil
@@ -314,12 +348,12 @@ func (c *Client) BulkIndex(index Index, id string, data interface{}) error {
 
 // Get an object
 func (c *Client) Get(index Index, id string) (*elastic.GetResult, error) {
-	return c.client.Get().Index(index.Alias()).Type(index.Type).Id(id).Do(context.Background())
+	return c.esClient.Get().Index(index.Alias()).Type(index.Type).Id(id).Do(context.Background())
 }
 
 // Delete an object
 func (c *Client) Delete(index Index, id string) (*elastic.DeleteResponse, error) {
-	return c.client.Delete().Index(index.Alias()).Type(index.Type).Id(id).Do(context.Background())
+	return c.esClient.Delete().Index(index.Alias()).Type(index.Type).Id(id).Do(context.Background())
 }
 
 // BulkDelete an object with the indexer
@@ -332,7 +366,7 @@ func (c *Client) BulkDelete(index Index, id string) error {
 
 // Search an object
 func (c *Client) Search(typ string, query elastic.Query, opts filters.SearchQuery, indices ...string) (*elastic.SearchResult, error) {
-	searchQuery := c.client.
+	searchQuery := c.esClient.
 		Search().
 		Index(indices...).
 		Type(typ).
@@ -366,15 +400,15 @@ func (c *Client) RollIndex() {
 
 // Start the Elasticsearch client background jobs
 func (c *Client) Start() {
-	for {
+	retry := func() error {
 		err := c.start()
 		if err == nil {
-			break
+			return nil
 		}
-		logging.GetLogger().Errorf("Unable to get connected to Elasticsearch: %s", err)
-
-		time.Sleep(1 * time.Second)
+		logging.GetLogger().Errorf("Elasticsearch not available: %s", err)
+		return err
 	}
+	common.Retry(retry, math.MaxInt64, time.Second)
 }
 
 // Stop Elasticsearch background client
@@ -383,7 +417,7 @@ func (c *Client) Stop() {
 		c.quit <- true
 		c.wg.Wait()
 
-		c.client.Stop()
+		c.esClient.Stop()
 	}
 }
 
@@ -407,42 +441,12 @@ func urlFromHost(host string) (*url.URL, error) {
 
 // GetClient returns the elastic client object
 func (c *Client) GetClient() *elastic.Client {
-	return c.client
+	return c.esClient
 }
 
 // NewClient creates a new ElasticSearch client based on configuration
 func NewClient(indices []Index, cfg Config, etcdClient *etcd.Client) (*Client, error) {
 	url, err := urlFromHost(cfg.ElasticHost)
-	if err != nil {
-		return nil, err
-	}
-
-	esConfig, err := esconfig.Parse(url.String())
-	if err != nil {
-		return nil, err
-	}
-
-	esClient, err := elastic.NewClientFromConfig(esConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	bulkProcessor, err := esClient.BulkProcessor().
-		After(func(executionId int64, requests []elastic.BulkableRequest, response *elastic.BulkResponse, err error) {
-			if err != nil {
-				logging.GetLogger().Errorf("Failed to execute bulk query: %s", err)
-				return
-			}
-
-			if response.Errors {
-				logging.GetLogger().Errorf("Failed to insert %d entries", len(response.Failed()))
-				for i, fail := range response.Failed() {
-					logging.GetLogger().Errorf("Failed to insert entry %d: %s", i, fail.Error.Reason)
-				}
-			}
-		}).
-		FlushInterval(time.Duration(cfg.BulkMaxDelay) * time.Second).
-		Do(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -458,16 +462,14 @@ func NewClient(indices []Index, cfg Config, etcdClient *etcd.Client) (*Client, e
 	}
 
 	client := &Client{
-		url:           url,
-		client:        esClient,
-		bulkProcessor: bulkProcessor,
-		quit:          make(chan bool, 1),
-		cfg:           cfg,
-		indices:       indicesMap,
+		url:     url,
+		quit:    make(chan bool, 1),
+		cfg:     cfg,
+		indices: indicesMap,
 	}
 
 	if len(rollIndices) > 0 {
-		client.rollService = newRollIndexService(esClient, rollIndices, cfg, etcdClient)
+		client.rollService = newRollIndexService(client, rollIndices, cfg, etcdClient)
 	}
 
 	client.started.Store(false)

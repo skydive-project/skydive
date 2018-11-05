@@ -130,8 +130,8 @@ func TestFillUUID(t *testing.T) {
 		t.Error("Same UUID with distinct filter")
 	}
 	fillUUID(&rule3, prefix1)
-	if uuid == rule3.UUID {
-		t.Error("Same UUID with distinct cookie")
+	if uuid != rule3.UUID {
+		t.Error("Distinct UUID with only distinct cookie")
 	}
 	fillUUID(&rule4, prefix1)
 	if uuid == rule4.UUID {

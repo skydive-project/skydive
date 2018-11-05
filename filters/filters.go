@@ -197,6 +197,10 @@ func (t *TermInt64Filter) Eval(g Getter) bool {
 		if field == t.Value {
 			return true
 		}
+	default:
+		if v, err := common.ToInt64(field); err == nil && v == t.Value {
+			return true
+		}
 	}
 	return false
 }
@@ -261,6 +265,7 @@ func (r *RegexFilter) Eval(g Getter) bool {
 	return false
 }
 
+// NewRegexFilter returns a new regular expression based filter
 func NewRegexFilter(key string, pattern string) (*RegexFilter, error) {
 	re, err := regexp.Compile(pattern)
 	if err != nil {

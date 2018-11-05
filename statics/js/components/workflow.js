@@ -15,20 +15,43 @@ Vue.component('item', {
 
   template: `
   <div class="form-group">
+    <div v-if="Type == 'string'" class="form-group">
+      <label :for="Name">{{Description}}</label>
+      <textarea:id="Name" v-model="formData[Name]"></textarea>
+    </div>
+    <div v-else-if="Type == 'date'" class="form-group">
     <label :for="Name">{{Description}}</label>
-    <textarea v-if="Type == 'string'" :id="Name" v-model="formData[Name]"></textarea>
-    <input v-else-if="Type == 'date'" type="date" :id="Name" v-model="formData[Name]" class="form-control input-sm">
-    <input v-else-if="Type == 'integer'" type="number" :id="Name" v-model="formData[Name]" class="form-control input-sm">
-    <input v-else-if="Type == 'boolean'" type="checkbox" :id="Name" v-model="formData[Name]" class="form-check-input">
-    <node-selector v-else-if="Type == 'node'" :id="Name" v-model="formData[Name]"></node-selector>
-    <template v-else-if="Type == 'choice'">
-      <select :id="Name" v-model="formData[Name]" class="form-control input-sm">
-        <option v-for="(option, index) in Values" :value="option.Value">{{ option.Value }} ({{ option.Description }})</option>
-      </select>
-    </template>
-    <template v-else-if="Type == 'group'">
-      <item v-for="i in item" v-bind="i" :key="i.Name"></item>
-    </template>
+      <input type="date" :id="Name" v-model="formData[Name]" class="form-control input-sm">
+    </div>
+    <div v-else-if="Type == 'integer'" class="form-group">
+      <label :for="Name">{{Description}}</label>
+      <input type="number" :id="Name" v-model="formData[Name]" class="form-control input-sm">
+    </div>
+    <div v-else-if="Type == 'boolean'" class="form-group">
+      <label class="form-check-label">\
+        <input :id="Name" v-model="formData[Name]" type="checkbox" class="form-check-input">\
+        {{Description}}\
+        <span class="checkmark"></span>\
+      </label>\
+    </div>
+    <div v-else-if="Type == 'node'" class="form-group">
+      <label :for="Name">{{Description}}</label>
+      <node-selector :id="Name" v-model="formData[Name]"></node-selector>
+    </div>
+    <div v-else-if="Type == 'choice'" class="form-group">
+      <label :for="Name">{{Description}}</label>
+      <template>
+        <select :id="Name" v-model="formData[Name]" class="form-control custom-select">
+          <option v-for="(option, index) in Values" :value="option.Value">{{ option.Value }} ({{ option.Description }})</option>
+        </select>
+      </template>
+    </div>
+    <div v-else-if="Type == 'group'" class="form-group">
+      <label :for="Name">{{Description}}</label>
+      <template>
+        <item v-for="i in item" v-bind="i" :key="i.Name"></item>
+      </template>
+    </div>
   </div>`
 })
 
@@ -56,7 +79,7 @@ Vue.component('workflow-params', {
 
   template: `
     <form v-if="workflow.Parameters" @submit.prevent="submit">
-      <h1>{{workflow.Name}}</h1>
+      <h1><span class="workflow-title">{{workflow.Name}}</span></h1>
       <item v-for="item in workflow.Parameters" v-bind="item" :key="item.Name"></item>
       <button type="submit" id="execute" class="btn btn-primary">Execute</button>\
     </form>
@@ -121,8 +144,8 @@ Vue.component('workflow-call', {
   template: `
     <div class="form-group">
       <div class="form-group">
-        <label for="workflow">Workflow</label>
-        <select id="workflow" v-model="currentWorkflow" class="form-control input-sm">
+        <label for="workflow">Workflows</label>
+        <select id="workflow" v-model="currentWorkflow" class="form-control custom-select">
           <option selected :value="{}">Select a workflow</option>\
           <option v-for="(workflow, id) in workflows" :value="workflow">{{ workflow.Name }} ({{ workflow.Description }})</option>
         </select>
@@ -130,13 +153,12 @@ Vue.component('workflow-call', {
       <div class="form-group">
         <workflow-params :workflow="currentWorkflow"></workflow-params>
       </div>
-      <div class="form-group">
-        <form>
-          <label for="workflow-output" v-if="result.value">Output</label>
+      <div class="form-group" v-if="result.value">
+        <h1><span class="workflow-title">Result</span></h1>
+        <div class="form-group">
           <textarea readonly id="workflow-output" type="text" class="form-control input-sm" rows="5" v-model="result.value" v-if="result.value && (typeof result.value) != 'object'"></textarea>
           <object-detail v-else-if="typeof result.value == 'object'" id="workflow-output" :object="result.value"></object-detail>\
         </div>
-        </form>
       </div>
     </div>
   `,

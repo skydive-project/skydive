@@ -124,8 +124,8 @@ var (
 	}
 )
 
-// ElasticSearchStorage describes an ElasticSearch flow backend
-type ElasticSearchStorage struct {
+// Storage describes an ElasticSearch flow backend
+type Storage struct {
 	client *es.Client
 }
 
@@ -178,9 +178,9 @@ type rawpacketRecord struct {
 }
 
 // StoreFlows push a set of flows in the database
-func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
+func (c *Storage) StoreFlows(flows []*flow.Flow) error {
 	if !c.client.Started() {
-		return errors.New("ElasticSearchStorage is not yet started")
+		return errors.New("Storage is not yet started")
 	}
 
 	for _, f := range flows {
@@ -243,14 +243,14 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (c *ElasticSearchStorage) sendRequest(typ string, query elastic.Query, pagination filters.SearchQuery, indices ...string) (*elastic.SearchResult, error) {
+func (c *Storage) sendRequest(typ string, query elastic.Query, pagination filters.SearchQuery, indices ...string) (*elastic.SearchResult, error) {
 	return c.client.Search(typ, query, pagination, indices...)
 }
 
 // SearchRawPackets searches flow raw packets matching filters in the database
-func (c *ElasticSearchStorage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filters.Filter) (map[string]*flow.RawPackets, error) {
+func (c *Storage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filters.Filter) (map[string]*flow.RawPackets, error) {
 	if !c.client.Started() {
-		return nil, errors.New("ElasticSearchStorage is not yet started")
+		return nil, errors.New("Storage is not yet started")
 	}
 
 	// do not escape flow as ES use sub object in that case
@@ -288,9 +288,9 @@ func (c *ElasticSearchStorage) SearchRawPackets(fsq filters.SearchQuery, packetF
 }
 
 // SearchMetrics searches flow metrics matching filters in the database
-func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]common.Metric, error) {
+func (c *Storage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]common.Metric, error) {
 	if !c.client.Started() {
-		return nil, errors.New("ElasticSearchStorage is not yet started")
+		return nil, errors.New("Storage is not yet started")
 	}
 
 	// do not escape flow as ES use sub object in that case
@@ -323,9 +323,9 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilt
 }
 
 // SearchFlows search flow matching filters in the database
-func (c *ElasticSearchStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error) {
+func (c *Storage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error) {
 	if !c.client.Started() {
-		return nil, errors.New("ElasticSearchStorage is not yet started")
+		return nil, errors.New("Storage is not yet started")
 	}
 
 	// TODO: dedup and sort in order to remove duplicate flow UUID due to rolling index
@@ -355,17 +355,17 @@ func (c *ElasticSearchStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowS
 }
 
 // Start the Database client
-func (c *ElasticSearchStorage) Start() {
+func (c *Storage) Start() {
 	go c.client.Start()
 }
 
 // Stop the Database client
-func (c *ElasticSearchStorage) Stop() {
+func (c *Storage) Stop() {
 	c.client.Stop()
 }
 
 // New creates a new ElasticSearch database client
-func New(backend string, etcdClient *etcd.Client) (*ElasticSearchStorage, error) {
+func New(backend string, etcdClient *etcd.Client) (*Storage, error) {
 	cfg := es.NewConfig(backend)
 
 	indices := []es.Index{
@@ -379,5 +379,5 @@ func New(backend string, etcdClient *etcd.Client) (*ElasticSearchStorage, error)
 		return nil, err
 	}
 
-	return &ElasticSearchStorage{client: client}, nil
+	return &Storage{client: client}, nil
 }

@@ -22,36 +22,8 @@
 
 package istio
 
-import (
-	"github.com/skydive-project/skydive/topology/graph"
-	"github.com/skydive-project/skydive/topology/probes/k8s"
-)
-
 const (
-	detailsField = "Istio"
+	// Manager is the manager value for Istio
 	Manager      = "istio"
+	detailsField = "Istio"
 )
-
-func newMetadata(ty, namespace, name string, details interface{}) graph.Metadata {
-	return k8s.NewMetadata(Manager, ty, namespace, name, details)
-}
-
-func newEdgeMetadata() graph.Metadata {
-	return k8s.NewEdgeMetadata(Manager)
-}
-
-func addOwnershipLink(g *graph.Graph, parent, child *graph.Node) *graph.Edge {
-	return k8s.AddOwnershipLink(Manager, g, parent, child)
-}
-
-func newObjectIndexerByNamespace(g *graph.Graph, ty string) *graph.MetadataIndexer {
-	return k8s.NewObjectIndexerByNamespace(Manager, g, ty)
-}
-
-func newObjectIndexerByNamespaceAndName(g *graph.Graph, ty string) *graph.MetadataIndexer {
-	return k8s.NewObjectIndexerByNamespaceAndName(Manager, g, ty)
-}
-
-func newObjectIndexerByName(g *graph.Graph, ty string) *graph.MetadataIndexer {
-	return k8s.NewObjectIndexerByName(Manager, g, ty)
-}

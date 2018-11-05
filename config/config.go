@@ -44,17 +44,19 @@ var ErrNoAnalyzerSpecified = errors.New("No analyzer specified in the configurat
 var (
 	cfg           *viper.Viper
 	relocationMap = map[string][]string{
-		"agent.auth.api.backend":         {"auth.type"},
-		"agent.auth.cluster.password":    {"auth.analyzer_password"},
-		"agent.auth.cluster.username":    {"auth.analyzer_username"},
-		"agent.capture.stats_update":     {"agent.flow.stats_update"},
-		"analyzer.auth.api.backend":      {"auth.type"},
-		"analyzer.auth.cluster.backend":  {"auth.type"},
-		"analyzer.auth.cluster.password": {"auth.analyzer_password"},
-		"analyzer.auth.cluster.username": {"auth.analyzer_username"},
-		"analyzer.flow.backend":          {"analyzer.storage.backend"},
-		"analyzer.flow.max_buffer_size":  {"analyzer.storage.max_flow_buffer_size"},
-		"analyzer.topology.backend":      {"graph.backend"},
+		"agent.auth.api.backend":            {"auth.type"},
+		"agent.auth.cluster.password":       {"auth.analyzer_password"},
+		"agent.auth.cluster.username":       {"auth.analyzer_username"},
+		"agent.capture.stats_update":        {"agent.flow.stats_update"},
+		"analyzer.auth.api.backend":         {"auth.type"},
+		"analyzer.auth.cluster.backend":     {"auth.type"},
+		"analyzer.auth.cluster.password":    {"auth.analyzer_password"},
+		"analyzer.auth.cluster.username":    {"auth.analyzer_username"},
+		"analyzer.flow.backend":             {"analyzer.storage.backend"},
+		"analyzer.flow.max_buffer_size":     {"analyzer.storage.max_flow_buffer_size"},
+		"analyzer.topology.backend":         {"graph.backend"},
+		"analyzer.topology.k8s.config_file": {"k8s.config_file"},
+		"analyzer.topology.k8s.probes":      {"k8s.probes"},
 	}
 )
 
@@ -96,6 +98,8 @@ func init() {
 	cfg.SetDefault("analyzer.replication.debug", false)
 	cfg.SetDefault("analyzer.topology.backend", "memory")
 	cfg.SetDefault("analyzer.topology.probes", []string{})
+	cfg.SetDefault("analyzer.topology.k8s.config_file", "/etc/skydive/kubeconfig")
+	cfg.SetDefault("analyzer.topology.istio.config_file", "/etc/skydive/kubeconfig")
 
 	cfg.SetDefault("auth.basic.type", "basic") // defined for backward compatibility
 	cfg.SetDefault("auth.keystone.tenant_name", "admin")
@@ -125,8 +129,6 @@ func init() {
 	cfg.SetDefault("http.ws.pong_timeout", 5)
 	cfg.SetDefault("http.ws.queue_size", 10000)
 	cfg.SetDefault("http.ws.enable_write_compression", true)
-
-	cfg.SetDefault("k8s.config_file", "/etc/skydive/kubeconfig")
 
 	cfg.SetDefault("logging.backends", []string{"stderr"})
 	cfg.SetDefault("logging.color", true)
@@ -333,8 +335,8 @@ func GetEtcdServerAddrs() []string {
 	return []string{fmt.Sprintf("http://localhost:%d", port)}
 }
 
-// IsTLSenabled returns true is the analyzer certificates are set
-func IsTLSenabled() bool {
+// IsTLSEnabled returns true is the analyzer certificates are set
+func IsTLSEnabled() bool {
 	certPEM := GetString("analyzer.X509_cert")
 	keyPEM := GetString("analyzer.X509_key")
 	if len(certPEM) > 0 && len(keyPEM) > 0 {
@@ -413,7 +415,7 @@ func BindPFlag(key string, flag *pflag.Flag) error {
 func GetURL(protocol string, addr string, port int, path string) *url.URL {
 	u, _ := url.Parse(fmt.Sprintf("%s://%s:%d%s", protocol, addr, port, path))
 
-	if (protocol == "http" || protocol == "ws") && IsTLSenabled() == true {
+	if (protocol == "http" || protocol == "ws") && IsTLSEnabled() == true {
 		u.Scheme += "s"
 	}
 

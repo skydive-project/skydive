@@ -86,8 +86,8 @@ func (r *RawPacketsGremlinTraversalStep) Exec(last traversal.GraphTraversalStep)
 }
 
 // Reduce RawPackets step
-func (r *RawPacketsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
-	return next
+func (r *RawPacketsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) (traversal.GremlinTraversalStep, error) {
+	return next, nil
 }
 
 // Context RawPackets step

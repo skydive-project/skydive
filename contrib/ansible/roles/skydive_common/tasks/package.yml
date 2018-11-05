@@ -5,12 +5,6 @@
     state: present
   when: ansible_distribution == 'CentOS' and skydive_package_location is not defined
 
-- name: Install skydive package
-  package:
-    name: skydive
-    state: present
-  when: skydive_package_location is not defined
-
 - name: Copy skydive packages
   copy:
     src: "{{ skydive_package_location | replace('file://', '') }}"
@@ -23,16 +17,25 @@
   shell: "mv /tmp/*/*.rpm /tmp"
   when: skydive_package_location is defined
 
-- name: Search skydive packages
-  find:
-    paths: /tmp
-    patterns: 'skydive-*.rpm'
-  register: skydive_packages
-  when: skydive_package_location is defined
-
-- name: Install skydive packages
-  yum:
-    name: "{{ item.path }}"
+- name: Install createrepo
+  package:
+    name: createrepo
     state: present
   when: skydive_package_location is defined
-  with_items: "{{ skydive_packages.files }}"
+
+- name: Create local repository
+  shell: "createrepo /tmp"
+  when: skydive_package_location is defined
+
+- name: Add local repository
+  yum_repository:
+    name: local
+    description: Local Skydive repository
+    baseurl: "file:///tmp"
+    gpgcheck: no
+  when: skydive_package_location is defined
+
+- name: Install skydive package
+  package:
+    name: skydive
+    state: present

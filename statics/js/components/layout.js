@@ -48,6 +48,11 @@ var nodeImgMap = setupFixedImages({
   "storageclass": "storageclass",
   // istio
   "destinationrule": "destinationrule",
+  "gateway": "gateway",
+  "quotaspec": "quotaspec",
+  "quotaspecbinding": "quotaspecbinding",
+  "serviceentry": "serviceentry",
+  "virtualservice": "virtualservice",
 });
 
 var managerImgMap = setupFixedImages({

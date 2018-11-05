@@ -12,7 +12,7 @@ if PREPARE_BOX and Vagrant::Util::Platform.windows? then
 end
 
 DEVMODE_ROOT = "../.."
-GOPATH = "/home/vagrant"
+GOPATH = "/home/vagrant/go"
 
 SKYDIVE_SYNC_FOLDER = ENV.fetch("SKYDIVE_SYNC_FOLDER", "false") == "true" ? true : false
 SKYDIVE_GITHUB = "github.com/skydive-project/skydive"
@@ -22,7 +22,7 @@ SKYDIVE_GUEST = GOPATH + SKYDIVE_DIR
 
 ANSIBLE_DIR = "/contrib/ansible"
 ANSIBLE_HOST = DEVMODE_ROOT + ANSIBLE_DIR
-ANSIBLE_GUEST = GOPATH + ANSIBLE_DIR
+ANSIBLE_GUEST = "/tmp" + ANSIBLE_DIR
 
 $skydive_extra_config = {
   "http.ws.pong_timeout" => 10,
@@ -109,10 +109,10 @@ EOF
 SCRIPT
 
 $setup_cleanup = <<SCRIPT
-sudo /home/vagrant/src/github.com/skydive-project/skydive/scripts/ci/cleanup.sh init
+sudo /home/vagrant/go/src/github.com/skydive-project/skydive/scripts/ci/cleanup.sh init
 cat >> ~/.bash_profile <<'EOF'
-export WORKSPACE=/home/vagrant
-alias cleanup="(sudo /home/vagrant/src/github.com/skydive-project/skydive/scripts/ci/cleanup.sh snapshot; sudo /home/vagrant/src/github.com/skydive-project/skydive/scripts/ci/cleanup.sh cleanup) &> /dev/null"
+export WORKSPACE=/home/vagrant/go
+alias cleanup="(sudo /home/vagrant/go/src/github.com/skydive-project/skydive/scripts/ci/cleanup.sh snapshot; sudo /home/vagrant/go/src/github.com/skydive-project/skydive/scripts/ci/cleanup.sh cleanup) &> /dev/null"
 EOF
 SCRIPT
 

@@ -35,7 +35,7 @@ type MemoryBackendEdge struct {
 
 // MemoryBackend describes the memory backend
 type MemoryBackend struct {
-	GraphBackend
+	Backend
 	nodes map[Identifier]*MemoryBackendNode
 	edges map[Identifier]*MemoryBackendEdge
 }
@@ -69,7 +69,7 @@ func (m *MemoryBackend) EdgeAdded(e *Edge) bool {
 }
 
 // GetEdge in the graph backend
-func (m *MemoryBackend) GetEdge(i Identifier, t GraphContext) []*Edge {
+func (m *MemoryBackend) GetEdge(i Identifier, t Context) []*Edge {
 	if e, ok := m.edges[i]; ok {
 		return []*Edge{e.Edge}
 	}
@@ -77,7 +77,7 @@ func (m *MemoryBackend) GetEdge(i Identifier, t GraphContext) []*Edge {
 }
 
 // GetEdgeNodes returns a list of nodes of an edge
-func (m *MemoryBackend) GetEdgeNodes(e *Edge, t GraphContext, parentMetadata, childMetadata GraphElementMatcher) ([]*Node, []*Node) {
+func (m *MemoryBackend) GetEdgeNodes(e *Edge, t Context, parentMetadata, childMetadata ElementMatcher) ([]*Node, []*Node) {
 	var parent *MemoryBackendNode
 	if n, ok := m.nodes[e.parent]; ok && n.MatchMetadata(parentMetadata) {
 		parent = n
@@ -106,7 +106,7 @@ func (m *MemoryBackend) NodeAdded(n *Node) bool {
 }
 
 // GetNode from the graph backend
-func (m *MemoryBackend) GetNode(i Identifier, t GraphContext) []*Node {
+func (m *MemoryBackend) GetNode(i Identifier, t Context) []*Node {
 	if n, ok := m.nodes[i]; ok {
 		return []*Node{n.Node}
 	}
@@ -114,7 +114,7 @@ func (m *MemoryBackend) GetNode(i Identifier, t GraphContext) []*Node {
 }
 
 // GetNodeEdges returns a list of edges of a node
-func (m *MemoryBackend) GetNodeEdges(n *Node, t GraphContext, meta GraphElementMatcher) []*Edge {
+func (m *MemoryBackend) GetNodeEdges(n *Node, t Context, meta ElementMatcher) []*Edge {
 	edges := []*Edge{}
 
 	if n, ok := m.nodes[n.ID]; ok {
@@ -156,7 +156,7 @@ func (m *MemoryBackend) NodeDeleted(n *Node) (removed bool) {
 }
 
 // GetNodes from the graph backend
-func (m MemoryBackend) GetNodes(t GraphContext, metadata GraphElementMatcher) (nodes []*Node) {
+func (m MemoryBackend) GetNodes(t Context, metadata ElementMatcher) (nodes []*Node) {
 	for _, n := range m.nodes {
 		if n.MatchMetadata(metadata) {
 			nodes = append(nodes, n.Node)
@@ -166,7 +166,7 @@ func (m MemoryBackend) GetNodes(t GraphContext, metadata GraphElementMatcher) (n
 }
 
 // GetEdges from the graph backend
-func (m MemoryBackend) GetEdges(t GraphContext, metadata GraphElementMatcher) (edges []*Edge) {
+func (m MemoryBackend) GetEdges(t Context, metadata ElementMatcher) (edges []*Edge) {
 	for _, e := range m.edges {
 		if e.MatchMetadata(metadata) {
 			edges = append(edges, e.Edge)

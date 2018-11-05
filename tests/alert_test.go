@@ -96,7 +96,7 @@ func decodeStructMessageJSON(b []byte) *ws.StructMessage {
 		Type:      mJSON.Type,
 		UUID:      mJSON.UUID,
 		Status:    mJSON.Status,
-		JsonObj:   mJSON.Obj,
+		JSONObj:   mJSON.Obj,
 	}
 	return msg
 }
@@ -108,7 +108,7 @@ func newClient(endpoint string) (*websocket.Conn, error) {
 	}
 
 	scheme := "ws"
-	if config.IsTLSenabled() == true {
+	if config.IsTLSEnabled() == true {
 		scheme = "wss"
 	}
 	endpoint = fmt.Sprintf("%s://%s/ws/subscriber", scheme, endpoint)
@@ -392,13 +392,13 @@ func TestAlertWithTimer(t *testing.T) {
 					continue
 				}
 
-				testPassed, err := checkMessage(t, []byte(*msg.JsonObj), al, "alert-ns-timer")
+				testPassed, err := checkMessage(t, []byte(*msg.JSONObj), al, "alert-ns-timer")
 				if err != nil {
 					return err
 				}
 
 				if !testPassed {
-					return fmt.Errorf("Wrong alert message: %+v (error: %+v)", string(*msg.JsonObj), err)
+					return fmt.Errorf("Wrong alert message: %+v (error: %+v)", string(*msg.JSONObj), err)
 				}
 
 				break

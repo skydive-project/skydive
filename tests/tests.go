@@ -88,8 +88,12 @@ agent:
       - docker
       - lxd
       - opencontrail
+      - lldp
     netlink:
       metrics_update: 5
+    lldp:
+      interfaces:
+      - lldp0
 
   metadata:
     info: This is compute node
@@ -167,6 +171,7 @@ type TestInjection struct {
 	id        int64
 	increment bool
 	payload   string
+	pcap      string
 }
 
 // CheckFunction describes a function that actually does a check and returns an error if needed
@@ -393,6 +398,15 @@ func (c *TestContext) getSystemState(t *testing.T) {
 	execCmds(t, stateCmds...)
 }
 
+func (c *TestContext) postmortem(t *testing.T, test *Test, timestamp time.Time) {
+	g := c.getWholeGraph(t, timestamp)
+	f := c.getAllFlows(t, timestamp)
+	execCmds(t, test.tearDownCmds...)
+	c.getSystemState(t)
+	t.Logf("Graph: %s", g)
+	t.Logf("Flows: %s", f)
+}
+
 // RunTest executes a test. It executes the following steps:
 // - create all the captures
 // - execute all the setup commands
@@ -482,10 +496,8 @@ func RunTest(t *testing.T, test *Test) {
 	}, 15, time.Second)
 
 	if err != nil {
-		g := context.getWholeGraph(t, time.Now())
-		execCmds(t, test.tearDownCmds...)
-		context.getSystemState(t)
-		t.Fatalf("Failed to setup captures: %s, graph: %s", err, g)
+		context.postmortem(t, test, time.Now())
+		t.Fatalf("Failed to setup captures: %s", err)
 	}
 
 	retries := test.retries
@@ -502,11 +514,8 @@ func RunTest(t *testing.T, test *Test) {
 		}, retries, time.Second)
 
 		if err != nil {
-			g := context.getWholeGraph(t, settleTime)
-			f := context.getAllFlows(t, settleTime)
-			execCmds(t, test.tearDownCmds...)
-			context.getSystemState(t)
-			t.Errorf("Test failed to settle: %s, graph: %s, flows: %s", err, g, f)
+			t.Errorf("Test failed to settle: %s", err)
+			context.postmortem(t, test, settleTime)
 			return
 		}
 	}
@@ -519,18 +528,15 @@ func RunTest(t *testing.T, test *Test) {
 	}
 	if test.setupFunction != nil {
 		if err = test.setupFunction(context); err != nil {
-			g := context.getWholeGraph(t, time.Time{})
-			f := context.getAllFlows(t, time.Time{})
-			execCmds(t, test.tearDownCmds...)
-			context.getSystemState(t)
-			t.Fatalf("Failed to setup test: %s, graph: %s, flows: %s", err, g, f)
+			context.postmortem(t, test, time.Time{})
+			t.Fatalf("Failed to setup test: %s", err)
 		}
 	}
 
 	// Wait for the interfaces to be ready for packet injection
 	err = common.Retry(func() error {
 		isReady := func(gremlin g.QueryString, ipv6 bool) error {
-			gremlin = gremlin.Has("State", "UP")
+			gremlin = gremlin.Has("LinkFlags", "UP")
 			if ipv6 {
 				gremlin = gremlin.HasKey("IPV6")
 			} else {
@@ -565,11 +571,8 @@ func RunTest(t *testing.T, test *Test) {
 	}, 15, time.Second)
 
 	if err != nil {
-		g := context.getWholeGraph(t, time.Time{})
-		f := context.getAllFlows(t, time.Time{})
-		execCmds(t, test.tearDownCmds...)
-		context.getSystemState(t)
-		t.Fatalf("Failed to setup test: %s, graph: %s, flows: %s", err, g, f)
+		context.postmortem(t, test, time.Time{})
+		t.Fatalf("Failed to setup test: %s", err)
 	}
 
 	for _, injection := range test.injections {
@@ -598,6 +601,22 @@ func RunTest(t *testing.T, test *Test) {
 			src = injection.from.String()
 		}
 
+		if injection.count == 0 {
+			injection.count = 1
+		}
+
+		var pcap []byte
+		if injection.pcap != "" {
+			pcapFile, err := os.Open(injection.pcap)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			pcap, err = ioutil.ReadAll(pcapFile)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
 		packet := &types.PacketInjection{
 			Src:       src,
 			SrcMAC:    srcMAC,
@@ -611,14 +630,12 @@ func RunTest(t *testing.T, test *Test) {
 			Increment: injection.increment,
 			Payload:   injection.payload,
 			Interval:  1000,
+			Pcap:      pcap,
 		}
 
 		if err := pingRequest(t, context, packet); err != nil {
-			g := context.getWholeGraph(t, time.Time{})
-			f := context.getAllFlows(t, time.Time{})
-			execCmds(t, test.tearDownCmds...)
-			context.getSystemState(t)
-			t.Errorf("Packet injection failed: %s, graph: %s, flows: %s", err, g, f)
+			t.Errorf("Packet injection failed: %s", err)
+			context.postmortem(t, test, time.Time{})
 			return
 		}
 
@@ -648,11 +665,8 @@ func RunTest(t *testing.T, test *Test) {
 		}, retries, time.Second)
 
 		if err != nil {
-			g := checkContext.getWholeGraph(t, time.Time{})
-			f := checkContext.getAllFlows(t, time.Time{})
-			execCmds(t, test.tearDownCmds...)
-			context.getSystemState(t)
-			t.Errorf("Test failed: %s, graph: %s, flows: %s", err, g, f)
+			t.Errorf("Test failed: %s", err)
+			context.postmortem(t, test, time.Time{})
 			return
 		}
 	}
@@ -776,7 +790,7 @@ func init() {
 			panic(fmt.Sprintf("Failed to initialize config: %s", err))
 		}
 
-		if err := logging.InitLogging(); err != nil {
+		if err := config.InitLogging(); err != nil {
 			panic(fmt.Sprintf("Failed to initialize logging system: %s", err))
 		}
 

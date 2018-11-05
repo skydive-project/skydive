@@ -25,27 +25,27 @@ package http
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/logging"
 )
 
+// RestClient describes a REST API client with a URL and authentication information
 type RestClient struct {
 	authOpts *AuthenticationOpts
 	client   *http.Client
 	url      *url.URL
 }
 
+// CrudClient describes a REST API client to issue CRUD commands
 type CrudClient struct {
-	RestClient
+	*RestClient
 }
 
 func readBody(resp *http.Response) string {
@@ -56,36 +56,26 @@ func readBody(resp *http.Response) string {
 	return string(data)
 }
 
-func getHttpClient() (*http.Client, error) {
+func getHTTPClient(tlsConfig *tls.Config) *http.Client {
 	client := &http.Client{}
-	if config.IsTLSenabled() {
-		tlsConfig, err := GetTLSConfig(true)
-		if err != nil {
-			return nil, err
-		}
+	if tlsConfig != nil {
 		tr := &http.Transport{TLSClientConfig: tlsConfig}
 		client = &http.Client{Transport: tr}
 	}
-	return client, nil
+	return client
 }
 
-func NewRestClient(url *url.URL, authOpts *AuthenticationOpts) (*RestClient, error) {
-	client, err := getHttpClient()
-	if err != nil {
-		return nil, err
-	}
-	rc := &RestClient{
-		client:   client,
+// NewRestClient returns a new REST API client. It takes a URL
+// to the HTTP point, authentication information and TLS configuration
+func NewRestClient(url *url.URL, authOpts *AuthenticationOpts, tlsConfig *tls.Config) *RestClient {
+	return &RestClient{
+		client:   getHTTPClient(tlsConfig),
 		url:      url,
 		authOpts: authOpts,
 	}
-	return rc, nil
 }
 
-func (c *RestClient) debug() bool {
-	return config.GetBool("http.rest.debug")
-}
-
+// Request issues a request to the API
 func (c *RestClient) Request(method, path string, body io.Reader, header http.Header) (*http.Response, error) {
 	url := c.url.ResolveReference(&url.URL{Path: path})
 	req, err := http.NewRequest(method, url.String(), body)
@@ -103,12 +93,6 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Add("Accept-Encoding", "gzip")
 
-	if c.debug() {
-		if buf, err := httputil.DumpRequest(req, true); err == nil {
-			logging.GetLogger().Debugf("Request:\n%s", buf)
-		}
-	}
-
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return resp, err
@@ -124,29 +108,17 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 		}
 	}
 
-	if c.debug() {
-		buf, err := httputil.DumpResponse(resp, true)
-		if err == nil {
-			logging.GetLogger().Debugf("Response:\n%s", buf)
-		} else {
-			logging.GetLogger().Debugf("Response (error):\n%s", err)
-		}
-
-	}
-
 	return resp, nil
 }
 
-func NewCrudClient(url *url.URL, authOpts *AuthenticationOpts) (*CrudClient, error) {
-	restClient, err := NewRestClient(url, authOpts)
-	if err != nil {
-		return nil, err
-	}
+// NewCrudClient returns a new REST client that is able to issue CRUD requests
+func NewCrudClient(url *url.URL, authOpts *AuthenticationOpts, tlsConfig *tls.Config) *CrudClient {
 	return &CrudClient{
-		RestClient: *restClient,
-	}, nil
+		RestClient: NewRestClient(url, authOpts, tlsConfig),
+	}
 }
 
+// List returns all the resources for a type
 func (c *CrudClient) List(resource string, values interface{}) error {
 	resp, err := c.Request("GET", resource, nil, nil)
 	if err != nil {
@@ -161,6 +133,7 @@ func (c *CrudClient) List(resource string, values interface{}) error {
 	return common.JSONDecode(resp.Body, values)
 }
 
+// Get fills the passed value with the resource with the specified ID
 func (c *CrudClient) Get(resource string, id string, value interface{}) error {
 	resp, err := c.Request("GET", resource+"/"+id, nil, nil)
 	if err != nil {
@@ -175,6 +148,7 @@ func (c *CrudClient) Get(resource string, id string, value interface{}) error {
 	return common.JSONDecode(resp.Body, value)
 }
 
+// Create does a POST request to create a new resource
 func (c *CrudClient) Create(resource string, value interface{}) error {
 	s, err := json.Marshal(value)
 	if err != nil {
@@ -195,6 +169,7 @@ func (c *CrudClient) Create(resource string, value interface{}) error {
 	return common.JSONDecode(resp.Body, value)
 }
 
+// Update modify a resource using a PUT call to the API
 func (c *CrudClient) Update(resource string, id string, value interface{}) error {
 	s, err := json.Marshal(value)
 	if err != nil {
@@ -215,6 +190,7 @@ func (c *CrudClient) Update(resource string, id string, value interface{}) error
 	return common.JSONDecode(resp.Body, value)
 }
 
+// Delete removes a resource using a DELETE call to the API
 func (c *CrudClient) Delete(resource string, id string) error {
 	resp, err := c.Request("DELETE", resource+"/"+id, nil, nil)
 	if err != nil {

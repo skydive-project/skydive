@@ -46,8 +46,8 @@ var (
 	ErrAgentAlreadyAllocated = errors.New("agent already allocated for this uuid")
 )
 
-// SFlowAgent describes SFlow agent probe
-type SFlowAgent struct {
+// Agent describes SFlow agent probe
+type Agent struct {
 	common.RWMutex
 	UUID       string
 	Addr       string
@@ -58,20 +58,20 @@ type SFlowAgent struct {
 	HeaderSize uint32
 }
 
-// SFlowAgentAllocator describes an SFlow agent allocator to manage multiple SFlow agent probe
-type SFlowAgentAllocator struct {
+// AgentAllocator describes an SFlow agent allocator to manage multiple SFlow agent probe
+type AgentAllocator struct {
 	common.RWMutex
 	portAllocator *common.PortAllocator
-	agents        []*SFlowAgent
+	agents        []*Agent
 }
 
 // GetTarget returns the current used connection
-func (sfa *SFlowAgent) GetTarget() string {
+func (sfa *Agent) GetTarget() string {
 	target := []string{sfa.Addr, strconv.FormatInt(int64(sfa.Port), 10)}
 	return strings.Join(target, ":")
 }
 
-func (sfa *SFlowAgent) feedFlowTable() {
+func (sfa *Agent) feedFlowTable() {
 	var bpf *flow.BPF
 
 	if b, err := flow.NewBPF(layers.LinkTypeEthernet, sfa.HeaderSize, sfa.BPFFilter); err == nil {
@@ -88,7 +88,7 @@ func (sfa *SFlowAgent) feedFlowTable() {
 		}
 
 		// TODO use gopacket.NoCopy ? instead of gopacket.Default
-		p := gopacket.NewPacket(buf[:n], layers.LayerTypeSFlow, gopacket.Default)
+		p := gopacket.NewPacket(buf[:n], layers.LayerTypeSFlow, gopacket.DecodeOptions{NoCopy: true})
 		sflowLayer := p.Layer(layers.LayerTypeSFlow)
 		sflowPacket, ok := sflowLayer.(*layers.SFlowDatagram)
 		if !ok {
@@ -107,7 +107,7 @@ func (sfa *SFlowAgent) feedFlowTable() {
 	}
 }
 
-func (sfa *SFlowAgent) start() error {
+func (sfa *Agent) start() error {
 	sfa.Lock()
 	addr := net.UDPAddr{
 		Port: sfa.Port,
@@ -131,12 +131,12 @@ func (sfa *SFlowAgent) start() error {
 }
 
 // Start the SFlow probe agent
-func (sfa *SFlowAgent) Start() {
+func (sfa *Agent) Start() {
 	go sfa.start()
 }
 
 // Stop the SFlow probe agent
-func (sfa *SFlowAgent) Stop() {
+func (sfa *Agent) Stop() {
 	sfa.Lock()
 	defer sfa.Unlock()
 
@@ -145,13 +145,13 @@ func (sfa *SFlowAgent) Stop() {
 	}
 }
 
-// NewSFlowAgent creates a new sFlow agent which will populate the given flowtable
-func NewSFlowAgent(u string, a *common.ServiceAddress, ft *flow.Table, bpfFilter string, headerSize uint32) *SFlowAgent {
+// NewAgent creates a new sFlow agent which will populate the given flowtable
+func NewAgent(u string, a *common.ServiceAddress, ft *flow.Table, bpfFilter string, headerSize uint32) *Agent {
 	if headerSize == 0 {
 		headerSize = flow.DefaultCaptureLength
 	}
 
-	return &SFlowAgent{
+	return &Agent{
 		UUID:       u,
 		Addr:       a.Addr,
 		Port:       a.Port,
@@ -161,7 +161,7 @@ func NewSFlowAgent(u string, a *common.ServiceAddress, ft *flow.Table, bpfFilter
 	}
 }
 
-func (a *SFlowAgentAllocator) release(uuid string) {
+func (a *AgentAllocator) release(uuid string) {
 	for i, agent := range a.agents {
 		if uuid == agent.UUID {
 			agent.Stop()
@@ -174,7 +174,7 @@ func (a *SFlowAgentAllocator) release(uuid string) {
 }
 
 // Release a sFlow agent
-func (a *SFlowAgentAllocator) Release(uuid string) {
+func (a *AgentAllocator) Release(uuid string) {
 	a.Lock()
 	defer a.Unlock()
 
@@ -182,7 +182,7 @@ func (a *SFlowAgentAllocator) Release(uuid string) {
 }
 
 // ReleaseAll sFlow agents
-func (a *SFlowAgentAllocator) ReleaseAll() {
+func (a *AgentAllocator) ReleaseAll() {
 	a.Lock()
 	defer a.Unlock()
 
@@ -192,7 +192,7 @@ func (a *SFlowAgentAllocator) ReleaseAll() {
 }
 
 // Alloc allocates a new sFlow agent
-func (a *SFlowAgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter string, headerSize uint32, addr *common.ServiceAddress) (agent *SFlowAgent, _ error) {
+func (a *AgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter string, headerSize uint32, addr *common.ServiceAddress) (agent *Agent, _ error) {
 	a.Lock()
 	defer a.Unlock()
 
@@ -210,7 +210,7 @@ func (a *SFlowAgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter strin
 			return nil, errors.New("failed to allocate sflow port: " + err.Error())
 		}
 	}
-	s := NewSFlowAgent(uuid, addr, ft, bpfFilter, headerSize)
+	s := NewAgent(uuid, addr, ft, bpfFilter, headerSize)
 
 	a.agents = append(a.agents, s)
 
@@ -218,8 +218,8 @@ func (a *SFlowAgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter strin
 	return s, nil
 }
 
-// NewSFlowAgentAllocator creates a new sFlow agent allocator
-func NewSFlowAgentAllocator() (*SFlowAgentAllocator, error) {
+// NewAgentAllocator creates a new sFlow agent allocator
+func NewAgentAllocator() (*AgentAllocator, error) {
 	min := config.GetInt("sflow.port_min")
 	max := config.GetInt("sflow.port_max")
 
@@ -228,5 +228,5 @@ func NewSFlowAgentAllocator() (*SFlowAgentAllocator, error) {
 		return nil, err
 	}
 
-	return &SFlowAgentAllocator{portAllocator: portAllocator}, nil
+	return &AgentAllocator{portAllocator: portAllocator}, nil
 }

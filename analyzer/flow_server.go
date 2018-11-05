@@ -122,7 +122,7 @@ func (c *FlowServerWebSocketConn) OnMessage(client ws.Speaker, m ws.Message) {
 // Serve starts a WebSocket flow server
 func (c *FlowServerWebSocketConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sync.WaitGroup) {
 	c.ch = ch
-	server := ws.NewServer(c.server, "/ws/flow", c.auth)
+	server := config.NewWSServer(c.server, "/ws/flow", c.auth)
 	server.AddEventHandler(c)
 	go func() {
 		server.Start()
@@ -273,7 +273,7 @@ func (s *FlowServer) setupBulkConfigFromBackend() error {
 }
 
 // NewFlowServer creates a new flow server listening at address/port, based on configuration
-func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe *probe.ProbeBundle, auth shttp.AuthenticationBackend) (*FlowServer, error) {
+func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe *probe.Bundle, auth shttp.AuthenticationBackend) (*FlowServer, error) {
 	var conn FlowServerConn
 	protocol := strings.ToLower(config.GetString("flow.protocol"))
 

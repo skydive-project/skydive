@@ -1,0 +1,57 @@
+syntax = "proto3";
+package layers;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.protosizer_all) = true;
+option (gogoproto.sizer_all) = false;
+option go_package = "layers";
+
+// LayerDHCPv4 wrapper to generate extra layer
+message DHCPv4 {
+	option (gogoproto.goproto_getters) = false;
+	
+	bytes contents = 1;
+	bytes payload = 2;
+	uint32 hardware_len = 3 [(gogoproto.casttype) = "uint8"];
+	uint32 hardware_opts = 4 [(gogoproto.casttype) = "uint8"];
+	uint32 xid = 5;
+	uint32 secs = 6 [(gogoproto.casttype) = "uint16"];
+	uint32 flags = 7 [(gogoproto.casttype) = "uint16"];
+	bytes server_name = 8;
+	bytes file = 9;
+}
+
+// LayerDNS wrapper to generate extra layer
+message DNS {
+	option (gogoproto.goproto_getters) = false;
+	
+	bytes contents = 1;
+	bytes payload = 2;
+	uint32 id = 3 [(gogoproto.casttype) = "uint16", (gogoproto.customname) = "ID", (gogoproto.jsontag) = "ID,omitempty"];
+	bool qr = 4 [(gogoproto.customname) = "QR", (gogoproto.jsontag) = "QR,omitempty"];
+	bool aa = 5 [(gogoproto.customname) = "AA", (gogoproto.jsontag) = "AA,omitempty"];
+	bool tc = 6 [(gogoproto.customname) = "TC", (gogoproto.jsontag) = "TC,omitempty"];
+	bool rd = 7 [(gogoproto.customname) = "RD", (gogoproto.jsontag) = "RD,omitempty"];
+	bool ra = 8 [(gogoproto.customname) = "RA", (gogoproto.jsontag) = "RA,omitempty"];
+	uint32 z = 9 [(gogoproto.casttype) = "uint8"];
+	uint32 qdcount = 10 [(gogoproto.casttype) = "uint16", (gogoproto.customname) = "QDCount", (gogoproto.jsontag) = "QDCount,omitempty"];
+	uint32 ancount = 11 [(gogoproto.casttype) = "uint16", (gogoproto.customname) = "ANCount", (gogoproto.jsontag) = "ANCount,omitempty"];
+	uint32 nscount = 12 [(gogoproto.casttype) = "uint16", (gogoproto.customname) = "NSCount", (gogoproto.jsontag) = "NSCount,omitempty"];
+	uint32 arcount = 13 [(gogoproto.casttype) = "uint16", (gogoproto.customname) = "ARCount", (gogoproto.jsontag) = "ARCount,omitempty"];
+}
+
+// LayerVRRPv2 wrapper to generate extra layer
+message VRRPv2 {
+	option (gogoproto.goproto_getters) = false;
+	
+	bytes contents = 1;
+	bytes payload = 2;
+	uint32 version = 3 [(gogoproto.casttype) = "uint8"];
+	uint32 virtual_rtr_id = 4 [(gogoproto.casttype) = "uint8", (gogoproto.customname) = "VirtualRtrID", (gogoproto.jsontag) = "VirtualRtrID,omitempty"];
+	uint32 priority = 5 [(gogoproto.casttype) = "uint8"];
+	uint32 count_ipaddr = 6 [(gogoproto.casttype) = "uint8", (gogoproto.customname) = "CountIPAddr", (gogoproto.jsontag) = "CountIPAddr,omitempty"];
+	uint32 adver_int = 7 [(gogoproto.casttype) = "uint8"];
+	uint32 checksum = 8 [(gogoproto.casttype) = "uint16"];
+}
+

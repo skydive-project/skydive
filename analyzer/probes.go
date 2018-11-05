@@ -34,11 +34,11 @@ import (
 )
 
 // NewTopologyProbeBundleFromConfig creates a new topology server probes from configuration
-func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.ProbeBundle, error) {
+func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.Bundle, error) {
 	list := config.GetStringSlice("analyzer.topology.probes")
 	probes := map[string]probe.Probe{
-		"fabric":  fabric.NewFabricProbe(g),
-		"peering": peering.NewPeeringProbe(g),
+		"fabric":  fabric.NewProbe(g),
+		"peering": peering.NewProbe(g),
 	}
 
 	for _, t := range list {
@@ -46,27 +46,23 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.ProbeBundle, error
 			continue
 		}
 
+		var err error
+
 		switch t {
 		case "k8s":
-			var err error
-			probes[t], err = k8s.NewProbe(g)
-			if err != nil {
-				logging.GetLogger().Errorf("Failed to initialize K8S probe: %s", err.Error())
-				return nil, err
-			}
-
+			probes[t], err = k8s.NewK8sProbe(g)
 		case "istio":
-			var err error
-			probes[t], err = istio.NewProbe(g)
-			if err != nil {
-				logging.GetLogger().Errorf("Failed to initialize istio probe: %s", err.Error())
-				return nil, err
-			}
-
+			probes[t], err = istio.NewIstioProbe(g)
 		default:
 			logging.GetLogger().Errorf("unknown probe type: %s", t)
+			continue
+		}
+
+		if err != nil {
+			logging.GetLogger().Errorf("failed to initialize probe %s: %s", t, err)
+			return nil, err
 		}
 	}
 
-	return probe.NewProbeBundle(probes), nil
+	return probe.NewBundle(probes), nil
 }

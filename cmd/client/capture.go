@@ -23,6 +23,7 @@
 package client
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -48,6 +49,7 @@ var (
 	ipDefrag           bool
 	reassembleTCP      bool
 	layerKeyMode       string
+	extraLayers        []string
 )
 
 // CaptureCmd skdyive capture root command
@@ -66,8 +68,7 @@ var CaptureCreate = &cobra.Command{
 	PreRun: func(cmd *cobra.Command, args []string) {
 		if nodeTID != "" {
 			if gremlinQuery != "" {
-				logging.GetLogger().Error("Options --node and --gremlin are exclusive")
-				os.Exit(1)
+				exitOnError(errors.New("Options --node and --gremlin are exclusive"))
 			}
 			gremlinQuery = fmt.Sprintf("g.V().Has('TID', '%s')", nodeTID)
 		}
@@ -75,8 +76,12 @@ var CaptureCreate = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Critical(err.Error())
-			os.Exit(1)
+			exitOnError(err)
+		}
+
+		var layers flow.ExtraLayers
+		if err := layers.Parse(extraLayers...); err != nil {
+			exitOnError(err)
 		}
 
 		capture := api.NewCapture(gremlinQuery, bpfFilter)
@@ -90,15 +95,14 @@ var CaptureCreate = &cobra.Command{
 		capture.ReassembleTCP = reassembleTCP
 		capture.LayerKeyMode = layerKeyMode
 		capture.RawPacketLimit = rawPacketLimit
+		capture.ExtraLayers = layers
 
 		if err := validator.Validate(capture); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		if err := client.Create("capture", &capture); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 		printJSON(&capture)
 	},
@@ -113,13 +117,11 @@ var CaptureList = &cobra.Command{
 		var captures map[string]api.Capture
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Critical(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		if err := client.List("capture", &captures); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 		printJSON(captures)
 	},
@@ -140,13 +142,11 @@ var CaptureGet = &cobra.Command{
 		var capture api.Capture
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Critical(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		if err := client.Get("capture", args[0], &capture); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 		printJSON(&capture)
 	},
@@ -166,8 +166,7 @@ var CaptureDelete = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Critical(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		for _, id := range args {
@@ -203,6 +202,7 @@ func addCaptureFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&ipDefrag, "ip-defrag", "", false, "Defragment IPv4 packets, default: false")
 	cmd.Flags().BoolVarP(&reassembleTCP, "reassamble-tcp", "", false, "Reassemble TCP packets, default: false")
 	cmd.Flags().StringVarP(&layerKeyMode, "layer-key-mode", "", "L2", "Defines the first layer used by flow key calculation, L2 or L3")
+	cmd.Flags().StringArrayVarP(&extraLayers, "extra-layer", "", []string{}, fmt.Sprintf("List of extra layers to be added to the flow, available: %s", flow.ExtraLayers(flow.ALLLayer)))
 }
 
 func init() {

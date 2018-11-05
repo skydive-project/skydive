@@ -69,11 +69,12 @@ var TopologyComponent = {
                 <div class="form-group row">\
                   <label class="control-label" for="topology-filter">Filter</label>\
                   <div class="input">\
-                    <input list="topology-gremlin-favorites" placeholder="e.g. g.V().Has(,)" \
-                    id="topology-filter" type="text" style="width: 400px" \
-                    v-model="topologyFilter" @keyup.enter="topologyFilterQuery" \
-                    v-on:input="onFilterDatalistSelect" \
-                    class="input-sm form-control"></input>\
+                    <input list="topology-gremlin-favorites" placeholder="e.g. g.V().Has(,)"\
+                      id="topology-filter" type="text" style="width: 400px"\
+                      v-model="topologyFilter" @keyup.enter="topologyFilterQuery"\
+                      v-on:input="onFilterDatalistSelect"\
+                      class="input-sm form-control">\
+                    </input>\
                     <span class="clear-btn" @click.stop="topologyFilterClear">&times;</span>\
                     <datalist id="topology-gremlin-favorites" class="topology-gremlin-favorites">\
                     </datalist>\
@@ -99,7 +100,7 @@ var TopologyComponent = {
           <div style="margin-top: 10px">\
             <div class="trigger">\
               <button @mouseenter="showTopologyOptions" @mouseleave="clearTopologyTimeout" @click="hideTopologyOptions">\
-                <span :class="[\'glyphicon\', isTopologyOptionsVisible ? \'glyphicon-remove\' : \'glyphicon-align-justify\']" aria-hidden="true"></span>\
+                <span :class="[\'glyphicon\', isTopologyOptionsVisible ? \'glyphicon-remove\' : \'glyphicon-filter\']" aria-hidden="true"></span>\
               </button>\
             </div>\
           </div>\
@@ -144,7 +145,7 @@ var TopologyComponent = {
           </button>\
         </div>\
       </div>\
-      <div id="info-panel" class="col-sm-5 fill sidebar">\
+      <div id="info-panel" class="col-sm-5 sidebar">\
         <tabs v-if="isAnalyzer" :active="!canReadCaptures ? 2 : 0">\
           <tab-pane title="Captures" v-if="canReadCaptures">\
             <capture-list></capture-list>\
@@ -163,6 +164,9 @@ var TopologyComponent = {
           </tab-pane>\
           <tab-pane title="Workflows">\
             <workflow-call></workflow-call>\
+          </tab-pane>\
+          <tab-pane title="Topology rules" v-if="topologyMode === \'live\'">\
+            <topology-rules></topology-rules>\
           </tab-pane>\
         </tabs>\
         <panel id="node-metadata" v-if="currentNodeMetadata"\
@@ -185,6 +189,10 @@ var TopologyComponent = {
         <panel id="edge-metadata" v-if="currentEdge"\
                title="Metadata">\
           <object-detail :object="currentEdge.metadata"></object-detail>\
+        </panel>\
+        <panel id="docker-metadata" v-if="currentNodeDocker"\
+               title="Docker">\
+          <object-detail :object="currentNodeDocker"></object-detail>\
         </panel>\
         <panel id="k8s-metadata" v-if="currentNodeK8s"\
                title="K8s">\
@@ -235,6 +243,7 @@ var TopologyComponent = {
 
   data: function() {
     return {
+      dynamicFilter: [],
       topologyTimeContext: 0,
       topologyTime: null,
       topologyDate: '',
@@ -250,6 +259,7 @@ var TopologyComponent = {
       metadataCollapseState: {
         IPV4: false,
         IPV6: false,
+        LinkFlags: false,
         'Neutron.IPV4': false,
         'Neutron.IPV6': false,
       },
@@ -343,6 +353,10 @@ var TopologyComponent = {
         self.topologyFilterQuery();
       }
     });
+
+    if (self.isK8SEnabled()) {
+      self.setk8sNamespacesFilter();
+    }
   },
 
   beforeDestroy: function() {
@@ -401,13 +415,18 @@ var TopologyComponent = {
     currentNodeMetadata: function() {
       if (!this.currentNode) return null;
       return this.extractMetadata(this.currentNode.metadata,
-        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'RoutingTable', 'Features', 'K8s']);
+        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'RoutingTable', 'Features', 'K8s', 'Docker']);
     },
 
     currentNodeFlowsQuery: function() {
       if (this.currentNodeMetadata && this.currentNode.isCaptureAllowed())
         return "G.Flows().Has('NodeTID', '" + this.currentNode.metadata.TID + "').Sort()";
       return null;
+    },
+
+    currentNodeDocker: function() {
+      if (!this.currentNodeMetadata || !this.currentNode.metadata.Docker) return null;
+      return this.currentNode.metadata.Docker;
     },
 
     currentNodeK8s: function() {
@@ -462,6 +481,10 @@ var TopologyComponent = {
 
     isSSHEnabled: function() {
       return app.getConfigValue('ssh_enabled');
+    },
+
+    isK8SEnabled: function() {
+      return app.getConfigValue('k8s_enabled')
     },
 
     metadataLinks: function(m) {
@@ -522,25 +545,77 @@ var TopologyComponent = {
        return str.indexOf(suffix, str.length - suffix.length) !== -1;
     },
 
+    setk8sNamespacesFilter: function() {
+      var self = this;
+      // get k8s namespaces using API
+      this.$topologyQuery("G.V().Has('Manager','k8s','Type', 'namespace')")
+        .then(function(data) {
+          var namespacesAsJsonFilter = '{"Name":"k8s namespace", "Type":"combobox", "value":{'
+          data.forEach(function(namespace) {
+            var namespaceName = namespace["Metadata"]["Name"]
+            var namespaceGremlin = 'G.V().Has(\'Namespace\',\'' + namespaceName + '\')'
+            namespacesAsJsonFilter += '"' + namespaceName + '":"' + namespaceGremlin + '",'
+            })
+          namespacesAsJsonFilter = namespacesAsJsonFilter.slice(0, -1);
+          namespacesAsJsonFilter += '}}'
+          self.dynamicFilter.push(namespacesAsJsonFilter)
+          self.setGremlinFavoritesFromConfig()
+         })
+        .catch(function() {});
+    },
+
+    addFilter: function(label, gremlin) {
+      var options = $(".topology-gremlin-favorites");
+      options.append($("<option/>").val(label).attr('gremlin', gremlin));
+    },
+
+    gremlinK8sTypes: function(types) {
+        return "G.V()"
+          + ".Has('Manager', Regex('k8s|istio'))" 
+          + ".Has('Namespace', Ne('kube-system')).Has('Namespace', Ne('istio-system'))"
+          + ".Has('Type', Regex('" + types.join("|") + "'))";
+    },
+
+    addFilterK8sTypes: function(label, types) {
+        this.addFilter("k8s " + label, this.gremlinK8sTypes(types));
+    },
+
     setGremlinFavoritesFromConfig: function() {
       var self = this;
       var options = $(".topology-gremlin-favorites");
-
+      options.children().remove();
       if (typeof(Storage) !== "undefined" && localStorage.preferences) {
         var favorites = JSON.parse(localStorage.preferences).favorites;
         if (favorites) {
           $.each(favorites, function(i, f) {
-            options.append($("<option/>").text(f.name).val(f.expression));
+            self.addFilter(f.name, f.expression);
           });
         }
       }
 
       var favorites = app.getConfigValue('topology.favorites');
-      if (!favorites || favorites.length == 0) return;
+      if (favorites) {
+        $.each(favorites, function(key, value) {
+          self.addFilter(key, value);
+        });
+      }
 
-      $.each(favorites, function(key, value) {
-        options.append($("<option/>").text(key).val(value));
-      });
+      if (self.isK8SEnabled()) {
+        self.addFilterK8sTypes("all", []);
+        self.addFilterK8sTypes("compute", ["cluster", "container", "namespace", "node", "pod"]);
+        self.addFilterK8sTypes("deployment", ["cluster", "deployment", "job", "namespace", "node", "pod", "replicaset", "replicationcontroller", "statefulset"]);
+        self.addFilterK8sTypes("compute", ["cluster", "container", "namespace", "networkpolicy", "pod"]);
+        self.addFilterK8sTypes("service", ["cluster", "endpoints", "ingress",  "namespace", "node", "pod", "service"]);
+        self.addFilterK8sTypes("storage", ["cluster", "persistentvolume", "persistentvolumeclaim", "storageclass"]);
+      }
+
+      for (var i = 0, len = self.dynamicFilter.length; i < len; i++) {
+        filter = JSON.parse(self.dynamicFilter[i])
+        $.each(filter["value"], function(key, value) {
+          let label = filter["Name"] + ": " + key
+          self.addFilter(label, value);
+        });
+      }
 
       var default_filter = app.getConfigValue('topology.default_filter');
       if (default_filter) {
@@ -561,6 +636,7 @@ var TopologyComponent = {
       var opts = document.getElementById(listId).childNodes;
       for (var i = 0; i < opts.length; i++) {
         if (opts[i].value === val) {
+          this.topologyFilter = opts[i].getAttribute("gremlin");
           if (e.target.id === "topology-filter") {
             this.topologyFilterQuery();
           } else if (e.target.id === "topology-highlight") {

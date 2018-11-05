@@ -29,19 +29,19 @@ import (
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
 )
 
-// DockerProbe describes a Docker topology graph that enhance the graph
-type DockerProbe struct {
+// Probe describes a Docker topology graph that enhance the graph
+type Probe struct {
 }
 
 // Start the probe
-func (probe *DockerProbe) Start() {
+func (probe *Probe) Start() {
 }
 
 // Stop the probe
-func (probe *DockerProbe) Stop() {
+func (probe *Probe) Stop() {
 }
 
-// NewDockerProbe creates a new topology Docker probe
-func NewDockerProbe(nsProbe *ns.NetNSProbe, dockerURL string) (*DockerProbe, error) {
+// NewProbe creates a new topology Docker probe
+func NewProbe(nsProbe *ns.Probe, dockerURL string) (*Probe, error) {
 	return nil, common.ErrNotImplemented
 }

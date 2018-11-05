@@ -8,103 +8,106 @@ var PreferenceComponent = {
 
   template: '\
     <form class="form-preference" @submit.prevent="save">\
-      <div class="form-group">\
+      <div class="form-group preference-field">\
         <label for="theme">Theme</label>\
-        <select id="theme" v-model="preferences.theme" class="form-control input-sm">\
+        <select id="theme" v-model="preferences.theme" class="form-control custom-select">\
           <option value="dark">Dark</option>\
           <option value="light">Light</option>\
         </select>\
+      </div>\
+      <div class="form-group preference-field">\
         <label for="default-favorite">Favorite Gremlin Expressions</label>\
         <a><i class="fa fa-question help-text" aria-hidden="true" title="Filter and highlight gremlin queries, displayed in the left panel"></i></a>\
         <div v-for="favorite in preferences.favorites">\
           <div class="form-group">\
             <div class="input-group">\
-              <label class="input-group-addon">Name: </label>\
-              <input class="form-control" v-model="favorite.name"/>\
+              <label class="input-group-addon filter-title">Name: </label>\
+              <input class="form-control filter-field" v-model="favorite.name"/>\
               <span class="input-group-btn">\
-                <button class="btn btn-danger" type="button" @click="removeFavorite(favorite)" title="Delete favorite expression">\
+                <button class="btn btn-filter" type="button" @click="removeFavorite(favorite)" title="Delete favorite expression">\
                   <i class="fa fa-trash-o" aria-hidden="true"></i>\
                 </button>\
               </span>\
             </div>\
-            <div class="input-group favorite-field">\
-              <label class="input-group-addon">Filter:  </label>\
-              <input class="form-control" v-model="favorite.expression"/>\
+            <div class="input-group filter-components">\
+              <label class="input-group-addon filter-title">Filter:  </label>\
+              <input class="form-control filter-field" v-model="favorite.expression"/>\
             </div>\
           </div>\
         </div>\
-        <button class="btn btn-primary btn-round-xs btn-xs" type="button" @click="addFavorite" title="Add new favorite expression">+</button>\
+        <button class="btn btn-primary spl-btn" type="button" @click="addFavorite" title="Add new favorite expression">+ Add New Expression</button>\
       </div>\
-      <div class="form-group">\
+      <div class="form-group preference-field">\
         <label for="bw-threshold">Bandwidth Threshold</label>\
         <a><i class="fa fa-question help-text" aria-hidden="true" title="bandwidth threshold mode (relative/absolute)"></i></a>\
-        <select id="bw-threshold" v-model="preferences.bandwidthThreshold" class="form-control input-sm">\
+        <select id="bw-threshold" v-model="preferences.bandwidthThreshold" class="form-control custom-select">\
           <option value="absolute">Absolute</option>\
           <option value="relative">Relative</option>\
         </select>\
       </div>\
       <div v-if="preferences.bandwidthThreshold == \'absolute\'">\
-        <div class="form-group">\
+        <div class="form-group preference-field">\
           <label for="bw-abs-active">Bandwidth Absolute Active</label>\
           <a><i class="fa fa-question help-text" aria-hidden="true" title="Active threshold in kbps"></i></a>\
           <input id="bw-abs-active" type="number" class="form-control input-sm" v-model.number="preferences.bandwidthAbsoluteActive" min="0"/>\
         </div>\
-        <div class="form-group">\
+        <div class="form-group preference-field">\
           <label for="bw-abs-warning">Bandwidth Absolute Warning</label>\
           <a><i class="fa fa-question help-text" aria-hidden="true" title="Warning threshold in kbps"></i></a>\
           <input id="bw-abs-warning" type="number" class="form-control input-sm" v-model.number="preferences.bandwidthAbsoluteWarning" min="0"/>\
         </div>\
-        <div class="form-group">\
+        <div class="form-group preference-field">\
           <label for="bw-abs-alert">Bandwidth Absolute Alert</label>\
           <a><i class="fa fa-question help-text" aria-hidden="true" title="Alert threshold in kbps"></i></a>\
           <input id="bw-abs-alert" type="number" class="form-control input-sm" v-model.number="preferences.bandwidthAbsoluteAlert" min="0"/>\
         </div>\
       </div>\
       <div v-if="preferences.bandwidthThreshold == \'relative\'">\
-        <div class="form-group">\
+        <div class="form-group preference-field">\
           <label for="bw-rel-active">Bandwidth Relative Active</label>\
           <a><i class="fa fa-question help-text" aria-hidden="true" title="Active threshold in between 0 to 1"></i></a>\
           <input id="bw-rel-active" type="number" class="form-control input-sm" v-model.number="preferences.bandwidthRelativeActive" min="0" max="1" step="0.1"/>\
         </div>\
-        <div class="form-group">\
+        <div class="form-group preference-field">\
           <label for="bw-rel-warning">Bandwidth Relative Warning</label>\
           <a><i class="fa fa-question help-text" aria-hidden="true" title="Warning threshold in between 0 to 1"></i></a>\
           <input id="bw-rel-warning" type="number" class="form-control input-sm" v-model.number="preferences.bandwidthRelativeWarning" min="0" max="1" step="0.1"/>\
         </div>\
-        <div class="form-group">\
+        <div class="form-group preference-field">\
           <label for="bw-rel-alert">Bandwidth Relative Alert</label>\
           <a><i class="fa fa-question help-text" aria-hidden="true" title="Alert threshold in between 0 to 1"></i></a>\
           <input id="bw-rel-alert" type="number" class="form-control input-sm" v-model.number="preferences.bandwidthRelativeAlert" min="0" max="1" step="0.1"/>\
         </div>\
       </div>\
-      <div class="form-group">\
+      <div class="form-group preference-field">\
         <label for="bpf-favorite">Favorite BPF Filters</label>\
         <a><i class="fa fa-question help-text" aria-hidden="true" title="BPF filters, listed in the capture form"></i></a>\
         <div v-for="f in preferences.bpf">\
           <div class="form-group">\
             <div class="input-group">\
-              <label class="input-group-addon">Name: </label>\
-              <input class="form-control" v-model="f.name"/>\
+              <label class="input-group-addon filter-title">Name: </label>\
+              <input class="form-control filter-field" v-model="f.name"/>\
               <span class="input-group-btn">\
-                <button class="btn btn-danger" type="button" @click="removeBPF(f)" title="Delete BPF filter">\
+                <button class="btn btn-filter" type="button" @click="removeBPF(f)" title="Delete BPF filter">\
                   <i class="fa fa-trash-o" aria-hidden="true"></i>\
                 </button>\
               </span>\
             </div>\
-            <div class="input-group favorite-field">\
-              <label class="input-group-addon">Filter:  </label>\
-              <input class="form-control" v-model="f.expression"/>\
+            <div class="input-group filter-components">\
+              <label class="input-group-addon filter-title">Filter:  </label>\
+              <input class="form-control filter-field" v-model="f.expression"/>\
             </div>\
           </div>\
         </div>\
-        <button class="btn btn-primary btn-round-xs btn-xs" type="button" @click="addBPF" title="Add new BPF">+</button>\
+        <button class="btn btn-primary spl-btn" type="button" @click="addBPF" title="Add new BPF">+ Add New BPF</button>\
       </div>\
+      <hr>\
       <div class="button-holder row">\
-        <button class="btn btn-lg btn-primary" type="button" @click="saveToFile" title="download preferences to local file"> Export</button>\
+        <button class="btn btn-lg btn-primary spl-btn" type="button" @click="saveToFile" title="download preferences to local file"> Export</button>\
         <input type="file" @change="openfile($event)" id="file_selector" style="display:none;">\
-        <button class="btn btn-lg btn-primary btn-group-pref" type="button" @click="uploadFile" title="upload preferences from local file"> Import</button>\
-        <button class="btn btn-lg btn-primary" type="submit" title="save in local storage">Save</button>\
-        <button class="btn btn-lg btn-danger" type="button" @click="cancel"> Cancel</button>\
+        <button class="btn btn-lg btn-primary btn-group-pref spl-btn" type="button" @click="uploadFile" title="upload preferences from local file"> Import</button>\
+        <button class="btn btn-lg btn-primary" style="float: right" type="submit" title="save in local storage">Save</button>\
+        <button class="btn btn-lg btn-danger" style="float: right" type="button" @click="cancel"> Cancel</button>\
       </div>\
     </form>\
   ',

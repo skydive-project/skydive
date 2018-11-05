@@ -75,19 +75,21 @@ Vue.component('dynamic-table', {
         </table>\
       </div>\
       <div class="dynamic-table-actions">\
-        <button-dropdown b-class="btn-xs" :auto-close="false">\
-          <span slot="button-text">\
-            <i class="fa fa-cog" aria-hidden="true"></i>\
-          </span>\
-          <li v-for="(field, index) in toggleEntries">\
-            <a href="#" @click="toggleField(field, index)">\
-              <small><i class="fa fa-check text-success pull-right"\
-                 aria-hidden="true" v-show="field.show"></i>\
-              {{field.label}}</small>\
-            </a>\
-          </li>\
-        </button-dropdown>\
         <slot name="actions"></slot>\
+        <div class="dynmic-table-actions-item">\
+          <button-dropdown b-class="btn-xs" :auto-close="false">\
+            <span slot="button-text">\
+              <i class="fa fa-cog" aria-hidden="true"></i>\
+            </span>\
+            <li v-for="(field, index) in toggleEntries">\
+              <a href="#" @click="toggleField(field, index)">\
+                <small><i class="fa fa-check text-success pull-right"\
+                  aria-hidden="true" v-show="field.show"></i>\
+                {{field.label}}</small>\
+              </a>\
+            </li>\
+          </button-dropdown>\
+        </div>\
       </div>\
     </div>\
     <div v-else class="alert-danger">{{error}}</div>\

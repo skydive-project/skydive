@@ -43,6 +43,8 @@ type OvsClient struct {
 
 // OvsMonitorHandler describes an OVS Monitor interface mechanism
 type OvsMonitorHandler interface {
+	OnConnected(monitor *OvsMonitor)
+	OnDisconnected(monitor *OvsMonitor)
 	OnOvsBridgeAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
 	OnOvsBridgeDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
 	OnOvsBridgeUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
@@ -52,6 +54,54 @@ type OvsMonitorHandler interface {
 	OnOvsPortAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
 	OnOvsPortDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
 	OnOvsPortUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
+}
+
+// DefaultOvsMonitorHandler default implementation of an handler
+type DefaultOvsMonitorHandler struct {
+}
+
+// OnConnected default implementation
+func (d *DefaultOvsMonitorHandler) OnConnected(monitor *OvsMonitor) {
+}
+
+// OnDisconnected default implementation
+func (d *DefaultOvsMonitorHandler) OnDisconnected(monitor *OvsMonitor) {
+}
+
+// OnOvsBridgeAdd default implementation
+func (d *DefaultOvsMonitorHandler) OnOvsBridgeAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
+// OnOvsBridgeDel default implementation
+func (d *DefaultOvsMonitorHandler) OnOvsBridgeDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
+// OnOvsBridgeUpdate default implementation
+func (d *DefaultOvsMonitorHandler) OnOvsBridgeUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
+//OnOvsInterfaceAdd default implementation
+func (d *DefaultOvsMonitorHandler) OnOvsInterfaceAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
+// OnOvsInterfaceDel default implementation
+func (d *DefaultOvsMonitorHandler) OnOvsInterfaceDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
+// OnOvsInterfaceUpdate default implementation
+func (d *DefaultOvsMonitorHandler) OnOvsInterfaceUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
+//OnOvsPortAdd default implementation
+func (d *DefaultOvsMonitorHandler) OnOvsPortAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
+//OnOvsPortDel default implementation
+func (d *DefaultOvsMonitorHandler) OnOvsPortDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
+//OnOvsPortUpdate default implementation
+func (d *DefaultOvsMonitorHandler) OnOvsPortUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
 // OvsMonitor describes an OVS client Monitor
@@ -99,7 +149,13 @@ func (n Notifier) Echo([]interface{}) {
 func (n Notifier) Disconnected(c *libovsdb.OvsdbClient) {
 	/* trigger re-connection */
 	atomic.StoreUint64(&n.monitor.OvsClient.connected, 0)
-	logging.GetLogger().Warningf("Disconnected from OVSDB")
+	logging.GetLogger().Warning("Disconnected from OVSDB")
+
+	n.monitor.Lock()
+	for _, handler := range n.monitor.MonitorHandlers {
+		handler.OnDisconnected(n.monitor)
+	}
+	n.monitor.Unlock()
 }
 
 // Exec execute a transaction on the OVS database
@@ -408,12 +464,16 @@ func (o *OvsMonitor) monitorOvsdb() error {
 	}
 	o.OvsClient.Lock()
 	o.OvsClient.ovsdb = ovsdb
+	o.OvsClient.Unlock()
 
 	atomic.StoreUint64(&o.OvsClient.connected, 1)
 
+	for _, handler := range o.MonitorHandlers {
+		handler.OnConnected(o)
+	}
+
 	notifier := Notifier{monitor: o}
 	ovsdb.Register(notifier)
-	o.OvsClient.Unlock()
 
 	requests := make(map[string]libovsdb.MonitorRequest)
 	err = o.setMonitorRequests("Bridge", &requests)
@@ -447,7 +507,7 @@ func (o *OvsMonitor) startMonitoring() error {
 	o.ticker = time.NewTicker(ConnectionPollInterval)
 
 	if err := o.monitorOvsdb(); err != nil {
-		logging.GetLogger().Warningf("Could not connect to OVSDB, will retry every %s", ConnectionPollInterval.String())
+		logging.GetLogger().Warningf("Could not connect to OVSDB(%s), will retry every %s", err, ConnectionPollInterval.String())
 	}
 
 	for {
@@ -487,9 +547,9 @@ func (o *OvsMonitor) StopMonitoring() {
 }
 
 // NewOvsMonitor creates a new monitoring probe agent on target
-func NewOvsMonitor(protcol string, target string) *OvsMonitor {
+func NewOvsMonitor(protocol string, target string) *OvsMonitor {
 	return &OvsMonitor{
-		Protocol:        protcol,
+		Protocol:        protocol,
 		Target:          target,
 		OvsClient:       &OvsClient{ovsdb: nil, connected: 0},
 		bridgeCache:     make(map[string]string),

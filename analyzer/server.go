@@ -41,7 +41,7 @@ import (
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/packet_injector"
+	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/enhancers"
@@ -84,10 +84,10 @@ type Server struct {
 	replicationEndpoint *TopologyReplicationEndpoint
 	alertServer         *alert.Server
 	onDemandClient      *ondemand.OnDemandProbeClient
-	piClient            *packet_injector.PacketInjectorClient
+	piClient            *packetinjector.Client
 	topologyManager     *usertopology.TopologyManager
 	flowServer          *FlowServer
-	probeBundle         *probe.ProbeBundle
+	probeBundle         *probe.Bundle
 	storage             storage.Storage
 	embeddedEtcd        *etcd.EmbeddedEtcd
 	etcdClient          *etcd.Client
@@ -226,7 +226,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	hserver, err := shttp.NewServerFromConfig(common.AnalyzerService)
+	hserver, err := config.NewHTTPServer(common.AnalyzerService)
 	if err != nil {
 		return nil, err
 	}
@@ -237,6 +237,7 @@ func NewServerFromConfig() (*Server, error) {
 	uiServer.AddGlobalVar("ui", config.Get("ui"))
 	uiServer.AddGlobalVar("flow-metric-keys", (&flow.FlowMetric{}).GetFields())
 	uiServer.AddGlobalVar("interface-metric-keys", (&topology.InterfaceMetric{}).GetFields())
+	uiServer.AddGlobalVar("probes", config.Get("analyzer.topology.probes"))
 
 	name := config.GetString("analyzer.topology.backend")
 	if len(name) == 0 {
@@ -255,10 +256,10 @@ func NewServerFromConfig() (*Server, error) {
 
 	g := graph.NewGraphFromConfig(cached, common.AnalyzerService)
 
-	clusterAuthOptions := AnalyzerClusterAuthenticationOpts()
+	clusterAuthOptions := ClusterAuthenticationOpts()
 
 	clusterAuthBackendName := config.GetString("analyzer.auth.cluster.backend")
-	clusterAuthBackend, err := shttp.NewAuthenticationBackendByName(clusterAuthBackendName)
+	clusterAuthBackend, err := config.NewAuthenticationBackendByName(clusterAuthBackendName)
 	if err != nil {
 		return nil, err
 	}
@@ -267,20 +268,20 @@ func NewServerFromConfig() (*Server, error) {
 	clusterAuthBackend.SetDefaultUserRole("admin")
 
 	apiAuthBackendName := config.GetString("analyzer.auth.api.backend")
-	apiAuthBackend, err := shttp.NewAuthenticationBackendByName(apiAuthBackendName)
+	apiAuthBackend, err := config.NewAuthenticationBackendByName(apiAuthBackendName)
 	if err != nil {
 		return nil, err
 	}
 
 	uiServer.RegisterLoginRoute(apiAuthBackend)
 
-	agentWSServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/agent", clusterAuthBackend))
+	agentWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/agent", clusterAuthBackend))
 	_, err = NewTopologyAgentEndpoint(agentWSServer, cached, g)
 	if err != nil {
 		return nil, err
 	}
 
-	publisherWSServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/publisher", apiAuthBackend))
+	publisherWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/publisher", apiAuthBackend))
 	_, err = NewTopologyPublisherEndpoint(publisherWSServer, g)
 	if err != nil {
 		return nil, err
@@ -289,8 +290,11 @@ func NewServerFromConfig() (*Server, error) {
 	tableClient := flow.NewWSTableClient(agentWSServer)
 
 	storage, err := storage.NewStorageFromConfig(etcdClient)
+	if err != nil {
+		return nil, err
+	}
 
-	replicationWSServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/replication", clusterAuthBackend))
+	replicationWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/replication", clusterAuthBackend))
 	replicationEndpoint, err := NewTopologyReplicationEndpoint(replicationWSServer, clusterAuthOptions, cached, g)
 	if err != nil {
 		return nil, err
@@ -304,8 +308,8 @@ func NewServerFromConfig() (*Server, error) {
 	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
 
-	subscriberWSServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/subscriber", apiAuthBackend))
-	topology.NewTopologySubscriberEndpoint(subscriberWSServer, g, tr)
+	subscriberWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
+	topology.NewSubscriberEndpoint(subscriberWSServer, g, tr)
 
 	probeBundle, err := NewTopologyProbeBundleFromConfig(g)
 	if err != nil {
@@ -326,7 +330,7 @@ func NewServerFromConfig() (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	piClient := packet_injector.NewPacketInjectorClient(agentWSServer, etcdClient, piAPIHandler, g)
+	piClient := packetinjector.NewClient(agentWSServer, etcdClient, piAPIHandler, g)
 
 	nodeAPIHandler, err := api.RegisterNodeRuleAPI(apiServer, g, apiAuthBackend)
 	if err != nil {
@@ -392,9 +396,12 @@ func NewServerFromConfig() (*Server, error) {
 	return s, nil
 }
 
-func AnalyzerClusterAuthenticationOpts() *shttp.AuthenticationOpts {
+// ClusterAuthenticationOpts returns auth info to connect to an analyzer
+// from the configuration
+func ClusterAuthenticationOpts() *shttp.AuthenticationOpts {
 	return &shttp.AuthenticationOpts{
 		Username: config.GetString("analyzer.auth.cluster.username"),
 		Password: config.GetString("analyzer.auth.cluster.password"),
+		Cookie:   config.GetStringMapString("http.cookie"),
 	}
 }

@@ -85,7 +85,7 @@ type EBPFProbesHandler struct {
 
 func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, updatedAt int64) *flow.Flow {
 	f := flow.NewFlow()
-	f.Init(common.UnixMillis(ebpfFlow.start), p.probeNodeTID, flow.FlowUUIDs{})
+	f.Init(common.UnixMillis(ebpfFlow.start), p.probeNodeTID, flow.UUIDs{})
 	f.Last = common.UnixMillis(ebpfFlow.last)
 
 	layersFlag := uint8(kernFlow.layers)
@@ -177,10 +177,10 @@ func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, up
 			ID:   uint32(id),
 		}
 		if f.Network != nil && f.Network.Protocol == flow.FlowProtocol_IPV4 {
-			f.ICMP.Type = flow.ICMPV4TypeToFlowICMPType(kind)
+			f.ICMP.Type = flow.ICMPv4TypeToFlowICMPType(kind)
 			f.LayersPath += "/ICMPv4"
 		} else {
-			f.ICMP.Type = flow.ICMPV6TypeToFlowICMPType(kind)
+			f.ICMP.Type = flow.ICMPv6TypeToFlowICMPType(kind)
 			f.LayersPath += "/ICMPv6"
 		}
 	}
@@ -203,7 +203,7 @@ func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, up
 	hasher.Write(C.GoBytes(unsafe.Pointer(&kernFlow.key), C.sizeof___u64))
 	key := hex.EncodeToString(hasher.Sum(nil))
 
-	f.UpdateUUID(key, flow.FlowOpts{})
+	f.UpdateUUID(key, flow.Opts{})
 
 	return f
 }
@@ -298,7 +298,7 @@ func (p *EBPFProbe) stop() {
 	p.quit <- true
 }
 
-func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+func (p *EBPFProbesHandler) registerProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 	if _, ok := p.probes[n.ID]; ok {
 		return nil
 	}
@@ -380,6 +380,14 @@ func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture,
 		e.OnStopped()
 	}()
 	return nil
+}
+
+func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+	err := p.registerProbe(n, capture, e)
+	if err != nil {
+		go e.OnError(err)
+	}
+	return err
 }
 
 func (p *EBPFProbesHandler) unregisterProbe(id graph.Identifier) error {

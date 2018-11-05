@@ -25,63 +25,33 @@ package k8s
 import (
 	"fmt"
 
-	"github.com/skydive-project/skydive/filters"
-	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 
 	"k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/kubernetes"
 )
 
-const nodeNameField = detailsField + ".Spec.NodeName"
-
-type podProbe struct {
-	DefaultKubeCacheEventHandler
-	*KubeCache
-	graph            *graph.Graph
-	containerIndexer *graph.MetadataIndexer
-	nodeIndexer      *graph.MetadataIndexer
+type podHandler struct {
+	graph.DefaultGraphListener
+	graph *graph.Graph
+	cache *ResourceCache
 }
 
-func newPodIndexerByHost(g *graph.Graph) *graph.MetadataIndexer {
-	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "pod"}, nodeNameField)
+func (h *podHandler) Dump(obj interface{}) string {
+	pod := obj.(*v1.Pod)
+	return fmt.Sprintf("pod{Namespace: %s, Name: %s}", pod.Namespace, pod.Name)
 }
 
-func newPodIndexerByNamespace(g *graph.Graph) *graph.MetadataIndexer {
-	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "pod"}, "Namespace")
-}
+func (h *podHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
+	pod := obj.(*v1.Pod)
 
-func newPodIndexerByName(g *graph.Graph) *graph.MetadataIndexer {
-	filter := filters.NewAndFilter(
-		filters.NewTermStringFilter("Type", "pod"),
-		filters.NewNotNullFilter("Namespace"),
-		filters.NewNotNullFilter("Name"))
-	m := graph.NewGraphElementFilter(filter)
-	return graph.NewMetadataIndexer(g, m, "Namespace", "Name")
-}
-
-func podUID(pod *v1.Pod) graph.Identifier {
-	return graph.Identifier(pod.GetUID())
-}
-
-func dumpPod2(namespace, name string) string {
-	return fmt.Sprintf("pod{Namespace: %s, Name: %s}", namespace, name)
-}
-
-func dumpPod(pod *v1.Pod) string {
-	return dumpPod2(pod.GetNamespace(), pod.GetName())
-}
-
-func (p *podProbe) newMetadata(pod *v1.Pod) graph.Metadata {
-	m := NewMetadata(Manager, "pod", pod.Namespace, pod.Name, pod)
+	m := NewMetadata(Manager, "pod", pod, pod.Name, pod.Namespace)
+	m.SetField("Node", pod.Spec.NodeName)
 
 	podIP := pod.Status.PodIP
 	if podIP != "" {
 		m.SetField("IP", podIP)
 	}
-
-	m.SetField("Node", pod.Spec.NodeName)
 
 	reason := string(pod.Status.Phase)
 	if pod.Status.Reason != "" {
@@ -89,111 +59,9 @@ func (p *podProbe) newMetadata(pod *v1.Pod) graph.Metadata {
 	}
 	m.SetField("Status", reason)
 
-	return m
+	return graph.Identifier(pod.GetUID()), m
 }
 
-func (p *podProbe) linkNodeToPod(pod *v1.Pod, podNode *graph.Node) {
-	nodeNodes, _ := p.nodeIndexer.Get(pod.Spec.NodeName)
-	if len(nodeNodes) == 0 {
-		return
-	}
-	linkNodeToPod(p.graph, nodeNodes[0], podNode)
-}
-
-func (p *podProbe) onAdd(obj interface{}) {
-	pod, ok := obj.(*v1.Pod)
-	if !ok {
-		return
-	}
-
-	podNode := NewNode(p.graph, podUID(pod), p.newMetadata(pod))
-
-	containerNodes, _ := p.containerIndexer.Get(pod.Namespace, pod.Name)
-	for _, containerNode := range containerNodes {
-		AddOwnershipLink(Manager, p.graph, podNode, containerNode)
-	}
-
-	p.linkNodeToPod(pod, podNode)
-}
-
-func (p *podProbe) OnAdd(obj interface{}) {
-	pod, ok := obj.(*v1.Pod)
-	if !ok {
-		return
-	}
-
-	p.graph.Lock()
-	defer p.graph.Unlock()
-
-	p.onAdd(obj)
-	logging.GetLogger().Debugf("Added %s", dumpPod(pod))
-}
-
-func (p *podProbe) OnUpdate(oldObj, newObj interface{}) {
-	oldPod := oldObj.(*v1.Pod)
-	newPod := newObj.(*v1.Pod)
-
-	p.graph.Lock()
-	defer p.graph.Unlock()
-
-	podNode := p.graph.GetNode(podUID(newPod))
-	if podNode == nil {
-		logging.GetLogger().Debugf("Updating (re-adding) node for %s", dumpPod(newPod))
-		p.onAdd(newObj)
-		return
-	}
-
-	if oldPod.Spec.NodeName == "" && newPod.Spec.NodeName != "" {
-		p.linkNodeToPod(newPod, podNode)
-	}
-
-	AddMetadata(p.graph, podNode, newPod)
-	logging.GetLogger().Debugf("Updated %s", dumpPod(newPod))
-}
-
-func (p *podProbe) OnDelete(obj interface{}) {
-	if pod, ok := obj.(*v1.Pod); ok {
-		p.graph.Lock()
-		if podNode := p.graph.GetNode(podUID(pod)); podNode != nil {
-			p.graph.DelNode(podNode)
-		}
-		p.graph.Unlock()
-		logging.GetLogger().Debugf("Deleted %s", dumpPod(pod))
-	}
-}
-
-func linkPodsToNode(g *graph.Graph, host *graph.Node, pods []*graph.Node) {
-	for _, pod := range pods {
-		linkNodeToPod(g, host, pod)
-	}
-}
-
-func linkNodeToPod(g *graph.Graph, node, pod *graph.Node) {
-	AddLinkTry(g, node, pod, NewEdgeMetadata(Manager))
-}
-
-func (p *podProbe) Start() {
-	p.containerIndexer.Start()
-	p.nodeIndexer.Start()
-	p.KubeCache.Start()
-}
-
-func (p *podProbe) Stop() {
-	p.containerIndexer.Stop()
-	p.nodeIndexer.Stop()
-	p.KubeCache.Stop()
-}
-
-func newPodKubeCache(handler cache.ResourceEventHandler) *KubeCache {
-	return NewKubeCache(getClientset().Core().RESTClient(), &v1.Pod{}, "pods", handler)
-}
-
-func newPodProbe(g *graph.Graph) probe.Probe {
-	p := &podProbe{
-		graph:            g,
-		containerIndexer: newContainerIndexer(g),
-		nodeIndexer:      newNodeIndexer(g),
-	}
-	p.KubeCache = newPodKubeCache(p)
-	return p
+func newPodProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
+	return NewResourceCache(clientset.CoreV1().RESTClient(), &v1.Pod{}, "pods", g, &podHandler{graph: g})
 }

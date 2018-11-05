@@ -48,6 +48,7 @@ type TopologyManager struct {
 	graph       *graph.Graph
 }
 
+// DefToMetadata converts a string in k1=v1,k2=v2,... format to a metadata object
 func DefToMetadata(def string, metadata graph.Metadata) (graph.Metadata, error) {
 	if def == "" {
 		return metadata, nil
@@ -135,7 +136,7 @@ func (tm *TopologyManager) nodeID(node *types.NodeRule) graph.Identifier {
 
 func (tm *TopologyManager) createNode(node *types.NodeRule) error {
 	id := tm.nodeID(node)
-	common.SetField(node.Metadata, "TID", id)
+	common.SetField(node.Metadata, "TID", string(id))
 
 	//check node already exist
 	if n := tm.graph.GetNode(id); n != nil {
@@ -238,8 +239,13 @@ func (tm *TopologyManager) handleEdgeRuleRequest(action string, resource types.R
 			logging.GetLogger().Errorf("Source or Destination node not found")
 			return
 		}
-		if link := tm.graph.GetFirstLink(src[0], dst[0], edge.Metadata); link != nil {
-			tm.graph.DelEdge(link)
+
+		for {
+			if link := tm.graph.GetFirstLink(src[0], dst[0], edge.Metadata); link != nil {
+				tm.graph.DelEdge(link)
+			} else {
+				return
+			}
 		}
 	}
 }

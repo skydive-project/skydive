@@ -82,6 +82,14 @@ func ToInt64(i interface{}) (int64, error) {
 		return int64(v), nil
 	case uint:
 		return int64(v), nil
+	case int8:
+		return int64(v), nil
+	case uint8:
+		return int64(v), nil
+	case int16:
+		return int64(v), nil
+	case uint16:
+		return int64(v), nil
 	case int32:
 		return int64(v), nil
 	case uint32:
@@ -605,4 +613,52 @@ func structFieldKeys(t reflect.Type, prefix string) []string {
 // StructFieldKeys returns field names of a structure
 func StructFieldKeys(i interface{}) []string {
 	return structFieldKeys(reflect.TypeOf(i), "")
+}
+
+// LookupPath lookup through the given obj according to the given path
+// return the value found if the kind matches
+func LookupPath(obj interface{}, path string, kind reflect.Kind) (reflect.Value, bool) {
+	nodes := strings.Split(path, ".")
+
+	var name string
+	value := reflect.ValueOf(obj)
+
+LOOP:
+	for _, node := range nodes {
+		name = node
+		if value.Kind() == reflect.Struct {
+			t := value.Type()
+
+			for i := 0; i != t.NumField(); i++ {
+				if t.Field(i).Name == node {
+					value = value.Field(i)
+					if value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr {
+						value = value.Elem()
+					}
+
+					continue LOOP
+				}
+			}
+		} else {
+			break LOOP
+		}
+	}
+
+	if name != nodes[len(nodes)-1] {
+		return value, false
+	}
+
+	if kind == reflect.Interface {
+		return value, true
+	}
+
+	// convert result kind to int for all size of interger as then
+	// only a int64 version will be retrieve by value.Int()
+	rk := value.Kind()
+	switch rk {
+	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		rk = reflect.Int
+	}
+
+	return value, rk == kind
 }

@@ -42,12 +42,17 @@ import (
 // ExtraAssetPrefix is used for extra assets
 const ExtraAssetPrefix = "/extra-statics"
 
+// ExtraAsset describes an extra asset to by exported by the server
 type ExtraAsset struct {
 	Filename string
 	Ext      string
 	Content  []byte
 }
 
+// Server describes the HTTP server for the Skydive UI
+// Extra assets to be served by the server can be specified
+// Global var is a map of variables that will be used
+// when processing Golang templates for the page
 type Server struct {
 	sync.RWMutex
 	httpServer  *shttp.Server
@@ -55,6 +60,7 @@ type Server struct {
 	globalVars  map[string]interface{}
 }
 
+// AddGlobalVar adds a global variable with the provided name and value
 func (s *Server) AddGlobalVar(key string, v interface{}) {
 	s.Lock()
 	s.globalVars[key] = v
@@ -207,10 +213,12 @@ func (s *Server) serveLoginHandlerFunc(authBackend shttp.AuthenticationBackend) 
 	}
 }
 
+// RegisterLoginRoute registers the login route with the provided auth backend
 func (s *Server) RegisterLoginRoute(authBackend shttp.AuthenticationBackend) {
 	s.httpServer.Router.HandleFunc("/login", s.serveLoginHandlerFunc(authBackend))
 }
 
+// NewServer returns a new Web server that serves the Skydive UI
 func NewServer(server *shttp.Server, assetsFolder string) *Server {
 	router := server.Router
 	s := &Server{
@@ -231,8 +239,6 @@ func NewServer(server *shttp.Server, assetsFolder string) *Server {
 	// the user to the correct page
 	routes := []shttp.Route{
 		{Path: "/topology", Method: "GET", HandlerFunc: s.ServeIndex},
-		{Path: "/conversation", Method: "GET", HandlerFunc: s.ServeIndex},
-		{Path: "/discovery", Method: "GET", HandlerFunc: s.ServeIndex},
 		{Path: "/preference", Method: "GET", HandlerFunc: s.ServeIndex},
 		{Path: "/status", Method: "GET", HandlerFunc: s.ServeIndex},
 	}

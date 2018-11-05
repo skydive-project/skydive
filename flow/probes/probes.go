@@ -33,6 +33,7 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+// ErrProbeNotCompiled is thrown when a flow probe was not compiled within the binary
 var ErrProbeNotCompiled = fmt.Errorf("probe is not compiled within skydive")
 
 // FlowProbe defines flow probe mechanism
@@ -46,6 +47,7 @@ type FlowProbe interface {
 type FlowProbeEventHandler interface {
 	OnStarted()
 	OnStopped()
+	OnError(err error)
 }
 
 // FlowProbeTableAllocator allocates table and set the table update callback
@@ -59,7 +61,8 @@ func (a *FlowProbeTableAllocator) Alloc(nodeTID string, opts flow.TableOpts) *fl
 	return a.TableAllocator.Alloc(a.fcpool.SendFlows, nodeTID, opts)
 }
 
-func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) *probe.ProbeBundle {
+// NewFlowProbeBundle returns a new bundle of flow probes
+func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) *probe.Bundle {
 	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket", "dpdk", "ebpf", "ovsmirror"}
 	logging.GetLogger().Infof("Flow probes: %v", list)
 
@@ -72,7 +75,7 @@ func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAl
 		fcpool:         fcpool,
 	}
 
-	fb := probe.NewProbeBundle(make(map[string]probe.Probe))
+	fb := probe.NewBundle(make(map[string]probe.Probe))
 
 	for _, t := range list {
 		if fb.GetProbe(t) != nil {
@@ -133,5 +136,6 @@ func tableOptsFromCapture(capture *types.Capture) flow.TableOpts {
 		IPDefrag:       capture.IPDefrag,
 		ReassembleTCP:  capture.ReassembleTCP,
 		LayerKeyMode:   layerKeyMode,
+		ExtraLayers:    capture.ExtraLayers,
 	}
 }

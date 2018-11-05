@@ -23,24 +23,15 @@
 package k8s
 
 import (
-	corev1 "k8s.io/api/core/v1"
+	"sync"
+	"time"
 
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
-)
 
-func dumpObject(obj interface{}) string {
-	switch obj := obj.(type) {
-	case *corev1.Namespace:
-		return dumpNamespace(obj)
-	case *corev1.Pod:
-		return dumpPod(obj)
-	default:
-		return "<nil>"
-	}
-}
+	"k8s.io/apimachinery/pkg/util/runtime"
+)
 
 func int32ValueOrDefault(value *int32, defaultValue int32) int32 {
 	if value == nil {
@@ -51,77 +42,101 @@ func int32ValueOrDefault(value *int32, defaultValue int32) int32 {
 
 // Probe for tracking k8s events
 type Probe struct {
-	bundle *probe.ProbeBundle
+	graph     *graph.Graph
+	manager   string
+	subprobes map[string]Subprobe
+	linkers   []probe.Probe
 }
 
-type ProbeHandler func(g *graph.Graph) probe.Probe
-type ProbeMap map[string]ProbeHandler
-
-// ProcessProbeBundle using config will create the runtime probes map
-func (m *ProbeMap) newProbeBundle(g *graph.Graph, context string) *probe.ProbeBundle {
-	configProbes := config.GetStringSlice(context + ".probes")
-	if len(configProbes) == 0 {
-		for name := range *m {
-			configProbes = append(configProbes, name)
-		}
-	}
-	logging.GetLogger().Infof("%s probes: %v", context, configProbes)
-
-	probes := make(map[string]probe.Probe)
-	for _, name := range configProbes {
-		if ctor, ok := (*m)[name]; ok {
-			probes[name] = ctor(g)
-		} else {
-			logging.GetLogger().Errorf("skipping unsupported %s probe %v", context, name)
-		}
-	}
-	return probe.NewProbeBundle(probes)
+// Subprobe describes a probe for a specific Kubernetes resource
+// It must implement the ListenerHandler interface so that you
+// listen for creation/update/removal of a resource
+type Subprobe interface {
+	probe.Probe
+	graph.ListenerHandler
 }
 
 // Start k8s probe
 func (p *Probe) Start() {
-	p.bundle.Start()
+	for _, linker := range p.linkers {
+		linker.Start()
+	}
+
+	for _, subprobe := range p.subprobes {
+		subprobe.Start()
+	}
 }
 
 // Stop k8s probe
 func (p *Probe) Stop() {
-	p.bundle.Stop()
+	for _, linker := range p.linkers {
+		linker.Stop()
+	}
+
+	for _, subprobe := range p.subprobes {
+		subprobe.Stop()
+	}
 }
 
-// NewProbeHelper create the Probe for tracking events
-func NewProbeHelper(g *graph.Graph, context string, m *ProbeMap) (*Probe, error) {
+// AppendClusterLinkers appends newly created cluster linker per type
+func (p *Probe) AppendClusterLinkers(types ...string) {
+	if clusterLinker := newClusterLinker(p.graph, p.manager, types...); clusterLinker != nil {
+		p.linkers = append(p.linkers, clusterLinker)
+	}
+}
+
+// AppendNamespaceLinkers appends newly created namespace linker per type
+func (p *Probe) AppendNamespaceLinkers(types ...string) {
+	if namespaceLinker := newNamespaceLinker(p.graph, p.manager, types...); namespaceLinker != nil {
+		p.linkers = append(p.linkers, namespaceLinker)
+	}
+}
+
+// NewProbe creates the probe for tracking k8s events
+func NewProbe(g *graph.Graph, manager string, subprobes map[string]Subprobe, linkers []probe.Probe) *Probe {
 	return &Probe{
-		bundle: m.newProbeBundle(g, context),
-	}, nil
+		graph:     g,
+		manager:   manager,
+		subprobes: subprobes,
+		linkers:   linkers,
+	}
 }
 
-// NewProbe create the Probe for tracking k8s events
-func NewProbe(g *graph.Graph) (*Probe, error) {
-	err := initClientset()
-	if err != nil {
-		return nil, err
+func logOnError(err error) {
+	logging.GetLogger().Warning(err)
+}
+
+type errorThrottle struct {
+	period   time.Duration
+	lastLock sync.RWMutex
+	last     time.Time
+}
+
+func (r *errorThrottle) onError(error) {
+	r.lastLock.RLock()
+	d := time.Since(r.last)
+	r.lastLock.RUnlock()
+
+	if d < r.period {
+		time.Sleep(r.period - d)
 	}
 
-	name2ctor := ProbeMap{
-		"cluster":               newClusterProbe,
-		"container":             newContainerProbe,
-		"cronjob":               newCronJobProbe,
-		"daemonset":             newDaemonSetProbe,
-		"deployment":            newDeploymentProbe,
-		"endpoints":             newEndpointsProbe,
-		"ingress":               newIngressProbe,
-		"job":                   newJobProbe,
-		"namespace":             newNamespaceProbe,
-		"networkpolicy":         newNetworkPolicyProbe,
-		"node":                  newNodeProbe,
-		"persistentvolume":      newPersistentVolumeProbe,
-		"persistentvolumeclaim": newPersistentVolumeClaimProbe,
-		"pod":                   newPodProbe,
-		"replicaset":            newReplicaSetProbe,
-		"replicationcontroller": newReplicationControllerProbe,
-		"service":               newServiceProbe,
-		"statefulset":           newStatefulSetProbe,
-		"storageclass":          newStorageClassProbe,
+	r.lastLock.Lock()
+	r.last = time.Now()
+	r.lastLock.Unlock()
+}
+
+func muteInternalErrors() {
+	throttle := errorThrottle{
+		period: time.Second,
+		last:   time.Now(),
 	}
-	return NewProbeHelper(g, "k8s", &name2ctor)
+	runtime.ErrorHandlers = []func(error){
+		logOnError,
+		throttle.onError,
+	}
+}
+
+func init() {
+	muteInternalErrors()
 }

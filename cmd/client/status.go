@@ -23,18 +23,19 @@
 package client
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 
 	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/logging"
 
 	"github.com/spf13/cobra"
 )
 
+// StatusCmd implents the skydive 'status' command that
+// return the status of an analyzer by quering its API
 var StatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show analyzer status",
@@ -42,27 +43,23 @@ var StatusCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		resp, err := client.Request("GET", "status", nil, nil)
 		if err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
 			data, _ := ioutil.ReadAll(resp.Body)
-			logging.GetLogger().Errorf("Failed to get status, %s: %s", resp.Status, data)
-			os.Exit(1)
+			exitOnError(fmt.Errorf("Failed to get status, %s: %s", resp.Status, data))
 		}
 
 		var status analyzer.Status
 		if err := common.JSONDecode(resp.Body, &status); err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		printJSON(&status)

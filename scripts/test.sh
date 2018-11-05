@@ -58,18 +58,31 @@ test_capture() {
     fi
     uuid=$( echo -n "$result" | jq -r .UUID )
 
-    # wait a bit for flows
-    sleep 5
+    # wait a bit and generate flows
+    for i in {1..10}; do
+        count=$( $skydive client query "G.V().Has('Capture.State', 'active').Count()" )
+         if [ ! -z "$count" ] && [ $count -ne 0 ]; then
+            break
+         fi
+         sleep 5
+    done
+
+    ips=$( $skydive client query "$gremlin.Values('IPV4')" | jq -r '.[] | @sh' )
+    for ip in $ips; do
+        ping -c 5 $( echo $ip | tr -d "'" | cut -d '/' -f 1 ) > /dev/null
+    done
 
     count=$( $skydive client query "G.Flows().Count()" )
     if [ $? -ne 0 ]; then
-        failed "flow request error"
+        intfs=$( $skydive client query "$gremlin" | jq .[].Metadata.Name )
+        failed "flow request error, interfaces: $intfs"
     else
         success "flow request succeed"
     fi
     
     if [ -z "$count" ] || [ $count -eq 0 ]; then
-        failed "no flow found"
+        intfs=$( $skydive client query "$gremlin" | jq .[].Metadata.Name )
+        failed "no flow found, interfaces: $intfs"
     else
         success "$count flows found"
     fi
@@ -98,6 +111,15 @@ test_injection() {
     fi
     capture_uuid=$( echo -n "$result" | jq -r .UUID )
 
+    # wait a bit and generate flows
+    for i in {1..10}; do
+        count=$( $skydive client query "G.V().Has('Capture.State', 'active').Count()" )
+         if [ ! -z "$count" ] && [ $count -ne 0 ]; then
+            break
+         fi
+         sleep 5
+    done
+
     result=$( $skydive client inject-packet create --count 30 --interval 1000 --id 9999 --src "G.V('$intf')" --dst "G.V('$intf')" )
     if [ $? -ne 0 ]; then
         failed "packet injection create request error"
@@ -106,19 +128,18 @@ test_injection() {
     fi
     injection_uuid=$( echo -n "$result" | jq -r .UUID )
 
-
     # wait a bit for flows
     sleep 5
 
     count=$( $skydive client query "G.V('$intf').Flows().Has('ICMP.ID', 9999).Count()" )
     if [ $? -ne 0 ]; then
-        failed "flow request error"
+        failed "flow request error, interface: $intf"
     else
         success "flow request succeed"
     fi
     
     if [ -z "$count" ] || [ $count -eq 0 ]; then
-        failed "no flow found"
+        failed "no flow found, interface: $intf"
     else
         success "$count flows found"
     fi

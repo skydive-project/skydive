@@ -25,83 +25,26 @@ package istio
 import (
 	"fmt"
 
-	kiali "github.com/hunchback/kiali/kubernetes"
-	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/probe"
+	kiali "github.com/kiali/kiali/kubernetes"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
-
-	"k8s.io/client-go/tools/cache"
 )
 
-type destinationRulesProbe struct {
-	k8s.DefaultKubeCacheEventHandler
-	*k8s.KubeCache
-	graph *graph.Graph
+type destinationRuleHandler struct {
 }
 
-func dumpDestinationRule(dr *kiali.DestinationRule) string {
+// Map graph node to k8s resource
+func (h *destinationRuleHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
+	dr := obj.(*kiali.DestinationRule)
+	return graph.Identifier(dr.GetUID()), k8s.NewMetadata(Manager, "destinationrule", dr, dr.Name, dr.Namespace)
+}
+
+// Dump k8s resource
+func (h *destinationRuleHandler) Dump(obj interface{}) string {
+	dr := obj.(*kiali.DestinationRule)
 	return fmt.Sprintf("destinationrule{Namespace: %s, Name: %s}", dr.Namespace, dr.Name)
 }
 
-func (p *destinationRulesProbe) newMetadata(dr *kiali.DestinationRule) graph.Metadata {
-	return newMetadata("destinationrule", dr.Namespace, dr.Name, dr)
-}
-
-func destinationRulesUID(dr *kiali.DestinationRule) graph.Identifier {
-	return graph.Identifier(dr.GetUID())
-}
-
-func (p *destinationRulesProbe) OnAdd(obj interface{}) {
-	if dr, ok := obj.(*kiali.DestinationRule); ok {
-		p.graph.Lock()
-		defer p.graph.Unlock()
-
-		k8s.NewNode(p.graph, destinationRulesUID(dr), p.newMetadata(dr))
-		logging.GetLogger().Debugf("Added %s", dumpDestinationRule(dr))
-	}
-}
-
-func (p *destinationRulesProbe) OnUpdate(oldObj, newObj interface{}) {
-	if dr, ok := newObj.(*kiali.DestinationRule); ok {
-		p.graph.Lock()
-		defer p.graph.Unlock()
-
-		if drNode := p.graph.GetNode(destinationRulesUID(dr)); drNode != nil {
-			k8s.AddMetadata(p.graph, drNode, dr)
-			logging.GetLogger().Debugf("Updated %s", dumpDestinationRule(dr))
-		}
-	}
-}
-
-func (p *destinationRulesProbe) OnDelete(obj interface{}) {
-	if dr, ok := obj.(*kiali.DestinationRule); ok {
-		p.graph.Lock()
-		defer p.graph.Unlock()
-
-		if drNode := p.graph.GetNode(destinationRulesUID(dr)); drNode != nil {
-			p.graph.DelNode(drNode)
-			logging.GetLogger().Debugf("Deleted %s", dumpDestinationRule(dr))
-		}
-	}
-}
-
-func (p *destinationRulesProbe) Start() {
-	p.KubeCache.Start()
-}
-
-func (p *destinationRulesProbe) Stop() {
-	p.KubeCache.Stop()
-}
-
-func newDestinationRuleKubeCache(handler cache.ResourceEventHandler) *k8s.KubeCache {
-	return k8s.NewKubeCache(getClient().GetIstioNetworkingApi(), &kiali.DestinationRule{}, "destinationrules", handler)
-}
-
-func newDestinationRuleProbe(g *graph.Graph) probe.Probe {
-	p := &destinationRulesProbe{
-		graph: g,
-	}
-	p.KubeCache = newDestinationRuleKubeCache(p)
-	return p
+func newDestinationRuleProbe(client *kiali.IstioClient, g *graph.Graph) k8s.Subprobe {
+	return k8s.NewResourceCache(client.GetIstioNetworkingApi(), &kiali.DestinationRule{}, "destinationrules", g, &destinationRuleHandler{})
 }

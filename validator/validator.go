@@ -64,7 +64,6 @@ var (
 	RawPacketLimitNotValid = func(min, max uint32) error {
 		return valid.TextErr{Err: fmt.Errorf("A valid raw packet limit size is > %d && <= %d", min, max)}
 	}
-
 	//LayerKeyModeNotValid validator
 	LayerKeyModeNotValid = func() error {
 		return valid.TextErr{Err: errors.New("Not a valid layer key mode")}

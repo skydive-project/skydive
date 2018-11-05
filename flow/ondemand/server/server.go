@@ -49,7 +49,7 @@ type OnDemandProbeServer struct {
 	graph.DefaultGraphListener
 	ws.DefaultSpeakerEventHandler
 	Graph        *graph.Graph
-	Probes       *probe.ProbeBundle
+	Probes       *probe.Bundle
 	clientPool   *ws.StructClientPool
 	activeProbes map[graph.Identifier]*activeProbe
 }
@@ -94,7 +94,7 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *types.Captur
 	fprobe, err := o.getProbe(n, capture)
 	if fprobe == nil {
 		if err != nil {
-			logging.GetLogger().Error(err.Error())
+			logging.GetLogger().Error(err)
 		}
 		return false
 	}
@@ -114,7 +114,7 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *types.Captur
 	}
 
 	if err := fprobe.RegisterProbe(n, capture, activeProbe); err != nil {
-		logging.GetLogger().Debugf("Failed to register flow probe: %s", err.Error())
+		logging.GetLogger().Errorf("Failed to register flow probe: %s", err)
 		return false
 	}
 
@@ -134,9 +134,20 @@ func (o *OnDemandProbeServer) unregisterProbe(n *graph.Node) bool {
 		return false
 	}
 
-	if err := probe.fprobe.UnregisterProbe(n, probe); err != nil {
-		logging.GetLogger().Debugf("Failed to unregister flow probe: %s", err.Error())
+	name, _ := n.GetFieldString("Name")
+	if name == "" {
+		logging.GetLogger().Debugf("Unable to register flow probe, name of node unknown %s", n.ID)
+		return false
 	}
+
+	logging.GetLogger().Debugf("Attempting to unregister probe on node %s", name)
+
+	if err := probe.fprobe.UnregisterProbe(n, probe); err != nil {
+		logging.GetLogger().Debugf("Failed to unregister flow probe: %s", err)
+	}
+
+	// in any case notify that the capture stopped even if it was in error
+	go probe.OnStopped()
 
 	o.Lock()
 	delete(o.activeProbes, n.ID)
@@ -149,6 +160,16 @@ func (o *OnDemandProbeServer) unregisterProbe(n *graph.Node) bool {
 func (p *activeProbe) OnStarted() {
 	p.graph.Lock()
 	p.graph.AddMetadata(p.node, "Capture.State", "active")
+	p.graph.Unlock()
+}
+
+// OnError FlowProbeEventHandler implementation
+func (p *activeProbe) OnError(err error) {
+	p.graph.Lock()
+	tr := p.graph.StartMetadataTransaction(p.node)
+	tr.AddMetadata("Capture.State", "error")
+	tr.AddMetadata("Capture.Error", err.Error())
+	tr.Commit()
 	p.graph.Unlock()
 }
 
@@ -247,7 +268,7 @@ func (o *OnDemandProbeServer) Stop() {
 }
 
 // NewOnDemandProbeServer creates a new Ondemand probes server based on graph and websocket
-func NewOnDemandProbeServer(fb *probe.ProbeBundle, g *graph.Graph, pool *ws.StructClientPool) (*OnDemandProbeServer, error) {
+func NewOnDemandProbeServer(fb *probe.Bundle, g *graph.Graph, pool *ws.StructClientPool) (*OnDemandProbeServer, error) {
 	return &OnDemandProbeServer{
 		Graph:        g,
 		Probes:       fb,

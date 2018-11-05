@@ -30,8 +30,10 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-var InvalidSchema = errors.New("Invalid schema")
+// ErrInvalidSchema is return when a JSON schema is invalid
+var ErrInvalidSchema = errors.New("Invalid schema")
 
+// SchemaValidator validates graph nodes and edges using a JSON schema
 type SchemaValidator struct {
 	nodeSchema gojsonschema.JSONLoader
 	edgeSchema gojsonschema.JSONLoader
@@ -43,19 +45,23 @@ func (v *SchemaValidator) validate(obj interface{}, schema gojsonschema.JSONLoad
 	if err != nil {
 		return err
 	} else if !result.Valid() {
-		return InvalidSchema
+		return ErrInvalidSchema
 	}
 	return nil
 }
 
+// ValidateNode valides a graph node
 func (v *SchemaValidator) ValidateNode(node *graph.Node) error {
 	return v.validate(node, v.nodeSchema)
 }
 
+// ValidateEdge valides a graph edge
 func (v *SchemaValidator) ValidateEdge(edge *graph.Edge) error {
 	return v.validate(edge, v.edgeSchema)
 }
 
+// NewSchemaValidator returns a new JSON schema validator for
+// graph nodes and edges. based on JSON schema bundled with go-bindata
 func NewSchemaValidator() (*SchemaValidator, error) {
 	nodeSchema, err := statics.Asset("statics/schemas/node.schema")
 	if err != nil {

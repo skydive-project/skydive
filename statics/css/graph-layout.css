@@ -1,5 +1,5 @@
 text {
-  fill: #111;
+  fill: #fff;
   pointer-events: none;
   font: 12px Helvetica, Arial, sans-serif;
   stroke-width: 0;
@@ -27,7 +27,7 @@ text {
 }
 
 .node circle {
-  fill: #c7e9c0;
+  fill: #f4e7c0;
 }
 
 .node circle.manager {
@@ -35,8 +35,13 @@ text {
   stroke: #eee;
 }
 
+.node rect {
+  stroke-width: 0;
+  fill: #1a1b1d;
+}
+
 .node text {
-  font: 20px sans-serif;
+  font: 16px monospace;
 }
 
 .selected circle {
@@ -45,7 +50,7 @@ text {
 }
 
 .ovsbridge circle, .bridge circle {
-  fill: #c6dbef;
+  fill: #a6dfcc;
 }
 
 .ovsport circle, .port circle, .bond circle {
@@ -65,7 +70,7 @@ circle.emphasized  {
 }
 
 .down circle {
-  fill: #FF3235;
+  fill: #cf5c67;
 }
 
 .link-wraps {
@@ -74,7 +79,7 @@ circle.emphasized  {
 }
 
 .link {
-  stroke: #111;
+  stroke: #000;
   stroke-width: 1.5;
 }
 
@@ -88,7 +93,7 @@ circle.emphasized  {
 
 .links path.ownership {
   /*display: none;*/
-  opacity: 0.1;
+  opacity: 0.2;
 }
 
 .links path.veth {
@@ -105,23 +110,26 @@ circle.emphasized  {
   stroke-width: 2;
 }
 
+.links path.lldp {
+  stroke: #eee;
+  stroke-width: 2;
+}
+
 .links path.networkpolicy {
-  stroke-dasharray: 5;
-  stroke-dashoffset: 80;
   stroke: rgb(102, 102, 51);
   stroke-width: 2;
-  opacity: 0.5;
+  opacity: 0.2;
 }
 
 .group {
-  fill: #517587;
-  stroke: #517587;
+  fill: #3c4145;
+  stroke: #3c4145;
   stroke-linejoin: round;
 }
 
 .groups .netns {
-  fill: #D8C3FF;
-  stroke: #D8C3FF;
+  fill: #709faf;
+  stroke: #709faf;
 }
 
 .groups .ovsbridge {
@@ -130,6 +138,11 @@ circle.emphasized  {
 }
 
 .groups .fabric {
+  fill: #FAC24D;
+  stroke: #FAC24D;
+}
+
+.groups .lldp {
   fill: #FAC24D;
   stroke: #FAC24D;
 }

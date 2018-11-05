@@ -50,6 +50,8 @@ var Capture = {
         <dd v-if="capture.HeaderSize">{{capture.HeaderSize}}</dd>\
         <dt v-if="capture.RawPacketLimit">R. Pkts</dt>\
         <dd v-if="capture.RawPacketLimit">{{capture.RawPacketLimit}}</dd>\
+        <dt v-if="capture.ExtraLayers">Extra layers</dt>\
+        <dd v-if="capture.ExtraLayers">{{extraLayers}}</dd>\
         <dt v-if="showFlows">Flows</dt>\
         <dd v-if="showFlows">\
           <flow-table :value="capture.GremlinQuery + \'.Flows().Dedup()\'"></flow-table>\
@@ -75,6 +77,10 @@ var Capture = {
     canWriteCaptures: function() {
       return app.enforce("capture", "write");
     },
+
+    extraLayers: function() {
+      return this.capture.ExtraLayers.join(', ');
+    }
 
   },
 

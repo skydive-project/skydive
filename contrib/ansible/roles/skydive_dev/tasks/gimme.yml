@@ -14,7 +14,7 @@
 - name: set GOPATH
   lineinfile:
     path: /home/vagrant/.bash_profile
-    line: 'export GOPATH=/home/vagrant'
+    line: 'export GOPATH=/home/vagrant/go'
 
 - name: run gimme once
   command: /usr/local/bin/gimme 1.9.1

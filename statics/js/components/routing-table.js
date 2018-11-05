@@ -19,9 +19,9 @@ Vue.component('routing-table', {
                    @order="order"\
                    @toggleField="toggleField">\
       <template slot="actions">\
-        <span class="form-inline">\
+        <div class="dynmic-table-actions-item">\
           <input v-model="filter" placeholder="Filter..." class="form-control input-sm input-xs"></input>\
-        </span>\
+        </div>\
       </template>\
     </dynamic-table>\
   ',

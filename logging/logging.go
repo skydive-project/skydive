@@ -24,25 +24,26 @@ package logging
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"runtime"
 	"strings"
 
-	"github.com/skydive-project/skydive/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-type logger struct {
+// Logger describes an identifier logger
+type Logger struct {
 	*zap.Logger
-	config zap.Config
-	id     string
+	id string
 }
 
-var currentLogger *logger
+var currentLogger *Logger
 
 type level int
 
+// Logging levels
 const (
 	CRITICAL level = iota
 	ERROR
@@ -52,7 +53,7 @@ const (
 	DEBUG
 )
 
-func (l *logger) log(level level, format *string, args ...interface{}) {
+func (l *Logger) logf(level level, format *string, args ...interface{}) {
 	s := l.Sugar()
 	fmt := l.id
 	if format != nil {
@@ -99,87 +100,94 @@ func getZapLevel(level string) zapcore.Level {
 }
 
 // Fatal is equivalent to l.Critical(fmt.Sprint()) followed by a call to os.Exit(1).
-func (l *logger) Fatal(args ...interface{}) {
-	l.log(CRITICAL, nil, args...)
+func (l *Logger) Fatal(args ...interface{}) {
+	l.logf(CRITICAL, nil, args...)
 	os.Exit(1)
 }
 
 // Fatalf is equivalent to l.Critical followed by a call to os.Exit(1).
-func (l *logger) Fatalf(format string, args ...interface{}) {
-	l.log(CRITICAL, &format, args...)
+func (l *Logger) Fatalf(format string, args ...interface{}) {
+	l.logf(CRITICAL, &format, args...)
 	os.Exit(1)
 }
 
 // Panic is equivalent to l.Critical(fmt.Sprint()) followed by a call to panic().
-func (l *logger) Panic(args ...interface{}) {
-	l.log(CRITICAL, nil, args...)
+func (l *Logger) Panic(args ...interface{}) {
+	l.logf(CRITICAL, nil, args...)
 	panic(fmt.Sprint(args...))
 }
 
 // Panicf is equivalent to l.Critical followed by a call to panic().
-func (l *logger) Panicf(format string, args ...interface{}) {
-	l.log(CRITICAL, &format, args...)
+func (l *Logger) Panicf(format string, args ...interface{}) {
+	l.logf(CRITICAL, &format, args...)
 	panic(fmt.Sprintf(format, args...))
 }
 
 // Critical logs a message using CRITICAL as log level.
-func (l *logger) Critical(args ...interface{}) {
-	l.log(CRITICAL, nil, args...)
+func (l *Logger) Critical(args ...interface{}) {
+	l.logf(CRITICAL, nil, args...)
 }
 
 // Criticalf logs a message using CRITICAL as log level.
-func (l *logger) Criticalf(format string, args ...interface{}) {
-	l.log(CRITICAL, &format, args...)
+func (l *Logger) Criticalf(format string, args ...interface{}) {
+	l.logf(CRITICAL, &format, args...)
 }
 
 // Error logs a message using ERROR as log level.
-func (l *logger) Error(args ...interface{}) {
-	l.log(ERROR, nil, args...)
+func (l *Logger) Error(args ...interface{}) {
+	l.logf(ERROR, nil, args...)
 }
 
 // Errorf logs a message using ERROR as log level.
-func (l *logger) Errorf(format string, args ...interface{}) {
-	l.log(ERROR, &format, args...)
+func (l *Logger) Errorf(format string, args ...interface{}) {
+	l.logf(ERROR, &format, args...)
 }
 
 // Warning logs a message using WARNING as log level.
-func (l *logger) Warning(args ...interface{}) {
-	l.log(WARNING, nil, args...)
+func (l *Logger) Warning(args ...interface{}) {
+	l.logf(WARNING, nil, args...)
 }
 
 // Warningf logs a message using WARNING as log level.
-func (l *logger) Warningf(format string, args ...interface{}) {
-	l.log(WARNING, &format, args...)
+func (l *Logger) Warningf(format string, args ...interface{}) {
+	l.logf(WARNING, &format, args...)
 }
 
 // Notice logs a message using NOTICE as log level.
-func (l *logger) Notice(args ...interface{}) {
-	l.log(NOTICE, nil, args...)
+func (l *Logger) Notice(args ...interface{}) {
+	l.logf(NOTICE, nil, args...)
 }
 
 // Noticef logs a message using NOTICE as log level.
-func (l *logger) Noticef(format string, args ...interface{}) {
-	l.log(NOTICE, &format, args...)
+func (l *Logger) Noticef(format string, args ...interface{}) {
+	l.logf(NOTICE, &format, args...)
 }
 
 // Info logs a message using INFO as log level.
-func (l *logger) Info(args ...interface{}) {
-	l.log(INFO, nil, args...)
+func (l *Logger) Info(args ...interface{}) {
+	l.logf(INFO, nil, args...)
 }
 
 // Infof logs a message using INFO as log level.
-func (l *logger) Infof(format string, args ...interface{}) {
-	l.log(INFO, &format, args...)
+func (l *Logger) Infof(format string, args ...interface{}) {
+	l.logf(INFO, &format, args...)
 }
 
 // Debug logs a message using DEBUG as log level.
-func (l *logger) Debug(args ...interface{}) {
-	l.log(DEBUG, nil, args...)
+func (l *Logger) Debug(args ...interface{}) {
+	l.logf(DEBUG, nil, args...)
 }
 
 // Debugf logs a message using DEBUG as log level.
-func (l *logger) Debugf(format string, args ...interface{}) {
-	l.log(DEBUG, &format, args...)
+func (l *Logger) Debugf(format string, args ...interface{}) {
+	l.logf(DEBUG, &format, args...)
+}
+
+// Write implements the io.Writer interface
+func (l *Logger) Write(p []byte) (n int, err error) {
+	s := strings.TrimRight(string(p), "\n")
+	l.Debug(s)
+	return len(s), nil
 }
 
 func shortCallerWithClassFunctionEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
@@ -193,8 +201,7 @@ func shortCallerWithClassFunctionEncoder(caller zapcore.EntryCaller, enc zapcore
 	enc.AppendString(path)
 }
 
-func newEncoderConfig() zapcore.EncoderConfig {
-	color := config.GetBool("logging.color")
+func newEncoderConfig(color bool) zapcore.EncoderConfig {
 	encoder := zapcore.EncoderConfig{
 		// Keys can be anything except the empty string.
 		TimeKey:        "ts",
@@ -215,103 +222,115 @@ func newEncoderConfig() zapcore.EncoderConfig {
 	return encoder
 }
 
-func newConfig() zap.Config {
+func newConfig(encoderConfig zapcore.EncoderConfig) zap.Config {
 	return zap.Config{
 		Level:            zap.NewAtomicLevelAt(zap.DebugLevel),
 		Development:      false,
 		Encoding:         "console",
-		EncoderConfig:    newEncoderConfig(),
+		EncoderConfig:    encoderConfig,
 		OutputPaths:      []string{"stderr"},
 		ErrorOutputPaths: []string{"stderr"},
 	}
 }
 
-func initLogger() (err error) {
-	cfg := config.GetConfig()
-	backendLevel := getZapLevel(cfg.GetString("logging.level"))
+// Backend describes a logging backend
+type Backend interface {
+	Core(msgPriority zap.LevelEnablerFunc, encoder zapcore.Encoder) zapcore.Core
+}
 
-	defaultEncoder := zapcore.NewConsoleEncoder(newEncoderConfig())
-	if cfg.GetString("logging.encoder") == "json" {
-		defaultEncoder = zapcore.NewJSONEncoder(newEncoderConfig())
+// LoggerConfig describes a logger configuration such as backend, log level or an encoding
+type LoggerConfig struct {
+	backend  Backend
+	logLevel string
+	encoding string
+}
+
+// NewLoggerConfig returns a logger configuration with the associated logging backend, log level and encoding
+func NewLoggerConfig(backend Backend, logLevel string, encoding string) *LoggerConfig {
+	return &LoggerConfig{backend: backend, logLevel: logLevel, encoding: encoding}
+}
+
+type fileBackend struct {
+	file *os.File
+}
+
+// Core returns a zap core
+func (b *fileBackend) Core(msgPriority zap.LevelEnablerFunc, encoder zapcore.Encoder) zapcore.Core {
+	return zapcore.NewCore(encoder, zapcore.Lock(b.file), msgPriority)
+}
+
+// NewFileBackend returns a logging backend that outputs to a file
+func NewFileBackend(filename string) (Backend, error) {
+	file, err := os.Create(filename)
+	if err != nil {
+		return nil, err
 	}
-	msgPriority := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
-		return lvl >= backendLevel
-	})
+	return &fileBackend{file: file}, nil
+}
 
-	var backends []zapcore.Core
-	for _, name := range cfg.GetStringSlice("logging.backends") {
-		switch name {
-		case "file":
-			filename := cfg.GetString("logging.file.path")
-			file, err := os.Create(filename)
-			if err != nil {
-				return err
-			}
-			encoder := defaultEncoder
-			if cfg.GetString("logging.file.encoder") == "json" {
-				encoder = zapcore.NewJSONEncoder(newEncoderConfig())
-			}
-			backends = append(backends, zapcore.NewCore(encoder, zapcore.Lock(file), msgPriority))
-		case "syslog":
-			encoder := defaultEncoder
-			if cfg.GetString("logging.syslog.encoder") == "json" {
-				encoder = zapcore.NewJSONEncoder(newEncoderConfig())
-			}
-			syslogTag := cfg.GetString("logging.syslog.tag")
-			backends, err = addSyslogBackend(backends, msgPriority, encoder, syslogTag)
-			if err != nil {
-				return err
-			}
-		case "stderr":
-			encoder := defaultEncoder
-			if cfg.GetString("logging.stderr.encoder") == "json" {
-				encoder = zapcore.NewJSONEncoder(newEncoderConfig())
-			}
-			backends = append(backends, zapcore.NewCore(encoder, zapcore.Lock(os.Stderr), msgPriority))
-		case "stdout":
-			encoder := defaultEncoder
-			if cfg.GetString("logging.stdout.encoder") == "json" {
-				encoder = zapcore.NewJSONEncoder(newEncoderConfig())
-			}
-			backends = append(backends, zapcore.NewCore(encoder, zapcore.Lock(os.Stdout), msgPriority))
+// NewStdioBackend returns a logging backend that outputs to the standard output
+func NewStdioBackend(file *os.File) Backend {
+	return &fileBackend{file: file}
+}
+
+// InitLogging initializes logging system with an identifier for the log messages,
+// whether the output should be in colored mode and a set of logger configs.
+func InitLogging(id string, color bool, loggers []*LoggerConfig) (err error) {
+	getMessagePriority := func(backendLevel zapcore.Level) zap.LevelEnablerFunc {
+		return zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
+			return lvl >= backendLevel
+		})
+	}
+
+	encoderConfig := newEncoderConfig(color)
+	consoleEncoder := zapcore.NewConsoleEncoder(encoderConfig)
+	jsonEncoder := zapcore.NewJSONEncoder(encoderConfig)
+
+	var cores []zapcore.Core
+	for _, logger := range loggers {
+		var encoder zapcore.Encoder
+		switch logger.encoding {
+		case "json":
+			encoder = jsonEncoder
 		default:
-			return fmt.Errorf("Invalid logging backend: %s", name)
+			encoder = consoleEncoder
 		}
+		backendLevel := getZapLevel(logger.logLevel)
+		cores = append(cores, logger.backend.Core(getMessagePriority(backendLevel), encoder))
 	}
 
 	newCore := zap.WrapCore(func(zapcore.Core) zapcore.Core {
-		return zapcore.NewTee(backends...)
+		return zapcore.NewTee(cores...)
 	})
 
-	c := newConfig()
-	c.Level.SetLevel(backendLevel)
-	z, _ := c.Build(
+	c := newConfig(encoderConfig)
+	z, err := c.Build(
 		newCore,
 		zap.AddCallerSkip(2),
 		// uncomment the following line to get stacktrace on error messages
 		// zap.AddStacktrace(zapcore.ErrorLevel),
 		zap.AddStacktrace(zapcore.DPanicLevel),
 	)
-	currentLogger = &logger{
-		Logger: z,
-		config: c,
-		id:     cfg.GetString("host_id") + ":" + cfg.GetString("logging.id"),
+	if err != nil {
+		return err
 	}
+
+	currentLogger = &Logger{
+		Logger: z,
+		id:     id,
+	}
+
+	log.SetOutput(currentLogger)
 
 	return nil
 }
 
 // GetLogger returns the current logger instance
-func GetLogger() (log *logger) {
-	if currentLogger == nil {
-		if err := initLogger(); err != nil {
-			panic(err)
-		}
-	}
+func GetLogger() (log *Logger) {
 	return currentLogger
 }
 
-// InitLogging initialize the logger
-func InitLogging() (err error) {
-	return initLogger()
+func init() {
+	hostname, _ := os.Hostname()
+	InitLogging(hostname, false, []*LoggerConfig{NewLoggerConfig(NewStdioBackend(os.Stderr), "INFO", "")})
 }

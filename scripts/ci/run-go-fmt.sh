@@ -21,8 +21,8 @@ if [ -n "$(${GOPATH}/bin/govendor list +u)" ]; then
 fi
 
 make lint GOMETALINTER_FLAGS="--disable-all --enable=golint"
-nbnotcomment=$(grep '"linter":"golint"' lint.json | grep 'should have comment or be unexported' | wc -l)
-if [ $nbnotcomment -gt 134 ]; then
+nbnotcomment=$(grep '"linter":"golint"' lint.json | wc -l)
+if [ $nbnotcomment -gt 0 ]; then
    cat lint.json
    echo "===> You should comment you code <==="
    exit 1

@@ -39,7 +39,7 @@ var (
 func printJSON(obj interface{}) {
 	s, err := json.MarshalIndent(obj, "", "  ")
 	if err != nil {
-		logging.GetLogger().Errorf(err.Error())
+		logging.GetLogger().Error(err)
 		os.Exit(1)
 	}
 	fmt.Println(string(s))

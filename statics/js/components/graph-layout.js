@@ -286,9 +286,9 @@ var TopologyGraphLayout = function(vm, selector) {
       pathD = a + " " + b
     }
 
-    let color = "rgb(159, 218, 64, 0.4)"
+    let color = "rgb(0, 128, 0, 0.8)"
     if (target === "deny") {
-      color = "rgba(255, 99, 71, 0.4)"
+      color = "rgba(255, 0, 0, 0.8)"
     }
 
     self.svg.append("defs").append("marker")
@@ -602,7 +602,7 @@ TopologyGraphLayout.prototype = {
   },
 
   setGroupLevel: function(group) {
-    var level = 1, g = group;
+    var level = 0, g = group;
     while (g) {
       if (level > g.depth) g.depth = level;
       level++;
@@ -803,7 +803,9 @@ TopologyGraphLayout.prototype = {
         }
       }
     }
-    if (node.metadata.Capture && !node._metadata.Capture) {
+
+    if (node.metadata.Capture && node.metadata.Capture.State === "active" && 
+        (!node._metadata.Capture || node._metadata.Capture.State !== "active")) {
       this.captureStarted(node);
     } else if (!node.metadata.Capture && node._metadata.Capture) {
       this.captureStopped(node);
@@ -1347,7 +1349,7 @@ TopologyGraphLayout.prototype = {
       if (maxLevel === 0) {
         return false;
       }
-      if ((this.collapseLevel + 1) >= maxLevel) {
+      if ((this.collapseLevel) >= maxLevel) {
         return false;
       }
 
@@ -1536,9 +1538,20 @@ TopologyGraphLayout.prototype = {
   },
 
   arrowhead: function(link) {
-    if (link.metadata.RelationType !== "networkpolicy") {
-      return "url(#arrowhead-none)";
+    let none = "url(#arrowhead-none)";
+
+    if (link.source.metadata.Type !== "networkpolicy") {
+      return none
     }
+
+    if (link.target.metadata.Type !== "pod") {
+      return none
+    }
+
+    if (link.metadata.RelationType !== "networkpolicy") {
+      return none
+    }
+
     return "url(#arrowhead-"+link.metadata.PolicyType+"-"+link.metadata.PolicyTarget+"-"+link.metadata.PolicyPoint+")";
   },
 
@@ -1579,10 +1592,22 @@ TopologyGraphLayout.prototype = {
       .attr("height", "24")
       .attr("xlink:href", this.nodeImg);
 
+    // node rectangle
+    nodeEnter.append("rect")
+      .attr("class", "node-text-rect")
+      .attr("width", function(d) { return self.nodeTitle(d).length * 10 + 10; })
+      .attr("height", 25)
+      .attr("x", function(d) {
+        return self.nodeSize(d) * 1.6 - 5;
+      })
+      .attr("y", -8)
+      .attr("rx", 4)
+      .attr("ry", 4);
+
     // node title
     nodeEnter.append("text")
       .attr("dx", function(d) {
-        return self.nodeSize(d) + 5;
+        return self.nodeSize(d) * 1.6;
       })
       .attr("dy", 10)
       .text(this.nodeTitle);

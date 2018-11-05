@@ -38,6 +38,7 @@ import (
 
 // PcapSocketProbe describes a TCP packet listener that inject packets in a flowtable
 type PcapSocketProbe struct {
+	graph     *graph.Graph
 	node      *graph.Node
 	state     int64
 	flowTable *flow.Table
@@ -83,9 +84,7 @@ func (p *PcapSocketProbe) run() {
 	}
 }
 
-// RegisterProbe registers a new probe in the graph
-func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
-
+func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
@@ -113,6 +112,7 @@ func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Cap
 	ft := p.fpta.Alloc(tid, opts)
 
 	probe := &PcapSocketProbe{
+		graph:     p.graph,
 		node:      n,
 		state:     common.StoppedState,
 		flowTable: ft,
@@ -139,6 +139,15 @@ func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Cap
 	}()
 
 	return nil
+}
+
+// RegisterProbe registers a new probe in the graph
+func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+	err := p.registerProbe(n, capture, e)
+	if err != nil {
+		go e.OnError(err)
+	}
+	return err
 }
 
 // UnregisterProbe a probe

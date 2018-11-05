@@ -30,16 +30,16 @@ import (
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
 )
 
-// LxdProbe describes a Lxd topology graph that enhance the graph
-type LxdProbe struct{}
+// Probe describes a Lxd topology graph that enhance the graph
+type Probe struct{}
 
 // Start the probe
-func (u *LxdProbe) Start() {}
+func (u *Probe) Start() {}
 
 // Stop the probe
-func (u *LxdProbe) Stop() {}
+func (u *Probe) Stop() {}
 
-// NewLxdProbe creates a new topology Lxd probe
-func NewLxdProbe(nsProbe *ns.NetNSProbe, lxdURL string) (*LxdProbe, error) {
+// NewProbe creates a new topology Lxd probe
+func NewProbe(nsProbe *ns.Probe, lxdURL string) (*Probe, error) {
 	return nil, common.ErrNotImplemented
 }

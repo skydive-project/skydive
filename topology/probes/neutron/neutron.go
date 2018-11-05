@@ -47,8 +47,8 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-// NeutronProbe describes a topology porbe that map neutron attribues in the graph
-type NeutronProbe struct {
+// Probe describes a topology probe that maps neutron attributes in the graph
+type Probe struct {
 	graph.DefaultGraphListener
 	graph           *graph.Graph
 	client          *gophercloud.ServiceClient
@@ -85,7 +85,7 @@ func (p *portMetadata) String() string {
 	return fmt.Sprintf("Name: `%s`, ID: `%s`, MAC: `%s`", p.name, p.portID, p.mac)
 }
 
-func (mapper *NeutronProbe) retrievePortMetadata(name string, node *graph.Node) portMetadata {
+func (mapper *Probe) retrievePortMetadata(name string, node *graph.Node) portMetadata {
 	// always prefer IDs
 	if ifaceID, _ := node.GetFieldString("ExtID.iface-id"); ifaceID != "" {
 		return portMetadata{name: name, portID: ifaceID}
@@ -106,7 +106,7 @@ func (mapper *NeutronProbe) retrievePortMetadata(name string, node *graph.Node) 
 	return emptyPortMetadata
 }
 
-func (mapper *NeutronProbe) retrievePort(portMd portMetadata) (port ports.Port, err error) {
+func (mapper *Probe) retrievePort(portMd portMetadata) (port ports.Port, err error) {
 	var opts ports.ListOpts
 
 	/* Determine the best way to search for the Neutron port.
@@ -147,7 +147,7 @@ func (mapper *NeutronProbe) retrievePort(portMd portMetadata) (port ports.Port, 
 	return port, nil
 }
 
-func (mapper *NeutronProbe) retrieveAttributes(portMd portMetadata) (*attributes, error) {
+func (mapper *Probe) retrieveAttributes(portMd portMetadata) (*attributes, error) {
 	port, err := mapper.retrievePort(portMd)
 	if err != nil {
 		return nil, err
@@ -193,7 +193,7 @@ func (mapper *NeutronProbe) retrieveAttributes(portMd portMetadata) (*attributes
 	return a, nil
 }
 
-func (mapper *NeutronProbe) nodeUpdater() {
+func (mapper *Probe) nodeUpdater() {
 	logging.GetLogger().Debug("Starting Neutron updater")
 
 	for nodeID := range mapper.nodeUpdaterChan {
@@ -227,7 +227,7 @@ func (mapper *NeutronProbe) nodeUpdater() {
 	logging.GetLogger().Debug("Stopping Neutron updater")
 }
 
-func (mapper *NeutronProbe) updateNode(node *graph.Node, attrs *attributes) {
+func (mapper *Probe) updateNode(node *graph.Node, attrs *attributes) {
 	mapper.graph.Lock()
 	defer mapper.graph.Unlock()
 
@@ -275,6 +275,14 @@ func (mapper *NeutronProbe) updateNode(node *graph.Node, attrs *attributes) {
 		return
 	}
 
+	if strings.HasPrefix(name, "tap") {
+		if attachedMac, _ := node.GetFieldString("ExtID.attached-mac"); attachedMac != "" {
+			tr := mapper.graph.StartMetadataTransaction(node)
+			tr.AddMetadata("PeerIntfMAC", attachedMac)
+			tr.Commit()
+		}
+	}
+
 	if !strings.HasPrefix(name, "qvo") {
 		return
 	}
@@ -286,13 +294,13 @@ func (mapper *NeutronProbe) updateNode(node *graph.Node, attrs *attributes) {
 		if attachedMac, _ := node.GetFieldString("ExtID.attached-mac"); attachedMac != "" {
 			retryFnc := func() error {
 				mapper.graph.RLock()
-				path := mapper.graph.LookupShortestPath(node, graph.Metadata{"Name": tap}, topology.Layer2Metadata)
+				path := mapper.graph.LookupShortestPath(node, graph.Metadata{"Name": tap}, topology.Layer2Metadata())
 				mapper.graph.RUnlock()
 
 				if len(path) == 0 {
 					qbr := strings.Replace(name, "qvo", "qbr", 1)
 					mapper.graph.RLock()
-					path = mapper.graph.LookupShortestPath(node, graph.Metadata{"Name": qbr}, topology.Layer2Metadata)
+					path = mapper.graph.LookupShortestPath(node, graph.Metadata{"Name": qbr}, topology.Layer2Metadata())
 					mapper.graph.RUnlock()
 
 					if len(path) == 0 {
@@ -330,7 +338,7 @@ func (mapper *NeutronProbe) updateNode(node *graph.Node, attrs *attributes) {
 }
 
 // enhanceNode enhance the graph node with neutron metadata (Name, MAC, Manager ...)
-func (mapper *NeutronProbe) enhanceNode(node *graph.Node) {
+func (mapper *Probe) enhanceNode(node *graph.Node) {
 	name, _ := node.GetFieldString("Name")
 	if name == "" {
 		return
@@ -360,12 +368,12 @@ func (mapper *NeutronProbe) enhanceNode(node *graph.Node) {
 }
 
 // OnNodeUpdated event
-func (mapper *NeutronProbe) OnNodeUpdated(n *graph.Node) {
+func (mapper *Probe) OnNodeUpdated(n *graph.Node) {
 	mapper.enhanceNode(n)
 }
 
 // OnNodeAdded event
-func (mapper *NeutronProbe) OnNodeAdded(n *graph.Node) {
+func (mapper *Probe) OnNodeAdded(n *graph.Node) {
 	name, _ := n.GetFieldString("Name")
 	attachedMAC, _ := n.GetFieldString("ExtID.attached-mac")
 	if attachedMAC == "" && strings.HasPrefix(name, "tap") {
@@ -388,12 +396,12 @@ func (mapper *NeutronProbe) OnNodeAdded(n *graph.Node) {
 }
 
 // OnNodeDeleted event
-func (mapper *NeutronProbe) OnNodeDeleted(n *graph.Node) {
+func (mapper *Probe) OnNodeDeleted(n *graph.Node) {
 	delete(mapper.portMetadata, n.ID)
 }
 
 // Start the probe
-func (mapper *NeutronProbe) Start() {
+func (mapper *Probe) Start() {
 	go func() {
 		for mapper.client == nil {
 			client, err := openstack.NewClient(mapper.opts.IdentityEndpoint)
@@ -445,13 +453,13 @@ func (mapper *NeutronProbe) Start() {
 }
 
 // Stop the probe
-func (mapper *NeutronProbe) Stop() {
+func (mapper *Probe) Stop() {
 	mapper.graph.RemoveEventListener(mapper)
 	close(mapper.nodeUpdaterChan)
 }
 
-// NewNeutronProbe creates a neutron probe that will enhance the graph
-func NewNeutronProbe(g *graph.Graph, authURL, username, password, tenantName, regionName, domainName string, availability gophercloud.Availability) (*NeutronProbe, error) {
+// NewProbe creates a neutron probe that will enhance the graph
+func NewProbe(g *graph.Graph, authURL, username, password, tenantName, regionName, domainName string, availability gophercloud.Availability) (*Probe, error) {
 	// only looking for interfaces matching the following regex as nova, neutron interfaces match this pattern
 
 	intfRegexp := regexp.MustCompile(`((tap|qr-|qg-|qvo)[a-fA-F0-9\-]+)|(vnet[0-9]+)`)
@@ -466,7 +474,7 @@ func NewNeutronProbe(g *graph.Graph, authURL, username, password, tenantName, re
 		AllowReauth:      true,
 	}
 
-	mapper := &NeutronProbe{
+	mapper := &Probe{
 		graph:           g,
 		intfRegexp:      intfRegexp,
 		nsRegexp:        nsRegexp,
@@ -482,8 +490,8 @@ func NewNeutronProbe(g *graph.Graph, authURL, username, password, tenantName, re
 	return mapper, nil
 }
 
-// NewNeutronProbeFromConfig creates a new neutron probe based on configuration
-func NewNeutronProbeFromConfig(g *graph.Graph) (*NeutronProbe, error) {
+// NewProbeFromConfig creates a new neutron probe based on configuration
+func NewProbeFromConfig(g *graph.Graph) (*Probe, error) {
 	authURL := config.GetString("agent.topology.neutron.auth_url")
 	domainName := config.GetString("agent.topology.neutron.domain_name")
 	endpointType := config.GetString("agent.topology.neutron.endpoint_type")
@@ -499,7 +507,7 @@ func NewNeutronProbeFromConfig(g *graph.Graph) (*NeutronProbe, error) {
 	}
 
 	if a, ok := endpointTypes[endpointType]; ok {
-		return NewNeutronProbe(g, authURL, username, password, tenantName, regionName, domainName, a)
+		return NewProbe(g, authURL, username, password, tenantName, regionName, domainName, a)
 	}
 
 	return nil, fmt.Errorf("Endpoint type '%s' is not valid (must be 'public', 'admin' or 'internal')", endpointType)

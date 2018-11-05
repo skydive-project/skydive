@@ -105,9 +105,10 @@ type GraphTraversalAs struct {
 	nodes          []*graph.Node
 }
 
+// KeyValueToFilter creates a filter for a key with a fixed value or a predicate
 func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 	switch v := v.(type) {
-	case *RegexGraphElementMatcher:
+	case *RegexElementMatcher:
 		// As we force anchors raise an error if anchor provided by the user
 		if strings.HasPrefix(v.regex, "^") || strings.HasSuffix(v.regex, "$") {
 			return nil, errors.New("Regex are anchored by default, ^ and $ don't have to be provided")
@@ -120,7 +121,7 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 		}
 
 		return &filters.Filter{RegexFilter: rf}, nil
-	case *NEGraphElementMatcher:
+	case *NEElementMatcher:
 		switch t := v.value.(type) {
 		case string:
 			return filters.NewNotFilter(filters.NewTermStringFilter(k, t)), nil
@@ -133,19 +134,19 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 			}
 			return filters.NewNotFilter(filters.NewTermInt64Filter(k, i)), nil
 		}
-	case *LTGraphElementMatcher:
+	case *LTElementMatcher:
 		i, err := common.ToInt64(v.value)
 		if err != nil {
 			return nil, errors.New("LT values should be of int64 type")
 		}
 		return filters.NewLtInt64Filter(k, i), nil
-	case *GTGraphElementMatcher:
+	case *GTElementMatcher:
 		i, err := common.ToInt64(v.value)
 		if err != nil {
 			return nil, errors.New("GT values should be of int64 type")
 		}
 		return filters.NewGtInt64Filter(k, i), nil
-	case *GTEGraphElementMatcher:
+	case *GTEElementMatcher:
 		i, err := common.ToInt64(v.value)
 		if err != nil {
 			return nil, errors.New("GTE values should be of int64 type")
@@ -153,7 +154,7 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 		return &filters.Filter{
 			GteInt64Filter: &filters.GteInt64Filter{Key: k, Value: i},
 		}, nil
-	case *LTEGraphElementMatcher:
+	case *LTEElementMatcher:
 		i, err := common.ToInt64(v.value)
 		if err != nil {
 			return nil, errors.New("LTE values should be of int64 type")
@@ -161,7 +162,7 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 		return &filters.Filter{
 			LteInt64Filter: &filters.LteInt64Filter{Key: k, Value: i},
 		}, nil
-	case *InsideGraphElementMatcher:
+	case *InsideElementMatcher:
 		f64, fok := common.ToInt64(v.from)
 		t64, tok := common.ToInt64(v.to)
 
@@ -170,7 +171,7 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 		}
 
 		return filters.NewAndFilter(filters.NewGtInt64Filter(k, f64), filters.NewLtInt64Filter(k, t64)), nil
-	case *OutsideGraphElementMatcher:
+	case *OutsideElementMatcher:
 		f64, fok := common.ToInt64(v.from)
 		t64, tok := common.ToInt64(v.to)
 
@@ -179,7 +180,7 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 		}
 
 		return filters.NewAndFilter(filters.NewLtInt64Filter(k, f64), filters.NewGtInt64Filter(k, t64)), nil
-	case *BetweenGraphElementMatcher:
+	case *BetweenElementMatcher:
 		f64, fok := common.ToInt64(v.from)
 		t64, tok := common.ToInt64(v.to)
 
@@ -188,7 +189,7 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 		}
 
 		return filters.NewAndFilter(filters.NewGteInt64Filter(k, f64), filters.NewLtInt64Filter(k, t64)), nil
-	case *WithinGraphElementMatcher:
+	case *WithinElementMatcher:
 		var orFilters []*filters.Filter
 		for _, val := range v.List {
 			switch v := val.(type) {
@@ -211,7 +212,7 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 		return filters.NewTermInt64Filter(k, v), nil
 	case bool:
 		return filters.NewTermBoolFilter(k, v), nil
-	case *IPV4RangeGraphElementMatcher:
+	case *IPV4RangeElementMatcher:
 		cidr, ok := v.value.(string)
 		if !ok {
 			return nil, errors.New("Ipv4Range value has to be a string")
@@ -232,61 +233,8 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 	}
 }
 
-// ParamsToMetadataFilter converts a slice to a GraphElementMatcher
-func ParamsToMetadataFilter(s ...interface{}) (graph.GraphElementMatcher, error) {
-	m, err := ParamsToMap(s...)
-	if err != nil {
-		return nil, err
-	}
-
-	return MapToMetadataFilter(m)
-}
-
-// ParamsToMetadata converts a slice to a GraphElementMatcher
-func ParamsToMetadata(s ...interface{}) (graph.Metadata, error) {
-	m, err := ParamsToMap(s...)
-	if err != nil {
-		return nil, err
-	}
-
-	return graph.Metadata(m), nil
-}
-
-// ParamsToFilter converts a slice to a filter
-func ParamsToFilter(s ...interface{}) (*filters.Filter, error) {
-	m, err := ParamsToMap(s...)
-	if err != nil {
-		return nil, err
-	}
-
-	return MapToFilter(m)
-}
-
-// MapToFilter return a AND filter of the given map
-func MapToFilter(m map[string]interface{}) (*filters.Filter, error) {
-	var lf []*filters.Filter
-	for k, v := range m {
-		filter, err := KeyValueToFilter(k, v)
-		if err != nil {
-			return nil, err
-		}
-
-		lf = append(lf, filter)
-	}
-	return filters.NewBoolFilter(filters.BoolFilterOp_AND, lf...), nil
-}
-
-// MapToMetadataFilter converts a map to a GraphElementMatcher
-func MapToMetadataFilter(m map[string]interface{}) (graph.GraphElementMatcher, error) {
-	filter, err := MapToFilter(m)
-	if err != nil {
-		return nil, err
-	}
-	return graph.NewGraphElementFilter(filter), nil
-}
-
-// ParamsToMap converts a slice to a map
-func ParamsToMap(s ...interface{}) (map[string]interface{}, error) {
+// ParamsToMetadata converts a slice to Metadata
+func paramsToMetadata(s ...interface{}) (graph.Metadata, error) {
 	if len(s)%2 != 0 {
 		return nil, fmt.Errorf("slice must be defined by pair k,v: %v", s)
 	}
@@ -301,67 +249,95 @@ func ParamsToMap(s ...interface{}) (map[string]interface{}, error) {
 		m[k] = s[i+1]
 	}
 
-	return m, nil
+	return graph.Metadata(m), nil
 }
 
-// WithinGraphElementMatcher describes a list of metadata that should match (within)
-type WithinGraphElementMatcher struct {
+// ParamsToFilter converts a slice to a filter
+func ParamsToFilter(filterOp filters.BoolFilterOp, s ...interface{}) (*filters.Filter, error) {
+	var lf []*filters.Filter
+	for i := 0; i < len(s); i += 2 {
+		k, ok := s[i].(string)
+		if !ok {
+			return nil, errors.New("keys should be of string type")
+		}
+
+		f, err := KeyValueToFilter(k, s[i+1])
+		if err != nil {
+			return nil, err
+		}
+		lf = append(lf, f)
+	}
+
+	return filters.NewBoolFilter(filterOp, lf...), nil
+}
+
+// ParamsToMetadataFilter converts a slice to a ElementMatcher
+func ParamsToMetadataFilter(filterOp filters.BoolFilterOp, s ...interface{}) (graph.ElementMatcher, error) {
+	filter, err := ParamsToFilter(filterOp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return graph.NewElementFilter(filter), nil
+}
+
+// WithinElementMatcher describes a list of metadata that should match (within)
+type WithinElementMatcher struct {
 	List []interface{}
 }
 
 // Within predicate
-func Within(s ...interface{}) *WithinGraphElementMatcher {
-	return &WithinGraphElementMatcher{List: s}
+func Within(s ...interface{}) *WithinElementMatcher {
+	return &WithinElementMatcher{List: s}
 }
 
-// WithoutGraphElementMatcher describes a list of metadata that shouldn't match (without)
-type WithoutGraphElementMatcher struct {
+// WithoutElementMatcher describes a list of metadata that shouldn't match (without)
+type WithoutElementMatcher struct {
 	list []interface{}
 }
 
 // Without predicate
-func Without(s ...interface{}) *WithoutGraphElementMatcher {
-	return &WithoutGraphElementMatcher{list: s}
+func Without(s ...interface{}) *WithoutElementMatcher {
+	return &WithoutElementMatcher{list: s}
 }
 
-// NEGraphElementMatcher describes a list of metadata that match NotEqual
-type NEGraphElementMatcher struct {
+// NEElementMatcher describes a list of metadata that match NotEqual
+type NEElementMatcher struct {
 	value interface{}
 }
 
 // Ne predicate
-func Ne(s interface{}) *NEGraphElementMatcher {
-	return &NEGraphElementMatcher{value: s}
+func Ne(s interface{}) *NEElementMatcher {
+	return &NEElementMatcher{value: s}
 }
 
-// LTGraphElementMatcher describes a list of metadata that match LessThan
-type LTGraphElementMatcher struct {
+// LTElementMatcher describes a list of metadata that match LessThan
+type LTElementMatcher struct {
 	value interface{}
 }
 
 // Lt predicate
-func Lt(s interface{}) *LTGraphElementMatcher {
-	return &LTGraphElementMatcher{value: s}
+func Lt(s interface{}) *LTElementMatcher {
+	return &LTElementMatcher{value: s}
 }
 
-// GTGraphElementMatcher describes a list of metadata that match GreaterThan
-type GTGraphElementMatcher struct {
+// GTElementMatcher describes a list of metadata that match GreaterThan
+type GTElementMatcher struct {
 	value interface{}
 }
 
 // Gt predicate
-func Gt(s interface{}) *GTGraphElementMatcher {
-	return &GTGraphElementMatcher{value: s}
+func Gt(s interface{}) *GTElementMatcher {
+	return &GTElementMatcher{value: s}
 }
 
-// LTEGraphElementMatcher describes a list of metadata that match Less Than Equal
-type LTEGraphElementMatcher struct {
+// LTEElementMatcher describes a list of metadata that match Less Than Equal
+type LTEElementMatcher struct {
 	value interface{}
 }
 
 // Lte predicate
-func Lte(s interface{}) *LTEGraphElementMatcher {
-	return &LTEGraphElementMatcher{value: s}
+func Lte(s interface{}) *LTEElementMatcher {
+	return &LTEElementMatcher{value: s}
 }
 
 // ForeverPredicate describes a entire time limit in the history
@@ -370,67 +346,67 @@ type ForeverPredicate struct{}
 // NowPredicate describes a current time in the history
 type NowPredicate struct{}
 
-// GTEGraphElementMatcher describes a list of metadata that match Greater Than Equal
-type GTEGraphElementMatcher struct {
+// GTEElementMatcher describes a list of metadata that match Greater Than Equal
+type GTEElementMatcher struct {
 	value interface{}
 }
 
 // Gte predicate
-func Gte(s interface{}) *GTEGraphElementMatcher {
-	return &GTEGraphElementMatcher{value: s}
+func Gte(s interface{}) *GTEElementMatcher {
+	return &GTEElementMatcher{value: s}
 }
 
-// InsideGraphElementMatcher describes a list of metadata that match inside the range from, to
-type InsideGraphElementMatcher struct {
+// InsideElementMatcher describes a list of metadata that match inside the range from, to
+type InsideElementMatcher struct {
 	from interface{}
 	to   interface{}
 }
 
 // Inside predicate
-func Inside(from, to interface{}) *InsideGraphElementMatcher {
-	return &InsideGraphElementMatcher{from: from, to: to}
+func Inside(from, to interface{}) *InsideElementMatcher {
+	return &InsideElementMatcher{from: from, to: to}
 }
 
-// OutsideGraphElementMatcher describes a list of metadata that match outside the range from, to
-type OutsideGraphElementMatcher struct {
+// OutsideElementMatcher describes a list of metadata that match outside the range from, to
+type OutsideElementMatcher struct {
 	from interface{}
 	to   interface{}
 }
 
 // Outside predicate
-func Outside(from, to interface{}) *OutsideGraphElementMatcher {
-	return &OutsideGraphElementMatcher{from: from, to: to}
+func Outside(from, to interface{}) *OutsideElementMatcher {
+	return &OutsideElementMatcher{from: from, to: to}
 }
 
-// BetweenGraphElementMatcher describes a list of metadata that match between the range from, to
-type BetweenGraphElementMatcher struct {
+// BetweenElementMatcher describes a list of metadata that match between the range from, to
+type BetweenElementMatcher struct {
 	from interface{}
 	to   interface{}
 }
 
 // Between predicate
-func Between(from interface{}, to interface{}) *BetweenGraphElementMatcher {
-	return &BetweenGraphElementMatcher{from: from, to: to}
+func Between(from interface{}, to interface{}) *BetweenElementMatcher {
+	return &BetweenElementMatcher{from: from, to: to}
 }
 
-// RegexGraphElementMatcher describes a list of metadata that match a regex
-type RegexGraphElementMatcher struct {
+// RegexElementMatcher describes a list of metadata that match a regex
+type RegexElementMatcher struct {
 	regex string
 }
 
 // Regex predicate
-func Regex(regex string) *RegexGraphElementMatcher {
-	return &RegexGraphElementMatcher{regex: regex}
+func Regex(regex string) *RegexElementMatcher {
+	return &RegexElementMatcher{regex: regex}
 }
 
-// IPV4RangeGraphElementMatcher matches ipv4 contained in an ipv4 range
-type IPV4RangeGraphElementMatcher struct {
+// IPV4RangeElementMatcher matches ipv4 contained in an ipv4 range
+type IPV4RangeElementMatcher struct {
 	value interface{}
 }
 
 // IPV4Range predicate
-func IPV4Range(s interface{}) *IPV4RangeGraphElementMatcher {
-	return &IPV4RangeGraphElementMatcher{value: s}
+func IPV4Range(s interface{}) *IPV4RangeElementMatcher {
+	return &IPV4RangeElementMatcher{value: s}
 }
 
 // Since describes a list of metadata that match since seconds
@@ -523,7 +499,7 @@ func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
 	t.RLock()
 	defer t.RUnlock()
 
-	g, err := t.Graph.CloneWithContext(graph.GraphContext{
+	g, err := t.Graph.CloneWithContext(graph.Context{
 		TimePoint: len(s) == 1,
 		TimeSlice: common.NewTimeSlice(common.UnixMillis(at.Add(-duration)), common.UnixMillis(at)),
 	})
@@ -537,7 +513,7 @@ func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
 // V step : [node ID]
 func (t *GraphTraversal) V(ctx StepContext, s ...interface{}) *GraphTraversalV {
 	var nodes []*graph.Node
-	var matcher graph.GraphElementMatcher
+	var matcher graph.ElementMatcher
 	var err error
 
 	if t.error != nil {
@@ -559,7 +535,7 @@ func (t *GraphTraversal) V(ctx StepContext, s ...interface{}) *GraphTraversalV {
 		}
 		nodes = []*graph.Node{node}
 	default:
-		if matcher, err = ParamsToMetadataFilter(s...); err != nil {
+		if matcher, err = ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...); err != nil {
 			return &GraphTraversalV{error: err}
 		}
 		fallthrough
@@ -741,6 +717,7 @@ func (tv *GraphTraversalV) G() *GraphTraversal {
 	return tv.GraphTraversal
 }
 
+// Select implements the SELECT gremlin step
 func (tv *GraphTraversalV) Select(ctx StepContext, keys ...interface{}) *GraphTraversalV {
 	if len(keys) == 0 {
 		return &GraphTraversalV{error: errors.New("Select requires at least one key")}
@@ -767,7 +744,7 @@ func (tv *GraphTraversalV) Select(ctx StepContext, keys ...interface{}) *GraphTr
 // E step : [edge ID]
 func (t *GraphTraversal) E(ctx StepContext, s ...interface{}) *GraphTraversalE {
 	var edges []*graph.Edge
-	var matcher graph.GraphElementMatcher
+	var matcher graph.ElementMatcher
 	var err error
 
 	if t.error != nil {
@@ -789,7 +766,7 @@ func (t *GraphTraversal) E(ctx StepContext, s ...interface{}) *GraphTraversalE {
 		}
 		edges = []*graph.Edge{edge}
 	default:
-		if matcher, err = ParamsToMetadataFilter(s...); err != nil {
+		if matcher, err = ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...); err != nil {
 			return &GraphTraversalE{error: err}
 		}
 		fallthrough
@@ -1019,8 +996,8 @@ func (tv *GraphTraversalV) ShortestPathTo(ctx StepContext, m graph.Metadata, e g
 	return sp
 }
 
-// Has step
-func (tv *GraphTraversalV) Has(ctx StepContext, s ...interface{}) *GraphTraversalV {
+// has apply either and or or filter
+func (tv *GraphTraversalV) has(filterOp filters.BoolFilterOp, ctx StepContext, s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
 	}
@@ -1037,7 +1014,7 @@ func (tv *GraphTraversalV) Has(ctx StepContext, s ...interface{}) *GraphTraversa
 		}
 		filter = filters.NewNotNullFilter(k)
 	default:
-		filter, err = ParamsToFilter(s...)
+		filter, err = ParamsToFilter(filterOp, s...)
 		if err != nil {
 			return &GraphTraversalV{error: err}
 		}
@@ -1059,6 +1036,16 @@ func (tv *GraphTraversalV) Has(ctx StepContext, s ...interface{}) *GraphTraversa
 	}
 
 	return ntv
+}
+
+// Has step produces a AND filter
+func (tv *GraphTraversalV) Has(ctx StepContext, s ...interface{}) *GraphTraversalV {
+	return tv.has(filters.BoolFilterOp_AND, ctx, s...)
+}
+
+// HasEither step produces a OR filter
+func (tv *GraphTraversalV) HasEither(ctx StepContext, s ...interface{}) *GraphTraversalV {
+	return tv.has(filters.BoolFilterOp_OR, ctx, s...)
 }
 
 // HasKey step
@@ -1097,7 +1084,7 @@ func (tv *GraphTraversalV) Both(ctx StepContext, s ...interface{}) *GraphTravers
 		return tv
 	}
 
-	metadata, err := ParamsToMetadataFilter(s...)
+	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
 		return &GraphTraversalV{error: err}
 	}
@@ -1179,7 +1166,7 @@ func (tv *GraphTraversalV) Out(ctx StepContext, s ...interface{}) *GraphTraversa
 		return tv
 	}
 
-	metadata, err := ParamsToMetadataFilter(s...)
+	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
 		return &GraphTraversalV{error: err}
 	}
@@ -1210,7 +1197,7 @@ func (tv *GraphTraversalV) OutE(ctx StepContext, s ...interface{}) *GraphTravers
 		return &GraphTraversalE{error: tv.error}
 	}
 
-	metadata, err := ParamsToMetadataFilter(s...)
+	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
 		return &GraphTraversalE{error: err}
 	}
@@ -1243,7 +1230,7 @@ func (tv *GraphTraversalV) BothE(ctx StepContext, s ...interface{}) *GraphTraver
 		return &GraphTraversalE{error: tv.error}
 	}
 
-	metadata, err := ParamsToMetadataFilter(s...)
+	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
 		return &GraphTraversalE{GraphTraversal: tv.GraphTraversal, error: err}
 	}
@@ -1274,7 +1261,7 @@ func (tv *GraphTraversalV) In(ctx StepContext, s ...interface{}) *GraphTraversal
 		return tv
 	}
 
-	metadata, err := ParamsToMetadataFilter(s...)
+	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
 		return &GraphTraversalV{error: err}
 	}
@@ -1305,7 +1292,7 @@ func (tv *GraphTraversalV) InE(ctx StepContext, s ...interface{}) *GraphTraversa
 		return &GraphTraversalE{error: tv.error}
 	}
 
-	metadata, err := ParamsToMetadataFilter(s...)
+	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
 		return &GraphTraversalE{GraphTraversal: tv.GraphTraversal, error: err}
 	}
@@ -1486,8 +1473,7 @@ func (te *GraphTraversalE) Dedup(ctx StepContext, keys ...interface{}) *GraphTra
 	return ntv
 }
 
-// Has step
-func (te *GraphTraversalE) Has(ctx StepContext, s ...interface{}) *GraphTraversalE {
+func (te *GraphTraversalE) has(filterOp filters.BoolFilterOp, ctx StepContext, s ...interface{}) *GraphTraversalE {
 	if te.error != nil {
 		return te
 	}
@@ -1504,7 +1490,7 @@ func (te *GraphTraversalE) Has(ctx StepContext, s ...interface{}) *GraphTraversa
 		}
 		filter = filters.NewNotNullFilter(k)
 	default:
-		filter, err = ParamsToFilter(s...)
+		filter, err = ParamsToFilter(filterOp, s...)
 		if err != nil {
 			return &GraphTraversalE{error: err}
 		}
@@ -1526,6 +1512,16 @@ func (te *GraphTraversalE) Has(ctx StepContext, s ...interface{}) *GraphTraversa
 	}
 
 	return nte
+}
+
+// Has step
+func (te *GraphTraversalE) Has(ctx StepContext, s ...interface{}) *GraphTraversalE {
+	return te.has(filters.BoolFilterOp_AND, ctx, s...)
+}
+
+// HasEither step
+func (te *GraphTraversalE) HasEither(ctx StepContext, s ...interface{}) *GraphTraversalE {
+	return te.has(filters.BoolFilterOp_OR, ctx, s...)
 }
 
 // HasKey step
@@ -1564,7 +1560,7 @@ func (te *GraphTraversalE) InV(ctx StepContext, s ...interface{}) *GraphTraversa
 		return &GraphTraversalV{error: te.error}
 	}
 
-	metadata, err := ParamsToMetadataFilter(s...)
+	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
 		return &GraphTraversalV{error: err}
 	}
@@ -1595,7 +1591,7 @@ func (te *GraphTraversalE) OutV(ctx StepContext, s ...interface{}) *GraphTravers
 		return &GraphTraversalV{error: te.error}
 	}
 
-	metadata, err := ParamsToMetadataFilter(s...)
+	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
 		return &GraphTraversalV{error: err}
 	}
@@ -1626,7 +1622,7 @@ func (te *GraphTraversalE) BothV(ctx StepContext, s ...interface{}) *GraphTraver
 		return &GraphTraversalV{error: te.error}
 	}
 
-	metadata, err := ParamsToMetadataFilter(s...)
+	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
 		return &GraphTraversalV{error: err}
 	}
@@ -1638,7 +1634,7 @@ func (te *GraphTraversalE) BothV(ctx StepContext, s ...interface{}) *GraphTraver
 	defer te.GraphTraversal.RUnlock()
 
 	for _, e := range te.edges {
-		parents, children := te.GraphTraversal.Graph.GetEdgeNodes(e, metadata, metadata)
+		parents, _ := te.GraphTraversal.Graph.GetEdgeNodes(e, metadata, nil)
 		for _, parent := range parents {
 			if it.Done() {
 				break
@@ -1646,6 +1642,8 @@ func (te *GraphTraversalE) BothV(ctx StepContext, s ...interface{}) *GraphTraver
 				ntv.nodes = append(ntv.nodes, parent)
 			}
 		}
+
+		_, children := te.GraphTraversal.Graph.GetEdgeNodes(e, nil, metadata)
 		for _, child := range children {
 			if it.Done() {
 				break
