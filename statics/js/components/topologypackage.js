@@ -376,10 +376,13 @@ function isUndefined(arg) {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__layout__ = __webpack_require__(31);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_0__layout__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__bridge__ = __webpack_require__(32);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_1__bridge__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__node__ = __webpack_require__(31);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_0__node__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__layout__ = __webpack_require__(34);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_1__layout__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__bridge__ = __webpack_require__(35);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_2__bridge__["a"]; });
+
 
 
 
@@ -828,7 +831,7 @@ function getHostFromSkydiveMessageWithOneNode(data) {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__strategy__ = __webpack_require__(34);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__strategy__ = __webpack_require__(37);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__strategy__["a"]; });
 
 
@@ -1549,7 +1552,7 @@ class HostTopologyDataSource {
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__config__["a"]; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__skydive_default_index__ = __webpack_require__(25);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_1__skydive_default_index__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__infra_index__ = __webpack_require__(35);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__infra_index__ = __webpack_require__(38);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_2__infra_index__["a"]; });
 
 
@@ -1906,6 +1909,7 @@ class SkydiveDefaultLayout {
         this.uiBridge.useConfig(this.config);
         this.uiBridge.useLayoutUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["b" /* LayoutUI */](selector));
         this.uiBridge.useDataManager(this.dataManager);
+        this.uiBridge.useNodeUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["c" /* NodeUI */]());
         this.uiBridge.setCollapseLevel(1);
         this.uiBridge.setMinimumCollapseLevel(1);
         this.dataManager.useLayoutContext(this.uiBridge.layoutContext);
@@ -2222,6 +2226,452 @@ function parseData(dataManager, dataType, data) {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__helpers_index__ = __webpack_require__(32);
+
+class NodeUI {
+    useLayoutContext(layoutContext) {
+        this.layoutContext = layoutContext;
+    }
+    createRoot(g) {
+        this.g = g.append("g").attr('class', 'nodes').selectAll(".node");
+        this.rootParent = g;
+    }
+    get root() {
+        return this.g;
+    }
+    tick() {
+        this.root.attr("transform", function (d) { return "translate(" + d.x + "," + d.y + ")"; });
+    }
+    update() {
+        const nodes = this.layoutContext.dataManager.nodeManager.getVisibleNodes(this.layoutContext.collapseLevel, this.layoutContext.isAutoExpand());
+        this.g = this.root.data(nodes, function (d) { return d.d3_id(); });
+        this.root.exit().remove();
+        var nodeEnter = this.root.enter()
+            .append("g")
+            .attr("class", this.nodeClass)
+            .attr("id", function (d) { return "node-" + d.d3_id(); })
+            .on("click", this.onNodeClick.bind(this))
+            .on("dblclick", this.collapseByNode.bind(this))
+            .call(window.d3.drag()
+            .on("start", this.onNodeDragStart.bind(this))
+            .on("drag", this.onNodeDrag.bind(this))
+            .on("end", this.onNodeDragEnd.bind(this)));
+        nodeEnter.append("circle")
+            .attr("r", this.nodeSize);
+        // node picto
+        nodeEnter.append("image")
+            .attr("id", function (d) { return "node-img-" + d.d3_id(); })
+            .attr("class", "picto")
+            .attr("x", -12)
+            .attr("y", -12)
+            .attr("width", "24")
+            .attr("height", "24")
+            .attr("xlink:href", this.nodeImg);
+        // node rectangle
+        nodeEnter.append("rect")
+            .attr("class", "node-text-rect")
+            .attr("width", (d) => { return this.nodeTitle(d).length * 10 + 10; })
+            .attr("height", 25)
+            .attr("x", function (d) {
+            return this.nodeSize(d) * 1.6 - 5;
+        })
+            .attr("y", -8)
+            .attr("rx", 4)
+            .attr("ry", 4);
+        // node title
+        nodeEnter.append("text")
+            .attr("dx", (d) => {
+            return this.nodeSize(d) * 1.6;
+        })
+            .attr("dy", 10)
+            .text(this.nodeTitle);
+        nodeEnter.filter(function (d) { return d.isGroupOwner(); })
+            .each(this.groupOwnerSet.bind(this));
+        nodeEnter.filter(function (d) { return d.Metadata.Capture; })
+            .each(this.captureStarted.bind(this));
+        nodeEnter.filter(function (d) { return d.Metadata.Manager; })
+            .each(this.managerSet.bind(this));
+        nodeEnter.filter(function (d) { return d.emphasized; })
+            .each(this.emphasizeNode.bind(this));
+        this.g = nodeEnter.merge(this.root);
+    }
+    stateSet(d) {
+        this.rootParent.select("#node-" + d.d3_id()).attr("class", this.nodeClass);
+    }
+    managerSet(d) {
+        var size = this.nodeSize(d);
+        var node = this.rootParent.select("#node-" + d.d3_id());
+        node.append("circle")
+            .attr("class", "manager")
+            .attr("r", 12)
+            .attr("cx", size - 2)
+            .attr("cy", size - 2);
+        node.append("image")
+            .attr("class", "manager")
+            .attr("x", size - 12)
+            .attr("y", size - 12)
+            .attr("width", 20)
+            .attr("height", 20)
+            .attr("xlink:href", this.managerImg(d));
+    }
+    captureStarted(d) {
+        var size = this.nodeSize(d);
+        this.rootParent.select("#node-" + d.d3_id()).append("image")
+            .attr("class", "capture")
+            .attr("x", -size - 8)
+            .attr("y", size - 8)
+            .attr("width", 16)
+            .attr("height", 16)
+            .attr("xlink:href", __WEBPACK_IMPORTED_MODULE_0__helpers_index__["a" /* captureIndicatorImg */]);
+    }
+    captureStopped(d) {
+        this.rootParent.select("#node-" + d.d3_id()).select('image.capture').remove();
+    }
+    collapseGroupLink(d) {
+        this.rootParent.select("#node-" + d.d3_id())
+            .attr('collapsed', d.group.collapsed)
+            .select('image.collapsexpand')
+            .attr('xlink:href', this.collapseImg);
+    }
+    groupOwnerSet(d) {
+        var self = this;
+        var o = this.rootParent.select("#node-" + d.d3_id());
+        o.append("image")
+            .attr("class", "collapsexpand")
+            .attr("width", 16)
+            .attr("height", 16)
+            .attr("x", (d) => { return -this.nodeSize(d) - 4; })
+            .attr("y", (d) => { return -this.nodeSize(d) - 4; })
+            .attr("xlink:href", this.collapseImg);
+        o.select('circle').attr("r", this.nodeSize);
+    }
+    groupOwnerUnset(d) {
+        var o = this.rootParent.select("#node-" + d.d3_id());
+        o.select('image.collapsexpand').remove();
+        o.select('circle').attr("r", this.nodeSize);
+    }
+    onNodeDragStart(d) {
+        if (!window.d3.event.active) {
+            this.layoutContext.e.emit('ui.simulation.alphatarget.restart');
+        }
+        if (window.d3.event.sourceEvent.shiftKey && d.isGroupOwner()) {
+            var i, members = d.group.members.nodes;
+            for (i = members.length - 1; i >= 0; i--) {
+                members[i].fx = members[i].x;
+                members[i].fy = members[i].y;
+            }
+        }
+        else {
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+    }
+    onNodeDrag(d) {
+        var dx = window.d3.event.x - d.fx, dy = window.d3.event.y - d.fy;
+        if (window.d3.event.sourceEvent.shiftKey && d.isGroupOwner()) {
+            var i, members = d.group.members.nodes;
+            for (i = members.length - 1; i >= 0; i--) {
+                members[i].fx += dx;
+                members[i].fy += dy;
+            }
+        }
+        else {
+            d.fx += dx;
+            d.fy += dy;
+        }
+    }
+    onNodeDragEnd(d) {
+        if (!window.d3.event.active) {
+            this.layoutContext.e.emit('ui.simulation.alphatarget');
+        }
+        if (d.isGroupOwner()) {
+            var i, members = d.group.members.nodes;
+            for (i = members.length - 1; i >= 0; i--) {
+                if (!members[i].fixed) {
+                    members[i].fx = null;
+                    members[i].fy = null;
+                }
+            }
+        }
+        else {
+            if (!d.fixed) {
+                d.fx = null;
+                d.fy = null;
+            }
+        }
+    }
+    nodeClass(d) {
+        var clazz = "node " + d.Metadata.Type;
+        if (d.Metadata.Probe)
+            clazz += " " + d.Metadata.Probe;
+        if (d.Metadata.State == "DOWN")
+            clazz += " down";
+        if (d.highlighted)
+            clazz += " highlighted";
+        if (d.selected)
+            clazz += " selected";
+        return clazz;
+    }
+    onNodeClick(d) {
+        if (window.d3.event.shiftKey)
+            return this.onNodeShiftClick(d);
+        if (window.d3.event.altKey)
+            return this.collapseByNode(d);
+        if (d.selected)
+            return;
+        this.layoutContext.e.emit('node.select', d);
+        this.selectNode(d);
+    }
+    selectNode(d) {
+        var circle = this.rootParent.select("#node-" + d.d3_id())
+            .classed('selected', true)
+            .select('circle');
+        circle.transition().duration(500).attr('r', +circle.attr('r') + 3);
+        d.selected = true;
+    }
+    unselectNode(d) {
+        var circle = this.rootParent.select("#node-" + d.d3_id())
+            .classed('selected', false)
+            .select('circle');
+        if (!circle)
+            return;
+        circle.transition().duration(500).attr('r', circle ? +circle.attr('r') - 3 : 0);
+        d.selected = false;
+    }
+    collapseByNode(d) {
+        if (d.Metadata.Type === "host") {
+            if (d.group.collapsed)
+                this.layoutContext.e.emit('host.uncollapse', d);
+            else
+                this.layoutContext.e.emit('host.collapse', d);
+        }
+        else {
+            if (d.isGroupOwner()) {
+                if (d.group) {
+                    this.layoutContext.e.emit('ui.group.collapse', d.group);
+                }
+            }
+            this.layoutContext.e.emit('ui.update');
+        }
+    }
+    nodeSize(d) {
+        var size;
+        switch (d.Metadata.Type) {
+            case "host":
+                size = 30;
+                break;
+            case "netns":
+                size = 26;
+                break;
+            case "port":
+            case "ovsport":
+                size = 22;
+                break;
+            case "switch":
+            case "ovsbridge":
+                size = 24;
+                break;
+            default:
+                size = d.isGroupOwner() ? 26 : 20;
+        }
+        if (d.selected)
+            size += 3;
+        return size;
+    }
+    nodeImg(d) {
+        var t = d.Metadata.Type || "default";
+        return (t in __WEBPACK_IMPORTED_MODULE_0__helpers_index__["d" /* nodeImgMap */]) ? __WEBPACK_IMPORTED_MODULE_0__helpers_index__["d" /* nodeImgMap */][t] : __WEBPACK_IMPORTED_MODULE_0__helpers_index__["d" /* nodeImgMap */]["default"];
+    }
+    nodeTitle(d) {
+        if (d.Metadata.Type === "host") {
+            return d.Metadata.Name.split(".")[0];
+        }
+        return d.Metadata.Name ? d.Metadata.Name.length > 12 ? d.Metadata.Name.substr(0, 12) + "..." : d.Metadata.Name : "";
+    }
+    emphasizeNodeID(d) {
+        d.emphasized = true;
+        const id = d.d3_id();
+        if (!this.rootParent.select("#node-emphasize-" + id).empty())
+            return;
+        var circle;
+        if (this.rootParent.select("#node-highlight-" + id).empty()) {
+            circle = this.rootParent.select("#node-" + id).insert("circle", ":first-child");
+        }
+        else {
+            circle = this.rootParent.select("#node-" + id).insert("circle", ":nth-child(2)");
+        }
+        circle.attr("id", "node-emphasize-" + id)
+            .attr("class", "emphasized")
+            .attr("r", (d) => { return this.nodeSize(d) + 8; });
+    }
+    deemphasizeNodeID(d) {
+        d.emphasized = false;
+        this.rootParent.select("#node-emphasize-" + d.d3_id()).remove();
+    }
+    deemphasizeNode(d) {
+        this.deemphasizeNodeID(d);
+    }
+    emphasizeNode(d) {
+        this.emphasizeNodeID(d);
+    }
+    managerImg(d) {
+        var t = d.Metadata.Orchestrator || d.Metadata.Manager || "default";
+        return (t in __WEBPACK_IMPORTED_MODULE_0__helpers_index__["b" /* managerImgMap */]) ? __WEBPACK_IMPORTED_MODULE_0__helpers_index__["b" /* managerImgMap */][t] : __WEBPACK_IMPORTED_MODULE_0__helpers_index__["b" /* managerImgMap */]["default"];
+    }
+    collapseImg(d) {
+        if (d.group && d.group.collapsed)
+            return __WEBPACK_IMPORTED_MODULE_0__helpers_index__["f" /* plusImg */];
+        return __WEBPACK_IMPORTED_MODULE_0__helpers_index__["c" /* minusImg */];
+    }
+    highlightNodeID(d) {
+        d.highlighted = true;
+        const id = d.d3_id();
+        if (!this.rootParent.select("#node-highlight-" + id).empty())
+            return;
+        this.rootParent.select("#node-" + id)
+            .insert("circle", ":first-child")
+            .attr("id", "node-highlight-" + id)
+            .attr("class", "highlighted")
+            .attr("r", (d) => { return this.nodeSize(d) + 16; });
+    }
+    unhighlightNodeID(d) {
+        const id = d.d3_id();
+        d.highlighted = false;
+        this.rootParent.select("#node-highlight-" + id).remove();
+    }
+    pinNode(d) {
+        const id = d.d3_id();
+        var size = this.nodeSize(d);
+        this.rootParent.select("#node-" + id).append("image")
+            .attr("class", "pin")
+            .attr("x", size - 12)
+            .attr("y", -size - 4)
+            .attr("width", 16)
+            .attr("height", 16)
+            .attr("xlink:href", __WEBPACK_IMPORTED_MODULE_0__helpers_index__["e" /* pinIndicatorImg */]);
+        d.fixed = true;
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+    unpinNode(d) {
+        const id = d.d3_id();
+        this.rootParent.select("#node-" + id).select('image.pin').remove();
+        d.fixed = false;
+        d.fx = null;
+        d.fy = null;
+    }
+    onNodeShiftClick(d) {
+        if (!d.fixed) {
+            this.pinNode(d);
+        }
+        else {
+            this.unpinNode(d);
+        }
+    }
+}
+/* harmony export (immutable) */ __webpack_exports__["a"] = NodeUI;
+
+
+
+/***/ }),
+/* 32 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__image__ = __webpack_require__(33);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "e", function() { return __WEBPACK_IMPORTED_MODULE_0__image__["e"]; });
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__image__["a"]; });
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_0__image__["c"]; });
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "f", function() { return __WEBPACK_IMPORTED_MODULE_0__image__["f"]; });
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "d", function() { return __WEBPACK_IMPORTED_MODULE_0__image__["d"]; });
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_0__image__["b"]; });
+
+
+
+/***/ }),
+/* 33 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+var getImagePath = function (label) {
+    return 'statics/img/' + label + '.png';
+};
+const minusImg = getImagePath('minus-outline-16');
+/* harmony export (immutable) */ __webpack_exports__["c"] = minusImg;
+
+const plusImg = getImagePath('plus-16');
+/* harmony export (immutable) */ __webpack_exports__["f"] = plusImg;
+
+const captureIndicatorImg = getImagePath('media-record');
+/* harmony export (immutable) */ __webpack_exports__["a"] = captureIndicatorImg;
+
+const pinIndicatorImg = getImagePath('pin');
+/* harmony export (immutable) */ __webpack_exports__["e"] = pinIndicatorImg;
+
+var setupFixedImages = function (labelMap) {
+    const imgMap = {};
+    Object.keys(labelMap).forEach(function (key) {
+        imgMap[key] = getImagePath(labelMap[key]);
+    });
+    return imgMap;
+};
+const nodeImgMap = setupFixedImages({
+    "host": "host",
+    "port": "port",
+    "ovsport": "port",
+    "bridge": "bridge",
+    "switch": "switch",
+    "ovsbridge": "switch",
+    "netns": "ns",
+    "veth": "veth",
+    "bond": "port",
+    "default": "intf",
+    // k8s
+    "cluster": "cluster",
+    "container": "container",
+    "cronjob": "cronjob",
+    "daemonset": "daemonset",
+    "deployment": "deployment",
+    "endpoints": "endpoints",
+    "ingress": "ingress",
+    "job": "job",
+    "node": "host",
+    "persistentvolume": "persistentvolume",
+    "persistentvolumeclaim": "persistentvolumeclaim",
+    "pod": "pod",
+    "networkpolicy": "networkpolicy",
+    "namespace": "ns",
+    "replicaset": "replicaset",
+    "replicationcontroller": "replicationcontroller",
+    "service": "service",
+    "statefulset": "statefulset",
+    "storageclass": "storageclass",
+    // istio
+    "destinationrule": "destinationrule",
+    "gateway": "gateway",
+    "quotaspec": "quotaspec",
+    "quotaspecbinding": "quotaspecbinding",
+    "serviceentry": "serviceentry",
+    "virtualservice": "virtualservice",
+});
+/* harmony export (immutable) */ __webpack_exports__["d"] = nodeImgMap;
+
+const managerImgMap = setupFixedImages({
+    "docker": "docker",
+    "lxd": "lxd",
+    "neutron": "openstack",
+    "k8s": "k8s",
+    "istio": "istio",
+});
+/* harmony export (immutable) */ __webpack_exports__["b"] = managerImgMap;
+
+
+
+/***/ }),
+/* 34 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
 class LayoutUI {
     constructor(selector) {
         this.selector = selector;
@@ -2340,11 +2790,11 @@ class LayoutUI {
 
 
 /***/ }),
-/* 32 */
+/* 35 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__layout_context__ = __webpack_require__(33);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__layout_context__ = __webpack_require__(36);
 
 class LayoutBridgeUI {
     constructor(selector) {
@@ -2370,6 +2820,9 @@ class LayoutBridgeUI {
     setMinimumCollapseLevel(level) {
         this.minimumCollapseLevel = level;
     }
+    useNodeUI(nodeUI) {
+        this.nodeUI = nodeUI;
+    }
     useDataManager(dataManager) {
         this.dataManager = dataManager;
     }
@@ -2383,8 +2836,17 @@ class LayoutBridgeUI {
         this.initialized = false;
         this.layoutUI.useLayoutContext(this.layoutContext);
         this.layoutUI.createRoot();
+        this.nodeUI.useLayoutContext(this.layoutContext);
+        this.nodeUI.createRoot(this.layoutUI.g);
         this.layoutContext.subscribeToEvent('ui.tick', this.tick.bind(this));
         this.layoutContext.subscribeToEvent('ui.update', this.invalidateGraph.bind(this));
+        this.layoutContext.subscribeToEvent('node.select', this.nodeSelected.bind(this));
+        this.layoutContext.subscribeToEvent('node.updated', this.nodeUpdated.bind(this));
+        this.layoutContext.subscribeToEvent('ui.node.highlight.byid', this.highlightNodeById.bind(this));
+        this.layoutContext.subscribeToEvent('ui.node.unhighlight.byid', this.unhighlightNodeById.bind(this));
+        this.layoutContext.subscribeToEvent('ui.node.emphasize.byid', this.emphasizeNodeById.bind(this));
+        this.layoutContext.subscribeToEvent('ui.node.deemphasize.byid', this.deemphasizeNodeById.bind(this));
+        this.layoutUI.start();
         this.intervalId = window.setInterval(() => {
             if (!this.invalidGraph) {
                 return;
@@ -2414,15 +2876,78 @@ class LayoutBridgeUI {
         return context;
     }
     tick() {
+        this.nodeUI.tick();
     }
     update() {
         if (!this.initialized) {
             return;
         }
+        this.nodeUI.update();
         this.layoutUI.restartsimulation();
+    }
+    nodeSelected(d) {
+        const activeNode = this.dataManager.nodeManager.getActive();
+        const activeEdge = this.dataManager.edgeManager.getActive();
+        if (activeEdge) {
+            activeEdge.selected = false;
+            this.e.emit('edge.select');
+        }
+        if (!activeNode || d.equalsTo(activeNode)) {
+            return;
+        }
+        this.nodeUI.unselectNode(activeNode);
+    }
+    nodeUpdated(oldNode, newNode) {
+        if (newNode.Metadata.Capture && newNode.Metadata.Capture.State === "active" && (!oldNode.Metadata.Capture || oldNode.Metadata.Capture.State !== "active")) {
+            this.nodeUI.captureStarted(newNode);
+        }
+        else if (!newNode.Metadata.Capture && oldNode.Metadata.Capture) {
+            this.nodeUI.captureStopped(newNode);
+        }
+        if (newNode.Metadata.Manager && !oldNode.Metadata.Manager) {
+            this.nodeUI.managerSet(newNode);
+        }
+        if (newNode.Metadata.State !== oldNode.Metadata.State) {
+            this.nodeUI.stateSet(newNode);
+        }
+    }
+    highlightNodeById(nodeID) {
+        const node = this.dataManager.nodeManager.getNodeById(nodeID);
+        this.nodeUI.highlightNodeID(node);
+    }
+    unhighlightNodeById(nodeID) {
+        const node = this.dataManager.nodeManager.getNodeById(nodeID);
+        this.nodeUI.unhighlightNodeID(node);
+    }
+    deemphasizeNodeById(nodeID) {
+        const node = this.dataManager.nodeManager.getNodeById(nodeID);
+        this.nodeUI.deemphasizeNodeID(node);
+    }
+    emphasizeNodeById(nodeID) {
+        const node = this.dataManager.nodeManager.getNodeById(nodeID);
+        this.nodeUI.emphasizeNodeID(node);
     }
     invalidateGraph() {
         this.invalidGraph = true;
+    }
+    showNode(d) {
+        if (d.hasType("ofrule")) {
+            return;
+        }
+        d.visible = true;
+        this.e.emit('ui.update');
+    }
+    hideNode(d) {
+        if (d.hasType("ofrule")) {
+            return;
+        }
+        d.visible = false;
+    }
+    collapseNode(d, group) {
+        this.hideNode(d);
+    }
+    uncollapseNode(d, group) {
+        this.showNode(d);
     }
 }
 /* harmony export (immutable) */ __webpack_exports__["a"] = LayoutBridgeUI;
@@ -2430,7 +2955,7 @@ class LayoutBridgeUI {
 
 
 /***/ }),
-/* 33 */
+/* 36 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -2456,7 +2981,7 @@ class LayoutContext {
 
 
 /***/ }),
-/* 34 */
+/* 37 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -2674,7 +3199,7 @@ class BandwidthStrategy {
 
 
 /***/ }),
-/* 35 */
+/* 38 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -2703,6 +3228,7 @@ class SkydiveInfraLayout {
         this.uiBridge.useConfig(this.config);
         this.uiBridge.useDataManager(this.dataManager);
         this.uiBridge.useLayoutUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["b" /* LayoutUI */](selector));
+        this.uiBridge.useNodeUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["c" /* NodeUI */]());
         this.dataManager.useLayoutContext(this.uiBridge.layoutContext);
     }
     initializer() {
