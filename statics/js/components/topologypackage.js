@@ -377,11 +377,14 @@ function isUndefined(arg) {
 
 "use strict";
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__node__ = __webpack_require__(31);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_0__node__["a"]; });
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "d", function() { return __WEBPACK_IMPORTED_MODULE_0__node__["a"]; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__layout__ = __webpack_require__(34);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_1__layout__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__bridge__ = __webpack_require__(35);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_2__bridge__["a"]; });
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_1__layout__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__link__ = __webpack_require__(35);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_2__link__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__bridge__ = __webpack_require__(36);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_3__bridge__["a"]; });
+
 
 
 
@@ -831,7 +834,7 @@ function getHostFromSkydiveMessageWithOneNode(data) {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__strategy__ = __webpack_require__(37);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__strategy__ = __webpack_require__(38);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__strategy__["a"]; });
 
 
@@ -1552,7 +1555,7 @@ class HostTopologyDataSource {
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__config__["a"]; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__skydive_default_index__ = __webpack_require__(25);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_1__skydive_default_index__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__infra_index__ = __webpack_require__(38);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__infra_index__ = __webpack_require__(39);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_2__infra_index__["a"]; });
 
 
@@ -1904,12 +1907,13 @@ class SkydiveDefaultLayout {
         this.active = false;
         this.dataSources = new __WEBPACK_IMPORTED_MODULE_0__data_source_index__["a" /* DataSourceRegistry */]();
         this.selector = selector;
-        this.uiBridge = new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["a" /* LayoutBridgeUI */](selector);
+        this.uiBridge = new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["b" /* LayoutBridgeUI */](selector);
         this.uiBridge.useEventEmitter(this.e);
         this.uiBridge.useConfig(this.config);
-        this.uiBridge.useLayoutUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["b" /* LayoutUI */](selector));
+        this.uiBridge.useLayoutUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["c" /* LayoutUI */](selector));
         this.uiBridge.useDataManager(this.dataManager);
-        this.uiBridge.useNodeUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["c" /* NodeUI */]());
+        this.uiBridge.useNodeUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["d" /* NodeUI */]());
+        this.uiBridge.useEdgeUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["a" /* EdgeUI */]());
         this.uiBridge.setCollapseLevel(1);
         this.uiBridge.setMinimumCollapseLevel(1);
         this.dataManager.useLayoutContext(this.uiBridge.layoutContext);
@@ -2794,7 +2798,249 @@ class LayoutUI {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__layout_context__ = __webpack_require__(36);
+class EdgeUI {
+    constructor() {
+        this.previousVisibleEdgeIds = [];
+        this.linkLabelData = {};
+    }
+    useLayoutContext(layoutContext) {
+        this.layoutContext = layoutContext;
+        this.bandwidthIntervalID = window.setInterval(this.updateLinkLabelHandler.bind(this), this.layoutContext.config.getValue('bandwidth').updatePeriod);
+    }
+    createRoot(g) {
+        this.root = g;
+        this.gLinkWrap = g.append("g").attr('class', 'link-wraps').selectAll(".link-wrap");
+        this.gLink = g.append("g").attr('class', 'links').selectAll(".link");
+        this.gLinkLabel = g.append("g").attr('class', 'link-labels').selectAll(".link-label");
+    }
+    tick() {
+        this.gLink.attr("d", function (d) { if (d.source.x && d.target.x)
+            return 'M ' + d.source.x + " " + d.source.y + " L " + d.target.x + " " + d.target.y; });
+        this.gLinkLabel.attr("transform", function (d) {
+            if (d.link.target.x < d.link.source.x) {
+                var bbox = this.getBBox();
+                var rx = bbox.x + bbox.width / 2;
+                var ry = bbox.y + bbox.height / 2;
+                return "rotate(180 " + rx + " " + ry + ")";
+            }
+            else {
+                return "rotate(0)";
+            }
+        });
+        this.gLinkWrap.attr('x1', function (d) { return d.link.source.x; })
+            .attr('y1', function (d) { return d.link.source.y; })
+            .attr('x2', function (d) { return d.link.target.x; })
+            .attr('y2', function (d) { return d.link.target.y; });
+    }
+    update() {
+        const visibleNodes = this.layoutContext.dataManager.nodeManager.getVisibleNodes(this.layoutContext.collapseLevel, this.layoutContext.isAutoExpand());
+        const visibleEdges = this.layoutContext.dataManager.edgeManager.getVisibleEdges(visibleNodes);
+        this.gLink = this.gLink.data(visibleEdges, function (d) { return d.d3_id(); });
+        this.gLink.exit().remove();
+        const linkEnter = this.gLink.enter()
+            .append("path")
+            .attr("id", function (d) { return "link-" + d.d3_id(); })
+            .on("click", this.onEdgeClick.bind(this))
+            .on("mouseover", this.highlightLink.bind(this))
+            .on("mouseout", this.unhighlightLink.bind(this))
+            .attr("class", this.linkClass);
+        this.gLink = linkEnter.merge(this.gLink);
+        this.gLinkWrap = this.gLinkWrap.data(this.linkWraps(), function (d) { return d.link.ID; });
+        this.gLinkWrap.exit().remove();
+        var linkWrapEnter = this.gLinkWrap.enter()
+            .append("line")
+            .attr("id", function (d) { return "link-wrap-" + d.link.d3_id(); })
+            .on("click", (d) => { this.onEdgeClick(d.link); })
+            .on("mouseover", (d) => { this.highlightLink(d.link); })
+            .on("mouseout", (d) => { this.unhighlightLink(d.link); })
+            .attr("class", this.linkWrapClass)
+            .attr("marker-end", (d) => { return this.arrowhead(d.link); });
+        this.gLinkWrap = linkWrapEnter.merge(this.gLinkWrap);
+        const visibleEdgeIds = visibleEdges.map((e) => e.ID);
+        // console.log('currently visible edges', visibleEdgeIds);
+        // console.log('visibleNodes', visibleNodes.map((n: Node) => n.Name));
+        // console.log('before visible edges', this.previousVisibleEdgeIds);
+        this.layoutContext.dataManager.edgeManager.edges.forEach((e) => {
+            if (visibleEdgeIds.indexOf(e.ID) !== -1) {
+                return;
+            }
+            if (this.previousVisibleEdgeIds.indexOf(e.ID) === -1) {
+                return;
+            }
+            // console.log('del Link', e.ID);
+            this.delLink(e);
+        });
+        this.previousVisibleEdgeIds = visibleEdgeIds;
+    }
+    linkWraps() {
+        const visibleNodes = this.layoutContext.dataManager.nodeManager.getVisibleNodes(this.layoutContext.collapseLevel, this.layoutContext.isAutoExpand());
+        return this.layoutContext.dataManager.edgeManager.getVisibleEdges(visibleNodes).reduce((accum, e) => {
+            if (!e.source.onTheScreen() || !e.target.onTheScreen()) {
+                return accum;
+            }
+            accum.push({ link: e });
+            return accum;
+        }, []);
+    }
+    onEdgeClick(d) {
+        this.layoutContext.e.emit('edge.select', d);
+    }
+    highlightLink(d) {
+        const t = window.d3.transition()
+            .duration(300)
+            .ease(window.d3.easeLinear);
+        this.root.select("#link-wrap-" + d.d3_id()).transition(t).style("stroke", "rgba(30, 30, 30, 0.15)");
+        this.root.select("#link-" + d.d3_id()).transition(t).style("stroke-width", 2);
+    }
+    unhighlightLink(d) {
+        const t = window.d3.transition()
+            .duration(300)
+            .ease(window.d3.easeLinear);
+        this.root.select("#link-wrap-" + d.d3_id()).transition(t).style("stroke", null);
+        this.root.select("#link-" + d.d3_id()).transition(t).style("stroke-width", null);
+    }
+    linkClass(d) {
+        var clazz = "link real-edge " + d.Metadata.RelationType;
+        if (d.Metadata.Type)
+            clazz += " " + d.Metadata.Type;
+        return clazz;
+    }
+    linkWrapClass(d) {
+        var clazz = "link-wrap real-edge-wrap";
+        return clazz;
+    }
+    arrowhead(link) {
+        const none = "url(#arrowhead-none)";
+        if (link.source.Metadata.Type !== "networkpolicy") {
+            return none;
+        }
+        if (link.target.Metadata.Type !== "pod") {
+            return none;
+        }
+        if (link.Metadata.RelationType !== "networkpolicy") {
+            return none;
+        }
+        return "url(#arrowhead-" + link.Metadata.PolicyType + "-" + link.Metadata.PolicyTarget + "-" + link.Metadata.PolicyPoint + ")";
+    }
+    delLink(e) {
+        const link = this.gLink.select("#link-" + e.d3_id());
+        link.remove();
+        const linkWrap = this.gLinkWrap.select("#link-wrap-" + e.d3_id());
+        linkWrap.remove();
+    }
+    // @todo to be improved ? - move to another abstraction ?
+    delLinkLabel(e) {
+        if (!(e.ID in this.linkLabelData))
+            return;
+        delete this.linkLabelData[e.ID];
+        this.bindLinkLabelData();
+        this.gLinkLabel.exit().remove();
+        // force a tick
+        this.layoutContext.e.emit('ui.tick');
+    }
+    bindLinkLabelData() {
+        this.gLinkLabel = this.gLinkLabel.data(Object.keys(this.linkLabelData).map(linkId => this.linkLabelData[linkId]), function (d) { return d.id; });
+    }
+    styleReturn(d, values) {
+        if (d.active)
+            return values[0];
+        if (d.warning)
+            return values[1];
+        if (d.alert)
+            return values[2];
+        return values[3];
+    }
+    styleStrokeDasharray(d) {
+        return this.styleReturn(d, ["20", "20", "20", ""]);
+    }
+    styleStrokeDashoffset(d) {
+        return this.styleReturn(d, ["80 ", "80", "80", ""]);
+    }
+    styleAnimation(d) {
+        var animate = function (speed) {
+            return "dash " + speed + " linear forwards infinite";
+        };
+        return this.styleReturn(d, [animate("6s"), animate("3s"), animate("1s"), ""]);
+    }
+    styleStroke(d) {
+        return this.styleReturn(d, ["YellowGreen", "Yellow", "Tomato", ""]);
+    }
+    updateLinkLabelHandler() {
+        var self = this;
+        this.updateLinkLabelData();
+        this.bindLinkLabelData();
+        // update links which don't have traffic
+        var exit = this.gLinkLabel.exit();
+        exit.each((d) => {
+            this.gLink.select("#link-" + d.link.d3_id())
+                .classed("link-label-active", false)
+                .classed("link-label-warning", false)
+                .classed("link-label-alert", false)
+                .style("stroke-dasharray", "")
+                .style("stroke-dashoffset", "")
+                .style("animation", "")
+                .style("stroke", "");
+        });
+        exit.remove();
+        var enter = this.gLinkLabel.enter()
+            .append('text')
+            .attr("id", function (d) { return "link-label-" + d.link.d3_id(); })
+            .attr("class", "link-label");
+        enter.append('textPath')
+            .attr("startOffset", "50%")
+            .attr("xlink:href", function (d) { return "#link-" + d.link.d3_id(); });
+        this.gLinkLabel = enter.merge(this.gLinkLabel);
+        this.gLinkLabel.select('textPath')
+            .classed("link-label-active", function (d) { return d.active; })
+            .classed("link-label-warning", function (d) { return d.warning; })
+            .classed("link-label-alert", function (d) { return d.alert; })
+            .text(function (d) { return d.text; });
+        this.gLinkLabel.each((d) => {
+            this.gLink.select("#link-" + d.link.d3_id())
+                .classed("link-label-active", d.active)
+                .classed("link-label-warning", d.warning)
+                .classed("link-label-alert", d.alert)
+                .style("stroke-dasharray", this.styleStrokeDasharray(d))
+                .style("stroke-dashoffset", this.styleStrokeDashoffset(d))
+                .style("animation", this.styleAnimation(d))
+                .style("stroke", this.styleStroke(d));
+        });
+        // force a tick
+        this.layoutContext.e.emit('ui.tick');
+    }
+    updateLinkLabelData() {
+        const driver = this.layoutContext.linkLabelStrategy;
+        const visibleNodes = this.layoutContext.dataManager.nodeManager.getVisibleNodes(this.layoutContext.collapseLevel, this.layoutContext.isAutoExpand());
+        const visibleEdges = this.layoutContext.dataManager.edgeManager.getVisibleEdges(visibleNodes);
+        visibleEdges.forEach((e) => {
+            if (e.Metadata.RelationType !== "layer2")
+                return;
+            driver.updateData(e);
+            if (driver.hasData(e)) {
+                this.linkLabelData[e.ID] = {
+                    id: "link-label-" + e.ID,
+                    text: driver.getText(e),
+                    active: driver.isActive(e),
+                    warning: driver.isWarning(e),
+                    alert: driver.isAlert(e),
+                };
+            }
+            else {
+                delete this.linkLabelData[e.ID];
+            }
+        });
+    }
+}
+/* harmony export (immutable) */ __webpack_exports__["a"] = EdgeUI;
+
+
+
+/***/ }),
+/* 36 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__layout_context__ = __webpack_require__(37);
 
 class LayoutBridgeUI {
     constructor(selector) {
@@ -2823,6 +3069,9 @@ class LayoutBridgeUI {
     useNodeUI(nodeUI) {
         this.nodeUI = nodeUI;
     }
+    useEdgeUI(edgeUI) {
+        this.edgeUI = edgeUI;
+    }
     useDataManager(dataManager) {
         this.dataManager = dataManager;
     }
@@ -2836,6 +3085,8 @@ class LayoutBridgeUI {
         this.initialized = false;
         this.layoutUI.useLayoutContext(this.layoutContext);
         this.layoutUI.createRoot();
+        this.edgeUI.useLayoutContext(this.layoutContext);
+        this.edgeUI.createRoot(this.layoutUI.g);
         this.nodeUI.useLayoutContext(this.layoutContext);
         this.nodeUI.createRoot(this.layoutUI.g);
         this.layoutContext.subscribeToEvent('ui.tick', this.tick.bind(this));
@@ -2846,6 +3097,7 @@ class LayoutBridgeUI {
         this.layoutContext.subscribeToEvent('ui.node.unhighlight.byid', this.unhighlightNodeById.bind(this));
         this.layoutContext.subscribeToEvent('ui.node.emphasize.byid', this.emphasizeNodeById.bind(this));
         this.layoutContext.subscribeToEvent('ui.node.deemphasize.byid', this.deemphasizeNodeById.bind(this));
+        this.layoutContext.subscribeToEvent('edge.select', this.edgeSelected.bind(this));
         this.layoutUI.start();
         this.intervalId = window.setInterval(() => {
             if (!this.invalidGraph) {
@@ -2896,6 +3148,17 @@ class LayoutBridgeUI {
             return;
         }
         this.nodeUI.unselectNode(activeNode);
+    }
+    edgeSelected(d) {
+        const activeEdge = this.dataManager.edgeManager.getActive();
+        const activeNode = this.dataManager.nodeManager.getActive();
+        if (activeNode) {
+            activeNode.selected = false;
+            this.e.emit('node.select');
+        }
+        if (!activeEdge || d.equalsTo(activeEdge)) {
+            return;
+        }
     }
     nodeUpdated(oldNode, newNode) {
         if (newNode.Metadata.Capture && newNode.Metadata.Capture.State === "active" && (!oldNode.Metadata.Capture || oldNode.Metadata.Capture.State !== "active")) {
@@ -2955,7 +3218,7 @@ class LayoutBridgeUI {
 
 
 /***/ }),
-/* 36 */
+/* 37 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -2981,7 +3244,7 @@ class LayoutContext {
 
 
 /***/ }),
-/* 37 */
+/* 38 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -3199,7 +3462,7 @@ class BandwidthStrategy {
 
 
 /***/ }),
-/* 38 */
+/* 39 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -3223,12 +3486,13 @@ class SkydiveInfraLayout {
         this.active = false;
         this.dataSources = new __WEBPACK_IMPORTED_MODULE_0__data_source_index__["a" /* DataSourceRegistry */]();
         this.selector = selector;
-        this.uiBridge = new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["a" /* LayoutBridgeUI */](selector);
+        this.uiBridge = new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["b" /* LayoutBridgeUI */](selector);
         this.uiBridge.useEventEmitter(this.e);
         this.uiBridge.useConfig(this.config);
         this.uiBridge.useDataManager(this.dataManager);
-        this.uiBridge.useLayoutUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["b" /* LayoutUI */](selector));
-        this.uiBridge.useNodeUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["c" /* NodeUI */]());
+        this.uiBridge.useLayoutUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["c" /* LayoutUI */](selector));
+        this.uiBridge.useNodeUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["d" /* NodeUI */]());
+        this.uiBridge.useEdgeUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["a" /* EdgeUI */]());
         this.dataManager.useLayoutContext(this.uiBridge.layoutContext);
     }
     initializer() {

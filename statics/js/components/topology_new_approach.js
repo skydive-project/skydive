@@ -3,6 +3,29 @@
 Vue.component('v-select', VueSelect.VueSelect);
 
 window.layoutConfig = new window.TopologyORegistry.config({
+    link: {
+        distance: function(e) {
+            var distance = 100, coeff;
+             // application
+            if ((e.source.Metadata.Type === "netns") && (e.target.Metadata.Type === "netns"))
+                return 1800;
+             if (e.source.group !== e.target.group || !e.source.group.isEqualTo(e.target.group)) {
+                if (e.source.isGroupOwner()) {
+                    coeff = e.source.group.collapsed ? 40 : 60;
+                    if (e.source.group.members.size) {
+                        distance += coeff * e.source.group.members.size / 10;
+                    }
+                }
+                if (e.target.isGroupOwner()) {
+                    coeff = e.target.group.collapsed ? 40 : 60;
+                    if (e.target.group.members.size) {
+                        distance += coeff * e.target.group.members.size / 10;
+                    }
+                }
+            }
+            return distance;
+        }
+    },
     useHardcodedData: window.location.href.indexOf('use_hardcoded_data=1') !== 1
 });
 

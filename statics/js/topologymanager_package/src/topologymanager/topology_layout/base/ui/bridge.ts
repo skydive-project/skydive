@@ -3,6 +3,7 @@ import * as events from 'events';
 import DataManager from '../data_manager';
 import { LayoutUII, LayoutUI } from './layout';
 import { NodeUII, NodeUI } from './node';
+import { EdgeUII, EdgeUI } from './link';
 import LayoutConfig from '../../config';
 import { Node } from '../node/index';
 import { Edge } from '../edge/index';
@@ -18,9 +19,11 @@ export interface LayoutBridgeUII {
     dataManager: DataManager;
     layoutUI: LayoutUII;
     nodeUI: NodeUII;
+    edgeUI: EdgeUII;
     linkLabelStrategy: any;
     useLayoutUI(layoutUI: LayoutUII): void;
     useNodeUI(nodeUI: NodeUII): void;
+    useEdgeUI(edgeUI: EdgeUII): void;
     useDataManager(dataManager: DataManager): void;
     useConfig(config: LayoutConfig): void;
     start(): void;
@@ -36,6 +39,7 @@ export interface LayoutBridgeUIConstructableI {
 }
 
 export class LayoutBridgeUI implements LayoutBridgeUII {
+    edgeUI: EdgeUII;
     e: events.EventEmitter;
     selector: string;
     nodeUI: NodeUII;
@@ -70,6 +74,9 @@ export class LayoutBridgeUI implements LayoutBridgeUII {
     useNodeUI(nodeUI: NodeUII) {
         this.nodeUI = nodeUI;
     }
+    useEdgeUI(edgeUI: EdgeUII) {
+        this.edgeUI = edgeUI;
+    }
     useDataManager(dataManager: DataManager) {
         this.dataManager = dataManager;
     }
@@ -83,6 +90,8 @@ export class LayoutBridgeUI implements LayoutBridgeUII {
         this.initialized = false;
         this.layoutUI.useLayoutContext(this.layoutContext);
         this.layoutUI.createRoot();
+        this.edgeUI.useLayoutContext(this.layoutContext);
+        this.edgeUI.createRoot(this.layoutUI.g);
         this.nodeUI.useLayoutContext(this.layoutContext);
         this.nodeUI.createRoot(this.layoutUI.g);
         this.layoutContext.subscribeToEvent('ui.tick', this.tick.bind(this));
@@ -93,6 +102,7 @@ export class LayoutBridgeUI implements LayoutBridgeUII {
         this.layoutContext.subscribeToEvent('ui.node.unhighlight.byid', this.unhighlightNodeById.bind(this));
         this.layoutContext.subscribeToEvent('ui.node.emphasize.byid', this.emphasizeNodeById.bind(this));
         this.layoutContext.subscribeToEvent('ui.node.deemphasize.byid', this.deemphasizeNodeById.bind(this));
+        this.layoutContext.subscribeToEvent('edge.select', this.edgeSelected.bind(this));
         this.layoutUI.start();
         this.intervalId = window.setInterval(() => {
             if (!this.invalidGraph) {
@@ -143,6 +153,17 @@ export class LayoutBridgeUI implements LayoutBridgeUII {
             return;
         }
         this.nodeUI.unselectNode(activeNode);
+    }
+    edgeSelected(d: Edge) {
+        const activeEdge = this.dataManager.edgeManager.getActive();
+        const activeNode = this.dataManager.nodeManager.getActive();
+        if (activeNode) {
+            activeNode.selected = false;
+            this.e.emit('node.select');
+        }
+        if (!activeEdge || d.equalsTo(activeEdge)) {
+            return;
+        }
     }
     nodeUpdated(oldNode: Node, newNode: Node) {
         if (newNode.Metadata.Capture && newNode.Metadata.Capture.State === "active" && (!oldNode.Metadata.Capture || oldNode.Metadata.Capture.State !== "active")) {
