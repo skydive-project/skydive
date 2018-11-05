@@ -104,7 +104,7 @@ Vue.component('workflow-params', {
         self.result.value = result;
         if (typeof result == "object") {
           if (result.nodes && result.edges) {
-            var g = topologyComponent.graph;
+            var g = window.topologyComponent.graph;
             for (var n in result.nodes) {
               var node = result.nodes[n];
               g.addNode(node.ID, node.Host, node.Metadata);

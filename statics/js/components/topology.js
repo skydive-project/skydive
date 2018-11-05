@@ -1,8 +1,6 @@
 /* jshint multistr: true */
 
-var topologyComponent
-
-var TopologyComponent = {
+var TopologyComponentOldApproach = {
 
   name: 'topology',
 
@@ -267,7 +265,7 @@ var TopologyComponent = {
   },
 
   mounted: function() {
-    topologyComponent = this;
+    window.topologyComponent = this;
     var self = this;
 
     // run d3 layout
