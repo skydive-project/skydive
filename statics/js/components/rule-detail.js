@@ -806,17 +806,12 @@ Vue.component('rule-detail', {
         var query = queryBridge + "." + queryPorts + "." ;
         if (has.length > 0) {
             for (var k in this.filters) {
-                //queryRules += ".Has('filters', regex('.*" + k + "=" + this.filters[k] + ".*')).As('"k"')";
                 query += queryRules + ".Has('filters', regex('.*" + k + "=" + this.filters[k] + ".*')).As('" + k + "').";
             }
         }
         else{
             query += queryRules + ".As('ofrules')."
         }
-        //queryRules += ".As('ofrules')"
-
-        //var query = queryBridge + "." + queryPorts + "." + queryRules + ".Select('bridge', 'ovsports', 'ofrules').SubGraph()";
-
         query += "Select('bridge', 'ovsports'";
 
         if (has.length > 0){
@@ -827,9 +822,7 @@ Vue.component('rule-detail', {
         else{
             query += ", 'ofrules'";
         }
-        query += ").SubGraph()";
-
-        //").SubGraph()"";
+        query += ").SubGraph()";  //Gremlin query using as/select method for "OR" condition.
         console.log(query);
         this.$topologyQuery(query)
             .then(function(g) {
