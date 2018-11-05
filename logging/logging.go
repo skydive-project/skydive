@@ -24,7 +24,6 @@ package logging
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"runtime"
 	"strings"
@@ -319,8 +318,6 @@ func InitLogging(id string, color bool, loggers []*LoggerConfig) (err error) {
 		Logger: z,
 		id:     id,
 	}
-
-	log.SetOutput(currentLogger)
 
 	return nil
 }
