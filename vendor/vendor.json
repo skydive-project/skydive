@@ -79,68 +79,64 @@
 			"revision": "b965b613227fddccbfffe13eae360ed3fa822f8d"
 		},
 		{
-			"checksumSHA1": "PP3i7ZVbaAK3XBdtN3HqvQa2Fm0=",
+			"checksumSHA1": "PkHIqhFjh21ePxRPoYkNnriqueg=",
 			"path": "github.com/casbin/casbin",
-			"revision": "3a17f2855cc12ad36fd614c590b9d18f46dfd65d",
-			"revisionTime": "2018-02-09T12:08:38Z",
-			"version": "v1.4.0",
-			"versionExact": "v1.4.0"
+			"revision": "5ff5a6f5e38a392305b3291c5433bf79ea2afb3d",
+			"revisionTime": "2018-10-31T01:03:32Z"
 		},
 		{
-			"checksumSHA1": "BXKY680lIrk01sP/PMxnr9s2meA=",
+			"checksumSHA1": "HXFHFC5laWQLV7ukDJMOu+fnV98=",
 			"path": "github.com/casbin/casbin/config",
-			"revision": "3a17f2855cc12ad36fd614c590b9d18f46dfd65d",
-			"revisionTime": "2018-02-09T12:08:38Z",
-			"version": "v1.4.0",
-			"versionExact": "v1.4.0"
+			"revision": "5ff5a6f5e38a392305b3291c5433bf79ea2afb3d",
+			"revisionTime": "2018-10-31T01:03:32Z"
 		},
 		{
-			"checksumSHA1": "VXqtVquCWuL2JXWbFYaAjtSTcA4=",
-			"path": "github.com/casbin/casbin/file-adapter",
-			"revision": "3a17f2855cc12ad36fd614c590b9d18f46dfd65d",
-			"revisionTime": "2018-02-09T12:08:38Z",
-			"version": "v1.4.0",
-			"versionExact": "v1.4.0"
+			"checksumSHA1": "Lplb5OORSoHiAhyRlaX7feoCRqI=",
+			"path": "github.com/casbin/casbin/effect",
+			"revision": "5ff5a6f5e38a392305b3291c5433bf79ea2afb3d",
+			"revisionTime": "2018-10-31T01:03:32Z"
 		},
 		{
-			"checksumSHA1": "bSkFnB02QiQ8WKnv0QCNMRJmTF8=",
+			"checksumSHA1": "5IZ0pDKgAJ4fmgI4pP8H6AEYHvs=",
+			"path": "github.com/casbin/casbin/log",
+			"revision": "5ff5a6f5e38a392305b3291c5433bf79ea2afb3d",
+			"revisionTime": "2018-10-31T01:03:32Z"
+		},
+		{
+			"checksumSHA1": "HlI7cjIFxeL/cwyHCKgdeS3ShBc=",
 			"path": "github.com/casbin/casbin/model",
-			"revision": "3a17f2855cc12ad36fd614c590b9d18f46dfd65d",
-			"revisionTime": "2018-02-09T12:08:38Z",
-			"version": "v1.4.0",
-			"versionExact": "v1.4.0"
+			"revision": "5ff5a6f5e38a392305b3291c5433bf79ea2afb3d",
+			"revisionTime": "2018-10-31T01:03:32Z"
 		},
 		{
-			"checksumSHA1": "teIOlw9Sg1JXFz4YM5YVxZVpbjQ=",
+			"checksumSHA1": "Vh0QOexgwx/ecGQUB6TzHEaaZDM=",
 			"path": "github.com/casbin/casbin/persist",
-			"revision": "3a17f2855cc12ad36fd614c590b9d18f46dfd65d",
-			"revisionTime": "2018-02-09T12:08:38Z",
-			"version": "v1.4.0",
-			"versionExact": "v1.4.0"
+			"revision": "5ff5a6f5e38a392305b3291c5433bf79ea2afb3d",
+			"revisionTime": "2018-10-31T01:03:32Z"
 		},
 		{
-			"checksumSHA1": "nAlfLc2pfrNcxI71bD8Eb+JGUJg=",
+			"checksumSHA1": "aLtUb035hzaQYgYXJjJce5o8ePE=",
+			"path": "github.com/casbin/casbin/persist/file-adapter",
+			"revision": "5ff5a6f5e38a392305b3291c5433bf79ea2afb3d",
+			"revisionTime": "2018-10-31T01:03:32Z"
+		},
+		{
+			"checksumSHA1": "ZruzUDr8GdmwPfkP9s9UNdr4Jrw=",
 			"path": "github.com/casbin/casbin/rbac",
-			"revision": "3a17f2855cc12ad36fd614c590b9d18f46dfd65d",
-			"revisionTime": "2018-02-09T12:08:38Z",
-			"version": "v1.4.0",
-			"versionExact": "v1.4.0"
+			"revision": "5ff5a6f5e38a392305b3291c5433bf79ea2afb3d",
+			"revisionTime": "2018-10-31T01:03:32Z"
 		},
 		{
-			"checksumSHA1": "00tJ6Ik3zJCCf9hx2gnfvdybyb8=",
+			"checksumSHA1": "+9abrv6Sdudiw6j+IZnjhqH+M/0=",
 			"path": "github.com/casbin/casbin/rbac/default-role-manager",
-			"revision": "3a17f2855cc12ad36fd614c590b9d18f46dfd65d",
-			"revisionTime": "2018-02-09T12:08:38Z",
-			"version": "v1.4.0",
-			"versionExact": "v1.4.0"
+			"revision": "5ff5a6f5e38a392305b3291c5433bf79ea2afb3d",
+			"revisionTime": "2018-10-31T01:03:32Z"
 		},
 		{
-			"checksumSHA1": "ZHfEHGfRFe4QPqmx5cukK8UMB1g=",
+			"checksumSHA1": "odG/LhWhDK1q6W2o2OjmO1Bxn3A=",
 			"path": "github.com/casbin/casbin/util",
-			"revision": "3a17f2855cc12ad36fd614c590b9d18f46dfd65d",
-			"revisionTime": "2018-02-09T12:08:38Z",
-			"version": "v1.4.0",
-			"versionExact": "v1.4.0"
+			"revision": "5ff5a6f5e38a392305b3291c5433bf79ea2afb3d",
+			"revisionTime": "2018-10-31T01:03:32Z"
 		},
 		{
 			"checksumSHA1": "V3t2eqPEsfIvxdGjBfvbsnO7Vqg=",
