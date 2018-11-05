@@ -29,12 +29,34 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/casbin/casbin/log"
 	"github.com/casbin/casbin/model"
 	"github.com/casbin/casbin/persist"
 	etcd "github.com/coreos/etcd/client"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/rbac"
 	"github.com/skydive-project/skydive/statics"
 )
+
+type logger struct {
+	enabled bool
+}
+
+func (l *logger) EnableLog(state bool) {
+	l.enabled = state
+}
+
+func (l *logger) IsEnabled() bool {
+	return l.enabled
+}
+
+func (l *logger) Print(args ...interface{}) {
+	logging.GetLogger().Debug(args...)
+}
+
+func (l *logger) Printf(fmt string, args ...interface{}) {
+	logging.GetLogger().Debugf(fmt, args...)
+}
 
 func loadSection(model model.Model, key string, sec string) {
 	getKey := func(i int) string {
@@ -87,6 +109,8 @@ func loadStaticPolicy(model model.Model) error {
 // - a policy bundled in the executable
 // - additional policy rules from the configuration
 func InitRBAC(kapi etcd.KeysAPI) error {
+	log.SetLogger(&logger{enabled: true})
+
 	m := model.Model{}
 	loadSection(m, "request_definition", "r")
 	loadSection(m, "policy_definition", "p")
