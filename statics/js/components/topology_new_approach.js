@@ -6,6 +6,16 @@ window.layoutConfig = new window.TopologyORegistry.config({
     useHardcodedData: window.location.href.indexOf('use_hardcoded_data=1') !== 1
 });
 
+function createHostLayout(hostName, selector, linkLabelType) {
+    console.log('use selector ' + selector + ' for skydive default');
+    const layout = new window.TopologyORegistry.layouts.skydive_default(selector)
+    layout.useConfig(layoutConfig);
+    if (linkLabelType) {
+      layout.useLinkLabelStrategy(linkLabelType);
+    }
+    return layout;
+}
+
 Vue.component('full-topology', {
   props: {
     hostName: {
@@ -23,8 +33,18 @@ Vue.component('full-topology', {
     </div>\
   ',
   created: function() {
+    websocket.addConnectHandler(() => {
+      this.layout = createHostLayout(this.hostName, '.topology-d3-full-host', this.linkLabelType);
+      this.layout.e.on('node.select', this.$parent.$parent.onNodeSelected.bind(this));
+      this.layout.e.on('edge.select', this.$parent.$parent.onEdgeSelected.bind(this));
+      this.layout.e.on('host.collapse', this.$parent.$parent.collapseHost.bind(this));
+      this.layout.initializer();
+    });
   },
   beforeDestroy: function() {
+    this.$parent.$parent.$store.commit('nodeUnselected');
+    this.$parent.$parent.$store.commit('edgeUnselected');
+    this.layout && this.layout.remove();
   },
   methods: {
   }
@@ -46,8 +66,18 @@ Vue.component('app-topology', {
     </div>\
   ',
   created: function() {
+     websocket.addConnectHandler(() => {
+         this.layout = createHostLayout(this.hostName, '.topology-d3-app-host');
+         this.layout.e.on('node.select', this.$parent.$parent.onNodeSelected.bind(this));
+         this.layout.e.on('edge.select', this.$parent.$parent.onEdgeSelected.bind(this));
+         this.layout.e.on('host.collapse', this.$parent.$parent.collapseHost.bind(this));
+         this.layout.initializer();
+     });
   },
   beforeDestroy: function() {
+    this.$parent.$parent.$store.commit('nodeUnselected');
+    this.$parent.$parent.$store.commit('edgeUnselected');
+    this.layout && this.layout.remove();
   },
   computed: {
     possibleToBuildHierarchiedTopology: function() {
@@ -445,13 +475,13 @@ var TopologyComponentNewApproach = {
           return;
       }
       if (mutation.type === "highlight")
-        self.layout.highlightNodeID(mutation.payload);
+        self.infraLayout.reactToTheUiEvent('node.highlight.byid', mutation.payload);
       else if (mutation.type === "unhighlight")
-        self.layout.unhighlightNodeID(mutation.payload);
+        self.infraLayout.reactToTheUiEvent('node.unhighlight.byid', mutation.payload);
       else if (mutation.type === "emphasize")
-        self.layout.emphasizeNodeID(mutation.payload);
+        self.infraLayout.reactToTheUiEvent('node.emphasize.byid', mutation.payload);
       else if (mutation.type === "deemphasize")
-        self.layout.deemphasizeNodeID(mutation.payload);
+        self.infraLayout.reactToTheUiEvent('node.deemphasize.byid', mutation.payload);
     });
 
     this.setGremlinFavoritesFromConfig();
@@ -475,7 +505,7 @@ var TopologyComponentNewApproach = {
     }
 
     if (typeof(this.$route.query.link_label_type) !== "undefined") {
-      this.layout.linkLabelType = this.$route.query.link_label_type;
+      this.linkLabelType = this.$route.query.link_label_type;
     }
 
     if (typeof(this.$route.query.topology_legend_hide) !== "undefined") {
@@ -491,12 +521,27 @@ var TopologyComponentNewApproach = {
     if (self.isK8SEnabled()) {
       self.setk8sNamespacesFilter();
     }
+
+    this.bandwidth = {
+      bandwidthThreshold: 'absolute',
+      updatePeriod: 3000,
+      active: 5,
+      warning: 100,
+      alert: 1000,
+      intervalID: null,
+    };
+    this.loadBandwidthConfig();
   },
 
   beforeDestroy: function() {
     this.$store.commit('nodeUnselected');
     this.$store.commit('edgeUnselected');
     this.unwatch();
+    this.removeInfraLayout();
+  },
+
+  created: function() {
+    this.initInfraLayout();
   },
 
   watch: {
@@ -609,6 +654,57 @@ var TopologyComponentNewApproach = {
 
   methods: {
 
+    loadBandwidthConfig: function() {
+      var b = this.bandwidth;
+
+      var cfgNames = {
+        relative: ['bandwidth_relative_active',
+                   'bandwidth_relative_warning',
+                   'bandwidth_relative_alert'],
+        absolute: ['bandwidth_absolute_active',
+                   'bandwidth_absolute_warning',
+                   'bandwidth_absolute_alert']
+      };
+
+      var cfgValues = {
+        absolute: [0, 0, 0],
+        relative: [0, 0, 0]
+      };
+
+      if (typeof(Storage) !== "undefined") {
+        cfgValues = {
+          absolute: [app.getLocalValue("bandwidthAbsoluteActive"),
+                     app.getLocalValue("bandwidthAbsoluteWarning"),
+                     app.getLocalValue("bandwidthAbsoluteAlert")],
+          relative: [app.getLocalValue("bandwidthRelativeActive"),
+                     app.getLocalValue("bandwidthRelativeWarning"),
+                     app.getLocalValue("bandwidthRelativeAlert")]
+        };
+      }
+      b.updatePeriod = app.getConfigValue('bandwidth_update_rate') * 1000; // in millisec
+      b.bandwidthThreshold = app.getConfigValue('bandwidth_threshold');
+      b.active = app.getConfigValue(cfgNames[b.bandwidthThreshold][0]);
+      b.warning = app.getConfigValue(cfgNames[b.bandwidthThreshold][1]);
+      b.alert = app.getConfigValue(cfgNames[b.bandwidthThreshold][2]);
+      layoutConfig.setValue('bandwidth', b);
+      console.log('set bandwidth config');
+    },
+
+    initInfraLayout: function() {
+        if (this.layoutType !== "infra") {
+            return;
+        }
+        var self = this;
+        const skydiveInfraLayout = new window.TopologyORegistry.layouts.infra('.topology-d3-infra')
+        if (!this.infraLayout) {
+            skydiveInfraLayout.useConfig(layoutConfig);
+            this.infraLayout = skydiveInfraLayout;
+            this.infraLayout.e.on('node.select', this.onNodeSelected.bind(this));
+            this.infraLayout.e.on('host.uncollapse', this.uncollapseHost.bind(this));
+            this.infraLayout.e.on('edge.select', this.onEdgeSelected.bind(this));
+        }
+    },
+
     onUpdatedHosts: function(hosts) {
       this.selectedHost = null;
       console.log('Updated hosts', hosts);
@@ -655,6 +751,10 @@ var TopologyComponentNewApproach = {
       this.timeId = null;
     },
 
+    removeInfraLayout: function() {
+      this.infraLayout.remove();
+    },
+
     switchToHostTopology: function(hostName) {
       this.layoutType = 'host';
       this.choosenHostName = hostName;
@@ -662,6 +762,16 @@ var TopologyComponentNewApproach = {
 
     onNodeSelected: function(d) {
       this.$store.commit('nodeSelected', d);
+    },
+
+    uncollapseHost: function(d) {
+      if (this.layoutType === 'infra') {
+          this.switchToHostTopology(d.Metadata.Name);
+      }
+    },
+
+    collapseHost: function(d) {
+      this.backToInfrastructureTopology();
     },
 
     onEdgeSelected: function(e) {
