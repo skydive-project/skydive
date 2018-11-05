@@ -8,6 +8,7 @@ declare global {
         TopologyORegistry: any;
         detailedTopology: any;
         websocket: any;
+        apiMixin: any;
     }
 }
 window.TopologyORegistry = {

@@ -4,6 +4,7 @@ import LayoutConfig from '../config';
 import * as events from 'events';
 import { DataManager } from '../base/index';
 import { LayoutBridgeUI, LayoutBridgeUII } from '../base/ui/index';
+import { LabelRetrieveInformationStrategy } from '../base/edge/label/index';
 
 export default class SkydiveDefaultLayout implements TopologyLayoutI {
     uiBridge: LayoutBridgeUII;
@@ -30,6 +31,9 @@ export default class SkydiveDefaultLayout implements TopologyLayoutI {
         this.active = true;
     }
     useLinkLabelStrategy(linkLabelType: string) {
+        const strategy = LabelRetrieveInformationStrategy(linkLabelType);
+        strategy.setup(this.config);
+        this.uiBridge.useLinkLabelStrategy(strategy);
     }
     useConfig(config: LayoutConfig) {
         this.config = config;
