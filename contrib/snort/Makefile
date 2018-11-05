@@ -2,8 +2,9 @@
 .PHONY: all
 all: snortSkydive
 
-snortSkydive: snortSkydive.go
-	govendor build snortSkydive.go
-
+.PHONY: clean
 clean:
-	rm -f snortSkydive
+	rm -rf snortSkydive
+
+snortSkydive: snortSkydive.go
+	govendor build -o $$GOPATH/bin/snort-skydive $<

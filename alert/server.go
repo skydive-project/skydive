@@ -66,7 +66,7 @@ type GremlinAlert struct {
 	gremlinParser     *traversal.GremlinTraversalParser
 }
 
-func (ga *GremlinAlert) evaluate(server *api.Server, vm *js.JSRE, lockGraph bool) (interface{}, error) {
+func (ga *GremlinAlert) evaluate(server *api.Server, vm *js.Runtime, lockGraph bool) (interface{}, error) {
 	// If the alert is a simple Gremlin query, avoid
 	// converting to JavaScript
 	if ga.traversalSequence != nil {
@@ -201,7 +201,7 @@ type Server struct {
 	graphAlerts   map[string]*GremlinAlert
 	alertTimers   map[string]chan bool
 	gremlinParser *traversal.GremlinTraversalParser
-	jsre          *js.JSRE
+	runtime       *js.Runtime
 }
 
 // Message describes a websocket message that is sent by the alerting
@@ -244,7 +244,7 @@ func (a *Server) evaluateAlert(al *GremlinAlert, lockGraph bool) error {
 		return nil
 	}
 
-	data, err := al.evaluate(a.apiServer, a.jsre, lockGraph)
+	data, err := al.evaluate(a.apiServer, a.runtime, lockGraph)
 	if err != nil {
 		return err
 	}
@@ -407,13 +407,13 @@ func (a *Server) Stop() {
 func NewServer(apiServer *api.Server, pool ws.StructSpeakerPool, graph *graph.Graph, parser *traversal.GremlinTraversalParser, etcdClient *etcd.Client) (*Server, error) {
 	elector := etcd.NewMasterElectorFromConfig(common.AnalyzerService, "alert-server", etcdClient)
 
-	jsre, err := js.NewJSRE()
+	runtime, err := js.NewRuntime()
 	if err != nil {
 		return nil, err
 	}
 
-	jsre.Start()
-	jsre.RegisterAPIServer(graph, parser, apiServer)
+	runtime.Start()
+	runtime.RegisterAPIServer(graph, parser, apiServer)
 
 	as := &Server{
 		MasterElector: elector,
@@ -424,7 +424,7 @@ func NewServer(apiServer *api.Server, pool ws.StructSpeakerPool, graph *graph.Gr
 		alertTimers:   make(map[string]chan bool),
 		gremlinParser: parser,
 		apiServer:     apiServer,
-		jsre:          jsre,
+		runtime:       runtime,
 	}
 
 	return as, nil

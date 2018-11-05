@@ -18,12 +18,18 @@ eval ' \
 endef
 
 define VENDOR_RUN
+mv ${BUILD_TOOLS} bin || true; \
 ln -s vendor src || mv vendor src; \
 cd src/$1; \
-(unset GOARCH; unset CC; GOPATH=$$GOPATH/src/${SKYDIVE_GITHUB} go build $1); \
+(unset GOARCH; unset CC; GOPATH=$$GOPATH/src/${SKYDIVE_GITHUB} go install $1); \
 cd -; \
-unlink src || mv src vendor
-PATH=$${GOPATH}/src/${SKYDIVE_GITHUB}/vendor/$1:$$PATH
+mv bin ${BUILD_TOOLS}; \
+unlink src || mv src vendor;
+endef
+
+define PROTOC_GEN
+$(call VENDOR_RUN,${PROTOC_GEN_GOFAST_GITHUB})
+$(call VENDOR_RUN,${PROTOC_GEN_GO_GITHUB}) protoc -Ivendor -I. --plugin=${BUILD_TOOLS}/protoc-gen-gogofaster --gogofaster_out . $1
 endef
 
 VERSION?=$(shell $(VERSION_CMD))
@@ -35,14 +41,18 @@ SKYDIVE_GITHUB:=github.com/skydive-project/skydive
 SKYDIVE_PKG:=skydive-${VERSION}
 SKYDIVE_PATH:=$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/
 SKYDIVE_GITHUB_VERSION:=$(SKYDIVE_GITHUB)/version.Version=${VERSION}
+BUILD_TOOLS:=${GOPATH}/.skydive-build-tool
 GO_BINDATA_GITHUB:=github.com/jteeuwen/go-bindata/go-bindata
 PROTOC_GEN_GO_GITHUB:=github.com/golang/protobuf/protoc-gen-go
+PROTOC_GEN_GOFAST_GITHUB:=github.com/gogo/protobuf/protoc-gen-gogofaster
+PROTEUS_GITHUB:=gopkg.in/src-d/proteus.v1/cli/proteus
 EASYJSON_GITHUB:=github.com/mailru/easyjson/easyjson
 EASYJSON_FILES_ALL=flow/flow.pb.go
 EASYJSON_FILES_TAG=\
 	flow/storage/elasticsearch/elasticsearch.go \
 	topology/graph/elasticsearch.go \
-	topology/metrics.go
+	topology/metrics.go \
+	topology/probes/netlink/route.go
 EASYJSON_FILES_TAG_LINUX=\
 	topology/probes/netlink/netlink.go \
 	topology/probes/socketinfo/connection.go
@@ -75,6 +85,8 @@ BOOTSTRAP_ARGS?=
 BUILD_TAGS?=$(TAGS)
 WITH_LXD?=true
 WITH_OPENCONTRAIL?=true
+
+export PATH:=$(BUILD_TOOLS):$(PATH)
 
 STATIC_DIR?=
 STATIC_LIBS?=
@@ -137,7 +149,7 @@ endif
 
 ifeq ($(WITH_ISTIO), true)
   BUILD_TAGS+=k8s istio
-  EXTRA_ARGS+=-analyzer.topology.probes=istio
+  EXTRA_ARGS+=-analyzer.topology.probes=k8s,istio
 endif
 
 ifeq ($(WITH_HELM), true)
@@ -190,10 +202,11 @@ debug.analyzer:
 	$(call skydive_debug,analyzer)
 
 %.pb.go: %.proto
-	$(call VENDOR_RUN,${PROTOC_GEN_GO_GITHUB}) protoc --go_out . $<
+	$(call PROTOC_GEN,$<)
 
 flow/flow.pb.go: flow/flow.proto
-	$(call VENDOR_RUN,${PROTOC_GEN_GO_GITHUB}) protoc --go_out . $<
+	$(call PROTOC_GEN,$<)
+
 	# always export flow.ParentUUID as we need to store this information to know
 	# if it's a Outer or Inner packet.
 	sed -e 's/ParentUUID\(.*\),omitempty\(.*\)/ParentUUID\1\2/' \
@@ -205,9 +218,18 @@ flow/flow.pb.go: flow/flow.proto
 	sed -e 's/json:"LastRawPackets,omitempty"/json:"-"/g' -i $@
 	# add flowState to flow generated struct
 	sed -e 's/type Flow struct {/type Flow struct { XXX_state flowState `json:"-"`/' -i $@
+	# to fix generated layers import
+	sed -e 's/layers "flow\/layers"/layers "github.com\/skydive-project\/skydive\/flow\/layers"/' -i $@
 	gofmt -s -w $@
 
-.proto: govendor flow/flow.pb.go filters/filters.pb.go websocket/structmessage.pb.go
+flow/layers/generated.proto: flow/layers/layers.go
+	$(call VENDOR_RUN,${PROTEUS_GITHUB}) proteus proto -f $${GOPATH}/src -p github.com/skydive-project/skydive/flow/layers
+	sed -e 's/^package .*;/package layers;/' -i $@
+	sed -e 's/^message Layer/message /' -i $@
+	sed -e 's/option (gogoproto.typedecl) = false;//' -i $@
+	sed 's/\((gogoproto\.customname) = "\([^\"]*\)"\)/\1, (gogoproto.jsontag) = "\2,omitempty"/' -i $@
+
+.proto: govendor flow/layers/generated.pb.go flow/flow.pb.go filters/filters.pb.go websocket/structmessage.pb.go
 
 .PHONY: .proto.clean
 .proto.clean:
@@ -499,6 +521,7 @@ docker-build:
 	docker cp skydive-compile-build:/root/go/bin/skydive contrib/docker/skydive.$$(uname -m)
 	docker rm skydive-compile-build
 	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} \
+		--label "Version=${VERSION}" \
 		--build-arg ARCH=$$(uname -m) \
 		-f contrib/docker/Dockerfile contrib/docker/
 
@@ -520,6 +543,7 @@ docker-cross-build: ebpf.build
 	docker cp skydive-crosscompile-build-${TARGET_GOARCH}:/root/go/bin/linux_${TARGET_GOARCH}/skydive contrib/docker/skydive.${TARGET_GOARCH}
 	docker rm skydive-crosscompile-build-${TARGET_GOARCH}
 	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} \
+		--label "Version=${VERSION}" \
 		--build-arg ARCH=${TARGET_GOARCH} \
 		$${BASE:+--build-arg BASE=$${BASE}} \
 		-f contrib/docker/Dockerfile.static contrib/docker/
@@ -527,7 +551,8 @@ docker-cross-build: ebpf.build
 SKYDIVE_PROTO_FILES:= \
 	flow/flow.proto \
 	filters/filters.proto \
-	websocket/structmessage.proto
+	websocket/structmessage.proto \
+	flow/layers/generated.proto
 
 SKYDIVE_TAR_INPUT:= \
 	vendor \

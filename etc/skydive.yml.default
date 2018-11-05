@@ -105,6 +105,50 @@ analyzer:
       # - k8s
       # - istio
 
+    k8s:
+      # EXPERIMENTAL: k8s probe is still under development and should not be used
+      # on production systems
+
+      # kubeconfig resolution order:
+      # - if config_file param is defined then use it;
+      # - else if $KUBECONFIG environment is define then use it;
+      # - else if $HOME/.kube/config file exists then use it;
+      # - else use empty configuration (for accessing from within the k8s cluster).
+
+      # specify the path of k8s configuration YAML file.
+      # config_file: /etc/skydive/kubeconfig
+
+      # list of (sub) probes comprising k8s probe.
+      # if list is empty then will resolve to all existing (sub) probes.
+      probes:
+        - cluster
+        - container
+        - cronjob
+        - deployment
+        - endpoints
+        - ingress
+        - job
+        - namespace
+        - networkpolicy
+        - node
+        - persistentvolume
+        - persistentvolumeclaim
+        - pod
+        - replicaset
+        - replicationcontroller
+        - service
+        - statefulset
+        - storageclass
+
+    istio:
+      # specify the path of istio configuration YAML file.
+      # config_file: /etc/skydive/kubeconfig
+
+      # EXPERIMENTAL: istio probe is still under development and should not be used
+      # on production systems
+      probes:
+      - destinationrule
+
   replication:
     # debug: false
 
@@ -143,7 +187,7 @@ agent:
   topology:
     # Probes used to capture topology information like interfaces,
     # bridges, namespaces, etc...
-    # Available: ovsdb, docker, neutron, opencontrail, socketinfo, lxd
+    # Available: ovsdb, docker, neutron, opencontrail, socketinfo, lxd, lldp
     probes:
       # - ovsdb
       # - docker
@@ -151,6 +195,7 @@ agent:
       # - opencontrail
       # - socketinfo
       # - lxd
+      # - lldp
 
     netlink:
       # delay in seconds between two metric updates
@@ -169,6 +214,12 @@ agent:
 
       # The endpoint_type value must be 'public', 'internal' or 'admin'
       # endpoint_type: public
+
+    lldp:
+      # Interfaces to listen for LLDP frames. If no list is specified,
+      # use all interfaces
+      interfaces:
+        # - eth0
 
   capture:
     # Period in second to get capture stats from the probe. Note this
@@ -383,48 +434,6 @@ flow:
     udp:
       # 1194: OPENVPN
 
-k8s:
-  # EXPERIMENTAL: k8s probe is still under development and should not be used
-  # on production systems
-
-  # kubeconfig resolution order:
-  # - if config_file param is defined then use it;
-  # - else if $KUBECONFIG environment is define then use it;
-  # - else if $HOME/.kube/config file exists then use it;
-  # - else use empty configuration (for accessing from within the k8s cluster).
-
-  # specify the path of k8s configuration YAML file.
-  # config_file: /etc/skydive/kubeconfig
-
-  # list of (sub) probes comprising k8s probe.
-  # if list is empty then will resolve to all existing (sub) probes.
-  probes:
-  - cluster
-  - container
-  - cronjob
-  - deployment
-  - endpoints
-  - ingress
-  - job
-  - namespace
-  - networkpolicy
-  - node
-  - persistentvolume
-  - persistentvolumeclaim
-  - pod
-  - replicaset
-  - replicationcontroller
-  - service
-  - statefulset
-  - storageclass
-
-istio:
-  # EXPERIMENTAL: istio probe is still under development and should not be used
-  # on production systems
-  probes:
-  - cluster
-  - destinationrule
-
 ui:
   # Specify the extra assets folder. Javascript and CSS files present in this
   # folder will be added to the WebUI.
@@ -461,6 +470,9 @@ ui:
 
   # Enable/disable ssh to hosts
   # ssh_enabled: false
+
+  # Enable/disable k8s related elements
+  # k8s_enabled: false
 
   bpf:
     # Pre-defined BPF filters

@@ -29,6 +29,7 @@ import (
 	"sync"
 
 	"github.com/GehirnInc/crypt"
+	// Specifically import md5_crypt
 	_ "github.com/GehirnInc/crypt/md5_crypt"
 	auth "github.com/abbot/go-http-auth"
 )

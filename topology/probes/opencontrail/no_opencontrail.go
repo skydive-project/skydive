@@ -29,19 +29,19 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-// OpenContrailProbe describes a probe that reads OpenContrail database and updates the graph
-type OpenContrailProbe struct {
+// Probe describes a probe that reads OpenContrail database and updates the graph
+type Probe struct {
 }
 
 // Start the probe
-func (mapper *OpenContrailProbe) Start() {
+func (mapper *Probe) Start() {
 }
 
 // Stop the probe
-func (mapper *OpenContrailProbe) Stop() {
+func (mapper *Probe) Stop() {
 }
 
-// NewOpenContrailProbeFromConfig creates a new OpenContrail probe based on configuration
-func NewOpenContrailProbeFromConfig(g *graph.Graph, r *graph.Node) (*OpenContrailProbe, error) {
+// NewProbeFromConfig creates a new OpenContrail probe based on configuration
+func NewProbeFromConfig(g *graph.Graph, r *graph.Node) (*Probe, error) {
 	return nil, common.ErrNotImplemented
 }

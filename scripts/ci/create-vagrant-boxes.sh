@@ -40,7 +40,7 @@ do
     [ "$provider" = "libvirt" ] && sudo chmod a+r /var/lib/libvirt/images/dev_dev.img || true
 
     # skydive testing
-    vagrant ssh -c 'set -e; cd src/github.com/skydive-project/skydive; make test functional; curl -XDELETE "localhost:9200/skydive*"'
+    vagrant ssh -c 'set -e; cd go/src/github.com/skydive-project/skydive; make test functional; curl -XDELETE "localhost:9200/skydive*"'
     
     vagrant package --out skydive-dev-$provider.box
     vagrant destroy --force

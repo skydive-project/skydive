@@ -25,85 +25,28 @@ package k8s
 import (
 	"fmt"
 
-	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 
 	"k8s.io/api/batch/v1beta1"
-	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/kubernetes"
 )
 
-type cronJobProbe struct {
-	DefaultKubeCacheEventHandler
-	*KubeCache
-	graph *graph.Graph
+type cronJobHandler struct {
 }
 
-func dumpCronJob(cj *v1beta1.CronJob) string {
+func (h *cronJobHandler) Dump(obj interface{}) string {
+	cj := obj.(*v1beta1.CronJob)
 	return fmt.Sprintf("cronjob{Namespace: %s, Name: %s}", cj.Namespace, cj.Name)
 }
 
-func (p *cronJobProbe) newMetadata(cj *v1beta1.CronJob) graph.Metadata {
-	m := NewMetadata(Manager, "cronjob", cj.Namespace, cj.Name, cj)
+func (h *cronJobHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
+	cj := obj.(*v1beta1.CronJob)
+	m := NewMetadata(Manager, "cronjob", cj, cj.Name, cj.Namespace)
 	m.SetField("Schedule", cj.Spec.Schedule)
 	m.SetField("Suspended", cj.Spec.Suspend != nil && *cj.Spec.Suspend)
-	return m
+	return graph.Identifier(cj.GetUID()), m
 }
 
-func cronJobUID(cj *v1beta1.CronJob) graph.Identifier {
-	return graph.Identifier(cj.GetUID())
-}
-
-func (p *cronJobProbe) OnAdd(obj interface{}) {
-	if cj, ok := obj.(*v1beta1.CronJob); ok {
-		p.graph.Lock()
-		defer p.graph.Unlock()
-
-		NewNode(p.graph, cronJobUID(cj), p.newMetadata(cj))
-		logging.GetLogger().Debugf("Added %s", dumpCronJob(cj))
-	}
-}
-
-func (p *cronJobProbe) OnUpdate(oldObj, newObj interface{}) {
-	if cj, ok := newObj.(*v1beta1.CronJob); ok {
-		p.graph.Lock()
-		defer p.graph.Unlock()
-
-		if node := p.graph.GetNode(cronJobUID(cj)); node != nil {
-			AddMetadata(p.graph, node, cj)
-			logging.GetLogger().Debugf("Updated %s", dumpCronJob(cj))
-		}
-	}
-}
-
-func (p *cronJobProbe) OnDelete(obj interface{}) {
-	if cj, ok := obj.(*v1beta1.CronJob); ok {
-		p.graph.Lock()
-		defer p.graph.Unlock()
-
-		if node := p.graph.GetNode(cronJobUID(cj)); node != nil {
-			p.graph.DelNode(node)
-			logging.GetLogger().Debugf("Deleted %s", dumpCronJob(cj))
-		}
-	}
-}
-
-func (p *cronJobProbe) Start() {
-	p.KubeCache.Start()
-}
-
-func (p *cronJobProbe) Stop() {
-	p.KubeCache.Stop()
-}
-
-func newCronJobKubeCache(handler cache.ResourceEventHandler) *KubeCache {
-	return NewKubeCache(getClientset().BatchV1beta1().RESTClient(), &v1beta1.CronJob{}, "cronjobs", handler)
-}
-
-func newCronJobProbe(g *graph.Graph) probe.Probe {
-	p := &cronJobProbe{
-		graph: g,
-	}
-	p.KubeCache = newCronJobKubeCache(p)
-	return p
+func newCronJobProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
+	return NewResourceCache(clientset.BatchV1beta1().RESTClient(), &v1beta1.CronJob{}, "cronjobs", g, &cronJobHandler{})
 }

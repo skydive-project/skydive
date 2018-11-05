@@ -421,12 +421,8 @@ func TestInterfaceUpdate(t *testing.T) {
 			hasDown := false
 			hasUp := false
 			for i := range nodes {
-				if !hasDown && nodes[i].Metadata()["State"].(string) == "DOWN" {
-					hasDown = true
-				}
-				if !hasUp && nodes[i].Metadata()["State"].(string) == "UP" {
-					hasUp = true
-				}
+				hasDown = hasDown || topology.IsInterfaceUp(nodes[i])
+				hasUp = hasUp || topology.IsInterfaceUp(nodes[i])
 			}
 
 			if !hasUp || !hasDown {
@@ -591,7 +587,7 @@ func TestQueryMetadata(t *testing.T) {
 			hostname, _ := os.Hostname()
 			wspool := ws.NewStructClientPool("TestQueryMetadata")
 			for _, sa := range addresses {
-				client := ws.NewClient(hostname+"-cli", common.UnknownService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher"), authOptions, http.Header{}, 1000)
+				client := ws.NewClient(hostname+"-cli", common.UnknownService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher"), authOptions, http.Header{}, 1000, true, nil)
 				wspool.AddClient(client)
 			}
 
@@ -679,6 +675,48 @@ func TestQueryMetadata(t *testing.T) {
 	RunTest(t, test)
 }
 
+func TestNodeRuleCreate(t *testing.T) {
+	nodeRule := &types.NodeRule{
+		Action:   "create",
+		Metadata: graph.Metadata{"Name": "TestNode", "Type": "fabric"},
+	}
+
+	test := &Test{
+		setupFunction: func(c *TestContext) error {
+			return c.client.Create("noderule", nodeRule)
+		},
+
+		tearDownFunction: func(c *TestContext) error {
+			c.client.Delete("noderule", nodeRule.ID())
+			return nil
+		},
+
+		mode: Replay,
+
+		checks: []CheckFunction{
+			func(c *CheckContext) error {
+				if _, err := c.gh.GetNode(c.gremlin.V().Has("Name", "TestNode")); err != nil {
+					return errors.New("Failed to find a node with name TestNode")
+				}
+
+				return nil
+			},
+
+			func(c *CheckContext) error {
+				c.client.Delete("noderule", nodeRule.ID())
+
+				if node, err := c.gh.GetNode(c.gremlin.V().Has("Name", "TestNode")); err != common.ErrNotFound {
+					return fmt.Errorf("Node %+v found with name TestNode", node)
+				}
+
+				return nil
+			},
+		},
+	}
+
+	RunTest(t, test)
+}
+
 func TestNodeRuleUpdate(t *testing.T) {
 	nodeRule := &types.NodeRule{
 		Action:   "update",
@@ -720,6 +758,66 @@ func TestNodeRuleUpdate(t *testing.T) {
 
 				if node, err := c.gh.GetNode(c.gremlin.V().Has("testKey", "testValue")); err != common.ErrNotFound {
 					return fmt.Errorf("Node %+v was found with metadata testKey", node)
+				}
+
+				return nil
+			},
+		},
+	}
+
+	RunTest(t, test)
+}
+
+func TestEdgeRuleCreate(t *testing.T) {
+	edgeRule := &types.EdgeRule{
+		Src:      "G.V().Has('Name', 'br-srcnode', 'Type', 'ovsbridge')",
+		Dst:      "G.V().Has('Name', 'br-dstnode', 'Type', 'ovsbridge')",
+		Metadata: graph.Metadata{"RelationType": "layer2"},
+	}
+
+	test := &Test{
+		setupCmds: []Cmd{
+			{"ovs-vsctl add-br br-srcnode", true},
+			{"ovs-vsctl add-br br-dstnode", true},
+		},
+
+		setupFunction: func(c *TestContext) error {
+			return c.client.Create("edgerule", edgeRule)
+		},
+
+		tearDownFunction: func(c *TestContext) error {
+			c.client.Delete("edgerule", edgeRule.ID())
+			return nil
+		},
+
+		tearDownCmds: []Cmd{
+			{"ovs-vsctl del-br br-srcnode", true},
+			{"ovs-vsctl del-br br-dstnode", true},
+		},
+
+		mode: Replay,
+
+		checks: []CheckFunction{
+			func(c *CheckContext) error {
+				query := c.gremlin.V().Has("Name", "br-srcnode", "Type", "ovsbridge")
+				query = query.BothE().Has("RelationType", "layer2")
+				query = query.BothV().Has("Name", "br-dstnode", "Type", "ovsbridge")
+				if _, err := c.gh.GetNode(query); err != nil {
+					return errors.New("Failed to find a layer2 link")
+				}
+
+				return nil
+			},
+
+			func(c *CheckContext) error {
+				query := c.gremlin.V().Has("Name", "br-srcnode", "Type", "ovsbridge")
+				query = query.BothE().Has("RelationType", "layer2")
+				query = query.BothV().Has("Name", "br-dstnode", "Type", "ovsbridge")
+
+				c.client.Delete("edgerule", edgeRule.ID())
+
+				if _, err := c.gh.GetNode(query); err != common.ErrNotFound {
+					return errors.New("Found a layer2 link")
 				}
 
 				return nil

@@ -24,6 +24,7 @@ package server
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/skydive-project/skydive/api/types"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
@@ -70,7 +71,7 @@ func (pi *PacketInjectorAPI) validateRequest(ppr *types.PacketInjection) error {
 	dstNode := pi.getNode(ppr.Dst)
 
 	if srcNode == nil {
-		return errors.New("Not able to find a source node")
+		return fmt.Errorf("Not able to find a source node for '%s'", ppr.Src)
 	}
 
 	ipField := "IPV4"
@@ -78,33 +79,35 @@ func (pi *PacketInjectorAPI) validateRequest(ppr *types.PacketInjection) error {
 		ipField = "IPV6"
 	}
 
-	ips, _ := srcNode.GetFieldStringList(ipField)
-	if len(ips) == 0 && ppr.SrcIP == "" {
-		return errors.New("No source IP in node")
-	}
-	if dstNode == nil && ppr.DstIP == "" {
-		return errors.New("No destination node and IP")
-	}
-	if ppr.DstIP == "" {
-		ips, _ := dstNode.GetFieldStringList(ipField)
-		if len(ips) == 0 {
-			return errors.New("No destination IP in node")
+	if len(ppr.Pcap) == 0 {
+		ips, _ := srcNode.GetFieldStringList(ipField)
+		if len(ips) == 0 && ppr.SrcIP == "" {
+			return errors.New("No source IP in node")
 		}
-	}
-	mac, _ := srcNode.GetFieldString("MAC")
-	if mac == "" && ppr.SrcMAC == "" {
-		return errors.New("No source MAC in node")
-	}
-	if dstNode == nil && ppr.DstMAC == "" {
-		return errors.New("No destination node and MAC")
-	}
-	if ppr.DstMAC == "" {
-		mac, _ := dstNode.GetFieldString("MAC")
-		if mac == "" {
-			return errors.New("No destination MAC in node")
+		if dstNode == nil && ppr.DstIP == "" {
+			return errors.New("No destination node and IP")
 		}
-	}
+		if ppr.DstIP == "" {
+			ips, _ := dstNode.GetFieldStringList(ipField)
+			if len(ips) == 0 {
+				return errors.New("No destination IP in node")
+			}
+		}
 
+		mac, _ := srcNode.GetFieldString("MAC")
+		if mac == "" && ppr.SrcMAC == "" {
+			return errors.New("No source MAC in node")
+		}
+		if dstNode == nil && ppr.DstMAC == "" {
+			return errors.New("No destination node and MAC")
+		}
+		if ppr.DstMAC == "" {
+			mac, _ := dstNode.GetFieldString("MAC")
+			if mac == "" {
+				return errors.New("No destination MAC in node")
+			}
+		}
+	}
 	return nil
 }
 

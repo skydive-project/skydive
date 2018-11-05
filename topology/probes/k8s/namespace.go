@@ -25,160 +25,46 @@ package k8s
 import (
 	"fmt"
 
-	"github.com/skydive-project/skydive/filters"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 
 	"k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/kubernetes"
 )
 
-type namespaceProbe struct {
-	DefaultKubeCacheEventHandler
-	graph.DefaultGraphListener
-	*KubeCache
-	graph            *graph.Graph
-	objectIndexer    *graph.MetadataIndexer
-	namespaceIndexer *graph.MetadataIndexer
+var namespaceEventHandler = graph.NewEventHandler(100)
+
+type namespaceHandler struct {
 }
 
-func newObjectIndexer(g *graph.Graph) *graph.MetadataIndexer {
-	ownedByNamespaceFilter := filters.NewOrFilter(
-		filters.NewTermStringFilter("Type", "cronjob"),
-		filters.NewTermStringFilter("Type", "deployment"),
-		filters.NewTermStringFilter("Type", "daemonset"),
-		filters.NewTermStringFilter("Type", "ingress"),
-		filters.NewTermStringFilter("Type", "job"),
-		filters.NewTermStringFilter("Type", "pod"),
-		filters.NewTermStringFilter("Type", "persistentvolume"),
-		filters.NewTermStringFilter("Type", "persistentvolumeclaim"),
-		filters.NewTermStringFilter("Type", "replicaset"),
-		filters.NewTermStringFilter("Type", "replicationcontroller"),
-		filters.NewTermStringFilter("Type", "service"),
-		filters.NewTermStringFilter("Type", "statefulset"),
-		filters.NewTermStringFilter("Type", "storageclass"),
-	)
-
-	filter := filters.NewAndFilter(
-		filters.NewTermStringFilter("Manager", Manager),
-		ownedByNamespaceFilter,
-	)
-	m := graph.NewGraphElementFilter(filter)
-	return graph.NewMetadataIndexer(g, m, "Namespace")
+func (h *namespaceHandler) Dump(obj interface{}) string {
+	ns := obj.(*v1.Namespace)
+	return fmt.Sprintf("namespace{Name: %s}", ns.Name)
 }
 
-func newNamespaceIndexerByName(g *graph.Graph) *graph.MetadataIndexer {
-	filter := filters.NewAndFilter(
-		filters.NewTermStringFilter("Manager", Manager),
-		filters.NewTermStringFilter("Type", "namespace"),
-		filters.NewNotNullFilter("Name"),
-	)
-	m := graph.NewGraphElementFilter(filter)
-	return graph.NewMetadataIndexer(g, m, "Name")
-}
+func (h *namespaceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
+	ns := obj.(*v1.Namespace)
 
-func dumpNamespace(ns *v1.Namespace) string {
-	return fmt.Sprintf("namespace{Name: %s}", ns.GetName())
-}
-
-func (p *namespaceProbe) newMetadata(ns *v1.Namespace) graph.Metadata {
-	m := NewMetadata(Manager, "namespace", "", ns.GetName(), ns)
+	m := NewMetadata(Manager, "namespace", ns, ns.Name)
 	m.SetFieldAndNormalize("Labels", ns.Labels)
 	m.SetField("Cluster", ns.ClusterName)
 	m.SetField("Status", ns.Status.Phase)
-	return m
+
+	return graph.Identifier(ns.GetUID()), m
 }
 
-func namespaceUID(ns *v1.Namespace) graph.Identifier {
-	return graph.Identifier(ns.GetUID())
+func newNamespaceProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
+	return NewResourceCache(clientset.Core().RESTClient(), &v1.Namespace{}, "namespaces", g, &namespaceHandler{}, namespaceEventHandler)
 }
 
-func (p *namespaceProbe) linkObject(objNode, nsNode *graph.Node) {
-	AddOwnershipLink(Manager, p.graph, nsNode, objNode)
-}
+func newNamespaceLinker(g *graph.Graph, manager string, types ...string) probe.Probe {
+	namespaceIndexer := graph.NewMetadataIndexer(g, namespaceEventHandler, graph.Metadata{"Manager": Manager, "Type": "namespace"}, "Name")
+	namespaceIndexer.Start()
 
-func (p *namespaceProbe) OnAdd(obj interface{}) {
-	if ns, ok := obj.(*v1.Namespace); ok {
-		p.graph.Lock()
-		defer p.graph.Unlock()
+	objectFilter := newTypesFilter(manager, types...)
+	objectIndexer := newObjectIndexerFromFilter(g, g, objectFilter, "Namespace")
+	objectIndexer.Start()
 
-		nsNode := NewNode(p.graph, namespaceUID(ns), p.newMetadata(ns))
-		logging.GetLogger().Debugf("Added %s", dumpNamespace(ns))
-
-		objNodes, _ := p.objectIndexer.Get(ns.GetName())
-		for _, objNode := range objNodes {
-			p.linkObject(objNode, nsNode)
-		}
-	}
-}
-
-func (p *namespaceProbe) OnUpdate(oldObj, newObj interface{}) {
-	if ns, ok := newObj.(*v1.Namespace); ok {
-		p.graph.Lock()
-		defer p.graph.Unlock()
-
-		if nsNode := p.graph.GetNode(namespaceUID(ns)); nsNode != nil {
-			AddMetadata(p.graph, nsNode, ns)
-			logging.GetLogger().Debugf("Updated %s", dumpNamespace(ns))
-		}
-	}
-}
-
-func (p *namespaceProbe) OnDelete(obj interface{}) {
-	if ns, ok := obj.(*v1.Namespace); ok {
-		p.graph.Lock()
-		defer p.graph.Unlock()
-
-		if nsNode := p.graph.GetNode(namespaceUID(ns)); nsNode != nil {
-			p.graph.DelNode(nsNode)
-			logging.GetLogger().Debugf("Deleted %s", dumpNamespace(ns))
-		}
-	}
-}
-
-func (p *namespaceProbe) OnNodeAdded(objNode *graph.Node) {
-	logging.GetLogger().Debugf("Got event on adding %s", DumpNode(objNode))
-	objNamespace, _ := objNode.GetFieldString("Namespace")
-	nsNodes, _ := p.namespaceIndexer.Get(objNamespace)
-	if len(nsNodes) > 0 {
-		p.linkObject(objNode, nsNodes[0])
-	}
-}
-
-func (p *namespaceProbe) OnNodeUpdated(objNode *graph.Node) {
-	logging.GetLogger().Debugf("Got event on updating %s", DumpNode(objNode))
-	objNamespace, _ := objNode.GetFieldString("Namespace")
-	nsNodes, _ := p.namespaceIndexer.Get(objNamespace)
-	if len(nsNodes) > 0 {
-		p.linkObject(objNode, nsNodes[0])
-	}
-}
-
-func (p *namespaceProbe) Start() {
-	p.KubeCache.Start()
-	p.namespaceIndexer.Start()
-	p.objectIndexer.AddEventListener(p)
-	p.objectIndexer.Start()
-}
-
-func (p *namespaceProbe) Stop() {
-	p.KubeCache.Stop()
-	p.namespaceIndexer.Stop()
-	p.objectIndexer.RemoveEventListener(p)
-	p.objectIndexer.Stop()
-}
-
-func newNamespaceKubeCache(handler cache.ResourceEventHandler) *KubeCache {
-	return NewKubeCache(getClientset().Core().RESTClient(), &v1.Namespace{}, "namespaces", handler)
-}
-
-func newNamespaceProbe(g *graph.Graph) probe.Probe {
-	p := &namespaceProbe{
-		graph:            g,
-		objectIndexer:    newObjectIndexer(g),
-		namespaceIndexer: newNamespaceIndexerByName(g),
-	}
-	p.KubeCache = newNamespaceKubeCache(p)
-	return p
+	return graph.NewMetadataIndexerLinker(g, namespaceIndexer, objectIndexer, topology.OwnershipMetadata())
 }

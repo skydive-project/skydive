@@ -15,12 +15,14 @@ Vue.component('capture-form', {
           <label for="capture-desc">Description</label>\
           <textarea id="capture-desc" type="text" class="form-control input-sm" rows="2" v-model="desc"></textarea>\
         </div>\
-        <div class="form-group">\
+        <div class="form-group form-inline">\
           <label class="radio-inline">\
-            <input type="radio" id="by-node" name="capture-target" value="selection" v-model="mode"> Nodes selection\
+            <input type="radio" id="by-node" name="capture-target" value="selection" v-model="mode"/> Nodes selection\
+            <span class="checkmark"></span>\
           </label>\
           <label class="radio-inline">\
-            <input type="radio" id="by-gremlin" name="capture-target" value="gremlin" v-model="mode"> Gremlin Expression\
+            <input type="radio" id="by-gremlin" name="capture-target" value="gremlin" v-model="mode"/> Gremlin Expression\
+            <span class="checkmark"></span>\
           </label>\
         </div>\
         <div class="form-group" v-if="mode == \'selection\'">\
@@ -49,15 +51,15 @@ Vue.component('capture-form', {
         </div>\
         <collapse :collapsed="true" class="form-group">\
           <h1 slot="collapse-header" slot-scope="props" :class="{\'closed\': !props.active}">\
-            Advanced options\
-            <span class="pull-right">\
-              <i class="glyphicon glyphicon-chevron-left rotate" :class="{\'down\': props.active}"></i>\
+            <span class="pull-left">\
+              <i class="glyphicon glyphicon-chevron-right rotate" :class="{\'down\': props.active}"></i>\
             </span>\
+            <span class="advanced-options">Advanced options</span>\
           </h1>\
           <fieldset slot="collapse-body" class="form-group">\
             <div class="form-group">\
               <label for="capture-type">Capture Type</label>\
-              <select id="capture-type" v-model="captureType" class="form-control input-sm" :disabled="!typeAllowed">\
+              <select id="capture-type" v-model="captureType" class="form-control custom-select" :disabled="!typeAllowed">\
                 <option disabled value="">Select capture type</option>\
                 <option v-for="option in options" :value="option.type">{{ option.type }} ({{option.desc}})</option>\
               </select>\
@@ -68,7 +70,7 @@ Vue.component('capture-form', {
             </div>\
             <div class="form-group">\
               <label for="capture-layer-key-mode">Layers used for Flow Key</label>\
-              <select id="capture-layer-key-mode" v-model="captureLayerKeyMode" class="form-control input-sm">\
+              <select id="capture-layer-key-mode" v-model="captureLayerKeyMode" class="form-control custom-select">\
                 <option disabled value="">Select layers to be used</option>\
                 <option value="" selected>Default</option>\
                 <option value="L2">L2 (uses Layer 2 and beyond)</option>\
@@ -87,14 +89,17 @@ Vue.component('capture-form', {
               <label class="form-check-label">\
                 <input id="capture-tcp-metric" type="checkbox" class="form-check-input" v-model="extraTCPMetric">\
                 Extra TCP metric\
+                <span class="checkmark"></span>\
               </label>\
               <label class="form-check-label">\
                 <input id="capture-ip-defrag" type="checkbox" class="form-check-input" v-model="ipDefrag">\
                 Defragment IPv4 packets\
+                <span class="checkmark"></span>\
               </label>\
               <label class="form-check-label">\
                 <input id="capture-reassemble-tcp" type="checkbox" class="form-check-input" v-model="reassembleTCP">\
                 Reassemble TCP packets\
+                <span class="checkmark"></span>\
               </label>\
             </div>\
           </fieldset>\

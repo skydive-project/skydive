@@ -30,6 +30,7 @@ import (
 	etcd "github.com/coreos/etcd/client"
 )
 
+// EtcdWatcher listens for etcd events
 type EtcdWatcher struct {
 	kapi     etcd.KeysAPI
 	running  bool

@@ -32,16 +32,16 @@ import (
 
 // Graph message type
 const (
-	SyncMsgType             = "Sync"
-	SyncRequestMsgType      = "SyncRequest"
-	SyncReplyMsgType        = "SyncReply"
-	HostGraphDeletedMsgType = "HostGraphDeleted"
-	NodeUpdatedMsgType      = "NodeUpdated"
-	NodeDeletedMsgType      = "NodeDeleted"
-	NodeAddedMsgType        = "NodeAdded"
-	EdgeUpdatedMsgType      = "EdgeUpdated"
-	EdgeDeletedMsgType      = "EdgeDeleted"
-	EdgeAddedMsgType        = "EdgeAdded"
+	SyncMsgType               = "Sync"
+	SyncRequestMsgType        = "SyncRequest"
+	SyncReplyMsgType          = "SyncReply"
+	OriginGraphDeletedMsgType = "OriginGraphDeleted"
+	NodeUpdatedMsgType        = "NodeUpdated"
+	NodeDeletedMsgType        = "NodeDeleted"
+	NodeAddedMsgType          = "NodeAdded"
+	EdgeUpdatedMsgType        = "EdgeUpdated"
+	EdgeDeletedMsgType        = "EdgeDeleted"
+	EdgeAddedMsgType          = "EdgeAdded"
 )
 
 // Graph error message
@@ -52,7 +52,7 @@ var (
 
 // SyncRequestMsg describes a graph synchro request message
 type SyncRequestMsg struct {
-	GraphContext
+	Context
 	GremlinFilter string
 }
 
@@ -135,7 +135,7 @@ func UnmarshalMessage(msg *ws.StructMessage) (string, interface{}, error) {
 		}
 
 		return msg.Type, result, nil
-	case HostGraphDeletedMsgType:
+	case OriginGraphDeletedMsgType:
 		return msg.Type, obj, nil
 	case NodeUpdatedMsgType, NodeDeletedMsgType, NodeAddedMsgType:
 		var node Node

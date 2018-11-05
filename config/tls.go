@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Red Hat, Inc.
+ * Copyright (C) 2015 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -20,26 +20,18 @@
  *
  */
 
-package http
+package config
 
 import (
 	"crypto/tls"
-	"net/http"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/logging"
 )
 
-func SetTLSHeader(w http.ResponseWriter, r *http.Request) {
-	if r.TLS != nil {
-		w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
-	}
-}
-
-func GetTLSConfig(setupRootCA bool) (*tls.Config, error) {
-	certPEM := config.GetString("agent.X509_cert")
-	keyPEM := config.GetString("agent.X509_key")
+// GetTLSClientConfig returns TLS config to be used by a server
+func GetTLSClientConfig(setupRootCA bool) (*tls.Config, error) {
+	certPEM := GetString("agent.X509_cert")
+	keyPEM := GetString("agent.X509_key")
 	var tlsConfig *tls.Config
 	if certPEM != "" && keyPEM != "" {
 		var err error
@@ -48,20 +40,28 @@ func GetTLSConfig(setupRootCA bool) (*tls.Config, error) {
 			return nil, err
 		}
 		if setupRootCA {
-			analyzerCertPEM := config.GetString("analyzer.X509_cert")
+			analyzerCertPEM := GetString("analyzer.X509_cert")
 			tlsConfig.RootCAs, err = common.SetupTLSLoadCertificate(analyzerCertPEM)
 			if err != nil {
 				return nil, err
 			}
 		}
-		checkTLSConfig(tlsConfig)
 	}
 	return tlsConfig, nil
 }
 
-func checkTLSConfig(tlsConfig *tls.Config) {
-	tlsConfig.InsecureSkipVerify = config.GetBool("agent.X509_insecure")
-	if tlsConfig.InsecureSkipVerify == true {
-		logging.GetLogger().Warning("======> You running the agent in Insecure, the certificate can't be verified, generally use for test purpose, Please make sure it what's you want <======\n PRODUCTION must not run in Insecure\n")
+// GetTLSServerConfig returns TLS config to be used by a server
+func GetTLSServerConfig(setupRootCA bool) (*tls.Config, error) {
+	certPEM := GetString("analyzer.X509_cert")
+	keyPEM := GetString("analyzer.X509_key")
+	agentCertPEM := GetString("agent.X509_cert")
+	tlsConfig, err := common.SetupTLSServerConfig(certPEM, keyPEM)
+	if err != nil {
+		return nil, err
 	}
+	tlsConfig.ClientCAs, err = common.SetupTLSLoadCertificate(agentCertPEM)
+	if err != nil {
+		return nil, err
+	}
+	return tlsConfig, nil
 }

@@ -53,6 +53,7 @@ const (
 // DefaultRequestTimeout default timeout used for Request/Reply JSON message.
 var DefaultRequestTimeout = 10 * time.Second
 
+// StructMessageJSON defines a JSON serialized object
 type StructMessageJSON struct {
 	Namespace string
 	Type      string
@@ -61,6 +62,7 @@ type StructMessageJSON struct {
 	Obj       *json.RawMessage
 }
 
+// StructMessage defines a basic structured message
 type StructMessage struct {
 	Protocol  string
 	Namespace string
@@ -69,7 +71,8 @@ type StructMessage struct {
 	Status    int64
 	value     interface{}
 
-	JsonObj            *json.RawMessage
+	// JSONObj embeds an other JSON object in the message
+	JSONObj            *json.RawMessage
 	jsonSerialized     []byte
 	ProtobufObj        []byte
 	protobufSerialized []byte
@@ -79,27 +82,15 @@ type StructMessage struct {
 func (g *StructMessage) Debug() string {
 	if g.Protocol == JSONProtocol {
 		return fmt.Sprintf("Namespace %s Type %s UUID %s Status %d Obj JSON (%d) : %q",
-			g.Namespace, g.Type, g.UUID, g.Status, len(*g.JsonObj), string(*g.JsonObj))
+			g.Namespace, g.Type, g.UUID, g.Status, len(*g.JSONObj), string(*g.JSONObj))
 	}
 	return fmt.Sprintf("Namespace %s Type %s UUID %s Status %d Obj Protobuf (%d bytes)",
 		g.Namespace, g.Type, g.UUID, g.Status, len(g.ProtobufObj))
 }
 
 // Marshal serializes the StructMessage into a JSON string.
-func (g *StructMessageJSON) Marshal() []byte {
-	j, err := json.Marshal(g)
-	if err != nil {
-		panic("JSON Marshal StructMessage encode failed")
-	}
-	return j
-}
-
-func (g *StructMessageProtobuf) Marshal() []byte {
-	b, err := proto.Marshal(g)
-	if err != nil {
-		panic("Protobuf Marshal StructMessage encode failed")
-	}
-	return b
+func (g *StructMessageJSON) Marshal() ([]byte, error) {
+	return json.Marshal(g)
 }
 
 // Bytes see Marshal
@@ -117,7 +108,7 @@ func (g StructMessage) Bytes(protocol string) []byte {
 			Status:    g.Status,
 			Obj:       g.ProtobufObj,
 		}
-		g.protobufSerialized = msgProto.Marshal()
+		g.protobufSerialized, _ = msgProto.Marshal()
 		return g.protobufSerialized
 	}
 
@@ -130,9 +121,9 @@ func (g StructMessage) Bytes(protocol string) []byte {
 		Type:      g.Type,
 		UUID:      g.UUID,
 		Status:    g.Status,
-		Obj:       g.JsonObj,
+		Obj:       g.JSONObj,
 	}
-	g.jsonSerialized = msgJSON.Marshal()
+	g.jsonSerialized, _ = msgJSON.Marshal()
 	return g.jsonSerialized
 }
 
@@ -144,7 +135,7 @@ func (g *StructMessage) marshalObj() {
 			return
 		}
 		raw := json.RawMessage(b)
-		g.JsonObj = &raw
+		g.JSONObj = &raw
 	}
 	if g.Protocol == ProtobufProtocol {
 		b, err := json.Marshal(g.value)
@@ -156,9 +147,10 @@ func (g *StructMessage) marshalObj() {
 	}
 }
 
+// DecodeObj decodes an object either as protobuf or as JSON
 func (g *StructMessage) DecodeObj(obj interface{}) error {
 	if g.Protocol == JSONProtocol {
-		if err := common.JSONDecode(bytes.NewReader([]byte(*g.JsonObj)), obj); err != nil {
+		if err := common.JSONDecode(bytes.NewReader([]byte(*g.JSONObj)), obj); err != nil {
 			return err
 		}
 	}
@@ -170,9 +162,10 @@ func (g *StructMessage) DecodeObj(obj interface{}) error {
 	return nil
 }
 
+// UnmarshalObj unmarshals an object from JSON or protobuf
 func (g *StructMessage) UnmarshalObj(obj interface{}) error {
 	if g.Protocol == JSONProtocol {
-		if err := json.Unmarshal(*g.JsonObj, obj); err != nil {
+		if err := json.Unmarshal(*g.JSONObj, obj); err != nil {
 			return err
 		}
 	}
@@ -266,12 +259,12 @@ func (a *structSpeakerEventDispatcher) dispatchMessage(c *StructSpeaker, m *Stru
 
 // OnDisconnected is implemented here to avoid infinite loop since the default
 // implemtation is triggering OnDisconnected too.
-func (p *structSpeakerEventDispatcher) OnDisconnected(c Speaker) {
+func (a *structSpeakerEventDispatcher) OnDisconnected(c Speaker) {
 }
 
 // OnConnected is implemented here to avoid infinite loop since the default
 // implemtation is triggering OnDisconnected too.
-func (p *structSpeakerEventDispatcher) OnConnected(c Speaker) {
+func (a *structSpeakerEventDispatcher) OnConnected(c Speaker) {
 }
 
 type structSpeakerPoolEventDispatcher struct {
@@ -393,7 +386,7 @@ func (s *StructSpeaker) OnMessage(c Speaker, m Message) {
 			msg.Type = mJSON.Type
 			msg.UUID = mJSON.UUID
 			msg.Status = mJSON.Status
-			msg.JsonObj = mJSON.Obj
+			msg.JSONObj = mJSON.Obj
 		}
 		s.structSpeakerEventDispatcher.dispatchMessage(c, &msg)
 	}
@@ -413,6 +406,7 @@ func newStructSpeaker(c Speaker) *StructSpeaker {
 	return s
 }
 
+// UpgradeToStructSpeaker a WebSocket client to a StructSpeaker
 func (c *Client) UpgradeToStructSpeaker() *StructSpeaker {
 	s := newStructSpeaker(c)
 	c.Lock()
@@ -443,11 +437,11 @@ type StructClientPool struct {
 }
 
 // AddClient adds a Client to the pool.
-func (a *StructClientPool) AddClient(c Speaker) error {
+func (s *StructClientPool) AddClient(c Speaker) error {
 	if wc, ok := c.(*Client); ok {
 		speaker := wc.UpgradeToStructSpeaker()
-		a.ClientPool.AddClient(speaker)
-		a.structSpeakerPoolEventDispatcher.AddStructSpeaker(speaker)
+		s.ClientPool.AddClient(speaker)
+		s.structSpeakerPoolEventDispatcher.AddStructSpeaker(speaker)
 	} else {
 		return errors.New("wrong client type")
 	}
@@ -517,7 +511,7 @@ func NewStructServer(server *Server) *StructServer {
 	s.Server.incomerHandler = func(conn *websocket.Conn, r *auth.AuthenticatedRequest) Speaker {
 		// the default incomer handler creates a standard wsIncomingClient that we upgrade to a StructSpeaker
 		// being able to handle the StructMessage
-		c := defaultIncomerHandler(conn, r).upgradeToStructSpeaker()
+		c := s.Server.newIncomingClient(conn, r).upgradeToStructSpeaker()
 
 		// from headers
 		if namespaces, ok := r.Header["X-Websocket-Namespace"]; ok {

@@ -25,16 +25,79 @@
 package tests
 
 import (
-	"testing"
-
 	"github.com/skydive-project/skydive/topology/probes/istio"
+	"testing"
+)
+
+const (
+	bookinfo = "https://raw.githubusercontent.com/istio/istio/release-1.0/samples/bookinfo"
 )
 
 /* -- test creation of single resource -- */
-func TestIstioClusterNode(t *testing.T) {
-	testNodeCreation(t, nil, nil, istio.Manager, "cluster", istio.ClusterName)
-}
-
 func TestIstioDestinationRuleNode(t *testing.T) {
 	testNodeCreationFromConfig(t, istio.Manager, "destinationrule", objName+"-destinationrule")
+}
+
+func TestIstioGatewayNode(t *testing.T) {
+	testNodeCreationFromConfig(t, istio.Manager, "gateway", objName+"-gateway")
+}
+
+func TestIstioServiceEntryNode(t *testing.T) {
+	testNodeCreationFromConfig(t, istio.Manager, "serviceentry", objName+"-serviceentry")
+}
+
+func TestIstioQuotaSpecNode(t *testing.T) {
+	testNodeCreationFromConfig(t, istio.Manager, "quotaspec", objName+"-quotaspec")
+}
+
+func TestIstioQuotaSpecBindingNode(t *testing.T) {
+	testNodeCreationFromConfig(t, istio.Manager, "quotaspecbinding", objName+"-quotaspecbinding")
+}
+
+func TestIstioVirtualServiceNode(t *testing.T) {
+	testNodeCreationFromConfig(t, istio.Manager, "virtualservice", objName+"-virtualservice")
+}
+
+func TestBookInfoScenario(t *testing.T) {
+	testRunner(
+		t,
+		[]Cmd{
+			{"kubectl apply -f " + bookinfo + "/networking/destination-rule-all.yaml", true},
+			{"kubectl apply -f " + bookinfo + "/networking/bookinfo-gateway.yaml", true},
+		},
+		[]Cmd{
+			{"kubectl apply -f " + bookinfo + "/platform/kube/cleanup.sh", false},
+		},
+		[]CheckFunction{
+			func(c *CheckContext) error {
+				// check nodes exist
+				_, err := checkNodeCreation(t, c, istio.Manager, "destinationrule", "Name", "details")
+				if err != nil {
+					return err
+				}
+
+				_, err = checkNodeCreation(t, c, istio.Manager, "destinationrule", "Name", "productpage")
+				if err != nil {
+					return err
+				}
+
+				_, err = checkNodeCreation(t, c, istio.Manager, "destinationrule", "Name", "ratings")
+				if err != nil {
+					return err
+				}
+
+				_, err = checkNodeCreation(t, c, istio.Manager, "destinationrule", "Name", "reviews")
+				if err != nil {
+					return err
+				}
+
+				_, err = checkNodeCreation(t, c, istio.Manager, "gateway", "Name", "bookinfo-gateway")
+				if err != nil {
+					return err
+				}
+
+				return nil
+			},
+		},
+	)
 }

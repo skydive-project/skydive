@@ -32,10 +32,19 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func addSyslogBackend(backends []zapcore.Core, msgPriority zap.LevelEnablerFunc, encoder zapcore.Encoder, tag string) ([]zapcore.Core, error) {
+type syslogBackend struct {
+	w *syslog.Writer
+}
+
+func (b *syslogBackend) Core(msgPriority zap.LevelEnablerFunc, encoder zapcore.Encoder) zapcore.Core {
+	return zapsyslog.NewCore(msgPriority, encoder, b.w)
+}
+
+// NewSyslogBackend returns a new backend that outputs to syslog
+func NewSyslogBackend(tag string) (Backend, error) {
 	w, err := syslog.New(syslog.LOG_CRIT, tag)
 	if err != nil {
 		return nil, err
 	}
-	return append(backends, zapsyslog.NewCore(msgPriority, encoder, w)), nil
+	return &syslogBackend{w: w}, nil
 }

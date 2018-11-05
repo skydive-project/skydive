@@ -82,8 +82,8 @@ func (s *MetricsGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (t
 }
 
 // Reduce metrics step
-func (s *MetricsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
-	return next
+func (s *MetricsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) (traversal.GremlinTraversalStep, error) {
+	return next, nil
 }
 
 // Context metrics step

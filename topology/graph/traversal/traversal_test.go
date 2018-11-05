@@ -83,6 +83,16 @@ func TestBasicTraversal(t *testing.T) {
 	}
 
 	// next traversal test
+	tv = tr.V(ctx).HasEither(ctx, "Type", "intf", "Name", "Node4")
+	if tv.Error() != nil {
+		t.Fatal(tv.Error())
+	}
+
+	if len(tv.Values()) != 3 {
+		t.Fatalf("should return 3 nodes, returned: %d", len(tv.Values()))
+	}
+
+	// next traversal test
 	tv = tr.V(ctx).Has(ctx, "List", "111")
 	if tv.Error() != nil {
 		t.Fatal(tv.Error())
@@ -521,6 +531,18 @@ func TestTraversalParser(t *testing.T) {
 	res := execTraversalQuery(t, g, query)
 	if len(res.Values()) != 2 {
 		t.Fatalf("Should return 2 nodes, returned: %v", res.Values())
+	}
+
+	query = `G.V().HasEither("Type", "intf", "Name", "Node4")`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 3 {
+		t.Fatalf("Should return 3, returned: %v", res.Values())
+	}
+
+	query = `G.V().HasEither("Bytes", 1024, "Bytes", 2024)`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 2 {
+		t.Fatalf("Should return 2, returned: %v", res.Values())
 	}
 
 	// next traversal test

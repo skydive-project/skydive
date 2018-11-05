@@ -110,7 +110,7 @@ var topologyArchiveIndex = es.Index{
 
 // ElasticSearchBackend describes a presisent backend based on ElasticSearch
 type ElasticSearchBackend struct {
-	GraphBackend
+	Backend
 	client       es.ClientInterface
 	prevRevision map[Identifier]*rawData
 }
@@ -261,7 +261,7 @@ func (b *ElasticSearchBackend) NodeDeleted(n *Node) bool {
 }
 
 // GetNode get a node within a time slice
-func (b *ElasticSearchBackend) GetNode(i Identifier, t GraphContext) []*Node {
+func (b *ElasticSearchBackend) GetNode(i Identifier, t Context) []*Node {
 	nodes := b.searchNodes(&TimedSearchQuery{
 		SearchQuery: filters.SearchQuery{
 			Filter: filters.NewTermStringFilter("ID", string(i)),
@@ -329,7 +329,7 @@ func (b *ElasticSearchBackend) EdgeDeleted(e *Edge) bool {
 }
 
 // GetEdge get an edge within a time slice
-func (b *ElasticSearchBackend) GetEdge(i Identifier, t GraphContext) []*Edge {
+func (b *ElasticSearchBackend) GetEdge(i Identifier, t Context) []*Edge {
 	edges := b.searchEdges(&TimedSearchQuery{
 		SearchQuery: filters.SearchQuery{
 			Filter: filters.NewTermStringFilter("ID", string(i)),
@@ -446,7 +446,7 @@ func (b *ElasticSearchBackend) searchEdges(tsq *TimedSearchQuery) (edges []*Edge
 }
 
 // GetEdges returns a list of edges within time slice, matching metadata
-func (b *ElasticSearchBackend) GetEdges(t GraphContext, m GraphElementMatcher) []*Edge {
+func (b *ElasticSearchBackend) GetEdges(t Context, m ElementMatcher) []*Edge {
 	var filter *filters.Filter
 	if m != nil {
 		f, err := m.Filter()
@@ -475,7 +475,7 @@ func (b *ElasticSearchBackend) GetEdges(t GraphContext, m GraphElementMatcher) [
 }
 
 // GetNodes returns a list of nodes within time slice, matching metadata
-func (b *ElasticSearchBackend) GetNodes(t GraphContext, m GraphElementMatcher) []*Node {
+func (b *ElasticSearchBackend) GetNodes(t Context, m ElementMatcher) []*Node {
 	var filter *filters.Filter
 	if m != nil {
 		f, err := m.Filter()
@@ -504,7 +504,7 @@ func (b *ElasticSearchBackend) GetNodes(t GraphContext, m GraphElementMatcher) [
 }
 
 // GetEdgeNodes returns the parents and child nodes of an edge within time slice, matching metadatas
-func (b *ElasticSearchBackend) GetEdgeNodes(e *Edge, t GraphContext, parentMetadata, childMetadata GraphElementMatcher) (parents []*Node, children []*Node) {
+func (b *ElasticSearchBackend) GetEdgeNodes(e *Edge, t Context, parentMetadata, childMetadata ElementMatcher) (parents []*Node, children []*Node) {
 	for _, parent := range b.GetNode(e.parent, t) {
 		if parent.MatchMetadata(parentMetadata) {
 			parents = append(parents, parent)
@@ -521,7 +521,7 @@ func (b *ElasticSearchBackend) GetEdgeNodes(e *Edge, t GraphContext, parentMetad
 }
 
 // GetNodeEdges returns a list of a node edges within time slice
-func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t GraphContext, m GraphElementMatcher) (edges []*Edge) {
+func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t Context, m ElementMatcher) (edges []*Edge) {
 	var filter *filters.Filter
 	if m != nil {
 		f, err := m.Filter()

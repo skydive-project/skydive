@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Red Hat, Inc.
+ * Copyright (C) 2018 IBM, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -23,25 +23,28 @@
 package istio
 
 import (
-	kiali "github.com/hunchback/kiali/kubernetes"
+	"fmt"
 
+	kiali "github.com/kiali/kiali/kubernetes"
+	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
 )
 
-var client *kiali.IstioClient
-
-func initClient() (err error) {
-	config, err := k8s.NewConfig()
-	if err != nil {
-		return
-	}
-	client, err = kiali.NewClientFromConfig(config)
-	return
+type virtualServiceHandler struct {
 }
 
-func getClient() *kiali.IstioClient {
-	if client == nil {
-		panic("client was not initialized, aborting!")
-	}
-	return client
+// Map graph node to k8s resource
+func (h *virtualServiceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
+	vs := obj.(*kiali.VirtualService)
+	return graph.Identifier(vs.GetUID()), k8s.NewMetadata(Manager, "virtualservice", vs, vs.Name, vs.Namespace)
+}
+
+// Dump k8s resource
+func (h *virtualServiceHandler) Dump(obj interface{}) string {
+	vs := obj.(*kiali.VirtualService)
+	return fmt.Sprintf("virtualservice{Namespace: %s, Name: %s}", vs.Namespace, vs.Name)
+}
+
+func newVirtualServiceProbe(client *kiali.IstioClient, g *graph.Graph) k8s.Subprobe {
+	return k8s.NewResourceCache(client.GetIstioNetworkingApi(), &kiali.VirtualService{}, "virtualservices", g, &virtualServiceHandler{})
 }

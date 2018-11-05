@@ -108,7 +108,7 @@ type RoutingTableUpdate struct {
 
 // routingTableUpdater serializes route update on both routing tables
 // and interfaces.
-func (mapper *OpenContrailProbe) routingTableUpdater() {
+func (mapper *Probe) routingTableUpdater() {
 	var vrfId int
 	logging.GetLogger().Debug("Starting routingTableUpdater...")
 	for a := range mapper.routingTableUpdaterChan {
@@ -142,7 +142,7 @@ func (mapper *OpenContrailProbe) routingTableUpdater() {
 	}
 }
 
-func (mapper *OpenContrailProbe) getOrCreateRoutingTable(vrfId int) *RoutingTable {
+func (mapper *Probe) getOrCreateRoutingTable(vrfId int) *RoutingTable {
 	vrf, exists := mapper.routingTables[vrfId]
 	if !exists {
 		logging.GetLogger().Debugf("Creating a new VRF with ID %d", vrfId)
@@ -156,14 +156,14 @@ func (mapper *OpenContrailProbe) getOrCreateRoutingTable(vrfId int) *RoutingTabl
 	return vrf
 }
 
-func (mapper *OpenContrailProbe) addInterface(vrfId int, interfaceUUID string) {
+func (mapper *Probe) addInterface(vrfId int, interfaceUUID string) {
 	if vrf := mapper.getOrCreateRoutingTable(vrfId); vrf != nil {
 		logging.GetLogger().Debugf("Appending interface %s to VRF %d...", interfaceUUID, vrfId)
 		vrf.InterfacesUUID = append(vrf.InterfacesUUID, interfaceUUID)
 	}
 }
 
-func (mapper *OpenContrailProbe) OnInterfaceAdded(vrfId int, interfaceUUID string) {
+func (mapper *Probe) OnInterfaceAdded(vrfId int, interfaceUUID string) {
 	mapper.routingTableUpdaterChan <- RoutingTableUpdate{
 		action: AddInterface,
 		intf:   interfaceUpdate{InterfaceUUID: interfaceUUID, VrfId: vrfId},
@@ -172,7 +172,7 @@ func (mapper *OpenContrailProbe) OnInterfaceAdded(vrfId int, interfaceUUID strin
 
 // deleteInterface removes interfaces from Vrf. If a Vrf no longer has
 // any interfaces, this Vrf is removed.
-func (mapper *OpenContrailProbe) deleteInterface(interfaceUUID string) (vrfId int, err error) {
+func (mapper *Probe) deleteInterface(interfaceUUID string) (vrfId int, err error) {
 	var found bool
 	for k, vrf := range mapper.routingTables {
 		for idx, intf := range vrf.InterfacesUUID {
@@ -194,7 +194,7 @@ func (mapper *OpenContrailProbe) deleteInterface(interfaceUUID string) (vrfId in
 	return 0, errors.New("No VrfId was found")
 }
 
-func (mapper *OpenContrailProbe) OnInterfaceDeleted(interfaceUUID string) {
+func (mapper *Probe) OnInterfaceDeleted(interfaceUUID string) {
 	mapper.routingTableUpdaterChan <- RoutingTableUpdate{
 		action: DelInterface,
 		intf:   interfaceUpdate{InterfaceUUID: interfaceUUID},
@@ -203,13 +203,13 @@ func (mapper *OpenContrailProbe) OnInterfaceDeleted(interfaceUUID string) {
 
 // onRouteChanged writes the Contrail routing table into the
 // Contrail.RoutingTable metadata attribute.
-func (mapper *OpenContrailProbe) onRouteChanged(vrfId int) {
+func (mapper *Probe) onRouteChanged(vrfId int) {
 	vrf := mapper.getOrCreateRoutingTable(vrfId)
 
 	mapper.graph.Lock()
 	defer mapper.graph.Unlock()
 
-	filter := graph.NewGraphElementFilter(filters.NewTermInt64Filter("Contrail.VRFID", int64(vrfId)))
+	filter := graph.NewElementFilter(filters.NewTermInt64Filter("Contrail.VRFID", int64(vrfId)))
 	intfs := mapper.graph.GetNodes(filter)
 
 	if len(intfs) == 0 {
@@ -222,7 +222,7 @@ func (mapper *OpenContrailProbe) onRouteChanged(vrfId int) {
 	}
 }
 
-func (mapper *OpenContrailProbe) addRoute(vrfId int, route OpenContrailRoute) {
+func (mapper *Probe) addRoute(vrfId int, route OpenContrailRoute) {
 	if vrf := mapper.getOrCreateRoutingTable(vrfId); vrf != nil {
 		logging.GetLogger().Debugf("Adding route %v to vrf %d", route, vrfId)
 		for _, r := range vrf.Routes {
@@ -234,7 +234,7 @@ func (mapper *OpenContrailProbe) addRoute(vrfId int, route OpenContrailRoute) {
 	}
 }
 
-func (mapper *OpenContrailProbe) delRoute(vrfId int, route OpenContrailRoute) {
+func (mapper *Probe) delRoute(vrfId int, route OpenContrailRoute) {
 	if vrf := mapper.getOrCreateRoutingTable(vrfId); vrf != nil {
 		for i, r := range vrf.Routes {
 			if r.Prefix == route.Prefix {
@@ -249,7 +249,7 @@ func (mapper *OpenContrailProbe) delRoute(vrfId int, route OpenContrailRoute) {
 }
 
 // vrfInit uses the Contrail binary rt --dump to get all routes of a VRF.
-func (mapper *OpenContrailProbe) vrfInit(vrfId int) (*RoutingTable, error) {
+func (mapper *Probe) vrfInit(vrfId int) (*RoutingTable, error) {
 	logging.GetLogger().Debugf("Initialization of VRF %d...", vrfId)
 
 	cmd := exec.Command("rt", "--dump", fmt.Sprint(vrfId))
@@ -307,7 +307,7 @@ func (mapper *OpenContrailProbe) vrfInit(vrfId int) (*RoutingTable, error) {
 // Contrail module. We cannot just listen the Netlink bus because
 // messages are encoded with Sandesh which is bound to the Contrail
 // version. This is why we read the stdout of the "rt" tools.
-func (mapper *OpenContrailProbe) rtMonitor() {
+func (mapper *Probe) rtMonitor() {
 	cmd := exec.CommandContext(mapper.ctx, "rt", "--monitor")
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

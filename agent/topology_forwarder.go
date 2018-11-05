@@ -44,8 +44,8 @@ func (t *TopologyForwarder) triggerResync() {
 	t.graph.RLock()
 	defer t.graph.RUnlock()
 
-	// request for deletion of everything belonging this host
-	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.HostGraphDeletedMsgType, t.host))
+	// request for deletion of everything belonging this origin
+	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.OriginGraphDeletedMsgType, t.graph.Origin()))
 
 	// re-add all the nodes and edges
 	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.SyncMsgType, t.graph))
@@ -63,32 +63,32 @@ func (t *TopologyForwarder) OnNewMaster(c ws.Speaker) {
 	}
 }
 
-// OnNodeUpdated graph node updated event. Implements the GraphEventListener interface.
+// OnNodeUpdated graph node updated event. Implements the EventListener interface.
 func (t *TopologyForwarder) OnNodeUpdated(n *graph.Node) {
 	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.NodeUpdatedMsgType, n))
 }
 
-// OnNodeAdded graph node added event. Implements the GraphEventListener interface.
+// OnNodeAdded graph node added event. Implements the EventListener interface.
 func (t *TopologyForwarder) OnNodeAdded(n *graph.Node) {
 	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.NodeAddedMsgType, n))
 }
 
-// OnNodeDeleted graph node deleted event. Implements the GraphEventListener interface.
+// OnNodeDeleted graph node deleted event. Implements the EventListener interface.
 func (t *TopologyForwarder) OnNodeDeleted(n *graph.Node) {
 	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.NodeDeletedMsgType, n))
 }
 
-// OnEdgeUpdated graph edge updated event. Implements the GraphEventListener interface.
+// OnEdgeUpdated graph edge updated event. Implements the EventListener interface.
 func (t *TopologyForwarder) OnEdgeUpdated(e *graph.Edge) {
 	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e))
 }
 
-// OnEdgeAdded graph edge added event. Implements the GraphEventListener interface.
+// OnEdgeAdded graph edge added event. Implements the EventListener interface.
 func (t *TopologyForwarder) OnEdgeAdded(e *graph.Edge) {
 	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
 }
 
-// OnEdgeDeleted graph edge deleted event. Implements the GraphEventListener interface.
+// OnEdgeDeleted graph edge deleted event. Implements the EventListener interface.
 func (t *TopologyForwarder) OnEdgeDeleted(e *graph.Edge) {
 	t.masterElection.SendMessageToMaster(ws.NewStructMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
 }

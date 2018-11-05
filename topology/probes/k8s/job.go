@@ -25,88 +25,33 @@ package k8s
 import (
 	"fmt"
 
-	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 
 	batchv1 "k8s.io/api/batch/v1"
-	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/kubernetes"
 )
 
-type jobProbe struct {
-	DefaultKubeCacheEventHandler
-	*KubeCache
-	graph *graph.Graph
+type jobHandler struct {
 }
 
-func dumpJob(job *batchv1.Job) string {
+func (h *jobHandler) Dump(obj interface{}) string {
+	job := obj.(*batchv1.Job)
 	return fmt.Sprintf("job{Namespace: %s, Name: %s}", job.Namespace, job.Name)
 }
 
-func (p *jobProbe) newMetadata(job *batchv1.Job) graph.Metadata {
-	m := NewMetadata(Manager, "job", job.Namespace, job.Name, job)
+func (h *jobHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
+	job := obj.(*batchv1.Job)
+
+	m := NewMetadata(Manager, "job", job, job.Name, job.Namespace)
 	m.SetField("Parallelism", job.Spec.Parallelism)
 	m.SetField("Completions", job.Spec.Completions)
 	m.SetField("Active", job.Status.Active)
 	m.SetField("Succeeded", job.Status.Succeeded)
 	m.SetField("Failed", job.Status.Failed)
-	return m
+
+	return graph.Identifier(job.GetUID()), m
 }
 
-func jobUID(job *batchv1.Job) graph.Identifier {
-	return graph.Identifier(job.GetUID())
-}
-
-func (p *jobProbe) OnAdd(obj interface{}) {
-	if job, ok := obj.(*batchv1.Job); ok {
-		p.graph.Lock()
-		defer p.graph.Unlock()
-
-		NewNode(p.graph, jobUID(job), p.newMetadata(job))
-		logging.GetLogger().Debugf("Added %s", dumpJob(job))
-	}
-}
-
-func (p *jobProbe) OnUpdate(oldObj, newObj interface{}) {
-	if job, ok := newObj.(*batchv1.Job); ok {
-		p.graph.Lock()
-		defer p.graph.Unlock()
-
-		if jobNode := p.graph.GetNode(jobUID(job)); jobNode != nil {
-			AddMetadata(p.graph, jobNode, job)
-			logging.GetLogger().Debugf("Updated %s", dumpJob(job))
-		}
-	}
-}
-
-func (p *jobProbe) OnDelete(obj interface{}) {
-	if job, ok := obj.(*batchv1.Job); ok {
-		p.graph.Lock()
-		defer p.graph.Unlock()
-
-		if jobNode := p.graph.GetNode(jobUID(job)); jobNode != nil {
-			p.graph.DelNode(jobNode)
-			logging.GetLogger().Debugf("Deleted %s", dumpJob(job))
-		}
-	}
-}
-
-func (p *jobProbe) Start() {
-	p.KubeCache.Start()
-}
-
-func (p *jobProbe) Stop() {
-	p.KubeCache.Stop()
-}
-
-func newJobKubeCache(handler cache.ResourceEventHandler) *KubeCache {
-	return NewKubeCache(getClientset().BatchV1().RESTClient(), &batchv1.Job{}, "jobs", handler)
-}
-
-func newJobProbe(g *graph.Graph) probe.Probe {
-	p := &jobProbe{
-		graph: g,
-	}
-	p.KubeCache = newJobKubeCache(p)
-	return p
+func newJobProbe(clientset *kubernetes.Clientset, graph *graph.Graph) Subprobe {
+	return NewResourceCache(clientset.BatchV1().RESTClient(), &batchv1.Job{}, "jobs", graph, &jobHandler{})
 }

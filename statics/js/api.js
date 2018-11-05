@@ -8,6 +8,8 @@ var apiMixin = {
     this.injectAPI = new api.API(client, "injectpacket", api.PacketInjection);
     this.workflowAPI = new api.API(client, "workflow", api.PacketInjection);
     this.gremlinAPI = new api.GremlinAPI(client);
+    this.noderuleAPI = new api.API(client, "noderule", api.NodeRule);
+    this.edgeruleAPI = new api.API(client, "edgerule", api.EdgeRule);
   },
 
   methods: {

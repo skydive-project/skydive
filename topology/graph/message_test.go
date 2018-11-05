@@ -41,7 +41,7 @@ func TestNullNodesEdges(t *testing.T) {
 		Type:      SyncMsgType,
 		UUID:      "aaa",
 		Status:    http.StatusOK,
-		JsonObj:   &raw,
+		JSONObj:   &raw,
 	}
 
 	if _, _, err := UnmarshalMessage(msg); err != nil {
@@ -58,7 +58,7 @@ func TestNullNodesEdges(t *testing.T) {
 		Type:      SyncMsgType,
 		UUID:      "bbb",
 		Status:    http.StatusOK,
-		JsonObj:   &raw,
+		JSONObj:   &raw,
 	}
 
 	if _, _, err := UnmarshalMessage(msg); err != nil {
@@ -77,7 +77,7 @@ func TestID(t *testing.T) {
 		Type:      SyncMsgType,
 		UUID:      "aaa",
 		Status:    http.StatusOK,
-		JsonObj:   &raw,
+		JSONObj:   &raw,
 	}
 
 	if _, _, err := UnmarshalMessage(msg); err == nil {
@@ -94,7 +94,7 @@ func TestID(t *testing.T) {
 		Type:      SyncMsgType,
 		UUID:      "aaa",
 		Status:    http.StatusOK,
-		JsonObj:   &raw,
+		JSONObj:   &raw,
 	}
 
 	if _, _, err := UnmarshalMessage(msg); err == nil {
@@ -113,7 +113,7 @@ func TestHost(t *testing.T) {
 		Type:      SyncMsgType,
 		UUID:      "aaa",
 		Status:    http.StatusOK,
-		JsonObj:   &raw,
+		JSONObj:   &raw,
 	}
 
 	if _, _, err := UnmarshalMessage(msg); err == nil {

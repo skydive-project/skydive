@@ -16,22 +16,27 @@ tests_run() {
         LOGFILE=$WORKSPACE/output.log
         TESTFILE=$WORKSPACE/tests.xml
 
-        BACKEND="memory"
-        ARGS=" -analyzer.topology.backend $BACKEND -analyzer.flow.backend $BACKEND -graph.output ascii -standalone"
+        BACKEND=${BACKEND:-memory}
+        ARGS="-graph.output ascii -standalone -analyzer.topology.backend $BACKEND -analyzer.flow.backend $BACKEND"
+        export ORIENTDB_ROOT_PASSWORD=root
 
         if [ "$COVERAGE" != "true" -a "$(uname -m)" != "ppc64le" ]; then
-            GOFLAGS="-race"
-              export TEST_COVERPROFILE=../functionals-$BACKEND.cover
+                GOFLAGS="-race"
+                export TEST_COVERPROFILE=../functionals-$BACKEND.cover
         fi
 
         make test.functionals.batch \
                 GOFLAGS="$GOFLAGS" VERBOSE=true TAGS="$TAGS" GORACE="history_size=5" TIMEOUT=20m \
                 WITH_HELM="$WITH_HELM" WITH_EBPF="$WITH_EBPF" WITH_K8S="$WITH_K8S" WITH_ISTIO="$WITH_ISTIO" \
-                ARGS="$ARGS" TEST_PATTERN=$TEST_PATTERN 2>&1 | tee $LOGFILE
+                ARGS="$ARGS" TEST_PATTERN="$TEST_PATTERN" 2>&1 | tee $LOGFILE
         RETCODE=$?
 
         go get -f -u github.com/tebeka/go2xunit
         go2xunit -fail -fail-on-race -suite-name-prefix tests \
                 -input $LOGFILE -output $TESTFILE
         sed -i 's/\x1b\[[0-9;]*m//g' $TESTFILE
+
+        if [ -e functionals.cover ]; then
+                mv functionals.cover $TEST_COVERPROFILE
+        fi
 }

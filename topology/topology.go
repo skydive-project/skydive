@@ -31,19 +31,26 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-// Describe the relation type between nodes
+// ErrNetworkPathNotFound
 const (
 	OwnershipLink = "ownership"
 	Layer2Link    = "layer2"
 )
 
-// Describe the relation type between nodes in the graph
 var (
-	OwnershipMetadata = graph.Metadata{"RelationType": OwnershipLink}
-	Layer2Metadata    = graph.Metadata{"RelationType": Layer2Link}
-
-	ErrNetworkPathNotFound = func(name string) error { return fmt.Errorf("Failed to determine network namespace path for %s", name) }
+	// ErrNoPathToHost is called when no host could be found as the parent of a node
+	ErrNoPathToHost = func(name string) error { return fmt.Errorf("Failed to determine network namespace path for %s", name) }
 )
+
+// OwnershipMetadata returns metadata for an ownership link
+func OwnershipMetadata() graph.Metadata {
+	return graph.Metadata{"RelationType": OwnershipLink}
+}
+
+// Layer2Metadata returns metadata for a layer2 link
+func Layer2Metadata() graph.Metadata {
+	return graph.Metadata{"RelationType": Layer2Link}
+}
 
 // NamespaceFromNode returns the namespace name and the path of a node in the graph
 func NamespaceFromNode(g *graph.Graph, n *graph.Node) (string, string, error) {
@@ -52,9 +59,9 @@ func NamespaceFromNode(g *graph.Graph, n *graph.Node) (string, string, error) {
 		return "", "", fmt.Errorf("No Name for node %v", n)
 	}
 
-	nodes := g.LookupShortestPath(n, graph.Metadata{"Type": "host"}, OwnershipMetadata)
+	nodes := g.LookupShortestPath(n, graph.Metadata{"Type": "host"}, OwnershipMetadata())
 	if len(nodes) == 0 {
-		return "", "", ErrNetworkPathNotFound(name)
+		return "", "", ErrNoPathToHost(name)
 	}
 
 	for _, node := range nodes {
@@ -108,24 +115,24 @@ func BuildHostNodeTIDMap(nodes []*graph.Node) HostNodeTIDMap {
 
 // HaveOwnershipLink returns true if parent and child have an ownership link
 func HaveOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node) bool {
-	return g.AreLinked(parent, child, OwnershipMetadata)
+	return g.AreLinked(parent, child, OwnershipMetadata())
 }
 
 // IsOwnershipLinked checks whether the node has an OwnershipLink
 func IsOwnershipLinked(g *graph.Graph, node *graph.Node) bool {
-	edges := g.GetNodeEdges(node, OwnershipMetadata)
+	edges := g.GetNodeEdges(node, OwnershipMetadata())
 	return len(edges) != 0
 }
 
 // GetOwnershipLink get ownership Link between the parent and the child node or nil
 func GetOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node) *graph.Edge {
-	return g.GetFirstLink(parent, child, OwnershipMetadata)
+	return g.GetFirstLink(parent, child, OwnershipMetadata())
 }
 
 // AddOwnershipLink Link between the parent and the child node, the child can have only one parent, previous will be overwritten
 func AddOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, metadata graph.Metadata, h ...string) *graph.Edge {
 	// a child node can only have one parent of type ownership, so delete the previous link
-	for _, e := range g.GetNodeEdges(child, OwnershipMetadata) {
+	for _, e := range g.GetNodeEdges(child, OwnershipMetadata()) {
 		if e.GetChild() == child.ID {
 			logging.GetLogger().Debugf("Delete previous ownership link: %v", e)
 			g.DelEdge(e)
@@ -143,7 +150,7 @@ func AddOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, met
 
 // HaveLayer2Link returns true if parent and child have the same layer 2
 func HaveLayer2Link(g *graph.Graph, node1 *graph.Node, node2 *graph.Node) bool {
-	return g.AreLinked(node1, node2, Layer2Metadata)
+	return g.AreLinked(node1, node2, Layer2Metadata())
 }
 
 // AddLayer2Link Link the parent and the child node
@@ -155,4 +162,15 @@ func AddLayer2Link(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, metadat
 
 	id, _ := uuid.NewV5(uuid.NamespaceOID, []byte(node1.ID+node2.ID+Layer2Link))
 	return g.NewEdge(graph.Identifier(id.String()), node1, node2, m)
+}
+
+// IsInterfaceUp returns whether an interface has the flag UP set
+func IsInterfaceUp(node *graph.Node) bool {
+	linkFlags, _ := node.GetFieldStringList("LinkFlags")
+	for _, flag := range linkFlags {
+		if flag == "UP" {
+			return true
+		}
+	}
+	return false
 }

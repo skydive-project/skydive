@@ -53,29 +53,25 @@ var PcapCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Critical(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		file, err := os.Open(pcapTrace)
 		if err != nil {
-			logging.GetLogger().Critical(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 		defer file.Close()
 
 		resp, err := client.Request("POST", "pcap", file, nil)
 		if err != nil {
-			logging.GetLogger().Critical(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		if resp.StatusCode == http.StatusOK {
 			fmt.Printf("%s was successfully imported\n", pcapTrace)
 		} else {
 			content, _ := ioutil.ReadAll(resp.Body)
-			logging.GetLogger().Errorf("Failed to import %s: %s", pcapTrace, string(content))
-			os.Exit(1)
+			exitOnError(fmt.Errorf("Failed to import %s: %s", pcapTrace, string(content)))
 		}
 	},
 }

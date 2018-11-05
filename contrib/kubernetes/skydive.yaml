@@ -22,6 +22,25 @@ spec:
     app: skydive
     tier: analyzer
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: skydive-analyzer
+  name: skydive-analyzer-config
+data:
+  SKYDIVE_ANALYZER_FLOW_BACKEND: elasticsearch
+  SKYDIVE_ANALYZER_TOPOLOGY_BACKEND: elasticsearch
+  SKYDIVE_ANALYZER_TOPOLOGY_PROBES: ""
+  SKYDIVE_ETCD_LISTEN: 0.0.0.0:12379
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: skydive-agent
+  name: skydive-agent-config
+---
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
@@ -46,13 +65,9 @@ spec:
           protocol: UDP
         - containerPort: 12379
         - containerPort: 12380
-        env:
-        - name: SKYDIVE_ANALYZER_STORAGE_BACKEND
-          value: elasticsearch
-        - name: SKYDIVE_GRAPH_BACKEND
-          value: elasticsearch
-        - name: SKYDIVE_ETCD_LISTEN
-          value: 0.0.0.0:12379
+        envFrom:
+        - configMapRef:
+            name: skydive-analyzer-config
         livenessProbe:
           httpGet:
             port: 8082
@@ -88,6 +103,9 @@ spec:
         env:
         - name: SKYDIVE_ANALYZERS
           value: "$(SKYDIVE_ANALYZER_SERVICE_HOST):$(SKYDIVE_ANALYZER_SERVICE_PORT_API)"
+        envFrom:
+        - configMapRef:
+            name: skydive-agent-config
         securityContext:
           privileged: true
         volumeMounts:

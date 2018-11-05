@@ -57,8 +57,7 @@ var AlertCreate = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		alert := types.NewAlert()
@@ -69,13 +68,11 @@ var AlertCreate = &cobra.Command{
 		alert.Action = alertAction
 
 		if err := validator.Validate(alert); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		if err := client.Create("alert", &alert); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 		printJSON(&alert)
 	},
@@ -90,12 +87,10 @@ var AlertList = &cobra.Command{
 		var alerts map[string]types.Alert
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 		if err := client.List("alert", &alerts); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 		printJSON(alerts)
 	},
@@ -116,13 +111,11 @@ var AlertGet = &cobra.Command{
 		var alert types.Alert
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Critical(err.Error())
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		if err := client.Get("alert", args[0], &alert); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 		printJSON(&alert)
 	},
@@ -142,8 +135,7 @@ var AlertDelete = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+			exitOnError(err)
 		}
 
 		for _, id := range args {

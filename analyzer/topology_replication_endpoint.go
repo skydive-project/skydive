@@ -110,15 +110,20 @@ func (p *TopologyReplicatorPeer) connect(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	logging.GetLogger().Infof("Connecting to peer: %s", p.URL.String())
-	wsClient := ws.NewClientFromConfig(common.AnalyzerService, p.URL, p.AuthOptions, http.Header{}).UpgradeToStructSpeaker()
+	wsClient, err := config.NewWSClient(common.AnalyzerService, p.URL, p.AuthOptions, http.Header{})
+	if err != nil {
+		logging.GetLogger().Errorf("Failed to create client: %s", err)
+		return
+	}
 
+	structClient := wsClient.UpgradeToStructSpeaker()
 	// will trigger shttp.SpeakerEventHandler, so OnConnected
-	wsClient.AddEventHandler(p)
+	structClient.AddEventHandler(p)
 
 	// subscribe to the graph messages
-	wsClient.AddStructMessageHandler(p.endpoint, []string{graph.Namespace})
+	structClient.AddStructMessageHandler(p.endpoint, []string{graph.Namespace})
 
-	p.wsspeaker = wsClient
+	p.wsspeaker = structClient
 	p.wsspeaker.Connect()
 }
 
@@ -198,9 +203,9 @@ func (t *TopologyReplicationEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Stru
 	case graph.SyncRequestMsgType:
 		reply := msg.Reply(t.Graph, graph.SyncReplyMsgType, http.StatusOK)
 		c.SendMessage(reply)
-	case graph.HostGraphDeletedMsgType:
-		logging.GetLogger().Debugf("Got %s message for host %s", graph.HostGraphDeletedMsgType, obj.(string))
-		t.Graph.DelHostGraph(obj.(string))
+	case graph.OriginGraphDeletedMsgType:
+		logging.GetLogger().Debugf("Got %s message for origin %s", graph.OriginGraphDeletedMsgType, obj.(string))
+		t.Graph.DelOriginGraph(obj.(string))
 	case graph.SyncMsgType, graph.SyncReplyMsgType:
 		r := obj.(*graph.SyncMsg)
 		for _, n := range r.Nodes {
@@ -237,7 +242,7 @@ func (t *TopologyReplicationEndpoint) notifyPeers(msg *ws.StructMessage) {
 	t.out.BroadcastMessage(msg)
 }
 
-// OnNodeUpdated graph node updated event. Implements the GraphEventListener interface.
+// OnNodeUpdated graph node updated event. Implements the EventListener interface.
 func (t *TopologyReplicationEndpoint) OnNodeUpdated(n *graph.Node) {
 	if t.replicateMsg.Load() == true {
 		msg := ws.NewStructMessage(graph.Namespace, graph.NodeUpdatedMsgType, n)
@@ -245,7 +250,7 @@ func (t *TopologyReplicationEndpoint) OnNodeUpdated(n *graph.Node) {
 	}
 }
 
-// OnNodeAdded graph node added event. Implements the GraphEventListener interface.
+// OnNodeAdded graph node added event. Implements the EventListener interface.
 func (t *TopologyReplicationEndpoint) OnNodeAdded(n *graph.Node) {
 	if t.replicateMsg.Load() == true {
 		msg := ws.NewStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
@@ -253,7 +258,7 @@ func (t *TopologyReplicationEndpoint) OnNodeAdded(n *graph.Node) {
 	}
 }
 
-// OnNodeDeleted graph node deleted event. Implements the GraphEventListener interface.
+// OnNodeDeleted graph node deleted event. Implements the EventListener interface.
 func (t *TopologyReplicationEndpoint) OnNodeDeleted(n *graph.Node) {
 	if t.replicateMsg.Load() == true {
 		msg := ws.NewStructMessage(graph.Namespace, graph.NodeDeletedMsgType, n)
@@ -261,7 +266,7 @@ func (t *TopologyReplicationEndpoint) OnNodeDeleted(n *graph.Node) {
 	}
 }
 
-// OnEdgeUpdated graph edge updated event. Implements the GraphEventListener interface.
+// OnEdgeUpdated graph edge updated event. Implements the EventListener interface.
 func (t *TopologyReplicationEndpoint) OnEdgeUpdated(e *graph.Edge) {
 	if t.replicateMsg.Load() == true {
 		msg := ws.NewStructMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e)
@@ -269,7 +274,7 @@ func (t *TopologyReplicationEndpoint) OnEdgeUpdated(e *graph.Edge) {
 	}
 }
 
-// OnEdgeAdded graph edge added event. Implements the GraphEventListener interface.
+// OnEdgeAdded graph edge added event. Implements the EventListener interface.
 func (t *TopologyReplicationEndpoint) OnEdgeAdded(e *graph.Edge) {
 	if t.replicateMsg.Load() == true {
 		msg := ws.NewStructMessage(graph.Namespace, graph.EdgeAddedMsgType, e)
@@ -277,7 +282,7 @@ func (t *TopologyReplicationEndpoint) OnEdgeAdded(e *graph.Edge) {
 	}
 }
 
-// OnEdgeDeleted graph edge deleted event. Implements the GraphEventListener interface.
+// OnEdgeDeleted graph edge deleted event. Implements the EventListener interface.
 func (t *TopologyReplicationEndpoint) OnEdgeDeleted(e *graph.Edge) {
 	if t.replicateMsg.Load() == true {
 		msg := ws.NewStructMessage(graph.Namespace, graph.EdgeDeletedMsgType, e)

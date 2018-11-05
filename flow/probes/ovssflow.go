@@ -58,7 +58,7 @@ type OvsSFlowProbesHandler struct {
 	Graph        *graph.Graph
 	fpta         *FlowProbeTableAllocator
 	ovsClient    *ovsdb.OvsClient
-	allocator    *sflow.SFlowAgentAllocator
+	allocator    *sflow.AgentAllocator
 	eventHandler FlowProbeEventHandler
 }
 
@@ -223,8 +223,7 @@ func isOvsBridge(n *graph.Node) bool {
 	return false
 }
 
-// RegisterProbe registers a probe on a graph node
-func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+func (o *OvsSFlowProbesHandler) registerProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
@@ -239,6 +238,15 @@ func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capt
 		}
 	}
 	return nil
+}
+
+// RegisterProbe registers a probe on a graph node
+func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+	err := o.registerProbe(n, capture, e)
+	if err != nil {
+		go e.OnError(err)
+	}
+	return err
 }
 
 // UnregisterProbe at the graph node
@@ -264,14 +272,14 @@ func (o *OvsSFlowProbesHandler) Stop() {
 }
 
 // NewOvsSFlowProbesHandler creates a new OVS SFlow porbes
-func NewOvsSFlowProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator, tb *probe.ProbeBundle) (*OvsSFlowProbesHandler, error) {
+func NewOvsSFlowProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator, tb *probe.Bundle) (*OvsSFlowProbesHandler, error) {
 	probe := tb.GetProbe("ovsdb")
 	if probe == nil {
 		return nil, errors.New("Agent.ovssflow probe depends on agent.ovsdb topology probe: agent.ovssflow probe can't start properly")
 	}
-	p := probe.(*ovsprobe.OvsdbProbe)
+	p := probe.(*ovsprobe.Probe)
 
-	allocator, err := sflow.NewSFlowAgentAllocator()
+	allocator, err := sflow.NewAgentAllocator()
 	if err != nil {
 		return nil, err
 	}

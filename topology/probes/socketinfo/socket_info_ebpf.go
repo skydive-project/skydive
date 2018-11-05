@@ -87,7 +87,7 @@ func (s *EBPFSocketInfoProbe) TCPEventV6(tcpV6 tracer.TcpV6) {
 				LocalPort:     int64(srcAddr.Port),
 				RemoteAddress: dstAddr.IP.String(),
 				RemotePort:    int64(dstAddr.Port),
-				State:         ConnectionState(tcpStates[0]),
+				State:         ConnectionState(tcpStates[1]),
 				Protocol:      flow.FlowProtocol_TCP,
 			}
 			s.connCache.Set(conn.Hash(), conn)

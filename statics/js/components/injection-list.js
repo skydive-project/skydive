@@ -102,6 +102,7 @@ Vue.component('injection-list', {
   data: function() {
     return {
       injectors: {},
+      intervalID: "",
     };
   },
 
@@ -113,11 +114,15 @@ Vue.component('injection-list', {
 
   created: function() {
     var self = this;
-    setInterval(this.getInjectorList.bind(this), 30000);
+    this.intervalID = setInterval(this.getInjectorList.bind(this), 30000);
     this.getInjectorList();
     app.$on("refresh-injector-list", function() {
       self.getInjectorList();
     });
+  },
+
+  destroyed: function() {
+    clearInterval(this.intervalID);
   },
 
   methods: {

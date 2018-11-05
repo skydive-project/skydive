@@ -25,7 +25,10 @@ package flow
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	fmt "fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -37,6 +40,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	fl "github.com/skydive-project/skydive/flow/layers"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -95,22 +99,87 @@ type RawPackets struct {
 // LayerKeyMode defines what are the layers used for the flow key calculation
 type LayerKeyMode int
 
+// Flow key calculation modes
 const (
 	DefaultLayerKeyMode              = L2KeyMode // default mode
 	L2KeyMode           LayerKeyMode = 0         // uses Layer2 and Layer3 for hash computation, default mode
 	L3PreferedKeyMode   LayerKeyMode = 1         // uses Layer3 only and layer2 if no Layer3
 )
 
-// FlowOpts describes options that can be used to process flows
-type FlowOpts struct {
+// ExtraLayers defines extra layer to be pushed in flow
+type ExtraLayers int
+
+const (
+	// VRRPLayer extra layer
+	VRRPLayer ExtraLayers = 1
+	// DNSLayer extra layer
+	DNSLayer ExtraLayers = 2
+	// DHCPv4Layer extra layer
+	DHCPv4Layer ExtraLayers = 4
+	// ALLLayer all extra layers
+	ALLLayer ExtraLayers = 255
+)
+
+var extraLayersMap = map[string]ExtraLayers{
+	"VRRP":   VRRPLayer,
+	"DNS":    DNSLayer,
+	"DHCPv4": DHCPv4Layer,
+}
+
+// Parse set the ExtraLayers struct with the given list of protocol strings
+func (e *ExtraLayers) Parse(s ...string) error {
+	*e = 0
+	for _, v := range s {
+		if i, ok := extraLayersMap[v]; ok {
+			*e |= i
+		} else {
+			return fmt.Errorf("Extra layer not supported: %s", v)
+		}
+	}
+	return nil
+}
+
+// Extract returns a string list of the ExtraLayers protocol
+func (e ExtraLayers) Extract() []string {
+	var l []string
+	for k, v := range extraLayersMap {
+		if (e & v) > 0 {
+			l = append(l, k)
+		}
+	}
+	return l
+}
+
+// String returns a string of the list of the protocols
+func (e ExtraLayers) String() string {
+	return strings.Join(e.Extract(), "|")
+}
+
+// MarshalJSON serializes the ExtraLayers structure
+func (e ExtraLayers) MarshalJSON() ([]byte, error) {
+	return json.Marshal(e.Extract())
+}
+
+// UnmarshalJSON deserializes json input to ExtraLayers
+func (e *ExtraLayers) UnmarshalJSON(data []byte) error {
+	var a []string
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	return e.Parse(a...)
+}
+
+// Opts describes options that can be used to process flows
+type Opts struct {
 	TCPMetric    bool
 	IPDefrag     bool
 	LayerKeyMode LayerKeyMode
 	AppPortMap   *ApplicationPortMap
+	ExtraLayers  ExtraLayers
 }
 
-// FlowUUIDs describes UUIDs that can be applied to flows
-type FlowUUIDs struct {
+// UUIDs describes UUIDs that can be applied to flows
+type UUIDs struct {
 	ParentUUID string
 	L2ID       int64
 	L3ID       int64
@@ -123,6 +192,7 @@ func (l LayerKeyMode) String() string {
 	return "L3"
 }
 
+// LayerKeyModeByName converts a string to a layer key mode
 func LayerKeyModeByName(name string) (LayerKeyMode, error) {
 	switch name {
 	case "L2":
@@ -133,6 +203,7 @@ func LayerKeyModeByName(name string) (LayerKeyMode, error) {
 	return L2KeyMode, errors.New("LayerKeyMode unknown")
 }
 
+// DefaultLayerKeyModeName returns the default layer key mode
 func DefaultLayerKeyModeName() string {
 	mode := config.GetString("flow.default_layer_key_mode")
 	if mode == "" {
@@ -195,15 +266,20 @@ func (p *Packet) TransportLayer() gopacket.TransportLayer {
 
 // ApplicationFlow returns first application flow
 func (p *Packet) ApplicationFlow() (gopacket.Flow, error) {
+	value32 := make([]byte, 4)
 	if layer := p.Layer(layers.LayerTypeICMPv4); layer != nil {
-		l := layer.(*ICMPv4)
-		value32 := make([]byte, 4)
-		binary.BigEndian.PutUint32(value32, uint32(l.Type)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.Id))
+		l := layer.(*layers.ICMPv4)
+		t := ICMPv4TypeToFlowICMPType(l.TypeCode.Type())
+		binary.BigEndian.PutUint32(value32, uint32(t)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.Id))
+		return gopacket.NewFlow(0, value32, nil), nil
+	} else if layer := p.Layer(layers.LayerTypeICMPv6Echo); layer != nil {
+		l := layer.(*layers.ICMPv6Echo)
+		binary.BigEndian.PutUint32(value32, uint32(ICMPType_ECHO)<<24|uint32(l.Identifier))
 		return gopacket.NewFlow(0, value32, nil), nil
 	} else if layer := p.Layer(layers.LayerTypeICMPv6); layer != nil {
-		l := layer.(*ICMPv6)
-		value32 := make([]byte, 4)
-		binary.BigEndian.PutUint32(value32, uint32(l.Type)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.ID))
+		l := layer.(*layers.ICMPv6)
+		t := ICMPv6TypeToFlowICMPType(l.TypeCode.Type())
+		binary.BigEndian.PutUint32(value32, uint32(t)<<24|uint32(l.TypeCode.Code())<<16)
 		return gopacket.NewFlow(0, value32, nil), nil
 	}
 
@@ -242,7 +318,7 @@ func (p *Packet) TransportFlow() (gopacket.Flow, error) {
 
 // Key returns the unique flow key
 // The unique key is calculated based on parentUUID, network, transport and applicable layers
-func (p *Packet) Key(parentUUID string, opts FlowOpts) string {
+func (p *Packet) Key(parentUUID string, opts Opts) string {
 	var uuid uint64
 
 	// uses L2 is requested or if there is no network layer
@@ -378,7 +454,7 @@ func NewFlow() *Flow {
 }
 
 // NewFlowFromGoPacket creates a new flow from the given gopacket
-func NewFlowFromGoPacket(p gopacket.Packet, nodeTID string, uuids FlowUUIDs, opts FlowOpts) *Flow {
+func NewFlowFromGoPacket(p gopacket.Packet, nodeTID string, uuids UUIDs, opts Opts) *Flow {
 	f := NewFlow()
 
 	var length int64
@@ -399,7 +475,7 @@ func NewFlowFromGoPacket(p gopacket.Packet, nodeTID string, uuids FlowUUIDs, opt
 }
 
 // UpdateUUID updates the flow UUID based on protocotols layers path and layers IDs
-func (f *Flow) UpdateUUID(key string, opts FlowOpts) {
+func (f *Flow) UpdateUUID(key string, opts Opts) {
 	layersPath := strings.Replace(f.LayersPath, "Dot1Q/", "", -1)
 
 	hasher := murmur3.New64()
@@ -471,7 +547,7 @@ func (f *Flow) LinkType() (layers.LinkType, error) {
 }
 
 // Init initializes the flow with the given Timestamp, nodeTID and related UUIDs
-func (f *Flow) Init(now int64, nodeTID string, uuids FlowUUIDs) {
+func (f *Flow) Init(now int64, nodeTID string, uuids UUIDs) {
 	f.Start = now
 	f.Last = now
 
@@ -483,7 +559,7 @@ func (f *Flow) Init(now int64, nodeTID string, uuids FlowUUIDs) {
 }
 
 // initFromPacket initializes the flow based on packet data, flow key and ids
-func (f *Flow) initFromPacket(key string, packet *Packet, nodeTID string, uuids FlowUUIDs, opts FlowOpts) {
+func (f *Flow) initFromPacket(key string, packet *Packet, nodeTID string, uuids UUIDs, opts Opts) {
 	now := common.UnixMillis(packet.GoPacket.Metadata().CaptureInfo.Timestamp)
 	f.Init(now, nodeTID, uuids)
 
@@ -496,6 +572,9 @@ func (f *Flow) initFromPacket(key string, packet *Packet, nodeTID string, uuids 
 		f.newTransportLayer(packet, opts)
 	}
 
+	// add optional application layer
+	f.newApplicationLayer(packet, opts)
+
 	// need to have as most variable filled as possible to get correct UUID
 	f.UpdateUUID(key, opts)
 
@@ -504,7 +583,7 @@ func (f *Flow) initFromPacket(key string, packet *Packet, nodeTID string, uuids 
 }
 
 // Update a flow metrics and latency
-func (f *Flow) Update(packet *Packet, opts FlowOpts) {
+func (f *Flow) Update(packet *Packet, opts Opts) {
 	now := common.UnixMillis(packet.GoPacket.Metadata().CaptureInfo.Timestamp)
 	f.Last = now
 	f.Metric.Last = now
@@ -608,11 +687,11 @@ func (f *Flow) newNetworkLayer(packet *Packet) error {
 		f.IPMetric = packet.IPMetric
 
 		icmpLayer := packet.Layer(layers.LayerTypeICMPv4)
-		if layer, ok := icmpLayer.(*ICMPv4); ok {
+		if icmp, ok := icmpLayer.(*layers.ICMPv4); ok {
 			f.ICMP = &ICMPLayer{
-				Code: uint32(layer.TypeCode.Code()),
-				Type: layer.Type,
-				ID:   uint32(layer.Id),
+				Type: ICMPv4TypeToFlowICMPType(icmp.TypeCode.Type()),
+				Code: uint32(icmp.TypeCode.Code()),
+				ID:   uint32(icmp.Id),
 			}
 		}
 		return nil
@@ -628,11 +707,18 @@ func (f *Flow) newNetworkLayer(packet *Packet) error {
 		}
 
 		icmpLayer := packet.Layer(layers.LayerTypeICMPv6)
-		if layer, ok := icmpLayer.(*ICMPv6); ok {
+		if icmp, ok := icmpLayer.(*layers.ICMPv6); ok {
+			t := ICMPv6TypeToFlowICMPType(icmp.TypeCode.Type())
 			f.ICMP = &ICMPLayer{
-				Code: uint32(layer.TypeCode.Code()),
-				Type: layer.Type,
-				ID:   uint32(layer.ID),
+				Type: t,
+				Code: uint32(icmp.TypeCode.Code()),
+			}
+
+			if t == ICMPType_ECHO {
+				echoLayer := packet.Layer(layers.LayerTypeICMPv6Echo)
+				if echo, ok := echoLayer.(*layers.ICMPv6Echo); ok {
+					f.ICMP.ID = uint32(echo.Identifier)
+				}
 			}
 		}
 		return nil
@@ -771,7 +857,7 @@ func (f *Flow) updateTCPMetrics(packet *Packet) error {
 	return nil
 }
 
-func (f *Flow) newTransportLayer(packet *Packet, opts FlowOpts) error {
+func (f *Flow) newTransportLayer(packet *Packet, opts Opts) error {
 	if layer := packet.Layer(layers.LayerTypeTCP); layer != nil {
 		f.Transport = &TransportLayer{Protocol: FlowProtocol_TCP}
 
@@ -804,6 +890,57 @@ func (f *Flow) newTransportLayer(packet *Packet, opts FlowOpts) error {
 		f.Transport.B = int64(transportPacket.DstPort)
 	} else {
 		return ErrLayerNotFound
+	}
+
+	return nil
+}
+
+func (f *Flow) newApplicationLayer(packet *Packet, opts Opts) error {
+	if (opts.ExtraLayers & DHCPv4Layer) != 0 {
+		if layer := packet.Layer(layers.LayerTypeDHCPv4); layer != nil {
+			d := layer.(*layers.DHCPv4)
+			f.DHCPv4 = &fl.DHCPv4{
+				File:         d.File,
+				Flags:        d.Flags,
+				HardwareLen:  d.HardwareLen,
+				HardwareOpts: d.HardwareOpts,
+				ServerName:   d.ServerName,
+				Secs:         d.Secs,
+			}
+			return nil
+		}
+	}
+
+	if (opts.ExtraLayers & DNSLayer) != 0 {
+		if layer := packet.Layer(layers.LayerTypeDNS); layer != nil {
+			d := layer.(*layers.DNS)
+			f.DNS = &fl.DNS{
+				AA:      d.AA,
+				ID:      d.ID,
+				QR:      d.QR,
+				RA:      d.RA,
+				RD:      d.RD,
+				TC:      d.TC,
+				ANCount: d.ANCount,
+				ARCount: d.ARCount,
+				NSCount: d.NSCount,
+				QDCount: d.QDCount,
+			}
+			return nil
+		}
+	}
+
+	if (opts.ExtraLayers & VRRPLayer) != 0 {
+		if layer := packet.Layer(layers.LayerTypeVRRP); layer != nil {
+			d := layer.(*layers.VRRPv2)
+			f.VRRPv2 = &fl.VRRPv2{
+				AdverInt:     d.AdverInt,
+				Priority:     d.Priority,
+				Version:      d.Version,
+				VirtualRtrID: d.VirtualRtrID,
+			}
+			return nil
+		}
 	}
 
 	return nil
@@ -916,7 +1053,7 @@ func PacketSeqFromGoPacket(packet gopacket.Packet, outerLength int64, bpf *BPF, 
 }
 
 // PacketSeqFromSFlowSample returns an array of Packets as a sample
-// contains mutlple records which generate a Packets each.
+// contains multiple records which generate a Packets each.
 func PacketSeqFromSFlowSample(sample *layers.SFlowFlowSample, bpf *BPF, defragger *IPDefragger) []*PacketSequence {
 	var pss []*PacketSequence
 
@@ -1148,6 +1285,14 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 	case "ETHERNET":
 		return f.Link.GetStringField(fields[1])
 	}
+
+	// check extra layers
+	if _, ok := extraLayersMap[name]; ok {
+		if value, ok := common.LookupPath(*f, field, reflect.String); ok {
+			return value.String(), nil
+		}
+	}
+
 	return "", common.ErrFieldNotFound
 }
 
@@ -1186,9 +1331,18 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 		return f.Transport.GetFieldInt64(fields[1])
 	case "RawPacketsCaptured":
 		return f.RawPacketsCaptured, nil
-	default:
-		return 0, common.ErrFieldNotFound
 	}
+
+	// check extra layers
+	if _, ok := extraLayersMap[name]; ok {
+		if value, ok := common.LookupPath(*f, field, reflect.Int); ok && value.IsValid() {
+			if i, err := common.ToInt64(value.Interface()); err == nil {
+				return i, nil
+			}
+		}
+	}
+
+	return 0, common.ErrFieldNotFound
 }
 
 // GetFieldInterface returns the value of a Flow field
@@ -1208,9 +1362,16 @@ func (f *Flow) GetFieldInterface(field string) (_ interface{}, err error) {
 		return f.ICMP, nil
 	case "Transport":
 		return f.Transport, nil
-	default:
-		return 0, common.ErrFieldNotFound
 	}
+
+	// check extra layers
+	if _, ok := extraLayersMap[field]; ok {
+		if value, ok := common.LookupPath(*f, field, reflect.Struct); ok && value.IsValid() {
+			return value.Interface(), nil
+		}
+	}
+
+	return 0, common.ErrFieldNotFound
 }
 
 // GetField returns the value of a field

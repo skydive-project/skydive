@@ -36,7 +36,7 @@ class BadRequest(Exception):
 
 class RESTClient:
     def __init__(self, endpoint, scheme="http",
-                 username="", password="",
+                 username="", password="", cookies={},
                  insecure=False, debug=0):
         self.endpoint = endpoint
         self.scheme = scheme
@@ -44,9 +44,10 @@ class RESTClient:
         self.password = password
         self.insecure = insecure
         self.debug = debug
+        self.cookies = cookies
 
-        self.auth = Authenticate(endpoint, scheme,
-                                 username, password, insecure)
+        self.auth = Authenticate(endpoint, scheme, username,
+                                 password, cookies, insecure)
 
     def request(self, path, method="GET", data=None):
         if self.username and not self.auth.authenticated:
@@ -71,6 +72,8 @@ class RESTClient:
             encoded_data = None
 
         opener = request.build_opener(*handlers)
+        for k, v in self.cookies.items():
+            opener.append = (k, v)
 
         headers = {'Content-Type': 'application/json'}
         req = request.Request(url,

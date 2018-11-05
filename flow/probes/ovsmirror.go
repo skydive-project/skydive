@@ -36,6 +36,7 @@ import (
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/ovs"
 	"github.com/skydive-project/skydive/probe"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	op "github.com/skydive-project/skydive/topology/probes/ovsdb"
 )
@@ -52,8 +53,9 @@ type ovsMirrorProbe struct {
 
 // OvsMirrorProbesHandler describes a flow probe in running in the graph
 type OvsMirrorProbesHandler struct {
+	ovsdb.DefaultOvsMonitorHandler
 	probes      map[string]*ovsMirrorProbe
-	probeBundle *probe.ProbeBundle
+	probeBundle *probe.Bundle
 	probesLock  common.RWMutex
 	Graph       *graph.Graph
 	ovsClient   *ovsdb.OvsClient
@@ -335,8 +337,7 @@ func isOvsPort(n *graph.Node) bool {
 	return false
 }
 
-// RegisterProbe registers a probe on a graph node
-func (o *OvsMirrorProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+func (o *OvsMirrorProbesHandler) registerProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 	if isOvsPort(n) {
 		if uuid, _ := n.GetFieldString("UUID"); uuid != "" {
 			if err := o.RegisterProbeOnPort(n, uuid, capture); err != nil {
@@ -347,6 +348,15 @@ func (o *OvsMirrorProbesHandler) RegisterProbe(n *graph.Node, capture *types.Cap
 		}
 	}
 	return nil
+}
+
+// RegisterProbe registers a probe on a graph node
+func (o *OvsMirrorProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+	err := o.registerProbe(n, capture, e)
+	if err != nil {
+		go e.OnError(err)
+	}
+	return err
 }
 
 // UnregisterProbe at the graph node
@@ -414,6 +424,7 @@ func (o *OvsMirrorProbesHandler) cleanupOvsMirrors() {
 	if _, err = o.ovsClient.Exec(operations...); err != nil {
 		logging.GetLogger().Errorf("OvsMirror cleanup error: %s", err)
 	}
+	logging.GetLogger().Info("OvsMirror cleanup previous mirrors")
 }
 
 // OnStarted FlowProbeEventHandler implementation
@@ -430,6 +441,23 @@ func (o *ovsMirrorProbe) OnStarted() {
 func (o *ovsMirrorProbe) OnStopped() {
 	o.graph.Lock()
 	o.graph.DelMetadata(o.mirrorNode, "Capture")
+	o.graph.Unlock()
+}
+
+// OnError FlowProbeEventHandler implementation
+func (o *ovsMirrorProbe) OnError(err error) {
+	o.graph.Lock()
+	tr := o.graph.StartMetadataTransaction(o.node)
+	tr.AddMetadata("Capture.State", "error")
+	tr.AddMetadata("Capture.Error", err.Error())
+	tr.Commit()
+
+	if o.mirrorNode != nil {
+		tr := o.graph.StartMetadataTransaction(o.mirrorNode)
+		tr.AddMetadata("Capture.State", "error")
+		tr.AddMetadata("Capture.Error", err.Error())
+		tr.Commit()
+	}
 	o.graph.Unlock()
 }
 
@@ -451,7 +479,7 @@ func (o *ovsMirrorInterfaceHandler) onNodeEvent(n *graph.Node) {
 		return
 	}
 
-	if state, _ := n.GetFieldString("State"); state != "UP" {
+	if !topology.IsInterfaceUp(n) {
 		name, _ := n.GetFieldString("Name")
 		intf, err := netlink.LinkByName(name)
 		if err != nil {
@@ -528,10 +556,13 @@ func (o *ovsMirrorInterfaceHandler) OnNodeDeleted(n *graph.Node) {
 	}
 }
 
+// OnConnected ovsdb event
+func (o *OvsMirrorProbesHandler) OnConnected(monitor *ovsdb.OvsMonitor) {
+	o.cleanupOvsMirrors()
+}
+
 // Start the probe
 func (o *OvsMirrorProbesHandler) Start() {
-	o.cleanupOvsMirrors()
-
 	o.intfIndexer.AddEventListener(o.intfHandler)
 	o.portIndexer.AddEventListener(o.portHandler)
 	o.intfIndexer.Start()
@@ -561,21 +592,24 @@ func (o *OvsMirrorProbesHandler) Stop() {
 }
 
 // NewOvsMirrorProbesHandler creates a new OVS Mirror probes
-func NewOvsMirrorProbesHandler(g *graph.Graph, tb, fb *probe.ProbeBundle) (*OvsMirrorProbesHandler, error) {
+func NewOvsMirrorProbesHandler(g *graph.Graph, tb, fb *probe.Bundle) (*OvsMirrorProbesHandler, error) {
 	probe := tb.GetProbe("ovsdb")
 	if probe == nil {
 		return nil, errors.New("Agent.ovssflow probe depends on agent.ovsdb topology probe: agent.ovssflow probe can't start properly")
 	}
-	p := probe.(*op.OvsdbProbe)
+	p := probe.(*op.Probe)
 
 	o := &OvsMirrorProbesHandler{
 		probes:      make(map[string]*ovsMirrorProbe),
 		Graph:       g,
 		ovsClient:   p.OvsMon.OvsClient,
 		probeBundle: fb,
-		intfIndexer: graph.NewMetadataIndexer(g, graph.Metadata{"Type": "internal"}, "ExtID.skydive-probe-id"),
-		portIndexer: graph.NewMetadataIndexer(g, graph.Metadata{"Type": "ovsport"}, "ExtID.skydive-probe-id"),
+		intfIndexer: graph.NewMetadataIndexer(g, g, graph.Metadata{"Type": "internal"}, "ExtID.skydive-probe-id"),
+		portIndexer: graph.NewMetadataIndexer(g, g, graph.Metadata{"Type": "ovsport"}, "ExtID.skydive-probe-id"),
 	}
+
+	// monitor connection/disconnection
+	p.OvsMon.AddMonitorHandler(o)
 
 	o.intfHandler = &ovsMirrorInterfaceHandler{oph: o}
 	o.portHandler = &ovsMirrorPortHandler{oph: o}

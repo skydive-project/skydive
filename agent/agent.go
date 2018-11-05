@@ -25,6 +25,7 @@ package agent
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/skydive-project/skydive/analyzer"
@@ -37,7 +38,7 @@ import (
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/packet_injector"
+	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -52,10 +53,10 @@ type Agent struct {
 	graph               *graph.Graph
 	wsServer            *ws.StructServer
 	analyzerClientPool  *ws.StructClientPool
-	topologyEndpoint    *topology.TopologySubscriberEndpoint
+	topologyEndpoint    *topology.SubscriberEndpoint
 	rootNode            *graph.Node
-	topologyProbeBundle *probe.ProbeBundle
-	flowProbeBundle     *probe.ProbeBundle
+	topologyProbeBundle *probe.Bundle
+	flowProbeBundle     *probe.Bundle
 	flowTableAllocator  *flow.TableAllocator
 	flowClientPool      *analyzer.FlowClientPool
 	onDemandProbeServer *ondemand.OnDemandProbeServer
@@ -80,7 +81,10 @@ func NewAnalyzerStructClientPool(authOptions *shttp.AuthenticationOpts) (*ws.Str
 	}
 
 	for _, sa := range addresses {
-		c := ws.NewClientFromConfig(common.AgentService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/agent"), authOptions, nil)
+		c, err := config.NewWSClient(common.AgentService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/agent"), authOptions, nil)
+		if err != nil {
+			return nil, err
+		}
 		pool.AddClient(c)
 	}
 
@@ -127,6 +131,10 @@ func (a *Agent) GetStatus() interface{} {
 
 // Start the agent services
 func (a *Agent) Start() {
+	if uid := os.Geteuid(); uid != 0 {
+		logging.GetLogger().Warning("Agent needs root permissions for some feature like capture, network namespace introspection, some feature might not work as expected")
+	}
+
 	go a.httpServer.Serve()
 
 	a.wsServer.Start()
@@ -170,13 +178,14 @@ func NewAgent() (*Agent, error) {
 	tm.Start()
 
 	apiAuthBackendName := config.GetString("agent.auth.api.backend")
-	apiAuthBackend, err := shttp.NewAuthenticationBackendByName(apiAuthBackendName)
+	apiAuthBackend, err := config.NewAuthenticationBackendByName(apiAuthBackendName)
 	if err != nil {
 		return nil, err
 	}
 
-	hserver, err := shttp.NewServerFromConfig(common.AgentService)
+	hserver, err := config.NewHTTPServer(common.AgentService)
 	if err != nil {
+
 		return nil, err
 	}
 
@@ -191,7 +200,7 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	wsServer := ws.NewStructServer(ws.NewServer(hserver, "/ws/subscriber", apiAuthBackend))
+	wsServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
 
 	// declare all extension available throught API and filtering
 	tr := traversal.NewGremlinTraversalParser()
@@ -209,9 +218,10 @@ func NewAgent() (*Agent, error) {
 	clusterAuthOptions := &shttp.AuthenticationOpts{
 		Username: config.GetString("agent.auth.cluster.username"),
 		Password: config.GetString("agent.auth.cluster.password"),
+		Cookie:   config.GetStringMapString("http.cookie"),
 	}
 
-	topologyEndpoint := topology.NewTopologySubscriberEndpoint(wsServer, g, tr)
+	topologyEndpoint := topology.NewSubscriberEndpoint(wsServer, g, tr)
 
 	analyzerClientPool, err := NewAnalyzerStructClientPool(clusterAuthOptions)
 	if err != nil {
@@ -233,7 +243,7 @@ func NewAgent() (*Agent, error) {
 	// exposes a flow server through the client connections
 	flow.NewWSTableServer(flowTableAllocator, analyzerClientPool)
 
-	packet_injector.NewServer(g, analyzerClientPool)
+	packetinjector.NewServer(g, analyzerClientPool)
 
 	flowClientPool := analyzer.NewFlowClientPool(analyzerClientPool, clusterAuthOptions)
 

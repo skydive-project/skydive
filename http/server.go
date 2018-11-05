@@ -37,13 +37,15 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/rbac"
 )
 
+// PathPrefix describes the prefix of the path of an URL
 type PathPrefix string
 
+// Route describes an HTTP route with a name, a HTTP verb,
+// a path protected by an authentication backend
 type Route struct {
 	Name        string
 	Method      string
@@ -51,15 +53,7 @@ type Route struct {
 	HandlerFunc auth.AuthenticatedHandlerFunc
 }
 
-type ConnectionType int
-
-const (
-	// TCP connection
-	TCP ConnectionType = 1 + iota
-	// TLS secure connection
-	TLS
-)
-
+// Server describes a HTTP server for a service that dispatches requests to routes
 type Server struct {
 	sync.RWMutex
 	http.Server
@@ -68,10 +62,8 @@ type Server struct {
 	Router      *mux.Router
 	Addr        string
 	Port        int
-	AuthBackend AuthenticationBackend
 	lock        sync.Mutex
 	listener    net.Listener
-	CnxType     ConnectionType
 	wg          sync.WaitGroup
 }
 
@@ -82,6 +74,14 @@ func copyRequestVars(old, new *http.Request) {
 	}
 }
 
+// SetTLSHeader set TLS specific headers in the response
+func SetTLSHeader(w http.ResponseWriter, r *http.Request) {
+	if r.TLS != nil {
+		w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+	}
+}
+
+// RegisterRoutes registers a set of routes protected by an authentication backend
 func (s *Server) RegisterRoutes(routes []Route, auth AuthenticationBackend) {
 	for _, route := range routes {
 		r := s.Router.
@@ -97,35 +97,20 @@ func (s *Server) RegisterRoutes(routes []Route, auth AuthenticationBackend) {
 	}
 }
 
+// Listen starts listening for TCP requests
 func (s *Server) Listen() error {
 	listenAddrPort := fmt.Sprintf("%s:%d", s.Addr, s.Port)
-	socketType := "TCP"
 	ln, err := net.Listen("tcp", listenAddrPort)
 	if err != nil {
 		return fmt.Errorf("Failed to listen on %s:%d: %s", s.Addr, s.Port, err)
 	}
+
 	s.listener = ln
-
-	if config.IsTLSenabled() == true {
-		socketType = "TLS"
-		certPEM := config.GetString("analyzer.X509_cert")
-		keyPEM := config.GetString("analyzer.X509_key")
-		agentCertPEM := config.GetString("agent.X509_cert")
-		tlsConfig, err := common.SetupTLSServerConfig(certPEM, keyPEM)
-		if err != nil {
-			return err
-		}
-		tlsConfig.ClientCAs, err = common.SetupTLSLoadCertificate(agentCertPEM)
-		if err != nil {
-			return err
-		}
-		s.listener = tls.NewListener(ln.(*net.TCPListener), tlsConfig)
-	}
-
-	logging.GetLogger().Infof("Listening on %s socket %s:%d", socketType, s.Addr, s.Port)
+	logging.GetLogger().Infof("Listening on socket %s:%d", s.Addr, s.Port)
 	return nil
 }
 
+// ListenAndServe starts listening and serving HTTP requests
 func (s *Server) ListenAndServe() {
 	if err := s.Listen(); err != nil {
 		logging.GetLogger().Critical(err)
@@ -134,24 +119,33 @@ func (s *Server) ListenAndServe() {
 	go s.Serve()
 }
 
+// Serve HTTP request
 func (s *Server) Serve() {
 	defer s.wg.Done()
 	s.wg.Add(1)
 
 	s.Handler = handlers.CompressHandler(s.Router)
-	if err := s.Server.Serve(s.listener); err != nil {
-		if err == http.ErrServerClosed {
-			return
-		}
-		logging.GetLogger().Errorf("Failed to serve on %s:%d: %s", s.Addr, s.Port, err)
+
+	var err error
+	if s.TLSConfig != nil {
+		err = s.Server.ServeTLS(s.listener, "", "")
+	} else {
+		err = s.Server.Serve(s.listener)
 	}
+
+	if err == http.ErrServerClosed {
+		return
+	}
+	logging.GetLogger().Errorf("Failed to serve on %s:%d: %s", s.Addr, s.Port, err)
 }
 
+// Unauthorized returns a 401 response
 func Unauthorized(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusUnauthorized)
 	w.Write([]byte("401 Unauthorized\n"))
 }
 
+// Stop the server
 func (s *Server) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -186,26 +180,19 @@ func (s *Server) HandleFunc(path string, f auth.AuthenticatedHandlerFunc, authBa
 	})
 }
 
-func NewServer(host string, serviceType common.ServiceType, addr string, port int) *Server {
+// NewServer returns a new HTTP service for a service
+func NewServer(host string, serviceType common.ServiceType, addr string, port int, tlsConfig *tls.Config) *Server {
 	router := mux.NewRouter().StrictSlash(true)
 	router.Headers("X-Host-ID", host, "X-Service-Type", serviceType.String())
 
 	return &Server{
+		Server: http.Server{
+			TLSConfig: tlsConfig,
+		},
 		Host:        host,
 		ServiceType: serviceType,
 		Router:      router,
 		Addr:        addr,
 		Port:        port,
 	}
-}
-
-func NewServerFromConfig(serviceType common.ServiceType) (*Server, error) {
-	sa, err := common.ServiceAddressFromString(config.GetString(serviceType.String() + ".listen"))
-	if err != nil {
-		return nil, fmt.Errorf("Configuration error: %s", err)
-	}
-
-	host := config.GetString("host_id")
-
-	return NewServer(host, serviceType, sa.Addr, sa.Port), nil
 }

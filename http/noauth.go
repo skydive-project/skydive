@@ -29,28 +29,32 @@ import (
 	"github.com/gorilla/context"
 )
 
+// NoAuthenticationBackend describes an authenticate backed that
+// allows everyone to do anything
 type NoAuthenticationBackend struct {
 }
 
 // Name returns the name of the backend
-func (h *NoAuthenticationBackend) Name() string {
+func (n *NoAuthenticationBackend) Name() string {
 	return "noauth"
 }
 
 // DefaultUserRole returns the name of the backend
-func (h *NoAuthenticationBackend) DefaultUserRole(user string) string {
-	return defaultUserRole
+func (n *NoAuthenticationBackend) DefaultUserRole(user string) string {
+	return DefaultUserRole
 }
 
 // SetDefaultUserRole defines the default user role
-func (b *NoAuthenticationBackend) SetDefaultUserRole(role string) {
+func (n *NoAuthenticationBackend) SetDefaultUserRole(role string) {
 }
 
-func (h *NoAuthenticationBackend) Authenticate(username string, password string) (string, error) {
+// Authenticate the user and its password
+func (n *NoAuthenticationBackend) Authenticate(username string, password string) (string, error) {
 	return "", nil
 }
 
-func (h *NoAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
+// Wrap an HTTP handler with no authentication backend
+func (n *NoAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ar := &auth.AuthenticatedRequest{Request: *r, Username: "admin"}
 		copyRequestVars(r, &ar.Request)
@@ -59,10 +63,13 @@ func (h *NoAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc) ht
 	}
 }
 
+// NewNoAuthenticationBackend returns a new authentication backend that allows
+// everyone to do anything
 func NewNoAuthenticationBackend() *NoAuthenticationBackend {
 	return &NoAuthenticationBackend{}
 }
 
+// NoAuthenticationWrap wraps a handler with no authentication
 func NoAuthenticationWrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
 	return NewNoAuthenticationBackend().Wrap(wrapped)
 }

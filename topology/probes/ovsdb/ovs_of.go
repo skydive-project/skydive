@@ -25,10 +25,15 @@ package ovsdb
 import (
 	"bufio"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -63,14 +68,17 @@ type OvsOfProbe struct {
 // highest priority hides the other rules. It is important to handle rules with the same rawUUID as a group
 // because ovs-ofctl monitor does not report priorities.
 type BridgeOfProbe struct {
-	Host       string             // The global host
-	Bridge     string             // The bridge monitored
-	UUID       string             // The UUID of the bridge node
-	Address    string             // The address of the bridge if different from name
-	BridgeNode *graph.Node        // the bridge node on which the rule nodes are attached.
-	OvsOfProbe *OvsOfProbe        // Back pointer to the probe
-	Rules      map[string][]*Rule // The set of rules found so far grouped by rawUUID
-	cancel     context.CancelFunc
+	Host           string               // The global host
+	Bridge         string               // The bridge monitored
+	UUID           string               // The UUID of the bridge node
+	Address        string               // The address of the bridge if different from name
+	BridgeNode     *graph.Node          // the bridge node on which the rule nodes are attached.
+	OvsOfProbe     *OvsOfProbe          // Back pointer to the probe
+	Rules          map[string][]*Rule   // The set of rules found so far grouped by rawUUID
+	Groups         map[uint]*graph.Node // The set of groups found so far
+	groupMonitored bool
+	ctx            context.Context
+	cancel         context.CancelFunc
 }
 
 // Rule is an OpenFlow rule in a switch
@@ -84,6 +92,14 @@ type Rule struct {
 	UUID     string // Unique id
 }
 
+// Group is an OpenFlow group in a switch
+type Group struct {
+	ID        uint   // Group id
+	GroupType string // Group type
+	Contents  string // Anything else (buckets + selection)
+	UUID      string // Unique id
+}
+
 // Event is an event as monitored by ovs-ofctl monitor <br> watch:
 type Event struct {
 	RawRule *Rule   // The rule from the event
@@ -92,6 +108,19 @@ type Event struct {
 	Action  string  // the action taken
 	Bridge  string  // The bridge whtere it ocured
 }
+
+const (
+	// Set the monitor in slave mode
+	openflowSetSlave = "061800180000000300000003000000008000000000000002"
+	// activate forward to the monitor of group related requests
+	// OVS tests use the following value "061c00280000000200000008000000050002000800000002000400080000001a000a000800000001"
+	// But the added asynchronous messages should not be needed for our use case
+	openflowActivateForwardRequest = "061c001000000002000a000800000001"
+)
+
+// A regular expression to parse group events
+var groupEventRegexp = regexp.MustCompile("[ ]*(ADD|DEL|MOD|INSERT_BUCKET|REMOVE_BUCKET)[ ].*group_id=([0-9]*)(.*)\n$")
+var groupRegexp = regexp.MustCompile("[ ]*group_id=([0-9]*),type=([^,]*),(.*)$")
 
 // ProtectCommas substitute commas with semicolon
 // when inside parenthesis
@@ -145,7 +174,6 @@ func fillIn(components []string, rule *Rule, event *Event) {
 			}
 		}
 	}
-
 }
 
 // extractPriority parses the filter of a rule and extracts the priority if it exists.
@@ -211,10 +239,19 @@ func parseEvent(line string, bridge string, prefix string) (Event, error) {
 // Generates a unique UUID for the rule
 // prefix is a unique string per bridge using bridge and host names.
 func fillUUID(rule *Rule, prefix string) {
-	id := prefix + rule.Filter + "-" + string(rule.Table) + "-" + string(rule.Cookie)
+	id := prefix + rule.Filter + "-" + string(rule.Table)
 	u, err := uuid.NewV5(uuid.NamespaceOID, []byte(id))
 	if err == nil {
 		rule.UUID = u.String()
+	}
+}
+
+// Generate a unique UUID for the group
+func fillGroupUUID(group *Group, prefix string) {
+	id := prefix + "-" + string(group.ID)
+	u, err := uuid.NewV5(uuid.NamespaceOID, []byte(id))
+	if err == nil {
+		group.UUID = u.String()
 	}
 }
 
@@ -234,6 +271,7 @@ func parseRule(line string) (*Rule, error) {
 	}
 	fillIn(components, &rule, nil)
 	tail := components[len(components)-1]
+	tail = strings.TrimPrefix(tail, "reset_counts ")
 	components = strings.Split(tail, " actions=")
 	if len(components) == 2 {
 		rule.Filter = components[0]
@@ -242,6 +280,24 @@ func parseRule(line string) (*Rule, error) {
 		return nil, errors.New("Rule syntax split filter and actions")
 	}
 	return &rule, nil
+}
+
+// parseGroup transform a single line of ofctl dump-groups in a group
+func parseGroup(line string) *Group {
+	submatch := groupRegexp.FindStringSubmatch(line)
+	if submatch == nil {
+		return nil
+	}
+	groupID, err := strconv.ParseInt(submatch[1], 10, 32)
+	if err != nil {
+		logging.GetLogger().Warningf("Bad group id in %s", line)
+		return nil
+	}
+	return &Group{
+		ID:        uint(groupID),
+		GroupType: submatch[2],
+		Contents:  submatch[3],
+	}
 }
 
 func makeFilter(rule *Rule) string {
@@ -279,7 +335,7 @@ func (r RealExecute) ExecCommandPipe(ctx context.Context, com string, args ...st
 	}
 
 	command.Stderr = command.Stdout
-	if err := command.Start(); err != nil {
+	if err = command.Start(); err != nil {
 		return nil, err
 	}
 
@@ -292,6 +348,7 @@ func launchOnSwitch(cmd []string) (string, error) {
 	if err == nil {
 		return string(bytes), nil
 	}
+	logging.GetLogger().Debugf("Command %v failed: %s", cmd, string(bytes))
 	return "", err
 }
 
@@ -301,11 +358,12 @@ func launchContinuousOnSwitch(ctx context.Context, cmd []string) (<-chan string,
 	var cout = make(chan string, 10)
 
 	go func() {
+		logging.GetLogger().Debugf("Launching continusously %v", cmd)
 		for ctx.Err() == nil {
 			retry := func() error {
 				out, err := executor.ExecCommandPipe(ctx, cmd[0], cmd[1:]...)
 				if err != nil {
-					logging.GetLogger().Errorf("Can't execute command %v", cmd)
+					logging.GetLogger().Errorf("Can't execute command %v: %s", cmd, err)
 					return nil
 				}
 
@@ -328,7 +386,7 @@ func launchContinuousOnSwitch(ctx context.Context, cmd []string) (<-chan string,
 
 				return nil
 			}
-			if err := common.Retry(retry, 100, 10*time.Millisecond); err != nil {
+			if err := common.Retry(retry, 100, 50*time.Millisecond); err != nil {
 				logging.GetLogger().Error(err)
 				break
 			}
@@ -352,6 +410,56 @@ func countElements(filter string) int {
 		}
 	}
 	return l
+}
+
+func (probe *BridgeOfProbe) prefix() string {
+	return probe.OvsOfProbe.Host + "-" + probe.Bridge + "-"
+}
+
+func (probe *BridgeOfProbe) dumpGroups() error {
+	ofp := probe.OvsOfProbe
+	prefix := probe.prefix()
+	command, err := ofp.makeCommand(
+		[]string{"ovs-ofctl", "-O", "OpenFlow15", "dump-groups"},
+		probe.Bridge)
+	if err != nil {
+		return err
+	}
+	lines, err := launchOnSwitch(command)
+	if err != nil {
+		return err
+	}
+	for _, line := range strings.Split(lines, "\n") {
+		group := parseGroup(line)
+		if group != nil {
+			fillGroupUUID(group, prefix)
+			probe.addGroup(group)
+		}
+	}
+	return nil
+}
+
+func (probe *BridgeOfProbe) getGroup(groupID uint) *Group {
+	ofp := probe.OvsOfProbe
+	prefix := probe.prefix()
+	command, err := ofp.makeCommand(
+		[]string{"ovs-ofctl", "-O", "OpenFlow15", "dump-groups"},
+		probe.Bridge, string(groupID))
+	if err != nil {
+		return nil
+	}
+	lines, err := launchOnSwitch(command)
+	if err != nil {
+		return nil
+	}
+	for _, line := range strings.Split(lines, "\n") {
+		group := parseGroup(line)
+		if group != nil && group.ID == groupID {
+			fillGroupUUID(group, prefix)
+			return group
+		}
+	}
+	return nil
 }
 
 // completeEvent completes the event by looking at it again but with dump-flows and a filter including table. This gives back more elements such as priority.
@@ -404,6 +512,41 @@ func (probe *BridgeOfProbe) addRule(rule *Rule) {
 	g.Link(bridgeNode, ruleNode, graph.Metadata{"RelationType": "ownership"})
 }
 
+// modRule modifies the node of an existing rule.
+func (probe *BridgeOfProbe) modRule(rule *Rule) {
+	logging.GetLogger().Infof("Rule %v modified", rule.UUID)
+	g := probe.OvsOfProbe.Graph
+	g.Lock()
+	defer g.Unlock()
+
+	ruleNode := g.LookupFirstNode(graph.Metadata{"UUID": rule.UUID})
+	if ruleNode != nil {
+		tr := g.StartMetadataTransaction(ruleNode)
+		defer tr.Commit()
+		tr.AddMetadata("actions", rule.Actions)
+		tr.AddMetadata("cookie", rule.Cookie)
+	}
+}
+
+// addGroup adds a group to the graph and links it to the bridge
+func (probe *BridgeOfProbe) addGroup(group *Group) {
+	logging.GetLogger().Infof("New group %v added", group.UUID)
+	g := probe.OvsOfProbe.Graph
+	g.Lock()
+	defer g.Unlock()
+	bridgeNode := probe.BridgeNode
+	metadata := graph.Metadata{
+		"Type":       "ofgroup",
+		"group_id":   group.ID,
+		"group_type": group.GroupType,
+		"contents":   group.Contents,
+		"UUID":       group.UUID,
+	}
+	groupNode := g.NewNode(graph.GenID(), metadata)
+	probe.Groups[group.ID] = groupNode
+	g.Link(bridgeNode, groupNode, graph.Metadata{"RelationType": "ownership"})
+}
+
 // delRule deletes a rule from the the graph.
 func (probe *BridgeOfProbe) delRule(rule *Rule) {
 	logging.GetLogger().Infof("Rule %v deleted", rule.UUID)
@@ -417,13 +560,64 @@ func (probe *BridgeOfProbe) delRule(rule *Rule) {
 	}
 }
 
-func containsRule(rules []*Rule, searched *Rule) bool {
-	for _, rule := range rules {
-		if rule.UUID == searched.UUID {
-			return true
+// delGroup deletes a rule from the the graph.
+func (probe *BridgeOfProbe) delGroup(groupID uint) {
+	g := probe.OvsOfProbe.Graph
+	g.Lock()
+	defer g.Unlock()
+	if groupID == 0xfffffffc {
+		logging.GetLogger().Infof("All groups deleted on %s", probe.Bridge)
+		for _, groupNode := range probe.Groups {
+			g.DelNode(groupNode)
+		}
+		probe.Groups = make(map[uint]*graph.Node)
+	} else {
+		logging.GetLogger().Infof("Group %d deleted on %s", groupID, probe.Bridge)
+		groupNode := probe.Groups[groupID]
+		delete(probe.Groups, groupID)
+		if groupNode != nil {
+			g.DelNode(groupNode)
 		}
 	}
-	return false
+}
+
+// modGroup modifies a group from the graph
+func (probe *BridgeOfProbe) modGroup(groupID uint) {
+	logging.GetLogger().Infof("Group %d modified", groupID)
+	g := probe.OvsOfProbe.Graph
+	g.Lock()
+	defer g.Unlock()
+	group := probe.getGroup(groupID)
+	node := probe.Groups[groupID]
+	if group == nil || node == nil {
+		logging.GetLogger().Errorf("Cannot modify node of OF group %d", groupID)
+		return
+	}
+	tr := g.StartMetadataTransaction(node)
+	defer tr.Commit()
+	tr.AddMetadata("group_id", group.ID)
+	tr.AddMetadata("group_type", group.GroupType)
+	tr.AddMetadata("contents", group.Contents)
+	tr.AddMetadata("UUID", group.UUID)
+}
+
+// containsRule checks if the searched rule may replace an existing rule in
+// rules and gives back the coresponding rule if found.
+func containsRule(rules []*Rule, searched *Rule) *Rule {
+	for _, rule := range rules {
+		if rule.UUID == searched.UUID {
+			return rule
+		}
+	}
+	return nil
+}
+
+// sendOpenflow sends an Openflow command in hexadecimal through the control
+// channel of an existing ovs-ofctl monitor command.
+func sendOpenflow(control string, hex string) error {
+	command := []string{"ovs-appctl", "-t", control, "ofctl/send", hex}
+	_, err := launchOnSwitch(command)
+	return err
 }
 
 // monitor monitors the openflow rules of a bridge by launching a goroutine. The context is used to control the execution of the routine.
@@ -438,6 +632,7 @@ func (probe *BridgeOfProbe) monitor(ctx context.Context) error {
 		return err
 	}
 	go func() {
+		logging.GetLogger().Debugf("Launching goroutine for monitor %s", probe.Bridge)
 		prefix := probe.Host + "-" + probe.Bridge + "-"
 		for line := range lines {
 			if ctx.Err() != nil {
@@ -447,22 +642,30 @@ func (probe *BridgeOfProbe) monitor(ctx context.Context) error {
 			if err == nil {
 				err = completeEvent(ctx, ofp, &event, prefix)
 				if err != nil {
-					logging.GetLogger().Error(err.Error())
+					logging.GetLogger().Errorf("Error while monitoring %s@%s: %s", probe.Bridge, probe.Host, err)
+					continue
 				}
 				rawUUID := event.RawRule.UUID
 				oldRules := probe.Rules[rawUUID]
 				switch event.Action {
-				case "ADDED":
+				case "ADDED", "MODIFIED":
 					for _, rule := range event.Rules {
-						if !containsRule(oldRules, rule) {
+						found := containsRule(oldRules, rule)
+						if found == nil {
 							oldRules = append(oldRules, rule)
 							probe.addRule(rule)
+						} else {
+							if found.Actions != rule.Actions || found.Cookie != rule.Cookie {
+								found.Actions = rule.Actions
+								found.Cookie = rule.Cookie
+								probe.modRule(rule)
+							}
 						}
 					}
 					probe.Rules[rawUUID] = oldRules
 				case "DELETED":
 					for _, oldRule := range oldRules {
-						if !containsRule(event.Rules, oldRule) {
+						if containsRule(event.Rules, oldRule) == nil {
 							probe.delRule(oldRule)
 						}
 					}
@@ -483,6 +686,104 @@ func (probe *BridgeOfProbe) monitor(ctx context.Context) error {
 	return nil
 }
 
+// Check if a file is created in time
+func waitForFile(path string) error {
+	retry := func() error {
+		_, err := os.Stat(path)
+		return err
+	}
+	return common.Retry(retry, 10, 500*time.Millisecond)
+}
+
+// monitorGroup monitors the openflow groups of a bridge by
+// launching a goroutine. It uses OpenFlow 1.4 ForwardRequest
+// command that is not directly available in ovs-ofctl
+//
+// Note: Openflow15 is really needed. Receiving an insert_bucket on an OF14
+// monitor crashes the switch (yes, the switch itself) on OVS 2.9
+func (probe *BridgeOfProbe) monitorGroup() error {
+	if probe.groupMonitored {
+		return nil
+	}
+	// We check that OF1.5 is supported
+	ofp := probe.OvsOfProbe
+	command, err := ofp.makeCommand(
+		[]string{"ovs-ofctl", "-O", "Openflow15", "show"},
+		probe.Bridge)
+	if err != nil {
+		return err
+	}
+	if _, err = launchOnSwitch(command); err != nil {
+		logging.GetLogger().Warningf("OpenFlow 1.5 not supported on %s", probe.Bridge)
+		return err
+	}
+	randBytes := make([]byte, 16)
+	rand.Read(randBytes)
+	controlChannel := filepath.Join(os.TempDir(), "skyof-"+hex.EncodeToString(randBytes))
+	command, err = ofp.makeCommand(
+		[]string{"ovs-ofctl", "-O", "Openflow15", "monitor", "--unixctl", controlChannel},
+		probe.Bridge)
+	if err != nil {
+		return err
+	}
+	probe.groupMonitored = true
+	lines, err := launchContinuousOnSwitch(probe.ctx, command)
+	if err != nil {
+		logging.GetLogger().Errorf("Group monitor failed %s: %s", probe.Bridge, err)
+		return err
+	}
+	if err = waitForFile(controlChannel); err != nil {
+		logging.GetLogger().Errorf("No control channel for group monitor failed %s: %s", probe.Bridge, err)
+		return err
+	}
+	if err = sendOpenflow(controlChannel, openflowSetSlave); err != nil {
+		logging.GetLogger().Errorf("Openflow command 'set slave' for group monitor failed %s: %s", probe.Bridge, err)
+		return err
+	}
+	if err = sendOpenflow(controlChannel, openflowActivateForwardRequest); err != nil {
+		logging.GetLogger().Errorf("Openflow command 'activate forward request' for group monitor failed %s: %s", probe.Bridge, err)
+		return err
+	}
+	go func() {
+		logging.GetLogger().Debugf("Launching goroutine for monitor groups %s", probe.Bridge)
+		err := probe.dumpGroups()
+		if err != nil {
+			logging.GetLogger().Warningf("Cannot dump groups for %s: %s", probe.Bridge, err)
+			return
+		}
+		logging.GetLogger().Debugf("Treating events for groups on %s", probe.Bridge)
+		for line := range lines {
+			if probe.ctx.Err() != nil {
+				break
+			}
+			submatch := groupEventRegexp.FindStringSubmatch(line)
+			if submatch == nil {
+				continue
+			}
+			gid, err := strconv.ParseUint(submatch[2], 10, 32)
+			if err != nil {
+				logging.GetLogger().Errorf("Cannot parse group id %s on %s: %s", submatch[2], probe.Bridge, err)
+				continue
+			}
+			groupID := uint(gid)
+			switch submatch[1] {
+			case "ADD":
+				group := probe.getGroup(groupID)
+				if group != nil {
+					probe.addGroup(group)
+				}
+			case "DEL":
+				probe.delGroup(groupID)
+			case "MOD", "INSERT_BUCKET", "REMOVE_BUCKET":
+				probe.modGroup(groupID)
+			default:
+				logging.GetLogger().Errorf("unknown group action %s", submatch[1])
+			}
+		}
+	}()
+	return nil
+}
+
 // NewBridgeProbe creates a probe and launch the active process
 func (o *OvsOfProbe) NewBridgeProbe(host string, bridge string, uuid string, bridgeNode *graph.Node) (*BridgeOfProbe, error) {
 	ctx, cancel := context.WithCancel(o.ctx)
@@ -491,16 +792,28 @@ func (o *OvsOfProbe) NewBridgeProbe(host string, bridge string, uuid string, bri
 		address = bridge
 	}
 	probe := &BridgeOfProbe{
-		Host:       host,
-		Bridge:     bridge,
-		UUID:       uuid,
-		Address:    address,
-		BridgeNode: bridgeNode,
-		OvsOfProbe: o,
-		Rules:      make(map[string][]*Rule),
-		cancel:     cancel}
+		Host:           host,
+		Bridge:         bridge,
+		UUID:           uuid,
+		Address:        address,
+		BridgeNode:     bridgeNode,
+		OvsOfProbe:     o,
+		Rules:          make(map[string][]*Rule),
+		Groups:         make(map[uint]*graph.Node),
+		groupMonitored: false,
+		ctx:            ctx,
+		cancel:         cancel}
 
-	return probe, probe.monitor(ctx)
+	err := probe.monitor(ctx)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	err = probe.monitorGroup()
+	if err != nil {
+		logging.GetLogger().Errorf("Cannot add group probe on %s - %s", bridge, err)
+	}
+	return probe, nil
 }
 
 func (o *OvsOfProbe) makeCommand(commands []string, bridge string, args ...string) ([]string, error) {
@@ -525,7 +838,10 @@ func (o *OvsOfProbe) OnOvsBridgeAdd(bridgeNode *graph.Node) {
 	defer o.Unlock()
 
 	uuid, _ := bridgeNode.GetFieldString("UUID")
-	if _, ok := o.BridgeProbes[uuid]; ok {
+	if probe, ok := o.BridgeProbes[uuid]; ok {
+		if !probe.groupMonitored {
+			probe.monitorGroup()
+		}
 		return
 	}
 
@@ -533,15 +849,15 @@ func (o *OvsOfProbe) OnOvsBridgeAdd(bridgeNode *graph.Node) {
 	bridgeName, _ := bridgeNode.GetFieldString("Name")
 	bridgeProbe, err := o.NewBridgeProbe(hostName, bridgeName, uuid, bridgeNode)
 	if err == nil {
-		logging.GetLogger().Infof("Probe added for %s on %s (%s)", bridgeName, hostName, uuid)
+		logging.GetLogger().Debugf("Probe added for %s on %s (%s)", bridgeName, hostName, uuid)
 		o.BridgeProbes[uuid] = bridgeProbe
 	} else {
-		logging.GetLogger().Errorf("Cannot add probe for bridge %s on %s (%s)", bridgeName, hostName, uuid)
+		logging.GetLogger().Errorf("Cannot add probe for bridge %s on %s (%s): %s", bridgeName, hostName, uuid, err)
 	}
 }
 
 // OnOvsBridgeDel is called when a bridge is deleted
-func (o *OvsOfProbe) OnOvsBridgeDel(uuid string, bridgeNode *graph.Node) {
+func (o *OvsOfProbe) OnOvsBridgeDel(uuid string) {
 	o.Lock()
 	defer o.Unlock()
 
@@ -550,11 +866,20 @@ func (o *OvsOfProbe) OnOvsBridgeDel(uuid string, bridgeNode *graph.Node) {
 		delete(o.BridgeProbes, uuid)
 	}
 	// Clean all the rules attached to the bridge.
+	g := o.Graph
+	g.Lock()
+	defer g.Unlock()
+	bridgeNode := o.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
 	if bridgeNode != nil {
-		rules := o.Graph.LookupChildren(bridgeNode, graph.Metadata{"Type": "ofrule"}, nil)
+		rules := g.LookupChildren(bridgeNode, graph.Metadata{"Type": "ofrule"}, nil)
 		for _, ruleNode := range rules {
 			logging.GetLogger().Infof("Rule %v deleted (Bridge deleted)", ruleNode.Metadata()["UUID"])
-			o.Graph.DelNode(ruleNode)
+			g.DelNode(ruleNode)
+		}
+		groups := g.LookupChildren(bridgeNode, graph.Metadata{"Type": "ofgroup"}, nil)
+		for _, groupNode := range groups {
+			logging.GetLogger().Infof("Group %v deleted (Bridge deleted)", groupNode.Metadata()["UUID"])
+			g.DelNode(groupNode)
 		}
 	}
 }

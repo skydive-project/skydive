@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -320,6 +321,17 @@ func compareFlow(expected, tested *Flow) bool {
 	return true
 }
 
+func checkGoPacketSanity(t *testing.T, p gopacket.Packet) {
+	if errLayer := p.ErrorLayer(); errLayer != nil {
+		if l := p.Layer(gopacket.LayerTypeDecodeFailure); l != nil {
+			df := l.(*gopacket.DecodeFailure)
+			if len(df.Dump()) > 0 {
+				t.Fatalf("packet made gopacket panic : %s %s", p.Dump(), df.Dump())
+			}
+		}
+	}
+}
+
 func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType layers.LinkType, bpf *BPF) {
 	handleRead, err := pcap.OpenOffline(filename)
 	if err != nil {
@@ -336,6 +348,7 @@ func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType lay
 		} else {
 			p := gopacket.NewPacket(data, linkType, gopacket.Default)
 			p.Metadata().CaptureInfo = ci
+			checkGoPacketSanity(t, p)
 
 			ps := PacketSeqFromGoPacket(p, 0, bpf, table.IPDefragger())
 			table.processPacketSeq(ps)
@@ -858,7 +871,7 @@ func benchmarkPacketParsing(b *testing.B, filename string, linkType layers.LinkT
 			b.Fatal("Failed to get PacketSeq: ", err)
 		}
 		for _, packet := range ps.Packets {
-			NewFlowFromGoPacket(packet.GoPacket, "", FlowUUIDs{}, FlowOpts{})
+			NewFlowFromGoPacket(packet.GoPacket, "", UUIDs{}, Opts{})
 		}
 	}
 }
@@ -928,7 +941,7 @@ func benchmarkPacketsParsing(b *testing.B, filename string, linkType layers.Link
 						b.Fatal("Failed to get PacketSeq")
 					}
 					for _, packet := range ps.Packets {
-						NewFlowFromGoPacket(packet.GoPacket, "", FlowUUIDs{}, FlowOpts{})
+						NewFlowFromGoPacket(packet.GoPacket, "", UUIDs{}, Opts{})
 					}
 				}
 			})
@@ -990,6 +1003,28 @@ func BenchmarkPacketsParsing(b *testing.B) {
 
 func BenchmarkPacketsFlowTable(b *testing.B) {
 	benchmarkPacketsFlowTable(b, "pcaptraces/201801011400.small.pcap", layers.LinkTypeEthernet)
+}
+
+// Bench creation of flow and connection tracking, via FlowTable
+func BenchmarkQueryFlowTable(b *testing.B) {
+	t := NewTable(nil, nil, "")
+
+	for i := 0; i != 10; i++ {
+		f := &Flow{
+			ICMP: &ICMPLayer{
+				ID: uint32(i),
+			},
+		}
+		t.table[strconv.Itoa(i)] = f
+	}
+
+	query := &filters.SearchQuery{
+		Filter: filters.NewTermInt64Filter("ICMP.ID", 4444),
+	}
+
+	for n := 0; n != b.N; n++ {
+		t.getFlows(query)
+	}
 }
 
 func TestGREMPLS(t *testing.T) {
@@ -1298,8 +1333,8 @@ func TestVxlanSrcPort(t *testing.T) {
 func TestGeneve(t *testing.T) {
 	expected := []*Flow{
 		{
-			LayersPath:  "Ethernet/IPv4/UDP",
-			Application: "UDP",
+			LayersPath:  "Ethernet/IPv4/UDP/Geneve",
+			Application: "Geneve",
 			Link: &FlowLayer{
 				Protocol: FlowProtocol_ETHERNET,
 				A:        "00:1b:21:3c:ab:64",
@@ -1310,7 +1345,7 @@ func TestGeneve(t *testing.T) {
 				Protocol: FlowProtocol_IPV4,
 				A:        "20.0.0.1",
 				B:        "20.0.0.2",
-				ID:       0,
+				ID:       10,
 			},
 			Transport: &TransportLayer{
 				Protocol: FlowProtocol_UDP,
@@ -1319,8 +1354,8 @@ func TestGeneve(t *testing.T) {
 				ID:       0,
 			},
 			Metric: &FlowMetric{
-				ABPackets: 3,
-				ABBytes:   468,
+				ABPackets: 19,
+				ABBytes:   5027,
 				BAPackets: 0,
 				BABytes:   0,
 			},
@@ -1381,6 +1416,33 @@ func TestGeneve(t *testing.T) {
 			},
 		},
 		{
+			LayersPath:  "Ethernet/IPv4/ICMPv4",
+			Application: "ICMPv4",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "b6:9e:d2:49:51:48",
+				B:        "fe:71:d8:83:72:4f",
+				ID:       0,
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "30.0.0.1",
+				B:        "30.0.0.2",
+				ID:       0,
+			},
+			ICMP: &ICMPLayer{
+				Type: ICMPType_ECHO,
+				Code: 0,
+				ID:   10578,
+			},
+			Metric: &FlowMetric{
+				ABPackets: 3,
+				ABBytes:   294,
+				BAPackets: 0,
+				BABytes:   0,
+			},
+		},
+		{
 			LayersPath:  "Ethernet/IPv4/TCP",
 			Application: "TCP",
 			Link: &FlowLayer{
@@ -1404,34 +1466,6 @@ func TestGeneve(t *testing.T) {
 			Metric: &FlowMetric{
 				ABPackets: 17,
 				ABBytes:   2959,
-				BAPackets: 0,
-				BABytes:   0,
-			},
-		},
-		{
-			LayersPath:  "Ethernet/IPv4/UDP",
-			Application: "UDP",
-			Link: &FlowLayer{
-				Protocol: FlowProtocol_ETHERNET,
-				A:        "00:1b:21:3c:ab:64",
-				B:        "00:1b:21:3c:ac:30",
-				ID:       0,
-			},
-			Network: &FlowLayer{
-				Protocol: FlowProtocol_IPV4,
-				A:        "20.0.0.1",
-				B:        "20.0.0.2",
-				ID:       0,
-			},
-			Transport: &TransportLayer{
-				Protocol: FlowProtocol_UDP,
-				A:        22540,
-				B:        6081,
-				ID:       0,
-			},
-			Metric: &FlowMetric{
-				ABPackets: 16,
-				ABBytes:   4559,
 				BAPackets: 0,
 				BABytes:   0,
 			},

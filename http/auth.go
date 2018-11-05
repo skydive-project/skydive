@@ -27,14 +27,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gorilla/context"
 
 	"github.com/abbot/go-http-auth"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/rbac"
 )
 
@@ -44,7 +42,8 @@ var (
 )
 
 const (
-	defaultUserRole = "admin"
+	// DefaultUserRole is the default role to assign to a user
+	DefaultUserRole = "admin"
 	tokenName       = "authtok"
 )
 
@@ -54,6 +53,7 @@ type AuthenticationOpts struct {
 	Username string
 	Password string
 	Token    string
+	Cookie   map[string]string
 }
 
 // AuthCookie returns a authentication cookie
@@ -72,7 +72,7 @@ func SetAuthHeaders(headers *http.Header, authOpts *AuthenticationOpts) {
 	}
 
 	// cookie that comes from the config, can be used with proxies
-	for name, value := range config.GetStringMapString("http.cookie") {
+	for name, value := range authOpts.Cookie {
 		cookies = append(cookies, &http.Cookie{Name: name, Value: value})
 	}
 
@@ -109,6 +109,9 @@ func authCallWrapped(w http.ResponseWriter, r *http.Request, username string, wr
 	context.Clear(&ar.Request)
 }
 
+// Authenticate checks a couple of username and password against an authentication backend.
+// If it succeeds, it set a token as a HTTP cookie. It then retrieves the roles for the
+// authenticated user from the backend.
 func Authenticate(backend AuthenticationBackend, w http.ResponseWriter, username, password string) (string, error) {
 	token, err := backend.Authenticate(username, password)
 	if err != nil {
@@ -158,24 +161,4 @@ func authenticateWithHeaders(backend AuthenticationBackend, w http.ResponseWrite
 	username, password := pair[0], pair[1]
 
 	return Authenticate(backend, w, username, password)
-}
-
-// NewAuthenticationBackendByName creates a new auth backend based on the name
-func NewAuthenticationBackendByName(name string) (backend AuthenticationBackend, err error) {
-	typ := config.GetString("auth." + name + ".type")
-	switch typ {
-	case "basic":
-		backend, err = NewBasicAuthenticationBackendFromConfig(name)
-	case "keystone":
-		backend, err = NewKeystoneAuthenticationBackendFromConfig(name)
-	case "noauth":
-		backend = NewNoAuthenticationBackend()
-	default:
-		err = fmt.Errorf("Authentication type unknown or backend not defined for: %s", name)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-	return backend, nil
 }

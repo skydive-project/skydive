@@ -1,0 +1,59 @@
+---
+UUID: "85757b38-6e21-11e8-b42d-28d2442e1329"
+name: "CheckConnectivity"
+description: "Test connectivity between two interfaces"
+parameters:
+  - name: source
+    description: Source node
+    type: node
+  - name: destination
+    description: Destination node
+    type: node
+source: |
+    function CheckConnectivity(from, to) {
+        var capture = new Capture();
+        capture.GremlinQuery = "G.V().Has('TID', '" + from + "').ShortestPathTo(Metadata('TID', '" + to + "'))";
+
+        var packetInjection = new PacketInjection();
+        packetInjection.Src = "G.V().Has('TID', '" + from + "')"
+        packetInjection.Dst = "G.V().Has('TID', '" + to + "')"
+        packetInjection.Type = "icmp4"
+        packetInjection.ICMPID = Math.floor(Math.random() * 1000);
+        packetInjection.Count = 5
+
+        return client.captures.create(capture).then(function (c) {
+            capture = c
+            return sleep(2000)
+        }).then(function () {
+            return client.G.V().Has("TID", from)
+        }).then(function (nodes) {
+            if (nodes[0].Metadata.Neutron && nodes[0].Metadata.Neutron.IPV4) {
+                packetInjection.SrcIP = nodes[0].Metadata.Neutron.IPV4[0]
+            }
+            if (nodes[0].Metadata.ExtID && nodes[0].Metadata.ExtID["attached-mac"]) {
+                packetInjection.SrcMAC = nodes[0].Metadata.ExtID["attached-mac"]
+            }
+            return client.G.V().Has("TID", to)
+        }).then(function (nodes) {
+            if (nodes[0].Metadata.Neutron && nodes[0].Metadata.Neutron.IPV4) {
+                packetInjection.DstIP = nodes[0].Metadata.Neutron.IPV4[0]
+            }
+            if (nodes[0].Metadata.ExtID && nodes[0].Metadata.ExtID["attached-mac"]) {
+                packetInjection.DstMAC = nodes[0].Metadata.ExtID["attached-mac"]
+            }
+            return client.packetInjections.create(packetInjection)
+        }).then(function () {
+            return sleep(2000)
+        }).then(function () {
+            return client.G.Flows().Has("ICMP.ID", packetInjection.ICMPID)
+        }).then(function (flows) {
+            console.log("Flows requested ! :-)")
+            console.log(flows)
+            return {
+                "State": flows.length > 0 && flows[0].Metric.ABPackets > 0 && flows[0].Metric.BAPackets > 0,
+                "Flows": flows
+            }
+        }).finally(function () {
+            client.captures.delete(capture.UUID)
+        })
+    }

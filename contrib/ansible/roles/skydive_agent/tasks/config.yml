@@ -1,4 +1,18 @@
 ---
+- name: Setup agent listen address for container mode
+  yedit:
+    src: "{{ skydive_config_file }}"
+    key: "agent.listen"
+    value: "0.0.0.0:{{ skydive_agent_port }}"
+  when: skydive_deployment_mode == "container"
+
+- name: Setup agent listen address for non container mode
+  yedit:
+    src: "{{ skydive_config_file }}"
+    key: "agent.listen"
+    value: "{{ skydive_agent_ip }}:{{ skydive_agent_port }}"
+  when: skydive_deployment_mode != "container"
+
 - name: Define cluster agent auth parameters
   yedit:
     src: "{{ skydive_config_file }}"

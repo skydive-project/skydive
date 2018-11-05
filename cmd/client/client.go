@@ -26,6 +26,7 @@ import (
 	"os"
 
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -47,6 +48,7 @@ var ClientCmd = &cobra.Command{
 	},
 }
 
+// RegisterClientCommands registers the 'client' CLI subcommands
 func RegisterClientCommands(cmd *cobra.Command) {
 	cmd.AddCommand(AlertCmd)
 	cmd.AddCommand(CaptureCmd)
@@ -59,6 +61,11 @@ func RegisterClientCommands(cmd *cobra.Command) {
 	cmd.AddCommand(WorkflowCmd)
 	cmd.AddCommand(NodeRuleCmd)
 	cmd.AddCommand(EdgeRuleCmd)
+}
+
+func exitOnError(err error) {
+	logging.GetLogger().Error(err)
+	os.Exit(1)
 }
 
 func init() {

@@ -109,8 +109,11 @@ func (c *FlowClientWebSocketConn) Close() error {
 }
 
 // Connect to the WebSocket flow server
-func (c *FlowClientWebSocketConn) Connect() error {
-	c.wsClient = ws.NewClientFromConfig(common.AgentService, c.url, c.authOpts, nil)
+func (c *FlowClientWebSocketConn) Connect() (err error) {
+	if c.wsClient, err = config.NewWSClient(common.AgentService, c.url, c.authOpts, nil); err != nil {
+		return nil
+	}
+
 	c.wsClient.Connect()
 	c.wsClient.AddEventHandler(c)
 

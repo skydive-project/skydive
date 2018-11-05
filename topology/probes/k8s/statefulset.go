@@ -25,26 +25,24 @@ package k8s
 import (
 	"fmt"
 
-	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 
 	"k8s.io/api/apps/v1beta1"
-	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/kubernetes"
 )
 
-type statefulSetProbe struct {
-	DefaultKubeCacheEventHandler
-	*KubeCache
-	graph *graph.Graph
+type statefulSetHandler struct {
 }
 
-func dumpStatefulSet(ss *v1beta1.StatefulSet) string {
+func (h *statefulSetHandler) Dump(obj interface{}) string {
+	ss := obj.(*v1beta1.StatefulSet)
 	return fmt.Sprintf("statefulset{Namespace: %s, Name: %s}", ss.Namespace, ss.Name)
 }
 
-func (p *statefulSetProbe) newMetadata(ss *v1beta1.StatefulSet) graph.Metadata {
-	m := NewMetadata(Manager, "statefulset", ss.Namespace, ss.Name, ss)
+func (h *statefulSetHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
+	ss := obj.(*v1beta1.StatefulSet)
+
+	m := NewMetadata(Manager, "statefulset", ss, ss.Name, ss.Namespace)
 	m.SetField("DesiredReplicas", int32ValueOrDefault(ss.Spec.Replicas, 1))
 	m.SetField("ServiceName", ss.Spec.ServiceName) // FIXME: replace by link to Service
 	m.SetField("Replicas", ss.Status.Replicas)
@@ -53,63 +51,10 @@ func (p *statefulSetProbe) newMetadata(ss *v1beta1.StatefulSet) graph.Metadata {
 	m.SetField("UpdatedReplicas", ss.Status.UpdatedReplicas)
 	m.SetField("CurrentRevision", ss.Status.CurrentRevision)
 	m.SetField("UpdateRevision", ss.Status.UpdateRevision)
-	return m
+
+	return graph.Identifier(ss.GetUID()), m
 }
 
-func statefulSetUID(ss *v1beta1.StatefulSet) graph.Identifier {
-	return graph.Identifier(ss.GetUID())
-}
-
-func (p *statefulSetProbe) OnAdd(obj interface{}) {
-	if ss, ok := obj.(*v1beta1.StatefulSet); ok {
-		p.graph.Lock()
-		defer p.graph.Unlock()
-
-		NewNode(p.graph, statefulSetUID(ss), p.newMetadata(ss))
-		logging.GetLogger().Debugf("Added %s", dumpStatefulSet(ss))
-	}
-}
-
-func (p *statefulSetProbe) OnUpdate(oldObj, newObj interface{}) {
-	if ss, ok := newObj.(*v1beta1.StatefulSet); ok {
-		p.graph.Lock()
-		defer p.graph.Unlock()
-
-		if node := p.graph.GetNode(statefulSetUID(ss)); node != nil {
-			AddMetadata(p.graph, node, ss)
-			logging.GetLogger().Debugf("Updated %s", dumpStatefulSet(ss))
-		}
-	}
-}
-
-func (p *statefulSetProbe) OnDelete(obj interface{}) {
-	if ss, ok := obj.(*v1beta1.StatefulSet); ok {
-		p.graph.Lock()
-		defer p.graph.Unlock()
-
-		if node := p.graph.GetNode(statefulSetUID(ss)); node != nil {
-			p.graph.DelNode(node)
-			logging.GetLogger().Debugf("Deleted %s", dumpStatefulSet(ss))
-		}
-	}
-}
-
-func (p *statefulSetProbe) Start() {
-	p.KubeCache.Start()
-}
-
-func (p *statefulSetProbe) Stop() {
-	p.KubeCache.Stop()
-}
-
-func newStatefulSetKubeCache(handler cache.ResourceEventHandler) *KubeCache {
-	return NewKubeCache(getClientset().AppsV1beta1().RESTClient(), &v1beta1.StatefulSet{}, "statefulsets", handler)
-}
-
-func newStatefulSetProbe(g *graph.Graph) probe.Probe {
-	p := &statefulSetProbe{
-		graph: g,
-	}
-	p.KubeCache = newStatefulSetKubeCache(p)
-	return p
+func newStatefulSetProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
+	return NewResourceCache(clientset.AppsV1beta1().RESTClient(), &v1beta1.StatefulSet{}, "statefulsets", g, &statefulSetHandler{})
 }

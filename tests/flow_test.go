@@ -912,7 +912,7 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 		// we should wait 11 sec to have the first update and the MetricRange filled
 		checks: []CheckFunction{func(c *CheckContext) error {
 			prefix := c.gremlin.V().Has("Name", "br-ipv6fh", "Type", "ovsbridge")
-			gremlin := prefix.Flows().Has("LayersPath", "Ethernet/IPv6/ICMPv6", "ICMP.Type", "ECHO")
+			gremlin := prefix.Flows().Has("LayersPath", "Ethernet/IPv6/ICMPv6/ICMPv6Echo", "ICMP.Type", "ECHO")
 			// filterIPv6AddrAnd() as we received multicast/broadcast from fresh registered interfaces announcement
 			allFlows, err := c.gh.GetFlows(gremlin)
 			if err != nil {
@@ -935,7 +935,7 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 			}
 
 			/* Dedup() here for same reason than above ^^^ */
-			gremlin = prefix.Flows().Has("LayersPath", "Ethernet/IPv6/ICMPv6").Hops().Dedup()
+			gremlin = prefix.Flows().Has("LayersPath", "Ethernet/IPv6/ICMPv6/ICMPv6Echo").Hops().Dedup()
 			nodes, err := c.gh.GetNodes(gremlin)
 			if err != nil {
 				return err
@@ -1044,7 +1044,7 @@ func TestICMP(t *testing.T) {
 				return fmt.Errorf("We should receive one ICMPv4 flow with TrackingID %s, got %s", ipv4TrackingID, flowsToString(icmpFlows))
 			}
 
-			gremlin = prefix.Flows().Has("LayersPath", "Ethernet/IPv6/ICMPv6", "ICMP.ID", 456)
+			gremlin = prefix.Flows().Has("LayersPath", "Ethernet/IPv6/ICMPv6/ICMPv6Echo", "ICMP.ID", 456)
 			icmpFlows, err = c.gh.GetFlows(gremlin)
 			if err != nil {
 				return err
@@ -1782,7 +1782,7 @@ func getRawPackets(gh *gclient.GremlinQueryHelper, query g.QueryString) ([]gopac
 			}
 			break
 		}
-		packet := gopacket.NewPacket(data, handle.LinkType(), gopacket.NoCopy)
+		packet := gopacket.NewPacket(data, handle.LinkType(), gopacket.DecodeOptions{NoCopy: true})
 		packets = append(packets, packet)
 	}
 

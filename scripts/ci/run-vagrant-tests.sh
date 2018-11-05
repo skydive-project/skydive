@@ -46,7 +46,7 @@ function vagrant_cleanup {
     vagrant ssh analyzer1 -c 'sudo journalctl -xe | grep skydive'
     vagrant destroy --force
 }
-trap vagrant_cleanup EXIT
+[ "$KEEP_RESOURCES" = "true" ] || trap vagrant_cleanup EXIT
 
 function run_functional_tests {
   vagrant ssh-config > vagrant-ssh-config
@@ -94,34 +94,42 @@ for mode in $MODES
 do
   echo "================== deploying mode $mode ==============================="
   DEPLOYMENT_MODE=$mode vagrant box update
-  DEPLOYMENT_MODE=$mode vagrant up --provision-with common
-  DEPLOYMENT_MODE=$mode vagrant provision
-
-  vagrant ssh analyzer1 -- sudo ntpdate fr.pool.ntp.org
-  vagrant ssh agent1 -- sudo ntpdate fr.pool.ntp.org
-
-  vagrant ssh analyzer1 -- sudo cat /etc/skydive/skydive.yml
-
-  vagrant ssh analyzer1 -- sudo journalctl -n 100 -u skydive-analyzer
-  vagrant ssh agent1 -- sudo journalctl -n 100 -u skydive-agent
-
-  if [ "$mode" = "container" ]; then
-      install_skydive_from_docker_image analyzer1
-      install_skydive_from_docker_image agent1
-  fi
+  DEPLOYMENT_MODE=$mode vagrant up --provision-with common ${KEEP_RESOURCES:+--no-destroy-on-error}
 
   if [ "$mode" = "package" ]; then
       install_skydive_selinux_enforcing analyzer1
       install_skydive_selinux_enforcing agent1
   fi
 
+  vagrant ssh analyzer1 -- sudo ntpdate fr.pool.ntp.org
+  vagrant ssh agent1 -- sudo ntpdate fr.pool.ntp.org
+
+  DEPLOYMENT_MODE=$mode vagrant provision
+
+  vagrant ssh analyzer1 -- sudo cat /etc/skydive/skydive.yml
+
+  if [ "$mode" = "container" ]; then
+      install_skydive_from_docker_image analyzer1
+      install_skydive_from_docker_image agent1
+  fi
+
+  vagrant ssh analyzer1 -- sudo journalctl -n 200 -u skydive-analyzer
+  vagrant ssh agent1 -- sudo journalctl -n 200 -u skydive-agent
+
   echo "================== external functional test suite ==============================="
   $root/scripts/test.sh -a 192.168.50.10:8082 -e $AGENT_COUNT -c -i
 
+  vagrant ssh analyzer1 -- sudo journalctl -n 200 -u skydive-analyzer
+  vagrant ssh agent1 -- sudo journalctl -n 200 -u skydive-agent
+
   if [ "$mode" != "container" ]; then
       sleep 10
+      echo "================== functional test suite ==============================="
       run_functional_tests
   fi
+
+  vagrant ssh analyzer1 -- sudo journalctl -n 200 -u skydive-analyzer
+  vagrant ssh agent1 -- sudo journalctl -n 200 -u skydive-agent
 
   vagrant destroy --force
 done

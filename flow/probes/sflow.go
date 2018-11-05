@@ -43,7 +43,7 @@ type SFlowProbesHandler struct {
 	fpta        *FlowProbeTableAllocator
 	probes      map[string]*flow.Table
 	probesLock  common.RWMutex
-	allocator   *sflow.SFlowAgentAllocator
+	allocator   *sflow.AgentAllocator
 	staticPorts map[string]string
 }
 
@@ -74,8 +74,7 @@ func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHand
 	return nil
 }
 
-// RegisterProbe registers a probe in the graph
-func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+func (d *SFlowProbesHandler) registerProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 	var tid string
 	if tid, _ = n.GetFieldString("TID"); tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
@@ -123,6 +122,15 @@ func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture
 	return nil
 }
 
+// RegisterProbe registers a probe in the graph
+func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+	err := d.registerProbe(n, capture, e)
+	if err != nil {
+		go e.OnError(err)
+	}
+	return err
+}
+
 // Start a probe
 func (d *SFlowProbesHandler) Start() {
 }
@@ -139,7 +147,7 @@ func (d *SFlowProbesHandler) Stop() {
 
 // NewSFlowProbesHandler creates a new SFlow probe in the graph
 func NewSFlowProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*SFlowProbesHandler, error) {
-	allocator, err := sflow.NewSFlowAgentAllocator()
+	allocator, err := sflow.NewAgentAllocator()
 	if err != nil {
 		return nil, err
 	}

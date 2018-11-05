@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Red Hat, Inc.
+ * Copyright (C) 2018 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -23,184 +23,120 @@
 package k8s
 
 import (
-	"fmt"
-
 	"github.com/skydive-project/skydive/filters"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 
-	"k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
+)
+
+const (
+	dockerContainerNameField = "Docker.Labels.io.kubernetes.container.name"
+	dockerPodNameField       = "Docker.Labels.io.kubernetes.pod.name"
+	dockerPodNamespaceField  = "Docker.Labels.io.kubernetes.pod.namespace"
 )
 
 type containerProbe struct {
-	DefaultKubeCacheEventHandler
+	graph.EventHandler
 	graph.DefaultGraphListener
-	*KubeCache
-	graph            *graph.Graph
-	podIndexer       *graph.MetadataIndexer
-	containerIndexer *graph.MetadataIndexer
-	dockerIndexer    *graph.MetadataIndexer
+	graph *graph.Graph
 }
 
-// commonly accessed docker specific fields
-const (
-	DockerNameField         = "Docker.ContainerName"
-	DockerPodNameField      = "Docker.Labels.io.kubernetes.pod.name"
-	DockerPodNamespaceField = "Docker.Labels.io.kubernetes.pod.namespace"
-)
-
-func newDockerIndexer(g *graph.Graph) *graph.MetadataIndexer {
-	filter := filters.NewAndFilter(
-		filters.NewTermStringFilter("Manager", "docker"),
-		filters.NewTermStringFilter("Type", "container"),
-		filters.NewNotNullFilter(DockerPodNamespaceField),
-		filters.NewNotNullFilter(DockerPodNameField),
-		filters.NewNotNullFilter(DockerNameField))
-	m := graph.NewGraphElementFilter(filter)
-
-	return graph.NewMetadataIndexer(g, m, DockerPodNamespaceField, DockerPodNameField, DockerNameField)
-}
-
-func newContainerIndexer(g *graph.Graph) *graph.MetadataIndexer {
-	filter := filters.NewAndFilter(
-		filters.NewTermStringFilter("Manager", "k8s"),
-		filters.NewTermStringFilter("Type", "container"),
-		filters.NewNotNullFilter("Namespace"),
-		filters.NewNotNullFilter("Pod"))
-	m := graph.NewGraphElementFilter(filter)
-
-	return graph.NewMetadataIndexer(g, m, "Namespace", "Pod")
-}
-
-func (c *containerProbe) newMetadata(pod *v1.Pod, container *v1.Container) graph.Metadata {
-	m := NewMetadata(Manager, "container", pod.Namespace, container.Name, container)
-	m.SetField("Pod", pod.Name)
-	m.SetFieldAndNormalize("Labels", pod.Labels)
-	m.SetField("Image", container.Image)
+func (p *containerProbe) getContainerMetadata(podNode *graph.Node, containerName string, container map[string]interface{}) graph.Metadata {
+	podName, _ := podNode.GetFieldString("Name")
+	podNamespace, _ := podNode.GetFieldString("Namespace")
+	m := NewMetadata(Manager, "container", container, containerName, podNamespace)
+	m.SetField("Pod", podName)
+	m.SetField("Image", container["Image"])
 	return m
 }
 
-func containerUID(pod *v1.Pod, containerName string) graph.Identifier {
-	return graph.GenIDNameBased(string(pod.GetUID()), containerName)
-}
-
-func dumpContainer2(pod *v1.Pod, containerName string) string {
-	return fmt.Sprintf("container{podNamespace: %s, podName: %s, containerName: %s}", pod.GetNamespace(), pod.GetName(), containerName)
-}
-
-func dumpContainer(pod *v1.Pod, container *v1.Container) string {
-	return dumpContainer2(pod, container.Name)
-}
-
-func (c *containerProbe) linkContainerToPod(pod *v1.Pod, container *v1.Container, containerNode *graph.Node) {
-	podNodes, _ := c.podIndexer.Get(pod.GetNamespace(), pod.GetName())
-
-	if len(podNodes) == 0 {
-		logging.GetLogger().Debugf("Can't find %s", dumpPod(pod))
-		return
+func (p *containerProbe) handleContainers(podNode *graph.Node) map[graph.Identifier]*graph.Node {
+	containers := make(map[graph.Identifier]*graph.Node)
+	specContainers, _ := podNode.GetField(detailsField + ".Spec.Containers")
+	if specContainers, ok := specContainers.([]interface{}); ok {
+		for _, container := range specContainers {
+			if container, ok := container.(map[string]interface{}); ok {
+				containerName := container["Name"].(string)
+				uid := graph.GenID(string(podNode.ID), containerName)
+				m := p.getContainerMetadata(podNode, containerName, container)
+				node := p.graph.GetNode(uid)
+				if node == nil {
+					node = p.graph.NewNode(uid, m)
+					p.graph.NewEdge(graph.GenID(), podNode, node, topology.OwnershipMetadata(), "")
+				} else {
+					p.graph.SetMetadata(node, m)
+				}
+				containers[uid] = node
+			}
+		}
 	}
-
-	logging.GetLogger().Debugf("Linking %s to %s", dumpContainer(pod, container), dumpPod(pod))
-	AddOwnershipLink(Manager, c.graph, podNodes[0], containerNode)
+	return containers
 }
 
-func (c *containerProbe) linkContainerToDocker(pod *v1.Pod, container *v1.Container, containerNode *graph.Node) {
-	dockerNodes, _ := c.dockerIndexer.Get(pod.GetNamespace(), pod.GetName(), container.Name)
-
-	if len(dockerNodes) == 0 {
-		logging.GetLogger().Debugf("Can't find docker associated with %s", dumpContainer(pod, container))
-		return
-	}
-
-	AddLinkTry(c.graph, containerNode, dockerNodes[0], NewEdgeMetadata(Manager))
-}
-
-func (c *containerProbe) onContainerAdd(pod *v1.Pod, container *v1.Container) {
-	c.graph.Lock()
-	defer c.graph.Unlock()
-
-	uid := containerUID(pod, container.Name)
-	containerNode := c.graph.GetNode(uid)
-	if containerNode == nil {
-		logging.GetLogger().Debugf("Adding %s", dumpContainer(pod, container))
-		containerNode = NewNode(c.graph, uid, c.newMetadata(pod, container))
-	} else {
-		logging.GetLogger().Debugf("Updating %s (as it already exists)", dumpContainer(pod, container))
-		AddMetadata(c.graph, containerNode, container)
-	}
-
-	c.linkContainerToPod(pod, container, containerNode)
-	c.linkContainerToDocker(pod, container, containerNode)
-}
-
-func (c *containerProbe) onPodAdd(pod *v1.Pod) {
-	for _, container := range pod.Spec.Containers {
-		c.onContainerAdd(pod, &container)
+func (p *containerProbe) OnNodeAdded(node *graph.Node) {
+	if nodeType, _ := node.GetFieldString("Type"); nodeType == "pod" {
+		p.handleContainers(node)
 	}
 }
 
-func (c *containerProbe) OnAdd(obj interface{}) {
-	pod, ok := obj.(*v1.Pod)
-	if !ok {
-		return
-	}
+func (p *containerProbe) OnNodeUpdated(node *graph.Node) {
+	if nodeType, _ := node.GetFieldString("Type"); nodeType == "pod" {
+		previousContainers := p.graph.LookupChildren(node, graph.Metadata{"Type": "container"}, topology.OwnershipMetadata())
+		containers := p.handleContainers(node)
 
-	logging.GetLogger().Debugf("Creating container nodes for %s", dumpPod(pod))
-	c.onPodAdd(pod)
-}
-
-func (c *containerProbe) OnUpdate(oldObj, newObj interface{}) {
-	pod, ok := newObj.(*v1.Pod)
-	if !ok {
-		return
-	}
-	logging.GetLogger().Debugf("Updating container nodes of %s", dumpPod(pod))
-	c.onPodAdd(pod)
-}
-
-func (c *containerProbe) OnDelete(obj interface{}) {
-	if pod, ok := obj.(*v1.Pod); ok {
-		c.graph.Lock()
-		defer c.graph.Unlock()
-
-		containerNodes, _ := c.containerIndexer.Get(pod.Namespace, pod.Name)
-		logging.GetLogger().Debugf("Deleting container nodes of %s", dumpPod(pod))
-		for _, containerNode := range containerNodes {
-			containerName, _ := containerNode.GetFieldString(DockerNameField)
-			logging.GetLogger().Debugf("Deleting %s", dumpContainer2(pod, containerName))
-			c.graph.DelNode(containerNode)
+		for _, container := range previousContainers {
+			if _, found := containers[container.ID]; !found {
+				p.graph.DelNode(container)
+			}
 		}
 	}
 }
 
-func (c *containerProbe) Start() {
-	c.containerIndexer.AddEventListener(c)
-	c.containerIndexer.Start()
-	c.dockerIndexer.AddEventListener(c)
-	c.dockerIndexer.Start()
-	c.podIndexer.AddEventListener(c)
-	c.podIndexer.Start()
-	c.KubeCache.Start()
-}
-
-func (c *containerProbe) Stop() {
-	c.containerIndexer.RemoveEventListener(c)
-	c.containerIndexer.Stop()
-	c.dockerIndexer.RemoveEventListener(c)
-	c.dockerIndexer.Stop()
-	c.podIndexer.RemoveEventListener(c)
-	c.podIndexer.Stop()
-	c.KubeCache.Stop()
-}
-
-func newContainerProbe(g *graph.Graph) probe.Probe {
-	c := &containerProbe{
-		graph:            g,
-		podIndexer:       newPodIndexerByName(g),
-		containerIndexer: newContainerIndexer(g),
-		dockerIndexer:    newDockerIndexer(g),
+func (p *containerProbe) OnNodeDeleted(node *graph.Node) {
+	if nodeType, _ := node.GetFieldString("Type"); nodeType == "pod" {
+		containers := p.graph.LookupChildren(node, graph.Metadata{"Type": "container"}, topology.OwnershipMetadata())
+		for _, container := range containers {
+			p.graph.DelNode(container)
+		}
 	}
-	c.KubeCache = newPodKubeCache(c)
-	return c
+}
+
+func (p *containerProbe) Start() {
+	p.graph.AddEventListener(p)
+}
+
+func (p *containerProbe) Stop() {
+	p.graph.RemoveEventListener(p)
+}
+
+func newContainerProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
+	return &containerProbe{graph: g}
+}
+
+func newDockerIndexer(g *graph.Graph) *graph.MetadataIndexer {
+	m := graph.NewElementFilter(filters.NewAndFilter(
+		filters.NewTermStringFilter("Manager", "docker"),
+		filters.NewTermStringFilter("Type", "container"),
+		filters.NewNotNullFilter(dockerPodNamespaceField),
+		filters.NewNotNullFilter(dockerPodNameField),
+	))
+
+	return graph.NewMetadataIndexer(g, g, m, dockerPodNamespaceField, dockerPodNameField, dockerContainerNameField)
+}
+
+func newContainerLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe {
+	podProbe := subprobes["pod"]
+	if podProbe == nil {
+		return nil
+	}
+
+	k8sIndexer := newObjectIndexer(g, g, "container", "Namespace", "Pod", "Name")
+	k8sIndexer.Start()
+
+	dockerIndexer := newDockerIndexer(g)
+	dockerIndexer.Start()
+
+	return graph.NewMetadataIndexerLinker(g, k8sIndexer, dockerIndexer, newEdgeMetadata())
 }

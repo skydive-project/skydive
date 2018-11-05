@@ -45,8 +45,8 @@ const (
 	// Misc characters
 	COMMA
 	DOT
-	LEFT_PARENTHESIS
-	RIGHT_PARENTHESIS
+	LEFTPARENTHESIS
+	RIGHTPARENTHESIS
 	STRING
 	NUMBER
 
@@ -57,6 +57,7 @@ const (
 	HAS
 	HASKEY
 	HASNOT
+	HASEITHER
 	OUT
 	IN
 	OUTV
@@ -137,9 +138,9 @@ func (s *GremlinTraversalScanner) Scan() (tok Token, lit string) {
 	case eof:
 		return EOF, ""
 	case '(':
-		return LEFT_PARENTHESIS, string(ch)
+		return LEFTPARENTHESIS, string(ch)
 	case ')':
-		return RIGHT_PARENTHESIS, string(ch)
+		return RIGHTPARENTHESIS, string(ch)
 	case ',':
 		return COMMA, string(ch)
 	case '.':
@@ -228,6 +229,8 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return HASKEY, buf.String()
 	case "HASNOT":
 		return HASNOT, buf.String()
+	case "HASEITHER":
+		return HASEITHER, buf.String()
 	case "OUT":
 		return OUT, buf.String()
 	case "IN":

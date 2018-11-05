@@ -96,6 +96,7 @@ import (
 	"github.com/vishvananda/netns"
 )
 
+// Protocols to receive
 const (
 	AllPackets    = syscall.ETH_P_ALL
 	OnlyIPPackets = syscall.ETH_P_IP

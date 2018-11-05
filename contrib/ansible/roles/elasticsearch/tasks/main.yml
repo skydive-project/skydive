@@ -13,7 +13,6 @@
     gpgkey: https://artifacts.elastic.co/GPG-KEY-elasticsearch
     baseurl: https://artifacts.elastic.co/packages/5.x/yum
 
-
 - name: Install elasticsearch package
   package:
     name: "{{ item }}"
@@ -21,6 +20,18 @@
   with_items:
     - java
     - elasticsearch
+
+- name: Set elasticsearch minimum heap size
+  lineinfile:
+    dest: /etc/elasticsearch/jvm.options
+    regexp: '^-Xms2G$'
+    line: '-Xms512m'
+
+- name: Set elasticsearch maximum heap size
+  lineinfile:
+    dest: /etc/elasticsearch/jvm.options
+    regexp: '^-Xmx2G$'
+    line: '-Xmx512m'
 
 - name: Starts and enable elasticsearch
   service:

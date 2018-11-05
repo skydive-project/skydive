@@ -23,6 +23,7 @@
 package websocket
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	fmt "fmt"
@@ -33,11 +34,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	auth "github.com/abbot/go-http-auth"
 	"github.com/gorilla/websocket"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 )
@@ -50,7 +49,7 @@ const (
 // ConnState describes the connection state
 type ConnState int32
 
-// WSConnStatus describes the status of a WebSocket connection
+// ConnStatus describes the status of a WebSocket connection
 type ConnStatus struct {
 	ServiceType       common.ServiceType
 	ClientProtocol    string
@@ -65,6 +64,7 @@ type ConnStatus struct {
 	RemoteServiceType common.ServiceType `json:",omitempty"`
 }
 
+// MarshalJSON marshal the connexion state to JSON
 func (s *ConnState) MarshalJSON() ([]byte, error) {
 	switch *s {
 	case common.RunningState:
@@ -128,15 +128,16 @@ type Speaker interface {
 type Conn struct {
 	common.RWMutex
 	ConnStatus
-	send          chan []byte
-	read          chan []byte
-	quit          chan bool
-	wg            sync.WaitGroup
-	conn          *websocket.Conn
-	running       atomic.Value
-	pingTicker    *time.Ticker // only used by incoming connections
-	eventHandlers []SpeakerEventHandler
-	wsSpeaker     Speaker // speaker owning the connection
+	send             chan []byte
+	read             chan []byte
+	quit             chan bool
+	wg               sync.WaitGroup
+	conn             *websocket.Conn
+	running          atomic.Value
+	pingTicker       *time.Ticker // only used by incoming connections
+	eventHandlers    []SpeakerEventHandler
+	wsSpeaker        Speaker // speaker owning the connection
+	writeCompression bool
 }
 
 // wsIncomingClient is only used internally to handle incoming client. It embeds a Conn.
@@ -148,8 +149,9 @@ type wsIncomingClient struct {
 // It embeds a Conn.
 type Client struct {
 	*Conn
-	Path     string
-	AuthOpts *shttp.AuthenticationOpts
+	Path      string
+	AuthOpts  *shttp.AuthenticationOpts
+	tlsConfig *tls.Config
 }
 
 // SpeakerEventHandler is the interface to be implement by the client events listeners.
@@ -265,7 +267,7 @@ func (c *Conn) write(msg []byte) error {
 	}
 
 	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-	c.conn.EnableWriteCompression(config.GetBool("http.ws.enable_write_compression"))
+	c.conn.EnableWriteCompression(c.writeCompression)
 	w, err := c.conn.NextWriter(websocket.TextMessage)
 	if err != nil {
 		return err
@@ -377,7 +379,7 @@ func (c *Conn) Disconnect() {
 	}
 }
 
-func newConn(host string, clientType common.ServiceType, clientProtocol string, url *url.URL, headers http.Header, queueSize int) *Conn {
+func newConn(host string, clientType common.ServiceType, clientProtocol string, url *url.URL, headers http.Header, queueSize int, writeCompression bool) *Conn {
 	if headers == nil {
 		headers = http.Header{}
 	}
@@ -395,10 +397,11 @@ func newConn(host string, clientType common.ServiceType, clientProtocol string, 
 			Headers:        headers,
 			ConnectTime:    time.Now(),
 		},
-		send:       make(chan []byte, queueSize),
-		read:       make(chan []byte, queueSize),
-		quit:       make(chan bool, 2),
-		pingTicker: &time.Ticker{},
+		send:             make(chan []byte, queueSize),
+		read:             make(chan []byte, queueSize),
+		quit:             make(chan bool, 2),
+		pingTicker:       &time.Ticker{},
+		writeCompression: writeCompression,
 	}
 	*c.State = common.StoppedState
 	c.running.Store(true)
@@ -406,7 +409,7 @@ func newConn(host string, clientType common.ServiceType, clientProtocol string, 
 }
 
 func (c *Client) scheme() string {
-	if config.IsTLSenabled() == true {
+	if c.tlsConfig != nil {
 		return "wss://"
 	}
 	return "ws://"
@@ -432,7 +435,7 @@ func (c *Client) connect() {
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 	}
-	d.TLSClientConfig, err = shttp.GetTLSConfig(false)
+	d.TLSClientConfig = c.tlsConfig
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err)
 		return
@@ -446,7 +449,7 @@ func (c *Client) connect() {
 		return
 	}
 	c.conn.SetPingHandler(nil)
-	c.conn.EnableWriteCompression(config.GetBool("http.ws.enable_write_compression"))
+	c.conn.EnableWriteCompression(c.writeCompression)
 
 	atomic.StoreInt32((*int32)(c.State), common.RunningState)
 	defer atomic.StoreInt32((*int32)(c.State), common.StoppedState)
@@ -496,72 +499,13 @@ func (c *Client) Connect() {
 }
 
 // NewClient returns a Client with a new connection.
-func NewClient(host string, clientType common.ServiceType, url *url.URL, authOpts *shttp.AuthenticationOpts, headers http.Header, queueSize int) *Client {
-	wsconn := newConn(host, clientType, ProtobufProtocol, url, headers, queueSize)
+func NewClient(host string, clientType common.ServiceType, url *url.URL, authOpts *shttp.AuthenticationOpts, headers http.Header, queueSize int, writeCompression bool, tlsConfig *tls.Config) *Client {
+	wsconn := newConn(host, clientType, ProtobufProtocol, url, headers, queueSize, writeCompression)
 	c := &Client{
-		Conn:     wsconn,
-		AuthOpts: authOpts,
+		Conn:      wsconn,
+		AuthOpts:  authOpts,
+		tlsConfig: tlsConfig,
 	}
 	wsconn.wsSpeaker = c
-	return c
-}
-
-// NewClientFromConfig creates a Client based on the configuration
-func NewClientFromConfig(clientType common.ServiceType, url *url.URL, authOpts *shttp.AuthenticationOpts, headers http.Header) *Client {
-	host := config.GetString("host_id")
-	queueSize := config.GetInt("http.ws.queue_size")
-	return NewClient(host, clientType, url, authOpts, headers, queueSize)
-}
-
-// newIncomingClient is called by the server for incoming connections
-func newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRequest) *wsIncomingClient {
-	clientType := common.ServiceType(getRequestParameter(&r.Request, "X-Client-Type"))
-	if clientType == "" {
-		clientType = common.UnknownService
-	}
-	clientProtocol := getRequestParameter(&r.Request, "X-Client-Protocol")
-	if clientProtocol != ProtobufProtocol {
-		clientProtocol = JSONProtocol
-	}
-
-	host := config.GetString("host_id")
-	queueSize := config.GetInt("http.ws.queue_size")
-
-	svc, _ := common.ServiceAddressFromString(conn.RemoteAddr().String())
-	url := config.GetURL("http", svc.Addr, svc.Port, r.URL.Path+"?"+r.URL.RawQuery)
-
-	wsconn := newConn(host, clientType, clientProtocol, url, r.Header, queueSize)
-	wsconn.conn = conn
-	wsconn.RemoteHost = getRequestParameter(&r.Request, "X-Host-ID")
-
-	// NOTE(safchain): fallback to remote addr if host id not provided
-	// should be removed, connection should be refused if host id not provided
-	if wsconn.RemoteHost == "" {
-		wsconn.RemoteHost = r.RemoteAddr
-	}
-
-	pingDelay := time.Duration(config.GetInt("http.ws.ping_delay")) * time.Second
-	pongTimeout := time.Duration(config.GetInt("http.ws.pong_timeout"))*time.Second + pingDelay
-
-	conn.SetReadLimit(maxMessageSize)
-	conn.SetReadDeadline(time.Now().Add(pongTimeout))
-	conn.SetPongHandler(func(string) error {
-		conn.SetReadDeadline(time.Now().Add(pongTimeout))
-		return nil
-	})
-
-	c := &wsIncomingClient{
-		Conn: wsconn,
-	}
-	wsconn.wsSpeaker = c
-
-	atomic.StoreInt32((*int32)(c.State), common.RunningState)
-
-	// send a first ping to help firefox and some other client which wait for a
-	// first ping before doing something
-	c.sendPing()
-
-	wsconn.pingTicker = time.NewTicker(pingDelay)
-
 	return c
 }
