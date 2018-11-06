@@ -35,7 +35,7 @@ type Permission struct {
 	Allowed bool
 }
 
-var enforcer *casbin.Enforcer
+var enforcer *casbin.SyncedEnforcer
 
 // Init loads the model from the configuration file then the policies.
 // 3 policies are applied, in that order :
@@ -48,7 +48,7 @@ func Init(model model.Model, kapi etcd.KeysAPI, loadPolicy func(model.Model) err
 		return err
 	}
 
-	casbinEnforcer := casbin.NewEnforcer()
+	casbinEnforcer := casbin.NewSyncedEnforcer()
 	casbinEnforcer.InitWithModelAndAdapter(model, etcdAdapter)
 
 	if loadPolicy != nil {
