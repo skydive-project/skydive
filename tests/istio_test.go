@@ -64,9 +64,13 @@ func TestBookInfoScenario(t *testing.T) {
 		[]Cmd{
 			{"kubectl apply -f " + bookinfo + "/networking/destination-rule-all.yaml", true},
 			{"kubectl apply -f " + bookinfo + "/networking/bookinfo-gateway.yaml", true},
+			{"kubectl apply -f " + bookinfo + "/platform/kube/bookinfo.yaml", true},
 		},
 		[]Cmd{
-			{"kubectl apply -f " + bookinfo + "/platform/kube/cleanup.sh", false},
+			{"istioctl delete virtualservice bookinfo", false},
+			{"istioctl delete gateway bookinfo-gateway", false},
+			{"istioctl delete destinationrule details productpage ratings reviews", false},
+			{"kubectl delete deployment details-v1 productpage-v1 ratings-v1 reviews-v1 reviews-v2 reviews-v3", false},
 		},
 		[]CheckFunction{
 			func(c *CheckContext) error {
@@ -92,6 +96,11 @@ func TestBookInfoScenario(t *testing.T) {
 				}
 
 				_, err = checkNodeCreation(t, c, istio.Manager, "gateway", "Name", "bookinfo-gateway")
+				if err != nil {
+					return err
+				}
+
+				_, err = checkNodeCreation(t, c, istio.Manager, "virtualservice", "Name", "bookinfo")
 				if err != nil {
 					return err
 				}
