@@ -293,9 +293,9 @@ var BridgeLayout = (function () {
   BridgeLayout.prototype.extract = function () {
     var itfs = {};
     var rules = [];
-    var rulesUUID = new Set();          // added on check tests, by p.c.
+    var rulesUUID = new Set();       // added on check tests, by p.c.
     var groupsUUID = new Set();
-    var groups = [];                
+    var groups = [];
     var children = this.graph.getTargets(this.bridge);
     for (var i = 0; i < children.length; i++) {
       var c = children[i];
@@ -309,7 +309,7 @@ var BridgeLayout = (function () {
           var rule = c.Metadata;
           summarize(rule);
           rules.push(rule);
-	  rulesUUID.add(rule.UUID);   // added on check tests, by p.c.
+          rulesUUID.add(rule.UUID);   // added on check tests, by p.c.
           break;
         case 'ofgroup':
           var group = c.metadata;
@@ -328,8 +328,7 @@ var BridgeLayout = (function () {
 
   /** Structure the information on the rules, classifying by tables and ports. */
   BridgeLayout.prototype.structure = function () {
-    var perTableRules =
-      classify(this.rules, function (r) { return r.table; });
+    var perTableRules = classify(this.rules, function (r) { return r.table; });
     this.structured = {};
     for (var key in perTableRules) {
       var array = perTableRules[key];
@@ -660,7 +659,7 @@ Vue.component('rule-detail', {
       type: Object,
       required: true
       },
-    realgraph: {
+    graph: {
       type: Object,
       required: true
     }
@@ -671,7 +670,7 @@ Vue.component('rule-detail', {
       value: "",
       memoBridgeLayout:null,
       filters: {},
-      graph: {
+      Subgraph: {
         nodes: [],
         edges: [],
         getNode: function(id) {
@@ -778,7 +777,6 @@ Vue.component('rule-detail', {
         Vue.set(this.filters, key, []);
       }
       this.filters[key].push(value);
-
       this.getRules();
     },
 
@@ -787,17 +785,14 @@ Vue.component('rule-detail', {
       if (this.filters[key].length === 0) {
         Vue.delete(this.filters, key);
       }
-
       this.getRules();
     },
     getRules: function() {
       var self = this;
       console.log(this.filters);
-
       var queryBridge = "G.V('" + self.bridge.id + "').As('bridge')";
       var queryPorts = queryBridge + ".Out().Has('Type', 'ovsport').As('ovsports')";
       var queryRules = queryBridge + ".Out().Has('Type', 'ofrule')";
-
       var has = "";
       var list = [];
       var i = 0;
@@ -809,36 +804,27 @@ Vue.component('rule-detail', {
       var query = queryBridge + "." + queryPorts + "." ;
       if (has.length > 0) {
 	        for (var k in this.filters) {
-                //queryRules += ".Has('filters', regex('.*" + k + "=" + this.filters[k] + ".*')).As('"k"')";
-                query += queryRules + ".Has('filters', regex('.*" + k + "=" + this.filters[k] + ".*')).As('" + k + "').";
+            query += queryRules + ".Has('filters', regex('.*" + k + "=" + this.filters[k] + ".*')).As('" + k + "').";
 	        }
       }
       else{
 	    query += queryRules + ".As('ofrules')."
       }
-      //queryRules += ".As('ofrules')"
-
-      //var query = queryBridge + "." + queryPorts + "." + queryRules + ".Select('bridge', 'ovsports', 'ofrules').SubGraph()";
-
       query += "Select('bridge', 'ovsports'";
-      
       if (has.length > 0){
       	for (var p in this.filters){
-	  query += ", '" + p + "'";
+	        query += ", '" + p + "'";
         }
       }
       else{
-	query += ", 'ofrules'";
+	      query += ", 'ofrules'";
       }
       query += ").SubGraph()";
-
-		//").SubGraph()"";
       console.log(query);
       this.$topologyQuery(query)
         .then(function(g) {
           self.graph.nodes = g[0].Nodes;
           self.graph.edges = g[0].Edges;
-
           self.memoBridgeLayout = null;
         });
     }
