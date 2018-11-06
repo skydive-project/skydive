@@ -539,7 +539,7 @@ func (f *FlowTraversalStep) PropertyKeys(ctx traversal.StepContext, keys ...inte
 
 	if len(f.flowset.Flows) > 0 {
 		// all Flow struct are the same, take the first one
-		s = f.flowset.Flows[0].GetFields()
+		s = f.flowset.Flows[0].GetFieldKeys()
 	}
 
 	return traversal.NewGraphTraversalValue(f.GraphTraversal, s)

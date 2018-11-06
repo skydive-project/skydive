@@ -1110,8 +1110,7 @@ func TestFlowSimpleSynFin(t *testing.T) {
 func TestGetFieldsXXX(t *testing.T) {
 	f := &Flow{}
 
-	fields := f.GetFields()
-	for _, k := range fields {
+	for _, k := range f.GetFieldKeys() {
 		if strings.HasPrefix(k, "XXX_") {
 			t.Error("XXX_ private field exposed")
 		}
@@ -1121,7 +1120,7 @@ func TestGetFieldsXXX(t *testing.T) {
 func TestGetFieldInterface(t *testing.T) {
 	f := &Flow{}
 
-	field, err := f.GetFieldInterface("Metric")
+	field, err := f.GetField("Metric")
 	if err != nil {
 		t.Error(err)
 	}

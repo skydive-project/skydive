@@ -76,7 +76,7 @@ type graphEvent struct {
 
 // ElementMatcher defines an interface used to match an element
 type ElementMatcher interface {
-	Match(g filters.Getter) bool
+	Match(g common.Getter) bool
 	Filter() (*filters.Filter, error)
 }
 
@@ -160,14 +160,15 @@ type Graph struct {
 	service      common.ServiceType
 }
 
-// RawMetadataDecoder defines a json rawmessage decoder
-type RawMetadataDecoder func(raw json.RawMessage) (interface{}, error)
+// MetadataDecoder defines a json rawmessage decoder which has to return a object
+// implementing the getter interface
+type MetadataDecoder func(raw json.RawMessage) (common.Getter, error)
 
 var (
 	// NodeMetadataDecoders is a map that owns special type metadata decoder
-	NodeMetadataDecoders = make(map[string]RawMetadataDecoder)
+	NodeMetadataDecoders = make(map[string]MetadataDecoder)
 	// EdgeMetadataDecoders is a map that owns special type metadata decoder
-	EdgeMetadataDecoders = make(map[string]RawMetadataDecoder)
+	EdgeMetadataDecoders = make(map[string]MetadataDecoder)
 )
 
 // DefaultGraphListener default implementation of a graph listener, can be used when not implementing
@@ -311,7 +312,7 @@ func (m Metadata) String() string {
 }
 
 // Match returns true if the the given element matches the metadata.
-func (m Metadata) Match(g filters.Getter) bool {
+func (m Metadata) Match(g common.Getter) bool {
 	for k, v := range m {
 		nv, err := g.GetField(k)
 		if err != nil || !reflect.DeepEqual(nv, v) {
@@ -351,7 +352,7 @@ func (m Metadata) Filter() (*filters.Filter, error) {
 }
 
 // Match returns true if the given element matches the filter.
-func (mf *ElementFilter) Match(g filters.Getter) bool {
+func (mf *ElementFilter) Match(g common.Getter) bool {
 	return mf.filter.Eval(g)
 }
 
@@ -406,15 +407,13 @@ func (e *graphElement) GetField(name string) (interface{}, error) {
 	}
 }
 
-func (e *graphElement) GetFields() ([]string, error) {
+func (e *graphElement) GetFieldKeys() []string {
 	keys := []string{"ID", "Host", "CreatedAt", "UpdatedAt", "DeletedAt", "Revision", "Origin"}
-	subkeys, err := common.GetFields(e.Metadata)
-	if err != nil {
-		return nil, err
-	}
-	return append(keys, subkeys...), nil
+	subkeys := common.GetFieldKeys(e.Metadata)
+	return append(keys, subkeys...)
 }
 
+// GetFieldStringList returns a list a string for the given field name
 func (e *graphElement) GetFieldStringList(name string) ([]string, error) {
 	v, err := e.GetField(name)
 	if err != nil {
@@ -469,7 +468,7 @@ func normalizeNumbers(raw interface{}) interface{} {
 }
 
 // normalize the graph element after partial deserialization
-func (e *graphElement) normalize(metadata map[string]json.RawMessage, decoders map[string]RawMetadataDecoder) error {
+func (e *graphElement) normalize(metadata map[string]json.RawMessage, decoders map[string]MetadataDecoder) error {
 	// sanity checks
 	if e.ID == "" {
 		return errors.New("No ID found for graph element")
@@ -485,6 +484,10 @@ func (e *graphElement) normalize(metadata map[string]json.RawMessage, decoders m
 	}
 
 	for k, r := range metadata {
+		if len(r) == 0 {
+			continue
+		}
+
 		if decoder, ok := decoders[k]; ok {
 			v, err := decoder(r)
 			if err != nil {
@@ -831,9 +834,9 @@ func (g *Graph) StartMetadataTransaction(i interface{}) *MetadataTransaction {
 
 func (g *Graph) getNeighborNodes(n *Node, em ElementMatcher) (nodes []*Node) {
 	for _, e := range g.backend.GetNodeEdges(n, g.context, em) {
-		parents, childrens := g.backend.GetEdgeNodes(e, g.context, nil, nil)
+		parents, children := g.backend.GetEdgeNodes(e, g.context, nil, nil)
 		nodes = append(nodes, parents...)
-		nodes = append(nodes, childrens...)
+		nodes = append(nodes, children...)
 	}
 	return nodes
 }

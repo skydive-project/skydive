@@ -25,7 +25,7 @@ package graph
 import (
 	"reflect"
 
-	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/common"
 )
 
 // Linker describes an object that returns incoming edges to a node
@@ -169,7 +169,7 @@ func NewResourceLinker(g *Graph, glh1 ListenerHandler, glh2 ListenerHandler, lin
 }
 
 // getFieldsAsArray returns an array of corresponding values from a field list
-func getFieldsAsArray(obj filters.Getter, fields []string) ([]interface{}, error) {
+func getFieldsAsArray(obj common.Getter, fields []string) ([]interface{}, error) {
 	values := make([]interface{}, len(fields))
 	for i, index := range fields {
 		v, err := obj.GetField(index)

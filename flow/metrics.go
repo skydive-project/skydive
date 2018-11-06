@@ -76,7 +76,7 @@ func (tm *TCPMetric) Copy() *TCPMetric {
 	}
 }
 
-// GetFieldInt64 returns the field value
+// GetFieldInt64 implements Getter and Metrics interface
 func (fm *FlowMetric) GetFieldInt64(field string) (int64, error) {
 	switch field {
 	case "ABPackets":
@@ -89,6 +89,16 @@ func (fm *FlowMetric) GetFieldInt64(field string) (int64, error) {
 		return fm.BABytes, nil
 	}
 	return 0, common.ErrFieldNotFound
+}
+
+// GetFieldString implements Getter interface
+func (fm *FlowMetric) GetFieldString(field string) (string, error) {
+	return "", common.ErrFieldNotFound
+}
+
+// GetField implements Getter interface
+func (fm *FlowMetric) GetField(field string) (interface{}, error) {
+	return fm.GetFieldInt64(field)
 }
 
 // Add sum flow metrics
@@ -165,8 +175,8 @@ func (fm *FlowMetric) Split(cut int64) (common.Metric, common.Metric) {
 	return m1, m2
 }
 
-// GetFields returns all the field keys available
-func (fm *FlowMetric) GetFields() []string {
+// GetFieldKeys implements Getter and Metrics interface
+func (fm *FlowMetric) GetFieldKeys() []string {
 	return metricsFields
 }
 

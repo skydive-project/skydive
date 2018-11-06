@@ -464,7 +464,7 @@ func TestMultipleTriggering(t *testing.T) {
 				}
 
 				var alertMsg alert.Message
-				if err := msg.DecodeObj(&alertMsg); err != nil {
+				if err := msg.UnmarshalObj(&alertMsg); err != nil {
 					t.Fatalf("Failed to unmarshal alert : %s", err.Error())
 				}
 

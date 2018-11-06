@@ -23,6 +23,8 @@
 package topology
 
 import (
+	json "encoding/json"
+
 	"github.com/skydive-project/skydive/common"
 )
 
@@ -56,6 +58,16 @@ type InterfaceMetric struct {
 	Last              int64 `json:"Last,omitempty"`
 }
 
+// InterfaceMetricMetadataDecoder implements a json message raw decoder
+func InterfaceMetricMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+	var metric InterfaceMetric
+	if err := json.Unmarshal(raw, &metric); err != nil {
+		return nil, err
+	}
+
+	return &metric, nil
+}
+
 // GetStart returns start time
 func (im *InterfaceMetric) GetStart() int64 {
 	return im.Start
@@ -76,9 +88,13 @@ func (im *InterfaceMetric) SetLast(last int64) {
 	im.Last = last
 }
 
-// GetFieldInt64 returns field by name
+// GetFieldInt64 implements Getter and Metrics interfaces
 func (im *InterfaceMetric) GetFieldInt64(field string) (int64, error) {
 	switch field {
+	case "Start":
+		return im.Start, nil
+	case "Last":
+		return im.Last, nil
 	case "RxPackets":
 		return im.RxPackets, nil
 	case "TxPackets":
@@ -127,6 +143,16 @@ func (im *InterfaceMetric) GetFieldInt64(field string) (int64, error) {
 		return im.TxCompressed, nil
 	}
 	return 0, common.ErrFieldNotFound
+}
+
+// GetField implements Getter interface
+func (im *InterfaceMetric) GetField(key string) (interface{}, error) {
+	return im.GetFieldInt64(key)
+}
+
+// GetFieldString implements Getter interface
+func (im *InterfaceMetric) GetFieldString(key string) (string, error) {
+	return "", common.ErrFieldNotFound
 }
 
 // Add sum two metrics and return a new Metrics object
@@ -281,8 +307,8 @@ func (im *InterfaceMetric) Split(cut int64) (common.Metric, common.Metric) {
 	return m1, m2
 }
 
-// GetFields returns all the field keys available
-func (im *InterfaceMetric) GetFields() []string {
+// GetFieldKeys implements Getter and Metrics interfaces
+func (im *InterfaceMetric) GetFieldKeys() []string {
 	return metricsFields
 }
 

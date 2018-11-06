@@ -236,8 +236,8 @@ func NewServerFromConfig() (*Server, error) {
 
 	// add some global vars
 	uiServer.AddGlobalVar("ui", config.Get("ui"))
-	uiServer.AddGlobalVar("flow-metric-keys", (&flow.FlowMetric{}).GetFields())
-	uiServer.AddGlobalVar("interface-metric-keys", (&topology.InterfaceMetric{}).GetFields())
+	uiServer.AddGlobalVar("flow-metric-keys", (&flow.FlowMetric{}).GetFieldKeys())
+	uiServer.AddGlobalVar("interface-metric-keys", (&topology.InterfaceMetric{}).GetFieldKeys())
 	uiServer.AddGlobalVar("probes", config.Get("analyzer.topology.probes"))
 
 	name := config.GetString("analyzer.topology.backend")
@@ -248,7 +248,9 @@ func NewServerFromConfig() (*Server, error) {
 	// add decoders for specific metadata keys, this aims to keep the same
 	// object type between the agent and the analyzer
 	// Decoder will be used while unmarshal the metadata
-	graph.NodeMetadataDecoders["RoutingTable"] = netlink.RoutingTableMetadataDecoder
+	graph.NodeMetadataDecoders["RoutingTables"] = netlink.RoutingTableMetadataDecoder
+	graph.NodeMetadataDecoders["Metric"] = topology.InterfaceMetricMetadataDecoder
+	graph.NodeMetadataDecoders["LastUpdateMetric"] = topology.InterfaceMetricMetadataDecoder
 
 	persistent, err := graph.NewBackendByName(name, etcdClient)
 	if err != nil {

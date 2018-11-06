@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"reflect"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -880,11 +881,11 @@ func TestRouteTable(t *testing.T) {
 					return fmt.Errorf("Failed to find a node with IP 124.65.91.42/24")
 				}
 
-				routingTables, ok := node.Metadata["RoutingTable"].([]netlink.RoutingTable)
+				routingTables, ok := node.Metadata["RoutingTables"].(*netlink.RoutingTables)
 				if !ok {
-					return fmt.Errorf("Wrong metadata type for RoutingTable: %+v", node.Metadata["RoutingTable"])
+					return fmt.Errorf("Wrong metadata type for RoutingTables: %+v", node.Metadata["RoutingTables"])
 				}
-				noOfRoutingTable := len(routingTables)
+				noOfRoutingTable := len(*routingTables)
 
 				execCmds(t,
 					Cmd{Cmd: "ip netns exec rt-vm1 ip route add 124.65.92.0/24 via 124.65.91.42 table 2", Check: true},
@@ -896,11 +897,11 @@ func TestRouteTable(t *testing.T) {
 					return fmt.Errorf("Failed to find a node with IP 124.65.91.42/24")
 				}
 
-				routingTables, ok = node.Metadata["RoutingTable"].([]netlink.RoutingTable)
+				routingTables, ok = node.Metadata["RoutingTables"].(*netlink.RoutingTables)
 				if !ok {
-					return fmt.Errorf("Wrong metadata type for RoutingTable: %+v", node.Metadata["RoutingTable"])
+					return fmt.Errorf("Wrong metadata type for RoutingTables: %+v", node.Metadata["RoutingTables"])
 				}
-				newNoOfRoutingTable := len(routingTables)
+				newNoOfRoutingTable := len(*routingTables)
 
 				execCmds(t,
 					Cmd{Cmd: "ip netns exec rt-vm1 ip route del 124.65.92.0/24 via 124.65.91.42 table 2", Check: true},
@@ -955,13 +956,13 @@ func TestRouteTableHistory(t *testing.T) {
 					return fmt.Errorf("Failed to find a node with IP 124.65.75.42/24")
 				}
 
-				routingTables, ok := node.Metadata["RoutingTable"].([]netlink.RoutingTable)
+				routingTables, ok := node.Metadata["RoutingTables"].(*netlink.RoutingTables)
 				if !ok {
-					return fmt.Errorf("Wrong metadata type for RoutingTable: %+v", node.Metadata["RoutingTable"])
+					return fmt.Errorf("Wrong metadata type for RoutingTables: %+v", reflect.TypeOf(node.Metadata["RoutingTables"]))
 				}
 
 				foundNewTable := false
-				for _, rt := range routingTables {
+				for _, rt := range *routingTables {
 					if rt.ID == 2 {
 						foundNewTable = true
 						break

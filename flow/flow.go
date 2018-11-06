@@ -1346,7 +1346,7 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 }
 
 // GetFieldInterface returns the value of a Flow field
-func (f *Flow) GetFieldInterface(field string) (_ interface{}, err error) {
+func (f *Flow) getFieldInterface(field string) (_ interface{}, err error) {
 	switch field {
 	case "Metric":
 		return f.Metric, nil
@@ -1376,7 +1376,7 @@ func (f *Flow) GetFieldInterface(field string) (_ interface{}, err error) {
 
 // GetField returns the value of a field
 func (f *Flow) GetField(field string) (interface{}, error) {
-	if i, err := f.GetFieldInterface(field); err == nil {
+	if i, err := f.getFieldInterface(field); err == nil {
 		return i, nil
 	}
 
@@ -1387,13 +1387,13 @@ func (f *Flow) GetField(field string) (interface{}, error) {
 	return f.GetFieldString(field)
 }
 
-// GetFields returns the list of valid field of a Flow
-func (f *Flow) GetFields() []string {
-	return flowFields
+// GetFieldKeys returns the list of valid field of a Flow
+func (f *Flow) GetFieldKeys() []string {
+	return flowFieldKeys
 }
 
-var flowFields []string
+var flowFieldKeys []string
 
 func init() {
-	flowFields = common.StructFieldKeys(Flow{})
+	flowFieldKeys = common.StructFieldKeys(Flow{})
 }

@@ -643,11 +643,7 @@ func (tv *GraphTraversalV) PropertyKeys(ctx StepContext, keys ...interface{}) *G
 
 	seen := make(map[string]bool)
 	for _, n := range tv.nodes {
-		fields, err := n.GetFields()
-		if err != nil {
-			return NewGraphTraversalValueFromError(err)
-		}
-		for _, k := range fields {
+		for _, k := range n.GetFieldKeys() {
 			if _, ok := seen[k]; !ok {
 				s = append(s, k)
 				seen[k] = true

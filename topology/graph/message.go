@@ -62,7 +62,7 @@ type SyncMsg struct {
 	Edges []*Edge
 }
 
-// UnmarshalJSON custom unmarshalling function
+// UnmarshalJSON custom unmarshal function
 func (s *SyncRequestMsg) UnmarshalJSON(b []byte) error {
 	raw := struct {
 		Time          int64
@@ -81,37 +81,37 @@ func (s *SyncRequestMsg) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// UnmarshalMessage unmarshall graph message
+// UnmarshalMessage unmarshal graph message
 func UnmarshalMessage(msg *ws.StructMessage) (string, interface{}, error) {
 	switch msg.Type {
 	case SyncRequestMsgType:
 		var syncRequest SyncRequestMsg
-		if err := msg.DecodeObj(&syncRequest); err != nil {
+		if err := msg.UnmarshalObj(&syncRequest); err != nil {
 			return "", msg, err
 		}
 
 		return msg.Type, &syncRequest, nil
 	case SyncMsgType, SyncReplyMsgType:
 		var syncMsg SyncMsg
-		if err := msg.DecodeObj(&syncMsg); err != nil {
+		if err := msg.UnmarshalObj(&syncMsg); err != nil {
 			return "", msg, err
 		}
 		return msg.Type, &syncMsg, nil
 	case OriginGraphDeletedMsgType:
 		var origin string
-		if err := msg.DecodeObj(&origin); err != nil {
+		if err := msg.UnmarshalObj(&origin); err != nil {
 			return "", msg, err
 		}
 		return msg.Type, origin, nil
 	case NodeUpdatedMsgType, NodeDeletedMsgType, NodeAddedMsgType:
 		var node Node
-		if err := msg.DecodeObj(&node); err != nil {
+		if err := msg.UnmarshalObj(&node); err != nil {
 			return "", msg, err
 		}
 		return msg.Type, &node, nil
 	case EdgeUpdatedMsgType, EdgeDeletedMsgType, EdgeAddedMsgType:
 		var edge Edge
-		if err := msg.DecodeObj(&edge); err != nil {
+		if err := msg.UnmarshalObj(&edge); err != nil {
 			return "", msg, err
 		}
 		return msg.Type, &edge, nil

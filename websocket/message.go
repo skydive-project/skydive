@@ -146,22 +146,7 @@ func (g *StructMessage) marshalObj() {
 	}
 }
 
-// DecodeObj decodes an object either as protobuf or as JSON
-func (g *StructMessage) DecodeObj(obj interface{}) error {
-	if g.Protocol == JSONProtocol {
-		if err := json.Unmarshal(*g.JSONObj, obj); err != nil {
-			return err
-		}
-	}
-	if g.Protocol == ProtobufProtocol {
-		if err := json.Unmarshal(g.ProtobufObj, obj); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// UnmarshalObj unmarshals an object from JSON or protobuf
+// UnmarshalObj unmarshal an object from JSON or protobuf
 func (g *StructMessage) UnmarshalObj(obj interface{}) error {
 	if g.Protocol == JSONProtocol {
 		if err := json.Unmarshal(*g.JSONObj, obj); err != nil {

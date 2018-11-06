@@ -23,9 +23,8 @@
 package traversal
 
 import (
+	"errors"
 	"strings"
-
-	"github.com/mitchellh/mapstructure"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/topology"
@@ -63,15 +62,13 @@ nodeloop:
 			continue
 		}
 
-		// NOTE(safchain) mapstructure for now, need to be change once converted from json to
-		// protobuf
-		var lastMetric topology.InterfaceMetric
-		if err := mapstructure.WeakDecode(m, &lastMetric); err != nil {
-			return NewMetricsTraversalStepFromError(err)
+		lastMetric, ok := m.(*topology.InterfaceMetric)
+		if !ok {
+			return NewMetricsTraversalStepFromError(errors.New("wrong interface metric type"))
 		}
 
 		if gslice == nil || (lastMetric.Start > gslice.Start && lastMetric.Last < gslice.Last) && it.Next() {
-			metrics[string(n.ID)] = append(metrics[string(n.ID)], &lastMetric)
+			metrics[string(n.ID)] = append(metrics[string(n.ID)], lastMetric)
 		}
 	}
 

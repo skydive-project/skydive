@@ -299,7 +299,7 @@ func (m *MetricsTraversalStep) PropertyKeys(ctx traversal.StepContext, keys ...i
 		for _, metrics := range m.metrics {
 			// all Metric struct are the same, take the first one
 			if len(metrics) > 0 {
-				s = metrics[0].GetFields()
+				s = metrics[0].GetFieldKeys()
 				break
 			}
 		}
