@@ -121,7 +121,7 @@ func newContainerProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe
 		graph:        g,
 	}
 	c.containerIndexer = newObjectIndexer(g, c.EventHandler, "container", "Namespace", "Pod")
-	c.KubeCache = NewKubeCache(clientset.CoreV1().RESTClient(), &v1.Pod{}, "pods", c)
+	c.KubeCache = RegisterKubeCache(clientset.CoreV1().RESTClient(), &v1.Pod{}, "pods", c)
 	return c
 }
 

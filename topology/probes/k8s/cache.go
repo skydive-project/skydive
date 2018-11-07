@@ -48,7 +48,7 @@ type KubeCache struct {
 	cache          cache.Indexer
 	controller     cache.Controller
 	stopController chan (struct{})
-	handler        k8sHandler
+	handlers       []k8sHandler
 }
 
 func (c *KubeCache) list() []interface{} {
@@ -103,26 +103,55 @@ func (c *KubeCache) Stop() {
 	c.stopController <- struct{}{}
 }
 
-// NewKubeCache returns a new cache using the associed Kubernetes
-// client and with the handler for the resource that this cache manages.
-func NewKubeCache(restClient rest.Interface, objType runtime.Object, resources string, handler k8sHandler) *KubeCache {
+// NewKubeCache returns a new cache using the associed Kubernetes client.
+func NewKubeCache(restClient rest.Interface, objType runtime.Object, resources string) *KubeCache {
 	watchlist := cache.NewListWatchFromClient(restClient, resources, api.NamespaceAll, fields.Everything())
 
 	c := &KubeCache{
-		handler:        handler,
+		handlers:       []k8sHandler{},
 		stopController: make(chan struct{}),
 	}
 
 	cacheHandler := cache.ResourceEventHandlerFuncs{}
-	if handler != nil {
-		cacheHandler.AddFunc = c.handler.OnAdd
-		cacheHandler.UpdateFunc = c.handler.OnUpdate
-		cacheHandler.DeleteFunc = c.handler.OnDelete
-	}
+	cacheHandler.AddFunc = c.onAdd
+	cacheHandler.UpdateFunc = c.onUpdate
+	cacheHandler.DeleteFunc = c.onDelete
 
 	indexers := cache.Indexers{"namespace": cache.MetaNamespaceIndexFunc}
 	c.cache, c.controller = cache.NewIndexerInformer(watchlist, objType, 30*time.Minute, cacheHandler, indexers)
 	return c
+}
+
+var kubeCacheMap = make(map[string]*KubeCache)
+
+// RegisterKubeCache registers resource handler to kubernetes events.
+func RegisterKubeCache(restClient rest.Interface, objType runtime.Object, resources string, handler k8sHandler) *KubeCache {
+	if _, ok := kubeCacheMap[resources]; !ok {
+		kubeCacheMap[resources] = NewKubeCache(restClient, objType, resources)
+	}
+	c := kubeCacheMap[resources]
+
+	c.handlers = append(c.handlers, handler)
+
+	return c
+}
+
+func (c *KubeCache) onAdd(obj interface{}) {
+	for _, h := range c.handlers {
+		h.OnAdd(obj)
+	}
+}
+
+func (c *KubeCache) onUpdate(oldObj, newObj interface{}) {
+	for _, h := range c.handlers {
+		h.OnUpdate(oldObj, newObj)
+	}
+}
+
+func (c *KubeCache) onDelete(obj interface{}) {
+	for _, h := range c.handlers {
+		h.OnDelete(obj)
+	}
 }
 
 func matchSelector(obj metav1.Object, selector labels.Selector) bool {
@@ -207,6 +236,6 @@ func NewResourceCache(restClient rest.Interface, objType runtime.Object, resourc
 		graph:        g,
 		handler:      handler,
 	}
-	c.KubeCache = NewKubeCache(restClient, objType, resources, c)
+	c.KubeCache = RegisterKubeCache(restClient, objType, resources, c)
 	return c
 }
