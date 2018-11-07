@@ -29,8 +29,8 @@ import (
 	"io/ioutil"
 )
 
-// SetupTLSLoadCertificate creates a X509 certificate from file
-func SetupTLSLoadCertificate(certPEM string) (*x509.CertPool, error) {
+// SetupTLSLoadCA creates an X509 certificate from file
+func SetupTLSLoadCA(certPEM string) (*x509.CertPool, error) {
 	rootPEM, err := ioutil.ReadFile(certPEM)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to open root certificate '%s' : %s", certPEM, err)
