@@ -41,6 +41,9 @@ export class LayoutUI implements LayoutUII {
     layoutContext: LayoutContext;
     constructor(selector: string) {
         this.selector = selector;
+        this.zoomIn = this.zoomIn.bind(this);
+        this.zoomOut = this.zoomOut.bind(this);
+        this.zoomFit = this.zoomFit.bind(this);
     }
     useLayoutContext(layoutContext: LayoutContext) {
         this.layoutContext = layoutContext;

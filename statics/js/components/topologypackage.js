@@ -469,8 +469,8 @@ class Node {
         this.emphasized = false;
         this.highlighted = false;
         this.fixed = false;
-        this.visible = false;
         this.edges = new __WEBPACK_IMPORTED_MODULE_0__edge_index__["a" /* EdgeRegistry */]();
+        this.collapsed = true;
     }
     static createFromData(ID, Name, Host, Metadata) {
         const node = new Node();
@@ -514,6 +514,15 @@ class Node {
     }
     onTheScreen() {
         return !!(this.x && this.y);
+    }
+    toggleExpandAllGroups() {
+        this.collapsed = !this.collapsed;
+        if (this.collapsed) {
+            this.group.collapse();
+        }
+        else {
+            this.group.uncollapse();
+        }
     }
 }
 /* harmony export (immutable) */ __webpack_exports__["a"] = Node;
@@ -656,6 +665,22 @@ class GroupRegistry {
             return true;
         });
     }
+    extractAll() {
+        this.groups.forEach((g) => g.uncollapse());
+    }
+    collapseByLevel(visibilityLevel) {
+        this.groups.forEach((g) => {
+            if (g.level <= visibilityLevel) {
+                g.uncollapse(false);
+            }
+            else {
+                g.collapse();
+            }
+        });
+    }
+    getMaxLevel() {
+        return Math.max(...this.groups.map((g) => g.level));
+    }
 }
 /* harmony export (immutable) */ __webpack_exports__["a"] = GroupRegistry;
 
@@ -679,7 +704,6 @@ class Group {
         this.collapsed = true;
         this.d = "";
     }
-    // collapseLinks: EdgeRegistry = new EdgeRegistry();
     static createFromData(owner, Type) {
         const group = new Group();
         group.owner = owner;
@@ -703,11 +727,17 @@ class Group {
     d3_id() {
         return this.ID;
     }
-    collapse() {
+    collapse(collapseChildren = true) {
         this.collapsed = true;
+        if (collapseChildren) {
+            this.children.groups.forEach((g) => g.collapse(collapseChildren));
+        }
     }
-    uncollapse() {
+    uncollapse(uncollapseChildren = true) {
         this.collapsed = false;
+        if (uncollapseChildren) {
+            this.children.groups.forEach((g) => g.uncollapse(uncollapseChildren));
+        }
     }
     hasOutsideLink() {
         return !!this.members.nodes.some((n) => {
@@ -1428,6 +1458,9 @@ module.exports = __webpack_require__(15);
 Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__topologymanager_data_source_index__ = __webpack_require__(2);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__topologymanager_topology_layout_index__ = __webpack_require__(19);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_events__ = __webpack_require__(0);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_events___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_2_events__);
+
 
 
 window.TopologyORegistry = {
@@ -1439,7 +1472,8 @@ window.TopologyORegistry = {
         skydive_default: __WEBPACK_IMPORTED_MODULE_1__topologymanager_topology_layout_index__["b" /* SkydiveDefaultLayout */],
         infra: __WEBPACK_IMPORTED_MODULE_1__topologymanager_topology_layout_index__["c" /* SkydiveInfraLayout */]
     },
-    config: __WEBPACK_IMPORTED_MODULE_1__topologymanager_topology_layout_index__["a" /* LayoutConfig */]
+    config: __WEBPACK_IMPORTED_MODULE_1__topologymanager_topology_layout_index__["a" /* LayoutConfig */],
+    eventEmitter: __WEBPACK_IMPORTED_MODULE_2_events__["EventEmitter"]
 };
 
 
@@ -2103,7 +2137,7 @@ class NodeRegistry {
                 if (!node.group.collapsed) {
                     return true;
                 }
-                return node.visible;
+                return false;
             }
             if (node.isGroupOwner()) {
                 return true;
@@ -2117,9 +2151,8 @@ class NodeRegistry {
             if (!node.group.collapsed) {
                 return true;
             }
-            return node.visible;
+            return false;
         });
-        nodes.forEach((n) => n.visible = true);
         return nodes;
     }
     removeOldData() {
@@ -2690,6 +2723,9 @@ const managerImgMap = setupFixedImages({
 class LayoutUI {
     constructor(selector) {
         this.selector = selector;
+        this.zoomIn = this.zoomIn.bind(this);
+        this.zoomOut = this.zoomOut.bind(this);
+        this.zoomFit = this.zoomFit.bind(this);
     }
     useLayoutContext(layoutContext) {
         this.layoutContext = layoutContext;
@@ -3226,6 +3262,14 @@ class LayoutBridgeUI {
         this.layoutContext.subscribeToEvent('ui.node.deemphasize.byid', this.deemphasizeNodeById.bind(this));
         this.layoutContext.subscribeToEvent('edge.select', this.edgeSelected.bind(this));
         this.layoutContext.subscribeToEvent('ui.group.collapse', this.groupCollapse.bind(this));
+        this.layoutContext.subscribeToEvent('graph.zoomIn', this.layoutUI.zoomIn.bind(this));
+        this.layoutContext.subscribeToEvent('graph.zoomOut', this.layoutUI.zoomOut.bind(this));
+        this.layoutContext.subscribeToEvent('graph.zoomFit', this.layoutUI.zoomFit.bind(this));
+        this.layoutContext.subscribeToEvent('graph.autoExpand', this.triggerAutoExpand.bind(this));
+        this.layoutContext.subscribeToEvent('graph.toggleExpandNode', this.toggleExpandAll.bind(this));
+        // @todo to be removed when multiple initialization would be fixed
+        this.layoutContext.unsubscribeFromEvent('graph.collapseByLevel');
+        this.layoutContext.subscribeToEvent('graph.collapseByLevel', this.collapseByLevel.bind(this));
         this.layoutUI.start();
         this.intervalId = window.setInterval(() => {
             if (!this.invalidGraph) {
@@ -3325,7 +3369,6 @@ class LayoutBridgeUI {
     invalidateGraph() {
         this.invalidGraph = true;
     }
-    // @todo to be moved ? simplified
     groupCollapse(g) {
         if (!g.collapsed) {
             g.children.groups.forEach((g1) => {
@@ -3339,20 +3382,21 @@ class LayoutBridgeUI {
             g.members.nodes.forEach((n) => {
                 this.collapseNode(n, g);
             });
-            g.collapse();
+            g.collapse(false);
             this.nodeUI.collapseGroupLink(g.owner);
         }
         else {
             g.members.nodes.forEach((n) => {
                 this.uncollapseNode(n, g);
             });
-            g.uncollapse();
+            g.uncollapse(false);
             g.children.groups.forEach((g1) => {
                 this.uncollapseNode(g1.owner, g1);
             });
             this.nodeUI.collapseGroupLink(g.owner);
         }
     }
+    // this part not tested well
     delGroup(g) {
         this.dataManager.groupManager.removeById(g.ID);
         this.dataManager.nodeManager.groupRemoved(g);
@@ -3364,57 +3408,43 @@ class LayoutBridgeUI {
             g = g.parent;
         }
     }
-    uncollapseGroupTree(g) {
-        g.members.nodes.forEach((n) => {
-            this.uncollapseNode(n, g);
-        });
-        g.collapsed = false;
-        g.children.groups.forEach((g1) => {
-            this.uncollapseGroupTree(g1);
-        });
-        this.nodeUI.collapseGroupLink(g.owner);
-    }
-    collapseGroupTree(g) {
-        g.children.groups.forEach((g1) => {
-            if (g1.collapsed) {
-                this.collapseGroupTree(g1);
-            }
-        });
-        g.members.nodes.forEach((n) => {
-            this.collapseNode(n, g);
-        });
-        g.collapsed = true;
-        this.nodeUI.collapseGroupLink(g.owner);
-    }
+    // end of this part not tested well
     toggleExpandAll(d) {
         if (d.isGroupOwner()) {
-            if (!d.group.collapsed) {
-                this.collapseGroupTree(d.group);
-            }
-            else {
-                this.uncollapseGroupTree(d.group);
-            }
+            d.toggleExpandAllGroups();
+            this.e.emit('ui.update');
+            this.nodeUI.collapseGroupLink(d);
         }
-        this.e.emit('ui.update');
-    }
-    showNode(d) {
-        if (d.hasType("ofrule")) {
-            return;
-        }
-        d.visible = true;
-        this.e.emit('ui.update');
-    }
-    hideNode(d) {
-        if (d.hasType("ofrule")) {
-            return;
-        }
-        d.visible = false;
     }
     collapseNode(d, group) {
-        this.hideNode(d);
+        if (d.isGroupOwner()) {
+            d.group.collapse();
+        }
+        this.e.emit('ui.update');
     }
     uncollapseNode(d, group) {
-        this.showNode(d);
+        if (d.isGroupOwner()) {
+            d.group.uncollapse(false);
+        }
+        this.e.emit('ui.update');
+    }
+    collapseByLevel(collapse) {
+        const maxLevel = this.dataManager.groupManager.getMaxLevel();
+        this.collapseLevel = Math.max(this.minimumCollapseLevel, collapse ? this.collapseLevel - 1 : this.collapseLevel + 1);
+        if (this.collapseLevel > maxLevel) {
+            this.collapseLevel = maxLevel;
+        }
+        console.log('collapse level ' + this.collapseLevel, 'groups', this.dataManager.groupManager.groups);
+        this.dataManager.groupManager.collapseByLevel(this.collapseLevel);
+        this.e.emit('ui.update');
+        this.dataManager.groupManager.groups.forEach((g) => {
+            this.nodeUI.collapseGroupLink(g.owner);
+        });
+    }
+    triggerAutoExpand() {
+        this.setAutoExpand(true);
+        this.dataManager.groupManager.extractAll();
+        this.e.emit('ui.update');
     }
 }
 /* harmony export (immutable) */ __webpack_exports__["a"] = LayoutBridgeUI;
@@ -3441,6 +3471,14 @@ class LayoutContext {
     }
     subscribeToEvent(eventName, cb) {
         this.e.on(eventName, cb);
+    }
+    unsubscribeFromEvent(eventName, cb) {
+        if (cb) {
+            this.e.removeListener(eventName, cb);
+        }
+        else {
+            this.e.removeAllListeners(eventName);
+        }
     }
 }
 /* harmony export (immutable) */ __webpack_exports__["a"] = LayoutContext;

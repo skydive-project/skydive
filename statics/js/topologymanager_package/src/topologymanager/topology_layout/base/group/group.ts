@@ -14,7 +14,6 @@ export default class Group {
     depth: number = 1;
     collapsed: boolean = true;
     d: string = "";
-    // collapseLinks: EdgeRegistry = new EdgeRegistry();
 
     static createFromData(owner: Node, Type: string): Group {
         const group = new Group();
@@ -45,12 +44,18 @@ export default class Group {
         return this.ID;
     }
 
-    collapse() {
+    collapse(collapseChildren: boolean = true) {
         this.collapsed = true;
+        if (collapseChildren) {
+            this.children.groups.forEach((g: Group) => g.collapse(collapseChildren));
+        }
     }
 
-    uncollapse() {
+    uncollapse(uncollapseChildren: boolean = true) {
         this.collapsed = false;
+        if (uncollapseChildren) {
+            this.children.groups.forEach((g: Group) => g.uncollapse(uncollapseChildren));
+        }
     }
 
     hasOutsideLink() {
@@ -69,4 +74,5 @@ export default class Group {
         });
         return members;
     }
+
 }

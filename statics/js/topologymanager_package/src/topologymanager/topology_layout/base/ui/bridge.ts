@@ -113,6 +113,14 @@ export class LayoutBridgeUI implements LayoutBridgeUII {
         this.layoutContext.subscribeToEvent('ui.node.deemphasize.byid', this.deemphasizeNodeById.bind(this));
         this.layoutContext.subscribeToEvent('edge.select', this.edgeSelected.bind(this));
         this.layoutContext.subscribeToEvent('ui.group.collapse', this.groupCollapse.bind(this));
+        this.layoutContext.subscribeToEvent('graph.zoomIn', this.layoutUI.zoomIn.bind(this));
+        this.layoutContext.subscribeToEvent('graph.zoomOut', this.layoutUI.zoomOut.bind(this));
+        this.layoutContext.subscribeToEvent('graph.zoomFit', this.layoutUI.zoomFit.bind(this));
+        this.layoutContext.subscribeToEvent('graph.autoExpand', this.triggerAutoExpand.bind(this));
+        this.layoutContext.subscribeToEvent('graph.toggleExpandNode', this.toggleExpandAll.bind(this));
+        // @todo to be removed when multiple initialization would be fixed
+        this.layoutContext.unsubscribeFromEvent('graph.collapseByLevel');
+        this.layoutContext.subscribeToEvent('graph.collapseByLevel', this.collapseByLevel.bind(this));
         this.layoutUI.start();
         this.intervalId = window.setInterval(() => {
             if (!this.invalidGraph) {
@@ -211,7 +219,6 @@ export class LayoutBridgeUI implements LayoutBridgeUII {
     invalidateGraph() {
         this.invalidGraph = true;
     }
-    // @todo to be moved ? simplified
     groupCollapse(g: Group) {
         if (!g.collapsed) {
             g.children.groups.forEach((g1: Group) => {
@@ -224,19 +231,20 @@ export class LayoutBridgeUI implements LayoutBridgeUII {
             g.members.nodes.forEach((n: Node) => {
                 this.collapseNode(n, g);
             });
-            g.collapse();
+            g.collapse(false);
             this.nodeUI.collapseGroupLink(g.owner);
         } else {
             g.members.nodes.forEach((n: Node) => {
                 this.uncollapseNode(n, g);
             });
-            g.uncollapse();
+            g.uncollapse(false);
             g.children.groups.forEach((g1: Group) => {
                 this.uncollapseNode(g1.owner, g1);
             });
             this.nodeUI.collapseGroupLink(g.owner);
         }
     }
+    // this part not tested well
     delGroup(g: Group) {
         this.dataManager.groupManager.removeById(g.ID);
         this.dataManager.nodeManager.groupRemoved(g);
@@ -248,55 +256,44 @@ export class LayoutBridgeUI implements LayoutBridgeUII {
             g = g.parent;
         }
     }
-    uncollapseGroupTree(g: Group) {
-        g.members.nodes.forEach((n: Node) => {
-            this.uncollapseNode(n, g);
-        })
-        g.collapsed = false;
-        g.children.groups.forEach((g1: Group) => {
-            this.uncollapseGroupTree(g1);
-        })
-        this.nodeUI.collapseGroupLink(g.owner);
-    }
-    collapseGroupTree(g: Group) {
-        g.children.groups.forEach((g1: Group) => {
-            if (g1.collapsed) {
-                this.collapseGroupTree(g1);
-            }
-        })
-        g.members.nodes.forEach((n: Node) => {
-            this.collapseNode(n, g);
-        })
-        g.collapsed = true;
-        this.nodeUI.collapseGroupLink(g.owner);
-    }
+    // end of this part not tested well
     toggleExpandAll(d: Node) {
         if (d.isGroupOwner()) {
-            if (!d.group.collapsed) {
-                this.collapseGroupTree(d.group);
-            } else {
-                this.uncollapseGroupTree(d.group);
-            }
+            d.toggleExpandAllGroups();
+            this.e.emit('ui.update');
+            this.nodeUI.collapseGroupLink(d);
         }
-        this.e.emit('ui.update');
-    }
-    showNode(d: Node) {
-        if (d.hasType("ofrule")) {
-            return;
-        }
-        d.visible = true;
-        this.e.emit('ui.update');
-    }
-    hideNode(d: Node) {
-        if (d.hasType("ofrule")) {
-            return;
-        }
-        d.visible = false;
     }
     collapseNode(d: Node, group: Group) {
-        this.hideNode(d);
+        if (d.isGroupOwner()) {
+            d.group.collapse();
+        }
+        this.e.emit('ui.update');
     }
     uncollapseNode(d: Node, group: any) {
-        this.showNode(d);
+        if (d.isGroupOwner()) {
+            d.group.uncollapse(false);
+        }
+        this.e.emit('ui.update');
+    }
+
+    collapseByLevel(collapse: boolean) {
+        const maxLevel = this.dataManager.groupManager.getMaxLevel();
+        this.collapseLevel = Math.max(this.minimumCollapseLevel, collapse ? this.collapseLevel - 1 : this.collapseLevel + 1);
+        if (this.collapseLevel > maxLevel) {
+            this.collapseLevel = maxLevel;
+        }
+        console.log('collapse level ' + this.collapseLevel, 'groups', this.dataManager.groupManager.groups);
+        this.dataManager.groupManager.collapseByLevel(this.collapseLevel);
+        this.e.emit('ui.update');
+        this.dataManager.groupManager.groups.forEach((g: Group) => {
+            this.nodeUI.collapseGroupLink(g.owner);
+        });
+    }
+
+    triggerAutoExpand() {
+        this.setAutoExpand(true);
+        this.dataManager.groupManager.extractAll();
+        this.e.emit('ui.update');
     }
 }

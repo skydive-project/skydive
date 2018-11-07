@@ -31,21 +31,21 @@ window.layoutConfig = new window.TopologyORegistry.config({
     useHardcodedData: window.location.href.indexOf('use_hardcoded_data=1') !== -1
 });
 
-function createHostLayout(hostName, selector, linkLabelType) {
-    console.log('use selector ' + selector + ' for skydive default');
-    const layout = new window.TopologyORegistry.layouts.skydive_default(selector)
-    layout.useConfig(layoutConfig);
-    if (linkLabelType) {
-      layout.useLinkLabelStrategy(linkLabelType);
-    }
-    const dataSource = new window.TopologyORegistry.dataSources.hostTopology(hostName)
-    dataSource.subscribe();
-    dataSource.e.on('broadcastMessage', (type, msg) => {
-        layout.reactToDataSourceEvent.call(layout, dataSource, type, msg);
-    });
-    layout.addDataSource(dataSource, true);
-    return layout;
+const GlobalEventHandler = function() {
+  this.e = new window.TopologyORegistry.eventEmitter();
+  this.currentLayout = null;
 }
+
+GlobalEventHandler.prototype = {
+  setCurrentLayout: function(layout) {
+    this.currentLayout = layout;
+  },
+  emit: function() {
+    this.currentLayout.e.emit.apply(this.currentLayout.e, arguments);
+  }
+}
+
+const globalEventHandler = new GlobalEventHandler();
 
 Vue.component('full-topology', {
   props: {
@@ -64,20 +64,38 @@ Vue.component('full-topology', {
     </div>\
   ',
   created: function() {
-    websocket.addConnectHandler(() => {
-      this.layout = createHostLayout(this.hostName, '.topology-d3-full-host', this.linkLabelType);
-      this.layout.e.on('node.select', this.$parent.$parent.onNodeSelected.bind(this));
-      this.layout.e.on('edge.select', this.$parent.$parent.onEdgeSelected.bind(this));
-      this.layout.e.on('host.collapse', this.$parent.$parent.collapseHost.bind(this));
-      this.layout.initializer();
-    });
+    this.buildTopology = this.buildTopology.bind(this);
+    websocket.addConnectHandler(this.buildTopology);
   },
   beforeDestroy: function() {
     this.$parent.$parent.$store.commit('nodeUnselected');
     this.$parent.$parent.$store.commit('edgeUnselected');
     this.layout && this.layout.remove();
+    websocket.delConnectHandler(this.buildTopology);
   },
   methods: {
+    buildTopology: function() {
+      console.log('use selector ' + '.topology-d3-full-host' + ' for skydive default');
+
+      const layout = new window.TopologyORegistry.layouts.skydive_default('.topology-d3-full-host')
+      this.layout = layout;
+      layout.useConfig(layoutConfig);
+      if (this.linkLabelType) {
+        layout.useLinkLabelStrategy(this.linkLabelType);
+      }
+      const dataSource = new window.TopologyORegistry.dataSources.hostTopology(this.hostName)
+      dataSource.subscribe();
+      dataSource.e.on('broadcastMessage', (type, msg) => {
+        layout.reactToDataSourceEvent.call(layout, dataSource, type, msg);
+        this.$parent.$parent.applyToLayoutCurrentConfig(this.layout);
+      });
+      layout.addDataSource(dataSource, true);
+      this.layout.e.on('node.select', this.$parent.$parent.onNodeSelected.bind(this));
+      this.layout.e.on('edge.select', this.$parent.$parent.onEdgeSelected.bind(this));
+      this.layout.e.on('host.collapse', this.$parent.$parent.collapseHost.bind(this));
+      this.layout.initializer();
+      globalEventHandler.setCurrentLayout(layout);
+    }
   }
 });
 
@@ -97,13 +115,13 @@ Vue.component('app-topology', {
     </div>\
   ',
   created: function() {
-     websocket.addConnectHandler(() => {
+     /**websocket.addConnectHandler(() => {
          this.layout = createHostLayout(this.hostName, '.topology-d3-app-host');
          this.layout.e.on('node.select', this.$parent.$parent.onNodeSelected.bind(this));
          this.layout.e.on('edge.select', this.$parent.$parent.onEdgeSelected.bind(this));
          this.layout.e.on('host.collapse', this.$parent.$parent.collapseHost.bind(this));
          this.layout.initializer();
-     });
+     });*/
   },
   beforeDestroy: function() {
     this.$parent.$parent.$store.commit('nodeUnselected');
@@ -505,15 +523,11 @@ var TopologyComponentNewApproach = {
       this.topologyFilter = this.$route.query.filter;
     }
 
-    // @todo adapt to new ui approach
-    // if (typeof(this.$route.query.expand) !== "undefined") {
-    //  this.layout.autoExpand(true);
-    // } else {
-    //  this.collapse();
-    //  websocket.addConnectHandler(function() {
-    //    self.collapse();
-    //  });
-    // }
+    this.autoExpand = typeof(this.$route.query.expand) !== "undefined";
+
+    websocket.addConnectHandler(function() {
+        self.applyToLayoutCurrentConfig();
+    });
 
     if (typeof(this.$route.query.link_label_type) !== "undefined") {
       this.linkLabelType = this.$route.query.link_label_type;
@@ -732,6 +746,7 @@ var TopologyComponentNewApproach = {
             this.infraLayout.e.on('node.select', this.onNodeSelected.bind(this));
             this.infraLayout.e.on('host.uncollapse', this.uncollapseHost.bind(this));
             this.infraLayout.e.on('edge.select', this.onEdgeSelected.bind(this));
+            globalEventHandler.setCurrentLayout(this.infraLayout);
         }
     },
 
@@ -812,15 +827,21 @@ var TopologyComponentNewApproach = {
     },
 
     zoomIn: function() {
-      this.layout.zoomIn();
+      globalEventHandler.emit('graph.zoomIn');
     },
 
     zoomOut: function() {
-      this.layout.zoomOut();
+      globalEventHandler.emit('graph.zoomOut');
     },
 
     zoomFit: function() {
-      this.layout.zoomFit();
+      globalEventHandler.emit('graph.zoomFit');
+    },
+
+    applyToLayoutCurrentConfig: function(layout) {
+      if (this.autoExpand) {
+        globalEventHandler.emit('graph.autoExpand');
+      }
     },
 
     topologyFilterClear: function () {
@@ -1090,17 +1111,12 @@ var TopologyComponentNewApproach = {
       }, 2000);
     },
 
-    collapse: function() {
-      this.collapsed = true;
-      this.layout.collapse(this.collapsed);
-    },
-
     toggleExpandAll: function(node) {
-      this.layout.toggleExpandAll(node);
+      globalEventHandler.emit('graph.toggleExpandNode', node);
     },
 
     toggleCollapseByLevel: function(collapse) {
-      this.layout.toggleCollapseByLevel(collapse);
+      globalEventHandler.emit('graph.collapseByLevel', collapse);
     },
 
     normalizeMetric: function(metric) {

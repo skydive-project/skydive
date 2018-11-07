@@ -22,5 +22,6 @@ window.TopologyORegistry = {
         skydive_default: SkydiveDefaultLayout,
         infra: SkydiveInfraLayout
     },
-    config: LayoutConfig
+    config: LayoutConfig,
+    eventEmitter: events.EventEmitter
 };

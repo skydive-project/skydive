@@ -51,7 +51,7 @@ export default class NodeRegistry {
                 if (!node.group.collapsed) {
                     return true;
                 }
-                return node.visible;
+                return false;
             }
             if (node.isGroupOwner()) {
                 return true;
@@ -65,9 +65,8 @@ export default class NodeRegistry {
             if (!node.group.collapsed) {
                 return true;
             }
-            return node.visible;
+            return false;
         });
-        nodes.forEach((n: Node) => n.visible = true);
         return nodes;
     }
 

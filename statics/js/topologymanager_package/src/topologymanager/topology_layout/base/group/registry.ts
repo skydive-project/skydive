@@ -91,4 +91,22 @@ export default class GroupRegistry {
         });
     }
 
+    extractAll() {
+        this.groups.forEach((g: Group) => g.uncollapse());
+    }
+
+    collapseByLevel(visibilityLevel: number) {
+        this.groups.forEach((g: Group) => {
+            if (g.level <= visibilityLevel) {
+                g.uncollapse(false);
+            } else {
+                g.collapse();
+            }
+        });
+    }
+
+    getMaxLevel(): number {
+        return Math.max(...this.groups.map((g: Group) => g.level));
+    }
+
 }

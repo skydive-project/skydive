@@ -15,8 +15,8 @@ export default class Node {
     emphasized: boolean = false;
     highlighted: boolean = false;
     fixed: boolean = false;
-    visible: boolean = false;
     edges: EdgeRegistry = new EdgeRegistry();
+    collapsed: boolean = true;
     _d3_id: any;
     static createFromData(ID: string, Name: string, Host: string, Metadata: any): Node {
         const node = new Node();
@@ -71,5 +71,14 @@ export default class Node {
 
     onTheScreen(): boolean {
         return !!(this.x && this.y);
+    }
+
+    toggleExpandAllGroups() {
+        this.collapsed = !this.collapsed;
+        if (this.collapsed) {
+            this.group.collapse();
+        } else {
+            this.group.uncollapse();
+        }
     }
 }
