@@ -755,6 +755,14 @@ func dedupEdges(edges []*Edge) []*Edge {
 	return uniq
 }
 
+func (g *Graph) preNodeNotify(n *Node) {
+	excludeFields := config.GetStringSlice("analyzer.topology.exclude_fields")
+	m := common.ExcludeFields(map[string]interface{}(n.metadata), excludeFields...)
+	if m, ok := m.(map[string]interface{}); ok {
+		n.metadata = Metadata(m)
+	}
+}
+
 // NodeUpdated updates a node
 func (g *Graph) NodeUpdated(n *Node) bool {
 	if node := g.GetNode(n.ID); node != nil {
@@ -766,6 +774,7 @@ func (g *Graph) NodeUpdated(n *Node) bool {
 			return false
 		}
 
+		g.preNodeNotify(node)
 		g.eventHandler.NotifyEvent(NodeUpdated, node)
 		return true
 	}
@@ -1200,6 +1209,7 @@ func (g *Graph) AddNode(n *Node) bool {
 	if !g.backend.NodeAdded(n) {
 		return false
 	}
+	g.preNodeNotify(n)
 	g.eventHandler.NotifyEvent(NodeAdded, n)
 
 	return true
@@ -1333,6 +1343,7 @@ func (g *Graph) DelEdge(e *Edge) bool {
 // NodeDeleted event
 func (g *Graph) NodeDeleted(n *Node) {
 	if g.backend.NodeDeleted(n) {
+		g.preNodeNotify(n)
 		g.eventHandler.NotifyEvent(NodeDeleted, n)
 	}
 }

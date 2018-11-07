@@ -137,6 +137,31 @@ func TestNormalizeMapKeys(t *testing.T) {
 	}
 }
 
+func TestExcludePaths(t *testing.T) {
+	before := map[string]interface{}{
+		"a": map[string]interface{}{
+			"aa": "11",
+			"ab": 12,
+			"ac": []string{"131", "132"},
+		},
+		"b": "2",
+		"c": "3",
+	}
+	expected := map[string]interface{}{
+		"a": map[string]interface{}{
+			"aa": "11",
+			"ac": []string{"131", "132"},
+		},
+		"b": "2",
+	}
+
+	actual := ExcludeFields(before, "a.ab", "c")
+
+	if !reflect.DeepEqual(expected, actual) {
+		t.Errorf("Expected %+v actual %+v", expected, actual)
+	}
+}
+
 func TestSetField(t *testing.T) {
 	actual := map[string]interface{}{
 		"a": map[string]interface{}{

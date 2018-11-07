@@ -249,6 +249,10 @@ func NormalizeIPForURL(ip net.IP) string {
 // NormalizeValue returns a version of the passed value
 // that can be safely marshalled to JSON
 func NormalizeValue(obj interface{}) interface{} {
+	ptr := reflect.ValueOf(obj)
+	if !ptr.IsValid() {
+		return ""
+	}
 	if structs.IsStruct(obj) {
 		obj = structs.Map(obj)
 	}
@@ -275,12 +279,23 @@ func NormalizeValue(obj interface{}) interface{} {
 		for i, val := range v {
 			v[i] = NormalizeValue(val)
 		}
-	case string:
-		return v
-	case nil:
-		return ""
 	}
 	return deepcopy.Copy(obj)
+}
+
+// ExcludeFields exlude all paths from obj
+func ExcludeFields(obj interface{}, paths ...string) interface{} {
+	if len(paths) > 0 {
+		obj = deepcopy.Copy(obj)
+		if obj, ok := obj.(map[string]interface{}); ok {
+			for _, path := range paths {
+				if _, err := GetField(obj, path); err == nil {
+					DelField(obj, path)
+				}
+			}
+		}
+	}
+	return obj
 }
 
 // JSONDecode wrapper to UseNumber during JSON decoding

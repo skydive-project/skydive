@@ -75,6 +75,10 @@ analyzer:
     # Storage backend name: mymemory, myelasticsearch, myorientdb
     # backend: mymemory
 
+    # Define paths to feilds be exluded from backend
+    # exclude_fields:
+    # - a.b.c
+
     # Define static interfaces and links updating Skydive topology
     # Can be useful to define external resources like : TOR, Router, etc.
     #

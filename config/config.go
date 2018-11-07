@@ -96,6 +96,7 @@ func init() {
 	cfg.SetDefault("analyzer.flow.max_buffer_size", 100000)
 	cfg.SetDefault("analyzer.listen", "127.0.0.1:8082")
 	cfg.SetDefault("analyzer.replication.debug", false)
+	cfg.SetDefault("analyzer.topology.exclude_fields", []string{})
 	cfg.SetDefault("analyzer.topology.backend", "memory")
 	cfg.SetDefault("analyzer.topology.probes", []string{})
 	cfg.SetDefault("analyzer.topology.k8s.config_file", "/etc/skydive/kubeconfig")
