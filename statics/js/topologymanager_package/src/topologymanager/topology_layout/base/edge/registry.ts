@@ -4,8 +4,10 @@ import Edge from './edge';
 export default class EdgeRegistry {
     edges: Array<Edge> = [];
 
-    addEdgeFromData(ID: string, Host: string, Metadata: any, source: Node, target: Node) {
-        this.edges.push(Edge.createFromData(ID, Host, Metadata, source, target));
+    addEdgeFromData(ID: string, Host: string, Metadata: any, source: Node, target: Node): Edge {
+        const edge = Edge.createFromData(ID, Host, Metadata, source, target);
+        this.edges.push(edge);
+        return edge;
     }
 
     getEdgeById(ID: string): Edge {
@@ -48,6 +50,12 @@ export default class EdgeRegistry {
 
     getActive(): Edge {
         return this.edges.find((n: Edge) => n.selected);
+    }
+
+    removeByHost(host: string) {
+        this.edges = this.edges.filter((e: Edge) => {
+            return e.Host !== host;
+        });
     }
 
 }

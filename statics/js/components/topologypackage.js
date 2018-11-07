@@ -575,6 +575,21 @@ class Edge {
     equalsTo(compareTo) {
         return compareTo.ID === this.ID;
     }
+    clone() {
+        const edge = new Edge();
+        edge.ID = this.ID;
+        edge.Host = this.Host;
+        edge.Metadata = this.Metadata;
+        edge.source = this.source;
+        edge.target = this.target;
+        edge.selected = this.selected;
+        edge.latencyTimestamp = this.latencyTimestamp;
+        edge.latency = this.latency;
+        edge.bandwidth = this.bandwidth;
+        edge.bandwidthAbsolute = this.bandwidthAbsolute;
+        edge.bandwidthBaseline = this.bandwidthBaseline;
+        return edge;
+    }
 }
 /* harmony export (immutable) */ __webpack_exports__["a"] = Edge;
 
@@ -681,6 +696,11 @@ class GroupRegistry {
     getMaxLevel() {
         return Math.max(...this.groups.map((g) => g.level));
     }
+    removeByHost(host) {
+        this.groups = this.groups.filter((g) => {
+            return g.owner.Host != host;
+        });
+    }
 }
 /* harmony export (immutable) */ __webpack_exports__["a"] = GroupRegistry;
 
@@ -767,10 +787,13 @@ Group.currentGroupId = 1;
 
 "use strict";
 /* harmony export (immutable) */ __webpack_exports__["a"] = parseSkydiveData;
-/* harmony export (immutable) */ __webpack_exports__["d"] = parseSkydiveMessageWithOneNode;
-/* harmony export (immutable) */ __webpack_exports__["c"] = getNodeIDFromSkydiveMessageWithOneNode;
-/* harmony export (immutable) */ __webpack_exports__["e"] = parseSkydiveMessageWithOneNodeAndUpdateNode;
-/* harmony export (immutable) */ __webpack_exports__["b"] = getHostFromSkydiveMessageWithOneNode;
+/* harmony export (immutable) */ __webpack_exports__["g"] = parseSkydiveMessageWithOneNode;
+/* harmony export (immutable) */ __webpack_exports__["d"] = getNodeIDFromSkydiveMessageWithOneNode;
+/* harmony export (immutable) */ __webpack_exports__["h"] = parseSkydiveMessageWithOneNodeAndUpdateNode;
+/* harmony export (immutable) */ __webpack_exports__["c"] = getHostFromSkydiveMessageWithOneNode;
+/* harmony export (immutable) */ __webpack_exports__["b"] = getEdgeIDFromSkydiveMessageWithOneEdge;
+/* harmony export (immutable) */ __webpack_exports__["f"] = parseSkydiveMessageWithOneEdgeAndUpdateEdge;
+/* harmony export (immutable) */ __webpack_exports__["e"] = parseNewSkydiveEdgeAndUpdateDataManager;
 function proceedNewEdge(dataManager, e) {
     e.source.edges.addEdge(e);
     e.target.edges.addEdge(e);
@@ -866,6 +889,18 @@ function parseSkydiveMessageWithOneNodeAndUpdateNode(node, data) {
 }
 function getHostFromSkydiveMessageWithOneNode(data) {
     return data.Obj;
+}
+function getEdgeIDFromSkydiveMessageWithOneEdge(data) {
+    return data.Obj.ID;
+}
+function parseSkydiveMessageWithOneEdgeAndUpdateEdge(edge, data) {
+    edge.Metadata = data.Obj.Metadata;
+}
+function parseNewSkydiveEdgeAndUpdateDataManager(dataManager, data) {
+    const edge = data.Obj;
+    const e = dataManager.edgeManager.addEdgeFromData(edge.ID, edge.Host, edge.Metadata, dataManager.nodeManager.getNodeById(edge.Parent), dataManager.nodeManager.getNodeById(edge.Child));
+    proceedNewEdge(dataManager, e);
+    dataManager.groupManager.updateLevelAndDepth(dataManager.layoutContext.collapseLevel, dataManager.layoutContext.isAutoExpand());
 }
 
 
@@ -2002,26 +2037,38 @@ class SkydiveDefaultLayout {
                 this.uiBridge.start();
                 this.e.emit('ui.update');
                 break;
-            // case "NodeAdded":
-            //     this.dataManager.addNodeFromData(dataSource.sourceType, args[0]);
-            //     console.log('Added node', args[0]);
-            //     this.e.emit('ui.update');
-            //     break;
-            // case "NodeDeleted":
-            //     this.dataManager.removeNodeFromData(dataSource.sourceType, args[0]);
-            //     console.log('Deleted node', args[0]);
-            //     this.e.emit('ui.update');
-            //     break;
-            // case "NodeUpdated":
-            //     const nodeOldAndNew = this.dataManager.updateNodeFromData(dataSource.sourceType, args[0]);
-            //     console.log('Updated node', args[0]);
-            //     this.e.emit('node.updated', nodeOldAndNew.oldNode, nodeOldAndNew.newNode);
-            //     break;
-            // case "HostGraphDeleted":
-            //     this.dataManager.removeAllNodesWhichBelongsToHostFromData(dataSource.sourceType, args[0]);
-            //     console.log('Removed host', args[0]);
-            //     this.e.emit('ui.updated');
-            //     break;
+            case "NodeAdded":
+                this.dataManager.addNodeFromData(dataSource.sourceType, args[0]);
+                console.log('Added node', args[0]);
+                this.e.emit('ui.update');
+                break;
+            case "NodeDeleted":
+                this.dataManager.removeNodeFromData(dataSource.sourceType, args[0]);
+                console.log('Deleted node', args[0]);
+                this.e.emit('ui.update');
+                break;
+            case "NodeUpdated":
+                const nodeOldAndNew = this.dataManager.updateNodeFromData(dataSource.sourceType, args[0]);
+                console.log('Updated node', args[0]);
+                this.e.emit('node.updated', nodeOldAndNew.oldNode, nodeOldAndNew.newNode);
+                break;
+            case "HostGraphDeleted":
+                this.dataManager.removeAllNodesWhichBelongsToHostFromData(dataSource.sourceType, args[0]);
+                this.dataManager.removeAllEdgesWhichBelongsToHostFromData(dataSource.sourceType, args[0]);
+                console.log('Removed host', args[0]);
+                this.e.emit('ui.update');
+                break;
+            case "EdgeUpdated":
+                this.dataManager.updateEdgeFromData(dataSource.sourceType, args[0]);
+                break;
+            case "EdgeAdded":
+                this.dataManager.addEdgeFromData(dataSource.sourceType, args[0]);
+                this.e.emit('ui.update');
+                break;
+            case "EdgeDeleted":
+                this.dataManager.removeEdgeFromData(dataSource.sourceType, args[0]);
+                this.e.emit('ui.update');
+                break;
         }
     }
     reactToTheUiEvent(eventName, ...args) {
@@ -2055,22 +2102,27 @@ class DataManager {
         this.layoutContext = layoutContext;
     }
     addNodeFromData(dataType, data) {
-        Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["d" /* parseSkydiveMessageWithOneNode */])(this, data);
+        Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["g" /* parseSkydiveMessageWithOneNode */])(this, data);
     }
     removeNodeFromData(dataType, data) {
-        const nodeID = Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["c" /* getNodeIDFromSkydiveMessageWithOneNode */])(data);
+        const nodeID = Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["d" /* getNodeIDFromSkydiveMessageWithOneNode */])(data);
         this.nodeManager.removeNodeByID(nodeID);
     }
     updateNodeFromData(dataType, data) {
-        const nodeID = Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["c" /* getNodeIDFromSkydiveMessageWithOneNode */])(data);
+        const nodeID = Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["d" /* getNodeIDFromSkydiveMessageWithOneNode */])(data);
         const node = this.nodeManager.getNodeById(nodeID);
         const clonedOldNode = node.clone();
-        Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["e" /* parseSkydiveMessageWithOneNodeAndUpdateNode */])(node, data);
+        Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["h" /* parseSkydiveMessageWithOneNodeAndUpdateNode */])(node, data);
         return { oldNode: clonedOldNode, newNode: node };
     }
     removeAllNodesWhichBelongsToHostFromData(dataType, data) {
-        const nodeHost = Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["b" /* getHostFromSkydiveMessageWithOneNode */])(data);
+        const nodeHost = Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["c" /* getHostFromSkydiveMessageWithOneNode */])(data);
         this.nodeManager.removeNodeByHost(nodeHost);
+        this.groupManager.removeByHost(nodeHost);
+    }
+    removeAllEdgesWhichBelongsToHostFromData(dataType, data) {
+        const nodeHost = Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["c" /* getHostFromSkydiveMessageWithOneNode */])(data);
+        this.edgeManager.removeByHost(nodeHost);
     }
     updateFromData(dataType, data) {
         Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["a" /* default */])(this, dataType, data);
@@ -2079,6 +2131,20 @@ class DataManager {
         this.nodeManager.removeOldData();
         this.edgeManager.removeOldData();
         this.groupManager.removeOldData();
+    }
+    updateEdgeFromData(sourceType, data) {
+        const edgeID = Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["b" /* getEdgeIDFromSkydiveMessageWithOneEdge */])(data);
+        const edge = this.edgeManager.getEdgeById(edgeID);
+        const clonedOldEdge = edge.clone();
+        Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["f" /* parseSkydiveMessageWithOneEdgeAndUpdateEdge */])(edge, data);
+        return { oldEdge: clonedOldEdge, newEdge: edge };
+    }
+    addEdgeFromData(sourceType, data) {
+        Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["e" /* parseNewSkydiveEdgeAndUpdateDataManager */])(this, data);
+    }
+    removeEdgeFromData(sourceType, data) {
+        const edgeID = Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["b" /* getEdgeIDFromSkydiveMessageWithOneEdge */])(data);
+        this.edgeManager.removeEdgeByID(edgeID);
     }
 }
 /* harmony export (immutable) */ __webpack_exports__["a"] = DataManager;
@@ -2190,7 +2256,9 @@ class EdgeRegistry {
         this.edges = [];
     }
     addEdgeFromData(ID, Host, Metadata, source, target) {
-        this.edges.push(__WEBPACK_IMPORTED_MODULE_0__edge__["a" /* default */].createFromData(ID, Host, Metadata, source, target));
+        const edge = __WEBPACK_IMPORTED_MODULE_0__edge__["a" /* default */].createFromData(ID, Host, Metadata, source, target);
+        this.edges.push(edge);
+        return edge;
     }
     getEdgeById(ID) {
         return this.edges.find((e) => e.ID === ID);
@@ -2225,6 +2293,11 @@ class EdgeRegistry {
     getActive() {
         return this.edges.find((n) => n.selected);
     }
+    removeByHost(host) {
+        this.edges = this.edges.filter((e) => {
+            return e.Host !== host;
+        });
+    }
 }
 /* harmony export (immutable) */ __webpack_exports__["a"] = EdgeRegistry;
 
@@ -2250,10 +2323,13 @@ class EdgeRegistry {
 "use strict";
 /* harmony export (immutable) */ __webpack_exports__["a"] = parseData;
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__skydive__ = __webpack_require__(11);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "g", function() { return __WEBPACK_IMPORTED_MODULE_0__skydive__["g"]; });
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "d", function() { return __WEBPACK_IMPORTED_MODULE_0__skydive__["d"]; });
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "h", function() { return __WEBPACK_IMPORTED_MODULE_0__skydive__["h"]; });
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_0__skydive__["c"]; });
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "e", function() { return __WEBPACK_IMPORTED_MODULE_0__skydive__["e"]; });
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_0__skydive__["b"]; });
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "f", function() { return __WEBPACK_IMPORTED_MODULE_0__skydive__["f"]; });
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "e", function() { return __WEBPACK_IMPORTED_MODULE_0__skydive__["e"]; });
 
 
 function parseData(dataManager, dataType, data) {
@@ -3789,8 +3865,20 @@ class SkydiveInfraLayout {
                 break;
             case "HostGraphDeleted":
                 this.dataManager.removeAllNodesWhichBelongsToHostFromData(dataSource.sourceType, args[0]);
+                this.dataManager.removeAllEdgesWhichBelongsToHostFromData(dataSource.sourceType, args[0]);
                 console.log('Removed host', args[0]);
-                this.e.emit('ui.updated');
+                this.e.emit('ui.update');
+                break;
+            case "EdgeUpdated":
+                this.dataManager.updateEdgeFromData(dataSource.sourceType, args[0]);
+                break;
+            case "EdgeAdded":
+                this.dataManager.addEdgeFromData(dataSource.sourceType, args[0]);
+                this.e.emit('ui.update');
+                break;
+            case "EdgeDeleted":
+                this.dataManager.removeEdgeFromData(dataSource.sourceType, args[0]);
+                this.e.emit('ui.update');
                 break;
         }
     }

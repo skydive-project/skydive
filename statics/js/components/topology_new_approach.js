@@ -690,15 +690,15 @@ var TopologyComponentNewApproach = {
               });
             infraTopologyDataSource.e.on('broadcastMessage', (type, msg) => {
                 if (type === 'SyncReply') {
-                    const hostSelectorData = [];
-                    msg.Obj.Nodes.forEach((node) => {
-                        if (node.Metadata.Type !== "host") {
-                            return;
-                        }
-                        hostSelectorData.push({name: node.Metadata.Name});
-                    });
-                    self.onUpdatedHosts(hostSelectorData);
-                };
+                  const hostSelectorData = [];
+                  msg.Obj.Nodes.forEach((node) => {
+                    if (node.Metadata.Type !== "host") {
+                      return;
+                    }
+                    hostSelectorData.push({name: node.Metadata.Name});
+                  });
+                  self.onUpdatedHosts(hostSelectorData);
+                }
                 self.infraLayout.reactToDataSourceEvent.call(self.infraLayout, infraTopologyDataSource, type, msg);
                 self.infraLayout.initializer();
             });

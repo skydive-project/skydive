@@ -42,4 +42,20 @@ export default class Edge {
     equalsTo(compareTo: Edge): boolean {
         return compareTo.ID === this.ID;
     }
+
+    clone(): Edge {
+        const edge = new Edge();
+        edge.ID = this.ID;
+        edge.Host = this.Host;
+        edge.Metadata = this.Metadata;
+        edge.source = this.source;
+        edge.target = this.target;
+        edge.selected = this.selected;
+        edge.latencyTimestamp = this.latencyTimestamp;
+        edge.latency = this.latency;
+        edge.bandwidth = this.bandwidth;
+        edge.bandwidthAbsolute = this.bandwidthAbsolute;
+        edge.bandwidthBaseline = this.bandwidthBaseline;
+        return edge;
+    }
 }

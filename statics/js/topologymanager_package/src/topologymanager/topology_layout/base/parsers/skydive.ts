@@ -111,3 +111,24 @@ export function parseSkydiveMessageWithOneNodeAndUpdateNode(node: Node, data: an
 export function getHostFromSkydiveMessageWithOneNode(data: any): string {
     return data.Obj;
 }
+
+export function getEdgeIDFromSkydiveMessageWithOneEdge(data: any): string {
+    return data.Obj.ID;
+}
+
+export function parseSkydiveMessageWithOneEdgeAndUpdateEdge(edge: Edge, data: any) {
+    edge.Metadata = data.Obj.Metadata;
+}
+
+export function parseNewSkydiveEdgeAndUpdateDataManager(dataManager: DataManager, data: any) {
+    const edge = data.Obj;
+    const e = dataManager.edgeManager.addEdgeFromData(
+        edge.ID, edge.Host, edge.Metadata, dataManager.nodeManager.getNodeById(edge.Parent), dataManager.nodeManager.getNodeById(edge.Child)
+    );
+    proceedNewEdge(dataManager, e);
+    dataManager.groupManager.updateLevelAndDepth(
+        dataManager.layoutContext.collapseLevel,
+        dataManager.layoutContext.isAutoExpand()
+    );
+}
+

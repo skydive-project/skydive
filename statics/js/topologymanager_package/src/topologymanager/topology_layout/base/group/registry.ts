@@ -109,4 +109,10 @@ export default class GroupRegistry {
         return Math.max(...this.groups.map((g: Group) => g.level));
     }
 
+    removeByHost(host: string) {
+        this.groups = this.groups.filter((g: Group) => {
+            return g.owner.Host != host;
+        });
+    }
+
 }

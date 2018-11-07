@@ -70,26 +70,40 @@ export default class SkydiveDefaultLayout implements TopologyLayoutI {
                 this.uiBridge.start();
                 this.e.emit('ui.update');
                 break;
-            // case "NodeAdded":
-            //     this.dataManager.addNodeFromData(dataSource.sourceType, args[0]);
-            //     console.log('Added node', args[0]);
-            //     this.e.emit('ui.update');
-            //     break;
-            // case "NodeDeleted":
-            //     this.dataManager.removeNodeFromData(dataSource.sourceType, args[0]);
-            //     console.log('Deleted node', args[0]);
-            //     this.e.emit('ui.update');
-            //     break;
-            // case "NodeUpdated":
-            //     const nodeOldAndNew = this.dataManager.updateNodeFromData(dataSource.sourceType, args[0]);
-            //     console.log('Updated node', args[0]);
-            //     this.e.emit('node.updated', nodeOldAndNew.oldNode, nodeOldAndNew.newNode);
-            //     break;
-            // case "HostGraphDeleted":
-            //     this.dataManager.removeAllNodesWhichBelongsToHostFromData(dataSource.sourceType, args[0]);
-            //     console.log('Removed host', args[0]);
-            //     this.e.emit('ui.updated');
-            //     break;
+            case "NodeAdded":
+                this.dataManager.addNodeFromData(dataSource.sourceType, args[0]);
+                console.log('Added node', args[0]);
+                this.e.emit('ui.update');
+                break;
+            case "NodeDeleted":
+                this.dataManager.removeNodeFromData(dataSource.sourceType, args[0]);
+                console.log('Deleted node', args[0]);
+                this.e.emit('ui.update');
+                break;
+            case "NodeUpdated":
+                const nodeOldAndNew = this.dataManager.updateNodeFromData(dataSource.sourceType, args[0]);
+                console.log('Updated node', args[0]);
+                this.e.emit('node.updated', nodeOldAndNew.oldNode, nodeOldAndNew.newNode);
+                break;
+            case "HostGraphDeleted":
+                this.dataManager.removeAllNodesWhichBelongsToHostFromData(dataSource.sourceType, args[0]);
+                this.dataManager.removeAllEdgesWhichBelongsToHostFromData(dataSource.sourceType, args[0]);
+                console.log('Removed host', args[0]);
+                this.e.emit('ui.update');
+                break;
+            case "EdgeUpdated":
+                this.dataManager.updateEdgeFromData(dataSource.sourceType, args[0]);
+                break;
+
+            case "EdgeAdded":
+                this.dataManager.addEdgeFromData(dataSource.sourceType, args[0]);
+                this.e.emit('ui.update');
+                break;
+
+            case "EdgeDeleted":
+                this.dataManager.removeEdgeFromData(dataSource.sourceType, args[0]);
+                this.e.emit('ui.update');
+                break;
         }
     }
     reactToTheUiEvent(eventName: string, ...args: Array<any>) {

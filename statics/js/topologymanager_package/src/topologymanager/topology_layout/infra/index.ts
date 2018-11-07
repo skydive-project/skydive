@@ -80,9 +80,24 @@ export default class SkydiveInfraLayout implements TopologyLayoutI {
                 break;
             case "HostGraphDeleted":
                 this.dataManager.removeAllNodesWhichBelongsToHostFromData(dataSource.sourceType, args[0]);
+                this.dataManager.removeAllEdgesWhichBelongsToHostFromData(dataSource.sourceType, args[0]);
                 console.log('Removed host', args[0]);
-                this.e.emit('ui.updated');
+                this.e.emit('ui.update');
                 break;
+            case "EdgeUpdated":
+                this.dataManager.updateEdgeFromData(dataSource.sourceType, args[0]);
+                break;
+
+            case "EdgeAdded":
+                this.dataManager.addEdgeFromData(dataSource.sourceType, args[0]);
+                this.e.emit('ui.update');
+                break;
+
+            case "EdgeDeleted":
+                this.dataManager.removeEdgeFromData(dataSource.sourceType, args[0]);
+                this.e.emit('ui.update');
+                break;
+
         }
     }
     reactToTheUiEvent(eventName: string, ...args: Array<any>) {
