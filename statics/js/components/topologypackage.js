@@ -524,6 +524,24 @@ class Node {
             this.group.uncollapse();
         }
     }
+    getNeighborWithType(Type) {
+        let nodeToReturn;
+        this.edges.edges.some((e) => {
+            if (e.source.equalsTo(this) && e.target.hasType(Type)) {
+                nodeToReturn = e.source;
+                return true;
+            }
+            if (e.target.equalsTo(this) && e.source.hasType(Type)) {
+                nodeToReturn = e.target;
+                return true;
+            }
+            return false;
+        });
+        return nodeToReturn;
+    }
+    getTargets() {
+        return this.edges.edges.map((e) => e.target);
+    }
 }
 /* harmony export (immutable) */ __webpack_exports__["a"] = Node;
 
@@ -877,7 +895,7 @@ function parseSkydiveData(dataManager, data) {
 }
 function parseSkydiveMessageWithOneNode(dataManager, data) {
     console.log('Parse skydive message with one node', data);
-    dataManager.nodeManager.addNodeFromData(data.Obj.ID, data.Obj.Metadata.Name, data.Obj.Host, data.Obj.Metadata);
+    return dataManager.nodeManager.addNodeFromData(data.Obj.ID, data.Obj.Metadata.Name, data.Obj.Host, data.Obj.Metadata);
 }
 function getNodeIDFromSkydiveMessageWithOneNode(data) {
     return data.Obj.ID;
@@ -901,6 +919,7 @@ function parseNewSkydiveEdgeAndUpdateDataManager(dataManager, data) {
     const e = dataManager.edgeManager.addEdgeFromData(edge.ID, edge.Host, edge.Metadata, dataManager.nodeManager.getNodeById(edge.Parent), dataManager.nodeManager.getNodeById(edge.Child));
     proceedNewEdge(dataManager, e);
     dataManager.groupManager.updateLevelAndDepth(dataManager.layoutContext.collapseLevel, dataManager.layoutContext.isAutoExpand());
+    return e;
 }
 
 
@@ -2023,6 +2042,7 @@ class SkydiveDefaultLayout {
     }
     reactToDataSourceEvent(dataSource, eventName, ...args) {
         console.log('Skydive default layout got an event', eventName, args);
+        let e;
         switch (eventName) {
             case "SyncReply":
                 if (this.config.getValue('useHardcodedData')) {
@@ -2038,9 +2058,10 @@ class SkydiveDefaultLayout {
                 this.e.emit('ui.update');
                 break;
             case "NodeAdded":
-                this.dataManager.addNodeFromData(dataSource.sourceType, args[0]);
+                const n = this.dataManager.addNodeFromData(dataSource.sourceType, args[0]);
                 console.log('Added node', args[0]);
                 this.e.emit('ui.update');
+                window.globalEventHandler.e.emit('graph.node_added', n);
                 break;
             case "NodeDeleted":
                 this.dataManager.removeNodeFromData(dataSource.sourceType, args[0]);
@@ -2051,6 +2072,7 @@ class SkydiveDefaultLayout {
                 const nodeOldAndNew = this.dataManager.updateNodeFromData(dataSource.sourceType, args[0]);
                 console.log('Updated node', args[0]);
                 this.e.emit('node.updated', nodeOldAndNew.oldNode, nodeOldAndNew.newNode);
+                window.globalEventHandler.e.emit('graph.node_updated', nodeOldAndNew);
                 break;
             case "HostGraphDeleted":
                 this.dataManager.removeAllNodesWhichBelongsToHostFromData(dataSource.sourceType, args[0]);
@@ -2062,12 +2084,14 @@ class SkydiveDefaultLayout {
                 this.dataManager.updateEdgeFromData(dataSource.sourceType, args[0]);
                 break;
             case "EdgeAdded":
-                this.dataManager.addEdgeFromData(dataSource.sourceType, args[0]);
+                e = this.dataManager.addEdgeFromData(dataSource.sourceType, args[0]);
                 this.e.emit('ui.update');
+                window.globalEventHandler.e.emit('graph.edge_added', e);
                 break;
             case "EdgeDeleted":
-                this.dataManager.removeEdgeFromData(dataSource.sourceType, args[0]);
+                e = this.dataManager.removeEdgeFromData(dataSource.sourceType, args[0]);
                 this.e.emit('ui.update');
+                window.globalEventHandler.e.emit('graph.edge_deleted', e);
                 break;
         }
     }
@@ -2102,7 +2126,7 @@ class DataManager {
         this.layoutContext = layoutContext;
     }
     addNodeFromData(dataType, data) {
-        Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["g" /* parseSkydiveMessageWithOneNode */])(this, data);
+        return Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["g" /* parseSkydiveMessageWithOneNode */])(this, data);
     }
     removeNodeFromData(dataType, data) {
         const nodeID = Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["d" /* getNodeIDFromSkydiveMessageWithOneNode */])(data);
@@ -2140,11 +2164,13 @@ class DataManager {
         return { oldEdge: clonedOldEdge, newEdge: edge };
     }
     addEdgeFromData(sourceType, data) {
-        Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["e" /* parseNewSkydiveEdgeAndUpdateDataManager */])(this, data);
+        return Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["e" /* parseNewSkydiveEdgeAndUpdateDataManager */])(this, data);
     }
     removeEdgeFromData(sourceType, data) {
         const edgeID = Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["b" /* getEdgeIDFromSkydiveMessageWithOneEdge */])(data);
+        const e = this.edgeManager.getEdgeById(edgeID);
         this.edgeManager.removeEdgeByID(edgeID);
+        return e;
     }
 }
 /* harmony export (immutable) */ __webpack_exports__["a"] = DataManager;
@@ -2163,7 +2189,9 @@ class NodeRegistry {
         this.nodes = [];
     }
     addNodeFromData(ID, Name, Host, Metadata) {
-        this.nodes.push(__WEBPACK_IMPORTED_MODULE_0__node__["a" /* default */].createFromData(ID, Name, Host, Metadata));
+        const node = __WEBPACK_IMPORTED_MODULE_0__node__["a" /* default */].createFromData(ID, Name, Host, Metadata);
+        this.nodes.push(node);
+        return node;
     }
     getActive() {
         return this.nodes.find((n) => n.selected);
@@ -3840,6 +3868,7 @@ class SkydiveInfraLayout {
     }
     reactToDataSourceEvent(dataSource, eventName, ...args) {
         console.log('Infra layout got an event', eventName, args);
+        let e;
         switch (eventName) {
             case "SyncReply":
                 this.dataManager.updateFromData(dataSource.sourceType, args[0]);
@@ -3862,6 +3891,7 @@ class SkydiveInfraLayout {
                 const nodeOldAndNew = this.dataManager.updateNodeFromData(dataSource.sourceType, args[0]);
                 console.log('Updated node', args[0]);
                 this.e.emit('node.updated', nodeOldAndNew.oldNode, nodeOldAndNew.newNode);
+                window.globalEventHandler.e.emit('graph.node_updated', nodeOldAndNew);
                 break;
             case "HostGraphDeleted":
                 this.dataManager.removeAllNodesWhichBelongsToHostFromData(dataSource.sourceType, args[0]);
@@ -3873,12 +3903,14 @@ class SkydiveInfraLayout {
                 this.dataManager.updateEdgeFromData(dataSource.sourceType, args[0]);
                 break;
             case "EdgeAdded":
-                this.dataManager.addEdgeFromData(dataSource.sourceType, args[0]);
+                e = this.dataManager.addEdgeFromData(dataSource.sourceType, args[0]);
                 this.e.emit('ui.update');
+                window.globalEventHandler.e.emit('graph.edge_added', e);
                 break;
             case "EdgeDeleted":
-                this.dataManager.removeEdgeFromData(dataSource.sourceType, args[0]);
+                e = this.dataManager.removeEdgeFromData(dataSource.sourceType, args[0]);
                 this.e.emit('ui.update');
+                window.globalEventHandler.e.emit('graph.edge_deleted', e);
                 break;
         }
     }

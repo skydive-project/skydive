@@ -4,8 +4,10 @@ import { Group } from '../group/index';
 export default class NodeRegistry {
     nodes: Array<Node> = [];
 
-    addNodeFromData(ID: string, Name: string, Host: string, Metadata: any) {
-        this.nodes.push(Node.createFromData(ID, Name, Host, Metadata));
+    addNodeFromData(ID: string, Name: string, Host: string, Metadata: any): Node {
+        const node = Node.createFromData(ID, Name, Host, Metadata);
+        this.nodes.push(node);
+        return node;
     }
 
     getActive(): Node {

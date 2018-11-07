@@ -11,6 +11,7 @@ declare global {
         websocket: any;
         apiMixin: any;
         $: any;
+        globalEventHandler: any;
     }
 }
 window.TopologyORegistry = {

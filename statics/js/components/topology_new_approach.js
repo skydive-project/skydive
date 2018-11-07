@@ -42,10 +42,13 @@ GlobalEventHandler.prototype = {
   },
   emit: function() {
     this.currentLayout.e.emit.apply(this.currentLayout.e, arguments);
+  },
+  on: function() {
+    this.e.on.apply(this.e, arguments);
   }
 }
 
-const globalEventHandler = new GlobalEventHandler();
+window.globalEventHandler = new GlobalEventHandler();
 
 Vue.component('full-topology', {
   props: {
@@ -471,6 +474,9 @@ var TopologyComponentNewApproach = {
         self.infraLayout.reactToTheUiEvent('node.deemphasize.byid', mutation.payload);
     });
 
+    this.emphasize = debounce(self.emphasizeGremlinExpr.bind(self), 300);
+    globalEventHandler.on('graph.node_added', this.emphasize);
+    globalEventHandler.on('graph.edge_added', this.emphasize);
     this.setGremlinFavoritesFromConfig();
 
     if (typeof(this.$route.query.highlight) !== "undefined") {

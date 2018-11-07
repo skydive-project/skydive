@@ -1,5 +1,6 @@
 import { EdgeRegistry } from '../edge/index';
 import { Group } from '../group/index';
+import { Edge } from '../edge/index';
 
 export default class Node {
     ID: string;
@@ -81,4 +82,25 @@ export default class Node {
             this.group.uncollapse();
         }
     }
+    getNeighborWithType(Type: string): Node {
+        let nodeToReturn;
+        this.edges.edges.some((e: Edge) => {
+            if (e.source.equalsTo(this) && e.target.hasType(Type)) {
+                nodeToReturn = e.source;
+                return true;
+            }
+            if (e.target.equalsTo(this) && e.source.hasType(Type)) {
+                nodeToReturn = e.target;
+                return true;
+            }
+            return false;
+        });
+        return nodeToReturn;
+    }
+
+    getTargets(): Node[] {
+        return this.edges.edges.map((e: Edge) => e.target);
+    }
+
+
 }

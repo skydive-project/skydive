@@ -55,6 +55,7 @@ export default class SkydiveInfraLayout implements TopologyLayoutI {
     }
     reactToDataSourceEvent(dataSource: DataSourceI, eventName: string, ...args: Array<any>) {
         console.log('Infra layout got an event', eventName, args);
+        let e;
         switch (eventName) {
             case "SyncReply":
                 this.dataManager.updateFromData(dataSource.sourceType, args[0]);
@@ -77,6 +78,7 @@ export default class SkydiveInfraLayout implements TopologyLayoutI {
                 const nodeOldAndNew = this.dataManager.updateNodeFromData(dataSource.sourceType, args[0]);
                 console.log('Updated node', args[0]);
                 this.e.emit('node.updated', nodeOldAndNew.oldNode, nodeOldAndNew.newNode);
+                window.globalEventHandler.e.emit('graph.node_updated', nodeOldAndNew);
                 break;
             case "HostGraphDeleted":
                 this.dataManager.removeAllNodesWhichBelongsToHostFromData(dataSource.sourceType, args[0]);
@@ -89,13 +91,15 @@ export default class SkydiveInfraLayout implements TopologyLayoutI {
                 break;
 
             case "EdgeAdded":
-                this.dataManager.addEdgeFromData(dataSource.sourceType, args[0]);
+                e = this.dataManager.addEdgeFromData(dataSource.sourceType, args[0]);
                 this.e.emit('ui.update');
+                window.globalEventHandler.e.emit('graph.edge_added', e);
                 break;
 
             case "EdgeDeleted":
-                this.dataManager.removeEdgeFromData(dataSource.sourceType, args[0]);
+                e = this.dataManager.removeEdgeFromData(dataSource.sourceType, args[0]);
                 this.e.emit('ui.update');
+                window.globalEventHandler.e.emit('graph.edge_deleted', e);
                 break;
 
         }
@@ -103,4 +107,5 @@ export default class SkydiveInfraLayout implements TopologyLayoutI {
     reactToTheUiEvent(eventName: string, ...args: Array<any>) {
         this.e.emit('ui.' + eventName, ...args);
     }
+
 }

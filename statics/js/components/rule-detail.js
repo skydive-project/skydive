@@ -248,24 +248,23 @@ function classify(array, classifier) {
  * but the bridge node is not part of the highlighted path. itfs is filled with an entry for the port using the numbering of ovs-ofctl as key
  * and the list of nodes as values.
  * @param c a GNode of type ovsport
- * @param graph the full graph model
  * @param itfs the table to fill with information on the port represented.
 */
-function extractPort(c, graph, itfs) {
-  var pot = graph.getTargets(c);
+function extractPort(c, itfs) {
+  var pot = cc.getTargets();
   for (var i = 0; i < pot.length; i++) {
     var cc = pot[i];
-    var ofport = cc.metadata.OfPort;
+    var ofport = cc.Metadata.OfPort;
     if (ofport === undefined)
       continue;
     var itf = [c, cc];
     itfs[ofport] = itf;
-    if (cc.metadata.Type === 'patch') {
-      var ccc = graph.getNeighbor(cc, 'patch');
+    if (cc.Metadata.Type === 'patch') {
+      var ccc = cc.getNeighborWithType('patch');
       if (ccc === undefined)
         return;
       itf.push(ccc);
-      var cccc = graph.getNeighbor(ccc, 'ovsport');
+      var cccc = cc.getNeighborWithType('ovsport');
       if (cccc !== undefined)
         itf.push(cccc);
     }
@@ -279,11 +278,9 @@ function extractPort(c, graph, itfs) {
 var BridgeLayout = (function () {
 
   /** Builds the bridge layout
-   * @param graph the global graph hosting the bridge
    * @param bridge the bridge node whose rules are represented.
    */
-  function BridgeLayout(graph, bridge, store) {
-    this.graph = graph;
+  function BridgeLayout(bridge, store) {
     this.bridge = bridge;
     this.store = store;
     this.compute();
@@ -296,23 +293,23 @@ var BridgeLayout = (function () {
     var rulesUUID = new Set();
     var groupsUUID = new Set();
     var groups = [];
-    var children = this.graph.getTargets(this.bridge);
+    var children = this.bridge.getTargets();
     for (var i = 0; i < children.length; i++) {
       var c = children[i];
       if (c === undefined)
         continue;
-      switch (c.metadata.Type) {
+      switch (c.Metadata.Type) {
         case 'ovsport':
-          extractPort(c, this.graph, itfs);
+          extractPort(c, itfs);
           break;
         case 'ofrule':
-          var rule = c.metadata;
+          var rule = c.Metadata;
           summarize(rule);
           rules.push(rule);
           rulesUUID.add(rule.UUID);
           break;
         case 'ofgroup':
-          var group = c.metadata;
+          var group = c.Metadata;
           summarizeGroup(group);
           groups.push(group);
           groupsUUID.add(group.UUID);
@@ -391,7 +388,7 @@ var BridgeLayout = (function () {
     var len = nodes.length;
     var last = nodes[len - 1];
     if (len === 4) {
-      last = this.graph.getNeighbor(last, 'ovsbridge');
+      last = last.getNeighborWithType('ovsbridge');
     }
     this.store.commit('nodeSelected', last);
     this.switchTab(0);
@@ -432,14 +429,14 @@ var BridgeLayout = (function () {
     var nodes = this.interfaces[p];
     if (nodes === undefined) return '???';
     var port = nodes[1];
-    var portname = (port === undefined) ? '???' : port.metadata.Name;
+    var portname = (port === undefined) ? '???' : port.Metadata.Name;
     return portname;
   };
 
   /** Check if rule is highlighted. */
   BridgeLayout.prototype.isHighlighted = function(rule) {
     var current = this.store.state.currentRule;
-    var status = current && rule.UUID === current.metadata.UUID;
+    var status = current && rule.UUID === current.Metadata.UUID;
     return status;
   };
 
@@ -643,10 +640,6 @@ Vue.component('rule-detail', {
     bridge: {
       type: Object,
       required: true
-    },
-    graph: {
-      type: Object,
-      required: true
     }
   },
 
@@ -657,7 +650,7 @@ Vue.component('rule-detail', {
   computed: {
     layout: function () {
       if (! this.memoBridgeLayout || this.memoBridgeLayout.bridge !== this.bridge) {
-        this.memoBridgeLayout = new BridgeLayout(this.graph, this.bridge, this.$store);
+        this.memoBridgeLayout = new BridgeLayout(this.bridge, this.$store);
         this.memoBridgeLayout.switchTab(0);
       }
       return this.memoBridgeLayout;
@@ -666,43 +659,40 @@ Vue.component('rule-detail', {
 
   beforeDestroy: function () {
     this.unwatch();
-    this.graph.removeHandler(this.handler);
   },
 
   mounted: function () {
     var self = this;
     var handle = function(e) {
       if (! self.bridge) return;
-      var tgtType = e.target.metadata.Type;
+      var tgtType = e.target.Metadata.Type;
       if ((tgtType === 'ofrule' || tgtType === 'ofgroup') && e.source.id == self.bridge.id ) {
         self.memoBridgeLayout = null;
       }
     };
-    var handleUpdate = function(n) {
-      if ((n.metadata.Type == 'ofgroup' && self.memoBridgeLayout.groupsUUID.has(n.metadata.UUID)) ||
-          (n.metadata.Type == 'ofrule' && self.memoBridgeLayout.rulesUUID.has(n.metadata.UUID))) {
+    var handleUpdate = function(updatedNode) {
+      var n = updatedNode.newNode;
+      if ((n.Metadata.Type == 'ofgroup' && self.memoBridgeLayout.groupsUUID.has(n.Metadata.UUID)) ||
+          (n.Metadata.Type == 'ofrule' && self.memoBridgeLayout.rulesUUID.has(n.Metadata.UUID))) {
         self.memoBridgeLayout = null;
       }
     };
-    this.handler = {
-      onEdgeAdded: handle,
-      onEdgeDeleted: handle,
-      onNodeUpdated:handleUpdate
-    };
-    this.graph.addHandler(this.handler);
+    window.globalEventHandler.on('graph.edge_added', handle);
+    window.globalEventHandler.on('graph.edge_deleted', handle);
+    window.globalEventHandler.on('graph.node_updated', handleUpdate);
     this.unwatch = this.$store.watch(
       function () {
         return self.$store.state.currentRule;
       },
       function (newNode, oldNode) {
         if (oldNode) {
-          $('#R-' + oldNode.metadata.UUID).removeClass('soft');
+          $('#R-' + oldNode.Metadata.UUID).removeClass('soft');
         }
         if (newNode) {
-          self.layout.switchTab(newNode.metadata.table);
-          var p = inport(newNode.metadata.filters);
-          self.layout.switchPortTab(newNode.metadata.table, p);
-          $('#R-' + newNode.metadata.UUID).addClass('soft');
+          self.layout.switchTab(newNode.Metadata.table);
+          var p = inport(newNode.Metadata.filters);
+          self.layout.switchPortTab(newNode.Metadata.table, p);
+          $('#R-' + newNode.Metadata.UUID).addClass('soft');
         }
       }
     )

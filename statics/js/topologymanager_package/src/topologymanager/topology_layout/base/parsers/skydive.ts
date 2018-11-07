@@ -96,9 +96,9 @@ export default function parseSkydiveData(dataManager: DataManager, data: any): v
         group.addMember(n);
     });
 }
-export function parseSkydiveMessageWithOneNode(dataManager: DataManager, data: any): void {
+export function parseSkydiveMessageWithOneNode(dataManager: DataManager, data: any): Node {
     console.log('Parse skydive message with one node', data);
-    dataManager.nodeManager.addNodeFromData(data.Obj.ID, data.Obj.Metadata.Name, data.Obj.Host, data.Obj.Metadata);
+    return dataManager.nodeManager.addNodeFromData(data.Obj.ID, data.Obj.Metadata.Name, data.Obj.Host, data.Obj.Metadata);
 }
 export function getNodeIDFromSkydiveMessageWithOneNode(data: any): string {
     return data.Obj.ID;
@@ -120,7 +120,7 @@ export function parseSkydiveMessageWithOneEdgeAndUpdateEdge(edge: Edge, data: an
     edge.Metadata = data.Obj.Metadata;
 }
 
-export function parseNewSkydiveEdgeAndUpdateDataManager(dataManager: DataManager, data: any) {
+export function parseNewSkydiveEdgeAndUpdateDataManager(dataManager: DataManager, data: any): Edge {
     const edge = data.Obj;
     const e = dataManager.edgeManager.addEdgeFromData(
         edge.ID, edge.Host, edge.Metadata, dataManager.nodeManager.getNodeById(edge.Parent), dataManager.nodeManager.getNodeById(edge.Child)
@@ -130,5 +130,6 @@ export function parseNewSkydiveEdgeAndUpdateDataManager(dataManager: DataManager
         dataManager.layoutContext.collapseLevel,
         dataManager.layoutContext.isAutoExpand()
     );
+    return e;
 }
 

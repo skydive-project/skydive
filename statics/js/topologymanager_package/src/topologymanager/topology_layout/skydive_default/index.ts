@@ -57,6 +57,7 @@ export default class SkydiveDefaultLayout implements TopologyLayoutI {
     }
     reactToDataSourceEvent(dataSource: DataSourceI, eventName: string, ...args: Array<any>) {
         console.log('Skydive default layout got an event', eventName, args);
+        let e;
         switch (eventName) {
             case "SyncReply":
                 if (this.config.getValue('useHardcodedData')) {
@@ -71,9 +72,10 @@ export default class SkydiveDefaultLayout implements TopologyLayoutI {
                 this.e.emit('ui.update');
                 break;
             case "NodeAdded":
-                this.dataManager.addNodeFromData(dataSource.sourceType, args[0]);
+                const n = this.dataManager.addNodeFromData(dataSource.sourceType, args[0]);
                 console.log('Added node', args[0]);
                 this.e.emit('ui.update');
+                window.globalEventHandler.e.emit('graph.node_added', n);
                 break;
             case "NodeDeleted":
                 this.dataManager.removeNodeFromData(dataSource.sourceType, args[0]);
@@ -84,6 +86,7 @@ export default class SkydiveDefaultLayout implements TopologyLayoutI {
                 const nodeOldAndNew = this.dataManager.updateNodeFromData(dataSource.sourceType, args[0]);
                 console.log('Updated node', args[0]);
                 this.e.emit('node.updated', nodeOldAndNew.oldNode, nodeOldAndNew.newNode);
+                window.globalEventHandler.e.emit('graph.node_updated', nodeOldAndNew);
                 break;
             case "HostGraphDeleted":
                 this.dataManager.removeAllNodesWhichBelongsToHostFromData(dataSource.sourceType, args[0]);
@@ -96,17 +99,20 @@ export default class SkydiveDefaultLayout implements TopologyLayoutI {
                 break;
 
             case "EdgeAdded":
-                this.dataManager.addEdgeFromData(dataSource.sourceType, args[0]);
+                e = this.dataManager.addEdgeFromData(dataSource.sourceType, args[0]);
                 this.e.emit('ui.update');
+                window.globalEventHandler.e.emit('graph.edge_added', e);
                 break;
 
             case "EdgeDeleted":
-                this.dataManager.removeEdgeFromData(dataSource.sourceType, args[0]);
+                e = this.dataManager.removeEdgeFromData(dataSource.sourceType, args[0]);
                 this.e.emit('ui.update');
+                window.globalEventHandler.e.emit('graph.edge_deleted', e);
                 break;
         }
     }
     reactToTheUiEvent(eventName: string, ...args: Array<any>) {
         this.e.emit('ui.' + eventName, ...args);
     }
+
 }

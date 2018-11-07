@@ -3,6 +3,7 @@ import { EdgeRegistry } from './edge/index';
 import { GroupRegistry } from './group/index';
 import LayoutContext from './ui/layout_context';
 import { Node } from './node/index';
+import { Edge } from './edge/index';
 import parseData, { parseSkydiveMessageWithOneNodeAndUpdateNode, parseSkydiveMessageWithOneNode, getNodeIDFromSkydiveMessageWithOneNode, getHostFromSkydiveMessageWithOneNode, getEdgeIDFromSkydiveMessageWithOneEdge, parseSkydiveMessageWithOneEdgeAndUpdateEdge, parseNewSkydiveEdgeAndUpdateDataManager } from './parsers/index';
 
 export default class DataManager {
@@ -13,8 +14,8 @@ export default class DataManager {
     useLayoutContext(layoutContext: LayoutContext) {
         this.layoutContext = layoutContext
     }
-    addNodeFromData(dataType: string, data: any) {
-        parseSkydiveMessageWithOneNode(this, data);
+    addNodeFromData(dataType: string, data: any): Node {
+        return parseSkydiveMessageWithOneNode(this, data);
     }
     removeNodeFromData(dataType: string, data: any) {
         const nodeID = getNodeIDFromSkydiveMessageWithOneNode(data);
@@ -53,12 +54,14 @@ export default class DataManager {
         return { oldEdge: clonedOldEdge, newEdge: edge };
     }
 
-    addEdgeFromData(sourceType: string, data: any) {
-        parseNewSkydiveEdgeAndUpdateDataManager(this, data);
+    addEdgeFromData(sourceType: string, data: any): Edge {
+        return parseNewSkydiveEdgeAndUpdateDataManager(this, data);
     }
 
-    removeEdgeFromData(sourceType: string, data: any) {
+    removeEdgeFromData(sourceType: string, data: any): Edge {
         const edgeID = getEdgeIDFromSkydiveMessageWithOneEdge(data);
+        const e = this.edgeManager.getEdgeById(edgeID);
         this.edgeManager.removeEdgeByID(edgeID);
+        return e;
     }
 }
