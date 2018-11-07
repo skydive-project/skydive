@@ -65,7 +65,7 @@ Vue.component('full-topology', {
   ',
   created: function() {
     this.buildTopology = this.buildTopology.bind(this);
-    websocket.addConnectHandler(this.buildTopology);
+    websocket.addOneTimeConnectHandler(this.buildTopology);
   },
   beforeDestroy: function() {
     this.$parent.$parent.$store.commit('nodeUnselected');
@@ -84,7 +84,9 @@ Vue.component('full-topology', {
         layout.useLinkLabelStrategy(this.linkLabelType);
       }
       const dataSource = new window.TopologyORegistry.dataSources.hostTopology(this.hostName)
-      dataSource.subscribe();
+      websocket.addOneTimeConnectHandler(() => {
+          dataSource.subscribe();
+      });
       dataSource.e.on('broadcastMessage', (type, msg) => {
         layout.reactToDataSourceEvent.call(layout, dataSource, type, msg);
         this.$parent.$parent.applyToLayoutCurrentConfig(this.layout);
@@ -95,42 +97,6 @@ Vue.component('full-topology', {
       this.layout.e.on('host.collapse', this.$parent.$parent.collapseHost.bind(this));
       this.layout.initializer();
       globalEventHandler.setCurrentLayout(layout);
-    }
-  }
-});
-
-Vue.component('app-topology', {
-  props: {
-    hostName: {
-      type: Object,
-      required: true
-    }
-  },
-  template: '\
-    <div class="topology-hierarchy">\
-      <div v-if="possibleToBuildHierarchiedTopology" class="topology-d3-app-host"></div>\
-      <div class="impossible-to-build-hierarchy-topology" v-if="!possibleToBuildHierarchiedTopology">\
-        Impossible to build a topology on host because there\'s no virtual machines\
-      </div>\
-    </div>\
-  ',
-  created: function() {
-     /**websocket.addConnectHandler(() => {
-         this.layout = createHostLayout(this.hostName, '.topology-d3-app-host');
-         this.layout.e.on('node.select', this.$parent.$parent.onNodeSelected.bind(this));
-         this.layout.e.on('edge.select', this.$parent.$parent.onEdgeSelected.bind(this));
-         this.layout.e.on('host.collapse', this.$parent.$parent.collapseHost.bind(this));
-         this.layout.initializer();
-     });*/
-  },
-  beforeDestroy: function() {
-    this.$parent.$parent.$store.commit('nodeUnselected');
-    this.$parent.$parent.$store.commit('edgeUnselected');
-    this.layout && this.layout.remove();
-  },
-  computed: {
-    possibleToBuildHierarchiedTopology: function() {
-      return this.layout.dataManager.nodeManager.isThereAnyNodeWithType("libvirt");
     }
   }
 });
@@ -156,14 +122,7 @@ Vue.component('host-topology', {
         <span class="glyphicon glyphicon-backward back-to-infrastructure-topology" aria-hidden="true"></span>\
         <span>Back to hosts topology</span>\
       </div>\
-      <div class="layout-switcher">\
-        <ul class="nav nav-pills nav-justified">\
-          <li v-on:click="switchToLayout(\'app\')" v-bind:class="[layout == \'app\' ? \'active\' : \'\']"><a href="#">App topology</a></li>\
-          <li v-on:click="switchToLayout(\'full\')" v-bind:class="[layout == \'full\' ? \'active\' : \'\']"><a href="#">Full topology</a></li>\
-        </ul>\
-      </div>\
       <full-topology :linkLabelType="linkLabelType" :hostName="choosenHost" v-if="layout == \'full\'"></full-topology>\
-      <app-topology :hostName="choosenHost" v-if="layout == \'app\'"></app-topology>\
     </div>\
   ',
   mounted: function() {
@@ -726,7 +685,9 @@ var TopologyComponentNewApproach = {
         if (!this.infraLayout) {
             const infraTopologyDataSource = new window.TopologyORegistry.dataSources.infraTopology();
             skydiveInfraLayout.useConfig(layoutConfig);
-            infraTopologyDataSource.subscribe();
+              websocket.addOneTimeConnectHandler(() => {
+                infraTopologyDataSource.subscribe();
+              });
             infraTopologyDataSource.e.on('broadcastMessage', (type, msg) => {
                 if (type === 'SyncReply') {
                     const hostSelectorData = [];
@@ -799,7 +760,8 @@ var TopologyComponentNewApproach = {
 
     removeInfraLayout: function() {
       this.infraLayout.remove();
-      this.infraLayout = null
+      this.infraLayout = null;
+      this.hosts = [];
     },
 
     switchToHostTopology: function(hostName) {

@@ -16,14 +16,14 @@ export default class HostTopologyDataSource implements DataSourceI {
     }
 
     subscribe() {
-        window.websocket.removeMsgHandler('Graph', this.processMessage);
+        window.websocket.removeMsgHandlers('Graph');
         window.websocket.addMsgHandler('Graph', this.processMessage);
-        window.websocket.addConnectHandler(this.onConnected, true);
+        window.websocket.addOneTimeConnectHandler(this.onConnected);
     }
 
     unsubscribe() {
         this.e.removeAllListeners();
-        window.websocket.removeMsgHandler('Graph', this.processMessage);
+        window.websocket.removeMsgHandlers('Graph');
     }
 
     onConnected() {

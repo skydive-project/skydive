@@ -1513,15 +1513,13 @@ class InfraTopologyDataSource {
         this.processMessage = this.processMessage.bind(this);
     }
     subscribe() {
-        window.websocket.disconnect();
-        window.websocket.removeMsgHandler('Graph', this.processMessage);
+        window.websocket.removeMsgHandlers('Graph');
         window.websocket.addMsgHandler('Graph', this.processMessage);
-        window.websocket.addConnectHandler(this.onConnected, true);
+        window.websocket.addOneTimeConnectHandler(this.onConnected);
     }
     unsubscribe() {
         this.e.removeAllListeners();
-        window.websocket.removeMsgHandler('Graph', this.processMessage);
-        window.websocket.disconnect();
+        window.websocket.removeMsgHandlers('Graph');
     }
     onConnected() {
         console.log('Send sync request');
@@ -1562,13 +1560,13 @@ class HostTopologyDataSource {
         this.processMessage = this.processMessage.bind(this);
     }
     subscribe() {
-        window.websocket.removeMsgHandler('Graph', this.processMessage);
+        window.websocket.removeMsgHandlers('Graph');
         window.websocket.addMsgHandler('Graph', this.processMessage);
-        window.websocket.addConnectHandler(this.onConnected, true);
+        window.websocket.addOneTimeConnectHandler(this.onConnected);
     }
     unsubscribe() {
         this.e.removeAllListeners();
-        window.websocket.removeMsgHandler('Graph', this.processMessage);
+        window.websocket.removeMsgHandlers('Graph');
     }
     onConnected() {
         console.log('Send sync request');

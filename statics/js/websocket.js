@@ -7,6 +7,8 @@ function WSHandler() {
   this.discHandlers = [];
   this.connHandlers = [];
   this.errorHandlers = [];
+  this.oneTimeConnHandlers = [];
+  this.oneTimeDisconnectHandlers = [];
 }
 
 WSHandler.prototype = {
@@ -29,11 +31,19 @@ WSHandler.prototype = {
       self.connHandlers.forEach(function(callback) {
         callback();
       });
+      self.oneTimeConnHandlers = self.oneTimeConnHandlers.filter(function(callback) {
+        callback();
+        return false;
+      });
     });
     this.disconnected = $.Deferred();
     this.disconnected.then(function() {
       self.discHandlers.forEach(function(callback) {
         callback();
+      });
+      self.oneTimeDisconnectHandlers = self.oneTimeDisconnectHandlers.filter(function(callback) {
+        callback();
+        return false;
       });
     });
     this.connecting = true;
@@ -120,6 +130,29 @@ WSHandler.prototype = {
 
   send: function(msg) {
     this.conn.send(JSON.stringify(msg));
-  }
+  },
 
+  addOneTimeConnectHandler: function(callback) {
+    if (this.connected !== null) {
+      this.connected.then(function() {
+        callback();
+      });
+    } else {
+      this.oneTimeConnHandlers.push(callback);
+    }
+  },
+
+  addOneTimeDisconnectHandler: function(callback) {
+    if (this.connected !== null) {
+      this.connected.then(function() {
+        callback();
+      });
+    } else {
+      this.oneTimeDisconnectHandlers.push(callback);
+    }
+  },
+
+  removeMsgHandlers: function(namespace) {
+    delete this.msgHandlers[namespace];
+  }
 };
