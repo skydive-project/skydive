@@ -202,8 +202,13 @@ func NewMetadataIndexer(g *Graph, listenerHandler ListenerHandler, m ElementMatc
 		Indexer: NewIndexer(g, listenerHandler, func(n *Node) (kv map[string]interface{}) {
 			if match := n.MatchMetadata(m); match {
 				kv = make(map[string]interface{})
-				if values, err := getFieldsAsArray(n, indexes); err == nil && len(indexes) == len(values) {
-					kv[Hash(values...)] = values
+				values, err := getFieldsAsArray(n, indexes)
+				if err == nil {
+					for _, fields := range values {
+						if len(indexes) == len(fields) {
+							kv[Hash(fields...)] = fields
+						}
+					}
 				}
 			}
 			return
