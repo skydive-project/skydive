@@ -335,13 +335,22 @@ func GetEtcdServerAddrs() []string {
 	return []string{fmt.Sprintf("http://localhost:%d", port)}
 }
 
-// IsTLSEnabled returns true is the analyzer certificates are set
+// IsTLSEnabled returns true is the client / server certificates are set
 func IsTLSEnabled() bool {
-	certPEM := GetString("analyzer.X509_cert")
-	keyPEM := GetString("analyzer.X509_key")
-	if len(certPEM) > 0 && len(keyPEM) > 0 {
+	client := GetString("tls.client_cert")
+	clientKey := GetString("tls.client_key")
+	server := GetString("tls.server_cert")
+	serverKey := GetString("tls.server_key")
+	ca := GetString("tls.ca_cert")
+
+	if len(client) > 0 &&
+		len(clientKey) > 0 &&
+		len(server) > 0 &&
+		len(serverKey) > 0 &&
+		len(ca) > 0 {
 		return true
 	}
+
 	return false
 }
 
