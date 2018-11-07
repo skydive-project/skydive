@@ -88,10 +88,7 @@ export class GroupUI implements GroupUII {
     }
 
     convexHull(g: Group) {
-        const members = g.members.clone().nodes;
-        g.children.groups.forEach((g1: Group) => {
-            members.push(g1.owner);
-        });
+        const members = g.getAllMembers();
         const memberIdToMember: any = members.reduce((accum: any, n: Node) => {
             accum[n.ID] = n;
             return accum;

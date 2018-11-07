@@ -62,4 +62,11 @@ export default class Group {
         })
     }
 
+    getAllMembers(): Node[] {
+        let members = this.members.nodes;
+        this.children.groups.forEach((children: Group) => {
+            members = members.concat(children.getAllMembers())
+        });
+        return members;
+    }
 }

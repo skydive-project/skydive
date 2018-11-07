@@ -102,7 +102,7 @@ export class NodeUI implements NodeUII {
             .attr("class", "node-text-rect")
             .attr("width", (d: Node) => { return this.nodeTitle(d).length * 10 + 10; })
             .attr("height", 25)
-            .attr("x", function(d: Node) {
+            .attr("x", (d: Node) => {
                 return this.nodeSize(d) * 1.6 - 5;
             })
             .attr("y", -8)

@@ -28,7 +28,7 @@ window.layoutConfig = new window.TopologyORegistry.config({
             return distance;
         }
     },
-    useHardcodedData: window.location.href.indexOf('use_hardcoded_data=1') !== 1
+    useHardcodedData: window.location.href.indexOf('use_hardcoded_data=1') !== -1
 });
 
 function createHostLayout(hostName, selector, linkLabelType) {

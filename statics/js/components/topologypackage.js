@@ -718,6 +718,13 @@ class Group {
             });
         });
     }
+    getAllMembers() {
+        let members = this.members.nodes;
+        this.children.groups.forEach((children) => {
+            members = members.concat(children.getAllMembers());
+        });
+        return members;
+    }
 }
 /* harmony export (immutable) */ __webpack_exports__["a"] = Group;
 
@@ -2280,7 +2287,7 @@ class NodeUI {
             .attr("class", "node-text-rect")
             .attr("width", (d) => { return this.nodeTitle(d).length * 10 + 10; })
             .attr("height", 25)
-            .attr("x", function (d) {
+            .attr("x", (d) => {
             return this.nodeSize(d) * 1.6 - 5;
         })
             .attr("y", -8)
@@ -2858,10 +2865,7 @@ class GroupUI {
         return clazz;
     }
     convexHull(g) {
-        const members = g.members.clone().nodes;
-        g.children.groups.forEach((g1) => {
-            members.push(g1.owner);
-        });
+        const members = g.getAllMembers();
         const memberIdToMember = members.reduce((accum, n) => {
             accum[n.ID] = n;
             return accum;

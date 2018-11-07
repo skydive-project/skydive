@@ -97,6 +97,14 @@ WSHandler.prototype = {
       this.connHandlers.indexOf(callback), 1);
   },
 
+  removeMsgHandler: function(namespace,callback) {
+    if (!this.msgHandlers[namespace]) {
+      return;
+    }
+    this.msgHandlers[namespace].splice(
+      this.msgHandlers[namespace].indexOf(callback), 1);
+  },
+
   addDisconnectHandler: function(callback) {
     this.discHandlers.push(callback);
     if (this.disconnected !== null) {
