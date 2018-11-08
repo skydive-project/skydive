@@ -86,6 +86,12 @@ GlobalEventHandler.prototype = {
       return;
     }
     this.currentLayout.reactToTheUiEvent.apply(this.currentLayout, arguments);
+  },
+  reactToDataSourceEvent: function(eventName, obj) {
+    if (!this.currentLayout) {
+      return;
+    }
+    this.currentLayout.reactToDataSourceEvent.apply(this.currentLayout, "skydive", eventName, obj);
   }
 }
 
