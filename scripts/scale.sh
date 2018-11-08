@@ -116,10 +116,17 @@ function generate_tls_crt() {
 		return
 	fi
 
-	sudo openssl genrsa -out $TEMP_DIR/$NAME.key 2048
-	sudo chmod 400 $TEMP_DIR/$NAME.key
+	if [ ! -e $TEMP_DIR/rootCA.crt ]; then
+	    sudo openssl genrsa -out $TEMP_DIR/rootCA.key 4096
+	    sudo chmod 400 $TEMP_DIR/rootCA.key
+            yes '' | sudo openssl req -x509 -new -nodes -key $TEMP_DIR/rootCA.key -days 365 -out $TEMP_DIR/rootCA.crt
+	    sudo chmod 444 $TEMP_DIR/rootCA.crt
+	fi
+
+        sudo openssl genrsa -out $TEMP_DIR/$NAME.key 2048
+        sudo chmod 400 $TEMP_DIR/$NAME.key
 	yes '' | sudo openssl req -new -key $TEMP_DIR/$NAME.key -out $TEMP_DIR/$NAME.csr -subj "/CN=$NAME" -config $TEMP_DIR/skydive-ssl.cnf
-	sudo openssl x509 -req -days 365 -signkey $TEMP_DIR/$NAME.key -in $TEMP_DIR/$NAME.csr -out $TEMP_DIR/$NAME.crt -extfile $TEMP_DIR/skydive-ssl.cnf -extensions v3_req
+	sudo openssl x509 -req -days 365 -in $TEMP_DIR/$NAME.csr -CA $TEMP_DIR/rootCA.crt -CAkey $TEMP_DIR/rootCA.key -CAcreateserial -out $TEMP_DIR/$NAME.crt -extfile $TEMP_DIR/skydive-ssl.cnf -extensions v3_req
 	sudo chmod 444 $TEMP_DIR/$NAME.crt
 }
 
@@ -155,11 +162,13 @@ function create_agent() {
 
 		# TLS if needed
 		if [ $TLS = true ]; then
-			AGENT_CRT=$TEMP_DIR/agent.crt
-			AGENT_KEY=$TEMP_DIR/agent.key
+                    CA_CRT=$TEMP_DIR/rootCA.crt
 
-			ANALYZER_CRT=$TEMP_DIR/analyzer.crt
-		        ANALYZER_KEY=$TEMP_DIR/analyzer.key
+                    AGENT_CRT=$TEMP_DIR/agent.crt
+		    AGENT_KEY=$TEMP_DIR/agent.key
+
+		    ANALYZER_CRT=$TEMP_DIR/analyzer.crt
+		    ANALYZER_KEY=$TEMP_DIR/analyzer.key
 		fi
 
 		echo "analyzers:" > $TEMP_DIR/$NAME.yml
@@ -173,14 +182,14 @@ host_id: $NAME
 http:
   ws:
     pong_timeout: 15
-analyzer:
-  X509_cert: $ANALYZER_CRT
-  X509_key: $ANALYZER_KEY
+tls:
+  ca_cert: $CA_CRT
+  client_cert: $AGENT_CRT
+  client_key: $AGENT_KEY
+  server_cert: $ANALYZER_CRT
+  server_key: $ANALYZER_KEY
 agent:
   listen: 0.0.0.0:8081
-  X509_cert: $AGENT_CRT
-  X509_key: $AGENT_KEY
-  X509_insecure: true
   topology:
     netlink:
       metrics_update: 5
@@ -294,11 +303,13 @@ function create_analyzer() {
 
 	# TLS if needed
 	if [ $TLS = true ]; then
-		ANALYZER_CRT=$TEMP_DIR/analyzer.crt
-		ANALYZER_KEY=$TEMP_DIR/analyzer.key
+            CA_CRT=$TEMP_DIR/rootCA.crt
 
-		AGENT_CRT=$TEMP_DIR/agent.crt
-		AGENT_KEY=$TEMP_DIR/agent.key
+	    ANALYZER_CRT=$TEMP_DIR/analyzer.crt
+	    ANALYZER_KEY=$TEMP_DIR/analyzer.key
+
+	    AGENT_CRT=$TEMP_DIR/agent.crt
+	    AGENT_KEY=$TEMP_DIR/agent.key
 	fi
 
 	cat <<EOF >> $TEMP_DIR/$NAME.yml
@@ -321,14 +332,14 @@ flow:
   expire: 600
   update: 5
   protocol: $FLOW_PROTOCOL
-agent:
-  X509_cert: $AGENT_CRT
-  X509_key: $AGENT_KEY
-  X509_insecure: true
+tls:
+  ca_cert: $CA_CRT
+  client_cert: $AGENT_CRT
+  client_key: $AGENT_KEY
+  server_cert: $ANALYZER_CRT
+  server_key: $ANALYZER_KEY
 analyzer:
   listen: 0.0.0.0:$CURR_ANALYZER_PORT
-  X509_cert: $ANALYZER_CRT
-  X509_key: $ANALYZER_KEY
   auth:
     api:
       backend: scaleapi
