@@ -88,7 +88,6 @@ func init() {
 	cfg.SetDefault("agent.topology.neutron.tenant_name", "service")
 	cfg.SetDefault("agent.topology.neutron.username", "neutron")
 	cfg.SetDefault("agent.topology.socketinfo.host_update", 10)
-	cfg.SetDefault("agent.X509_servername", "")
 
 	cfg.SetDefault("analyzer.auth.cluster.backend", "noauth")
 	cfg.SetDefault("analyzer.auth.api.backend", "noauth")
