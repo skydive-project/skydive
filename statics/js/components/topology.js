@@ -36,6 +36,7 @@ const GlobalEventHandler = function() {
   this.currentLayout = null;
   this.ds = null;
   this.eventNameToCallback = {};
+  this.reconnect = false;
 }
 
 GlobalEventHandler.prototype = {
@@ -50,24 +51,59 @@ GlobalEventHandler.prototype = {
   },
   setCurrentDataSource: function(ds) {
     var self = this;
-    this.ds = ds;
-    Object.keys(this.eventNameToCallback).forEach(function(eventName) {
+    if (this.ds) {
+      this.ds.websocket.e.once('websocket.disconnected', function() {
+        self._initNewDs(ds);
+      });
+      this.ds.websocket.disconnect();
+      return;
+    }
+    self._initNewDs(ds);
+  },
+  toggleDataSourceLiveMode: function(status) {
+    if (!self.ds) {
+      return;
+    }
+    self.ds.toggleLiveMode(status);
+  },
+  _initNewDs: function(ds) {
+    var self = this;
+    self.ds = ds;
+    Object.keys(self.eventNameToCallback).forEach(function(eventName) {
       self.eventNameToCallback[eventName].forEach(function(cb) {
         self.ds.websocket.e.removeListener(eventName, cb);
         self.ds.websocket.e.on(eventName, cb);
       });
     });
+    self.ds.websocket.toggleReconnectMode(self.reconnect);
+    if (self.reconnect) {
+      self.ds.websocket.connect();
+    }
   },
   websocket: function() {
-    if (this.ds) {
-      return this.ds.websocket;
-    }
+    var self = this;
     return {
-      connect: function() {},
-      disconnect: function() {}
+      connect: function() {
+        if (self.ds) {
+	  self.ds.websocket.connect();
+	}
+      },
+      disconnect: function() {
+        if (self.ds) {
+	  self.ds.websocket.disconnect();
+	}
+      },
+      toggleReconnectMode: function(reconnectMode) {
+        self.reconnect = reconnectMode;
+        if (self.ds) {
+	  self.ds.websocket.toggleReconnectMode(reconnectMode);
+	}
+      }
     }
   },
   removeWebsocketHandler: function(eventName, callback) {
+    var self = this;
+    self.eventNameToCallback[eventName] = self.eventNameToCallback[eventName].filter((cb) => { return cb !== callback});
     if (this.ds) {
       this.ds.websocket.e.removeListener(eventName, callback);
     }
@@ -92,7 +128,17 @@ GlobalEventHandler.prototype = {
       return;
     }
     this.currentLayout.reactToDataSourceEvent.apply(this.currentLayout, "skydive", eventName, obj);
-  }
+  },
+  onUiEvent: function(eventName, cb, once) {
+    if (!this.currentLayout) {
+      return;
+    }
+    if (once) {
+      this.currentLayout.e.once(eventName, cb);
+    } else {
+      this.currentLayout.e.on(eventName, cb);
+    }
+  },
 }
 
 window.globalEventHandler = new GlobalEventHandler();
@@ -110,7 +156,7 @@ Vue.component('full-topology', {
   },
   template: '\
     <div>\
-      <div class="topology-d3-full-host"></div>\
+      <div class="topology-d3-full-host" style="z-index:2"></div>\
     </div>\
   ',
   created: function() {
@@ -163,7 +209,7 @@ Vue.component('gremlin-topology', {
   },
   template: '\
     <div>\
-      <div class="topology-d3-gremlin"></div>\
+      <div class="topology-d3-gremlin" style="z-index:2"></div>\
     </div>\
   ',
   created: function() {
@@ -282,9 +328,9 @@ var TopologyComponent = {
         </div>\
       </div>\
       <div class="col-sm-7 fill content">\
-        <div v-if="layoutType == \'infra\'" class="topology-d3-infra"></div>\
+        <div v-if="layoutType == \'infra\'" class="topology-d3-infra" style="z-index:2"></div>\
         <host-topology :topologyFilter="topologyFilter" :linkLabelType="linkLabelType" :choosenHost="choosenHostName" v-if="layoutType !== \'infra\'"></host-topology>\
-        <div class="topology-legend">\
+        <div class="topology-legend" style="z-index:1">\
           <strong>Topology view</strong></br>\
           <p v-if="currTopologyFilter">{{currTopologyFilter}}</p>\
           <p v-else>Full</p>\
@@ -369,7 +415,7 @@ var TopologyComponent = {
             </div>\
           </div>\
           <div style="margin-top: 10px">\
-            <div class="trigger">\
+            <div class="trigger" id="toggle-topology-filter">\
               <button @mouseenter="showTopologyOptions" @mouseleave="clearTopologyTimeout" @click="hideTopologyOptions">\
                 <span :class="[\'glyphicon\', isTopologyOptionsVisible ? \'glyphicon-remove\' : \'glyphicon-filter\']" aria-hidden="true"></span>\
               </button>\
@@ -416,11 +462,11 @@ var TopologyComponent = {
           </button>\
         </div>\
       </div>\
-      <div id="info-panel" class="col-sm-5 sidebar">\
+      <div id="info-panel" class="col-sm-5 sidebar" style="z-index: 1">\
         <tabs v-if="isAnalyzer" :active="!canReadCaptures ? 2 : 0">\
-          <tab-pane title="Captures" v-if="canReadCaptures">\
+          <tab-pane id="captures-tab" title="Captures" v-if="canReadCaptures">\
             <capture-list></capture-list>\
-            <capture-form v-if="canWriteCaptures && topologyMode ===  \'live\'"></capture-form>\
+            <capture-form id="capture-form" v-if="canWriteCaptures && topologyMode ===  \'live\'"></capture-form>\
           </tab-pane>\
           <tab-pane title="Generator" v-if="topologyMode ===  \'live\' && canInjectPackets">\
             <injection-list></injection-list>\
@@ -475,7 +521,7 @@ var TopologyComponent = {
         </panel>\
         <panel id="ovs-rules" v-if="currentNodeMetadata && currentNodeMetadata.Type == \'ovsbridge\'"\
                title="Rules">\
-          <rule-detail :bridge="currentNode" :graph="graph"></rule-detail>\
+          <rule-detail :bridge="currentNode"></rule-detail>\
         </panel>\
         <panel id="total-metric" v-if="currentNodeMetric"\
                title="Metrics">\
@@ -634,10 +680,10 @@ var TopologyComponent = {
 
     topologyMode: function (val) {
       if (val === 'live') {
+        globalEventHandler.toggleDataSourceLiveMode(true);
         this.topologyTimeTravelClear();
       } else {
-        this.graph.pauseLive();
-
+        globalEventHandler.toggleDataSourceLiveMode(false);
         var dt = new Date();
         this.topologyDate = dt;
         this.topologyTime = dt.getHours() + ":" + dt.getMinutes() + ":" + dt.getSeconds();

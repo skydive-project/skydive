@@ -40,12 +40,12 @@ function proceedNewEdge(dataManager: DataManager, e: Edge) {
 export default function parseSkydiveData(dataManager: DataManager, data: any): void {
     dataManager.removeOldData();
     console.log('Parse skydive data', data);
-    data.Obj.Nodes.forEach((node: any) => {
+    data.Obj.Nodes && data.Obj.Nodes.forEach((node: any) => {
         dataManager.nodeManager.addNodeFromData(
             node.ID, node.Metadata.Name, node.Host, node.Metadata
         );
     });
-    data.Obj.Edges.forEach((edge: any) => {
+    data.Obj.Edges && data.Obj.Edges.forEach((edge: any) => {
         dataManager.edgeManager.addEdgeFromData(
             edge.ID, edge.Host, edge.Metadata, dataManager.nodeManager.getNodeById(edge.Parent), dataManager.nodeManager.getNodeById(edge.Child)
         );
@@ -98,6 +98,9 @@ export default function parseSkydiveData(dataManager: DataManager, data: any): v
 }
 export function parseSkydiveMessageWithOneNode(dataManager: DataManager, data: any): Node {
     console.log('Parse skydive message with one node', data);
+    if (dataManager.nodeManager.getNodeById(data.Obj.ID)) {
+        return dataManager.nodeManager.getNodeById(data.Obj.ID);
+    }
     return dataManager.nodeManager.addNodeFromData(data.Obj.ID, data.Obj.Metadata.Name, data.Obj.Host, data.Obj.Metadata);
 }
 export function getNodeIDFromSkydiveMessageWithOneNode(data: any): string {
@@ -122,6 +125,9 @@ export function parseSkydiveMessageWithOneEdgeAndUpdateEdge(edge: Edge, data: an
 
 export function parseNewSkydiveEdgeAndUpdateDataManager(dataManager: DataManager, data: any): Edge {
     const edge = data.Obj;
+    if (dataManager.edgeManager.getEdgeById(edge.ID)) {
+        return dataManager.edgeManager.getEdgeById(edge.ID);
+    }
     const e = dataManager.edgeManager.addEdgeFromData(
         edge.ID, edge.Host, edge.Metadata, dataManager.nodeManager.getNodeById(edge.Parent), dataManager.nodeManager.getNodeById(edge.Child)
     );

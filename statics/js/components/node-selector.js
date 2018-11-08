@@ -10,7 +10,7 @@ Vue.component('node-selector', {
     },
     attr: {
       type: String,
-      default: "metadata.TID"
+      default: "Metadata.TID"
     },
     form: {
       type: String,
@@ -34,26 +34,18 @@ Vue.component('node-selector', {
 
     select: function() {
       var self = this;
-      $(".topology-d3").off('click');
-      $(".topology-d3").on('click', function(e) {
-        var value, node;
-        if (! e.target.__data__) {
-          return;
-        } else {
-          if (self.form == "capture") {
-            if (self.$allowedTypes().indexOf(e.target.__data__.metadata.Type) > -1) {
-              node = value = e.target.__data__;
-            } else {
-              self.$error({message: "Capture not allowed on this node"});
-              $(".topology-d3").off('click');
-              return;
-            }
-          } else {
-            node = value = e.target.__data__;
-          }
-        }
-
+      globalEventHandler.onUiEvent('node.select', function(node) {
+        if (!node) {
+	  return;
+	}
+        if (self.form == "capture") {
+	  if (self.$allowedTypes().indexOf(node.Metadata.Type) === -1) {
+            self.$error({message: "Capture not allowed on this node"});
+	    return;
+	  }
+	}
         var found = true;
+	var value = node;
         self.attr.split(".").forEach(function(key) {
           if (! value[key]) {
             found = false;
@@ -69,10 +61,7 @@ Vue.component('node-selector', {
         } else {
           self.$error({message: "Capture not allowed, required metadata missing `" + self.attr + "`"});
         }
-
-        e.preventDefault();
-        $(".topology-d3").off('click');
-      });
+      }, true);
     }
 
   }

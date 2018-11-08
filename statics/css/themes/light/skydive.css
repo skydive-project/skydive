@@ -10,7 +10,7 @@ label {
   color: #337ab7;
 }
 
-.topology-d3 {
+.topology-d3-full-host, .topology-d3-infra, .topology-d3-gremlin {
     background-color: #eee;
 }
 

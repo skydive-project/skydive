@@ -10,6 +10,7 @@ export default class BaseSkydiveDataSource implements DataSourceI {
     time: any;
     filterQuery: string = "";
     websocket: WsHandler;
+    live: boolean = true;
 
     constructor() {
         this.onConnected = this.onConnected.bind(this);
@@ -19,14 +20,12 @@ export default class BaseSkydiveDataSource implements DataSourceI {
 
     subscribe() {
         this.websocket.e.on('websocket.messageGraph', this.processMessage);
-        this.websocket.e.once('websocket.connected', this.onConnected);
-        this.websocket.connect();
+        this.websocket.e.on('websocket.connected', this.onConnected);
     }
 
     unsubscribe() {
         this.e.removeAllListeners();
         this.websocket.e.removeAllListeners('websocket.messageGraph');
-        this.websocket.disconnect();
     }
 
     onConnected() {
@@ -43,8 +42,15 @@ export default class BaseSkydiveDataSource implements DataSourceI {
     }
 
     processMessage(msg: any) {
+        if (!this.live) {
+            return;
+        }
         console.log('Got message from websocket', msg);
         this.e.emit('broadcastMessage', msg.Type, msg)
+    }
+
+    toggleLiveMode(status: boolean) {
+        this.live = status;
     }
 
 }

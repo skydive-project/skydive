@@ -196,6 +196,65 @@ func (s *seleniumHelper) expandGroup(gremlin g.QueryString) error {
 	return s.webdriver.KeyUp(selenium.AltKey)
 }
 
+func (s *seleniumHelper) expandHost(gremlin g.QueryString) error {
+	node, err := s.gh.GetNode(gremlin)
+	if err != nil {
+		return err
+	}
+	if err = s.webdriver.KeyDown(selenium.AltKey); err != nil {
+		return err
+	}
+
+	err = common.Retry(func() error {
+		el, err := s.findElement(selenium.ByXPATH, ".//*[@id='node-"+string(node.ID)+"']")
+		if err != nil {
+			return err
+		}
+
+		if err = s.clickOn(el); err != nil {
+			return err
+		}
+
+		el, err = s.findElement(selenium.ByXPATH, ".//*[@id='node-"+string(node.ID)+"']")
+		if err != nil {
+			return err
+		}
+
+		if collapsed, err := el.GetAttribute("collapsed"); err != nil || collapsed != "false" {
+			return errors.New("host still collapsed")
+		}
+		el, err = s.findElement(selenium.ByXPATH, ".//*[@class='back-to-hosts-topology']")
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}, 40, 5*time.Millisecond)
+
+	if err != nil {
+		return err
+	}
+
+	return s.webdriver.KeyUp(selenium.AltKey)
+}
+
+func (s *seleniumHelper) backToInfrastructureTopology() error {
+	el, err := s.findElement(selenium.ByXPATH, ".//*[@class='back-to-hosts-topology']")
+	if err != nil {
+		return err
+	}
+
+	if err = s.clickOn(el); err != nil {
+		return err
+	}
+
+	el, err = s.findElement(selenium.ByXPATH, ".//*[@class='back-to-hosts-topology']")
+	if err == nil {
+		return fmt.Errorf("Element back-to-hosts-topology still exists on the page")
+	}
+	return nil
+}
+
 func (s *seleniumHelper) getFlowRow(gremlin g.QueryString) (selenium.WebElement, error) {
 	var flows []*flow.Flow
 	var err error
@@ -309,6 +368,14 @@ func (s *seleniumHelper) activateTab(id string) error {
 }
 
 func (s *seleniumHelper) startShortestPathCapture(g1, g2 g.QueryString, bpf string) error {
+	// if bpf == "icmp1" {
+	// 	jsErrors, _ := s.webdriver.Log("browser")
+	// 	var error string
+	// 	for _, jsError := range jsErrors {
+	// 		error += "\n" + jsError.Message
+	// 	}
+	// 	return fmt.Errorf("%s", error)
+	// }
 	if err := s.activateTab("Captures"); err != nil {
 		return err
 	}
@@ -552,6 +619,24 @@ func (s *seleniumHelper) stopVideoRecord() {
 	execCmds(s.t, cmds...)
 
 	s.currVideoName = ""
+}
+
+func (s *seleniumHelper) switchToGremlinFilteredQueryTopology(topologyFilterQuery string) error {
+	el, err := s.findElement(selenium.ByXPATH, ".//*[@id='toggle-topology-filter']")
+	if err != nil {
+		return err
+	}
+	s.moveOn(el)
+	el.Click()
+	time.Sleep(2 * time.Second)
+	el, err = s.findElement(selenium.ByXPATH, ".//*[@id='topology-filter']")
+	if err != nil {
+		return err
+	}
+	el.Click()
+	el.SendKeys(topologyFilterQuery + selenium.EnterKey)
+	time.Sleep(2 * time.Second)
+	return nil
 }
 
 func (s *seleniumHelper) quit() {

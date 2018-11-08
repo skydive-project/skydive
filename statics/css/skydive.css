@@ -123,17 +123,16 @@ label {
   height: 100%;
 }
 
-.topology-d3 {
+.topology-d3-infra, .topology-d3-full-host, .topology-d3-gremlin {
   width: 100%;
-  text-align: center;
-  outline: none;
+  /* text-align: center; */
+  /* outline: none; */
   background-color: #292e34;
   border-radius: 4px;
 }
 
-.topology-d3 {
+.topology-d3-infra, .topology-d3-full-host, .topology-d3-gremlin {
   height: 99%;
-  overflow: hidden;
 }
 
 .node-selection {

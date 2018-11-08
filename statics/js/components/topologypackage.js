@@ -429,19 +429,18 @@ class BaseSkydiveDataSource {
         this.e = new __WEBPACK_IMPORTED_MODULE_0_events__["EventEmitter"]();
         this.subscribable = true;
         this.filterQuery = "";
+        this.live = true;
         this.onConnected = this.onConnected.bind(this);
         this.processMessage = this.processMessage.bind(this);
         this.websocket = new __WEBPACK_IMPORTED_MODULE_1__websocket__["a" /* default */](window.location.host + "/ws/subscriber?x-client-type=webui");
     }
     subscribe() {
         this.websocket.e.on('websocket.messageGraph', this.processMessage);
-        this.websocket.e.once('websocket.connected', this.onConnected);
-        this.websocket.connect();
+        this.websocket.e.on('websocket.connected', this.onConnected);
     }
     unsubscribe() {
         this.e.removeAllListeners();
         this.websocket.e.removeAllListeners('websocket.messageGraph');
-        this.websocket.disconnect();
     }
     onConnected() {
         console.log('Send sync request');
@@ -455,8 +454,14 @@ class BaseSkydiveDataSource {
         this.websocket.send(msg);
     }
     processMessage(msg) {
+        if (!this.live) {
+            return;
+        }
         console.log('Got message from websocket', msg);
         this.e.emit('broadcastMessage', msg.Type, msg);
+    }
+    toggleLiveMode(status) {
+        this.live = status;
     }
 }
 /* harmony export (immutable) */ __webpack_exports__["a"] = BaseSkydiveDataSource;
@@ -912,10 +917,10 @@ function proceedNewEdge(dataManager, e) {
 function parseSkydiveData(dataManager, data) {
     dataManager.removeOldData();
     console.log('Parse skydive data', data);
-    data.Obj.Nodes.forEach((node) => {
+    data.Obj.Nodes && data.Obj.Nodes.forEach((node) => {
         dataManager.nodeManager.addNodeFromData(node.ID, node.Metadata.Name, node.Host, node.Metadata);
     });
-    data.Obj.Edges.forEach((edge) => {
+    data.Obj.Edges && data.Obj.Edges.forEach((edge) => {
         dataManager.edgeManager.addEdgeFromData(edge.ID, edge.Host, edge.Metadata, dataManager.nodeManager.getNodeById(edge.Parent), dataManager.nodeManager.getNodeById(edge.Child));
     });
     const ownershipEdges = dataManager.edgeManager.getEdgesWithRelationType("ownership");
@@ -960,6 +965,9 @@ function parseSkydiveData(dataManager, data) {
 }
 function parseSkydiveMessageWithOneNode(dataManager, data) {
     console.log('Parse skydive message with one node', data);
+    if (dataManager.nodeManager.getNodeById(data.Obj.ID)) {
+        return dataManager.nodeManager.getNodeById(data.Obj.ID);
+    }
     return dataManager.nodeManager.addNodeFromData(data.Obj.ID, data.Obj.Metadata.Name, data.Obj.Host, data.Obj.Metadata);
 }
 function getNodeIDFromSkydiveMessageWithOneNode(data) {
@@ -981,6 +989,9 @@ function parseSkydiveMessageWithOneEdgeAndUpdateEdge(edge, data) {
 }
 function parseNewSkydiveEdgeAndUpdateDataManager(dataManager, data) {
     const edge = data.Obj;
+    if (dataManager.edgeManager.getEdgeById(edge.ID)) {
+        return dataManager.edgeManager.getEdgeById(edge.ID);
+    }
     const e = dataManager.edgeManager.addEdgeFromData(edge.ID, edge.Host, edge.Metadata, dataManager.nodeManager.getNodeById(edge.Parent), dataManager.nodeManager.getNodeById(edge.Child));
     proceedNewEdge(dataManager, e);
     dataManager.groupManager.updateLevelAndDepth(dataManager.layoutContext.collapseLevel, dataManager.layoutContext.isAutoExpand());
@@ -1643,6 +1654,9 @@ class InfraTopologyDataSource extends __WEBPACK_IMPORTED_MODULE_0__base_skydive_
 class WSHandler {
     constructor(connectionUrl) {
         this.e = new __WEBPACK_IMPORTED_MODULE_0_events__["EventEmitter"]();
+        this.connecting = false;
+        this.connected = false;
+        this.reconnect = true;
         this.connectionUrl = connectionUrl;
         this.protocol = "ws://";
         if (location.protocol == "https:") {
@@ -1653,15 +1667,24 @@ class WSHandler {
         if (this.conn && this.conn.readyState == window.WebSocket.OPEN) {
             return;
         }
+        if (this.connecting || this.connected) {
+            return;
+        }
         this._connect();
     }
     _connect() {
+        this.connecting = true;
+        this.connected = false;
         this.conn = new WebSocket(this.protocol + this.connectionUrl);
         this.conn.onopen = () => {
+            this.connecting = false;
+            this.connected = true;
             this.e.emit('websocket.connected');
         };
         this.conn.onclose = () => {
             this.e.emit('websocket.disconnected');
+            this.connected = false;
+            this.tryToReconnect();
         };
         this.conn.onmessage = (r) => {
             const msg = JSON.parse(r.data);
@@ -1669,13 +1692,32 @@ class WSHandler {
         };
         this.conn.onerror = () => {
             this.e.emit('websocket.error');
+            this.connected = false;
+            this.tryToReconnect();
         };
     }
     disconnect() {
+        this.connected = false;
         this.conn && this.conn.close();
     }
     send(msg) {
         this.conn.send(JSON.stringify(msg));
+    }
+    tryToReconnect() {
+        if (!this.reconnect) {
+            return;
+        }
+        this.conn.onopen = function () { };
+        this.conn.onclose = function () { };
+        this.conn.onmessage = function () { };
+        this.conn.onerror = function () { };
+        window.setTimeout(() => {
+            this.connecting = false;
+            this.connect();
+        }, 200);
+    }
+    toggleReconnectMode(status) {
+        this.reconnect = status;
     }
 }
 /* harmony export (immutable) */ __webpack_exports__["a"] = WSHandler;
@@ -2115,9 +2157,14 @@ class SkydiveDefaultLayout {
         this.dataSources.sources.forEach((source) => {
             source.unsubscribe();
         });
+        this.removeLayout();
+    }
+    removeLayout() {
         this.active = false;
         this.uiBridge.remove();
         $(this.selector).empty();
+        this.dataManager.removeOldData();
+        this.e.emit('ui.update');
     }
     addDataSource(dataSource, defaultSource) {
         this.dataSources.addSource(dataSource, !!defaultSource);
@@ -2496,6 +2543,12 @@ class NodeUI {
             .append("g")
             .attr("class", this.nodeClass)
             .attr("id", function (d) { return "node-" + d.d3_id(); })
+            .attr('collapsed', function (d) {
+            if (d.isGroupOwner()) {
+                return d.group.collapsed;
+            }
+            return null;
+        })
             .on("click", this.onNodeClick.bind(this))
             .on("dblclick", this.collapseByNode.bind(this))
             .call(window.d3.drag()
@@ -3510,9 +3563,9 @@ class LayoutBridgeUI {
         if (!this.initialized) {
             return;
         }
-        this.nodeUI.update();
         this.edgeUI.update();
         this.groupUI.update();
+        this.nodeUI.update();
         this.layoutUI.restartsimulation();
     }
     nodeSelected(d) {
@@ -3959,9 +4012,14 @@ class SkydiveInfraLayout {
         this.dataSources.sources.forEach((source) => {
             source.unsubscribe();
         });
+        this.removeLayout();
+    }
+    removeLayout() {
         this.active = false;
         this.uiBridge.remove();
         $(this.selector).empty();
+        this.dataManager.removeOldData();
+        this.e.emit('ui.update');
     }
     addDataSource(dataSource, defaultSource) {
         this.dataSources.addSource(dataSource, !!defaultSource);

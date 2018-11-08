@@ -46,10 +46,16 @@ export default class SkydiveInfraLayout implements TopologyLayoutI {
         this.dataSources.sources.forEach((source: DataSourceI) => {
             source.unsubscribe();
         });
+        this.removeLayout();
+    }
+    removeLayout() {
         this.active = false;
         this.uiBridge.remove();
         $(this.selector).empty();
+        this.dataManager.removeOldData();
+        this.e.emit('ui.update');
     }
+
     addDataSource(dataSource: DataSourceI, defaultSource?: boolean) {
         this.dataSources.addSource(dataSource, !!defaultSource);
     }

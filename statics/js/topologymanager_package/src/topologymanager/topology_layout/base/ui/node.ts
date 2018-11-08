@@ -77,6 +77,12 @@ export class NodeUI implements NodeUII {
             .append("g")
             .attr("class", this.nodeClass)
             .attr("id", function(d: Node) { return "node-" + d.d3_id(); })
+            .attr('collapsed', function(d: Node) {
+                if (d.isGroupOwner()) {
+                    return d.group.collapsed;
+                }
+                return null;
+            })
             .on("click", this.onNodeClick.bind(this))
             .on("dblclick", this.collapseByNode.bind(this))
             .call(window.d3.drag()

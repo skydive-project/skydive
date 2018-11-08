@@ -90,27 +90,22 @@ func TestOverview(t *testing.T) {
 		return
 	}
 
-	if err = delaySec(5, sh.expand()); err != nil {
-		t.Error(err)
-		return
-	}
 	if err = delaySec(1, sh.zoomFit()); err != nil {
 		t.Error(err)
 		return
 	}
+
+	if err = delaySec(1, sh.expandHost(g.G.V().Has("Name", "agent-1", "Type", "host"))); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err = delaySec(1, sh.expand()); err != nil {
+		t.Error(err)
+		return
+	}
+
 	if err = delaySec(1, sh.expandGroup(g.G.V().Has("Name", "agent-1", "Type", "host").Out().Has("Name", "vm1", "Type", "netns"))); err != nil {
-		t.Error(err)
-		return
-	}
-	if err = delaySec(1, sh.zoomFit()); err != nil {
-		t.Error(err)
-		return
-	}
-	if err = delaySec(1, sh.expandGroup(g.G.V().Has("Name", "agent-3", "Type", "host").Out().Has("Name", "vm1", "Type", "netns"))); err != nil {
-		t.Error(err)
-		return
-	}
-	if err = delaySec(1, sh.zoomFit()); err != nil {
 		t.Error(err)
 		return
 	}
@@ -122,12 +117,56 @@ func TestOverview(t *testing.T) {
 		return
 	}
 
+	if err = delaySec(1, sh.backToInfrastructureTopology()); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err = delaySec(1, sh.expandHost(g.G.V().Has("Name", "agent-3", "Type", "host"))); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err = delaySec(1, sh.expand()); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err = delaySec(1, sh.expandGroup(g.G.V().Has("Name", "agent-3", "Type", "host").Out().Has("Name", "vm1", "Type", "netns"))); err != nil {
+		t.Error(err)
+		return
+	}
+
 	ng3_eth0 := g.G.V().Has("Name", "agent-3", "Type", "host").Out().Has("Name", "vm1", "Type", "netns").Out().Has("Name", "eth0")
 	ng3_bridge := g.G.V().Has("Name", "agent-3", "Type", "host").Out().Has("Type", "ovsbridge")
 	if err = sh.startShortestPathCapture(ng3_eth0, ng3_bridge, "icmp"); err != nil {
 		t.Error(err)
 		return
 	}
+
+	if err = delaySec(1, sh.switchToGremlinFilteredQueryTopology("G.V().Has('Host', Within('agent-1', 'agent-3')).SubGraph()")); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err = delaySec(1, sh.expand()); err != nil {
+		t.Error(err)
+		return
+	}
+
+	for i := 1; i <= 3; i++ {
+		if err = delaySec(1, sh.zoomOut()); err != nil {
+			t.Error(err)
+			return
+		}
+	}
+
+	// jsErrors, _ := sh.webdriver.Log("browser")
+	// var error string
+	// for _, jsError := range jsErrors {
+	// 	error += "\n" + jsError.Message
+	// }
+	// t.Error(error)
 
 	if err = delaySec(1, sh.injectPacket(ng1_eth0, ng3_eth0, 4)); err != nil {
 		t.Error(err)

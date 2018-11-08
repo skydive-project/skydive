@@ -182,7 +182,15 @@ var app = new Vue({
     globalEventHandler.onWebsocketEvent('websocket.connected', self.onConnected.bind(self));
     globalEventHandler.onWebsocketEvent('websocket.disconnected', self.onDisconnected.bind(self));
     globalEventHandler.onWebsocketEvent('websocket.error', self.onError.bind(self));
-
+    this.$store.subscribe(function(mutation) {
+      if (mutation.type === "login") {
+        globalEventHandler.websocket().toggleReconnectMode(true);
+	globalEventHandler.websocket().connect();
+      } else if (mutation.type === 'logout'){
+        globalEventHandler.websocket().toggleReconnectMode(false);
+	globalEventHandler.websocket().disconnect();
+      }
+    });
     this.checkAPI();
 
     this.interval = null;
@@ -259,15 +267,11 @@ var app = new Vue({
       this.$store.commit('disconnected');
       this.$error({message: 'Disconnected'});
 
-      if (this.$store.state.logged)
-        setTimeout(function(){ globalEventHandler.websocket().connect(); }, 1000);
     },
 
     onError: function() {
       if (this.$store.state.connected)
         this.$store.commit('disconnected');
-
-      setTimeout(function(){ globalEventHandler.websocket().connect(); }, 1000);
     },
 
     camelize: function(input) {
