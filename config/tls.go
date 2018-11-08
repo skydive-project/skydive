@@ -28,10 +28,10 @@ import (
 	"github.com/skydive-project/skydive/common"
 )
 
-// GetTLSClientConfig returns TLS config to be used by a server
+// GetTLSClientConfig returns TLS config to be used by client
 func GetTLSClientConfig(setupRootCA bool) (*tls.Config, error) {
-	certPEM := GetString("agent.X509_cert")
-	keyPEM := GetString("agent.X509_key")
+	certPEM := GetString("tls.client_cert")
+	keyPEM := GetString("tls.client_key")
 	var tlsConfig *tls.Config
 	if certPEM != "" && keyPEM != "" {
 		var err error
@@ -40,8 +40,8 @@ func GetTLSClientConfig(setupRootCA bool) (*tls.Config, error) {
 			return nil, err
 		}
 		if setupRootCA {
-			analyzerCertPEM := GetString("analyzer.X509_cert")
-			tlsConfig.RootCAs, err = common.SetupTLSLoadCertificate(analyzerCertPEM)
+			rootCaPEM := GetString("tls.ca_cert")
+			tlsConfig.RootCAs, err = common.SetupTLSLoadCA(rootCaPEM)
 			if err != nil {
 				return nil, err
 			}
@@ -50,18 +50,21 @@ func GetTLSClientConfig(setupRootCA bool) (*tls.Config, error) {
 	return tlsConfig, nil
 }
 
-// GetTLSServerConfig returns TLS config to be used by a server
+// GetTLSServerConfig returns TLS config to be used by server
 func GetTLSServerConfig(setupRootCA bool) (*tls.Config, error) {
-	certPEM := GetString("analyzer.X509_cert")
-	keyPEM := GetString("analyzer.X509_key")
-	agentCertPEM := GetString("agent.X509_cert")
+	certPEM := GetString("tls.server_cert")
+	keyPEM := GetString("tls.server_key")
+
 	tlsConfig, err := common.SetupTLSServerConfig(certPEM, keyPEM)
 	if err != nil {
 		return nil, err
 	}
-	tlsConfig.ClientCAs, err = common.SetupTLSLoadCertificate(agentCertPEM)
-	if err != nil {
-		return nil, err
+	if setupRootCA {
+		rootCaPEM := GetString("tls.ca_cert")
+		tlsConfig.ClientCAs, err = common.SetupTLSLoadCA(rootCaPEM)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return tlsConfig, nil
 }

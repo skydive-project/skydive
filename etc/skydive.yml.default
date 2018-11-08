@@ -3,6 +3,17 @@
 # host_id is used to reference the agent, by default set to hostname
 # host_id:
 
+tls:
+  # File path to X509 Certificate and Private Key to enable TLS communication
+  # Unique certificate per agent is recommended
+  # client_cert: /etc/ssl/certs/agent.domain.com.crt
+  # client_key:  /etc/ssl/certs/agent.domain.com.key
+
+  # server_cert: /etc/ssl/certs/analyzer.domain.com.crt
+  # server_key:  /etc/ssl/certs/analyzer.domain.com.key
+
+  # ca_cert: /etc/ssl/certs/ca.domain.com.crt
+
 http:
   # define the Cookie HTTP Request Header
   cookie:
@@ -36,11 +47,6 @@ analyzer:
   # address and port for the analyzer API, Format: addr:port.
   # Default addr is 127.0.0.1
   # listen: :8082
-
-  # File path to X509 Certificate and Private Key to enable TLS communication
-  # Must be different than the agent
-  # X509_cert: /etc/ssl/certs/analyzer.domain.com.crt
-  # X509_key:  /etc/ssl/certs/analyzer.domain.com.key
 
   auth:
     # auth section for API request
@@ -161,17 +167,6 @@ agent:
   # Default addr is 127.0.0.1
   # listen: :8081
 
-  # File path to X509 Certificate and Private Key to enable TLS communication
-  # Must be different than the analyzer and unique per agent (recommended)
-  # X509_cert: /etc/ssl/certs/agent.domain.com.crt
-  # X509_key:  /etc/ssl/certs/agent.domain.com.key
-
-  # Allow to use auto-signed Certificate
-  # X509_insecure: false
-
-  # Server name field specified in TLS communications.
-  # Not required, but can be used to allow virtual hosting
-  # X509_servername: domain.com
 
   auth:
     # auth section for API request
