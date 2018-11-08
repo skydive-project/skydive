@@ -80,6 +80,7 @@ func init() {
 	cfg.SetDefault("agent.flow.pcapsocket.max_port", 8132)
 	cfg.SetDefault("agent.listen", "127.0.0.1:8081")
 	cfg.SetDefault("agent.topology.probes", []string{"ovsdb"})
+	cfg.SetDefault("agent.topology.libvirt.url", "qemu:///system")
 	cfg.SetDefault("agent.topology.netlink.metrics_update", 30)
 	cfg.SetDefault("agent.topology.neutron.domain_name", "Default")
 	cfg.SetDefault("agent.topology.neutron.endpoint_type", "public")

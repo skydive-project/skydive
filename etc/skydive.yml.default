@@ -216,6 +216,9 @@ agent:
       interfaces:
         # - eth0
 
+    libvirt:
+      # url: qemu:///system
+
   capture:
     # Period in second to get capture stats from the probe. Note this
     # stats_update: 1
