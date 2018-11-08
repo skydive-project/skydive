@@ -108,7 +108,8 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 	}
 
 	linkerHandlers := []linkHandler{
-		newContainerLinker,
+		newContainerDockerLinker,
+		newPodContainerLinker,
 		newHostNodeLinker,
 		newNodePodLinker,
 		newIngressServiceLinker,

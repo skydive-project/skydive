@@ -45,6 +45,7 @@ func (h *podHandler) Dump(obj interface{}) string {
 func (h *podHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	pod := obj.(*v1.Pod)
 
+	pod.Spec.Containers = nil
 	m := NewMetadata(Manager, "pod", pod, pod.Name, pod.Namespace)
 	m.SetField("Node", pod.Spec.NodeName)
 
