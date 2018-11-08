@@ -32,6 +32,9 @@ export class EdgeUI implements EdgeUII {
     bandwidthIntervalID: any;
     useLayoutContext(layoutContext: LayoutContext) {
         this.layoutContext = layoutContext
+        if (this.bandwidthIntervalID) {
+            window.clearInterval(this.bandwidthIntervalID);
+        }
         this.bandwidthIntervalID = window.setInterval(this.updateLinkLabelHandler.bind(this), this.layoutContext.config.getValue('bandwidth').updatePeriod);
     }
     createRoot(g: any) {
@@ -42,8 +45,10 @@ export class EdgeUI implements EdgeUII {
     }
     tick() {
         this.gLink.attr("d", function(d: Edge) { if (d.source.x && d.target.x) return 'M ' + d.source.x + " " + d.source.y + " L " + d.target.x + " " + d.target.y; });
+        const self = this;
         this.gLinkLabel.attr("transform", function(d: any) {
-            if (d.link.target.x < d.link.source.x) {
+            const link = self.layoutContext.dataManager.edgeManager.getEdgeById(d.linkID);
+            if (link.target.x < link.source.x) {
                 var bbox = this.getBBox();
                 var rx = bbox.x + bbox.width / 2;
                 var ry = bbox.y + bbox.height / 2;
@@ -228,7 +233,7 @@ export class EdgeUI implements EdgeUII {
         // update links which don't have traffic
         var exit = this.gLinkLabel.exit();
         exit.each((d: any) => {
-            this.gLink.select("#link-" + d.link.d3_id())
+            this.gLink.select("#link-" + d.linkID)
                 .classed("link-label-active", false)
                 .classed("link-label-warning", false)
                 .classed("link-label-alert", false)
@@ -241,11 +246,11 @@ export class EdgeUI implements EdgeUII {
 
         var enter = this.gLinkLabel.enter()
             .append('text')
-            .attr("id", function(d: any) { return "link-label-" + d.link.d3_id(); })
+            .attr("id", function(d: any) { return d.id; })
             .attr("class", "link-label");
         enter.append('textPath')
             .attr("startOffset", "50%")
-            .attr("xlink:href", function(d: any) { return "#link-" + d.link.d3_id(); });
+            .attr("xlink:href", function(d: any) { return "#link-" + d.linkID; });
         this.gLinkLabel = enter.merge(this.gLinkLabel);
 
         this.gLinkLabel.select('textPath')
@@ -255,7 +260,7 @@ export class EdgeUI implements EdgeUII {
             .text(function(d: any) { return d.text; });
 
         this.gLinkLabel.each((d: any) => {
-            this.gLink.select("#link-" + d.link.d3_id())
+            this.gLink.select("#link-" + d.linkID)
                 .classed("link-label-active", d.active)
                 .classed("link-label-warning", d.warning)
                 .classed("link-label-alert", d.alert)
@@ -286,6 +291,7 @@ export class EdgeUI implements EdgeUII {
                     active: driver.isActive(e),
                     warning: driver.isWarning(e),
                     alert: driver.isAlert(e),
+                    linkID: e.ID
                 };
             } else {
                 delete this.linkLabelData[e.ID];
