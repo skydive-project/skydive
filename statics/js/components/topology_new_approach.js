@@ -34,6 +34,8 @@ window.layoutConfig = new window.TopologyORegistry.config({
 const GlobalEventHandler = function() {
   this.e = new window.TopologyORegistry.eventEmitter();
   this.currentLayout = null;
+  this.ds = null;
+  this.eventNameToCallback = {};
 }
 
 GlobalEventHandler.prototype = {
@@ -45,6 +47,39 @@ GlobalEventHandler.prototype = {
   },
   on: function() {
     this.e.on.apply(this.e, arguments);
+  },
+  setCurrentDataSource: function(ds) {
+    var self = this;
+    this.ds = ds;
+    Object.keys(this.eventNameToCallback).forEach(function(eventName) {
+      self.eventNameToCallback[eventName].forEach(function(cb) {
+        self.ds.websocket.e.removeListener(eventName, cb);
+        self.ds.websocket.e.on(eventName, cb);
+      });
+    });
+  },
+  websocket: function() {
+    if (this.ds) {
+      return this.ds.websocket;
+    }
+    return {
+      connect: function() {},
+      disconnect: function() {}
+    }
+  },
+  removeWebsocketHandler: function(eventName, callback) {
+    if (this.ds) {
+      this.ds.websocket.e.removeListener(eventName, callback);
+    }
+  },
+  onWebsocketEvent: function(eventName, callback) {
+    if (!this.eventNameToCallback[eventName]) {
+      this.eventNameToCallback[eventName] = [];
+    }
+    this.eventNameToCallback[eventName].push(callback);
+    if (this.ds) {
+      this.ds.websocket.e.on(eventName, callback);
+    }
   }
 }
 
@@ -67,14 +102,12 @@ Vue.component('full-topology', {
     </div>\
   ',
   created: function() {
-    this.buildTopology = this.buildTopology.bind(this);
-    websocket.addOneTimeConnectHandler(this.buildTopology);
+    this.buildTopology();
   },
   beforeDestroy: function() {
     this.$parent.$parent.$store.commit('nodeUnselected');
     this.$parent.$parent.$store.commit('edgeUnselected');
     this.layout && this.layout.remove();
-    websocket.delConnectHandler(this.buildTopology);
   },
   methods: {
     buildTopology: function() {
@@ -87,9 +120,63 @@ Vue.component('full-topology', {
         layout.useLinkLabelStrategy(this.linkLabelType);
       }
       const dataSource = new window.TopologyORegistry.dataSources.hostTopology(this.hostName)
-      websocket.addOneTimeConnectHandler(() => {
-          dataSource.subscribe();
+      globalEventHandler.setCurrentDataSource(dataSource);
+      globalEventHandler.setCurrentLayout(layout);
+      dataSource.subscribe();
+      dataSource.e.on('broadcastMessage', (type, msg) => {
+        layout.reactToDataSourceEvent.call(layout, dataSource, type, msg);
+        this.$parent.$parent.applyToLayoutCurrentConfig(this.layout);
       });
+      layout.addDataSource(dataSource, true);
+      layout.setCollapseLevel(1);
+      layout.setMinimumCollapseLevel(1);
+      this.layout.e.on('node.select', this.$parent.$parent.onNodeSelected.bind(this));
+      this.layout.e.on('edge.select', this.$parent.$parent.onEdgeSelected.bind(this));
+      this.layout.e.on('host.collapse', this.$parent.$parent.collapseHost.bind(this));
+      this.layout.initializer();
+    }
+  }
+});
+
+Vue.component('gremlin-topology', {
+  props: {
+    topologyFilter: {
+      type: String,
+      required: true
+    },
+    linkLabelType: {
+      type: String,
+      required: true
+    }
+  },
+  template: '\
+    <div>\
+      <div class="topology-d3-gremlin"></div>\
+    </div>\
+  ',
+  created: function() {
+    this.buildTopology = this.buildTopology.bind(this);
+    this.buildTopology();
+  },
+  beforeDestroy: function() {
+    this.$parent.$parent.$store.commit('nodeUnselected');
+    this.$parent.$parent.$store.commit('edgeUnselected');
+    this.layout && this.layout.remove();
+  },
+  methods: {
+    buildTopology: function() {
+      console.log('use selector ' + '.topology-d3-gremlin' + ' for skydive default');
+
+      const layout = new window.TopologyORegistry.layouts.skydive_default('.topology-d3-gremlin')
+      this.layout = layout;
+      layout.useConfig(layoutConfig);
+      if (this.linkLabelType) {
+        layout.useLinkLabelStrategy(this.linkLabelType);
+      }
+      const dataSource = new window.TopologyORegistry.dataSources.filterTopologyByQuery(this.topologyFilter)
+      globalEventHandler.setCurrentDataSource(dataSource);
+      globalEventHandler.setCurrentLayout(layout);
+      dataSource.subscribe();
       dataSource.e.on('broadcastMessage', (type, msg) => {
         layout.reactToDataSourceEvent.call(layout, dataSource, type, msg);
         this.$parent.$parent.applyToLayoutCurrentConfig(this.layout);
@@ -97,9 +184,7 @@ Vue.component('full-topology', {
       layout.addDataSource(dataSource, true);
       this.layout.e.on('node.select', this.$parent.$parent.onNodeSelected.bind(this));
       this.layout.e.on('edge.select', this.$parent.$parent.onEdgeSelected.bind(this));
-      this.layout.e.on('host.collapse', this.$parent.$parent.collapseHost.bind(this));
       this.layout.initializer();
-      globalEventHandler.setCurrentLayout(layout);
     }
   }
 });
@@ -117,6 +202,10 @@ Vue.component('host-topology', {
     linkLabelType: {
       type: String,
       required: true
+    },
+    topologyFilter: {
+      type: String,
+      required: true
     }
   },
   template: '\
@@ -125,7 +214,8 @@ Vue.component('host-topology', {
         <span class="glyphicon glyphicon-backward back-to-infrastructure-topology" aria-hidden="true"></span>\
         <span>Back to hosts topology</span>\
       </div>\
-      <full-topology :linkLabelType="linkLabelType" :hostName="choosenHost" v-if="layout == \'full\'"></full-topology>\
+      <full-topology :linkLabelType="linkLabelType" :hostName="choosenHost" v-if="layout == \'full\' && !topologyFilter"></full-topology>\
+      <gremlin-topology :linkLabelType="linkLabelType" :topologyFilter="topologyFilter" v-if="topologyFilter"></full-topology>\
     </div>\
   ',
   mounted: function() {
@@ -181,7 +271,7 @@ var TopologyComponentNewApproach = {
       </div>\
       <div class="col-sm-7 fill content">\
         <div v-if="layoutType == \'infra\'" class="topology-d3-infra"></div>\
-        <host-topology :linkLabelType="linkLabelType" :choosenHost="choosenHostName" v-if="layoutType == \'host\'"></host-topology>\
+        <host-topology :topologyFilter="topologyFilter" :linkLabelType="linkLabelType" :choosenHost="choosenHostName" v-if="layoutType !== \'infra\'"></host-topology>\
         <div class="topology-legend">\
           <strong>Topology view</strong></br>\
           <p v-if="currTopologyFilter">{{currTopologyFilter}}</p>\
@@ -287,7 +377,7 @@ var TopologyComponentNewApproach = {
                   title="Zoom Fit" @click="zoomFit">\
             <span class="glyphicon glyphicon-fullscreen" aria-hidden="true"></span>\
           </button>\
-          <button v-if="layoutType === \'host\'" id="expand" type="button" class="btn btn-primary" \
+          <button v-if="layoutType !== \'infra\'" id="expand" type="button" class="btn btn-primary" \
                   title="Expand" @click="toggleCollapseByLevel(false)">\
             <span class="expand-icon-stack">\
               <i class="glyphicon glyphicon-resize-full icon-main"></i>\
@@ -296,7 +386,7 @@ var TopologyComponentNewApproach = {
               <i class="glyphicon glyphicon-plus-sign icon-sub"></i>\
             </span>\
           </button>\
-          <button v-if="layoutType === \'host\'" id="collapse" type="button" class="btn btn-primary" \
+          <button v-if="layoutType !== \'host\'" id="collapse" type="button" class="btn btn-primary" \
                   title="Collapse" @click="toggleCollapseByLevel(true)">\
             <span class="expand-icon-stack">\
               <i class="glyphicon glyphicon-resize-small icon-main"></i>\
@@ -305,7 +395,7 @@ var TopologyComponentNewApproach = {
               <i class="glyphicon glyphicon-minus-sign icon-sub"></i>\
             </span>\
           </button>\
-          <button v-if="layoutType === \'host\' && currentNode != null && currentNode.isGroupOwner()" id="expand-all" type="button" class="btn btn-primary" \
+          <button v-if="layoutType !== \'host\' && currentNode != null && currentNode.isGroupOwner()" id="expand-all" type="button" class="btn btn-primary" \
                   title="Expand/Collapse Current Node Tree" @click="toggleExpandAll(currentNode)">\
             <span class="expand-icon-stack">\
               <span v-if="currentNode.group != null" class="glyphicon icon-main" \
@@ -490,9 +580,7 @@ var TopologyComponentNewApproach = {
 
     this.autoExpand = typeof(this.$route.query.expand) !== "undefined";
 
-    websocket.addConnectHandler(function() {
-        self.applyToLayoutCurrentConfig();
-    });
+    globalEventHandler.onWebsocketEvent('websocket.connected', self.applyToLayoutCurrentConfig.bind(self));
 
     if (typeof(this.$route.query.link_label_type) !== "undefined") {
       this.linkLabelType = this.$route.query.link_label_type;
@@ -502,7 +590,7 @@ var TopologyComponentNewApproach = {
       $('.topology-legend').remove();
     }
 
-    websocket.addConnectHandler(function() {
+    globalEventHandler.onWebsocketEvent('websocket.connected', function() {
       if (self.topologyFilter !== '') {
         self.topologyFilterQuery();
       }
@@ -562,6 +650,7 @@ var TopologyComponentNewApproach = {
     timeType: function(val) {
       this.topologyTimeTravel();
     }
+
   },
 
   computed: {
@@ -691,22 +780,21 @@ var TopologyComponentNewApproach = {
         if (!this.infraLayout) {
             const infraTopologyDataSource = new window.TopologyORegistry.dataSources.infraTopology();
             skydiveInfraLayout.useConfig(layoutConfig);
-              websocket.addOneTimeConnectHandler(() => {
-                infraTopologyDataSource.subscribe();
-              });
+            globalEventHandler.setCurrentDataSource(infraTopologyDataSource);
+            infraTopologyDataSource.subscribe();
             infraTopologyDataSource.e.on('broadcastMessage', (type, msg) => {
-                if (type === 'SyncReply') {
-                  const hostSelectorData = [];
-                  msg.Obj.Nodes.forEach((node) => {
-                    if (node.Metadata.Type !== "host") {
-                      return;
-                    }
-                    hostSelectorData.push({name: node.Metadata.Name});
-                  });
-                  self.onUpdatedHosts(hostSelectorData);
-                }
-                self.infraLayout.reactToDataSourceEvent.call(self.infraLayout, infraTopologyDataSource, type, msg);
-                self.infraLayout.initializer();
+              if (type === 'SyncReply') {
+                const hostSelectorData = [];
+                msg.Obj.Nodes.forEach((node) => {
+                  if (node.Metadata.Type !== "host") {
+                    return;
+                  }
+                  hostSelectorData.push({name: node.Metadata.Name});
+                });
+                self.onUpdatedHosts(hostSelectorData);
+              }
+              self.infraLayout.reactToDataSourceEvent.call(self.infraLayout, infraTopologyDataSource, type, msg);
+              self.infraLayout.initializer();
             });
             skydiveInfraLayout.addDataSource(infraTopologyDataSource, true)
             this.infraLayout = skydiveInfraLayout;
@@ -814,6 +902,9 @@ var TopologyComponentNewApproach = {
 
     topologyFilterClear: function () {
       this.topologyFilter = '';
+      this.layoutType = 'infra';
+      this.infraLayout = null;
+      this.initInfraLayout();
       this.topologyFilterQuery();
      },
 
@@ -991,8 +1082,9 @@ var TopologyComponentNewApproach = {
         this.currTopologyFilter = filter;
 
         this.$store.commit('topologyFilter', this.topologyFilter);
-        // @todo migrate to new ui approach
-        // this.syncTopo(this.topologyTimeContext, this.topologyFilter);
+        if (this.topologyFilter) {
+          this.switchToGremlinFilterLayout(this.topologyFilter);
+        }
       }
     },
 
@@ -1126,7 +1218,11 @@ var TopologyComponentNewApproach = {
       return mdata;
     },
 
-  },
+    switchToGremlinFilterLayout: function(topologyFilterQuery) {
+      this.layoutType = 'gremlin';
+    }
+
+  }
 
 };
 

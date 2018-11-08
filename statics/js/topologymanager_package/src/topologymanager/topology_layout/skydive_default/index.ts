@@ -26,14 +26,20 @@ export default class SkydiveDefaultLayout implements TopologyLayoutI {
         this.uiBridge.useNodeUI(new NodeUI());
         this.uiBridge.useGroupUI(new GroupUI());
         this.uiBridge.useEdgeUI(new EdgeUI());
-        this.uiBridge.setCollapseLevel(1);
-        this.uiBridge.setMinimumCollapseLevel(1);
+        // this.uiBridge.setCollapseLevel(1);
+        // this.uiBridge.setMinimumCollapseLevel(1);
         this.dataManager.useLayoutContext(this.uiBridge.layoutContext);
     }
     initializer() {
         console.log("Try to initialize topology " + this.alias);
         $(this.selector).empty();
         this.active = true;
+    }
+    setCollapseLevel(collapseLevel: number) {
+        this.uiBridge.setCollapseLevel(collapseLevel);
+    }
+    setMinimumCollapseLevel(collapseLevel: number) {
+        this.uiBridge.setMinimumCollapseLevel(collapseLevel);
     }
     useLinkLabelStrategy(linkLabelType: string) {
         const strategy = LabelRetrieveInformationStrategy(linkLabelType);

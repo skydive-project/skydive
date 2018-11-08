@@ -60,7 +60,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 13);
+/******/ 	return __webpack_require__(__webpack_require__.s = 14);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -376,15 +376,15 @@ function isUndefined(arg) {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__node__ = __webpack_require__(31);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__node__ = __webpack_require__(34);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "e", function() { return __WEBPACK_IMPORTED_MODULE_0__node__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__layout__ = __webpack_require__(34);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__layout__ = __webpack_require__(37);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "d", function() { return __WEBPACK_IMPORTED_MODULE_1__layout__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__group__ = __webpack_require__(35);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__group__ = __webpack_require__(38);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_2__group__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__link__ = __webpack_require__(36);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__link__ = __webpack_require__(39);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_3__link__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__bridge__ = __webpack_require__(37);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__bridge__ = __webpack_require__(40);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_4__bridge__["a"]; });
 
 
@@ -398,12 +398,15 @@ function isUndefined(arg) {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__registry__ = __webpack_require__(16);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__registry__ = __webpack_require__(17);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__registry__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__infra_topology__ = __webpack_require__(17);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_1__infra_topology__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__host_topology__ = __webpack_require__(18);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_2__host_topology__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__infra_topology__ = __webpack_require__(18);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "d", function() { return __WEBPACK_IMPORTED_MODULE_1__infra_topology__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__host_topology__ = __webpack_require__(20);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_2__host_topology__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__gremlin_filtered_topology__ = __webpack_require__(21);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_3__gremlin_filtered_topology__["a"]; });
+
 
 
 
@@ -411,6 +414,57 @@ function isUndefined(arg) {
 
 /***/ }),
 /* 3 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_events__ = __webpack_require__(0);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_events___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_events__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__websocket__ = __webpack_require__(19);
+
+
+class BaseSkydiveDataSource {
+    constructor() {
+        this.sourceType = "skydive";
+        this.dataSourceName = "base_skydive_data_source";
+        this.e = new __WEBPACK_IMPORTED_MODULE_0_events__["EventEmitter"]();
+        this.subscribable = true;
+        this.filterQuery = "";
+        this.onConnected = this.onConnected.bind(this);
+        this.processMessage = this.processMessage.bind(this);
+        this.websocket = new __WEBPACK_IMPORTED_MODULE_1__websocket__["a" /* default */](window.location.host + "/ws/subscriber?x-client-type=webui");
+    }
+    subscribe() {
+        this.websocket.e.on('websocket.messageGraph', this.processMessage);
+        this.websocket.e.once('websocket.connected', this.onConnected);
+        this.websocket.connect();
+    }
+    unsubscribe() {
+        this.e.removeAllListeners();
+        this.websocket.e.removeAllListeners('websocket.messageGraph');
+        this.websocket.disconnect();
+    }
+    onConnected() {
+        console.log('Send sync request');
+        const obj = {};
+        if (this.time) {
+            obj.Time = this.time;
+        }
+        obj.GremlinFilter = this.filterQuery;
+        const msg = { "Namespace": "Graph", "Type": "SyncRequest", "Obj": obj };
+        console.log('send msg', msg);
+        this.websocket.send(msg);
+    }
+    processMessage(msg) {
+        console.log('Got message from websocket', msg);
+        this.e.emit('broadcastMessage', msg.Type, msg);
+    }
+}
+/* harmony export (immutable) */ __webpack_exports__["a"] = BaseSkydiveDataSource;
+
+
+
+/***/ }),
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -423,7 +477,7 @@ function isUndefined(arg) {
 
 
 
-var isArray = __webpack_require__(22);
+var isArray = __webpack_require__(25);
 
 module.exports = function isObject(val) {
   return val != null && typeof val === 'object' && isArray(val) === false;
@@ -431,25 +485,12 @@ module.exports = function isObject(val) {
 
 
 /***/ }),
-/* 4 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__data_manager__ = __webpack_require__(26);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__data_manager__["a"]; });
-
-
-
-/***/ }),
 /* 5 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__registry__ = __webpack_require__(27);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__registry__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__node__ = __webpack_require__(6);
-/* unused harmony reexport Node */
-
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__data_manager__ = __webpack_require__(29);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__data_manager__["a"]; });
 
 
 
@@ -458,7 +499,20 @@ module.exports = function isObject(val) {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__edge_index__ = __webpack_require__(7);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__registry__ = __webpack_require__(30);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__registry__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__node__ = __webpack_require__(7);
+/* unused harmony reexport Node */
+
+
+
+
+/***/ }),
+/* 7 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__edge_index__ = __webpack_require__(8);
 
 class Node {
     constructor() {
@@ -548,20 +602,20 @@ class Node {
 
 
 /***/ }),
-/* 7 */
+/* 8 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__registry__ = __webpack_require__(28);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__registry__ = __webpack_require__(31);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__registry__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__edge__ = __webpack_require__(8);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__edge__ = __webpack_require__(9);
 /* unused harmony reexport Edge */
 
 
 
 
 /***/ }),
-/* 8 */
+/* 9 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -614,11 +668,11 @@ class Edge {
 
 
 /***/ }),
-/* 9 */
+/* 10 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__group__ = __webpack_require__(10);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__group__ = __webpack_require__(11);
 
 function fixDepthAndLevelForGroup(g, level = 0) {
     const group = g;
@@ -725,12 +779,12 @@ class GroupRegistry {
 
 
 /***/ }),
-/* 10 */
+/* 11 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__node_index__ = __webpack_require__(5);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__registry__ = __webpack_require__(9);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__node_index__ = __webpack_require__(6);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__registry__ = __webpack_require__(10);
 
 
 class Group {
@@ -800,7 +854,7 @@ Group.currentGroupId = 1;
 
 
 /***/ }),
-/* 11 */
+/* 12 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -924,25 +978,25 @@ function parseNewSkydiveEdgeAndUpdateDataManager(dataManager, data) {
 
 
 /***/ }),
-/* 12 */
+/* 13 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__strategy__ = __webpack_require__(39);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__strategy__ = __webpack_require__(42);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__strategy__["a"]; });
 
 
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
-__webpack_require__(14);
-module.exports = __webpack_require__(15);
+__webpack_require__(15);
+module.exports = __webpack_require__(16);
 
 
 /***/ }),
-/* 14 */
+/* 15 */
 /***/ (function(module, exports) {
 
 (function (global) {
@@ -1505,13 +1559,13 @@ module.exports = __webpack_require__(15);
 })(typeof global === "undefined" ? self : global);
 
 /***/ }),
-/* 15 */
+/* 16 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__topologymanager_data_source_index__ = __webpack_require__(2);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__topologymanager_topology_layout_index__ = __webpack_require__(19);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__topologymanager_topology_layout_index__ = __webpack_require__(22);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_events__ = __webpack_require__(0);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_events___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_2_events__);
 
@@ -1519,8 +1573,9 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 
 window.TopologyORegistry = {
     dataSources: {
-        infraTopology: __WEBPACK_IMPORTED_MODULE_0__topologymanager_data_source_index__["c" /* InfraTopologyDataSource */],
-        hostTopology: __WEBPACK_IMPORTED_MODULE_0__topologymanager_data_source_index__["b" /* HostTopologyDataSource */]
+        infraTopology: __WEBPACK_IMPORTED_MODULE_0__topologymanager_data_source_index__["d" /* InfraTopologyDataSource */],
+        hostTopology: __WEBPACK_IMPORTED_MODULE_0__topologymanager_data_source_index__["c" /* HostTopologyDataSource */],
+        filterTopologyByQuery: __WEBPACK_IMPORTED_MODULE_0__topologymanager_data_source_index__["b" /* GremlinFilteredTopologyDataSource */]
     },
     layouts: {
         skydive_default: __WEBPACK_IMPORTED_MODULE_1__topologymanager_topology_layout_index__["b" /* SkydiveDefaultLayout */],
@@ -1532,7 +1587,7 @@ window.TopologyORegistry = {
 
 
 /***/ }),
-/* 16 */
+/* 17 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -1549,96 +1604,20 @@ class DataSourceRegistry {
 
 
 /***/ }),
-/* 17 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_events__ = __webpack_require__(0);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_events___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_events__);
-
-class InfraTopologyDataSource {
-    constructor() {
-        this.sourceType = "skydive";
-        this.dataSourceName = "infra_topology";
-        this.e = new __WEBPACK_IMPORTED_MODULE_0_events__["EventEmitter"]();
-        this.subscribable = true;
-        this.filterQuery = "G.V().Has('Type', 'host')";
-        this.onConnected = this.onConnected.bind(this);
-        this.processMessage = this.processMessage.bind(this);
-    }
-    subscribe() {
-        window.websocket.removeMsgHandlers('Graph');
-        window.websocket.addMsgHandler('Graph', this.processMessage);
-        window.websocket.addOneTimeConnectHandler(this.onConnected);
-    }
-    unsubscribe() {
-        this.e.removeAllListeners();
-        window.websocket.removeMsgHandlers('Graph');
-    }
-    onConnected() {
-        console.log('Send sync request');
-        const obj = {};
-        if (this.time) {
-            obj.Time = this.time;
-        }
-        obj.GremlinFilter = this.filterQuery + ".SubGraph()";
-        const msg = { "Namespace": "Graph", "Type": "SyncRequest", "Obj": obj };
-        window.websocket.send(msg);
-    }
-    processMessage(msg) {
-        console.log('Got message from websocket', msg);
-        this.e.emit('broadcastMessage', msg.Type, msg);
-    }
-}
-/* harmony export (immutable) */ __webpack_exports__["a"] = InfraTopologyDataSource;
-
-
-
-/***/ }),
 /* 18 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_events__ = __webpack_require__(0);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_events___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_events__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__base_skydive_data_source__ = __webpack_require__(3);
 
-class HostTopologyDataSource {
-    constructor(host) {
-        this.sourceType = "skydive";
+class InfraTopologyDataSource extends __WEBPACK_IMPORTED_MODULE_0__base_skydive_data_source__["a" /* default */] {
+    constructor() {
+        super(...arguments);
         this.dataSourceName = "infra_topology";
-        this.e = new __WEBPACK_IMPORTED_MODULE_0_events__["EventEmitter"]();
-        this.subscribable = true;
-        this.filterQuery = "";
-        this.filterQuery = "G.V().Has('Host', '" + host + "')";
-        this.onConnected = this.onConnected.bind(this);
-        this.processMessage = this.processMessage.bind(this);
-    }
-    subscribe() {
-        window.websocket.removeMsgHandlers('Graph');
-        window.websocket.addMsgHandler('Graph', this.processMessage);
-        window.websocket.addOneTimeConnectHandler(this.onConnected);
-    }
-    unsubscribe() {
-        this.e.removeAllListeners();
-        window.websocket.removeMsgHandlers('Graph');
-    }
-    onConnected() {
-        console.log('Send sync request');
-        const obj = {};
-        if (this.time) {
-            obj.Time = this.time;
-        }
-        obj.GremlinFilter = this.filterQuery + ".SubGraph()";
-        const msg = { "Namespace": "Graph", "Type": "SyncRequest", "Obj": obj };
-        console.log('send msg', msg);
-        window.websocket.send(msg);
-    }
-    processMessage(msg) {
-        console.log('Got message from websocket', msg);
-        this.e.emit('broadcastMessage', msg.Type, msg);
+        this.filterQuery = "G.V().Has('Type', 'host').SubGraph()";
     }
 }
-/* harmony export (immutable) */ __webpack_exports__["a"] = HostTopologyDataSource;
+/* harmony export (immutable) */ __webpack_exports__["a"] = InfraTopologyDataSource;
 
 
 
@@ -1647,14 +1626,48 @@ class HostTopologyDataSource {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__config__ = __webpack_require__(20);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__config__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__skydive_default_index__ = __webpack_require__(25);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_1__skydive_default_index__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__infra_index__ = __webpack_require__(40);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_2__infra_index__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_events__ = __webpack_require__(0);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_events___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_events__);
 
-
+class WSHandler {
+    constructor(connectionUrl) {
+        this.e = new __WEBPACK_IMPORTED_MODULE_0_events__["EventEmitter"]();
+        this.connectionUrl = connectionUrl;
+        this.protocol = "ws://";
+        if (location.protocol == "https:") {
+            this.protocol = "wss://";
+        }
+    }
+    connect() {
+        if (this.conn && this.conn.readyState == window.WebSocket.OPEN) {
+            return;
+        }
+        this._connect();
+    }
+    _connect() {
+        this.conn = new WebSocket(this.protocol + this.connectionUrl);
+        this.conn.onopen = () => {
+            this.e.emit('websocket.connected');
+        };
+        this.conn.onclose = () => {
+            this.e.emit('websocket.disconnected');
+        };
+        this.conn.onmessage = (r) => {
+            const msg = JSON.parse(r.data);
+            this.e.emit('websocket.message' + msg.Namespace, msg);
+        };
+        this.conn.onerror = () => {
+            this.e.emit('websocket.error');
+        };
+    }
+    disconnect() {
+        this.conn && this.conn.close();
+    }
+    send(msg) {
+        this.conn.send(JSON.stringify(msg));
+    }
+}
+/* harmony export (immutable) */ __webpack_exports__["a"] = WSHandler;
 
 
 
@@ -1663,8 +1676,60 @@ class HostTopologyDataSource {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-const get = __webpack_require__(21);
-const set = __webpack_require__(23);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__base_skydive_data_source__ = __webpack_require__(3);
+
+class HostTopologyDataSource extends __WEBPACK_IMPORTED_MODULE_0__base_skydive_data_source__["a" /* default */] {
+    constructor(host) {
+        super();
+        this.dataSourceName = "host_topology";
+        this.filterQuery = "G.V().Has('Host', '" + host + "').SubGraph()";
+    }
+}
+/* harmony export (immutable) */ __webpack_exports__["a"] = HostTopologyDataSource;
+
+
+
+/***/ }),
+/* 21 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__base_skydive_data_source__ = __webpack_require__(3);
+
+class GremlinFilteredTopologyDataSource extends __WEBPACK_IMPORTED_MODULE_0__base_skydive_data_source__["a" /* default */] {
+    constructor(topologyFilter) {
+        super();
+        this.dataSourceName = "gremlin_filtered__topology";
+        this.filterQuery = topologyFilter;
+    }
+}
+/* harmony export (immutable) */ __webpack_exports__["a"] = GremlinFilteredTopologyDataSource;
+
+
+
+/***/ }),
+/* 22 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__config__ = __webpack_require__(23);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__config__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__skydive_default_index__ = __webpack_require__(28);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return __WEBPACK_IMPORTED_MODULE_1__skydive_default_index__["a"]; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__infra_index__ = __webpack_require__(43);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_2__infra_index__["a"]; });
+
+
+
+
+
+/***/ }),
+/* 23 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+const get = __webpack_require__(24);
+const set = __webpack_require__(26);
 class LayoutConfig {
     constructor(configuration) {
         this.configuration = configuration;
@@ -1685,7 +1750,7 @@ class LayoutConfig {
 
 
 /***/ }),
-/* 21 */
+/* 24 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /*!
@@ -1695,7 +1760,7 @@ class LayoutConfig {
  * Released under the MIT License.
  */
 
-const isObject = __webpack_require__(3);
+const isObject = __webpack_require__(4);
 
 module.exports = function(target, path, options) {
   if (!isObject(options)) {
@@ -1801,7 +1866,7 @@ function isValidObject(val) {
 
 
 /***/ }),
-/* 22 */
+/* 25 */
 /***/ (function(module, exports) {
 
 var toString = {}.toString;
@@ -1812,7 +1877,7 @@ module.exports = Array.isArray || function (arr) {
 
 
 /***/ }),
-/* 23 */
+/* 26 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1825,7 +1890,7 @@ module.exports = Array.isArray || function (arr) {
 
 
 
-const isPlain = __webpack_require__(24);
+const isPlain = __webpack_require__(27);
 
 function set(target, path, value, options) {
   if (!isObject(target)) {
@@ -1935,7 +2000,7 @@ module.exports = set;
 
 
 /***/ }),
-/* 24 */
+/* 27 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1948,7 +2013,7 @@ module.exports = set;
 
 
 
-var isObject = __webpack_require__(3);
+var isObject = __webpack_require__(4);
 
 function isObjectObject(o) {
   return isObject(o) === true
@@ -1979,16 +2044,16 @@ module.exports = function isPlainObject(o) {
 
 
 /***/ }),
-/* 25 */
+/* 28 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__data_source_index__ = __webpack_require__(2);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_events__ = __webpack_require__(0);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_events___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_events__);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__base_index__ = __webpack_require__(4);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__base_index__ = __webpack_require__(5);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__base_ui_index__ = __webpack_require__(1);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__base_edge_label_index__ = __webpack_require__(12);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__base_edge_label_index__ = __webpack_require__(13);
 
 
 
@@ -2011,14 +2076,20 @@ class SkydiveDefaultLayout {
         this.uiBridge.useNodeUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["e" /* NodeUI */]());
         this.uiBridge.useGroupUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["b" /* GroupUI */]());
         this.uiBridge.useEdgeUI(new __WEBPACK_IMPORTED_MODULE_3__base_ui_index__["a" /* EdgeUI */]());
-        this.uiBridge.setCollapseLevel(1);
-        this.uiBridge.setMinimumCollapseLevel(1);
+        // this.uiBridge.setCollapseLevel(1);
+        // this.uiBridge.setMinimumCollapseLevel(1);
         this.dataManager.useLayoutContext(this.uiBridge.layoutContext);
     }
     initializer() {
         console.log("Try to initialize topology " + this.alias);
         $(this.selector).empty();
         this.active = true;
+    }
+    setCollapseLevel(collapseLevel) {
+        this.uiBridge.setCollapseLevel(collapseLevel);
+    }
+    setMinimumCollapseLevel(collapseLevel) {
+        this.uiBridge.setMinimumCollapseLevel(collapseLevel);
     }
     useLinkLabelStrategy(linkLabelType) {
         const strategy = Object(__WEBPACK_IMPORTED_MODULE_4__base_edge_label_index__["a" /* LabelRetrieveInformationStrategy */])(linkLabelType);
@@ -2104,14 +2175,14 @@ class SkydiveDefaultLayout {
 
 
 /***/ }),
-/* 26 */
+/* 29 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__node_index__ = __webpack_require__(5);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__edge_index__ = __webpack_require__(7);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__group_index__ = __webpack_require__(29);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__parsers_index__ = __webpack_require__(30);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__node_index__ = __webpack_require__(6);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__edge_index__ = __webpack_require__(8);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__group_index__ = __webpack_require__(32);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__parsers_index__ = __webpack_require__(33);
 
 
 
@@ -2178,11 +2249,11 @@ class DataManager {
 
 
 /***/ }),
-/* 27 */
+/* 30 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__node__ = __webpack_require__(6);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__node__ = __webpack_require__(7);
 
 class NodeRegistry {
     constructor() {
@@ -2273,11 +2344,11 @@ class NodeRegistry {
 
 
 /***/ }),
-/* 28 */
+/* 31 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__edge__ = __webpack_require__(8);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__edge__ = __webpack_require__(9);
 
 class EdgeRegistry {
     constructor() {
@@ -2332,25 +2403,25 @@ class EdgeRegistry {
 
 
 /***/ }),
-/* 29 */
+/* 32 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__registry__ = __webpack_require__(9);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__registry__ = __webpack_require__(10);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__registry__["a"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__group__ = __webpack_require__(10);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__group__ = __webpack_require__(11);
 /* unused harmony reexport Group */
 
 
 
 
 /***/ }),
-/* 30 */
+/* 33 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 /* harmony export (immutable) */ __webpack_exports__["a"] = parseData;
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__skydive__ = __webpack_require__(11);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__skydive__ = __webpack_require__(12);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "g", function() { return __WEBPACK_IMPORTED_MODULE_0__skydive__["g"]; });
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "d", function() { return __WEBPACK_IMPORTED_MODULE_0__skydive__["d"]; });
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "h", function() { return __WEBPACK_IMPORTED_MODULE_0__skydive__["h"]; });
@@ -2372,11 +2443,11 @@ function parseData(dataManager, dataType, data) {
 
 
 /***/ }),
-/* 31 */
+/* 34 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__helpers_index__ = __webpack_require__(32);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__helpers_index__ = __webpack_require__(35);
 
 class NodeUI {
     useLayoutContext(layoutContext) {
@@ -2724,11 +2795,11 @@ class NodeUI {
 
 
 /***/ }),
-/* 32 */
+/* 35 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__image__ = __webpack_require__(33);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__image__ = __webpack_require__(36);
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "e", function() { return __WEBPACK_IMPORTED_MODULE_0__image__["e"]; });
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return __WEBPACK_IMPORTED_MODULE_0__image__["a"]; });
 /* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return __WEBPACK_IMPORTED_MODULE_0__image__["c"]; });
@@ -2739,7 +2810,7 @@ class NodeUI {
 
 
 /***/ }),
-/* 33 */
+/* 36 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -2818,7 +2889,7 @@ const managerImgMap = setupFixedImages({
 
 
 /***/ }),
-/* 34 */
+/* 37 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -2943,7 +3014,7 @@ class LayoutUI {
 
 
 /***/ }),
-/* 35 */
+/* 38 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -3054,7 +3125,7 @@ class GroupUI {
 
 
 /***/ }),
-/* 36 */
+/* 39 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -3296,11 +3367,11 @@ class EdgeUI {
 
 
 /***/ }),
-/* 37 */
+/* 40 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__layout_context__ = __webpack_require__(38);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__layout_context__ = __webpack_require__(41);
 
 class LayoutBridgeUI {
     constructor(selector) {
@@ -3554,7 +3625,7 @@ class LayoutBridgeUI {
 
 
 /***/ }),
-/* 38 */
+/* 41 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -3588,7 +3659,7 @@ class LayoutContext {
 
 
 /***/ }),
-/* 39 */
+/* 42 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -3806,16 +3877,16 @@ class BandwidthStrategy {
 
 
 /***/ }),
-/* 40 */
+/* 43 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__data_source_index__ = __webpack_require__(2);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_events__ = __webpack_require__(0);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_events___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_events__);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__base_index__ = __webpack_require__(4);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__base_index__ = __webpack_require__(5);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__base_ui_index__ = __webpack_require__(1);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__base_edge_label_index__ = __webpack_require__(12);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__base_edge_label_index__ = __webpack_require__(13);
 
 
 

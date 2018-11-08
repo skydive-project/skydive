@@ -1,5 +1,4 @@
 window.testNewUI = window.location.href.indexOf('newui_approach=1') !== -1;
-var websocket = new WSHandler();
 
 var store = new Vuex.Store({
 
@@ -142,7 +141,7 @@ var routes = [
       created: function() {
         setCookie("authtok", "", -1);
         setCookie("permissions", "", -1);
-        websocket.disconnect();
+        globalEventHandler.websocket().disconnect();
         this.$store.commit('logout');
       }
     }
@@ -182,9 +181,9 @@ var app = new Vue({
 
     this.setThemeFromConfig();
 
-    websocket.addConnectHandler(self.onConnected.bind(self));
-    websocket.addDisconnectHandler(self.onDisconnected.bind(self));
-    websocket.addErrorHandler(self.onError.bind(self));
+    globalEventHandler.onWebsocketEvent('websocket.connected', self.onConnected.bind(self));
+    globalEventHandler.onWebsocketEvent('websocket.disconnected', self.onDisconnected.bind(self));
+    globalEventHandler.onWebsocketEvent('websocket.error', self.onError.bind(self));
 
     this.checkAPI();
 
@@ -212,7 +211,6 @@ var app = new Vue({
       if (newVal === true) {
         this.checkAPI();
         router.push('/topology');
-        websocket.connect();
 
         if (!this.interval)
           this.interval = setInterval(this.checkAPI, 5000);
@@ -264,14 +262,14 @@ var app = new Vue({
       this.$error({message: 'Disconnected'});
 
       if (this.$store.state.logged)
-        setTimeout(function(){websocket.connect();}, 1000);
+        setTimeout(function(){ globalEventHandler.websocket().connect(); }, 1000);
     },
 
     onError: function() {
       if (this.$store.state.connected)
         this.$store.commit('disconnected');
 
-      setTimeout(function(){websocket.connect();}, 1000);
+      setTimeout(function(){ globalEventHandler.websocket().connect(); }, 1000);
     },
 
     camelize: function(input) {

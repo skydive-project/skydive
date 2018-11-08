@@ -178,12 +178,12 @@ Vue.component('capture-list', {
   },
 
   created: function() {
-    websocket.addMsgHandler('OnDemandNotification', this.onMsg.bind(this));
-    websocket.addConnectHandler(this.init.bind(this));
+    globalEventHandler.onWebsocketEvent('websocket.messageOnDemandNotification', this.onMsg.bind(this))
+    globalEventHandler.onWebsocketEvent('websocket.connected', this.init.bind(this))
   },
 
   beforeDestroy: function() {
-    websocket.delConnectHandler(this.init.bind(this));
+    globalEventHandler.removeWebsocketHandler('websocket.connected', this.init.bind(this))
   },
 
   computed: {

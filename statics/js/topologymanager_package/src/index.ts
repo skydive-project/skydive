@@ -1,4 +1,4 @@
-import { InfraTopologyDataSource, HostTopologyDataSource } from "./topologymanager/data_source/index";
+import { GremlinFilteredTopologyDataSource, InfraTopologyDataSource, HostTopologyDataSource } from "./topologymanager/data_source/index";
 import { SkydiveDefaultLayout, SkydiveInfraLayout, LayoutConfig } from "./topologymanager/topology_layout/index";
 import * as events from 'events';
 
@@ -8,16 +8,17 @@ declare global {
         d3: any;
         TopologyORegistry: any;
         detailedTopology: any;
-        websocket: any;
         apiMixin: any;
         $: any;
         globalEventHandler: any;
+        WebSocket: any;
     }
 }
 window.TopologyORegistry = {
     dataSources: {
         infraTopology: InfraTopologyDataSource,
-        hostTopology: HostTopologyDataSource
+        hostTopology: HostTopologyDataSource,
+        filterTopologyByQuery: GremlinFilteredTopologyDataSource
     },
     layouts: {
         skydive_default: SkydiveDefaultLayout,
