@@ -142,23 +142,10 @@ func (fb *Probe) getOrCreateFabricNodeFromDef(nodeDef string) (*graph.Node, erro
 
 // Start the probe
 func (fb *Probe) Start() {
-}
-
-// Stop the probe
-func (fb *Probe) Stop() {
-}
-
-// NewProbe creates a new probe to enhance the graph
-func NewProbe(g *graph.Graph) *Probe {
-	fb := &Probe{
-		Graph: g,
-		links: make(map[*graph.Node][]fabricLink),
-	}
-
-	g.AddEventListener(fb)
-
 	fb.Graph.Lock()
 	defer fb.Graph.Unlock()
+
+	fb.Graph.AddEventListener(fb)
 
 	list := config.GetStringSlice("analyzer.topology.fabric")
 	for _, link := range list {
@@ -241,6 +228,19 @@ func NewProbe(g *graph.Graph) *Probe {
 				topology.AddLayer2Link(fb.Graph, node1, node2, linkMetadata)
 			}
 		}
+	}
+}
+
+// Stop the probe
+func (fb *Probe) Stop() {
+	fb.Graph.RemoveEventListener(fb)
+}
+
+// NewProbe creates a new probe to enhance the graph
+func NewProbe(g *graph.Graph) *Probe {
+	fb := &Probe{
+		Graph: g,
+		links: make(map[*graph.Node][]fabricLink),
 	}
 
 	return fb

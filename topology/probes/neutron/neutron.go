@@ -402,6 +402,8 @@ func (mapper *Probe) OnNodeDeleted(n *graph.Node) {
 
 // Start the probe
 func (mapper *Probe) Start() {
+	mapper.graph.AddEventListener(mapper)
+
 	go func() {
 		for mapper.client == nil {
 			client, err := openstack.NewClient(mapper.opts.IdentityEndpoint)
@@ -484,8 +486,6 @@ func NewProbe(g *graph.Graph, authURL, username, password, tenantName, regionNam
 		nodeUpdaterChan: make(chan graph.Identifier, 500),
 		portMetadata:    make(map[graph.Identifier]portMetadata),
 	}
-
-	g.AddEventListener(mapper)
 
 	return mapper, nil
 }

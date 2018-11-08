@@ -96,11 +96,12 @@ type NetNsProbe struct {
 // Probe describes a list NetLink NameSpace probe to enhance the graph
 type Probe struct {
 	common.RWMutex
-	Graph   *graph.Graph
-	epollFd int
-	probes  map[int32]*NetNsProbe
-	state   int64
-	wg      sync.WaitGroup
+	Graph    *graph.Graph
+	hostNode *graph.Node
+	epollFd  int
+	probes   map[int32]*NetNsProbe
+	state    int64
+	wg       sync.WaitGroup
 }
 
 func (u *NetNsProbe) linkPendingChildren(intf *graph.Node, index int64) {
@@ -1098,6 +1099,8 @@ func (u *Probe) start() {
 
 // Start the probe
 func (u *Probe) Start() {
+	u.Register("", u.hostNode)
+
 	go u.start()
 }
 
@@ -1120,19 +1123,18 @@ func (u *Probe) Stop() {
 }
 
 // NewProbe creates a new netlink probe
-func NewProbe(g *graph.Graph, n *graph.Node) (*Probe, error) {
+func NewProbe(g *graph.Graph, hostNode *graph.Node) (*Probe, error) {
 	epfd, err := syscall.EpollCreate1(0)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create epoll: %s", err)
 	}
 
 	nlProbe := &Probe{
-		Graph:   g,
-		epollFd: epfd,
-		probes:  make(map[int32]*NetNsProbe),
+		Graph:    g,
+		hostNode: hostNode,
+		epollFd:  epfd,
+		probes:   make(map[int32]*NetNsProbe),
 	}
-
-	nlProbe.Register("", n)
 
 	return nlProbe, nil
 }
