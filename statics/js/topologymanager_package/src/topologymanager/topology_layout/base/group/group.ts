@@ -36,6 +36,10 @@ export default class Group {
         this.members.removeNodeByID(node.id);
     }
 
+    delMemberByID(nodeID: string) {
+        this.members.removeNodeByID(nodeID);
+    }
+
     isEqualTo(group: Group) {
         return this.ID === group.ID;
     }

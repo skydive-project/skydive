@@ -20,6 +20,8 @@ export default class DataManager {
     removeNodeFromData(dataType: string, data: any) {
         const nodeID = getNodeIDFromSkydiveMessageWithOneNode(data);
         this.nodeManager.removeNodeByID(nodeID);
+        this.groupManager.removeNodeByID(nodeID);
+        this.edgeManager.removeEdgeByNodeID(nodeID);
     }
     updateNodeFromData(dataType: string, data: any): any {
         const nodeID = getNodeIDFromSkydiveMessageWithOneNode(data);
@@ -62,6 +64,7 @@ export default class DataManager {
         const edgeID = getEdgeIDFromSkydiveMessageWithOneEdge(data);
         const e = this.edgeManager.getEdgeById(edgeID);
         this.edgeManager.removeEdgeByID(edgeID);
+        this.nodeManager.removeEdgeByID(edgeID);
         return e;
     }
 }

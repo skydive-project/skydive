@@ -115,4 +115,13 @@ export default class GroupRegistry {
         });
     }
 
+    removeNodeByID(nodeID: string) {
+        this.groups = this.groups.filter((g: Group) => {
+            return g.owner.ID !== nodeID;
+        });
+        this.groups.forEach((g: Group) => {
+            g.delMemberByID(nodeID);
+        });
+    }
+
 }

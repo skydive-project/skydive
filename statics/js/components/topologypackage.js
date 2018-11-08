@@ -773,6 +773,14 @@ class GroupRegistry {
             return g.owner.Host != host;
         });
     }
+    removeNodeByID(nodeID) {
+        this.groups = this.groups.filter((g) => {
+            return g.owner.ID !== nodeID;
+        });
+        this.groups.forEach((g) => {
+            g.delMemberByID(nodeID);
+        });
+    }
 }
 /* harmony export (immutable) */ __webpack_exports__["a"] = GroupRegistry;
 
@@ -812,6 +820,9 @@ class Group {
     }
     delMember(node) {
         this.members.removeNodeByID(node.id);
+    }
+    delMemberByID(nodeID) {
+        this.members.removeNodeByID(nodeID);
     }
     isEqualTo(group) {
         return this.ID === group.ID;
@@ -2202,6 +2213,8 @@ class DataManager {
     removeNodeFromData(dataType, data) {
         const nodeID = Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["d" /* getNodeIDFromSkydiveMessageWithOneNode */])(data);
         this.nodeManager.removeNodeByID(nodeID);
+        this.groupManager.removeNodeByID(nodeID);
+        this.edgeManager.removeEdgeByNodeID(nodeID);
     }
     updateNodeFromData(dataType, data) {
         const nodeID = Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["d" /* getNodeIDFromSkydiveMessageWithOneNode */])(data);
@@ -2241,6 +2254,7 @@ class DataManager {
         const edgeID = Object(__WEBPACK_IMPORTED_MODULE_3__parsers_index__["b" /* getEdgeIDFromSkydiveMessageWithOneEdge */])(data);
         const e = this.edgeManager.getEdgeById(edgeID);
         this.edgeManager.removeEdgeByID(edgeID);
+        this.nodeManager.removeEdgeByID(edgeID);
         return e;
     }
 }
@@ -2395,6 +2409,17 @@ class EdgeRegistry {
     removeByHost(host) {
         this.edges = this.edges.filter((e) => {
             return e.Host !== host;
+        });
+    }
+    removeEdgeByNodeID(nodeID) {
+        this.edges = this.edges.filter((e) => {
+            if (e.source.id == nodeID) {
+                return false;
+            }
+            if (e.target.id == nodeID) {
+                return false;
+            }
+            return true;
         });
     }
 }

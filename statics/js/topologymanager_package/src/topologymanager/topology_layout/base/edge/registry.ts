@@ -58,4 +58,16 @@ export default class EdgeRegistry {
         });
     }
 
+    removeEdgeByNodeID(nodeID: string) {
+        this.edges = this.edges.filter((e: Edge) => {
+            if (e.source.id == nodeID) {
+                return false;
+            }
+            if (e.target.id == nodeID) {
+                return false;
+            }
+            return true;
+        });
+    }
+
 }
