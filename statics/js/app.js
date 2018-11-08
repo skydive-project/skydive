@@ -1,5 +1,3 @@
-window.testNewUI = window.location.href.indexOf('newui_approach=1') !== -1;
-
 var store = new Vuex.Store({
 
   state: {
@@ -146,7 +144,7 @@ var routes = [
       }
     }
   },
-  { path: '/topology', component: window.testNewUI ? TopologyComponentNewApproach : TopologyComponentOldApproach, props: (route) => ({ query: route.query }) },
+  { path: '/topology', component: TopologyComponent, props: (route) => ({ query: route.query }) },
   { path: '/preference', component: PreferenceComponent },
   { path: '/status', component: StatusComponent },
   { path: '*', redirect: '/topology' }
