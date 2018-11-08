@@ -80,6 +80,12 @@ GlobalEventHandler.prototype = {
     if (this.ds) {
       this.ds.websocket.e.on(eventName, callback);
     }
+  },
+  reactToTheUiEvent: function() {
+    if (!this.currentLayout) {
+      return;
+    }
+    this.currentLayout.reactToTheUiEvent.apply(this.currentLayout, arguments);
   }
 }
 
@@ -548,20 +554,16 @@ var TopologyComponentNewApproach = {
         });
       }
     });
-    // @todo adapt to new ui approach
     // trigered when some component wants to highlight/emphasize some nodes
     this.$store.subscribe(function(mutation) {
-      if (self.layoutType !== 'infra') {
-          return;
-      }
       if (mutation.type === "highlight")
-        self.infraLayout.reactToTheUiEvent('node.highlight.byid', mutation.payload);
+        globalEventHandler.reactToTheUiEvent('node.highlight.byid', mutation.payload);
       else if (mutation.type === "unhighlight")
-        self.infraLayout.reactToTheUiEvent('node.unhighlight.byid', mutation.payload);
+        globalEventHandler.reactToTheUiEvent('node.unhighlight.byid', mutation.payload);
       else if (mutation.type === "emphasize")
-        self.infraLayout.reactToTheUiEvent('node.emphasize.byid', mutation.payload);
+        globalEventHandler.reactToTheUiEvent('node.emphasize.byid', mutation.payload);
       else if (mutation.type === "deemphasize")
-        self.infraLayout.reactToTheUiEvent('node.deemphasize.byid', mutation.payload);
+        globalEventHandler.reactToTheUiEvent('node.deemphasize.byid', mutation.payload);
     });
 
     this.emphasize = debounce(self.emphasizeGremlinExpr.bind(self), 300);
