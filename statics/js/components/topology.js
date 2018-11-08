@@ -392,7 +392,7 @@ var TopologyComponent = {
               <i class="glyphicon glyphicon-plus-sign icon-sub"></i>\
             </span>\
           </button>\
-          <button v-if="layoutType !== \'host\'" id="collapse" type="button" class="btn btn-primary" \
+          <button v-if="layoutType !== \'infra\'" id="collapse" type="button" class="btn btn-primary" \
                   title="Collapse" @click="toggleCollapseByLevel(true)">\
             <span class="expand-icon-stack">\
               <i class="glyphicon glyphicon-resize-small icon-main"></i>\
@@ -401,7 +401,7 @@ var TopologyComponent = {
               <i class="glyphicon glyphicon-minus-sign icon-sub"></i>\
             </span>\
           </button>\
-          <button v-if="layoutType !== \'host\' && currentNode != null && currentNode.isGroupOwner()" id="expand-all" type="button" class="btn btn-primary" \
+          <button v-if="layoutType !== \'infra\' && currentNode != null && currentNode.isGroupOwner()" id="expand-all" type="button" class="btn btn-primary" \
                   title="Expand/Collapse Current Node Tree" @click="toggleExpandAll(currentNode)">\
             <span class="expand-icon-stack">\
               <span v-if="currentNode.group != null" class="glyphicon icon-main" \

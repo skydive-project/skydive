@@ -3465,8 +3465,6 @@ class LayoutBridgeUI {
         this.layoutContext.subscribeToEvent('graph.zoomFit', this.layoutUI.zoomFit.bind(this));
         this.layoutContext.subscribeToEvent('graph.autoExpand', this.triggerAutoExpand.bind(this));
         this.layoutContext.subscribeToEvent('graph.toggleExpandNode', this.toggleExpandAll.bind(this));
-        // @todo to be removed when multiple initialization would be fixed
-        this.layoutContext.unsubscribeFromEvent('graph.collapseByLevel');
         this.layoutContext.subscribeToEvent('graph.collapseByLevel', this.collapseByLevel.bind(this));
         this.layoutUI.start();
         this.intervalId = window.setInterval(() => {
