@@ -21,7 +21,7 @@ dir="$(dirname "$0")"
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 
 echo "--- BINARIES ---"
-make static WITH_EBPF=true
+make static WITH_EBPF=true WITH_LIBVIRT=false
 git reset --hard
 git remote add binaries ${BINARIES_REPO}
 git fetch binaries

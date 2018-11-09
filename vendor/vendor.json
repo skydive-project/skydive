@@ -1595,6 +1595,12 @@
 			"revisionTime": "2017-10-06T17:48:01Z"
 		},
 		{
+			"checksumSHA1": "Yu3IvAsGn8hW418tnDYqUs6YC3o=",
+			"path": "github.com/libvirt/libvirt-go",
+			"revision": "9c5bdce3c18faad94cb383e7ec42f5122a8c7fa1",
+			"revisionTime": "2018-10-05T09:27:46Z"
+		},
+		{
 			"checksumSHA1": "E6lbuGqlBGB0dnklAzqfNZ8wd6s=",
 			"path": "github.com/lxc/lxd/client",
 			"revision": "9907f3a64b6b8ec9144e8be02d633b951439c0f6",

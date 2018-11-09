@@ -31,6 +31,7 @@ import (
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/probes/docker"
+	"github.com/skydive-project/skydive/topology/probes/libvirt"
 	"github.com/skydive-project/skydive/topology/probes/lldp"
 	"github.com/skydive-project/skydive/topology/probes/lxd"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
@@ -107,6 +108,12 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 			probes[t] = opencontrail
 		case "socketinfo":
 			probes[t] = socketinfo.NewSocketInfoProbe(g, hostNode)
+		case "libvirt":
+			libvirt, err := libvirt.NewProbeFromConfig(g, hostNode)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to initialize Libvirt probe: %s", err)
+			}
+			probes[t] = libvirt
 		default:
 			logging.GetLogger().Errorf("unknown probe type %s", t)
 		}

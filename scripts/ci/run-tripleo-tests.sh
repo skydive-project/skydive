@@ -5,7 +5,7 @@ set -e
 SKYDIVE_PATH=$PWD
 
 pushd ${GOPATH}/src/github.com/skydive-project/skydive
-make static
+make static WITH_LIBVIRT=false
 popd
 
 QUICKSTART=${QUICKSTART:-/tmp/tripleo-quickstart}

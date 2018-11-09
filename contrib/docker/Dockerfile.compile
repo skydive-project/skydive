@@ -12,7 +12,7 @@ RUN apt-get -y update \
     && add-apt-repository -y ppa:ubuntu-toolchain-r/ppa \
     && apt-get -y update \
     && apt-get -y install git make flex bison wget unzip golang libpcap0.8-dev npm \
-         clang llvm zlib1g-dev liblzma-dev libc++-dev libc-dev linux-libc-dev libxml2-dev \
+         clang llvm zlib1g-dev liblzma-dev libc++-dev libc-dev linux-libc-dev libxml2-dev libvirt-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # EBPF requires llvm-6.0 clang-6.0 however the cross compulation docker image can't install them

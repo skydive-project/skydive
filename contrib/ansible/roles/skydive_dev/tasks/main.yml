@@ -27,6 +27,7 @@
      - rpm-build
      - rpmlint
      - libvirt
+     - libvirt-devel
      - libvirt-client
      - vagrant-libvirt
      - ansible
