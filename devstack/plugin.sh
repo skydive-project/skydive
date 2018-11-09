@@ -127,9 +127,9 @@ function pre_install_skydive {
 function install_skydive {
     if [ ! -f $GOPATH/bin/skydive ]; then
         if is_fedora ; then
-            install_package libpcap-devel npm
+            install_package libpcap-devel npm libvirt-devel
         else
-            install_package libpcap-dev npm
+            install_package libpcap-dev npm libvirt-dev
         fi
         SKYDIVE_SRC=$GOPATH/src/github.com/skydive-project
         mkdir -p $SKYDIVE_SRC
