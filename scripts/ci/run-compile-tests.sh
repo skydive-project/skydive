@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -v
+set -e
 
 dir="$(dirname "$0")"
 
@@ -23,4 +24,4 @@ make WITH_PROF=true VERBOSE=true
 make test.functionals.compile TAGS=${TAGS} WITH_NEUTRON=true WITH_SELENIUM=true WITH_CDD=true WITH_SCALE=true
 
 # Compile static
-make static
+make static WITH_LIBVIRT=false
