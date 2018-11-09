@@ -43,12 +43,13 @@ License:        ASL 2.0
 URL:            https://%{import_path}
 Source0:        https://%{import_path}/releases/download/v%{version}/skydive-%{fullver}.tar.gz
 BuildRequires:  systemd
-BuildRequires:  libpcap-devel libxml2-devel
+BuildRequires:  libpcap-devel libxml2-devel libvirt-devel
 %if 0%{?fedora} >= 27
 BuildRequires:  llvm clang kernel-headers
 %endif
 BuildRequires:  selinux-policy-devel, policycoreutils-devel
 Requires:       %{name}-selinux = %{version}-%{release}
+Requires:       libpcap libxml2 libvirt-libs
 
 # This is used by the specfile-update-bundles script to automatically
 # generate the list of the Go libraries bundled into the Skydive binaries
