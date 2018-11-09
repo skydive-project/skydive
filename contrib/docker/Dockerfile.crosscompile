@@ -55,4 +55,4 @@ CMD chown -R $UID /root/go/.cache/govendor \
     CC=${TARGET_ARCH}-linux-gnu-gcc \
     GOOS=linux \
     GOARCH=$TARGET_GOARCH \
-    make govendor compile.static WITH_OPENCONTRAIL=false WITH_EBPF=true
+    make govendor compile.static WITH_OPENCONTRAIL=false WITH_LIBVIRT=false WITH_EBPF=true
