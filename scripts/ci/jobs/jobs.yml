@@ -183,6 +183,14 @@
           description: Keep resources at the end of the test
 
 - parameter:
+    name: skydive-labels
+    parameters:
+      - label:
+          name: SLAVE_NAME
+          default: "{slave-name}"
+          description: "The node on which to run the job"
+
+- parameter:
     name: skydive-default-parameters
     parameters:
       - skydive-parameters:
@@ -195,10 +203,11 @@
 - defaults:
     name: skydive
     project-type: freestyle
-    node: slaves
     concurrent: true
     parameters:
       - skydive-default-parameters
+      - skydive-labels:
+          slave-name: "slaves"
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
@@ -260,13 +269,16 @@
 - job:
     name: skydive-k8s-tests
     defaults: skydive
-    node: baremetal
     triggers:
       - skydive-pull-request:
           name: k8s-tests
           trigger-prefix: "(all )?"
           only-trigger-phrase: true
           cancel-builds-on-update: true
+    parameters:
+      - skydive-default-parameters
+      - skydive-labels:
+          slave-name: baremetal
     builders:
       - skydive-test:
           test: BACKEND=memory scripts/ci/run-istio-tests.sh
@@ -278,7 +290,10 @@
 - job:
     name: skydive-helm-tests
     defaults: skydive
-    node: baremetal
+    parameters:
+      - skydive-default-parameters
+      - skydive-labels:
+          slave-name: baremetal
     concurrent: true
     triggers:
       - skydive-pull-request:
@@ -297,7 +312,10 @@
 - job:
     name: skydive-opencontrail-tests
     defaults: skydive
-    node: baremetal
+    parameters:
+      - skydive-default-parameters
+      - skydive-labels:
+          slave-name: baremetal
     triggers:
       - skydive-pull-request:
           name: opencontrail-tests
@@ -422,9 +440,10 @@
 - job:
     name: skydive-create-vagrant-boxes
     defaults: skydive
-    node: baremetal
     parameters:
       - skydive-default-parameters
+      - skydive-labels:
+          slave-name: baremetal
       - string:
           name: PROVIDERS
           default: ""
@@ -448,7 +467,6 @@
 - job:
     name: skydive-create-docker-image
     defaults: skydive
-    node: baremetal
     triggers:
       - skydive-pull-request:
           name: create-docker-image
@@ -481,7 +499,10 @@
 - job:
     name: skydive-devstack-tests
     defaults: skydive
-    node: baremetal
+    parameters:
+      - skydive-default-parameters
+      - skydive-labels:
+          slave-name: baremetal
     triggers:
       - skydive-pull-request:
           name: devstack-tests
@@ -499,7 +520,10 @@
 - job:
     name: skydive-kolla-tests
     defaults: skydive
-    node: baremetal
+    parameters:
+      - skydive-default-parameters
+      - skydive-labels:
+          slave-name: baremetal
     triggers:
       - skydive-pull-request:
           name: kolla-tests
@@ -516,9 +540,10 @@
 - job:
     name: skydive-vagrant-tests
     defaults: skydive
-    node: baremetal
     parameters:
       - skydive-default-parameters
+      - skydive-labels:
+          slave-name: baremetal
       - string:
           name: DEVMODE
           default: "true"
@@ -568,7 +593,10 @@
 - job:
     name: skydive-coverage
     defaults: skydive
-    node: baremetal
+    parameters:
+      - skydive-default-parameters
+      - skydive-labels:
+          slave-name: baremetal
     triggers:
       - skydive-pull-request:
           name: coverage
@@ -671,7 +699,10 @@
 - job:
     name: skydive-tripleo-tests
     defaults: skydive
-    node: tripleo
+    parameters:
+      - skydive-default-parameters
+      - skydive-labels:
+          slave-name: tripleo
     triggers:
       - skydive-pull-request:
           name: tripleo-tests
@@ -685,7 +716,10 @@
 - job:
     name: skydive-ppc64le-tests
     defaults: skydive
-    node: ppc64le
+    parameters:
+      - skydive-default-parameters
+      - skydive-labels:
+          slave-name: ppc64le
     triggers:
       - skydive-pull-request:
           name: ppc64le-tests
