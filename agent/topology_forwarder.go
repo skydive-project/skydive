@@ -52,7 +52,7 @@ func (t *TopologyForwarder) triggerResync() {
 }
 
 // OnNewMaster is called by the master election mechanism when a new master is elected. In
-// such case a "Re-sync" is triggerd in order to be in sync with the new master.
+// such case a "Re-sync" is triggered in order to be in sync with the new master.
 func (t *TopologyForwarder) OnNewMaster(c ws.Speaker) {
 	if c == nil {
 		logging.GetLogger().Warn("Lost connection to master")

@@ -50,9 +50,11 @@ EASYJSON_GITHUB:=github.com/mailru/easyjson/easyjson
 EASYJSON_FILES_ALL=flow/flow.pb.go
 EASYJSON_FILES_TAG=\
 	flow/storage/elasticsearch/elasticsearch.go \
+	flow/storage/orientdb/orientdb.go \
 	topology/graph/elasticsearch.go \
 	topology/metrics.go \
-	topology/probes/netlink/route.go
+	topology/probes/netlink/route.go \
+	topology/probes/netlink/neighbor.go
 EASYJSON_FILES_TAG_LINUX=\
 	topology/probes/netlink/netlink.go \
 	topology/probes/socketinfo/connection.go

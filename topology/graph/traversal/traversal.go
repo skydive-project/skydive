@@ -643,11 +643,7 @@ func (tv *GraphTraversalV) PropertyKeys(ctx StepContext, keys ...interface{}) *G
 
 	seen := make(map[string]bool)
 	for _, n := range tv.nodes {
-		fields, err := n.GetFields()
-		if err != nil {
-			return NewGraphTraversalValueFromError(err)
-		}
-		for _, k := range fields {
+		for _, k := range n.GetFieldKeys() {
 			if _, ok := seen[k]; !ok {
 				s = append(s, k)
 				seen[k] = true
@@ -1099,7 +1095,7 @@ nodeloop:
 	for _, n := range tv.nodes {
 		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n, nil) {
 			var nodes []*graph.Node
-			if e.GetChild() == n.ID {
+			if e.Child == n.ID {
 				nodes, _ = tv.GraphTraversal.Graph.GetEdgeNodes(e, metadata, nil)
 			} else {
 				_, nodes = tv.GraphTraversal.Graph.GetEdgeNodes(e, nil, metadata)
@@ -1211,7 +1207,7 @@ func (tv *GraphTraversalV) OutE(ctx StepContext, s ...interface{}) *GraphTravers
 nodeloop:
 	for _, n := range tv.nodes {
 		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n, metadata) {
-			if e.GetParent() == n.ID {
+			if e.Parent == n.ID {
 				if it.Done() {
 					break nodeloop
 				} else if it.Next() {
@@ -1306,7 +1302,7 @@ func (tv *GraphTraversalV) InE(ctx StepContext, s ...interface{}) *GraphTraversa
 nodeloop:
 	for _, n := range tv.nodes {
 		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n, metadata) {
-			if e.GetChild() == n.ID {
+			if e.Child == n.ID {
 				if it.Done() {
 					break nodeloop
 				} else if it.Next() {
@@ -1460,7 +1456,7 @@ func (te *GraphTraversalE) Dedup(ctx StepContext, keys ...interface{}) *GraphTra
 	for _, e := range te.edges {
 		kvisited = e.ID
 		if key != "" {
-			if v, ok := e.Metadata()[key]; ok {
+			if v, ok := e.Metadata[key]; ok {
 				kvisited = v
 			}
 		}

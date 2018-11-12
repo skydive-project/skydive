@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"reflect"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -39,6 +40,7 @@ import (
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/topology/probes/netlink"
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
@@ -463,7 +465,7 @@ func TestInterfaceMetrics(t *testing.T) {
 			gremlin := c.gremlin.Context(c.startTime, c.startTime.Unix()-c.setupTime.Unix()+5)
 			gremlin = gremlin.V().Has("Name", "im", "Type", "netns").Out().Has("Name", "lo").Metrics().Aggregates(10)
 
-			metrics, err := gh.GetMetrics(gremlin)
+			metrics, err := gh.GetInterfaceMetrics(gremlin)
 			if err != nil {
 				return err
 			}
@@ -476,7 +478,7 @@ func TestInterfaceMetrics(t *testing.T) {
 				return fmt.Errorf("Should have more metrics entry, got %+v", metrics["Aggregated"])
 			}
 
-			var start, tx int64
+			var start, totalTx int64
 			for _, m := range metrics["Aggregated"] {
 				if m.GetStart() < start {
 					j, _ := json.MarshalIndent(metrics, "", "\t")
@@ -484,26 +486,25 @@ func TestInterfaceMetrics(t *testing.T) {
 				}
 				start = m.GetStart()
 
-				im := m.(*topology.InterfaceMetric)
-				tx += im.TxPackets
+				tx, _ := m.GetFieldInt64("TxPackets")
+				totalTx += tx
 			}
 
 			// due to ratio applied during the aggregation we can't expect to get exactly
 			// the sum of the metrics.
-			if tx <= 25 {
-				return fmt.Errorf("Expected at least TxPackets, got %d", tx)
+			if totalTx <= 25 {
+				return fmt.Errorf("Expected at least TxPackets, got %d", totalTx)
 			}
 
 			gremlin += `.Sum()`
 
-			m, err := gh.GetMetric(gremlin)
+			m, err := gh.GetInterfaceMetric(gremlin)
 			if err != nil {
 				return fmt.Errorf("Could not find metrics with: %s", gremlin)
 			}
 
-			im := m.(*topology.InterfaceMetric)
-			if im.TxPackets != tx {
-				return fmt.Errorf("Sum error %d vs %d", im.TxPackets, tx)
+			if tx, _ := m.GetFieldInt64("TxPackets"); tx != totalTx {
+				return fmt.Errorf("Sum error %d vs %d", totalTx, tx)
 			}
 
 			return nil
@@ -608,33 +609,28 @@ func TestQueryMetadata(t *testing.T) {
 				return err
 			}
 
-			m := map[string]interface{}{
-				"ID":   "123",
-				"Host": "test",
-				"Metadata": map[string]interface{}{
-					"A": map[string]interface{}{
-						"B": map[string]interface{}{
-							"C": 123,
-							"D": []interface{}{1, 2, 3},
-							"E": []interface{}{"a", "b", "c"},
-						},
-						"F": map[string]interface{}{
-							"G": 123,
-							"H": []interface{}{true, true},
-						},
+			m := graph.Metadata{
+				"A": map[string]interface{}{
+					"B": map[string]interface{}{
+						"C": 123,
+						"D": []interface{}{1, 2, 3},
+						"E": []interface{}{"a", "b", "c"},
+					},
+					"F": map[string]interface{}{
+						"G": 123,
+						"H": []interface{}{true, true},
 					},
 				},
 			}
-			n := new(graph.Node)
-			n.Decode(m)
+			n := graph.CreateNode(graph.Identifier("123"), m, graph.TimeUTC(), "test", common.AgentService)
 
 			// The first message should be rejected as it has no 'Type' attribute
 			msg := ws.NewStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
 			masterElection.SendMessageToMaster(msg)
 
-			m["Metadata"].(map[string]interface{})["Type"] = "external"
-			m["Metadata"].(map[string]interface{})["Name"] = "testNode"
-			n.Decode(m)
+			m.SetField("Type", "external")
+			m.SetField("Name", "testNode")
+
 			msg = ws.NewStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
 			masterElection.SendMessageToMaster(msg)
 
@@ -885,8 +881,11 @@ func TestRouteTable(t *testing.T) {
 					return fmt.Errorf("Failed to find a node with IP 124.65.91.42/24")
 				}
 
-				routingTable := node.Metadata()["RoutingTable"].([]interface{})
-				noOfRoutingTable := len(routingTable)
+				routingTables, ok := node.Metadata["RoutingTables"].(*netlink.RoutingTables)
+				if !ok {
+					return fmt.Errorf("Wrong metadata type for RoutingTables: %+v", node.Metadata["RoutingTables"])
+				}
+				noOfRoutingTable := len(*routingTables)
 
 				execCmds(t,
 					Cmd{Cmd: "ip netns exec rt-vm1 ip route add 124.65.92.0/24 via 124.65.91.42 table 2", Check: true},
@@ -898,8 +897,11 @@ func TestRouteTable(t *testing.T) {
 					return fmt.Errorf("Failed to find a node with IP 124.65.91.42/24")
 				}
 
-				routingTable = node.Metadata()["RoutingTable"].([]interface{})
-				newNoOfRoutingTable := len(routingTable)
+				routingTables, ok = node.Metadata["RoutingTables"].(*netlink.RoutingTables)
+				if !ok {
+					return fmt.Errorf("Wrong metadata type for RoutingTables: %+v", node.Metadata["RoutingTables"])
+				}
+				newNoOfRoutingTable := len(*routingTables)
 
 				execCmds(t,
 					Cmd{Cmd: "ip netns exec rt-vm1 ip route del 124.65.92.0/24 via 124.65.91.42 table 2", Check: true},
@@ -953,11 +955,15 @@ func TestRouteTableHistory(t *testing.T) {
 				if err != nil {
 					return fmt.Errorf("Failed to find a node with IP 124.65.75.42/24")
 				}
-				routingTable := node.Metadata()["RoutingTable"].([]interface{})
+
+				routingTables, ok := node.Metadata["RoutingTables"].(*netlink.RoutingTables)
+				if !ok {
+					return fmt.Errorf("Wrong metadata type for RoutingTables: %+v", reflect.TypeOf(node.Metadata["RoutingTables"]))
+				}
+
 				foundNewTable := false
-				for _, obj := range routingTable {
-					rt := obj.(map[string]interface{})
-					if rt["Id"].(int64) == 2 {
+				for _, rt := range *routingTables {
+					if rt.ID == 2 {
 						foundNewTable = true
 						break
 					}

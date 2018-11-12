@@ -57,7 +57,7 @@ func (t *TopologyAgentEndpoint) OnDisconnected(c ws.Speaker) {
 func (t *TopologyAgentEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	msgType, obj, err := graph.UnmarshalMessage(msg)
 	if err != nil {
-		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
+		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg.JSONObj, err)
 		return
 	}
 

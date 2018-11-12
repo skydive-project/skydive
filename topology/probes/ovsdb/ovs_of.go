@@ -873,12 +873,12 @@ func (o *OvsOfProbe) OnOvsBridgeDel(uuid string) {
 	if bridgeNode != nil {
 		rules := g.LookupChildren(bridgeNode, graph.Metadata{"Type": "ofrule"}, nil)
 		for _, ruleNode := range rules {
-			logging.GetLogger().Infof("Rule %v deleted (Bridge deleted)", ruleNode.Metadata()["UUID"])
+			logging.GetLogger().Infof("Rule %v deleted (Bridge deleted)", ruleNode.Metadata["UUID"])
 			g.DelNode(ruleNode)
 		}
 		groups := g.LookupChildren(bridgeNode, graph.Metadata{"Type": "ofgroup"}, nil)
 		for _, groupNode := range groups {
-			logging.GetLogger().Infof("Group %v deleted (Bridge deleted)", groupNode.Metadata()["UUID"])
+			logging.GetLogger().Infof("Group %v deleted (Bridge deleted)", groupNode.Metadata["UUID"])
 			g.DelNode(groupNode)
 		}
 	}

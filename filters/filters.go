@@ -33,15 +33,8 @@ import (
 
 var regexpCache *cache.Cache
 
-// Getter describes filter getter fields
-type Getter interface {
-	GetField(field string) (interface{}, error)
-	GetFieldInt64(field string) (int64, error)
-	GetFieldString(field string) (string, error)
-}
-
 // Eval evaluates a filter
-func (f *Filter) Eval(g Getter) bool {
+func (f *Filter) Eval(g common.Getter) bool {
 	if f.BoolFilter != nil {
 		return f.BoolFilter.Eval(g)
 	}
@@ -80,7 +73,7 @@ func (f *Filter) Eval(g Getter) bool {
 }
 
 // Eval evaluates a boolean (not, and, or) filter
-func (b *BoolFilter) Eval(g Getter) bool {
+func (b *BoolFilter) Eval(g common.Getter) bool {
 	for _, filter := range b.Filters {
 		result := filter.Eval(g)
 		if b.Op == BoolFilterOp_NOT && !result {
@@ -96,7 +89,7 @@ func (b *BoolFilter) Eval(g Getter) bool {
 }
 
 // Eval evaluates an int64 > filter
-func (r *GtInt64Filter) Eval(g Getter) bool {
+func (r *GtInt64Filter) Eval(g common.Getter) bool {
 	field, err := g.GetFieldInt64(r.Key)
 	if err != nil {
 		return false
@@ -109,7 +102,7 @@ func (r *GtInt64Filter) Eval(g Getter) bool {
 }
 
 // Eval evaluates an int64 < filter
-func (r *LtInt64Filter) Eval(g Getter) bool {
+func (r *LtInt64Filter) Eval(g common.Getter) bool {
 	field, err := g.GetFieldInt64(r.Key)
 	if err != nil {
 		return false
@@ -122,7 +115,7 @@ func (r *LtInt64Filter) Eval(g Getter) bool {
 }
 
 // Eval evaluates an int64 >= filter
-func (r *GteInt64Filter) Eval(g Getter) bool {
+func (r *GteInt64Filter) Eval(g common.Getter) bool {
 	field, err := g.GetFieldInt64(r.Key)
 	if err != nil {
 		return false
@@ -135,7 +128,7 @@ func (r *GteInt64Filter) Eval(g Getter) bool {
 }
 
 // Eval evaluates an int64 <= filter
-func (r *LteInt64Filter) Eval(g Getter) bool {
+func (r *LteInt64Filter) Eval(g common.Getter) bool {
 	field, err := g.GetFieldInt64(r.Key)
 	if err != nil {
 		return false
@@ -148,7 +141,7 @@ func (r *LteInt64Filter) Eval(g Getter) bool {
 }
 
 // Eval evaluates an string type filter
-func (t *TermStringFilter) Eval(g Getter) bool {
+func (t *TermStringFilter) Eval(g common.Getter) bool {
 	field, err := g.GetField(t.Key)
 	if err != nil {
 		return false
@@ -175,7 +168,7 @@ func (t *TermStringFilter) Eval(g Getter) bool {
 }
 
 // Eval evaluates an int64 type filter
-func (t *TermInt64Filter) Eval(g Getter) bool {
+func (t *TermInt64Filter) Eval(g common.Getter) bool {
 	field, err := g.GetField(t.Key)
 	if err != nil {
 		return false
@@ -206,7 +199,7 @@ func (t *TermInt64Filter) Eval(g Getter) bool {
 }
 
 // Eval evaluates a bool type filter
-func (t *TermBoolFilter) Eval(g Getter) bool {
+func (t *TermBoolFilter) Eval(g common.Getter) bool {
 	field, err := g.GetField(t.Key)
 	if err != nil {
 		return false
@@ -233,7 +226,7 @@ func (t *TermBoolFilter) Eval(g Getter) bool {
 }
 
 // Eval evaluates an regex filter
-func (r *RegexFilter) Eval(g Getter) bool {
+func (r *RegexFilter) Eval(g common.Getter) bool {
 	field, err := g.GetField(r.Key)
 	if err != nil {
 		return false
@@ -277,7 +270,7 @@ func NewRegexFilter(key string, pattern string) (*RegexFilter, error) {
 }
 
 // Eval evaluates an null filter (not string and not int64 types)
-func (n *NullFilter) Eval(g Getter) bool {
+func (n *NullFilter) Eval(g common.Getter) bool {
 	if _, err := g.GetField(n.Key); err == nil {
 		return false
 	}
@@ -285,7 +278,7 @@ func (n *NullFilter) Eval(g Getter) bool {
 }
 
 // Eval evaluates an ipv4 range filter
-func (r *IPV4RangeFilter) Eval(g Getter) bool {
+func (r *IPV4RangeFilter) Eval(g common.Getter) bool {
 	field, err := g.GetField(r.Key)
 	if err != nil {
 		return false

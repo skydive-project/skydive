@@ -107,6 +107,17 @@ func (c *ConnectionInfo) GetField(field string) (interface{}, error) {
 	return c.GetFieldString(field)
 }
 
+// GetFieldKeys returns the list of valid field of a Flow
+func (c *ConnectionInfo) GetFieldKeys() []string {
+	return connInfoFieldKeys
+}
+
+var connInfoFieldKeys []string
+
+func init() {
+	connInfoFieldKeys = common.StructFieldKeys(ConnectionInfo{})
+}
+
 // Decode an JSON object to connection info
 func (c *ConnectionInfo) Decode(obj interface{}) error {
 	objMap, ok := obj.(map[string]interface{})

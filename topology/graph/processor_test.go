@@ -85,7 +85,7 @@ func TestProcessor(t *testing.T) {
 	nodes := g.GetNodes(Metadata{"Mark": true})
 	result := make([]int, len(nodes))
 	for i, node := range nodes {
-		result[i], _ = node.Metadata()["Num"].(int)
+		result[i], _ = node.Metadata["Num"].(int)
 	}
 	sort.Ints(result)
 	expected := []int{0, 6, 7, 8, 9}

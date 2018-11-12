@@ -25,6 +25,7 @@ package elasticsearch
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/google/gopacket/layers"
 	"github.com/olivere/elastic"
@@ -33,7 +34,7 @@ import (
 	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/logging"
+	fl "github.com/skydive-project/skydive/flow/layers"
 	es "github.com/skydive-project/skydive/storage/elasticsearch"
 )
 
@@ -138,12 +139,15 @@ type embeddedFlow struct {
 	Network      *flow.FlowLayer      `json:"Network,omitempty"`
 	Transport    *flow.TransportLayer `json:"Transport,omitempty"`
 	ICMP         *flow.ICMPLayer      `json:"ICMP,omitempty"`
+	DHCPv4       *fl.DHCPv4           `json:"DHCPv4,omitempty"`
+	DNS          *fl.DNS              `json:"DNS,omitempty"`
+	VRRPv2       *fl.VRRPv2           `json:"VRRPv2,omitempty"`
 	TrackingID   *string
 	L3TrackingID *string
 	ParentUUID   *string
 	NodeTID      *string
-	Start        *int64
-	Last         *int64
+	Start        int64
+	Last         int64
 }
 
 func flowToEmbbedFlow(f *flow.Flow) *embeddedFlow {
@@ -155,12 +159,15 @@ func flowToEmbbedFlow(f *flow.Flow) *embeddedFlow {
 		Network:      f.Network,
 		Transport:    f.Transport,
 		ICMP:         f.ICMP,
+		DHCPv4:       f.DHCPv4,
+		DNS:          f.DNS,
+		VRRPv2:       f.VRRPv2,
 		TrackingID:   &f.TrackingID,
 		L3TrackingID: &f.L3TrackingID,
 		ParentUUID:   &f.ParentUUID,
 		NodeTID:      &f.NodeTID,
-		Start:        &f.Start,
-		Last:         &f.Last,
+		Start:        f.Start,
+		Last:         f.Last,
 	}
 }
 
@@ -186,13 +193,11 @@ func (c *Storage) StoreFlows(flows []*flow.Flow) error {
 	for _, f := range flows {
 		data, err := json.Marshal(f)
 		if err != nil {
-			logging.GetLogger().Error(err)
-			continue
+			return err
 		}
 
 		if err := c.client.BulkIndex(flowIndex, f.UUID, json.RawMessage(data)); err != nil {
-			logging.GetLogger().Error(err)
-			continue
+			return err
 		}
 
 		eflow := flowToEmbbedFlow(f)
@@ -205,20 +210,17 @@ func (c *Storage) StoreFlows(flows []*flow.Flow) error {
 
 			data, err := json.Marshal(record)
 			if err != nil {
-				logging.GetLogger().Error(err)
-				continue
+				return err
 			}
 
 			if err := c.client.BulkIndex(metricIndex, "", json.RawMessage(data)); err != nil {
-				logging.GetLogger().Error(err)
-				continue
+				return err
 			}
 		}
 
 		linkType, err := f.LinkType()
 		if err != nil {
-			logging.GetLogger().Errorf("Error while indexing: %s", err)
-			continue
+			return fmt.Errorf("Error while indexing: %s", err)
 		}
 		for _, r := range f.LastRawPackets {
 			record := &rawpacketRecord{
@@ -229,13 +231,11 @@ func (c *Storage) StoreFlows(flows []*flow.Flow) error {
 
 			data, err := json.Marshal(record)
 			if err != nil {
-				logging.GetLogger().Error(err)
-				continue
+				return err
 			}
 
 			if c.client.BulkIndex(rawpacketIndex, "", json.RawMessage(data)) != nil {
-				logging.GetLogger().Error(err)
-				continue
+				return err
 			}
 		}
 	}

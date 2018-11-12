@@ -38,21 +38,18 @@ import (
 	"github.com/skydive-project/skydive/filters"
 )
 
-// Document describes an orientdb docmuent interface
-type Document map[string]interface{}
-
-// Result descibe an orientdb request result
+// Result describes an orientdb request result
 type Result struct {
-	Result interface{} `json:"result"`
+	Body []byte
 }
 
 // ClientInterface describes the mechanism API of OrientDB database client
 type ClientInterface interface {
 	Request(method string, url string, body io.Reader) (*http.Response, error)
 	DeleteDocument(id string) error
-	GetDocument(id string) (Document, error)
-	CreateDocument(doc Document) (Document, error)
-	Upsert(doc Document, key string) (Document, error)
+	GetDocument(id string) (*Result, error)
+	CreateDocument(doc interface{}) (*Result, error)
+	Upsert(class string, doc interface{}, idkey string, idval string) (*Result, error)
 	GetDocumentClass(name string) (*DocumentClass, error)
 	AlterProperty(className string, prop Property) error
 	CreateProperty(className string, prop Property) error
@@ -60,11 +57,11 @@ type ClientInterface interface {
 	CreateIndex(className string, index Index) error
 	CreateDocumentClass(class ClassDefinition) error
 	DeleteDocumentClass(name string) error
-	GetDatabase() (Document, error)
-	CreateDatabase() (Document, error)
-	SQL(query string, result interface{}) error
-	Search(query string) ([]Document, error)
-	Query(obj string, query *filters.SearchQuery, result interface{}) error
+	GetDatabase() (*Result, error)
+	CreateDatabase() (*Result, error)
+	SQL(query string) (*Result, error)
+	Search(query string) (*Result, error)
+	Query(obj string, query *filters.SearchQuery) (*Result, error)
 	Connect() error
 }
 
@@ -157,28 +154,28 @@ func getResponseBody(resp *http.Response) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
-func parseResponse(resp *http.Response, result interface{}) error {
+func parseResponse(resp *http.Response) (*Result, error) {
 	if resp.StatusCode < 400 && resp.ContentLength == 0 {
-		return nil
+		return nil, nil
 	}
 
 	body, err := getResponseBody(resp)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer body.Close()
 
 	if resp.StatusCode >= 400 {
-		return parseError(body)
+		return nil, parseError(body)
 	}
 
-	content, _ := ioutil.ReadAll(body)
-	if len(content) != 0 && result != nil {
-		if err := common.JSONDecode(bytes.NewBuffer(content), result); err != nil {
-			return fmt.Errorf("Error while parsing OrientDB response: %s (%s)", err, content)
-		}
+	var result Result
+	result.Body, err = ioutil.ReadAll(body)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+
+	return &result, nil
 }
 
 func compressBody(body io.Reader) io.Reader {
@@ -333,8 +330,8 @@ func (c *Client) DeleteDocument(id string) error {
 	return nil
 }
 
-// GetDocument reterive a specific OrientDB document
-func (c *Client) GetDocument(id string) (Document, error) {
+// GetDocument retrieve a specific OrientDB document
+func (c *Client) GetDocument(id string) (*Result, error) {
 	url := fmt.Sprintf("%s/document/%s/%s", c.url, c.database, id)
 	resp, err := c.Request("GET", url, nil)
 	if err != nil {
@@ -342,15 +339,11 @@ func (c *Client) GetDocument(id string) (Document, error) {
 	}
 	defer resp.Body.Close()
 
-	var result Document
-	if err := parseResponse(resp, &result); err != nil {
-		return nil, err
-	}
-	return result, nil
+	return parseResponse(resp)
 }
 
 // CreateDocument creates an OrientDB document
-func (c *Client) CreateDocument(doc Document) (Document, error) {
+func (c *Client) CreateDocument(doc interface{}) (*Result, error) {
 	url := fmt.Sprintf("%s/document/%s", c.url, c.database)
 	marshal, err := json.Marshal(doc)
 	if err != nil {
@@ -363,39 +356,18 @@ func (c *Client) CreateDocument(doc Document) (Document, error) {
 	}
 	defer resp.Body.Close()
 
-	var result Document
-	if err := parseResponse(resp, &result); err != nil {
-		return nil, err
-	}
-	return result, nil
+	return parseResponse(resp)
 }
 
-// Upsert udpate or insert a key in an OrientDB document
-func (c *Client) Upsert(doc Document, key string) (Document, error) {
-	class, ok := doc["@class"]
-	if !ok {
-		return nil, errors.New("A @class property is required for upsert")
-	}
-	delete(doc, "@class")
-
-	id, ok := doc[key]
-	if !ok {
-		return nil, fmt.Errorf("No property '%s' found in document", key)
-	}
-
+// Upsert updates or insert a key in an OrientDB document
+func (c *Client) Upsert(class string, doc interface{}, idkey string, idval string) (*Result, error) {
 	content, err := json.Marshal(doc)
 	if err != nil {
 		return nil, err
 	}
 
-	query := fmt.Sprintf("UPDATE %s CONTENT %s UPSERT RETURN AFTER @rid WHERE %s = '%s'", class, string(content), key, id)
-	docs, err := c.Search(query)
-
-	if len(docs) > 0 {
-		return docs[0], err
-	}
-
-	return nil, err
+	query := fmt.Sprintf("UPDATE %s CONTENT %s UPSERT RETURN AFTER @rid WHERE %s = '%s'", class, string(content), idkey, idval)
+	return c.SQL(query)
 }
 
 // GetDocumentClass returns an OrientDB document class
@@ -407,28 +379,34 @@ func (c *Client) GetDocumentClass(name string) (*DocumentClass, error) {
 	}
 	defer resp.Body.Close()
 
-	var result DocumentClass
-	if err := parseResponse(resp, &result); err != nil {
+	result, err := parseResponse(resp)
+	if err != nil {
 		return nil, err
 	}
-	return &result, nil
+
+	var dc DocumentClass
+	if err := json.Unmarshal(result.Body, &dc); err != nil {
+		return nil, err
+	}
+
+	return &dc, nil
 }
 
 // AlterProperty modify a property
 func (c *Client) AlterProperty(className string, prop Property) error {
 	alterQuery := fmt.Sprintf("ALTER PROPERTY %s.%s", className, prop.Name)
 	if prop.Mandatory {
-		if err := c.SQL(alterQuery+" MANDATORY true", nil); err != nil && err != io.EOF {
+		if _, err := c.SQL(alterQuery + " MANDATORY true"); err != nil && err != io.EOF {
 			return err
 		}
 	}
 	if prop.NotNull {
-		if err := c.SQL(alterQuery+" NOTNULL true", nil); err != nil && err != io.EOF {
+		if _, err := c.SQL(alterQuery + " NOTNULL true"); err != nil && err != io.EOF {
 			return err
 		}
 	}
 	if prop.ReadOnly {
-		if err := c.SQL(alterQuery+" READONLY true", nil); err != nil && err != io.EOF {
+		if _, err := c.SQL(alterQuery + " READONLY true"); err != nil && err != io.EOF {
 			return err
 		}
 	}
@@ -444,7 +422,7 @@ func (c *Client) CreateProperty(className string, prop Property) error {
 	if prop.LinkedType != "" {
 		query += " " + prop.LinkedType
 	}
-	if err := c.SQL(query, nil); err != nil {
+	if _, err := c.SQL(query); err != nil {
 		return err
 	}
 
@@ -458,13 +436,21 @@ func (c *Client) CreateClass(class ClassDefinition) error {
 		query += " EXTENDS " + class.SuperClass
 	}
 
-	return c.SQL(query, nil)
+	if _, err := c.SQL(query); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // CreateIndex creates a new Index
 func (c *Client) CreateIndex(className string, index Index) error {
 	query := fmt.Sprintf("CREATE INDEX %s ON %s (%s) %s", index.Name, className, strings.Join(index.Fields, ", "), index.Type)
-	return c.SQL(query, nil)
+	if _, err := c.SQL(query); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // CreateDocumentClass creates a new OrientDB document class
@@ -504,7 +490,7 @@ func (c *Client) DeleteDocumentClass(name string) error {
 }
 
 // GetDatabase returns the root OrientDB document
-func (c *Client) GetDatabase() (Document, error) {
+func (c *Client) GetDatabase() (*Result, error) {
 	url := fmt.Sprintf("%s/database/%s", c.url, c.database)
 	resp, err := c.Request("GET", url, nil)
 	if err != nil {
@@ -512,15 +498,11 @@ func (c *Client) GetDatabase() (Document, error) {
 	}
 	defer resp.Body.Close()
 
-	var result Document
-	if err := parseResponse(resp, &result); err != nil {
-		return nil, err
-	}
-	return result, nil
+	return parseResponse(resp)
 }
 
 // CreateDatabase creates the root OrientDB Document
-func (c *Client) CreateDatabase() (Document, error) {
+func (c *Client) CreateDatabase() (*Result, error) {
 	url := fmt.Sprintf("%s/database/%s/plocal", c.url, c.database)
 	resp, err := c.Request("POST", url, nil)
 	if err != nil {
@@ -528,9 +510,11 @@ func (c *Client) CreateDatabase() (Document, error) {
 	}
 	defer resp.Body.Close()
 
-	var result Document
 	// OrientDB returns a 500 error but successfully creates the DB
-	parseResponse(resp, &result)
+	result, err := parseResponse(resp)
+	if err != nil {
+		return nil, err
+	}
 
 	if _, e := c.GetDatabase(); e != nil {
 		// Returns the original error
@@ -541,25 +525,24 @@ func (c *Client) CreateDatabase() (Document, error) {
 }
 
 // SQL Simple Query Language, send a query to the OrientDB server
-func (c *Client) SQL(query string, result interface{}) error {
+func (c *Client) SQL(query string) (*Result, error) {
 	url := fmt.Sprintf("%s/command/%s/sql", c.url, c.database)
 	resp, err := c.Request("POST", url, bytes.NewBufferString(query))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	return parseResponse(resp, &Result{Result: result})
+	return parseResponse(resp)
 }
 
 // Search send a search query to the OrientDB server
-func (c *Client) Search(query string) ([]Document, error) {
-	var docs []Document
-	return docs, c.SQL(query, &docs)
+func (c *Client) Search(query string) (*Result, error) {
+	return c.SQL(query)
 }
 
 // Query the OrientDB based on filters
-func (c *Client) Query(obj string, query *filters.SearchQuery, result interface{}) error {
+func (c *Client) Query(obj string, query *filters.SearchQuery) (*Result, error) {
 	interval := query.PaginationRange
 	filter := query.Filter
 
@@ -580,7 +563,7 @@ func (c *Client) Query(obj string, query *filters.SearchQuery, result interface{
 		}
 	}
 
-	return c.SQL(sql, result)
+	return c.SQL(sql)
 }
 
 // Connect to the OrientDB server

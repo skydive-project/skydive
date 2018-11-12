@@ -117,11 +117,11 @@ func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *types
 			return
 		}
 
-		if node.Host() == "" {
+		if node.Host == "" {
 			return
 		}
 
-		return node.ID, node.Host(), true
+		return node.ID, node.Host, true
 	}
 
 	nps := map[graph.Identifier]nodeProbe{}
@@ -182,8 +182,8 @@ func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node, capture *types.C
 		return false
 	}
 
-	if err := o.agentPool.SendMessageTo(msg, node.Host()); err != nil {
-		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", node.Host(), err)
+	if err := o.agentPool.SendMessageTo(msg, node.Host); err != nil {
+		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", node.Host, err)
 		return false
 	}
 

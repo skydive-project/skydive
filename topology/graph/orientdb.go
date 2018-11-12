@@ -26,9 +26,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
@@ -43,20 +41,20 @@ type OrientDBBackend struct {
 
 type eventTime struct {
 	name string
-	t    time.Time
+	t    Time
 }
 
 func graphElementToOrientDBSetString(e graphElement) (s string) {
 	properties := []string{
 		fmt.Sprintf("ID = \"%s\"", string(e.ID)),
-		fmt.Sprintf("Host = \"%s\"", e.host),
-		fmt.Sprintf("Origin = \"%s\"", e.origin),
-		fmt.Sprintf("CreatedAt = %d", common.UnixMillis(e.createdAt)),
-		fmt.Sprintf("UpdatedAt = %d", common.UnixMillis(e.updatedAt)),
-		fmt.Sprintf("Revision = %d", e.revision),
+		fmt.Sprintf("Host = \"%s\"", e.Host),
+		fmt.Sprintf("Origin = \"%s\"", e.Origin),
+		fmt.Sprintf("CreatedAt = %d", e.CreatedAt.Unix()),
+		fmt.Sprintf("UpdatedAt = %d", e.UpdatedAt.Unix()),
+		fmt.Sprintf("Revision = %d", e.Revision),
 	}
 	s = strings.Join(properties, ", ")
-	if m := metadataToOrientDBSetString(e.metadata); m != "" {
+	if m := metadataToOrientDBSetString(e.Metadata); m != "" {
 		s += ", " + m
 	}
 	return
@@ -91,119 +89,112 @@ func metadataToOrientDBSelectString(m ElementMatcher) string {
 	})
 }
 
-func graphElementToOrientDBDocument(e graphElement) (orientdb.Document, error) {
-	data, err := json.Marshal(e.metadata)
-	if err != nil {
-		return nil, fmt.Errorf("Error while adding graph element %s: %s", e.ID, err)
-	}
-
-	doc := make(orientdb.Document)
-	doc["@class"] = "Node"
-	doc["ID"] = e.ID
-	doc["Host"] = e.host
-	doc["Origin"] = e.origin
-	doc["Metadata"] = json.RawMessage(data)
-	doc["CreatedAt"] = common.UnixMillis(e.createdAt)
-	doc["UpdatedAt"] = common.UnixMillis(e.updatedAt)
-	if !e.deletedAt.IsZero() {
-		doc["DeletedAt"] = common.UnixMillis(e.deletedAt)
-	}
-	doc["Revision"] = e.revision
-	return doc, nil
-}
-
-func orientDBDocumentToNode(doc orientdb.Document) *Node {
-	n := new(Node)
-	n.Decode(map[string]interface{}(doc))
-	return n
-}
-
-func orientDBDocumentToEdge(doc orientdb.Document) *Edge {
-	e := new(Edge)
-	e.Decode(map[string]interface{}(doc))
-	return e
-}
-
 func (o *OrientDBBackend) updateTimes(e string, id string, events ...eventTime) bool {
 	attrs := []string{}
 	for _, event := range events {
-		attrs = append(attrs, fmt.Sprintf("%s = %d", event.name, common.UnixMillis(event.t)))
+		attrs = append(attrs, fmt.Sprintf("%s = %d", event.name, event.t.Unix()))
 	}
 	query := fmt.Sprintf("UPDATE %s SET %s WHERE DeletedAt IS NULL AND ArchivedAt IS NULL AND ID = '%s'", e, strings.Join(attrs, ", "), id)
-	docs, err := o.client.Search(query)
+	result, err := o.client.Search(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while deleting %s: %s", id, err)
 		return false
 	}
 
-	value, ok := docs[0]["value"]
+	values := struct {
+		Result []map[string]interface{}
+	}{}
+
+	if err := json.Unmarshal(result.Body, &values); err != nil {
+		logging.GetLogger().Errorf("Error while parsing nodes: %s, %s", err, string(result.Body))
+	}
+	if len(values.Result) == 0 {
+		return false
+	}
+
+	value, ok := values.Result[0]["value"]
 	if !ok {
 		return false
 	}
 
-	i, err := value.(json.Number).Int64()
-	return err == nil && i == 1
+	f, ok := value.(float64)
+	return ok && f == 1
 }
 
 func (o *OrientDBBackend) createNode(n *Node) bool {
-	doc, err := graphElementToOrientDBDocument(n.graphElement)
-	if err != nil {
-		logging.GetLogger().Errorf("Error while marshalling node %s: %s", n.ID, err)
+	on := struct {
+		*Node
+		Class string `json:"@class"`
+	}{
+		Node:  n,
+		Class: "Node",
 	}
-	doc["@class"] = "Node"
-	if _, err := o.client.CreateDocument(doc); err != nil {
+
+	data, err := json.Marshal(on)
+	if err != nil {
+		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err)
+		return false
+	}
+
+	if _, err := o.client.CreateDocument(json.RawMessage(data)); err != nil {
 		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err)
 		return false
 	}
 	return true
 }
 
-func (o *OrientDBBackend) searchNodes(t Context, where string) (nodes []*Node) {
+func (o *OrientDBBackend) searchNodes(t Context, where string) []*Node {
 	query := "SELECT FROM Node WHERE " + where
 	if !t.TimePoint {
 		query += " ORDER BY UpdatedAt"
 	}
 
-	docs, err := o.client.Search(query)
+	result, err := o.client.Search(query)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while retrieving nodes: %s (%+v)", err, docs)
-		return
+		logging.GetLogger().Errorf("Error while retrieving nodes: %s", err)
+		return nil
 	}
 
-	nodes = make([]*Node, len(docs))
-	for i, doc := range docs {
-		nodes[i] = orientDBDocumentToNode(doc)
+	nodes := struct {
+		Result []*Node
+	}{}
+
+	if err := json.Unmarshal(result.Body, &nodes); err != nil {
+		logging.GetLogger().Errorf("Error while parsing nodes: %s, %s", err, string(result.Body))
 	}
 
-	if len(nodes) > 1 && t.TimePoint {
-		nodes = dedupNodes(nodes)
+	if len(nodes.Result) > 1 && t.TimePoint {
+		nodes.Result = dedupNodes(nodes.Result)
 	}
 
-	return
+	return nodes.Result
 }
 
-func (o *OrientDBBackend) searchEdges(t Context, where string) (edges []*Edge) {
+func (o *OrientDBBackend) searchEdges(t Context, where string) []*Edge {
 	query := "SELECT FROM Link WHERE " + where
 	if !t.TimePoint {
 		query += " ORDER BY UpdatedAt"
 	}
 
-	docs, err := o.client.Search(query)
+	result, err := o.client.Search(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving edges: %s", err)
 		return nil
 	}
 
-	edges = make([]*Edge, len(docs))
-	for i, doc := range docs {
-		edges[i] = orientDBDocumentToEdge(doc)
+	edges := struct {
+		Result []*Edge
+	}{}
+
+	if err := json.Unmarshal(result.Body, &edges); err != nil {
+		logging.GetLogger().Errorf("Error while parsing edges: %s, %s", err, string(result.Body))
 	}
 
-	if len(edges) > 1 && t.TimePoint {
-		edges = dedupEdges(edges)
+	if len(edges.Result) > 1 && t.TimePoint {
+		edges.Result = dedupEdges(edges.Result)
 	}
 
-	return
+	return edges.Result
 }
 
 // NodeAdded add a node in the database
@@ -213,7 +204,7 @@ func (o *OrientDBBackend) NodeAdded(n *Node) bool {
 
 // NodeDeleted delete a node in the database
 func (o *OrientDBBackend) NodeDeleted(n *Node) bool {
-	return o.updateTimes("Node", string(n.ID), eventTime{"DeletedAt", n.deletedAt}, eventTime{"ArchivedAt", n.deletedAt})
+	return o.updateTimes("Node", string(n.ID), eventTime{"DeletedAt", n.DeletedAt}, eventTime{"ArchivedAt", n.DeletedAt})
 }
 
 // GetNode get a node within a time slice
@@ -237,16 +228,17 @@ func (o *OrientDBBackend) GetNodeEdges(n *Node, t Context, m ElementMatcher) (ed
 }
 
 func (o *OrientDBBackend) createEdge(e *Edge) bool {
-	fromQuery := fmt.Sprintf("SELECT FROM Node WHERE DeletedAt IS NULL AND ArchivedAt IS NULL AND ID = '%s'", e.parent)
-	toQuery := fmt.Sprintf("SELECT FROM Node WHERE DeletedAt IS NULL AND ArchivedAt IS NULL AND ID = '%s'", e.child)
-	setQuery := fmt.Sprintf("%s, Parent = '%s', Child = '%s'", graphElementToOrientDBSetString(e.graphElement), e.parent, e.child)
+	fromQuery := fmt.Sprintf("SELECT FROM Node WHERE DeletedAt IS NULL AND ArchivedAt IS NULL AND ID = '%s'", e.Parent)
+	toQuery := fmt.Sprintf("SELECT FROM Node WHERE DeletedAt IS NULL AND ArchivedAt IS NULL AND ID = '%s'", e.Child)
+	setQuery := fmt.Sprintf("%s, Parent = '%s', Child = '%s'", graphElementToOrientDBSetString(e.graphElement), e.Parent, e.Child)
 	query := fmt.Sprintf("CREATE EDGE Link FROM (%s) TO (%s) SET %s RETRY 100 WAIT 20", fromQuery, toQuery, setQuery)
-	docs, err := o.client.Search(query)
-	if err != nil {
+
+	if _, err := o.client.SQL(query); err != nil {
 		logging.GetLogger().Errorf("Error while adding edge %s: %s (sql: %s)", e.ID, err, query)
 		return false
 	}
-	return len(docs) == 1
+
+	return true
 }
 
 // EdgeAdded add a node in the database
@@ -256,7 +248,7 @@ func (o *OrientDBBackend) EdgeAdded(e *Edge) bool {
 
 // EdgeDeleted delete a node in the database
 func (o *OrientDBBackend) EdgeDeleted(e *Edge) bool {
-	return o.updateTimes("Link", string(e.ID), eventTime{"DeletedAt", e.deletedAt}, eventTime{"ArchivedAt", e.deletedAt})
+	return o.updateTimes("Link", string(e.ID), eventTime{"DeletedAt", e.DeletedAt}, eventTime{"ArchivedAt", e.DeletedAt})
 }
 
 // GetEdge get an edge within a time slice
@@ -272,10 +264,10 @@ func (o *OrientDBBackend) GetEdge(i Identifier, t Context) []*Edge {
 // GetEdgeNodes returns the parents and child nodes of an edge within time slice, matching metadata
 func (o *OrientDBBackend) GetEdgeNodes(e *Edge, t Context, parentMetadata, childMetadata ElementMatcher) (parents []*Node, children []*Node) {
 	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
-	query += fmt.Sprintf(" AND ID in [\"%s\", \"%s\"]", e.parent, e.child)
+	query += fmt.Sprintf(" AND ID in [\"%s\", \"%s\"]", e.Parent, e.Child)
 
 	for _, node := range o.searchNodes(t, query) {
-		if node.ID == e.parent && node.MatchMetadata(parentMetadata) {
+		if node.ID == e.Parent && node.MatchMetadata(parentMetadata) {
 			parents = append(parents, node)
 		} else if node.MatchMetadata(childMetadata) {
 			children = append(children, node)
@@ -291,13 +283,13 @@ func (o *OrientDBBackend) MetadataUpdated(i interface{}) bool {
 
 	switch i := i.(type) {
 	case *Node:
-		if !o.updateTimes("Node", string(i.ID), eventTime{"ArchivedAt", i.updatedAt}) {
+		if !o.updateTimes("Node", string(i.ID), eventTime{"ArchivedAt", i.UpdatedAt}) {
 			return false
 		}
 
 		success = o.createNode(i)
 	case *Edge:
-		if !o.updateTimes("Link", string(i.ID), eventTime{"ArchivedAt", i.updatedAt}) {
+		if !o.updateTimes("Link", string(i.ID), eventTime{"ArchivedAt", i.UpdatedAt}) {
 			return false
 		}
 

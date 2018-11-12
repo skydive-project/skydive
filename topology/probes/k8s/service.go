@@ -24,7 +24,6 @@ package k8s
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -97,7 +96,7 @@ func (spl *servicePodLinker) GetBALinks(podNode *graph.Node) (edges []*graph.Edg
 			continue
 		}
 		if srvNode := spl.graph.GetNode(graph.Identifier(srv.GetUID())); srvNode != nil {
-			edges = append(edges, spl.graph.CreateEdge("", srvNode, podNode, spl.newEdgeMetadata(), time.Now(), ""))
+			edges = append(edges, spl.graph.CreateEdge("", srvNode, podNode, spl.newEdgeMetadata(), graph.TimeUTC(), ""))
 		}
 	}
 	return

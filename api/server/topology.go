@@ -67,7 +67,7 @@ func (t *TopologyAPI) graphToDot(w http.ResponseWriter, g *graph.Graph) {
 		name, _ := n.GetFieldString("Name")
 		title := fmt.Sprintf("%s-%s", name, shortID(n.ID))
 		label := title
-		for k, v := range n.Metadata() {
+		for k, v := range n.Metadata {
 			switch k {
 			case "Type", "IfIndex", "State", "TID", "IPV4", "IPV6":
 				label += fmt.Sprintf("\\n%s = %v", k, v)
@@ -77,8 +77,8 @@ func (t *TopologyAPI) graphToDot(w http.ResponseWriter, g *graph.Graph) {
 	}
 
 	for _, e := range g.GetEdges(nil) {
-		parent := nodeMap[e.GetParent()]
-		child := nodeMap[e.GetChild()]
+		parent := nodeMap[e.Parent]
+		child := nodeMap[e.Child]
 		if parent == nil || child == nil {
 			continue
 		}

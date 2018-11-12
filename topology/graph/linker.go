@@ -24,9 +24,8 @@ package graph
 
 import (
 	"reflect"
-	"time"
 
-	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/common"
 )
 
 // Linker describes an object that returns incoming edges to a node
@@ -58,14 +57,14 @@ func (l *listener) nodeEvent(node *Node) {
 
 	for id, newLink := range newLinks {
 		for k, v := range l.metadata {
-			newLink.metadata[k] = v
+			newLink.Metadata[k] = v
 		}
 
 		if oldLink, found := existingLinks[id]; !found {
 			l.graph.AddEdge(newLink)
 		} else {
-			if !reflect.DeepEqual(newLink.metadata, oldLink.metadata) {
-				l.graph.SetMetadata(oldLink, newLink.metadata)
+			if !reflect.DeepEqual(newLink.Metadata, oldLink.Metadata) {
+				l.graph.SetMetadata(oldLink, newLink.Metadata)
 			}
 			delete(existingLinks, id)
 		}
@@ -170,7 +169,7 @@ func NewResourceLinker(g *Graph, glh1 ListenerHandler, glh2 ListenerHandler, lin
 }
 
 // getFieldsAsArray returns an array of corresponding values from a field list
-func getFieldsAsArray(obj filters.Getter, fields []string) ([]interface{}, error) {
+func getFieldsAsArray(obj common.Getter, fields []string) ([]interface{}, error) {
 	values := make([]interface{}, len(fields))
 	for i, index := range fields {
 		v, err := obj.GetField(index)
@@ -200,7 +199,7 @@ func (mil *MetadataIndexerLinker) genID(parent, child *Node) Identifier {
 }
 
 func (mil *MetadataIndexerLinker) createEdge(node1, node2 *Node) *Edge {
-	return mil.g.CreateEdge(mil.genID(node1, node2), node1, node2, mil.edgeMetadata, time.Now(), "")
+	return mil.g.CreateEdge(mil.genID(node1, node2), node1, node2, mil.edgeMetadata, TimeUTC(), "")
 }
 
 // GetABLinks returns all the outgoing links for a node

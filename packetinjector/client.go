@@ -228,7 +228,7 @@ func (pc *Client) requestToParams(pi *types.PacketInjection) (string, *PacketInj
 		return "", nil, fmt.Errorf("All the params were not set properly: %s", errs)
 	}
 
-	return srcNode.Host(), pip, nil
+	return srcNode.Host, pip, nil
 }
 
 func (pc *Client) expirePI(id string, expireTime time.Duration) {
@@ -287,7 +287,7 @@ func (pc *Client) onAPIWatcherEvent(action string, id string, resource types.Res
 		if srcNode == nil {
 			return
 		}
-		pc.StopInjection(srcNode.Host(), pi.UUID)
+		pc.StopInjection(srcNode.Host, pi.UUID)
 	}
 }
 

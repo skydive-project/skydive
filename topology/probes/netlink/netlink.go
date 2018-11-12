@@ -64,18 +64,6 @@ type pendingLink struct {
 	Metadata graph.Metadata
 }
 
-// Neighbor describes a member of the forwarding database
-// easyjson:json
-type Neighbor struct {
-	Flags   []string `json:"Flags,omitempty"`
-	MAC     string
-	IP      string   `json:"IP,omitempty"`
-	State   []string `json:"State,omitempty"`
-	Vlan    int64    `json:"Vlan,omitempty"`
-	VNI     int64    `json:"VNI,omitempty"`
-	IfIndex int64
-}
-
 // NetNsProbe describes a topology probe based on netlink in a network namespace
 type NetNsProbe struct {
 	common.RWMutex
@@ -312,11 +300,13 @@ func getFlagsString(flags []string, state int) (a []string) {
 	return
 }
 
-func (u *NetNsProbe) getNeighbors(index, family int) (neighbors []Neighbor) {
+func (u *NetNsProbe) getNeighbors(index, family int) *Neighbors {
+	var neighbors Neighbors
+
 	neighList, err := u.handle.NeighList(index, family)
 	if err == nil && len(neighList) > 0 {
 		for i, neigh := range neighList {
-			neighbors = append(neighbors, Neighbor{
+			neighbors = append(neighbors, &Neighbor{
 				Flags:   getFlagsString(neighFlags, neigh.Flags),
 				MAC:     neigh.HardwareAddr.String(),
 				State:   getFlagsString(neighStates, neigh.State),
@@ -329,7 +319,7 @@ func (u *NetNsProbe) getNeighbors(index, family int) (neighbors []Neighbor) {
 			}
 		}
 	}
-	return
+	return &neighbors
 }
 
 func newInterfaceMetricsFromNetlink(link netlink.Link) *topology.InterfaceMetric {
@@ -409,18 +399,18 @@ func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 		}
 	}
 
-	if neighbors := u.getNeighbors(attrs.Index, syscall.AF_BRIDGE); len(neighbors) > 0 {
+	if neighbors := u.getNeighbors(attrs.Index, syscall.AF_BRIDGE); len(*neighbors) > 0 {
 		metadata["FDB"] = neighbors
 	}
 
 	neighbors := u.getNeighbors(attrs.Index, syscall.AF_INET)
-	neighbors = append(neighbors, u.getNeighbors(attrs.Index, syscall.AF_INET6)...)
-	if len(neighbors) > 0 {
+	*neighbors = append(*neighbors, *u.getNeighbors(attrs.Index, syscall.AF_INET6)...)
+	if len(*neighbors) > 0 {
 		metadata["Neighbors"] = neighbors
 	}
 
-	if rt := u.getRoutingTable(link, syscall.RTA_UNSPEC); rt != nil {
-		metadata["RoutingTable"] = rt
+	if rts := u.getRoutingTables(link, syscall.RTA_UNSPEC); rts != nil {
+		metadata["RoutingTables"] = &rts
 	}
 
 	if metric := newInterfaceMetricsFromNetlink(link); metric != nil {
@@ -502,7 +492,7 @@ func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 	u.handleIntfIsVeth(intf, link)
 }
 
-func (u *NetNsProbe) getRoutingTable(link netlink.Link, table int) []RoutingTable {
+func (u *NetNsProbe) getRoutingTables(link netlink.Link, table int) *RoutingTables {
 	routeFilter := &netlink.Route{
 		LinkIndex: link.Attrs().Index,
 		Table:     table,
@@ -517,11 +507,11 @@ func (u *NetNsProbe) getRoutingTable(link netlink.Link, table int) []RoutingTabl
 		return nil
 	}
 
-	routingTableList := make(map[int]RoutingTable)
+	routingTableMap := make(map[int]*RoutingTable)
 	for _, r := range routeList {
-		routingTable, ok := routingTableList[r.Table]
+		routingTable, ok := routingTableMap[r.Table]
 		if !ok {
-			routingTable = RoutingTable{ID: int64(r.Table), Src: r.Src}
+			routingTable = &RoutingTable{ID: int64(r.Table), Src: r.Src}
 		}
 
 		protocol, prefix := int64(r.Protocol), ""
@@ -532,19 +522,19 @@ func (u *NetNsProbe) getRoutingTable(link netlink.Link, table int) []RoutingTabl
 		route := routingTable.GetOrCreateRoute(protocol, prefix)
 		if len(r.MultiPath) > 0 {
 			for _, nh := range r.MultiPath {
-				route.GetOrCreateNexthop(nh.Gw, int64(nh.LinkIndex), int64(r.Priority))
+				route.GetOrCreateNextHop(nh.Gw, int64(nh.LinkIndex), int64(r.Priority))
 			}
 		} else {
-			route.GetOrCreateNexthop(r.Gw, int64(r.LinkIndex), int64(r.Priority))
+			route.GetOrCreateNextHop(r.Gw, int64(r.LinkIndex), int64(r.Priority))
 		}
-		routingTableList[r.Table] = routingTable
+		routingTableMap[r.Table] = routingTable
 	}
 
-	var result []RoutingTable
-	for _, r := range routingTableList {
+	var result RoutingTables
+	for _, r := range routingTableMap {
 		result = append(result, r)
 	}
-	return result
+	return &result
 }
 
 func (u *NetNsProbe) onLinkAdded(link netlink.Link) {
@@ -607,7 +597,7 @@ func getFamilyKey(family int) string {
 	return ""
 }
 
-func (u *NetNsProbe) onRouteChanged(index int64, rt []RoutingTable) {
+func (u *NetNsProbe) onRoutingTablesChanged(index int64, rts *RoutingTables) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
@@ -616,11 +606,11 @@ func (u *NetNsProbe) onRouteChanged(index int64, rt []RoutingTable) {
 		logging.GetLogger().Errorf("No interface with index %d to add a new Route", index)
 		return
 	}
-	_, err := intf.GetField("RoutingTable")
-	if rt == nil && err == nil {
-		u.Graph.DelMetadata(intf, "RoutingTable")
-	} else if rt != nil {
-		u.Graph.AddMetadata(intf, "RoutingTable", rt)
+	_, err := intf.GetField("RoutingTables")
+	if rts == nil && err == nil {
+		u.Graph.DelMetadata(intf, "RoutingTables")
+	} else if rts != nil {
+		u.Graph.AddMetadata(intf, "RoutingTables", rts)
 	}
 }
 
@@ -702,7 +692,7 @@ func (u *NetNsProbe) initialize() {
 	}
 }
 
-func (u *NetNsProbe) getRoutingTables(m []byte) ([]RoutingTable, int, error) {
+func (u *NetNsProbe) parseRtMsg(m []byte) (*RoutingTables, int, error) {
 	msg := nl.DeserializeRtMsg(m)
 	attrs, err := nl.ParseRouteAttr(m[msg.Len():])
 	if err != nil {
@@ -723,7 +713,7 @@ func (u *NetNsProbe) getRoutingTables(m []byte) ([]RoutingTable, int, error) {
 		return nil, linkIndex, err
 	}
 
-	return u.getRoutingTable(link, syscall.RTA_UNSPEC), linkIndex, err
+	return u.getRoutingTables(link, syscall.RTA_UNSPEC), linkIndex, err
 }
 
 func parseAddr(m []byte) (addr netlink.Addr, family, index int, err error) {
@@ -941,12 +931,12 @@ func (u *NetNsProbe) onMessageAvailable() {
 			}
 			u.onAddressDeleted(addr, family, int64(ifindex))
 		case syscall.RTM_NEWROUTE, syscall.RTM_DELROUTE:
-			rt, index, err := u.getRoutingTables(msg.Data)
+			rts, index, err := u.parseRtMsg(msg.Data)
 			if err != nil {
 				logging.GetLogger().Warningf("Failed to get Routes: %s", err)
 				continue
 			}
-			u.onRouteChanged(int64(index), rt)
+			u.onRoutingTablesChanged(int64(index), rts)
 		}
 	}
 }

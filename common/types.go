@@ -66,6 +66,14 @@ const (
 	SortDescending SortOrder = "DESC"
 )
 
+// Getter describes filter getter fields
+type Getter interface {
+	GetField(field string) (interface{}, error)
+	GetFieldKeys() []string
+	GetFieldInt64(field string) (int64, error)
+	GetFieldString(field string) (string, error)
+}
+
 // ToInt64 Convert all number like type to int64
 func ToInt64(i interface{}) (int64, error) {
 	switch v := i.(type) {
@@ -308,7 +316,10 @@ func NewTimeSlice(s, l int64) *TimeSlice {
 
 // Metric defines a common metric interface
 type Metric interface {
+	// part of the Getter interface
 	GetFieldInt64(field string) (int64, error)
+	GetFieldKeys() []string
+
 	Add(m Metric) Metric
 	Sub(m Metric) Metric
 	Split(cut int64) (Metric, Metric)
@@ -317,7 +328,6 @@ type Metric interface {
 	GetLast() int64
 	SetLast(last int64)
 	IsZero() bool
-	GetFields() []string
 }
 
 // SetField set a value in a tree based on dot key ("a.b.c.d" = "ok")
@@ -340,7 +350,7 @@ func SetField(obj map[string]interface{}, k string, v interface{}) bool {
 	return true
 }
 
-// DelField detete a value in a tree based on dot key
+// DelField deletes a value in a tree based on dot key
 func DelField(obj map[string]interface{}, k string) bool {
 	components := strings.Split(k, ".")
 	o, ok := obj[components[0]]
@@ -378,28 +388,37 @@ func GetField(obj map[string]interface{}, k string) (interface{}, error) {
 			return i, nil
 		}
 
-		if list, ok := i.([]interface{}); ok {
+		subkey := strings.Join(components[n+1:], ".")
+
+		switch i.(type) {
+		case Getter:
+			return i.(Getter).GetField(subkey)
+		case []interface{}:
 			var results []interface{}
-			for _, v := range list {
+			for _, v := range i.([]interface{}) {
 				switch v := v.(type) {
+				case Getter:
+					if obj, err := v.(Getter).GetField(subkey); err == nil {
+						results = append(results, obj)
+					}
 				case map[string]interface{}:
-					if obj, err := GetField(v, strings.Join(components[n+1:], ".")); err == nil {
+					if obj, err := GetField(v, subkey); err == nil {
 						results = append(results, obj)
 					}
 				}
 			}
 			return results, nil
-		}
-
-		if obj, ok = i.(map[string]interface{}); !ok {
-			return nil, fmt.Errorf("%s is not a map, but a %+v", component, reflect.TypeOf(obj))
+		case map[string]interface{}:
+			obj = i.(map[string]interface{})
+		default:
+			return nil, fmt.Errorf("%s is not a supported type(%+v)", component, reflect.TypeOf(obj))
 		}
 	}
 
 	return obj, nil
 }
 
-func getFields(obj map[string]interface{}, path string) ([]string, error) {
+func getFieldKeys(obj map[string]interface{}, path string) []string {
 	var fields []string
 
 	if path != "" {
@@ -410,23 +429,23 @@ func getFields(obj map[string]interface{}, path string) ([]string, error) {
 		fields = append(fields, path+k)
 
 		switch v.(type) {
-		case map[string]interface{}:
-			subfields, err := getFields(v.(map[string]interface{}), path+k)
-			if err != nil {
-				return nil, err
+		case Getter:
+			keys := v.(Getter).GetFieldKeys()
+			for _, subkey := range keys {
+				fields = append(fields, k+"."+subkey)
 			}
+		case map[string]interface{}:
+			subfields := getFieldKeys(v.(map[string]interface{}), path+k)
 			fields = append(fields, subfields...)
-		case map[interface{}]interface{}:
-			return nil, errors.New("Not supporting map not using string as key")
 		}
 	}
 
-	return fields, nil
+	return fields
 }
 
-// GetFields returns all the keys using dot notation
-func GetFields(obj map[string]interface{}) ([]string, error) {
-	return getFields(obj, "")
+// GetFieldKeys returns all the keys using dot notation
+func GetFieldKeys(obj map[string]interface{}) []string {
+	return getFieldKeys(obj, "")
 }
 
 func splitToRanges(min, max int) []int {
@@ -589,7 +608,7 @@ func structFieldKeys(t reflect.Type, prefix string) []string {
 		vField := t.Field(i)
 		tField := vField.Type
 
-		// ignore XXX fields as there are considered as private
+		// ignore XXX fields as they are considered as private
 		if strings.HasPrefix(vField.Name, "XXX_") {
 			continue
 		}
@@ -600,9 +619,21 @@ func structFieldKeys(t reflect.Type, prefix string) []string {
 			tField = tField.Elem()
 		}
 
-		if tField.Kind() == reflect.Struct {
+		switch tField.Kind() {
+		case reflect.Struct:
 			fFields = append(fFields, structFieldKeys(tField, vName+".")...)
-		} else {
+		case reflect.Slice:
+			fFields = append(fFields, vName)
+
+			se := tField.Elem()
+			if se.Kind() == reflect.Ptr {
+				se = se.Elem()
+			}
+
+			if se.Kind() == reflect.Struct {
+				fFields = append(fFields, structFieldKeys(se, vName+".")...)
+			}
+		default:
 			fFields = append(fFields, vName)
 		}
 	}

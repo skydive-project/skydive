@@ -362,7 +362,7 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 		return "\n" + string(output)
 
 	default:
-		data, err := c.gh.QueryRaw(gremlin)
+		data, err := c.gh.Query(gremlin)
 		if err != nil {
 			t.Error(err)
 			return ""

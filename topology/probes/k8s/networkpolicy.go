@@ -25,7 +25,6 @@ package k8s
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
@@ -262,7 +261,7 @@ func (npl *networkPolicyLinker) createLinks(np *v1beta1.NetworkPolicy, npNode, f
 				fields = append(fields, k, v.(string))
 			}
 			id := graph.GenID(fields...)
-			edges = append(edges, npl.graph.CreateEdge(id, npNode, objNode, metadata, time.Now(), ""))
+			edges = append(edges, npl.graph.CreateEdge(id, npNode, objNode, metadata, graph.TimeUTC(), ""))
 		}
 	}
 	return

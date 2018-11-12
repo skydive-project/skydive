@@ -23,14 +23,11 @@
 package graph
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/olivere/elastic"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
@@ -139,7 +136,7 @@ type rawData struct {
 }
 
 func graphElementToRaw(typ string, e *graphElement) (*rawData, error) {
-	data, err := json.Marshal(e.metadata)
+	data, err := json.Marshal(e.Metadata)
 	if err != nil {
 		return nil, fmt.Errorf("Error while adding graph element %s: %s", e.ID, err)
 	}
@@ -147,16 +144,16 @@ func graphElementToRaw(typ string, e *graphElement) (*rawData, error) {
 	raw := &rawData{
 		Type:      typ,
 		ID:        string(e.ID),
-		Host:      e.host,
-		Origin:    e.origin,
-		CreatedAt: common.UnixMillis(e.createdAt),
-		UpdatedAt: common.UnixMillis(e.updatedAt),
+		Host:      e.Host,
+		Origin:    e.Origin,
+		CreatedAt: e.CreatedAt.Unix(),
+		UpdatedAt: e.UpdatedAt.Unix(),
 		Metadata:  json.RawMessage(data),
-		Revision:  e.revision,
+		Revision:  e.Revision,
 	}
 
-	if !e.deletedAt.IsZero() {
-		raw.DeletedAt = common.UnixMillis(e.deletedAt)
+	if !e.DeletedAt.IsZero() {
+		raw.DeletedAt = e.DeletedAt.Unix()
 	}
 
 	return raw, nil
@@ -171,13 +168,13 @@ func edgeToRaw(e *Edge) (*rawData, error) {
 	if err != nil {
 		return nil, err
 	}
-	raw.Parent = string(e.parent)
-	raw.Child = string(e.child)
+	raw.Parent = string(e.Parent)
+	raw.Child = string(e.Child)
 	return raw, nil
 }
 
-func (b *ElasticSearchBackend) archive(raw *rawData, at time.Time) bool {
-	raw.ArchivedAt = common.UnixMillis(at)
+func (b *ElasticSearchBackend) archive(raw *rawData, at Time) bool {
+	raw.ArchivedAt = at.Unix()
 
 	data, err := json.Marshal(raw)
 	if err != nil {
@@ -190,24 +187,6 @@ func (b *ElasticSearchBackend) archive(raw *rawData, at time.Time) bool {
 		return false
 	}
 	return true
-}
-
-func (b *ElasticSearchBackend) hitToNode(source *json.RawMessage, node *Node) error {
-	var obj map[string]interface{}
-	if err := common.JSONDecode(bytes.NewReader([]byte(*source)), &obj); err != nil {
-		return err
-	}
-
-	return node.Decode(obj)
-}
-
-func (b *ElasticSearchBackend) hitToEdge(source *json.RawMessage, edge *Edge) error {
-	var obj map[string]interface{}
-	if err := common.JSONDecode(bytes.NewReader([]byte(*source)), &obj); err != nil {
-		return err
-	}
-
-	return edge.Decode(obj)
 }
 
 func (b *ElasticSearchBackend) indexNode(n *Node) bool {
@@ -246,7 +225,7 @@ func (b *ElasticSearchBackend) NodeDeleted(n *Node) bool {
 	}
 
 	success := true
-	if !b.archive(raw, n.deletedAt) {
+	if !b.archive(raw, n.DeletedAt) {
 		success = false
 	}
 
@@ -314,7 +293,7 @@ func (b *ElasticSearchBackend) EdgeDeleted(e *Edge) bool {
 	}
 
 	success := true
-	if !b.archive(raw, e.deletedAt) {
+	if !b.archive(raw, e.DeletedAt) {
 		success = false
 	}
 
@@ -358,7 +337,7 @@ func (b *ElasticSearchBackend) MetadataUpdated(i interface{}) bool {
 			return false
 		}
 
-		if !b.archive(obj, i.updatedAt) {
+		if !b.archive(obj, i.UpdatedAt) {
 			return false
 		}
 
@@ -370,7 +349,7 @@ func (b *ElasticSearchBackend) MetadataUpdated(i interface{}) bool {
 			return false
 		}
 
-		if !b.archive(obj, i.updatedAt) {
+		if !b.archive(obj, i.UpdatedAt) {
 			return false
 		}
 
@@ -414,8 +393,9 @@ func (b *ElasticSearchBackend) searchNodes(tsq *TimedSearchQuery) (nodes []*Node
 	if out != nil && len(out.Hits.Hits) > 0 {
 		for _, d := range out.Hits.Hits {
 			var node Node
-			if err := b.hitToNode(d.Source, &node); err != nil {
-				logging.GetLogger().Debugf("Failed to unmarshal node: %+v", d.Source)
+			if err := json.Unmarshal(*d.Source, &node); err != nil {
+				logging.GetLogger().Errorf("Failed to unmarshal node %s: %s", err, string(*d.Source))
+				continue
 			}
 			nodes = append(nodes, &node)
 		}
@@ -435,8 +415,9 @@ func (b *ElasticSearchBackend) searchEdges(tsq *TimedSearchQuery) (edges []*Edge
 	if out != nil && len(out.Hits.Hits) > 0 {
 		for _, d := range out.Hits.Hits {
 			var edge Edge
-			if err := b.hitToEdge(d.Source, &edge); err != nil {
-				logging.GetLogger().Debugf("Failed to unmarshal edge: %+v", d.Source)
+			if err := json.Unmarshal(*d.Source, &edge); err != nil {
+				logging.GetLogger().Errorf("Failed to unmarshal edge %s: %s", err, string(*d.Source))
+				continue
 			}
 			edges = append(edges, &edge)
 		}
@@ -505,13 +486,13 @@ func (b *ElasticSearchBackend) GetNodes(t Context, m ElementMatcher) []*Node {
 
 // GetEdgeNodes returns the parents and child nodes of an edge within time slice, matching metadatas
 func (b *ElasticSearchBackend) GetEdgeNodes(e *Edge, t Context, parentMetadata, childMetadata ElementMatcher) (parents []*Node, children []*Node) {
-	for _, parent := range b.GetNode(e.parent, t) {
+	for _, parent := range b.GetNode(e.Parent, t) {
 		if parent.MatchMetadata(parentMetadata) {
 			parents = append(parents, parent)
 		}
 	}
 
-	for _, child := range b.GetNode(e.child, t) {
+	for _, child := range b.GetNode(e.Child, t) {
 		if child.MatchMetadata(childMetadata) {
 			children = append(children, child)
 		}

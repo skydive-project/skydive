@@ -338,9 +338,9 @@ func (p *Probe) OnEdgeAdded(e *graph.Edge) {
 	defer p.Unlock()
 
 	// Only consider nodes that are owned by the host node
-	if e.GetParent() == p.hostNode.ID {
+	if e.Parent == p.hostNode.ID {
 		if relationType, _ := e.GetFieldString("RelationType"); relationType == topology.OwnershipLink {
-			n := p.g.GetNode(e.GetChild())
+			n := p.g.GetNode(e.Child)
 			p.handleNode(n)
 		}
 	}

@@ -51,12 +51,12 @@ func (m *MemoryBackend) EdgeAdded(e *Edge) bool {
 		Edge: e,
 	}
 
-	parent, ok := m.nodes[e.parent]
+	parent, ok := m.nodes[e.Parent]
 	if !ok {
 		return false
 	}
 
-	child, ok := m.nodes[e.child]
+	child, ok := m.nodes[e.Child]
 	if !ok {
 		return false
 	}
@@ -79,12 +79,12 @@ func (m *MemoryBackend) GetEdge(i Identifier, t Context) []*Edge {
 // GetEdgeNodes returns a list of nodes of an edge
 func (m *MemoryBackend) GetEdgeNodes(e *Edge, t Context, parentMetadata, childMetadata ElementMatcher) ([]*Node, []*Node) {
 	var parent *MemoryBackendNode
-	if n, ok := m.nodes[e.parent]; ok && n.MatchMetadata(parentMetadata) {
+	if n, ok := m.nodes[e.Parent]; ok && n.MatchMetadata(parentMetadata) {
 		parent = n
 	}
 
 	var child *MemoryBackendNode
-	if n, ok := m.nodes[e.child]; ok && n.MatchMetadata(childMetadata) {
+	if n, ok := m.nodes[e.Child]; ok && n.MatchMetadata(childMetadata) {
 		child = n
 	}
 
@@ -134,11 +134,11 @@ func (m *MemoryBackend) EdgeDeleted(e *Edge) bool {
 		return false
 	}
 
-	if parent, ok := m.nodes[e.parent]; ok {
+	if parent, ok := m.nodes[e.Parent]; ok {
 		delete(parent.edges, e.ID)
 	}
 
-	if child, ok := m.nodes[e.child]; ok {
+	if child, ok := m.nodes[e.Child]; ok {
 		delete(child.edges, e.ID)
 	}
 

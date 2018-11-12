@@ -226,9 +226,9 @@ var TopologyComponent = {
               :defaultKeys="[\'Last\', \'Start\', \'RxBytes\', \'RxPackets\', \'TxBytes\', \'TxPackets\']"></metrics-table>\
           </div>\
         </panel>\
-        <panel id="routing-tabel" v-if="currentNodeMetadata && currentNode.metadata.RoutingTable"\
+        <panel id="routing-tabel" v-if="currentNodeMetadata && currentNode.metadata.RoutingTables"\
                title="Routing tables">\
-          <div v-for="rt in currentNode.metadata.RoutingTable">\
+          <div v-for="rt in currentNode.metadata.RoutingTables">\
             <h2>src: {{rt.Src || "none"}}<span class="pull-right">(id: {{rt.Id}})</span></h2>\
             <routing-table :rt="rt"></routing-table>\
           </div>\
@@ -415,7 +415,7 @@ var TopologyComponent = {
     currentNodeMetadata: function() {
       if (!this.currentNode) return null;
       return this.extractMetadata(this.currentNode.metadata,
-        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'RoutingTable', 'Features', 'K8s', 'Docker']);
+        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'RoutingTables', 'Features', 'K8s', 'Docker']);
     },
 
     currentNodeFlowsQuery: function() {

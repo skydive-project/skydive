@@ -86,7 +86,7 @@ func (ga *GremlinAlert) evaluate(server *api.Server, vm *js.Runtime, lockGraph b
 	// Fallback to JavaScript
 	result, err := vm.Exec(ga.Expression)
 	if err != nil {
-		return nil, fmt.Errorf("Error while executing Javascript '%s': %s", ga.Expression, err.Error())
+		return nil, fmt.Errorf("Error while executing Javascript '%s': %s", ga.Expression, err)
 	}
 
 	if result.Class() == "Error" {
@@ -131,13 +131,13 @@ func (ga *GremlinAlert) trigger(payload []byte) error {
 
 		req, err := http.NewRequest("POST", ga.data, bytes.NewReader(payload))
 		if err != nil {
-			return fmt.Errorf("Failed to post alert to %s: %s", ga.data, err.Error())
+			return fmt.Errorf("Failed to post alert to %s: %s", ga.data, err)
 		}
 
 		req.Close = true
 		_, err = client.Do(req)
 		if err != nil {
-			return fmt.Errorf("Error while posting alert to %s: %s", ga.data, err.Error())
+			return fmt.Errorf("Error while posting alert to %s: %s", ga.data, err)
 		}
 	case actionScript:
 		logging.GetLogger().Debugf("Executing command '%s'", ga.data)
@@ -145,11 +145,11 @@ func (ga *GremlinAlert) trigger(payload []byte) error {
 		cmd := exec.Command(ga.data)
 		stdin, err := cmd.StdinPipe()
 		if err != nil {
-			return fmt.Errorf("Failed to get stdin for command '%s': %s", ga.data, err.Error())
+			return fmt.Errorf("Failed to get stdin for command '%s': %s", ga.data, err)
 		}
 
 		if _, err = stdin.Write(payload); err != nil {
-			return fmt.Errorf("Failed to write to stdin for '%s': %s", ga.data, err.Error())
+			return fmt.Errorf("Failed to write to stdin for '%s': %s", ga.data, err)
 		}
 		stdin.Write([]byte("\n"))
 
@@ -223,12 +223,12 @@ func (a *Server) triggerAlert(al *GremlinAlert, data interface{}) error {
 
 	payload, err := json.Marshal(msg)
 	if err != nil {
-		return fmt.Errorf("Failed to marshal alert to JSON: %s", err.Error())
+		return fmt.Errorf("Failed to marshal alert to JSON: %s", err)
 	}
 
 	go func() {
 		if err := al.trigger(payload); err != nil {
-			logging.GetLogger().Infof("Failed to trigger alert: %s", err.Error())
+			logging.GetLogger().Infof("Failed to trigger alert: %s", err)
 		}
 	}()
 
@@ -274,7 +274,7 @@ func (a *Server) evaluateAlerts(alerts map[string]*GremlinAlert, lockGraph bool)
 
 	for _, al := range alerts {
 		if err := a.evaluateAlert(al, lockGraph); err != nil {
-			logging.GetLogger().Warning(err.Error())
+			logging.GetLogger().Warning(err)
 		}
 	}
 }
@@ -344,7 +344,7 @@ func (a *Server) registerAlert(apiAlert *types.Alert) error {
 				select {
 				case <-ticker.C:
 					if err := a.evaluateAlert(alert, true); err != nil {
-						logging.GetLogger().Warning(err.Error())
+						logging.GetLogger().Warning(err)
 					}
 				case <-done:
 					return
@@ -383,7 +383,7 @@ func (a *Server) onAPIWatcherEvent(action string, id string, resource types.Reso
 	switch action {
 	case "init", "create", "set", "update":
 		if err := a.registerAlert(resource.(*types.Alert)); err != nil {
-			logging.GetLogger().Errorf("Failed to register alert: %s", err.Error())
+			logging.GetLogger().Errorf("Failed to register alert: %s", err)
 		}
 	case "expire", "delete":
 		a.unregisterAlert(id)

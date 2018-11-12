@@ -24,7 +24,6 @@ package graph
 
 import (
 	"testing"
-	"time"
 
 	"github.com/skydive-project/skydive/filters"
 )
@@ -39,7 +38,7 @@ func (l *simpleLinker) GetABLinks(n *Node) (edges []*Edge) {
 		return nil
 	}
 
-	edge := l.g.CreateEdge("", n, n2, Metadata{}, time.Now())
+	edge := l.g.CreateEdge("", n, n2, Metadata{}, TimeUTC())
 	return []*Edge{edge}
 }
 
@@ -64,7 +63,7 @@ func (l *metadataLinker) GetBALinks(n *Node) (edges []*Edge) {
 
 	for _, node := range nodes {
 		if node.ID != n.ID {
-			edges = append(edges, l.g.CreateEdge("", node, n, Metadata{}, time.Now()))
+			edges = append(edges, l.g.CreateEdge("", node, n, Metadata{}, TimeUTC()))
 		}
 	}
 	return
