@@ -169,14 +169,12 @@ func (c *Storage) StoreFlows(flows []*flow.Flow) error {
 		fd := flowToDoc(flow)
 		raw, err := json.Marshal(fd)
 		if err != nil {
-			logging.GetLogger().Errorf("Error while pushing flow %s: %s", flow.UUID, err)
-			return err
+			return fmt.Errorf("Error while pushing flow %s: %s", flow.UUID, err)
 		}
 
 		result, err := c.client.Upsert("Flow", json.RawMessage(raw), "UUID", flow.UUID)
 		if err != nil {
-			logging.GetLogger().Errorf("Error while pushing flow %s: %s", flow.UUID, err)
-			return err
+			return fmt.Errorf("Error while pushing flow %s: %s", flow.UUID, err)
 		}
 
 		data := struct {
@@ -186,45 +184,38 @@ func (c *Storage) StoreFlows(flows []*flow.Flow) error {
 		}{}
 
 		if err := json.Unmarshal(result.Body, &data); err != nil {
-			logging.GetLogger().Errorf("Error while decoding flow %s: %s", flow.UUID, err)
-			return err
+			return fmt.Errorf("Error while decoding flow %s: %s", flow.UUID, err)
 		}
 
 		if len(data.Result) == 0 {
-			logging.GetLogger().Errorf("Error while decoding flow %s: no result", flow.UUID)
-			return err
+			return fmt.Errorf("Error while decoding flow %s: no result", flow.UUID)
 		}
 
 		if flow.LastUpdateMetric != nil {
 			md := metricToDoc(data.Result[0].RID, flow.LastUpdateMetric)
 			raw, err := json.Marshal(md)
 			if err != nil {
-				logging.GetLogger().Errorf("Error while pushing metric %s: %s", flow.UUID, err)
-				return err
+				return fmt.Errorf("Error while pushing metric %s: %s", flow.UUID, err)
 			}
 
 			if _, err = c.client.CreateDocument(json.RawMessage(raw)); err != nil {
-				logging.GetLogger().Errorf("Error while pushing metric %+v: %s", flow.LastUpdateMetric, err)
-				continue
+				return fmt.Errorf("Error while pushing metric %+v: %s", flow.LastUpdateMetric, err)
 			}
 		}
 
 		linkType, err := flow.LinkType()
 		if err != nil {
-			logging.GetLogger().Errorf("Error while indexing: %s", err)
-			continue
+			return fmt.Errorf("Error while indexing: %s", err)
 		}
 		for _, r := range flow.LastRawPackets {
 			rd := rawpacketToDoc(data.Result[0].RID, linkType, r)
 			raw, err := json.Marshal(rd)
 			if err != nil {
-				logging.GetLogger().Errorf("Error while pushing raw packet %s: %s", flow.UUID, err)
-				return err
+				return fmt.Errorf("Error while pushing raw packet %s: %s", flow.UUID, err)
 			}
 
 			if _, err = c.client.CreateDocument(json.RawMessage(raw)); err != nil {
-				logging.GetLogger().Errorf("Error while pushing raw packet %+v: %s", r, err)
-				continue
+				return fmt.Errorf("Error while pushing raw packet %+v: %s", r, err)
 			}
 		}
 	}

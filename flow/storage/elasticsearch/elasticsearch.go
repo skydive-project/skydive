@@ -25,6 +25,7 @@ package elasticsearch
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/google/gopacket/layers"
 	"github.com/olivere/elastic"
@@ -34,7 +35,6 @@ import (
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	fl "github.com/skydive-project/skydive/flow/layers"
-	"github.com/skydive-project/skydive/logging"
 	es "github.com/skydive-project/skydive/storage/elasticsearch"
 )
 
@@ -193,13 +193,11 @@ func (c *Storage) StoreFlows(flows []*flow.Flow) error {
 	for _, f := range flows {
 		data, err := json.Marshal(f)
 		if err != nil {
-			logging.GetLogger().Error(err)
-			continue
+			return err
 		}
 
 		if err := c.client.BulkIndex(flowIndex, f.UUID, json.RawMessage(data)); err != nil {
-			logging.GetLogger().Error(err)
-			continue
+			return err
 		}
 
 		eflow := flowToEmbbedFlow(f)
@@ -212,20 +210,17 @@ func (c *Storage) StoreFlows(flows []*flow.Flow) error {
 
 			data, err := json.Marshal(record)
 			if err != nil {
-				logging.GetLogger().Error(err)
-				continue
+				return err
 			}
 
 			if err := c.client.BulkIndex(metricIndex, "", json.RawMessage(data)); err != nil {
-				logging.GetLogger().Error(err)
-				continue
+				return err
 			}
 		}
 
 		linkType, err := f.LinkType()
 		if err != nil {
-			logging.GetLogger().Errorf("Error while indexing: %s", err)
-			continue
+			return fmt.Errorf("Error while indexing: %s", err)
 		}
 		for _, r := range f.LastRawPackets {
 			record := &rawpacketRecord{
@@ -236,13 +231,11 @@ func (c *Storage) StoreFlows(flows []*flow.Flow) error {
 
 			data, err := json.Marshal(record)
 			if err != nil {
-				logging.GetLogger().Error(err)
-				continue
+				return err
 			}
 
 			if c.client.BulkIndex(rawpacketIndex, "", json.RawMessage(data)) != nil {
-				logging.GetLogger().Error(err)
-				continue
+				return err
 			}
 		}
 	}
