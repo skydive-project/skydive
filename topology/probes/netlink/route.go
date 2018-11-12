@@ -59,8 +59,8 @@ type NextHop struct {
 	IfIndex  int64  `json:"IfIndex,omitempty"`
 }
 
-// RoutingTableMetadataDecoder implements a json message raw decoder
-func RoutingTableMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+// RoutingTablesMetadataDecoder implements a json message raw decoder
+func RoutingTablesMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
 	var rt RoutingTables
 	if err := json.Unmarshal(raw, &rt); err != nil {
 		return nil, fmt.Errorf("unable to unmarshal routing table %s: %s", string(raw), err)

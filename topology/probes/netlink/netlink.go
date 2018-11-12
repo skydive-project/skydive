@@ -64,18 +64,6 @@ type pendingLink struct {
 	Metadata graph.Metadata
 }
 
-// Neighbor describes a member of the forwarding database
-// easyjson:json
-type Neighbor struct {
-	Flags   []string `json:"Flags,omitempty"`
-	MAC     string
-	IP      string   `json:"IP,omitempty"`
-	State   []string `json:"State,omitempty"`
-	Vlan    int64    `json:"Vlan,omitempty"`
-	VNI     int64    `json:"VNI,omitempty"`
-	IfIndex int64
-}
-
 // NetNsProbe describes a topology probe based on netlink in a network namespace
 type NetNsProbe struct {
 	common.RWMutex
@@ -312,11 +300,13 @@ func getFlagsString(flags []string, state int) (a []string) {
 	return
 }
 
-func (u *NetNsProbe) getNeighbors(index, family int) (neighbors []Neighbor) {
+func (u *NetNsProbe) getNeighbors(index, family int) *Neighbors {
+	var neighbors Neighbors
+
 	neighList, err := u.handle.NeighList(index, family)
 	if err == nil && len(neighList) > 0 {
 		for i, neigh := range neighList {
-			neighbors = append(neighbors, Neighbor{
+			neighbors = append(neighbors, &Neighbor{
 				Flags:   getFlagsString(neighFlags, neigh.Flags),
 				MAC:     neigh.HardwareAddr.String(),
 				State:   getFlagsString(neighStates, neigh.State),
@@ -329,7 +319,7 @@ func (u *NetNsProbe) getNeighbors(index, family int) (neighbors []Neighbor) {
 			}
 		}
 	}
-	return
+	return &neighbors
 }
 
 func newInterfaceMetricsFromNetlink(link netlink.Link) *topology.InterfaceMetric {
@@ -409,13 +399,13 @@ func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 		}
 	}
 
-	if neighbors := u.getNeighbors(attrs.Index, syscall.AF_BRIDGE); len(neighbors) > 0 {
+	if neighbors := u.getNeighbors(attrs.Index, syscall.AF_BRIDGE); len(*neighbors) > 0 {
 		metadata["FDB"] = neighbors
 	}
 
 	neighbors := u.getNeighbors(attrs.Index, syscall.AF_INET)
-	neighbors = append(neighbors, u.getNeighbors(attrs.Index, syscall.AF_INET6)...)
-	if len(neighbors) > 0 {
+	*neighbors = append(*neighbors, *u.getNeighbors(attrs.Index, syscall.AF_INET6)...)
+	if len(*neighbors) > 0 {
 		metadata["Neighbors"] = neighbors
 	}
 

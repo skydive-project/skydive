@@ -248,7 +248,9 @@ func NewServerFromConfig() (*Server, error) {
 	// add decoders for specific metadata keys, this aims to keep the same
 	// object type between the agent and the analyzer
 	// Decoder will be used while unmarshal the metadata
-	graph.NodeMetadataDecoders["RoutingTables"] = netlink.RoutingTableMetadataDecoder
+	graph.NodeMetadataDecoders["RoutingTables"] = netlink.RoutingTablesMetadataDecoder
+	graph.NodeMetadataDecoders["FDB"] = netlink.NeighborMetadataDecoder
+	graph.NodeMetadataDecoders["Neighbors"] = netlink.NeighborMetadataDecoder
 	graph.NodeMetadataDecoders["Metric"] = topology.InterfaceMetricMetadataDecoder
 	graph.NodeMetadataDecoders["LastUpdateMetric"] = topology.InterfaceMetricMetadataDecoder
 
