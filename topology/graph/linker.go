@@ -42,6 +42,7 @@ type listener struct {
 	newLinksFunc      func(node *Node) []*Edge
 	existingLinksFunc func(node *Node) []*Edge
 	metadata          Metadata
+	links             map[Identifier]bool
 }
 
 func mapOfLinks(edges []*Edge) map[Identifier]*Edge {
@@ -63,6 +64,7 @@ func (l *listener) nodeEvent(node *Node) {
 
 		if oldLink, found := existingLinks[id]; !found {
 			l.graph.AddEdge(newLink)
+			l.links[newLink.ID] = true
 		} else {
 			if !reflect.DeepEqual(newLink.metadata, oldLink.metadata) {
 				l.graph.SetMetadata(oldLink, newLink.metadata)
@@ -72,7 +74,10 @@ func (l *listener) nodeEvent(node *Node) {
 	}
 
 	for _, oldLink := range existingLinks {
-		l.graph.DelEdge(oldLink)
+		if _, found := l.links[oldLink.ID]; found {
+			l.graph.DelEdge(oldLink)
+			delete(l.links, oldLink.ID)
+		}
 	}
 }
 
@@ -109,6 +114,7 @@ type ResourceLinker struct {
 	glh2       ListenerHandler
 	linker     Linker
 	metadata   Metadata
+	links      map[Identifier]bool
 }
 
 func (rl *ResourceLinker) getLinks(node *Node, direction string) []*Edge {
@@ -122,6 +128,8 @@ func (rl *ResourceLinker) getLinks(node *Node, direction string) []*Edge {
 
 // Start linking resources by listening for graph events
 func (rl *ResourceLinker) Start() {
+	links := make(map[Identifier]bool)
+
 	if rl.glh1 != nil {
 		rl.abListener = &listener{
 			graph:        rl.g,
@@ -130,6 +138,7 @@ func (rl *ResourceLinker) Start() {
 				return rl.getLinks(node, "Parent")
 			},
 			metadata: rl.metadata,
+			links:    links,
 		}
 		rl.glh1.AddEventListener(rl.abListener)
 	}
@@ -142,6 +151,7 @@ func (rl *ResourceLinker) Start() {
 				return rl.getLinks(node, "Child")
 			},
 			metadata: rl.metadata,
+			links:    links,
 		}
 		rl.glh2.AddEventListener(rl.baListener)
 	}
