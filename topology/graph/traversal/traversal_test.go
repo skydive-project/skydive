@@ -83,6 +83,12 @@ func TestBasicTraversal(t *testing.T) {
 	}
 
 	// next traversal test
+	tv = tr.V(ctx).Has(ctx, "Type", "intf", "badparams")
+	if tv.Error() == nil {
+		t.Fatal("Has() params should be a list of key,value")
+	}
+
+	// next traversal test
 	tv = tr.V(ctx).HasEither(ctx, "Type", "intf", "Name", "Node4")
 	if tv.Error() != nil {
 		t.Fatal(tv.Error())
