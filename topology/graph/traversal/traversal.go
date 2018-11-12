@@ -254,6 +254,10 @@ func paramsToMetadata(s ...interface{}) (graph.Metadata, error) {
 
 // ParamsToFilter converts a slice to a filter
 func ParamsToFilter(filterOp filters.BoolFilterOp, s ...interface{}) (*filters.Filter, error) {
+	if (len(s) % 2) != 0 {
+		return nil, errors.New("params should be a list of key,value")
+	}
+
 	var lf []*filters.Filter
 	for i := 0; i < len(s); i += 2 {
 		k, ok := s[i].(string)
