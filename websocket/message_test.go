@@ -100,7 +100,7 @@ func (f *fakeMessageClientSubscriptionHandler) OnStructMessage(c Speaker, m *Str
 func TestMessageSubscription(t *testing.T) {
 	httpserver := shttp.NewServer("myhost", common.AnalyzerService, "localhost", 59999, nil)
 
-	go httpserver.ListenAndServe()
+	httpserver.ListenAndServe()
 	defer httpserver.Stop()
 
 	wsserver := NewStructServer(NewServer(httpserver, "/wstest", shttp.NewNoAuthenticationBackend(), true, 100, 2*time.Second, 5*time.Second))
@@ -124,8 +124,8 @@ func TestMessageSubscription(t *testing.T) {
 
 	wspool.AddStructMessageHandler(clientHandler, []string{"SrvValidNS"})
 
-	wsclient.Connect()
-	defer wsclient.Disconnect()
+	wsclient.Start()
+	defer wsclient.Stop()
 
 	err := common.Retry(func() error {
 		clientHandler.Lock()

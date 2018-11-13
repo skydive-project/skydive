@@ -104,7 +104,7 @@ func NewFlowClientUDPConn(addr string, port int) (*FlowClientUDPConn, error) {
 
 // Close the connection
 func (c *FlowClientWebSocketConn) Close() error {
-	c.wsClient.Disconnect()
+	c.wsClient.Stop()
 	return nil
 }
 
@@ -114,7 +114,7 @@ func (c *FlowClientWebSocketConn) Connect() (err error) {
 		return nil
 	}
 
-	c.wsClient.Connect()
+	c.wsClient.Start()
 	c.wsClient.AddEventHandler(c)
 
 	return nil

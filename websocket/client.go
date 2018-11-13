@@ -117,8 +117,9 @@ type Speaker interface {
 	IsConnected() bool
 	SendMessage(m Message) error
 	SendRaw(r []byte) error
-	Connect()
-	Disconnect()
+	Connect() error
+	Start()
+	Stop()
 	AddEventHandler(SpeakerEventHandler)
 	GetRemoteHost() string
 	GetRemoteServiceType() common.ServiceType
@@ -128,6 +129,7 @@ type Speaker interface {
 type Conn struct {
 	common.RWMutex
 	ConnStatus
+	flush            chan struct{}
 	send             chan []byte
 	read             chan []byte
 	quit             chan bool
@@ -262,10 +264,6 @@ func (c *Conn) GetRemoteServiceType() common.ServiceType {
 
 // SendMessage sends a message directly over the wire.
 func (c *Conn) write(msg []byte) error {
-	if !c.IsConnected() {
-		return errors.New("Not connected")
-	}
-
 	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 	c.conn.EnableWriteCompression(c.writeCompression)
 	w, err := c.conn.NextWriter(websocket.TextMessage)
@@ -280,15 +278,48 @@ func (c *Conn) write(msg []byte) error {
 	return w.Close()
 }
 
-func (c *Conn) start() {
+// Run the main loop
+func (c *Conn) Run() {
+	c.wg.Add(1)
+	c.run()
+}
+
+// Start main loop in a goroutine
+func (c *Conn) Start() {
 	c.wg.Add(1)
 	go c.run()
 }
 
 // main loop to read and send messages
 func (c *Conn) run() {
-	defer c.wg.Done()
+	flushChannel := func(c chan []byte, cb func(msg []byte)) {
+		for {
+			select {
+			case m := <-c:
+				cb(m)
+			default:
+				return
+			}
+		}
+	}
 
+	// notify all the listeners that a message was received
+	handleReceivedMessage := func(m []byte) {
+		c.RLock()
+		for _, l := range c.eventHandlers {
+			l.OnMessage(c.wsSpeaker, RawMessage(m))
+		}
+		c.RUnlock()
+	}
+
+	// write the message to the wire
+	handleSentMessage := func(m []byte) {
+		if err := c.write(m); err != nil {
+			logging.GetLogger().Errorf("Error while writing to the WebSocket: %s", err)
+		}
+	}
+
+	// goroutine to read messages from the socket and put them into a channel
 	go func() {
 		for c.running.Load() == true {
 			_, m, err := c.conn.ReadMessage()
@@ -298,30 +329,38 @@ func (c *Conn) run() {
 				}
 				break
 			}
-
 			c.read <- m
 		}
 	}()
 
-	defer func() {
-		atomic.StoreInt32((*int32)(c.State), common.StoppedState)
-		c.conn.Close()
-
-		c.RLock()
-		for _, l := range c.eventHandlers {
-			l.OnDisconnected(c.wsSpeaker)
-		}
-		c.RUnlock()
-	}()
-
 	done := make(chan bool, 2)
 	go func() {
+		defer func() {
+			c.conn.Close()
+			atomic.StoreInt32((*int32)(c.State), common.StoppedState)
+
+			// handle all the pending received messages
+			flushChannel(c.read, func(m []byte) {
+				handleReceivedMessage(m)
+			})
+
+			c.wg.Done()
+
+			c.RLock()
+			for _, l := range c.eventHandlers {
+				l.OnDisconnected(c.wsSpeaker)
+			}
+			c.RUnlock()
+		}()
+
 		for {
 			select {
 			case m := <-c.send:
-				if err := c.write(m); err != nil {
-					logging.GetLogger().Errorf("Error while writing to the WebSocket: %s", err)
-				}
+				handleSentMessage(m)
+			case <-c.flush:
+				flushChannel(c.send, func(m []byte) {
+					handleSentMessage(m)
+				})
 			case <-c.pingTicker.C:
 				if err := c.sendPing(); err != nil {
 					logging.GetLogger().Errorf("Error while sending ping to %+v: %s", c, err)
@@ -335,20 +374,14 @@ func (c *Conn) run() {
 			}
 		}
 	}()
-	defer func() {
-		done <- true
-	}()
 
 	for {
 		select {
 		case <-c.quit:
+			done <- true
 			return
 		case m := <-c.read:
-			c.RLock()
-			for _, l := range c.eventHandlers {
-				l.OnMessage(c.wsSpeaker, RawMessage(m))
-			}
-			c.RUnlock()
+			handleReceivedMessage(m)
 		}
 	}
 }
@@ -368,15 +401,22 @@ func (c *Conn) AddEventHandler(h SpeakerEventHandler) {
 }
 
 // Connect default implementation doing nothing as for incoming connection it is not used.
-func (c *Conn) Connect() {
+func (c *Conn) Connect() error {
+	return nil
 }
 
-// Disconnect the Speakers without waiting for termination.
-func (c *Conn) Disconnect() {
+// Flush all the pending sent messages
+func (c *Conn) Flush() {
+	c.flush <- struct{}{}
+}
+
+// Stop disconnect the speakers and wait for the goroutine to end
+func (c *Conn) Stop() {
 	c.running.Store(false)
 	if atomic.CompareAndSwapInt32((*int32)(c.State), common.RunningState, common.StoppingState) {
 		c.quit <- true
 	}
+	c.wg.Wait()
 }
 
 func newConn(host string, clientType common.ServiceType, clientProtocol string, url *url.URL, headers http.Header, queueSize int, writeCompression bool) *Conn {
@@ -399,6 +439,7 @@ func newConn(host string, clientType common.ServiceType, clientProtocol string, 
 		},
 		send:             make(chan []byte, queueSize),
 		read:             make(chan []byte, queueSize),
+		flush:            make(chan struct{}),
 		quit:             make(chan bool, 2),
 		pingTicker:       &time.Ticker{},
 		writeCompression: writeCompression,
@@ -415,7 +456,8 @@ func (c *Client) scheme() string {
 	return "ws://"
 }
 
-func (c *Client) connect() {
+// Connect to the server
+func (c *Client) Connect() error {
 	var err error
 	endpoint := c.URL.String()
 	headers := http.Header{
@@ -425,6 +467,8 @@ func (c *Client) connect() {
 		"X-Client-Protocol":     {ProtobufProtocol},
 		"X-Websocket-Namespace": {WildcardNamespace},
 	}
+
+	logging.GetLogger().Infof("Connecting to %s", endpoint)
 
 	if c.AuthOpts != nil {
 		shttp.SetAuthHeaders(&headers, c.AuthOpts)
@@ -437,22 +481,19 @@ func (c *Client) connect() {
 	}
 	d.TLSClientConfig = c.tlsConfig
 	if err != nil {
-		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err)
-		return
+		return fmt.Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err)
 	}
 
 	var resp *http.Response
 	c.conn, resp, err = d.Dial(endpoint, headers)
 
 	if err != nil {
-		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err)
-		return
+		return fmt.Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err)
 	}
 	c.conn.SetPingHandler(nil)
 	c.conn.EnableWriteCompression(c.writeCompression)
 
 	atomic.StoreInt32((*int32)(c.State), common.RunningState)
-	defer atomic.StoreInt32((*int32)(c.State), common.StoppedState)
 
 	logging.GetLogger().Infof("Connected to %s", endpoint)
 
@@ -481,18 +522,21 @@ func (c *Client) connect() {
 
 	// in case of a handler disconnect the client directly
 	if !c.IsConnected() {
-		return
+		return errors.New("Aborting connection to the server")
 	}
 
-	c.wg.Add(1)
-	c.run()
+	return nil
 }
 
-// Connect to the server - and reconnect if necessary
-func (c *Client) Connect() {
+// Start connects to the server - and reconnect if necessary
+func (c *Client) Start() {
 	go func() {
 		for c.running.Load() == true {
-			c.connect()
+			if err := c.Connect(); err == nil {
+				c.Run()
+			} else {
+				logging.GetLogger().Error(err)
+			}
 			time.Sleep(1 * time.Second)
 		}
 	}()

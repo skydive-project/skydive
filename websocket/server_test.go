@@ -91,7 +91,7 @@ func (f *fakeClientSubscriptionHandler) OnMessage(c Speaker, m Message) {
 func TestSubscription(t *testing.T) {
 	httpServer := shttp.NewServer("myhost", common.AnalyzerService, "localhost", 59999, nil)
 
-	go httpServer.ListenAndServe()
+	httpServer.ListenAndServe()
 	defer httpServer.Stop()
 
 	wsServer := NewServer(httpServer, "/wstest", shttp.NewNoAuthenticationBackend(), true, 100, 2*time.Second, 5*time.Second)
@@ -112,8 +112,8 @@ func TestSubscription(t *testing.T) {
 	clientHandler := &fakeClientSubscriptionHandler{t: t, received: 0}
 	wsClient.AddEventHandler(clientHandler)
 	wsPool.AddEventHandler(clientHandler)
-	wsClient.Connect()
-	defer wsClient.Disconnect()
+	wsClient.Start()
+	defer wsClient.Stop()
 
 	err := common.Retry(func() error {
 		clientHandler.Lock()
