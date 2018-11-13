@@ -13,7 +13,7 @@ make docker-image
 cd contrib/python
 
 echo "Python2 tests"
-virtualenv-2 venv2
+virtualenv -p python2 venv2
 source venv2/bin/activate
 
 pip install -r api/requirements.txt
@@ -27,7 +27,7 @@ deactivate
 
 
 echo "Python3 tests"
-virtualenv-3 venv3
+virtualenv -p python3 venv3
 source venv3/bin/activate
 
 pip install flake8

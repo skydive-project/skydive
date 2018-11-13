@@ -343,7 +343,8 @@ bench.flow: bench.flow.traces
 	govendor test -bench=. ${SKYDIVE_GITHUB}/flow
 
 .PHONY: static
-static: skydive.clean govendor genlocalfiles compile.static
+static: skydive.clean govendor genlocalfiles
+	$(MAKE) compile.static WITH_LIBVIRT=false
 
 .PHONY: contribs.clean
 contribs.clean:
