@@ -23,79 +23,42 @@
 package peering
 
 import (
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
 // Probe describes graph peering based on MAC address and graph events
 type Probe struct {
-	graph.DefaultGraphListener
-	graph *graph.Graph
-	peers map[string]*graph.Node
-}
-
-func (p *Probe) onNodeEvent(n *graph.Node) {
-	if mac, _ := n.GetFieldString("MAC"); mac != "" {
-		if node, ok := p.peers[mac]; ok {
-			if !topology.HaveLayer2Link(p.graph, node, n) {
-				topology.AddLayer2Link(p.graph, node, n, nil)
-			}
-			return
-		}
-	}
-	if mac, _ := n.GetFieldString("PeerIntfMAC"); mac != "" {
-		nodes := p.graph.GetNodes(graph.Metadata{"MAC": mac})
-		switch len(nodes) {
-		case 1:
-			if !topology.HaveLayer2Link(p.graph, n, nodes[0]) {
-				topology.AddLayer2Link(p.graph, n, nodes[0], nil)
-			}
-			fallthrough
-		case 0:
-			p.peers[mac] = n
-		default:
-			logging.GetLogger().Errorf("Multiple peer MAC found: %s", mac)
-		}
-
-	}
-}
-
-// OnNodeUpdated event
-func (p *Probe) OnNodeUpdated(n *graph.Node) {
-	p.onNodeEvent(n)
-}
-
-// OnNodeAdded event
-func (p *Probe) OnNodeAdded(n *graph.Node) {
-	p.onNodeEvent(n)
-}
-
-// OnNodeDeleted event
-func (p *Probe) OnNodeDeleted(n *graph.Node) {
-	for mac, node := range p.peers {
-		if n.ID == node.ID {
-			delete(p.peers, mac)
-		}
-	}
+	graph              *graph.Graph
+	peerIntfMACIndexer *graph.MetadataIndexer
+	macIndexer         *graph.MetadataIndexer
+	linker             *graph.MetadataIndexerLinker
 }
 
 // Start the MAC peering resolver probe
 func (p *Probe) Start() {
+	p.peerIntfMACIndexer.Start()
+	p.macIndexer.Start()
+	p.linker.Start()
 }
 
 // Stop the probe
 func (p *Probe) Stop() {
-	p.graph.RemoveEventListener(p)
+	p.peerIntfMACIndexer.Stop()
+	p.macIndexer.Stop()
+	p.linker.Stop()
 }
 
 // NewProbe creates a new graph node peering probe
 func NewProbe(g *graph.Graph) *Probe {
+	peerIntfMACIndexer := graph.NewMetadataIndexer(g, g, nil, "PeerIntfMAC")
+	macIndexer := graph.NewMetadataIndexer(g, g, nil, "MAC")
 	probe := &Probe{
-		graph: g,
-		peers: make(map[string]*graph.Node),
+		graph:              g,
+		peerIntfMACIndexer: peerIntfMACIndexer,
+		macIndexer:         macIndexer,
+		linker:             graph.NewMetadataIndexerLinker(g, peerIntfMACIndexer, macIndexer, graph.Metadata{"RelationType": topology.Layer2Link}),
 	}
-	g.AddEventListener(probe)
 
 	return probe
 }
