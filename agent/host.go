@@ -28,12 +28,15 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Jaganathancse/numautils"
+
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/host"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/logging"
 )
 
 // CPUInfo defines host information
@@ -50,6 +53,14 @@ type CPUInfo struct {
 	Mhz        int64  `json:"Mhz,omitempty"`
 	CacheSize  int64  `json:"CacheSize,omitempty"`
 	Microcode  string `json:"Microcode,omitempty"`
+}
+
+// NUMATopology defines NUMA topology details
+type NUMATopology struct {
+	NUMA int64
+	RAM  string               `json:"RAM,omitempty"`
+	NICs []string             `json:"NICs,omitempty"`
+	CPUs []*numautils.CPUInfo `json:"CPUs,omitempty"`
 }
 
 // createRootNode creates a graph.Node based on the host properties and aims to have an unique ID
@@ -106,6 +117,24 @@ func createRootNode(g *graph.Graph) (*graph.Node, error) {
 	}
 
 	m.SetField("CPU", cpus)
+
+	// Gets NUMA topology details
+	numaInfo, err := numautils.GetNumaTopology()
+	if err == nil {
+		var numaTopology []*NUMATopology
+		for _, numa := range numaInfo {
+			n := &NUMATopology{
+				NUMA: numa.NUMA,
+				RAM:  numa.RAM,
+				NICs: numa.NICs,
+				CPUs: numa.CPUs,
+			}
+			numaTopology = append(numaTopology, n)
+		}
+		m.SetField("NUMA", numaTopology)
+	} else {
+		logging.GetLogger().Warningf("Unable to determine NUMA topology")
+	}
 
 	hostInfo, err := host.Info()
 	if err != nil {

@@ -26,6 +26,18 @@
 			"revision": "5a3fafaa7c86150c096504f50630ca6ac8cff681",
 			"revisionTime": "2017-04-04T12:02:57Z"
 		},
+                {
+                        "checksumSHA1": "zAM8MP6vyxuxSUW5oSovEnjv5/U=",
+                        "path": "github.com/Jaganathancse/numautils",
+                        "revision": "3538271e04f4a1b794455339977a29ae18d4df88",
+                        "revisionTime": "2018-11-27T05:54:24Z"
+                },
+                {
+                        "checksumSHA1": "Qfm45DHlYCZf24QSoAmbDtDsiug=",
+                        "path": "code.cloudfoundry.org/bytefmt",
+                        "revision": "2aa6f33b730c79971cfc3c742f279195b0abc627",
+                        "revisionTime": "2018-09-04T21:41:32Z"
+                },
 		{
 			"checksumSHA1": "oyXJxS8qqy5TCkqvndCD1c7Lkg4=",
 			"path": "github.com/Knetic/govaluate",
