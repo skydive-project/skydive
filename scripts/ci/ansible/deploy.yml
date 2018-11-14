@@ -60,6 +60,7 @@
         - timestamper
         - jenkins-multijob-plugin
         - envinject
+        - nodelabelparameter
 
 - name: Install requirements
   hosts: jenkins_master, slaves
