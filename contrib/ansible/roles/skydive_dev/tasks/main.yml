@@ -54,6 +54,7 @@
      - ffmpeg
      - npm
      - gifsicle
+     - podman
 
 - service:
     name: "{{ item }}"

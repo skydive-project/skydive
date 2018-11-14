@@ -89,6 +89,7 @@ agent:
       - lxd
       - opencontrail
       - lldp
+      - runc
     netlink:
       metrics_update: 5
     lldp:
