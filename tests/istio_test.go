@@ -25,7 +25,10 @@
 package tests
 
 import (
+	g "github.com/skydive-project/skydive/gremlin"
+	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/probes/istio"
+	"github.com/skydive-project/skydive/topology/probes/k8s"
 	"testing"
 )
 
@@ -56,6 +59,40 @@ func TestIstioQuotaSpecBindingNode(t *testing.T) {
 
 func TestIstioVirtualServiceNode(t *testing.T) {
 	testNodeCreationFromConfig(t, istio.Manager, "virtualservice", objName+"-virtualservice")
+}
+
+func checkEdgeVirtualService(t *testing.T, c *CheckContext, from, to *graph.Node, edgeArgs ...interface{}) error {
+	return checkEdge(t, c, from, to, "virtualservice", edgeArgs...)
+}
+
+func TestIstioVirtualServicePodScenario(t *testing.T) {
+	file := "virtualservice-pod"
+	name := objName + "-" + file
+	testRunner(
+		t,
+		setupFromConfigFile(istio.Manager, file),
+		tearDownFromConfigFile(istio.Manager, file),
+		[]CheckFunction{
+			func(c *CheckContext) error {
+				virtualservice, err := checkNodeCreation(t, c, istio.Manager, "virtualservice", "Name", name)
+				if err != nil {
+					return err
+				}
+				_, err = checkNodeCreation(t, c, istio.Manager, "destinationrule", "Name", name)
+				if err != nil {
+					return err
+				}
+				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", "Name", name)
+				if err != nil {
+					return err
+				}
+				if err = checkEdgeVirtualService(t, c, virtualservice, pod); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+	)
 }
 
 func TestBookInfoScenario(t *testing.T) {
@@ -100,8 +137,17 @@ func TestBookInfoScenario(t *testing.T) {
 					return err
 				}
 
-				_, err = checkNodeCreation(t, c, istio.Manager, "virtualservice", "Name", "bookinfo")
+				virtualservice, err := checkNodeCreation(t, c, istio.Manager, "virtualservice", "Name", "bookinfo")
 				if err != nil {
+					return err
+				}
+
+				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", "Name", g.Regex("%s-.*", "productpage"))
+				if err != nil {
+					return err
+				}
+
+				if err = checkEdgeVirtualService(t, c, virtualservice, pod); err != nil {
 					return err
 				}
 
