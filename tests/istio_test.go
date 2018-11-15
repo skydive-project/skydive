@@ -137,12 +137,12 @@ func TestBookInfoScenario(t *testing.T) {
 					return err
 				}
 
-				virtualservice, err := checkNodeCreation(t, c, istio.Manager, "virtualservice", "Name", "bookinfo")
+				virtualservice, err := checkNodeCreation(t, c, istio.Manager, "virtualservice", "bookinfo")
 				if err != nil {
 					return err
 				}
 
-				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", "Name", g.Regex("%s-.*", "productpage"))
+				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", g.Regex("%s-.*", "productpage"))
 				if err != nil {
 					return err
 				}

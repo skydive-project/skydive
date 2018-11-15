@@ -34,7 +34,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-type linkHandler func(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe
+// LinkHandler handles links between two k8s or istio objects
+type LinkHandler func(g *graph.Graph) probe.Probe
 
 // NewConfig returns a new Kubernetes configuration object
 func NewConfig(kubeConfig string) (*rest.Config, error) {
@@ -90,9 +91,9 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		"storageclass":          newStorageClassProbe,
 	}
 
-	subprobes := InitSubprobes(enabledSubprobes, subprobeHandlers, clientset, g)
+	InitSubprobes(enabledSubprobes, subprobeHandlers, clientset, g, Manager)
 
-	linkerHandlers := []linkHandler{
+	linkerHandlers := []LinkHandler{
 		newContainerDockerLinker,
 		newPodContainerLinker,
 		newHostNodeLinker,
@@ -104,12 +105,12 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 
 	var linkers []probe.Probe
 	for _, linkHandler := range linkerHandlers {
-		if linker := linkHandler(g, subprobes); linker != nil {
+		if linker := linkHandler(g); linker != nil {
 			linkers = append(linkers, linker)
 		}
 	}
 
-	probe := NewProbe(g, Manager, subprobes, linkers)
+	probe := NewProbe(g, Manager, subprobes[Manager], linkers)
 
 	probe.AppendClusterLinkers(
 		"namespace",

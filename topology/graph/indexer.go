@@ -32,6 +32,17 @@ import (
 // a set of hash,value pairs
 type NodeHasher func(n *Node) map[string]interface{}
 
+// Hash computes the hash of the passed parameters
+func Hash(values ...interface{}) string {
+	if len(values) == 1 {
+		if s, ok := values[0].(string); ok {
+			return s
+		}
+	}
+	h, _ := structhash.Hash(values, 1)
+	return h
+}
+
 // Indexer provides a way to index graph nodes. A node can be mapped to
 // multiple hash,value pairs. A hash can also be mapped to multiple nodes.
 type Indexer struct {
@@ -44,6 +55,12 @@ type Indexer struct {
 	appendOnly      bool
 	hashToValues    map[string]map[Identifier]interface{}
 	nodeToHashes    map[Identifier]map[string]bool
+}
+
+// Get computes the hash of the passed parameters and returns the matching
+// nodes with their respective value
+func (i *Indexer) Get(values ...interface{}) ([]*Node, []interface{}) {
+	return i.FromHash(Hash(values...))
 }
 
 func (i *Indexer) index(id Identifier, h string, value interface{}) {
@@ -179,23 +196,6 @@ type MetadataIndexer struct {
 	indexes []string
 }
 
-// Hash computes the hash of the passed parameters
-func (m *MetadataIndexer) Hash(values ...interface{}) string {
-	if len(values) == 1 {
-		if s, ok := values[0].(string); ok {
-			return s
-		}
-	}
-	h, _ := structhash.Hash(values, 1)
-	return h
-}
-
-// Get computes the hash of the passed parameters and returns the matching
-// nodes with their respective value
-func (m *MetadataIndexer) Get(values ...interface{}) ([]*Node, []interface{}) {
-	return m.FromHash(m.Hash(values...))
-}
-
 // NewMetadataIndexer returns a new metadata graph indexer for the nodes
 // matching the graph filter `m`, indexing the metadata with `indexes`
 func NewMetadataIndexer(g *Graph, listenerHandler ListenerHandler, m ElementMatcher, indexes ...string) (indexer *MetadataIndexer) {
@@ -205,7 +205,7 @@ func NewMetadataIndexer(g *Graph, listenerHandler ListenerHandler, m ElementMatc
 			if match := n.MatchMetadata(m); match {
 				kv = make(map[string]interface{})
 				if values, err := getFieldsAsArray(n, indexes); err == nil && len(values) > 0 {
-					kv[indexer.Hash(values...)] = values
+					kv[Hash(values...)] = values
 				}
 			}
 			return
