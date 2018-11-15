@@ -22,8 +22,20 @@
 
 package istio
 
+import (
+	"github.com/skydive-project/skydive/topology/graph"
+)
+
 const (
 	// Manager is the manager value for Istio
 	Manager      = "istio"
 	detailsField = "Istio"
 )
+
+func newEdgeMetadata(name string) graph.Metadata {
+	m := graph.Metadata{
+		"Manager":      Manager,
+		"RelationType": name,
+	}
+	return m
+}

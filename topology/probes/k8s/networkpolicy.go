@@ -179,12 +179,12 @@ func filterNamespaceByNamespaceSelector(in []interface{}, namespaceSelector *met
 
 func (npl *networkPolicyLinker) getPeerPods(peer v1beta1.NetworkPolicyPeer, namespace string) (pods []metav1.Object) {
 	if podSelector := peer.PodSelector; podSelector != nil {
-		pods = filterPodByPodSelector(npl.podCache.list(), podSelector, namespace)
+		pods = filterPodByPodSelector(npl.podCache.List(), podSelector, namespace)
 	}
 
 	if nsSelector := peer.NamespaceSelector; nsSelector != nil {
-		if allPods := npl.podCache.list(); len(allPods) != 0 {
-			for _, ns := range filterNamespaceByNamespaceSelector(npl.namespaceCache.list(), nsSelector) {
+		if allPods := npl.podCache.List(); len(allPods) != 0 {
+			for _, ns := range filterNamespaceByNamespaceSelector(npl.namespaceCache.List(), nsSelector) {
 				pods = append(pods, filterPodByPodSelector(allPods, nil, ns.(*corev1.Namespace).Name)...)
 			}
 		}
@@ -269,7 +269,7 @@ func (npl *networkPolicyLinker) createLinks(np *v1beta1.NetworkPolicy, npNode, f
 
 func (npl *networkPolicyLinker) getLinks(np *v1beta1.NetworkPolicy, npNode, filterNode *graph.Node) (edges []*graph.Edge) {
 	createLinks := func(ty PolicyType, target PolicyTarget, pods []metav1.Object) []*graph.Edge {
-		selectedPods := filterPodByPodSelector(npl.podCache.list(), &np.Spec.PodSelector, np.Namespace)
+		selectedPods := filterPodByPodSelector(npl.podCache.List(), &np.Spec.PodSelector, np.Namespace)
 		return append(
 			npl.createLinks(np, npNode, filterNode, ty, target, PolicyPointBegin, selectedPods),
 			npl.createLinks(np, npNode, filterNode, ty, target, PolicyPointEnd, pods)...,
@@ -296,7 +296,7 @@ func (npl *networkPolicyLinker) getLinks(np *v1beta1.NetworkPolicy, npNode, filt
 }
 
 func (npl *networkPolicyLinker) GetABLinks(npNode *graph.Node) (edges []*graph.Edge) {
-	if np := npl.npCache.getByNode(npNode); np != nil {
+	if np := npl.npCache.GetByNode(npNode); np != nil {
 		np := np.(*v1beta1.NetworkPolicy)
 		return npl.getLinks(np, npNode, nil)
 	}
@@ -304,7 +304,7 @@ func (npl *networkPolicyLinker) GetABLinks(npNode *graph.Node) (edges []*graph.E
 }
 
 func (npl *networkPolicyLinker) GetBALinks(objNode *graph.Node) (edges []*graph.Edge) {
-	for _, np := range npl.npCache.list() {
+	for _, np := range npl.npCache.List() {
 		np := np.(*v1beta1.NetworkPolicy)
 		npNode := npl.graph.GetNode(graph.Identifier(np.GetUID()))
 		if npNode == nil {

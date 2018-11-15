@@ -33,6 +33,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/runtime"
 )
 
+var Subprobes map[string]Subprobe
+
 func int32ValueOrDefault(value *int32, defaultValue int32) int32 {
 	if value == nil {
 		return defaultValue

@@ -36,7 +36,7 @@ import (
 )
 
 type resourceHandler func(clientset *kubernetes.Clientset, graph *graph.Graph) Subprobe
-type linkHandler func(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe
+type LinkHandler func(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe
 
 // NewConfig returns a new Kubernetes configuration object
 func NewConfig(kubeConfig string) (*rest.Config, error) {
@@ -98,16 +98,16 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		}
 	}
 
-	subprobes := make(map[string]Subprobe)
+	Subprobes = make(map[string]Subprobe)
 	for _, name := range enabledSubprobes {
 		if probeHandler, ok := resourceHandlers[name]; ok {
-			subprobes[name] = probeHandler(clientset, g)
+			Subprobes[name] = probeHandler(clientset, g)
 		} else {
 			logging.GetLogger().Errorf("skipping unsupported probe %v", name)
 		}
 	}
 
-	linkerHandlers := []linkHandler{
+	linkerHandlers := []LinkHandler{
 		newContainerDockerLinker,
 		newPodContainerLinker,
 		newHostNodeLinker,
@@ -119,12 +119,12 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 
 	var linkers []probe.Probe
 	for _, linkHandler := range linkerHandlers {
-		if linker := linkHandler(g, subprobes); linker != nil {
+		if linker := linkHandler(g, Subprobes); linker != nil {
 			linkers = append(linkers, linker)
 		}
 	}
 
-	probe := NewProbe(g, Manager, subprobes, linkers)
+	probe := NewProbe(g, Manager, Subprobes, linkers)
 
 	probe.AppendClusterLinkers(
 		"namespace",
