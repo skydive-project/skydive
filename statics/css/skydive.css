@@ -628,6 +628,10 @@ ul.dropdown-menu .fa.pull-right {
   color: #47AAFF;
 }
 
+.object-key-value {
+ line-height:21px;
+}
+
 .object-sub-detail {
   margin-top: 5px;
   margin-bottom: 5px;
