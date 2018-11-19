@@ -40,6 +40,7 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/opencontrail"
 	"github.com/skydive-project/skydive/topology/probes/ovsdb"
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
+	"github.com/skydive-project/skydive/topology/probes/sriov"
 )
 
 // NewTopologyProbeBundleFromConfig creates a new topology probe.Bundle based on the configuration
@@ -114,6 +115,12 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 				return nil, fmt.Errorf("Failed to initialize Libvirt probe: %s", err)
 			}
 			probes[t] = libvirt
+		case "sriov":
+			sriov, err := sriov.NewProbe(g, hostNode)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to initialize Sriov probe: %s", err)
+			}
+			probes[t] = sriov
 		default:
 			logging.GetLogger().Errorf("unknown probe type %s", t)
 		}
