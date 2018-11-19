@@ -40,3 +40,11 @@ oc delete route skydive-analyzer
 oc expose svc skydive-analyzer
 ```
 
+# FAQ
+
+## How to deploy the skydive agent on all nodes
+
+The current template only deploys the skydive agents to default compute nodes with selectors in `osm_default_node_selector` or in  `_openshift_node_group_name_` as there is no **node-selector** defined in the `skydive-template.yaml`.
+You can execute the command below to add the skydive agent to the other nodes.
+
+`oc patch namespace skydive -p '{"metadata": {"annotations": {"openshift.io/node-selector": ""}}}'`
