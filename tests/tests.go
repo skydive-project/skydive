@@ -90,6 +90,7 @@ agent:
       - opencontrail
       - lldp
       - runc
+      - sriov
     netlink:
       metrics_update: 5
     lldp:
