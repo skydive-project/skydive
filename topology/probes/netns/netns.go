@@ -28,9 +28,12 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -50,13 +53,15 @@ type Probe struct {
 	common.RWMutex
 	Graph       *graph.Graph
 	Root        *graph.Node
-	Probe       *netlink.Probe
+	nlProbe     *netlink.Probe
 	pathToNetNS map[string]*NetNs
 	netNsProbes map[string]*netNsProbe
 	rootNs      *NetNs
 	watcher     *fsnotify.Watcher
 	pending     chan string
 	exclude     []string
+	state       int64
+	wg          sync.WaitGroup
 }
 
 // NetNs describes a network namespace path associated with a device / inode
@@ -165,8 +170,6 @@ func (u *Probe) Register(path string, name string) (*graph.Node, error) {
 		return probe.Root, nil
 	}
 
-	u.Graph.Lock()
-
 	logging.GetLogger().Debugf("Network namespace added: %s", nsString)
 	metadata := graph.Metadata{
 		"Name":   name,
@@ -176,9 +179,9 @@ func (u *Probe) Register(path string, name string) (*graph.Node, error) {
 		"Device": int64(newns.dev),
 	}
 
+	u.Graph.Lock()
 	n := u.Graph.NewNode(graph.GenID(), metadata)
 	topology.AddOwnershipLink(u.Graph, u.Root, n, nil)
-
 	u.Graph.Unlock()
 
 	logging.GetLogger().Debugf("Registering namespace: %s", nsString)
@@ -186,7 +189,7 @@ func (u *Probe) Register(path string, name string) (*graph.Node, error) {
 	var probe *netlink.NetNsProbe
 	err := common.Retry(func() error {
 		var err error
-		probe, err = u.Probe.Register(path, n)
+		probe, err = u.nlProbe.Register(path, n)
 		if err != nil {
 			return fmt.Errorf("Could not register netlink probe within namespace: %s", err)
 		}
@@ -227,7 +230,7 @@ func (u *Probe) Unregister(path string) {
 		return
 	}
 
-	u.Probe.Unregister(path)
+	u.nlProbe.Unregister(path)
 	logging.GetLogger().Debugf("Network namespace deleted: %s", nsString)
 
 	u.Graph.Lock()
@@ -242,44 +245,64 @@ func (u *Probe) Unregister(path string) {
 }
 
 func (u *Probe) initializeRunPath(path string) {
-	for {
-		if _, err := os.Stat(path); err == nil {
-			break
-		}
-		time.Sleep(time.Second)
-	}
+	defer u.wg.Done()
 
-	if err := u.watcher.Add(path); err != nil {
-		logging.GetLogger().Errorf("Unable to Watch %s: %s", path, err)
+	err := common.Retry(func() error {
+		if atomic.LoadInt64(&u.state) != common.RunningState {
+			return nil
+		}
+
+		if _, err := os.Stat(path); err != nil {
+			return err
+		}
+
+		if err := u.watcher.Add(path); err != nil {
+			return fmt.Errorf("Unable to Watch %s: %s", path, err)
+		}
+
+		return nil
+	}, math.MaxInt32, time.Second)
+
+	if err != nil {
+		logging.GetLogger().Error(err)
+		return
 	}
 
 	files, _ := ioutil.ReadDir(path)
-LOOP:
 	for _, f := range files {
 		fullpath, name := path+"/"+f.Name(), f.Name()
 
 		if u.isPathExcluded(fullpath) {
-			continue LOOP
+			continue
 		}
 
 		if _, err := u.Register(fullpath, name); err != nil {
 			logging.GetLogger().Errorf("Failed to register namespace %s: %s", fullpath, err)
-			continue
 		}
 	}
 	logging.GetLogger().Debugf("Probe initialized %s", path)
 }
 
 func (u *Probe) start() {
+	defer u.wg.Done()
+
 	logging.GetLogger().Debugf("Probe initialized")
-LOOP:
-	for {
+
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	if !atomic.CompareAndSwapInt64(&u.state, common.StoppedState, common.RunningState) {
+		return
+	}
+
+	for atomic.LoadInt64(&u.state) == common.RunningState {
 		select {
 		case path := <-u.pending:
+			u.wg.Add(1)
 			go u.initializeRunPath(path)
 		case ev := <-u.watcher.Events:
 			if u.isPathExcluded(ev.Name) {
-				continue LOOP
+				continue
 			}
 			if ev.Op&fsnotify.Create == fsnotify.Create {
 				if _, err := u.Register(ev.Name, getNetNSName(ev.Name)); err != nil {
@@ -293,6 +316,7 @@ LOOP:
 
 		case err := <-u.watcher.Errors:
 			logging.GetLogger().Errorf("Error while watching network namespace: %s", err)
+		case <-ticker.C:
 		}
 	}
 }
@@ -304,12 +328,20 @@ func (u *Probe) Watch(path string) {
 
 // Start the probe
 func (u *Probe) Start() {
+	u.wg.Add(1)
 	go u.start()
 }
 
 // Stop the probe
 func (u *Probe) Stop() {
-	u.Probe.Stop()
+	if !atomic.CompareAndSwapInt64(&u.state, common.RunningState, common.StoppingState) {
+		return
+	}
+	u.wg.Wait()
+
+	u.nlProbe.Stop()
+
+	atomic.StoreInt64(&u.state, common.StoppedState)
 }
 
 func (u *Probe) isPathExcluded(path string) bool {
@@ -353,12 +385,13 @@ func NewProbe(g *graph.Graph, n *graph.Node, nlProbe *netlink.Probe) (*Probe, er
 	nsProbe := &Probe{
 		Graph:       g,
 		Root:        n,
-		Probe:       nlProbe,
+		nlProbe:     nlProbe,
 		pathToNetNS: make(map[string]*NetNs),
 		netNsProbes: make(map[string]*netNsProbe),
 		rootNs:      rootNs,
 		watcher:     watcher,
 		pending:     make(chan string, 10),
+		state:       common.StoppedState,
 	}
 
 	if path := config.GetString("netns.run_path"); path != "" {

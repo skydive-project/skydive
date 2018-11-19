@@ -109,7 +109,6 @@ func (probe *Probe) registerContainer(id string) {
 		probe.Graph.Unlock()
 	}
 
-	probe.Graph.Lock()
 	metadata := graph.Metadata{
 		"Type":    "container",
 		"Name":    info.Name[1:],
@@ -125,6 +124,7 @@ func (probe *Probe) registerContainer(id string) {
 		metadata["Docker"].(map[string]interface{})["Labels"] = common.NormalizeValue(info.Config.Labels)
 	}
 
+	probe.Graph.Lock()
 	containerNode := probe.Graph.NewNode(graph.GenID(), metadata)
 	topology.AddOwnershipLink(probe.Graph, n, containerNode, nil)
 	probe.Graph.Unlock()
