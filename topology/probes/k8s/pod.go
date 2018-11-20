@@ -25,6 +25,8 @@ package k8s
 import (
 	"fmt"
 
+	"github.com/mohae/deepcopy"
+
 	"github.com/skydive-project/skydive/topology/graph"
 
 	"k8s.io/api/core/v1"
@@ -43,7 +45,9 @@ func (h *podHandler) Dump(obj interface{}) string {
 }
 
 func (h *podHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
-	pod := obj.(*v1.Pod)
+	// we make a copy of pod before modifaying the pod object so
+	// that don't interfere with the container subprobe
+	pod := deepcopy.Copy(obj).(*v1.Pod)
 
 	pod.Spec.Containers = nil
 	m := NewMetadata(Manager, "pod", pod, pod.Name, pod.Namespace)

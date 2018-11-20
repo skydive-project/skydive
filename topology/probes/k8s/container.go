@@ -62,6 +62,8 @@ func (c *containerProbe) dump(pod *v1.Pod, name string) string {
 // OnAdd is called when a new Kubernetes resource has been created
 func (c *containerProbe) OnAdd(obj interface{}) {
 	if pod, ok := obj.(*v1.Pod); ok {
+		logging.GetLogger().Debugf("Added/Updated pod{Namespace: %s, Name: %s}", pod.Namespace, pod.Name)
+
 		c.graph.Lock()
 		defer c.graph.Unlock()
 
@@ -102,6 +104,8 @@ func (c *containerProbe) OnUpdate(oldObj, newObj interface{}) {
 // OnDelete is called when a Kubernetes resource has been deleted
 func (c *containerProbe) OnDelete(obj interface{}) {
 	if pod, ok := obj.(*v1.Pod); ok {
+		logging.GetLogger().Debugf("Deleted pod{Namespace: %s, Name: %s}", pod.Namespace, pod.Name)
+
 		c.graph.Lock()
 		defer c.graph.Unlock()
 

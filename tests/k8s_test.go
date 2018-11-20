@@ -65,7 +65,7 @@ func makeHasArgsType(mngr, ty interface{}, args1 ...interface{}) []interface{} {
 }
 
 func makeHasArgsNode(node *graph.Node, args1 ...interface{}) []interface{} {
-	m := node.Metadata()
+	m := node.Metadata
 	args := []interface{}{}
 	for _, key := range []string{"Namespace", "Name"} {
 		if val, ok := m[key]; ok {
@@ -166,7 +166,7 @@ func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []Cmd, mngr, typ, na
 				return err
 			}
 
-			m := obj.Metadata()
+			m := obj.Metadata
 			for _, field := range fields {
 				if _, ok := m[field]; !ok {
 					return fmt.Errorf("Node '%s %s' missing field: %s", typ, name, field)

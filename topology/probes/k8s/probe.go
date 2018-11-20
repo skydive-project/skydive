@@ -94,6 +94,11 @@ func (p *Probe) AppendNamespaceLinkers(types ...string) {
 
 // NewProbe creates the probe for tracking k8s events
 func NewProbe(g *graph.Graph, manager string, subprobes map[string]Subprobe, linkers []probe.Probe) *Probe {
+	names := []string{}
+	for k := range subprobes {
+		names = append(names, k)
+	}
+	logging.GetLogger().Infof("Probe %s subprobes %v", manager, names)
 	return &Probe{
 		graph:     g,
 		manager:   manager,
