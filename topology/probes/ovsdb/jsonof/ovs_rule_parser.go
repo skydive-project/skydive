@@ -43,12 +43,14 @@ import (
 
 // JSONRule is an openflow rule ready for JSON export
 type JSONRule struct {
-	Cookie   uint64    `json:"Cookie"`         // cookie value of the rule
-	Table    int       `json:"Table"`          // table containing the rule
-	Priority int       `json:"Priority"`       // priority of rule
-	Meta     []*Meta   `json:"Meta,omitempty"` // anything that is not a filter.
-	Filters  []*Filter `json:"Filters"`        // all the filter
-	Actions  []*Action `json:"Actions"`        // all the actions
+	Cookie    uint64    `json:"Cookie"`         // cookie value of the rule
+	Table     int       `json:"Table"`          // table containing the rule
+	Priority  int       `json:"Priority"`       // priority of rule
+	Meta      []*Meta   `json:"Meta,omitempty"` // anything that is not a filter.
+	Filters   []*Filter `json:"Filters"`        // all the filter
+	Actions   []*Action `json:"Actions"`        // all the actions
+	UUID      string    `json:"-"`              // UUID used by skydive
+	RawFilter string    `json:"-"`              // Kept to be respawned
 }
 
 // JSONGroup is an openflow group ready for JSON export
@@ -57,6 +59,7 @@ type JSONGroup struct {
 	Type    string    `json:"Type"`           // group type
 	Meta    []*Meta   `json:"Meta,omitempty"` // anything that is not a bucket
 	Buckets []*Bucket `json:"Buckets"`        // buckets
+	UUID    string    `json:"-"`              // UUID used by skydive
 }
 
 // Bucket is the representation of a bucket in an openflow group
@@ -344,9 +347,19 @@ func (s *Stream) ParseRuleSep(result *JSONRule, stack []*Meta) error {
 		return errors.New("expected text or space after comma")
 	}
 	if tok == tSpace {
-		for _, meta := range stack {
+		var raw bytes.Buffer
+		for i, meta := range stack {
+			if i > 0 {
+				raw.WriteByte(',')
+			}
+			raw.WriteString(meta.Key)
+			if meta.Value != "" {
+				raw.WriteByte(':')
+				raw.WriteString(meta.Value)
+			}
 			result.Filters = append(result.Filters, makeFilter(meta))
 		}
+		result.RawFilter = raw.String()
 		return s.ParseRule(result)
 	}
 	return errors.New("expecting a comma or a space")

@@ -48,9 +48,6 @@ func TestParseEvent(t *testing.T) {
 	if event.Bridge != "br" {
 		t.Error("wrong bridge assigned")
 	}
-	if event.RawRule.Actions != "" {
-		t.Error("No action here")
-	}
 	if event.RawRule.Filter != "dl_src=01:00:00:00:00:00/01:00:00:00:00:00" {
 		t.Errorf("Bad filter: %s", event.RawRule.Filter)
 	}
@@ -67,9 +64,6 @@ func TestParseEventWithAction(t *testing.T) {
 	event, err := parseEvent(line, "br", "host-br-")
 	if err != nil {
 		t.Error("parseEvent should succeed")
-	}
-	if event.RawRule.Actions != "resubmit(;1)" {
-		t.Errorf("Bad action: %s", event.RawRule.Actions)
 	}
 	if event.RawRule.Filter != "" {
 		t.Errorf("No filter here %s", event.RawRule.Filter)
@@ -88,9 +82,6 @@ func TestParseEventRemove(t *testing.T) {
 	if err != nil {
 		t.Error("parseEvent should succeed")
 	}
-	if event.RawRule.Actions != "" {
-		t.Errorf("No action here")
-	}
 	if event.RawRule.Filter != "ip,nw_dst=192.168.0.1" {
 		t.Errorf("Bad filter %s", event.RawRule.Filter)
 	}
@@ -102,74 +93,35 @@ func TestParseEventRemove(t *testing.T) {
 	}
 }
 
-func TestFillUUID(t *testing.T) {
+func TestFillRawUUID(t *testing.T) {
 	var (
-		rule1   = Rule{Cookie: 1, Table: 1, Filter: "a"}
-		rule2   = Rule{Cookie: 1, Table: 1, Filter: "b"}
-		rule3   = Rule{Cookie: 2, Table: 1, Filter: "a"}
-		rule4   = Rule{Cookie: 1, Table: 2, Filter: "a"}
+		rule1   = RawRule{Cookie: 1, Table: 1, Filter: "a"}
+		rule2   = RawRule{Cookie: 1, Table: 1, Filter: "b"}
+		rule3   = RawRule{Cookie: 2, Table: 1, Filter: "a"}
+		rule4   = RawRule{Cookie: 1, Table: 2, Filter: "a"}
 		prefix1 = "XX"
 		prefix2 = "YY"
 	)
-	fillUUID(&rule1, prefix1)
+	fillRawUUID(&rule1, prefix1)
 	var uuid = rule1.UUID
 	if uuid == "" {
 		t.Error("UUID not filled in")
 	}
-	fillUUID(&rule1, prefix2)
+	fillRawUUID(&rule1, prefix2)
 	if uuid == rule1.UUID {
 		t.Error("Same UUID with distinct prefix")
 	}
-	fillUUID(&rule2, prefix1)
+	fillRawUUID(&rule2, prefix1)
 	if uuid == rule2.UUID {
 		t.Error("Same UUID with distinct filter")
 	}
-	fillUUID(&rule3, prefix1)
+	fillRawUUID(&rule3, prefix1)
 	if uuid != rule3.UUID {
 		t.Error("Distinct UUID with only distinct cookie")
 	}
-	fillUUID(&rule4, prefix1)
+	fillRawUUID(&rule4, prefix1)
 	if uuid == rule4.UUID {
 		t.Error("Same UUID with distinct table")
-	}
-}
-
-func TestRule1(t *testing.T) {
-	var line1 = " cookie=0x10, duration=57227.249s, table=11, n_packets=0, n_bytes=0, idle_age=57227, dl_src=01:00:00:00:00:00/01:00:00:00:00:00 actions=drop"
-	rule1, err1 := parseRule(line1)
-	if err1 != nil {
-		t.Error("unexpected error")
-	}
-	if rule1.Cookie != 16 || rule1.Table != 11 || rule1.Filter != "dl_src=01:00:00:00:00:00/01:00:00:00:00:00" || rule1.Actions != "drop" {
-		out, err := json.Marshal(&rule1)
-		if err != nil {
-			t.Error("bad marshall")
-		}
-		t.Errorf("Bad rule 1 %s", out)
-	}
-}
-
-func TestRule2(t *testing.T) {
-	var line2 = " cookie=0x20, duration=57214.349s, table=22, n_packets=0, n_bytes=0, idle_age=57293, priority=10 actions=resubmit(,1)"
-	rule2, err2 := parseRule(line2)
-	if err2 != nil {
-		t.Error("unexpected error")
-	}
-	if rule2.Cookie != 32 || rule2.Table != 22 || rule2.Filter != "priority=10" || rule2.Actions != "resubmit(;1)" {
-		out, err := json.Marshal(&rule2)
-		if err != nil {
-			t.Error("bad marshall")
-		}
-		t.Errorf("Bad rule 2 %s", out)
-	}
-
-}
-
-func TestRule3(t *testing.T) {
-	var line = "aaaaaaaa"
-	_, err3 := parseRule(line)
-	if err3 == nil {
-		t.Error("Failure was expected")
 	}
 }
 
@@ -259,7 +211,14 @@ func TestCompleteRule(t *testing.T) {
 		t.Error("completeRule: Should not err")
 	}
 	rule := event.Rules[0]
-	if rule.Filter != "priority=1,dl_src=01:00:00:00:00:00/01:00:00:00:00:00" || rule.Actions != "drop" {
-		t.Errorf("completeRule: fails action=%s, filter=%s", rule.Actions, rule.Filter)
+	filters, err1 := json.Marshal(rule.Filters)
+	actions, err2 := json.Marshal(rule.Actions)
+	if err1 != nil || err2 != nil {
+		t.Error("cannot marshal filters or actions")
+	}
+	expectedAction := `[{"Function":"drop"}]`
+	expectedFilter := `[{"Key":"dl_src","Value":"01:00:00:00:00:00","Mask":"01:00:00:00:00:00"}]`
+	if string(filters) != expectedFilter || string(actions) != expectedAction {
+		t.Errorf("completeRule: fails action=%s, filter=%s", actions, filters)
 	}
 }

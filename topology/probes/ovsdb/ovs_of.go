@@ -28,6 +28,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -41,6 +42,7 @@ import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology/probes/ovsdb/jsonof"
 )
 
 // OvsOfProbe is the type of the probe retrieving Openflow rules on an Open Vswitch
@@ -65,45 +67,35 @@ type OvsOfProbe struct {
 // highest priority hides the other rules. It is important to handle rules with the same rawUUID as a group
 // because ovs-ofctl monitor does not report priorities.
 type BridgeOfProbe struct {
-	Host           string               // The global host
-	Bridge         string               // The bridge monitored
-	UUID           string               // The UUID of the bridge node
-	Address        string               // The address of the bridge if different from name
-	BridgeNode     *graph.Node          // the bridge node on which the rule nodes are attached.
-	OvsOfProbe     *OvsOfProbe          // Back pointer to the probe
-	Rules          map[string][]*Rule   // The set of rules found so far grouped by rawUUID
-	Groups         map[uint]*graph.Node // The set of groups found so far
+	Host           string                        // The global host
+	Bridge         string                        // The bridge monitored
+	UUID           string                        // The UUID of the bridge node
+	Address        string                        // The address of the bridge if different from name
+	BridgeNode     *graph.Node                   // the bridge node on which the rule nodes are attached.
+	OvsOfProbe     *OvsOfProbe                   // Back pointer to the probe
+	Rules          map[string][]*jsonof.JSONRule // The set of rules found so far grouped by rawUUID
+	Groups         map[uint]*graph.Node          // The set of groups found so far
 	groupMonitored bool
 	ctx            context.Context
 	cancel         context.CancelFunc
 }
 
-// Rule is an OpenFlow rule in a switch
-type Rule struct {
+// RawRule is an OpenFlow rule in a switch captured as an event.
+type RawRule struct {
 	Cookie   uint64 // cookie value of the rule
 	Table    int    // table containing the rule
 	Priority int    // priority of rule
 	Filter   string // all the filters as a comma separated string
-	Actions  string // all the actions (comma separated)
-	InPort   int    // -1 is any
 	UUID     string // Unique id
-}
-
-// Group is an OpenFlow group in a switch
-type Group struct {
-	ID        uint   // Group id
-	GroupType string // Group type
-	Contents  string // Anything else (buckets + selection)
-	UUID      string // Unique id
 }
 
 // Event is an event as monitored by ovs-ofctl monitor <br> watch:
 type Event struct {
-	RawRule *Rule   // The rule from the event
-	Rules   []*Rule // Rules found by ovs-ofctl matching the event rule filter.
-	Date    int64   // the date of the event
-	Action  string  // the action taken
-	Bridge  string  // The bridge whtere it ocured
+	RawRule *RawRule           // The rule from the event
+	Rules   []*jsonof.JSONRule // Rules found by ovs-ofctl matching the event rule filter.
+	Date    int64              // the date of the event
+	Action  string             // the action taken
+	Bridge  string             // The bridge whtere it ocured
 }
 
 const (
@@ -141,7 +133,7 @@ func protectCommas(line string) string {
 
 // fillIn is a utility function that takes a splitted rule line
 // and fills a Rule/Event structure with it
-func fillIn(components []string, rule *Rule, event *Event) {
+func fillIn(components []string, rule *RawRule, event *Event) {
 	for _, component := range components {
 		keyvalue := strings.SplitN(component, "=", 2)
 		if len(keyvalue) == 2 {
@@ -152,8 +144,6 @@ func fillIn(components []string, rule *Rule, event *Event) {
 				if event != nil {
 					event.Action = value
 				}
-			case "actions":
-				rule.Actions = value
 			case "table":
 				table, err := strconv.ParseInt(value, 10, 32)
 				if err == nil {
@@ -171,27 +161,15 @@ func fillIn(components []string, rule *Rule, event *Event) {
 			}
 		}
 	}
-}
-
-// extractPriority parses the filter of a rule and extracts the priority if it exists.
-func extractPriority(rule *Rule) {
-	components := strings.Split(rule.Filter, ",")
-	rule.Priority = 32768 // Default rule priority.
-	for _, component := range components {
-		keyvalue := strings.SplitN(component, "=", 2)
-		if len(keyvalue) == 2 {
-			key := keyvalue[0]
-			value := keyvalue[1]
-			switch key {
-			case "priority":
-				priority, err := strconv.ParseInt(value, 10, 32)
-				if err == nil {
-					rule.Priority = int(priority)
-				} else {
-					logging.GetLogger().Errorf("Error while parsing priority of rule: %s", err)
-				}
-			}
-		}
+	if len(components) < 2 {
+		logging.GetLogger().Errorf("Rule syntax for filters")
+	}
+	tentativeFilterPos := len(components) - 1
+	if strings.HasPrefix(components[tentativeFilterPos], "actions=") {
+		tentativeFilterPos = tentativeFilterPos - 1
+	}
+	if !strings.HasPrefix(components[tentativeFilterPos], "cookie=") {
+		rule.Filter = components[tentativeFilterPos]
 	}
 }
 
@@ -206,7 +184,7 @@ func (e *noEventError) Error() string {
 // Protected commas will be replaced.
 func parseEvent(line string, bridge string, prefix string) (Event, error) {
 	var result Event
-	var rule Rule
+	var rule RawRule
 
 	if line[0] != ' ' {
 		return result, &noEventError{}
@@ -219,23 +197,17 @@ func parseEvent(line string, bridge string, prefix string) (Event, error) {
 	if len(components) < 2 {
 		return result, errors.New("Rule syntax")
 	}
-	tentative := len(components) - 1
-	if strings.HasPrefix(components[tentative], "actions=") {
-		tentative = tentative - 1
-	}
-	if !strings.HasPrefix(components[tentative], "cookie=") {
-		rule.Filter = components[tentative]
-	}
+
 	result.RawRule = &rule
-	fillUUID(&rule, prefix)
+	fillRawUUID(&rule, prefix)
 	result.Date = time.Now().Unix()
 	result.Bridge = bridge
 	return result, nil
 }
 
-// Generates a unique UUID for the rule
+// fillRawUUID Generates a unique UUID for the rule
 // prefix is a unique string per bridge using bridge and host names.
-func fillUUID(rule *Rule, prefix string) {
+func fillRawUUID(rule *RawRule, prefix string) {
 	id := prefix + rule.Filter + "-" + string(rule.Table)
 	u, err := uuid.NewV5(uuid.NamespaceOID, []byte(id))
 	if err == nil {
@@ -243,61 +215,26 @@ func fillUUID(rule *Rule, prefix string) {
 	}
 }
 
+// fillRawUUID Generates a unique UUID for the rule
+// prefix is a unique string per bridge using bridge and host names.
+func fillUUID(rule *jsonof.JSONRule, prefix string) {
+	id := prefix + rule.RawFilter + "-" + string(rule.Table) + "-" + string(rule.Priority)
+	u, err := uuid.NewV5(uuid.NamespaceOID, []byte(id))
+	if err == nil {
+		rule.UUID = u.String()
+	}
+}
+
 // Generate a unique UUID for the group
-func fillGroupUUID(group *Group, prefix string) {
-	id := prefix + "-" + string(group.ID)
+func fillGroupUUID(group *jsonof.JSONGroup, prefix string) {
+	id := prefix + "-" + string(group.GroupID)
 	u, err := uuid.NewV5(uuid.NamespaceOID, []byte(id))
 	if err == nil {
 		group.UUID = u.String()
 	}
 }
 
-// parseRule transforms a single line of ofctl dump-flow in a rule.
-// The line DOES NOT include the terminating newline. Protected commas will be replaced.
-func parseRule(line string) (*Rule, error) {
-	var rule Rule
-	if len(line) == 0 || line[0] != ' ' {
-		return nil, errors.New("No rule: " + line)
-	}
-	if strings.ContainsRune(line, '(') {
-		line = protectCommas(line)
-	}
-	components := strings.Split(line[1:], ", ")
-	if len(components) < 2 {
-		return nil, errors.New("Rule syntax")
-	}
-	fillIn(components, &rule, nil)
-	tail := components[len(components)-1]
-	tail = strings.TrimPrefix(tail, "reset_counts ")
-	components = strings.Split(tail, " actions=")
-	if len(components) == 2 {
-		rule.Filter = components[0]
-		rule.Actions = components[1]
-	} else {
-		return nil, errors.New("Rule syntax split filter and actions")
-	}
-	return &rule, nil
-}
-
-// parseGroup transform a single line of ofctl dump-groups in a group
-func parseGroup(line string) *Group {
-	submatch := groupRegexp.FindStringSubmatch(line)
-	if submatch == nil {
-		return nil
-	}
-	groupID, err := strconv.ParseInt(submatch[1], 10, 32)
-	if err != nil {
-		logging.GetLogger().Warningf("Bad group id in %s", line)
-		return nil
-	}
-	return &Group{
-		ID:        uint(groupID),
-		GroupType: submatch[2],
-		Contents:  submatch[3],
-	}
-}
-
-func makeFilter(rule *Rule) string {
+func makeFilter(rule *RawRule) string {
 	if rule.Filter == "" {
 		return fmt.Sprintf("table=%d", rule.Table)
 	}
@@ -434,8 +371,8 @@ func (probe *BridgeOfProbe) dumpGroups() error {
 		return err
 	}
 	for _, line := range strings.Split(lines, "\n") {
-		group := parseGroup(line)
-		if group != nil {
+		group, err := jsonof.ToASTGroup(line)
+		if err == nil {
 			fillGroupUUID(group, prefix)
 			probe.addGroup(group)
 		}
@@ -443,7 +380,7 @@ func (probe *BridgeOfProbe) dumpGroups() error {
 	return nil
 }
 
-func (probe *BridgeOfProbe) getGroup(groupID uint) *Group {
+func (probe *BridgeOfProbe) getGroup(groupID uint) *jsonof.JSONGroup {
 	ofp := probe.OvsOfProbe
 	prefix := probe.prefix()
 	command, err := ofp.makeCommand(
@@ -457,8 +394,8 @@ func (probe *BridgeOfProbe) getGroup(groupID uint) *Group {
 		return nil
 	}
 	for _, line := range strings.Split(lines, "\n") {
-		group := parseGroup(line)
-		if group != nil && group.ID == groupID {
+		group, err := jsonof.ToASTGroup(line)
+		if err == nil && group.GroupID == groupID {
 			fillGroupUUID(group, prefix)
 			return group
 		}
@@ -486,10 +423,9 @@ func completeEvent(ctx context.Context, o *OvsOfProbe, event *Event, prefix stri
 		return fmt.Errorf("Cannot launch ovs-ofctl dump-flows on %s@%s with filter %s: %s", bridge, o.Host, filter, err)
 	}
 	for _, line := range strings.Split(lines, "\n") {
-		rule, err2 := parseRule(line)
-		if err2 == nil && countElements(rule.Filter) == expected && oldrule.Cookie == rule.Cookie {
+		rule, err2 := jsonof.ToAST(line)
+		if err2 == nil && countElements(rule.RawFilter) == expected && oldrule.Cookie == rule.Cookie {
 			fillUUID(rule, prefix)
-			extractPriority(rule)
 			event.Rules = append(event.Rules, rule)
 		}
 	}
@@ -497,7 +433,7 @@ func completeEvent(ctx context.Context, o *OvsOfProbe, event *Event, prefix stri
 }
 
 // addRule adds a rule to the graph and links it to the bridge.
-func (probe *BridgeOfProbe) addRule(rule *Rule) {
+func (probe *BridgeOfProbe) addRule(rule *jsonof.JSONRule) {
 	logging.GetLogger().Infof("New rule %v added", rule.UUID)
 	g := probe.OvsOfProbe.Graph
 	g.Lock()
@@ -505,11 +441,11 @@ func (probe *BridgeOfProbe) addRule(rule *Rule) {
 	bridgeNode := probe.BridgeNode
 	metadata := graph.Metadata{
 		"Type":     "ofrule",
-		"cookie":   fmt.Sprintf("0x%x", rule.Cookie),
-		"table":    rule.Table,
-		"filters":  rule.Filter,
-		"actions":  rule.Actions,
-		"priority": rule.Priority,
+		"Cookie":   fmt.Sprintf("0x%x", rule.Cookie),
+		"Table":    rule.Table,
+		"Filters":  rule.Filters,
+		"Actions":  rule.Actions,
+		"Priority": rule.Priority,
 		"UUID":     rule.UUID,
 	}
 	ruleNode, err := g.NewNode(graph.GenID(), metadata)
@@ -524,7 +460,7 @@ func (probe *BridgeOfProbe) addRule(rule *Rule) {
 }
 
 // modRule modifies the node of an existing rule.
-func (probe *BridgeOfProbe) modRule(rule *Rule) {
+func (probe *BridgeOfProbe) modRule(rule *jsonof.JSONRule) {
 	logging.GetLogger().Infof("Rule %v modified", rule.UUID)
 	g := probe.OvsOfProbe.Graph
 	g.Lock()
@@ -534,38 +470,39 @@ func (probe *BridgeOfProbe) modRule(rule *Rule) {
 	if ruleNode != nil {
 		tr := g.StartMetadataTransaction(ruleNode)
 		defer tr.Commit()
-		tr.AddMetadata("actions", rule.Actions)
-		tr.AddMetadata("cookie", rule.Cookie)
+		tr.AddMetadata("Actions", rule.Actions)
+		tr.AddMetadata("Cookie", rule.Cookie)
 	}
 }
 
 // addGroup adds a group to the graph and links it to the bridge
-func (probe *BridgeOfProbe) addGroup(group *Group) {
+func (probe *BridgeOfProbe) addGroup(group *jsonof.JSONGroup) {
 	logging.GetLogger().Infof("New group %v added", group.UUID)
 	g := probe.OvsOfProbe.Graph
 	g.Lock()
 	defer g.Unlock()
 	bridgeNode := probe.BridgeNode
 	metadata := graph.Metadata{
-		"Type":       "ofgroup",
-		"group_id":   group.ID,
-		"group_type": group.GroupType,
-		"contents":   group.Contents,
-		"UUID":       group.UUID,
+		"Type":      "ofgroup",
+		"GroupId":   group.GroupID,
+		"GroupType": group.Type,
+		"Meta":      group.Meta,
+		"Buckets":   group.Buckets,
+		"UUID":      group.UUID,
 	}
 	groupNode, err := g.NewNode(graph.GenID(), metadata)
 	if err != nil {
 		logging.GetLogger().Error(err)
 		return
 	}
-	probe.Groups[group.ID] = groupNode
+	probe.Groups[group.GroupID] = groupNode
 	if _, err := topology.AddOwnershipLink(g, bridgeNode, groupNode, nil); err != nil {
 		logging.GetLogger().Error(err)
 	}
 }
 
 // delRule deletes a rule from the the graph.
-func (probe *BridgeOfProbe) delRule(rule *Rule) {
+func (probe *BridgeOfProbe) delRule(rule *jsonof.JSONRule) {
 	logging.GetLogger().Infof("Rule %v deleted", rule.UUID)
 	g := probe.OvsOfProbe.Graph
 	g.Lock()
@@ -619,15 +556,16 @@ func (probe *BridgeOfProbe) modGroup(groupID uint) {
 	}
 	tr := g.StartMetadataTransaction(node)
 	defer tr.Commit()
-	tr.AddMetadata("group_id", group.ID)
-	tr.AddMetadata("group_type", group.GroupType)
-	tr.AddMetadata("contents", group.Contents)
+	tr.AddMetadata("GroupId", group.GroupID)
+	tr.AddMetadata("GroupType", group.Type)
+	tr.AddMetadata("Meta", group.Meta)
+	tr.AddMetadata("Buckets", group.Buckets)
 	tr.AddMetadata("UUID", group.UUID)
 }
 
 // containsRule checks if the searched rule may replace an existing rule in
 // rules and gives back the coresponding rule if found.
-func containsRule(rules []*Rule, searched *Rule) *Rule {
+func containsRule(rules []*jsonof.JSONRule, searched *jsonof.JSONRule) *jsonof.JSONRule {
 	for _, rule := range rules {
 		if rule.UUID == searched.UUID {
 			return rule
@@ -679,7 +617,7 @@ func (probe *BridgeOfProbe) monitor(ctx context.Context) error {
 							oldRules = append(oldRules, rule)
 							probe.addRule(rule)
 						} else {
-							if found.Actions != rule.Actions || found.Cookie != rule.Cookie {
+							if !reflect.DeepEqual(found.Actions, rule.Actions) || found.Cookie != rule.Cookie {
 								found.Actions = rule.Actions
 								found.Cookie = rule.Cookie
 								probe.modRule(rule)
@@ -822,7 +760,7 @@ func (o *OvsOfProbe) NewBridgeProbe(host string, bridge string, uuid string, bri
 		Address:        address,
 		BridgeNode:     bridgeNode,
 		OvsOfProbe:     o,
-		Rules:          make(map[string][]*Rule),
+		Rules:          make(map[string][]*jsonof.JSONRule),
 		Groups:         make(map[uint]*graph.Node),
 		groupMonitored: false,
 		ctx:            ctx,
