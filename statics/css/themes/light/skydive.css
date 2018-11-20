@@ -11,7 +11,11 @@ label {
 }
 
 .topology-d3-full-host, .topology-d3-infra, .topology-d3-gremlin {
-    background-color: #eee;
+  background-color: #eee;
+}
+
+.topology-d3 {
+  background-color: #eee;
 }
 
 .panel {

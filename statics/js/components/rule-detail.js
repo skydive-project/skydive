@@ -251,7 +251,7 @@ function classify(array, classifier) {
  * @param itfs the table to fill with information on the port represented.
 */
 function extractPort(c, itfs) {
-  var pot = cc.getTargets();
+  var pot = window.graphDataHandler.getTargets(c);
   for (var i = 0; i < pot.length; i++) {
     var cc = pot[i];
     var ofport = cc.Metadata.OfPort;
@@ -260,11 +260,11 @@ function extractPort(c, itfs) {
     var itf = [c, cc];
     itfs[ofport] = itf;
     if (cc.Metadata.Type === 'patch') {
-      var ccc = cc.getNeighborWithType('patch');
+      var ccc = window.graphDataHandler.getNeighborWithType(cc, 'patch');
       if (ccc === undefined)
         return;
       itf.push(ccc);
-      var cccc = cc.getNeighborWithType('ovsport');
+      var cccc = window.graphDataHandler.getNeighborWithType(ccc, 'ovsport');
       if (cccc !== undefined)
         itf.push(cccc);
     }
@@ -293,7 +293,7 @@ var BridgeLayout = (function () {
     var rulesUUID = new Set();
     var groupsUUID = new Set();
     var groups = [];
-    var children = this.bridge.getTargets();
+    var children = window.graphDataHandler.getTargets(this.bridge);
     for (var i = 0; i < children.length; i++) {
       var c = children[i];
       if (c === undefined)
@@ -388,7 +388,7 @@ var BridgeLayout = (function () {
     var len = nodes.length;
     var last = nodes[len - 1];
     if (len === 4) {
-      last = last.getNeighborWithType('ovsbridge');
+      last = window.graphDataHandler.getNeighborWithType(last, 'ovsbridge');
     }
     this.store.commit('nodeSelected', last);
     this.switchTab(0);
@@ -659,6 +659,9 @@ Vue.component('rule-detail', {
 
   beforeDestroy: function () {
     this.unwatch();
+    if (!window.layoutConfig.getValue('useNewUi')) {
+      window.topologyComponent.graph.removeHandler(this.handler);
+    }
   },
 
   mounted: function () {
@@ -677,9 +680,18 @@ Vue.component('rule-detail', {
         self.memoBridgeLayout = null;
       }
     };
-    window.globalEventHandler.on('graph.edge_added', handle);
-    window.globalEventHandler.on('graph.edge_deleted', handle);
-    window.globalEventHandler.on('graph.node_updated', handleUpdate);
+    if (!window.layoutConfig.getValue('useNewUi')) {
+      this.handler = {
+        onEdgeAdded: handle,
+        onEdgeDeleted: handle,
+        onNodeUpdated:handleUpdate
+      };
+      window.topologyComponent.graph.addHandler(this.handler);
+    } else {
+      window.globalEventHandler.on('graph.edge_added', handle);
+      window.globalEventHandler.on('graph.edge_deleted', handle);
+      window.globalEventHandler.on('graph.node_updated', handleUpdate);
+    }
     this.unwatch = this.$store.watch(
       function () {
         return self.$store.state.currentRule;

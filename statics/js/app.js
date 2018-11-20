@@ -144,7 +144,7 @@ var routes = [
       }
     }
   },
-  { path: '/topology', component: TopologyComponent, props: (route) => ({ query: route.query }) },
+  { path: '/topology', component: window.layoutConfig.getValue('useNewUi') ? TopologyComponentNewApproach : TopologyComponentOldApproach, props: (route) => ({ query: route.query }) },
   { path: '/preference', component: PreferenceComponent },
   { path: '/status', component: StatusComponent },
   { path: '*', redirect: '/topology' }

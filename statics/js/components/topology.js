@@ -28,7 +28,8 @@ window.layoutConfig = new window.TopologyORegistry.config({
             return distance;
         }
     },
-    useHardcodedData: window.location.href.indexOf('use_hardcoded_data=1') !== -1
+    useHardcodedData: window.location.href.indexOf('use_hardcoded_data=1') !== -1,
+    useNewUi: window.location.href.indexOf('test_newui=1') !== -1
 });
 
 const GlobalEventHandler = function() {
@@ -84,11 +85,19 @@ GlobalEventHandler.prototype = {
     var self = this;
     return {
       connect: function() {
+        if (!window.layoutConfig.getValue('useNewUi')) {
+          websocket.connect();
+          return;
+        }
         if (self.ds) {
 	  self.ds.websocket.connect();
 	}
       },
       disconnect: function() {
+        if (!window.layoutConfig.getValue('useNewUi')) {
+          websocket.disconnect();
+          return;
+        }
         if (self.ds) {
 	  self.ds.websocket.disconnect();
 	}
@@ -102,6 +111,12 @@ GlobalEventHandler.prototype = {
     }
   },
   removeWebsocketHandler: function(eventName, callback) {
+    if (!window.layoutConfig.getValue('useNewUi')) {
+      if (eventName === 'websocket.connected') {
+        websocket.delConnectHandler(callback);
+      }
+      return;
+    }
     var self = this;
     self.eventNameToCallback[eventName] = self.eventNameToCallback[eventName].filter((cb) => { return cb !== callback});
     if (this.ds) {
@@ -109,6 +124,18 @@ GlobalEventHandler.prototype = {
     }
   },
   onWebsocketEvent: function(eventName, callback) {
+    if (!window.layoutConfig.getValue('useNewUi')) {
+      if (eventName === 'websocket.connected') {
+        websocket.addConnectHandler(callback);
+      } else if (eventName === 'websocket.disconnected') {
+        websocket.addDisconnectHandler(callback);
+      } else if (eventName === 'websocket.error') {
+        websocket.addErrorHandler(callback);
+      } else if (eventName === 'websocket.messageOnDemandNotification') {
+         websocket.addMsgHandler('OnDemandNotification', callback);
+      }
+      return;
+    }
     if (!this.eventNameToCallback[eventName]) {
       this.eventNameToCallback[eventName] = [];
     }
@@ -130,6 +157,29 @@ GlobalEventHandler.prototype = {
     this.currentLayout.reactToDataSourceEvent.apply(this.currentLayout, "skydive", eventName, obj);
   },
   onUiEvent: function(eventName, cb, once) {
+    if (!window.layoutConfig.getValue('useNewUi')) {
+      var eventHandler = {
+        onNodeSelected: function(node) {
+          if (eventName !== 'node.select') {
+            return;
+          }
+          cb(node);
+          if (once) {
+            window.topologyComponent.layout.removeHandler(eventHandler);
+          }
+        },
+        onEdgeSelected: function() {
+          if (eventName === 'node.select') {
+            return;
+          }
+          if (once) {
+            window.topologyComponent.layout.removeHandler(eventHandler);
+          }
+        }
+      }
+      window.topologyComponent.layout.addHandler(eventHandler);
+      return;
+    }
     if (!this.currentLayout) {
       return;
     }
@@ -138,10 +188,31 @@ GlobalEventHandler.prototype = {
     } else {
       this.currentLayout.e.on(eventName, cb);
     }
-  },
+  }
 }
 
 window.globalEventHandler = new GlobalEventHandler();
+
+const GraphDataHandler = function() {
+  this.newUi = window.layoutConfig.getValue('useNewUi');
+}
+
+GraphDataHandler.prototype = {
+  getTargets: function(n) {
+   if (this.newUi) {
+     return n.getTargets();
+   }
+   return window.topologyComponent.graph.getTargets(n);
+  },
+  getNeighbor: function(n, neighborType) {
+   if (this.newUi) {
+     return n.getNeighborWithType(neighborType);
+   }
+   return window.topologyComponent.graph.getNeighbor(n, neighborType);
+  },
+}
+
+window.graphDataHandler = new GraphDataHandler();
 
 Vue.component('full-topology', {
   props: {
@@ -314,7 +385,7 @@ const HostSelector = {
 window.Vue.component('host-selector', HostSelector);
 
 
-var TopologyComponent = {
+var TopologyComponentNewApproach = {
 
   name: 'topology',
 
