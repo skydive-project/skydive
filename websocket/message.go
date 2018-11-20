@@ -242,12 +242,12 @@ func (a *structSpeakerEventDispatcher) dispatchMessage(c *StructSpeaker, m *Stru
 }
 
 // OnDisconnected is implemented here to avoid infinite loop since the default
-// implemtation is triggering OnDisconnected too.
+// implementation is triggering OnDisconnected too.
 func (a *structSpeakerEventDispatcher) OnDisconnected(c Speaker) {
 }
 
 // OnConnected is implemented here to avoid infinite loop since the default
-// implemtation is triggering OnDisconnected too.
+// implementation is triggering OnDisconnected too.
 func (a *structSpeakerEventDispatcher) OnConnected(c Speaker) {
 }
 

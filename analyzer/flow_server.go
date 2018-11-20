@@ -96,13 +96,14 @@ type FlowServer struct {
 	ch                 chan *flow.Flow
 	quit               chan struct{}
 	auth               shttp.AuthenticationBackend
+	subscriberEndpoint *FlowSubscriberEndpoint
 }
 
 // OnMessage event
 func (c *FlowServerWebSocketConn) OnMessage(client ws.Speaker, m ws.Message) {
 	f, err := flow.FromData(m.Bytes(client.GetClientProtocol()))
 	if err != nil {
-		logging.GetLogger().Errorf("Error while parsing flow: %s", err.Error())
+		logging.GetLogger().Errorf("Error while parsing flow: %s", err)
 		return
 	}
 	logging.GetLogger().Debugf("New flow from Websocket connection: %+v", f)
@@ -116,13 +117,14 @@ func (c *FlowServerWebSocketConn) OnMessage(client ws.Speaker, m ws.Message) {
 		}
 		return
 	}
+
 	c.ch <- f
 }
 
 // Serve starts a WebSocket flow server
 func (c *FlowServerWebSocketConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sync.WaitGroup) {
 	c.ch = ch
-	server := config.NewWSServer(c.server, "/ws/flow", c.auth)
+	server := config.NewWSServer(c.server, "/ws/agent/flow", c.auth)
 	server.AddEventHandler(c)
 	go func() {
 		server.Start()
@@ -156,12 +158,12 @@ func (c *FlowServerUDPConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sy
 							continue
 						}
 					}
-					logging.GetLogger().Errorf("Error while reading: %s", err.Error())
+					logging.GetLogger().Errorf("Error while reading: %s", err)
 				}
 
 				f, err := flow.FromData(data[0:n])
 				if err != nil {
-					logging.GetLogger().Errorf("Error while parsing flow: %s", err.Error())
+					logging.GetLogger().Errorf("Error while parsing flow: %s", err)
 					continue
 				}
 
@@ -201,12 +203,16 @@ func NewFlowServerUDPConn(addr string, port int) (*FlowServerUDPConn, error) {
 }
 
 func (s *FlowServer) storeFlows(flows []*flow.Flow) {
-	if s.storage != nil && len(flows) > 0 {
-		if err := s.storage.StoreFlows(flows); err != nil {
-			logging.GetLogger().Error(err)
-		} else {
-			logging.GetLogger().Debugf("%d flows stored", len(flows))
+	if len(flows) > 0 {
+		if s.storage != nil {
+			if err := s.storage.StoreFlows(flows); err != nil {
+				logging.GetLogger().Error(err)
+			} else {
+				logging.GetLogger().Debugf("%d flows stored", len(flows))
+			}
 		}
+
+		s.subscriberEndpoint.SendFlows(flows)
 	}
 }
 
@@ -275,7 +281,7 @@ func (s *FlowServer) setupBulkConfigFromBackend() error {
 }
 
 // NewFlowServer creates a new flow server listening at address/port, based on configuration
-func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe *probe.Bundle, auth shttp.AuthenticationBackend) (*FlowServer, error) {
+func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, endpoint *FlowSubscriberEndpoint, probe *probe.Bundle, auth shttp.AuthenticationBackend) (*FlowServer, error) {
 	var conn FlowServerConn
 	protocol := strings.ToLower(config.GetString("flow.protocol"))
 
@@ -294,10 +300,11 @@ func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe
 	}
 
 	fs := &FlowServer{
-		storage: store,
-		conn:    conn,
-		quit:    make(chan struct{}, 2),
-		auth:    auth,
+		storage:            store,
+		conn:               conn,
+		quit:               make(chan struct{}, 2),
+		auth:               auth,
+		subscriberEndpoint: endpoint,
 	}
 	err = fs.setupBulkConfigFromBackend()
 	if err != nil {

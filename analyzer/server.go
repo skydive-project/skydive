@@ -285,7 +285,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	uiServer.RegisterLoginRoute(apiAuthBackend)
 
-	agentWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/agent", clusterAuthBackend))
+	agentWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/agent/topology", clusterAuthBackend))
 	_, err = NewTopologyAgentEndpoint(agentWSServer, cached, g)
 	if err != nil {
 		return nil, err
@@ -326,6 +326,10 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
+	// new flow subscriber endpoints
+	flowSubscriberWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/subscriber/flow", apiAuthBackend))
+	flowSubscriberEndpoint := NewFlowSubscriberEndpoint(flowSubscriberWSServer)
+
 	apiServer, err := api.NewAPI(hserver, etcdClient.KeysAPI, common.AnalyzerService, apiAuthBackend)
 	if err != nil {
 		return nil, err
@@ -362,7 +366,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	onDemandClient := ondemand.NewOnDemandProbeClient(g, captureAPIHandler, agentWSServer, subscriberWSServer, etcdClient)
 
-	flowServer, err := NewFlowServer(hserver, g, storage, probeBundle, clusterAuthBackend)
+	flowServer, err := NewFlowServer(hserver, g, storage, flowSubscriberEndpoint, probeBundle, clusterAuthBackend)
 	if err != nil {
 		return nil, err
 	}
