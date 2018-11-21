@@ -27,8 +27,6 @@ import (
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
-
-	"k8s.io/client-go/kubernetes"
 )
 
 // ClusterName is the name of the k8s cluster
@@ -54,7 +52,7 @@ func (c *clusterCache) Start() {
 func (c *clusterCache) Stop() {
 }
 
-func newClusterProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
+func newClusterProbe(clientset interface{}, g *graph.Graph) Subprobe {
 	return &clusterCache{
 		EventHandler: clusterEventHandler,
 		graph:        g,

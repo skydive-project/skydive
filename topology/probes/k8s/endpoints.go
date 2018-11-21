@@ -45,6 +45,6 @@ func (h *endpointsHandler) Map(obj interface{}) (graph.Identifier, graph.Metadat
 	return graph.Identifier(endpoints.GetUID()), m
 }
 
-func newEndpointsProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
-	return NewResourceCache(clientset.Core().RESTClient(), &v1.Endpoints{}, "endpoints", g, &endpointsHandler{})
+func newEndpointsProbe(client interface{}, g *graph.Graph) Subprobe {
+	return NewResourceCache(client.(*kubernetes.Clientset).Core().RESTClient(), &v1.Endpoints{}, "endpoints", g, &endpointsHandler{})
 }

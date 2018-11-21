@@ -45,6 +45,6 @@ func (h *quotaSpecHandler) Dump(obj interface{}) string {
 	return fmt.Sprintf("quotaspec{Namespace: %s, Name: %s}", qs.Namespace, qs.Name)
 }
 
-func newQuotaSpecProbe(client *kiali.IstioClient, g *graph.Graph) k8s.Subprobe {
-	return k8s.NewResourceCache(client.GetIstioConfigApi(), &kiali.QuotaSpec{}, "quotaspecs", g, &quotaSpecHandler{})
+func newQuotaSpecProbe(client interface{}, g *graph.Graph) k8s.Subprobe {
+	return k8s.NewResourceCache(client.(*kiali.IstioClient).GetIstioConfigApi(), &kiali.QuotaSpec{}, "quotaspecs", g, &quotaSpecHandler{})
 }

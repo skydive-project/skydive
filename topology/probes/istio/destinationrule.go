@@ -45,6 +45,6 @@ func (h *destinationRuleHandler) Dump(obj interface{}) string {
 	return fmt.Sprintf("destinationrule{Namespace: %s, Name: %s}", dr.Namespace, dr.Name)
 }
 
-func newDestinationRuleProbe(client *kiali.IstioClient, g *graph.Graph) k8s.Subprobe {
-	return k8s.NewResourceCache(client.GetIstioNetworkingApi(), &kiali.DestinationRule{}, "destinationrules", g, &destinationRuleHandler{})
+func newDestinationRuleProbe(client interface{}, g *graph.Graph) k8s.Subprobe {
+	return k8s.NewResourceCache(client.(*kiali.IstioClient).GetIstioNetworkingApi(), &kiali.DestinationRule{}, "destinationrules", g, &destinationRuleHandler{})
 }

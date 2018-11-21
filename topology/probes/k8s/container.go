@@ -119,13 +119,13 @@ func (c *containerProbe) OnDelete(obj interface{}) {
 	}
 }
 
-func newContainerProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
+func newContainerProbe(client interface{}, g *graph.Graph) Subprobe {
 	c := &containerProbe{
 		EventHandler: graph.NewEventHandler(100),
 		graph:        g,
 	}
 	c.containerIndexer = newObjectIndexer(g, c.EventHandler, "container", "Namespace", "Pod")
-	c.KubeCache = RegisterKubeCache(clientset.CoreV1().RESTClient(), &v1.Pod{}, "pods", c)
+	c.KubeCache = RegisterKubeCache(client.(*kubernetes.Clientset).CoreV1().RESTClient(), &v1.Pod{}, "pods", c)
 	return c
 }
 

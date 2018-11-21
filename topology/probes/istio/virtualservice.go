@@ -45,6 +45,6 @@ func (h *virtualServiceHandler) Dump(obj interface{}) string {
 	return fmt.Sprintf("virtualservice{Namespace: %s, Name: %s}", vs.Namespace, vs.Name)
 }
 
-func newVirtualServiceProbe(client *kiali.IstioClient, g *graph.Graph) k8s.Subprobe {
-	return k8s.NewResourceCache(client.GetIstioNetworkingApi(), &kiali.VirtualService{}, "virtualservices", g, &virtualServiceHandler{})
+func newVirtualServiceProbe(client interface{}, g *graph.Graph) k8s.Subprobe {
+	return k8s.NewResourceCache(client.(*kiali.IstioClient).GetIstioNetworkingApi(), &kiali.VirtualService{}, "virtualservices", g, &virtualServiceHandler{})
 }

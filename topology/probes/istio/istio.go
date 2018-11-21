@@ -36,9 +36,12 @@ type Probe struct {
 	*k8s.Probe
 }
 
+type resourceHandler func(client *kiali.IstioClient, g *graph.Graph) k8s.Subprobe
+
 // NewIstioProbe creates the probe for tracking istio events
 func NewIstioProbe(g *graph.Graph) (*k8s.Probe, error) {
 	configFile := config.GetString("analyzer.topology.istio.config_file")
+	enabledSubprobes := config.GetStringSlice("analyzer.topology.istio.probes")
 	config, err := k8s.NewConfig(configFile)
 	if err != nil {
 		return nil, err
@@ -49,14 +52,16 @@ func NewIstioProbe(g *graph.Graph) (*k8s.Probe, error) {
 		return nil, err
 	}
 
-	subprobes := map[string]k8s.Subprobe{
-		"destinationrule":  newDestinationRuleProbe(client, g),
-		"gateway":          newGatewayProbe(client, g),
-		"quotaspec":        newQuotaSpecProbe(client, g),
-		"quotaspecbinding": newQuotaSpecBindingProbe(client, g),
-		"serviceentry":     newServiceEntryProbe(client, g),
-		"virtualservice":   newVirtualServiceProbe(client, g),
+	subprobeHandlers := map[string]k8s.SubprobeHandler{
+		"destinationrule":  newDestinationRuleProbe,
+		"gateway":          newGatewayProbe,
+		"quotaspec":        newQuotaSpecProbe,
+		"quotaspecbinding": newQuotaSpecBindingProbe,
+		"serviceentry":     newServiceEntryProbe,
+		"virtualservice":   newVirtualServiceProbe,
 	}
+
+	subprobes := k8s.InitSubprobes(enabledSubprobes, subprobeHandlers, client, g)
 
 	probe := k8s.NewProbe(g, Manager, subprobes, nil)
 

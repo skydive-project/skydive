@@ -52,6 +52,6 @@ func (h *jobHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	return graph.Identifier(job.GetUID()), m
 }
 
-func newJobProbe(clientset *kubernetes.Clientset, graph *graph.Graph) Subprobe {
-	return NewResourceCache(clientset.BatchV1().RESTClient(), &batchv1.Job{}, "jobs", graph, &jobHandler{})
+func newJobProbe(client interface{}, g *graph.Graph) Subprobe {
+	return NewResourceCache(client.(*kubernetes.Clientset).BatchV1().RESTClient(), &batchv1.Job{}, "jobs", g, &jobHandler{})
 }

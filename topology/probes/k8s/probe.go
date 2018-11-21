@@ -107,6 +107,25 @@ func NewProbe(g *graph.Graph, manager string, subprobes map[string]Subprobe, lin
 	}
 }
 
+// SubprobeHandler the signiture of ctor of a subprobe
+type SubprobeHandler func(client interface{}, g *graph.Graph) Subprobe
+
+// InitSubprobes returns only the subprobes which are enabled
+func InitSubprobes(enabled []string, subprobeHandlers map[string]SubprobeHandler, client interface{}, g *graph.Graph) map[string]Subprobe {
+	if len(enabled) == 0 {
+		for name := range subprobeHandlers {
+			enabled = append(enabled, name)
+		}
+	}
+
+	subprobes := make(map[string]Subprobe)
+	for _, name := range enabled {
+		handler := subprobeHandlers[name]
+		subprobes[name] = handler(client, g)
+	}
+	return subprobes
+}
+
 func logOnError(err error) {
 	logging.GetLogger().Warning(err)
 }

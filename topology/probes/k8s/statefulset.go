@@ -55,6 +55,6 @@ func (h *statefulSetHandler) Map(obj interface{}) (graph.Identifier, graph.Metad
 	return graph.Identifier(ss.GetUID()), m
 }
 
-func newStatefulSetProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
-	return NewResourceCache(clientset.AppsV1beta1().RESTClient(), &v1beta1.StatefulSet{}, "statefulsets", g, &statefulSetHandler{})
+func newStatefulSetProbe(client interface{}, g *graph.Graph) Subprobe {
+	return NewResourceCache(client.(*kubernetes.Clientset).AppsV1beta1().RESTClient(), &v1beta1.StatefulSet{}, "statefulsets", g, &statefulSetHandler{})
 }

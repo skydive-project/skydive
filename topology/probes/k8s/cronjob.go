@@ -47,6 +47,6 @@ func (h *cronJobHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata)
 	return graph.Identifier(cj.GetUID()), m
 }
 
-func newCronJobProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
-	return NewResourceCache(clientset.BatchV1beta1().RESTClient(), &v1beta1.CronJob{}, "cronjobs", g, &cronJobHandler{})
+func newCronJobProbe(client interface{}, g *graph.Graph) Subprobe {
+	return NewResourceCache(client.(*kubernetes.Clientset).BatchV1beta1().RESTClient(), &v1beta1.CronJob{}, "cronjobs", g, &cronJobHandler{})
 }

@@ -52,8 +52,8 @@ func (h *networkPolicyHandler) Map(obj interface{}) (graph.Identifier, graph.Met
 	return graph.Identifier(np.GetUID()), m
 }
 
-func newNetworkPolicyProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
-	return NewResourceCache(clientset.ExtensionsV1beta1().RESTClient(), &v1beta1.NetworkPolicy{}, "networkpolicies", g, &networkPolicyHandler{})
+func newNetworkPolicyProbe(client interface{}, g *graph.Graph) Subprobe {
+	return NewResourceCache(client.(*kubernetes.Clientset).ExtensionsV1beta1().RESTClient(), &v1beta1.NetworkPolicy{}, "networkpolicies", g, &networkPolicyHandler{})
 }
 
 type networkPolicyLinker struct {
