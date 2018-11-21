@@ -605,8 +605,7 @@ Vue.component('rule-detail', {
             class="tab-pane"\
             :id="\'T\' + tname"\
             role="tabpanel"\
-            v-for="(table, tname, tidx) in layout.structured" style="background-color: #666">\
-      \
+            v-for="(table, tname, tidx) in layout.structured">\
             <div class="container-fluid" v-if="Object.keys(table.ports).length > 0">\
               <div class="navbar-header">\
                 <span class="navbar-brand"> Port </span>\
@@ -634,11 +633,13 @@ Vue.component('rule-detail', {
               </div>\
             </div>\
             <rule-table-detail :rules="table.any" :layout="layout"/>\
-            <div style="background-color: #666; padding: 4px">\
-              <filter-selector :query="value"\
-                :filters="filters"\
-                @add="addFilter"\
-                @remove="removeFilter"></filter-selector>\
+            <div class="dynamic-table">\
+              <div class="dynamic-table-actions">\
+                <filter-selector :query="value"\
+                  :filters="filters"\
+                  @add="addFilter"\
+                  @remove="removeFilter"></filter-selector>\
+              </div>\
             </div>\
           </div>\
         </div>\
