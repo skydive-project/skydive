@@ -184,7 +184,7 @@ func NewFlowClient(addr string, port int, authOpts *shttp.AuthenticationOpts) (*
 	case "udp":
 		connection, err = NewFlowClientUDPConn(common.NormalizeAddrForURL(addr), port)
 	case "websocket":
-		endpoint := config.GetURL("ws", common.NormalizeAddrForURL(addr), port, "/ws/flow")
+		endpoint := config.GetURL("ws", common.NormalizeAddrForURL(addr), port, "/ws/agent/flow")
 		connection, err = NewFlowClientWebSocketConn(endpoint, authOpts)
 	default:
 		return nil, fmt.Errorf("Invalid protocol %s", protocol)

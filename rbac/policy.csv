@@ -11,8 +11,9 @@ p, admin, status, read, allow
 p, admin, topology, read, allow
 p, admin, workflow, read, allow
 p, admin, workflow, write, allow
-p, admin, websocket, /ws/agent, allow
-p, admin, websocket, /ws/flow, allow
+p, admin, websocket, /ws/agent/topology, allow
+p, admin, websocket, /ws/agent/flow, allow
+p, admin, websocket, /ws/subscriber/flow, allow
 p, admin, websocket, /ws/publisher, allow
 p, admin, websocket, /ws/replication, allow
 p, admin, websocket, /ws/subscriber, allow
@@ -34,8 +35,9 @@ p, guest, status, read, allow
 p, guest, topology, read, allow
 p, guest, workflow, read, deny
 p, guest, workflow, write, deny
-p, guest, websocket, /ws/agent, deny
-p, guest, websocket, /ws/flow, deny
+p, guest, websocket, /ws/agent/topology, deny
+p, guest, websocket, /ws/agent/flow, deny
+p, guest, websocket, /ws/subscriber/flow, deny
 p, guest, websocket, /ws/publisher, deny
 p, guest, websocket, /ws/replication, deny
 p, guest, websocket, /ws/subscriber, allow
