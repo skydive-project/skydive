@@ -528,7 +528,7 @@ func TestK8sNetworkPolicyAllowIngressNamespaceToNamespaceScenario(t *testing.T) 
 }
 
 func TestK8sNetworkPolicyAllowIngressPodToPodPortsScenario(t *testing.T) {
-	testK8sNetworkPolicyObjectToObjectScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, "ports", "Ports", ":80")
+	testK8sNetworkPolicyObjectToObjectScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, "ports", "PolicyPorts", ":80")
 }
 
 func TestK8sServicePodScenario(t *testing.T) {

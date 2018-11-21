@@ -255,7 +255,7 @@ func (npl *networkPolicyLinker) createLinks(np *v1beta1.NetworkPolicy, npNode, f
 	metadata := npl.newEdgeMetadata(ty, target, point)
 	for _, objNode := range podNodes {
 		if filterNode == nil || filterNode.ID == objNode.ID {
-			metadata.SetFieldAndNormalize("Ports", getFieldPorts(np, ty))
+			metadata.SetFieldAndNormalize("PolicyPorts", getFieldPorts(np, ty))
 			fields := []string{string(npNode.ID), string(objNode.ID)}
 			for k, v := range metadata {
 				fields = append(fields, k, v.(string))
