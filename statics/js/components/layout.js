@@ -22,6 +22,7 @@ var nodeImgMap = setupFixedImages({
   "bridge": "bridge",
   "switch": "switch",
   "ovsbridge": "switch",
+  "libvirt": "vm",
   "netns": "ns",
   "veth": "veth",
   "bond": "port",
