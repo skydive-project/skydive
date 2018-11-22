@@ -4,6 +4,7 @@ ARG UID=1000
 
 VOLUME /root/go/src/github.com/skydive-project/skydive
 VOLUME /root/go/.cache/govendor
+VOLUME /root/.cache/go-build
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -36,6 +37,7 @@ RUN chown -R $UID /root/
 WORKDIR /root/go/src/github.com/skydive-project/skydive
 
 CMD chown -R $UID /root/go/.cache/govendor \
+    && chown -R $UID /root/.cache/go-build \
     && /gosu $UID env \
     HOME=/root \
     GOPATH=/root/go \
