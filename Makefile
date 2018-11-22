@@ -520,11 +520,13 @@ docker-build:
 		--build-arg UID=$$(id -u) \
 		-f contrib/docker/Dockerfile.compile  contrib/docker
 	docker volume create govendor-cache
+	docker volume create gobuild-cache
 	docker rm skydive-compile-build || true
 	docker run --name skydive-compile-build \
 		--env UID=$$(id -u) \
 		--volume $$PWD:/root/go/src/github.com/skydive-project/skydive \
 		--volume govendor-cache:/root/go/.cache/govendor \
+		--volume gobuild-cache:/root/.cache/go-build \
 		skydive-compile
 	docker cp skydive-compile-build:/root/go/bin/skydive contrib/docker/skydive.$$(uname -m)
 	docker rm skydive-compile-build
