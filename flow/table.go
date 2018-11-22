@@ -199,6 +199,9 @@ func (ft *Table) expire(expireBefore int64) {
 			}
 
 			logging.GetLogger().Debugf("Expire flow %s Duration %v", f.UUID, duration)
+			f.ReportCounter++
+			f.Status = FlowStatus_ENDED
+			f.FinishType = FlowFinishType_TIMEOUT
 			expiredFlows = append(expiredFlows, f)
 
 			// need to use the key as the key could be not equal to the UUID
@@ -248,10 +251,14 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 	logging.GetLogger().Debugf("flow table update: %d, %d", updateFrom, updateTime)
 
 	var updatedFlows []*Flow
-	for _, f := range ft.table {
+	for k, f := range ft.table {
 		if f.XXX_state.updateVersion > ft.updateVersion {
 			ft.updateMetric(f, updateFrom, updateTime)
+			f.ReportCounter++
 			updatedFlows = append(updatedFlows, f)
+			if f.Status == FlowStatus_ENDED {
+				delete(ft.table, k)
+			}
 		} else {
 			f.LastUpdateMetric = &FlowMetric{Start: updateFrom, Last: updateTime}
 		}
@@ -367,6 +374,7 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
 		}
 
 		flow.initFromPacket(key, packet, ft.nodeTID, uuids, ft.flowOpts)
+		flow.Status = FlowStatus_STARTED
 	} else {
 		if ft.Opts.ReassembleTCP {
 			if layer := packet.GoPacket.TransportLayer(); layer != nil && layer.LayerType() == layers.LayerTypeTCP {
@@ -375,6 +383,9 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
 		}
 
 		flow.Update(packet, ft.flowOpts)
+		if flow.Status != FlowStatus_ENDED {
+			flow.Status = FlowStatus_UPDATED
+		}
 	}
 
 	flow.XXX_state.updateVersion = ft.updateVersion + 1
