@@ -146,3 +146,37 @@ class SkydiveWSTest(unittest.TestCase):
         edges = restclient.lookup_edges(
             "G.E().Has('RelationType', 'layer2')")
         self.assertEqual(len(edges), 1, "should find one an only one edge")
+
+    def test_topology_rules(self):
+        restclient = RESTClient("localhost:8082",
+                                scheme=self.schemeHTTP,
+                                username=self.username,
+                                password=self.password,
+                                insecure=True)
+
+        noderule1 = restclient.noderule_create(
+            "create", metadata={"Name": "node1", "Type": "fabric"})
+        noderule2 = restclient.noderule_create(
+            "create", metadata={"Name": "node2", "Type": "fabric"})
+
+        time.sleep(1)
+
+        edgerule = restclient.edgerule_create(
+                "G.V().Has('Name', 'node1')", "G.V().Has('Name', 'node2')",
+                {"RelationType": "layer2", "EdgeName": "my_edge"})
+
+        time.sleep(1)
+
+        node1 = restclient.lookup_nodes("G.V().Has('Name', 'node1')")
+        self.assertEqual(len(node1), 1, "should find only one node as node1")
+
+        node2 = restclient.lookup_nodes("G.V().Has('Name', 'node2')")
+        self.assertEqual(len(node2), 1, "should find only one node as node2")
+
+        edge = restclient.lookup_edges(
+                "G.E().Has('RelationType', 'layer2', 'EdgeName', 'my_edge')")
+        self.assertEqual(len(edge), 1, "should find only one edge")
+
+        restclient.edgerule_delete(edgerule.uuid)
+        restclient.noderule_delete(noderule1.uuid)
+        restclient.noderule_delete(noderule2.uuid)
