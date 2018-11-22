@@ -586,7 +586,7 @@ Vue.component('rule-detail', {
   mixins: [apiMixin],
 
   template: '\
-    <div class="rules-detail flow-ops-panel" v-if="Object.keys(layout.structured).length > 0">\
+    <div class="rules-detail flow-ops-panel">\
       <ul class="nav nav-pills"\
         role="tablist">\
         <li>\
@@ -622,8 +622,7 @@ Vue.component('rule-detail', {
                 </li>\
               </ul>\
             </div>\
-            <div class="tab-content"\
-              v-if="Object.keys(table.ports).length > 0">\
+            <div class="tab-content">\
               <div :class="{ active: (pidx==0) }"\
                 class="tab-pane"\
                 :id="\'P\' + tname + \'-\' + port"\
@@ -633,13 +632,14 @@ Vue.component('rule-detail', {
               </div>\
             </div>\
             <rule-table-detail :rules="table.any" :layout="layout"/>\
-            <div class="dynamic-table">\
-              <div class="dynamic-table-actions">\
-                <filter-selector :query="value"\
-                  :filters="filters"\
-                  @add="addFilter"\
-                  @remove="removeFilter"></filter-selector>\
-              </div>\
+          </div>\
+          <rule-table-detail v-if="Object.keys(layout.structured).length == 0" />\
+          <div class="dynamic-table">\
+            <div class="dynamic-table-actions">\
+              <filter-selector :query="value"\
+                :filters="filters"\
+                @add="addFilter"\
+                @remove="removeFilter"></filter-selector>\
             </div>\
           </div>\
         </div>\
