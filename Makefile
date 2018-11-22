@@ -340,7 +340,7 @@ flow/pcaptraces/201801011400.small.pcap: flow/pcaptraces/201801011400.pcap
 bench.flow.traces: flow/pcaptraces/201801011400.small.pcap
 
 bench.flow: bench.flow.traces
-	govendor test -bench=. ${SKYDIVE_GITHUB}/flow
+	$(GOVENDOR) test -bench=. ${SKYDIVE_GITHUB}/flow
 
 .PHONY: static
 static: skydive.clean govendor genlocalfiles
