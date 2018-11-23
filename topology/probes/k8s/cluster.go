@@ -34,38 +34,65 @@ const ClusterName = "cluster"
 
 var clusterEventHandler = graph.NewEventHandler(100)
 
+var clusterNode *graph.Node
+
 type clusterCache struct {
 	*graph.EventHandler
 	graph *graph.Graph
 }
 
-func (c *clusterCache) Start() {
+func (c *clusterCache) addClusterNode() {
 	c.graph.Lock()
 	defer c.graph.Unlock()
 
 	m := NewMetadata(Manager, "cluster", nil, ClusterName)
-	node := c.graph.NewNode(graph.GenID(), m, "")
-	c.NotifyEvent(graph.NodeAdded, node)
+	clusterNode = c.graph.NewNode(graph.GenID(), m, "")
+	c.NotifyEvent(graph.NodeAdded, clusterNode)
 	logging.GetLogger().Debugf("Added cluster{Name: %s}", ClusterName)
+}
+
+func (c *clusterCache) Start() {
 }
 
 func (c *clusterCache) Stop() {
 }
 
 func newClusterProbe(clientset interface{}, g *graph.Graph) Subprobe {
-	return &clusterCache{
+	c := &clusterCache{
 		EventHandler: clusterEventHandler,
 		graph:        g,
 	}
+	c.addClusterNode()
+	return c
+}
+
+type clusterLinker struct {
+	graph.DefaultLinker
+	*graph.ResourceLinker
+	g             *graph.Graph
+	objectIndexer *graph.MetadataIndexer
+}
+
+func (linker *clusterLinker) createEdge(cluster, object *graph.Node) *graph.Edge {
+	id := graph.GenID(string(cluster.ID), string(object.ID))
+	return linker.g.CreateEdge(id, cluster, object, topology.OwnershipMetadata(), graph.TimeUTC(), "")
+}
+
+// GetBALinks returns all the incoming links for a node
+func (linker *clusterLinker) GetBALinks(objectNode *graph.Node) (edges []*graph.Edge) {
+	edges = append(edges, linker.createEdge(clusterNode, objectNode))
+	return
 }
 
 func newClusterLinker(g *graph.Graph, manager string, types ...string) probe.Probe {
-	clusterIndexer := graph.NewMetadataIndexer(g, clusterEventHandler, graph.Metadata{"Manager": Manager, "Type": "cluster"})
-	clusterIndexer.Start()
-
-	objectFilter := newTypesFilter(manager, types...)
-	objectIndexer := newObjectIndexerFromFilter(g, g, objectFilter)
+	objectIndexer := newObjectIndexerFromFilter(g, g, newTypesFilter(manager, types...))
 	objectIndexer.Start()
 
-	return graph.NewMetadataIndexerLinker(g, clusterIndexer, objectIndexer, topology.OwnershipMetadata())
+	return graph.NewResourceLinker(
+		g,
+		nil,
+		objectIndexer,
+		&clusterLinker{g: g},
+		topology.OwnershipMetadata(),
+	)
 }
