@@ -48,6 +48,10 @@ select:active, select:hover {
   box-shadow: none;
 }
 
+.dropdown-menu {
+  background-color:#141419;
+}
+
 .dark .input-group-addon {
   background-color: #1b1e23;
 }

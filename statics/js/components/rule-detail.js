@@ -165,7 +165,6 @@ function summarizeGroup(group) {
     if (b.charAt(b.length - 1) == ',') {
       rawBuckets[i] = b.slice(0, -1);
     }
-
     group.additional = rawBuckets[0];
     group.buckets = rawBuckets.slice(1).map(parseBucket);
   }
@@ -255,12 +254,12 @@ function extractPort(c, graph, itfs) {
   var pot = graph.getTargets(c);
   for (var i = 0; i < pot.length; i++) {
     var cc = pot[i];
-    var ofport = cc.metadata.OfPort;
+    var ofport = cc.Metadata.OfPort;
     if (ofport === undefined)
       continue;
     var itf = [c, cc];
     itfs[ofport] = itf;
-    if (cc.metadata.Type === 'patch') {
+    if (cc.Metadata.Type === 'patch') {
       var ccc = graph.getNeighbor(cc, 'patch');
       if (ccc === undefined)
         return;
@@ -293,7 +292,7 @@ var BridgeLayout = (function () {
   BridgeLayout.prototype.extract = function () {
     var itfs = {};
     var rules = [];
-    var rulesUUID = new Set();
+    var rulesUUID = new Set();       // added on check tests, by p.c.
     var groupsUUID = new Set();
     var groups = [];
     var children = this.graph.getTargets(this.bridge);
@@ -301,21 +300,22 @@ var BridgeLayout = (function () {
       var c = children[i];
       if (c === undefined)
         continue;
-      switch (c.metadata.Type) {
+      switch (c.Metadata.Type) {
         case 'ovsport':
           extractPort(c, this.graph, itfs);
           break;
         case 'ofrule':
-          var rule = c.metadata;
+          var rule = c.Metadata;
           summarize(rule);
           rules.push(rule);
-          rulesUUID.add(rule.UUID);
+          rulesUUID.add(rule.UUID);   // added on check tests, by p.c.
           break;
         case 'ofgroup':
           var group = c.metadata;
           summarizeGroup(group);
           groups.push(group);
           groupsUUID.add(group.UUID);
+
       }
     }
     this.rules = rules;
@@ -327,8 +327,7 @@ var BridgeLayout = (function () {
 
   /** Structure the information on the rules, classifying by tables and ports. */
   BridgeLayout.prototype.structure = function () {
-    var perTableRules =
-      classify(this.rules, function (r) { return r.table; });
+    var perTableRules = classify(this.rules, function (r) { return r.table; });
     this.structured = {};
     for (var key in perTableRules) {
       var array = perTableRules[key];
@@ -454,42 +453,42 @@ Vue.component('rule-table-detail', {
     <div class="dynamic-table">\
       <table class="table table-bordered table-condensed">\
         <thead>\
-            <tr>\
-                <th class="priority-column">priority</th>\
-                <th class="filters-column">filters</th>\
-                <th class="summary-column">summary</th>\
-                <th class="actions-column">actions</th>\
-            </tr>\
+          <tr>\
+            <th class="priority-column">priority</th>\
+            <th class="filters-column">filters</th>\
+            <th class="summary-column">summary</th>\
+            <th class="actions-column">actions</th>\
+          </tr>\
         </thead>\
         <tbody>\
-            <tr v-for="rule in rules"\
-                :id="\'R-\' + rule.UUID"\
-                v-bind:class="{soft: layout.isHighlighted(rule)}">\
-                <td v-if="rule.prioritySpan != -1" :rowspan="rule.prioritySpan">\
-                  {{rule.priority}}\
-                </td>\
-                <td>\
-                  {{ splitLine(rule.filters) }}\
-                </td>\
-                <td v-if="rule.actionsSpan != -1" :rowspan="rule.actionsSpan">\
-                    <table class="inner-table">\
-                        <tr v-for="act in rule.outAction">\
-                            <td>\
-                              <i :class="layout.clazz(act.action)"></i>\
-                            </td>\
-                            <td v-on:mouseover="layout.mark(act.port)"\
-                                v-on:mouseleave="layout.unmark(act.port)"\
-                                v-on:click="layout.select(act.port)">\
-                                <span class="port-link">{{layout.portname(act.port)}}</span>\
-                            </td>\
-                            <td><a class="table-link" v-on:click="layout.switchTab(act.table)">{{act.table}}</a></td>\
-                        </tr>\
-                    </table>\
-                </td>\
-                <td v-if="rule.actionsSpan != -1" :rowspan="rule.actionsSpan">\
-                  {{ splitLine(rule.actions) }}\
-                </td>\
-            </tr>\
+          <tr v-for="rule in rules"\
+            :id="\'R-\' + rule.UUID"\
+            v-bind:class="{soft: layout.isHighlighted(rule)}">\
+            <td v-if="rule.prioritySpan != -1" :rowspan="rule.prioritySpan">\
+              {{rule.priority}}\
+            </td>\
+            <td>\
+              {{ splitLine(rule.filters) }}\
+            </td>\
+            <td v-if="rule.actionsSpan != -1" :rowspan="rule.actionsSpan">\
+              <table class="inner-table">\
+                <tr v-for="act in rule.outAction">\
+                  <td>\
+                    <i :class="layout.clazz(act.action)"></i>\
+                  </td>\
+                  <td v-on:mouseover="layout.mark(act.port)"\
+                    v-on:mouseleave="layout.unmark(act.port)"\
+                    v-on:click="layout.select(act.port)">\
+                    <span class="port-link">{{layout.portname(act.port)}}</span>\
+                  </td>\
+                  <td><a class="table-link" v-on:click="layout.switchTab(act.table)">{{act.table}}</a></td>\
+                </tr>\
+              </table>\
+            </td>\
+            <td v-if="rule.actionsSpan != -1" :rowspan="rule.actionsSpan">\
+              {{ splitLine(rule.actions) }}\
+            </td>\
+          </tr>\
         </tbody>\
       </table>\
     </div>',
@@ -522,52 +521,52 @@ Vue.component('rule-table-detail', {
 Vue.component('groups-detail', {
   template: '\
     <div class="group-detail" v-if="Object.keys(layout.groups).length > 0">\
-        <ul class="nav nav-pills" role="tablist">\
-          <li>\
-            <span style="display: block;padding: 10px 10px;font-weight: bold;">Group</span>\
-          </li>\
-          <li :class="{ active: index==0 }"\
-              v-for="(group, index) in layout.groups">\
-              <a data-toggle="tab"\
-                  role="tab"\
-                  :href="\'#G\' + group.group_id">{{group.group_id}}</a>\
-          </li>\
-        </ul>\
+      <ul class="nav nav-pills" role="tablist">\
+        <li>\
+          <span style="display: block;padding: 10px 10px;font-weight: bold;">Group</span>\
+        </li>\
+        <li :class="{ active: index==0 }"\
+          v-for="(group, index) in layout.groups">\
+          <a data-toggle="tab"\
+            role="tab"\
+            :href="\'#G\' + group.group_id">{{group.group_id}}</a>\
+        </li>\
+      </ul>\
       <div class="groups">\
         <div class="tab-content clearfix">\
-            <div :class="{ active: index==0 }"\
-                class="tab-pane"\
-                :id="\'G\' + group.group_id"\
-                role="tabpanel"\
-                v-for="(group, index) in layout.groups">\
-                <div class="object-detail">\
-                  <div class="object-key-value">\
-                    <span class="object-key">Type</span>: \
-                    <span class="object-detail">{{group.group_type}}</span>\
-                  </div>\
-                  <div class="object-key-value">\
-                    <span class="object-key">Additional</span>: \
-                    <span class="object-detail">{{group.additional}}</span>\
-                  </div>\
-                </div>\
-                <div class="dynamic-table">\
-                  <table class="table table-bordered table-condensed">\
-                      <thead>\
-                          <tr>\
-                              <th class="id">id</th>\
-                              <th class="content">content</th>\
-                          </tr>\
-                      </thead>\
-                      <tbody>\
-                          <tr v-for="bucket in group.buckets"\
-                              :id="\'GB-\' + group.UUID + \'-\' + bucket.id">\
-                              <td>{{bucket.id}}</td>\
-                              <td>{{bucket.content}}</td>\
-                          </tr>\
-                      </tbody>\
-                  </table>\
-                </div>\
+          <div :class="{ active: index==0 }"\
+            class="tab-pane"\
+            :id="\'G\' + group.group_id"\
+            role="tabpanel"\
+            v-for="(group, index) in layout.groups">\
+            <div class="object-detail">\
+              <div class="object-key-value">\
+                <span class="object-key">Type</span>: \
+                <span class="object-detail">{{group.group_type}}</span>\
+              </div>\
+              <div class="object-key-value">\
+                <span class="object-key">Additional</span>: \
+                <span class="object-detail">{{group.additional}}</span>\
+              </div>\
             </div>\
+            <div class="dynamic-table">\
+              <table class="table table-bordered table-condensed">\
+                <thead>\
+                  <tr>\
+                    <th class="id">id</th>\
+                    <th class="content">content</th>\
+                  </tr>\
+                </thead>\
+                <tbody>\
+                  <tr v-for="bucket in group.buckets"\
+                    :id="\'GB-\' + group.UUID + \'-\' + bucket.id">\
+                    <td>{{bucket.id}}</td>\
+                    <td>{{bucket.content}}</td>\
+                  </tr>\
+                </tbody>\
+              </table>\
+            </div>\
+          </div>\
         </div>\
       </div>\
     </div>\
@@ -580,65 +579,81 @@ Vue.component('groups-detail', {
   },
 });
 
+
 /** Vue component showing the rules associated to a bridge */
 Vue.component('rule-detail', {
+
+  mixins: [apiMixin],
+
   template: '\
-<div class="rules-detail flow-ops-panel" v-if="Object.keys(layout.structured).length > 0">\
+    <div class="rules-detail flow-ops-panel">\
       <ul class="nav nav-pills"\
-          role="tablist">\
+        role="tablist">\
         <li>\
           <span style="display: block;padding: 10px 10px;font-weight: bold;">Table</span>\
         </li>\
         <li :class="{ active: (tidx==0) }"\
-            v-for="(table, tname, tidx) in layout.structured">\
-            <a data-toggle="tab"\
-                role="tab"\
-                :href="\'#T\' + tname">{{tname}}</a>\
+          v-for="(table, tname, tidx) in layout.structured">\
+          <a data-toggle="tab"\
+            role="tab"\
+            :href="\'#T\' + tname">{{tname}}</a>\
         </li>\
       </ul>\
-    <div class="rules">\
-      <div class="tab-content clearfix">\
+      <div class="rules">\
+        <div class="tab-content clearfix">\
           <div :class="{ active: (tidx==0) }"\
-              class="tab-pane"\
-              :id="\'T\' + tname"\
-              role="tabpanel"\
-              v-for="(table, tname, tidx) in layout.structured">\
-  \
-              <div class="container-fluid" v-if="Object.keys(table.ports).length > 0">\
-                <div class="navbar-header">\
-                  <span class="navbar-brand"> Port </span>\
-                </div>\
-                <ul class="nav nav-pills"\
-                    role="tablist">\
-                    <li :class="{ active: (pidx==0) }"\
-                        v-for="(rules,port,pidx) in table.ports"\
-                        v-on:mouseover="layout.mark(port)"\
-                        v-on:mouseleave="layout.unmark(port)">\
-                        <a data-toggle="tab"\
-                            role="tab"\
-                            :href="\'#P\' + tname + \'-\' + port">{{layout.portname(port)}}</a>\
-                    </li>\
-                </ul>\
+            class="tab-pane"\
+            :id="\'T\' + tname"\
+            role="tabpanel"\
+            v-for="(table, tname, tidx) in layout.structured">\
+            <div class="container-fluid" v-if="Object.keys(table.ports).length > 0">\
+              <div class="navbar-header">\
+                <span class="navbar-brand"> Port </span>\
               </div>\
-              <div class="tab-content"\
-                  v-if="Object.keys(table.ports).length > 0">\
-                  <div :class="{ active: (pidx==0) }"\
-                      class="tab-pane"\
-                      :id="\'P\' + tname + \'-\' + port"\
-                      role="tabpanel"\
-                      v-for="(rules, port, pidx) in table.ports">\
-                      <rule-table-detail :rules="rules" :layout="layout"/>\
-                  </div>\
+              <ul class="nav nav-pills"\
+                role="tablist">\
+                <li :class="{ active: (pidx==0) }"\
+                  v-for="(rules,port,pidx) in table.ports"\
+                  v-on:mouseover="layout.mark(port)"\
+                  v-on:mouseleave="layout.unmark(port)">\
+                  <a data-toggle="tab"\
+                    role="tab"\
+                    :href="\'#P\' + tname + \'-\' + port">{{layout.portname(port)}}</a>\
+                </li>\
+              </ul>\
+            </div>\
+            <div class="tab-content">\
+              <div :class="{ active: (pidx==0) }"\
+                class="tab-pane"\
+                :id="\'P\' + tname + \'-\' + port"\
+                role="tabpanel"\
+                v-for="(rules, port, pidx) in table.ports">\
+                <rule-table-detail :rules="rules" :layout="layout"/>\
               </div>\
-              <rule-table-detail :rules="table.any" :layout="layout"/>\
+            </div>\
+            <rule-table-detail :rules="table.any" :layout="layout"/>\
           </div>\
+          <rule-table-detail v-if="Object.keys(layout.structured).length == 0" />\
+          <div class="dynamic-table">\
+            <div class="dynamic-table-actions">\
+              <filter-selector :query="value"\
+                :filters="filters"\
+                @add="addFilter"\
+                @remove="removeFilter"></filter-selector>\
+            </div>\
+          </div>\
+        </div>\
+      </div>\
+      <div>\
+        <groups-detail :layout="layout"/>\
       </div>\
     </div>\
-    <div>\
-      <groups-detail :layout="layout"/>\
-    </div>\
-</div>\
   ',
+
+  components: {
+    'filter-selector': FilterSelector
+  },
+
   props: {
     bridge: {
       type: Object,
@@ -651,13 +666,49 @@ Vue.component('rule-detail', {
   },
 
   data: function() {
-    return { memoBridgeLayout:null };
+    return {
+      value: "",
+      memoBridgeLayout:null,
+      filters: {},
+      subgraph: {
+        nodes: [],
+        edges: [],
+        getNode: function(id) {
+          for (var j in this.nodes) {
+            var n = this.nodes[j];
+            if (n.ID === id) {
+              return n
+            }
+          }
+          return undefined
+        },
+        getTargets: function(node) {
+          var targets = [];
+          for (var i in this.edges) {
+            var e = this.edges[i];
+            if (e.Parent === node.id) {
+              var n = this.getNode(e.Child);
+              if (n) targets.push(n);
+            }
+          }
+          return targets;
+        },
+        getNeighbor: function(node, type) {
+          for (var i in this.edges) {
+            var edge = this.edges[i];
+            if (edge.Parent === node.id && edge.target.Metadata.Type === type) return this.getNode(edge.Parent);
+            if (edge.Child === node.id && edge.source.Metadata.Type === type) return this.getNode(edge.Child);
+          }
+          return undefined;
+        },
+      }
+    };
   },
 
   computed: {
     layout: function () {
       if (! this.memoBridgeLayout || this.memoBridgeLayout.bridge !== this.bridge) {
-        this.memoBridgeLayout = new BridgeLayout(this.graph, this.bridge, this.$store);
+        this.memoBridgeLayout = new BridgeLayout(this.subgraph, this.bridge, this.$store);
         this.memoBridgeLayout.switchTab(0);
       }
       return this.memoBridgeLayout;
@@ -666,22 +717,29 @@ Vue.component('rule-detail', {
 
   beforeDestroy: function () {
     this.unwatch();
-    this.graph.removeHandler(this.handler);
   },
 
   mounted: function () {
     var self = this;
     var handle = function(e) {
       if (! self.bridge) return;
-      var tgtType = e.target.metadata.Type;
-      if ((tgtType === 'ofrule' || tgtType === 'ofgroup') && e.source.id == self.bridge.id ) {
-        self.memoBridgeLayout = null;
+      if (e.target.metadata.Type === 'ofrule' && e.source.id == self.bridge.id ) {
+        self.getRules();
+      }
+    };
+    var handleUpdate = function(n) {
+      if (n.metadata.Type == 'ofrule') {
+        self.getRules();
+        var tgtType = e.target.metadata.Type;
+        if ((tgtType === 'ofrule' || tgtType === 'ofgroup') && e.source.id == self.bridge.id ) {
+          self.memoBridgeLayout = null;
+        }
       }
     };
     var handleUpdate = function(n) {
       if ((n.metadata.Type == 'ofgroup' && self.memoBridgeLayout.groupsUUID.has(n.metadata.UUID)) ||
           (n.metadata.Type == 'ofrule' && self.memoBridgeLayout.rulesUUID.has(n.metadata.UUID))) {
-        self.memoBridgeLayout = null;
+            self.memoBridgeLayout = null;
       }
     };
     this.handler = {
@@ -690,21 +748,82 @@ Vue.component('rule-detail', {
       onNodeUpdated:handleUpdate
     };
     this.graph.addHandler(this.handler);
+    this.getRules();
+    var self = this;
     this.unwatch = this.$store.watch(
       function () {
         return self.$store.state.currentRule;
       },
       function (newNode, oldNode) {
         if (oldNode) {
-          $('#R-' + oldNode.metadata.UUID).removeClass('soft');
+          $('#R-' + oldNode.Metadata.UUID).removeClass('soft');
         }
         if (newNode) {
-          self.layout.switchTab(newNode.metadata.table);
-          var p = inport(newNode.metadata.filters);
-          self.layout.switchPortTab(newNode.metadata.table, p);
-          $('#R-' + newNode.metadata.UUID).addClass('soft');
+          self.layout.switchTab(newNode.Metadata.table);
+          var p = inport(newNode.Metadata.filters);
+          self.layout.switchPortTab(newNode.Metadata.table, p);
+          $('#R-' + newNode.Metadata.UUID).addClass('soft');
         }
       }
     )
+  },
+
+  methods: {
+    addFilter: function(key, value) {
+      if (!this.filters[key]) {
+        Vue.set(this.filters, key, []);
+      }
+      this.filters[key].push(value);
+      this.getRules();
+    },
+
+    removeFilter: function(key, index) {
+      this.filters[key].splice(index, 1);
+      if (this.filters[key].length === 0) {
+        Vue.delete(this.filters, key);
+      }
+      this.getRules();
+    },
+    getRules: function() {
+      var self = this;
+      console.log(this.filters);
+      var queryBridge = "G.V('" + self.bridge.id + "').As('bridge')";
+      var queryPorts = queryBridge + ".Out().Has('Type', 'ovsport').As('ovsports')";
+      var queryRules = queryBridge + ".Out().Has('Type', 'ofrule')";
+      var has = "";
+      var list = [];
+      var i = 0;
+      for (var k in this.filters) {
+        has += "'filters', regex('.*" + k + "=" + this.filters[k] + ".*')";
+        list[i] = k;
+        i +=1;
+      }
+      var query = queryBridge + "." + queryPorts + "." ;
+      if (has.length > 0) {
+        for (var k in this.filters) {
+          query += queryRules + ".Has('filters', regex('.*" + k + "=" + this.filters[k] + ".*')).As('" + k + "').";
+        }
+      }
+      else{
+        query += queryRules + ".As('ofrules')."
+      }
+      query += "Select('bridge', 'ovsports'";
+      if (has.length > 0){
+        for (var p in this.filters){
+          query += ", '" + p + "'";
+        }
+      }
+      else{
+        query += ", 'ofrules'";
+      }
+      query += ").SubGraph()";
+      console.log(query);
+      this.$topologyQuery(query)
+        .then(function(g) {
+          self.subgraph.nodes = g[0].Nodes;
+          self.subgraph.edges = g[0].Edges;
+          self.memoBridgeLayout = null;
+        });
+    }
   }
 });
