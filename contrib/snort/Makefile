@@ -1,3 +1,4 @@
+GOVENDOR:=${GOPATH}/bin/govendor
 
 .PHONY: all
 all: snortSkydive
@@ -7,4 +8,4 @@ clean:
 	rm -rf snortSkydive
 
 snortSkydive: snortSkydive.go
-	govendor build -o $$GOPATH/bin/snort-skydive $<
+	$(GOVENDOR) build -o $$GOPATH/bin/snort-skydive $<
