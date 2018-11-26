@@ -29,7 +29,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -38,6 +37,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -68,24 +68,15 @@ type ProcSocketInfoProbe struct {
 }
 
 func getProcessInfo(pid int) (*ProcessInfo, error) {
-	processPath := fmt.Sprintf("/proc/%d", pid)
-	exe, err := os.Readlink(processPath + "/exe")
+	pi, err := common.GetProcessInfo(pid)
 	if err != nil {
 		return nil, err
 	}
-
-	stat, err := ioutil.ReadFile(processPath + "/stat")
-	if err != nil {
-		return nil, err
-	}
-
-	var name string
-	fmt.Sscanf(string(stat), "%d %s", &pid, &name)
 
 	return &ProcessInfo{
-		Process: exe,
-		Name:    name[1 : len(name)-1],
-		Pid:     int64(pid),
+		Process: pi.Process,
+		Name:    pi.Name,
+		Pid:     pi.Pid,
 	}, nil
 }
 
