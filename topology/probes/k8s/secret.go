@@ -18,13 +18,48 @@
 package k8s
 
 import (
+	"encoding/json"
 	"fmt"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
+
+// MetadataInnerSecret contains the type specific fields
+// easyjson:json
+type MetadataInnerSecret struct {
+	MetadataInner
+	Type string `skydive:"string"`
+}
+
+// GetField implements Getter interface
+func (inner *MetadataInnerSecret) GetField(key string) (interface{}, error) {
+	return GenericGetField(inner, key)
+}
+
+// GetFieldInt64 implements Getter interface
+func (inner *MetadataInnerSecret) GetFieldInt64(key string) (int64, error) {
+	return GenericGetFieldInt64(inner, key)
+}
+
+// GetFieldString implements Getter interface
+func (inner *MetadataInnerSecret) GetFieldString(key string) (string, error) {
+	return GenericGetFieldString(inner, key)
+}
+
+// GetFieldKeys implements Getter interface
+func (inner *MetadataInnerSecret) GetFieldKeys() []string {
+	return GenericGetFieldKeys(inner)
+}
+
+// MetadataInnerSecretDecoder implements a json message raw decoder
+func MetadataInnerSecretDecoder(raw json.RawMessage) (common.Getter, error) {
+	var inner MetadataInnerSecret
+	return GenericMetadataDecoder(&inner, raw)
+}
 
 type secretHandler struct {
 }
@@ -36,11 +71,14 @@ func (h *secretHandler) Dump(obj interface{}) string {
 
 func (h *secretHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	secret := obj.(*v1.Secret)
-	m := NewMetadataFields(&secret.ObjectMeta)
-	m.SetField("Type", secret.Type)
-	return graph.Identifier(secret.GetUID()), NewMetadata(Manager, "secret", m, secret, secret.Name)
+
+	inner := new(MetadataInnerSecret)
+	inner.MetadataInner.Setup(&secret.ObjectMeta, secret)
+	inner.Type = string(secret.Type)
+	return graph.Identifier(secret.GetUID()), NewMetadata(Manager, "secret", inner.Name, inner)
 }
 
 func newSecretProbe(client interface{}, g *graph.Graph) Subprobe {
+	RegisterNodeDecoder(MetadataInnerDecoder, "secret")
 	return NewResourceCache(client.(*kubernetes.Clientset).CoreV1().RESTClient(), &v1.Secret{}, "secrets", g, &secretHandler{})
 }

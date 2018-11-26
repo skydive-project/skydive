@@ -32,8 +32,8 @@ type gatewayHandler struct {
 // Map graph node to k8s resource
 func (h *gatewayHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	gw := obj.(*kiali.Gateway)
-	m := k8s.NewMetadataFields(&gw.ObjectMeta)
-	return graph.Identifier(gw.GetUID()), k8s.NewMetadata(Manager, "gateway", m, gw, gw.Name)
+	inner := new(k8s.MetadataInner).Setup(&gw.ObjectMeta, gw)
+	return graph.Identifier(gw.GetUID()), k8s.NewMetadata(Manager, "gateway", inner.Name, inner)
 }
 
 // Dump k8s resource
@@ -43,6 +43,7 @@ func (h *gatewayHandler) Dump(obj interface{}) string {
 }
 
 func newGatewayProbe(client interface{}, g *graph.Graph) k8s.Subprobe {
+	k8s.RegisterNodeDecoder(k8s.MetadataInnerDecoder, "gateway")
 	return k8s.NewResourceCache(client.(*kiali.IstioClient).GetIstioNetworkingApi(), &kiali.Gateway{}, "gateways", g, &gatewayHandler{})
 }
 

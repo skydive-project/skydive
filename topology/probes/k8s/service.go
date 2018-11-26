@@ -18,14 +18,54 @@
 package k8s
 
 import (
+	"encoding/json"
 	"fmt"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
+
+// MetadataInnerService contains the type specific fields
+// easyjson:json
+type MetadataInnerService struct {
+	MetadataInner
+	Ports           []v1.ServicePort
+	ClusterIP       string             `skydive:"string"`
+	ServiceType     v1.ServiceType     `skydive:"string"`
+	SessionAffinity v1.ServiceAffinity `skydive:"string"`
+	LoadBalancerIP  string             `skydive:"string"`
+	ExternalName    string             `skydive:"string"`
+}
+
+// GetField implements Getter interface
+func (inner *MetadataInnerService) GetField(key string) (interface{}, error) {
+	return GenericGetField(inner, key)
+}
+
+// GetFieldInt64 implements Getter interface
+func (inner *MetadataInnerService) GetFieldInt64(key string) (int64, error) {
+	return GenericGetFieldInt64(inner, key)
+}
+
+// GetFieldString implements Getter interface
+func (inner *MetadataInnerService) GetFieldString(key string) (string, error) {
+	return GenericGetFieldString(inner, key)
+}
+
+// GetFieldKeys implements Getter interface
+func (inner *MetadataInnerService) GetFieldKeys() []string {
+	return GenericGetFieldKeys(inner)
+}
+
+// MetadataInnerServiceDecoder implements a json message raw decoder
+func MetadataInnerServiceDecoder(raw json.RawMessage) (common.Getter, error) {
+	var inner MetadataInnerService
+	return GenericMetadataDecoder(&inner, raw)
+}
 
 type serviceHandler struct {
 }
@@ -38,18 +78,20 @@ func (h *serviceHandler) Dump(obj interface{}) string {
 func (h *serviceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	srv := obj.(*v1.Service)
 
-	m := NewMetadataFields(&srv.ObjectMeta)
-	m.SetFieldAndNormalize("Ports", srv.Spec.Ports)
-	m.SetFieldAndNormalize("ClusterIP", srv.Spec.ClusterIP)
-	m.SetFieldAndNormalize("ServiceType", srv.Spec.Type)
-	m.SetFieldAndNormalize("SessionAffinity", srv.Spec.SessionAffinity)
-	m.SetFieldAndNormalize("LoadBalancerIP", srv.Spec.LoadBalancerIP)
-	m.SetFieldAndNormalize("ExternalName", srv.Spec.ExternalName)
+	inner := new(MetadataInnerService)
+	inner.MetadataInner.Setup(&srv.ObjectMeta, srv)
+	inner.Ports = srv.Spec.Ports
+	inner.ClusterIP = srv.Spec.ClusterIP
+	inner.ServiceType = srv.Spec.Type
+	inner.SessionAffinity = srv.Spec.SessionAffinity
+	inner.LoadBalancerIP = srv.Spec.LoadBalancerIP
+	inner.ExternalName = srv.Spec.ExternalName
 
-	return graph.Identifier(srv.GetUID()), NewMetadata(Manager, "service", m, srv, srv.Name)
+	return graph.Identifier(srv.GetUID()), NewMetadata(Manager, "service", inner.Name, inner)
 }
 
 func newServiceProbe(client interface{}, g *graph.Graph) Subprobe {
+	RegisterNodeDecoder(MetadataInnerServiceDecoder, "service")
 	return NewResourceCache(client.(*kubernetes.Clientset).Core().RESTClient(), &v1.Service{}, "services", g, &serviceHandler{})
 }
 

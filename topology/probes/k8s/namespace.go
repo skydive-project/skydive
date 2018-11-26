@@ -18,8 +18,10 @@
 package k8s
 
 import (
+	"encoding/json"
 	"fmt"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
@@ -27,6 +29,39 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
+
+// MetadataInnerNamespace contains the type specific fields
+// easyjson:json
+type MetadataInnerNamespace struct {
+	MetadataInner
+	Status string `skydive:"string"`
+}
+
+// GetField implements Getter interface
+func (inner *MetadataInnerNamespace) GetField(key string) (interface{}, error) {
+	return GenericGetField(inner, key)
+}
+
+// GetFieldInt64 implements Getter interface
+func (inner *MetadataInnerNamespace) GetFieldInt64(key string) (int64, error) {
+	return GenericGetFieldInt64(inner, key)
+}
+
+// GetFieldString implements Getter interface
+func (inner *MetadataInnerNamespace) GetFieldString(key string) (string, error) {
+	return GenericGetFieldString(inner, key)
+}
+
+// GetFieldKeys implements Getter interface
+func (inner *MetadataInnerNamespace) GetFieldKeys() []string {
+	return GenericGetFieldKeys(inner)
+}
+
+// MetadataInnerNamespaceDecoder implements a json message raw decoder
+func MetadataInnerNamespaceDecoder(raw json.RawMessage) (common.Getter, error) {
+	var inner MetadataInnerNamespace
+	return GenericMetadataDecoder(&inner, raw)
+}
 
 type namespaceHandler struct {
 }
@@ -39,13 +74,15 @@ func (h *namespaceHandler) Dump(obj interface{}) string {
 func (h *namespaceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	ns := obj.(*v1.Namespace)
 
-	m := NewMetadataFields(&ns.ObjectMeta)
-	m.SetField("Status", ns.Status.Phase)
+	inner := new(MetadataInnerNamespace)
+	inner.MetadataInner.Setup(&ns.ObjectMeta, ns)
+	inner.Status = string(ns.Status.Phase)
 
-	return graph.Identifier(ns.GetUID()), NewMetadata(Manager, "namespace", m, ns, ns.Name)
+	return graph.Identifier(ns.GetUID()), NewMetadata(Manager, "namespace", inner.Name, inner)
 }
 
 func newNamespaceProbe(client interface{}, g *graph.Graph) Subprobe {
+	RegisterNodeDecoder(MetadataInnerNamespaceDecoder, "namespace")
 	return NewResourceCache(client.(*kubernetes.Clientset).Core().RESTClient(), &v1.Namespace{}, "namespaces", g, &namespaceHandler{})
 }
 

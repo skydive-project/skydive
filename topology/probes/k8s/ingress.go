@@ -18,8 +18,10 @@
 package k8s
 
 import (
+	"encoding/json"
 	"fmt"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 
@@ -27,6 +29,41 @@ import (
 	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/client-go/kubernetes"
 )
+
+// MetadataInnerIngress contains the type specific fields
+// easyjson:json
+type MetadataInnerIngress struct {
+	MetadataInner
+	Backend *v1beta1.IngressBackend `skydive:"string"`
+	TLS     []v1beta1.IngressTLS
+	Rules   []v1beta1.IngressRule
+}
+
+// GetField implements Getter interface
+func (inner *MetadataInnerIngress) GetField(key string) (interface{}, error) {
+	return GenericGetField(inner, key)
+}
+
+// GetFieldInt64 implements Getter interface
+func (inner *MetadataInnerIngress) GetFieldInt64(key string) (int64, error) {
+	return GenericGetFieldInt64(inner, key)
+}
+
+// GetFieldString implements Getter interface
+func (inner *MetadataInnerIngress) GetFieldString(key string) (string, error) {
+	return GenericGetFieldString(inner, key)
+}
+
+// GetFieldKeys implements Getter interface
+func (inner *MetadataInnerIngress) GetFieldKeys() []string {
+	return GenericGetFieldKeys(inner)
+}
+
+// MetadataInnerIngressDecoder implements a json message raw decoder
+func MetadataInnerIngressDecoder(raw json.RawMessage) (common.Getter, error) {
+	var inner MetadataInnerIngress
+	return GenericMetadataDecoder(&inner, raw)
+}
 
 type ingressHandler struct {
 }
@@ -39,15 +76,17 @@ func (h *ingressHandler) Dump(obj interface{}) string {
 func (h *ingressHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	ingress := obj.(*v1beta1.Ingress)
 
-	m := NewMetadataFields(&ingress.ObjectMeta)
-	m.SetFieldAndNormalize("Backend", ingress.Spec.Backend)
-	m.SetFieldAndNormalize("TLS", ingress.Spec.TLS)
-	m.SetFieldAndNormalize("Rules", ingress.Spec.Rules)
+	inner := new(MetadataInnerIngress)
+	inner.MetadataInner.Setup(&ingress.ObjectMeta, ingress)
+	inner.Backend = ingress.Spec.Backend
+	inner.TLS = ingress.Spec.TLS
+	inner.Rules = ingress.Spec.Rules
 
-	return graph.Identifier(ingress.GetUID()), NewMetadata(Manager, "ingress", m, ingress, ingress.Name)
+	return graph.Identifier(ingress.GetUID()), NewMetadata(Manager, "ingress", inner.Name, inner)
 }
 
 func newIngressProbe(client interface{}, g *graph.Graph) Subprobe {
+	RegisterNodeDecoder(MetadataInnerIngressDecoder, "ingress")
 	return NewResourceCache(client.(*kubernetes.Clientset).ExtensionsV1beta1().RESTClient(), &v1beta1.Ingress{}, "ingresses", g, &ingressHandler{})
 }
 

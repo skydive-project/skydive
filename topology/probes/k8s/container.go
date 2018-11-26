@@ -18,8 +18,10 @@
 package k8s
 
 import (
+	"encoding/json"
 	"fmt"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
@@ -36,6 +38,40 @@ const (
 	dockerPodNamespaceField  = "Docker.Labels.io.kubernetes.pod.namespace"
 )
 
+// MetadataInnerContainer contains the type specific fields
+// easyjson:json
+type MetadataInnerContainer struct {
+	MetadataInner
+	Pod   string `skydive:"string"`
+	Image string `skydive:"string"`
+}
+
+// GetField implements Getter interface
+func (inner *MetadataInnerContainer) GetField(key string) (interface{}, error) {
+	return GenericGetField(inner, key)
+}
+
+// GetFieldInt64 implements Getter interface
+func (inner *MetadataInnerContainer) GetFieldInt64(key string) (int64, error) {
+	return GenericGetFieldInt64(inner, key)
+}
+
+// GetFieldString implements Getter interface
+func (inner *MetadataInnerContainer) GetFieldString(key string) (string, error) {
+	return GenericGetFieldString(inner, key)
+}
+
+// GetFieldKeys implements Getter interface
+func (inner *MetadataInnerContainer) GetFieldKeys() []string {
+	return GenericGetFieldKeys(inner)
+}
+
+// MetadataInnerContainerDecoder implements a json message raw decoder
+func MetadataInnerContainerDecoder(raw json.RawMessage) (common.Getter, error) {
+	var inner MetadataInnerContainer
+	return GenericMetadataDecoder(&inner, raw)
+}
+
 type containerProbe struct {
 	*graph.EventHandler
 	*KubeCache
@@ -44,11 +80,14 @@ type containerProbe struct {
 }
 
 func (c *containerProbe) newMetadata(pod *v1.Pod, container *v1.Container) graph.Metadata {
-	m := NewMetadataFields(&pod.ObjectMeta)
-	m.SetField("Pod", pod.Name)
-	m.SetField("Name", container.Name)
-	m.SetField("Image", container.Image)
-	return NewMetadata(Manager, "container", m, container, container.Name)
+	inner := new(MetadataInnerContainer)
+	inner.Namespace = pod.Namespace
+	inner.Name = container.Name
+	inner.Extra = container
+	inner.Pod = pod.Name
+	inner.Image = container.Image
+
+	return NewMetadata(Manager, "container", inner.Name, inner)
 }
 
 func (c *containerProbe) dump(pod *v1.Pod, name string) string {
@@ -131,6 +170,7 @@ func (c *containerProbe) OnDelete(obj interface{}) {
 }
 
 func newContainerProbe(client interface{}, g *graph.Graph) Subprobe {
+	RegisterNodeDecoder(MetadataInnerContainerDecoder, "container")
 	c := &containerProbe{
 		EventHandler: graph.NewEventHandler(100),
 		graph:        g,

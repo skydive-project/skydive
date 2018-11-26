@@ -33,8 +33,8 @@ type destinationRuleHandler struct {
 // Map graph node to k8s resource
 func (h *destinationRuleHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	dr := obj.(*kiali.DestinationRule)
-	m := k8s.NewMetadataFields(&dr.ObjectMeta)
-	return graph.Identifier(dr.GetUID()), k8s.NewMetadata(Manager, "destinationrule", m, dr, dr.Name)
+	inner := new(k8s.MetadataInner).Setup(&dr.ObjectMeta, dr)
+	return graph.Identifier(dr.GetUID()), k8s.NewMetadata(Manager, "destinationrule", inner.Name, inner)
 }
 
 // Dump k8s resource
@@ -44,6 +44,7 @@ func (h *destinationRuleHandler) Dump(obj interface{}) string {
 }
 
 func newDestinationRuleProbe(client interface{}, g *graph.Graph) k8s.Subprobe {
+	k8s.RegisterNodeDecoder(k8s.MetadataInnerDecoder, "destinationrule")
 	return k8s.NewResourceCache(client.(*kiali.IstioClient).GetIstioNetworkingApi(), &kiali.DestinationRule{}, "destinationrules", g, &destinationRuleHandler{})
 }
 

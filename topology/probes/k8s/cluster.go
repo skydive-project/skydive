@@ -38,10 +38,11 @@ func (c *clusterCache) addClusterNode() {
 	c.graph.Lock()
 	defer c.graph.Unlock()
 
-	m := graph.Metadata{"Name": ClusterName}
+	inner := new(MetadataInner)
+	inner.Name = ClusterName
 
 	var err error
-	clusterNode, err = c.graph.NewNode(graph.GenID(), NewMetadata(Manager, "cluster", m, nil, ClusterName), "")
+	clusterNode, err = c.graph.NewNode(graph.GenID(), NewMetadata(Manager, "cluster", inner.Name, inner), "")
 	if err != nil {
 		logging.GetLogger().Error(err)
 		return
@@ -57,6 +58,7 @@ func (c *clusterCache) Stop() {
 }
 
 func newClusterProbe(clientset interface{}, g *graph.Graph) Subprobe {
+	RegisterNodeDecoder(MetadataInnerDecoder, "cluster")
 	c := &clusterCache{
 		EventHandler: graph.NewEventHandler(100),
 		graph:        g,
@@ -68,8 +70,7 @@ func newClusterProbe(clientset interface{}, g *graph.Graph) Subprobe {
 type clusterLinker struct {
 	graph.DefaultLinker
 	*graph.ResourceLinker
-	g             *graph.Graph
-	objectIndexer *graph.MetadataIndexer
+	g *graph.Graph
 }
 
 func (linker *clusterLinker) createEdge(cluster, object *graph.Node) *graph.Edge {

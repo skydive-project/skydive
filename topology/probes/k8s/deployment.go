@@ -18,8 +18,10 @@
 package k8s
 
 import (
+	"encoding/json"
 	"fmt"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 
@@ -27,6 +29,43 @@ import (
 	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/client-go/kubernetes"
 )
+
+// MetadataInnerDeployment contains the type specific fields
+// easyjson:json
+type MetadataInnerDeployment struct {
+	MetadataInner
+	DesiredReplicas     int32 `skydive:"int"`
+	Replicas            int32 `skydive:"int"`
+	ReadyReplicas       int32 `skydive:"int"`
+	AvailableReplicas   int32 `skydive:"int"`
+	UnavailableReplicas int32 `skydive:"int"`
+}
+
+// GetField implements Getter interface
+func (inner *MetadataInnerDeployment) GetField(key string) (interface{}, error) {
+	return GenericGetField(inner, key)
+}
+
+// GetFieldInt64 implements Getter interface
+func (inner *MetadataInnerDeployment) GetFieldInt64(key string) (int64, error) {
+	return GenericGetFieldInt64(inner, key)
+}
+
+// GetFieldString implements Getter interface
+func (inner *MetadataInnerDeployment) GetFieldString(key string) (string, error) {
+	return GenericGetFieldString(inner, key)
+}
+
+// GetFieldKeys implements Getter interface
+func (inner *MetadataInnerDeployment) GetFieldKeys() []string {
+	return GenericGetFieldKeys(inner)
+}
+
+// MetadataInnerDeploymentDecoder implements a json message raw decoder
+func MetadataInnerDeploymentDecoder(raw json.RawMessage) (common.Getter, error) {
+	var inner MetadataInnerDaemonSet
+	return GenericMetadataDecoder(&inner, raw)
+}
 
 type deploymentHandler struct {
 }
@@ -39,17 +78,19 @@ func (h *deploymentHandler) Dump(obj interface{}) string {
 func (h *deploymentHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	deployment := obj.(*v1beta1.Deployment)
 
-	m := NewMetadataFields(&deployment.ObjectMeta)
-	m.SetField("DesiredReplicas", int32ValueOrDefault(deployment.Spec.Replicas, 1))
-	m.SetField("Replicas", deployment.Status.Replicas)
-	m.SetField("ReadyReplicas", deployment.Status.ReadyReplicas)
-	m.SetField("AvailableReplicas", deployment.Status.AvailableReplicas)
-	m.SetField("UnavailableReplicas", deployment.Status.UnavailableReplicas)
+	inner := new(MetadataInnerDeployment)
+	inner.MetadataInner.Setup(&deployment.ObjectMeta, deployment)
+	inner.DesiredReplicas = int32ValueOrDefault(deployment.Spec.Replicas, 1)
+	inner.Replicas = deployment.Status.Replicas
+	inner.ReadyReplicas = deployment.Status.ReadyReplicas
+	inner.AvailableReplicas = deployment.Status.AvailableReplicas
+	inner.UnavailableReplicas = deployment.Status.UnavailableReplicas
 
-	return graph.Identifier(deployment.GetUID()), NewMetadata(Manager, "deployment", m, deployment, deployment.Name)
+	return graph.Identifier(deployment.GetUID()), NewMetadata(Manager, "deployment", inner.Name, inner)
 }
 
 func newDeploymentProbe(client interface{}, g *graph.Graph) Subprobe {
+	RegisterNodeDecoder(MetadataInnerDeploymentDecoder, "deployment")
 	return NewResourceCache(client.(*kubernetes.Clientset).ExtensionsV1beta1().RESTClient(), &v1beta1.Deployment{}, "deployments", g, &deploymentHandler{})
 }
 

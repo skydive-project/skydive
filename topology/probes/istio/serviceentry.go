@@ -31,8 +31,8 @@ type serviceEntryHandler struct {
 // Map graph node to k8s resource
 func (h *serviceEntryHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	se := obj.(*kiali.ServiceEntry)
-	m := k8s.NewMetadataFields(&se.ObjectMeta)
-	return graph.Identifier(se.GetUID()), k8s.NewMetadata(Manager, "serviceentry", m, se, se.Name)
+	inner := new(k8s.MetadataInner).Setup(&se.ObjectMeta, se)
+	return graph.Identifier(se.GetUID()), k8s.NewMetadata(Manager, "serviceentry", inner.Name, inner)
 }
 
 // Dump k8s resource
@@ -42,5 +42,6 @@ func (h *serviceEntryHandler) Dump(obj interface{}) string {
 }
 
 func newServiceEntryProbe(client interface{}, g *graph.Graph) k8s.Subprobe {
+	k8s.RegisterNodeDecoder(k8s.MetadataInnerDecoder, "serviceentry")
 	return k8s.NewResourceCache(client.(*kiali.IstioClient).GetIstioNetworkingApi(), &kiali.ServiceEntry{}, "serviceentries", g, &serviceEntryHandler{})
 }

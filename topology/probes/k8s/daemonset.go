@@ -18,13 +18,50 @@
 package k8s
 
 import (
+	"encoding/json"
 	"fmt"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 
 	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/client-go/kubernetes"
 )
+
+// MetadataInnerDaemonSet contains the type specific fields
+// easyjson:json
+type MetadataInnerDaemonSet struct {
+	MetadataInner
+	DesiredNumberScheduled int32 `skydive:"int"`
+	CurrentNumberScheduled int32 `skydive:"int"`
+	NumberMisscheduled     int32 `skydive:"int"`
+}
+
+// GetField implements Getter interface
+func (inner *MetadataInnerDaemonSet) GetField(key string) (interface{}, error) {
+	return GenericGetField(inner, key)
+}
+
+// GetFieldInt64 implements Getter interface
+func (inner *MetadataInnerDaemonSet) GetFieldInt64(key string) (int64, error) {
+	return GenericGetFieldInt64(inner, key)
+}
+
+// GetFieldString implements Getter interface
+func (inner *MetadataInnerDaemonSet) GetFieldString(key string) (string, error) {
+	return GenericGetFieldString(inner, key)
+}
+
+// GetFieldKeys implements Getter interface
+func (inner *MetadataInnerDaemonSet) GetFieldKeys() []string {
+	return GenericGetFieldKeys(inner)
+}
+
+// MetadataInnerDaemonSetDecoder implements a json message raw decoder
+func MetadataInnerDaemonSetDecoder(raw json.RawMessage) (common.Getter, error) {
+	var inner MetadataInnerDaemonSet
+	return GenericMetadataDecoder(&inner, raw)
+}
 
 type daemonSetHandler struct {
 }
@@ -37,14 +74,16 @@ func (h *daemonSetHandler) Dump(obj interface{}) string {
 func (h *daemonSetHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	ds := obj.(*v1beta1.DaemonSet)
 
-	m := NewMetadataFields(&ds.ObjectMeta)
-	m.SetField("DesiredNumberScheduled", ds.Status.DesiredNumberScheduled)
-	m.SetField("CurrentNumberScheduled", ds.Status.CurrentNumberScheduled)
-	m.SetField("NumberMisscheduled", ds.Status.NumberMisscheduled)
+	inner := new(MetadataInnerDaemonSet)
+	inner.MetadataInner.Setup(&ds.ObjectMeta, ds)
+	inner.DesiredNumberScheduled = ds.Status.DesiredNumberScheduled
+	inner.CurrentNumberScheduled = ds.Status.CurrentNumberScheduled
+	inner.NumberMisscheduled = ds.Status.NumberMisscheduled
 
-	return graph.Identifier(ds.GetUID()), NewMetadata(Manager, "daemonset", m, ds, ds.Name)
+	return graph.Identifier(ds.GetUID()), NewMetadata(Manager, "daemonset", inner.Name, inner)
 }
 
 func newDaemonSetProbe(client interface{}, g *graph.Graph) Subprobe {
+	RegisterNodeDecoder(MetadataInnerDaemonSetDecoder, "daemonset")
 	return NewResourceCache(client.(*kubernetes.Clientset).ExtensionsV1beta1().RESTClient(), &v1beta1.DaemonSet{}, "daemonsets", g, &daemonSetHandler{})
 }

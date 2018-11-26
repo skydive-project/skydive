@@ -34,8 +34,8 @@ type virtualServiceHandler struct {
 // Map graph node to k8s resource
 func (h *virtualServiceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	vs := obj.(*kiali.VirtualService)
-	m := k8s.NewMetadataFields(&vs.ObjectMeta)
-	return graph.Identifier(vs.GetUID()), k8s.NewMetadata(Manager, "virtualservice", m, vs, vs.Name)
+	inner := new(k8s.MetadataInner).Setup(&vs.ObjectMeta, vs)
+	return graph.Identifier(vs.GetUID()), k8s.NewMetadata(Manager, "virtualservice", inner.Name, inner)
 }
 
 // Dump k8s resource
@@ -45,6 +45,7 @@ func (h *virtualServiceHandler) Dump(obj interface{}) string {
 }
 
 func newVirtualServiceProbe(client interface{}, g *graph.Graph) k8s.Subprobe {
+	k8s.RegisterNodeDecoder(k8s.MetadataInnerDecoder, "virtualservice")
 	return k8s.NewResourceCache(client.(*kiali.IstioClient).GetIstioNetworkingApi(), &kiali.VirtualService{}, "virtualservices", g, &virtualServiceHandler{})
 }
 

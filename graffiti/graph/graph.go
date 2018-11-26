@@ -168,16 +168,33 @@ type Elements struct {
 	Edges []*Edge
 }
 
+type metadataDecoderMap map[string]map[string]MetadataDecoder
+
 // MetadataDecoder defines a json rawmessage decoder which has to return a object
 // implementing the getter interface
 type MetadataDecoder func(raw json.RawMessage) (common.Getter, error)
 
 var (
 	// NodeMetadataDecoders is a map that owns special type metadata decoder
-	NodeMetadataDecoders = make(map[string]MetadataDecoder)
+	NodeMetadataDecoders = make(map[string]map[string]MetadataDecoder)
 	// EdgeMetadataDecoders is a map that owns special type metadata decoder
-	EdgeMetadataDecoders = make(map[string]MetadataDecoder)
+	EdgeMetadataDecoders = make(map[string]map[string]MetadataDecoder)
 )
+
+const decoderTypeAny = ""
+
+// RegisterNodeDecoder register node decoder handlers
+func RegisterNodeDecoder(class string, decoder MetadataDecoder, nodeTypes ...string) {
+	if _, ok := NodeMetadataDecoders[class]; !ok {
+		NodeMetadataDecoders[class] = make(map[string]MetadataDecoder)
+	}
+	if len(nodeTypes) == 0 {
+		nodeTypes = append(nodeTypes, decoderTypeAny)
+	}
+	for _, ty := range nodeTypes {
+		NodeMetadataDecoders[class][ty] = decoder
+	}
+}
 
 // DefaultGraphListener default implementation of a graph listener, can be used when not implementing
 // the whole set of callbacks
@@ -476,7 +493,7 @@ func normalizeNumbers(raw interface{}) interface{} {
 }
 
 // normalize the graph element after partial deserialization
-func (e *graphElement) normalize(metadata map[string]json.RawMessage, decoders map[string]MetadataDecoder) error {
+func (e *graphElement) normalize(metadata map[string]json.RawMessage, decoders map[string]map[string]MetadataDecoder) error {
 	// sanity checks
 	if e.ID == "" {
 		return errors.New("No ID found for graph element")
@@ -491,12 +508,29 @@ func (e *graphElement) normalize(metadata map[string]json.RawMessage, decoders m
 		e.UpdatedAt = TimeUTC()
 	}
 
+	nodeType := ""
+	if r, ok := metadata["Type"]; ok {
+		var i interface{}
+		if err := json.Unmarshal(r, &i); err != nil {
+			return err
+		}
+		if nodeType, ok = i.(string); !ok {
+			return common.ErrFieldWrongType
+		}
+	}
+
 	for k, r := range metadata {
 		if len(r) == 0 {
 			continue
 		}
 
-		if decoder, ok := decoders[k]; ok {
+		if decodersByType, ok := decoders[k]; ok {
+			decoderType := decoderTypeAny
+			if _, ok := decodersByType[nodeType]; ok {
+				decoderType = nodeType
+			}
+			decoder := decodersByType[decoderType]
+
 			v, err := decoder(r)
 			if err != nil {
 				return err

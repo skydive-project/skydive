@@ -18,8 +18,10 @@
 package k8s
 
 import (
+	"encoding/json"
 	"fmt"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 
@@ -27,6 +29,39 @@ import (
 	"k8s.io/api/storage/v1"
 	"k8s.io/client-go/kubernetes"
 )
+
+// MetadataInnerStorageClass contains the type specific fields
+// easyjson:json
+type MetadataInnerStorageClass struct {
+	MetadataInner
+	Provisioner string `skydive:"string"`
+}
+
+// GetField implements Getter interface
+func (inner *MetadataInnerStorageClass) GetField(key string) (interface{}, error) {
+	return GenericGetField(inner, key)
+}
+
+// GetFieldInt64 implements Getter interface
+func (inner *MetadataInnerStorageClass) GetFieldInt64(key string) (int64, error) {
+	return GenericGetFieldInt64(inner, key)
+}
+
+// GetFieldString implements Getter interface
+func (inner *MetadataInnerStorageClass) GetFieldString(key string) (string, error) {
+	return GenericGetFieldString(inner, key)
+}
+
+// GetFieldKeys implements Getter interface
+func (inner *MetadataInnerStorageClass) GetFieldKeys() []string {
+	return GenericGetFieldKeys(inner)
+}
+
+// MetadataInnerStorageClassDecoder implements a json message raw decoder
+func MetadataInnerStorageClassDecoder(raw json.RawMessage) (common.Getter, error) {
+	var inner MetadataInnerStorageClass
+	return GenericMetadataDecoder(&inner, raw)
+}
 
 type storageClassHandler struct {
 }
@@ -39,13 +74,15 @@ func (h *storageClassHandler) Dump(obj interface{}) string {
 func (h *storageClassHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	sc := obj.(*v1.StorageClass)
 
-	m := NewMetadataFields(&sc.ObjectMeta)
-	m.SetField("Provisioner", sc.Provisioner)
+	inner := new(MetadataInnerStorageClass)
+	inner.MetadataInner.Setup(&sc.ObjectMeta, sc)
+	inner.Provisioner = sc.Provisioner
 
-	return graph.Identifier(sc.GetUID()), NewMetadata(Manager, "storageclass", m, sc, sc.Name)
+	return graph.Identifier(sc.GetUID()), NewMetadata(Manager, "storageclass", inner.Name, inner)
 }
 
 func newStorageClassProbe(client interface{}, g *graph.Graph) Subprobe {
+	RegisterNodeDecoder(MetadataInnerStorageClassDecoder, "storageclass")
 	return NewResourceCache(client.(*kubernetes.Clientset).StorageV1().RESTClient(), &v1.StorageClass{}, "storageclasses", g, &storageClassHandler{})
 }
 

@@ -41,11 +41,12 @@ func (h *networkPolicyHandler) Dump(obj interface{}) string {
 
 func (h *networkPolicyHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	np := obj.(*v1beta1.NetworkPolicy)
-	m := NewMetadataFields(&np.ObjectMeta)
-	return graph.Identifier(np.GetUID()), NewMetadata(Manager, "networkpolicy", m, np, np.Name)
+	inner := new(MetadataInner).Setup(&np.ObjectMeta, np)
+	return graph.Identifier(np.GetUID()), NewMetadata(Manager, "networkpolicy", inner.Name, inner)
 }
 
 func newNetworkPolicyProbe(client interface{}, g *graph.Graph) Subprobe {
+	RegisterNodeDecoder(MetadataInnerDecoder, "networkpolicy")
 	return NewResourceCache(client.(*kubernetes.Clientset).ExtensionsV1beta1().RESTClient(), &v1beta1.NetworkPolicy{}, "networkpolicies", g, &networkPolicyHandler{})
 }
 

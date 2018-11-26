@@ -31,8 +31,8 @@ type quotaSpecBindingHandler struct {
 // Map graph node to k8s resource
 func (h *quotaSpecBindingHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	qsb := obj.(*kiali.QuotaSpecBinding)
-	m := k8s.NewMetadataFields(&qsb.ObjectMeta)
-	return graph.Identifier(qsb.GetUID()), k8s.NewMetadata(Manager, "quotaspecbinding", m, qsb, qsb.Name)
+	inner := new(k8s.MetadataInner).Setup(&qsb.ObjectMeta, qsb)
+	return graph.Identifier(qsb.GetUID()), k8s.NewMetadata(Manager, "quotaspecbinding", inner.Name, inner)
 }
 
 // Dump k8s resource
@@ -42,5 +42,6 @@ func (h *quotaSpecBindingHandler) Dump(obj interface{}) string {
 }
 
 func newQuotaSpecBindingProbe(client interface{}, g *graph.Graph) k8s.Subprobe {
+	k8s.RegisterNodeDecoder(k8s.MetadataInnerDecoder, "quotaspecbinding")
 	return k8s.NewResourceCache(client.(*kiali.IstioClient).GetIstioConfigApi(), &kiali.QuotaSpecBinding{}, "quotaspecbindings", g, &quotaSpecBindingHandler{})
 }

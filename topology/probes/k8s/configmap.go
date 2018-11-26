@@ -36,10 +36,11 @@ func (h *configMapHandler) Dump(obj interface{}) string {
 
 func (h *configMapHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	cm := obj.(*v1.ConfigMap)
-	m := NewMetadataFields(&cm.ObjectMeta)
-	return graph.Identifier(cm.GetUID()), NewMetadata(Manager, "configmap", m, cm, cm.Name)
+	inner := new(MetadataInner).Setup(&cm.ObjectMeta, cm)
+	return graph.Identifier(cm.GetUID()), NewMetadata(Manager, "configmap", inner.Name, inner)
 }
 
 func newConfigMapProbe(client interface{}, g *graph.Graph) Subprobe {
+	RegisterNodeDecoder(MetadataInnerDecoder, "configmap")
 	return NewResourceCache(client.(*kubernetes.Clientset).CoreV1().RESTClient(), &v1.ConfigMap{}, "configmaps", g, &configMapHandler{})
 }

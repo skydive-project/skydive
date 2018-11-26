@@ -36,10 +36,11 @@ func (h *endpointsHandler) Dump(obj interface{}) string {
 
 func (h *endpointsHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	endpoints := obj.(*v1.Endpoints)
-	m := NewMetadataFields(&endpoints.ObjectMeta)
-	return graph.Identifier(endpoints.GetUID()), NewMetadata(Manager, "endpoints", m, endpoints, endpoints.Name)
+	inner := new(MetadataInner).Setup(&endpoints.ObjectMeta, endpoints)
+	return graph.Identifier(endpoints.GetUID()), NewMetadata(Manager, "endpoints", inner.Name, inner)
 }
 
 func newEndpointsProbe(client interface{}, g *graph.Graph) Subprobe {
+	RegisterNodeDecoder(MetadataInnerDecoder, "endpoints")
 	return NewResourceCache(client.(*kubernetes.Clientset).Core().RESTClient(), &v1.Endpoints{}, "endpoints", g, &endpointsHandler{})
 }

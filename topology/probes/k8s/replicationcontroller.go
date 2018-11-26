@@ -36,10 +36,11 @@ func (h *replicationControllerHandler) Dump(obj interface{}) string {
 
 func (h *replicationControllerHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	rc := obj.(*v1.ReplicationController)
-	m := NewMetadataFields(&rc.ObjectMeta)
-	return graph.Identifier(rc.GetUID()), NewMetadata(Manager, "replicationcontroller", m, rc, rc.Name)
+	inner := new(MetadataInner).Setup(&rc.ObjectMeta, rc)
+	return graph.Identifier(rc.GetUID()), NewMetadata(Manager, "replicationcontroller", inner.Name, inner)
 }
 
 func newReplicationControllerProbe(client interface{}, g *graph.Graph) Subprobe {
+	RegisterNodeDecoder(MetadataInnerDecoder, "replicationcontroller")
 	return NewResourceCache(client.(*kubernetes.Clientset).CoreV1().RESTClient(), &v1.ReplicationController{}, "replicationcontrollers", g, &replicationControllerHandler{})
 }

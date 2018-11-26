@@ -36,10 +36,11 @@ func (h *replicaSetHandler) Dump(obj interface{}) string {
 
 func (h *replicaSetHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	rs := obj.(*v1beta1.ReplicaSet)
-	m := NewMetadataFields(&rs.ObjectMeta)
-	return graph.Identifier(rs.GetUID()), NewMetadata(Manager, "replicaset", m, rs, rs.Name)
+	inner := new(MetadataInner).Setup(&rs.ObjectMeta, rs)
+	return graph.Identifier(rs.GetUID()), NewMetadata(Manager, "replicaset", inner.Name, inner)
 }
 
 func newReplicaSetProbe(client interface{}, g *graph.Graph) Subprobe {
+	RegisterNodeDecoder(MetadataInnerDecoder, "replicaset")
 	return NewResourceCache(client.(*kubernetes.Clientset).ExtensionsV1beta1().RESTClient(), &v1beta1.ReplicaSet{}, "replicasets", g, &replicaSetHandler{})
 }

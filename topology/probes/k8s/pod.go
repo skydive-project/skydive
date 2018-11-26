@@ -18,15 +18,53 @@
 package k8s
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/mohae/deepcopy"
+
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
+
+// MetadataInnerPod contains the type specific fields
+// easyjson:json
+type MetadataInnerPod struct {
+	MetadataInner
+	Node   string `skydive:"string"`
+	IP     string `skydive:"string"`
+	Status string `skydive:"string"`
+}
+
+// GetField implements Getter interface
+func (inner *MetadataInnerPod) GetField(key string) (interface{}, error) {
+	return GenericGetField(inner, key)
+}
+
+// GetFieldInt64 implements Getter interface
+func (inner *MetadataInnerPod) GetFieldInt64(key string) (int64, error) {
+	return GenericGetFieldInt64(inner, key)
+}
+
+// GetFieldString implements Getter interface
+func (inner *MetadataInnerPod) GetFieldString(key string) (string, error) {
+	return GenericGetFieldString(inner, key)
+}
+
+// GetFieldKeys implements Getter interface
+func (inner *MetadataInnerPod) GetFieldKeys() []string {
+	return GenericGetFieldKeys(inner)
+}
+
+// MetadataInnerPodDecoder implements a json message raw decoder
+func MetadataInnerPodDecoder(raw json.RawMessage) (common.Getter, error) {
+	var inner MetadataInnerPod
+	return GenericMetadataDecoder(&inner, raw)
+}
 
 type podHandler struct {
 	graph.DefaultGraphListener
@@ -46,25 +84,24 @@ func (h *podHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 
 	pod.Spec.Containers = nil
 
-	m := NewMetadataFields(&pod.ObjectMeta)
-	m.SetField("Node", pod.Spec.NodeName)
-	podIP := pod.Status.PodIP
-	if podIP != "" {
-		m.SetField("IP", podIP)
-	}
+	inner := new(MetadataInnerPod)
+	inner.MetadataInner.Setup(&pod.ObjectMeta, pod)
+	inner.Node = pod.Spec.NodeName
+	inner.IP = pod.Status.PodIP
 	reason := string(pod.Status.Phase)
 	if pod.Status.Reason != "" {
 		reason = pod.Status.Reason
 	}
-	m.SetField("Status", reason)
+	inner.Status = reason
 
-	metadata := NewMetadata(Manager, "pod", m, pod, pod.Name)
+	metadata := NewMetadata(Manager, "pod", inner.Name, inner)
 	SetState(&metadata, reason == "Running")
 
 	return graph.Identifier(pod.GetUID()), metadata
 }
 
 func newPodProbe(client interface{}, g *graph.Graph) Subprobe {
+	RegisterNodeDecoder(MetadataInnerPodDecoder, "pod")
 	return NewResourceCache(client.(*kubernetes.Clientset).CoreV1().RESTClient(), &v1.Pod{}, "pods", g, &podHandler{graph: g})
 }
 
