@@ -39,14 +39,17 @@ description:
 options:
     analyzer:
         description:
-            - analyzer address, default: localhost:8082
+            - analyzer address
+        default: localhost:8082
         required: true
     ssl:
         description:
             - SSL enabled
+        default: false
     insecure:
         description:
             - ignore SSL certification verification
+        default: false
     username:
         description:
             - username authentication parameter
@@ -67,6 +70,10 @@ options:
     seed:
         description:
             - used to generate the UUID of the node
+        default: <name>:<type>
+
+notes:
+  - The default value of seed may be unsufficient to disambiguate nodes.
 
 author:
     - Sylvain Afchain (@safchain)
@@ -90,6 +97,7 @@ message:
     description: The output message that the sample module generates
 '''
 
+import os
 import uuid
 
 from ansible.module_utils.basic import AnsibleModule
@@ -165,12 +173,14 @@ def run_module():
         scheme = "wss"
 
     try:
-        wsclient = WSClient("analyzer",
+        wsclient = WSClient("ansible-" + str(os.getpid()) + "-"
+                            + module.params["host"],
                             "%s://%s/ws/publisher" % (scheme,
                                                       module.params["analyzer"]),
                             protocol=NodeInjectProtocol, persistent=True,
                             insecure=module.params["insecure"],
-                            username=module.params["username"], password=module.params["password"],
+                            username=module.params["username"],
+                            password=module.params["password"],
                             module=module,
                             params=module.params,
                             result=result)
