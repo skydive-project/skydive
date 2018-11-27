@@ -73,7 +73,7 @@
                       "minLength": 1
                     }
                   },
-                  "required": [ "Type", "Name" ]
+                  "required": [ "Type" ]
                 }
               ]
             }
