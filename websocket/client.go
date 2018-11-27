@@ -468,6 +468,10 @@ func (c *Client) Connect() error {
 		"X-Websocket-Namespace": {WildcardNamespace},
 	}
 
+	for k, v := range c.Headers {
+		headers[k] = v
+	}
+
 	logging.GetLogger().Infof("Connecting to %s", endpoint)
 
 	if c.AuthOpts != nil {
