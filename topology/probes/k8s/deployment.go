@@ -53,6 +53,6 @@ func (h *deploymentHandler) Map(obj interface{}) (graph.Identifier, graph.Metada
 	return graph.Identifier(deployment.GetUID()), m
 }
 
-func newDeploymentProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
-	return NewResourceCache(clientset.ExtensionsV1beta1().RESTClient(), &v1beta1.Deployment{}, "deployments", g, &deploymentHandler{})
+func newDeploymentProbe(client interface{}, g *graph.Graph) Subprobe {
+	return NewResourceCache(client.(*kubernetes.Clientset).ExtensionsV1beta1().RESTClient(), &v1beta1.Deployment{}, "deployments", g, &deploymentHandler{})
 }

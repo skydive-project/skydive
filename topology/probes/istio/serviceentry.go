@@ -45,6 +45,6 @@ func (h *serviceEntryHandler) Dump(obj interface{}) string {
 	return fmt.Sprintf("serviceentry{Namespace: %s, Name: %s}", se.Namespace, se.Name)
 }
 
-func newServiceEntryProbe(client *kiali.IstioClient, g *graph.Graph) k8s.Subprobe {
-	return k8s.NewResourceCache(client.GetIstioNetworkingApi(), &kiali.ServiceEntry{}, "serviceentries", g, &serviceEntryHandler{})
+func newServiceEntryProbe(client interface{}, g *graph.Graph) k8s.Subprobe {
+	return k8s.NewResourceCache(client.(*kiali.IstioClient).GetIstioNetworkingApi(), &kiali.ServiceEntry{}, "serviceentries", g, &serviceEntryHandler{})
 }

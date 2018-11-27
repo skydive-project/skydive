@@ -26,7 +26,6 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 
@@ -35,7 +34,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-type resourceHandler func(clientset *kubernetes.Clientset, graph *graph.Graph) Subprobe
 type linkHandler func(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe
 
 // NewConfig returns a new Kubernetes configuration object
@@ -70,7 +68,7 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		return nil, fmt.Errorf("Failed to create Kubernetes client: %s", err.Error())
 	}
 
-	resourceHandlers := map[string]resourceHandler{
+	subprobeHandlers := map[string]SubprobeHandler{
 		"cluster":               newClusterProbe,
 		"container":             newContainerProbe,
 		"cronjob":               newCronJobProbe,
@@ -92,20 +90,7 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		"storageclass":          newStorageClassProbe,
 	}
 
-	if len(enabledSubprobes) == 0 {
-		for name := range resourceHandlers {
-			enabledSubprobes = append(enabledSubprobes, name)
-		}
-	}
-
-	subprobes := make(map[string]Subprobe)
-	for _, name := range enabledSubprobes {
-		if probeHandler, ok := resourceHandlers[name]; ok {
-			subprobes[name] = probeHandler(clientset, g)
-		} else {
-			logging.GetLogger().Errorf("skipping unsupported probe %v", name)
-		}
-	}
+	subprobes := InitSubprobes(enabledSubprobes, subprobeHandlers, clientset, g)
 
 	linkerHandlers := []linkHandler{
 		newContainerDockerLinker,

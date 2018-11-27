@@ -94,12 +94,36 @@ func (p *Probe) AppendNamespaceLinkers(types ...string) {
 
 // NewProbe creates the probe for tracking k8s events
 func NewProbe(g *graph.Graph, manager string, subprobes map[string]Subprobe, linkers []probe.Probe) *Probe {
+	names := []string{}
+	for k := range subprobes {
+		names = append(names, k)
+	}
+	logging.GetLogger().Infof("Probe %s subprobes %v", manager, names)
 	return &Probe{
 		graph:     g,
 		manager:   manager,
 		subprobes: subprobes,
 		linkers:   linkers,
 	}
+}
+
+// SubprobeHandler the signiture of ctor of a subprobe
+type SubprobeHandler func(client interface{}, g *graph.Graph) Subprobe
+
+// InitSubprobes returns only the subprobes which are enabled
+func InitSubprobes(enabled []string, subprobeHandlers map[string]SubprobeHandler, client interface{}, g *graph.Graph) map[string]Subprobe {
+	if len(enabled) == 0 {
+		for name := range subprobeHandlers {
+			enabled = append(enabled, name)
+		}
+	}
+
+	subprobes := make(map[string]Subprobe)
+	for _, name := range enabled {
+		handler := subprobeHandlers[name]
+		subprobes[name] = handler(client, g)
+	}
+	return subprobes
 }
 
 func logOnError(err error) {

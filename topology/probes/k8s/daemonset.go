@@ -51,6 +51,6 @@ func (h *daemonSetHandler) Map(obj interface{}) (graph.Identifier, graph.Metadat
 	return graph.Identifier(ds.GetUID()), m
 }
 
-func newDaemonSetProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
-	return NewResourceCache(clientset.ExtensionsV1beta1().RESTClient(), &v1beta1.DaemonSet{}, "daemonsets", g, &daemonSetHandler{})
+func newDaemonSetProbe(client interface{}, g *graph.Graph) Subprobe {
+	return NewResourceCache(client.(*kubernetes.Clientset).ExtensionsV1beta1().RESTClient(), &v1beta1.DaemonSet{}, "daemonsets", g, &daemonSetHandler{})
 }

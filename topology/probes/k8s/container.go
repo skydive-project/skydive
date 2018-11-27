@@ -62,6 +62,8 @@ func (c *containerProbe) dump(pod *v1.Pod, name string) string {
 // OnAdd is called when a new Kubernetes resource has been created
 func (c *containerProbe) OnAdd(obj interface{}) {
 	if pod, ok := obj.(*v1.Pod); ok {
+		logging.GetLogger().Debugf("Added/Updated pod{Namespace: %s, Name: %s}", pod.Namespace, pod.Name)
+
 		c.graph.Lock()
 		defer c.graph.Unlock()
 
@@ -102,6 +104,8 @@ func (c *containerProbe) OnUpdate(oldObj, newObj interface{}) {
 // OnDelete is called when a Kubernetes resource has been deleted
 func (c *containerProbe) OnDelete(obj interface{}) {
 	if pod, ok := obj.(*v1.Pod); ok {
+		logging.GetLogger().Debugf("Deleted pod{Namespace: %s, Name: %s}", pod.Namespace, pod.Name)
+
 		c.graph.Lock()
 		defer c.graph.Unlock()
 
@@ -115,13 +119,13 @@ func (c *containerProbe) OnDelete(obj interface{}) {
 	}
 }
 
-func newContainerProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
+func newContainerProbe(client interface{}, g *graph.Graph) Subprobe {
 	c := &containerProbe{
 		EventHandler: graph.NewEventHandler(100),
 		graph:        g,
 	}
 	c.containerIndexer = newObjectIndexer(g, c.EventHandler, "container", "Namespace", "Pod")
-	c.KubeCache = RegisterKubeCache(clientset.CoreV1().RESTClient(), &v1.Pod{}, "pods", c)
+	c.KubeCache = RegisterKubeCache(client.(*kubernetes.Clientset).CoreV1().RESTClient(), &v1.Pod{}, "pods", c)
 	return c
 }
 
