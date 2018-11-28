@@ -39,7 +39,8 @@ description:
 options:
     analyzer:
         description:
-            - analyzer address, default: localhost:8082
+            - analyzer address
+        default: localhost:8082
         required: true
     ssl:
         description:
@@ -59,7 +60,7 @@ options:
         required: true
     relation_type:
         description:
-            - relation type of the node, ex: ownership, layer2, layer3
+            - "relation type of the node, ex: ownership, layer2, layer3"
         required: true
     node1:
         description:
@@ -120,6 +121,7 @@ message:
     description: The output message that the sample module generates
 '''
 
+import os
 import uuid
 
 from ansible.module_utils.basic import AnsibleModule
@@ -225,12 +227,14 @@ def run_module():
         scheme = "wss"
 
     try:
-        wsclient = WSClient("analyzer",
+        wsclient = WSClient("ansible-" + str(os.getpid()) + "-"
+                            + module.params["host"],
                             "%s://%s/ws/publisher" % (scheme,
                                                       module.params["analyzer"]),
                             protocol=EdgeInjectProtocol, persistent=True,
                             insecure=module.params["insecure"],
-                            username=module.params["username"], password=module.params["password"],
+                            username=module.params["username"],
+                            password=module.params["password"],
                             module=module,
                             params=module.params,
                             node1=node1,
