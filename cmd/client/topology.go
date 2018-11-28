@@ -23,15 +23,25 @@
 package client
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 
+	"github.com/skydive-project/skydive/analyzer"
+	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/websocket"
 	"github.com/spf13/cobra"
 )
 
 var (
 	gremlinQuery string
 	outputFormat string
+	filename     string
 )
 
 // TopologyCmd skydive topology root command
@@ -53,8 +63,82 @@ var TopologyRequest = &cobra.Command{
 	},
 }
 
+// TopologyImport skydive topology import command
+var TopologyImport = &cobra.Command{
+	Use:   "import",
+	Short: "import topology",
+	Long:  "import topology",
+	Run: func(cmd *cobra.Command, args []string) {
+		sa, err := config.GetOneAnalyzerServiceAddress()
+		if err != nil {
+			exitOnError(err)
+		}
+
+		url := config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher")
+		headers := http.Header{}
+		headers.Add("X-Persistence-Policy", string(analyzer.Persistent))
+		client, err := config.NewWSClient(common.UnknownService, url, &AuthenticationOpts, headers)
+		if err != nil {
+			exitOnError(err)
+		}
+
+		if err := client.Connect(); err != nil {
+			exitOnError(err)
+		}
+
+		go client.Run()
+		defer func() {
+			client.Flush()
+			client.Conn.Stop()
+		}()
+
+		content, err := ioutil.ReadFile(filename)
+		if err != nil {
+			exitOnError(err)
+		}
+
+		syncMsg := []*graph.SyncMsg{}
+		if err := json.Unmarshal(content, &syncMsg); err != nil {
+			exitOnError(err)
+		}
+
+		if len(syncMsg) != 1 {
+			exitOnError(errors.New("Invalid graph format"))
+		}
+
+		for _, node := range syncMsg[0].Nodes {
+			msg := websocket.NewStructMessage(graph.Namespace, graph.NodeAddedMsgType, node)
+			if err := client.SendMessage(msg); err != nil {
+				exitOnError(fmt.Errorf("Failed to send message: %s", err))
+			}
+		}
+
+		for _, edge := range syncMsg[0].Edges {
+			msg := websocket.NewStructMessage(graph.Namespace, graph.EdgeAddedMsgType, edge)
+			if err := client.SendMessage(msg); err != nil {
+				exitOnError(fmt.Errorf("Failed to send message: %s", err))
+			}
+		}
+	},
+}
+
+// TopologyExport skydive topology export command
+var TopologyExport = &cobra.Command{
+	Use:   "export",
+	Short: "export topology",
+	Long:  "export topology",
+	Run: func(cmd *cobra.Command, args []string) {
+		QueryCmd.Run(cmd, []string{"G"})
+	},
+}
+
 func init() {
-	TopologyCmd.AddCommand(TopologyRequest)
+	TopologyCmd.AddCommand(TopologyExport)
+
+	TopologyImport.Flags().StringVarP(&filename, "file", "", "graph.json", "Input file")
+	TopologyCmd.AddCommand(TopologyImport)
+
 	TopologyRequest.Flags().StringVarP(&gremlinQuery, "gremlin", "", "G", "Gremlin Query")
 	TopologyRequest.Flags().StringVarP(&outputFormat, "format", "", "json", "Output format (json, dot or pcap)")
+	TopologyCmd.AddCommand(TopologyRequest)
 }

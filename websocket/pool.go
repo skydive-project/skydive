@@ -205,7 +205,7 @@ func (s *Pool) DisconnectAll() {
 
 	s.RLock()
 	for _, c := range s.speakers {
-		c.Disconnect()
+		c.Stop()
 	}
 	s.RUnlock()
 }
@@ -278,7 +278,7 @@ func (s *ClientPool) ConnectAll() {
 	// shuffle connections to avoid election of the same client as master
 	indexes := rand.Perm(len(s.speakers))
 	for _, i := range indexes {
-		s.speakers[i].Connect()
+		s.speakers[i].Start()
 	}
 	s.RUnlock()
 }

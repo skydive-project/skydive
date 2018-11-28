@@ -81,14 +81,14 @@ func (p *TopologyReplicatorPeer) OnConnected(c ws.Speaker) {
 
 	if host == config.GetString("host_id") {
 		logging.GetLogger().Debugf("Disconnecting from %s since it's me", p.URL.String())
-		c.Disconnect()
+		c.Stop()
 		return
 	}
 
 	// disconnect as can be connect to the same host from different addresses.
 	if u, ok := p.endpoint.outByHost[host]; ok {
 		logging.GetLogger().Debugf("Disconnecting from %s as already connected through", p.URL.String(), u.String())
-		c.Disconnect()
+		c.Stop()
 		return
 	}
 
@@ -124,12 +124,12 @@ func (p *TopologyReplicatorPeer) connect(wg *sync.WaitGroup) {
 	structClient.AddStructMessageHandler(p.endpoint, []string{graph.Namespace})
 
 	p.wsspeaker = structClient
-	p.wsspeaker.Connect()
+	p.wsspeaker.Start()
 }
 
 func (p *TopologyReplicatorPeer) disconnect() {
 	if p.wsspeaker != nil {
-		p.wsspeaker.Disconnect()
+		p.wsspeaker.Stop()
 	}
 }
 
@@ -306,7 +306,7 @@ func (t *TopologyReplicationEndpoint) OnConnected(c ws.Speaker) {
 	host := c.GetRemoteHost()
 	if speaker := t.inByHost[host]; speaker != nil {
 		logging.GetLogger().Debugf("Disconnecting %s from %s as already connected from %s", host, c.GetURL(), speaker.GetURL())
-		c.Disconnect()
+		c.Stop()
 		return
 	}
 

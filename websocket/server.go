@@ -152,7 +152,7 @@ func (s *Server) newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRe
 
 	wsconn.pingTicker = time.NewTicker(s.pingDelay)
 
-	c.start()
+	c.Start()
 
 	return c
 }
