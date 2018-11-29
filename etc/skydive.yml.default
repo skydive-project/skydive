@@ -191,6 +191,7 @@ agent:
       # - socketinfo
       # - lxd
       # - lldp
+      # - runc
 
     netlink:
       # delay in seconds between two metric updates
@@ -218,6 +219,10 @@ agent:
 
     libvirt:
       # url: qemu:///system
+
+    runc:
+      run_path:
+        # - /var/run/runc
 
   capture:
     # Period in second to get capture stats from the probe. Note this

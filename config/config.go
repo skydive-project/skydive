@@ -88,6 +88,7 @@ func init() {
 	cfg.SetDefault("agent.topology.neutron.region_name", "RegionOne")
 	cfg.SetDefault("agent.topology.neutron.tenant_name", "service")
 	cfg.SetDefault("agent.topology.neutron.username", "neutron")
+	cfg.SetDefault("agent.topology.runc.run_path", []string{"/run/containerd/runc", "/run/runc"})
 	cfg.SetDefault("agent.topology.socketinfo.host_update", 10)
 
 	cfg.SetDefault("analyzer.auth.cluster.backend", "noauth")

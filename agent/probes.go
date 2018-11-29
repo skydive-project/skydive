@@ -39,6 +39,7 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/neutron"
 	"github.com/skydive-project/skydive/topology/probes/opencontrail"
 	"github.com/skydive-project/skydive/topology/probes/ovsdb"
+	"github.com/skydive-project/skydive/topology/probes/runc"
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
 )
 
@@ -114,6 +115,12 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 				return nil, fmt.Errorf("Failed to initialize Libvirt probe: %s", err)
 			}
 			probes[t] = libvirt
+		case "runc":
+			runc, err := runc.NewProbe(nsProbe)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to initialize runc probe: %s", err)
+			}
+			probes[t] = runc
 		default:
 			logging.GetLogger().Errorf("unknown probe type %s", t)
 		}
