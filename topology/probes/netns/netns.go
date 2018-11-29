@@ -106,7 +106,15 @@ func (u *Probe) checkNamespace(path string) error {
 		}
 
 		if (stats.Mode & syscall.S_IFLNK) > 0 {
-			return nil
+			// check if the link is a regular link or could be netns
+			b := make([]byte, 256)
+			n, err := syscall.Readlink(path, b)
+			if err == nil {
+				var lstat syscall.Stat_t
+				if err := syscall.Lstat(string(b[:n]), &lstat); err != nil && lstat.Dev == 0 {
+					return nil
+				}
+			}
 		}
 
 		if parent := filepath.Dir(path); parent != "" {
@@ -150,6 +158,7 @@ func (u *Probe) Register(path string, name string) (*graph.Node, error) {
 	}
 
 	nsString := newns.String()
+
 	if probe, ok := u.netNsProbes[nsString]; ok {
 		probe.useCount++
 		logging.GetLogger().Debugf("Increasing counter for namespace %s to %d", nsString, probe.useCount)
