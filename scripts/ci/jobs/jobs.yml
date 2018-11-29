@@ -270,11 +270,11 @@
     name: skydive-k8s-tests
     defaults: skydive
     wrappers:
+      - skydive-wrappers
       - timeout:
           timeout: 40
           fail: true
           type: absolute
-      - timestamps
     triggers:
       - skydive-pull-request:
           name: k8s-tests
