@@ -1,0 +1,46 @@
+---
+UUID: "85757b38-6e21-1dee-b42d-28d2442e1017"
+Name: "FlowLatency"
+Description: "Calculate flow latency between two interfaces"
+Parameters:
+  - Name: source
+    Description: Source node
+    Type: node
+  - Name: destination
+    Description: Destination node
+    Type: node
+Source: |
+    function FlowLatency(from, to) {
+      try {
+        var capture = new Capture();
+        capture.GremlinQuery = "G.V().Has('TID', '" + from + "')";
+
+        var packetInjection = new PacketInjection();
+        packetInjection.Src = "G.V().Has('TID', '" + from + "')"
+        packetInjection.Dst = "G.V().Has('TID', '" + to + "')"
+        packetInjection.Type = "icmp4"
+        packetInjection.ICMPID = Math.floor(Math.random() * 1000);
+        packetInjection.Count = 1
+
+        capture = client.captures.create(capture)
+        sleep(1000)
+        client.packetInjections.create(packetInjection)
+        sleep(1000)
+
+        var flows = client.G.V().Has("TID", from).Flows().Has("ICMP.ID", packetInjection.ICMPID).result()
+
+        if (flows.length > 0) {
+          return {
+            "Latency(RTT)": (flows[0].Metric.RTT / 1000000).toFixed(3) + " ms"
+          }
+        } else {
+          return {
+            "Error": "No flows found, Check the conectivity."
+          }
+        }
+      } catch (e) {
+        console.log(e)
+      } finally {
+        if (capture && capture.UUID) client.captures.delete(capture.UUID)
+      }
+    }
