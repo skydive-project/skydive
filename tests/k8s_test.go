@@ -65,10 +65,10 @@ func makeHasArgsType(mngr, ty interface{}, args1 ...interface{}) []interface{} {
 }
 
 func makeHasArgsNode(node *graph.Node, args1 ...interface{}) []interface{} {
-	m := node.Metadata
+	m := map[string]interface{}(node.Metadata)
 	args := []interface{}{}
-	for _, key := range []string{"Namespace", "Name"} {
-		if val, ok := m[key]; ok {
+	for _, key := range k8s.MetadataFields("Namespace", "Pod", "Name") {
+		if val, err := common.GetField(m, key); err == nil {
 			args = append(args, key, val)
 		}
 	}
@@ -103,8 +103,11 @@ func queryNodeCreation(t *testing.T, c *CheckContext, query g.QueryString) (node
 	return
 }
 
-func checkNodeCreation(t *testing.T, c *CheckContext, mngr, ty string, values ...interface{}) (*graph.Node, error) {
-	args := makeHasArgsType(mngr, ty, values...)
+func checkNodeCreation(t *testing.T, c *CheckContext, mngr, ty string, name interface{}, args ...interface{}) (*graph.Node, error) {
+	if name != nil {
+		args = append([]interface{}{k8s.MetadataField("Name"), name}, args...)
+	}
+	args = makeHasArgsType(mngr, ty, args...)
 	query := c.gremlin.V().Has(args...)
 	return queryNodeCreation(t, c, query)
 }
@@ -154,21 +157,19 @@ func testRunner(t *testing.T, setupCmds, tearDownCmds []Cmd, checks []CheckFunct
 	RunTest(t, test)
 }
 
-func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []Cmd, mngr, typ, name string, fields ...string) {
+func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []Cmd, mngr, typ string, name interface{}, fields ...string) {
 	testRunner(t, setupCmds, tearDownCmds, []CheckFunction{
 		func(c *CheckContext) error {
 			var values []interface{}
-			if name != "" {
-				values = append(values, "Name", name)
-			}
-			obj, err := checkNodeCreation(t, c, mngr, typ, values...)
+			obj, err := checkNodeCreation(t, c, mngr, typ, name, values...)
 			if err != nil {
 				return err
 			}
 
-			m := obj.Metadata
+			m := map[string]interface{}(obj.Metadata)
 			for _, field := range fields {
-				if _, ok := m[field]; !ok {
+				field = k8s.MetadataField(field)
+				if _, err := common.GetField(m, field); err != nil {
 					return fmt.Errorf("Node '%s %s' missing field: %s", typ, name, field)
 				}
 			}
@@ -178,7 +179,7 @@ func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []Cmd, mngr, typ, na
 	})
 }
 
-func testNodeCreationFromConfig(t *testing.T, mngr, ty, name string, fields ...string) {
+func testNodeCreationFromConfig(t *testing.T, mngr, ty string, name interface{}, fields ...string) {
 	file := ty
 	setup := setupFromConfigFile(mngr, file)
 	tearDown := tearDownFromConfigFile(mngr, file)
@@ -199,7 +200,7 @@ func TestK8sCronJobNode(t *testing.T) {
 }
 
 func TestK8sDeploymentNode(t *testing.T) {
-	testNodeCreationFromConfig(t, k8s.Manager, "deployment", objName+"-deployment", "Selector", "DesiredReplicas", "Replicas", "ReadyReplicas", "AvailableReplicas", "UnavailableReplicas")
+	testNodeCreationFromConfig(t, k8s.Manager, "deployment", objName+"-deployment", "DesiredReplicas", "Replicas", "ReadyReplicas", "AvailableReplicas", "UnavailableReplicas")
 }
 
 func TestK8sEndpointsNode(t *testing.T) {
@@ -215,11 +216,11 @@ func TestK8sJobNode(t *testing.T) {
 }
 
 func TestK8sNamespaceNode(t *testing.T) {
-	testNodeCreationFromConfig(t, k8s.Manager, "namespace", objName+"-namespace", "Cluster", "Labels", "Status")
+	testNodeCreationFromConfig(t, k8s.Manager, "namespace", objName+"-namespace", "Status")
 }
 
 func TestK8sDaemonSetNode(t *testing.T) {
-	testNodeCreationFromConfig(t, k8s.Manager, "daemonset", objName+"-daemonset", "Labels", "DesiredNumberScheduled", "CurrentNumberScheduled", "NumberMisscheduled")
+	testNodeCreationFromConfig(t, k8s.Manager, "daemonset", objName+"-daemonset", "DesiredNumberScheduled", "CurrentNumberScheduled", "NumberMisscheduled")
 }
 
 func TestK8sNetworkPolicyNode(t *testing.T) {
@@ -227,7 +228,7 @@ func TestK8sNetworkPolicyNode(t *testing.T) {
 }
 
 func TestK8sNodeNode(t *testing.T) {
-	testNodeCreation(t, nil, nil, k8s.Manager, "node", "", "Arch", "Cluster", "Hostname", "InternalIP", "Labels", "OS")
+	testNodeCreation(t, nil, nil, k8s.Manager, "node", nil, "Arch", "Hostname", "InternalIP", "OS")
 }
 
 func TestK8sPersistentVolumeNode(t *testing.T) {
@@ -272,12 +273,12 @@ func TestK8sIngressScenario1(t *testing.T) {
 		tearDownFromConfigFile(k8s.Manager, file),
 		[]CheckFunction{
 			func(c *CheckContext) error {
-				ingress, err := checkNodeCreation(t, c, k8s.Manager, "ingress", "Name", name)
+				ingress, err := checkNodeCreation(t, c, k8s.Manager, "ingress", name)
 				if err != nil {
 					return err
 				}
 
-				service, err := checkNodeCreation(t, c, k8s.Manager, "service", "Name", name)
+				service, err := checkNodeCreation(t, c, k8s.Manager, "service", name)
 				if err != nil {
 					return err
 				}
@@ -304,42 +305,42 @@ func TestHelloNodeScenario(t *testing.T) {
 		[]CheckFunction{
 			func(c *CheckContext) error {
 				// check nodes exist
-				cluster, err := checkNodeCreation(t, c, k8s.Manager, "cluster", "Name", k8s.ClusterName)
+				cluster, err := checkNodeCreation(t, c, k8s.Manager, "cluster", k8s.ClusterName)
 				if err != nil {
 					return err
 				}
 
-				container, err := checkNodeCreation(t, c, k8s.Manager, "container", "Name", "hello-node")
+				container, err := checkNodeCreation(t, c, k8s.Manager, "container", "hello-node")
 				if err != nil {
 					return err
 				}
 
-				deployment, err := checkNodeCreation(t, c, k8s.Manager, "deployment", "Name", "hello-node")
+				deployment, err := checkNodeCreation(t, c, k8s.Manager, "deployment", "hello-node")
 				if err != nil {
 					return err
 				}
 
-				namespace, err := checkNodeCreation(t, c, k8s.Manager, "namespace", "Name", "default")
+				namespace, err := checkNodeCreation(t, c, k8s.Manager, "namespace", "default")
 				if err != nil {
 					return err
 				}
 
-				service, err := checkNodeCreation(t, c, k8s.Manager, "service", "Name", "kubernetes")
+				service, err := checkNodeCreation(t, c, k8s.Manager, "service", "kubernetes")
 				if err != nil {
 					return err
 				}
 
-				replicaset, err := checkNodeCreation(t, c, k8s.Manager, "replicaset", "Name", g.Regex("%s-.*", "hello-node"))
+				replicaset, err := checkNodeCreation(t, c, k8s.Manager, "replicaset", g.Regex("%s-.*", "hello-node"))
 				if err != nil {
 					return err
 				}
 
-				node, err := checkNodeCreation(t, c, k8s.Manager, "node")
+				node, err := checkNodeCreation(t, c, k8s.Manager, "node", nil)
 				if err != nil {
 					return err
 				}
 
-				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", "Name", g.Regex("%s-.*", "hello-node"))
+				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", g.Regex("%s-.*", "hello-node"))
 				if err != nil {
 					return err
 				}
@@ -387,12 +388,12 @@ func TestK8sNetworkPolicyScenario1(t *testing.T) {
 		tearDownFromConfigFile(k8s.Manager, file),
 		[]CheckFunction{
 			func(c *CheckContext) error {
-				networkpolicy, err := checkNodeCreation(t, c, k8s.Manager, "networkpolicy", "Name", name)
+				networkpolicy, err := checkNodeCreation(t, c, k8s.Manager, "networkpolicy", name)
 				if err != nil {
 					return err
 				}
 
-				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", "Name", name)
+				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", name)
 				if err != nil {
 					return err
 				}
@@ -416,12 +417,12 @@ func TestK8sNetworkPolicyScenario2(t *testing.T) {
 		tearDownFromConfigFile(k8s.Manager, file),
 		[]CheckFunction{
 			func(c *CheckContext) error {
-				networkpolicy, err := checkNodeCreation(t, c, k8s.Manager, "networkpolicy", "Name", name)
+				networkpolicy, err := checkNodeCreation(t, c, k8s.Manager, "networkpolicy", name)
 				if err != nil {
 					return err
 				}
 
-				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", "Name", name)
+				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", name)
 				if err != nil {
 					return err
 				}
@@ -445,12 +446,12 @@ func testK8sNetworkPolicyDefaultScenario(t *testing.T, policyType k8s.PolicyType
 		tearDownFromConfigFile(k8s.Manager, file),
 		[]CheckFunction{
 			func(c *CheckContext) error {
-				np, err := checkNodeCreation(t, c, k8s.Manager, "networkpolicy", "Name", name)
+				np, err := checkNodeCreation(t, c, k8s.Manager, "networkpolicy", name)
 				if err != nil {
 					return err
 				}
 
-				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", "Name", name)
+				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", name)
 				if err != nil {
 					return err
 				}
@@ -490,17 +491,17 @@ func testK8sNetworkPolicyObjectToObjectScenario(t *testing.T, policyType k8s.Pol
 		tearDownFromConfigFile(k8s.Manager, file),
 		[]CheckFunction{
 			func(c *CheckContext) error {
-				np, err := checkNodeCreation(t, c, k8s.Manager, "networkpolicy", "Name", name)
+				np, err := checkNodeCreation(t, c, k8s.Manager, "networkpolicy", name)
 				if err != nil {
 					return err
 				}
 
-				begin, err := checkNodeCreation(t, c, k8s.Manager, "pod", "Name", name+"-to")
+				begin, err := checkNodeCreation(t, c, k8s.Manager, "pod", name+"-to")
 				if err != nil {
 					return err
 				}
 
-				end, err := checkNodeCreation(t, c, k8s.Manager, "pod", "Name", name+"-from")
+				end, err := checkNodeCreation(t, c, k8s.Manager, "pod", name+"-from")
 				if err != nil {
 					return err
 				}
@@ -528,7 +529,7 @@ func TestK8sNetworkPolicyAllowIngressNamespaceToNamespaceScenario(t *testing.T) 
 }
 
 func TestK8sNetworkPolicyAllowIngressPodToPodPortsScenario(t *testing.T) {
-	testK8sNetworkPolicyObjectToObjectScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, "ports", "Ports", ":80")
+	testK8sNetworkPolicyObjectToObjectScenario(t, k8s.PolicyTypeIngress, k8s.PolicyTargetAllow, "ports", "PolicyPorts", ":80")
 }
 
 func TestK8sServicePodScenario(t *testing.T) {
@@ -540,12 +541,12 @@ func TestK8sServicePodScenario(t *testing.T) {
 		tearDownFromConfigFile(k8s.Manager, file),
 		[]CheckFunction{
 			func(c *CheckContext) error {
-				service, err := checkNodeCreation(t, c, k8s.Manager, "service", "Name", name)
+				service, err := checkNodeCreation(t, c, k8s.Manager, "service", name)
 				if err != nil {
 					return err
 				}
 
-				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", "Name", name)
+				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", name)
 				if err != nil {
 					return err
 				}

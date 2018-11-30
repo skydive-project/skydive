@@ -42,14 +42,14 @@ func (h *jobHandler) Dump(obj interface{}) string {
 func (h *jobHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	job := obj.(*batchv1.Job)
 
-	m := NewMetadata(Manager, "job", job, job.Name, job.Namespace)
+	m := NewMetadataFields(&job.ObjectMeta)
 	m.SetField("Parallelism", job.Spec.Parallelism)
 	m.SetField("Completions", job.Spec.Completions)
 	m.SetField("Active", job.Status.Active)
 	m.SetField("Succeeded", job.Status.Succeeded)
 	m.SetField("Failed", job.Status.Failed)
 
-	return graph.Identifier(job.GetUID()), m
+	return graph.Identifier(job.GetUID()), NewMetadata(Manager, "job", m, job, job.Name)
 }
 
 func newJobProbe(client interface{}, g *graph.Graph) Subprobe {

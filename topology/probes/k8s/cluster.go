@@ -45,8 +45,8 @@ func (c *clusterCache) addClusterNode() {
 	c.graph.Lock()
 	defer c.graph.Unlock()
 
-	m := NewMetadata(Manager, "cluster", nil, ClusterName)
-	clusterNode = c.graph.NewNode(graph.GenID(), m, "")
+	m := graph.Metadata{"Name": ClusterName}
+	clusterNode = c.graph.NewNode(graph.GenID(), NewMetadata(Manager, "cluster", m, nil, ClusterName), "")
 	c.NotifyEvent(graph.NodeAdded, clusterNode)
 	logging.GetLogger().Debugf("Added cluster{Name: %s}", ClusterName)
 }

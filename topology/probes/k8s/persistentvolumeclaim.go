@@ -41,13 +41,15 @@ func (h *persistentVolumeClaimHandler) Dump(obj interface{}) string {
 
 func (h *persistentVolumeClaimHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	pvc := obj.(*v1.PersistentVolumeClaim)
-	m := NewMetadata(Manager, "persistentvolumeclaim", pvc, pvc.Name, pvc.Namespace)
+
+	m := NewMetadataFields(&pvc.ObjectMeta)
 	m.SetFieldAndNormalize("AccessModes", pvc.Spec.AccessModes)
 	m.SetFieldAndNormalize("VolumeName", pvc.Spec.VolumeName)             // FIXME: replace by link to PersistentVolume
 	m.SetFieldAndNormalize("StorageClassName", pvc.Spec.StorageClassName) // FIXME: replace by link to StorageClass
 	m.SetFieldAndNormalize("VolumeMode", pvc.Spec.VolumeMode)
 	m.SetFieldAndNormalize("Status", pvc.Status.Phase)
-	return graph.Identifier(pvc.GetUID()), m
+
+	return graph.Identifier(pvc.GetUID()), NewMetadata(Manager, "persistentvolumeclaim", m, pvc, pvc.Name)
 }
 
 func newPersistentVolumeClaimProbe(client interface{}, g *graph.Graph) Subprobe {

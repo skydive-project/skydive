@@ -36,7 +36,8 @@ type serviceEntryHandler struct {
 // Map graph node to k8s resource
 func (h *serviceEntryHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	se := obj.(*kiali.ServiceEntry)
-	return graph.Identifier(se.GetUID()), k8s.NewMetadata(Manager, "serviceentry", se, se.Name, se.Namespace)
+	m := k8s.NewMetadataFields(&se.ObjectMeta)
+	return graph.Identifier(se.GetUID()), k8s.NewMetadata(Manager, "serviceentry", m, se, se.Name)
 }
 
 // Dump k8s resource

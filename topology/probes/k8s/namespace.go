@@ -46,12 +46,10 @@ func (h *namespaceHandler) Dump(obj interface{}) string {
 func (h *namespaceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	ns := obj.(*v1.Namespace)
 
-	m := NewMetadata(Manager, "namespace", ns, ns.Name)
-	m.SetFieldAndNormalize("Labels", ns.Labels)
-	m.SetField("Cluster", ns.ClusterName)
+	m := NewMetadataFields(&ns.ObjectMeta)
 	m.SetField("Status", ns.Status.Phase)
 
-	return graph.Identifier(ns.GetUID()), m
+	return graph.Identifier(ns.GetUID()), NewMetadata(Manager, "namespace", m, ns, ns.Name)
 }
 
 func newNamespaceProbe(client interface{}, g *graph.Graph) Subprobe {
@@ -59,11 +57,12 @@ func newNamespaceProbe(client interface{}, g *graph.Graph) Subprobe {
 }
 
 func newNamespaceLinker(g *graph.Graph, manager string, types ...string) probe.Probe {
-	namespaceIndexer := graph.NewMetadataIndexer(g, namespaceEventHandler, graph.Metadata{"Manager": Manager, "Type": "namespace"}, "Name")
+	namespaceFilter := newTypesFilter(Manager, "namespace")
+	namespaceIndexer := newObjectIndexerFromFilter(g, namespaceEventHandler, namespaceFilter, MetadataFields("Name")...)
 	namespaceIndexer.Start()
 
 	objectFilter := newTypesFilter(manager, types...)
-	objectIndexer := newObjectIndexerFromFilter(g, g, objectFilter, "Namespace")
+	objectIndexer := newObjectIndexerFromFilter(g, g, objectFilter, MetadataFields("Namespace")...)
 	objectIndexer.Start()
 
 	return graph.NewMetadataIndexerLinker(g, namespaceIndexer, objectIndexer, topology.OwnershipMetadata())

@@ -50,21 +50,20 @@ func (h *podHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	pod := deepcopy.Copy(obj).(*v1.Pod)
 
 	pod.Spec.Containers = nil
-	m := NewMetadata(Manager, "pod", pod, pod.Name, pod.Namespace)
-	m.SetField("Node", pod.Spec.NodeName)
 
+	m := NewMetadataFields(&pod.ObjectMeta)
+	m.SetField("Node", pod.Spec.NodeName)
 	podIP := pod.Status.PodIP
 	if podIP != "" {
 		m.SetField("IP", podIP)
 	}
-
 	reason := string(pod.Status.Phase)
 	if pod.Status.Reason != "" {
 		reason = pod.Status.Reason
 	}
 	m.SetField("Status", reason)
 
-	return graph.Identifier(pod.GetUID()), m
+	return graph.Identifier(pod.GetUID()), NewMetadata(Manager, "pod", m, pod, pod.Name)
 }
 
 func newPodProbe(client interface{}, g *graph.Graph) Subprobe {

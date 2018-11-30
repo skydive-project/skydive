@@ -195,7 +195,7 @@ var TopologyComponent = {
           <object-detail :object="currentNodeDocker"></object-detail>\
         </panel>\
         <panel id="k8s-metadata" v-if="currentNodeK8s"\
-               title="K8s">\
+               title="K8s.Extra">\
           <object-detail :object="currentNodeK8s"></object-detail>\
         </panel>\
         <panel id="feature-table" v-if="currentNodeFeatures"\
@@ -415,7 +415,7 @@ var TopologyComponent = {
     currentNodeMetadata: function() {
       if (!this.currentNode) return null;
       return this.extractMetadata(this.currentNode.metadata,
-        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'RoutingTables', 'Features', 'K8s', 'Docker']);
+        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'RoutingTables', 'Features', 'K8s.Extra', 'Docker']);
     },
 
     currentNodeFlowsQuery: function() {
@@ -430,8 +430,8 @@ var TopologyComponent = {
     },
 
     currentNodeK8s: function() {
-      if (!this.currentNodeMetadata || !this.currentNode.metadata.K8s) return null;
-      return this.currentNode.metadata.K8s;
+      if (!this.currentNodeMetadata || !this.currentNode.metadata.K8s || !this.currentNode.metadata.K8s.Extra) return null;
+      return this.currentNode.metadata.K8s.Extra;
     },
  
     currentNodeFeatures: function() {
@@ -553,7 +553,7 @@ var TopologyComponent = {
           var namespacesAsJsonFilter = '{"Name":"k8s namespace", "Type":"combobox", "value":{'
           data.forEach(function(namespace) {
             var namespaceName = namespace["Metadata"]["Name"]
-            var namespaceGremlin = 'G.V().Has(\'Namespace\',\'' + namespaceName + '\')'
+            var namespaceGremlin = 'G.V().Has(\'K8s.Namespace\',\'' + namespaceName + '\')'
             namespacesAsJsonFilter += '"' + namespaceName + '":"' + namespaceGremlin + '",'
             })
           namespacesAsJsonFilter = namespacesAsJsonFilter.slice(0, -1);
@@ -570,10 +570,19 @@ var TopologyComponent = {
     },
 
     gremlinK8sTypes: function(types) {
-        return "G.V()"
-          + ".Has('Manager', Regex('k8s|istio'))" 
-          + ".Has('Namespace', Ne('kube-system')).Has('Namespace', Ne('istio-system'))"
-          + ".Has('Type', Regex('" + types.join("|") + "'))";
+        var gremlin = "G.V().Has('Manager', Within('k8s', 'istio'))";
+
+        if (types.length != 0) {
+          for (var i in types) {
+            types[i] = "'" + types[i] + "'"
+          }
+          gremlin += ".Has('Type', Within(" + types.join(", ") + "))";
+        }
+
+        // FIXME: HasNot() is not yet supported by backend so for now don't filter out system namespaces
+        // gremlin += ".HasNot('Type', 'namespace', 'Name', Within('kube-system', 'istio-system'))";
+        // gremlin += ".HasNot('Type, NE('namespace'), 'K8s.Namespace', Within('kube-system', 'istio-system'))";
+        return gremlin
     },
 
     addFilterK8sTypes: function(label, types) {
@@ -604,9 +613,9 @@ var TopologyComponent = {
         self.addFilterK8sTypes("all", []);
         self.addFilterK8sTypes("compute", ["cluster", "container", "namespace", "node", "pod"]);
         self.addFilterK8sTypes("deployment", ["cluster", "deployment", "job", "namespace", "node", "pod", "replicaset", "replicationcontroller", "statefulset"]);
-        self.addFilterK8sTypes("compute", ["cluster", "container", "namespace", "networkpolicy", "pod"]);
+        self.addFilterK8sTypes("network", ["cluster", "container", "namespace", "networkpolicy", "pod"]);
         self.addFilterK8sTypes("service", ["cluster", "endpoints", "ingress",  "namespace", "node", "pod", "service"]);
-        self.addFilterK8sTypes("storage", ["cluster", "persistentvolume", "persistentvolumeclaim", "storageclass"]);
+        self.addFilterK8sTypes("storage", ["cluster", "namespace", "persistentvolume", "persistentvolumeclaim", "storageclass"]);
       }
 
       for (var i = 0, len = self.dynamicFilter.length; i < len; i++) {

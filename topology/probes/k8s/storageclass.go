@@ -42,10 +42,10 @@ func (h *storageClassHandler) Dump(obj interface{}) string {
 func (h *storageClassHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	sc := obj.(*v1.StorageClass)
 
-	m := NewMetadata(Manager, "storageclass", sc, sc.Name, sc.Namespace)
+	m := NewMetadataFields(&sc.ObjectMeta)
 	m.SetField("Provisioner", sc.Provisioner)
 
-	return graph.Identifier(sc.GetUID()), m
+	return graph.Identifier(sc.GetUID()), NewMetadata(Manager, "storageclass", m, sc, sc.Name)
 }
 
 func newStorageClassProbe(client interface{}, g *graph.Graph) Subprobe {

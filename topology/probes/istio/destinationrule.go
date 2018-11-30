@@ -36,7 +36,8 @@ type destinationRuleHandler struct {
 // Map graph node to k8s resource
 func (h *destinationRuleHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	dr := obj.(*kiali.DestinationRule)
-	return graph.Identifier(dr.GetUID()), k8s.NewMetadata(Manager, "destinationrule", dr, dr.Name, dr.Namespace)
+	m := k8s.NewMetadataFields(&dr.ObjectMeta)
+	return graph.Identifier(dr.GetUID()), k8s.NewMetadata(Manager, "destinationrule", m, dr, dr.Name)
 }
 
 // Dump k8s resource

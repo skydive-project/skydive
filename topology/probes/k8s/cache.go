@@ -68,7 +68,7 @@ func (c *KubeCache) getByKey(namespace, name string) interface{} {
 }
 
 func (c *KubeCache) getByNode(node *graph.Node) interface{} {
-	namespace, _ := node.GetFieldString("Namespace")
+	namespace, _ := node.GetFieldString(MetadataField("Namespace"))
 	name, _ := node.GetFieldString("Name")
 	if name == "" {
 		return nil
