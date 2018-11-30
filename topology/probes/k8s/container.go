@@ -49,14 +49,15 @@ type containerProbe struct {
 }
 
 func (c *containerProbe) newMetadata(pod *v1.Pod, container *v1.Container) graph.Metadata {
-	m := NewMetadata(Manager, "container", container, container.Name, pod.Namespace)
+	m := NewMetadataFields(&pod.ObjectMeta)
 	m.SetField("Pod", pod.Name)
+	m.SetField("Name", container.Name)
 	m.SetField("Image", container.Image)
-	return m
+	return NewMetadata(Manager, "container", m, container, container.Name)
 }
 
 func (c *containerProbe) dump(pod *v1.Pod, name string) string {
-	return fmt.Sprintf("container{Namespace: %s, Pod: %s, Name: %s}", pod.GetNamespace(), pod.GetName(), name)
+	return fmt.Sprintf("container{Namespace: %s, Pod: %s, Name: %s}", pod.Namespace, pod.Name, name)
 }
 
 // OnAdd is called when a new Kubernetes resource has been created
@@ -86,7 +87,7 @@ func (c *containerProbe) OnAdd(obj interface{}) {
 
 		nodes, _ := c.containerIndexer.Get(pod.Namespace, pod.Name)
 		for _, node := range nodes {
-			name, _ := node.GetFieldString("Name")
+			name, _ := node.GetFieldString(MetadataField("Name"))
 			if !wasUpdated[name] {
 				c.graph.DelNode(node)
 				c.NotifyEvent(graph.NodeDeleted, node)
@@ -111,7 +112,7 @@ func (c *containerProbe) OnDelete(obj interface{}) {
 
 		containerNodes, _ := c.containerIndexer.Get(pod.Namespace, pod.Name)
 		for _, containerNode := range containerNodes {
-			name, _ := containerNode.GetFieldString("Name")
+			name, _ := containerNode.GetFieldString(MetadataField("Name"))
 			c.graph.DelNode(containerNode)
 			c.NotifyEvent(graph.NodeDeleted, containerNode)
 			logging.GetLogger().Debugf("Deleted %s", c.dump(pod, name))
@@ -124,13 +125,15 @@ func newContainerProbe(client interface{}, g *graph.Graph) Subprobe {
 		EventHandler: graph.NewEventHandler(100),
 		graph:        g,
 	}
-	c.containerIndexer = newObjectIndexer(g, c.EventHandler, "container", "Namespace", "Pod")
+
+	containerFilter := newTypesFilter(Manager, "container")
+	c.containerIndexer = newObjectIndexerFromFilter(g, c.EventHandler, containerFilter, MetadataFields("Namespace", "Pod")...)
 	c.KubeCache = RegisterKubeCache(client.(*kubernetes.Clientset).CoreV1().RESTClient(), &v1.Pod{}, "pods", c)
 	return c
 }
 
 func newPodContainerLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe {
-	return newResourceLinker(g, subprobes, "pod", []string{"Namespace", "Name"}, "container", []string{"Namespace", "Pod"}, topology.OwnershipMetadata())
+	return newResourceLinker(g, subprobes, "pod", MetadataFields("Namespace", "Name"), "container", MetadataFields("Namespace", "Pod"), topology.OwnershipMetadata())
 }
 
 func newDockerIndexer(g *graph.Graph) *graph.MetadataIndexer {
@@ -139,6 +142,7 @@ func newDockerIndexer(g *graph.Graph) *graph.MetadataIndexer {
 		filters.NewTermStringFilter("Type", "container"),
 		filters.NewNotNullFilter(dockerPodNamespaceField),
 		filters.NewNotNullFilter(dockerPodNameField),
+		filters.NewNotNullFilter(dockerContainerNameField),
 	))
 
 	return graph.NewMetadataIndexer(g, g, m, dockerPodNamespaceField, dockerPodNameField, dockerContainerNameField)
@@ -150,7 +154,8 @@ func newContainerDockerLinker(g *graph.Graph, subprobes map[string]Subprobe) pro
 		return nil
 	}
 
-	containerIndexer := newObjectIndexer(g, containerProbe, "container", "Namespace", "Pod", "Name")
+	containerFilter := newTypesFilter(Manager, "container")
+	containerIndexer := newObjectIndexerFromFilter(g, containerProbe, containerFilter, MetadataFields("Namespace", "Pod", "Name")...)
 	containerIndexer.Start()
 
 	dockerIndexer := newDockerIndexer(g)

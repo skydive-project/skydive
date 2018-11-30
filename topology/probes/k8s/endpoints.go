@@ -41,8 +41,8 @@ func (h *endpointsHandler) Dump(obj interface{}) string {
 
 func (h *endpointsHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	endpoints := obj.(*v1.Endpoints)
-	m := NewMetadata(Manager, "endpoints", endpoints, endpoints.Name, endpoints.Namespace)
-	return graph.Identifier(endpoints.GetUID()), m
+	m := NewMetadataFields(&endpoints.ObjectMeta)
+	return graph.Identifier(endpoints.GetUID()), NewMetadata(Manager, "endpoints", m, endpoints, endpoints.Name)
 }
 
 func newEndpointsProbe(client interface{}, g *graph.Graph) Subprobe {

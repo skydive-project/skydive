@@ -41,7 +41,8 @@ func (h *replicationControllerHandler) Dump(obj interface{}) string {
 
 func (h *replicationControllerHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	rc := obj.(*v1.ReplicationController)
-	return graph.Identifier(rc.GetUID()), NewMetadata(Manager, "replicationcontroller", rc, rc.Name, rc.Namespace)
+	m := NewMetadataFields(&rc.ObjectMeta)
+	return graph.Identifier(rc.GetUID()), NewMetadata(Manager, "replicationcontroller", m, rc, rc.Name)
 }
 
 func newReplicationControllerProbe(client interface{}, g *graph.Graph) Subprobe {

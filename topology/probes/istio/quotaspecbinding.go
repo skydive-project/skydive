@@ -36,7 +36,8 @@ type quotaSpecBindingHandler struct {
 // Map graph node to k8s resource
 func (h *quotaSpecBindingHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	qsb := obj.(*kiali.QuotaSpecBinding)
-	return graph.Identifier(qsb.GetUID()), k8s.NewMetadata(Manager, "quotaspecbinding", qsb, qsb.Name, qsb.Namespace)
+	m := k8s.NewMetadataFields(&qsb.ObjectMeta)
+	return graph.Identifier(qsb.GetUID()), k8s.NewMetadata(Manager, "quotaspecbinding", m, qsb, qsb.Name)
 }
 
 // Dump k8s resource

@@ -42,7 +42,7 @@ func (h *statefulSetHandler) Dump(obj interface{}) string {
 func (h *statefulSetHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	ss := obj.(*v1beta1.StatefulSet)
 
-	m := NewMetadata(Manager, "statefulset", ss, ss.Name, ss.Namespace)
+	m := NewMetadataFields(&ss.ObjectMeta)
 	m.SetField("DesiredReplicas", int32ValueOrDefault(ss.Spec.Replicas, 1))
 	m.SetField("ServiceName", ss.Spec.ServiceName) // FIXME: replace by link to Service
 	m.SetField("Replicas", ss.Status.Replicas)
@@ -52,7 +52,7 @@ func (h *statefulSetHandler) Map(obj interface{}) (graph.Identifier, graph.Metad
 	m.SetField("CurrentRevision", ss.Status.CurrentRevision)
 	m.SetField("UpdateRevision", ss.Status.UpdateRevision)
 
-	return graph.Identifier(ss.GetUID()), m
+	return graph.Identifier(ss.GetUID()), NewMetadata(Manager, "statefulset", m, ss, ss.Name)
 }
 
 func newStatefulSetProbe(client interface{}, g *graph.Graph) Subprobe {

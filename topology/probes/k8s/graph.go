@@ -23,7 +23,6 @@
 package k8s
 
 import (
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -32,23 +31,46 @@ import (
 
 const (
 	// Manager is the manager value for Kubernetes
-	Manager      = "k8s"
-	detailsField = "K8s"
+	Manager = "k8s"
+	// KubeKey is the metadata area for k8s specific fields
+	KubeKey = "K8s"
+	// ExtraKey is the metadata area for k8s extra fields
+	ExtraKey = "K8s.Extra"
 )
 
+// MetadataField is generates full path of a k8s specific field
+func MetadataField(field string) string {
+	return KubeKey + "." + field
+}
+
+// MetadataFields generates full path of a list of k8s specific fields
+func MetadataFields(fields ...string) []string {
+	kubeFields := make([]string, len(fields))
+	for i, field := range fields {
+		kubeFields[i] = MetadataField(field)
+	}
+	return kubeFields
+}
+
+// NewMetadataFields creates internal k8s node metadata struct
+func NewMetadataFields(meta *metav1.ObjectMeta) graph.Metadata {
+	m := graph.Metadata{}
+	if meta.Namespace != "" {
+		m["Namespace"] = meta.Namespace
+	}
+	m["Name"] = meta.Name
+	return m
+}
+
 // NewMetadata creates a k8s node base metadata struct
-func NewMetadata(manager, ty, details interface{}, name string, namespace ...string) graph.Metadata {
+func NewMetadata(manager, ty string, kubeMeta graph.Metadata, extra interface{}, name string) graph.Metadata {
 	m := graph.Metadata{}
 	m["Manager"] = manager
 	m["Type"] = ty
-
-	if len(namespace) == 1 {
-		m["Namespace"] = namespace[0]
-	}
 	m["Name"] = name
-
-	if details != nil {
-		m[detailsField] = common.NormalizeValue(details)
+	m.SetFieldAndNormalize(KubeKey, map[string]interface{}(kubeMeta))
+	if extra != nil {
+		m.SetFieldAndNormalize(ExtraKey, extra)
 	}
 	return m
 }
@@ -59,17 +81,6 @@ func newEdgeMetadata() graph.Metadata {
 		"RelationType": "association",
 	}
 	return m
-}
-
-func newObjectIndexer(g *graph.Graph, h graph.ListenerHandler, nodeType string, indexes ...string) *graph.MetadataIndexer {
-	filter := filters.NewAndFilter(
-		filters.NewTermStringFilter("Manager", Manager),
-		filters.NewTermStringFilter("Type", nodeType),
-		filters.NewNotNullFilter("Namespace"),
-		filters.NewNotNullFilter("Name"),
-	)
-	m := graph.NewElementFilter(filter)
-	return graph.NewMetadataIndexer(g, h, m, indexes...)
 }
 
 func newTypesFilter(manager string, types ...string) *filters.Filter {

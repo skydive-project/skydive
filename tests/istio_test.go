@@ -75,27 +75,27 @@ func TestBookInfoScenario(t *testing.T) {
 		[]CheckFunction{
 			func(c *CheckContext) error {
 				// check nodes exist
-				_, err := checkNodeCreation(t, c, istio.Manager, "destinationrule", "Name", "details")
+				_, err := checkNodeCreation(t, c, istio.Manager, "destinationrule", "details")
 				if err != nil {
 					return err
 				}
 
-				_, err = checkNodeCreation(t, c, istio.Manager, "destinationrule", "Name", "productpage")
+				_, err = checkNodeCreation(t, c, istio.Manager, "destinationrule", "productpage")
 				if err != nil {
 					return err
 				}
 
-				_, err = checkNodeCreation(t, c, istio.Manager, "destinationrule", "Name", "ratings")
+				_, err = checkNodeCreation(t, c, istio.Manager, "destinationrule", "ratings")
 				if err != nil {
 					return err
 				}
 
-				_, err = checkNodeCreation(t, c, istio.Manager, "destinationrule", "Name", "reviews")
+				_, err = checkNodeCreation(t, c, istio.Manager, "destinationrule", "reviews")
 				if err != nil {
 					return err
 				}
 
-				_, err = checkNodeCreation(t, c, istio.Manager, "gateway", "Name", "bookinfo-gateway")
+				_, err = checkNodeCreation(t, c, istio.Manager, "gateway", "bookinfo-gateway")
 				if err != nil {
 					return err
 				}

@@ -39,11 +39,23 @@ const graphElementMapping = `
 {
 	"dynamic_templates": [
 		{
-			"strings": {
-				"match": "*",
-				"match_mapping_type": "string",
+                        "strings": {
+                                "path_match": "*",
+                                "path_unmatch": "*.Extra.*",
+                                "match_mapping_type": "string",
+                                "mapping": {
+                                        "type": "keyword"
+                                }
+                        }
+                },
+		{
+			"extra": {
+				"path_match": "*.Extra",
 				"mapping": {
-					"type": "keyword"
+					"type": "object",
+					"enabled": false,
+					"store": true,
+					"index": "no"
 				}
 			}
 		},
