@@ -70,6 +70,9 @@ func NewMetadata(manager, ty string, kubeMeta graph.Metadata, extra interface{},
 	m["Name"] = name
 	m.SetFieldAndNormalize(KubeKey, map[string]interface{}(kubeMeta))
 	if extra != nil {
+		// FIX: extra should never be a external unknown struct. As it should be used by K8S
+		// internally and we don't what kind of information we are going to serialize.
+		// Fix this line, test are failing without test are passing.
 		m.SetFieldAndNormalize(ExtraKey, extra)
 	}
 	return m

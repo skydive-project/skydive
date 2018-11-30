@@ -24,6 +24,8 @@ istio_teardown() {
 
 export no_proxy=$no_proxy,192.168.99.100
 
+BACKEND=elasticsearch
+
 . "$DIR/run-tests-utils.sh"
 network_setup
 istio_setup
