@@ -431,7 +431,7 @@ var BridgeLayout = (function () {
     var nodes = this.interfaces[p];
     if (nodes === undefined) return '???';
     var port = nodes[1];
-    var portname = (port === undefined) ? '???' : port.metadata.Name;
+    var portname = (port === undefined) ? '???' : port.Metadata.Name;
     return portname;
   };
 
@@ -683,10 +683,11 @@ Vue.component('rule-detail', {
           return undefined
         },
         getTargets: function(node) {
+          var nodeid = node.id ? node.id : node.ID; // TODO: remove when capitalization is fixed.
           var targets = [];
           for (var i in this.edges) {
             var e = this.edges[i];
-            if (e.Parent === node.id) {
+            if (e.Parent === nodeid) {
               var n = this.getNode(e.Child);
               if (n) targets.push(n);
             }
@@ -788,7 +789,7 @@ Vue.component('rule-detail', {
       var self = this;
       console.log(this.filters);
       var queryBridge = "G.V('" + self.bridge.id + "').As('bridge')";
-      var queryPorts = queryBridge + ".Out().Has('Type', 'ovsport').As('ovsports')";
+      var queryPorts = queryBridge + ".Out().Has('Type', 'ovsport').As('ovsports').Out().As('ovsinterfaces')";
       var queryRules = queryBridge + ".Out().Has('Type', 'ofrule')";
       var has = "";
       var list = [];
@@ -807,7 +808,7 @@ Vue.component('rule-detail', {
       else{
         query += queryRules + ".As('ofrules')."
       }
-      query += "Select('bridge', 'ovsports'";
+      query += "Select('bridge', 'ovsports', 'ovsinterfaces'";
       if (has.length > 0){
         for (var p in this.filters){
           query += ", '" + p + "'";
