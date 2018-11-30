@@ -286,6 +286,7 @@
       - skydive-labels:
           slave-name: baremetal
     builders:
+      - skydive-cleanup
       - skydive-test:
           test: BACKEND=elasticsearch scripts/ci/run-istio-tests.sh
     publishers:
