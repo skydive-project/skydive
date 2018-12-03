@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.21.0] - 2018-11-30
+### Added
+- LLDP topology probe for topology auto discovery
+- Libvirt probe
+- runC container probe
+- Introduce WebSocket endpoint to get flows notifications
+- Extra flow layers such as DHCP, VRRP and DNS
+- Add command line command to export/import topology
+- Gremlin:
+  - New HasEither step to generate a OR filter instead of AND
+  - NextHop step to compute the next hop using routing tables
+- Support for OpenFlow group tables
+
+### Changed
+- Wait for elasticsearch to be ready instead of failing
+- Refactored TLS configuration
+
 ## [0.20.0] - 2018-10-08
 ### Changed
 - Switch to gopacket master branch
