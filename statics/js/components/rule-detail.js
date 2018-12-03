@@ -254,12 +254,12 @@ function extractPort(c, graph, itfs) {
   var pot = graph.getTargets(c);
   for (var i = 0; i < pot.length; i++) {
     var cc = pot[i];
-    var ofport = cc.Metadata.OfPort;
+    var ofport = cc.metadata.OfPort;
     if (ofport === undefined)
       continue;
     var itf = [c, cc];
     itfs[ofport] = itf;
-    if (cc.Metadata.Type === 'patch') {
+    if (cc.metadata.Type === 'patch') {
       var ccc = graph.getNeighbor(cc, 'patch');
       if (ccc === undefined)
         return;
@@ -281,8 +281,9 @@ var BridgeLayout = (function () {
    * @param graph the global graph hosting the bridge
    * @param bridge the bridge node whose rules are represented.
    */
-  function BridgeLayout(graph, bridge, store) {
+  function BridgeLayout(graph, filtered, bridge, store) {
     this.graph = graph;
+    this.filtered = filtered;
     this.bridge = bridge;
     this.store = store;
     this.compute();
@@ -300,15 +301,16 @@ var BridgeLayout = (function () {
       var c = children[i];
       if (c === undefined)
         continue;
-      switch (c.Metadata.Type) {
+      switch (c.metadata.Type) {
         case 'ovsport':
           extractPort(c, this.graph, itfs);
           break;
         case 'ofrule':
-          var rule = c.Metadata;
+          var rule = c.metadata;
+          if (this.filtered != null && ! (this.filtered.includes(rule.UUID))) continue;
           summarize(rule);
           rules.push(rule);
-          rulesUUID.add(rule.UUID);   // added on check tests, by p.c.
+          rulesUUID.add(rule.UUID);
           break;
         case 'ofgroup':
           var group = c.metadata;
@@ -431,7 +433,7 @@ var BridgeLayout = (function () {
     var nodes = this.interfaces[p];
     if (nodes === undefined) return '???';
     var port = nodes[1];
-    var portname = (port === undefined) ? '???' : port.Metadata.Name;
+    var portname = (port === undefined) ? '???' : port.metadata.Name;
     return portname;
   };
 
@@ -670,46 +672,14 @@ Vue.component('rule-detail', {
       value: "",
       memoBridgeLayout:null,
       filters: {},
-      subgraph: {
-        nodes: [],
-        edges: [],
-        getNode: function(id) {
-          for (var j in this.nodes) {
-            var n = this.nodes[j];
-            if (n.ID === id) {
-              return n
-            }
-          }
-          return undefined
-        },
-        getTargets: function(node) {
-          var nodeid = node.id ? node.id : node.ID; // TODO: remove when capitalization is fixed.
-          var targets = [];
-          for (var i in this.edges) {
-            var e = this.edges[i];
-            if (e.Parent === nodeid) {
-              var n = this.getNode(e.Child);
-              if (n) targets.push(n);
-            }
-          }
-          return targets;
-        },
-        getNeighbor: function(node, type) {
-          for (var i in this.edges) {
-            var edge = this.edges[i];
-            if (edge.Parent === node.id && edge.target.Metadata.Type === type) return this.getNode(edge.Parent);
-            if (edge.Child === node.id && edge.source.Metadata.Type === type) return this.getNode(edge.Child);
-          }
-          return undefined;
-        },
-      }
+      filtered: null
     };
   },
 
   computed: {
     layout: function () {
       if (! this.memoBridgeLayout || this.memoBridgeLayout.bridge !== this.bridge) {
-        this.memoBridgeLayout = new BridgeLayout(this.subgraph, this.bridge, this.$store);
+        this.memoBridgeLayout = new BridgeLayout(this.graph, this.filtered, this.bridge, this.$store);
         this.memoBridgeLayout.switchTab(0);
       }
       return this.memoBridgeLayout;
@@ -718,25 +688,21 @@ Vue.component('rule-detail', {
 
   beforeDestroy: function () {
     this.unwatch();
+    this.graph.removeHandler(this.handler);
   },
 
   mounted: function () {
     var self = this;
     var handle = function(e) {
       if (! self.bridge) return;
-      if (e.target.metadata.Type === 'ofrule' && e.source.id == self.bridge.id ) {
+      var tgtType = e.target.metadata.Type;
+      if (tgtType === 'ofrule'  && e.source.id == self.bridge.id ) {
         self.getRules();
+      } else if (tgtType === 'ofgroup'  && e.source.id == self.bridge.id ) {
+        self.memoBridgeLayout = null;
       }
     };
-    var handleUpdate = function(n) {
-      if (n.metadata.Type == 'ofrule') {
-        self.getRules();
-        var tgtType = e.target.metadata.Type;
-        if ((tgtType === 'ofrule' || tgtType === 'ofgroup') && e.source.id == self.bridge.id ) {
-          self.memoBridgeLayout = null;
-        }
-      }
-    };
+
     var handleUpdate = function(n) {
       if ((n.metadata.Type == 'ofgroup' && self.memoBridgeLayout.groupsUUID.has(n.metadata.UUID)) ||
           (n.metadata.Type == 'ofrule' && self.memoBridgeLayout.rulesUUID.has(n.metadata.UUID))) {
@@ -757,13 +723,13 @@ Vue.component('rule-detail', {
       },
       function (newNode, oldNode) {
         if (oldNode) {
-          $('#R-' + oldNode.Metadata.UUID).removeClass('soft');
+          $('#R-' + oldNode.metadata.UUID).removeClass('soft');
         }
         if (newNode) {
-          self.layout.switchTab(newNode.Metadata.table);
-          var p = inport(newNode.Metadata.filters);
-          self.layout.switchPortTab(newNode.Metadata.table, p);
-          $('#R-' + newNode.Metadata.UUID).addClass('soft');
+          self.layout.switchTab(newNode.metadata.table);
+          var p = inport(newNode.metadata.filters);
+          self.layout.switchPortTab(newNode.metadata.table, p);
+          $('#R-' + newNode.metadata.UUID).addClass('soft');
         }
       }
     )
@@ -788,41 +754,25 @@ Vue.component('rule-detail', {
     getRules: function() {
       var self = this;
       console.log(this.filters);
-      var queryBridge = "G.V('" + self.bridge.id + "').As('bridge')";
-      var queryPorts = queryBridge + ".Out().Has('Type', 'ovsport').As('ovsports').Out().As('ovsinterfaces')";
-      var queryRules = queryBridge + ".Out().Has('Type', 'ofrule')";
-      var has = "";
-      var list = [];
-      var i = 0;
+      var keys = Object.keys(this.filters);
+      if(keys.length == 0) {
+        // Short cut no filter.
+        this.filtered = null;
+        this.memoBridgeLayout = null;
+        return;
+      }
+      var queryRules = "G.V('" + self.bridge.id + "').Out().Has('Type', 'ofrule')";
+      var query = "";
       for (var k in this.filters) {
-        has += "'filters', regex('.*" + k + "=" + this.filters[k] + ".*')";
-        list[i] = k;
-        i +=1;
+        var valList = this.filters[k];
+        var regex = valList.length == 1 ? valList[0] : '(' + valList.join('|') + ')';
+        query += queryRules + ".Has('filters', regex('.*" + k + "=" + regex + ".*')).As('" + k + "').";
       }
-      var query = queryBridge + "." + queryPorts + "." ;
-      if (has.length > 0) {
-        for (var k in this.filters) {
-          query += queryRules + ".Has('filters', regex('.*" + k + "=" + this.filters[k] + ".*')).As('" + k + "').";
-        }
-      }
-      else{
-        query += queryRules + ".As('ofrules')."
-      }
-      query += "Select('bridge', 'ovsports', 'ovsinterfaces'";
-      if (has.length > 0){
-        for (var p in this.filters){
-          query += ", '" + p + "'";
-        }
-      }
-      else{
-        query += ", 'ofrules'";
-      }
-      query += ").SubGraph()";
+      query += "Select('" + keys.join("', '") + "')";
       console.log(query);
       this.$topologyQuery(query)
-        .then(function(g) {
-          self.subgraph.nodes = g[0].Nodes;
-          self.subgraph.edges = g[0].Edges;
+        .then(function(r) {
+          self.filtered = r.map(function(node) {return node.Metadata.UUID});
           self.memoBridgeLayout = null;
         });
     }
