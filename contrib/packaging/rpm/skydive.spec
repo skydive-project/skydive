@@ -31,7 +31,7 @@
 %endif
 %endif
 
-%{!?fullver:%global fullver 0.20.0}
+%{!?fullver:%global fullver 0.21.0}
 %define version %{extractversion %{fullver}}
 %{!?tag:%global tag 1}
 
