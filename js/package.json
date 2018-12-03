@@ -4,14 +4,14 @@
   "description": "Skydive API",
   "main": "api.js",
   "dependencies": {
+    "@formschema/native": "^1.1.0",
     "browser-or-node": "1.0.2",
-    "browserify": "16.2.0",
+    "browserify": "^16.2.3",
     "lodash.defaultsdeep": "^4.6.0",
     "najax": "1.0.3",
     "qs": "^6.2.0",
     "typescript": "^2.7.1",
-    "vue-form-generator": "^2.2.2",
-    "@formschema/native": "^1.1.0"
+    "vue-form-generator": "^2.2.2"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
