@@ -207,21 +207,22 @@ func (pc *Client) requestToParams(pi *types.PacketInjection) (string, *PacketInj
 	}
 
 	pip := &PacketInjectionParams{
-		UUID:      pi.UUID,
-		SrcNodeID: srcNode.ID,
-		SrcIP:     pi.SrcIP,
-		SrcMAC:    pi.SrcMAC,
-		SrcPort:   pi.SrcPort,
-		DstIP:     pi.DstIP,
-		DstMAC:    pi.DstMAC,
-		DstPort:   pi.DstPort,
-		Type:      pi.Type,
-		Payload:   pi.Payload,
-		Pcap:      pi.Pcap,
-		Count:     pi.Count,
-		Interval:  pi.Interval,
-		ID:        pi.ICMPID,
-		Increment: pi.Increment,
+		UUID:             pi.UUID,
+		SrcNodeID:        srcNode.ID,
+		SrcIP:            pi.SrcIP,
+		SrcMAC:           pi.SrcMAC,
+		SrcPort:          pi.SrcPort,
+		DstIP:            pi.DstIP,
+		DstMAC:           pi.DstMAC,
+		DstPort:          pi.DstPort,
+		Type:             pi.Type,
+		Payload:          pi.Payload,
+		Pcap:             pi.Pcap,
+		Count:            pi.Count,
+		Interval:         pi.Interval,
+		ID:               pi.ICMPID,
+		Increment:        pi.Increment,
+		IncrementPayload: pi.IncrementPayload,
 	}
 
 	if errs := validator.Validate(pip); errs != nil {
