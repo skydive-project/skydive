@@ -38,7 +38,7 @@ SKYDIVE_ANALYZER_ETCD=${SKYDIVE_ANALYZER_ETCD:-$SERVICE_HOST:12379}
 SKYDIVE_AGENT_LISTEN=${SKYDIVE_AGENT_LISTEN:-"127.0.0.1:8081"}
 
 # The path for the generated skydive configuration file
-SKYDIVE_CONFIG_FILE=${SKYDIVE_CONFIG_FILE:-"/tmp/skydive.yaml"}
+SKYDIVE_CONFIG_FILE=${SKYDIVE_CONFIG_FILE:-"/etc/skydive/skydive.yaml"}
 
 # List of agent probes to be used by the agent
 SKYDIVE_AGENT_PROBES=${SKYDIVE_AGENT_PROBES:-"ovsdb neutron"}
@@ -139,6 +139,8 @@ function install_skydive {
         fi
         cd $SKYDIVE_SRC/skydive
         make install
+
+        sudo ln -s $GOPATH/bin/skydive /usr/bin/skydive
     fi
 }
 
@@ -160,7 +162,8 @@ function get_fabric_config {
 }
 
 function configure_skydive {
-    cat > $SKYDIVE_CONFIG_FILE <<- EOF
+    sudo mkdir -p `dirname $SKYDIVE_CONFIG_FILE`
+    cat <<EOF | sudo tee $SKYDIVE_CONFIG_FILE
 auth:
   type: keystone
   analyzer_username: admin
@@ -200,13 +203,13 @@ analyzer:
 EOF
 
     if [ "$SKYDIVE_FLOWS_STORAGE" == "elasticsearch" ]; then
-        cat >> $SKYDIVE_CONFIG_FILE <<- EOF
+        cat <<EOF | sudo tee -a $SKYDIVE_CONFIG_FILE
   flow:
     backend: $SKYDIVE_FLOWS_STORAGE
 EOF
     fi
 
-    cat >> $SKYDIVE_CONFIG_FILE <<- EOF
+    cat <<EOF | sudo tee -a $SKYDIVE_CONFIG_FILE
   topology:
     backend: $SKYDIVE_GRAPH_STORAGE
     probes:
@@ -214,20 +217,20 @@ $(get_probes_for_config $SKYDIVE_ANALYZER_PROBES)
 EOF
 
     if [ "x$SKYDIVE_PUBLIC_INTERFACES" != "x" ]; then
-        cat >> $SKYDIVE_CONFIG_FILE <<- EOF
+        cat <<EOF | sudo tee -a $SKYDIVE_CONFIG_FILE
     fabric:
 $(get_fabric_config)
 EOF
     fi
 
     if [ "x$SKYDIVE_ANALYZER_LISTEN" != "x" ]; then
-        cat >> $SKYDIVE_CONFIG_FILE <<- EOF
+        cat <<EOF | sudo tee -a $SKYDIVE_CONFIG_FILE
   listen: $SKYDIVE_ANALYZER_LISTEN
 EOF
     fi
 
     if [ "x$SKYDIVE_OVSDB_REMOTE_PORT" != "x" ]; then
-        cat >> $SKYDIVE_CONFIG_FILE <<- EOF
+        cat <<EOF | sudo tee -a $SKYDIVE_CONFIG_FILE
 ovs:
   ovsdb: $SKYDIVE_OVSDB_REMOTE_PORT
   oflow:
