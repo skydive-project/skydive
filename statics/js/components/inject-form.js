@@ -22,7 +22,7 @@ Vue.component('inject-form', {
         <node-selector class="inject-target"\
                        placeholder="From"\
                        id="inject-src"\
-                       v-model="node1" :attr="newUi ? \'ID\' : \'Metadata.TID\'"></node-selector>\
+                       v-model="node1"></node-selector>\
         <div class="input-group">\
           <label for="inject-src-ip" class="input-group-addon inject-label">IP: </label>\
           <input id="inject-src-ip" class="form-control" v-model="srcIP" placeholder="Auto"/>\
@@ -37,7 +37,7 @@ Vue.component('inject-form', {
         <node-selector placeholder="To"\
                        class="inject-target"\
                        id="inject-dst"\
-                       v-model="node2" :attr="newUi ? \'ID\' : \'Metadata.TID\'"></node-selector>\
+                       v-model="node2"></node-selector>\
         <div class="input-group">\
           <label for="inject-dst-ip" class="input-group-addon inject-label">IP: </label>\
           <input id="inject-dst-ip" class="form-control" v-model="dstIP" placeholder="Auto"/>\
@@ -122,7 +122,6 @@ Vue.component('inject-form', {
       dstMAC: "",
       mode: "random",
       payload: "",
-      newUi: window.layoutConfig.getValue('useNewUi')
     };
   },
 
@@ -211,7 +210,7 @@ Vue.component('inject-form', {
     },
 
     getIP: function(node) {
-      md = node.Metadata;
+      md = node.metadata;
       ipFamily = this.type.slice(-1);
       if (ipFamily == "4" && "IPV4" in md) {
         return md.IPV4[0];
@@ -223,7 +222,7 @@ Vue.component('inject-form', {
     },
 
     getMAC: function(node) {
-      return node.Metadata.MAC || "";
+      return node.metadata.MAC || "";
     },
 
     reset: function() {
@@ -252,8 +251,8 @@ Vue.component('inject-form', {
         dataType: "json",
         url: '/api/injectpacket',
         data: JSON.stringify({
-          "Src": "G.V().Has('" + (this.newUi ? 'ID' : 'TID') + "', '" + this.node1 + "')",
-          "Dst": "G.V().Has('" + (this.newUi ? 'ID' : 'TID') + "', '" + this.node2 + "')",
+          "Src": "G.V().Has('TID', '" + this.node1 + "')",
+          "Dst": "G.V().Has('TID', '" + this.node2 + "')",
           "SrcPort": this.port1,
           "DstPort": this.port2,
           "SrcIP": this.srcIP,

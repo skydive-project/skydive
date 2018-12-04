@@ -8,7 +8,7 @@ module.exports = {
     ],
     output: {
         filename: 'topologypackage.js',
-        path: path.resolve(__dirname, '../components/')
+        path: path.resolve(__dirname, '../')
     },
     resolve: {
         extensions: ['.tsx', '.ts', '.js'],

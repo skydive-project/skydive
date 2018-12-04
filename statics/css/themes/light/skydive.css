@@ -10,10 +10,6 @@ label {
   color: #337ab7;
 }
 
-.topology-d3-full-host, .topology-d3-infra, .topology-d3-gremlin {
-  background-color: #eee;
-}
-
 .topology-d3 {
   background-color: #eee;
 }
@@ -195,26 +191,4 @@ hr {
 
 .input-group-addon {
   color: black;
-}
-
-.impossible-to-build-hierarchy-topology {
-    justify-content: center;
-    font-weight: bold;
-    font-size: 20px;
-    min-height: 100%;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-}
-
-.back-to-infrastructure-topology {
-    margin: 10px 0 0 10px;
-}
-.back-to-hosts-topology {
-    margin: 10px 0;
-    font-size: 24px;
-    cursor: pointer;
-}
-.layout-switcher {
-    margin-bottom: 10px;
 }

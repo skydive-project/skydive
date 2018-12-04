@@ -64,10 +64,6 @@
       "^.+\\.tsx?$": "ts-jest"
     },
     "testRegex": "(/__tests__/(test|spec)/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
-    "setupFiles": [
-      "./__tests__/setup_mocks.js",
-      "./__tests__/extend_expect.js"
-    ],
     "moduleFileExtensions": [
       "ts",
       "tsx",

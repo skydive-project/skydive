@@ -104,21 +104,14 @@ Vue.component('workflow-params', {
         self.result.value = result;
         if (typeof result == "object") {
           if (result.nodes && result.edges) {
+            var g = topologyComponent.graph;
             for (var n in result.nodes) {
               var node = result.nodes[n];
-              if (!window.layoutConfig.getValue('useNewUi')) {
-                window.topologyComponent.graph.addNode(node.ID, node.Host, node.Metadata);
-              } else {
-                globalEventHandler.reactToDataSourceEvent('NodeAdded', {Obj: node});
-              }
+              g.addNode(node.ID, node.Host, node.Metadata);
             }
             for (var e in result.edges) {
               var edge = result.edges[e];
-              if (!window.layoutConfig.getValue('useNewUi')) {
-                window.topologyComponent.graph.addEdge(edge.ID, edge.Host, edge.Metadata, window.topologyComponent.graph.nodes[edge.Parent], window.topologyComponent.graph.nodes[edge.Child]);
-              } else {
-                globalEventHandler.reactToDataSourceEvent('EdgeAdded', {Obj: edge});
-              }
+              g.addEdge(edge.ID, edge.Host, edge.Metadata, g.nodes[edge.Parent], g.nodes[edge.Child]);
             }
           }
         }

@@ -99,13 +99,6 @@ func TestOverview(t *testing.T) {
 		return
 	}
 
-	/*jsErrors, _ := sh.webdriver.Log("browser")
-	var error string
-	for _, jsError := range jsErrors {
-		error += "\n" + jsError.Message
-	}
-	t.Error(error)*/
-
 	if err = delaySec(1, sh.expandGroup(g.G.V().Has("Name", "agent-1", "Type", "host").Out().Has("Name", "vm1", "Type", "netns"))); err != nil {
 		t.Error(err)
 		return

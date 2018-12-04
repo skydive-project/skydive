@@ -139,12 +139,12 @@ var routes = [
       created: function() {
         setCookie("authtok", "", -1);
         setCookie("permissions", "", -1);
-        globalEventHandler.websocket().disconnect();
+        websocket.disconnect();
         this.$store.commit('logout');
       }
     }
   },
-  { path: '/topology', component: window.layoutConfig.getValue('useNewUi') ? TopologyComponentNewApproach : TopologyComponentOldApproach, props: (route) => ({ query: route.query }) },
+  { path: '/topology', component: TopologyComponent, props: (route) => ({ query: route.query }) },
   { path: '/preference', component: PreferenceComponent },
   { path: '/status', component: StatusComponent },
   { path: '*', redirect: '/topology' }
@@ -179,18 +179,10 @@ var app = new Vue({
 
     this.setThemeFromConfig();
 
-    globalEventHandler.onWebsocketEvent('websocket.connected', self.onConnected.bind(self));
-    globalEventHandler.onWebsocketEvent('websocket.disconnected', self.onDisconnected.bind(self));
-    globalEventHandler.onWebsocketEvent('websocket.error', self.onError.bind(self));
-    this.$store.subscribe(function(mutation) {
-      if (mutation.type === "login") {
-        globalEventHandler.websocket().toggleReconnectMode(true);
-	globalEventHandler.websocket().connect();
-      } else if (mutation.type === 'logout'){
-        globalEventHandler.websocket().toggleReconnectMode(false);
-	globalEventHandler.websocket().disconnect();
-      }
-    });
+    websocket.addConnectHandler(self.onConnected.bind(self));
+    websocket.addDisconnectHandler(self.onDisconnected.bind(self));
+    websocket.addErrorHandler(self.onError.bind(self));
+
     this.checkAPI();
 
     this.interval = null;
@@ -217,6 +209,7 @@ var app = new Vue({
       if (newVal === true) {
         this.checkAPI();
         router.push('/topology');
+        websocket.connect();
 
         if (!this.interval)
           this.interval = setInterval(this.checkAPI, 5000);
@@ -267,11 +260,15 @@ var app = new Vue({
       this.$store.commit('disconnected');
       this.$error({message: 'Disconnected'});
 
+      if (this.$store.state.logged)
+        setTimeout(function(){websocket.connect();}, 1000);
     },
 
     onError: function() {
       if (this.$store.state.connected)
         this.$store.commit('disconnected');
+
+      setTimeout(function(){websocket.connect();}, 1000);
     },
 
     camelize: function(input) {
