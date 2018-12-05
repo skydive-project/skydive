@@ -22,6 +22,8 @@
 
 package graph
 
+import "fmt"
+
 // MemoryBackendNode a memory backend node
 type MemoryBackendNode struct {
 	*Node
@@ -78,14 +80,23 @@ func (m *MemoryBackend) GetEdge(i Identifier, t Context) []*Edge {
 
 // GetEdgeNodes returns a list of nodes of an edge
 func (m *MemoryBackend) GetEdgeNodes(e *Edge, t Context, parentMetadata, childMetadata ElementMatcher) ([]*Node, []*Node) {
-	var parent *MemoryBackendNode
-	if n, ok := m.nodes[e.Parent]; ok && n.MatchMetadata(parentMetadata) {
-		parent = n
+	var parent, child *MemoryBackendNode
+
+	p, ok := m.nodes[e.Parent]
+	if !ok {
+		panic(fmt.Errorf("not able to find parent node for edge: %+v", e))
+	}
+	if p.MatchMetadata(parentMetadata) {
+		parent = p
 	}
 
-	var child *MemoryBackendNode
-	if n, ok := m.nodes[e.Child]; ok && n.MatchMetadata(childMetadata) {
-		child = n
+	c, ok := m.nodes[e.Child]
+	if !ok {
+		panic(fmt.Errorf("not able to find child node for edge: %+v", e))
+	}
+
+	if c.MatchMetadata(childMetadata) {
+		child = c
 	}
 
 	if parent == nil || child == nil {
