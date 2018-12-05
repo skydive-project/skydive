@@ -63,6 +63,10 @@ func (m *MemoryBackend) EdgeAdded(e *Edge) bool {
 		return false
 	}
 
+	if _, ok := m.edges[e.ID]; ok {
+		return false
+	}
+
 	m.edges[e.ID] = edge
 	parent.edges[e.ID] = edge
 	child.edges[e.ID] = edge
