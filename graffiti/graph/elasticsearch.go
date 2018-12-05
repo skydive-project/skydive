@@ -185,70 +185,60 @@ func edgeToRaw(e *Edge) (*rawData, error) {
 	return raw, nil
 }
 
-func (b *ElasticSearchBackend) archive(raw *rawData, at Time) bool {
+func (b *ElasticSearchBackend) archive(raw *rawData, at Time) error {
 	raw.ArchivedAt = at.Unix()
 
 	data, err := json.Marshal(raw)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while adding graph element %s: %s", raw.ID, err)
-		return false
+		return fmt.Errorf("Error while adding graph element %s: %s", raw.ID, err)
 	}
 
 	if err := b.client.BulkIndex(topologyArchiveIndex, "", json.RawMessage(data)); err != nil {
-		logging.GetLogger().Errorf("Error while archiving %v: %s", raw, err)
-		return false
+		return fmt.Errorf("Error while archiving %v: %s", raw, err)
 	}
-	return true
+	return nil
 }
 
-func (b *ElasticSearchBackend) indexNode(n *Node) bool {
+func (b *ElasticSearchBackend) indexNode(n *Node) error {
 	raw, err := nodeToRaw(n)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err)
-		return false
+		return fmt.Errorf("Error while adding node %s: %s", n.ID, err)
 	}
 
 	data, err := json.Marshal(raw)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err)
-		return false
+		return fmt.Errorf("Error while adding node %s: %s", n.ID, err)
 	}
 
 	if err := b.client.BulkIndex(topologyLiveIndex, string(n.ID), json.RawMessage(data)); err != nil {
-		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err)
-		return false
+		return fmt.Errorf("Error while adding node %s: %s", n.ID, err)
 	}
 	b.prevRevision[n.ID] = raw
 
-	return true
+	return nil
 }
 
 // NodeAdded add a node
-func (b *ElasticSearchBackend) NodeAdded(n *Node) bool {
+func (b *ElasticSearchBackend) NodeAdded(n *Node) error {
 	return b.indexNode(n)
 }
 
 // NodeDeleted delete a node
-func (b *ElasticSearchBackend) NodeDeleted(n *Node) bool {
+func (b *ElasticSearchBackend) NodeDeleted(n *Node) error {
 	raw, err := nodeToRaw(n)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while deleting node %s: %s", n.ID, err)
-		return false
+		return fmt.Errorf("Error while deleting node %s: %s", n.ID, err)
 	}
 
-	success := true
-	if !b.archive(raw, n.DeletedAt) {
-		success = false
-	}
+	err = b.archive(raw, n.DeletedAt)
 
-	if err := b.client.BulkDelete(topologyLiveIndex, string(n.ID)); err != nil {
-		logging.GetLogger().Errorf("Error while deleting node %s: %s", n.ID, err)
-		success = false
+	if errBulk := b.client.BulkDelete(topologyLiveIndex, string(n.ID)); err != nil {
+		err = fmt.Errorf("Error while deleting node %s: %s", n.ID, errBulk)
 	}
 
 	delete(b.prevRevision, n.ID)
 
-	return success
+	return err
 }
 
 // GetNode get a node within a time slice
@@ -269,54 +259,46 @@ func (b *ElasticSearchBackend) GetNode(i Identifier, t Context) []*Node {
 	return nodes
 }
 
-func (b *ElasticSearchBackend) indexEdge(e *Edge) bool {
+func (b *ElasticSearchBackend) indexEdge(e *Edge) error {
 	raw, err := edgeToRaw(e)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while adding edge %s: %s", e.ID, err)
-		return false
+		return fmt.Errorf("Error while adding edge %s: %s", e.ID, err)
 	}
 
 	data, err := json.Marshal(raw)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while adding edge %s: %s", e.ID, err)
-		return false
+		return fmt.Errorf("Error while adding edge %s: %s", e.ID, err)
 	}
 
 	if err := b.client.BulkIndex(topologyLiveIndex, string(e.ID), json.RawMessage(data)); err != nil {
-		logging.GetLogger().Errorf("Error while indexing edge %s: %s", e.ID, err)
-		return false
+		return fmt.Errorf("Error while indexing edge %s: %s", e.ID, err)
 	}
 	b.prevRevision[e.ID] = raw
 
-	return true
+	return nil
 }
 
 // EdgeAdded add an edge in the database
-func (b *ElasticSearchBackend) EdgeAdded(e *Edge) bool {
+func (b *ElasticSearchBackend) EdgeAdded(e *Edge) error {
 	return b.indexEdge(e)
 }
 
 // EdgeDeleted delete an edge in the database
-func (b *ElasticSearchBackend) EdgeDeleted(e *Edge) bool {
+func (b *ElasticSearchBackend) EdgeDeleted(e *Edge) error {
 	raw, err := edgeToRaw(e)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while deleting edge %s: %s", e.ID, err)
-		return false
+		return fmt.Errorf("Error while deleting edge %s: %s", e.ID, err)
 	}
 
-	success := true
-	if !b.archive(raw, e.DeletedAt) {
-		success = false
-	}
+	err = b.archive(raw, e.DeletedAt)
 
-	if err := b.client.BulkDelete(topologyLiveIndex, string(e.ID)); err != nil {
-		logging.GetLogger().Errorf("Error while deleting edge %s: %s", e.ID, err)
-		success = false
+	if errBulk := b.client.BulkDelete(topologyLiveIndex, string(e.ID)); err != nil {
+		err = fmt.Errorf("Error while deleting edge %s: %s", e.ID, errBulk)
 	}
 
 	delete(b.prevRevision, e.ID)
 
-	return success
+	return err
 }
 
 // GetEdge get an edge within a time slice
@@ -338,37 +320,35 @@ func (b *ElasticSearchBackend) GetEdge(i Identifier, t Context) []*Edge {
 }
 
 // MetadataUpdated updates a node metadata in the database
-func (b *ElasticSearchBackend) MetadataUpdated(i interface{}) bool {
-	success := true
+func (b *ElasticSearchBackend) MetadataUpdated(i interface{}) error {
+	var err error
 
 	switch i := i.(type) {
 	case *Node:
 		obj := b.prevRevision[i.ID]
 		if obj == nil {
-			logging.GetLogger().Errorf("Unable to update an unkwown node: %s", i.ID)
-			return false
+			return fmt.Errorf("Unable to update an unkwown node: %s", i.ID)
 		}
 
-		if !b.archive(obj, i.UpdatedAt) {
-			return false
+		if err := b.archive(obj, i.UpdatedAt); err != nil {
+			return err
 		}
 
-		success = b.indexNode(i)
+		err = b.indexNode(i)
 	case *Edge:
 		obj := b.prevRevision[i.ID]
 		if obj == nil {
-			logging.GetLogger().Errorf("Unable to update an unkwown edge: %s", i.ID)
-			return false
+			return fmt.Errorf("Unable to update an unkwown edge: %s", i.ID)
 		}
 
-		if !b.archive(obj, i.UpdatedAt) {
-			return false
+		if err := b.archive(obj, i.UpdatedAt); err != nil {
+			return err
 		}
 
-		success = b.indexEdge(i)
+		err = b.indexEdge(i)
 	}
 
-	return success
+	return err
 }
 
 // Query the database for a "node" or "edge"

@@ -194,7 +194,11 @@ func (c *ResourceCache) OnAdd(obj interface{}) {
 	defer c.graph.Unlock()
 
 	id, metadata := c.handler.Map(obj)
-	node := c.graph.NewNode(id, metadata, "")
+	node, err := c.graph.NewNode(id, metadata, "")
+	if err != nil {
+		logging.GetLogger().Error(err)
+		return
+	}
 	c.NotifyEvent(graph.NodeAdded, node)
 	logging.GetLogger().Debugf("Added %s", c.handler.Dump(obj))
 }
@@ -206,7 +210,10 @@ func (c *ResourceCache) OnUpdate(oldObj, newObj interface{}) {
 
 	id, metadata := c.handler.Map(newObj)
 	if node := c.graph.GetNode(id); node != nil {
-		c.graph.SetMetadata(node, metadata)
+		if err := c.graph.SetMetadata(node, metadata); err != nil {
+			logging.GetLogger().Error(err)
+			return
+		}
 		c.NotifyEvent(graph.NodeUpdated, node)
 		logging.GetLogger().Debugf("Updated %s", c.handler.Dump(newObj))
 	}
@@ -219,7 +226,10 @@ func (c *ResourceCache) OnDelete(obj interface{}) {
 
 	id, _ := c.handler.Map(obj)
 	if node := c.graph.GetNode(id); node != nil {
-		c.graph.DelNode(node)
+		if err := c.graph.DelNode(node); err != nil {
+			logging.GetLogger().Error(err)
+			return
+		}
 		c.NotifyEvent(graph.NodeDeleted, node)
 		logging.GetLogger().Debugf("Deleted %s", c.handler.Dump(obj))
 	}

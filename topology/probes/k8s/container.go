@@ -31,7 +31,7 @@ import (
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -74,11 +74,20 @@ func (c *containerProbe) OnAdd(obj interface{}) {
 			uid := graph.GenID(string(pod.GetUID()), container.Name)
 			m := c.newMetadata(pod, &container)
 			if node := c.graph.GetNode(uid); node == nil {
-				node = c.graph.NewNode(uid, m)
+				var err error
+
+				node, err = c.graph.NewNode(uid, m)
+				if err != nil {
+					logging.GetLogger().Error(err)
+					continue
+				}
 				c.NotifyEvent(graph.NodeAdded, node)
 				logging.GetLogger().Debugf("Added %s", c.dump(pod, container.Name))
 			} else {
-				c.graph.SetMetadata(node, m)
+				if err := c.graph.SetMetadata(node, m); err != nil {
+					logging.GetLogger().Error(err)
+					continue
+				}
 				c.NotifyEvent(graph.NodeUpdated, node)
 				logging.GetLogger().Debugf("Updated %s", c.dump(pod, container.Name))
 			}
@@ -89,7 +98,10 @@ func (c *containerProbe) OnAdd(obj interface{}) {
 		for _, node := range nodes {
 			name, _ := node.GetFieldString(MetadataField("Name"))
 			if !wasUpdated[name] {
-				c.graph.DelNode(node)
+				if err := c.graph.DelNode(node); err != nil {
+					logging.GetLogger().Error(err)
+					continue
+				}
 				c.NotifyEvent(graph.NodeDeleted, node)
 				logging.GetLogger().Debugf("Deleted %s", c.dump(pod, name))
 			}
@@ -113,7 +125,10 @@ func (c *containerProbe) OnDelete(obj interface{}) {
 		containerNodes, _ := c.containerIndexer.Get(pod.Namespace, pod.Name)
 		for _, containerNode := range containerNodes {
 			name, _ := containerNode.GetFieldString(MetadataField("Name"))
-			c.graph.DelNode(containerNode)
+			if err := c.graph.DelNode(containerNode); err != nil {
+				logging.GetLogger().Error(err)
+				continue
+			}
 			c.NotifyEvent(graph.NodeDeleted, containerNode)
 			logging.GetLogger().Debugf("Deleted %s", c.dump(pod, name))
 		}
@@ -161,5 +176,12 @@ func newContainerDockerLinker(g *graph.Graph) probe.Probe {
 	dockerIndexer := newDockerIndexer(g)
 	dockerIndexer.Start()
 
-	return graph.NewMetadataIndexerLinker(g, containerIndexer, dockerIndexer, NewEdgeMetadata(Manager, "association"))
+	ml := graph.NewMetadataIndexerLinker(g, containerIndexer, dockerIndexer, NewEdgeMetadata(Manager, "association"))
+
+	linker := &Linker{
+		ResourceLinker: ml.ResourceLinker,
+	}
+	ml.AddEventListener(linker)
+
+	return linker
 }

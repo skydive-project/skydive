@@ -134,5 +134,5 @@ func createRootNode(g *graph.Graph) (*graph.Node, error) {
 		m.SetField("VirtualizationRole", hostInfo.VirtualizationRole)
 	}
 
-	return g.NewNode(graph.GenID(), m), nil
+	return g.NewNode(graph.GenID(), m)
 }

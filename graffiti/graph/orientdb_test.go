@@ -43,7 +43,7 @@ type op struct {
 
 type fakeOrientDBClient struct {
 	ops    []op
-	result orientdb.Result
+	result []orientdb.Result
 }
 
 func (f *fakeOrientDBClient) getOps() []op {
@@ -104,7 +104,11 @@ func (f *fakeOrientDBClient) SQL(query string) (*orientdb.Result, error) {
 }
 func (f *fakeOrientDBClient) Search(query string) (*orientdb.Result, error) {
 	f.ops = append(f.ops, op{name: "Search", data: query})
-	return &f.result, nil
+
+	result := f.result[0]
+	f.result = f.result[1:]
+
+	return &result, nil
 }
 func (f *fakeOrientDBClient) Query(obj string, query *filters.SearchQuery) (*orientdb.Result, error) {
 	return nil, nil
@@ -128,7 +132,9 @@ func newOrientDBGraph(t *testing.T) (*Graph, *fakeOrientDBClient) {
 func TestLocalHistory(t *testing.T) {
 	g, client := newOrientDBGraph(t)
 
-	client.result.Body = []byte(`{"result": [{"value": 1}]}`)
+	client.result = []orientdb.Result{
+		{Body: []byte(`{"result": [{"value": 1}]}`)},
+	}
 
 	node := g.CreateNode("aaa", Metadata{"MTU": 1500}, Unix(1, 0), "host1")
 	g.AddNode(node)
@@ -177,6 +183,10 @@ func TestLocalHistory(t *testing.T) {
 
 	if !reflect.DeepEqual(client.getOps()[0].data, expected[0].data) {
 		t.Fatalf("Expected orientdb records not found: \nexpected: %s\ngot: %s", spew.Sdump(expected), spew.Sdump(client.getOps()))
+	}
+
+	client.result = []orientdb.Result{
+		{Body: []byte(`{"result": [{"value": 1}]}`)},
 	}
 
 	g.addMetadata(node, "MTU", 1520, Unix(3, 0))
@@ -244,7 +254,11 @@ func TestLocalHistory(t *testing.T) {
 		t.Fatalf("Expected orientdb records not found: \nexpected: %s\ngot: %s", spew.Sdump(expected), spew.Sdump(client.getOps()))
 	}
 
-	client.result.Body = []byte(`{"result": [{"ID": "bbb", "Parent": "123", "Child": "456"}]}`)
+	client.result = []orientdb.Result{
+		{Body: []byte(`{"result": [{"ID": "bbb", "Parent": "123", "Child": "456"}]}`)},
+		{Body: []byte(`{"result": [{"value": 1}]}`)},
+		{Body: []byte(`{"result": [{"value": 1}]}`)},
+	}
 
 	g.delNode(node, Unix(4, 0))
 

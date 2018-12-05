@@ -52,7 +52,7 @@ func TestSocketsIndexer(t *testing.T) {
 		},
 	}
 
-	n1 := g.NewNode(graph.GenID(), m, "host")
+	n1, _ := g.NewNode(graph.GenID(), m, "host")
 
 	conn := &socketinfo.ConnectionInfo{
 		LocalAddress:  "127.0.0.1",

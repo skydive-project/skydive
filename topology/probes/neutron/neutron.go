@@ -345,7 +345,9 @@ func (mapper *Probe) enhanceNode(node *graph.Node) {
 	}
 
 	if mapper.nsRegexp.MatchString(name) {
-		mapper.graph.AddMetadata(node, "Manager", "neutron")
+		if err := mapper.graph.AddMetadata(node, "Manager", "neutron"); err != nil {
+			logging.GetLogger().Error(err)
+		}
 		return
 	}
 

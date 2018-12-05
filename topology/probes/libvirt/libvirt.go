@@ -149,7 +149,9 @@ func (itf *Interface) ProcessNode(g *graph.Graph, node *graph.Node) bool {
 	tr.AddMetadata("PeerIntfMAC", itf.Mac.Address)
 	tr.Commit()
 	if !g.AreLinked(node, itf.Host, graph.Metadata{"RelationType": "vlayer2"}) {
-		g.Link(node, itf.Host, graph.Metadata{"RelationType": "vlayer2"})
+		if _, err := g.Link(node, itf.Host, graph.Metadata{"RelationType": "vlayer2"}); err != nil {
+			logging.GetLogger().Error(err)
+		}
 	}
 	return false
 }
@@ -173,10 +175,20 @@ func (probe *Probe) createOrUpdateDomain(d *libvirtgo.Domain) *graph.Node {
 		"Name": domainName,
 		"Type": "libvirt",
 	}
+
+	var err error
+
 	domainNode := g.LookupFirstNode(metadata)
 	if domainNode == nil {
-		domainNode = g.NewNode(graph.GenID(), metadata)
-		g.Link(probe.root, domainNode, graph.Metadata{"RelationType": "ownership"})
+		domainNode, err = g.NewNode(graph.GenID(), metadata)
+		if err != nil {
+			logging.GetLogger().Error(err)
+			return nil
+		}
+		if _, err = g.Link(probe.root, domainNode, graph.Metadata{"RelationType": "ownership"}); err != nil {
+			logging.GetLogger().Error(err)
+			return nil
+		}
 	}
 	state, _, err := d.GetState()
 	if err != nil {
@@ -195,7 +207,9 @@ func (probe *Probe) deleteDomain(d *libvirtgo.Domain) {
 	if domainNode != nil {
 		probe.graph.Lock()
 		defer probe.graph.Unlock()
-		probe.graph.DelNode(domainNode)
+		if err := probe.graph.DelNode(domainNode); err != nil {
+			logging.GetLogger().Error(err)
+		}
 	}
 }
 

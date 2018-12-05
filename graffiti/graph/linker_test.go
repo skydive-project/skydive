@@ -85,8 +85,8 @@ func TestSimpleLinker(t *testing.T) {
 	linker := NewResourceLinker(g, []ListenerHandler{g.eventHandler}, nil, &simpleLinker{g: g}, Metadata{"RelationType": "simpleLinker"})
 	linker.Start()
 
-	n1 := g.NewNode("node1", m1, "host")
-	n2 := g.NewNode("node2", m2, "host")
+	n1, _ := g.NewNode("node1", m1, "host")
+	n2, _ := g.NewNode("node2", m2, "host")
 
 	if g.AreLinked(n1, n2, Metadata{"RelationType": "simpleLinker"}) {
 		t.Error("nodes should not be linked by an edge of type 'simpleLinker'")
@@ -142,8 +142,8 @@ func TestMetadataLinker(t *testing.T) {
 	linker := NewResourceLinker(g, []ListenerHandler{g.eventHandler}, []ListenerHandler{g.eventHandler}, &metadataLinker{g: g}, Metadata{"RelationType": "metadataLinker"})
 	linker.Start()
 
-	n1 := g.NewNode("node1", m1, "host")
-	n2 := g.NewNode("node2", m2, "host")
+	n1, _ := g.NewNode("node1", m1, "host")
+	n2, _ := g.NewNode("node2", m2, "host")
 
 	if !g.AreLinked(n1, n2, Metadata{"RelationType": "metadataLinker"}) {
 		t.Error("nodes should be linked by an edge of type 'metadataLinker'")
@@ -185,9 +185,9 @@ func TestMetadataIndexerLinker(t *testing.T) {
 	linker := NewMetadataIndexerLinker(g, indexer1, indexer2, Metadata{"RelationType": "metadataIndexerLinker"})
 	linker.Start()
 
-	n1 := g.NewNode("node1", m1, "host")
-	n2 := g.NewNode("node2", m2, "host")
-	n3 := g.NewNode("node3", m3, "host")
+	n1, _ := g.NewNode("node1", m1, "host")
+	n2, _ := g.NewNode("node2", m2, "host")
+	n3, _ := g.NewNode("node3", m3, "host")
 
 	if !g.AreLinked(n1, n3, Metadata{"RelationType": "metadataIndexerLinker"}) {
 		t.Error("nodes should be linked by an edge of type 'metadataIndexerLinker'")

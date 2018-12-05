@@ -63,7 +63,7 @@ func TestNextHopStep1(t *testing.T) {
 	m1 := graph.Metadata{
 		"Neighbors": &neighbors,
 	}
-	n := g.NewNode(graph.GenID(), m1)
+	n, _ := g.NewNode(graph.GenID(), m1)
 	res := execNextHopQuery(t, g, "g.v().NextHop('192.168.0.2')")
 
 	if len(res.Values()) != 1 {
@@ -119,7 +119,7 @@ func TestNextHopStep2(t *testing.T) {
 		"RoutingTables": &routingtables,
 	}
 
-	n := g.NewNode(graph.GenID(), m1)
+	n, _ := g.NewNode(graph.GenID(), m1)
 	res := execNextHopQuery(t, g, "g.v().NextHop('192.168.0.5')")
 
 	if len(res.Values()) != 1 {
@@ -173,7 +173,7 @@ func TestNextHopStep3(t *testing.T) {
 		"RoutingTables": &routingtables,
 	}
 
-	n := g.NewNode(graph.GenID(), m1)
+	n, _ := g.NewNode(graph.GenID(), m1)
 	res := execNextHopQuery(t, g, "g.v().NextHop('8.8.8.8')")
 
 	if len(res.Values()) != 1 {
@@ -239,7 +239,7 @@ func TestNextHopStep4(t *testing.T) {
 		"RoutingTables": &routingtables,
 	}
 
-	n := g.NewNode(graph.GenID(), m1)
+	n, _ := g.NewNode(graph.GenID(), m1)
 	res := execNextHopQuery(t, g, "g.v().NextHop('10.16.0.3')")
 
 	if len(res.Values()) != 1 {
@@ -282,7 +282,7 @@ func TestNextHopStep5(t *testing.T) {
 		"RoutingTables": &routingtables,
 	}
 
-	n := g.NewNode(graph.GenID(), m1)
+	n, _ := g.NewNode(graph.GenID(), m1)
 	res := execNextHopQuery(t, g, "g.v().NextHop('10.60.0.5')")
 
 	if len(res.Values()) != 1 {

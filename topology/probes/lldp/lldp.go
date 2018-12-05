@@ -302,7 +302,12 @@ func (p *Probe) startCapture(ifName, mac string, n *graph.Node) error {
 func (p *Probe) getOrCreate(id graph.Identifier, m graph.Metadata) *graph.Node {
 	node := p.g.GetNode(id)
 	if node == nil {
-		node = p.g.NewNode(id, m)
+		var err error
+
+		node, err = p.g.NewNode(id, m)
+		if err != nil {
+			logging.GetLogger().Error(err)
+		}
 	} else {
 		tr := p.g.StartMetadataTransaction(node)
 		for k, v := range m {

@@ -54,7 +54,7 @@ type Agent struct {
 	pod                 *pod.Pod
 	graph               *graph.Graph
 	analyzerClientPool  *ws.StructClientPool
-	topologyEndpoint    *topology.SubscriberEndpoint
+	topologyEndpoint    *pod.TopologySubscriberEndpoint
 	rootNode            *graph.Node
 	topologyProbeBundle *probe.Bundle
 	flowProbeBundle     *probe.Bundle

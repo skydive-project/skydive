@@ -166,7 +166,7 @@ func (i *Indexer) Stop() {
 	i.listenerHandler.RemoveEventListener(i)
 }
 
-// AddEventListener subscibe a new graph listener
+// AddEventListener subscribes a new graph listener
 func (i *Indexer) AddEventListener(l EventListener) {
 	i.eventHandler.AddEventListener(l)
 }

@@ -219,7 +219,9 @@ func (probe *Probe) registerContainer(path string) error {
 		}
 
 		probe.Graph.Lock()
-		probe.Graph.AddMetadata(n, "Manager", "runc")
+		if err := probe.Graph.AddMetadata(n, "Manager", "runc"); err != nil {
+			logging.GetLogger().Error(err)
+		}
 		probe.Graph.Unlock()
 	}
 
@@ -231,7 +233,12 @@ func (probe *Probe) registerContainer(path string) error {
 	}
 
 	probe.Graph.Lock()
-	node := probe.Graph.NewNode(graph.GenID(), metadata)
+	node, err := probe.Graph.NewNode(graph.GenID(), metadata)
+	if err != nil {
+		probe.Graph.Unlock()
+		return err
+
+	}
 	topology.AddOwnershipLink(probe.Graph, n, node, nil)
 	probe.Graph.Unlock()
 

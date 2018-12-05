@@ -36,7 +36,7 @@ import (
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/ovs"
+	ovsdb "github.com/skydive-project/skydive/ovs"
 	"github.com/skydive-project/skydive/topology"
 )
 
@@ -100,7 +100,13 @@ func (o *Probe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libo
 	o.Graph.Lock()
 	bridge := o.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
 	if bridge == nil {
-		bridge = o.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "UUID": uuid, "Type": "ovsbridge"})
+		var err error
+
+		bridge, err = o.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "UUID": uuid, "Type": "ovsbridge"})
+		if err != nil {
+			logging.GetLogger().Error(err)
+			return
+		}
 		topology.AddOwnershipLink(o.Graph, o.Root, bridge, nil)
 	}
 
@@ -151,7 +157,6 @@ func (o *Probe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libo
 
 // OnOvsBridgeDel event
 func (o *Probe) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-
 	if o.OvsOfProbe != nil {
 		o.OvsOfProbe.OnOvsBridgeDel(uuid)
 	}
@@ -159,7 +164,9 @@ func (o *Probe) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row *libo
 	defer o.Graph.Unlock()
 	bridge := o.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
 	if bridge != nil {
-		o.Graph.DelNode(bridge)
+		if err := o.Graph.DelNode(bridge); err != nil {
+			logging.GetLogger().Error(err)
+		}
 	}
 }
 
@@ -301,14 +308,22 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 			// netlink have seen the same interface. In order to keep only
 			// one interface we delete the ovs one and use the netlink one.
 			if nintf := o.Graph.LookupFirstNode(graph.NewElementFilter(andFilter)); nintf != nil && intf.ID != nintf.ID {
-				o.Graph.DelNode(intf)
+				if err := o.Graph.DelNode(intf); err != nil {
+					logging.GetLogger().Error(err)
+				}
 				intf = nintf
 			}
 		}
 	}
 
 	if intf == nil {
-		intf = o.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "UUID": uuid})
+		var err error
+
+		intf, err = o.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "UUID": uuid})
+		if err != nil {
+			logging.GetLogger().Error(err)
+			return
+		}
 	}
 
 	tr := o.Graph.StartMetadataTransaction(intf)
@@ -450,7 +465,9 @@ func (o *Probe) OnOvsInterfaceDel(monitor *ovsdb.OvsMonitor, uuid string, row *l
 
 	// do not delete if not an openvswitch interface
 	if driver, _ := intf.GetFieldString("Driver"); driver == "openvswitch" {
-		o.Graph.DelNode(intf)
+		if err := o.Graph.DelNode(intf); err != nil {
+			logging.GetLogger().Error(err)
+		}
 	}
 
 	delete(o.uuidToIntf, uuid)
@@ -467,11 +484,19 @@ func (o *Probe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovs
 
 	port, ok := o.uuidToPort[uuid]
 	if !ok {
-		port = o.Graph.NewNode(graph.GenID(), graph.Metadata{
+		var err error
+
+		port, err = o.Graph.NewNode(graph.GenID(), graph.Metadata{
 			"UUID": uuid,
 			"Name": row.New.Fields["name"].(string),
 			"Type": "ovsport",
 		})
+
+		if err != nil {
+			logging.GetLogger().Error(err)
+			return
+		}
+
 		o.uuidToPort[uuid] = port
 	}
 
@@ -584,7 +609,9 @@ func (o *Probe) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovs
 	o.Graph.Lock()
 	defer o.Graph.Unlock()
 
-	o.Graph.DelNode(port)
+	if err := o.Graph.DelNode(port); err != nil {
+		logging.GetLogger().Error(err)
+	}
 
 	delete(o.uuidToPort, uuid)
 	delete(o.portToBridge, uuid)

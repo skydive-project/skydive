@@ -26,9 +26,10 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -79,7 +80,14 @@ func (spl *servicePodLinker) GetABLinks(srvNode *graph.Node) (edges []*graph.Edg
 		metadata := spl.newEdgeMetadata()
 		for _, podNode := range selectedPods {
 			id := graph.GenID(string(srvNode.ID), string(podNode.ID), "RelationType", "service")
-			edges = append(edges, spl.graph.NewEdge(id, srvNode, podNode, metadata, ""))
+
+			edge, err := spl.graph.NewEdge(id, srvNode, podNode, metadata, "")
+			if err != nil {
+				logging.GetLogger().Error(err)
+				continue
+			}
+
+			edges = append(edges, edge)
 		}
 	}
 	return
@@ -109,7 +117,7 @@ func newServicePodLinker(g *graph.Graph) probe.Probe {
 		return nil
 	}
 
-	return graph.NewResourceLinker(
+	rl := graph.NewResourceLinker(
 		g,
 		[]graph.ListenerHandler{serviceProbe},
 		[]graph.ListenerHandler{podProbe},
@@ -120,4 +128,11 @@ func newServicePodLinker(g *graph.Graph) probe.Probe {
 		},
 		graph.Metadata{"RelationType": "service"},
 	)
+
+	linker := &Linker{
+		ResourceLinker: rl,
+	}
+	rl.AddEventListener(linker)
+
+	return linker
 }

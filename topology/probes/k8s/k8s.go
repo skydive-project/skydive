@@ -48,7 +48,7 @@ func NewConfig(kubeConfig string) (*rest.Config, error) {
 		kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
 		config, err = kubeConfig.ClientConfig()
 		if err != nil {
-			return nil, fmt.Errorf("Failed to load Kubernetes config: %s", err.Error())
+			return nil, fmt.Errorf("Failed to load Kubernetes config: %s", err)
 		}
 	}
 	return config, nil
@@ -66,7 +66,7 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create Kubernetes client: %s", err.Error())
+		return nil, fmt.Errorf("Failed to create Kubernetes client: %s", err)
 	}
 
 	subprobeHandlers := map[string]SubprobeHandler{

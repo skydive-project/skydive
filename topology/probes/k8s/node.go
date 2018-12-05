@@ -28,7 +28,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -72,7 +72,14 @@ func newHostNodeLinker(g *graph.Graph) probe.Probe {
 	nodeIndexer := graph.NewMetadataIndexer(g, nodeProbe, graph.Metadata{"Type": "node"}, MetadataField("Name"))
 	nodeIndexer.Start()
 
-	return graph.NewMetadataIndexerLinker(g, hostIndexer, nodeIndexer, NewEdgeMetadata(Manager, "association"))
+	ml := graph.NewMetadataIndexerLinker(g, hostIndexer, nodeIndexer, NewEdgeMetadata(Manager, "association"))
+
+	linker := &Linker{
+		ResourceLinker: ml.ResourceLinker,
+	}
+	ml.AddEventListener(linker)
+
+	return linker
 }
 
 func newNodePodLinker(g *graph.Graph) probe.Probe {
