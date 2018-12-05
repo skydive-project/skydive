@@ -70,7 +70,6 @@ type clusterLinker struct {
 	graph.DefaultLinker
 	*graph.ResourceLinker
 	g             *graph.Graph
-	objectIndexer *graph.MetadataIndexer
 }
 
 func (linker *clusterLinker) createEdge(cluster, object *graph.Node) *graph.Edge {
