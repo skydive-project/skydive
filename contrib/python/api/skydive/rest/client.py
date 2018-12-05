@@ -28,7 +28,7 @@ except ImportError:
 
 from skydive.auth import Authenticate
 from skydive.graph import Node, Edge
-from skydive.rules import NodeRule, EdgeRule
+from skydive.rules import NodeRule, EdgeRule, InjectionRule
 
 
 class BadRequest(Exception):
@@ -36,6 +36,8 @@ class BadRequest(Exception):
 
 
 class RESTClient:
+    INJECTION_PATH = "/api/injectpacket"
+
     def __init__(self, endpoint, scheme="http",
                  username="", password="", cookies={},
                  insecure=False, debug=0):
@@ -167,3 +169,37 @@ class RESTClient:
     def edgerule_delete(self, rule_id):
         path = "/api/edgerule/%s" % rule_id
         self.request(path, method="DELETE")
+
+    def injection_create(self, src_query="", dst_query="", type="icmp4",
+                         payload="", interval=1000, src_ip="",
+                         dst_ip="", src_mac="", dst_mac="",
+                         count=1, icmp_id=0, src_port=0, dst_port=0,
+                         increment=False):
+
+        data = json.dumps({
+            "Src": src_query,
+            "Dst": dst_query,
+            "SrcPort": src_port,
+            "DstPort": dst_port,
+            "SrcIP": src_ip,
+            "DstIP": dst_ip,
+            "SrcMAC": src_mac,
+            "DstMAC": dst_mac,
+            "Type": type,
+            "Count": count,
+            "ICMPID": icmp_id,
+            "Interval": interval,
+            "Payload": payload,
+            "Increment": increment
+        })
+        
+        r = self.request(self.INJECTION_PATH, method="POST", data=data)
+        return InjectionRule.from_object(r)
+        
+    def injection_delete(self, injection_id):
+        path = self.INJECTION_PATH+"/"+injection_id
+        return self.request(path, method="DELETE")
+
+    def injection_list(self):
+        return self.request(self.INJECTION_PATH)
+
