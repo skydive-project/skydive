@@ -34,11 +34,6 @@ type NodeHasher func(n *Node) map[string]interface{}
 
 // Hash computes the hash of the passed parameters
 func Hash(values ...interface{}) string {
-	if len(values) == 1 {
-		if s, ok := values[0].(string); ok {
-			return s
-		}
-	}
 	h, _ := structhash.Hash(values, 1)
 	return h
 }

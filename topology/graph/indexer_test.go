@@ -77,7 +77,12 @@ func TestMetadataIndexer(t *testing.T) {
 		t.Errorf("Expected one node with TID 123: got %+v", nodes[0])
 	}
 
-	nodes, values = tidCache.FromHash("55:44:33:22:11")
+	nodes, values = tidCache.Get("55:44:33:22:11")
+	if len(nodes) != 2 || len(values) != 2 {
+		t.Errorf("Expected two nodes and two values: got %+v, %+v", nodes, values)
+	}
+
+	nodes, values = tidCache.FromHash(Hash("55:44:33:22:11"))
 	if len(nodes) != 2 || len(values) != 2 {
 		t.Errorf("Expected two nodes and two values: got %+v, %+v", nodes, values)
 	}
