@@ -66,13 +66,13 @@ type servicePodLinker struct {
 }
 
 func (spl *servicePodLinker) newEdgeMetadata() graph.Metadata {
-	m := newEdgeMetadata()
+	m := NewEdgeMetadata(Manager, "association")
 	m.SetField("RelationType", "service")
 	return m
 }
 
 func (spl *servicePodLinker) GetABLinks(srvNode *graph.Node) (edges []*graph.Edge) {
-	if srv := spl.serviceCache.getByNode(srvNode); srv != nil {
+	if srv := spl.serviceCache.GetByNode(srvNode); srv != nil {
 		srv := srv.(*v1.Service)
 		labelSelector := &metav1.LabelSelector{MatchLabels: srv.Spec.Selector}
 		selectedPods := objectsToNodes(spl.graph, spl.podCache.getBySelector(spl.graph, srv.Namespace, labelSelector))
@@ -102,9 +102,9 @@ func (spl *servicePodLinker) GetBALinks(podNode *graph.Node) (edges []*graph.Edg
 	return
 }
 
-func newServicePodLinker(g *graph.Graph, probes map[string]Subprobe) probe.Probe {
-	serviceProbe := probes["service"]
-	podProbe := probes["pod"]
+func newServicePodLinker(g *graph.Graph) probe.Probe {
+	serviceProbe := GetSubprobe(Manager, "service")
+	podProbe := GetSubprobe(Manager, "pod")
 	if serviceProbe == nil || podProbe == nil {
 		return nil
 	}

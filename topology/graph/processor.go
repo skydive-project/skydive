@@ -74,7 +74,7 @@ func (processor *Processor) DoAction(action NodeAction, values ...interface{}) {
 	}
 	if kont {
 		act := deferred{action: action}
-		hash := processor.MetadataIndexer.Hash(values...)
+		hash := Hash(values...)
 		if actions, ok := processor.actions[hash]; ok {
 			actions = append(actions, act)
 		} else {
@@ -97,15 +97,14 @@ func (processor *Processor) Stop() {
 // Cancel the actions attached to a given set of values.
 func (processor *Processor) Cancel(values ...interface{}) {
 	processor.Lock()
-	defer processor.Unlock()
-	hash := processor.MetadataIndexer.Hash(values...)
-	delete(processor.actions, hash)
+	delete(processor.actions, Hash(values...))
+	processor.Unlock()
 }
 
 // OnNodeAdded event
 func (processor *Processor) OnNodeAdded(n *Node) {
 	if values, err := getFieldsAsArray(n, processor.MetadataIndexer.indexes); err == nil {
-		hash := processor.MetadataIndexer.Hash(values...)
+		hash := Hash(values...)
 		processor.Lock()
 		defer processor.Unlock()
 		if actions, ok := processor.actions[hash]; ok {

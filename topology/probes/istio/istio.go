@@ -26,6 +26,7 @@ import (
 	kiali "github.com/kiali/kiali/kubernetes"
 
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
 )
@@ -61,9 +62,20 @@ func NewIstioProbe(g *graph.Graph) (*k8s.Probe, error) {
 		"virtualservice":   newVirtualServiceProbe,
 	}
 
-	subprobes := k8s.InitSubprobes(enabledSubprobes, subprobeHandlers, client, g)
+	k8s.InitSubprobes(enabledSubprobes, subprobeHandlers, client, g, Manager)
 
-	probe := k8s.NewProbe(g, Manager, subprobes, nil)
+	linkerHandlers := []k8s.LinkHandler{
+		newVirtualServicePodLinker,
+	}
+
+	var linkers []probe.Probe
+	for _, linkHandler := range linkerHandlers {
+		if linker := linkHandler(g); linker != nil {
+			linkers = append(linkers, linker)
+		}
+	}
+
+	probe := k8s.NewProbe(g, Manager, k8s.GetSubprobesMap(Manager), linkers)
 
 	probe.AppendNamespaceLinkers(
 		"destinationrule",

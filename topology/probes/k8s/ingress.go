@@ -55,6 +55,6 @@ func newIngressProbe(client interface{}, g *graph.Graph) Subprobe {
 	return NewResourceCache(client.(*kubernetes.Clientset).ExtensionsV1beta1().RESTClient(), &v1beta1.Ingress{}, "ingresses", g, &ingressHandler{})
 }
 
-func newIngressServiceLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe {
-	return newResourceLinker(g, subprobes, "ingress", MetadataFields("Namespace", "Backend.ServiceName"), "service", MetadataFields("Namespace", "Name"), graph.Metadata{"RelationType": "ingress"})
+func newIngressServiceLinker(g *graph.Graph) probe.Probe {
+	return newResourceLinker(g, GetSubprobesMap(Manager), "ingress", MetadataFields("Namespace", "Backend.ServiceName"), "service", MetadataFields("Namespace", "Name"), graph.Metadata{"RelationType": "ingress"})
 }

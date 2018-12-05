@@ -75,10 +75,11 @@ func NewMetadata(manager, ty string, kubeMeta graph.Metadata, extra interface{},
 	return m
 }
 
-func newEdgeMetadata() graph.Metadata {
+// NewEdgeMetadata creates a new edge metadata
+func NewEdgeMetadata(manager, name string) graph.Metadata {
 	m := graph.Metadata{
-		"Manager":      Manager,
-		"RelationType": "association",
+		"Manager":      manager,
+		"RelationType": name,
 	}
 	return m
 }

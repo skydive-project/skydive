@@ -33,6 +33,23 @@ import (
 	"k8s.io/apimachinery/pkg/util/runtime"
 )
 
+var subprobes = make(map[string]map[string]Subprobe)
+
+// PutSubprobe puts a new subprobe in the subprobes map
+func PutSubprobe(manager, name string, subprobe Subprobe) {
+	subprobes[manager][name] = subprobe
+}
+
+// GetSubprobe returns a specific subprobe
+func GetSubprobe(manager, name string) Subprobe {
+	return subprobes[manager][name]
+}
+
+// GetSubprobesMap returns a map of all the subprobes that belong to manager probe
+func GetSubprobesMap(manager string) map[string]Subprobe {
+	return subprobes[manager]
+}
+
 func int32ValueOrDefault(value *int32, defaultValue int32) int32 {
 	if value == nil {
 		return defaultValue
@@ -110,20 +127,20 @@ func NewProbe(g *graph.Graph, manager string, subprobes map[string]Subprobe, lin
 // SubprobeHandler the signiture of ctor of a subprobe
 type SubprobeHandler func(client interface{}, g *graph.Graph) Subprobe
 
-// InitSubprobes returns only the subprobes which are enabled
-func InitSubprobes(enabled []string, subprobeHandlers map[string]SubprobeHandler, client interface{}, g *graph.Graph) map[string]Subprobe {
+// InitSubprobes initializes only the subprobes which are enabled
+func InitSubprobes(enabled []string, subprobeHandlers map[string]SubprobeHandler, client interface{}, g *graph.Graph, manager string) {
+
+	subprobes[manager] = make(map[string]Subprobe)
 	if len(enabled) == 0 {
 		for name := range subprobeHandlers {
 			enabled = append(enabled, name)
 		}
 	}
 
-	subprobes := make(map[string]Subprobe)
 	for _, name := range enabled {
 		handler := subprobeHandlers[name]
-		subprobes[name] = handler(client, g)
+		PutSubprobe(manager, name, handler(client, g))
 	}
-	return subprobes
 }
 
 func logOnError(err error) {

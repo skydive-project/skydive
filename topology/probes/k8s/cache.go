@@ -51,7 +51,8 @@ type KubeCache struct {
 	handlers       []k8sHandler
 }
 
-func (c *KubeCache) list() []interface{} {
+// List returns a list of resources
+func (c *KubeCache) List() []interface{} {
 	return c.cache.List()
 }
 
@@ -67,7 +68,8 @@ func (c *KubeCache) getByKey(namespace, name string) interface{} {
 	return nil
 }
 
-func (c *KubeCache) getByNode(node *graph.Node) interface{} {
+// GetByNode returns graph node according to name and namespace
+func (c *KubeCache) GetByNode(node *graph.Node) interface{} {
 	namespace, _ := node.GetFieldString(MetadataField("Namespace"))
 	name, _ := node.GetFieldString("Name")
 	if name == "" {
@@ -78,7 +80,7 @@ func (c *KubeCache) getByNode(node *graph.Node) interface{} {
 
 func (c *KubeCache) getByNamespace(namespace string) []interface{} {
 	if namespace == api.NamespaceAll {
-		return c.list()
+		return c.List()
 	}
 
 	objects, _ := c.cache.ByIndex("namespace", namespace)

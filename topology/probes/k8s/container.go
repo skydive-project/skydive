@@ -132,8 +132,8 @@ func newContainerProbe(client interface{}, g *graph.Graph) Subprobe {
 	return c
 }
 
-func newPodContainerLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe {
-	return newResourceLinker(g, subprobes, "pod", MetadataFields("Namespace", "Name"), "container", MetadataFields("Namespace", "Pod"), topology.OwnershipMetadata())
+func newPodContainerLinker(g *graph.Graph) probe.Probe {
+	return newResourceLinker(g, GetSubprobesMap(Manager), "pod", MetadataFields("Namespace", "Name"), "container", MetadataFields("Namespace", "Pod"), topology.OwnershipMetadata())
 }
 
 func newDockerIndexer(g *graph.Graph) *graph.MetadataIndexer {
@@ -148,8 +148,8 @@ func newDockerIndexer(g *graph.Graph) *graph.MetadataIndexer {
 	return graph.NewMetadataIndexer(g, g, m, dockerPodNamespaceField, dockerPodNameField, dockerContainerNameField)
 }
 
-func newContainerDockerLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe {
-	containerProbe := subprobes["container"]
+func newContainerDockerLinker(g *graph.Graph) probe.Probe {
+	containerProbe := GetSubprobe(Manager, "container")
 	if containerProbe == nil {
 		return nil
 	}
@@ -161,5 +161,5 @@ func newContainerDockerLinker(g *graph.Graph, subprobes map[string]Subprobe) pro
 	dockerIndexer := newDockerIndexer(g)
 	dockerIndexer.Start()
 
-	return graph.NewMetadataIndexerLinker(g, containerIndexer, dockerIndexer, newEdgeMetadata())
+	return graph.NewMetadataIndexerLinker(g, containerIndexer, dockerIndexer, NewEdgeMetadata(Manager, "association"))
 }
