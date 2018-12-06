@@ -147,6 +147,28 @@ class SkydiveWSTest(unittest.TestCase):
             "G.E().Has('RelationType', 'layer2')")
         self.assertEqual(len(edges), 1, "should find one an only one edge")
 
+    def test_alert(self):
+        restclient = RESTClient("localhost:8082",
+                                scheme=self.schemeHTTP,
+                                username=self.username,
+                                password=self.password,
+                                insecure=True)
+
+        alert1 = restclient.alert_create(
+            "https://localhost:8081",
+            "G.V().Has('Name', 'alert-ns-webhook', 'Type', 'netns')")
+
+        alerts = restclient.alert_list()
+        self.assertGreaterEqual(len(alerts), 1, "no alerts found")
+        for alert in alerts:
+            if (alert.uuid == alert1.uuid):
+                found = True
+                break
+
+        self.assertTrue(found, "created alert not found")
+
+        restclient.alert_delete(alert1.uuid)
+
     def test_topology_rules(self):
         restclient = RESTClient("localhost:8082",
                                 scheme=self.schemeHTTP,
