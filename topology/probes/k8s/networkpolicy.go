@@ -347,5 +347,6 @@ func newNetworkPolicyLinker(g *graph.Graph) probe.Probe {
 		namespaceCache: namespaceProbe.(*ResourceCache),
 	}
 
-	return graph.NewResourceLinker(g, npProbe, podNamespaceIndexer, linker, graph.Metadata{"RelationType": "networkpolicy"})
+	return graph.NewResourceLinker(g, []graph.ListenerHandler{npProbe}, []graph.ListenerHandler{podNamespaceIndexer},
+		linker, graph.Metadata{"RelationType": "networkpolicy"})
 }

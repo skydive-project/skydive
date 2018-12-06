@@ -82,7 +82,7 @@ func TestSimpleLinker(t *testing.T) {
 		"Name": "host2",
 	}
 
-	linker := NewResourceLinker(g, g.eventHandler, nil, &simpleLinker{g: g}, Metadata{"RelationType": "simpleLinker"})
+	linker := NewResourceLinker(g, []ListenerHandler{g.eventHandler}, nil, &simpleLinker{g: g}, Metadata{"RelationType": "simpleLinker"})
 	linker.Start()
 
 	n1 := g.NewNode("node1", m1, "host")
@@ -139,7 +139,7 @@ func TestMetadataLinker(t *testing.T) {
 		"Name": "host2",
 	}
 
-	linker := NewResourceLinker(g, g.eventHandler, g.eventHandler, &metadataLinker{g: g}, Metadata{"RelationType": "metadataLinker"})
+	linker := NewResourceLinker(g, []ListenerHandler{g.eventHandler}, []ListenerHandler{g.eventHandler}, &metadataLinker{g: g}, Metadata{"RelationType": "metadataLinker"})
 	linker.Start()
 
 	n1 := g.NewNode("node1", m1, "host")

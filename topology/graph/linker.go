@@ -109,8 +109,8 @@ type ResourceLinker struct {
 	g          *Graph
 	abListener *listener
 	baListener *listener
-	glh1       ListenerHandler
-	glh2       ListenerHandler
+	glhs1      []ListenerHandler
+	glhs2      []ListenerHandler
 	linker     Linker
 	metadata   Metadata
 	links      map[Identifier]bool
@@ -129,7 +129,7 @@ func (rl *ResourceLinker) getLinks(node *Node, direction string) []*Edge {
 func (rl *ResourceLinker) Start() {
 	links := make(map[Identifier]bool)
 
-	if rl.glh1 != nil {
+	if len(rl.glhs1) > 0 {
 		rl.abListener = &listener{
 			graph:        rl.g,
 			newLinksFunc: rl.linker.GetABLinks,
@@ -139,10 +139,12 @@ func (rl *ResourceLinker) Start() {
 			metadata: rl.metadata,
 			links:    links,
 		}
-		rl.glh1.AddEventListener(rl.abListener)
+		for _, handler := range rl.glhs1 {
+			handler.AddEventListener(rl.abListener)
+		}
 	}
 
-	if rl.glh2 != nil {
+	if len(rl.glhs2) > 0 {
 		rl.baListener = &listener{
 			graph:        rl.g,
 			newLinksFunc: rl.linker.GetBALinks,
@@ -152,27 +154,29 @@ func (rl *ResourceLinker) Start() {
 			metadata: rl.metadata,
 			links:    links,
 		}
-		rl.glh2.AddEventListener(rl.baListener)
+		for _, handler := range rl.glhs2 {
+			handler.AddEventListener(rl.baListener)
+		}
 	}
 }
 
 // Stop linking resources
 func (rl *ResourceLinker) Stop() {
-	if rl.glh1 != nil {
-		rl.glh1.RemoveEventListener(rl.abListener)
+	for _, handler := range rl.glhs1 {
+		handler.RemoveEventListener(rl.abListener)
 	}
 
-	if rl.glh2 != nil {
-		rl.glh2.RemoveEventListener(rl.baListener)
+	for _, handler := range rl.glhs2 {
+		handler.RemoveEventListener(rl.baListener)
 	}
 }
 
 // NewResourceLinker returns a new resource linker
-func NewResourceLinker(g *Graph, glh1 ListenerHandler, glh2 ListenerHandler, linker Linker, m Metadata) *ResourceLinker {
+func NewResourceLinker(g *Graph, glhs1 []ListenerHandler, glhs2 []ListenerHandler, linker Linker, m Metadata) *ResourceLinker {
 	return &ResourceLinker{
 		g:        g,
-		glh1:     glh1,
-		glh2:     glh2,
+		glhs1:    glhs1,
+		glhs2:    glhs2,
 		linker:   linker,
 		metadata: m,
 	}
@@ -241,6 +245,6 @@ func NewMetadataIndexerLinker(g *Graph, indexer1, indexer2 *MetadataIndexer, edg
 		indexer2: indexer2,
 	}
 
-	mil.ResourceLinker = NewResourceLinker(g, indexer1, indexer2, mil, edgeMetadata)
+	mil.ResourceLinker = NewResourceLinker(g, []ListenerHandler{indexer1}, []ListenerHandler{indexer2}, mil, edgeMetadata)
 	return mil
 }
