@@ -58,8 +58,17 @@ Vue.component('object-detail', {
           </collapse>\
         </div>\
         <div v-else-if="typeof value == \'object\'" class="object-sub-detail">\
-          <span class="object-key">{{key}}</span>\
-          <object-detail :object="value" :pathPrefix="path(key)" :transformer="transformer" :collapsed="collapsed"></object-detail>\
+          <collapse :collapsed="collapsedState(path(key))">\
+            <div slot="collapse-header" slot-scope="props" class="object-key">\
+              {{key}} :\
+              <span class="pull-right">\
+                <i class="glyphicon glyphicon-chevron-left rotate" :class="{\'down\': props.active}"></i>\
+              </span>\
+            </div>\
+            <div slot="collapse-body">\
+              <object-detail :object="value" :pathPrefix="path(key)" :transformer="transformer" :collapsed="collapsed"></object-detail>\
+            </div>\
+          </collapse>\
         </div>\
         <div v-else>\
           <span class="object-key">{{key}}</span> :\
