@@ -111,8 +111,8 @@ func newServicePodLinker(g *graph.Graph) probe.Probe {
 
 	return graph.NewResourceLinker(
 		g,
-		serviceProbe,
-		podProbe,
+		[]graph.ListenerHandler{serviceProbe},
+		[]graph.ListenerHandler{podProbe},
 		&servicePodLinker{
 			graph:        g,
 			serviceCache: serviceProbe.(*ResourceCache),

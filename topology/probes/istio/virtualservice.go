@@ -165,8 +165,8 @@ func newVirtualServicePodLinker(g *graph.Graph) probe.Probe {
 
 	nvspl := graph.NewResourceLinker(
 		g,
-		vsProbe,
-		podProbe,
+		[]graph.ListenerHandler{vsProbe},
+		[]graph.ListenerHandler{podProbe},
 		&virtualServicePodLinker{
 			graph:      g,
 			vsCache:    vsCache,

@@ -85,13 +85,17 @@ func (linker *clusterLinker) GetBALinks(objectNode *graph.Node) (edges []*graph.
 }
 
 func newClusterLinker(g *graph.Graph, manager string, types ...string) probe.Probe {
-	objectIndexer := newObjectIndexerFromFilter(g, g, newTypesFilter(manager, types...))
-	objectIndexer.Start()
+	var handlers []graph.ListenerHandler
+	for _, t := range types {
+		if subprobe := GetSubprobe(Manager, t); subprobe != nil {
+			handlers = append(handlers, subprobe)
+		}
+	}
 
 	return graph.NewResourceLinker(
 		g,
 		nil,
-		objectIndexer,
+		handlers,
 		&clusterLinker{g: g},
 		topology.OwnershipMetadata(),
 	)
