@@ -34,9 +34,9 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/etcd"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/validator"
 	ws "github.com/skydive-project/skydive/websocket"
 )
@@ -54,7 +54,7 @@ type Reply struct {
 
 // Client describes a packet injector client
 type Client struct {
-	*etcd.MasterElector
+	common.MasterElection
 	pool      ws.StructSpeakerPool
 	watcher   apiServer.StoppableWatcher
 	graph     *graph.Graph
@@ -293,14 +293,14 @@ func (pc *Client) onAPIWatcherEvent(action string, id string, resource types.Res
 
 // Start the packet injector client
 func (pc *Client) Start() {
-	pc.MasterElector.StartAndWait()
+	pc.MasterElection.StartAndWait()
 	pc.watcher = pc.piHandler.AsyncWatch(pc.onAPIWatcherEvent)
 }
 
 // Stop the packet injector client
 func (pc *Client) Stop() {
 	pc.watcher.Stop()
-	pc.MasterElector.Stop()
+	pc.MasterElection.Stop()
 }
 
 func (pc *Client) setTimeouts() {
@@ -320,16 +320,16 @@ func (pc *Client) setTimeouts() {
 
 // NewClient returns a new packet injector client
 func NewClient(pool ws.StructSpeakerPool, etcdClient *etcd.Client, piHandler *apiServer.PacketInjectorAPI, g *graph.Graph) *Client {
-	elector := etcd.NewMasterElectorFromConfig(common.AnalyzerService, "pi-client", etcdClient)
+	election := etcdClient.NewElection("pi-client")
 
 	pic := &Client{
-		MasterElector: elector,
-		pool:          pool,
-		piHandler:     piHandler,
-		graph:         g,
+		MasterElection: election,
+		pool:           pool,
+		piHandler:      piHandler,
+		graph:          g,
 	}
 
-	elector.AddEventListener(pic)
+	election.AddEventListener(pic)
 
 	pic.setTimeouts()
 	return pic

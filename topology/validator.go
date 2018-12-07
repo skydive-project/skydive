@@ -25,8 +25,8 @@ package topology
 import (
 	"errors"
 
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/statics"
-	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/xeipuuv/gojsonschema"
 )
 

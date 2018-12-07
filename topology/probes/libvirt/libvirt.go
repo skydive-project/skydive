@@ -33,8 +33,8 @@ import (
 	"github.com/skydive-project/skydive/config"
 
 	libvirtgo "github.com/libvirt/libvirt-go"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 // Probe is the libvirt probe

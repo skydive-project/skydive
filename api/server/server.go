@@ -33,7 +33,6 @@ import (
 	etcd "github.com/coreos/etcd/client"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/rbac"
@@ -43,10 +42,9 @@ import (
 
 // Server object are created once for each ServiceType (agent or analyzer)
 type Server struct {
-	HTTPServer  *shttp.Server
-	EtcdKeyAPI  etcd.KeysAPI
-	ServiceType common.ServiceType
-	handlers    map[string]Handler
+	HTTPServer *shttp.Server
+	EtcdKeyAPI etcd.KeysAPI
+	handlers   map[string]Handler
 }
 
 // Info for each host describes his API version and service (agent or analyzer)
@@ -202,11 +200,11 @@ func (a *Server) RegisterAPIHandler(handler Handler, authBackend shttp.Authentic
 	return nil
 }
 
-func (a *Server) addAPIRootRoute(authBackend shttp.AuthenticationBackend) {
+func (a *Server) addAPIRootRoute(service common.Service, authBackend shttp.AuthenticationBackend) {
 	info := Info{
-		Host:    config.GetString("host_id"),
 		Version: version.Version,
-		Service: string(a.ServiceType),
+		Service: string(service.Type),
+		Host:    service.ID,
 	}
 
 	routes := []shttp.Route{
@@ -233,15 +231,14 @@ func (a *Server) GetHandler(hname string) Handler {
 }
 
 // NewAPI creates a new API server based on http
-func NewAPI(server *shttp.Server, kapi etcd.KeysAPI, serviceType common.ServiceType, authBackend shttp.AuthenticationBackend) (*Server, error) {
+func NewAPI(server *shttp.Server, kapi etcd.KeysAPI, service common.Service, authBackend shttp.AuthenticationBackend) (*Server, error) {
 	apiServer := &Server{
-		HTTPServer:  server,
-		EtcdKeyAPI:  kapi,
-		ServiceType: serviceType,
-		handlers:    make(map[string]Handler),
+		HTTPServer: server,
+		EtcdKeyAPI: kapi,
+		handlers:   make(map[string]Handler),
 	}
 
-	apiServer.addAPIRootRoute(authBackend)
+	apiServer.addAPIRootRoute(service, authBackend)
 
 	return apiServer, nil
 }

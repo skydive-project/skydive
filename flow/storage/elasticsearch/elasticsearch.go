@@ -365,9 +365,7 @@ func (c *Storage) Stop() {
 }
 
 // New creates a new ElasticSearch database client
-func New(backend string, etcdClient *etcd.Client) (*Storage, error) {
-	cfg := es.NewConfig(backend)
-
+func New(cfg es.Config, etcdClient *etcd.Client) (*Storage, error) {
 	indices := []es.Index{
 		flowIndex,
 		metricIndex,

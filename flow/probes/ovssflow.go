@@ -32,11 +32,11 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/ovs"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/sflow"
-	"github.com/skydive-project/skydive/topology/graph"
 	ovsprobe "github.com/skydive-project/skydive/topology/probes/ovsdb"
 )
 

@@ -35,9 +35,9 @@ import (
 	lxd "github.com/lxc/lxd/client"
 	"github.com/mitchellh/mapstructure"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/graph"
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
 	"github.com/vishvananda/netns"
 )

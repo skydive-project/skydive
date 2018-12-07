@@ -27,21 +27,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
-
-	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/topology/graph"
-	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
-
-func newGraph(t *testing.T) *graph.Graph {
-	b, err := graph.NewMemoryBackend()
-	if err != nil {
-		t.Error(err)
-	}
-
-	return graph.NewGraphFromConfig(b, common.UnknownService)
-}
 
 func execNextHopQuery(t *testing.T, g *graph.Graph, query string) traversal.GraphTraversalStep {
 	tr := traversal.NewGremlinTraversalParser()

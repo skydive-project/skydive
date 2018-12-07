@@ -42,8 +42,8 @@ import (
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 // OvsOfProbe is the type of the probe retrieving Openflow rules on an Open Vswitch

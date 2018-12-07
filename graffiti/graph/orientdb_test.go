@@ -121,7 +121,7 @@ func newOrientDBGraph(t *testing.T) (*Graph, *fakeOrientDBClient) {
 		t.Error(err)
 	}
 
-	return NewGraphFromConfig(b, common.UnknownService), client
+	return NewGraph("host1", b, common.UnknownService), client
 }
 
 // test history when doing local modification

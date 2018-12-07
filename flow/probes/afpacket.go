@@ -32,7 +32,7 @@ import (
 	"github.com/google/gopacket/afpacket"
 	"github.com/google/gopacket/layers"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"golang.org/x/net/bpf"
 )
 

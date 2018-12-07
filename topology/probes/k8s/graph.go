@@ -24,8 +24,9 @@ package k8s
 
 import (
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
-	"github.com/skydive-project/skydive/topology/graph"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

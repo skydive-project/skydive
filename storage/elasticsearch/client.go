@@ -38,8 +38,6 @@ import (
 	esconfig "github.com/olivere/elastic/config"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 )
@@ -57,27 +55,6 @@ type Config struct {
 	EntriesLimit int
 	AgeLimit     int
 	IndicesLimit int
-}
-
-// NewConfig returns a new Config for the given backend name
-func NewConfig(name ...string) Config {
-	cfg := Config{}
-
-	path := "storage."
-	if len(name) > 0 {
-		path += name[0]
-	} else {
-		path += "elasticsearch"
-	}
-
-	cfg.ElasticHost = config.GetString(path + ".host")
-	cfg.BulkMaxDelay = config.GetInt(path + ".bulk_maxdelay")
-
-	cfg.EntriesLimit = config.GetInt(path + ".index_entries_limit")
-	cfg.AgeLimit = config.GetInt(path + ".index_age_limit")
-	cfg.IndicesLimit = config.GetInt(path + ".indices_to_keep")
-
-	return cfg
 }
 
 // ClientInterface describes the mechanism API of ElasticSearch database client
@@ -445,7 +422,7 @@ func (c *Client) GetClient() *elastic.Client {
 }
 
 // NewClient creates a new ElasticSearch client based on configuration
-func NewClient(indices []Index, cfg Config, etcdClient *etcd.Client) (*Client, error) {
+func NewClient(indices []Index, cfg Config, electionService common.MasterElectionService) (*Client, error) {
 	url, err := urlFromHost(cfg.ElasticHost)
 	if err != nil {
 		return nil, err
@@ -469,7 +446,7 @@ func NewClient(indices []Index, cfg Config, etcdClient *etcd.Client) (*Client, e
 	}
 
 	if len(rollIndices) > 0 {
-		client.rollService = newRollIndexService(client, rollIndices, cfg, etcdClient)
+		client.rollService = newRollIndexService(client, rollIndices, cfg, electionService)
 	}
 
 	client.started.Store(false)

@@ -26,9 +26,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
-	"github.com/skydive-project/skydive/topology/graph"
 
 	"k8s.io/apimachinery/pkg/util/runtime"
 )

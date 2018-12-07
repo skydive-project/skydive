@@ -25,15 +25,12 @@ package graph
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 
 	"github.com/nu7hatch/gouuid"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/filters"
 )
 
@@ -1355,31 +1352,4 @@ func NewGraph(host string, backend Backend, service common.ServiceType) *Graph {
 		context:      Context{TimePoint: true},
 		service:      service,
 	}
-}
-
-// NewGraphFromConfig creates a new graph based on configuration
-func NewGraphFromConfig(backend Backend, service common.ServiceType) *Graph {
-	host := config.GetString("host_id")
-	return NewGraph(host, backend, service)
-}
-
-// NewBackendByName creates a new graph backend based on the name
-// memory, orientdb, elasticsearch backend are supported
-func NewBackendByName(name string, etcdClient *etcd.Client) (backend Backend, err error) {
-	driver := config.GetString("storage." + name + ".driver")
-	switch driver {
-	case "memory":
-		backend, err = NewMemoryBackend()
-	case "orientdb":
-		backend, err = NewOrientDBBackendFromConfig(name)
-	case "elasticsearch":
-		backend, err = NewElasticSearchBackendFromConfig(name, etcdClient)
-	default:
-		return nil, fmt.Errorf("Topology backend driver '%s' not supported", driver)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-	return backend, nil
 }

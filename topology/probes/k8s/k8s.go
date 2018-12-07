@@ -26,8 +26,8 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
-	"github.com/skydive-project/skydive/topology/graph"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"

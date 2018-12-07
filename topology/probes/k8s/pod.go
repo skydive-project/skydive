@@ -26,8 +26,7 @@ import (
 	"fmt"
 
 	"github.com/mohae/deepcopy"
-
-	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/graffiti/graph"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"

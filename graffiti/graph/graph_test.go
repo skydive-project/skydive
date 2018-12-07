@@ -37,7 +37,7 @@ func newGraph(t *testing.T) *Graph {
 		t.Error(err.Error())
 	}
 
-	return NewGraphFromConfig(b, common.UnknownService)
+	return NewGraph("testhost", b, common.UnknownService)
 }
 
 func TestLinks(t *testing.T) {
