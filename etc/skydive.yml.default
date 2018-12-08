@@ -154,6 +154,11 @@ analyzer:
       # on production systems
       probes:
       - destinationrule
+      - gateway
+      - quotaspec
+      - quotaspecbinding
+      - serviceentry
+      - virtualservice
 
   replication:
     # debug: false
