@@ -353,10 +353,6 @@ var TopologyComponent = {
         self.topologyFilterQuery();
       }
     });
-
-    if (self.isK8SEnabled()) {
-      self.setk8sNamespacesFilter();
-    }
   },
 
   beforeDestroy: function() {
@@ -545,25 +541,6 @@ var TopologyComponent = {
        return str.indexOf(suffix, str.length - suffix.length) !== -1;
     },
 
-    setk8sNamespacesFilter: function() {
-      var self = this;
-      // get k8s namespaces using API
-      this.$topologyQuery("G.V().Has('Manager','k8s','Type', 'namespace')")
-        .then(function(data) {
-          var namespacesAsJsonFilter = '{"Name":"k8s namespace", "Type":"combobox", "value":{'
-          data.forEach(function(namespace) {
-            var namespaceName = namespace["Metadata"]["Name"]
-            var namespaceGremlin = 'G.V().Has(\'K8s.Namespace\',\'' + namespaceName + '\')'
-            namespacesAsJsonFilter += '"' + namespaceName + '":"' + namespaceGremlin + '",'
-            })
-          namespacesAsJsonFilter = namespacesAsJsonFilter.slice(0, -1);
-          namespacesAsJsonFilter += '}}'
-          self.dynamicFilter.push(namespacesAsJsonFilter)
-          self.setGremlinFavoritesFromConfig()
-         })
-        .catch(function() {});
-    },
-
     addFilter: function(label, gremlin) {
       var options = $(".topology-gremlin-favorites");
       options.append($("<option/>").val(label).attr('gremlin', gremlin));
@@ -616,14 +593,6 @@ var TopologyComponent = {
         self.addFilterK8sTypes("network", ["cluster", "container", "namespace", "networkpolicy", "pod"]);
         self.addFilterK8sTypes("service", ["cluster", "endpoints", "ingress",  "namespace", "node", "pod", "service"]);
         self.addFilterK8sTypes("storage", ["cluster", "namespace", "persistentvolume", "persistentvolumeclaim", "storageclass"]);
-      }
-
-      for (var i = 0, len = self.dynamicFilter.length; i < len; i++) {
-        filter = JSON.parse(self.dynamicFilter[i])
-        $.each(filter["value"], function(key, value) {
-          let label = filter["Name"] + ": " + key
-          self.addFilter(label, value);
-        });
       }
 
       var default_filter = app.getConfigValue('topology.default_filter');
