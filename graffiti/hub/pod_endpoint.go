@@ -106,8 +106,8 @@ func (t *TopologyAgentEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMess
 	}
 }
 
-// NewTopologyAgentEndpoint returns a new server that handles messages from the agents
-func NewTopologyAgentEndpoint(pool ws.StructSpeakerPool, cached *graph.CachedBackend, g *graph.Graph) (*TopologyAgentEndpoint, error) {
+// NewTopologyPodEndpoint returns a new server that handles messages from the agents
+func NewTopologyPodEndpoint(pool ws.StructSpeakerPool, cached *graph.CachedBackend, g *graph.Graph) (*TopologyAgentEndpoint, error) {
 	t := &TopologyAgentEndpoint{
 		Graph:  g,
 		pool:   pool,
