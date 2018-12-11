@@ -41,13 +41,14 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/hub"
+	"github.com/skydive-project/skydive/graffiti/pod"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/enhancers"
+	usertopology "github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
 	"github.com/skydive-project/skydive/ui"
 	ws "github.com/skydive-project/skydive/websocket"
@@ -285,7 +286,7 @@ func NewServerFromConfig() (*Server, error) {
 	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
 
 	subscriberWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
-	topology.NewSubscriberEndpoint(subscriberWSServer, g, tr)
+	pod.NewTopologySubscriberEndpoint(subscriberWSServer, g, tr)
 
 	probeBundle, err := NewTopologyProbeBundleFromConfig(g)
 	if err != nil {

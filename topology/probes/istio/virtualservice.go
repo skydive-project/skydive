@@ -28,9 +28,10 @@ import (
 	kiali "github.com/kiali/kiali/kubernetes"
 	"github.com/mitchellh/mapstructure"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 type virtualServiceHandler struct {
@@ -104,7 +105,14 @@ func (vspl *virtualServicePodLinker) GetABLinks(vsNode *graph.Node) (edges []*gr
 			podNodes, _ := vspl.podIndexer.Get(info.getIndexerValues()...)
 			for _, podNode := range podNodes {
 				id := graph.GenID(string(vsNode.ID), string(podNode.ID), "RelationType", "virtualservice")
-				edges = append(edges, vspl.graph.NewEdge(id, vsNode, podNode, nil, ""))
+
+				edge, err := vspl.graph.NewEdge(id, vsNode, podNode, nil, "")
+				if err != nil {
+					logging.GetLogger().Error(err)
+					continue
+				}
+
+				edges = append(edges, edge)
 			}
 		}
 	}
@@ -121,7 +129,14 @@ func (vspl *virtualServicePodLinker) GetBALinks(podNode *graph.Node) (edges []*g
 		vsNodes := append(vsWithVersionNodes, vsWithoutVersionNodes...)
 		for _, vsNode := range vsNodes {
 			id := graph.GenID(string(vsNode.ID), string(podNode.ID), "RelationType", "virtualservice")
-			edges = append(edges, vspl.graph.NewEdge(id, vsNode, podNode, nil, ""))
+
+			edge, err := vspl.graph.NewEdge(id, vsNode, podNode, nil, "")
+			if err != nil {
+				logging.GetLogger().Error(err)
+				continue
+			}
+
+			edges = append(edges, edge)
 		}
 	}
 	return
@@ -176,5 +191,11 @@ func newVirtualServicePodLinker(g *graph.Graph) probe.Probe {
 		},
 		k8s.NewEdgeMetadata("istio", "virtualservice"),
 	)
-	return nvspl
+
+	linker := &k8s.Linker{
+		ResourceLinker: nvspl,
+	}
+	nvspl.AddEventListener(linker)
+
+	return linker
 }

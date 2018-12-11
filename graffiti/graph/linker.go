@@ -35,6 +35,11 @@ type Linker interface {
 	GetBALinks(node *Node) []*Edge
 }
 
+// LinkerEventListener defines the event interface for linker
+type LinkerEventListener interface {
+	OnError(err error)
+}
+
 type listener struct {
 	DefaultGraphListener
 	graph             *Graph
@@ -42,6 +47,7 @@ type listener struct {
 	existingLinksFunc func(node *Node) []*Edge
 	metadata          Metadata
 	links             map[Identifier]bool
+	resourceLinker    *ResourceLinker
 }
 
 func mapOfLinks(edges []*Edge) map[Identifier]*Edge {
@@ -62,11 +68,16 @@ func (l *listener) nodeEvent(node *Node) {
 		}
 
 		if oldLink, found := existingLinks[id]; !found {
-			l.graph.AddEdge(newLink)
-			l.links[newLink.ID] = true
+			if err := l.graph.AddEdge(newLink); err != nil {
+				l.resourceLinker.notifyError(err)
+			} else {
+				l.links[newLink.ID] = true
+			}
 		} else {
 			if !reflect.DeepEqual(newLink.Metadata, oldLink.Metadata) {
-				l.graph.SetMetadata(oldLink, newLink.Metadata)
+				if err := l.graph.SetMetadata(oldLink, newLink.Metadata); err != nil {
+					l.resourceLinker.notifyError(err)
+				}
 			}
 			delete(existingLinks, id)
 		}
@@ -74,7 +85,9 @@ func (l *listener) nodeEvent(node *Node) {
 
 	for _, oldLink := range existingLinks {
 		if _, found := l.links[oldLink.ID]; found {
-			l.graph.DelEdge(oldLink)
+			if err := l.graph.DelEdge(oldLink); err != nil {
+				l.resourceLinker.notifyError(err)
+			}
 			delete(l.links, oldLink.ID)
 		}
 	}
@@ -106,14 +119,16 @@ func (dl *DefaultLinker) GetBALinks(node *Node) []*Edge {
 // 2 graph events sources to determine if resources from one source should be
 // linked with resources of the other source.
 type ResourceLinker struct {
-	g          *Graph
-	abListener *listener
-	baListener *listener
-	glhs1      []ListenerHandler
-	glhs2      []ListenerHandler
-	linker     Linker
-	metadata   Metadata
-	links      map[Identifier]bool
+	common.RWMutex
+	g              *Graph
+	abListener     *listener
+	baListener     *listener
+	glhs1          []ListenerHandler
+	glhs2          []ListenerHandler
+	linker         Linker
+	metadata       Metadata
+	links          map[Identifier]bool
+	eventListeners []LinkerEventListener
 }
 
 func (rl *ResourceLinker) getLinks(node *Node, direction string) []*Edge {
@@ -136,8 +151,9 @@ func (rl *ResourceLinker) Start() {
 			existingLinksFunc: func(node *Node) (edges []*Edge) {
 				return rl.getLinks(node, "Parent")
 			},
-			metadata: rl.metadata,
-			links:    links,
+			metadata:       rl.metadata,
+			links:          links,
+			resourceLinker: rl,
 		}
 		for _, handler := range rl.glhs1 {
 			handler.AddEventListener(rl.abListener)
@@ -151,8 +167,9 @@ func (rl *ResourceLinker) Start() {
 			existingLinksFunc: func(node *Node) (edges []*Edge) {
 				return rl.getLinks(node, "Child")
 			},
-			metadata: rl.metadata,
-			links:    links,
+			metadata:       rl.metadata,
+			links:          links,
+			resourceLinker: rl,
 		}
 		for _, handler := range rl.glhs2 {
 			handler.AddEventListener(rl.baListener)
@@ -168,6 +185,36 @@ func (rl *ResourceLinker) Stop() {
 
 	for _, handler := range rl.glhs2 {
 		handler.RemoveEventListener(rl.baListener)
+	}
+}
+
+func (rl *ResourceLinker) notifyError(err error) {
+	rl.RLock()
+	defer rl.RUnlock()
+
+	for _, l := range rl.eventListeners {
+		l.OnError(err)
+	}
+}
+
+// AddEventListener subscribe a new linker listener
+func (rl *ResourceLinker) AddEventListener(l LinkerEventListener) {
+	rl.Lock()
+	defer rl.Unlock()
+
+	rl.eventListeners = append(rl.eventListeners, l)
+}
+
+// RemoveEventListener unsubscribe a linker listener
+func (rl *ResourceLinker) RemoveEventListener(l LinkerEventListener) {
+	rl.Lock()
+	defer rl.Unlock()
+
+	for i, el := range rl.eventListeners {
+		if l == el {
+			rl.eventListeners = append(rl.eventListeners[:i], rl.eventListeners[i+1:]...)
+			break
+		}
 	}
 }
 

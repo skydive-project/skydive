@@ -73,6 +73,16 @@ type Subprobe interface {
 	graph.ListenerHandler
 }
 
+// Linker defines a k8s linker
+type Linker struct {
+	*graph.ResourceLinker
+}
+
+// OnError implements the LinkerEventListener interface
+func (l *Linker) OnError(err error) {
+	logging.GetLogger().Error(err)
+}
+
 // Start k8s probe
 func (p *Probe) Start() {
 	for _, linker := range p.linkers {
@@ -124,7 +134,7 @@ func NewProbe(g *graph.Graph, manager string, subprobes map[string]Subprobe, lin
 	}
 }
 
-// SubprobeHandler the signiture of ctor of a subprobe
+// SubprobeHandler the signature of ctor of a subprobe
 type SubprobeHandler func(client interface{}, g *graph.Graph) Subprobe
 
 // InitSubprobes initializes only the subprobes which are enabled

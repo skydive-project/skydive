@@ -26,7 +26,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/nu7hatch/gouuid"
+	uuid "github.com/nu7hatch/gouuid"
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -137,7 +137,7 @@ func (fb *Probe) getOrCreateFabricNodeFromDef(nodeDef string) (*graph.Node, erro
 
 	metadata["Probe"] = "fabric"
 
-	return fb.Graph.NewNode(id, metadata, ""), nil
+	return fb.Graph.NewNode(id, metadata, "")
 }
 
 // Start the probe
@@ -189,19 +189,19 @@ func (fb *Probe) Start() {
 
 			parentNode, err := fb.getOrCreateFabricNodeFromDef(parentDef)
 			if err != nil {
-				logging.GetLogger().Error(err.Error())
+				logging.GetLogger().Error(err)
 				continue
 			}
 
 			_, parentMetadata, err := nodeDefToMetadata(nodes[0])
 			if err != nil {
-				logging.GetLogger().Error(err.Error())
+				logging.GetLogger().Error(err)
 				continue
 			}
 
 			_, childMetadata, err := nodeDefToMetadata(nodes[1])
 			if err != nil {
-				logging.GetLogger().Error(err.Error())
+				logging.GetLogger().Error(err)
 				continue
 			}
 
@@ -211,13 +211,13 @@ func (fb *Probe) Start() {
 			// Fabric Node to Fabric Node
 			node1, err := fb.getOrCreateFabricNodeFromDef(parentDef)
 			if err != nil {
-				logging.GetLogger().Error(err.Error())
+				logging.GetLogger().Error(err)
 				continue
 			}
 
 			node2, err := fb.getOrCreateFabricNodeFromDef(childDef)
 			if err != nil {
-				logging.GetLogger().Error(err.Error())
+				logging.GetLogger().Error(err)
 				continue
 			}
 

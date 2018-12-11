@@ -24,11 +24,13 @@ package peering
 
 import (
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
 )
 
 // Probe describes graph peering based on MAC address and graph events
 type Probe struct {
+	graph.DefaultGraphListener
 	graph              *graph.Graph
 	peerIntfMACIndexer *graph.MetadataIndexer
 	macIndexer         *graph.MetadataIndexer
@@ -49,16 +51,25 @@ func (p *Probe) Stop() {
 	p.linker.Stop()
 }
 
+// OnError implements the LinkerEventListener interface
+func (p *Probe) OnError(err error) {
+	logging.GetLogger().Error(err)
+}
+
 // NewProbe creates a new graph node peering probe
 func NewProbe(g *graph.Graph) *Probe {
 	peerIntfMACIndexer := graph.NewMetadataIndexer(g, g, nil, "PeerIntfMAC")
 	macIndexer := graph.NewMetadataIndexer(g, g, nil, "MAC")
+
+	linker := graph.NewMetadataIndexerLinker(g, peerIntfMACIndexer, macIndexer, graph.Metadata{"RelationType": topology.Layer2Link})
+
 	probe := &Probe{
 		graph:              g,
 		peerIntfMACIndexer: peerIntfMACIndexer,
 		macIndexer:         macIndexer,
-		linker:             graph.NewMetadataIndexerLinker(g, peerIntfMACIndexer, macIndexer, graph.Metadata{"RelationType": topology.Layer2Link}),
+		linker:             linker,
 	}
+	linker.AddEventListener(probe)
 
 	return probe
 }

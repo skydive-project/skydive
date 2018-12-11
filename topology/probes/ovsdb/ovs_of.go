@@ -508,8 +508,14 @@ func (probe *BridgeOfProbe) addRule(rule *Rule) {
 		"priority": rule.Priority,
 		"UUID":     rule.UUID,
 	}
-	ruleNode := g.NewNode(graph.GenID(), metadata)
-	g.Link(bridgeNode, ruleNode, graph.Metadata{"RelationType": "ownership"})
+	ruleNode, err := g.NewNode(graph.GenID(), metadata)
+	if err != nil {
+		logging.GetLogger().Error(err)
+		return
+	}
+	if _, err := g.Link(bridgeNode, ruleNode, graph.Metadata{"RelationType": "ownership"}); err != nil {
+		logging.GetLogger().Error(err)
+	}
 }
 
 // modRule modifies the node of an existing rule.
@@ -542,9 +548,15 @@ func (probe *BridgeOfProbe) addGroup(group *Group) {
 		"contents":   group.Contents,
 		"UUID":       group.UUID,
 	}
-	groupNode := g.NewNode(graph.GenID(), metadata)
+	groupNode, err := g.NewNode(graph.GenID(), metadata)
+	if err != nil {
+		logging.GetLogger().Error(err)
+		return
+	}
 	probe.Groups[group.ID] = groupNode
-	g.Link(bridgeNode, groupNode, graph.Metadata{"RelationType": "ownership"})
+	if _, err := g.Link(bridgeNode, groupNode, graph.Metadata{"RelationType": "ownership"}); err != nil {
+		logging.GetLogger().Error(err)
+	}
 }
 
 // delRule deletes a rule from the the graph.
@@ -556,7 +568,9 @@ func (probe *BridgeOfProbe) delRule(rule *Rule) {
 
 	ruleNode := g.LookupFirstNode(graph.Metadata{"UUID": rule.UUID})
 	if ruleNode != nil {
-		g.DelNode(ruleNode)
+		if err := g.DelNode(ruleNode); err != nil {
+			logging.GetLogger().Error(err)
+		}
 	}
 }
 
@@ -565,10 +579,13 @@ func (probe *BridgeOfProbe) delGroup(groupID uint) {
 	g := probe.OvsOfProbe.Graph
 	g.Lock()
 	defer g.Unlock()
+
 	if groupID == 0xfffffffc {
 		logging.GetLogger().Infof("All groups deleted on %s", probe.Bridge)
 		for _, groupNode := range probe.Groups {
-			g.DelNode(groupNode)
+			if err := g.DelNode(groupNode); err != nil {
+				logging.GetLogger().Error(err)
+			}
 		}
 		probe.Groups = make(map[uint]*graph.Node)
 	} else {
@@ -576,7 +593,9 @@ func (probe *BridgeOfProbe) delGroup(groupID uint) {
 		groupNode := probe.Groups[groupID]
 		delete(probe.Groups, groupID)
 		if groupNode != nil {
-			g.DelNode(groupNode)
+			if err := g.DelNode(groupNode); err != nil {
+				logging.GetLogger().Error(err)
+			}
 		}
 	}
 }
@@ -874,12 +893,16 @@ func (o *OvsOfProbe) OnOvsBridgeDel(uuid string) {
 		rules := g.LookupChildren(bridgeNode, graph.Metadata{"Type": "ofrule"}, nil)
 		for _, ruleNode := range rules {
 			logging.GetLogger().Infof("Rule %v deleted (Bridge deleted)", ruleNode.Metadata["UUID"])
-			g.DelNode(ruleNode)
+			if err := g.DelNode(ruleNode); err != nil {
+				logging.GetLogger().Error(err)
+			}
 		}
 		groups := g.LookupChildren(bridgeNode, graph.Metadata{"Type": "ofgroup"}, nil)
 		for _, groupNode := range groups {
 			logging.GetLogger().Infof("Group %v deleted (Bridge deleted)", groupNode.Metadata["UUID"])
-			g.DelNode(groupNode)
+			if err := g.DelNode(groupNode); err != nil {
+				logging.GetLogger().Error(err)
+			}
 		}
 	}
 }

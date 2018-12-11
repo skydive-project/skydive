@@ -210,26 +210,34 @@ func (t *TopologyReplicationEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Stru
 		r := obj.(*graph.SyncMsg)
 		for _, n := range r.Nodes {
 			if t.Graph.GetNode(n.ID) == nil {
-				t.Graph.NodeAdded(n)
+				if err := t.Graph.NodeAdded(n); err != nil {
+					logging.GetLogger().Error(err)
+				}
 			}
 		}
 		for _, e := range r.Edges {
 			if t.Graph.GetEdge(e.ID) == nil {
-				t.Graph.EdgeAdded(e)
+				if err := t.Graph.EdgeAdded(e); err != nil {
+					logging.GetLogger().Error(err)
+				}
 			}
 		}
 	case graph.NodeUpdatedMsgType:
-		t.Graph.NodeUpdated(obj.(*graph.Node))
+		err = t.Graph.NodeUpdated(obj.(*graph.Node))
 	case graph.NodeDeletedMsgType:
-		t.Graph.NodeDeleted(obj.(*graph.Node))
+		err = t.Graph.NodeDeleted(obj.(*graph.Node))
 	case graph.NodeAddedMsgType:
-		t.Graph.NodeAdded(obj.(*graph.Node))
+		err = t.Graph.NodeAdded(obj.(*graph.Node))
 	case graph.EdgeUpdatedMsgType:
-		t.Graph.EdgeUpdated(obj.(*graph.Edge))
+		err = t.Graph.EdgeUpdated(obj.(*graph.Edge))
 	case graph.EdgeDeletedMsgType:
-		t.Graph.EdgeDeleted(obj.(*graph.Edge))
+		err = t.Graph.EdgeDeleted(obj.(*graph.Edge))
 	case graph.EdgeAddedMsgType:
-		t.Graph.EdgeAdded(obj.(*graph.Edge))
+		err = t.Graph.EdgeAdded(obj.(*graph.Edge))
+	}
+
+	if err != nil {
+		logging.GetLogger().Error(err)
 	}
 }
 

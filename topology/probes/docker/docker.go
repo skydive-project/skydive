@@ -105,7 +105,9 @@ func (probe *Probe) registerContainer(id string) {
 		}
 
 		probe.Graph.Lock()
-		probe.Graph.AddMetadata(n, "Manager", "docker")
+		if err := probe.Graph.AddMetadata(n, "Manager", "docker"); err != nil {
+			logging.GetLogger().Error(err)
+		}
 		probe.Graph.Unlock()
 	}
 
@@ -125,9 +127,14 @@ func (probe *Probe) registerContainer(id string) {
 	}
 
 	probe.Graph.Lock()
-	containerNode := probe.Graph.NewNode(graph.GenID(), metadata)
+	defer probe.Graph.Unlock()
+
+	containerNode, err := probe.Graph.NewNode(graph.GenID(), metadata)
+	if err != nil {
+		logging.GetLogger().Error(err)
+		return
+	}
 	topology.AddOwnershipLink(probe.Graph, n, containerNode, nil)
-	probe.Graph.Unlock()
 
 	probe.containerMap[info.ID] = containerInfo{
 		Pid:  info.State.Pid,
@@ -145,7 +152,11 @@ func (probe *Probe) unregisterContainer(id string) {
 	}
 
 	probe.Graph.Lock()
-	probe.Graph.DelNode(infos.Node)
+	if err := probe.Graph.DelNode(infos.Node); err != nil {
+		probe.Graph.Unlock()
+		logging.GetLogger().Error(err)
+		return
+	}
 	probe.Graph.Unlock()
 
 	namespace := probe.containerNamespace(infos.Pid)

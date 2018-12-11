@@ -340,13 +340,20 @@ func newNetworkPolicyLinker(g *graph.Graph) probe.Probe {
 	podNamespaceIndexer := graph.NewMetadataIndexer(g, g, graph.NewElementFilter(filter))
 	podNamespaceIndexer.Start()
 
-	linker := &networkPolicyLinker{
+	npLinker := &networkPolicyLinker{
 		graph:          g,
 		npCache:        npProbe.(*ResourceCache),
 		podCache:       podProbe.(*ResourceCache),
 		namespaceCache: namespaceProbe.(*ResourceCache),
 	}
 
-	return graph.NewResourceLinker(g, []graph.ListenerHandler{npProbe}, []graph.ListenerHandler{podNamespaceIndexer},
-		linker, graph.Metadata{"RelationType": "networkpolicy"})
+	rl := graph.NewResourceLinker(g, []graph.ListenerHandler{npProbe}, []graph.ListenerHandler{podNamespaceIndexer},
+		npLinker, graph.Metadata{"RelationType": "networkpolicy"})
+
+	linker := &Linker{
+		ResourceLinker: rl,
+	}
+	rl.AddEventListener(linker)
+
+	return linker
 }

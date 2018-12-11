@@ -41,7 +41,7 @@ func TestAddEdgeMissingNode(t *testing.T) {
 		},
 	}
 
-	if b.EdgeAdded(e) {
-		t.Error("Edge inserted with missing nodes")
+	if err := b.EdgeAdded(e); err == nil {
+		t.Errorf("Edge inserted with missing nodes: %s", err)
 	}
 }

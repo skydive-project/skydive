@@ -37,7 +37,7 @@ import (
 	"syscall"
 	"time"
 
-	"gopkg.in/fsnotify/fsnotify.v1"
+	fsnotify "gopkg.in/fsnotify/fsnotify.v1"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
@@ -180,14 +180,18 @@ func (u *Probe) Register(path string, name string) (*graph.Node, error) {
 	}
 
 	u.Graph.Lock()
-	n := u.Graph.NewNode(graph.GenID(), metadata)
+	n, err := u.Graph.NewNode(graph.GenID(), metadata)
+	if err != nil {
+		u.Graph.Unlock()
+		return nil, err
+	}
 	topology.AddOwnershipLink(u.Graph, u.Root, n, nil)
 	u.Graph.Unlock()
 
 	logging.GetLogger().Debugf("Registering namespace: %s", nsString)
 
 	var probe *netlink.NetNsProbe
-	err := common.Retry(func() error {
+	err = common.Retry(func() error {
 		var err error
 		probe, err = u.nlProbe.Register(path, n)
 		if err != nil {
@@ -237,9 +241,13 @@ func (u *Probe) Unregister(path string) {
 	defer u.Graph.Unlock()
 
 	for _, child := range u.Graph.LookupChildren(probe.Root, nil, nil) {
-		u.Graph.DelNode(child)
+		if err := u.Graph.DelNode(child); err != nil {
+			logging.GetLogger().Error(err)
+		}
 	}
-	u.Graph.DelNode(probe.Root)
+	if err := u.Graph.DelNode(probe.Root); err != nil {
+		logging.GetLogger().Error(err)
+	}
 
 	delete(u.netNsProbes, nsString)
 }

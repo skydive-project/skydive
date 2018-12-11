@@ -46,7 +46,13 @@ func (c *clusterCache) addClusterNode() {
 	defer c.graph.Unlock()
 
 	m := graph.Metadata{"Name": ClusterName}
-	clusterNode = c.graph.NewNode(graph.GenID(), NewMetadata(Manager, "cluster", m, nil, ClusterName), "")
+
+	var err error
+	clusterNode, err = c.graph.NewNode(graph.GenID(), NewMetadata(Manager, "cluster", m, nil, ClusterName), "")
+	if err != nil {
+		logging.GetLogger().Error(err)
+		return
+	}
 	c.NotifyEvent(graph.NodeAdded, clusterNode)
 	logging.GetLogger().Debugf("Added cluster{Name: %s}", ClusterName)
 }
@@ -92,11 +98,18 @@ func newClusterLinker(g *graph.Graph, manager string, types ...string) probe.Pro
 		}
 	}
 
-	return graph.NewResourceLinker(
+	rl := graph.NewResourceLinker(
 		g,
 		nil,
 		handlers,
 		&clusterLinker{g: g},
 		topology.OwnershipMetadata(),
 	)
+
+	linker := &Linker{
+		ResourceLinker: rl,
+	}
+	rl.AddEventListener(linker)
+
+	return linker
 }

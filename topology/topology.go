@@ -25,7 +25,7 @@ package topology
 import (
 	"fmt"
 
-	"github.com/nu7hatch/gouuid"
+	uuid "github.com/nu7hatch/gouuid"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
@@ -145,7 +145,13 @@ func AddOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, met
 	}
 
 	id, _ := uuid.NewV5(uuid.NamespaceOID, []byte(parent.ID+child.ID+OwnershipLink))
-	return g.NewEdge(graph.Identifier(id.String()), parent, child, m, h...)
+	edge, err := g.NewEdge(graph.Identifier(id.String()), parent, child, m, h...)
+	if err != nil {
+		logging.GetLogger().Error(err)
+		return nil
+	}
+
+	return edge
 }
 
 // HaveLayer2Link returns true if parent and child have the same layer 2
@@ -161,7 +167,13 @@ func AddLayer2Link(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, metadat
 	}
 
 	id, _ := uuid.NewV5(uuid.NamespaceOID, []byte(node1.ID+node2.ID+Layer2Link))
-	return g.NewEdge(graph.Identifier(id.String()), node1, node2, m)
+	edge, err := g.NewEdge(graph.Identifier(id.String()), node1, node2, m)
+	if err != nil {
+		logging.GetLogger().Error(err)
+		return nil
+	}
+
+	return edge
 }
 
 // IsInterfaceUp returns whether an interface has the flag UP set

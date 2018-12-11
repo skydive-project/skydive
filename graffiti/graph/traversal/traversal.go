@@ -521,7 +521,7 @@ func (t *GraphTraversal) V(ctx StepContext, s ...interface{}) *GraphTraversalV {
 	var err error
 
 	if t.error != nil {
-		return &GraphTraversalV{error: t.error}
+		return &GraphTraversalV{GraphTraversal: t, error: t.error}
 	}
 
 	t.RLock()
@@ -531,16 +531,16 @@ func (t *GraphTraversal) V(ctx StepContext, s ...interface{}) *GraphTraversalV {
 	case 1:
 		id, ok := s[0].(string)
 		if !ok {
-			return &GraphTraversalV{error: errors.New("V accepts only a string when there is only one argument")}
+			return &GraphTraversalV{GraphTraversal: t, error: errors.New("V accepts only a string when there is only one argument")}
 		}
 		node := t.Graph.GetNode(graph.Identifier(id))
 		if node == nil {
-			return &GraphTraversalV{error: fmt.Errorf("Node '%s' does not exist", id)}
+			return &GraphTraversalV{GraphTraversal: t, error: fmt.Errorf("Node '%s' does not exist", id)}
 		}
 		nodes = []*graph.Node{node}
 	default:
 		if matcher, err = ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...); err != nil {
-			return &GraphTraversalV{error: err}
+			return &GraphTraversalV{GraphTraversal: t, error: err}
 		}
 		fallthrough
 	case 0:
@@ -700,11 +700,11 @@ func (tv *GraphTraversalV) As(ctx StepContext, keys ...interface{}) *GraphTraver
 	}
 
 	if len(keys) != 1 {
-		return &GraphTraversalV{error: errors.New("As parameter have to be a string key")}
+		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: errors.New("As parameter have to be a string key")}
 	}
 	key, ok := keys[0].(string)
 	if !ok {
-		return &GraphTraversalV{error: errors.New("As parameter have to be a string key")}
+		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: errors.New("As parameter have to be a string key")}
 	}
 
 	tv.GraphTraversal.as[key] = &GraphTraversalAs{nodes: tv.nodes}
@@ -720,19 +720,19 @@ func (tv *GraphTraversalV) G() *GraphTraversal {
 // Select implements the SELECT gremlin step
 func (tv *GraphTraversalV) Select(ctx StepContext, keys ...interface{}) *GraphTraversalV {
 	if len(keys) == 0 {
-		return &GraphTraversalV{error: errors.New("Select requires at least one key")}
+		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: errors.New("Select requires at least one key")}
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
 	for _, k := range keys {
 		key, ok := k.(string)
 		if !ok {
-			return &GraphTraversalV{error: errors.New("Select accepts only string parameters")}
+			return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: errors.New("Select accepts only string parameters")}
 		}
 
 		as, ok := tv.GraphTraversal.as[key]
 		if !ok {
-			return &GraphTraversalV{error: fmt.Errorf("Key %s not registered. Need to be registered using 'As' step", key)}
+			return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: fmt.Errorf("Key %s not registered. Need to be registered using 'As' step", key)}
 		}
 
 		ntv.nodes = append(ntv.nodes, as.nodes...)
@@ -748,7 +748,7 @@ func (t *GraphTraversal) E(ctx StepContext, s ...interface{}) *GraphTraversalE {
 	var err error
 
 	if t.error != nil {
-		return &GraphTraversalE{error: t.error}
+		return &GraphTraversalE{GraphTraversal: t, error: t.error}
 	}
 
 	t.RLock()
@@ -758,7 +758,7 @@ func (t *GraphTraversal) E(ctx StepContext, s ...interface{}) *GraphTraversalE {
 	case 1:
 		id, ok := s[0].(string)
 		if !ok {
-			return &GraphTraversalE{error: errors.New("E accepts only a string when there is only one argument")}
+			return &GraphTraversalE{GraphTraversal: t, error: errors.New("E accepts only a string when there is only one argument")}
 		}
 		edge := t.Graph.GetEdge(graph.Identifier(id))
 		if edge == nil {
@@ -767,7 +767,7 @@ func (t *GraphTraversal) E(ctx StepContext, s ...interface{}) *GraphTraversalE {
 		edges = []*graph.Edge{edge}
 	default:
 		if matcher, err = ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...); err != nil {
-			return &GraphTraversalE{error: err}
+			return &GraphTraversalE{GraphTraversal: t, error: err}
 		}
 		fallthrough
 	case 0:
@@ -862,7 +862,7 @@ func (tv *GraphTraversalV) Sort(ctx StepContext, keys ...interface{}) *GraphTrav
 
 	sortOrder, sortBy, err := ParseSortParameter(keys...)
 	if err != nil {
-		return &GraphTraversalV{error: err}
+		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: err}
 	}
 
 	if sortBy == "" {
@@ -885,7 +885,7 @@ func (tv *GraphTraversalV) Dedup(ctx StepContext, s ...interface{}) *GraphTraver
 		for _, key := range s {
 			k, ok := key.(string)
 			if !ok {
-				return &GraphTraversalV{error: errors.New("Dedup parameters have to be string keys")}
+				return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: errors.New("Dedup parameters have to be string keys")}
 			}
 			keys = append(keys, k)
 		}
@@ -1006,17 +1006,17 @@ func (tv *GraphTraversalV) has(filterOp filters.BoolFilterOp, ctx StepContext, s
 	var filter *filters.Filter
 	switch len(s) {
 	case 0:
-		return &GraphTraversalV{error: errors.New("At least one parameter must be provided")}
+		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: errors.New("At least one parameter must be provided")}
 	case 1:
 		k, ok := s[0].(string)
 		if !ok {
-			return &GraphTraversalV{error: errors.New("Key must be a string")}
+			return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: errors.New("Key must be a string")}
 		}
 		filter = filters.NewNotNullFilter(k)
 	default:
 		filter, err = ParamsToFilter(filterOp, s...)
 		if err != nil {
-			return &GraphTraversalV{error: err}
+			return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: err}
 		}
 	}
 
@@ -1086,7 +1086,7 @@ func (tv *GraphTraversalV) Both(ctx StepContext, s ...interface{}) *GraphTravers
 
 	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
-		return &GraphTraversalV{error: err}
+		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: err}
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
@@ -1152,7 +1152,7 @@ func (tv *GraphTraversalV) Range(ctx StepContext, s ...interface{}) *GraphTraver
 		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: nodes}
 	}
 
-	return &GraphTraversalV{error: errors.New("2 parameters must be provided to 'range'")}
+	return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: errors.New("2 parameters must be provided to 'range'")}
 }
 
 // Limit step
@@ -1168,7 +1168,7 @@ func (tv *GraphTraversalV) Out(ctx StepContext, s ...interface{}) *GraphTraversa
 
 	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
-		return &GraphTraversalV{error: err}
+		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: err}
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
@@ -1199,7 +1199,7 @@ func (tv *GraphTraversalV) OutE(ctx StepContext, s ...interface{}) *GraphTravers
 
 	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
-		return &GraphTraversalE{error: err}
+		return &GraphTraversalE{GraphTraversal: tv.GraphTraversal, error: err}
 	}
 
 	nte := &GraphTraversalE{GraphTraversal: tv.GraphTraversal, edges: []*graph.Edge{}}
@@ -1263,7 +1263,7 @@ func (tv *GraphTraversalV) In(ctx StepContext, s ...interface{}) *GraphTraversal
 
 	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
-		return &GraphTraversalV{error: err}
+		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: err}
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
@@ -1335,8 +1335,8 @@ func (tv *GraphTraversalV) SubGraph(ctx StepContext, s ...interface{}) *GraphTra
 
 	// first insert all the nodes
 	for _, n := range tv.nodes {
-		if !memory.NodeAdded(n) {
-			return &GraphTraversal{error: errors.New("Error while adding node to SubGraph")}
+		if err := memory.NodeAdded(n); err != nil {
+			return &GraphTraversal{error: fmt.Errorf("Error while adding node to SubGraph: %s", err)}
 		}
 	}
 
@@ -1345,7 +1345,11 @@ func (tv *GraphTraversalV) SubGraph(ctx StepContext, s ...interface{}) *GraphTra
 	for _, n := range tv.nodes {
 		edges := tv.GraphTraversal.Graph.GetNodeEdges(n, nil)
 		for _, e := range edges {
-			memory.EdgeAdded(e)
+			switch err := memory.EdgeAdded(e); err {
+			case nil, graph.ErrParentNotFound, graph.ErrChildNotFound, graph.ErrEdgeConflict:
+			default:
+				return &GraphTraversal{error: fmt.Errorf("Error while adding edge to SubGraph: %s", err)}
+			}
 		}
 	}
 
@@ -1371,8 +1375,8 @@ func (sp *GraphTraversalShortestPath) SubGraph(ctx StepContext, s ...interface{}
 	// first insert all the nodes
 	for _, p := range sp.paths {
 		for _, n := range p {
-			if !memory.NodeAdded(n) {
-				return &GraphTraversal{error: errors.New("Error while adding node to SubGraph")}
+			if err := memory.NodeAdded(n); err != nil && err != graph.ErrNodeConflict {
+				return &GraphTraversal{error: fmt.Errorf("Error while adding node to SubGraph: %s", err)}
 			}
 		}
 	}
@@ -1380,7 +1384,11 @@ func (sp *GraphTraversalShortestPath) SubGraph(ctx StepContext, s ...interface{}
 		for _, n := range p {
 			edges := sp.GraphTraversal.Graph.GetNodeEdges(n, nil)
 			for _, e := range edges {
-				memory.EdgeAdded(e)
+				switch err := memory.EdgeAdded(e); err {
+				case nil, graph.ErrParentNotFound, graph.ErrChildNotFound, graph.ErrEdgeConflict:
+				default:
+					return &GraphTraversal{error: fmt.Errorf("Error while adding edge to SubGraph: %s", err)}
+				}
 			}
 		}
 	}
@@ -1445,7 +1453,7 @@ func (te *GraphTraversalE) Dedup(ctx StepContext, keys ...interface{}) *GraphTra
 	if len(keys) > 0 {
 		k, ok := keys[0].(string)
 		if !ok {
-			return &GraphTraversalE{error: errors.New("Dedup parameter has to be a string key")}
+			return &GraphTraversalE{GraphTraversal: te.GraphTraversal, error: errors.New("Dedup parameter has to be a string key")}
 		}
 		key = k
 	}
@@ -1482,17 +1490,17 @@ func (te *GraphTraversalE) has(filterOp filters.BoolFilterOp, ctx StepContext, s
 	var filter *filters.Filter
 	switch len(s) {
 	case 0:
-		return &GraphTraversalE{error: errors.New("At least one parameter must be provided")}
+		return &GraphTraversalE{GraphTraversal: te.GraphTraversal, error: errors.New("At least one parameter must be provided")}
 	case 1:
 		k, ok := s[0].(string)
 		if !ok {
-			return &GraphTraversalE{error: errors.New("Key must be a string")}
+			return &GraphTraversalE{GraphTraversal: te.GraphTraversal, error: errors.New("Key must be a string")}
 		}
 		filter = filters.NewNotNullFilter(k)
 	default:
 		filter, err = ParamsToFilter(filterOp, s...)
 		if err != nil {
-			return &GraphTraversalE{error: err}
+			return &GraphTraversalE{GraphTraversal: te.GraphTraversal, error: err}
 		}
 	}
 
@@ -1562,7 +1570,7 @@ func (te *GraphTraversalE) InV(ctx StepContext, s ...interface{}) *GraphTraversa
 
 	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
-		return &GraphTraversalV{error: err}
+		return &GraphTraversalV{GraphTraversal: te.GraphTraversal, error: err}
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: te.GraphTraversal, nodes: []*graph.Node{}}
@@ -1593,7 +1601,7 @@ func (te *GraphTraversalE) OutV(ctx StepContext, s ...interface{}) *GraphTravers
 
 	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
-		return &GraphTraversalV{error: err}
+		return &GraphTraversalV{GraphTraversal: te.GraphTraversal, error: err}
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: te.GraphTraversal, nodes: []*graph.Node{}}
@@ -1619,12 +1627,12 @@ func (te *GraphTraversalE) OutV(ctx StepContext, s ...interface{}) *GraphTravers
 // BothV step, nodes in/out
 func (te *GraphTraversalE) BothV(ctx StepContext, s ...interface{}) *GraphTraversalV {
 	if te.error != nil {
-		return &GraphTraversalV{error: te.error}
+		return &GraphTraversalV{GraphTraversal: te.GraphTraversal, error: te.error}
 	}
 
 	metadata, err := ParamsToMetadataFilter(filters.BoolFilterOp_AND, s...)
 	if err != nil {
-		return &GraphTraversalV{error: err}
+		return &GraphTraversalV{GraphTraversal: te.GraphTraversal, error: err}
 	}
 
 	ntv := NewGraphTraversalV(te.GraphTraversal, []*graph.Node{})
@@ -1673,19 +1681,19 @@ func (te *GraphTraversalE) SubGraph(ctx StepContext, s ...interface{}) *GraphTra
 	for _, e := range te.edges {
 		parents, children := te.GraphTraversal.Graph.GetEdgeNodes(e, nil, nil)
 		for _, child := range children {
-			if !memory.NodeAdded(child) {
-				return &GraphTraversal{error: errors.New("Error while adding node to SubGraph")}
+			if err := memory.NodeAdded(child); err != nil && err != graph.ErrNodeConflict {
+				return &GraphTraversal{error: fmt.Errorf("Error while adding node to SubGraph: %s", err)}
 			}
 		}
 
 		for _, parent := range parents {
-			if !memory.NodeAdded(parent) {
-				return &GraphTraversal{error: errors.New("Error while adding node to SubGraph")}
+			if err := memory.NodeAdded(parent); err != nil && err != graph.ErrNodeConflict {
+				return &GraphTraversal{error: fmt.Errorf("Error while adding node to SubGraph: %s", err)}
 			}
 		}
 
-		if !memory.EdgeAdded(e) {
-			return &GraphTraversal{error: errors.New("Error while adding edge to SubGraph")}
+		if err := memory.EdgeAdded(e); err != nil && err != graph.ErrEdgeConflict {
+			return &GraphTraversal{error: fmt.Errorf("Error while adding edge to SubGraph: %s", err)}
 		}
 	}
 

@@ -119,7 +119,14 @@ func newResourceLinker(g *graph.Graph, subprobes map[string]Subprobe, srcType st
 	dstIndexer := graph.NewMetadataIndexer(g, dstCache, graph.Metadata{"Type": dstType}, dstAttrs...)
 	dstIndexer.Start()
 
-	return graph.NewMetadataIndexerLinker(g, srcIndexer, dstIndexer, edgeMetadata)
+	ml := graph.NewMetadataIndexerLinker(g, srcIndexer, dstIndexer, edgeMetadata)
+
+	linker := &Linker{
+		ResourceLinker: ml.ResourceLinker,
+	}
+	ml.AddEventListener(linker)
+
+	return linker
 }
 
 func objectToNode(g *graph.Graph, object metav1.Object) (node *graph.Node) {

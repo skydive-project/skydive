@@ -23,6 +23,7 @@
 package graph
 
 import (
+	"errors"
 	"sync/atomic"
 )
 
@@ -31,6 +32,11 @@ const (
 	CacheOnlyMode int = iota
 	PersistentOnlyMode
 	DefaultMode
+)
+
+// Cachebackend graph errors
+var (
+	ErrCacheBackendModeUnknown = errors.New("Cache backend mode unknown")
 )
 
 // CachedBackend describes a cache mechanism in memory and/or persistent database
@@ -46,35 +52,56 @@ func (c *CachedBackend) SetMode(mode int) {
 }
 
 // NodeAdded same the node in the cache
-func (c *CachedBackend) NodeAdded(n *Node) bool {
+func (c *CachedBackend) NodeAdded(n *Node) error {
 	mode := c.cacheMode.Load()
 
-	r := false
+	var added bool
+
 	if mode != PersistentOnlyMode {
-		r = c.memory.NodeAdded(n)
+		if err := c.memory.NodeAdded(n); err != nil {
+			return err
+		}
+		added = true
 	}
 
 	if mode != CacheOnlyMode {
-		r = c.persistent.NodeAdded(n)
+		if err := c.persistent.NodeAdded(n); err != nil {
+			return err
+		}
+		added = true
 	}
 
-	return r
+	if !added {
+		return ErrCacheBackendModeUnknown
+	}
+
+	return nil
 }
 
 // NodeDeleted Delete the node in the cache
-func (c *CachedBackend) NodeDeleted(n *Node) bool {
+func (c *CachedBackend) NodeDeleted(n *Node) error {
 	mode := c.cacheMode.Load()
 
-	r := false
+	var deleted bool
+
 	if mode != PersistentOnlyMode {
-		r = c.memory.NodeDeleted(n)
+		if err := c.memory.NodeDeleted(n); err != nil {
+			return err
+		}
+		deleted = true
 	}
 
 	if mode != CacheOnlyMode {
-		r = c.persistent.NodeDeleted(n)
+		if err := c.persistent.NodeDeleted(n); err != nil {
+			return err
+		}
 	}
 
-	return r
+	if !deleted {
+		return ErrCacheBackendModeUnknown
+	}
+
+	return nil
 }
 
 // GetNode retrieve a node from the cache within a time slice
@@ -108,35 +135,57 @@ func (c *CachedBackend) GetNodeEdges(n *Node, t Context, m ElementMatcher) (edge
 }
 
 // EdgeAdded add an edge in the cache
-func (c *CachedBackend) EdgeAdded(e *Edge) bool {
+func (c *CachedBackend) EdgeAdded(e *Edge) error {
 	mode := c.cacheMode.Load()
 
-	r := false
+	var added bool
+
 	if mode != PersistentOnlyMode {
-		r = c.memory.EdgeAdded(e)
+		if err := c.memory.EdgeAdded(e); err != nil {
+			return err
+		}
+		added = true
 	}
 
 	if mode != CacheOnlyMode {
-		r = c.persistent.EdgeAdded(e)
+		if err := c.persistent.EdgeAdded(e); err != nil {
+			return err
+		}
+		added = true
 	}
 
-	return r
+	if !added {
+		return ErrCacheBackendModeUnknown
+	}
+
+	return nil
 }
 
 // EdgeDeleted delete an edge in the cache
-func (c *CachedBackend) EdgeDeleted(e *Edge) bool {
+func (c *CachedBackend) EdgeDeleted(e *Edge) error {
 	mode := c.cacheMode.Load()
 
-	r := false
+	var deleted bool
+
 	if mode != PersistentOnlyMode {
-		r = c.memory.EdgeDeleted(e)
+		if err := c.memory.EdgeDeleted(e); err != nil {
+			return err
+		}
+		deleted = true
 	}
 
 	if mode != CacheOnlyMode {
-		r = c.persistent.EdgeDeleted(e)
+		if err := c.persistent.EdgeDeleted(e); err != nil {
+			return err
+		}
+		deleted = true
 	}
 
-	return r
+	if !deleted {
+		return ErrCacheBackendModeUnknown
+	}
+
+	return nil
 }
 
 // GetEdge retrieve an edge within a time slice
@@ -170,19 +219,30 @@ func (c *CachedBackend) GetEdgeNodes(e *Edge, t Context, parentMetadata, childMe
 }
 
 // MetadataUpdated updates metadata
-func (c *CachedBackend) MetadataUpdated(i interface{}) bool {
+func (c *CachedBackend) MetadataUpdated(i interface{}) error {
 	mode := c.cacheMode.Load()
 
-	r := false
+	var updated bool
+
 	if mode != CacheOnlyMode {
-		r = c.persistent.MetadataUpdated(i)
+		if err := c.persistent.MetadataUpdated(i); err != nil {
+			return err
+		}
+		updated = true
 	}
 
 	if mode != PersistentOnlyMode {
-		r = c.memory.MetadataUpdated(i)
+		if err := c.memory.MetadataUpdated(i); err != nil {
+			return err
+		}
+		updated = true
 	}
 
-	return r
+	if !updated {
+		return ErrCacheBackendModeUnknown
+	}
+
+	return nil
 }
 
 // GetNodes returns a list of nodes with a time slice, matching metadata

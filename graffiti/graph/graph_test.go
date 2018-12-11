@@ -43,8 +43,8 @@ func newGraph(t *testing.T) *Graph {
 func TestLinks(t *testing.T) {
 	g := newGraph(t)
 
-	n1 := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
-	n2 := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
+	n1, _ := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
+	n2, _ := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
 
 	g.NewEdge(GenID(), n1, n2, nil)
 	if !g.AreLinked(n1, n2, nil) {
@@ -70,8 +70,8 @@ func TestLinks(t *testing.T) {
 func TestAreLinkedWithMetadata(t *testing.T) {
 	g := newGraph(t)
 
-	n1 := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
-	n2 := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
+	n1, _ := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
+	n2, _ := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
 
 	g.Link(n1, n2, Metadata{"Type": "aaa"})
 	if !g.AreLinked(n1, n2, nil) {
@@ -90,8 +90,8 @@ func TestAreLinkedWithMetadata(t *testing.T) {
 func TestFirstLinkDoesExist(t *testing.T) {
 	g := newGraph(t)
 
-	n1 := g.NewNode(GenID(), Metadata{"Type": "intf"})
-	n2 := g.NewNode(GenID(), Metadata{"Type": "intf"})
+	n1, _ := g.NewNode(GenID(), Metadata{"Type": "intf"})
+	n2, _ := g.NewNode(GenID(), Metadata{"Type": "intf"})
 
 	g.Link(n1, n2, Metadata{})
 
@@ -107,8 +107,8 @@ func TestFirstLinkDoesExist(t *testing.T) {
 func TestFirstLinkIsCorrect(t *testing.T) {
 	g := newGraph(t)
 
-	n1 := g.NewNode(GenID(), Metadata{"Type": "intf"})
-	n2 := g.NewNode(GenID(), Metadata{"Type": "intf"})
+	n1, _ := g.NewNode(GenID(), Metadata{"Type": "intf"})
+	n2, _ := g.NewNode(GenID(), Metadata{"Type": "intf"})
 
 	g.Link(n2, n1, Metadata{"Field": "other"})
 	expected := "me"
@@ -127,8 +127,8 @@ func TestFirstLinkIsCorrect(t *testing.T) {
 func TestGetFirstLinkLoop(t *testing.T) {
 	g := newGraph(t)
 
-	n1 := g.NewNode(GenID(), Metadata{"Type": "intf"})
-	n2 := g.NewNode(GenID(), Metadata{"Type": "intf"})
+	n1, _ := g.NewNode(GenID(), Metadata{"Type": "intf"})
+	n2, _ := g.NewNode(GenID(), Metadata{"Type": "intf"})
 
 	g.Link(n2, n2, Metadata{})
 
@@ -148,10 +148,10 @@ func TestGetFirstLinkLoop(t *testing.T) {
 func TestBasicLookup(t *testing.T) {
 	g := newGraph(t)
 
-	n1 := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
-	n2 := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
-	n3 := g.NewNode(GenID(), Metadata{"Value": 3})
-	n4 := g.NewNode(GenID(), Metadata{"Value": 4, "Name": "Node4"})
+	n1, _ := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
+	n2, _ := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
+	n3, _ := g.NewNode(GenID(), Metadata{"Value": 3})
+	n4, _ := g.NewNode(GenID(), Metadata{"Value": 4, "Name": "Node4"})
 
 	g.NewEdge(GenID(), n1, n2, nil)
 	g.NewEdge(GenID(), n2, n3, nil)
@@ -180,7 +180,7 @@ func TestBasicLookup(t *testing.T) {
 func TestBasicLookupMultipleTypes(t *testing.T) {
 	g := newGraph(t)
 
-	n1 := g.NewNode(GenID(), Metadata{"Value": int32(1), "Type": float64(44.5)})
+	n1, _ := g.NewNode(GenID(), Metadata{"Value": int32(1), "Type": float64(44.5)})
 
 	if g.LookupFirstNode(Metadata{"Value": uint64(1)}) != nil {
 		t.Error("Should return no node")
@@ -198,10 +198,10 @@ func TestBasicLookupMultipleTypes(t *testing.T) {
 func TestHierarchyLookup(t *testing.T) {
 	g := newGraph(t)
 
-	n1 := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
-	n2 := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
-	n3 := g.NewNode(GenID(), Metadata{"Value": 3})
-	n4 := g.NewNode(GenID(), Metadata{"Value": 4, "Name": "Node4"})
+	n1, _ := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
+	n2, _ := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
+	n3, _ := g.NewNode(GenID(), Metadata{"Value": 3})
+	n4, _ := g.NewNode(GenID(), Metadata{"Value": 4, "Name": "Node4"})
 
 	g.Link(n1, n2, nil)
 	g.Link(n2, n3, nil)
@@ -262,10 +262,10 @@ func TestPath(t *testing.T) {
 		return expected == strings.Join(values, "/")
 	}
 
-	n1 := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
-	n2 := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
-	n3 := g.NewNode(GenID(), Metadata{"Value": 3})
-	n4 := g.NewNode(GenID(), Metadata{"Value": 4, "Name": "Node4"})
+	n1, _ := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
+	n2, _ := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
+	n3, _ := g.NewNode(GenID(), Metadata{"Value": 3})
+	n4, _ := g.NewNode(GenID(), Metadata{"Value": 4, "Name": "Node4"})
 
 	g.Link(n1, n2, Metadata{"Type": "Layer2"})
 	g.Link(n2, n3, Metadata{"Type": "Layer2"})
@@ -314,17 +314,17 @@ func TestPath(t *testing.T) {
 	//   \-- n11 -- n12---------------- n5
 	//                \                /
 	//                 \-- n121 -- n122
-	n5 := g.NewNode(GenID(), Metadata{"Value": 5, "Name": "Node5"})
+	n5, _ := g.NewNode(GenID(), Metadata{"Value": 5, "Name": "Node5"})
 	g.Link(n4, n5, Metadata{"Type": "Layer2"})
 
-	n11 := g.NewNode(GenID(), Metadata{"Value": 11, "Name": "Node11"})
-	n12 := g.NewNode(GenID(), Metadata{"Value": 12, "Name": "Node12"})
+	n11, _ := g.NewNode(GenID(), Metadata{"Value": 11, "Name": "Node11"})
+	n12, _ := g.NewNode(GenID(), Metadata{"Value": 12, "Name": "Node12"})
 	g.Link(n1, n11, Metadata{"Type": "Layer2"})
 	g.Link(n11, n12, Metadata{"Type": "Layer2"})
 	g.Link(n12, n5, Metadata{"Type": "Layer2"})
 
-	n121 := g.NewNode(GenID(), Metadata{"Value": 121, "Name": "Node121"})
-	n122 := g.NewNode(GenID(), Metadata{"Value": 122, "Name": "Node122"})
+	n121, _ := g.NewNode(GenID(), Metadata{"Value": 121, "Name": "Node121"})
+	n122, _ := g.NewNode(GenID(), Metadata{"Value": 122, "Name": "Node122"})
 
 	g.Link(n12, n121, Metadata{"Type": "Layer2"})
 	g.Link(n121, n122, Metadata{"Type": "Layer2"})
@@ -340,7 +340,7 @@ func nodeExpand(g *Graph, nodes []*Node, n int, level int) []*Node {
 	var ret []*Node
 	for _, node := range nodes {
 		for i := 0; i < n; i++ {
-			n := g.NewNode(GenID(), Metadata{"Value": level*1000 + i, "Name": fmt.Sprintf("Node%d-%d", level, i)})
+			n, _ := g.NewNode(GenID(), Metadata{"Value": level*1000 + i, "Name": fmt.Sprintf("Node%d-%d", level, i)})
 			g.Link(node, n, Metadata{"Type": "Layer2"})
 			ret = append(ret, n)
 		}
@@ -357,8 +357,8 @@ func nodeCollapse(g *Graph, nodes []*Node, nodeEnd *Node) {
 func TestComplexPath(t *testing.T) {
 	g := newGraph(t)
 
-	nstart := g.NewNode(GenID(), Metadata{"Value": 1, "Name": "NodeStart"})
-	nend := g.NewNode(GenID(), Metadata{"Value": 1, "Name": "NodeEnd"})
+	nstart, _ := g.NewNode(GenID(), Metadata{"Value": 1, "Name": "NodeStart"})
+	nend, _ := g.NewNode(GenID(), Metadata{"Value": 1, "Name": "NodeEnd"})
 
 	nprev := nodeExpand(g, []*Node{nstart}, 10, 1)
 	for i := 2; i < 4; i++ { // test complexity limit, as test.timeout = 1min
@@ -380,7 +380,7 @@ func TestComplexPath(t *testing.T) {
 func TestMetadata(t *testing.T) {
 	g := newGraph(t)
 
-	n := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
+	n, _ := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
 
 	g.AddMetadata(n, "Name", "Node1")
 	v, _ := n.GetFieldString("Name")
@@ -408,7 +408,7 @@ func TestMetadata(t *testing.T) {
 func TestMetadataTransaction(t *testing.T) {
 	g := newGraph(t)
 
-	n := g.NewNode(GenID(), Metadata{"Type": "intf", "Section": []string{"A1", "A2"}})
+	n, _ := g.NewNode(GenID(), Metadata{"Type": "intf", "Section": []string{"A1", "A2"}})
 	g.AddMetadata(n, "Label.List1", "EL1")
 	g.AddMetadata(n, "Label.List2", "EL2")
 
@@ -480,17 +480,17 @@ func TestEvents(t *testing.T) {
 	l := &FakeListener{}
 	g.AddEventListener(l)
 
-	n1 := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
+	n1, _ := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
 	if l.lastNodeAdded.ID != n1.ID {
 		t.Error("Didn't get the notification")
 	}
 
-	n2 := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
+	n2, _ := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
 	if l.lastNodeAdded.ID != n2.ID {
 		t.Error("Didn't get the notification")
 	}
 
-	e := g.NewEdge(GenID(), n1, n2, nil)
+	e, _ := g.NewEdge(GenID(), n1, n2, nil)
 	if l.lastEdgeAdded.ID != e.ID {
 		t.Error("Didn't get the notification")
 	}

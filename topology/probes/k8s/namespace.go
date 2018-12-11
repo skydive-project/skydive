@@ -29,7 +29,7 @@ import (
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -65,5 +65,12 @@ func newNamespaceLinker(g *graph.Graph, manager string, types ...string) probe.P
 	objectIndexer := newObjectIndexerFromFilter(g, g, objectFilter, MetadataFields("Namespace")...)
 	objectIndexer.Start()
 
-	return graph.NewMetadataIndexerLinker(g, namespaceIndexer, objectIndexer, topology.OwnershipMetadata())
+	ml := graph.NewMetadataIndexerLinker(g, namespaceIndexer, objectIndexer, topology.OwnershipMetadata())
+
+	linker := &Linker{
+		ResourceLinker: ml.ResourceLinker,
+	}
+	ml.AddEventListener(linker)
+
+	return linker
 }

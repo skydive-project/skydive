@@ -120,7 +120,7 @@ func NewHub(server *shttp.Server, g *graph.Graph, cached *graph.CachedBackend, a
 	}
 
 	podWSServer := websocket.NewStructServer(newWSServer(podEndpoint, clusterAuthBackend))
-	_, err := NewTopologyAgentEndpoint(podWSServer, cached, g)
+	_, err := NewTopologyPodEndpoint(podWSServer, cached, g)
 	if err != nil {
 		return nil, err
 	}

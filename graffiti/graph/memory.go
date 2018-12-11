@@ -22,6 +22,8 @@
 
 package graph
 
+import "fmt"
+
 // MemoryBackendNode a memory backend node
 type MemoryBackendNode struct {
 	*Node
@@ -40,32 +42,36 @@ type MemoryBackend struct {
 	edges map[Identifier]*MemoryBackendEdge
 }
 
-// MetadataUpdated returns true
-func (m *MemoryBackend) MetadataUpdated(i interface{}) bool {
-	return true
+// MetadataUpdated return true
+func (m *MemoryBackend) MetadataUpdated(i interface{}) error {
+	return nil
 }
 
 // EdgeAdded event add an edge in the memory backend
-func (m *MemoryBackend) EdgeAdded(e *Edge) bool {
+func (m *MemoryBackend) EdgeAdded(e *Edge) error {
+	if _, ok := m.edges[e.ID]; ok {
+		return ErrEdgeConflict
+	}
+
 	edge := &MemoryBackendEdge{
 		Edge: e,
 	}
 
 	parent, ok := m.nodes[e.Parent]
 	if !ok {
-		return false
+		return ErrParentNotFound
 	}
 
 	child, ok := m.nodes[e.Child]
 	if !ok {
-		return false
+		return ErrChildNotFound
 	}
 
 	m.edges[e.ID] = edge
 	parent.edges[e.ID] = edge
 	child.edges[e.ID] = edge
 
-	return true
+	return nil
 }
 
 // GetEdge in the graph backend
@@ -78,14 +84,23 @@ func (m *MemoryBackend) GetEdge(i Identifier, t Context) []*Edge {
 
 // GetEdgeNodes returns a list of nodes of an edge
 func (m *MemoryBackend) GetEdgeNodes(e *Edge, t Context, parentMetadata, childMetadata ElementMatcher) ([]*Node, []*Node) {
-	var parent *MemoryBackendNode
-	if n, ok := m.nodes[e.Parent]; ok && n.MatchMetadata(parentMetadata) {
-		parent = n
+	var parent, child *MemoryBackendNode
+
+	p, ok := m.nodes[e.Parent]
+	if !ok {
+		panic(fmt.Errorf("not able to find parent node for edge: %+v", e))
+	}
+	if p.MatchMetadata(parentMetadata) {
+		parent = p
 	}
 
-	var child *MemoryBackendNode
-	if n, ok := m.nodes[e.Child]; ok && n.MatchMetadata(childMetadata) {
-		child = n
+	c, ok := m.nodes[e.Child]
+	if !ok {
+		panic(fmt.Errorf("not able to find child node for edge: %+v", e))
+	}
+
+	if c.MatchMetadata(childMetadata) {
+		child = c
 	}
 
 	if parent == nil || child == nil {
@@ -96,13 +111,17 @@ func (m *MemoryBackend) GetEdgeNodes(e *Edge, t Context, parentMetadata, childMe
 }
 
 // NodeAdded in the graph backend
-func (m *MemoryBackend) NodeAdded(n *Node) bool {
+func (m *MemoryBackend) NodeAdded(n *Node) error {
+	if _, ok := m.nodes[n.ID]; ok {
+		return ErrNodeConflict
+	}
+
 	m.nodes[n.ID] = &MemoryBackendNode{
 		Node:  n,
 		edges: make(map[Identifier]*MemoryBackendEdge),
 	}
 
-	return true
+	return nil
 }
 
 // GetNode from the graph backend
@@ -129,9 +148,9 @@ func (m *MemoryBackend) GetNodeEdges(n *Node, t Context, meta ElementMatcher) []
 }
 
 // EdgeDeleted in the graph backend
-func (m *MemoryBackend) EdgeDeleted(e *Edge) bool {
+func (m *MemoryBackend) EdgeDeleted(e *Edge) error {
 	if _, ok := m.edges[e.ID]; !ok {
-		return false
+		return ErrEdgeNotFound
 	}
 
 	if parent, ok := m.nodes[e.Parent]; ok {
@@ -144,15 +163,18 @@ func (m *MemoryBackend) EdgeDeleted(e *Edge) bool {
 
 	delete(m.edges, e.ID)
 
-	return true
+	return nil
 }
 
 // NodeDeleted in the graph backend
-func (m *MemoryBackend) NodeDeleted(n *Node) (removed bool) {
-	if _, removed = m.nodes[n.ID]; removed {
-		delete(m.nodes, n.ID)
+func (m *MemoryBackend) NodeDeleted(n *Node) error {
+	if _, ok := m.nodes[n.ID]; !ok {
+		return ErrNodeNotFound
 	}
-	return
+
+	delete(m.nodes, n.ID)
+
+	return nil
 }
 
 // GetNodes from the graph backend
