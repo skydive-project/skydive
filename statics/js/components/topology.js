@@ -542,8 +542,8 @@ var TopologyComponent = {
     },
 
     addFilter: function(label, gremlin) {
-      var options = $(".topology-gremlin-favorites");
-      options.append($("<option/>").val(label).attr('gremlin', gremlin));
+      $(".topology-gremlin-favorites").append($("<option/>").val(label).attr('gremlin', gremlin));
+      $(".topology-highlight-list").append($("<option/>").val(label).attr('gremlin', gremlin));
     },
 
     gremlinK8sTypes: function(types) {
@@ -568,8 +568,8 @@ var TopologyComponent = {
 
     setGremlinFavoritesFromConfig: function() {
       var self = this;
-      var options = $(".topology-gremlin-favorites");
-      options.children().remove();
+      $(".topology-gremlin-favorites").children().remove();
+      $(".topology-highlight-list").children().remove();
       if (typeof(Storage) !== "undefined" && localStorage.preferences) {
         var favorites = JSON.parse(localStorage.preferences).favorites;
         if (favorites) {
@@ -614,10 +614,11 @@ var TopologyComponent = {
       var opts = document.getElementById(listId).childNodes;
       for (var i = 0; i < opts.length; i++) {
         if (opts[i].value === val) {
-          this.topologyFilter = opts[i].getAttribute("gremlin");
           if (e.target.id === "topology-filter") {
+            this.topologyFilter = opts[i].getAttribute("gremlin");
             this.topologyFilterQuery();
           } else if (e.target.id === "topology-highlight") {
+            this.topologyEmphasize = opts[i].getAttribute("gremlin");
             this.emphasizeGremlinExpr();
           }
         }
