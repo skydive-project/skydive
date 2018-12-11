@@ -69,11 +69,13 @@ func (probe *Probe) containerNamespace(pid int) string {
 	return fmt.Sprintf("/proc/%d/ns/net", pid)
 }
 
+type initProcessStart int64
+
 type containerState struct {
 	path             string
-	ID               string `json:"id"`
-	InitProcessPid   int    `json:"init_process_pid"`
-	InitProcessStart int64  `json:"init_process_start"`
+	ID               string           `json:"id"`
+	InitProcessPid   int              `json:"init_process_pid"`
+	InitProcessStart initProcessStart `json:"init_process_start"`
 	Config           struct {
 		Labels []string `json:"labels"`
 	} `json:"config"`
@@ -83,6 +85,23 @@ type createConfig struct {
 	Image   string
 	ImageID string
 	Labels  map[string]interface{}
+}
+
+// UnmarshalJSON custom marshall to handle both string and int64
+func (ips *initProcessStart) UnmarshalJSON(data []byte) error {
+	var v interface{}
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+
+	i, err := common.ToInt64(v)
+	if err != nil {
+		return err
+	}
+
+	*ips = initProcessStart(i)
+
+	return nil
 }
 
 func getLabels(raw []string) map[string]interface{} {
@@ -109,6 +128,9 @@ func getLabels(raw []string) map[string]interface{} {
 func getCreateConfig(path string) (*createConfig, error) {
 	body, err := ioutil.ReadFile(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("Unable to read create config %s: %s", path, err)
 	}
 
@@ -129,7 +151,7 @@ func getStatus(state *containerState) string {
 	if err != nil {
 		return "stopped"
 	}
-	if info.Start != state.InitProcessStart || info.State == common.Zombie || info.State == common.Dead {
+	if info.Start != int64(state.InitProcessStart) || info.State == common.Zombie || info.State == common.Dead {
 		return "stopped"
 	}
 	base := path.Base(state.path)
