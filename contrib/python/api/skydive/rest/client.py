@@ -29,6 +29,7 @@ except ImportError:
 from skydive.auth import Authenticate
 from skydive.graph import Node, Edge
 from skydive.rules import NodeRule, EdgeRule
+from skydive.alerts import Alert
 
 
 class BadRequest(Exception):
@@ -128,6 +129,25 @@ class RESTClient:
 
     def capture_delete(self, capture_id):
         path = "/api/capture/%s" % capture_id
+        return self.request(path, method="DELETE")
+
+    def alert_create(self, action, expression, trigger="graph"):
+        data = json.dumps(
+            {
+                "Action": action,
+                "Expression": expression,
+                "Trigger": trigger
+            }
+        )
+        a = self.request("/api/alert", method="POST", data=data)
+        return Alert.from_object(a)
+
+    def alert_list(self):
+        objs = self.request("/api/alert")
+        return [Alert.from_object(o) for o in objs.values()]
+
+    def alert_delete(self, alert_id):
+        path = "/api/alert/%s" % alert_id
         return self.request(path, method="DELETE")
 
     def noderule_create(self, action, metadata=None, query=""):
