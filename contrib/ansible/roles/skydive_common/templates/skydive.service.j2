@@ -1,13 +1,15 @@
 [Unit]
 Description={{ service_name }}
+{% if skydive_container_cli == 'docker' %}
 After=docker.service
+{% endif %}
 
 [Service]
 EnvironmentFile=-/etc/environment
 EnvironmentFile=-/etc/sysconfig/{{ service_name }}
 {% if exec_start_pre is defined %}
 ExecStartPre=-{{ exec_start_pre }}
-ExecStartPre=-/usr/bin/docker rm {{ service_name }}-{{ ansible_hostname }}
+ExecStartPre=-/usr/bin/{{ skydive_container_cli }} rm {{ service_name }}-{{ ansible_hostname }}
 {% endif %}
 ExecStart={{ exec_start }}
 {% if exec_start_post is defined %}
