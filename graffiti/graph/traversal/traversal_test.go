@@ -222,6 +222,18 @@ func TestTraversalWithin(t *testing.T) {
 	}
 }
 
+func TestTraversalWithout(t *testing.T) {
+	g := newTransversalGraph(t)
+	ctx := StepContext{}
+
+	tr := NewGraphTraversal(g, false)
+
+	tv := tr.V(ctx).Has(ctx, "Value", Without(1, 3))
+	if len(tv.Values()) != 2 {
+		t.Fatalf("Should return 2 nodes, returned: %v", tv.Values())
+	}
+}
+
 func TestTraversalLt(t *testing.T) {
 	g := newTransversalGraph(t)
 	ctx := StepContext{}
