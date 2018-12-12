@@ -25,3 +25,6 @@ skydive_os_service_insecure: true
 
 skydive_cluster_username: skydive
 skydive_cluster_password: secret
+
+skydive_sys_username: skydive
+skydive_sys_groupname: skydive
