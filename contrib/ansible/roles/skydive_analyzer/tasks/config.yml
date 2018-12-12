@@ -107,25 +107,15 @@
     state: present
   when: skydive_auth_type is not none
 
-- name: Define API basic auth users file
+- name: Define API basic auth user
   yedit:
     src: "{{ skydive_config_file }}"
     edits:
         - key: "auth.api.type"
           value: "basic"
-        - key: "auth.api.file"
-          value: "{{ skydive_basic_auth_file }}"
+        - key: "auth.api.users.{{ skydive_username }}"
+          value: "{{ skydive_password }}"
     state: present
-  when: skydive_auth_type == "basic"
-
-- name: Create API basic auth users file
-  htpasswd:
-    path: "{{ skydive_basic_auth_file }}"
-    name: "{{ skydive_username }}"
-    password: "{{ skydive_password }}"
-    owner: root
-    group: root
-    mode: 0640
   when: skydive_auth_type == "basic"
 
 - name: Define API keystone user authentication parameters
