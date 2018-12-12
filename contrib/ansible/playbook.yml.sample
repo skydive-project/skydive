@@ -1,4 +1,8 @@
 ---
+- name: Setup localhost
+  hosts: localhost
+  connection: local
+
 - name: Gather facts
   hosts: all
   tasks:
@@ -7,12 +11,12 @@
 
 - name: Deploy Skydive agents
   hosts: agents
-  become: true
+  become: yes
   roles:
   - skydive_agent
 
 - name: Deploy Skydive analyzers
   hosts: analyzers
-  become: true
+  become: yes
   roles:
   - skydive_analyzer
