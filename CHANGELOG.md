@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.20.1] - 2018-12-13
+### Changed
+- Fix ansible playbook/roles for tripleo deployment
+
 ## [0.20.0] - 2018-10-08
 ### Changed
 - Switch to gopacket master branch
