@@ -206,6 +206,23 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 		}
 
 		return filters.NewOrFilter(orFilters...), nil
+	case *WithoutElementMatcher:
+		var andFilters []*filters.Filter
+		for _, val := range v.List {
+			switch v := val.(type) {
+			case string:
+				andFilters = append(andFilters, filters.NewNotFilter(filters.NewTermStringFilter(k, v)))
+			default:
+				i, err := common.ToInt64(v)
+				if err != nil {
+					return nil, err
+				}
+
+				andFilters = append(andFilters, filters.NewNotFilter(filters.NewTermInt64Filter(k, i)))
+			}
+		}
+
+		return filters.NewAndFilter(andFilters...), nil
 	case string:
 		return filters.NewTermStringFilter(k, v), nil
 	case int64:
@@ -296,12 +313,12 @@ func Within(s ...interface{}) *WithinElementMatcher {
 
 // WithoutElementMatcher describes a list of metadata that shouldn't match (without)
 type WithoutElementMatcher struct {
-	list []interface{}
+	List []interface{}
 }
 
 // Without predicate
 func Without(s ...interface{}) *WithoutElementMatcher {
-	return &WithoutElementMatcher{list: s}
+	return &WithoutElementMatcher{List: s}
 }
 
 // NEElementMatcher describes a list of metadata that match NotEqual
