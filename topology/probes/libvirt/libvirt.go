@@ -112,7 +112,8 @@ func (probe *Probe) getDomainInterfaces(
 	for _, itf := range d.Interfaces {
 		if constraint == "" || constraint == itf.Alias.Name {
 			itf.Host = domainNode
-			interfaces = append(interfaces, &itf)
+			itfObj := itf
+			interfaces = append(interfaces, &itfObj)
 		}
 	}
 	return
