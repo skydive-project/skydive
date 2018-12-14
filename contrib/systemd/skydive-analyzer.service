@@ -7,6 +7,8 @@ Type=simple
 EnvironmentFile=-/etc/sysconfig/skydive-analyzer
 ExecStart=/usr/bin/skydive analyzer $SKYDIVE_ANALYZER_OPTIONS --conf /etc/skydive/skydive.yml
 Restart=on-failure
+User=skydive
+Group=skydive
 
 [Install]
 WantedBy=multi-user.target

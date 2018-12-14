@@ -49,6 +49,8 @@ BuildRequires:  llvm clang kernel-headers
 %endif
 BuildRequires:  selinux-policy-devel, policycoreutils-devel
 Requires:       %{name}-selinux = %{version}-%{release}
+Requires:       libpcap libxml2
+Requires(pre):  shadow-utils
 
 # This is used by the specfile-update-bundles script to automatically
 # generate the list of the Go libraries bundled into the Skydive binaries
@@ -127,6 +129,7 @@ make -f /usr/share/selinux/devel/Makefile -C contrib/packaging/rpm/ skydive.pp
 bzip2 contrib/packaging/rpm/skydive.pp
 
 %install
+mkdir -p %{buildroot}/%{_localstatedir}/lib/skydive
 install -D -p -m 755 %{_builddir}/skydive-%{fullver}/bin/skydive %{buildroot}%{_bindir}/skydive
 ln -s skydive %{buildroot}%{_bindir}/skydive-cli
 for bin in agent analyzer
@@ -143,6 +146,13 @@ cp -R contrib/ansible/* %{buildroot}/%{_datadir}/skydive-ansible/
 install -D -m 644 contrib/packaging/rpm/skydive.pp.bz2 %{buildroot}%{_datadir}/selinux/packages/skydive.pp.bz2
 install -D -m 644 contrib/packaging/rpm/skydive.if %{buildroot}%{_datadir}/selinux/devel/include/contrib/skydive.if
 install -D -m 644 contrib/packaging/rpm/skydive-selinux.8 %{buildroot}%{_mandir}/man8/skydive-selinux.8
+
+%pre
+getent group skydive >/dev/null || groupadd -r skydive
+getent passwd skydive >/dev/null || \
+    useradd -r -g skydive -d /var/lib/skydive -s /sbin/nologin \
+    -c "Skydive user" skydive
+exit 0
 
 %post agent
 if %{_sbindir}/selinuxenabled && [ "$1" = "1" ] ; then
@@ -212,7 +222,8 @@ fi
 %{_bindir}/skydive
 %{_bindir}/skydive-cli
 %{_sysconfdir}/bash_completion.d/skydive-bash-completion.sh
-%config(noreplace) %{_sysconfdir}/skydive/skydive.yml
+%config(noreplace) %attr(0640, skydive, skydive) %{_sysconfdir}/skydive/skydive.yml
+%attr(0700, skydive, skydive) %{_localstatedir}/lib/skydive/
 
 %files agent
 %config(noreplace) %{_sysconfdir}/sysconfig/skydive-agent
