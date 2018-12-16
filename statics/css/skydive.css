@@ -987,3 +987,10 @@ input[type=number] {
   appearance: none;
 
 }
+
+.layout-building-error {
+  color: white;
+  font-size: 2em;
+  text-align: center;
+  background-color: #292e34;
+}

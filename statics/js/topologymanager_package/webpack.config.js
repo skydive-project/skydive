@@ -1,10 +1,12 @@
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const WebpackBabelExternalsPlugin = require('webpack-babel-external-helpers-2');
 const path = require('path');
+const webpack = require('webpack');
 
 module.exports = {
     entry: [
         path.resolve(__dirname, 'src/index.ts'),
+        path.resolve(__dirname, "node_modules/d3-hierarchy/dist/d3-hierarchy.js")
     ],
     output: {
         filename: 'topologypackage.js',
@@ -31,6 +33,7 @@ module.exports = {
         ]
     },
     plugins: [
+        new webpack.IgnorePlugin(/^d3$/),
         new WebpackBabelExternalsPlugin(),
     ]
 };

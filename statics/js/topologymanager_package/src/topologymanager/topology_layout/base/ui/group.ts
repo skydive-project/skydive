@@ -22,12 +22,15 @@ export class GroupUI implements GroupUII {
     useLayoutContext(layoutContext: LayoutContext) {
         this.layoutContext = layoutContext
     }
+
     createRoot(g: any) {
         this.g = g.append("g").attr('class', 'groups').selectAll(".group");
     }
+
     get root() {
         return this.g;
     }
+
     tick() {
     }
 

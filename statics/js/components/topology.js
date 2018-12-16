@@ -11,6 +11,7 @@ var TopologyComponent = {
   template: '\
     <div class="topology">\
       <div class="col-sm-7 fill content">\
+        <div class="layout-building-error" v-if="layoutBuildingError">{{layoutBuildingError}}</div>\
         <div class="topology-d3">\
           <div class="topology-legend">\
             <strong>Topology view</strong></br>\
@@ -263,6 +264,7 @@ var TopologyComponent = {
         'Neutron.IPV4': false,
         'Neutron.IPV6': false,
       },
+      layoutBuildingError: ""
     };
   },
 
@@ -858,6 +860,10 @@ var TopologyComponent = {
       return mdata;
     },
 
+    onImpossibleToBuildRequestedTopology: function(error) {
+      this.layoutBuildingError = error;
+    }
+
   },
 
 };
@@ -1144,6 +1150,7 @@ Graph.prototype = {
   },
 
   init: function(g) {
+    this.notifyHandlers('syncTopology', g);
     var n, e, i;
     for (i in g.Nodes) {
       n = g.Nodes[i];

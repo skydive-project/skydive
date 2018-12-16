@@ -192,3 +192,9 @@ hr {
 .input-group-addon {
   color: black;
 }
+
+.layout-building-error {
+  color: black;
+  background-color: #eee;
+}
+

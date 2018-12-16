@@ -12,6 +12,7 @@ declare global {
         $: any;
         WebSocket: any;
         topologyComponent: any;
+        nodeImgMap: any;
     }
 }
 window.TopologyORegistry = {
