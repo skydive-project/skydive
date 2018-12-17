@@ -1280,11 +1280,12 @@
 			"revisionTime": "2017-06-12T17:47:53Z"
 		},
 		{
-			"checksumSHA1": "ISe56iKTfCZCoQnnMplP5HCRmFY=",
+			"checksumSHA1": "YUHv0o6NCXLJGQ5nR8f8f0IK/ZI=",
 			"comment": "v1.1.11-106-gbdf4ee7",
+			"origin": "github.com/dvandra/gopacket",
 			"path": "github.com/google/gopacket",
-			"revision": "d78765a6cecd9fcdd509444f5239ee13ebe3e2e6",
-			"revisionTime": "2018-10-08T16:23:22Z"
+			"revision": "19136fda3e0283c21dc7612023dd30bae4f2b34e",
+			"revisionTime": "2018-12-03T09:29:26Z"
 		},
 		{
 			"checksumSHA1": "6BWy22N/CkrCUB61/lCZtLUp/A0=",
@@ -1299,11 +1300,12 @@
 			"revisionTime": "2018-10-08T16:23:22Z"
 		},
 		{
-			"checksumSHA1": "kGk/c2dtyEtqN2wUpoIIHphu9Vg=",
+			"checksumSHA1": "baIB2C2/qWoVqPgCK3CGbfBXxPg=",
 			"comment": "v1.1.11-106-gbdf4ee7",
+			"origin": "github.com/dvandra/gopacket/layers",
 			"path": "github.com/google/gopacket/layers",
-			"revision": "d78765a6cecd9fcdd509444f5239ee13ebe3e2e6",
-			"revisionTime": "2018-10-08T16:23:22Z"
+			"revision": "19136fda3e0283c21dc7612023dd30bae4f2b34e",
+			"revisionTime": "2018-12-03T09:29:26Z"
 		},
 		{
 			"checksumSHA1": "xDZ93qPS7HY5SkgjHGjHtgfZRjY=",

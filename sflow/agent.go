@@ -34,6 +34,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -56,6 +57,8 @@ type Agent struct {
 	Conn       *net.UDPConn
 	BPFFilter  string
 	HeaderSize uint32
+	Graph      *graph.Graph
+	Node       *graph.Node
 }
 
 // AgentAllocator describes an SFlow agent allocator to manage multiple SFlow agent probe
@@ -91,6 +94,8 @@ func (sfa *Agent) feedFlowTable() {
 		p := gopacket.NewPacket(buf[:n], layers.LayerTypeSFlow, gopacket.DecodeOptions{NoCopy: true})
 		sflowLayer := p.Layer(layers.LayerTypeSFlow)
 		sflowPacket, ok := sflowLayer.(*layers.SFlowDatagram)
+		logging.GetLogger().Debugf("value of p %s", p)
+
 		if !ok {
 			logging.GetLogger().Errorf("Unable to decode sFlow packet: %s", p)
 			continue
@@ -103,7 +108,11 @@ func (sfa *Agent) feedFlowTable() {
 				// records each generating Packets.
 				sfa.FlowTable.FeedWithSFlowSample(&sample, bpf)
 			}
+			sfa.Graph.Lock()
+			sfa.Graph.AddMetadata(sfa.Node, "Sflow-Counters", sflowPacket.CounterSamples)
+			sfa.Graph.Unlock()
 		}
+
 	}
 }
 
@@ -146,7 +155,7 @@ func (sfa *Agent) Stop() {
 }
 
 // NewAgent creates a new sFlow agent which will populate the given flowtable
-func NewAgent(u string, a *common.ServiceAddress, ft *flow.Table, bpfFilter string, headerSize uint32) *Agent {
+func NewAgent(u string, a *common.ServiceAddress, ft *flow.Table, bpfFilter string, headerSize uint32, n *graph.Node, g *graph.Graph) *Agent {
 	if headerSize == 0 {
 		headerSize = flow.DefaultCaptureLength
 	}
@@ -158,6 +167,8 @@ func NewAgent(u string, a *common.ServiceAddress, ft *flow.Table, bpfFilter stri
 		FlowTable:  ft,
 		BPFFilter:  bpfFilter,
 		HeaderSize: headerSize,
+		Graph:      g,
+		Node:       n,
 	}
 }
 
@@ -192,7 +203,7 @@ func (a *AgentAllocator) ReleaseAll() {
 }
 
 // Alloc allocates a new sFlow agent
-func (a *AgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter string, headerSize uint32, addr *common.ServiceAddress) (agent *Agent, _ error) {
+func (a *AgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter string, headerSize uint32, addr *common.ServiceAddress, n *graph.Node, g *graph.Graph) (agent *Agent, _ error) {
 	a.Lock()
 	defer a.Unlock()
 
@@ -210,7 +221,7 @@ func (a *AgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter string, he
 			return nil, errors.New("failed to allocate sflow port: " + err.Error())
 		}
 	}
-	s := NewAgent(uuid, addr, ft, bpfFilter, headerSize)
+	s := NewAgent(uuid, addr, ft, bpfFilter, headerSize, n, g)
 
 	a.agents = append(a.agents, s)
 
