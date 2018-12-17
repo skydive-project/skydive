@@ -28,6 +28,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 
+	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -55,6 +56,26 @@ func newIngressProbe(client interface{}, g *graph.Graph) Subprobe {
 	return NewResourceCache(client.(*kubernetes.Clientset).ExtensionsV1beta1().RESTClient(), &v1beta1.Ingress{}, "ingresses", g, &ingressHandler{})
 }
 
+func ingressServiceAreLinked(a, b interface{}) bool {
+	ingress := a.(*v1beta1.Ingress)
+	service := b.(*v1.Service)
+
+	if ingress.Spec.Backend != nil && ingress.Spec.Backend.ServiceName == service.Name {
+		return true
+	}
+
+	for _, rule := range ingress.Spec.Rules {
+		if rule.HTTP != nil {
+			for _, path := range rule.HTTP.Paths {
+				if path.Backend.ServiceName == service.Name {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 func newIngressServiceLinker(g *graph.Graph) probe.Probe {
-	return newResourceLinker(g, GetSubprobesMap(Manager), "ingress", MetadataFields("Namespace", "Backend.ServiceName"), "service", MetadataFields("Namespace", "Name"), graph.Metadata{"RelationType": "ingress"})
+	return NewABLinker(g, Manager, "ingress", Manager, "service", ingressServiceAreLinked)
 }
