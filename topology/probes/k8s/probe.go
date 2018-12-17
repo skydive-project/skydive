@@ -50,6 +50,16 @@ func GetSubprobesMap(manager string) map[string]Subprobe {
 	return subprobes[manager]
 }
 
+// ListSubprobes returns the list of Subprobe as ListernerHandler
+func ListSubprobes(manager string, types ...string) (handlers []graph.ListenerHandler) {
+	for _, t := range types {
+		if subprobe := GetSubprobe(Manager, t); subprobe != nil {
+			handlers = append(handlers, subprobe)
+		}
+	}
+	return
+}
+
 func int32ValueOrDefault(value *int32, defaultValue int32) int32 {
 	if value == nil {
 		return defaultValue

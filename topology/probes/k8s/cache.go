@@ -237,14 +237,9 @@ func (c *ResourceCache) OnDelete(obj interface{}) {
 
 // NewResourceCache returns a new cache using the associed Kubernetes
 // client and with the handler for the resource that this cache manages.
-func NewResourceCache(restClient rest.Interface, objType runtime.Object, resources string, g *graph.Graph, handler ResourceHandler, optionalEventHandler ...*graph.EventHandler) *ResourceCache {
-	eventHandler := graph.NewEventHandler(100)
-	if len(optionalEventHandler) == 1 {
-		eventHandler = optionalEventHandler[0]
-	}
-
+func NewResourceCache(restClient rest.Interface, objType runtime.Object, resources string, g *graph.Graph, handler ResourceHandler) *ResourceCache {
 	c := &ResourceCache{
-		EventHandler: eventHandler,
+		EventHandler: graph.NewEventHandler(100),
 		graph:        g,
 		handler:      handler,
 	}

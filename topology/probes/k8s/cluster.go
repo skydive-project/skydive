@@ -32,8 +32,6 @@ import (
 // ClusterName is the name of the k8s cluster
 const ClusterName = "cluster"
 
-var clusterEventHandler = graph.NewEventHandler(100)
-
 var clusterNode *graph.Node
 
 type clusterCache struct {
@@ -65,7 +63,7 @@ func (c *clusterCache) Stop() {
 
 func newClusterProbe(clientset interface{}, g *graph.Graph) Subprobe {
 	c := &clusterCache{
-		EventHandler: clusterEventHandler,
+		EventHandler: graph.NewEventHandler(100),
 		graph:        g,
 	}
 	c.addClusterNode()
@@ -91,17 +89,10 @@ func (linker *clusterLinker) GetBALinks(objectNode *graph.Node) (edges []*graph.
 }
 
 func newClusterLinker(g *graph.Graph, manager string, types ...string) probe.Probe {
-	var handlers []graph.ListenerHandler
-	for _, t := range types {
-		if subprobe := GetSubprobe(Manager, t); subprobe != nil {
-			handlers = append(handlers, subprobe)
-		}
-	}
-
 	rl := graph.NewResourceLinker(
 		g,
 		nil,
-		handlers,
+		ListSubprobes(manager, types...),
 		&clusterLinker{g: g},
 		topology.OwnershipMetadata(),
 	)

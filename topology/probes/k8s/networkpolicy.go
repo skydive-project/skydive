@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
@@ -330,16 +329,6 @@ func newNetworkPolicyLinker(g *graph.Graph) probe.Probe {
 		return nil
 	}
 
-	filter := filters.NewAndFilter(
-		filters.NewTermStringFilter("Manager", Manager),
-		filters.NewOrFilter(
-			filters.NewTermStringFilter("Type", "namespace"),
-			filters.NewTermStringFilter("Type", "pod"),
-		),
-	)
-	podNamespaceIndexer := graph.NewMetadataIndexer(g, g, graph.NewElementFilter(filter))
-	podNamespaceIndexer.Start()
-
 	npLinker := &networkPolicyLinker{
 		graph:          g,
 		npCache:        npProbe.(*ResourceCache),
@@ -347,7 +336,7 @@ func newNetworkPolicyLinker(g *graph.Graph) probe.Probe {
 		namespaceCache: namespaceProbe.(*ResourceCache),
 	}
 
-	rl := graph.NewResourceLinker(g, []graph.ListenerHandler{npProbe}, []graph.ListenerHandler{podNamespaceIndexer},
+	rl := graph.NewResourceLinker(g, []graph.ListenerHandler{npProbe}, []graph.ListenerHandler{podProbe, namespaceProbe},
 		npLinker, graph.Metadata{"RelationType": "networkpolicy"})
 
 	linker := &Linker{

@@ -33,8 +33,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-var namespaceEventHandler = graph.NewEventHandler(100)
-
 type namespaceHandler struct {
 }
 
@@ -53,12 +51,12 @@ func (h *namespaceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadat
 }
 
 func newNamespaceProbe(client interface{}, g *graph.Graph) Subprobe {
-	return NewResourceCache(client.(*kubernetes.Clientset).Core().RESTClient(), &v1.Namespace{}, "namespaces", g, &namespaceHandler{}, namespaceEventHandler)
+	return NewResourceCache(client.(*kubernetes.Clientset).Core().RESTClient(), &v1.Namespace{}, "namespaces", g, &namespaceHandler{})
 }
 
 func newNamespaceLinker(g *graph.Graph, manager string, types ...string) probe.Probe {
 	namespaceFilter := newTypesFilter(Manager, "namespace")
-	namespaceIndexer := newObjectIndexerFromFilter(g, namespaceEventHandler, namespaceFilter, MetadataFields("Name")...)
+	namespaceIndexer := newObjectIndexerFromFilter(g, GetSubprobe(Manager, "namespace"), namespaceFilter, MetadataFields("Name")...)
 	namespaceIndexer.Start()
 
 	objectFilter := newTypesFilter(manager, types...)

@@ -199,12 +199,15 @@ type MetadataIndexer struct {
 // NewMetadataIndexer returns a new metadata graph indexer for the nodes
 // matching the graph filter `m`, indexing the metadata with `indexes`
 func NewMetadataIndexer(g *Graph, listenerHandler ListenerHandler, m ElementMatcher, indexes ...string) (indexer *MetadataIndexer) {
+	if len(indexes) == 0 {
+		panic("MetadataIndexer object can't be created with no indexes")
+	}
 	indexer = &MetadataIndexer{
 		indexes: indexes,
 		Indexer: NewIndexer(g, listenerHandler, func(n *Node) (kv map[string]interface{}) {
 			if match := n.MatchMetadata(m); match {
 				kv = make(map[string]interface{})
-				if values, err := getFieldsAsArray(n, indexes); err == nil && len(values) > 0 {
+				if values, err := getFieldsAsArray(n, indexes); err == nil && len(indexes) == len(values) {
 					kv[Hash(values...)] = values
 				}
 			}
