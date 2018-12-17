@@ -56,6 +56,7 @@ type OvsSFlowProbesHandler struct {
 	probes       map[string]OvsSFlowProbe
 	probesLock   common.RWMutex
 	Graph        *graph.Graph
+	Node         *graph.Node
 	fpta         *FlowProbeTableAllocator
 	ovsClient    *ovsdb.OvsClient
 	allocator    *sflow.AgentAllocator
@@ -178,7 +179,7 @@ func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(bridgeUUID string
 }
 
 // RegisterProbeOnBridge registers a new probe on the OVS bridge
-func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid string, capture *types.Capture) error {
+func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid string, capture *types.Capture, n *graph.Node) error {
 	headerSize := flow.DefaultCaptureLength
 	if capture.HeaderSize != 0 {
 		headerSize = uint32(capture.HeaderSize)
@@ -192,7 +193,7 @@ func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid str
 		Interface:  "lo",
 		HeaderSize: headerSize,
 		Sampling:   1,
-		Polling:    0,
+		Polling:    10,
 		flowTable:  ft,
 	}
 
@@ -202,7 +203,7 @@ func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid str
 	}
 
 	addr := common.ServiceAddress{Addr: address, Port: 0}
-	agent, err := o.allocator.Alloc(bridgeUUID, probe.flowTable, capture.BPFFilter, headerSize, &addr)
+	agent, err := o.allocator.Alloc(bridgeUUID, probe.flowTable, capture.BPFFilter, headerSize, &addr, n, o.Graph)
 	if err != nil && err != sflow.ErrAgentAlreadyAllocated {
 		return err
 	}
@@ -231,7 +232,7 @@ func (o *OvsSFlowProbesHandler) registerProbe(n *graph.Node, capture *types.Capt
 
 	if isOvsBridge(n) {
 		if uuid, _ := n.GetFieldString("UUID"); uuid != "" {
-			if err := o.RegisterProbeOnBridge(uuid, tid, capture); err != nil {
+			if err := o.RegisterProbeOnBridge(uuid, tid, capture, n); err != nil {
 				return err
 			}
 			go e.OnStarted()

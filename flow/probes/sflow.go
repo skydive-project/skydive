@@ -107,7 +107,7 @@ func (d *SFlowProbesHandler) registerProbe(n *graph.Node, capture *types.Capture
 	ft := d.fpta.Alloc(tid, opts)
 
 	addr := common.ServiceAddress{Addr: address, Port: capture.Port}
-	if _, err := d.allocator.Alloc(tid, ft, capture.BPFFilter, headerSize, &addr); err != nil {
+	if _, err := d.allocator.Alloc(tid, ft, capture.BPFFilter, headerSize, &addr, n, d.Graph); err != nil {
 		return err
 	}
 
