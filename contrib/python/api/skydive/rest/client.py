@@ -30,6 +30,7 @@ from skydive.auth import Authenticate
 from skydive.graph import Node, Edge
 from skydive.rules import NodeRule, EdgeRule
 from skydive.alerts import Alert
+from skydive.captures import Capture
 
 
 class BadRequest(Exception):
@@ -122,10 +123,12 @@ class RESTClient:
         data = json.dumps(
             {"GremlinQuery": query}
         )
-        return self.request("/api/capture", method="POST", data=data)
+        c = self.request("/api/capture", method="POST", data=data)
+        return Capture.from_object(c)
 
     def capture_list(self):
-        return self.request("/api/capture")
+        objs = self.request("/api/capture")
+        return [Capture.from_object(o) for o in objs.values()]
 
     def capture_delete(self, capture_id):
         path = "/api/capture/%s" % capture_id

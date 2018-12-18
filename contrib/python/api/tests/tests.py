@@ -147,6 +147,27 @@ class SkydiveWSTest(unittest.TestCase):
             "G.E().Has('RelationType', 'layer2')")
         self.assertEqual(len(edges), 1, "should find one an only one edge")
 
+    def test_capture(self):
+        restclient = RESTClient("localhost:8082",
+                                scheme=self.schemeHTTP,
+                                username=self.username,
+                                password=self.password,
+                                insecure=True)
+
+        capture1 = restclient.capture_create(
+            "G.V().Has('Name', 'test', 'Type', 'netns')")
+
+        captures = restclient.capture_list()
+        self.assertGreaterEqual(len(captures), 1, "no capture found")
+
+        for capture in captures:
+            if (capture.uuid == capture1.uuid):
+                found = True
+                break
+        self.assertTrue(found, "created capture not found")
+
+        restclient.capture_delete(capture1.uuid)
+
     def test_alert(self):
         restclient = RESTClient("localhost:8082",
                                 scheme=self.schemeHTTP,
