@@ -1,0 +1,28 @@
+---
+- copy:
+      dest: "/etc/yum.repos.d/fdio-release.repo"
+      content: |
+        [fdio_release]
+        name=fdio_release
+        baseurl=https://packagecloud.io/fdio/release/el/7/$basearch
+        repo_gpgcheck=1
+        gpgcheck=0
+        enabled=1
+        gpgkey=https://packagecloud.io/fdio/release/gpgkey
+        sslverify=1
+        sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+        metadata_expire=300
+    
+- package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+     - vpp
+     - vpp-plugins
+     - vpp-devel
+     - vpp-api-python
+
+- service:
+    name: vpp
+    state: started
+    enabled: yes

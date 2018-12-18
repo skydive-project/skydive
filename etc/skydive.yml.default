@@ -196,6 +196,7 @@ agent:
       # - lldp
       # - libvirt
       # - runc
+      # - vpp
 
     netlink:
       # delay in seconds between two metric updates
@@ -228,6 +229,11 @@ agent:
       run_path:
         # - /var/run/runc
         # - /run/runc-ctrs
+
+    vpp:
+      # VPP API segment prefix connection, default : "" is equivalent to "/dev/shm"
+      # could be use when vpp and skydive are isolated in different container
+      # connect: ""
 
   capture:
     # Period in second to get capture stats from the probe. Note this
