@@ -217,7 +217,7 @@ var TopologyComponent = {
           </div>\
         </panel>\
         <panel id="ovs-metric" v-if="currentNodeOvsMetric"\
-               title="OVS metrics">\
+               title="OVS Metrics">\
           <h2>Total metrics</h2>\
           <metrics-table :object="currentNodeOvsMetric" :keys="globalVars[\'interface-metric-keys\']"></metrics-table>\
           <div v-show="currentNodeOvsLastUpdateMetric && topologyTimeContext === 0">\

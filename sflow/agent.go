@@ -27,6 +27,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -36,6 +37,7 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology"
 )
 
 const (
@@ -109,8 +111,46 @@ func (sfa *Agent) feedFlowTable() {
 				sfa.FlowTable.FeedWithSFlowSample(&sample, bpf)
 			}
 			sfa.Graph.Lock()
-			sfa.Graph.AddMetadata(sfa.Node, "Sflow-Counters", sflowPacket.CounterSamples)
+			sfa.Graph.AddMetadata(sfa.Node, "SFlow.Counters", sflowPacket.CounterSamples)
 			sfa.Graph.Unlock()
+			for _, sample := range sflowPacket.CounterSamples {
+				records := sample.GetRecords()
+				for _, record := range records {
+					t := record.(interface{})
+
+					switch t.(type) {
+					case layers.SFlowGenericInterfaceCounters:
+						var gen layers.SFlowGenericInterfaceCounters
+						gen = t.(layers.SFlowGenericInterfaceCounters)
+						tr := sfa.Graph.StartMetadataTransaction(sfa.Node)
+						currMetric := &topology.InterfaceMetric{
+							Multicast: int64(gen.IfInMulticastPkts),
+							RxDropped: int64(gen.IfInDiscards),
+							RxErrors:  int64(gen.IfInErrors),
+							RxPackets: int64(uint32(gen.IfInUcastPkts) + uint32(gen.IfInMulticastPkts) + uint32(gen.IfInBroadcastPkts)),
+							TxDropped: int64(gen.IfOutDiscards),
+							TxErrors:  int64(gen.IfOutErrors),
+							TxPackets: int64(uint32(gen.IfOutUcastPkts) + uint32(gen.IfOutMulticastPkts) + uint32(gen.IfOutBroadcastPkts)),
+						}
+						now := time.Now()
+						currMetric.Last = int64(common.UnixMillis(now))
+						var prevMetric, lastUpdateMetric *topology.InterfaceMetric
+
+						if metric, err := sfa.Node.GetField("SFlow.Metric"); err == nil {
+							prevMetric = metric.(*topology.InterfaceMetric)
+							lastUpdateMetric = currMetric.Sub(prevMetric).(*topology.InterfaceMetric)
+						}
+						tr.AddMetadata("SFlow.Metric", currMetric)
+						// nothing changed since last update
+						if lastUpdateMetric != nil && !lastUpdateMetric.IsZero() {
+							lastUpdateMetric.Start = prevMetric.Last
+							lastUpdateMetric.Last = int64(common.UnixMillis(now))
+							tr.AddMetadata("SFlow.LastUpdateMetric", lastUpdateMetric)
+						}
+						tr.Commit()
+					}
+				}
+			}
 		}
 
 	}
