@@ -168,23 +168,24 @@ func (n *NodeRule) Validate() error {
 // PacketInjection packet injector API parameters
 type PacketInjection struct {
 	BasicResource
-	Src        string
-	Dst        string
-	SrcIP      string
-	DstIP      string
-	SrcMAC     string
-	DstMAC     string
-	SrcPort    int64
-	DstPort    int64
-	Type       string
-	Payload    string
-	TrackingID string
-	ICMPID     int64
-	Count      int64
-	Interval   int64
-	Increment  bool
-	StartTime  time.Time
-	Pcap       []byte
+	Src              string
+	Dst              string
+	SrcIP            string
+	DstIP            string
+	SrcMAC           string
+	DstMAC           string
+	SrcPort          int64
+	DstPort          int64
+	Type             string
+	Payload          string
+	TrackingID       string
+	ICMPID           int64
+	Count            int64
+	Interval         int64
+	Increment        bool
+	IncrementPayload int64
+	StartTime        time.Time
+	Pcap             []byte
 }
 
 // Validate verifies the packet injection type is supported
