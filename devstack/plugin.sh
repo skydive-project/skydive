@@ -58,6 +58,9 @@ SKYDIVE_FLOWS_STORAGE=${SKYDIVE_FLOWS_STORAGE:-"memory"}
 # Storage used by the analyzer to store the graph
 SKYDIVE_GRAPH_STORAGE=${SKYDIVE_GRAPH_STORAGE:-"memory"}
 
+# Installation mode: source, binary, release
+SKYDIVE_INSTALL_MODE=${SKYDIVE_INSTALL_MODE:-"source"}
+
 # List of public interfaces for the agents to register in fabric
 # ex: "devstack1/eth0 devstack2/eth1"
 if [ "x$PUBLIC_INTERFACE" != "x" ]; then
@@ -124,23 +127,45 @@ function pre_install_skydive {
     fi
 }
 
+function install_from_source {
+    if is_fedora ; then
+        install_package libpcap-devel npm libvirt-devel
+    else
+        install_package libpcap-dev npm libvirt-dev
+    fi
+    SKYDIVE_SRC=$GOPATH/src/github.com/skydive-project
+    mkdir -p $SKYDIVE_SRC
+    if [ ! -d $SKYDIVE_SRC/skydive ]; then
+        mv $DEST/skydive $SKYDIVE_SRC/
+        ln -s $SKYDIVE_SRC/skydive $DEST/skydive
+    fi
+    cd $SKYDIVE_SRC/skydive
+    make install
+
+    sudo ln -s $GOPATH/bin/skydive /usr/bin/skydive
+}
+
+function install_latest_binary {
+    curl -Lo /tmp/skydive https://github.com/skydive-project/skydive-binaries/raw/jenkins-builds/skydive-latest
+    chmod +x /tmp/skydive
+    sudo mv /tmp/skydive /usr/bin/skydive
+}
+
+function install_latest_release {
+    local version=$( curl -s https://api.github.com/repos/skydive-project/skydive/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")' )
+    curl -Lo /tmp/skydive https://github.com/skydive-project/skydive/releases/download/${version}/skydive
+    sudo mv /tmp/skydive /usr/bin/skydive
+}
+
 function install_skydive {
     if [ ! -f $GOPATH/bin/skydive ]; then
-        if is_fedora ; then
-            install_package libpcap-devel npm libvirt-devel
-        else
-            install_package libpcap-dev npm libvirt-dev
-        fi
-        SKYDIVE_SRC=$GOPATH/src/github.com/skydive-project
-        mkdir -p $SKYDIVE_SRC
-        if [ ! -d $SKYDIVE_SRC/skydive ]; then
-            mv $DEST/skydive $SKYDIVE_SRC/
-            ln -s $SKYDIVE_SRC/skydive $DEST/skydive
-        fi
-        cd $SKYDIVE_SRC/skydive
-        make install
+        case $SKYDIVE_INSTALL_MODE in
 
-        sudo ln -s $GOPATH/bin/skydive /usr/bin/skydive
+            source) install_from_source;;
+            binary) install_latest_binary;;
+            release) install_latest_release;;
+
+        esac
     fi
 }
 
@@ -248,14 +273,14 @@ EOF
 
 function start_skydive {
     if is_service_enabled skydive-agent ; then
-        run_process skydive-agent "$GOPATH/bin/skydive agent --conf $SKYDIVE_CONFIG_FILE" "root" "root"
+        run_process skydive-agent "/usr/bin/skydive agent --conf $SKYDIVE_CONFIG_FILE" "root" "root"
     fi
 
     if is_service_enabled skydive-analyzer ; then
         if [ ${USE_ELASTICSEARCH} -eq 1 ]; then
             $TOP_DIR/pkg/elasticsearch.sh start
         fi
-        run_process skydive-analyzer "$GOPATH/bin/skydive analyzer --conf $SKYDIVE_CONFIG_FILE"
+        run_process skydive-analyzer "/usr/bin/skydive analyzer --conf $SKYDIVE_CONFIG_FILE"
     fi
 }
 
@@ -286,6 +311,6 @@ if is_service_enabled skydive-agent || is_service_enabled skydive-analyzer ; the
 
     if [[ "$1" == "unstack" ]]; then
         stop_skydive
-        rm $SKYDIVE_CONFIG_FILE
+        sudo rm $SKYDIVE_CONFIG_FILE
     fi
 fi
