@@ -33,10 +33,6 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/k8s"
 )
 
-const (
-	bookinfo = "https://raw.githubusercontent.com/istio/istio/release-1.0/samples/bookinfo"
-)
-
 /* -- test creation of single resource -- */
 func TestIstioDestinationRuleNode(t *testing.T) {
 	testNodeCreationFromConfig(t, istio.Manager, "destinationrule", objName+"-destinationrule")
@@ -100,15 +96,10 @@ func TestBookInfoScenario(t *testing.T) {
 	testRunner(
 		t,
 		[]Cmd{
-			{"kubectl apply -f " + bookinfo + "/networking/destination-rule-all.yaml", true},
-			{"kubectl apply -f " + bookinfo + "/networking/bookinfo-gateway.yaml", true},
-			{"kubectl apply -f " + bookinfo + "/platform/kube/bookinfo.yaml", true},
+			{"./bookinfo/bookinfo.sh start", true},
 		},
 		[]Cmd{
-			{"istioctl delete virtualservice bookinfo", false},
-			{"istioctl delete gateway bookinfo-gateway", false},
-			{"istioctl delete destinationrule details productpage ratings reviews", false},
-			{"kubectl delete deployment details-v1 productpage-v1 ratings-v1 reviews-v1 reviews-v2 reviews-v3", false},
+			{"./bookinfo/bookinfo.sh stop", false},
 		},
 		[]CheckFunction{
 			func(c *CheckContext) error {
