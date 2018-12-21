@@ -119,11 +119,26 @@ class RESTClient:
     def lookup_edges(self, gremlin):
         return self.lookup(gremlin, Edge)
 
-    def capture_create(self, query):
-        data = json.dumps(
-            {"GremlinQuery": query}
-        )
-        c = self.request("/api/capture", method="POST", data=data)
+    def capture_create(self, query, name="", description="",
+                       extra_tcp_metric=False, ip_defrag=False,
+                       reassemble_tcp=False, layer_key_mode="L2"):
+        data = {
+            "GremlinQuery": query,
+            "LayerKeyMode": layer_key_mode,
+        }
+
+        if name:
+            data["Name"] = name
+        if description:
+            data["Description"] = description
+        if extra_tcp_metric:
+            data["ExtraTCPMetric"] = True
+        if ip_defrag:
+            data["IPDefrag"] = True
+        if reassemble_tcp:
+            data["ReassembleTCP"] = True
+
+        c = self.request("/api/capture", method="POST", data=json.dumps(data))
         return Capture.from_object(c)
 
     def capture_list(self):
