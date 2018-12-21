@@ -154,6 +154,7 @@ function install_latest_binary {
 function install_latest_release {
     local version=$( curl -s https://api.github.com/repos/skydive-project/skydive/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")' )
     curl -Lo /tmp/skydive https://github.com/skydive-project/skydive/releases/download/${version}/skydive
+    chmod +x /tmp/skydive
     sudo mv /tmp/skydive /usr/bin/skydive
 }
 
@@ -166,6 +167,8 @@ function install_skydive {
             release) install_latest_release;;
 
         esac
+
+    	sudo chown root:root /usr/bin/skydive
     fi
 }
 
