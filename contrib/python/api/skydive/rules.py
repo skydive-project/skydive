@@ -46,6 +46,7 @@ class NodeRule(object):
             obj["Description"] = self.description
         if self.query:
             obj["Query"] = self.query
+        return obj
 
     @classmethod
     def from_object(self, obj):
