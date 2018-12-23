@@ -18,6 +18,11 @@ if [ -z "$WITH_NETPOL_FIX" ]; then
 fi
 echo "export WITH_NETPOL_FIX=$WITH_NETPOL_FIX"
 
+if [ -z "$SRVNAME" ]; then
+	SRVNAME=productpage
+fi
+echo "export SRVNAME=$SRVNAME"
+
 apply() {
 	kubectl apply -n $NAMESPACE -f $1
 }
@@ -48,6 +53,11 @@ start() {
 	$WITH_NETPOL_FIX && apply $SCRIPTDIR/bookinfo-networkpolicy-fix.yaml
 }
 
+port_forward() {
+	srvport=$(kubectl get service/$SRVNAME -n $NAMESPACE -o jsonpath='{.spec.ports[0].port}')
+	kubectl port-forward service/$SRVNAME -n $NAMESPACE $srvport:$srvport
+}
+
 case "$1" in
 	stop)
 		stop
@@ -55,8 +65,11 @@ case "$1" in
 	start)
 		start
 		;;
+	port-forward)
+		port_forward
+		;;
 	*)
-		echo "$0 [stop|start|help]"
+		echo "$0 [stop|start|port-forward|help]"
 		exit 1
 		;;
 esac
