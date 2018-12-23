@@ -44,7 +44,7 @@ func newTransversalGraph(t *testing.T) *graph.Graph {
 
 	n1, _ := g.NewNode(graph.GenID(), graph.Metadata{"Value": int64(1), "Type": "intf", "Bytes": int64(1024), "List": []string{"111", "222"}, "Map": map[string]int64{"a": 1}})
 	n2, _ := g.NewNode(graph.GenID(), graph.Metadata{"Value": int64(2), "Type": "intf", "Bytes": int64(2024), "IPV4": []string{"10.0.0.1", "10.0.1.2"}})
-	n3, _ := g.NewNode(graph.GenID(), graph.Metadata{"Value": int64(3), "IPV4": "192.168.0.34/24", "Map": map[string]int64{}})
+	n3, _ := g.NewNode(graph.GenID(), graph.Metadata{"Value": int64(3), "IPV4": "192.168.0.34/24", "Map": map[string]int64{}, "MTU": 1500})
 	n4, _ := g.NewNode(graph.GenID(), graph.Metadata{"Value": int64(4), "Name": "Node4", "Bytes": int64(4024), "IPV4": "192.168.1.34", "Indexes": []int64{5, 6}})
 
 	g.Link(n1, n2, graph.Metadata{"Direction": "Left", "Name": "e1"})
@@ -185,8 +185,8 @@ func TestBasicTraversal(t *testing.T) {
 	}
 
 	props := tr.V(ctx).PropertyKeys(ctx)
-	if len(props.Values()) != 15 {
-		t.Fatalf("Should return 15 properties, returned: %s", props.Values())
+	if len(props.Values()) != 16 {
+		t.Fatalf("Should return 16 properties, returned: %s", props.Values())
 	}
 
 	res := tr.V(ctx).PropertyValues(ctx, "Type")
@@ -319,9 +319,27 @@ func TestTraversalNe(t *testing.T) {
 	}
 
 	// next test
-	tv = tr.V(ctx).Has(ctx, "Type", Ne("intf"))
-	if len(tv.Values()) != 2 {
-		t.Fatalf("Should return 2 nodes, returned: %v", tv.Values())
+	tv = tr.V(ctx).Has(ctx, "MTU", Ne(1200))
+	if len(tv.Values()) != 1 {
+		t.Fatalf("Should return 1 node, returned: %v", tv.Values())
+	}
+
+	// next test
+	tv = tr.V(ctx).Has(ctx, "MTU", Ne(""))
+	if len(tv.Values()) != 1 {
+		t.Fatalf("Should return 1 node, returned: %v", tv.Values())
+	}
+
+	// next test
+	tv = tr.V(ctx).Has(ctx, "MTU", Ne(1500))
+	if len(tv.Values()) != 0 {
+		t.Fatalf("Should return 0 node, returned: %v", tv.Values())
+	}
+
+	// next test
+	tv = tr.V(ctx).Has(ctx, "aaaaaaaaaaa", Ne(""))
+	if len(tv.Values()) != 0 {
+		t.Fatalf("Shouldn't return a node for an unknown key, returned: %v", tv.Values())
 	}
 }
 
@@ -653,10 +671,10 @@ func TestTraversalParser(t *testing.T) {
 	}
 
 	// next traversal test
-	query = `G.V().Has("Type", Ne("intf"))`
+	query = `G.V().Has("MTU", Ne(1200))`
 	res = execTraversalQuery(t, g, query)
-	if len(res.Values()) != 2 {
-		t.Fatalf("Should return 2 nodes, returned: %v", res.Values())
+	if len(res.Values()) != 1 {
+		t.Fatalf("Should return 1 node, returned: %v", res.Values())
 	}
 
 	// next traversal test

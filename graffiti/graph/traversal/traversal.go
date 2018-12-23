@@ -122,18 +122,22 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 
 		return &filters.Filter{RegexFilter: rf}, nil
 	case *NEElementMatcher:
+		var neFilter *filters.Filter
+
 		switch t := v.value.(type) {
 		case string:
-			return filters.NewNotFilter(filters.NewTermStringFilter(k, t)), nil
+			neFilter = filters.NewNotFilter(filters.NewTermStringFilter(k, t))
 		case bool:
-			return filters.NewTermBoolFilter(k, !t), nil
+			neFilter = filters.NewTermBoolFilter(k, !t)
 		default:
 			i, err := common.ToInt64(t)
 			if err != nil {
 				return nil, err
 			}
-			return filters.NewNotFilter(filters.NewTermInt64Filter(k, i)), nil
+			neFilter = filters.NewNotFilter(filters.NewTermInt64Filter(k, i))
 		}
+
+		return filters.NewAndFilter(filters.NewNotNullFilter(k), neFilter), nil
 	case *LTElementMatcher:
 		i, err := common.ToInt64(v.value)
 		if err != nil {
