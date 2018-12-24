@@ -23,8 +23,6 @@
 package server
 
 import (
-	"github.com/nu7hatch/gouuid"
-
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	shttp "github.com/skydive-project/skydive/http"
@@ -48,11 +46,7 @@ func (erh *EdgeRuleResourceHandler) Name() string {
 
 // New creates a new EdgeRule
 func (erh *EdgeRuleResourceHandler) New() types.Resource {
-	id, _ := uuid.NewV4()
-
-	return &types.EdgeRule{
-		UUID: id.String(),
-	}
+	return &types.EdgeRule{}
 }
 
 // RegisterEdgeRuleAPI registers an EdgeRule's API to a designated API Server
