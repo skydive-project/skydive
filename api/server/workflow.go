@@ -20,7 +20,7 @@ package server
 import (
 	"fmt"
 
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 
 	"github.com/skydive-project/skydive/api/types"
 	shttp "github.com/skydive-project/skydive/http"
@@ -52,6 +52,7 @@ func (w *WorkflowResourceHandler) Name() string {
 // Create tests whether the resource is a duplicate or is unique
 func (w *WorkflowAPIHandler) Create(r types.Resource) error {
 	workflow := r.(*types.Workflow)
+
 	for _, resource := range w.Index() {
 		w := resource.(*types.Workflow)
 		if w.Name == workflow.Name {

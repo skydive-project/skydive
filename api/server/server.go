@@ -21,8 +21,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strings"
+
+	yaml "gopkg.in/yaml.v2"
 
 	auth "github.com/abbot/go-http-auth"
 	etcd "github.com/coreos/etcd/client"
@@ -128,7 +131,18 @@ func (a *Server) RegisterAPIHandler(handler Handler, authBackend shttp.Authentic
 
 				resource := handler.New()
 
-				if err := common.JSONDecode(r.Body, &resource); err != nil {
+				var err error
+				if contentType := r.Header.Get("Content-Type"); contentType == "application/yaml" {
+					if content, e := ioutil.ReadAll(r.Body); e == nil {
+						err = yaml.Unmarshal(content, resource)
+					} else {
+						writeError(w, http.StatusBadRequest, err)
+						return
+					}
+				} else {
+					err = common.JSONDecode(r.Body, &resource)
+				}
+				if err != nil {
 					writeError(w, http.StatusBadRequest, err)
 					return
 				}
