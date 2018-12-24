@@ -250,7 +250,7 @@ Vue.component('inject-form', {
         return;
       }
       if (this.mode == "random") {
-        this.payload = (new Array(this.payloadlength)).join("x").toString();
+        this.payload = "x".repeat(this.payloadlength);
       }
       $.ajax({
         dataType: "json",
