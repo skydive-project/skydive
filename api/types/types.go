@@ -103,22 +103,12 @@ func NewCapture(query string, bpfFilter string) *Capture {
 
 // EdgeRule describes a edge rule
 type EdgeRule struct {
-	UUID        string
+	BasicResource
 	Name        string
 	Description string
 	Src         string `valid:"isGremlinExpr"`
 	Dst         string `valid:"isGremlinExpr"`
 	Metadata    graph.Metadata
-}
-
-// ID returns the edge rule ID
-func (e *EdgeRule) ID() string {
-	return e.UUID
-}
-
-// SetID set ID
-func (e *EdgeRule) SetID(id string) {
-	e.UUID = id
 }
 
 // Validate verifies the nodedgee rule does not create invalid edges
@@ -131,22 +121,12 @@ func (e *EdgeRule) Validate() error {
 
 // NodeRule describes a node rule
 type NodeRule struct {
-	UUID        string
+	BasicResource
 	Name        string
 	Description string
 	Metadata    graph.Metadata
 	Action      string `valid:"regexp=^(create|update)$"`
 	Query       string `valid:"isGremlinOrEmpty"`
-}
-
-// ID returns the node rule ID
-func (n *NodeRule) ID() string {
-	return n.UUID
-}
-
-// SetID set ID
-func (n *NodeRule) SetID(id string) {
-	n.UUID = id
 }
 
 // Validate verifies the node rule does not create invalid node or change
