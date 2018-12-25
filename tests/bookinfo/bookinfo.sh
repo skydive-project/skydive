@@ -3,54 +3,48 @@
 SCRIPTDIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 BOOKINFO_URL=https://raw.githubusercontent.com/istio/istio/release-1.0/samples/bookinfo
 
-if [ -z "$NAMESPACE" ]; then
-	NAMESPACE=default
-fi
+[ -z "$NAMESPACE" ] && NAMESPACE=default
 echo "export NAMESPACE=$NAMESPACE"
 
-if [ -z "$WITH_ISTIO" ]; then
-	WITH_ISTIO=false
-fi
+[ -z "$WITH_ISTIO" ] && WITH_ISTIO=false
 echo "export WITH_ISTIO=$WITH_ISTIO"
 
-if [ -z "$WITH_NETPOL_FIX" ]; then
-	WITH_NETPOL_FIX=true
-fi
-echo "export WITH_NETPOL_FIX=$WITH_NETPOL_FIX"
+[ -z "$WITH_NETPOL" ] && WITH_NETPOL=false
+echo "export WITH_NETPOL=$WITH_NETPOL"
 
-if [ -z "$SRVNAME" ]; then
-	SRVNAME=productpage
-fi
+[ -z "$SRVNAME" ] && SRVNAME=productpage
 echo "export SRVNAME=$SRVNAME"
 
-apply() {
-	kubectl apply -n $NAMESPACE -f $1
+create() {
+	for file in "$@"; do
+		kubectl apply -n $NAMESPACE -f $file
+		shift
+	done
 }
 
 delete() {
-	kubectl delete --grace-period=0 --force -n $NAMESPACE -f $1
+	for file in "$@"; do
+		kubectl delete --grace-period=0 --force -n $NAMESPACE -f $file
+		shift
+	done
+}
+
+bookinfo() {
+	$WITH_ISTIO && $1 $BOOKINFO_URL/networking/destination-rule-all.yaml
+	$WITH_ISTIO && $1 $BOOKINFO_URL/networking/bookinfo-gateway.yaml
+	$1 $BOOKINFO_URL/platform/kube/bookinfo.yaml
+	$1 $BOOKINFO_URL/platform/kube/bookinfo-ingress.yaml
+	$WITH_NETPOL && $1 $SCRIPTDIR/*netpol*.yaml
 }
 
 stop() {
-	$WITH_ISTIO && delete $BOOKINFO_URL/networking/destination-rule-all.yaml
-	$WITH_ISTIO && delete $BOOKINFO_URL/networking/bookinfo-gateway.yaml
-	delete $BOOKINFO_URL/platform/kube/bookinfo.yaml
-	delete $BOOKINFO_URL/platform/kube/bookinfo-ingress.yaml
-	delete $SCRIPTDIR/bookinfo-networkpolicy.yaml
-	$WITH_NETPOL_FIX && delete $SCRIPTDIR/bookinfo-networkpolicy-fix.yaml
-
+	bookinfo delete
 	kubectl delete namespace $NAMESPACE
 }
 
 start() {
 	kubectl create namespace $NAMESPACE
-
-	$WITH_ISTIO && apply $BOOKINFO_URL/networking/destination-rule-all.yaml
-	$WITH_ISTIO && apply $BOOKINFO_URL/networking/bookinfo-gateway.yaml
-	apply $BOOKINFO_URL/platform/kube/bookinfo.yaml
-	apply $BOOKINFO_URL/platform/kube/bookinfo-ingress.yaml
-	apply $SCRIPTDIR/bookinfo-networkpolicy.yaml
-	$WITH_NETPOL_FIX && apply $SCRIPTDIR/bookinfo-networkpolicy-fix.yaml
+	bookinfo create
 }
 
 port_forward() {

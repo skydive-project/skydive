@@ -93,13 +93,14 @@ func TestIstioVirtualServicePodScenario(t *testing.T) {
 }
 
 func TestBookInfoScenario(t *testing.T) {
+	bookinfo := "WITH_ISTIO=true ./bookinfo/bookinfo.sh"
 	testRunner(
 		t,
 		[]Cmd{
-			{"./bookinfo/bookinfo.sh start", true},
+			{bookinfo + " start", true},
 		},
 		[]Cmd{
-			{"./bookinfo/bookinfo.sh stop", false},
+			{bookinfo + " stop", false},
 		},
 		[]CheckFunction{
 			func(c *CheckContext) error {
