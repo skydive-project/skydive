@@ -54,12 +54,11 @@ func MetadataFields(fields ...string) []string {
 }
 
 // NewMetadataFields creates internal k8s node metadata struct
-func NewMetadataFields(meta *metav1.ObjectMeta) graph.Metadata {
+func NewMetadataFields(o metav1.Object) graph.Metadata {
 	m := graph.Metadata{}
-	if meta.Namespace != "" {
-		m["Namespace"] = meta.Namespace
-	}
-	m["Name"] = meta.Name
+	m["Name"] = o.GetName()
+	m["Namespace"] = o.GetNamespace()
+	m["Labels"] = o.GetLabels()
 	return m
 }
 
