@@ -28,6 +28,7 @@
           status-context: "skydive-{name}"
           black-list-labels:
             - no-ci
+          white-list: []
 
 - publisher:
     name: publish-cobertura
