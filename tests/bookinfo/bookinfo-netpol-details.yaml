@@ -1,12 +1,13 @@
 kind: NetworkPolicy
 apiVersion: networking.k8s.io/v1
 metadata:
-  name: reviews-v3
+  name: details
+  labels:
+    app: details
 spec:
   podSelector:
     matchLabels:
-      app: reviews
-      version: v3
+      app: details
   ingress:
   - from:
       - podSelector:
