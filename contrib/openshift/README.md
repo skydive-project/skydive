@@ -16,10 +16,13 @@ VERSION=v0.20.1
 oc create -f https://raw.githubusercontent.com/skydive-project/skydive/${VERSION}/contrib/openshift/skydive-template.yaml
 ```
 
-You need the DeploymentConfig to run in privileged:
+Skype analyser and agent need  extended  privileges
 
 ```
-oc adm policy add-scc-to-user privileged system:serviceaccount:skydive:default
+# analyser and agen run as privileged container
+oc adm policy add-scc-to-user privileged -z default
+# analyser need cluster-reader access get all informations from the cluster
+oc adm policy add-cluster-role-to-user cluster-reader -z default
 ```
 
 Instanciate the template:
