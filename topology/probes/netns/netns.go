@@ -151,6 +151,7 @@ func (u *Probe) Register(path string, name string) (*graph.Node, error) {
 
 	// avoid hard link to root ns
 	if u.rootNs.Equal(newns) {
+		logging.GetLogger().Debugf("%s is a privileged namespace", path)
 		return u.Root, nil
 	}
 
