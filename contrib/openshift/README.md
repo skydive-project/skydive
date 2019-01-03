@@ -11,7 +11,9 @@ oc new-project skydive
 Install the template
 
 ```
-oc create -f skydive-template.yaml
+# adjust VERSION for the current version - for example: v0.20.1 or master
+VERSION=v0.20.1
+oc create -f https://raw.githubusercontent.com/skydive-project/skydive/${VERSION}/contrib/openshift/skydive-template.yaml
 ```
 
 You need the DeploymentConfig to run in privileged:
