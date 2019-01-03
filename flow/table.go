@@ -255,7 +255,7 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 			ft.updateMetric(f, updateFrom, updateTime)
 			f.ReportCounter++
 			updatedFlows = append(updatedFlows, f)
-			if f.FinishType != "" {
+			if f.FinishType != FlowFinishType_NOT_FINISHED {
 				delete(ft.table, k)
 			}
 		} else {

@@ -56,9 +56,10 @@ message TransportLayer {
 }
 
 enum FlowFinishType {
-  TIMEOUT = 0;
-  TCP_FIN = 1;
-  TCP_RST = 2;
+  NOT_FINISHED = 0;
+  TIMEOUT = 1;
+  TCP_FIN = 2;
+  TCP_RST = 3;
 }
 
 enum ICMPType {
