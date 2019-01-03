@@ -15,14 +15,6 @@ objects:
     SKYDIVE_ANALYZER_TOPOLOGY_PROBES: ""
     SKYDIVE_ETCD_LISTEN: 0.0.0.0:12379
 - apiVersion: v1
-  kind: ConfigMap
-  metadata:
-    labels:
-      app: skydive-agent
-    name: skydive-agent-config
-  data:
-    SKYDIVE_AGENT_TOPOLOGY_PROBES: "ovsdb runc docker"
-- apiVersion: v1
   kind: Service
   metadata:
     labels:
@@ -167,9 +159,12 @@ objects:
           env:
           - name: SKYDIVE_ANALYZERS
             value: $(SKYDIVE_ANALYZER_SERVICE_HOST):$(SKYDIVE_ANALYZER_SERVICE_PORT_API)
-          envFrom:
-          - configMapRef:
-              name: skydive-agent-config
+          - name: SKYDIVE_LOGGING_LEVEL
+            value: DEBUG
+          - name: SKYDIVE_AGENT_TOPOLOGY_PROBES
+            value: "ovsdb runc docker"
+          - name: SKYDIVE_RUNC_PATH
+            value: "/run/containerd/runc /var/run/runc /var/run/runc-ctrs"
           image: skydive/skydive
           imagePullPolicy: Always
           name: skydive-agent
@@ -182,8 +177,8 @@ objects:
           volumeMounts:
           - mountPath: /var/run/docker.sock
             name: docker
-          - mountPath: /host/run
-            name: run
+          - mountPath: /var/run/netns
+            name: netns
           - mountPath: /var/run/openvswitch/db.sock
             name: ovsdb
           - mountPath: /var/run/runc
@@ -201,12 +196,12 @@ objects:
           name: docker
         - hostPath:
             path: /var/run/netns
-          name: run
+          name: netns
         - hostPath:
-            path: /run/runc
+            path: /var/run/runc
           name: runc
         - hostPath:
-            path: /run/runc-ctrs
+            path: /var/run/runc-ctrs
           name: runc-ctrs
         - hostPath:
             path: /var/run/openvswitch/db.sock
