@@ -228,6 +228,7 @@ agent:
     runc:
       run_path:
         # - /var/run/runc
+        # - /run/runc-ctrs
 
   capture:
     # Period in second to get capture stats from the probe. Note this

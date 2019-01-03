@@ -20,6 +20,8 @@ objects:
     labels:
       app: skydive-agent
     name: skydive-agent-config
+  data:
+    SKYDIVE_AGENT_TOPOLOGY_PROBES: "ovsdb runc docker"
 - apiVersion: v1
   kind: Service
   metadata:
@@ -184,6 +186,10 @@ objects:
             name: run
           - mountPath: /var/run/openvswitch/db.sock
             name: ovsdb
+          - mountPath: /var/run/runc
+            name: runc
+          - mountPath: /var/run/runc-ctrs
+            name: runc-ctrs
         dnsPolicy: ClusterFirst
         hostNetwork: true
         hostPID: true
@@ -196,6 +202,12 @@ objects:
         - hostPath:
             path: /var/run/netns
           name: run
+        - hostPath:
+            path: /run/runc
+          name: runc
+        - hostPath:
+            path: /run/runc-ctrs
+          name: runc-ctrs
         - hostPath:
             path: /var/run/openvswitch/db.sock
           name: ovsdb
