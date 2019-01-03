@@ -29,6 +29,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/skydive-project/skydive/config"
 
@@ -61,7 +62,7 @@ type Address struct {
 }
 
 // DomainStateMap stringifies the state of a domain
-var DomainStateMap map[libvirtgo.DomainState]string = map[libvirtgo.DomainState]string{
+var DomainStateMap = map[libvirtgo.DomainState]string{
 	libvirtgo.DOMAIN_NOSTATE:     "UNDEFINED",
 	libvirtgo.DOMAIN_RUNNING:     "UP",
 	libvirtgo.DOMAIN_BLOCKED:     "BLOCKED",
@@ -214,85 +215,118 @@ func (probe *Probe) deleteDomain(d *libvirtgo.Domain) {
 	}
 }
 
-// Start get all domains attached to a libvirt connection
-func (probe *Probe) Start() {
+func (probe *Probe) tryToConnectToLibvirt() bool {
+	var err error
 	// The event loop must be registered WITH its poll loop active BEFORE the
 	// connection is opened. Otherwise it just does not work.
-	if err := libvirtgo.EventRegisterDefaultImpl(); err != nil {
+	if err = libvirtgo.EventRegisterDefaultImpl(); err != nil {
 		logging.GetLogger().Errorf("libvirt event handler:  %s", err)
+		return false
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	probe.cancel = cancel
-	go func() {
-		for ctx.Err() == nil {
-			if err := libvirtgo.EventRunDefaultImpl(); err != nil {
-				logging.GetLogger().Errorf("libvirt poll loop problem: %s", err)
-			}
-		}
-	}()
-	conn, err := libvirtgo.NewConnectReadOnly(probe.uri)
+	probe.conn, err = libvirtgo.NewConnectReadOnly(probe.uri)
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to create libvirt connect")
-		return
+		return false
 	}
-	probe.conn = conn
-	callback := func(
-		c *libvirtgo.Connect, d *libvirtgo.Domain,
-		event *libvirtgo.DomainEventLifecycle,
-	) {
-		switch event.Event {
-		case libvirtgo.DOMAIN_EVENT_UNDEFINED:
-			probe.deleteDomain(d)
-		case libvirtgo.DOMAIN_EVENT_STARTED:
-			domainNode := probe.createOrUpdateDomain(d)
-			interfaces := probe.getDomainInterfaces(d, domainNode, "")
-			probe.registerInterfaces(interfaces)
-		case libvirtgo.DOMAIN_EVENT_DEFINED, libvirtgo.DOMAIN_EVENT_SUSPENDED,
-			libvirtgo.DOMAIN_EVENT_RESUMED, libvirtgo.DOMAIN_EVENT_STOPPED,
-			libvirtgo.DOMAIN_EVENT_SHUTDOWN, libvirtgo.DOMAIN_EVENT_PMSUSPENDED,
-			libvirtgo.DOMAIN_EVENT_CRASHED:
-			probe.createOrUpdateDomain(d)
-		}
-	}
-	probe.cidLifecycle, err = conn.DomainEventLifecycleRegister(nil, callback)
+	probe.cidLifecycle, err = probe.conn.DomainEventLifecycleRegister(nil, probe.onLibvirtDomainEvent)
 	if err != nil {
 		logging.GetLogger().Errorf(
 			"Could not register the lifecycle event handler %s", err)
+		return false
 	}
-	callbackDeviceAdded := func(
-		c *libvirtgo.Connect, d *libvirtgo.Domain,
-		event *libvirtgo.DomainEventDeviceAdded,
-	) {
-		domainNode := probe.getDomain(d)
-		interfaces := probe.getDomainInterfaces(d, domainNode, event.DevAlias)
-		probe.registerInterfaces(interfaces) // 0 or 1 device changed.
-	}
-	probe.cidDevAdded, err = conn.DomainEventDeviceAddedRegister(nil, callbackDeviceAdded)
+	probe.cidDevAdded, err = probe.conn.DomainEventDeviceAddedRegister(nil, probe.onLibvirtDeviceEvent)
 	if err != nil {
 		logging.GetLogger().Errorf(
 			"Could not register the device added event handler %s", err)
+		return false
 	}
 	domains, err := probe.conn.ListAllDomains(0)
 	if err != nil {
 		logging.GetLogger().Error(err)
-		return
+		return false
 	}
 	for _, domain := range domains {
 		domainNode := probe.createOrUpdateDomain(&domain)
 		interfaces := probe.getDomainInterfaces(&domain, domainNode, "")
 		probe.registerInterfaces(interfaces)
 	}
+
+	return true
+}
+
+func (probe *Probe) onLibvirtDomainEvent(c *libvirtgo.Connect, d *libvirtgo.Domain, event *libvirtgo.DomainEventLifecycle) {
+	switch event.Event {
+	case libvirtgo.DOMAIN_EVENT_UNDEFINED:
+		probe.deleteDomain(d)
+	case libvirtgo.DOMAIN_EVENT_STARTED:
+		domainNode := probe.createOrUpdateDomain(d)
+		interfaces := probe.getDomainInterfaces(d, domainNode, "")
+		probe.registerInterfaces(interfaces)
+	case libvirtgo.DOMAIN_EVENT_DEFINED, libvirtgo.DOMAIN_EVENT_SUSPENDED,
+		libvirtgo.DOMAIN_EVENT_RESUMED, libvirtgo.DOMAIN_EVENT_STOPPED,
+		libvirtgo.DOMAIN_EVENT_SHUTDOWN, libvirtgo.DOMAIN_EVENT_PMSUSPENDED,
+		libvirtgo.DOMAIN_EVENT_CRASHED:
+		probe.createOrUpdateDomain(d)
+	}
+}
+
+func (probe *Probe) onLibvirtDeviceEvent(
+	c *libvirtgo.Connect, d *libvirtgo.Domain,
+	event *libvirtgo.DomainEventDeviceAdded,
+) {
+	domainNode := probe.getDomain(d)
+	interfaces := probe.getDomainInterfaces(d, domainNode, event.DevAlias)
+	probe.registerInterfaces(interfaces) // 0 or 1 device changed.
+}
+
+func (probe *Probe) periodicChecker(ctx context.Context) {
+	var err error
+	var ok bool
+	for ctx.Err() == nil {
+		ok = false
+		err = nil
+		if probe.conn != nil {
+			ok, err = probe.conn.IsAlive()
+		}
+		if err != nil || !ok {
+			ok = probe.tryToConnectToLibvirt()
+			if !ok {
+				time.Sleep(1 * time.Second)
+				continue
+			}
+		}
+		if err = libvirtgo.EventRunDefaultImpl(); err != nil {
+			logging.GetLogger().Errorf("libvirt poll loop problem: %s", err)
+		}
+	}
+}
+
+// Start get all domains attached to a libvirt connection
+func (probe *Probe) Start() {
+	ctx, cancel := context.WithCancel(context.Background())
+	probe.cancel = cancel
+	go probe.periodicChecker(ctx)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				{
+					if probe.cidLifecycle != -1 {
+						probe.conn.DomainEventDeregister(probe.cidLifecycle)
+						probe.conn.DomainEventDeregister(probe.cidDevAdded)
+						probe.conn.Close()
+					}
+					return
+				}
+			}
+		}
+	}()
 }
 
 // Stop stops the probe
 func (probe *Probe) Stop() {
 	probe.cancel()
 	probe.tunProcessor.Stop()
-	if probe.cidLifecycle != -1 {
-		probe.conn.DomainEventDeregister(probe.cidLifecycle)
-		probe.conn.DomainEventDeregister(probe.cidDevAdded)
-	}
-	probe.conn.Close()
 }
 
 // NewProbe creates a libvirt topology probe
