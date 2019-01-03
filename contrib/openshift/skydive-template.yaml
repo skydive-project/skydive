@@ -220,6 +220,8 @@ objects:
   spec:
     port:
       targetPort: api
+    tls:
+      termination: edge
     to:
       kind: Service
       name: skydive-analyzer
