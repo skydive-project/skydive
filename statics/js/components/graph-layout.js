@@ -268,29 +268,7 @@ var TopologyGraphLayout = function(vm, selector) {
     .call(this.zoom)
     .on("dblclick.zoom", null);
 
-  var defsMarker = function(type, target, point) {
-    let id = "arrowhead-"+type+"-"+target+"-"+point;
-
-    let refX = 1.65
-    let refY = 0.15
-    let pathD = "M0,0 L0,0.3 L0.5,0.15 Z"
-    if (type === "egress" || point === "end") {
-      pathD = "M0.5,0 L0.5,0.3 L0,0.15 Z"
-    }
-
-    if (target === "deny") {
-      refX = 1.85
-      refY = 0.3
-      a = "M0.1,0 L0.6,0.5 L0.5,0.6 L0,0.1 Z"
-      b = "M0,0.5 L0.1,0.6 L0.6,0.1 L0.5,0 Z"
-      pathD = a + " " + b
-    }
-
-    let color = "rgb(0, 128, 0, 0.8)"
-    if (target === "deny") {
-      color = "rgba(255, 0, 0, 0.8)"
-    }
-
+  var defsMarker = function(id, refX, refY, color, pathD) {
     self.svg.append("defs").append("marker")
       .attr("id", id)
       .attr("refX", refX)
@@ -304,14 +282,44 @@ var TopologyGraphLayout = function(vm, selector) {
         .attr("d", pathD);
   }
 
-  defsMarker("ingress", "deny", "begin");
-  defsMarker("ingress", "deny", "end");
-  defsMarker("ingress", "allow", "begin");
-  defsMarker("ingress", "allow", "end");
-  defsMarker("egress", "deny", "begin");
-  defsMarker("egress", "deny", "end");
-  defsMarker("egress", "allow", "begin");
-  defsMarker("egress", "allow", "end");
+  const marker_arrow = "M0.6,0.15 L0.6,0.45 L1.1,0.30 Z ";
+  const marker_rarrow = "M1.1,0.15 L1.1,0.45 L0.6,0.30 Z ";
+  const marker_cross = "M0.05,0 L0.55,0.5 L0.5,0.55 L0,0.05 Z  M0,0.5 L0.05,0.55 L0.55,0.05 L0.5,0 Z";
+
+  const marker_refX = 2.0;
+  const marker_refY = 0.3;
+
+  const marker_black = "rgb(0, 0, 0, 0.8)";
+  const marker_green = "rgb(0, 128, 0, 0.8)";
+  const marker_red = "rgb(255, 0, 0, 0.8)";
+
+  var networkpolicyMarker = function(type, target, point) {
+    let id = "arrowhead-"+type+"-"+target+"-"+point;
+
+    let color = (target === "deny") ? marker_red : marker_green;
+
+    let pathD = (type === "egress" || point === "end") ? marker_rarrow : marker_arrow;
+    if (target === "deny") {
+      pathD += marker_cross;
+    }
+
+    defsMarker(id, marker_refX, marker_refY, color, pathD);
+  }
+
+  var kubeDefaultMarker = function(label) {
+    let id = "arrowhead-"+label;
+    defsMarker(id, marker_refX, marker_refY, marker_black, marker_arrow);
+  }
+ 
+  networkpolicyMarker("ingress", "deny", "begin");
+  networkpolicyMarker("ingress", "deny", "end");
+  networkpolicyMarker("ingress", "allow", "begin");
+  networkpolicyMarker("ingress", "allow", "end");
+  networkpolicyMarker("egress", "deny", "begin");
+  networkpolicyMarker("egress", "deny", "end");
+  networkpolicyMarker("egress", "allow", "begin");
+  networkpolicyMarker("egress", "allow", "end");
+  kubeDefaultMarker("default")
 
   this.g = this.svg.append("g");
 
@@ -1538,21 +1546,18 @@ TopologyGraphLayout.prototype = {
   },
 
   arrowhead: function(link) {
-    let none = "url(#arrowhead-none)";
-
-    if (link.source.metadata.Type !== "networkpolicy") {
-      return none
+    if ("Manager" in link.metadata) {
+      switch(link.metadata.RelationType) {
+      case "networkpolicy":
+        if (link.source.metadata.Type === "networkpolicy" || link.target.metadata.Type === "pod") {
+            return "url(#arrowhead-"+link.metadata.PolicyType+"-"+link.metadata.PolicyTarget+"-"+link.metadata.PolicyPoint+")";
+        }
+        break;
+      default:
+        return "url(#arrowhead-default)";
+      }
     }
-
-    if (link.target.metadata.Type !== "pod") {
-      return none
-    }
-
-    if (link.metadata.RelationType !== "networkpolicy") {
-      return none
-    }
-
-    return "url(#arrowhead-"+link.metadata.PolicyType+"-"+link.metadata.PolicyTarget+"-"+link.metadata.PolicyPoint+")";
+    return "url(#arrowhead-none)";
   },
 
   update: function() {
@@ -1759,7 +1764,7 @@ TopologyGraphLayout.prototype = {
   },
 
   linkClass: function(d) {
-    var clazz = "link " + d.metadata.RelationType;
+    var clazz = "link " + (d.metadata.Manager || d.metadata.RelationType);
 
     if (d.metadata.Type) clazz += " " + d.metadata.Type;
 
