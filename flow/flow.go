@@ -874,11 +874,9 @@ func (f *Flow) newTransportLayer(packet *Packet, opts Opts) error {
 		}
 
 		if transportPacket.FIN {
-			f.Status = FlowStatus_ENDED
 			f.FinishType = FlowFinishType_TCP_FIN
 		}
 		if transportPacket.RST {
-			f.Status = FlowStatus_ENDED
 			f.FinishType = FlowFinishType_TCP_RST
 		}
 	} else if layer := packet.Layer(layers.LayerTypeUDP); layer != nil {
