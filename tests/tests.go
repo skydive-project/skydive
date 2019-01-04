@@ -304,7 +304,7 @@ func execCmds(t *testing.T, cmds ...Cmd) (e error) {
 		}
 		if err != nil {
 			if cmd.Check {
-				t.Fatal("cmd : ("+cmd.Cmd+") returned ", err.Error(), string(stdouterr))
+				return fmt.Errorf("cmd : (%s) returned error %s with output %s", cmd.Cmd, err, string(stdouterr))
 			}
 			e = err
 		}
@@ -461,7 +461,11 @@ func RunTest(t *testing.T, test *Test) {
 	if test.preCleanup {
 		execCmds(t, test.tearDownCmds...)
 	}
-	execCmds(t, test.setupCmds...)
+
+	if err := execCmds(t, test.setupCmds...); err != nil {
+		execCmds(t, test.tearDownCmds...)
+		t.Fatal(err)
+	}
 
 	context := &TestContext{
 		gh:       gclient.NewGremlinQueryHelper(&shttp.AuthenticationOpts{}),
@@ -697,7 +701,9 @@ func RunTest(t *testing.T, test *Test) {
 		}
 	}
 
-	execCmds(t, test.tearDownCmds...)
+	if err := execCmds(t, test.tearDownCmds...); err != nil {
+		t.Fatal(err)
+	}
 
 	if test.mode == Replay {
 		if topologyBackend != "memory" {
