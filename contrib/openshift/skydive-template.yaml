@@ -72,6 +72,8 @@ objects:
             value: k8s
           - name: SKYDIVE_ETCD_LISTEN
             value: 0.0.0.0:12379
+          - name: SKYDIVE_LOGGING_LEVEL
+            value: ${SKYDIVE_LOGGING_LEVEL}
           image: skydive/skydive
           imagePullPolicy: Always
           livenessProbe:
@@ -155,7 +157,7 @@ objects:
           - name: SKYDIVE_ANALYZERS
             value: $(SKYDIVE_ANALYZER_SERVICE_HOST):$(SKYDIVE_ANALYZER_SERVICE_PORT_API)
           - name: SKYDIVE_LOGGING_LEVEL
-            value: DEBUG
+            value: ${SKYDIVE_LOGGING_LEVEL}
           - name: SKYDIVE_AGENT_TOPOLOGY_PROBES
             value: "ovsdb runc docker"
           - name: SKYDIVE_RUNC_PATH
@@ -217,3 +219,9 @@ objects:
       name: skydive-analyzer
       weight: 100
     wildcardPolicy: None
+parameters:
+- description: Loglevel of Skydive agent and analyzer
+  displayName: Loglevel
+  name: SKYDIVE_LOGGING_LEVEL
+  required: true
+  value: INFO
