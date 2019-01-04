@@ -111,28 +111,38 @@ func (probe *Probe) registerContainer(id string) {
 		probe.Graph.Unlock()
 	}
 
-	metadata := graph.Metadata{
-		"Type":    "container",
-		"Name":    info.Name[1:],
-		"Manager": "docker",
-		"Docker": map[string]interface{}{
-			"ContainerID":   info.ID,
-			"ContainerName": info.Name,
-			"ContainerPID":  int64(info.State.Pid),
-		},
+	pid := int64(info.State.Pid)
+
+	dockerMetadata := graph.Metadata{
+		"ContainerID":   info.ID,
+		"ContainerName": info.Name,
 	}
 
 	if len(info.Config.Labels) != 0 {
-		metadata["Docker"].(map[string]interface{})["Labels"] = common.NormalizeValue(info.Config.Labels)
+		dockerMetadata["Labels"] = common.NormalizeValue(info.Config.Labels)
 	}
 
 	probe.Graph.Lock()
 	defer probe.Graph.Unlock()
 
-	containerNode, err := probe.Graph.NewNode(graph.GenID(), metadata)
-	if err != nil {
-		logging.GetLogger().Error(err)
-		return
+	containerNode := probe.Graph.LookupFirstNode(graph.Metadata{"InitProcessPID": pid})
+	if containerNode != nil {
+		if err := probe.Graph.AddMetadata(containerNode, "Docker", dockerMetadata); err != nil {
+			logging.GetLogger().Error(err)
+		}
+	} else {
+		metadata := graph.Metadata{
+			"Type":           "container",
+			"Name":           info.Name[1:],
+			"Manager":        "docker",
+			"InitProcessPID": pid,
+			"Docker":         dockerMetadata,
+		}
+
+		if containerNode, err = probe.Graph.NewNode(graph.GenID(), metadata); err != nil {
+			logging.GetLogger().Error(err)
+			return
+		}
 	}
 	topology.AddOwnershipLink(probe.Graph, n, containerNode, nil)
 

@@ -179,9 +179,8 @@ func parseState(path string) (*containerState, error) {
 
 func getMetadata(state *containerState) graph.Metadata {
 	m := graph.Metadata{
-		"ContainerID":  state.ID,
-		"ContainerPID": int64(state.InitProcessPid),
-		"Status":       getStatus(state),
+		"ContainerID": state.ID,
+		"Status":      getStatus(state),
 	}
 
 	if labels := getLabels(state.Config.Labels); len(labels) > 0 {
@@ -241,35 +240,52 @@ func (probe *Probe) registerContainer(path string) error {
 		}
 
 		probe.Graph.Lock()
-		if err := probe.Graph.AddMetadata(n, "Manager", "runc"); err != nil {
+		tr := probe.Graph.StartMetadataTransaction(n)
+		tr.AddMetadata("Runtime", "runc")
+
+		if _, err := n.GetFieldString("Manager"); err != nil {
+			tr.AddMetadata("Manager", "runc")
+		}
+		if err := tr.Commit(); err != nil {
 			logging.GetLogger().Error(err)
 		}
 		probe.Graph.Unlock()
 	}
 
-	metadata := graph.Metadata{
-		"Type":    "container",
-		"Name":    state.ID,
-		"Manager": "runc",
-		"Runc":    getMetadata(state),
-	}
+	pid := int64(state.InitProcessPid)
+	runcMetadata := getMetadata(state)
 
 	probe.Graph.Lock()
-	node, err := probe.Graph.NewNode(graph.GenID(), metadata)
-	if err != nil {
-		probe.Graph.Unlock()
-		return err
+	defer probe.Graph.Unlock()
 
+	containerNode := probe.Graph.LookupFirstNode(graph.Metadata{"InitProcessPID": pid})
+	if containerNode != nil {
+		tr := probe.Graph.StartMetadataTransaction(containerNode)
+		tr.AddMetadata("Runc", runcMetadata)
+		tr.AddMetadata("Runtime", "runc")
+		if err := tr.Commit(); err != nil {
+			logging.GetLogger().Error(err)
+		}
+	} else {
+		metadata := graph.Metadata{
+			"Type":           "container",
+			"Name":           state.ID,
+			"Manager":        "runc",
+			"Runtime":        "runc",
+			"InitProcessPID": pid,
+			"Runc":           runcMetadata,
+		}
+
+		if containerNode, err = probe.Graph.NewNode(graph.GenID(), metadata); err != nil {
+			return err
+		}
 	}
-	topology.AddOwnershipLink(probe.Graph, n, node, nil)
-	probe.Graph.Unlock()
+	topology.AddOwnershipLink(probe.Graph, n, containerNode, nil)
 
-	probe.containersLock.Lock()
 	probe.containers[path] = &container{
 		namespace: namespace,
-		node:      node,
+		node:      containerNode,
 	}
-	probe.containersLock.Unlock()
 
 	return nil
 }
