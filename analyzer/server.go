@@ -223,16 +223,8 @@ func NewServerFromConfig() (*Server, error) {
 	uiServer.AddGlobalVar("ui", config.Get("ui"))
 	uiServer.AddGlobalVar("flow-metric-keys", (&flow.FlowMetric{}).GetFieldKeys())
 	uiServer.AddGlobalVar("interface-metric-keys", (&topology.InterfaceMetric{}).GetFieldKeys())
+	uiServer.AddGlobalVar("sflow-metric-keys", (&topology.SFlowMetric{}).GetFieldKeys())
 	uiServer.AddGlobalVar("probes", config.Get("analyzer.topology.probes"))
-
-	// add decoders for specific metadata keys, this aims to keep the same
-	// object type between the agent and the analyzer
-	// Decoder will be used while unmarshal the metadata
-	graph.NodeMetadataDecoders["RoutingTables"] = netlink.RoutingTablesMetadataDecoder
-	graph.NodeMetadataDecoders["FDB"] = netlink.NeighborMetadataDecoder
-	graph.NodeMetadataDecoders["Neighbors"] = netlink.NeighborMetadataDecoder
-	graph.NodeMetadataDecoders["Metric"] = topology.InterfaceMetricMetadataDecoder
-	graph.NodeMetadataDecoders["LastUpdateMetric"] = topology.InterfaceMetricMetadataDecoder
 
 	persistent, err := newGraphBackendFromConfig(etcdClient)
 	if err != nil {
@@ -381,4 +373,17 @@ func ClusterAuthenticationOpts() *shttp.AuthenticationOpts {
 		Password: config.GetString("analyzer.auth.cluster.password"),
 		Cookie:   config.GetStringMapString("http.cookie"),
 	}
+}
+
+func init() {
+	// add decoders for specific metadata keys, this aims to keep the same
+	// object type between the agent and the analyzer
+	// Decoder will be used while unmarshal the metadata
+	graph.NodeMetadataDecoders["RoutingTables"] = netlink.RoutingTablesMetadataDecoder
+	graph.NodeMetadataDecoders["FDB"] = netlink.NeighborMetadataDecoder
+	graph.NodeMetadataDecoders["Neighbors"] = netlink.NeighborMetadataDecoder
+	graph.NodeMetadataDecoders["Metric"] = topology.InterfaceMetricMetadataDecoder
+	graph.NodeMetadataDecoders["LastUpdateMetric"] = topology.InterfaceMetricMetadataDecoder
+	graph.NodeMetadataDecoders["SFlow.Metric"] = topology.SFlowMetricMetadataDecoder
+	graph.NodeMetadataDecoders["SFlow.LastUpdateMetric"] = topology.SFlowMetricMetadataDecoder
 }

@@ -27,6 +27,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -36,6 +37,7 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology"
 )
 
 const (
@@ -94,7 +96,6 @@ func (sfa *Agent) feedFlowTable() {
 		p := gopacket.NewPacket(buf[:n], layers.LayerTypeSFlow, gopacket.DecodeOptions{NoCopy: true})
 		sflowLayer := p.Layer(layers.LayerTypeSFlow)
 		sflowPacket, ok := sflowLayer.(*layers.SFlowDatagram)
-		logging.GetLogger().Debugf("value of p %s", p)
 
 		if !ok {
 			logging.GetLogger().Errorf("Unable to decode sFlow packet: %s", p)
@@ -102,15 +103,69 @@ func (sfa *Agent) feedFlowTable() {
 		}
 
 		if sflowPacket.SampleCount > 0 {
-			logging.GetLogger().Debugf("%d sample captured", sflowPacket.SampleCount)
 			for _, sample := range sflowPacket.FlowSamples {
 				// iterate over a set of Packets as a sample contains multiple
 				// records each generating Packets.
 				sfa.FlowTable.FeedWithSFlowSample(&sample, bpf)
 			}
 			sfa.Graph.Lock()
-			sfa.Graph.AddMetadata(sfa.Node, "Sflow-Counters", sflowPacket.CounterSamples)
+			sfa.Graph.AddMetadata(sfa.Node, "SFlow.Counters", sflowPacket.CounterSamples)
 			sfa.Graph.Unlock()
+			for _, sample := range sflowPacket.CounterSamples {
+				records := sample.GetRecords()
+				for _, record := range records {
+					switch record.(type) {
+					case layers.SFlowGenericInterfaceCounters:
+						gen := record.(layers.SFlowGenericInterfaceCounters)
+						tr := sfa.Graph.StartMetadataTransaction(sfa.Node)
+						Uint64ToInt64 := func(key uint64) int64 {
+							return int64(float64(key))
+						}
+						Uint32ToInt64 := func(key uint32) int64 {
+							return int64(float64(key))
+						}
+						currMetric := &topology.SFlowMetric{
+							IfIndex:            Uint32ToInt64(gen.IfIndex),
+							IfType:             Uint32ToInt64(gen.IfType),
+							IfSpeed:            Uint64ToInt64(gen.IfSpeed),
+							IfDirection:        Uint32ToInt64(gen.IfDirection),
+							IfStatus:           Uint32ToInt64(gen.IfStatus),
+							IfInOctets:         Uint64ToInt64(gen.IfInOctets),
+							IfInUcastPkts:      Uint32ToInt64(gen.IfInUcastPkts),
+							IfInMulticastPkts:  Uint32ToInt64(gen.IfInMulticastPkts),
+							IfInBroadcastPkts:  Uint32ToInt64(gen.IfInBroadcastPkts),
+							IfInDiscards:       Uint32ToInt64(gen.IfInDiscards),
+							IfInErrors:         Uint32ToInt64(gen.IfInErrors),
+							IfInUnknownProtos:  Uint32ToInt64(gen.IfInUnknownProtos),
+							IfOutOctets:        Uint64ToInt64(gen.IfOutOctets),
+							IfOutUcastPkts:     Uint32ToInt64(gen.IfOutUcastPkts),
+							IfOutMulticastPkts: Uint32ToInt64(gen.IfOutMulticastPkts),
+							IfOutBroadcastPkts: Uint32ToInt64(gen.IfOutBroadcastPkts),
+							IfOutDiscards:      Uint32ToInt64(gen.IfOutDiscards),
+							IfOutErrors:        Uint32ToInt64(gen.IfOutErrors),
+							IfPromiscuousMode:  Uint32ToInt64(gen.IfPromiscuousMode),
+						}
+						now := time.Now()
+						currMetric.Last = int64(common.UnixMillis(now))
+
+						var prevMetric, lastUpdateMetric *topology.SFlowMetric
+
+						if metric, err := sfa.Node.GetField("SFlow.Metric"); err == nil {
+							prevMetric = metric.(*topology.SFlowMetric)
+							lastUpdateMetric = currMetric.Sub(prevMetric).(*topology.SFlowMetric)
+						}
+						tr.AddMetadata("SFlow.Metric", currMetric)
+
+						// nothing changed since last update
+						if lastUpdateMetric != nil && !lastUpdateMetric.IsZero() {
+							lastUpdateMetric.Start = prevMetric.Last
+							lastUpdateMetric.Last = int64(common.UnixMillis(now))
+							tr.AddMetadata("SFlow.LastUpdateMetric", lastUpdateMetric)
+						}
+						tr.Commit()
+					}
+				}
+			}
 		}
 
 	}

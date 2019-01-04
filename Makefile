@@ -53,6 +53,7 @@ EASYJSON_FILES_TAG=\
 	flow/storage/orientdb/orientdb.go \
 	graffiti/graph/elasticsearch.go \
 	topology/metrics.go \
+	topology/sflowmetric.go \
 	topology/probes/netlink/route.go \
 	topology/probes/netlink/neighbor.go
 EASYJSON_FILES_TAG_LINUX=\
