@@ -191,10 +191,8 @@ message Flow {
 /* number of raw packet captured */
   int64 RawPacketsCaptured = 37;
 
-/* counts the number of times this flow was reported */
-  int64 ReportCounter = 60;
 /* describes the way the flow was ended (e.g. by RST, FIN) */
-  FlowFinishType FinishType = 61;
+  FlowFinishType FinishType = 60;
 }
 
 message FlowSet {

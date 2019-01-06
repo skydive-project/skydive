@@ -199,7 +199,6 @@ func (ft *Table) expire(expireBefore int64) {
 			}
 
 			logging.GetLogger().Debugf("Expire flow %s Duration %v", f.UUID, duration)
-			f.ReportCounter++
 			f.FinishType = FlowFinishType_TIMEOUT
 			expiredFlows = append(expiredFlows, f)
 
@@ -253,7 +252,6 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 	for k, f := range ft.table {
 		if f.XXX_state.updateVersion > ft.updateVersion {
 			ft.updateMetric(f, updateFrom, updateTime)
-			f.ReportCounter++
 			updatedFlows = append(updatedFlows, f)
 			if f.FinishType != FlowFinishType_NOT_FINISHED {
 				delete(ft.table, k)
