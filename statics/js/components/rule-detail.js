@@ -23,15 +23,26 @@ var ActionNormal = 3;
 var ActionDrop = 4;
 
 /** Port number representing any port */
-var ANY_PORT = -1;
+var ANY_PORT = 0xffff;
 /** Port number representing the local port */
-var LOCAL_PORT = -2;
+var LOCAL_PORT = 0xfffe;
 /** Port number representing the controller port */
-var CONTROLLER_PORT = -3;
+var CONTROLLER_PORT = 0xfffd;
 /** Port number representing all the ports but the entry port */
-var OTHER_PORTS = -4;
+var OTHER_PORTS = 0xfffc;
 /** Port number representing the entry port - not an Openflow normalized port */
-var SAME_PORT = -5;
+var SAME_PORT = 0xfffb;
+var NORMAL_PORT = 0xfffa;
+var IN_PORT = 0xfff8;
+
+var portTable = {};
+portTable[ANY_PORT] = 'any';
+portTable[LOCAL_PORT] = 'local';
+portTable[CONTROLLER_PORT] = 'controller';
+portTable[OTHER_PORTS] = 'other_ports';
+portTable[SAME_PORT] = 'same_port';
+portTable[NORMAL_PORT] = 'normal';
+portTable[IN_PORT] = 'inport';
 
 /** Translation from OVS syntax to summary actions */
 var actionTable = {
@@ -64,7 +75,7 @@ function computeAction(rule, element) {
   var verb = (element['Function'] || element['Type']).toLowerCase();
   var args = element['Arguments'];
   function getNumArg(i) {
-    return safePort(args[i]?args[i]['Type']:'');
+    return safePort(args[i]?(args[i]['Function'] || args[i]['Type']):'');
   }
   var action = actionTable[verb];
   if (action !== undefined) {
@@ -73,18 +84,23 @@ function computeAction(rule, element) {
       case 'resubmit':
         if (args.length !== undefined) {
           summary.port = getNumArg(0);
-          if (summary.port === ANY_PORT)
-            summary.port = SAME_PORT;
           if (args.length > 1)
             summary.table = getNumArg(1);
-          break;
         } else {
-          summary.port = args.InPort;
+          summary.port = normalizePort(args.InPort);
           summary.table = args.Table;
         }
+        if (summary.port === ANY_PORT)
+          summary.port = SAME_PORT;
+        break;
       case 'output':
+        summary.port = normalizePort(args.Port) || getNumArg(0);
+        if (summary.port == NORMAL_PORT) {
+          summary.action = ActionNormal;
+        }
+        break
       case 'enqueue':
-        summary.port = getNumArg(0);
+        summary.port = normalizePort(args.Port) || getNumArg(0);
         break;
       case 'local':
         summary.port = LOCAL_PORT;
@@ -107,6 +123,16 @@ function summarizeActions(rule) {
   }
 }
 
+/** Normalize port number
+ * @param port: port number
+ */
+function normalizePort(port) {
+  if (typeof(port) === "number") {
+    return port & 0xffff;
+  }
+  return port;
+}
+
 /** Compute the inport from a filter expression
  * @param filter: the filter as a single string
  * @return the port or ANY_PORT if not found.
@@ -116,7 +142,7 @@ function inport(filters) {
   if (filters) {
     for (var i=0; i <  filters.length; i++) {
       var filter = filters[i];
-      if (filter['Key'] == 'in_port') {
+      if ((filter['Key'] || filter['Type']) == 'in_port') {
         matchInport = safePort(filter['Value']);
         break;
       }
@@ -138,7 +164,7 @@ function summarizeFilter(rule) {
  */
 function textFilters(filters) {
   function text(e) {
-    var r = e['Value'] != '' ? ':' + e['Value'] + (e['Mask'] != undefined ? '/' + e['Mask']: '')  : '';
+    var r = e['Value'] !== '' ? ':' + JSON.stringify(e['Value']) + (e['Mask'] !== undefined ? '/' + JSON.stringify(e['Mask']) : '')  : '';
     return (e['Key'] || e['Type']) + r
   }
   return !filters ? '' : filters.map(text).join(',');
@@ -172,8 +198,19 @@ function textAction(a) {
           r = f + '(' + args.map(textAction).join(',') + ')';
         } else {
           var _args = new Array;
-          for(var key in args) {
-            _args.push(key + "=" + args[key]);
+          var normalize = function (obj) {
+            for (var i in obj) {
+              if (i.indexOf("Port") != -1 && normalizePort(obj[i]) in portTable) {
+                obj[i] = portTable[normalizePort(obj[i])];
+              } else if (typeof(obj[i]) != "string") {
+                normalize(obj[i]);
+              }
+            }
+          }
+          var clonedArgs = JSON.parse(JSON.stringify(args));
+          normalize(clonedArgs);
+          for(var key in clonedArgs) {
+            _args.push(key + "=" + JSON.stringify(clonedArgs[key]));
           }
           r = f + '(' + _args.join(',') + ')';
         }
@@ -201,7 +238,7 @@ function summarize(rule) {
  */
 function summarizeGroup(group) {
   function textMeta(m){
-    return m['Key'] + (m['Value'] ? '=' + m['Value'] : '');
+    return (m['Key'] || m['Type']) + (m['Value'] ? '=' + m['Value'] : '');
   }
   function textBucket(bucket) {
     var content;
@@ -354,7 +391,7 @@ var BridgeLayout = (function () {
           break;
         case 'ofrule':
           var rule = c.metadata;
-          if (this.filtered != null && ! (this.filtered.includes(rule.UUID))) continue;
+          if (this.filtered != null && ! (this.filtered.includes((rule.UUID || rule.ID)))) continue;
           summarize(rule);
           rules.push(rule);
           rulesUUID.add(rule.UUID);
@@ -473,11 +510,11 @@ var BridgeLayout = (function () {
   /** Readable name of an openflow port
    * @param pr the index of the port or its stringified value.
   */
-  BridgeLayout.prototype.portname = function(pr) {
-    var p = (typeof (pr) === 'string') ? parseInt(pr) : pr;
+  BridgeLayout.prototype.portname = function(p) {
+    p = (typeof (p) === 'string') ? parseInt(p) : p;
     if (p === ANY_PORT) return 'ANY';
     if (p === LOCAL_PORT) return 'LOCAL';
-    if (p === SAME_PORT || p === undefined) return '';
+    if (p === SAME_PORT || p === NORMAL_PORT || p === IN_PORT || p === undefined) return '';
     var nodes = this.interfaces[p];
     if (nodes === undefined) return '???';
     var port = nodes[1];
@@ -511,34 +548,39 @@ Vue.component('rule-table-detail', {
           </tr>\
         </thead>\
         <tbody>\
-            <tr v-for="rule in rules"\
-                :id="\'R-\' + rule.UUID"\
-                v-bind:class="{soft: layout.isHighlighted(rule)}">\
-                <td v-if="rule.prioritySpan != -1" :rowspan="rule.prioritySpan">\
-                  {{rule.Priority}}\
-                </td>\
-                <td>\
-                  {{ splitLine(rule.textFilters) }}\
-                </td>\
-                <td v-if="rule.actionsSpan != -1" :rowspan="rule.actionsSpan">\
-                    <table class="inner-table">\
-                        <tr v-for="act in rule.outAction">\
-                            <td>\
-                              <i :class="layout.clazz(act.action)"></i>\
-                            </td>\
-                            <td v-on:mouseover="layout.mark(act.port)"\
-                                v-on:mouseleave="layout.unmark(act.port)"\
-                                v-on:click="layout.select(act.port)">\
-                                <span class="port-link">{{layout.portname(act.port)}}</span>\
-                            </td>\
-                            <td><a class="table-link" v-on:click="layout.switchTab(act.table)">{{act.table}}</a></td>\
-                        </tr>\
-                    </table>\
-                </td>\
-                <td v-if="rule.actionsSpan != -1" :rowspan="rule.actionsSpan">\
-                  {{ splitLine(rule.textActions) }}\
-                </td>\
-            </tr>\
+          <tr v-for="rule in rules"\
+              :id="\'R-\' + rule.UUID"\
+              v-bind:class="{soft: layout.isHighlighted(rule)}">\
+            <td v-if="rule.prioritySpan != -1" :rowspan="rule.prioritySpan">\
+              {{rule.Priority}}\
+            </td>\
+            <td>\
+              {{ splitLine(rule.textFilters) }}\
+            </td>\
+            <td v-if="rule.actionsSpan != -1" :rowspan="rule.actionsSpan">\
+                <table class="inner-table">\
+                    <tr v-for="act in rule.outAction">\
+                        <td>\
+                          <i :class="layout.clazz(act.action)"></i>\
+                        </td>\
+                        <td v-on:mouseover="layout.mark(act.port)"\
+                            v-on:mouseleave="layout.unmark(act.port)"\
+                            v-on:click="layout.select(act.port)">\
+                            <span class="port-link">{{layout.portname(act.port)}}</span>\
+                        </td>\
+                        <td><a class="table-link" v-on:click="layout.switchTab(act.table)">{{act.table}}</a></td>\
+                    </tr>\
+                </table>\
+            </td>\
+            <td v-if="rule.actionsSpan != -1" :rowspan="rule.actionsSpan">\
+              <div v-if="rule.Actions[0][\'Function\']">\
+                {{ splitLine(rule.textActions) }}\
+              </div>\
+              <div v-else>\
+                {{ splitLine(rule.textActions) }}\
+              </div>\
+            </td>\
+          </tr>\
         </tbody>\
       </table>\
     </div>',
@@ -685,6 +727,7 @@ Vue.component('rule-detail', {
             <rule-table-detail :rules="table.any" :layout="layout"/>\
           </div>\
           <rule-table-detail v-if="Object.keys(layout.structured).length == 0" />\
+          <!--\
           <div class="dynamic-table">\
             <div class="dynamic-table-actions">\
               <filter-selector :query="value"\
@@ -693,6 +736,7 @@ Vue.component('rule-detail', {
                 @remove="removeFilter"></filter-selector>\
             </div>\
           </div>\
+          -->\
         </div>\
       </div>\
       <div>\
@@ -802,7 +846,6 @@ Vue.component('rule-detail', {
     },
     getRules: function() {
       var self = this;
-      console.log(this.filters);
       var keys = Object.keys(this.filters);
       if(keys.length == 0) {
         // Short cut no filter.
@@ -815,7 +858,7 @@ Vue.component('rule-detail', {
       for (var k in this.filters) {
         var valList = this.filters[k];
         var regex = valList.length == 1 ? valList[0] : '(' + valList.join('|') + ')';
-        query += queryRules + ".Has('filters', regex('.*" + k + "=" + regex + ".*')).As('" + k + "').";
+        query += queryRules + ".Has('Filters', regex('.*" + k + "=" + regex + ".*')).As('" + k + "').";
       }
       query += "Select('" + keys.join("', '") + "')";
       console.log(query);
