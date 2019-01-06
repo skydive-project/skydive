@@ -554,15 +554,15 @@ var TopologyComponent = {
           }
           gremlin += ".Has('Type', Within(" + types.join(", ") + "))";
         }
-
-        // FIXME: HasNot() is not yet supported by backend so for now don't filter out system namespaces
-        // gremlin += ".HasNot('Type', 'namespace', 'Name', Within('kube-system', 'istio-system'))";
-        // gremlin += ".HasNot('Type, NE('namespace'), 'K8s.Namespace', Within('kube-system', 'istio-system'))";
         return gremlin
     },
 
+    addFilterK8s: function(control, label, gremlin) {
+      this.addFilter(control, "k8s " + label, gremlin);
+    },
+
     addFilterK8sTypes: function(control, label, types) {
-      this.addFilter(control, "k8s " + label, this.gremlinK8sTypes(types));
+      this.addFilterK8s(control, label, this.gremlinK8sTypes(types));
     },
 
     setGremlinFavoritesFromConfig: function() {
@@ -593,6 +593,8 @@ var TopologyComponent = {
       }
 
       if (self.isK8SEnabled()) {
+        self.addFilterK8s(filter, "none", "G.V().Has('Manager', Without('k8s', 'istio'))")
+
         self.addFilterK8sTypes(filter, "all", []);
 
         self.addFilterK8sTypes(filter, "compute", ["cluster", "container", "namespace", "node", "pod"]);
