@@ -12,6 +12,9 @@ echo "export WITH_ISTIO=$WITH_ISTIO"
 [ -z "$WITH_NETPOL" ] && WITH_NETPOL=false
 echo "export WITH_NETPOL=$WITH_NETPOL"
 
+[ -z "$WITH_IBMCLOUD" ] && WITH_IBMCLOUD=false
+echo "export WITH_IBMCLOUD=$WITH_IBMCLOUD"
+
 [ -z "$SRVNAME" ] && SRVNAME=productpage
 echo "export SRVNAME=$SRVNAME"
 
@@ -30,6 +33,7 @@ delete() {
 }
 
 bookinfo() {
+	$WITH_IBMCLOUD && $1 $SCRIPTDIR/*ibmcloud*.yaml
 	$WITH_ISTIO && $1 $BOOKINFO_URL/networking/destination-rule-all.yaml
 	$WITH_ISTIO && $1 $BOOKINFO_URL/networking/bookinfo-gateway.yaml
 	$1 $BOOKINFO_URL/platform/kube/bookinfo.yaml
