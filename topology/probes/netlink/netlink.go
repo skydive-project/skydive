@@ -401,6 +401,8 @@ func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 	if speed, err := u.ethtool.CmdGet(&ethtool.EthtoolCmd{}, attrs.Name); err == nil {
 		if speed != math.MaxUint32 {
 			metadata["Speed"] = int64(speed)
+		}else {
+			metadata["Speed"] = "Unknown"
 		}
 	}
 
