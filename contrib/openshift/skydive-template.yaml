@@ -182,6 +182,8 @@ objects:
             name: runc
           - mountPath: /var/run/runc-ctrs
             name: runc-ctrs
+          - mountPath: /run/containerd/runc
+            name: containerd-runc
         dnsPolicy: ClusterFirst
         hostNetwork: true
         hostPID: true
@@ -200,6 +202,9 @@ objects:
         - hostPath:
             path: /var/run/runc-ctrs
           name: runc-ctrs
+        - hostPath:
+            path: /run/containerd/runc
+          name: containerd-runc
         - hostPath:
             path: /var/run/openvswitch/db.sock
           name: ovsdb
