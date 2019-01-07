@@ -3681,5 +3681,5 @@
 			"version": "kubernetes-1.8.2"
 		}
 	],
-	"rootPath": "github.com/jonnary/skydive"
+	"rootPath": "github.com/skydive-project/skydive"
 }
