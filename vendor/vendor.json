@@ -1954,10 +1954,10 @@
 			"revisionTime": "2015-01-06T09:31:45Z"
 		},
 		{
-			"checksumSHA1": "7Fqh2nZs8wQCD0AYGsqfLodWHAk=",
+			"checksumSHA1": "FleLGwYi5mNFHFUv43XcwB0NYcY=",
 			"path": "github.com/safchain/ethtool",
-			"revision": "6e3f4faa84e1d8d48afec75ed064cf3611d3f8bf",
-			"revisionTime": "2018-05-04T15:00:54Z"
+			"revision": "41a6d35882ae02b093542a1b7a177a3b6ff52f60",
+			"revisionTime": "2019-01-06T19:27:16Z"
 		},
 		{
 			"checksumSHA1": "QtAVwWxnBr7kMsJYpOIv+hD00Ss=",
@@ -3681,5 +3681,5 @@
 			"version": "kubernetes-1.8.2"
 		}
 	],
-	"rootPath": "github.com/skydive-project/skydive"
+	"rootPath": "github.com/jonnary/skydive"
 }
