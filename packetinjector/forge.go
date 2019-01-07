@@ -71,7 +71,7 @@ func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC
 
 	switch packetType {
 	case "icmp4":
-		ipLayer := &layers.IPv4{Version: 4, SrcIP: srcIP, DstIP: dstIP, Protocol: layers.IPProtocolICMPv4}
+		ipLayer := &layers.IPv4{Version: 4, SrcIP: srcIP, DstIP: dstIP, Protocol: layers.IPProtocolICMPv4, TTL: 64}
 		icmpLayer := &layers.ICMPv4{
 			TypeCode: layers.CreateICMPv4TypeCode(layers.ICMPv4TypeEchoRequest, 0),
 			Id:       uint16(ID),
