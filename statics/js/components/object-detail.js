@@ -57,7 +57,7 @@ Vue.component('object-detail', {
             </div>\
           </collapse>\
         </div>\
-        <div v-else-if="typeof value == \'object\'" class="object-sub-detail">\
+        <div v-else-if="typeof value == \'object\' && isNotEmpty(value)" class="object-sub-detail">\
           <collapse :collapsed="collapsedState(path(key))">\
             <div slot="collapse-header" slot-scope="props" class="object-key">\
               {{key}} :\
@@ -72,7 +72,7 @@ Vue.component('object-detail', {
         </div>\
         <div v-else>\
           <span class="object-key">{{key}}</span> :\
-          <span class="object-value copy-clipboard" :class="typeof(value)" v-html="transform(key, value)" @click="copyToClipboard(value)"></span>\
+          <span v-if="isNotEmpty(value)" class="object-value copy-clipboard" :class="typeof(value)" v-html="transform(key, value)" @click="copyToClipboard(value)"></span>\
           <i v-if="links && links[key]" :class="links[key].class" @click="links[key].onClick" \
             @mouseover="links[key].onMouseOver" @mouseout="links[key].onMouseOut"></i>\
         </div>\
@@ -89,6 +89,13 @@ Vue.component('object-detail', {
       else {
         return key;
       }
+    },
+
+    isNotEmpty: function(obj) {
+      for(var key in obj) {
+        if (obj.hasOwnProperty(key)) return true;
+      }
+      return false;
     },
 
     transform: function(key, value) {
