@@ -12,12 +12,10 @@ MINIKUBE_URL="https://github.com/kubernetes/minikube/releases/download/$MINIKUBE
 K8S_VERSION="v1.10.0"
 KUBECTL_URL="https://storage.googleapis.com/kubernetes-release/release/$K8S_VERSION/bin/$OS/$ARCH/kubectl"
 
-WITH_CALICO=false
+[ -z "$WITH_CALICO" ] && WITH_CALICO=false
 
-CALICO_SITE="https://docs.projectcalico.org"
-CALICO_VER="v1.5"
-CALICO_PATH="getting-started/kubernetes/installation/hosted/calico.yaml"
-CALICO_URL="$CALICO_SITE/$CALICO_VER/$CALICO_PATH"
+CALICO_VERSION="v2.6"
+CALICO_URL="https://docs.projectcalico.org/$CALICO_VERSION/getting-started/kubernetes/installation/hosted/calico.yaml"
 
 export MINIKUBE_WANTUPDATENOTIFICATION=false
 export MINIKUBE_WANTREPORTERRORPROMPT=false
@@ -110,9 +108,7 @@ start() {
                 fi
         fi
 
-        if [ "$WITH_CALICO" == "true" ]; then
-                args="$args --network-plugin=cni --host-only-cidr=20.0.0.0/16"
-        fi
+	$WITH_CALICO && args="$args --network-plugin=cni --host-only-cidr=20.0.0.0/16"
 
 	# FIXME: using '|| true' to overcome following:
         # FIXME: Error cluster status: getting status: running command: sudo systemctl is-active kubelet
@@ -132,9 +128,7 @@ start() {
                 sudo cp -ar $HOME/$i /root/$i
         done
 
-        if [ "$WITH_CALICO" == "true" ]; then
-                kubectl apply -f $CALICO_URL
-        fi
+	$WITH_CALICO && kubectl apply -f $CALICO_URL
 
         kubectl get services kubernetes
         kubectl get pods -n kube-system
