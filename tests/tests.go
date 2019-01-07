@@ -28,6 +28,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -114,9 +115,9 @@ flow:
 ovs:
   oflow:
     enable: true
-    native: true
+    native: {{.OvsOflowNative}}
     address:
-      br-test: tcp:127.0.0.1:16633
+      br-test: tcp://127.0.0.1:16633
 
 storage:
   orientdb:
@@ -220,6 +221,7 @@ var (
 	etcdServer        string
 	flowBackend       string
 	graphOutputFormat string
+	ovsOflowNative    bool
 	standalone        bool
 	topologyBackend   string
 )
@@ -242,6 +244,7 @@ func initConfig(conf string, params ...helperParams) error {
 	params[0]["AnalyzerPort"] = sa.Port
 	params[0]["AgentAddr"] = sa.Addr
 	params[0]["AgentPort"] = sa.Port - 1
+	params[0]["OvsOflowNative"] = strconv.FormatBool(ovsOflowNative)
 
 	if testing.Verbose() {
 		params[0]["LogLevel"] = "DEBUG"
@@ -824,6 +827,7 @@ func init() {
 	flag.StringVar(&analyzerListen, "analyzer.listen", "0.0.0.0:64500", "Specify the analyzer listen address")
 	flag.StringVar(&analyzerProbes, "analyzer.topology.probes", "", "Specify the analyzer probes to enable")
 	flag.StringVar(&agentProbes, "agent.topology.probes", "", "Specify the extra agent probes to enable")
+	flag.BoolVar(&ovsOflowNative, "ovs.oflow.native", false, "Use native OpenFlow protocol instead of ovs-ofctl")
 	flag.Parse()
 
 	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 100

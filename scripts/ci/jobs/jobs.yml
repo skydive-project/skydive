@@ -367,7 +367,7 @@
     builders:
       - skydive-cleanup
       - skydive-test:
-          test: BACKEND=orientdb scripts/ci/run-functional-tests.sh
+          test: BACKEND=orientdb ARGS="-ovs.oflow.native" scripts/ci/run-functional-tests.sh
     publishers:
       - junit:
           results: tests.xml

@@ -27,8 +27,6 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-test/deep"
-	"github.com/skydive-project/goloxi"
-	"github.com/skydive-project/goloxi/of10"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 )
@@ -41,7 +39,7 @@ type ruleCmd struct {
 func verify(c *CheckContext, bridge string, expected []int) error {
 	l := len(expected)
 	found := make([]int, l)
-	gremlin := c.gremlin.V().Has("Type", "ovsbridge", "Name", bridge).Out("Type", "ofrule")
+	gremlin := c.gremlin.V().Has("Type", "ovsbridge", "Name", bridge).Out("Type", "ofrule").Sort()
 	nodes, _ := c.gh.GetNodes(gremlin)
 	for _, node := range nodes {
 		metadata := node.Metadata
@@ -95,6 +93,7 @@ func makeTest(t *testing.T, suffix string, rules []ruleCmd, expected []int) {
 		{"ovs-vsctl add-br " + bridge, true},
 		{"ovs-vsctl add-port " + bridge + " " + intf1 + " -- set interface " + intf1 + " type=internal", true},
 		{"ovs-vsctl add-port " + bridge + " " + intf2 + " -- set interface " + intf2 + " type=internal", true},
+		{"sleep 2", true},
 	}
 
 	for _, ruleCmd := range rules {
@@ -944,8 +943,8 @@ func TestOVSGroupAdd(t *testing.T) {
 		delete(metadata, "Metric")
 
 		expectedMetadata := map[string]interface{}{
-			"GroupID":   int64(1),
-			"GroupType": int64(0),
+			"GroupId":   int64(1),
+			"GroupType": "all",
 			"Type":      "ofgroup",
 			"Buckets": []interface{}{
 				map[string]interface{}{
