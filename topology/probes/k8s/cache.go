@@ -160,10 +160,24 @@ func matchSelector(obj metav1.Object, selector labels.Selector) bool {
 	return selector.Matches(labels.Set(obj.GetLabels()))
 }
 
-func filterObjectsBySelector(objects []interface{}, labelSelector *metav1.LabelSelector) (out []metav1.Object) {
+func matchLabelSelector(obj metav1.Object, labelSelector *metav1.LabelSelector) bool {
+	selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+	return err == nil && selector.Matches(labels.Set(obj.GetLabels()))
+}
+
+func matchMapSelector(obj metav1.Object, mapSelector map[string]string) bool {
+	labelSelector := &metav1.LabelSelector{MatchLabels: mapSelector}
+	selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+	return err == nil && selector.Matches(labels.Set(obj.GetLabels()))
+}
+
+func filterObjectsBySelector(objects []interface{}, labelSelector *metav1.LabelSelector, namespace ...string) (out []metav1.Object) {
 	selector, _ := metav1.LabelSelectorAsSelector(labelSelector)
 	for _, obj := range objects {
 		obj := obj.(metav1.Object)
+		if len(namespace) > 0 && obj.GetNamespace() != namespace[0] {
+			continue
+		}
 		if matchSelector(obj, selector) {
 			out = append(out, obj)
 		}

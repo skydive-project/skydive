@@ -27,7 +27,6 @@ import (
 	"strings"
 
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 
 	corev1 "k8s.io/api/core/v1"
@@ -132,14 +131,20 @@ func isEgress(np *v1beta1.NetworkPolicy) bool {
 	return false
 }
 
-func isIngressDeny(np *v1beta1.NetworkPolicy) bool {
+func getIngressTarget(np *v1beta1.NetworkPolicy) PolicyTarget {
 	selector, _ := metav1.LabelSelectorAsSelector(&np.Spec.PodSelector)
-	return selector.Empty() && len(np.Spec.Ingress) == 0
+	if selector.Empty() && len(np.Spec.Ingress) == 0 {
+		return PolicyTargetDeny
+	}
+	return PolicyTargetAllow
 }
 
-func isEgressDeny(np *v1beta1.NetworkPolicy) bool {
+func getEgressTarget(np *v1beta1.NetworkPolicy) PolicyTarget {
 	selector, _ := metav1.LabelSelectorAsSelector(&np.Spec.PodSelector)
-	return selector.Empty() && len(np.Spec.Egress) == 0
+	if selector.Empty() && len(np.Spec.Egress) == 0 {
+		return PolicyTargetDeny
+	}
+	return PolicyTargetAllow
 }
 
 func filterPodByPodSelector(in []interface{}, podSelector *metav1.LabelSelector, namespace string) (pods []metav1.Object) {
@@ -165,17 +170,6 @@ func filterPodByPodSelector(in []interface{}, podSelector *metav1.LabelSelector,
 	return
 }
 
-func filterNamespaceByNamespaceSelector(in []interface{}, namespaceSelector *metav1.LabelSelector) (namespaces []metav1.Object) {
-	selector, _ := metav1.LabelSelectorAsSelector(namespaceSelector)
-	for _, ns := range in {
-		ns := ns.(*corev1.Namespace)
-		if selector.Matches(labels.Set(ns.Labels)) {
-			namespaces = append(namespaces, ns)
-		}
-	}
-	return
-}
-
 func (npl *networkPolicyLinker) getPeerPods(peer v1beta1.NetworkPolicyPeer, namespace string) (pods []metav1.Object) {
 	if podSelector := peer.PodSelector; podSelector != nil {
 		pods = filterPodByPodSelector(npl.podCache.List(), podSelector, namespace)
@@ -183,8 +177,8 @@ func (npl *networkPolicyLinker) getPeerPods(peer v1beta1.NetworkPolicyPeer, name
 
 	if nsSelector := peer.NamespaceSelector; nsSelector != nil {
 		if allPods := npl.podCache.List(); len(allPods) != 0 {
-			for _, ns := range filterNamespaceByNamespaceSelector(npl.namespaceCache.List(), nsSelector) {
-				pods = append(pods, filterPodByPodSelector(allPods, nil, ns.(*corev1.Namespace).Name)...)
+			for _, ns := range filterObjectsBySelector(npl.namespaceCache.List(), nsSelector) {
+				pods = append(pods, filterPodByPodSelector(allPods, nil, ns.GetName())...)
 			}
 		}
 	}
@@ -241,83 +235,63 @@ func getFieldPorts(np *v1beta1.NetworkPolicy, ty PolicyType) string {
 }
 
 func (npl *networkPolicyLinker) newEdgeMetadata(ty PolicyType, target PolicyTarget, point PolicyPoint) graph.Metadata {
-	m := NewEdgeMetadata(Manager, "association")
-	m.SetField("RelationType", "networkpolicy")
+	m := NewEdgeMetadata(Manager, "networkpolicy")
 	m.SetField("PolicyType", string(ty))
 	m.SetField("PolicyTarget", string(target))
 	m.SetField("PolicyPoint", string(point))
 	return m
 }
 
-func (npl *networkPolicyLinker) createLinks(np *v1beta1.NetworkPolicy, npNode, filterNode *graph.Node, ty PolicyType, target PolicyTarget, point PolicyPoint, pods []metav1.Object) (edges []*graph.Edge) {
+func (npl *networkPolicyLinker) create1SideLinks(np *v1beta1.NetworkPolicy, npNode, filterNode *graph.Node, ty PolicyType, target PolicyTarget, point PolicyPoint, pods []metav1.Object) (edges []*graph.Edge) {
 	podNodes := objectsToNodes(npl.graph, pods)
 	metadata := npl.newEdgeMetadata(ty, target, point)
-	for _, objNode := range podNodes {
-		if filterNode == nil || filterNode.ID == objNode.ID {
-			metadata.SetFieldAndNormalize("PolicyPorts", getFieldPorts(np, ty))
-			fields := []string{string(npNode.ID), string(objNode.ID)}
+	for _, podNode := range podNodes {
+		if filterNode == nil || filterNode.ID == podNode.ID {
+			fields := []string{string(npNode.ID), string(podNode.ID)}
 			for k, v := range metadata {
 				fields = append(fields, k, v.(string))
 			}
 			id := graph.GenID(fields...)
-			edges = append(edges, npl.graph.CreateEdge(id, npNode, objNode, metadata, graph.TimeUTC(), ""))
+			metadata.SetField("PolicyPorts", getFieldPorts(np, ty))
+			edges = append(edges, npl.graph.CreateEdge(id, npNode, podNode, metadata, graph.TimeUTC(), ""))
 		}
 	}
 	return
 }
 
+func (npl *networkPolicyLinker) create2SideLinks(np *v1beta1.NetworkPolicy, npNode, filterNode *graph.Node, ty PolicyType, target PolicyTarget, pods []metav1.Object) []*graph.Edge {
+	selectedPods := filterObjectsBySelector(npl.podCache.List(), &np.Spec.PodSelector, np.Namespace)
+	return append(
+		npl.create1SideLinks(np, npNode, filterNode, ty, target, PolicyPointBegin, selectedPods),
+		npl.create1SideLinks(np, npNode, filterNode, ty, target, PolicyPointEnd, pods)...,
+	)
+}
+
 func (npl *networkPolicyLinker) getLinks(np *v1beta1.NetworkPolicy, npNode, filterNode *graph.Node) (edges []*graph.Edge) {
-	createLinks := func(ty PolicyType, target PolicyTarget, pods []metav1.Object) []*graph.Edge {
-		selectedPods := filterPodByPodSelector(npl.podCache.List(), &np.Spec.PodSelector, np.Namespace)
-		return append(
-			npl.createLinks(np, npNode, filterNode, ty, target, PolicyPointBegin, selectedPods),
-			npl.createLinks(np, npNode, filterNode, ty, target, PolicyPointEnd, pods)...,
-		)
-	}
-
 	if isIngress(np) {
-		if isIngressDeny(np) {
-			edges = append(edges, createLinks(PolicyTypeIngress, PolicyTargetDeny, npl.getIngressAllow(np))...)
-		} else {
-			edges = append(edges, createLinks(PolicyTypeIngress, PolicyTargetAllow, npl.getIngressAllow(np))...)
-		}
+		edges = append(edges, npl.create2SideLinks(np, npNode, filterNode, PolicyTypeIngress, getIngressTarget(np), npl.getIngressAllow(np))...)
 	}
-
 	if isEgress(np) {
-		if isEgressDeny(np) {
-			edges = append(edges, createLinks(PolicyTypeEgress, PolicyTargetDeny, npl.getEgressAllow(np))...)
-		} else {
-			edges = append(edges, createLinks(PolicyTypeEgress, PolicyTargetAllow, npl.getEgressAllow(np))...)
-		}
+		edges = append(edges, npl.create2SideLinks(np, npNode, filterNode, PolicyTypeEgress, getEgressTarget(np), npl.getEgressAllow(np))...)
 	}
-
 	return
 }
 
 func (npl *networkPolicyLinker) GetABLinks(npNode *graph.Node) (edges []*graph.Edge) {
 	if np := npl.npCache.GetByNode(npNode); np != nil {
 		np := np.(*v1beta1.NetworkPolicy)
-		return npl.getLinks(np, npNode, nil)
+		edges = append(edges, npl.getLinks(np, npNode, nil)...)
 	}
 	return
 }
 
-func (npl *networkPolicyLinker) GetBALinks(objNode *graph.Node) (edges []*graph.Edge) {
+func (npl *networkPolicyLinker) GetBALinks(podNode *graph.Node) (edges []*graph.Edge) {
 	for _, np := range npl.npCache.List() {
 		np := np.(*v1beta1.NetworkPolicy)
-		npNode := npl.graph.GetNode(graph.Identifier(np.GetUID()))
-		if npNode == nil {
-			logging.GetLogger().Debugf("can't find networkpolicy %s", np.GetUID())
-			continue
+		if npNode := npl.graph.GetNode(graph.Identifier(np.GetUID())); npNode != nil {
+			edges = append(edges, npl.getLinks(np, npNode, podNode)...)
 		}
-		if nodeType, _ := objNode.GetFieldString("Type"); nodeType == "pod" {
-			return npl.getLinks(np, npNode, objNode)
-		}
-		// FIXME: for type "namespace" its' more efficient to
-		// loop through all related pods rather than pass nil
-		return npl.getLinks(np, npNode, nil)
 	}
-
 	return
 }
 
@@ -336,7 +310,7 @@ func newNetworkPolicyLinker(g *graph.Graph) probe.Probe {
 		namespaceCache: namespaceProbe.(*ResourceCache),
 	}
 
-	rl := graph.NewResourceLinker(g, []graph.ListenerHandler{npProbe}, []graph.ListenerHandler{podProbe, namespaceProbe},
+	rl := graph.NewResourceLinker(g, []graph.ListenerHandler{npProbe}, []graph.ListenerHandler{podProbe},
 		npLinker, graph.Metadata{"RelationType": "networkpolicy"})
 
 	linker := &Linker{

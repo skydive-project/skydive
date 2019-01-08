@@ -54,7 +54,7 @@ func setupFromConfigFile(mngr, file string) []Cmd {
 func tearDownFromConfigFile(mngr, file string) []Cmd {
 	return []Cmd{
 		{"kubectl delete --grace-period=0 --force -f " + k8sConfigFile(mngr, file), false},
-		{"sleep 5", true},
+		{"sleep 10", true},
 	}
 }
 
