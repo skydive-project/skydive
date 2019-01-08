@@ -12,8 +12,6 @@ skydive_fabric_tor_name: tor1
 skydive_fabric_tor_mtu: 1500
 skydive_auth_type:
 skydive_basic_auth_file: /var/lib/skydive/skydive.secret
-skydive_etcd_embedded: yes
-skydive_etcd_port: 12379
 
 os_auth_url:
 os_username:

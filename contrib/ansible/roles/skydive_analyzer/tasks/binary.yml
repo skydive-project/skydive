@@ -5,3 +5,5 @@
   vars:
     service_name: skydive-analyzer
     exec_start: "{{ skydive_binary_location }} analyzer --conf /etc/skydive/skydive.yml"
+    user: "{{ skydive_sys_username }}"
+    group: "{{ skydive_sys_groupname }}"

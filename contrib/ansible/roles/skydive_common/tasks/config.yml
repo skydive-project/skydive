@@ -1,4 +1,21 @@
 ---
+- name: Create Skydive system group
+  group:
+    name: "{{ skydive_sys_groupname }}"
+    state: present
+
+- name: Create Skydive system user
+  user:
+    name: "{{ skydive_sys_username }}"
+    group: "{{ skydive_sys_groupname }}"
+    shell: /sbin/nologin
+    home: /var/lib/skydive
+    append: yes
+    comment: "Skydive nologin User"
+    state: present
+  register: skydive_sysuser_result
+  become: yes
+
 - name: Ensures skydive configuration folder exists
   file:
     path: "{{ skydive_config_file | dirname }}"
@@ -8,13 +25,13 @@
   copy:
     content: ""
     dest: "{{ skydive_config_file }}"
-    mode: 0600
+    mode: 0640
     force: no
 
 - name: Set config file mode
   file:
     path: "{{ skydive_config_file }}"
-    mode: 0600
+    mode: 0640
 
 - name: Set host ID
   yedit:
