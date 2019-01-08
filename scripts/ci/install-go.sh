@@ -23,3 +23,8 @@ export PATH=$PATH:$GOPATH/bin
 mkdir -p $HOME/.govendor $GOPATH/.cache
 rm -rf $GOPATH/.cache/govendor
 ln -s $HOME/.govendor $GOPATH/.cache/govendor
+
+# share compile cache
+mkdir -p $HOME/pkg
+rm -rf $GOPATH/pkg
+ln -s $HOME/pkg $GOPATH/pkg
