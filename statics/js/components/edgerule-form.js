@@ -28,12 +28,12 @@ Vue.component('edgerule-form', {
         </div>\
         <div class="form-group">\
           <label for="type">Relationship type</label>\
-          <select id="type" v-model="type" class="form-control custom-select">\
-            <option disabled value="">Select Relationship type</option>\
-            <option value="layer2">Layer 2</option>\
-            <option value="ownership">Ownership</option>\
-            <option value="both">Both (ownership & layer2)</option>\
-          </select>\
+          <input list="relation-types" id="type" type="text" v-model="type" class="form-control input-sm">\
+          </input>\
+          <datalist id="relation-types">\
+            <option value="layer2">\
+            <option value="ownership">\
+          </datalist>\
         </div>\
         <div class="form-group">\
           <label for="metadata">Metadata</label>\
