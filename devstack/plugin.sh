@@ -68,7 +68,7 @@ if [ "x$PUBLIC_INTERFACE" != "x" ]; then
 fi
 
 ELASTICSEARCH_BASE_URL=https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution
-ELASTICSEARCH_VERSION=5.6.10
+ELASTICSEARCH_VERSION=5.6.14
 
 USE_ELASTICSEARCH=0
 if [ "${SKYDIVE_FLOWS_STORAGE}" == "elasticsearch" ] || [ "${SKYDIVE_GRAPH_STORAGE}" == "elasticsearch" ]; then
