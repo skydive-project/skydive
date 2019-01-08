@@ -27,15 +27,11 @@ import (
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/probe"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
-
-// LinkHandler handles links between two k8s or istio objects
-type LinkHandler func(g *graph.Graph) probe.Probe
 
 // NewConfig returns a new Kubernetes configuration object
 func NewConfig(kubeConfig string) (*rest.Config, error) {
@@ -103,12 +99,7 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		newServicePodLinker,
 	}
 
-	var linkers []probe.Probe
-	for _, linkHandler := range linkerHandlers {
-		if linker := linkHandler(g); linker != nil {
-			linkers = append(linkers, linker)
-		}
-	}
+	linkers := InitLinkers(linkerHandlers, g)
 
 	probe := NewProbe(g, Manager, subprobes[Manager], linkers)
 

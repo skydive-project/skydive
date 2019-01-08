@@ -25,7 +25,6 @@ package istio
 import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
 
 	kiali "github.com/kiali/kiali/kubernetes"
@@ -68,12 +67,7 @@ func NewIstioProbe(g *graph.Graph) (*k8s.Probe, error) {
 		newVirtualServicePodLinker,
 	}
 
-	var linkers []probe.Probe
-	for _, linkHandler := range linkerHandlers {
-		if linker := linkHandler(g); linker != nil {
-			linkers = append(linkers, linker)
-		}
-	}
+	linkers := k8s.InitLinkers(linkerHandlers, g)
 
 	probe := k8s.NewProbe(g, Manager, k8s.GetSubprobesMap(Manager), linkers)
 

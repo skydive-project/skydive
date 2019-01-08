@@ -33,6 +33,19 @@ import (
 	"k8s.io/apimachinery/pkg/util/runtime"
 )
 
+// LinkHandler creates a linker
+type LinkHandler func(g *graph.Graph) probe.Probe
+
+// InitLinkers initializes the listed linkers
+func InitLinkers(linkerHandlers []LinkHandler, g *graph.Graph) (linkers []probe.Probe) {
+	for _, handler := range linkerHandlers {
+		if linker := handler(g); linker != nil {
+			linkers = append(linkers, linker)
+		}
+	}
+	return
+}
+
 var subprobes = make(map[string]map[string]Subprobe)
 
 // PutSubprobe puts a new subprobe in the subprobes map
