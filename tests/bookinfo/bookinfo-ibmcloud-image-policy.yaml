@@ -1,0 +1,9 @@
+apiVersion: securityenforcement.admission.cloud.ibm.com/v1beta1
+kind: ImagePolicy
+metadata:
+  name: ibmcloud-image-policy
+spec:
+   repositories:
+    # This policy allows all images to be deployed into this namespace.
+    - name: "*"
+      policy:
