@@ -872,6 +872,13 @@ func (f *Flow) newTransportLayer(packet *Packet, opts Opts) error {
 		if opts.TCPMetric {
 			f.TCPMetric = &TCPMetric{}
 		}
+
+		if transportPacket.FIN {
+			f.FinishType = FlowFinishType_TCP_FIN
+		}
+		if transportPacket.RST {
+			f.FinishType = FlowFinishType_TCP_RST
+		}
 	} else if layer := packet.Layer(layers.LayerTypeUDP); layer != nil {
 		f.Transport = &TransportLayer{Protocol: FlowProtocol_UDP}
 
