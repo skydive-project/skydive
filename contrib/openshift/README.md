@@ -10,12 +10,12 @@ This OpenShift template allows you to instantiate skydive in OpenShift.
 oc adm new-project --node-selector='' skydive
 ```
 
-####  Skype analyser and agent need  extended  privileges
+####  Skype analyzer and agent need  extended  privileges
 
 ```
-# analyser and agen run as privileged container
+# analyzer and agent run as privileged container
 oc adm policy add-scc-to-user privileged -z default
-# analyser need cluster-reader access get all informations from the cluster
+# analyzer need cluster-reader access get all informations from the cluster
 oc adm policy add-cluster-role-to-user cluster-reader -z default
 ```
 
