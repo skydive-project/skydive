@@ -24,7 +24,7 @@ oc adm policy add-cluster-role-to-user cluster-reader -z default
 
 ```
 # adjust VERSION for the current version - for example: v0.20.1 or master
-VERSION=v0.21.0
+VERSION=master
 oc process -f https://raw.githubusercontent.com/skydive-project/skydive/${VERSION}/contrib/openshift/skydive-template.yaml | oc apply -f -
 ```
 
