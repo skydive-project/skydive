@@ -197,6 +197,7 @@ agent:
       # - lxd
       # - lldp
       # - runc
+      # - sriov
 
     netlink:
       # delay in seconds between two metric updates
