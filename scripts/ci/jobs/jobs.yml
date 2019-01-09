@@ -214,6 +214,8 @@
           url: https://github.com/skydive-project/skydive
       - inject:
           properties-content: MINIKUBE_DRIVER=virtualbox
+      - build-discarder:
+          artifact-num-to-keep: 100
     scm:
       - skydive-github:
           repository: "${REPOSITORY}"

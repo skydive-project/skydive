@@ -14,7 +14,7 @@ curl -sL -o ~/bin/gimme https://raw.githubusercontent.com/travis-ci/gimme/master
 chmod +x ~/bin/gimme
 
 # before changing this be sure that it will not break the RHEL packaging
-eval "$(gimme 1.9.1)"
+eval "$(gimme 1.10.3)"
 
 export GOPATH=$WORKSPACE
 export PATH=$PATH:$GOPATH/bin
@@ -23,3 +23,8 @@ export PATH=$PATH:$GOPATH/bin
 mkdir -p $HOME/.govendor $GOPATH/.cache
 rm -rf $GOPATH/.cache/govendor
 ln -s $HOME/.govendor $GOPATH/.cache/govendor
+
+# share compile cache
+mkdir -p $HOME/pkg
+rm -rf $GOPATH/pkg
+ln -s $HOME/pkg $GOPATH/pkg
