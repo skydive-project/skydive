@@ -1798,10 +1798,18 @@ func (t *GraphTraversalValue) Dedup(ctx StepContext, keys ...interface{}) *Graph
 
 	var nv []interface{}
 	ntv := &GraphTraversalValue{GraphTraversal: t.GraphTraversal, value: nv}
+
 	visited := make(map[interface{}]bool)
+	var kvisited interface{}
+	var err error
+
 	for _, v := range t.Values() {
-		if _, ok := visited[v]; !ok {
-			visited[v] = true
+		if kvisited, err = hashstructure.Hash(v, nil); err != nil {
+			return &GraphTraversalValue{GraphTraversal: t.GraphTraversal, error: errors.New("Dedup unable to hash the key values")}
+		}
+
+		if _, ok := visited[kvisited]; !ok {
+			visited[kvisited] = true
 			ntv.value = append(ntv.value.([]interface{}), v)
 		}
 	}
