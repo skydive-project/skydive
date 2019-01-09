@@ -629,6 +629,13 @@ func TestTraversalParser(t *testing.T) {
 	}
 
 	// next traversal test
+	query = `G.E().Dedup("Direction")`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 4 {
+		t.Fatalf("Should return 4 nodes, returned: %v", res.Values())
+	}
+
+	// next traversal test
 	query = `G.V().Dedup("Type")`
 	res = execTraversalQuery(t, g, query)
 	if len(res.Values()) != 3 {
