@@ -310,7 +310,7 @@ func makeFilter(rule *Rule) string {
 // Execute exposes an interface to command launch on the OS
 type Execute interface {
 	ExecCommand(string, ...string) ([]byte, error)
-	ExecCommandPipe(context.Context, string, ...string) (io.Reader, error)
+	ExecCommandPipe(context.Context, string, ...string) (io.Reader, interface{ Wait() error }, error)
 }
 
 // RealExecute is the actual implementation given below. It can be overridden for tests.
@@ -326,20 +326,20 @@ func (r RealExecute) ExecCommand(com string, args ...string) ([]byte, error) {
 }
 
 // ExecCommandPipe executes a command on a host and gives back a pipe to control it.
-func (r RealExecute) ExecCommandPipe(ctx context.Context, com string, args ...string) (io.Reader, error) {
+func (r RealExecute) ExecCommandPipe(ctx context.Context, com string, args ...string) (io.Reader, interface{ Wait() error }, error) {
 	/* #nosec */
 	command := exec.CommandContext(ctx, com, args...)
 	out, err := command.StdoutPipe()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	command.Stderr = command.Stdout
 	if err = command.Start(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return out, err
+	return out, command, err
 }
 
 // launchOnSwitch launches a command on a given switch
@@ -361,7 +361,7 @@ func launchContinuousOnSwitch(ctx context.Context, cmd []string) (<-chan string,
 		logging.GetLogger().Debugf("Launching continusously %v", cmd)
 		for ctx.Err() == nil {
 			retry := func() error {
-				out, err := executor.ExecCommandPipe(ctx, cmd[0], cmd[1:]...)
+				out, com, err := executor.ExecCommandPipe(ctx, cmd[0], cmd[1:]...)
 				if err != nil {
 					logging.GetLogger().Errorf("Can't execute command %v: %s", cmd, err)
 					return nil
@@ -371,19 +371,22 @@ func launchContinuousOnSwitch(ctx context.Context, cmd []string) (<-chan string,
 				for ctx.Err() == nil {
 					line, err := reader.ReadString('\n')
 					if err == io.EOF {
+						com.Wait()
 						break
 					} else if err != nil {
 						logging.GetLogger().Errorf("IO Error on command %v: %s", cmd, err)
+						// Should return but there may be weird cases.
+						go com.Wait()
 						break
 					} else {
 						if strings.Contains(line, "is not a bridge or a socket") {
 							reader.Discard(int(^uint(0) >> 1))
+							com.Wait()
 							return errors.New("Not a bridge or a socket")
 						}
 						cout <- line
 					}
 				}
-
 				return nil
 			}
 			if err := common.Retry(retry, 100, 50*time.Millisecond); err != nil {
