@@ -349,10 +349,12 @@ static: skydive.clean govendor genlocalfiles
 .PHONY: contribs.clean
 contribs.clean:
 	$(MAKE) -C contrib/snort clean
+	$(MAKE) -C contrib/objectstore clean
 
 .PHONY: contribs
 contribs:
 	$(MAKE) -C contrib/snort
+	$(MAKE) -C contrib/objectstore
 
 .PHONY: dpdk.build
 dpdk.build:
