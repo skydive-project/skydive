@@ -96,6 +96,26 @@ func virtualServicePodAreLinked(a, b interface{}) bool {
 	return false
 }
 
+func virtualServiceServiceAreLinked(a, b interface{}) bool {
+	vs := a.(*kiali.VirtualService)
+	service := b.(*v1.Service)
+	vsSpec := &virtualServiceSpec{}
+	if err := mapstructure.Decode(vs.Spec, vsSpec); err != nil {
+		return false
+	}
+	vsAppsVersions := vsSpec.getAppsVersions()
+	for app := range vsAppsVersions {
+		if app == service.Labels["app"] {
+			return true
+		}
+	}
+	return false
+}
+
 func newVirtualServicePodLinker(g *graph.Graph) probe.Probe {
 	return k8s.NewABLinker(g, Manager, "virtualservice", k8s.Manager, "pod", virtualServicePodAreLinked)
+}
+
+func newVirtualServiceServiceLinker(g *graph.Graph) probe.Probe {
+	return k8s.NewABLinker(g, Manager, "virtualservice", k8s.Manager, "service", virtualServiceServiceAreLinked)
 }

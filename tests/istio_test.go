@@ -27,7 +27,6 @@ package tests
 import (
 	"testing"
 
-	"github.com/skydive-project/skydive/graffiti/graph"
 	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/topology/probes/istio"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
@@ -58,12 +57,8 @@ func TestIstioVirtualServiceNode(t *testing.T) {
 	testNodeCreationFromConfig(t, istio.Manager, "virtualservice", objName+"-virtualservice")
 }
 
-func checkEdgeVirtualService(t *testing.T, c *CheckContext, from, to *graph.Node, edgeArgs ...interface{}) error {
-	return checkEdge(t, c, from, to, "virtualservice", edgeArgs...)
-}
-
-func TestIstioVirtualServicePodScenario(t *testing.T) {
-	file := "virtualservice-pod"
+func TestIstioVirtualServiceServicePodScenario(t *testing.T) {
+	file := "virtualservice-service-pod"
 	name := objName + "-" + file
 	testRunner(
 		t,
@@ -71,21 +66,30 @@ func TestIstioVirtualServicePodScenario(t *testing.T) {
 		tearDownFromConfigFile(istio.Manager, file),
 		[]CheckFunction{
 			func(c *CheckContext) error {
+
 				virtualservice, err := checkNodeCreation(t, c, istio.Manager, "virtualservice", name)
 				if err != nil {
 					return err
 				}
-				_, err = checkNodeCreation(t, c, istio.Manager, "destinationrule", name)
+
+				service, err := checkNodeCreation(t, c, k8s.Manager, "service", name)
 				if err != nil {
 					return err
 				}
+
 				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", name)
 				if err != nil {
 					return err
 				}
-				if err = checkEdgeVirtualService(t, c, virtualservice, pod); err != nil {
+
+				if err = checkEdge(t, c, virtualservice, service, "virtualservice"); err != nil {
 					return err
 				}
+
+				if err = checkEdge(t, c, virtualservice, pod, "virtualservice"); err != nil {
+					return err
+				}
+
 				return nil
 			},
 		},
