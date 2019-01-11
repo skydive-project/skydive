@@ -227,6 +227,11 @@ $(get_probes_for_config $SKYDIVE_AGENT_PROBES)
       region_name: RegionOne
       domain_name: $SERVICE_DOMAIN_NAME
 
+ovs:
+  oflow:
+    enable: true
+    native: true
+
 analyzer:
 EOF
 
