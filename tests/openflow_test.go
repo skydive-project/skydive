@@ -248,8 +248,9 @@ func TestAddOFGroup(t *testing.T) {
 		tearDownCmds: []Cmd{
 			{"ovs-vsctl del-br br-of6", true},
 		},
-		mode:   Replay,
-		checks: []CheckFunction{func(c *CheckContext) error { return verifyGroup(c, "br-of6", 1) }},
+		mode:    Replay,
+		retries: 15,
+		checks:  []CheckFunction{func(c *CheckContext) error { return verifyGroup(c, "br-of6", 1) }},
 	}
 
 	RunTest(t, test)
@@ -260,6 +261,7 @@ func TestModOFGroup(t *testing.T) {
 		{"ovs-vsctl --if-exists del-br br-of7", true},
 		{"ovs-vsctl add-br br-of7", true},
 		{"ovs-vsctl set bridge br-of7 protocols=OpenFlow10,OpenFlow14,OpenFlow15", true},
+		{"sleep 1", true},
 		{"ovs-vsctl add-port br-of7 intf1-7 -- set interface intf1-7 type=internal", true},
 		{"ovs-vsctl add-port br-of7 intf2-7 -- set interface intf2-7 type=internal", true},
 		{"ovs-ofctl -O OpenFlow15 add-group br-of7 group_id=123,type=all,bucket=actions=1", true},
@@ -271,8 +273,9 @@ func TestModOFGroup(t *testing.T) {
 		tearDownCmds: []Cmd{
 			{"ovs-vsctl del-br br-of7", true},
 		},
-		mode:   Replay,
-		checks: []CheckFunction{func(c *CheckContext) error { return verifyGroup(c, "br-of7", 1) }},
+		mode:    Replay,
+		retries: 15,
+		checks:  []CheckFunction{func(c *CheckContext) error { return verifyGroup(c, "br-of7", 1) }},
 	}
 
 	RunTest(t, test)
@@ -295,8 +298,9 @@ func TestDelOFGroup(t *testing.T) {
 		tearDownCmds: []Cmd{
 			{"ovs-vsctl del-br br-of8", true},
 		},
-		mode:   Replay,
-		checks: []CheckFunction{func(c *CheckContext) error { return verifyGroup(c, "br-of8", 0) }},
+		mode:    Replay,
+		retries: 15,
+		checks:  []CheckFunction{func(c *CheckContext) error { return verifyGroup(c, "br-of8", 0) }},
 	}
 
 	RunTest(t, test)
@@ -325,7 +329,7 @@ func testOVSRule(t *testing.T, kind, rule string, checkRule func(node *graph.Nod
 			{"ovs-vsctl del-br br-test", true},
 		},
 
-		retries: 10,
+		retries: 15,
 
 		mode: Replay,
 
@@ -475,6 +479,27 @@ func TestOVSActionSetField(t *testing.T) {
 						"Value": "10.0.0.1",
 					},
 				},
+			},
+		}
+		if err := deep.Equal(actions, expectedActions); err != nil {
+			return errors.New(spew.Sdump(err))
+		}
+		return nil
+	})
+}
+
+func TestOVSActionPushPopVlan(t *testing.T) {
+	testOVSRule(t, "flow", "-O OpenFlow14 priority=32768,actions=push_vlan:0x8100,pop_vlan", func(node *graph.Node) error {
+		actions, _ := node.GetField("Actions")
+		expectedActions := []interface{}{
+			map[string]interface{}{
+				"Type": "push_vlan",
+				"Arguments": map[string]interface{}{
+					"Ethertype": int64(33024),
+				},
+			},
+			map[string]interface{}{
+				"Type": "pop_vlan",
 			},
 		}
 		if err := deep.Equal(actions, expectedActions); err != nil {

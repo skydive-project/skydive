@@ -91,7 +91,7 @@ func (o *OvsOfProbe) OnOvsBridgeAdd(bridgeNode *graph.Node) {
 	uuid, _ := bridgeNode.GetFieldString("UUID")
 	if probe, ok := o.bridgeOfProbes[uuid]; ok {
 		if err := probe.prober.MonitorGroup(); err != nil {
-			logging.GetLogger().Warning(err)
+			logging.GetLogger().Debug(err)
 		}
 		return
 	}

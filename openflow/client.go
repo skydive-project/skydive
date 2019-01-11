@@ -22,6 +22,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strings"
 	"sync"
@@ -29,7 +30,7 @@ import (
 	"time"
 
 	"github.com/skydive-project/goloxi"
-	"github.com/skydive-project/goloxi/of10"
+	"github.com/skydive-project/goloxi/of13"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -49,14 +50,15 @@ var (
 // Client describes an OpenFlow client
 type Client struct {
 	sync.RWMutex
-	Conn      net.Conn
-	addr      string
-	reader    *bufio.Reader
-	ctx       context.Context
-	msgChan   chan (goloxi.Message)
-	listeners []Listener
-	xid       uint32
-	protocol  Protocol
+	conn               net.Conn
+	addr               string
+	reader             *bufio.Reader
+	ctx                context.Context
+	msgChan            chan (goloxi.Message)
+	listeners          []Listener
+	xid                uint32
+	protocol           Protocol
+	supportedProtocols []Protocol
 }
 
 // Listener defines the interface implemented by monitor listeners
@@ -85,47 +87,92 @@ func (c *Client) connect(addr string) (net.Conn, error) {
 	}
 }
 
-func (c *Client) receiveMessage() (goloxi.Message, error) {
-	select {
-	case <-c.ctx.Done():
-		return nil, ErrContextDone
-	case <-time.After(30 * time.Second):
-		return nil, ErrConnectionTimeout
-	case msg, ok := <-c.msgChan:
-		if !ok {
-			return nil, ErrReaderChannelClosed
-		}
-		return msg, nil
+func (c *Client) handshake() (Protocol, error) {
+	var ownBitmap uint32
+
+	protocol := c.supportedProtocols[len(c.supportedProtocols)-1]
+	for _, supportedProtocol := range c.supportedProtocols {
+		ownBitmap |= 1 << supportedProtocol.GetVersion()
 	}
-}
 
-func (c *Client) handshake() (goloxi.Message, error) {
-	c.SendHello()
+	if err := c.SendMessage(protocol.NewHello(ownBitmap)); err != nil {
+		return nil, err
+	}
 
-	msg, err := c.receiveMessage()
+	header, data, err := c.readMessage()
 	if err != nil {
 		return nil, err
 	}
 
-	if msg.MessageType() != of10.OFPTHello {
+	if header.Type != goloxi.OFPTHello {
 		return nil, fmt.Errorf("Expected a first message of type Hello")
 	}
 
-	return msg, nil
+	switch {
+	case header.Version == protocol.GetVersion():
+		return protocol, nil
+	case header.Version < protocol.GetVersion():
+		for _, protocol := range c.supportedProtocols {
+			if header.Version == protocol.GetVersion() {
+				return protocol, nil
+			}
+		}
+	case header.Version > protocol.GetVersion():
+		// Since OpenFlow 1.3, Hello message can include bitmaps of the supported versions.
+		// If this bitmap is provided, the negotiated version is the highest one supported
+		// by both sides
+		if header.Version >= goloxi.VERSION_1_3 && len(data) > 8 {
+			if msg, err := of13.DecodeHello(nil, goloxi.NewDecoder(data[8:])); err == nil {
+				for _, element := range msg.GetElements() {
+					if peerBitmaps, ok := element.(*of13.HelloElemVersionbitmap); ok && len(peerBitmaps.GetBitmaps()) > 0 {
+						peerBitmap := peerBitmaps.GetBitmaps()[0].Value
+						for i := uint8(31); i >= 0; i-- {
+							if peerBitmap&(1<<i) != 0 {
+								for _, supportedProtocol := range c.supportedProtocols {
+									if i == supportedProtocol.GetVersion() {
+										logging.GetLogger().Debugf("Negotiated version %d", i)
+										return protocol, nil
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		} else {
+			// Otherwise, the negotiated version is the lowest version
+			return protocol, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Unsupported protocol version %d", protocol.GetVersion())
 }
 
 func (c *Client) handleLoop() error {
+	ctx, cancel := context.WithCancel(c.ctx)
+	defer cancel()
+
+	echoTicker := time.NewTicker(time.Second * echoDuration)
+	defer echoTicker.Stop()
+
 	for {
-		msg, err := c.receiveMessage()
-		if err != nil {
-			logging.GetLogger().Errorf("Error while receiving message: %s", err)
-			return err
-		}
+		select {
+		case <-ctx.Done():
+			logging.GetLogger().Debugf("Context was cancelled")
+			return ErrContextDone
+		case <-echoTicker.C:
+			c.SendEcho()
+		case msg, ok := <-c.msgChan:
+			if !ok {
+				logging.GetLogger().Error(ErrReaderChannelClosed)
+				return ErrReaderChannelClosed
+			}
 
-		c.dispatchMessage(msg)
+			c.dispatchMessage(msg)
 
-		if msg.MessageType() == of10.OFPTEchoRequest {
-			c.SendMessage(c.protocol.NewEchoReply())
+			if msg.MessageType() == goloxi.OFPTEchoRequest {
+				c.SendMessage(c.protocol.NewEchoReply())
+			}
 		}
 	}
 }
@@ -138,51 +185,42 @@ func (c *Client) dispatchMessage(msg goloxi.Message) {
 	c.RUnlock()
 }
 
-func (c *Client) readLoop() {
-	type Timeout interface {
-		Timeout() bool
+func (c *Client) readMessage() (*goloxi.Header, []byte, error) {
+	c.conn.SetReadDeadline(time.Now().Add(30 * time.Second))
+	data, err := c.reader.Peek(8)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	echoTicker := time.NewTicker(time.Second * echoDuration)
-	defer echoTicker.Stop()
+	header := &goloxi.Header{}
+	if err := header.Decode(goloxi.NewDecoder(data)); err != nil {
+		return nil, nil, err
+	}
 
+	data = make([]byte, header.Length)
+	_, err = io.ReadFull(c.reader, data)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to read full OpenFlow message: %s", err)
+	}
+
+	return header, data, nil
+}
+
+func (c *Client) readLoop() {
 	for {
-		select {
-		case <-c.ctx.Done():
+		_, data, err := c.readMessage()
+		if err != nil {
+			logging.GetLogger().Error(err)
 			return
-		case <-echoTicker.C:
-			c.SendEcho()
-		default:
-			data, err := c.reader.Peek(8)
-			if err != nil {
-				if _, ok := err.(Timeout); !ok {
-					logging.GetLogger().Errorf("Failed to read packet: %s", err)
-					return
-				}
-				continue
-			}
-
-			header := of10.Header{}
-			if err := header.Decode(goloxi.NewDecoder(data)); err != nil {
-				logging.GetLogger().Debugf("Ignoring non OpenFlow packet: %s", err)
-				continue
-			}
-
-			data = make([]byte, header.Length)
-			n, err := c.reader.Read(data)
-			if n != int(header.Length) {
-				logging.GetLogger().Errorf("Failed to read full OpenFlow message: %s", err)
-				continue
-			}
-
-			msg, err := c.protocol.DecodeMessage(data)
-			if err != nil {
-				logging.GetLogger().Warningf("Failed to decode message with %s: %s", err, c.protocol)
-				continue
-			}
-
-			c.msgChan <- msg
 		}
+
+		msg, err := c.protocol.DecodeMessage(data)
+		if err != nil {
+			logging.GetLogger().Warningf("Failed to decode message on bridge %s with %s: %s", c.addr, err, c.protocol)
+			continue
+		}
+
+		c.msgChan <- msg
 	}
 }
 
@@ -219,25 +257,20 @@ func (c *Client) SendMessage(msg goloxi.Message) error {
 		b := &barrier{c: make(chan goloxi.Message, 1)}
 		c.RegisterListener(b)
 
-		_, err := c.Conn.Write(encoder.Bytes())
+		_, err := c.conn.Write(encoder.Bytes())
 		if err == nil {
 			<-b.c
 		}
 		return nil
 	}
 
-	_, err := c.Conn.Write(encoder.Bytes())
+	_, err := c.conn.Write(encoder.Bytes())
 	return err
 }
 
 // SendEcho sends an OpenFlow echo message
 func (c *Client) SendEcho() error {
 	return c.SendMessage(c.protocol.NewEchoRequest())
-}
-
-// SendHello sends an OpenFlow hello message
-func (c *Client) SendHello() error {
-	return c.SendMessage(c.protocol.NewHello())
 }
 
 // RegisterListener registers a new listener of the received messages
@@ -250,24 +283,23 @@ func (c *Client) RegisterListener(listener Listener) {
 
 // Start monitoring the OpenFlow bridge
 func (c *Client) Start(ctx context.Context) (err error) {
-	c.Conn, err = c.connect(c.addr)
+	c.conn, err = c.connect(c.addr)
 	if err != nil {
 		return err
 	}
 
-	c.reader = bufio.NewReader(c.Conn)
+	c.reader = bufio.NewReader(c.conn)
 	c.ctx = ctx
 
-	go c.readLoop()
-
-	_, err = c.handshake()
+	c.protocol, err = c.handshake()
 	if err != nil {
 		return err
 	}
 
+	go c.readLoop()
 	go c.handleLoop()
 
-	logging.GetLogger().Infof("Successfully connected to OpenFlow switch")
+	logging.GetLogger().Infof("Successfully connected to OpenFlow switch %s using version %d", c.addr, c.protocol.GetVersion())
 
 	return nil
 }
@@ -277,11 +309,20 @@ func (c *Client) Stop() error {
 	return nil
 }
 
+// GetProtocol returns the current protocol
+func (c *Client) GetProtocol() Protocol {
+	return c.protocol
+}
+
 // NewClient returns a new OpenFlow client using either a UNIX socket or a TCP socket
-func NewClient(addr string, protocol Protocol) (*Client, error) {
-	return &Client{
-		addr:     addr,
-		msgChan:  make(chan goloxi.Message, 500),
-		protocol: protocol,
-	}, nil
+func NewClient(addr string, protocols []Protocol) (*Client, error) {
+	if protocols == nil {
+		protocols = []Protocol{OpenFlow10, OpenFlow11, OpenFlow12, OpenFlow13, OpenFlow14}
+	}
+	client := &Client{
+		addr:               addr,
+		msgChan:            make(chan goloxi.Message, 500),
+		supportedProtocols: protocols,
+	}
+	return client, nil
 }

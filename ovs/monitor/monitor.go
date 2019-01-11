@@ -67,7 +67,7 @@ func (m *Monitor) Start(ctx context.Context) error {
 
 // NewMonitor returns a new OVS monitor using either a UNIX socket or a TCP socket
 func NewMonitor(addr string) (*Monitor, error) {
-	client, err := openflow.NewClient(addr, openflow.OpenFlow10)
+	client, err := openflow.NewClient(addr, []openflow.Protocol{openflow.OpenFlow10})
 	if err != nil {
 		return nil, err
 	}

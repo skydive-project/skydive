@@ -25,9 +25,7 @@ import (
 	"time"
 
 	"github.com/cnf/structhash"
-	"github.com/davecgh/go-spew/spew"
 	goloxi "github.com/skydive-project/goloxi"
-	"github.com/skydive-project/goloxi/of10"
 	"github.com/skydive-project/goloxi/of14"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -37,25 +35,35 @@ import (
 	"github.com/skydive-project/skydive/topology"
 )
 
+type ofHandler interface {
+	openflow.Protocol
+	OnMessage(msg goloxi.Message)
+	NewGroupForwardRequest() (goloxi.Message, error)
+	NewRoleRequest() (goloxi.Message, error)
+	NewFlowStatsRequest(match Match) (goloxi.Message, error)
+	NewGroupDescStatsRequest() (goloxi.Message, error)
+}
+
 type ofProbe struct {
 	sync.Mutex
 	bridge           string
 	address          string
 	g                *graph.Graph
 	node             *graph.Node
+	handler          ofHandler
 	client           *openflow.Client
 	monitor          *monitor.Monitor
 	ctx              context.Context
 	cancel           context.CancelFunc
 	lastUpdateMetric time.Time
-	debouncer        *common.Debouncer
 	rules            map[graph.Identifier]graph.Identifier
 	requests         map[uint32]*ofRule
 }
 
 type ofFilter struct {
-	Type  string
-	Value interface{}
+	Type      string
+	Value     interface{}
+	ValueMask interface{} `json:",omitempty"`
 }
 
 type ofAction struct {
@@ -70,6 +78,10 @@ func newOfAction(action goloxi.IAction) *ofAction {
 	}
 }
 
+type ofEnum interface {
+	MarshalJSON() ([]byte, error)
+}
+
 type ofRule struct {
 	monitorID    graph.Identifier
 	Cookie       int64
@@ -78,7 +90,7 @@ type ofRule struct {
 	IdleTimeout  int64
 	HardTimeout  int64
 	Importance   int64
-	Flags        of14.FlowModFlags
+	Flags        ofEnum
 	Filters      []*ofFilter
 	Actions      []*ofAction
 	WriteActions []*ofAction
@@ -87,9 +99,22 @@ type ofRule struct {
 type ofBucket struct {
 	Len        int64
 	Weight     int64
-	WatchPort  of14.Port
-	WatchGroup of14.Group
+	WatchPort  int64
+	WatchGroup int64
 	Actions    []*ofAction
+}
+
+func newOfBucket(weight, watchPort, watchGroup int64, actions []goloxi.IAction) *ofBucket {
+	bucket := &ofBucket{
+		WatchGroup: watchGroup,
+		WatchPort:  watchPort,
+		Weight:     int64(weight),
+		Actions:    make([]*ofAction, len(actions)),
+	}
+	for i, action := range actions {
+		bucket.Actions[i] = newOfAction(action)
+	}
+	return bucket
 }
 
 func (r *ofRule) GetMetadata() graph.Metadata {
@@ -123,9 +148,8 @@ func (r *ofRule) GetMetadata() graph.Metadata {
 		default:
 			if s, ok := t.(fmt.Stringer); ok {
 				value = s.String()
-			} else {
-				value = t
 			}
+			value = t
 		}
 		filters[i] = map[string]interface{}{
 			"Type":  filter.Type,
@@ -180,7 +204,7 @@ func (r *ofRule) GetID(host, bridge string) graph.Identifier {
 	return graph.Identifier(hash)
 }
 
-func newOfRule(cookie uint64, table uint8, priority, idleTimeout, hardTimeout, importance uint16, flags of14.FlowModFlags, match *of14.Match, actions []goloxi.IAction, writeActions []goloxi.IAction) (*ofRule, error) {
+func newOfRule(cookie uint64, table uint8, priority, idleTimeout, hardTimeout, importance uint16, flags ofEnum, match of14.IMatchV3, actions []goloxi.IAction, writeActions []goloxi.IAction) (*ofRule, error) {
 	rule := &ofRule{
 		Cookie:       int64(cookie),
 		Table:        int64(table),
@@ -189,20 +213,18 @@ func newOfRule(cookie uint64, table uint8, priority, idleTimeout, hardTimeout, i
 		HardTimeout:  int64(hardTimeout),
 		Importance:   int64(importance),
 		Flags:        flags,
-		Filters:      make([]*ofFilter, len(match.OxmList)),
+		Filters:      make([]*ofFilter, len(match.GetOxmList())),
 		Actions:      make([]*ofAction, len(actions)),
 		WriteActions: make([]*ofAction, len(writeActions)),
 	}
 
-	for i, entry := range match.OxmList {
-		oxm, ok := entry.(of14.IOxm)
-		if !ok {
-			return nil, fmt.Errorf("Invalid match entry %+v", oxm)
-		}
-
+	for i, entry := range match.GetOxmList() {
 		rule.Filters[i] = &ofFilter{
-			Type:  oxm.GetOXMName(),
-			Value: oxm.GetOXMValue(),
+			Type:  entry.GetOXMName(),
+			Value: entry.GetOXMValue(),
+		}
+		if oxmMasked, ok := entry.(goloxi.IOxmMasked); ok {
+			rule.Filters[i].ValueMask = oxmMasked.GetOXMValueMask()
 		}
 	}
 
@@ -222,7 +244,7 @@ func newOfRule(cookie uint64, table uint8, priority, idleTimeout, hardTimeout, i
 }
 
 type ofGroup struct {
-	GroupType of14.GroupType
+	GroupType ofEnum
 	ID        int64
 	Buckets   []*ofBucket
 }
@@ -238,60 +260,23 @@ func (g *ofGroup) GetMetadata() graph.Metadata {
 	return metadata
 }
 
-func newOfGroup(groupType of14.GroupType, id int64, buckets []*of14.Bucket) *ofGroup {
-	ofGroup := &ofGroup{
-		GroupType: groupType,
-		ID:        id,
+func (probe *ofProbe) sendFlowStatsRequest(match Match) error {
+	msg, err := probe.handler.NewFlowStatsRequest(match)
+	if err != nil {
+		return err
 	}
-	for _, bucket := range buckets {
-		ofBucket := &ofBucket{
-			WatchGroup: of14.Group(bucket.WatchGroup),
-			WatchPort:  bucket.WatchPort,
-			Weight:     int64(bucket.Weight),
-			Actions:    make([]*ofAction, len(bucket.Actions)),
-		}
-		for i, action := range bucket.Actions {
-			ofBucket.Actions[i] = newOfAction(action)
-		}
-		ofGroup.Buckets = append(ofGroup.Buckets, ofBucket)
-	}
-	return ofGroup
+
+	return probe.client.SendMessage(msg)
 }
 
-func (probe *ofProbe) sendRoleRequest() error {
-	request := of14.NewRoleRequest()
-	request.Role = of14.OFPCRRoleSlave
-	request.GenerationId = 0x8000000000000002
-	return probe.client.SendMessage(request)
-}
-
-func (probe *ofProbe) requestGroupForward() error {
-	request := of14.NewAsyncSet()
-	prop := of14.NewAsyncConfigPropRequestforwardSlave()
-	prop.Mask = 0x1
-	prop.Length = 8
-	request.Properties = append(request.Properties, prop)
-	return probe.client.SendMessage(request)
-}
-
-// sendFlowStatsRequest creates a flow stats request, similar to ovs-ofctl dump-flows
-func (probe *ofProbe) newFlowStatsRequest(match *of14.Match) goloxi.Message {
-	request := of14.NewFlowStatsRequest()
-	request.TableId = of14.OFPTTAll
-	request.OutPort = of14.OFPPAny
-	request.OutGroup = of14.OFPGAny
-	if match == nil {
-		match = of14.NewMatchV3()
-		match.Length = 4
-		match.Type = of14.OFPMTOXM
-	}
-	request.Match = *match
-	return request
-}
-
-// SendGroupStatsDescRequest sends a group stats request, similar to ovs-ofctl dump-groups
+// sendGroupStatsDescRequest sends a group stats request, similar to ovs-ofctl dump-groups
 func (probe *ofProbe) sendGroupStatsDescRequest() error {
-	return probe.client.SendMessage(of14.NewGroupDescStatsRequest())
+	msg, err := probe.handler.NewGroupDescStatsRequest()
+	if err != nil {
+		return err
+	}
+
+	return probe.client.SendMessage(msg)
 }
 
 func (probe *ofProbe) Monitor(ctx context.Context) (err error) {
@@ -300,18 +285,33 @@ func (probe *ofProbe) Monitor(ctx context.Context) (err error) {
 		return err
 	}
 
-	probe.client, err = openflow.NewClient(probe.address, openflow.OpenFlow14)
+	probe.client, err = openflow.NewClient(probe.address, nil)
 	if err != nil {
 		return err
 	}
 
 	probe.lastUpdateMetric = time.Now().UTC()
-	probe.monitor.RegisterListener(probe)
-	probe.client.RegisterListener(probe)
+
+	probe.monitor.RegisterListener(&of10Handler{probe: probe})
 
 	if err = common.Retry(func() error { return probe.client.Start(ctx) }, 5, time.Second); err != nil {
 		return err
 	}
+
+	ofVersion := probe.client.GetProtocol().GetVersion()
+	switch ofVersion {
+	case goloxi.VERSION_1_2:
+		probe.handler = &of12Handler{probe: probe}
+	case goloxi.VERSION_1_3:
+		probe.handler = &of13Handler{probe: probe}
+	case goloxi.VERSION_1_4:
+		probe.handler = &of14Handler{probe: probe}
+	case goloxi.VERSION_1_5:
+		probe.handler = &of15Handler{probe: probe}
+	default:
+		return fmt.Errorf("Unsupported version %d for bridge %s", ofVersion, probe.address)
+	}
+	probe.client.RegisterListener(probe.handler)
 
 	if err = common.Retry(func() error { return probe.monitor.Start(ctx) }, 5, time.Second); err != nil {
 		return err
@@ -334,7 +334,7 @@ func (probe *ofProbe) queryStats(ctx context.Context) {
 	for {
 		select {
 		case <-timer.C:
-			probe.client.SendMessage(probe.newFlowStatsRequest(nil))
+			probe.sendFlowStatsRequest(nil)
 			probe.sendGroupStatsDescRequest()
 		case <-ctx.Done():
 			return
@@ -343,15 +343,29 @@ func (probe *ofProbe) queryStats(ctx context.Context) {
 }
 
 func (probe *ofProbe) MonitorGroup() error {
-	if err := probe.sendRoleRequest(); err != nil {
+	if probe.handler.GetVersion() < goloxi.VERSION_1_5 {
+		return fmt.Errorf("Group monitoring is only possible on OpenFlow 1.5 and later because of an OVS bug")
+	}
+
+	msg, err := probe.handler.NewRoleRequest()
+	if err != nil {
 		return err
 	}
 
-	if err := probe.client.SendMessage(of14.NewBarrierRequest()); err != nil {
+	if err := probe.client.SendMessage(msg); err != nil {
 		return err
 	}
 
-	if err := probe.requestGroupForward(); err != nil {
+	if err := probe.client.SendMessage(probe.handler.NewBarrierRequest()); err != nil {
+		return err
+	}
+
+	msg, err = probe.handler.NewGroupForwardRequest()
+	if err != nil {
+		return err
+	}
+
+	if err := probe.client.SendMessage(msg); err != nil {
 		return err
 	}
 
@@ -403,152 +417,61 @@ func (probe *ofProbe) handleFlowRule(rule *ofRule, delete bool) *graph.Node {
 	return probe.syncNode(id, rule.GetMetadata(), delete)
 }
 
-func (probe *ofProbe) handleRequestForward(request of14.IHeader) {
+// Match is the interface of an OpenFlow match
+type Match interface {
+	of14.IMatchV3
+}
+
+// Stats holds the statistics of an OpenFlow rule
+type Stats struct {
+	PacketCount int64
+	ByteCount   int64
+	FlowCount   int64
+	Duration    time.Duration
+	IdleTime    time.Duration
+}
+
+func (probe *ofProbe) handleFlowStats(xid uint32, rule *ofRule, actions, writeActions []goloxi.IAction, stats Stats, now, last time.Time) {
+	probe.Lock()
+	if requestedRule, ok := probe.requests[xid]; ok && requestedRule.Priority == rule.Priority && len(requestedRule.Filters) == len(rule.Filters) {
+		monitorID := requestedRule.GetID(probe.g.GetHost(), probe.bridge)
+		probe.rules[monitorID] = rule.GetID(probe.g.GetHost(), probe.bridge)
+		delete(probe.requests, xid)
+	}
+	probe.Unlock()
+
 	probe.g.Lock()
-	defer probe.g.Unlock()
 
-	switch group := request.(type) {
-	case *of14.GroupAdd:
-		probe.handleGroup(newOfGroup(group.GroupType, int64(group.GroupId), group.Buckets), false)
-	case *of14.GroupModify:
-		probe.handleGroup(newOfGroup(group.GroupType, int64(group.GroupId), group.Buckets), false)
-	case *of14.GroupDelete:
-		if group.GroupId == of14.OFPGAll {
-			for _, children := range probe.g.LookupChildren(probe.node, graph.Metadata{"Type": "ofgroup"}, nil) {
-				probe.g.DelNode(children)
-			}
-		} else {
-			probe.handleGroup(newOfGroup(group.GroupType, int64(group.GroupId), group.Buckets), true)
-		}
+	node := probe.handleFlowRule(rule, false)
+
+	currMetric := &topology.InterfaceMetric{
+		RxPackets: stats.PacketCount,
+		RxBytes:   stats.ByteCount,
 	}
-}
 
-func (probe *ofProbe) handleFlowStats(xid uint32, flowStats []*of14.FlowStatsEntry, now, last time.Time) {
-	for _, stats := range flowStats {
-		var actions, writeActions []goloxi.IAction
-		for _, instruction := range stats.Instructions {
-			if instruction, ok := instruction.(*of14.InstructionApplyActions); ok {
-				actions = append(actions, instruction.Actions...)
-			}
-			if instruction, ok := instruction.(*of14.InstructionWriteActions); ok {
-				writeActions = append(writeActions, instruction.Actions...)
-			}
-		}
+	tr := probe.g.StartMetadataTransaction(node)
 
-		rule, err := newOfRule(stats.Cookie, stats.TableId, stats.Priority, stats.IdleTimeout, stats.HardTimeout, stats.Importance, stats.Flags, &stats.Match, actions, writeActions)
-		if err != nil {
-			logging.GetLogger().Error(err)
-			continue
-		}
+	var lastUpdateMetric *topology.InterfaceMetric
+	prevMetric, err := node.GetField("Metric")
+	if err == nil {
+		lastUpdateMetric = currMetric.Sub(prevMetric.(*topology.InterfaceMetric)).(*topology.InterfaceMetric)
+	}
 
-		probe.Lock()
-		if requestedRule, ok := probe.requests[xid]; ok && requestedRule.Priority == rule.Priority && len(requestedRule.Filters) == len(rule.Filters) {
-			monitorID := requestedRule.GetID(probe.g.GetHost(), probe.bridge)
-			probe.rules[monitorID] = rule.GetID(probe.g.GetHost(), probe.bridge)
-			delete(probe.requests, xid)
-		}
-		probe.Unlock()
-
-		probe.g.Lock()
-
-		node := probe.handleFlowRule(rule, false)
-
-		currMetric := &topology.InterfaceMetric{
-			RxPackets: int64(stats.PacketCount),
-			RxBytes:   int64(stats.ByteCount),
-		}
-
-		tr := probe.g.StartMetadataTransaction(node)
-
-		var lastUpdateMetric *topology.InterfaceMetric
-		prevMetric, err := node.GetField("Metric")
-		if err == nil {
-			lastUpdateMetric = currMetric.Sub(prevMetric.(*topology.InterfaceMetric)).(*topology.InterfaceMetric)
-		}
-
-		// nothing changed since last update
-		if lastUpdateMetric != nil && lastUpdateMetric.IsZero() {
-			probe.g.Unlock()
-			continue
-		}
-
-		tr.AddMetadata("Metric", currMetric)
-		if lastUpdateMetric != nil {
-			lastUpdateMetric.Start = int64(common.UnixMillis(last))
-			lastUpdateMetric.Last = int64(common.UnixMillis(now))
-			tr.AddMetadata("LastUpdateMetric", lastUpdateMetric)
-		}
-		tr.Commit()
-
+	// nothing changed since last update
+	if lastUpdateMetric != nil && lastUpdateMetric.IsZero() {
 		probe.g.Unlock()
-	}
-}
-
-func (probe *ofProbe) handleFlowMonitorReply(reply *of10.NiciraFlowMonitorReply) {
-	logging.GetLogger().Debugf("Handling flow monitor %s", spew.Sdump(reply))
-	nxm2oxm := func(nxm of14.INiciraMatch, matchLen uint16) *of14.MatchV3 {
-		oxm := of14.NewMatchV3()
-		for _, e := range nxm.GetNxmEntries() {
-			oxm.OxmList = append(oxm.OxmList, e)
-		}
-		oxm.Length = matchLen + 4
-		oxm.Type = of14.OFPMTOXM
-		return oxm
+		return
 	}
 
-	for _, update := range reply.Updates {
-		switch u := update.(type) {
-		case *of10.NiciraFlowUpdateFullAdd:
-			rule, err := newOfRule(u.Cookie, u.TableId, u.Priority, u.IdleTimeout, u.HardTimeout, 0, 0, nxm2oxm(&u.Match, u.MatchLen), u.Actions, nil)
-			if err != nil {
-				logging.GetLogger().Errorf("Failed to parse update: %s", err)
-				continue
-			}
-			msg := probe.newFlowStatsRequest(nxm2oxm(&u.Match, u.MatchLen))
-			probe.client.PrepareMessage(msg)
-			probe.Lock()
-			probe.requests[msg.GetXid()] = rule
-			probe.Unlock()
-			probe.client.SendMessage(msg)
-		case *of10.NiciraFlowUpdateFullDeleted:
-			monitorRule, err := newOfRule(u.Cookie, u.TableId, u.Priority, u.IdleTimeout, u.HardTimeout, 0, 0, nxm2oxm(&u.Match, u.MatchLen), u.Actions, nil)
-			if err != nil {
-				logging.GetLogger().Errorf("Failed to parse update: %s", err)
-				continue
-			}
-			monitorID := monitorRule.GetID(probe.g.GetHost(), probe.bridge)
-			probe.Lock()
-			ruleID := probe.rules[monitorID]
-			delete(probe.rules, monitorID)
-			probe.Unlock()
-
-			probe.g.Lock()
-			if n := probe.g.GetNode(ruleID); n != nil {
-				probe.g.DelNode(n)
-			}
-			probe.g.Unlock()
-		}
+	tr.AddMetadata("Metric", currMetric)
+	if lastUpdateMetric != nil {
+		lastUpdateMetric.Start = int64(common.UnixMillis(last))
+		lastUpdateMetric.Last = int64(common.UnixMillis(now))
+		tr.AddMetadata("LastUpdateMetric", lastUpdateMetric)
 	}
-}
+	tr.Commit()
 
-func (probe *ofProbe) OnMessage(msg goloxi.Message) {
-	switch t := msg.(type) {
-	case *of10.NiciraFlowMonitorReply: // Received on connection and on events
-		probe.handleFlowMonitorReply(t)
-	case *of14.FlowStatsReply: // Received with ticker and in response to requests
-		now := time.Now().UTC()
-		probe.handleFlowStats(t.GetXid(), t.Entries, now, probe.lastUpdateMetric)
-		probe.lastUpdateMetric = now
-	case *of14.Requestforward:
-		probe.handleRequestForward(t.Request)
-	case *of14.GroupDescStatsReply: // Received on initial sync
-		probe.g.Lock()
-		defer probe.g.Unlock()
-
-		for _, group := range t.Entries {
-			probe.handleGroup(newOfGroup(group.GroupType, int64(group.GroupId), group.Buckets), false)
-		}
-	}
+	probe.g.Unlock()
 }
 
 // NewOfProbe returns a new OpenFlow natively speaking probe
