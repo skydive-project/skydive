@@ -226,6 +226,16 @@ var TopologyComponent = {
               :defaultKeys="[\'Last\', \'Start\', \'RxBytes\', \'RxPackets\', \'TxBytes\', \'TxPackets\']"></metrics-table>\
           </div>\
         </panel>\
+        <panel id="ovs-sflow-metric" v-if="currentNodeSFlowMetric"\
+               title="OVS SFlow Metrics">\
+           <h2>Total metrics</h2>\
+           <sflow-metrics-table :object="currentNodeSFlowMetric" :keys="globalVars[\'sflow-metric-keys\']"></sflow-metrics-table>\
+           <div v-show="currentNodeSFlowLastUpdateMetric && topologyTimeContext === 0">\
+             <h2>Last metrics</h2>\
+             <sflow-metrics-table :object="currentNodeSFlowLastUpdateMetric" :keys="globalVars[\'sflow-metric-keys\']" \
+                :defaultKeys="[\'Last\', \'IfInUcastPkts\', \'IfOutUcastPkts\', \'IfInMulticastPkts\', \'IfOutUcastPkts\', \'IfInDiscards\', \'IfOutDiscards\', \'IfInErrors\', \'IfOutErrors\']"></sflow-metrics-table>\
+           </div>\
+        </panel>\
         <panel id="routing-tabel" v-if="currentNodeMetadata && currentNode.metadata.RoutingTables"\
                title="Routing tables">\
           <div v-for="rt in currentNode.metadata.RoutingTables">\
@@ -411,7 +421,7 @@ var TopologyComponent = {
     currentNodeMetadata: function() {
       if (!this.currentNode) return null;
       return this.extractMetadata(this.currentNode.metadata,
-        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'RoutingTables', 'Features', 'K8s.Extra', 'Docker']);
+        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'SFlow.Metric', 'SFlow.LastUpdateMetric', 'RoutingTables', 'Features', 'K8s.Extra', 'Docker']);
     },
 
     currentNodeFlowsQuery: function() {
@@ -453,6 +463,16 @@ var TopologyComponent = {
     currentNodeOvsLastUpdateMetric: function() {
       if (!this.currentNodeMetadata || !this.currentNode.metadata.Ovs || !this.currentNode.metadata.Ovs.LastUpdateMetric) return null;
       return this.normalizeMetric(this.currentNode.metadata.Ovs.LastUpdateMetric);
+    },
+
+    currentNodeSFlowMetric: function() {
+      if (!this.currentNodeMetadata || !this.currentNode.metadata.SFlow || !this.currentNode.metadata.SFlow.Metric) return null;
+      return this.normalizeMetric(this.currentNode.metadata.SFlow.Metric);
+    },
+
+    currentNodeSFlowLastUpdateMetric: function() {
+      if (!this.currentNodeMetadata || !this.currentNode.metadata.SFlow || !this.currentNode.metadata.SFlow.LastUpdateMetric) return null;
+      return this.normalizeMetric(this.currentNode.metadata.SFlow.LastUpdateMetric);
     },
 
     canReadCaptures: function() {
