@@ -108,15 +108,16 @@ func (sfa *Agent) feedFlowTable() {
 				sfa.FlowTable.FeedWithSFlowSample(&sample, bpf)
 			}
 
-			//Countersamples SFlow Counter Samples
+			// SFlow Counter Samples
 			Countersamples := sflowPacket.CounterSamples
 
 			for _, sample := range sflowPacket.CounterSamples {
 				records := sample.GetRecords()
+
 				for _, record := range records {
 					switch record.(type) {
 					case layers.SFlowGenericInterfaceCounters:
-						gen := record.(layers.SFlowGenericInterfaceCounters)   //Adding Generic Interface Counters
+						gen := record.(layers.SFlowGenericInterfaceCounters) //Adding Generic Interface Counters
 						tr := sfa.Graph.StartMetadataTransaction(sfa.Node)
 						Uint64ToInt64 := func(key uint64) int64 {
 							return int64(float64(key))
@@ -147,7 +148,6 @@ func (sfa *Agent) feedFlowTable() {
 						}
 						now := time.Now()
 
-
 						currMetric.Last = int64(common.UnixMillis(now))
 
 						var prevMetric, lastUpdateMetric *SFMetric
@@ -164,13 +164,12 @@ func (sfa *Agent) feedFlowTable() {
 						}
 
 						sfl := &SFlow{
-							Counters: Countersamples,
-							Metric: currMetric,
+							Counters:         Countersamples,
+							Metric:           currMetric,
 							LastUpdateMetric: lastUpdateMetric,
 						}
 
 						tr.AddMetadata("SFlow", sfl)
-
 						tr.Commit()
 					}
 				}
@@ -213,6 +212,7 @@ func (sfa *Agent) Stop() {
 	sfa.Lock()
 	defer sfa.Unlock()
 
+	sfa.Graph.DelMetadata(sfa.Node, "SFlow")
 	if sfa.Conn != nil {
 		sfa.Conn.Close()
 	}

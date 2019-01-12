@@ -1288,15 +1288,17 @@
 		},
 		{
 			"checksumSHA1": "6BWy22N/CkrCUB61/lCZtLUp/A0=",
+			"origin": "github.com/dvandra/gopacket/afpacket",
 			"path": "github.com/google/gopacket/afpacket",
-			"revision": "3c037fb4650eaecb208dfa07c0bf4c7e3bb3b7be",
-			"revisionTime": "2018-12-11T12:11:11Z"
+			"revision": "3089bcfc7175b0e7afdac18e3ed73dcf11490209",
+			"revisionTime": "2018-12-16T08:22:35Z"
 		},
 		{
 			"checksumSHA1": "d1XG2Ex84jvLIHmb0BB0wO/S0WM=",
+			"origin": "github.com/dvandra/gopacket/ip4defrag",
 			"path": "github.com/google/gopacket/ip4defrag",
-			"revision": "3c037fb4650eaecb208dfa07c0bf4c7e3bb3b7be",
-			"revisionTime": "2018-12-11T12:11:11Z"
+			"revision": "3089bcfc7175b0e7afdac18e3ed73dcf11490209",
+			"revisionTime": "2018-12-16T08:22:35Z"
 		},
 		{
 			"checksumSHA1": "YBdRZEAlH01q4SiBOjUaTcv6sH0=",
@@ -1307,21 +1309,24 @@
 		},
 		{
 			"checksumSHA1": "xDZ93qPS7HY5SkgjHGjHtgfZRjY=",
+			"origin": "github.com/dvandra/gopacket/pcap",
 			"path": "github.com/google/gopacket/pcap",
-			"revision": "3c037fb4650eaecb208dfa07c0bf4c7e3bb3b7be",
-			"revisionTime": "2018-12-11T12:11:11Z"
+			"revision": "3089bcfc7175b0e7afdac18e3ed73dcf11490209",
+			"revisionTime": "2018-12-16T08:22:35Z"
 		},
 		{
-			"checksumSHA1": "aiqR3pgZHyYXpstC7LcVkbYoUMc=",
+			"checksumSHA1": "fw0H3stsMVbz3Ecy8MglAbKJVGY=",
+			"origin": "github.com/dvandra/gopacket/pcapgo",
 			"path": "github.com/google/gopacket/pcapgo",
-			"revision": "3c037fb4650eaecb208dfa07c0bf4c7e3bb3b7be",
-			"revisionTime": "2018-12-11T12:11:11Z"
+			"revision": "3089bcfc7175b0e7afdac18e3ed73dcf11490209",
+			"revisionTime": "2018-12-16T08:22:35Z"
 		},
 		{
 			"checksumSHA1": "JB3iiLLoJSfHofXOz5cZLh9y+Eo=",
+			"origin": "github.com/dvandra/gopacket/tcpassembly",
 			"path": "github.com/google/gopacket/tcpassembly",
-			"revision": "3c037fb4650eaecb208dfa07c0bf4c7e3bb3b7be",
-			"revisionTime": "2018-12-11T12:11:11Z"
+			"revision": "3089bcfc7175b0e7afdac18e3ed73dcf11490209",
+			"revisionTime": "2018-12-16T08:22:35Z"
 		},
 		{
 			"checksumSHA1": "Nf/pN/E1Rutz925nyJR4eEeghwg=",

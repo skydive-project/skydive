@@ -29,6 +29,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	"github.com/skydive-project/skydive/sflow"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
 )
@@ -39,7 +40,7 @@ func InterfaceMetrics(ctx traversal.StepContext, tv *traversal.GraphTraversalV) 
 		return NewMetricsTraversalStepFromError(tv.Error())
 	}
 
-	tv = tv.Dedup(ctx, "ID", "LastUpdateMetric.Start").Sort(ctx, common.SortAscending, "LastUpdateMetric.Start")
+	tv = tv.Dedup(ctx, "ID", "LastUpdateMetric.Start", "SFlow.LastUpdateMetric.Start").Sort(ctx, common.SortAscending, "LastUpdateMetric.Start")
 	if tv.Error() != nil {
 		return NewMetricsTraversalStepFromError(tv.Error())
 	}
@@ -59,16 +60,25 @@ nodeloop:
 
 		m, _ := n.GetField("LastUpdateMetric")
 		if m == nil {
-			continue
-		}
-
-		lastMetric, ok := m.(*topology.InterfaceMetric)
-		if !ok {
-			return NewMetricsTraversalStepFromError(errors.New("wrong interface metric type"))
-		}
-
-		if gslice == nil || (lastMetric.Start > gslice.Start && lastMetric.Last < gslice.Last) && it.Next() {
-			metrics[string(n.ID)] = append(metrics[string(n.ID)], lastMetric)
+			sf, _ := n.GetField("SFlow.LastUpdateMetric")
+			if sf == nil {
+				continue
+			}
+			sflastMetric, ok := sf.(*sflow.SFMetric)
+			if !ok {
+				return NewMetricsTraversalStepFromError(errors.New("wrong interface metric type"))
+			}
+			if gslice == nil || (sflastMetric.Start > gslice.Start && sflastMetric.Last < gslice.Last) && it.Next() {
+				metrics[string(n.ID)] = append(metrics[string(n.ID)], sflastMetric)
+			}
+		} else {
+			lastMetric, ok := m.(*topology.InterfaceMetric)
+			if !ok {
+				return NewMetricsTraversalStepFromError(errors.New("wrong interface metric type"))
+			}
+			if gslice == nil || (lastMetric.Start > gslice.Start && lastMetric.Last < gslice.Last) && it.Next() {
+				metrics[string(n.ID)] = append(metrics[string(n.ID)], lastMetric)
+			}
 		}
 	}
 

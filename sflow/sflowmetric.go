@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Red Hat, Inc.
+ * Copyright (C) 2019 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -24,18 +24,20 @@ package sflow
 
 import (
 	"encoding/json"
+
 	"github.com/google/gopacket/layers"
 	"github.com/skydive-project/skydive/common"
 )
 
+//SFlow all sflow information
 type SFlow struct {
-	Counters []layers.SFlowCounterSample  `json:"Counters,omitempty"`
-	Metric *SFMetric  `json:"Metric,omitempty"`
-	LastUpdateMetric *SFMetric `json:"LastUpdateMetric,omitempty"`
+	Counters         []layers.SFlowCounterSample `json:"Counters,omitempty"`
+	Metric           *SFMetric                   `json:"Metric,omitempty"`
+	LastUpdateMetric *SFMetric                   `json:"LastUpdateMetric,omitempty"`
 }
 
-//SFlowMetadataDecoder implements a json message raw decoder
-func SFlowMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+//SFMetadataDecoder implements a json message raw decoder
+func SFMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
 	var sf SFlow
 	if err := json.Unmarshal(raw, &sf); err != nil {
 		return nil, err
@@ -47,15 +49,15 @@ func SFlowMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
 // GetField implements Getter interface
 func (sf *SFlow) GetField(key string) (interface{}, error) {
 	switch key {
-	case "Metric" :
+	case "Metric":
 		return sf.Metric, nil
-	case "LastUpdateMetric" :
+	case "LastUpdateMetric":
 		return sf.LastUpdateMetric, nil
-	case "Counters" :
+	case "Counters":
 		return sf.Counters, nil
 	}
 
-	return nil, nil
+	return nil, common.ErrFieldNotFound
 }
 
 // GetFieldString implements Getter interface
@@ -68,7 +70,7 @@ func (sf *SFlow) GetFieldInt64(key string) (int64, error) {
 	return 0, nil
 }
 
-// GetFieldKeys implements Getter and Metrics interfaces
+// GetFieldKeys implements Getter interface
 func (sf *SFlow) GetFieldKeys() []string {
 	return sflowFields
 }
@@ -79,7 +81,7 @@ func init() {
 	sflowFields = common.StructFieldKeys(SFlow{})
 }
 
-// SFMetric the SFlow counter samples
+// SFMetric the SFlow Counter Samples
 // easyjson:json
 type SFMetric struct {
 	Start              int64 `json:"Start,omitempty"`
@@ -106,229 +108,230 @@ type SFMetric struct {
 }
 
 // GetStart returns start time
-func (im *SFMetric) GetStart() int64 {
-	return im.Start
+func (sm *SFMetric) GetStart() int64 {
+	return sm.Start
 }
 
 // SetStart set start time
-func (im *SFMetric) SetStart(start int64) {
-	im.Start = start
+func (sm *SFMetric) SetStart(start int64) {
+	sm.Start = start
 }
 
 // GetLast returns last time
-func (im *SFMetric) GetLast() int64 {
-	return im.Last
+func (sm *SFMetric) GetLast() int64 {
+	return sm.Last
 }
 
 // SetLast set last tome
-func (im *SFMetric) SetLast(last int64) {
-	im.Last = last
+func (sm *SFMetric) SetLast(last int64) {
+	sm.Last = last
 }
 
-// GetFieldInt64 implements Getter and SFlowMetrics interfaces
-func (im *SFMetric) GetFieldInt64(field string) (int64, error) {
+// GetFieldInt64 implements Getter and Metrics interfaces
+func (sm *SFMetric) GetFieldInt64(field string) (int64, error) {
 	switch field {
 	case "Start":
-		return im.Start, nil
+		return sm.Start, nil
 	case "Last":
-		return im.Last, nil
+		return sm.Last, nil
 	case "IfIndex":
-		return im.IfIndex, nil
+		return sm.IfIndex, nil
 	case "IfType":
-		return im.IfType, nil
+		return sm.IfType, nil
 	case "IfSpeed":
-		return im.IfSpeed, nil
+		return sm.IfSpeed, nil
 	case "IfDirection":
-		return im.IfDirection, nil
+		return sm.IfDirection, nil
 	case "IfStatus":
-		return im.IfStatus, nil
+		return sm.IfStatus, nil
 	case "IfInOctets":
-		return im.IfInOctets, nil
+		return sm.IfInOctets, nil
 	case "IfInUcastPkts":
-		return im.IfInUcastPkts, nil
+		return sm.IfInUcastPkts, nil
 	case "IfInMulticastPkts":
-		return im.IfInMulticastPkts, nil
+		return sm.IfInMulticastPkts, nil
 	case "IfInBroadcastPkts":
-		return im.IfInBroadcastPkts, nil
+		return sm.IfInBroadcastPkts, nil
 	case "IfInDiscards":
-		return im.IfInDiscards, nil
+		return sm.IfInDiscards, nil
 	case "IfInErrors":
-		return im.IfInErrors, nil
+		return sm.IfInErrors, nil
 	case "IfInUnknownProtos":
-		return im.IfInUnknownProtos, nil
+		return sm.IfInUnknownProtos, nil
 	case "IfOutOctets":
-		return im.IfOutOctets, nil
+		return sm.IfOutOctets, nil
 	case "IfOutUcastPkts":
-		return im.IfOutUcastPkts, nil
+		return sm.IfOutUcastPkts, nil
 	case "IfOutMulticastPkts":
-		return im.IfOutMulticastPkts, nil
+		return sm.IfOutMulticastPkts, nil
 	case "IfOutBroadcastPkts":
-		return im.IfOutBroadcastPkts, nil
+		return sm.IfOutBroadcastPkts, nil
 	case "IfOutDiscards":
-		return im.IfOutDiscards, nil
+		return sm.IfOutDiscards, nil
 	case "IfOutErrors":
-		return im.IfOutErrors, nil
+		return sm.IfOutErrors, nil
 	case "IfPromiscuousMode":
-		return im.IfPromiscuousMode, nil
+		return sm.IfPromiscuousMode, nil
 	}
 
 	return 0, common.ErrFieldNotFound
 }
 
 // GetField implements Getter interface
-func (im *SFMetric) GetField(key string) (interface{}, error) {
-	return im.GetFieldInt64(key)
+func (sm *SFMetric) GetField(key string) (interface{}, error) {
+	return sm.GetFieldInt64(key)
 }
 
 // GetFieldString implements Getter interface
-func (im *SFMetric) GetFieldString(key string) (string, error) {
+func (sm *SFMetric) GetFieldString(key string) (string, error) {
 	return "", common.ErrFieldNotFound
 }
 
-// Add sum two metrics and return a new SFlowMetrics object
-func (im *SFMetric) Add(m common.Metric) common.Metric {
+// Add sum two metrics and return a new Metrics object
+func (sm *SFMetric) Add(m common.Metric) common.Metric {
+	om := m.(*SFMetric)
 	om, ok := m.(*SFMetric)
 	if !ok {
-		return im
+		return sm
 	}
 
 	return &SFMetric{
-		Start:              im.Start,
-		Last:               im.Last,
-		IfIndex:            im.IfIndex + om.IfIndex,
-		IfType:             im.IfType + om.IfType,
-		IfSpeed:            im.IfSpeed + om.IfSpeed,
-		IfDirection:        im.IfDirection + om.IfDirection,
-		IfStatus:           im.IfStatus + om.IfStatus,
-		IfInOctets:         im.IfInOctets + om.IfInOctets,
-		IfInUcastPkts:      im.IfInUcastPkts + om.IfInUcastPkts,
-		IfInMulticastPkts:  im.IfInMulticastPkts + om.IfInMulticastPkts,
-		IfInBroadcastPkts:  im.IfInBroadcastPkts + om.IfInBroadcastPkts,
-		IfInDiscards:       im.IfInDiscards + om.IfInDiscards,
-		IfInErrors:         im.IfInErrors + om.IfInErrors,
-		IfInUnknownProtos:  im.IfInUnknownProtos + om.IfInUnknownProtos,
-		IfOutOctets:        im.IfOutOctets + om.IfOutOctets,
-		IfOutUcastPkts:     im.IfOutUcastPkts + om.IfOutUcastPkts,
-		IfOutMulticastPkts: im.IfOutMulticastPkts + om.IfOutMulticastPkts,
-		IfOutBroadcastPkts: im.IfOutBroadcastPkts + om.IfOutBroadcastPkts,
-		IfOutDiscards:      im.IfOutDiscards + om.IfOutDiscards,
-		IfOutErrors:        im.IfOutErrors + om.IfOutErrors,
-		IfPromiscuousMode:  im.IfPromiscuousMode + om.IfPromiscuousMode,
+		Start:              sm.Start,
+		Last:               sm.Last,
+		IfIndex:            sm.IfIndex + om.IfIndex,
+		IfType:             sm.IfType + om.IfType,
+		IfSpeed:            sm.IfSpeed + om.IfSpeed,
+		IfDirection:        sm.IfDirection + om.IfDirection,
+		IfStatus:           sm.IfStatus + om.IfStatus,
+		IfInOctets:         sm.IfInOctets + om.IfInOctets,
+		IfInUcastPkts:      sm.IfInUcastPkts + om.IfInUcastPkts,
+		IfInMulticastPkts:  sm.IfInMulticastPkts + om.IfInMulticastPkts,
+		IfInBroadcastPkts:  sm.IfInBroadcastPkts + om.IfInBroadcastPkts,
+		IfInDiscards:       sm.IfInDiscards + om.IfInDiscards,
+		IfInErrors:         sm.IfInErrors + om.IfInErrors,
+		IfInUnknownProtos:  sm.IfInUnknownProtos + om.IfInUnknownProtos,
+		IfOutOctets:        sm.IfOutOctets + om.IfOutOctets,
+		IfOutUcastPkts:     sm.IfOutUcastPkts + om.IfOutUcastPkts,
+		IfOutMulticastPkts: sm.IfOutMulticastPkts + om.IfOutMulticastPkts,
+		IfOutBroadcastPkts: sm.IfOutBroadcastPkts + om.IfOutBroadcastPkts,
+		IfOutDiscards:      sm.IfOutDiscards + om.IfOutDiscards,
+		IfOutErrors:        sm.IfOutErrors + om.IfOutErrors,
+		IfPromiscuousMode:  sm.IfPromiscuousMode + om.IfPromiscuousMode,
 	}
 }
 
-// Sub subtract two metrics and return a new SFlowMetrics object
-func (im *SFMetric) Sub(m common.Metric) common.Metric {
+// Sub subtract two metrics and return a new Metrics object
+func (sm *SFMetric) Sub(m common.Metric) common.Metric {
 	om, ok := m.(*SFMetric)
 	if !ok {
-		return im
+		return sm
 	}
 
 	return &SFMetric{
-		Start:              im.Start,
-		Last:               im.Last,
-		IfIndex:            im.IfIndex - om.IfIndex,
-		IfType:             im.IfType - om.IfType,
-		IfSpeed:            im.IfSpeed - om.IfSpeed,
-		IfDirection:        im.IfDirection - om.IfDirection,
-		IfStatus:           im.IfStatus - om.IfStatus,
-		IfInOctets:         im.IfInOctets - om.IfInOctets,
-		IfInUcastPkts:      im.IfInUcastPkts - om.IfInUcastPkts,
-		IfInMulticastPkts:  im.IfInMulticastPkts - om.IfInMulticastPkts,
-		IfInBroadcastPkts:  im.IfInBroadcastPkts - om.IfInBroadcastPkts,
-		IfInDiscards:       im.IfInDiscards - om.IfInDiscards,
-		IfInErrors:         im.IfInErrors - om.IfInErrors,
-		IfInUnknownProtos:  im.IfInUnknownProtos - om.IfInUnknownProtos,
-		IfOutOctets:        im.IfOutOctets - om.IfOutOctets,
-		IfOutUcastPkts:     im.IfOutUcastPkts - om.IfOutUcastPkts,
-		IfOutMulticastPkts: im.IfOutMulticastPkts - om.IfOutMulticastPkts,
-		IfOutBroadcastPkts: im.IfOutBroadcastPkts - om.IfOutBroadcastPkts,
-		IfOutDiscards:      im.IfOutDiscards - om.IfOutDiscards,
-		IfOutErrors:        im.IfOutErrors - om.IfOutErrors,
-		IfPromiscuousMode:  im.IfPromiscuousMode - om.IfPromiscuousMode,
+		Start:              sm.Start,
+		Last:               sm.Last,
+		IfIndex:            sm.IfIndex - om.IfIndex,
+		IfType:             sm.IfType - om.IfType,
+		IfSpeed:            sm.IfSpeed - om.IfSpeed,
+		IfDirection:        sm.IfDirection - om.IfDirection,
+		IfStatus:           sm.IfStatus - om.IfStatus,
+		IfInOctets:         sm.IfInOctets - om.IfInOctets,
+		IfInUcastPkts:      sm.IfInUcastPkts - om.IfInUcastPkts,
+		IfInMulticastPkts:  sm.IfInMulticastPkts - om.IfInMulticastPkts,
+		IfInBroadcastPkts:  sm.IfInBroadcastPkts - om.IfInBroadcastPkts,
+		IfInDiscards:       sm.IfInDiscards - om.IfInDiscards,
+		IfInErrors:         sm.IfInErrors - om.IfInErrors,
+		IfInUnknownProtos:  sm.IfInUnknownProtos - om.IfInUnknownProtos,
+		IfOutOctets:        sm.IfOutOctets - om.IfOutOctets,
+		IfOutUcastPkts:     sm.IfOutUcastPkts - om.IfOutUcastPkts,
+		IfOutMulticastPkts: sm.IfOutMulticastPkts - om.IfOutMulticastPkts,
+		IfOutBroadcastPkts: sm.IfOutBroadcastPkts - om.IfOutBroadcastPkts,
+		IfOutDiscards:      sm.IfOutDiscards - om.IfOutDiscards,
+		IfOutErrors:        sm.IfOutErrors - om.IfOutErrors,
+		IfPromiscuousMode:  sm.IfPromiscuousMode - om.IfPromiscuousMode,
 	}
 }
 
 // IsZero returns true if all the values are equal to zero
-func (im *SFMetric) IsZero() bool {
+func (sm *SFMetric) IsZero() bool {
 	// sum as these numbers can't be <= 0
-	return (im.IfIndex +
-		im.IfType +
-		im.IfSpeed +
-		im.IfDirection +
-		im.IfStatus +
-		im.IfInOctets +
-		im.IfInUcastPkts +
-		im.IfInMulticastPkts +
-		im.IfInBroadcastPkts +
-		im.IfInDiscards +
-		im.IfInErrors +
-		im.IfInUnknownProtos +
-		im.IfOutOctets +
-		im.IfOutUcastPkts +
-		im.IfOutMulticastPkts +
-		im.IfOutBroadcastPkts +
-		im.IfOutDiscards +
-		im.IfOutErrors +
-		im.IfPromiscuousMode) == 0
+	return (sm.IfIndex +
+		sm.IfType +
+		sm.IfSpeed +
+		sm.IfDirection +
+		sm.IfStatus +
+		sm.IfInOctets +
+		sm.IfInUcastPkts +
+		sm.IfInMulticastPkts +
+		sm.IfInBroadcastPkts +
+		sm.IfInDiscards +
+		sm.IfInErrors +
+		sm.IfInUnknownProtos +
+		sm.IfOutOctets +
+		sm.IfOutUcastPkts +
+		sm.IfOutMulticastPkts +
+		sm.IfOutBroadcastPkts +
+		sm.IfOutDiscards +
+		sm.IfOutErrors +
+		sm.IfPromiscuousMode) == 0
 }
 
-func (im *SFMetric) applyRatio(ratio float64) *SFMetric {
+func (sm *SFMetric) applyRatio(ratio float64) *SFMetric {
 	return &SFMetric{
-		Start:              im.Start,
-		Last:               im.Last,
-		IfIndex:            int64(float64(im.IfIndex) * ratio),
-		IfType:             int64(float64(im.IfType) * ratio),
-		IfSpeed:            int64(float64(im.IfSpeed) * ratio),
-		IfDirection:        int64(float64(im.IfDirection) * ratio),
-		IfStatus:           int64(float64(im.IfStatus) * ratio),
-		IfInOctets:         int64(float64(im.IfInOctets) * ratio),
-		IfInUcastPkts:      int64(float64(im.IfInUcastPkts) * ratio),
-		IfInMulticastPkts:  int64(float64(im.IfInMulticastPkts) * ratio),
-		IfInBroadcastPkts:  int64(float64(im.IfInBroadcastPkts) * ratio),
-		IfInDiscards:       int64(float64(im.IfInDiscards) * ratio),
-		IfInErrors:         int64(float64(im.IfInErrors) * ratio),
-		IfInUnknownProtos:  int64(float64(im.IfInUnknownProtos) * ratio),
-		IfOutOctets:        int64(float64(im.IfOutOctets) * ratio),
-		IfOutUcastPkts:     int64(float64(im.IfOutUcastPkts) * ratio),
-		IfOutMulticastPkts: int64(float64(im.IfOutMulticastPkts) * ratio),
-		IfOutBroadcastPkts: int64(float64(im.IfOutBroadcastPkts) * ratio),
-		IfOutDiscards:      int64(float64(im.IfOutDiscards) * ratio),
-		IfOutErrors:        int64(float64(im.IfOutErrors) * ratio),
-		IfPromiscuousMode:  int64(float64(im.IfPromiscuousMode) * ratio),
+		Start:              sm.Start,
+		Last:               sm.Last,
+		IfIndex:            int64(float64(sm.IfIndex) * ratio),
+		IfType:             int64(float64(sm.IfType) * ratio),
+		IfSpeed:            int64(float64(sm.IfSpeed) * ratio),
+		IfDirection:        int64(float64(sm.IfDirection) * ratio),
+		IfStatus:           int64(float64(sm.IfStatus) * ratio),
+		IfInOctets:         int64(float64(sm.IfInOctets) * ratio),
+		IfInUcastPkts:      int64(float64(sm.IfInUcastPkts) * ratio),
+		IfInMulticastPkts:  int64(float64(sm.IfInMulticastPkts) * ratio),
+		IfInBroadcastPkts:  int64(float64(sm.IfInBroadcastPkts) * ratio),
+		IfInDiscards:       int64(float64(sm.IfInDiscards) * ratio),
+		IfInErrors:         int64(float64(sm.IfInErrors) * ratio),
+		IfInUnknownProtos:  int64(float64(sm.IfInUnknownProtos) * ratio),
+		IfOutOctets:        int64(float64(sm.IfOutOctets) * ratio),
+		IfOutUcastPkts:     int64(float64(sm.IfOutUcastPkts) * ratio),
+		IfOutMulticastPkts: int64(float64(sm.IfOutMulticastPkts) * ratio),
+		IfOutBroadcastPkts: int64(float64(sm.IfOutBroadcastPkts) * ratio),
+		IfOutDiscards:      int64(float64(sm.IfOutDiscards) * ratio),
+		IfOutErrors:        int64(float64(sm.IfOutErrors) * ratio),
+		IfPromiscuousMode:  int64(float64(sm.IfPromiscuousMode) * ratio),
 	}
 }
 
 // Split splits a metric into two parts
-func (im *SFMetric) Split(cut int64) (common.Metric, common.Metric) {
-	if cut < im.Start {
-		return nil, im
-	} else if cut > im.Last {
-		return im, nil
-	} else if im.Start == im.Last {
-		return im, nil
-	} else if cut == im.Start {
-		return nil, im
-	} else if cut == im.Last {
-		return im, nil
+func (sm *SFMetric) Split(cut int64) (common.Metric, common.Metric) {
+	if cut < sm.Start {
+		return nil, sm
+	} else if cut > sm.Last {
+		return sm, nil
+	} else if sm.Start == sm.Last {
+		return sm, nil
+	} else if cut == sm.Start {
+		return nil, sm
+	} else if cut == sm.Last {
+		return sm, nil
 	}
 
-	duration := float64(im.Last - im.Start)
+	duration := float64(sm.Last - sm.Start)
 
-	ratio1 := float64(cut-im.Start) / duration
-	ratio2 := float64(im.Last-cut) / duration
+	ratio1 := float64(cut-sm.Start) / duration
+	ratio2 := float64(sm.Last-cut) / duration
 
-	m1 := im.applyRatio(ratio1)
+	m1 := sm.applyRatio(ratio1)
 	m1.Last = cut
 
-	m2 := im.applyRatio(ratio2)
+	m2 := sm.applyRatio(ratio2)
 	m2.Start = cut
 
 	return m1, m2
 }
 
-// GetFieldKeys implements Getter and SFlowMetrics interfaces
-func (im *SFMetric) GetFieldKeys() []string {
+// GetFieldKeys implements Getter and Metrics interfaces
+func (sm *SFMetric) GetFieldKeys() []string {
 	return sflowmetricsFields
 }
 
