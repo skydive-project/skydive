@@ -47,6 +47,7 @@ import (
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/probe"
+	"github.com/skydive-project/skydive/sflow"
 	"github.com/skydive-project/skydive/topology"
 	usertopology "github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
@@ -383,4 +384,6 @@ func init() {
 	graph.NodeMetadataDecoders["Neighbors"] = netlink.NeighborMetadataDecoder
 	graph.NodeMetadataDecoders["Metric"] = topology.InterfaceMetricMetadataDecoder
 	graph.NodeMetadataDecoders["LastUpdateMetric"] = topology.InterfaceMetricMetadataDecoder
+	graph.NodeMetadataDecoders["SFlow"] = sflow.SFlowMetadataDecoder
 }
+

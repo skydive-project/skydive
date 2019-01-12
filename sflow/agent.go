@@ -37,7 +37,6 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology"
 )
 
 const (
@@ -96,7 +95,6 @@ func (sfa *Agent) feedFlowTable() {
 		p := gopacket.NewPacket(buf[:n], layers.LayerTypeSFlow, gopacket.DecodeOptions{NoCopy: true})
 		sflowLayer := p.Layer(layers.LayerTypeSFlow)
 		sflowPacket, ok := sflowLayer.(*layers.SFlowDatagram)
-		logging.GetLogger().Debugf("value of p %s", p)
 
 		if !ok {
 			logging.GetLogger().Errorf("Unable to decode sFlow packet: %s", p)
@@ -104,49 +102,75 @@ func (sfa *Agent) feedFlowTable() {
 		}
 
 		if sflowPacket.SampleCount > 0 {
-			logging.GetLogger().Debugf("%d sample captured", sflowPacket.SampleCount)
 			for _, sample := range sflowPacket.FlowSamples {
 				// iterate over a set of Packets as a sample contains multiple
 				// records each generating Packets.
 				sfa.FlowTable.FeedWithSFlowSample(&sample, bpf)
 			}
-			sfa.Graph.Lock()
-			sfa.Graph.AddMetadata(sfa.Node, "SFlow.Counters", sflowPacket.CounterSamples)
-			sfa.Graph.Unlock()
+
+			//Countersamples SFlow Counter Samples
+			Countersamples := sflowPacket.CounterSamples
+
 			for _, sample := range sflowPacket.CounterSamples {
 				records := sample.GetRecords()
 				for _, record := range records {
-					t := record.(interface{})
-
-					switch t.(type) {
+					switch record.(type) {
 					case layers.SFlowGenericInterfaceCounters:
-						var gen layers.SFlowGenericInterfaceCounters
-						gen = t.(layers.SFlowGenericInterfaceCounters)
+						gen := record.(layers.SFlowGenericInterfaceCounters)   //Adding Generic Interface Counters
 						tr := sfa.Graph.StartMetadataTransaction(sfa.Node)
-						currMetric := &topology.InterfaceMetric{
-							Multicast: int64(gen.IfInMulticastPkts),
-							RxDropped: int64(gen.IfInDiscards),
-							RxErrors:  int64(gen.IfInErrors),
-							RxPackets: int64(uint32(gen.IfInUcastPkts) + uint32(gen.IfInMulticastPkts) + uint32(gen.IfInBroadcastPkts)),
-							TxDropped: int64(gen.IfOutDiscards),
-							TxErrors:  int64(gen.IfOutErrors),
-							TxPackets: int64(uint32(gen.IfOutUcastPkts) + uint32(gen.IfOutMulticastPkts) + uint32(gen.IfOutBroadcastPkts)),
+						Uint64ToInt64 := func(key uint64) int64 {
+							return int64(float64(key))
+						}
+						Uint32ToInt64 := func(key uint32) int64 {
+							return int64(float64(key))
+						}
+						currMetric := &SFMetric{
+							IfIndex:            Uint32ToInt64(gen.IfIndex),
+							IfType:             Uint32ToInt64(gen.IfType),
+							IfSpeed:            Uint64ToInt64(gen.IfSpeed),
+							IfDirection:        Uint32ToInt64(gen.IfDirection),
+							IfStatus:           Uint32ToInt64(gen.IfStatus),
+							IfInOctets:         Uint64ToInt64(gen.IfInOctets),
+							IfInUcastPkts:      Uint32ToInt64(gen.IfInUcastPkts),
+							IfInMulticastPkts:  Uint32ToInt64(gen.IfInMulticastPkts),
+							IfInBroadcastPkts:  Uint32ToInt64(gen.IfInBroadcastPkts),
+							IfInDiscards:       Uint32ToInt64(gen.IfInDiscards),
+							IfInErrors:         Uint32ToInt64(gen.IfInErrors),
+							IfInUnknownProtos:  Uint32ToInt64(gen.IfInUnknownProtos),
+							IfOutOctets:        Uint64ToInt64(gen.IfOutOctets),
+							IfOutUcastPkts:     Uint32ToInt64(gen.IfOutUcastPkts),
+							IfOutMulticastPkts: Uint32ToInt64(gen.IfOutMulticastPkts),
+							IfOutBroadcastPkts: Uint32ToInt64(gen.IfOutBroadcastPkts),
+							IfOutDiscards:      Uint32ToInt64(gen.IfOutDiscards),
+							IfOutErrors:        Uint32ToInt64(gen.IfOutErrors),
+							IfPromiscuousMode:  Uint32ToInt64(gen.IfPromiscuousMode),
 						}
 						now := time.Now()
+
+
 						currMetric.Last = int64(common.UnixMillis(now))
-						var prevMetric, lastUpdateMetric *topology.InterfaceMetric
+
+						var prevMetric, lastUpdateMetric *SFMetric
 
 						if metric, err := sfa.Node.GetField("SFlow.Metric"); err == nil {
-							prevMetric = metric.(*topology.InterfaceMetric)
-							lastUpdateMetric = currMetric.Sub(prevMetric).(*topology.InterfaceMetric)
+							prevMetric = metric.(*SFMetric)
+							lastUpdateMetric = currMetric.Sub(prevMetric).(*SFMetric)
 						}
-						tr.AddMetadata("SFlow.Metric", currMetric)
+
 						// nothing changed since last update
 						if lastUpdateMetric != nil && !lastUpdateMetric.IsZero() {
 							lastUpdateMetric.Start = prevMetric.Last
 							lastUpdateMetric.Last = int64(common.UnixMillis(now))
-							tr.AddMetadata("SFlow.LastUpdateMetric", lastUpdateMetric)
 						}
+
+						sfl := &SFlow{
+							Counters: Countersamples,
+							Metric: currMetric,
+							LastUpdateMetric: lastUpdateMetric,
+						}
+
+						tr.AddMetadata("SFlow", sfl)
+
 						tr.Commit()
 					}
 				}
