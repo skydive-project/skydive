@@ -129,32 +129,38 @@ func (r *ofRule) GetMetadata() graph.Metadata {
 		"Flags":       r.Flags,
 	}
 
-	filters := make([]interface{}, len(r.Filters))
-	for i, filter := range r.Filters {
-		var value interface{}
-		switch t := filter.Value.(type) {
+	normalizeValue := func(value interface{}) interface{} {
+		switch t := value.(type) {
 		case net.HardwareAddr:
-			value = t.String()
+			return t.String()
 		case net.IP:
-			value = t.String()
+			return t.String()
 		case uint64:
-			value = int64(t)
+			return int64(t)
 		case uint32:
-			value = int64(t)
+			return int64(t)
 		case uint16:
-			value = int64(t)
+			return int64(t)
 		case uint8:
-			value = int64(t)
+			return int64(t)
 		default:
 			if s, ok := t.(fmt.Stringer); ok {
-				value = s.String()
+				return s.String()
 			}
-			value = t
+			return t
 		}
-		filters[i] = map[string]interface{}{
+	}
+
+	filters := make([]interface{}, len(r.Filters))
+	for i, filter := range r.Filters {
+		f := map[string]interface{}{
 			"Type":  filter.Type,
-			"Value": value,
+			"Value": normalizeValue(filter.Value),
 		}
+		if filter.ValueMask != nil {
+			f["Mask"] = normalizeValue(filter.ValueMask)
+		}
+		filters[i] = f
 	}
 	metadata["Filters"] = filters
 

@@ -358,8 +358,11 @@ func TestOVSOXMCsState(t *testing.T) {
 			map[string]interface{}{
 				"Type": "conn_tracking_state_masked",
 				"Value": map[string]interface{}{
-					"New":         true,
-					"Established": true,
+					"New": true,
+				},
+				"Mask": map[string]interface{}{
+					"New":     true,
+					"Related": true,
 				},
 			},
 		}
@@ -381,6 +384,27 @@ func TestOVSOXMSimple(t *testing.T) {
 			map[string]interface{}{
 				"Type":  "eth_type",
 				"Value": "ip",
+			},
+		}
+		if err := deep.Equal(filters, expectedFilters); err != nil {
+			return errors.New(spew.Sdump(err))
+		}
+		return nil
+	})
+}
+
+func TestOVSOXMNwSrc(t *testing.T) {
+	testOVSRule(t, "flow", "ip,nw_src=192.168.200.0/24,actions=drop", func(node *graph.Node) error {
+		filters, _ := node.GetField("Filters")
+		expectedFilters := []interface{}{
+			map[string]interface{}{
+				"Type":  "eth_type",
+				"Value": "ip",
+			},
+			map[string]interface{}{
+				"Type":  "ipv4_src_masked",
+				"Value": "192.168.200.0",
+				"Mask":  "255.255.255.0",
 			},
 		}
 		if err := deep.Equal(filters, expectedFilters); err != nil {
