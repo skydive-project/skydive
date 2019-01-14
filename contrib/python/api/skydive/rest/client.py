@@ -27,9 +27,11 @@ except ImportError:
     import urllib2 as request
 
 from skydive.auth import Authenticate
-from skydive.rules import NodeRule, EdgeRule, InjectionRule
+from skydive.graph import Node, Edge
+from skydive.rules import NodeRule, EdgeRule
 from skydive.alerts import Alert
 from skydive.captures import Capture
+from skydive.packet_injector import PacketInjection
 
 
 class BadRequest(Exception):
@@ -231,12 +233,13 @@ class RESTClient:
         })
         
         r = self.request(self.INJECTION_PATH, method="POST", data=data)
-        return InjectionRule.from_object(r)
+        return PacketInjection.from_object(r)
         
     def injection_delete(self, injection_id):
         path = self.INJECTION_PATH+"/"+injection_id
         return self.request(path, method="DELETE")
 
     def injection_list(self):
-        return self.request(self.INJECTION_PATH)
+        objs = self.request(self.INJECTION_PATH)
+        return [PacketInjection.from_object(o) for o in objs.values()]
 

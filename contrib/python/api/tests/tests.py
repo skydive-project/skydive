@@ -48,7 +48,7 @@ class SkydiveWSTest(unittest.TestCase):
         subprocess.call(["docker", "run", "--name",
                          "skydive-docker-python-tests", "-p", "8082:8082"] +
                         extraArgs +
-                        ["-d", "skydive/skydive:devel", "analyzer"])
+                        ["-d", "skydive/skydive:devel", "allinone"])
         time.sleep(10)
 
     @classmethod
@@ -223,3 +223,41 @@ class SkydiveWSTest(unittest.TestCase):
         restclient.edgerule_delete(edgerule.uuid)
         restclient.noderule_delete(noderule1.uuid)
         restclient.noderule_delete(noderule2.uuid)
+    
+    @classmethod
+    def test_injections(self):
+        restclient = RESTClient("localhost:8082",
+                                scheme=self.schemeHTTP,
+                                username=self.username,
+                                password=self.password,
+                                insecure=True)
+        
+        nodes = restclient.lookup("G.V().Has('Name', 'eth0')")
+
+        self.assertGreaterEqual(len(nodes), 1, "should find only one edge")
+        eth0 = nodes[0]["Metadata"]["TID"]
+    
+
+        quary = "G.V().Has('TID', '" + eth0 + "')"
+        num_injections_before = len(restclient.injection_list())
+        
+        time.sleep(1)
+        
+        injection_response = restclient.injection_create(quary, quary, count=1000)
+
+        time.sleep(1)
+        
+        num_injections_after = len(restclient.injection_list())
+        
+        self.assertEqual(num_injections_after, num_injections_before + 1,
+                        "injection creation didn's succeed")
+
+        restclient.injection_delete(injection_response.uuid)
+        
+        time.sleep(1)
+        
+        num_injections_after_deletion = len(restclient.injection_list())
+
+        self.assertEqual(num_injections_after_deletion, num_injections_before,
+                        "injection deletion didn's succeed")
+                        
