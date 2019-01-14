@@ -34,12 +34,14 @@ import (
 )
 
 // InterfaceMetrics returns a Metrics step from interface metric metadata
-func InterfaceMetrics(ctx traversal.StepContext, tv *traversal.GraphTraversalV) *MetricsTraversalStep {
+func InterfaceMetrics(ctx traversal.StepContext, tv *traversal.GraphTraversalV, key string) *MetricsTraversalStep {
 	if tv.Error() != nil {
 		return NewMetricsTraversalStepFromError(tv.Error())
 	}
 
-	tv = tv.Dedup(ctx, "ID", "LastUpdateMetric.Start").Sort(ctx, common.SortAscending, "LastUpdateMetric.Start")
+	startField := key + ".Start"
+
+	tv = tv.Dedup(ctx, "ID", startField).Sort(ctx, common.SortAscending, startField)
 	if tv.Error() != nil {
 		return NewMetricsTraversalStepFromError(tv.Error())
 	}
@@ -57,7 +59,7 @@ nodeloop:
 			break nodeloop
 		}
 
-		m, _ := n.GetField("LastUpdateMetric")
+		m, _ := n.GetField(key)
 		if m == nil {
 			continue
 		}
