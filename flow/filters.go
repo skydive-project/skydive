@@ -24,7 +24,7 @@ package flow
 
 import (
 	"github.com/skydive-project/skydive/filters"
-	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
 // NewFilterForNodeTIDs creates a new filter based on flow NodeTID

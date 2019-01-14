@@ -42,8 +42,8 @@ import (
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 // OvsOfProbe is the type of the probe retrieving Openflow rules on an Open Vswitch
@@ -310,7 +310,7 @@ func makeFilter(rule *Rule) string {
 // Execute exposes an interface to command launch on the OS
 type Execute interface {
 	ExecCommand(string, ...string) ([]byte, error)
-	ExecCommandPipe(context.Context, string, ...string) (io.Reader, error)
+	ExecCommandPipe(context.Context, string, ...string) (io.Reader, interface{ Wait() error }, error)
 }
 
 // RealExecute is the actual implementation given below. It can be overridden for tests.
@@ -326,20 +326,20 @@ func (r RealExecute) ExecCommand(com string, args ...string) ([]byte, error) {
 }
 
 // ExecCommandPipe executes a command on a host and gives back a pipe to control it.
-func (r RealExecute) ExecCommandPipe(ctx context.Context, com string, args ...string) (io.Reader, error) {
+func (r RealExecute) ExecCommandPipe(ctx context.Context, com string, args ...string) (io.Reader, interface{ Wait() error }, error) {
 	/* #nosec */
 	command := exec.CommandContext(ctx, com, args...)
 	out, err := command.StdoutPipe()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	command.Stderr = command.Stdout
 	if err = command.Start(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return out, err
+	return out, command, err
 }
 
 // launchOnSwitch launches a command on a given switch
@@ -361,7 +361,7 @@ func launchContinuousOnSwitch(ctx context.Context, cmd []string) (<-chan string,
 		logging.GetLogger().Debugf("Launching continusously %v", cmd)
 		for ctx.Err() == nil {
 			retry := func() error {
-				out, err := executor.ExecCommandPipe(ctx, cmd[0], cmd[1:]...)
+				out, com, err := executor.ExecCommandPipe(ctx, cmd[0], cmd[1:]...)
 				if err != nil {
 					logging.GetLogger().Errorf("Can't execute command %v: %s", cmd, err)
 					return nil
@@ -371,19 +371,22 @@ func launchContinuousOnSwitch(ctx context.Context, cmd []string) (<-chan string,
 				for ctx.Err() == nil {
 					line, err := reader.ReadString('\n')
 					if err == io.EOF {
+						com.Wait()
 						break
 					} else if err != nil {
 						logging.GetLogger().Errorf("IO Error on command %v: %s", cmd, err)
+						// Should return but there may be weird cases.
+						go com.Wait()
 						break
 					} else {
 						if strings.Contains(line, "is not a bridge or a socket") {
 							reader.Discard(int(^uint(0) >> 1))
+							com.Wait()
 							return errors.New("Not a bridge or a socket")
 						}
 						cout <- line
 					}
 				}
-
 				return nil
 			}
 			if err := common.Retry(retry, 100, 50*time.Millisecond); err != nil {
@@ -508,8 +511,14 @@ func (probe *BridgeOfProbe) addRule(rule *Rule) {
 		"priority": rule.Priority,
 		"UUID":     rule.UUID,
 	}
-	ruleNode := g.NewNode(graph.GenID(), metadata)
-	g.Link(bridgeNode, ruleNode, graph.Metadata{"RelationType": "ownership"})
+	ruleNode, err := g.NewNode(graph.GenID(), metadata)
+	if err != nil {
+		logging.GetLogger().Error(err)
+		return
+	}
+	if _, err := g.Link(bridgeNode, ruleNode, graph.Metadata{"RelationType": "ownership"}); err != nil {
+		logging.GetLogger().Error(err)
+	}
 }
 
 // modRule modifies the node of an existing rule.
@@ -542,9 +551,15 @@ func (probe *BridgeOfProbe) addGroup(group *Group) {
 		"contents":   group.Contents,
 		"UUID":       group.UUID,
 	}
-	groupNode := g.NewNode(graph.GenID(), metadata)
+	groupNode, err := g.NewNode(graph.GenID(), metadata)
+	if err != nil {
+		logging.GetLogger().Error(err)
+		return
+	}
 	probe.Groups[group.ID] = groupNode
-	g.Link(bridgeNode, groupNode, graph.Metadata{"RelationType": "ownership"})
+	if _, err := g.Link(bridgeNode, groupNode, graph.Metadata{"RelationType": "ownership"}); err != nil {
+		logging.GetLogger().Error(err)
+	}
 }
 
 // delRule deletes a rule from the the graph.
@@ -556,7 +571,9 @@ func (probe *BridgeOfProbe) delRule(rule *Rule) {
 
 	ruleNode := g.LookupFirstNode(graph.Metadata{"UUID": rule.UUID})
 	if ruleNode != nil {
-		g.DelNode(ruleNode)
+		if err := g.DelNode(ruleNode); err != nil {
+			logging.GetLogger().Error(err)
+		}
 	}
 }
 
@@ -565,10 +582,13 @@ func (probe *BridgeOfProbe) delGroup(groupID uint) {
 	g := probe.OvsOfProbe.Graph
 	g.Lock()
 	defer g.Unlock()
+
 	if groupID == 0xfffffffc {
 		logging.GetLogger().Infof("All groups deleted on %s", probe.Bridge)
 		for _, groupNode := range probe.Groups {
-			g.DelNode(groupNode)
+			if err := g.DelNode(groupNode); err != nil {
+				logging.GetLogger().Error(err)
+			}
 		}
 		probe.Groups = make(map[uint]*graph.Node)
 	} else {
@@ -576,7 +596,9 @@ func (probe *BridgeOfProbe) delGroup(groupID uint) {
 		groupNode := probe.Groups[groupID]
 		delete(probe.Groups, groupID)
 		if groupNode != nil {
-			g.DelNode(groupNode)
+			if err := g.DelNode(groupNode); err != nil {
+				logging.GetLogger().Error(err)
+			}
 		}
 	}
 }
@@ -874,12 +896,16 @@ func (o *OvsOfProbe) OnOvsBridgeDel(uuid string) {
 		rules := g.LookupChildren(bridgeNode, graph.Metadata{"Type": "ofrule"}, nil)
 		for _, ruleNode := range rules {
 			logging.GetLogger().Infof("Rule %v deleted (Bridge deleted)", ruleNode.Metadata["UUID"])
-			g.DelNode(ruleNode)
+			if err := g.DelNode(ruleNode); err != nil {
+				logging.GetLogger().Error(err)
+			}
 		}
 		groups := g.LookupChildren(bridgeNode, graph.Metadata{"Type": "ofgroup"}, nil)
 		for _, groupNode := range groups {
 			logging.GetLogger().Infof("Group %v deleted (Bridge deleted)", groupNode.Metadata["UUID"])
-			g.DelNode(groupNode)
+			if err := g.DelNode(groupNode); err != nil {
+				logging.GetLogger().Error(err)
+			}
 		}
 	}
 }

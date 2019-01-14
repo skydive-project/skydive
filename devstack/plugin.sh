@@ -38,7 +38,7 @@ SKYDIVE_ANALYZER_ETCD=${SKYDIVE_ANALYZER_ETCD:-$SERVICE_HOST:12379}
 SKYDIVE_AGENT_LISTEN=${SKYDIVE_AGENT_LISTEN:-"127.0.0.1:8081"}
 
 # The path for the generated skydive configuration file
-SKYDIVE_CONFIG_FILE=${SKYDIVE_CONFIG_FILE:-"/tmp/skydive.yaml"}
+SKYDIVE_CONFIG_FILE=${SKYDIVE_CONFIG_FILE:-"/etc/skydive/skydive.yaml"}
 
 # List of agent probes to be used by the agent
 SKYDIVE_AGENT_PROBES=${SKYDIVE_AGENT_PROBES:-"ovsdb neutron"}
@@ -58,6 +58,9 @@ SKYDIVE_FLOWS_STORAGE=${SKYDIVE_FLOWS_STORAGE:-"memory"}
 # Storage used by the analyzer to store the graph
 SKYDIVE_GRAPH_STORAGE=${SKYDIVE_GRAPH_STORAGE:-"memory"}
 
+# Installation mode: source, binary, release
+SKYDIVE_INSTALL_MODE=${SKYDIVE_INSTALL_MODE:-"source"}
+
 # List of public interfaces for the agents to register in fabric
 # ex: "devstack1/eth0 devstack2/eth1"
 if [ "x$PUBLIC_INTERFACE" != "x" ]; then
@@ -65,7 +68,7 @@ if [ "x$PUBLIC_INTERFACE" != "x" ]; then
 fi
 
 ELASTICSEARCH_BASE_URL=https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution
-ELASTICSEARCH_VERSION=5.6.10
+ELASTICSEARCH_VERSION=5.6.14
 
 USE_ELASTICSEARCH=0
 if [ "${SKYDIVE_FLOWS_STORAGE}" == "elasticsearch" ] || [ "${SKYDIVE_GRAPH_STORAGE}" == "elasticsearch" ]; then
@@ -124,21 +127,48 @@ function pre_install_skydive {
     fi
 }
 
+function install_from_source {
+    if is_fedora ; then
+        install_package libpcap-devel npm libvirt-devel
+    else
+        install_package libpcap-dev npm libvirt-dev
+    fi
+    SKYDIVE_SRC=$GOPATH/src/github.com/skydive-project
+    mkdir -p $SKYDIVE_SRC
+    if [ ! -d $SKYDIVE_SRC/skydive ]; then
+        mv $DEST/skydive $SKYDIVE_SRC/
+        ln -s $SKYDIVE_SRC/skydive $DEST/skydive
+    fi
+    cd $SKYDIVE_SRC/skydive
+    make install
+
+    sudo ln -s $GOPATH/bin/skydive /usr/bin/skydive
+}
+
+function install_latest_binary {
+    curl -Lo /tmp/skydive https://github.com/skydive-project/skydive-binaries/raw/jenkins-builds/skydive-latest
+    chmod +x /tmp/skydive
+    sudo mv /tmp/skydive /usr/bin/skydive
+}
+
+function install_latest_release {
+    local version=$( curl -s https://api.github.com/repos/skydive-project/skydive/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")' )
+    curl -Lo /tmp/skydive https://github.com/skydive-project/skydive/releases/download/${version}/skydive
+    chmod +x /tmp/skydive
+    sudo mv /tmp/skydive /usr/bin/skydive
+}
+
 function install_skydive {
     if [ ! -f $GOPATH/bin/skydive ]; then
-        if is_fedora ; then
-            install_package libpcap-devel npm libvirt-devel
-        else
-            install_package libpcap-dev npm libvirt-dev
-        fi
-        SKYDIVE_SRC=$GOPATH/src/github.com/skydive-project
-        mkdir -p $SKYDIVE_SRC
-        if [ ! -d $SKYDIVE_SRC/skydive ]; then
-            mv $DEST/skydive $SKYDIVE_SRC/
-            ln -s $SKYDIVE_SRC/skydive $DEST/skydive
-        fi
-        cd $SKYDIVE_SRC/skydive
-        make install
+        case $SKYDIVE_INSTALL_MODE in
+
+            source) install_from_source;;
+            binary) install_latest_binary;;
+            release) install_latest_release;;
+
+        esac
+
+    	sudo chown root:root /usr/bin/skydive
     fi
 }
 
@@ -160,7 +190,8 @@ function get_fabric_config {
 }
 
 function configure_skydive {
-    cat > $SKYDIVE_CONFIG_FILE <<- EOF
+    sudo mkdir -p `dirname $SKYDIVE_CONFIG_FILE`
+    cat <<EOF | sudo tee $SKYDIVE_CONFIG_FILE
 auth:
   type: keystone
   analyzer_username: admin
@@ -200,13 +231,13 @@ analyzer:
 EOF
 
     if [ "$SKYDIVE_FLOWS_STORAGE" == "elasticsearch" ]; then
-        cat >> $SKYDIVE_CONFIG_FILE <<- EOF
+        cat <<EOF | sudo tee -a $SKYDIVE_CONFIG_FILE
   flow:
     backend: $SKYDIVE_FLOWS_STORAGE
 EOF
     fi
 
-    cat >> $SKYDIVE_CONFIG_FILE <<- EOF
+    cat <<EOF | sudo tee -a $SKYDIVE_CONFIG_FILE
   topology:
     backend: $SKYDIVE_GRAPH_STORAGE
     probes:
@@ -214,20 +245,20 @@ $(get_probes_for_config $SKYDIVE_ANALYZER_PROBES)
 EOF
 
     if [ "x$SKYDIVE_PUBLIC_INTERFACES" != "x" ]; then
-        cat >> $SKYDIVE_CONFIG_FILE <<- EOF
+        cat <<EOF | sudo tee -a $SKYDIVE_CONFIG_FILE
     fabric:
 $(get_fabric_config)
 EOF
     fi
 
     if [ "x$SKYDIVE_ANALYZER_LISTEN" != "x" ]; then
-        cat >> $SKYDIVE_CONFIG_FILE <<- EOF
+        cat <<EOF | sudo tee -a $SKYDIVE_CONFIG_FILE
   listen: $SKYDIVE_ANALYZER_LISTEN
 EOF
     fi
 
     if [ "x$SKYDIVE_OVSDB_REMOTE_PORT" != "x" ]; then
-        cat >> $SKYDIVE_CONFIG_FILE <<- EOF
+        cat <<EOF | sudo tee -a $SKYDIVE_CONFIG_FILE
 ovs:
   ovsdb: $SKYDIVE_OVSDB_REMOTE_PORT
   oflow:
@@ -245,14 +276,14 @@ EOF
 
 function start_skydive {
     if is_service_enabled skydive-agent ; then
-        run_process skydive-agent "$GOPATH/bin/skydive agent --conf $SKYDIVE_CONFIG_FILE" "root" "root"
+        run_process skydive-agent "/usr/bin/skydive agent --conf $SKYDIVE_CONFIG_FILE" "root" "root"
     fi
 
     if is_service_enabled skydive-analyzer ; then
         if [ ${USE_ELASTICSEARCH} -eq 1 ]; then
             $TOP_DIR/pkg/elasticsearch.sh start
         fi
-        run_process skydive-analyzer "$GOPATH/bin/skydive analyzer --conf $SKYDIVE_CONFIG_FILE"
+        run_process skydive-analyzer "/usr/bin/skydive analyzer --conf $SKYDIVE_CONFIG_FILE"
     fi
 }
 
@@ -283,6 +314,6 @@ if is_service_enabled skydive-agent || is_service_enabled skydive-analyzer ; the
 
     if [[ "$1" == "unstack" ]]; then
         stop_skydive
-        rm $SKYDIVE_CONFIG_FILE
+        sudo rm $SKYDIVE_CONFIG_FILE
     fi
 fi

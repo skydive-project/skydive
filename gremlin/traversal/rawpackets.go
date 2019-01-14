@@ -29,7 +29,7 @@ import (
 	layers "github.com/google/gopacket/layers"
 
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/topology/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 )
 
 // RawPacketsTraversalExtension describes a new extension to enhance the topology

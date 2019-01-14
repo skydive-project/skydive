@@ -21,7 +21,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
              os.networks = ENV.fetch("OS_NETWORKS", "private").split()
          end
          devstack.vm.provider :libvirt do |domain, override|
-             override.vm.box = "fedora/27-cloud-base"
+             override.vm.box = "fedora/29-cloud-base"
              override.ssh.username = 'vagrant'
              domain.memory = 8192
              domain.cpus = 4

@@ -30,8 +30,8 @@ import (
 	"time"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	g "github.com/skydive-project/skydive/gremlin"
-	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
 )
 
@@ -54,7 +54,7 @@ func setupFromConfigFile(mngr, file string) []Cmd {
 func tearDownFromConfigFile(mngr, file string) []Cmd {
 	return []Cmd{
 		{"kubectl delete --grace-period=0 --force -f " + k8sConfigFile(mngr, file), false},
-		{"sleep 5", true},
+		{"sleep 10", true},
 	}
 }
 

@@ -49,6 +49,12 @@ const (
 	StoppingState
 )
 
+// Service describes a service identified by its type and identifier
+type Service struct {
+	Type ServiceType
+	ID   string
+}
+
 // ServiceAddress describes the service listening address and port
 type ServiceAddress struct {
 	Addr string

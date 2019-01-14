@@ -1,18 +1,33 @@
 ---
-- name: Install Keystone requirements
+- name: Install Keystone requirements (yum)
   package:
     name: python2-shade
     state: present
-  when: ansible_os_family == "RedHat"
+    use: yum
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_major_version|int == 7
+  ignore_errors: yes
 
-- name: Install Keystone requirements
+- name: Install Keystone requirements (dnf)
+  package:
+    name: python2-shade
+    state: present
+    use: dnf
+  when: (ansible_os_family == 'RedHat' and ansible_distribution_major_version|int > 7) or (ansible_distribution == 'Fedora')
+  ignore_errors: yes
+
+- name: Install Keystone requirements (apt)
   package:
     name: python-shade
     state: present
+    use: apt
   when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  ignore_errors: yes
 
 - name: Create a Skydive tenant
   environment:
+    OS_AUTH_TOKEN: ""
     OS_AUTH_URL: "{{ os_auth_url }}"
     OS_USERNAME: "{{ os_username }}"
     OS_PASSWORD: "{{ os_password }}"
@@ -29,6 +44,7 @@
 
 - name: Create a Skydive keystone API user
   environment:
+    OS_AUTH_TOKEN: ""
     OS_AUTH_URL: "{{ os_auth_url }}"
     OS_USERNAME: "{{ os_username }}"
     OS_PASSWORD: "{{ os_password }}"
@@ -45,6 +61,7 @@
 
 - name: Set skydive Keystone API user role
   environment:
+    OS_AUTH_TOKEN: ""
     OS_AUTH_URL: "{{ os_auth_url }}"
     OS_USERNAME: "{{ os_username }}"
     OS_PASSWORD: "{{ os_password }}"
@@ -60,6 +77,7 @@
 
 - name: Create a Skydive keystone service user
   environment:
+    OS_AUTH_TOKEN: ""
     OS_AUTH_URL: "{{ os_auth_url }}"
     OS_USERNAME: "{{ os_username }}"
     OS_PASSWORD: "{{ os_password }}"
@@ -76,6 +94,7 @@
 
 - name: Set skydive Keystone service user role
   environment:
+    OS_AUTH_TOKEN: ""
     OS_AUTH_URL: "{{ os_auth_url }}"
     OS_USERNAME: "{{ os_username }}"
     OS_PASSWORD: "{{ os_password }}"

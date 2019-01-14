@@ -1,0 +1,7 @@
+---
+- name: Ensure config file permissions
+  file:
+    path: "{{ skydive_config_file }}"
+    owner: "root"
+    group: "{{ skydive_sys_groupname }}"
+    mode: 0640

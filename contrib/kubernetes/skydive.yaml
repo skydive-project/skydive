@@ -40,6 +40,8 @@ metadata:
   labels:
     app: skydive-agent
   name: skydive-agent-config
+data:
+  SKYDIVE_AGENT_TOPOLOGY_PROBES: "runc docker"
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -115,6 +117,10 @@ spec:
           mountPath: /host/run
         - name: ovsdb
           mountPath: /var/run/openvswitch/db.sock
+        - mountPath: /var/run/runc
+          name: runc
+        - mountPath: /var/run/runc-ctrs
+          name: runc-ctrs
       volumes:
       - name: docker
         hostPath:
@@ -125,3 +131,9 @@ spec:
       - name: ovsdb
         hostPath:
           path: /var/run/openvswitch/db.sock
+      - hostPath:
+          path: /run/runc
+        name: runc
+      - hostPath:
+          path: /run/runc-ctrs
+        name: runc-ctrs

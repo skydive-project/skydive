@@ -28,9 +28,9 @@ import (
 	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 // ErrProbeNotCompiled is thrown when a flow probe was not compiled within the binary

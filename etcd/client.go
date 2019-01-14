@@ -30,11 +30,12 @@ import (
 
 	etcd "github.com/coreos/etcd/client"
 
-	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/common"
 )
 
 // Client describes a ETCD configuration client
 type Client struct {
+	service common.Service
 	client  *etcd.Client
 	KeysAPI etcd.KeysAPI
 }
@@ -63,8 +64,13 @@ func (client *Client) Stop() {
 	}
 }
 
+// NewElection creates a new ETCD master elector
+func (client *Client) NewElection(name string) common.MasterElection {
+	return NewMasterElector(client, name)
+}
+
 // NewClient creates a new ETCD client connection to ETCD servers
-func NewClient(etcdServers []string, clientTimeout time.Duration) (*Client, error) {
+func NewClient(service common.Service, etcdServers []string, clientTimeout time.Duration) (*Client, error) {
 	cfg := etcd.Config{
 		Endpoints:               etcdServers,
 		Transport:               etcd.DefaultTransport,
@@ -79,21 +85,8 @@ func NewClient(etcdServers []string, clientTimeout time.Duration) (*Client, erro
 	kapi := etcd.NewKeysAPI(client)
 
 	return &Client{
+		service: service,
 		client:  &client,
 		KeysAPI: kapi,
 	}, nil
-}
-
-// NewClientFromConfig creates a new ETCD client from configuration
-func NewClientFromConfig() (*Client, error) {
-	etcdServers := config.GetEtcdServerAddrs()
-	etcdTimeout := config.GetInt("etcd.client_timeout")
-	switch etcdTimeout {
-	case 0:
-		etcdTimeout = 5 // Default timeout
-	case -1:
-		etcdTimeout = 0 // No timeout
-	}
-
-	return NewClient(etcdServers, time.Duration(etcdTimeout)*time.Second)
 }

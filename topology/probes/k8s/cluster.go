@@ -23,16 +23,14 @@
 package k8s
 
 import (
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 // ClusterName is the name of the k8s cluster
 const ClusterName = "cluster"
-
-var clusterEventHandler = graph.NewEventHandler(100)
 
 var clusterNode *graph.Node
 
@@ -46,7 +44,13 @@ func (c *clusterCache) addClusterNode() {
 	defer c.graph.Unlock()
 
 	m := graph.Metadata{"Name": ClusterName}
-	clusterNode = c.graph.NewNode(graph.GenID(), NewMetadata(Manager, "cluster", m, nil, ClusterName), "")
+
+	var err error
+	clusterNode, err = c.graph.NewNode(graph.GenID(), NewMetadata(Manager, "cluster", m, nil, ClusterName), "")
+	if err != nil {
+		logging.GetLogger().Error(err)
+		return
+	}
 	c.NotifyEvent(graph.NodeAdded, clusterNode)
 	logging.GetLogger().Debugf("Added cluster{Name: %s}", ClusterName)
 }
@@ -59,7 +63,7 @@ func (c *clusterCache) Stop() {
 
 func newClusterProbe(clientset interface{}, g *graph.Graph) Subprobe {
 	c := &clusterCache{
-		EventHandler: clusterEventHandler,
+		EventHandler: graph.NewEventHandler(100),
 		graph:        g,
 	}
 	c.addClusterNode()
@@ -85,14 +89,18 @@ func (linker *clusterLinker) GetBALinks(objectNode *graph.Node) (edges []*graph.
 }
 
 func newClusterLinker(g *graph.Graph, manager string, types ...string) probe.Probe {
-	objectIndexer := newObjectIndexerFromFilter(g, g, newTypesFilter(manager, types...))
-	objectIndexer.Start()
-
-	return graph.NewResourceLinker(
+	rl := graph.NewResourceLinker(
 		g,
 		nil,
-		objectIndexer,
+		ListSubprobes(manager, types...),
 		&clusterLinker{g: g},
 		topology.OwnershipMetadata(),
 	)
+
+	linker := &Linker{
+		ResourceLinker: rl,
+	}
+	rl.AddEventListener(linker)
+
+	return linker
 }

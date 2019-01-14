@@ -25,11 +25,10 @@ package k8s
 import (
 	"fmt"
 
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
-	"github.com/skydive-project/skydive/topology/graph"
 
 	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -59,65 +58,18 @@ func newServiceProbe(client interface{}, g *graph.Graph) Subprobe {
 	return NewResourceCache(client.(*kubernetes.Clientset).Core().RESTClient(), &v1.Service{}, "services", g, &serviceHandler{})
 }
 
-type servicePodLinker struct {
-	graph        *graph.Graph
-	serviceCache *ResourceCache
-	podCache     *ResourceCache
+func servicePodAreLinked(a, b interface{}) bool {
+	return matchMapSelector(b.(*v1.Pod), a.(*v1.Service).Spec.Selector)
 }
 
-func (spl *servicePodLinker) newEdgeMetadata() graph.Metadata {
-	m := newEdgeMetadata()
-	m.SetField("RelationType", "service")
-	return m
+func newServicePodLinker(g *graph.Graph) probe.Probe {
+	return NewABLinker(g, Manager, "service", Manager, "pod", servicePodAreLinked)
 }
 
-func (spl *servicePodLinker) GetABLinks(srvNode *graph.Node) (edges []*graph.Edge) {
-	if srv := spl.serviceCache.getByNode(srvNode); srv != nil {
-		srv := srv.(*v1.Service)
-		labelSelector := &metav1.LabelSelector{MatchLabels: srv.Spec.Selector}
-		selectedPods := objectsToNodes(spl.graph, spl.podCache.getBySelector(spl.graph, srv.Namespace, labelSelector))
-		metadata := spl.newEdgeMetadata()
-		for _, podNode := range selectedPods {
-			id := graph.GenID(string(srvNode.ID), string(podNode.ID), "RelationType", "service")
-			edges = append(edges, spl.graph.NewEdge(id, srvNode, podNode, metadata, ""))
-		}
-	}
-	return
+func serviceEndpointsAreLinked(a, b interface{}) bool {
+	return matchMapSelector(b.(*v1.Endpoints), a.(*v1.Service).Spec.Selector)
 }
 
-func (spl *servicePodLinker) GetBALinks(podNode *graph.Node) (edges []*graph.Edge) {
-	namespace, _ := podNode.GetFieldString(MetadataField("Namespace"))
-	name, _ := podNode.GetFieldString(MetadataField("Name"))
-	pod := spl.podCache.getByKey(namespace, name)
-	for _, srv := range spl.serviceCache.getByNamespace(namespace) {
-		srv := srv.(*v1.Service)
-		labelSelector := &metav1.LabelSelector{MatchLabels: srv.Spec.Selector}
-		if len(filterObjectsBySelector([]interface{}{pod}, labelSelector)) != 1 {
-			continue
-		}
-		if srvNode := spl.graph.GetNode(graph.Identifier(srv.GetUID())); srvNode != nil {
-			edges = append(edges, spl.graph.CreateEdge("", srvNode, podNode, spl.newEdgeMetadata(), graph.TimeUTC(), ""))
-		}
-	}
-	return
-}
-
-func newServicePodLinker(g *graph.Graph, probes map[string]Subprobe) probe.Probe {
-	serviceProbe := probes["service"]
-	podProbe := probes["pod"]
-	if serviceProbe == nil || podProbe == nil {
-		return nil
-	}
-
-	return graph.NewResourceLinker(
-		g,
-		serviceProbe,
-		podProbe,
-		&servicePodLinker{
-			graph:        g,
-			serviceCache: serviceProbe.(*ResourceCache),
-			podCache:     podProbe.(*ResourceCache),
-		},
-		graph.Metadata{"RelationType": "service"},
-	)
+func newServiceEndpointsLinker(g *graph.Graph) probe.Probe {
+	return NewABLinker(g, Manager, "service", Manager, "endpoints", serviceEndpointsAreLinked)
 }

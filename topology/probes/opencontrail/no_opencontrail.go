@@ -26,7 +26,7 @@ package opencontrail
 
 import (
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
 // Probe describes a probe that reads OpenContrail database and updates the graph

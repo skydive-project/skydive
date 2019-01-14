@@ -26,7 +26,7 @@ import (
 	"testing"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
 )
 
@@ -36,7 +36,7 @@ func TestSocketsIndexer(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	g := graph.NewGraphFromConfig(b, common.UnknownService)
+	g := graph.NewGraph("testhost", b, common.UnknownService)
 	indexer := NewSocketIndexer(g)
 	indexer.Start()
 
@@ -52,7 +52,7 @@ func TestSocketsIndexer(t *testing.T) {
 		},
 	}
 
-	n1 := g.NewNode(graph.GenID(), m, "host")
+	n1, _ := g.NewNode(graph.GenID(), m, "host")
 
 	conn := &socketinfo.ConnectionInfo{
 		LocalAddress:  "127.0.0.1",

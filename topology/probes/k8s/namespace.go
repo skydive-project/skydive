@@ -25,15 +25,13 @@ package k8s
 import (
 	"fmt"
 
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/graph"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
-
-var namespaceEventHandler = graph.NewEventHandler(100)
 
 type namespaceHandler struct {
 }
@@ -53,17 +51,24 @@ func (h *namespaceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadat
 }
 
 func newNamespaceProbe(client interface{}, g *graph.Graph) Subprobe {
-	return NewResourceCache(client.(*kubernetes.Clientset).Core().RESTClient(), &v1.Namespace{}, "namespaces", g, &namespaceHandler{}, namespaceEventHandler)
+	return NewResourceCache(client.(*kubernetes.Clientset).Core().RESTClient(), &v1.Namespace{}, "namespaces", g, &namespaceHandler{})
 }
 
 func newNamespaceLinker(g *graph.Graph, manager string, types ...string) probe.Probe {
 	namespaceFilter := newTypesFilter(Manager, "namespace")
-	namespaceIndexer := newObjectIndexerFromFilter(g, namespaceEventHandler, namespaceFilter, MetadataFields("Name")...)
+	namespaceIndexer := newObjectIndexerFromFilter(g, GetSubprobe(Manager, "namespace"), namespaceFilter, MetadataFields("Name")...)
 	namespaceIndexer.Start()
 
 	objectFilter := newTypesFilter(manager, types...)
 	objectIndexer := newObjectIndexerFromFilter(g, g, objectFilter, MetadataFields("Namespace")...)
 	objectIndexer.Start()
 
-	return graph.NewMetadataIndexerLinker(g, namespaceIndexer, objectIndexer, topology.OwnershipMetadata())
+	ml := graph.NewMetadataIndexerLinker(g, namespaceIndexer, objectIndexer, topology.OwnershipMetadata())
+
+	linker := &Linker{
+		ResourceLinker: ml.ResourceLinker,
+	}
+	ml.AddEventListener(linker)
+
+	return linker
 }

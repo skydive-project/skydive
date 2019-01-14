@@ -23,11 +23,9 @@
 package server
 
 import (
-	"github.com/nu7hatch/gouuid"
-
 	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 // NodeRuleResourceHandler describes a node resource handler
@@ -48,11 +46,7 @@ func (nrh *NodeRuleResourceHandler) Name() string {
 
 // New creates a new node rule
 func (nrh *NodeRuleResourceHandler) New() types.Resource {
-	id, _ := uuid.NewV4()
-
-	return &types.NodeRule{
-		UUID: id.String(),
-	}
+	return &types.NodeRule{}
 }
 
 // Create a new node rule

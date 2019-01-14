@@ -3,6 +3,12 @@ agent:
     probes:
       - ovsdb
       - docker
+      - runc
+
+  runc:
+    run_path:
+    - /var/run/runc
+    - /var/run/runc-ctrs
 
 analyzer:
   listen: 0.0.0.0:8082

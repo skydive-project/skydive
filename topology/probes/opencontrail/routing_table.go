@@ -50,8 +50,8 @@ import (
 	"strconv"
 
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 // This represents the data we get from rt --monitor stdout

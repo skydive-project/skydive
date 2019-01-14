@@ -38,8 +38,8 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 var (
@@ -205,7 +205,10 @@ func NewDPDKProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*DPDKP
 			"State":     "UP",
 			"Type":      "dpdkport",
 		}
-		dpdkNode := g.NewNode(graph.GenID(), m)
+		dpdkNode, err := g.NewNode(graph.GenID(), m)
+		if err != nil {
+			return nil, err
+		}
 		topology.AddOwnershipLink(g, hostNode, dpdkNode, nil)
 		tid, _ := dpdkNode.GetFieldString("TID")
 		port := dpdkPort{}

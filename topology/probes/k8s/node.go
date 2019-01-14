@@ -25,10 +25,10 @@ package k8s
 import (
 	"fmt"
 
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
-	"github.com/skydive-project/skydive/topology/graph"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -60,8 +60,8 @@ func newNodeProbe(client interface{}, g *graph.Graph) Subprobe {
 	return NewResourceCache(client.(*kubernetes.Clientset).Core().RESTClient(), &v1.Node{}, "nodes", g, &nodeHandler{})
 }
 
-func newHostNodeLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe {
-	nodeProbe := subprobes["node"]
+func newHostNodeLinker(g *graph.Graph) probe.Probe {
+	nodeProbe := GetSubprobe(Manager, "node")
 	if nodeProbe == nil {
 		return nil
 	}
@@ -72,9 +72,16 @@ func newHostNodeLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Prob
 	nodeIndexer := graph.NewMetadataIndexer(g, nodeProbe, graph.Metadata{"Type": "node"}, MetadataField("Name"))
 	nodeIndexer.Start()
 
-	return graph.NewMetadataIndexerLinker(g, hostIndexer, nodeIndexer, newEdgeMetadata())
+	ml := graph.NewMetadataIndexerLinker(g, hostIndexer, nodeIndexer, NewEdgeMetadata(Manager, "association"))
+
+	linker := &Linker{
+		ResourceLinker: ml.ResourceLinker,
+	}
+	ml.AddEventListener(linker)
+
+	return linker
 }
 
-func newNodePodLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe {
-	return newResourceLinker(g, subprobes, "node", MetadataFields("Name"), "pod", MetadataFields("Node"), newEdgeMetadata())
+func newNodePodLinker(g *graph.Graph) probe.Probe {
+	return newResourceLinker(g, GetSubprobesMap(Manager), "node", MetadataFields("Name"), "pod", MetadataFields("Node"), NewEdgeMetadata(Manager, "association"))
 }

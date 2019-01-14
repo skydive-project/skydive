@@ -38,15 +38,17 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/client"
 	"github.com/skydive-project/skydive/flow/storage"
+	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/hub"
+	"github.com/skydive-project/skydive/graffiti/pod"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/enhancers"
-	"github.com/skydive-project/skydive/topology/graph"
-	"github.com/skydive-project/skydive/topology/graph/traversal"
+	usertopology "github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
 	"github.com/skydive-project/skydive/ui"
 	ws "github.com/skydive-project/skydive/websocket"
@@ -57,16 +59,10 @@ type ElectionStatus struct {
 	IsMaster bool
 }
 
-// PeersStatus describes the state of a peer
-type PeersStatus struct {
-	Incomers map[string]ws.ConnStatus
-	Outgoers map[string]ws.ConnStatus
-}
-
 // Status describes the status of an analyzer
 type Status struct {
 	Agents      map[string]ws.ConnStatus
-	Peers       PeersStatus
+	Peers       hub.PeersStatus
 	Publishers  map[string]ws.ConnStatus
 	Subscribers map[string]ws.ConnStatus
 	Alerts      ElectionStatus
@@ -76,45 +72,30 @@ type Status struct {
 
 // Server describes an Analyzer servers mechanism like http, websocket, topology, ondemand probes, ...
 type Server struct {
-	httpServer          *shttp.Server
-	uiServer            *ui.Server
-	agentWSServer       *ws.StructServer
-	publisherWSServer   *ws.StructServer
-	replicationWSServer *ws.StructServer
-	subscriberWSServer  *ws.StructServer
-	replicationEndpoint *TopologyReplicationEndpoint
-	alertServer         *alert.Server
-	onDemandClient      *ondemand.OnDemandProbeClient
-	piClient            *packetinjector.Client
-	topologyManager     *usertopology.TopologyManager
-	flowServer          *FlowServer
-	probeBundle         *probe.Bundle
-	storage             storage.Storage
-	embeddedEtcd        *etcd.EmbeddedEtcd
-	etcdClient          *etcd.Client
-	wgServers           sync.WaitGroup
+	httpServer      *shttp.Server
+	uiServer        *ui.Server
+	hub             *hub.Hub
+	alertServer     *alert.Server
+	onDemandClient  *ondemand.OnDemandProbeClient
+	piClient        *packetinjector.Client
+	topologyManager *usertopology.TopologyManager
+	flowServer      *FlowServer
+	probeBundle     *probe.Bundle
+	storage         storage.Storage
+	embeddedEtcd    *etcd.EmbeddedEtcd
+	etcdClient      *etcd.Client
+	wgServers       sync.WaitGroup
 }
 
 // GetStatus returns the status of an analyzer
 func (s *Server) GetStatus() interface{} {
-	peersStatus := PeersStatus{
-		Incomers: make(map[string]ws.ConnStatus),
-		Outgoers: make(map[string]ws.ConnStatus),
-	}
-
-	for _, speaker := range s.replicationEndpoint.in.GetSpeakers() {
-		peersStatus.Incomers[speaker.GetRemoteHost()] = speaker.GetStatus()
-	}
-
-	for _, speaker := range s.replicationEndpoint.out.GetSpeakers() {
-		peersStatus.Outgoers[speaker.GetRemoteHost()] = speaker.GetStatus()
-	}
+	hubStatus := s.hub.GetStatus()
 
 	return &Status{
-		Agents:      s.agentWSServer.GetStatus(),
-		Peers:       peersStatus,
-		Publishers:  s.publisherWSServer.GetStatus(),
-		Subscribers: s.subscriberWSServer.GetStatus(),
+		Agents:      hubStatus.Pods,
+		Peers:       hubStatus.Peers,
+		Publishers:  hubStatus.Publishers,
+		Subscribers: hubStatus.Subscribers,
 		Alerts:      ElectionStatus{IsMaster: s.alertServer.IsMaster()},
 		Captures:    ElectionStatus{IsMaster: s.onDemandClient.IsMaster()},
 		Probes:      s.probeBundle.ActiveProbes(),
@@ -145,18 +126,13 @@ func (s *Server) Start() error {
 		return err
 	}
 
-	s.replicationEndpoint.ConnectPeers()
-
+	s.hub.Start()
 	s.probeBundle.Start()
 	s.onDemandClient.Start()
 	s.piClient.Start()
 	s.alertServer.Start()
 	s.topologyManager.Start()
 	s.flowServer.Start()
-	s.agentWSServer.Start()
-	s.publisherWSServer.Start()
-	s.replicationWSServer.Start()
-	s.subscriberWSServer.Start()
 
 	s.wgServers.Add(1)
 	go func() {
@@ -169,11 +145,8 @@ func (s *Server) Start() error {
 
 // Stop the analyzer server
 func (s *Server) Stop() {
+	s.hub.Stop()
 	s.flowServer.Stop()
-	s.agentWSServer.Stop()
-	s.publisherWSServer.Stop()
-	s.replicationWSServer.Stop()
-	s.subscriberWSServer.Stop()
 	s.httpServer.Stop()
 	if s.embeddedEtcd != nil {
 		s.embeddedEtcd.Stop()
@@ -198,23 +171,35 @@ func (s *Server) Stop() {
 // NewServerFromConfig creates a new empty server
 func NewServerFromConfig() (*Server, error) {
 	embedEtcd := config.GetBool("etcd.embedded")
+	host := config.GetString("host_id")
 
 	var embeddedEtcd *etcd.EmbeddedEtcd
 	var err error
 	if embedEtcd {
-		if embeddedEtcd, err = etcd.NewEmbeddedEtcdFromConfig(); err != nil {
+		name := config.GetString("etcd.name")
+		dataDir := config.GetString("etcd.data_dir")
+		listen := config.GetString("etcd.listen")
+		maxWalFiles := uint(config.GetInt("etcd.max_wal_files"))
+		maxSnapFiles := uint(config.GetInt("etcd.max_snap_files"))
+		debug := config.GetBool("etcd.debug")
+		peers := config.GetStringMapString("etcd.peers")
+
+		if embeddedEtcd, err = etcd.NewEmbeddedEtcd(name, listen, peers, dataDir, maxWalFiles, maxSnapFiles, debug); err != nil {
 			return nil, err
 		}
 	}
 
-	etcdClient, err := etcd.NewClientFromConfig()
+	service := common.Service{ID: host, Type: common.AnalyzerService}
+
+	etcdServers := config.GetEtcdServerAddrs()
+	etcdTimeout := config.GetInt("etcd.client_timeout")
+	etcdClient, err := etcd.NewClient(service, etcdServers, time.Duration(etcdTimeout)*time.Second)
 	if err != nil {
 		return nil, err
 	}
 
 	// wait for etcd to be ready
 	for {
-		host := config.GetString("host_id")
 		if err = etcdClient.SetInt64(fmt.Sprintf("/analyzer:%s/start-time", host), time.Now().Unix()); err != nil {
 			logging.GetLogger().Errorf("Etcd server not ready: %s", err)
 			time.Sleep(time.Second)
@@ -227,7 +212,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	hserver, err := config.NewHTTPServer(common.AnalyzerService)
+	hserver, err := config.NewHTTPServer(service.Type)
 	if err != nil {
 		return nil, err
 	}
@@ -240,21 +225,7 @@ func NewServerFromConfig() (*Server, error) {
 	uiServer.AddGlobalVar("interface-metric-keys", (&topology.InterfaceMetric{}).GetFieldKeys())
 	uiServer.AddGlobalVar("probes", config.Get("analyzer.topology.probes"))
 
-	name := config.GetString("analyzer.topology.backend")
-	if len(name) == 0 {
-		name = "memory"
-	}
-
-	// add decoders for specific metadata keys, this aims to keep the same
-	// object type between the agent and the analyzer
-	// Decoder will be used while unmarshal the metadata
-	graph.NodeMetadataDecoders["RoutingTables"] = netlink.RoutingTablesMetadataDecoder
-	graph.NodeMetadataDecoders["FDB"] = netlink.NeighborMetadataDecoder
-	graph.NodeMetadataDecoders["Neighbors"] = netlink.NeighborMetadataDecoder
-	graph.NodeMetadataDecoders["Metric"] = topology.InterfaceMetricMetadataDecoder
-	graph.NodeMetadataDecoders["LastUpdateMetric"] = topology.InterfaceMetricMetadataDecoder
-
-	persistent, err := graph.NewBackendByName(name, etcdClient)
+	persistent, err := newGraphBackendFromConfig(etcdClient)
 	if err != nil {
 		return nil, err
 	}
@@ -264,9 +235,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	g := graph.NewGraphFromConfig(cached, common.AnalyzerService)
-
-	clusterAuthOptions := ClusterAuthenticationOpts()
+	g := graph.NewGraph(host, cached, service.Type)
 
 	clusterAuthBackendName := config.GetString("analyzer.auth.cluster.backend")
 	clusterAuthBackend, err := config.NewAuthenticationBackendByName(clusterAuthBackendName)
@@ -285,27 +254,15 @@ func NewServerFromConfig() (*Server, error) {
 
 	uiServer.RegisterLoginRoute(apiAuthBackend)
 
-	agentWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/agent/topology", clusterAuthBackend))
-	_, err = NewTopologyAgentEndpoint(agentWSServer, cached, g)
+	clusterAuthOptions := ClusterAuthenticationOpts()
+	hub, err := hub.NewHub(hserver, g, cached, apiAuthBackend, clusterAuthBackend, clusterAuthOptions, "/ws/agent/topology", true, 10000, 2*time.Second, 5*time.Second)
 	if err != nil {
 		return nil, err
 	}
 
-	publisherWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/publisher", apiAuthBackend))
-	_, err = NewTopologyPublisherEndpoint(publisherWSServer, g)
-	if err != nil {
-		return nil, err
-	}
+	tableClient := flow.NewWSTableClient(hub.PodServer())
 
-	tableClient := flow.NewWSTableClient(agentWSServer)
-
-	storage, err := storage.NewStorageFromConfig(etcdClient)
-	if err != nil {
-		return nil, err
-	}
-
-	replicationWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/replication", clusterAuthBackend))
-	replicationEndpoint, err := NewTopologyReplicationEndpoint(replicationWSServer, clusterAuthOptions, cached, g)
+	storage, err := newFlowBackendFromConfig(etcdClient)
 	if err != nil {
 		return nil, err
 	}
@@ -320,7 +277,7 @@ func NewServerFromConfig() (*Server, error) {
 	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
 
 	subscriberWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
-	topology.NewSubscriberEndpoint(subscriberWSServer, g, tr)
+	pod.NewTopologySubscriberEndpoint(subscriberWSServer, g, tr)
 
 	probeBundle, err := NewTopologyProbeBundleFromConfig(g)
 	if err != nil {
@@ -331,7 +288,7 @@ func NewServerFromConfig() (*Server, error) {
 	flowSubscriberWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/subscriber/flow", apiAuthBackend))
 	flowSubscriberEndpoint := NewFlowSubscriberEndpoint(flowSubscriberWSServer)
 
-	apiServer, err := api.NewAPI(hserver, etcdClient.KeysAPI, common.AnalyzerService, apiAuthBackend)
+	apiServer, err := api.NewAPI(hserver, etcdClient.KeysAPI, service, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +302,7 @@ func NewServerFromConfig() (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	piClient := packetinjector.NewClient(agentWSServer, etcdClient, piAPIHandler, g)
+	piClient := packetinjector.NewClient(hub.PodServer(), etcdClient, piAPIHandler, g)
 
 	nodeAPIHandler, err := api.RegisterNodeRuleAPI(apiServer, g, apiAuthBackend)
 	if err != nil {
@@ -365,34 +322,30 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	onDemandClient := ondemand.NewOnDemandProbeClient(g, captureAPIHandler, agentWSServer, subscriberWSServer, etcdClient)
+	onDemandClient := ondemand.NewOnDemandProbeClient(g, captureAPIHandler, hub.PodServer(), hub.SubscriberServer(), etcdClient)
 
 	flowServer, err := NewFlowServer(hserver, g, storage, flowSubscriberEndpoint, probeBundle, clusterAuthBackend)
 	if err != nil {
 		return nil, err
 	}
 
-	alertServer, err := alert.NewServer(apiServer, subscriberWSServer, g, tr, etcdClient)
+	alertServer, err := alert.NewServer(apiServer, hub.SubscriberServer(), g, tr, etcdClient)
 	if err != nil {
 		return nil, err
 	}
 
 	s := &Server{
-		httpServer:          hserver,
-		agentWSServer:       agentWSServer,
-		publisherWSServer:   publisherWSServer,
-		replicationWSServer: replicationWSServer,
-		subscriberWSServer:  subscriberWSServer,
-		replicationEndpoint: replicationEndpoint,
-		probeBundle:         probeBundle,
-		embeddedEtcd:        embeddedEtcd,
-		etcdClient:          etcdClient,
-		onDemandClient:      onDemandClient,
-		piClient:            piClient,
-		topologyManager:     topologyManager,
-		storage:             storage,
-		flowServer:          flowServer,
-		alertServer:         alertServer,
+		httpServer:      hserver,
+		hub:             hub,
+		probeBundle:     probeBundle,
+		embeddedEtcd:    embeddedEtcd,
+		etcdClient:      etcdClient,
+		onDemandClient:  onDemandClient,
+		piClient:        piClient,
+		topologyManager: topologyManager,
+		storage:         storage,
+		flowServer:      flowServer,
+		alertServer:     alertServer,
 	}
 
 	s.createStartupCapture(captureAPIHandler)
@@ -419,4 +372,15 @@ func ClusterAuthenticationOpts() *shttp.AuthenticationOpts {
 		Password: config.GetString("analyzer.auth.cluster.password"),
 		Cookie:   config.GetStringMapString("http.cookie"),
 	}
+}
+
+func init() {
+	// add decoders for specific metadata keys, this aims to keep the same
+	// object type between the agent and the analyzer
+	// Decoder will be used while unmarshal the metadata
+	graph.NodeMetadataDecoders["RoutingTables"] = netlink.RoutingTablesMetadataDecoder
+	graph.NodeMetadataDecoders["FDB"] = netlink.NeighborMetadataDecoder
+	graph.NodeMetadataDecoders["Neighbors"] = netlink.NeighborMetadataDecoder
+	graph.NodeMetadataDecoders["Metric"] = topology.InterfaceMetricMetadataDecoder
+	graph.NodeMetadataDecoders["LastUpdateMetric"] = topology.InterfaceMetricMetadataDecoder
 }

@@ -27,8 +27,9 @@ except ImportError:
     import urllib2 as request
 
 from skydive.auth import Authenticate
-from skydive.graph import Node, Edge
 from skydive.rules import NodeRule, EdgeRule, InjectionRule
+from skydive.alerts import Alert
+from skydive.captures import Capture
 
 
 class BadRequest(Exception):
@@ -119,17 +120,53 @@ class RESTClient:
     def lookup_edges(self, gremlin):
         return self.lookup(gremlin, Edge)
 
-    def capture_create(self, query):
-        data = json.dumps(
-            {"GremlinQuery": query}
-        )
-        return self.request("/api/capture", method="POST", data=data)
+    def capture_create(self, query, name="", description="",
+                       extra_tcp_metric=False, ip_defrag=False,
+                       reassemble_tcp=False, layer_key_mode="L2"):
+        data = {
+            "GremlinQuery": query,
+            "LayerKeyMode": layer_key_mode,
+        }
+
+        if name:
+            data["Name"] = name
+        if description:
+            data["Description"] = description
+        if extra_tcp_metric:
+            data["ExtraTCPMetric"] = True
+        if ip_defrag:
+            data["IPDefrag"] = True
+        if reassemble_tcp:
+            data["ReassembleTCP"] = True
+
+        c = self.request("/api/capture", method="POST", data=json.dumps(data))
+        return Capture.from_object(c)
 
     def capture_list(self):
-        return self.request("/api/capture")
+        objs = self.request("/api/capture")
+        return [Capture.from_object(o) for o in objs.values()]
 
     def capture_delete(self, capture_id):
         path = "/api/capture/%s" % capture_id
+        return self.request(path, method="DELETE")
+
+    def alert_create(self, action, expression, trigger="graph"):
+        data = json.dumps(
+            {
+                "Action": action,
+                "Expression": expression,
+                "Trigger": trigger
+            }
+        )
+        a = self.request("/api/alert", method="POST", data=data)
+        return Alert.from_object(a)
+
+    def alert_list(self):
+        objs = self.request("/api/alert")
+        return [Alert.from_object(o) for o in objs.values()]
+
+    def alert_delete(self, alert_id):
+        path = "/api/alert/%s" % alert_id
         return self.request(path, method="DELETE")
 
     def noderule_create(self, action, metadata=None, query=""):

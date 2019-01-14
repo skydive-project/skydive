@@ -88,7 +88,7 @@ func init() {
 	cfg.SetDefault("agent.topology.neutron.region_name", "RegionOne")
 	cfg.SetDefault("agent.topology.neutron.tenant_name", "service")
 	cfg.SetDefault("agent.topology.neutron.username", "neutron")
-	cfg.SetDefault("agent.topology.runc.run_path", []string{"/run/containerd/runc", "/run/runc"})
+	cfg.SetDefault("agent.topology.runc.run_path", []string{"/run/containerd/runc", "/run/runc", "/run/runc-ctrs"})
 	cfg.SetDefault("agent.topology.socketinfo.host_update", 10)
 
 	cfg.SetDefault("analyzer.auth.cluster.backend", "noauth")
@@ -114,10 +114,11 @@ func init() {
 	cfg.SetDefault("docker.url", "unix:///var/run/docker.sock")
 	cfg.SetDefault("docker.netns.run_path", "/var/run/docker/netns")
 
+	cfg.SetDefault("etcd.client_timeout", 5)
 	cfg.SetDefault("etcd.data_dir", "/var/lib/skydive/etcd")
 	cfg.SetDefault("etcd.embedded", true)
-	cfg.SetDefault("etcd.name", host)
 	cfg.SetDefault("etcd.listen", fmt.Sprintf("127.0.0.1:%d", etcdDefaultPort))
+	cfg.SetDefault("etcd.name", host)
 
 	cfg.SetDefault("flow.expire", 600)
 	cfg.SetDefault("flow.update", 60)

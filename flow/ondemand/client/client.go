@@ -34,16 +34,16 @@ import (
 	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow/ondemand"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology/graph"
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
 // OnDemandProbeClient describes an ondemand probe client based on a websocket
 type OnDemandProbeClient struct {
 	common.RWMutex
-	*etcd.MasterElector
+	common.MasterElection
 	graph.DefaultGraphListener
 	graph                *graph.Graph
 	captureHandler       *api.CaptureAPIHandler
@@ -356,7 +356,7 @@ func (o *OnDemandProbeClient) onAPIWatcherEvent(action string, id string, resour
 
 // Start the probe
 func (o *OnDemandProbeClient) Start() {
-	o.MasterElector.StartAndWait()
+	o.MasterElection.StartAndWait()
 
 	o.checkForRegistration.Start()
 
@@ -367,7 +367,7 @@ func (o *OnDemandProbeClient) Start() {
 // Stop the probe
 func (o *OnDemandProbeClient) Stop() {
 	o.watcher.Stop()
-	o.MasterElector.Stop()
+	o.MasterElection.Stop()
 	o.checkForRegistration.Stop()
 }
 
@@ -379,21 +379,20 @@ func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, agentPool
 		captures[resource.ID()] = resource.(*types.Capture)
 	}
 
-	elector := etcd.NewMasterElectorFromConfig(common.AnalyzerService, "ondemand-client", etcdClient)
-
+	election := etcdClient.NewElection("ondemand-client")
 	o := &OnDemandProbeClient{
-		MasterElector:    elector,
+		MasterElection:   election,
 		graph:            g,
 		captureHandler:   ch,
 		agentPool:        agentPool,
 		subscriberPool:   subscriberPool,
 		captures:         captures,
 		registeredNodes:  make(map[string]string),
-		deletedNodeCache: cache.New(elector.TTL()*2, elector.TTL()*2),
+		deletedNodeCache: cache.New(election.TTL()*2, election.TTL()*2),
 	}
 	o.checkForRegistration = common.NewDebouncer(time.Second, o.checkForRegistrationCallback)
 
-	elector.AddEventListener(o)
+	election.AddEventListener(o)
 	agentPool.AddStructMessageHandler(o, []string{ondemand.Namespace})
 
 	return o

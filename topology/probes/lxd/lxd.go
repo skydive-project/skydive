@@ -35,9 +35,9 @@ import (
 	lxd "github.com/lxc/lxd/client"
 	"github.com/mitchellh/mapstructure"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/graph"
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
 	"github.com/vishvananda/netns"
 )
@@ -153,11 +153,15 @@ func (probe *Probe) registerContainer(id string) {
 
 	probe.Graph.Lock()
 
-	containerNode := probe.Graph.NewNode(graph.GenID(), graph.Metadata{
+	containerNode, err := probe.Graph.NewNode(graph.GenID(), graph.Metadata{
 		"Type": "container",
 		"Name": id,
 		"LXD":  metadata,
 	})
+	if err != nil {
+		logging.GetLogger().Error(err)
+		return
+	}
 
 	topology.AddOwnershipLink(probe.Graph, n, containerNode, nil)
 	probe.Graph.Unlock()
@@ -178,7 +182,9 @@ func (probe *Probe) unregisterContainer(id string) {
 	}
 
 	probe.Graph.Lock()
-	probe.Graph.DelNode(infos.Node)
+	if err := probe.Graph.DelNode(infos.Node); err != nil {
+		logging.GetLogger().Error(err)
+	}
 	probe.Graph.Unlock()
 
 	namespace := probe.containerNamespace(infos.Pid)

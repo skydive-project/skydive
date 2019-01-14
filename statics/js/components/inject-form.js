@@ -82,6 +82,10 @@ Vue.component('inject-form', {
         <label for="payld">Payload</label>\
         <input id="payld" type="text" class="form-control input-sm" v-model="payload"/>\
       </div>\
+      <div class="form-group">\
+        <label for="increment-payload">Increment payload size</label>\
+        <input id="increment-payload" type="number" class="form-control input-sm" v-model.number="incrementPayload" min="0" />\
+      </div>\
       <div v-if="type === \'tcp4\' || type === \'tcp6\' || type === \'udp4\' || type === \'udp6\'">\
         <div class="form-group">\
           <label for="src-port">Src Port</label>\
@@ -122,6 +126,7 @@ Vue.component('inject-form', {
       dstMAC: "",
       mode: "random",
       payload: "",
+      incrementPayload: 0,
     };
   },
 
@@ -230,7 +235,7 @@ Vue.component('inject-form', {
       this.node1 = this.node2 = "";
       this.count = 1;
       this.type = "icmp4";
-      this.payloadlength = 0;
+      this.payloadlength = this.incrementPayload = 0;
       this.srcNode = this.dstNode = null;
       this.srcIP = this.dstIP = "";
       this.srcMAC = this.dstMAC = "";
@@ -245,7 +250,7 @@ Vue.component('inject-form', {
         return;
       }
       if (this.mode == "random") {
-        this.payload = (new Array(this.payloadlength)).join("x").toString();
+        this.payload = "x".repeat(this.payloadlength);
       }
       $.ajax({
         dataType: "json",
@@ -265,6 +270,7 @@ Vue.component('inject-form', {
           "Increment": this.increment,
           "Interval": this.interval,
           "Payload": this.payload,
+          "incrementPayload": this.incrementPayload,
         }),
         contentType: "application/json; charset=utf-8",
         method: 'POST',

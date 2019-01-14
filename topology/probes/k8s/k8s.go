@@ -26,15 +26,12 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/probe"
-	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/graffiti/graph"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
-
-type linkHandler func(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe
 
 // NewConfig returns a new Kubernetes configuration object
 func NewConfig(kubeConfig string) (*rest.Config, error) {
@@ -47,7 +44,7 @@ func NewConfig(kubeConfig string) (*rest.Config, error) {
 		kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
 		config, err = kubeConfig.ClientConfig()
 		if err != nil {
-			return nil, fmt.Errorf("Failed to load Kubernetes config: %s", err.Error())
+			return nil, fmt.Errorf("Failed to load Kubernetes config: %s", err)
 		}
 	}
 	return config, nil
@@ -65,7 +62,7 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create Kubernetes client: %s", err.Error())
+		return nil, fmt.Errorf("Failed to create Kubernetes client: %s", err)
 	}
 
 	subprobeHandlers := map[string]SubprobeHandler{
@@ -90,26 +87,24 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		"storageclass":          newStorageClassProbe,
 	}
 
-	subprobes := InitSubprobes(enabledSubprobes, subprobeHandlers, clientset, g)
+	InitSubprobes(enabledSubprobes, subprobeHandlers, clientset, g, Manager)
 
-	linkerHandlers := []linkHandler{
+	linkerHandlers := []LinkHandler{
 		newContainerDockerLinker,
+		newDeploymentPodLinker,
+		newDeploymentReplicaSetLinker,
 		newPodContainerLinker,
 		newHostNodeLinker,
 		newNodePodLinker,
 		newIngressServiceLinker,
 		newNetworkPolicyLinker,
+		newServiceEndpointsLinker,
 		newServicePodLinker,
 	}
 
-	var linkers []probe.Probe
-	for _, linkHandler := range linkerHandlers {
-		if linker := linkHandler(g, subprobes); linker != nil {
-			linkers = append(linkers, linker)
-		}
-	}
+	linkers := InitLinkers(linkerHandlers, g)
 
-	probe := NewProbe(g, Manager, subprobes, linkers)
+	probe := NewProbe(g, Manager, subprobes[Manager], linkers)
 
 	probe.AppendClusterLinkers(
 		"namespace",

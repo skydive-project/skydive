@@ -26,8 +26,11 @@ import (
 	"fmt"
 
 	kiali "github.com/kiali/kiali/kubernetes"
-	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/mitchellh/mapstructure"
+	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
+	"k8s.io/api/core/v1"
 )
 
 type virtualServiceHandler struct {
@@ -48,4 +51,51 @@ func (h *virtualServiceHandler) Dump(obj interface{}) string {
 
 func newVirtualServiceProbe(client interface{}, g *graph.Graph) k8s.Subprobe {
 	return k8s.NewResourceCache(client.(*kiali.IstioClient).GetIstioNetworkingApi(), &kiali.VirtualService{}, "virtualservices", g, &virtualServiceHandler{})
+}
+
+type virtualServiceSpec struct {
+	HTTP []struct {
+		Route []struct {
+			Destination struct {
+				App     string `mapstructure:"host"`
+				Version string `mapstructure:"subset"`
+			} `mapstructure:"destination"`
+		} `mapstructure:"route"`
+	} `mapstructure:"http"`
+}
+
+func (vsSpec virtualServiceSpec) getAppsVersions() map[string][]string {
+	appsVersions := make(map[string][]string)
+	for _, http := range vsSpec.HTTP {
+		for _, route := range http.Route {
+			app := route.Destination.App
+			version := route.Destination.Version
+			appsVersions[app] = append(appsVersions[app], version)
+		}
+	}
+	return appsVersions
+}
+
+func virtualServicePodAreLinked(a, b interface{}) bool {
+	vs := a.(*kiali.VirtualService)
+	pod := b.(*v1.Pod)
+	vsSpec := &virtualServiceSpec{}
+	if err := mapstructure.Decode(vs.Spec, vsSpec); err != nil {
+		return false
+	}
+	vsAppsVersions := vsSpec.getAppsVersions()
+	for app, versions := range vsAppsVersions {
+		if app == pod.Labels["app"] {
+			for _, version := range versions {
+				if version == "" || version == pod.Labels["version"] {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func newVirtualServicePodLinker(g *graph.Graph) probe.Probe {
+	return k8s.NewABLinker(g, Manager, "virtualservice", k8s.Manager, "pod", virtualServicePodAreLinked)
 }

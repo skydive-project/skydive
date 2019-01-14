@@ -23,11 +23,11 @@
 package istio
 
 import (
-	kiali "github.com/kiali/kiali/kubernetes"
-
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
+
+	kiali "github.com/kiali/kiali/kubernetes"
 )
 
 // Probe describes the Istio probe in charge of importing
@@ -61,9 +61,15 @@ func NewIstioProbe(g *graph.Graph) (*k8s.Probe, error) {
 		"virtualservice":   newVirtualServiceProbe,
 	}
 
-	subprobes := k8s.InitSubprobes(enabledSubprobes, subprobeHandlers, client, g)
+	k8s.InitSubprobes(enabledSubprobes, subprobeHandlers, client, g, Manager)
 
-	probe := k8s.NewProbe(g, Manager, subprobes, nil)
+	linkerHandlers := []k8s.LinkHandler{
+		newVirtualServicePodLinker,
+	}
+
+	linkers := k8s.InitLinkers(linkerHandlers, g)
+
+	probe := k8s.NewProbe(g, Manager, k8s.GetSubprobesMap(Manager), linkers)
 
 	probe.AppendNamespaceLinkers(
 		"destinationrule",

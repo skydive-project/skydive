@@ -1,0 +1,21 @@
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: ratings
+  labels:
+    app: ratings
+spec:
+  podSelector:
+    matchLabels:
+      app: ratings
+  ingress:
+  - from:
+      - podSelector:
+          matchLabels:
+            app: reviews
+            version: v2
+  - from:
+      - podSelector:
+          matchLabels:
+            app: reviews
+            version: v3

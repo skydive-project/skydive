@@ -13,7 +13,7 @@ dir="$(dirname "$0")"
 
 # SKYDIVE_RELEASE is a relase tag (like "v0.1.2") or "master"
 export SKYDIVE_RELEASE=master
-BOXVERSION=1.0.0
+BOXVERSION=0.22.0.alpha
 tagname=$(git show-ref --tags $REF)
 if [ -n "$tagname" ]; then
     export SKYDIVE_RELEASE=$(echo $tagname | awk -F "/" "{print \$NF}")
@@ -45,12 +45,35 @@ do
     vagrant package --out skydive-dev-$provider.box
     vagrant destroy --force
 
-    json=`curl "https://vagrantcloud.com/api/v1/box/skydive/skydive-dev/version/$BOXVERSION/provider/$provider/upload?access_token=$VAGRANTCLOUD_TOKEN"`
-    upload_path=`echo $json | jq .upload_path | cut -d '"' -f 2`
-
     if [ -n "$DRY_RUN" ]; then
         echo "Running in dry run mode. Skipping upload."
     else
+        # Create a new version
+        curl \
+        --header "Content-Type: application/json" \
+        --header "Authorization: Bearer $VAGRANTCLOUD_TOKEN" \
+        https://app.vagrantup.com/api/v1/box/skydive/skydive-dev/versions \
+        --data "{ \"version\": { \"version\": \"$BOXVERSION\" } }" || true
+
+        # Create libvirt provider
+        curl \
+        --header "Content-Type: application/json" \
+        --header "Authorization: Bearer $VAGRANTCLOUD_TOKEN" \
+        https://app.vagrantup.com/api/v1/box/skydive/skydive-dev/version/$BOXVERSION/providers \
+        --data '{ "provider": { "name": "libvirt" } }' || true
+
+        # Create virtualbox provider
+        curl \
+        --header "Content-Type: application/json" \
+        --header "Authorization: Bearer $VAGRANTCLOUD_TOKEN" \
+        https://app.vagrantup.com/api/v1/box/skydive/skydive-dev/version/$BOXVERSION/providers \
+        --data '{ "provider": { "name": "virtualbox" } }' || true
+
+        # Get the upload URL
+        json=`curl "https://app.vagrantup.com/api/v1/box/skydive/skydive-dev/version/$BOXVERSION/provider/$provider/upload?access_token=$VAGRANTCLOUD_TOKEN"`
+        upload_path=`echo $json | jq .upload_path | cut -d '"' -f 2`
+
+        # Upload the file
         curl -X PUT --upload-file skydive-dev-$provider.box $upload_path
     fi
 done
