@@ -27,21 +27,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
-
-	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/topology/graph"
-	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
-
-func newGraph(t *testing.T) *graph.Graph {
-	b, err := graph.NewMemoryBackend()
-	if err != nil {
-		t.Error(err)
-	}
-
-	return graph.NewGraphFromConfig(b, common.UnknownService)
-}
 
 func execNextHopQuery(t *testing.T, g *graph.Graph, query string) traversal.GraphTraversalStep {
 	tr := traversal.NewGremlinTraversalParser()
@@ -74,7 +63,7 @@ func TestNextHopStep1(t *testing.T) {
 	m1 := graph.Metadata{
 		"Neighbors": &neighbors,
 	}
-	n := g.NewNode(graph.GenID(), m1)
+	n, _ := g.NewNode(graph.GenID(), m1)
 	res := execNextHopQuery(t, g, "g.v().NextHop('192.168.0.2')")
 
 	if len(res.Values()) != 1 {
@@ -113,7 +102,7 @@ func TestNextHopStep2(t *testing.T) {
 	var routes []*netlink.Route
 	_, cidr, _ := net.ParseCIDR("192.168.0.0/24")
 	route := &netlink.Route{
-		Prefix:   netlink.Prefix{*cidr},
+		Prefix:   netlink.Prefix{IPNet: *cidr},
 		NextHops: nhs,
 	}
 	routes = append(routes, route)
@@ -130,7 +119,7 @@ func TestNextHopStep2(t *testing.T) {
 		"RoutingTables": &routingtables,
 	}
 
-	n := g.NewNode(graph.GenID(), m1)
+	n, _ := g.NewNode(graph.GenID(), m1)
 	res := execNextHopQuery(t, g, "g.v().NextHop('192.168.0.5')")
 
 	if len(res.Values()) != 1 {
@@ -167,7 +156,7 @@ func TestNextHopStep3(t *testing.T) {
 
 	var routes []*netlink.Route
 	route := &netlink.Route{
-		Prefix:   netlink.Prefix{netlink.IPv4DefaultRoute},
+		Prefix:   netlink.Prefix{IPNet: netlink.IPv4DefaultRoute},
 		NextHops: nhs,
 	}
 	routes = append(routes, route)
@@ -184,7 +173,7 @@ func TestNextHopStep3(t *testing.T) {
 		"RoutingTables": &routingtables,
 	}
 
-	n := g.NewNode(graph.GenID(), m1)
+	n, _ := g.NewNode(graph.GenID(), m1)
 	res := execNextHopQuery(t, g, "g.v().NextHop('8.8.8.8')")
 
 	if len(res.Values()) != 1 {
@@ -236,7 +225,7 @@ func TestNextHopStep4(t *testing.T) {
 	_, cidr, _ := net.ParseCIDR("10.16.0.0/24")
 	routes = append(routes, &netlink.Route{
 		NextHops: nhs2,
-		Prefix:   netlink.Prefix{*cidr},
+		Prefix:   netlink.Prefix{IPNet: *cidr},
 	})
 
 	var routingtables netlink.RoutingTables
@@ -250,7 +239,7 @@ func TestNextHopStep4(t *testing.T) {
 		"RoutingTables": &routingtables,
 	}
 
-	n := g.NewNode(graph.GenID(), m1)
+	n, _ := g.NewNode(graph.GenID(), m1)
 	res := execNextHopQuery(t, g, "g.v().NextHop('10.16.0.3')")
 
 	if len(res.Values()) != 1 {
@@ -280,7 +269,7 @@ func TestNextHopStep5(t *testing.T) {
 	_, cidr, _ := net.ParseCIDR("10.60.0.0/24")
 	routes = append(routes, &netlink.Route{
 		NextHops: nhs,
-		Prefix:   netlink.Prefix{*cidr},
+		Prefix:   netlink.Prefix{IPNet: *cidr},
 	})
 
 	var routingtables netlink.RoutingTables
@@ -293,7 +282,7 @@ func TestNextHopStep5(t *testing.T) {
 		"RoutingTables": &routingtables,
 	}
 
-	n := g.NewNode(graph.GenID(), m1)
+	n, _ := g.NewNode(graph.GenID(), m1)
 	res := execNextHopQuery(t, g, "g.v().NextHop('10.60.0.5')")
 
 	if len(res.Values()) != 1 {

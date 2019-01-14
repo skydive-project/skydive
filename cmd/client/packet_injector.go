@@ -35,21 +35,22 @@ import (
 )
 
 var (
-	srcNode    string
-	dstNode    string
-	srcIP      string
-	srcMAC     string
-	srcPort    int64
-	dstPort    int64
-	dstIP      string
-	dstMAC     string
-	packetType string
-	payload    string
-	pcap       string
-	id         int64
-	count      int64
-	interval   int64
-	increment  bool
+	srcNode          string
+	dstNode          string
+	srcIP            string
+	srcMAC           string
+	srcPort          int64
+	dstPort          int64
+	dstIP            string
+	dstMAC           string
+	packetType       string
+	payload          string
+	pcap             string
+	id               int64
+	count            int64
+	interval         int64
+	increment        bool
+	incrementPayload int64
 )
 
 // PacketInjectorCmd skydive inject-packet root command
@@ -86,21 +87,22 @@ var PacketInjectionCreate = &cobra.Command{
 		}
 
 		packet := &api.PacketInjection{
-			Src:       srcNode,
-			Dst:       dstNode,
-			SrcIP:     srcIP,
-			SrcMAC:    srcMAC,
-			SrcPort:   srcPort,
-			DstIP:     dstIP,
-			DstMAC:    dstMAC,
-			DstPort:   dstPort,
-			Type:      packetType,
-			Payload:   payload,
-			Pcap:      pcapContent,
-			ICMPID:    id,
-			Count:     count,
-			Interval:  interval,
-			Increment: increment,
+			Src:              srcNode,
+			Dst:              dstNode,
+			SrcIP:            srcIP,
+			SrcMAC:           srcMAC,
+			SrcPort:          srcPort,
+			DstIP:            dstIP,
+			DstMAC:           dstMAC,
+			DstPort:          dstPort,
+			Type:             packetType,
+			Payload:          payload,
+			Pcap:             pcapContent,
+			ICMPID:           id,
+			Count:            count,
+			Interval:         interval,
+			Increment:        increment,
+			IncrementPayload: incrementPayload,
 		}
 
 		if err = validator.Validate(packet); err != nil {
@@ -198,6 +200,7 @@ func addInjectPacketFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&pcap, "pcap", "", "PCAP file")
 	cmd.Flags().Int64VarP(&id, "id", "", 0, "ICMP identification")
 	cmd.Flags().BoolVarP(&increment, "increment", "", false, "increment ICMP id for each packet")
+	cmd.Flags().Int64VarP(&incrementPayload, "incrementPayload", "", 0, "increase payload for each packet")
 	cmd.Flags().Int64VarP(&count, "count", "", 1, "number of packets to be generated")
 	cmd.Flags().Int64VarP(&interval, "interval", "", 1000, "wait interval milliseconds between sending each packet")
 }

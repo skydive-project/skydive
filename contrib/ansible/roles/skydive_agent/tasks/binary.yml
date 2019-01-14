@@ -5,3 +5,5 @@
   vars:
     service_name: skydive-agent
     exec_start: "{{ skydive_binary_location }} agent --conf {{ skydive_config_file }}"
+    user: root
+    group: root

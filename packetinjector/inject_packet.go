@@ -34,9 +34,9 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 var (
@@ -48,21 +48,22 @@ var (
 
 // PacketInjectionParams describes the packet parameters to be injected
 type PacketInjectionParams struct {
-	UUID      string
-	SrcNodeID graph.Identifier `valid:"nonzero"`
-	SrcIP     string
-	SrcMAC    string
-	SrcPort   int64 `valid:"min=0"`
-	DstIP     string
-	DstMAC    string
-	DstPort   int64  `valid:"min=0"`
-	Type      string `valid:"regexp=^(icmp4|icmp6|tcp4|tcp6|udp4|udp6)$"`
-	Count     int64  `valid:"min=1"`
-	ID        int64  `valid:"min=0"`
-	Interval  int64  `valid:"min=0"`
-	Increment bool
-	Payload   string
-	Pcap      []byte
+	UUID             string
+	SrcNodeID        graph.Identifier `valid:"nonzero"`
+	SrcIP            string
+	SrcMAC           string
+	SrcPort          int64 `valid:"min=0"`
+	DstIP            string
+	DstMAC           string
+	DstPort          int64  `valid:"min=0"`
+	Type             string `valid:"regexp=^(icmp4|icmp6|tcp4|tcp6|udp4|udp6)$"`
+	Count            int64  `valid:"min=1"`
+	ID               int64  `valid:"min=0"`
+	Interval         int64  `valid:"min=0"`
+	Increment        bool
+	IncrementPayload int64
+	Payload          string
+	Pcap             []byte
 }
 
 type channels struct {

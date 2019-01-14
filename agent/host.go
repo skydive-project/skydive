@@ -33,7 +33,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
 // CPUInfo defines host information
@@ -134,5 +134,5 @@ func createRootNode(g *graph.Graph) (*graph.Node, error) {
 		m.SetField("VirtualizationRole", hostInfo.VirtualizationRole)
 	}
 
-	return g.NewNode(graph.GenID(), m), nil
+	return g.NewNode(graph.GenID(), m)
 }

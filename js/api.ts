@@ -490,6 +490,10 @@ export class V extends Step {
     Sockets(...params: any[]): Sockets {
         return new Sockets(this.api, this, ...params);
     }
+
+    Flows(...params: any[]): Flows {
+        return new Flows(this.api, this, ...params)
+    }
 }
 
 export class E extends Step {

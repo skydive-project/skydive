@@ -31,7 +31,6 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -39,21 +38,13 @@ const (
 	timeout = time.Second * 30
 )
 
-// MasterElectionListener describes the multi ETCD election mechanism
-type MasterElectionListener interface {
-	OnStartAsMaster()
-	OnStartAsSlave()
-	OnSwitchToMaster()
-	OnSwitchToSlave()
-}
-
 // MasterElector describes an ETCD master elector
 type MasterElector struct {
 	common.RWMutex
 	EtcdKeyAPI etcd.KeysAPI
 	Host       string
 	path       string
-	listeners  []MasterElectionListener
+	listeners  []common.MasterElectionListener
 	cancel     context.CancelFunc
 	master     bool
 	state      int64
@@ -212,22 +203,16 @@ func (le *MasterElector) Stop() {
 }
 
 // AddEventListener registers a new listener
-func (le *MasterElector) AddEventListener(listener MasterElectionListener) {
+func (le *MasterElector) AddEventListener(listener common.MasterElectionListener) {
 	le.listeners = append(le.listeners, listener)
 }
 
 // NewMasterElector creates a new ETCD master elector
-func NewMasterElector(host string, serviceType common.ServiceType, key string, etcdClient *Client) *MasterElector {
+func NewMasterElector(etcdClient *Client, key string) *MasterElector {
 	return &MasterElector{
 		EtcdKeyAPI: etcdClient.KeysAPI,
-		Host:       host,
-		path:       "/master-" + serviceType.String() + "-" + key,
+		Host:       etcdClient.service.ID,
+		path:       "/master-" + etcdClient.service.Type.String() + "-" + key,
 		master:     false,
 	}
-}
-
-// NewMasterElectorFromConfig creates a new ETCD master elector from configuration
-func NewMasterElectorFromConfig(serviceType common.ServiceType, key string, etcdClient *Client) *MasterElector {
-	host := config.GetString("host_id")
-	return NewMasterElector(host, serviceType, key, etcdClient)
 }

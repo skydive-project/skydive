@@ -115,10 +115,16 @@ circle.emphasized  {
   stroke-width: 2;
 }
 
-.links path.networkpolicy {
-  stroke: rgb(102, 102, 51);
-  stroke-width: 2;
-  opacity: 0.2;
+.links path.k8s {
+  stroke: rgb(33, 97, 140);
+  stroke-width: 1.5;
+  opacity: 0.8;
+}
+
+.links path.istio {
+  stroke: rgb(93, 109, 126);
+  stroke-width: 1.5;
+  opacity: 0.8;
 }
 
 .group {

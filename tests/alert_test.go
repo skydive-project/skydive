@@ -41,7 +41,7 @@ import (
 	"github.com/skydive-project/skydive/alert"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	ws "github.com/skydive-project/skydive/websocket"
 )
 

@@ -55,6 +55,13 @@ message TransportLayer {
   int64 ID = 4;
 }
 
+enum FlowFinishType {
+  NOT_FINISHED = 0;
+  TIMEOUT = 1;
+  TCP_FIN = 2;
+  TCP_RST = 3;
+}
+
 enum ICMPType {
   UNKNOWN = 0;
   DESTINATION_UNREACHABLE = 1;
@@ -183,6 +190,9 @@ message Flow {
   repeated RawPacket LastRawPackets = 36;
 /* number of raw packet captured */
   int64 RawPacketsCaptured = 37;
+
+/* describes the way the flow was ended (e.g. by RST, FIN) */
+  FlowFinishType FinishType = 60;
 }
 
 message FlowSet {

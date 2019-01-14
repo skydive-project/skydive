@@ -26,7 +26,7 @@ package libvirt
 
 import (
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
 // Probe describes a Libvirt probe that does nothing

@@ -88,6 +88,7 @@ require {
         type unconfined_t;
         type commplex_main_port_t;
         type neutron_port_t;
+        type keystone_port_t;
         type cloud_var_lib_t;
         class system module_load;
         class file { getattr map open read };
@@ -118,6 +119,8 @@ allow skydive_t self:unix_dgram_socket ioctl;
 allow skydive_t skydive_exec_t:file map;
 allow skydive_t skydive_var_lib_t:file map;
 allow skydive_t cloud_var_lib_t:file read;
+allow skydive_t cloud_var_lib_t:file open;
+allow skydive_t keystone_port_t:tcp_socket name_connect;
 
 allow skydive_t self:process { setcap signal_perms };
 allow skydive_t self:netlink_route_socket create_netlink_socket_perms;

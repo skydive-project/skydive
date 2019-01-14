@@ -29,8 +29,8 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/sflow"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 const (

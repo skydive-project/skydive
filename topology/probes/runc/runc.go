@@ -41,9 +41,9 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/graph"
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
 )
 
@@ -69,11 +69,13 @@ func (probe *Probe) containerNamespace(pid int) string {
 	return fmt.Sprintf("/proc/%d/ns/net", pid)
 }
 
+type initProcessStart int64
+
 type containerState struct {
 	path             string
-	ID               string `json:"id"`
-	InitProcessPid   int    `json:"init_process_pid"`
-	InitProcessStart int64  `json:"init_process_start"`
+	ID               string           `json:"id"`
+	InitProcessPid   int              `json:"init_process_pid"`
+	InitProcessStart initProcessStart `json:"init_process_start"`
 	Config           struct {
 		Labels []string `json:"labels"`
 	} `json:"config"`
@@ -83,6 +85,23 @@ type createConfig struct {
 	Image   string
 	ImageID string
 	Labels  map[string]interface{}
+}
+
+// UnmarshalJSON custom marshall to handle both string and int64
+func (ips *initProcessStart) UnmarshalJSON(data []byte) error {
+	var v interface{}
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+
+	i, err := common.ToInt64(v)
+	if err != nil {
+		return err
+	}
+
+	*ips = initProcessStart(i)
+
+	return nil
 }
 
 func getLabels(raw []string) map[string]interface{} {
@@ -109,6 +128,9 @@ func getLabels(raw []string) map[string]interface{} {
 func getCreateConfig(path string) (*createConfig, error) {
 	body, err := ioutil.ReadFile(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("Unable to read create config %s: %s", path, err)
 	}
 
@@ -129,7 +151,7 @@ func getStatus(state *containerState) string {
 	if err != nil {
 		return "stopped"
 	}
-	if info.Start != state.InitProcessStart || info.State == common.Zombie || info.State == common.Dead {
+	if info.Start != int64(state.InitProcessStart) || info.State == common.Zombie || info.State == common.Dead {
 		return "stopped"
 	}
 	base := path.Base(state.path)
@@ -157,9 +179,8 @@ func parseState(path string) (*containerState, error) {
 
 func getMetadata(state *containerState) graph.Metadata {
 	m := graph.Metadata{
-		"ContainerID":  state.ID,
-		"ContainerPID": int64(state.InitProcessPid),
-		"Status":       getStatus(state),
+		"ContainerID": state.ID,
+		"Status":      getStatus(state),
 	}
 
 	if labels := getLabels(state.Config.Labels); len(labels) > 0 {
@@ -219,28 +240,52 @@ func (probe *Probe) registerContainer(path string) error {
 		}
 
 		probe.Graph.Lock()
-		probe.Graph.AddMetadata(n, "Manager", "runc")
+		tr := probe.Graph.StartMetadataTransaction(n)
+		tr.AddMetadata("Runtime", "runc")
+
+		if _, err := n.GetFieldString("Manager"); err != nil {
+			tr.AddMetadata("Manager", "runc")
+		}
+		if err := tr.Commit(); err != nil {
+			logging.GetLogger().Error(err)
+		}
 		probe.Graph.Unlock()
 	}
 
-	metadata := graph.Metadata{
-		"Type":    "container",
-		"Name":    state.ID,
-		"Manager": "runc",
-		"Runc":    getMetadata(state),
-	}
+	pid := int64(state.InitProcessPid)
+	runcMetadata := getMetadata(state)
 
 	probe.Graph.Lock()
-	node := probe.Graph.NewNode(graph.GenID(), metadata)
-	topology.AddOwnershipLink(probe.Graph, n, node, nil)
-	probe.Graph.Unlock()
+	defer probe.Graph.Unlock()
 
-	probe.containersLock.Lock()
+	containerNode := probe.Graph.LookupFirstNode(graph.Metadata{"InitProcessPID": pid})
+	if containerNode != nil {
+		tr := probe.Graph.StartMetadataTransaction(containerNode)
+		tr.AddMetadata("Runc", runcMetadata)
+		tr.AddMetadata("Runtime", "runc")
+		if err := tr.Commit(); err != nil {
+			logging.GetLogger().Error(err)
+		}
+	} else {
+		metadata := graph.Metadata{
+			"Type":           "container",
+			"Name":           state.ID,
+			"Manager":        "runc",
+			"Runtime":        "runc",
+			"InitProcessPID": pid,
+			"Runc":           runcMetadata,
+		}
+
+		if containerNode, err = probe.Graph.NewNode(graph.GenID(), metadata); err != nil {
+			return err
+		}
+	}
+	topology.AddOwnershipLink(probe.Graph, n, containerNode, nil)
+
 	probe.containers[path] = &container{
 		namespace: namespace,
-		node:      node,
+		node:      containerNode,
 	}
-	probe.containersLock.Unlock()
 
 	return nil
 }

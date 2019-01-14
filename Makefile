@@ -51,7 +51,7 @@ EASYJSON_FILES_ALL=flow/flow.pb.go
 EASYJSON_FILES_TAG=\
 	flow/storage/elasticsearch/elasticsearch.go \
 	flow/storage/orientdb/orientdb.go \
-	topology/graph/elasticsearch.go \
+	graffiti/graph/elasticsearch.go \
 	topology/metrics.go \
 	topology/probes/netlink/route.go \
 	topology/probes/netlink/neighbor.go
@@ -349,10 +349,12 @@ static: skydive.clean govendor genlocalfiles
 .PHONY: contribs.clean
 contribs.clean:
 	$(MAKE) -C contrib/snort clean
+	$(MAKE) -C contrib/objectstore clean
 
 .PHONY: contribs
 contribs:
 	$(MAKE) -C contrib/snort
+	$(MAKE) -C contrib/objectstore
 
 .PHONY: dpdk.build
 dpdk.build:

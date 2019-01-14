@@ -22,7 +22,7 @@ systemctl start openvswitch
 systemctl start docker
 systemctl enable openvswitch
 systemctl enable docker
-yum -y install libpcap libselinux-python bridge-utils net-tools yum-plugin-copr.noarch
+yum -y install libpcap libvirt-libs podman libselinux-python bridge-utils net-tools yum-plugin-copr.noarch
 #curl -o /etc/yum.repos.d/_copr_ganto-lxc3.repo https://copr.fedorainfracloud.org/coprs/ganto/lxc3/repo/epel-7/ganto-lxc3-epel-7.repo
 #yum repolist
 #yum -y install lxd
@@ -44,7 +44,7 @@ if DEVMODE then
   # default config from tests/tests.go:testConfig
   $skydive_extra_config["flow.expire"] = "600"
   $skydive_extra_config["flow.update"] = "10"
-  $skydive_extra_config["agent.topology.probes"] = "netlink netns ovsdb docker lldp"
+  $skydive_extra_config["agent.topology.probes"] = "netlink netns ovsdb docker lldp runc"
   $skydive_extra_config["agent.topology.metrics_update"] = "5"
   $skydive_extra_config["agent.metadata.mydict.value"] = "123"
   $skydive_extra_config["analyzer.startup.capture_gremlin"] = "g.V().Has('Name','startup-vm2')"

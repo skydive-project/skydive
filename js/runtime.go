@@ -37,11 +37,11 @@ import (
 	"github.com/robertkrimen/otto"
 	"github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/statics"
-	"github.com/skydive-project/skydive/topology/graph"
-	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
 type evalReq struct {

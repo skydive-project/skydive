@@ -24,3 +24,7 @@
 
 - include: binary.yml
   when: skydive_deployment_mode == "binary"
+
+- include_role:
+    name: skydive_common
+    tasks_from: permissions

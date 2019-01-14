@@ -26,7 +26,7 @@ package probes
 
 import (
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
 // EBPFProbesHandler describes a flow probe handle in the graph

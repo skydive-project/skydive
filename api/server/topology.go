@@ -33,12 +33,12 @@ import (
 	"github.com/abbot/go-http-auth"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/rbac"
-	"github.com/skydive-project/skydive/topology/graph"
-	"github.com/skydive-project/skydive/topology/graph/traversal"
 	"github.com/skydive-project/skydive/validator"
 )
 

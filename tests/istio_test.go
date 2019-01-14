@@ -25,12 +25,12 @@
 package tests
 
 import (
-	"github.com/skydive-project/skydive/topology/probes/istio"
 	"testing"
-)
 
-const (
-	bookinfo = "https://raw.githubusercontent.com/istio/istio/release-1.0/samples/bookinfo"
+	"github.com/skydive-project/skydive/graffiti/graph"
+	g "github.com/skydive-project/skydive/gremlin"
+	"github.com/skydive-project/skydive/topology/probes/istio"
+	"github.com/skydive-project/skydive/topology/probes/k8s"
 )
 
 /* -- test creation of single resource -- */
@@ -58,50 +58,141 @@ func TestIstioVirtualServiceNode(t *testing.T) {
 	testNodeCreationFromConfig(t, istio.Manager, "virtualservice", objName+"-virtualservice")
 }
 
+func checkEdgeVirtualService(t *testing.T, c *CheckContext, from, to *graph.Node, edgeArgs ...interface{}) error {
+	return checkEdge(t, c, from, to, "virtualservice", edgeArgs...)
+}
+
+func TestIstioVirtualServicePodScenario(t *testing.T) {
+	file := "virtualservice-pod"
+	name := objName + "-" + file
+	testRunner(
+		t,
+		setupFromConfigFile(istio.Manager, file),
+		tearDownFromConfigFile(istio.Manager, file),
+		[]CheckFunction{
+			func(c *CheckContext) error {
+				virtualservice, err := checkNodeCreation(t, c, istio.Manager, "virtualservice", name)
+				if err != nil {
+					return err
+				}
+				_, err = checkNodeCreation(t, c, istio.Manager, "destinationrule", name)
+				if err != nil {
+					return err
+				}
+				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", name)
+				if err != nil {
+					return err
+				}
+				if err = checkEdgeVirtualService(t, c, virtualservice, pod); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+	)
+}
+
 func TestBookInfoScenario(t *testing.T) {
+	bookinfo := "WITH_ISTIO=true ./bookinfo/bookinfo.sh"
 	testRunner(
 		t,
 		[]Cmd{
-			{"kubectl apply -f " + bookinfo + "/networking/destination-rule-all.yaml", true},
-			{"kubectl apply -f " + bookinfo + "/networking/bookinfo-gateway.yaml", true},
-			{"kubectl apply -f " + bookinfo + "/platform/kube/bookinfo.yaml", true},
+			{bookinfo + " start", true},
 		},
 		[]Cmd{
-			{"istioctl delete virtualservice bookinfo", false},
-			{"istioctl delete gateway bookinfo-gateway", false},
-			{"istioctl delete destinationrule details productpage ratings reviews", false},
-			{"kubectl delete deployment details-v1 productpage-v1 ratings-v1 reviews-v1 reviews-v2 reviews-v3", false},
+			{bookinfo + " stop", false},
 		},
 		[]CheckFunction{
 			func(c *CheckContext) error {
+
 				// check nodes exist
-				_, err := checkNodeCreation(t, c, istio.Manager, "destinationrule", "details")
+
+				drDetails, err := checkNodeCreation(t, c, istio.Manager, "destinationrule", "details")
 				if err != nil {
 					return err
 				}
 
-				_, err = checkNodeCreation(t, c, istio.Manager, "destinationrule", "productpage")
+				drProductpage, err := checkNodeCreation(t, c, istio.Manager, "destinationrule", "productpage")
 				if err != nil {
 					return err
 				}
 
-				_, err = checkNodeCreation(t, c, istio.Manager, "destinationrule", "ratings")
+				drRatings, err := checkNodeCreation(t, c, istio.Manager, "destinationrule", "ratings")
 				if err != nil {
 					return err
 				}
 
-				_, err = checkNodeCreation(t, c, istio.Manager, "destinationrule", "reviews")
+				drReviews, err := checkNodeCreation(t, c, istio.Manager, "destinationrule", "reviews")
 				if err != nil {
 					return err
 				}
 
-				_, err = checkNodeCreation(t, c, istio.Manager, "gateway", "bookinfo-gateway")
+				vs, err := checkNodeCreation(t, c, istio.Manager, "virtualservice", "bookinfo")
 				if err != nil {
 					return err
 				}
 
-				_, err = checkNodeCreation(t, c, istio.Manager, "virtualservice", "Name", "bookinfo")
+				podProductpage, err := checkNodeCreation(t, c, k8s.Manager, "pod", g.Regex("%s-.*", "productpage"))
 				if err != nil {
+					return err
+				}
+
+				serviceDetails, err := checkNodeCreation(t, c, k8s.Manager, "service", "details")
+				if err != nil {
+					return err
+				}
+
+				serviceProductpage, err := checkNodeCreation(t, c, k8s.Manager, "service", "productpage")
+				if err != nil {
+					return err
+				}
+
+				serviceRatings, err := checkNodeCreation(t, c, k8s.Manager, "service", "ratings")
+				if err != nil {
+					return err
+				}
+
+				serviceReviews, err := checkNodeCreation(t, c, k8s.Manager, "service", "reviews")
+				if err != nil {
+					return err
+				}
+
+				gateway, err := checkNodeCreation(t, c, istio.Manager, "gateway", "bookinfo-gateway")
+				if err != nil {
+					return err
+				}
+
+				// check edges exist
+
+				if err = checkEdge(t, c, vs, podProductpage, "virtualservice"); err != nil {
+					return err
+				}
+
+				if err = checkEdge(t, c, vs, serviceProductpage, "virtualservice"); err != nil {
+					return err
+				}
+
+				if err = checkEdge(t, c, vs, drProductpage, "virtualservice"); err != nil {
+					return err
+				}
+
+				if err = checkEdge(t, c, drDetails, serviceDetails, "destinationrule"); err != nil {
+					return err
+				}
+
+				if err = checkEdge(t, c, drProductpage, serviceProductpage, "destinationrule"); err != nil {
+					return err
+				}
+
+				if err = checkEdge(t, c, drRatings, serviceRatings, "destinationrule"); err != nil {
+					return err
+				}
+
+				if err = checkEdge(t, c, drReviews, serviceReviews, "destinationrule"); err != nil {
+					return err
+				}
+
+				if err = checkEdge(t, c, gateway, vs, "gateway"); err != nil {
 					return err
 				}
 

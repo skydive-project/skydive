@@ -74,7 +74,7 @@ Vue.component('workflow-params', {
   },
 
   inject: [
-    'result'
+    'result', 'toggleResultDisplay'
   ],
 
   template: `
@@ -88,6 +88,7 @@ Vue.component('workflow-params', {
   methods: {
 
     submit: function() {
+      this.toggleResultDisplay(true);
       var self = this;
       var source = "(" + this.workflow.Source + ")";
       var f = eval(source);
@@ -131,13 +132,15 @@ Vue.component('workflow-call', {
       "result": {
         "value": null
       },
-      "workflows": {}
+      "workflows": {},
+      "display": false
     }
   },
 
   provide() {
     return {
-      result: this.result
+      result: this.result,
+      toggleResultDisplay: this.toggleResultDisplay
     }
   },
 
@@ -153,11 +156,14 @@ Vue.component('workflow-call', {
       <div class="form-group">
         <workflow-params :workflow="currentWorkflow"></workflow-params>
       </div>
-      <div class="form-group" v-if="result.value">
+      <div class="form-group" v-if="display">
         <h1><span class="workflow-title">Result</span></h1>
-        <div class="form-group">
+        <div class="form-group" v-if="result.value">
           <textarea readonly id="workflow-output" type="text" class="form-control input-sm" rows="5" v-model="result.value" v-if="result.value && (typeof result.value) != 'object'"></textarea>
           <object-detail v-else-if="typeof result.value == 'object'" id="workflow-output" :object="result.value"></object-detail>\
+        </div>
+        <div class="form-group" v-else>
+          <i class="fa fa-circle-o-notch fa-spin fa-2x fa-fw"></i>
         </div>
       </div>
     </div>
@@ -165,7 +171,7 @@ Vue.component('workflow-call', {
 
   watch: {
     'currentWorkflow': function () {
-      this.result.value = undefined
+      this.toggleResultDisplay(false);
     }
   },
 
@@ -188,6 +194,12 @@ Vue.component('workflow-call', {
         self.$error({message: 'Error while listing workflows: ' + e.responseText});
         return e;
       });
-  }
+  },
 
+  methods: {
+    toggleResultDisplay: function(status) {
+      this.display = status;
+      this.result.value = undefined;
+    }
+  }
 })

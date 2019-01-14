@@ -1,0 +1,10 @@
+# endpoint: http://127.0.0.1:9000
+# region: local
+# bucket: bucket
+# access_key: user
+# secret_key: password
+# object_prefix: logs
+# subscriber_url: wss://127.0.0.1:8082/ws/subscriber/flow
+# subscriber_username:
+# subscriber_password:
+# max_seconds_per_stream: 86400

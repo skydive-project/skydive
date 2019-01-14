@@ -88,7 +88,7 @@ var TopologyComponent = {
                     <input list="topology-highlight-list" placeholder="e.g. g.V().Has(,)" \
                     id="topology-highlight" type="text" style="width: 400px" \
                     v-model="topologyEmphasize" @keyup.enter="emphasizeGremlinExpr" \
-                    v-on:input="onFilterDatalistSelect" \
+                    v-on:input="onHighlightDatalistSelect" \
                     class="input-sm form-control"></input>\
                     <span class="clear-btn" @click.stop="topologyEmphasizeClear">&times;</span>\
                     <datalist id="topology-highlight-list" class="topology-gremlin-favorites">\
@@ -353,10 +353,6 @@ var TopologyComponent = {
         self.topologyFilterQuery();
       }
     });
-
-    if (self.isK8SEnabled()) {
-      self.setk8sNamespacesFilter();
-    }
   },
 
   beforeDestroy: function() {
@@ -545,28 +541,8 @@ var TopologyComponent = {
        return str.indexOf(suffix, str.length - suffix.length) !== -1;
     },
 
-    setk8sNamespacesFilter: function() {
-      var self = this;
-      // get k8s namespaces using API
-      this.$topologyQuery("G.V().Has('Manager','k8s','Type', 'namespace')")
-        .then(function(data) {
-          var namespacesAsJsonFilter = '{"Name":"k8s namespace", "Type":"combobox", "value":{'
-          data.forEach(function(namespace) {
-            var namespaceName = namespace["Metadata"]["Name"]
-            var namespaceGremlin = 'G.V().Has(\'K8s.Namespace\',\'' + namespaceName + '\')'
-            namespacesAsJsonFilter += '"' + namespaceName + '":"' + namespaceGremlin + '",'
-            })
-          namespacesAsJsonFilter = namespacesAsJsonFilter.slice(0, -1);
-          namespacesAsJsonFilter += '}}'
-          self.dynamicFilter.push(namespacesAsJsonFilter)
-          self.setGremlinFavoritesFromConfig()
-         })
-        .catch(function() {});
-    },
-
-    addFilter: function(label, gremlin) {
-      var options = $(".topology-gremlin-favorites");
-      options.append($("<option/>").val(label).attr('gremlin', gremlin));
+    addFilter: function(control, label, gremlin) {
+      control.append($("<option/>").val(label).attr('gremlin', gremlin));
     },
 
     gremlinK8sTypes: function(types) {
@@ -578,26 +554,32 @@ var TopologyComponent = {
           }
           gremlin += ".Has('Type', Within(" + types.join(", ") + "))";
         }
-
-        // FIXME: HasNot() is not yet supported by backend so for now don't filter out system namespaces
-        // gremlin += ".HasNot('Type', 'namespace', 'Name', Within('kube-system', 'istio-system'))";
-        // gremlin += ".HasNot('Type, NE('namespace'), 'K8s.Namespace', Within('kube-system', 'istio-system'))";
         return gremlin
     },
 
-    addFilterK8sTypes: function(label, types) {
-        this.addFilter("k8s " + label, this.gremlinK8sTypes(types));
+    addFilterK8s: function(control, label, gremlin) {
+      this.addFilter(control, "k8s " + label, gremlin);
+    },
+
+    addFilterK8sTypes: function(control, label, types) {
+      this.addFilterK8s(control, label, this.gremlinK8sTypes(types));
     },
 
     setGremlinFavoritesFromConfig: function() {
       var self = this;
-      var options = $(".topology-gremlin-favorites");
-      options.children().remove();
+
+      const filter = $("#topology-gremlin-favorites");
+      const highlight = $("#topology-highlight-list");
+
+      filter.children().remove();
+      highlight.children().remove();
+
       if (typeof(Storage) !== "undefined" && localStorage.preferences) {
         var favorites = JSON.parse(localStorage.preferences).favorites;
         if (favorites) {
           $.each(favorites, function(i, f) {
-            self.addFilter(f.name, f.expression);
+            self.addFilter(filter, f.name, f.expression);
+            self.addFilter(highlight, f.name, f.expression);
           });
         }
       }
@@ -605,25 +587,30 @@ var TopologyComponent = {
       var favorites = app.getConfigValue('topology.favorites');
       if (favorites) {
         $.each(favorites, function(key, value) {
-          self.addFilter(key, value);
+          self.addFilter(filter, key, value);
+          self.addFilter(highlight, key, value);
         });
       }
 
       if (self.isK8SEnabled()) {
-        self.addFilterK8sTypes("all", []);
-        self.addFilterK8sTypes("compute", ["cluster", "container", "namespace", "node", "pod"]);
-        self.addFilterK8sTypes("deployment", ["cluster", "deployment", "job", "namespace", "node", "pod", "replicaset", "replicationcontroller", "statefulset"]);
-        self.addFilterK8sTypes("network", ["cluster", "container", "namespace", "networkpolicy", "pod"]);
-        self.addFilterK8sTypes("service", ["cluster", "endpoints", "ingress",  "namespace", "node", "pod", "service"]);
-        self.addFilterK8sTypes("storage", ["cluster", "namespace", "persistentvolume", "persistentvolumeclaim", "storageclass"]);
-      }
+        self.addFilterK8s(filter, "none", "G.V().Has('Manager', Without('k8s', 'istio'))")
 
-      for (var i = 0, len = self.dynamicFilter.length; i < len; i++) {
-        filter = JSON.parse(self.dynamicFilter[i])
-        $.each(filter["value"], function(key, value) {
-          let label = filter["Name"] + ": " + key
-          self.addFilter(label, value);
-        });
+        self.addFilterK8sTypes(filter, "all", []);
+
+        self.addFilterK8sTypes(filter, "compute", ["cluster", "container", "namespace", "node", "pod"]);
+        self.addFilterK8sTypes(highlight, "compute", ["container", "pod"]);
+
+        self.addFilterK8sTypes(filter, "deployment", ["cluster", "deployment", "job", "namespace", "node", "pod", "replicaset", "replicationcontroller", "statefulset"]);
+        self.addFilterK8sTypes(highlight, "deployment", ["deployment", "job", "replicaset", "replicationcontroller", "statefulset"]);
+
+        self.addFilterK8sTypes(filter, "network", ["cluster", "container", "namespace", "networkpolicy", "pod"]);
+        self.addFilterK8sTypes(highlight, "network", ["networkpolicy", "pod"]);
+
+        self.addFilterK8sTypes(filter, "service", ["cluster", "container", "endpoints", "ingress", "namespace", "networkpolicy", "pod", "service"]);
+        self.addFilterK8sTypes(highlight, "service", ["endpoints", "ingress", "service"]);
+
+        self.addFilterK8sTypes(filter, "storage", ["cluster", "namespace", "persistentvolume", "persistentvolumeclaim", "storageclass"]);
+        self.addFilterK8sTypes(highlight, "storage", ["persistentvolume", "persistentvolumeclaim", "storageclass"]);
       }
 
       var default_filter = app.getConfigValue('topology.default_filter');
@@ -639,20 +626,31 @@ var TopologyComponent = {
       }
     },
 
-    onFilterDatalistSelect: function(e) {
+    onDatalistSelect: function(e, selectFilter) {
       var val = e.target.value;
       var listId = e.target.getAttribute("list");
       var opts = document.getElementById(listId).childNodes;
       for (var i = 0; i < opts.length; i++) {
         if (opts[i].value === val) {
-          this.topologyFilter = opts[i].getAttribute("gremlin");
-          if (e.target.id === "topology-filter") {
-            this.topologyFilterQuery();
-          } else if (e.target.id === "topology-highlight") {
-            this.emphasizeGremlinExpr();
-          }
+          selectFilter(opts[i].getAttribute("gremlin"));
         }
       }
+    },
+
+    onFilterDatalistSelect: function(e) {
+      var self = this;
+      self.onDatalistSelect(e, function(gremlin) {
+        self.topologyFilter = gremlin;
+        self.topologyFilterQuery();
+      });
+    },
+
+    onHighlightDatalistSelect: function(e) {
+      var self = this;
+      self.onDatalistSelect(e, function(gremlin) {
+        self.topologyEmphasize = gremlin;
+        self.emphasizeGremlinExpr();
+      });
     },
 
     topologyTimeTravelClear: function() {

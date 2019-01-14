@@ -39,9 +39,9 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/graph"
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
 	sversion "github.com/skydive-project/skydive/version"
 )
@@ -105,29 +105,46 @@ func (probe *Probe) registerContainer(id string) {
 		}
 
 		probe.Graph.Lock()
-		probe.Graph.AddMetadata(n, "Manager", "docker")
+		if err := probe.Graph.AddMetadata(n, "Manager", "docker"); err != nil {
+			logging.GetLogger().Error(err)
+		}
 		probe.Graph.Unlock()
 	}
 
-	metadata := graph.Metadata{
-		"Type":    "container",
-		"Name":    info.Name[1:],
-		"Manager": "docker",
-		"Docker": map[string]interface{}{
-			"ContainerID":   info.ID,
-			"ContainerName": info.Name,
-			"ContainerPID":  int64(info.State.Pid),
-		},
+	pid := int64(info.State.Pid)
+
+	dockerMetadata := graph.Metadata{
+		"ContainerID":   info.ID,
+		"ContainerName": info.Name,
 	}
 
 	if len(info.Config.Labels) != 0 {
-		metadata["Docker"].(map[string]interface{})["Labels"] = common.NormalizeValue(info.Config.Labels)
+		dockerMetadata["Labels"] = common.NormalizeValue(info.Config.Labels)
 	}
 
 	probe.Graph.Lock()
-	containerNode := probe.Graph.NewNode(graph.GenID(), metadata)
+	defer probe.Graph.Unlock()
+
+	containerNode := probe.Graph.LookupFirstNode(graph.Metadata{"InitProcessPID": pid})
+	if containerNode != nil {
+		if err := probe.Graph.AddMetadata(containerNode, "Docker", dockerMetadata); err != nil {
+			logging.GetLogger().Error(err)
+		}
+	} else {
+		metadata := graph.Metadata{
+			"Type":           "container",
+			"Name":           info.Name[1:],
+			"Manager":        "docker",
+			"InitProcessPID": pid,
+			"Docker":         dockerMetadata,
+		}
+
+		if containerNode, err = probe.Graph.NewNode(graph.GenID(), metadata); err != nil {
+			logging.GetLogger().Error(err)
+			return
+		}
+	}
 	topology.AddOwnershipLink(probe.Graph, n, containerNode, nil)
-	probe.Graph.Unlock()
 
 	probe.containerMap[info.ID] = containerInfo{
 		Pid:  info.State.Pid,
@@ -145,7 +162,11 @@ func (probe *Probe) unregisterContainer(id string) {
 	}
 
 	probe.Graph.Lock()
-	probe.Graph.DelNode(infos.Node)
+	if err := probe.Graph.DelNode(infos.Node); err != nil {
+		probe.Graph.Unlock()
+		logging.GetLogger().Error(err)
+		return
+	}
 	probe.Graph.Unlock()
 
 	namespace := probe.containerNamespace(infos.Pid)

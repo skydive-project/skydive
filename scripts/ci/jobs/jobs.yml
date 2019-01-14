@@ -28,6 +28,7 @@
           status-context: "skydive-{name}"
           black-list-labels:
             - no-ci
+          white-list: []
 
 - publisher:
     name: publish-cobertura
@@ -169,10 +170,11 @@
       - string:
           name: REF
           default: "{ref}"
-          description: The tag or branch to build
+          description: "The tag or branch to build (ex: origin/pr/1234/merge for the PR 1234)"
       - string:
           name: REFSPEC
           default: "{refspec}"
+          description: "Refspec (ex: +refs/pull/*:refs/remotes/origin/pr/* for a PR, +refs/tags/*:refs/remotes/origin/tags/* for a tag)"
       - string:
           name: DRY_RUN
           default: "{dry-run}"
@@ -213,6 +215,8 @@
           url: https://github.com/skydive-project/skydive
       - inject:
           properties-content: MINIKUBE_DRIVER=virtualbox
+      - build-discarder:
+          artifact-num-to-keep: 100
     scm:
       - skydive-github:
           repository: "${REPOSITORY}"

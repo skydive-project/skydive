@@ -38,6 +38,8 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 
+	"github.com/skydive-project/skydive/analyzer"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
@@ -95,6 +97,13 @@ type snortMessage struct {
 	Message        string
 	Classification string
 	Data           []byte
+}
+
+type fakeMasterElection struct {
+}
+
+func (f *fakeMasterElection) NewElection(name string) common.MasterElection {
+	return nil
 }
 
 func flowFromSnortMessage(msg *snortMessage) *flow.Flow {
@@ -229,8 +238,8 @@ func newSnortFlowEnhancer() *SnortFlowEnhancer {
 
 	indices := []es.Index{snortIndex}
 
-	cfg := es.NewConfig()
-	client, err := es.NewClient(indices, cfg, nil)
+	cfg := analyzer.NewESConfig()
+	client, err := es.NewClient(indices, cfg, &fakeMasterElection{})
 	if err != nil {
 		if err != io.EOF {
 			logging.GetLogger().Errorf("elasticsearch client error : %v", err)

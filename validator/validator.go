@@ -32,8 +32,8 @@ import (
 	valid "gopkg.in/validator.v2"
 
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
-	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
 // Validator interface used to validate value type in Gremlin expression

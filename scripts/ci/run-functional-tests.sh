@@ -7,5 +7,5 @@ DIR="$(dirname "$0")"
 
 . "$DIR/run-tests-utils.sh"
 network_setup
-tests_run
+WITH_EBPF=true tests_run
 exit $RETCODE

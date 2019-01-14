@@ -42,9 +42,9 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 const (
@@ -214,7 +214,12 @@ func (u *NetNsProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metadat
 	})
 
 	if intf == nil {
-		intf = u.Graph.NewNode(graph.GenID(), m)
+		var err error
+		intf, err = u.Graph.NewNode(graph.GenID(), m)
+		if err != nil {
+			logging.GetLogger().Error(err)
+			return nil
+		}
 	}
 
 	if !topology.HaveOwnershipLink(u.Graph, u.Root, intf) {
@@ -420,7 +425,7 @@ func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 	if linkType == "veth" {
 		stats, err := u.ethtool.Stats(attrs.Name)
 		if err != nil && err != syscall.ENODEV {
-			logging.GetLogger().Errorf("Unable get stats from ethtool (%s): %s", attrs.Name, err.Error())
+			logging.GetLogger().Errorf("Unable get stats from ethtool (%s): %s", attrs.Name, err)
 		} else if index, ok := stats["peer_ifindex"]; ok {
 			metadata["PeerIfIndex"] = int64(index)
 		}
@@ -568,7 +573,9 @@ func (u *NetNsProbe) onLinkDeleted(link netlink.Link) {
 	if intf != nil {
 		parents := u.Graph.LookupParents(intf, graph.Metadata{"Type": "bridge"}, nil)
 		for _, parent := range parents {
-			u.Graph.Unlink(parent, intf)
+			if err := u.Graph.Unlink(parent, intf); err != nil {
+				logging.GetLogger().Error(err)
+			}
 		}
 	}
 
@@ -580,9 +587,13 @@ func (u *NetNsProbe) onLinkDeleted(link netlink.Link) {
 		uuid, _ := intf.GetFieldString("UUID")
 
 		if driver == "openvswitch" && uuid != "" {
-			u.Graph.Unlink(u.Root, intf)
+			err = u.Graph.Unlink(u.Root, intf)
 		} else {
-			u.Graph.DelNode(intf)
+			err = u.Graph.DelNode(intf)
+		}
+
+		if err != nil {
+			logging.GetLogger().Error(err)
 		}
 	}
 	u.Graph.Unlock()
@@ -614,9 +625,15 @@ func (u *NetNsProbe) onRoutingTablesChanged(index int64, rts *RoutingTables) {
 	}
 	_, err := intf.GetField("RoutingTables")
 	if rts == nil && err == nil {
-		u.Graph.DelMetadata(intf, "RoutingTables")
+		err = u.Graph.DelMetadata(intf, "RoutingTables")
 	} else if rts != nil {
-		u.Graph.AddMetadata(intf, "RoutingTables", rts)
+		err = u.Graph.AddMetadata(intf, "RoutingTables", rts)
+	} else {
+		err = nil
+	}
+
+	if err != nil {
+		logging.GetLogger().Error(err)
 	}
 }
 
@@ -645,7 +662,9 @@ func (u *NetNsProbe) onAddressAdded(addr netlink.Addr, family int, index int64) 
 		}
 	}
 
-	u.Graph.AddMetadata(intf, key, append(ips, addr.IPNet.String()))
+	if err := u.Graph.AddMetadata(intf, key, append(ips, addr.IPNet.String())); err != nil {
+		logging.GetLogger().Error(err)
+	}
 }
 
 func (u *NetNsProbe) onAddressDeleted(addr netlink.Addr, family int, index int64) {
@@ -673,9 +692,13 @@ func (u *NetNsProbe) onAddressDeleted(addr netlink.Addr, family int, index int64
 		}
 
 		if len(ips) == 0 {
-			u.Graph.DelMetadata(intf, key)
+			err = u.Graph.DelMetadata(intf, key)
 		} else {
-			u.Graph.AddMetadata(intf, key, ips)
+			err = u.Graph.AddMetadata(intf, key, ips)
+		}
+
+		if err != nil {
+			logging.GetLogger().Error(err)
 		}
 	}
 }
@@ -838,7 +861,9 @@ func (u *NetNsProbe) updateIntfFeatures() {
 
 		if len(features) > 0 {
 			u.Graph.Lock()
-			u.Graph.AddMetadata(node, "Features", features)
+			if err := u.Graph.AddMetadata(node, "Features", features); err != nil {
+				logging.GetLogger().Error(err)
+			}
 			u.Graph.Unlock()
 		}
 	}
@@ -1031,7 +1056,7 @@ func (u *Probe) Register(nsPath string, root *graph.Node) (*NetNsProbe, error) {
 	event := syscall.EpollEvent{Events: syscall.EPOLLIN, Fd: int32(probe.epollFd)}
 	if err := syscall.EpollCtl(u.epollFd, syscall.EPOLL_CTL_ADD, probe.epollFd, &event); err != nil {
 		probe.closeFds()
-		return nil, fmt.Errorf("Failed to add fd to epoll events set for %s: %s", root.String(), err.Error())
+		return nil, fmt.Errorf("Failed to add fd to epoll events set for %s: %s", root.String(), err)
 	}
 
 	u.Lock()
@@ -1051,7 +1076,7 @@ func (u *Probe) Unregister(nsPath string) error {
 	for fd, probe := range u.probes {
 		if probe.NsPath == nsPath {
 			if err := syscall.EpollCtl(u.epollFd, syscall.EPOLL_CTL_DEL, int(fd), nil); err != nil {
-				return fmt.Errorf("Failed to del fd from epoll events set for %s: %s", probe.Root.ID, err.Error())
+				return fmt.Errorf("Failed to del fd from epoll events set for %s: %s", probe.Root.ID, err)
 			}
 			delete(u.probes, fd)
 

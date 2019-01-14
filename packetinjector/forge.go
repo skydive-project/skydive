@@ -34,8 +34,8 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 // ForgedPacketGenerator is used to forge packets. It creates
@@ -50,11 +50,6 @@ type ForgedPacketGenerator struct {
 
 func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC net.HardwareAddr, srcIP, dstIP net.IP, srcPort, dstPort int64, ID int64, data string) ([]byte, gopacket.Packet, error) {
 	var l []gopacket.SerializableLayer
-
-	// use same size as ping when no payload specified
-	if len(data) == 0 {
-		data = common.RandString(56)
-	}
 
 	payload := gopacket.Payload([]byte(data))
 
@@ -71,7 +66,7 @@ func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC
 
 	switch packetType {
 	case "icmp4":
-		ipLayer := &layers.IPv4{Version: 4, SrcIP: srcIP, DstIP: dstIP, Protocol: layers.IPProtocolICMPv4}
+		ipLayer := &layers.IPv4{Version: 4, SrcIP: srcIP, DstIP: dstIP, Protocol: layers.IPProtocolICMPv4, TTL: 64}
 		icmpLayer := &layers.ICMPv4{
 			TypeCode: layers.CreateICMPv4TypeCode(layers.ICMPv4TypeEchoRequest, 0),
 			Id:       uint16(ID),
@@ -136,13 +131,23 @@ func (f *ForgedPacketGenerator) PacketSource() chan *Packet {
 	ch := make(chan *Packet)
 
 	go func() {
+		payload := f.Payload
+		// use same size as ping when no payload specified
+		if len(payload) == 0 {
+			payload = common.RandString(56)
+		}
+
 		for i := int64(0); i < f.Count; i++ {
 			id := int64(f.ID)
 			if strings.HasPrefix(f.Type, "icmp") && f.Increment {
 				id += i
 			}
 
-			packetData, packet, err := forgePacket(f.Type, f.layerType, f.srcMAC, f.dstMAC, f.srcIP, f.dstIP, f.SrcPort, f.DstPort, id, f.Payload)
+			if f.IncrementPayload > 0 {
+				payload = payload + common.RandString(int(f.IncrementPayload))
+			}
+
+			packetData, packet, err := forgePacket(f.Type, f.layerType, f.srcMAC, f.dstMAC, f.srcIP, f.dstIP, f.SrcPort, f.DstPort, id, payload)
 			if err != nil {
 				logging.GetLogger().Error(err)
 				return

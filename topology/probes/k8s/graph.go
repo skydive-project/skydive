@@ -24,8 +24,9 @@ package k8s
 
 import (
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
-	"github.com/skydive-project/skydive/topology/graph"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -53,12 +54,11 @@ func MetadataFields(fields ...string) []string {
 }
 
 // NewMetadataFields creates internal k8s node metadata struct
-func NewMetadataFields(meta *metav1.ObjectMeta) graph.Metadata {
+func NewMetadataFields(o metav1.Object) graph.Metadata {
 	m := graph.Metadata{}
-	if meta.Namespace != "" {
-		m["Namespace"] = meta.Namespace
-	}
-	m["Name"] = meta.Name
+	m["Name"] = o.GetName()
+	m["Namespace"] = o.GetNamespace()
+	m["Labels"] = o.GetLabels()
 	return m
 }
 
@@ -75,10 +75,11 @@ func NewMetadata(manager, ty string, kubeMeta graph.Metadata, extra interface{},
 	return m
 }
 
-func newEdgeMetadata() graph.Metadata {
+// NewEdgeMetadata creates a new edge metadata
+func NewEdgeMetadata(manager, name string) graph.Metadata {
 	m := graph.Metadata{
-		"Manager":      Manager,
-		"RelationType": "association",
+		"Manager":      manager,
+		"RelationType": name,
 	}
 	return m
 }
@@ -117,7 +118,14 @@ func newResourceLinker(g *graph.Graph, subprobes map[string]Subprobe, srcType st
 	dstIndexer := graph.NewMetadataIndexer(g, dstCache, graph.Metadata{"Type": dstType}, dstAttrs...)
 	dstIndexer.Start()
 
-	return graph.NewMetadataIndexerLinker(g, srcIndexer, dstIndexer, edgeMetadata)
+	ml := graph.NewMetadataIndexerLinker(g, srcIndexer, dstIndexer, edgeMetadata)
+
+	linker := &Linker{
+		ResourceLinker: ml.ResourceLinker,
+	}
+	ml.AddEventListener(linker)
+
+	return linker
 }
 
 func objectToNode(g *graph.Graph, object metav1.Object) (node *graph.Node) {

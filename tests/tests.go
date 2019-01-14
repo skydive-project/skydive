@@ -786,15 +786,15 @@ func init() {
 
 	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 100
 
+	if err := initConfig(testConfig); err != nil {
+		panic(fmt.Sprintf("Failed to initialize config: %s", err))
+	}
+
+	if err := config.InitLogging(); err != nil {
+		panic(fmt.Sprintf("Failed to initialize logging system: %s", err))
+	}
+
 	if standalone {
-		if err := initConfig(testConfig); err != nil {
-			panic(fmt.Sprintf("Failed to initialize config: %s", err))
-		}
-
-		if err := config.InitLogging(); err != nil {
-			panic(fmt.Sprintf("Failed to initialize logging system: %s", err))
-		}
-
 		server, err := analyzer.NewServerFromConfig()
 		if err != nil {
 			panic(err)

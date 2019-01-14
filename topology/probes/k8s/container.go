@@ -26,12 +26,12 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/graph"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -74,11 +74,20 @@ func (c *containerProbe) OnAdd(obj interface{}) {
 			uid := graph.GenID(string(pod.GetUID()), container.Name)
 			m := c.newMetadata(pod, &container)
 			if node := c.graph.GetNode(uid); node == nil {
-				node = c.graph.NewNode(uid, m)
+				var err error
+
+				node, err = c.graph.NewNode(uid, m)
+				if err != nil {
+					logging.GetLogger().Error(err)
+					continue
+				}
 				c.NotifyEvent(graph.NodeAdded, node)
 				logging.GetLogger().Debugf("Added %s", c.dump(pod, container.Name))
 			} else {
-				c.graph.SetMetadata(node, m)
+				if err := c.graph.SetMetadata(node, m); err != nil {
+					logging.GetLogger().Error(err)
+					continue
+				}
 				c.NotifyEvent(graph.NodeUpdated, node)
 				logging.GetLogger().Debugf("Updated %s", c.dump(pod, container.Name))
 			}
@@ -89,7 +98,10 @@ func (c *containerProbe) OnAdd(obj interface{}) {
 		for _, node := range nodes {
 			name, _ := node.GetFieldString(MetadataField("Name"))
 			if !wasUpdated[name] {
-				c.graph.DelNode(node)
+				if err := c.graph.DelNode(node); err != nil {
+					logging.GetLogger().Error(err)
+					continue
+				}
 				c.NotifyEvent(graph.NodeDeleted, node)
 				logging.GetLogger().Debugf("Deleted %s", c.dump(pod, name))
 			}
@@ -113,7 +125,10 @@ func (c *containerProbe) OnDelete(obj interface{}) {
 		containerNodes, _ := c.containerIndexer.Get(pod.Namespace, pod.Name)
 		for _, containerNode := range containerNodes {
 			name, _ := containerNode.GetFieldString(MetadataField("Name"))
-			c.graph.DelNode(containerNode)
+			if err := c.graph.DelNode(containerNode); err != nil {
+				logging.GetLogger().Error(err)
+				continue
+			}
 			c.NotifyEvent(graph.NodeDeleted, containerNode)
 			logging.GetLogger().Debugf("Deleted %s", c.dump(pod, name))
 		}
@@ -132,8 +147,8 @@ func newContainerProbe(client interface{}, g *graph.Graph) Subprobe {
 	return c
 }
 
-func newPodContainerLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe {
-	return newResourceLinker(g, subprobes, "pod", MetadataFields("Namespace", "Name"), "container", MetadataFields("Namespace", "Pod"), topology.OwnershipMetadata())
+func newPodContainerLinker(g *graph.Graph) probe.Probe {
+	return newResourceLinker(g, GetSubprobesMap(Manager), "pod", MetadataFields("Namespace", "Name"), "container", MetadataFields("Namespace", "Pod"), topology.OwnershipMetadata())
 }
 
 func newDockerIndexer(g *graph.Graph) *graph.MetadataIndexer {
@@ -148,8 +163,8 @@ func newDockerIndexer(g *graph.Graph) *graph.MetadataIndexer {
 	return graph.NewMetadataIndexer(g, g, m, dockerPodNamespaceField, dockerPodNameField, dockerContainerNameField)
 }
 
-func newContainerDockerLinker(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe {
-	containerProbe := subprobes["container"]
+func newContainerDockerLinker(g *graph.Graph) probe.Probe {
+	containerProbe := GetSubprobe(Manager, "container")
 	if containerProbe == nil {
 		return nil
 	}
@@ -161,5 +176,12 @@ func newContainerDockerLinker(g *graph.Graph, subprobes map[string]Subprobe) pro
 	dockerIndexer := newDockerIndexer(g)
 	dockerIndexer.Start()
 
-	return graph.NewMetadataIndexerLinker(g, containerIndexer, dockerIndexer, newEdgeMetadata())
+	ml := graph.NewMetadataIndexerLinker(g, containerIndexer, dockerIndexer, NewEdgeMetadata(Manager, "association"))
+
+	linker := &Linker{
+		ResourceLinker: ml.ResourceLinker,
+	}
+	ml.AddEventListener(linker)
+
+	return linker
 }

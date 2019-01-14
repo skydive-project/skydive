@@ -25,8 +25,8 @@ package k8s
 import (
 	"time"
 
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology/graph"
 
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,7 +51,8 @@ type KubeCache struct {
 	handlers       []k8sHandler
 }
 
-func (c *KubeCache) list() []interface{} {
+// List returns a list of resources
+func (c *KubeCache) List() []interface{} {
 	return c.cache.List()
 }
 
@@ -67,7 +68,8 @@ func (c *KubeCache) getByKey(namespace, name string) interface{} {
 	return nil
 }
 
-func (c *KubeCache) getByNode(node *graph.Node) interface{} {
+// GetByNode returns graph node according to name and namespace
+func (c *KubeCache) GetByNode(node *graph.Node) interface{} {
 	namespace, _ := node.GetFieldString(MetadataField("Namespace"))
 	name, _ := node.GetFieldString("Name")
 	if name == "" {
@@ -78,7 +80,7 @@ func (c *KubeCache) getByNode(node *graph.Node) interface{} {
 
 func (c *KubeCache) getByNamespace(namespace string) []interface{} {
 	if namespace == api.NamespaceAll {
-		return c.list()
+		return c.List()
 	}
 
 	objects, _ := c.cache.ByIndex("namespace", namespace)
@@ -158,10 +160,24 @@ func matchSelector(obj metav1.Object, selector labels.Selector) bool {
 	return selector.Matches(labels.Set(obj.GetLabels()))
 }
 
-func filterObjectsBySelector(objects []interface{}, labelSelector *metav1.LabelSelector) (out []metav1.Object) {
+func matchLabelSelector(obj metav1.Object, labelSelector *metav1.LabelSelector) bool {
+	selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+	return err == nil && selector.Matches(labels.Set(obj.GetLabels()))
+}
+
+func matchMapSelector(obj metav1.Object, mapSelector map[string]string) bool {
+	labelSelector := &metav1.LabelSelector{MatchLabels: mapSelector}
+	selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+	return err == nil && selector.Matches(labels.Set(obj.GetLabels()))
+}
+
+func filterObjectsBySelector(objects []interface{}, labelSelector *metav1.LabelSelector, namespace ...string) (out []metav1.Object) {
 	selector, _ := metav1.LabelSelectorAsSelector(labelSelector)
 	for _, obj := range objects {
 		obj := obj.(metav1.Object)
+		if len(namespace) > 0 && obj.GetNamespace() != namespace[0] {
+			continue
+		}
 		if matchSelector(obj, selector) {
 			out = append(out, obj)
 		}
@@ -192,7 +208,11 @@ func (c *ResourceCache) OnAdd(obj interface{}) {
 	defer c.graph.Unlock()
 
 	id, metadata := c.handler.Map(obj)
-	node := c.graph.NewNode(id, metadata, "")
+	node, err := c.graph.NewNode(id, metadata, "")
+	if err != nil {
+		logging.GetLogger().Error(err)
+		return
+	}
 	c.NotifyEvent(graph.NodeAdded, node)
 	logging.GetLogger().Debugf("Added %s", c.handler.Dump(obj))
 }
@@ -204,7 +224,10 @@ func (c *ResourceCache) OnUpdate(oldObj, newObj interface{}) {
 
 	id, metadata := c.handler.Map(newObj)
 	if node := c.graph.GetNode(id); node != nil {
-		c.graph.SetMetadata(node, metadata)
+		if err := c.graph.SetMetadata(node, metadata); err != nil {
+			logging.GetLogger().Error(err)
+			return
+		}
 		c.NotifyEvent(graph.NodeUpdated, node)
 		logging.GetLogger().Debugf("Updated %s", c.handler.Dump(newObj))
 	}
@@ -217,7 +240,10 @@ func (c *ResourceCache) OnDelete(obj interface{}) {
 
 	id, _ := c.handler.Map(obj)
 	if node := c.graph.GetNode(id); node != nil {
-		c.graph.DelNode(node)
+		if err := c.graph.DelNode(node); err != nil {
+			logging.GetLogger().Error(err)
+			return
+		}
 		c.NotifyEvent(graph.NodeDeleted, node)
 		logging.GetLogger().Debugf("Deleted %s", c.handler.Dump(obj))
 	}
@@ -225,14 +251,9 @@ func (c *ResourceCache) OnDelete(obj interface{}) {
 
 // NewResourceCache returns a new cache using the associed Kubernetes
 // client and with the handler for the resource that this cache manages.
-func NewResourceCache(restClient rest.Interface, objType runtime.Object, resources string, g *graph.Graph, handler ResourceHandler, optionalEventHandler ...*graph.EventHandler) *ResourceCache {
-	eventHandler := graph.NewEventHandler(100)
-	if len(optionalEventHandler) == 1 {
-		eventHandler = optionalEventHandler[0]
-	}
-
+func NewResourceCache(restClient rest.Interface, objType runtime.Object, resources string, g *graph.Graph, handler ResourceHandler) *ResourceCache {
 	c := &ResourceCache{
-		EventHandler: eventHandler,
+		EventHandler: graph.NewEventHandler(100),
 		graph:        g,
 		handler:      handler,
 	}
