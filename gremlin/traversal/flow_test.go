@@ -150,8 +150,8 @@ func TestHasStep(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	flowChan <- newICMPFlow(222)
-	flowChan <- newICMPFlow(444)
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(222), Key: strconv.Itoa(rand.Int())}
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(444), Key: strconv.Itoa(rand.Int())}
 
 	time.Sleep(time.Second)
 
@@ -207,8 +207,8 @@ func TestLimitStep(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	flowChan <- newICMPFlow(222)
-	flowChan <- newICMPFlow(444)
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(222), Key: strconv.Itoa(rand.Int())}
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(444), Key: strconv.Itoa(rand.Int())}
 
 	time.Sleep(time.Second)
 
@@ -234,8 +234,8 @@ func TestDedupStep(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	flowChan <- newICMPFlow(222)
-	flowChan <- newICMPFlow(222)
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(222), Key: strconv.Itoa(rand.Int())}
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(222), Key: strconv.Itoa(rand.Int())}
 
 	time.Sleep(time.Second)
 
@@ -273,11 +273,11 @@ func TestCaptureNodeStep(t *testing.T) {
 
 	icmp := newICMPFlow(222)
 	icmp.NodeTID = "123"
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	icmp = newICMPFlow(444)
 	icmp.NodeTID = "456"
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	time.Sleep(time.Second)
 
@@ -321,15 +321,15 @@ func TestInStep(t *testing.T) {
 
 	icmp := newICMPFlow(222)
 	icmp.Link = &flow.FlowLayer{A: "123"}
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	icmp = newICMPFlow(444)
 	icmp.Link = &flow.FlowLayer{A: "456"}
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	icmp = newICMPFlow(666)
 	icmp.Link = &flow.FlowLayer{A: "123"}
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	time.Sleep(time.Second)
 
@@ -367,15 +367,15 @@ func TestOutStep(t *testing.T) {
 
 	icmp := newICMPFlow(222)
 	icmp.Link = &flow.FlowLayer{B: "123"}
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	icmp = newICMPFlow(444)
 	icmp.Link = &flow.FlowLayer{B: "456"}
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	icmp = newICMPFlow(666)
 	icmp.Link = &flow.FlowLayer{B: "123"}
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	time.Sleep(time.Second)
 
@@ -413,15 +413,15 @@ func TestBothStep(t *testing.T) {
 
 	icmp := newICMPFlow(222)
 	icmp.Link = &flow.FlowLayer{A: "123"}
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	icmp = newICMPFlow(444)
 	icmp.Link = &flow.FlowLayer{B: "456"}
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	icmp = newICMPFlow(666)
 	icmp.Link = &flow.FlowLayer{B: "123"}
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	time.Sleep(time.Second)
 

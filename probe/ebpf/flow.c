@@ -352,11 +352,6 @@ int bpf_flow_table(struct __sk_buff *skb)
 		update_metrics(skb, prev, tm,
 			flow.link_layer._hash_src == prev->link_layer._hash_src);
 		__sync_fetch_and_add(&prev->last, tm - prev->last);
-
-		if(prev->metrics.ab_packets >= 1 && prev->metrics.ba_packets >= 1 && prev->_flags != RTT_SET) {
-			__sync_fetch_and_add(&prev->rtt, tm - prev->start);
-			prev->_flags = RTT_SET;
-		}
 	} else {
 		update_metrics(skb, &flow, tm, 1);
 		__sync_fetch_and_add(&flow.start, tm);
