@@ -25,7 +25,6 @@ package websocket
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
 	"testing"
 	"time"
@@ -104,7 +103,12 @@ func TestSubscription(t *testing.T) {
 
 	u, _ := url.Parse("ws://localhost:59999/wstest")
 
-	wsClient := NewClient("myhost", common.AgentService, u, nil, http.Header{}, 1000, true, nil)
+	opts := ClientOpts{
+		QueueSize:        1000,
+		WriteCompression: true,
+	}
+
+	wsClient := NewClient("myhost", common.AgentService, u, opts)
 	wsPool := NewClientPool("TestSubscription")
 
 	wsPool.AddClient(wsClient)

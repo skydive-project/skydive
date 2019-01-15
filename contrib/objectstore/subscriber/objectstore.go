@@ -39,12 +39,12 @@ type Subscriber struct {
 func (s *Subscriber) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	switch msg.Type {
 	case "store":
-		var flows []*flow.Flow
-		if err := msg.UnmarshalObj(&flows); err != nil {
+		var flowArray flow.FlowArray
+		if err := flowArray.Unmarshal(msg.Obj); err != nil {
 			logging.GetLogger().Error("Failed to unmarshal flows: ", err)
 			return
 		}
-		s.StoreFlows(flows)
+		s.StoreFlows(flowArray.Flows)
 
 	default:
 		logging.GetLogger().Error("Unknown message type: ", msg.Type)

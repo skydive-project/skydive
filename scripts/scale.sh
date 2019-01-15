@@ -81,7 +81,7 @@ stateOrProvinceName_default = Paris
 localityName_default = Paris
 organizationalUnitName_default = Skydive Team
 commonName = skydive
-commonName_max	= 64
+commonName_max = 64
 
 [ v3_req ]
 # Extensions to add to a certificate request

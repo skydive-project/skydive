@@ -27,6 +27,9 @@ package flow;
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "flow/layers/generated.proto";
 
+import "filters/filters.proto";
+
+option go_package = "github.com/skydive-project/skydive/flow";
 option (gogoproto.protosizer_all) = true;
 option (gogoproto.sizer_all) = false;
 
@@ -195,6 +198,10 @@ message Flow {
   FlowFinishType FinishType = 60;
 }
 
+message FlowArray {
+  repeated Flow Flows = 1;
+}
+
 message FlowSet {
   repeated Flow Flows = 1;
   int64 Start = 2;
@@ -203,4 +210,14 @@ message FlowSet {
 
 message FlowSearchReply {
   FlowSet FlowSet = 1;
+}
+
+message TableQuery {
+  string Type = 1;
+  filters.SearchQuery query = 2;
+}
+
+message TableReply {
+  int32 Status = 1;
+  repeated bytes FlowSetBytes = 2;
 }

@@ -52,8 +52,8 @@ func TestFlowCreateUpdate(t *testing.T) {
 
 func TestFlowExpire(t *testing.T) {
 	var received int
-	callback := func(f []*Flow) {
-		received += len(f)
+	callback := func(f *FlowArray) {
+		received += len(f.Flows)
 	}
 	handler := NewFlowHandler(callback, time.Second)
 
@@ -132,11 +132,11 @@ func TestGetFlowsWithFilters(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	var received int
-	callback := func(f []*Flow) {
-		received += len(f)
+	callback := func(f *FlowArray) {
+		received += len(f.Flows)
 	}
 	updHandler := NewFlowHandler(callback, time.Second)
-	expHandler := NewFlowHandler(func(f []*Flow) {}, 300*time.Second)
+	expHandler := NewFlowHandler(func(f *FlowArray) {}, 300*time.Second)
 
 	table := NewTable(updHandler, expHandler, "", TableOpts{})
 

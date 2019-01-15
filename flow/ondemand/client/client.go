@@ -23,6 +23,7 @@
 package client
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -65,7 +66,7 @@ type nodeProbe struct {
 // OnStructMessage event, valid message type : CaptureStartReply or CaptureStopReply message
 func (o *OnDemandProbeClient) OnStructMessage(c ws.Speaker, m *ws.StructMessage) {
 	var query ondemand.CaptureQuery
-	if err := m.UnmarshalObj(&query); err != nil {
+	if err := json.Unmarshal(m.Obj, &query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode capture %v", m)
 		return
 	}

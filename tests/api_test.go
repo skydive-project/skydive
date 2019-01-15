@@ -34,7 +34,7 @@ import (
 func TestAlertAPI(t *testing.T) {
 	client, err := client.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
 	if err != nil {
-		t.Fatal(err.Error())
+		t.Fatal(err)
 	}
 
 	alert := types.NewAlert()
@@ -83,7 +83,7 @@ func TestAlertAPI(t *testing.T) {
 func TestCaptureAPI(t *testing.T) {
 	client, err := client.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
 	if err != nil {
-		t.Fatal(err.Error())
+		t.Fatal(err)
 	}
 
 	var captures map[string]types.Capture

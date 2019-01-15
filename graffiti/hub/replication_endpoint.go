@@ -34,6 +34,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/websocket"
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
@@ -42,11 +43,11 @@ import (
 // client will be forwarded to the peer.
 type TopologyReplicatorPeer struct {
 	ws.DefaultSpeakerEventHandler
-	URL         *url.URL
-	Graph       *graph.Graph
-	AuthOptions *shttp.AuthenticationOpts
-	wsspeaker   ws.Speaker
-	endpoint    *TopologyReplicationEndpoint
+	URL       *url.URL
+	Graph     *graph.Graph
+	AuthOpts  *shttp.AuthenticationOpts
+	wsspeaker ws.Speaker
+	endpoint  *TopologyReplicationEndpoint
 }
 
 // TopologyReplicationEndpoint serves the local Graph and send local modification to its peers.
@@ -110,7 +111,7 @@ func (p *TopologyReplicatorPeer) connect(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	logging.GetLogger().Infof("Connecting to peer: %s", p.URL.String())
-	wsClient, err := config.NewWSClient(common.AnalyzerService, p.URL, p.AuthOptions, http.Header{})
+	wsClient, err := config.NewWSClient(common.AnalyzerService, p.URL, websocket.ClientOpts{AuthOpts: p.AuthOpts})
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to create client: %s", err)
 		return
@@ -135,10 +136,10 @@ func (p *TopologyReplicatorPeer) disconnect() {
 
 func (t *TopologyReplicationEndpoint) addCandidate(url *url.URL, auth *shttp.AuthenticationOpts) *TopologyReplicatorPeer {
 	peer := &TopologyReplicatorPeer{
-		URL:         url,
-		Graph:       t.Graph,
-		AuthOptions: auth,
-		endpoint:    t,
+		URL:      url,
+		Graph:    t.Graph,
+		AuthOpts: auth,
+		endpoint: t,
 	}
 
 	t.candidates = append(t.candidates, peer)
@@ -197,7 +198,8 @@ func (t *TopologyReplicationEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Stru
 	defer t.cached.SetMode(graph.DefaultMode)
 
 	if t.debug() {
-		logging.GetLogger().Debugf("Received message from peer %s: %s", c.GetURL().String(), msg.Bytes(c.GetClientProtocol()))
+		b, _ := msg.Bytes(ws.JSONProtocol)
+		logging.GetLogger().Debugf("Received message from peer %s: %s", c.GetURL().String(), string(b))
 	}
 	switch msgType {
 	case graph.SyncRequestMsgType:
@@ -244,7 +246,8 @@ func (t *TopologyReplicationEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Stru
 // SendToPeers sends the message to all the peers
 func (t *TopologyReplicationEndpoint) notifyPeers(msg *ws.StructMessage) {
 	if t.debug() {
-		logging.GetLogger().Debugf("Broadcasting message to all peers: (protobuf) %s", msg.Bytes(ws.ProtobufProtocol))
+		b, _ := msg.Bytes(ws.JSONProtocol)
+		logging.GetLogger().Debugf("Broadcasting message to all peers: %s", string(b))
 	}
 	t.in.BroadcastMessage(msg)
 	t.out.BroadcastMessage(msg)

@@ -23,141 +23,176 @@
 package websocket
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
+	fmt "fmt"
 	"net/http"
 	"time"
 
-	"github.com/abbot/go-http-auth"
-	"github.com/golang/protobuf/proto"
+	auth "github.com/abbot/go-http-auth"
+	proto "github.com/gogo/protobuf/proto"
 	"github.com/gorilla/websocket"
-	"github.com/nu7hatch/gouuid"
+	uuid "github.com/nu7hatch/gouuid"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 )
 
+// Protocol used to transport messages
+type Protocol string
+
 const (
 	// WildcardNamespace is the namespace used as wildcard. It is used by listeners to filter callbacks.
 	WildcardNamespace = "*"
 
+	// RawProtocol is used for raw messages
+	RawProtocol Protocol = "raw"
 	// ProtobufProtocol is used for protobuf encoded messages
-	ProtobufProtocol = "protobuf"
+	ProtobufProtocol Protocol = "protobuf"
 	// JSONProtocol is used for JSON encoded messages
-	JSONProtocol = "json"
+	JSONProtocol Protocol = "json"
 )
 
 // DefaultRequestTimeout default timeout used for Request/Reply JSON message.
 var DefaultRequestTimeout = 10 * time.Second
 
-// StructMessageJSON defines a JSON serialized object
-type StructMessageJSON struct {
-	Namespace string
-	Type      string
-	UUID      string
-	Status    int64
-	Obj       *json.RawMessage
+// ProtobufObject defines an object that can be serialized in protobuf
+type ProtobufObject interface {
+	proto.Marshaler
+	proto.Message
 }
 
-// StructMessage defines a basic structured message
-type StructMessage struct {
-	Protocol  string
-	Namespace string
-	Type      string
-	UUID      string
-	Status    int64
-	value     interface{}
+type structMessageState struct {
+	value interface{}
 
-	// JSONObj embeds an other JSON object in the message
-	JSONObj            *json.RawMessage
-	jsonSerialized     []byte
-	ProtobufObj        []byte
-	protobufSerialized []byte
+	// keep a cached version to avoid to serialize multiple time during
+	// the call flow
+	jsonCache     []byte
+	protobufCache []byte
+}
+
+func (p *Protocol) parse(s string) error {
+	switch s {
+	case "", "json":
+		*p = JSONProtocol
+	case "protobuf":
+		*p = ProtobufProtocol
+	default:
+		return errors.New("protocol not supported")
+	}
+	return nil
+}
+
+func (p *Protocol) String() string {
+	return string(*p)
 }
 
 // Debug representation of the struct StructMessage
 func (g *StructMessage) Debug() string {
-	if g.Protocol == JSONProtocol {
-		return fmt.Sprintf("Namespace %s Type %s UUID %s Status %d Obj JSON (%d) : %q",
-			g.Namespace, g.Type, g.UUID, g.Status, len(*g.JSONObj), string(*g.JSONObj))
-	}
-	return fmt.Sprintf("Namespace %s Type %s UUID %s Status %d Obj Protobuf (%d bytes)",
-		g.Namespace, g.Type, g.UUID, g.Status, len(g.ProtobufObj))
+	return fmt.Sprintf("Namespace %s Type %s UUID %s Status %d Obj (%d bytes)",
+		g.Namespace, g.Type, g.UUID, g.Status, len(g.Obj))
 }
 
-// Marshal serializes the StructMessage into a JSON string.
-func (g *StructMessageJSON) Marshal() ([]byte, error) {
-	return json.Marshal(g)
-}
-
-// Bytes see Marshal
-func (g StructMessage) Bytes(protocol string) []byte {
-	g.Protocol = protocol
-	if g.Protocol == ProtobufProtocol {
-		if len(g.protobufSerialized) > 0 {
-			return g.protobufSerialized
-		}
-		g.marshalObj()
-		msgProto := &StructMessageProtobuf{
-			Namespace: g.Namespace,
-			Type:      g.Type,
-			UUID:      g.UUID,
-			Status:    g.Status,
-			Obj:       g.ProtobufObj,
-		}
-		g.protobufSerialized, _ = msgProto.Marshal()
-		return g.protobufSerialized
+func (g *StructMessage) protobufBytes() ([]byte, error) {
+	if len(g.XXX_state.protobufCache) > 0 {
+		return g.XXX_state.protobufCache, nil
 	}
 
-	if len(g.jsonSerialized) > 0 {
-		return g.jsonSerialized
-	}
-	g.marshalObj()
-	msgJSON := &StructMessageJSON{
-		Namespace: g.Namespace,
-		Type:      g.Type,
-		UUID:      g.UUID,
-		Status:    g.Status,
-		Obj:       g.JSONObj,
-	}
-	g.jsonSerialized, _ = msgJSON.Marshal()
-	return g.jsonSerialized
-}
+	obj, ok := g.XXX_state.value.(ProtobufObject)
+	if ok {
+		g.Format = Format_Protobuf
 
-func (g *StructMessage) marshalObj() {
-	if g.Protocol == JSONProtocol {
-		b, err := json.Marshal(g.value)
+		msgObj, err := obj.Marshal()
 		if err != nil {
-			logging.GetLogger().Error("Json Marshal encode value failed", err)
-			return
+			return nil, err
 		}
-		raw := json.RawMessage(b)
-		g.JSONObj = &raw
-	}
-	if g.Protocol == ProtobufProtocol {
-		b, err := json.Marshal(g.value)
+		g.Obj = msgObj
+	} else {
+		// fallback to json
+		g.Format = Format_Json
+
+		msgObj, err := json.Marshal(g.XXX_state.value)
 		if err != nil {
-			logging.GetLogger().Error("ProtobufProtocol : Json Marshal encode value failed", err)
-			return
+			return nil, err
 		}
-		g.ProtobufObj = []byte(json.RawMessage(b))
+		g.Obj = msgObj
 	}
+
+	msgBytes, err := g.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	g.XXX_state.protobufCache = msgBytes
+
+	return msgBytes, nil
 }
 
-// UnmarshalObj unmarshal an object from JSON or protobuf
-func (g *StructMessage) UnmarshalObj(obj interface{}) error {
-	if g.Protocol == JSONProtocol {
-		if err := json.Unmarshal(*g.JSONObj, obj); err != nil {
-			return err
+func (g *StructMessage) jsonBytes() ([]byte, error) {
+	if len(g.XXX_state.jsonCache) > 0 {
+		return g.XXX_state.jsonCache, nil
+	}
+
+	m := struct {
+		*StructMessage
+		Obj interface{}
+	}{
+		StructMessage: g,
+		Obj:           g.XXX_state.value,
+	}
+
+	msgBytes, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+
+	g.XXX_state.jsonCache = msgBytes
+
+	return msgBytes, nil
+}
+
+// Bytes implements the message interface
+func (g *StructMessage) Bytes(protocol Protocol) ([]byte, error) {
+	if protocol == ProtobufProtocol {
+		return g.protobufBytes()
+	}
+	return g.jsonBytes()
+}
+
+// UnmarshalJSON custom unmarshal
+func (g *StructMessage) UnmarshalJSON(b []byte) error {
+	m := struct {
+		Namespace string
+		Type      string
+		UUID      string
+		Status    int64
+		Obj       json.RawMessage
+	}{}
+
+	if err := json.Unmarshal(b, &m); err != nil {
+		return err
+	}
+
+	g.Namespace = m.Namespace
+	g.Type = m.Type
+	g.UUID = m.UUID
+	g.Status = m.Status
+	g.Obj = []byte(m.Obj)
+
+	return nil
+}
+
+func (g *StructMessage) unmarshalByProtocol(b []byte, protocol Protocol) error {
+	if protocol == ProtobufProtocol {
+		if err := g.Unmarshal(b); err != nil {
+			return fmt.Errorf("Error while decoding Protobuf StructMessage %s", err)
+		}
+	} else {
+		if err := g.UnmarshalJSON(b); err != nil {
+			return fmt.Errorf("Error while decoding JSON StructMessage %s", err)
 		}
 	}
-	if g.Protocol == ProtobufProtocol {
-		if err := json.Unmarshal(g.ProtobufObj, obj); err != nil {
-			return err
-		}
-	}
+
 	return nil
 }
 
@@ -177,8 +212,9 @@ func NewStructMessage(ns string, tp string, v interface{}, uuids ...string) *Str
 		Type:      tp,
 		UUID:      u,
 		Status:    int64(http.StatusOK),
-		value:     v,
 	}
+	msg.XXX_state.value = v
+
 	return msg
 }
 
@@ -190,8 +226,9 @@ func (g *StructMessage) Reply(v interface{}, kind string, status int) *StructMes
 		Type:      kind,
 		UUID:      g.UUID,
 		Status:    int64(status),
-		value:     v,
 	}
+	msg.XXX_state.value = v
+
 	return msg
 }
 
@@ -292,7 +329,7 @@ type StructSpeaker struct {
 
 // Send sends a message according to the namespace.
 func (s *StructSpeaker) Send(m Message) {
-	if msg, ok := m.(StructMessage); ok {
+	if msg, ok := m.(*StructMessage); ok {
 		if _, ok := s.nsSubscribed[msg.Namespace]; !ok {
 			if _, ok := s.nsSubscribed[WildcardNamespace]; !ok {
 				return
@@ -344,35 +381,15 @@ func (s *StructSpeaker) Request(m *StructMessage, timeout time.Duration) (*Struc
 // to the namespace.
 func (s *StructSpeaker) OnMessage(c Speaker, m Message) {
 	if c, ok := c.(*StructSpeaker); ok {
-		msg := StructMessage{}
-		if c.GetClientProtocol() == ProtobufProtocol {
-			mProtobuf := StructMessageProtobuf{}
-			b := m.Bytes(ProtobufProtocol)
-			if err := proto.Unmarshal(b, &mProtobuf); err != nil {
-				logging.GetLogger().Errorf("Error while decoding Protobuf StructMessage %s\n%s", err.Error(), hex.Dump(b))
-				return
-			}
-			msg.Protocol = ProtobufProtocol
-			msg.Namespace = mProtobuf.Namespace
-			msg.Type = mProtobuf.Type
-			msg.UUID = mProtobuf.UUID
-			msg.Status = mProtobuf.Status
-			msg.ProtobufObj = mProtobuf.Obj
-		} else {
-			mJSON := StructMessageJSON{}
-			b := m.Bytes(JSONProtocol)
-			if err := json.Unmarshal(b, &mJSON); err != nil {
-				logging.GetLogger().Errorf("Error while decoding JSON StructMessage %s\n%s", err.Error(), hex.Dump(b))
-				return
-			}
-			msg.Protocol = JSONProtocol
-			msg.Namespace = mJSON.Namespace
-			msg.Type = mJSON.Type
-			msg.UUID = mJSON.UUID
-			msg.Status = mJSON.Status
-			msg.JSONObj = mJSON.Obj
+		// m is a rawmessage at this point
+		bytes, _ := m.Bytes(RawProtocol)
+
+		var structMsg StructMessage
+		if err := structMsg.unmarshalByProtocol(bytes, c.GetClientProtocol()); err != nil {
+			logging.GetLogger().Error(err)
+			return
 		}
-		s.structSpeakerEventDispatcher.dispatchMessage(c, &msg)
+		s.structSpeakerEventDispatcher.dispatchMessage(c, &structMsg)
 	}
 }
 
@@ -492,10 +509,14 @@ func NewStructServer(server *Server) *StructServer {
 	// This incomerHandler upgrades the incomers to StructSpeaker thus being able to parse StructMessage.
 	// The server set also the StructSpeaker with the proper namspaces it subscribes to thanks to the
 	// headers.
-	s.Server.incomerHandler = func(conn *websocket.Conn, r *auth.AuthenticatedRequest) Speaker {
+	s.Server.incomerHandler = func(conn *websocket.Conn, r *auth.AuthenticatedRequest) (Speaker, error) {
 		// the default incomer handler creates a standard wsIncomingClient that we upgrade to a StructSpeaker
 		// being able to handle the StructMessage
-		c := s.Server.newIncomingClient(conn, r).upgradeToStructSpeaker()
+		ic, err := s.Server.newIncomingClient(conn, r)
+		if err != nil {
+			return nil, err
+		}
+		c := ic.upgradeToStructSpeaker()
 
 		// from headers
 		if namespaces, ok := r.Header["X-Websocket-Namespace"]; ok {
@@ -518,7 +539,7 @@ func NewStructServer(server *Server) *StructServer {
 
 		s.structSpeakerPoolEventDispatcher.AddStructSpeaker(c)
 
-		return c
+		return c, nil
 	}
 
 	return s
