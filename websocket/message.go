@@ -494,7 +494,6 @@ func (s *StructServer) OnConnected(c Speaker) {
 
 // OnDisconnected removes the Speaker from the incomer pool.
 func (s *StructServer) OnDisconnected(c Speaker) {
-	s.Server.incomerPool.RemoveClient(c)
 }
 
 // NewStructServer returns a new StructServer

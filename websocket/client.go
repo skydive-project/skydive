@@ -536,11 +536,6 @@ func (c *Client) Connect() error {
 		l.OnConnected(c)
 	}
 
-	// in case of a handler disconnect the client directly
-	if !c.IsConnected() {
-		return errors.New("Aborting connection to the server")
-	}
-
 	return nil
 }
 
@@ -549,7 +544,10 @@ func (c *Client) Start() {
 	go func() {
 		for c.running.Load() == true {
 			if err := c.Connect(); err == nil {
-				c.Run()
+				// in case of a handler disconnect the client directly
+				if c.IsConnected() {
+					c.Run()
+				}
 			} else {
 				logging.GetLogger().Error(err)
 			}
