@@ -131,6 +131,7 @@ func (p *Probe) handlePacket(n *graph.Node, packet gopacket.Packet) {
 		}
 
 		var chassisID string
+		var chassisDiscriminators []string
 		switch lldpLayer.ChassisID.Subtype {
 		case layers.LLDPChassisIDSubTypeMACAddr:
 			chassisID = net.HardwareAddr(lldpLayer.ChassisID.ID).String()
@@ -171,8 +172,24 @@ func (p *Probe) handlePacket(n *graph.Node, packet gopacket.Packet) {
 			}
 
 			if sysName := bytesToString([]byte(lldpLayerInfo.SysName)); sysName != "" {
+				chassisDiscriminators = append(chassisDiscriminators, sysName, "SysName")
 				common.SetField(chassisMetadata, "LLDP.SysName", sysName)
 				chassisMetadata["Name"] = sysName
+			}
+
+			if mgmtAddress := lldpLayerInfo.MgmtAddress; len(mgmtAddress.Address) > 0 {
+				var addr string
+				switch mgmtAddress.Subtype {
+				case layers.IANAAddressFamilyIPV4, layers.IANAAddressFamilyIPV6:
+					addr = net.IP(mgmtAddress.Address).String()
+				case layers.IANAAddressFamilyDistname:
+					addr = bytesToString(mgmtAddress.Address)
+				}
+
+				if addr != "" {
+					chassisDiscriminators = append(chassisDiscriminators, addr, "MgmtAddress")
+					common.SetField(chassisMetadata, "LLDP.MgmtAddress", addr)
+				}
 			}
 
 			if lldp8201Q, err := lldpLayerInfo.Decode8021(); err == nil {
@@ -232,11 +249,19 @@ func (p *Probe) handlePacket(n *graph.Node, packet gopacket.Packet) {
 		p.g.Lock()
 
 		// Create a node for the sending chassis with a predictable ID
-		chassis := p.getOrCreate(graph.GenID(chassisID, lldpLayer.ChassisID.Subtype.String()), chassisMetadata)
+		// Some switches - such as Cisco Nexus - sends a different chassis ID
+		// for each port, so you use SysName and MgmtAddress if present and
+		// fallback to chassis ID otherwise.
+		if len(chassisDiscriminators) == 0 {
+			chassisDiscriminators = append(chassisDiscriminators, chassisID, lldpLayer.ChassisID.Subtype.String())
+		}
+
+		chassisNodeID := graph.GenID(chassisDiscriminators...)
+		chassis := p.getOrCreate(chassisNodeID, chassisMetadata)
 
 		// Create a port with a predicatable ID
 		port := p.getOrCreate(graph.GenID(
-			chassisID, lldpLayer.ChassisID.Subtype.String(),
+			string(chassisNodeID),
 			portID, lldpLayer.PortID.Subtype.String(),
 		), portMetadata)
 
