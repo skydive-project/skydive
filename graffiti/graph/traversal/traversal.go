@@ -895,6 +895,19 @@ func (tv *GraphTraversalV) Sort(ctx StepContext, keys ...interface{}) *GraphTrav
 	return tv
 }
 
+func dedupValues(g common.Getter, keys []string) []interface{} {
+	var values []interface{}
+	for _, key := range keys {
+		v, err := g.GetField(key)
+		if err != nil {
+			continue
+		}
+		values = append(values, v)
+	}
+
+	return values
+}
+
 // Dedup step : deduplicate output
 func (tv *GraphTraversalV) Dedup(ctx StepContext, s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
@@ -916,46 +929,40 @@ func (tv *GraphTraversalV) Dedup(ctx StepContext, s ...interface{}) *GraphTraver
 	it := ctx.PaginationRange.Iterator()
 
 	visited := make(map[interface{}]bool)
-	var kvisited interface{}
 	var err error
 
 	tv.GraphTraversal.RLock()
 	defer tv.GraphTraversal.RUnlock()
 
-nodeLoop:
 	for _, n := range tv.nodes {
 		if it.Done() {
 			break
 		}
 
-		skip := false
+		var kvisited interface{}
 		if len(keys) != 0 {
-			values := make([]interface{}, len(keys))
-			for i, key := range keys {
-				v, err := n.GetField(key)
-				if err != nil {
-					continue nodeLoop
+			values := dedupValues(n, keys)
+			if len(values) > 0 {
+				if kvisited, err = hashstructure.Hash(values, nil); err != nil {
+					return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: errors.New("Dedup unable to hash the key values")}
 				}
-				values[i] = v
-			}
-
-			kvisited, err = hashstructure.Hash(values, nil)
-			if err != nil {
-				skip = true
 			}
 		} else {
 			kvisited = n.ID
 		}
 
-		_, ok := visited[kvisited]
-		if ok || !it.Next() {
+		if !it.Next() {
 			continue
 		}
 
-		ntv.nodes = append(ntv.nodes, n)
-		if !skip {
+		if kvisited != nil {
+			if _, ok := visited[kvisited]; ok {
+				continue
+			}
 			visited[kvisited] = true
 		}
+
+		ntv.nodes = append(ntv.nodes, n)
 	}
 
 	return ntv
@@ -1465,39 +1472,56 @@ func (te *GraphTraversalE) Limit(ctx StepContext, s ...interface{}) *GraphTraver
 }
 
 // Dedup step : deduplicate
-func (te *GraphTraversalE) Dedup(ctx StepContext, keys ...interface{}) *GraphTraversalE {
+func (te *GraphTraversalE) Dedup(ctx StepContext, s ...interface{}) *GraphTraversalE {
 	if te.error != nil {
 		return te
 	}
 
-	var key string
-	if len(keys) > 0 {
-		k, ok := keys[0].(string)
-		if !ok {
-			return &GraphTraversalE{GraphTraversal: te.GraphTraversal, error: errors.New("Dedup parameter has to be a string key")}
+	var keys []string
+	if len(s) > 0 {
+		for _, key := range s {
+			k, ok := key.(string)
+			if !ok {
+				return &GraphTraversalE{GraphTraversal: te.GraphTraversal, error: errors.New("Dedup parameters have to be string keys")}
+			}
+			keys = append(keys, k)
 		}
-		key = k
 	}
 
 	ntv := &GraphTraversalE{GraphTraversal: te.GraphTraversal, edges: []*graph.Edge{}}
+	it := ctx.PaginationRange.Iterator()
+
 	visited := make(map[interface{}]bool)
-	var kvisited interface{}
+	var err error
 
 	te.GraphTraversal.RLock()
 	defer te.GraphTraversal.RUnlock()
 
 	for _, e := range te.edges {
-		kvisited = e.ID
-		if key != "" {
-			if v, ok := e.Metadata[key]; ok {
-				kvisited = v
+		var kvisited interface{}
+		if len(keys) != 0 {
+			values := dedupValues(e, keys)
+			if len(values) > 0 {
+				if kvisited, err = hashstructure.Hash(values, nil); err != nil {
+					return &GraphTraversalE{GraphTraversal: te.GraphTraversal, error: errors.New("Dedup unable to hash the key values")}
+				}
 			}
+		} else {
+			kvisited = e.ID
 		}
 
-		if _, ok := visited[kvisited]; !ok {
-			ntv.edges = append(ntv.edges, e)
+		if !it.Next() {
+			continue
+		}
+
+		if kvisited != nil {
+			if _, ok := visited[kvisited]; ok {
+				continue
+			}
 			visited[kvisited] = true
 		}
+
+		ntv.edges = append(ntv.edges, e)
 	}
 	return ntv
 }
@@ -1774,10 +1798,18 @@ func (t *GraphTraversalValue) Dedup(ctx StepContext, keys ...interface{}) *Graph
 
 	var nv []interface{}
 	ntv := &GraphTraversalValue{GraphTraversal: t.GraphTraversal, value: nv}
+
 	visited := make(map[interface{}]bool)
+	var kvisited interface{}
+	var err error
+
 	for _, v := range t.Values() {
-		if _, ok := visited[v]; !ok {
-			visited[v] = true
+		if kvisited, err = hashstructure.Hash(v, nil); err != nil {
+			return &GraphTraversalValue{GraphTraversal: t.GraphTraversal, error: errors.New("Dedup unable to hash the key values")}
+		}
+
+		if _, ok := visited[kvisited]; !ok {
+			visited[kvisited] = true
 			ntv.value = append(ntv.value.([]interface{}), v)
 		}
 	}

@@ -629,10 +629,17 @@ func TestTraversalParser(t *testing.T) {
 	}
 
 	// next traversal test
+	query = `G.E().Dedup("Direction")`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 4 {
+		t.Fatalf("Should return 4 nodes, returned: %v", res.Values())
+	}
+
+	// next traversal test
 	query = `G.V().Dedup("Type")`
 	res = execTraversalQuery(t, g, query)
-	if len(res.Values()) != 1 {
-		t.Fatalf("Should return 1 nodes, returned: %v", res.Values())
+	if len(res.Values()) != 3 {
+		t.Fatalf("Should return 3 nodes, returned: %v", res.Values())
 	}
 
 	// next traversal test
@@ -801,5 +808,42 @@ func TestLimit(t *testing.T) {
 	res = execTraversalQuery(t, g, query)
 	if len(res.Values()) != 1 {
 		t.Fatalf("Should return 1 result, returned: %v", res.Values())
+	}
+}
+
+func TestDedupMultiplefields(t *testing.T) {
+	g := newGraph(t)
+
+	g.NewNode(graph.GenID(), graph.Metadata{"Name": "aaa", "Type": "intf", "Value": "v1"})
+	g.NewNode(graph.GenID(), graph.Metadata{"Name": "bbb", "Type": "intf", "Value": "v1"})
+	g.NewNode(graph.GenID(), graph.Metadata{"Name": "aaa", "Type": "veth"})
+	g.NewNode(graph.GenID(), graph.Metadata{"Name": "aaa", "Type": "intf"})
+
+	// next traversal test
+	query := `G.V().Dedup("Name")`
+	res := execTraversalQuery(t, g, query)
+	if len(res.Values()) != 2 {
+		t.Fatalf("Should return 2 nodes, returned: %v", res.Values())
+	}
+
+	// next traversal test
+	query = `G.V().Dedup("Name", "Type")`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 3 {
+		t.Fatalf("Should return 3 nodes, returned: %v", res.Values())
+	}
+
+	// next traversal test
+	query = `G.V().Dedup("Value")`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 3 {
+		t.Fatalf("Should return 3 nodes, returned: %v", res.Values())
+	}
+
+	// next traversal test
+	query = `G.V().Dedup("Misc", "Value")`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 3 {
+		t.Fatalf("Should return 3 nodes, returned: %v", res.Values())
 	}
 }
