@@ -275,8 +275,10 @@ func (p *EBPFProbe) run() {
 				if !found {
 					break
 				}
-				p.module.DeleteElement(p.fmap, unsafe.Pointer(&key)) //delete every entry after we read to reduce size.
 				key = nextKey
+				// delete every entry after we read the entry value
+				p.module.DeleteElement(p.fmap, unsafe.Pointer(&key))
+
 				lastK := int64(kernFlow.last)
 
 				ebpfFlow, ok := ebpfFlows[kernFlow.key]
@@ -310,7 +312,6 @@ func (p *EBPFProbe) run() {
 					flowChan <- fl
 
 				}
-
 			}
 
 			for k, v := range ebpfFlows {
