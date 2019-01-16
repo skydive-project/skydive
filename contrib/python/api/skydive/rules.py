@@ -80,6 +80,7 @@ class EdgeRule(object):
             obj["Name"] = self.name
         if self.description:
             obj["Description"] = self.description
+        return obj
 
     @classmethod
     def from_object(self, obj):
