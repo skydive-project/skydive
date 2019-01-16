@@ -181,7 +181,7 @@ class RESTClient:
 
     def noderule_list(self):
         objs = self.request("/api/noderule")
-        return [NodeRule.from_object(o) for o in objs]
+        return [NodeRule.from_object(o) for o in objs.values()]
 
     def noderule_delete(self, rule_id):
         path = "/api/noderule/%s" % rule_id
@@ -200,7 +200,7 @@ class RESTClient:
 
     def edgerule_list(self):
         objs = self.request("/api/edgerule")
-        return [EdgeRule.from_object(o) for o in objs]
+        return [EdgeRule.from_object(o) for o in objs.values()]
 
     def edgerule_delete(self, rule_id):
         path = "/api/edgerule/%s" % rule_id
