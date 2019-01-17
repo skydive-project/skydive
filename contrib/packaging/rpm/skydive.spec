@@ -18,7 +18,7 @@
 %global selinux_policyver 3.13.1-192
 %global moduletype contrib
 
-%if 0%{?fedora} >= 27
+%if 0%{?fedora} >= 27 || 0%{?rhel} >= 8
 %global selinux_semanage_pkg policycoreutils-python-utils
 %else
 %global selinux_semanage_pkg policycoreutils-python
@@ -49,7 +49,8 @@ BuildRequires:  llvm clang kernel-headers
 %endif
 BuildRequires:  selinux-policy-devel, policycoreutils-devel
 Requires:       %{name}-selinux = %{version}-%{release}
-Requires:       libpcap libxml2 libvirt-libs
+Requires:       libpcap libxml2 libvirt-libs coreutils
+Requires(pre):  /usr/sbin/useradd
 
 # This is used by the specfile-update-bundles script to automatically
 # generate the list of the Go libraries bundled into the Skydive binaries
@@ -145,6 +146,11 @@ install -D -m 644 contrib/packaging/rpm/skydive.pp.bz2 %{buildroot}%{_datadir}/s
 install -D -m 644 contrib/packaging/rpm/skydive.if %{buildroot}%{_datadir}/selinux/devel/include/contrib/skydive.if
 install -D -m 644 contrib/packaging/rpm/skydive-selinux.8 %{buildroot}%{_mandir}/man8/skydive-selinux.8
 
+%pre
+/usr/sbin/groupadd -r skydive >/dev/null 2>&1 || :
+/usr/sbin/useradd -r -g skydive -d /var/lib/skydive -s /sbin/nologin \
+    -c "Skydive user" skydive >/dev/null 2>&1 || :
+
 %post agent
 if %{_sbindir}/selinuxenabled && [ "$1" = "1" ] ; then
     set +e
@@ -171,7 +177,10 @@ if %{_sbindir}/selinuxenabled && [ "$1" = "1" ] ; then
     set +e
     %{_sbindir}/semanage port -a -t skydive_etcd_ports_t -p tcp 12379-12380
     %{_sbindir}/semanage port -a -t skydive_analyzer_db_connect_ports_t -p tcp 2480
-    %{_sbindir}/semanage port -a -t skydive_analyzer_db_connect_ports_t -p tcp 9200
+    %if 0%{?fedora} < 27 && 0%{?rhel} < 8
+        # already set by wap_wsp_port_t
+        %{_sbindir}/semanage port -a -t skydive_analyzer_db_connect_ports_t -p tcp 9200
+    %endif
 fi
 %systemd_post %{basename:%{name}-analyzer.service}
 
@@ -184,7 +193,10 @@ if %{_sbindir}/selinuxenabled && [ "$1" = "0" ] ; then
     set +e
     %{_sbindir}/semanage port -d -t skydive_etcd_ports_t -p tcp 12379-12380
     %{_sbindir}/semanage port -d -t skydive_analyzer_db_connect_ports_t -p tcp 2480
-    %{_sbindir}/semanage port -d -t skydive_analyzer_db_connect_ports_t -p tcp 9200
+    %if 0%{?fedora} < 27 && 0%{?rhel} < 8
+        # already set by wap_wsp_port_t
+        %{_sbindir}/semanage port -d -t skydive_analyzer_db_connect_ports_t -p tcp 9200
+    %endif
 fi
 
 %pre selinux
