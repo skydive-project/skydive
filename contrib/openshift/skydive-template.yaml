@@ -69,7 +69,9 @@ objects:
           - name: SKYDIVE_ANALYZER_TOPOLOGY_BACKEND
             value: elasticsearch
           - name: SKYDIVE_ANALYZER_TOPOLOGY_PROBES
-            value: k8s
+            value: ${SKYDIVE_ANALYZER_TOPOLOGY_PROBES}
+          - name: SKYDIVE_ANALYZER_TOPOLOGY_K8S_PROBES
+            value: ${SKYDIVE_ANALYZER_TOPOLOGY_K8S_PROBES}
           - name: SKYDIVE_ETCD_LISTEN
             value: 0.0.0.0:12379
           - name: SKYDIVE_LOGGING_LEVEL
@@ -230,3 +232,13 @@ parameters:
   name: SKYDIVE_LOGGING_LEVEL
   required: true
   value: INFO
+- description: Topology probes for anaylyser, default is empty. Add 'k8s' to add k8s/openshift objects to skydive
+  displayName: Analyzer topology probes
+  name: SKYDIVE_ANALYZER_TOPOLOGY_PROBES
+  required: false
+  value: ""
+- description: Probes for k8s/openshift, default is empty. If you only want same objects add those objects, for examples "cluster service pod node"
+  displayName: K8s/OpenShift probes
+  name: SKYDIVE_ANALYZER_TOPOLOGY_K8S_PROBES
+  required: false
+  value: ""
