@@ -163,7 +163,7 @@ objects:
           - name: SKYDIVE_AGENT_TOPOLOGY_PROBES
             value: "ovsdb runc docker"
           - name: SKYDIVE_RUNC_PATH
-            value: "/run/containerd/runc /var/run/runc /var/run/runc-ctrs"
+            value: "/run/containerd/runc /run/runc /run/runc-ctrs"
           image: skydive/skydive
           imagePullPolicy: Always
           name: skydive-agent
@@ -174,15 +174,15 @@ objects:
           securityContext:
             privileged: true
           volumeMounts:
-          - mountPath: /var/run/docker.sock
+          - mountPath: /run/docker.sock
             name: docker
-          - mountPath: /var/run/netns
+          - mountPath: /run/netns
             name: netns
-          - mountPath: /var/run/openvswitch/db.sock
+          - mountPath: /run/openvswitch/db.sock
             name: ovsdb
-          - mountPath: /var/run/runc
+          - mountPath: /run/runc
             name: runc
-          - mountPath: /var/run/runc-ctrs
+          - mountPath: /run/runc-ctrs
             name: runc-ctrs
           - mountPath: /run/containerd/runc
             name: containerd-runc
@@ -193,22 +193,22 @@ objects:
         terminationGracePeriodSeconds: 30
         volumes:
         - hostPath:
-            path: /var/run/docker.sock
+            path: /run/docker.sock
           name: docker
         - hostPath:
-            path: /var/run/netns
+            path: /run/netns
           name: netns
         - hostPath:
-            path: /var/run/runc
+            path: /run/runc
           name: runc
         - hostPath:
-            path: /var/run/runc-ctrs
+            path: /run/runc-ctrs
           name: runc-ctrs
         - hostPath:
             path: /run/containerd/runc
           name: containerd-runc
         - hostPath:
-            path: /var/run/openvswitch/db.sock
+            path: /run/openvswitch/db.sock
           name: ovsdb
 - apiVersion: v1
   kind: Route
