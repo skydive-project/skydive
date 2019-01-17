@@ -775,6 +775,7 @@ func TestEdgeRuleCreate(t *testing.T) {
 		setupCmds: []Cmd{
 			{"ovs-vsctl add-br br-srcnode", true},
 			{"ovs-vsctl add-br br-dstnode", true},
+			{"sleep 5", false},
 		},
 
 		setupFunction: func(c *TestContext) error {
@@ -799,7 +800,7 @@ func TestEdgeRuleCreate(t *testing.T) {
 				query = query.BothE().Has("RelationType", "layer2")
 				query = query.BothV().Has("Name", "br-dstnode", "Type", "ovsbridge")
 				if _, err := c.gh.GetNode(query); err != nil {
-					return errors.New("Failed to find a layer2 link")
+					return fmt.Errorf("Failed to find a layer2 link, error: %v", err)
 				}
 
 				return nil
