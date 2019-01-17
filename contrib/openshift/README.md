@@ -8,6 +8,7 @@ This OpenShift template allows you to instantiate skydive in OpenShift.
 
 ```
 oc adm new-project --node-selector='' skydive
+oc project skydive
 ```
 
 ####  Skype analyzer and agent need  extended  privileges
