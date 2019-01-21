@@ -86,11 +86,6 @@ func init() {
 type SFMetric struct {
 	Start              int64 `json:"Start,omitempty"`
 	Last               int64 `json:"Last,omitempty"`
-	IfIndex            int64 `json:"IfIndex,omitempty"`
-	IfType             int64 `json:"IfType,omitempty"`
-	IfSpeed            int64 `json:"IfSpeed,omitempty"`
-	IfDirection        int64 `json:"IfDirection,omitempty"`
-	IfStatus           int64 `json:"IfStatus,omitempty"`
 	IfInOctets         int64 `json:"IfInOctets,omitempty"`
 	IfInUcastPkts      int64 `json:"IfInUcastPkts,omitempty"`
 	IfInMulticastPkts  int64 `json:"IfInMulticastPkts,omitempty"`
@@ -104,7 +99,6 @@ type SFMetric struct {
 	IfOutBroadcastPkts int64 `json:"IfOutBroadcastPkts,omitempty"`
 	IfOutDiscards      int64 `json:"IfOutDiscards,omitempty"`
 	IfOutErrors        int64 `json:"IfOutErrors,omitempty"`
-	IfPromiscuousMode  int64 `json:"IfPromiscuousMode,omitempty"`
 }
 
 // GetStart returns start time
@@ -134,16 +128,6 @@ func (sm *SFMetric) GetFieldInt64(field string) (int64, error) {
 		return sm.Start, nil
 	case "Last":
 		return sm.Last, nil
-	case "IfIndex":
-		return sm.IfIndex, nil
-	case "IfType":
-		return sm.IfType, nil
-	case "IfSpeed":
-		return sm.IfSpeed, nil
-	case "IfDirection":
-		return sm.IfDirection, nil
-	case "IfStatus":
-		return sm.IfStatus, nil
 	case "IfInOctets":
 		return sm.IfInOctets, nil
 	case "IfInUcastPkts":
@@ -170,8 +154,6 @@ func (sm *SFMetric) GetFieldInt64(field string) (int64, error) {
 		return sm.IfOutDiscards, nil
 	case "IfOutErrors":
 		return sm.IfOutErrors, nil
-	case "IfPromiscuousMode":
-		return sm.IfPromiscuousMode, nil
 	}
 
 	return 0, common.ErrFieldNotFound
@@ -198,11 +180,6 @@ func (sm *SFMetric) Add(m common.Metric) common.Metric {
 	return &SFMetric{
 		Start:              sm.Start,
 		Last:               sm.Last,
-		IfIndex:            sm.IfIndex + om.IfIndex,
-		IfType:             sm.IfType + om.IfType,
-		IfSpeed:            sm.IfSpeed + om.IfSpeed,
-		IfDirection:        sm.IfDirection + om.IfDirection,
-		IfStatus:           sm.IfStatus + om.IfStatus,
 		IfInOctets:         sm.IfInOctets + om.IfInOctets,
 		IfInUcastPkts:      sm.IfInUcastPkts + om.IfInUcastPkts,
 		IfInMulticastPkts:  sm.IfInMulticastPkts + om.IfInMulticastPkts,
@@ -216,7 +193,6 @@ func (sm *SFMetric) Add(m common.Metric) common.Metric {
 		IfOutBroadcastPkts: sm.IfOutBroadcastPkts + om.IfOutBroadcastPkts,
 		IfOutDiscards:      sm.IfOutDiscards + om.IfOutDiscards,
 		IfOutErrors:        sm.IfOutErrors + om.IfOutErrors,
-		IfPromiscuousMode:  sm.IfPromiscuousMode + om.IfPromiscuousMode,
 	}
 }
 
@@ -230,11 +206,6 @@ func (sm *SFMetric) Sub(m common.Metric) common.Metric {
 	return &SFMetric{
 		Start:              sm.Start,
 		Last:               sm.Last,
-		IfIndex:            sm.IfIndex - om.IfIndex,
-		IfType:             sm.IfType - om.IfType,
-		IfSpeed:            sm.IfSpeed - om.IfSpeed,
-		IfDirection:        sm.IfDirection - om.IfDirection,
-		IfStatus:           sm.IfStatus - om.IfStatus,
 		IfInOctets:         sm.IfInOctets - om.IfInOctets,
 		IfInUcastPkts:      sm.IfInUcastPkts - om.IfInUcastPkts,
 		IfInMulticastPkts:  sm.IfInMulticastPkts - om.IfInMulticastPkts,
@@ -248,19 +219,13 @@ func (sm *SFMetric) Sub(m common.Metric) common.Metric {
 		IfOutBroadcastPkts: sm.IfOutBroadcastPkts - om.IfOutBroadcastPkts,
 		IfOutDiscards:      sm.IfOutDiscards - om.IfOutDiscards,
 		IfOutErrors:        sm.IfOutErrors - om.IfOutErrors,
-		IfPromiscuousMode:  sm.IfPromiscuousMode - om.IfPromiscuousMode,
 	}
 }
 
 // IsZero returns true if all the values are equal to zero
 func (sm *SFMetric) IsZero() bool {
 	// sum as these numbers can't be <= 0
-	return (sm.IfIndex +
-		sm.IfType +
-		sm.IfSpeed +
-		sm.IfDirection +
-		sm.IfStatus +
-		sm.IfInOctets +
+	return (sm.IfInOctets +
 		sm.IfInUcastPkts +
 		sm.IfInMulticastPkts +
 		sm.IfInBroadcastPkts +
@@ -272,19 +237,13 @@ func (sm *SFMetric) IsZero() bool {
 		sm.IfOutMulticastPkts +
 		sm.IfOutBroadcastPkts +
 		sm.IfOutDiscards +
-		sm.IfOutErrors +
-		sm.IfPromiscuousMode) == 0
+		sm.IfOutErrors) == 0
 }
 
 func (sm *SFMetric) applyRatio(ratio float64) *SFMetric {
 	return &SFMetric{
 		Start:              sm.Start,
 		Last:               sm.Last,
-		IfIndex:            int64(float64(sm.IfIndex) * ratio),
-		IfType:             int64(float64(sm.IfType) * ratio),
-		IfSpeed:            int64(float64(sm.IfSpeed) * ratio),
-		IfDirection:        int64(float64(sm.IfDirection) * ratio),
-		IfStatus:           int64(float64(sm.IfStatus) * ratio),
 		IfInOctets:         int64(float64(sm.IfInOctets) * ratio),
 		IfInUcastPkts:      int64(float64(sm.IfInUcastPkts) * ratio),
 		IfInMulticastPkts:  int64(float64(sm.IfInMulticastPkts) * ratio),
@@ -298,7 +257,6 @@ func (sm *SFMetric) applyRatio(ratio float64) *SFMetric {
 		IfOutBroadcastPkts: int64(float64(sm.IfOutBroadcastPkts) * ratio),
 		IfOutDiscards:      int64(float64(sm.IfOutDiscards) * ratio),
 		IfOutErrors:        int64(float64(sm.IfOutErrors) * ratio),
-		IfPromiscuousMode:  int64(float64(sm.IfPromiscuousMode) * ratio),
 	}
 }
 
