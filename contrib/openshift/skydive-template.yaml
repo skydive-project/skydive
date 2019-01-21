@@ -4,25 +4,6 @@ metadata:
   name: skydive
 objects:
 - apiVersion: v1
-  kind: ConfigMap
-  metadata:
-    labels:
-      app: skydive-analyzer
-    name: skydive-analyzer-config
-  data:
-    SKYDIVE_ANALYZER_FLOW_BACKEND: elasticsearch
-    SKYDIVE_ANALYZER_TOPOLOGY_BACKEND: elasticsearch
-    SKYDIVE_ANALYZER_TOPOLOGY_PROBES: ""
-    SKYDIVE_ETCD_LISTEN: 0.0.0.0:12379
-- apiVersion: v1
-  kind: ConfigMap
-  metadata:
-    labels:
-      app: skydive-agent
-    name: skydive-agent-config
-  data:
-    SKYDIVE_AGENT_TOPOLOGY_PROBES: "ovsdb runc docker"
-- apiVersion: v1
   kind: Service
   metadata:
     labels:
@@ -82,9 +63,19 @@ objects:
         - args:
           - analyzer
           - --listen=0.0.0.0:8082
-          envFrom:
-          - configMapRef:
-              name: skydive-analyzer-config
+          env:
+          - name: SKYDIVE_ANALYZER_FLOW_BACKEND
+            value: elasticsearch
+          - name: SKYDIVE_ANALYZER_TOPOLOGY_BACKEND
+            value: elasticsearch
+          - name: SKYDIVE_ANALYZER_TOPOLOGY_PROBES
+            value: ${SKYDIVE_ANALYZER_TOPOLOGY_PROBES}
+          - name: SKYDIVE_ANALYZER_TOPOLOGY_K8S_PROBES
+            value: ${SKYDIVE_ANALYZER_TOPOLOGY_K8S_PROBES}
+          - name: SKYDIVE_ETCD_LISTEN
+            value: 0.0.0.0:12379
+          - name: SKYDIVE_LOGGING_LEVEL
+            value: ${SKYDIVE_LOGGING_LEVEL}
           image: skydive/skydive
           imagePullPolicy: Always
           livenessProbe:
@@ -167,9 +158,12 @@ objects:
           env:
           - name: SKYDIVE_ANALYZERS
             value: $(SKYDIVE_ANALYZER_SERVICE_HOST):$(SKYDIVE_ANALYZER_SERVICE_PORT_API)
-          envFrom:
-          - configMapRef:
-              name: skydive-agent-config
+          - name: SKYDIVE_LOGGING_LEVEL
+            value: ${SKYDIVE_LOGGING_LEVEL}
+          - name: SKYDIVE_AGENT_TOPOLOGY_PROBES
+            value: "ovsdb runc docker"
+          - name: SKYDIVE_RUNC_PATH
+            value: "/run/containerd/runc /run/runc /run/runc-ctrs"
           image: skydive/skydive
           imagePullPolicy: Always
           name: skydive-agent
@@ -180,16 +174,18 @@ objects:
           securityContext:
             privileged: true
           volumeMounts:
-          - mountPath: /var/run/docker.sock
+          - mountPath: /run/docker.sock
             name: docker
-          - mountPath: /host/run
-            name: run
-          - mountPath: /var/run/openvswitch/db.sock
+          - mountPath: /run/netns
+            name: netns
+          - mountPath: /run/openvswitch/db.sock
             name: ovsdb
-          - mountPath: /var/run/runc
+          - mountPath: /run/runc
             name: runc
-          - mountPath: /var/run/runc-ctrs
+          - mountPath: /run/runc-ctrs
             name: runc-ctrs
+          - mountPath: /run/containerd/runc
+            name: containerd-runc
         dnsPolicy: ClusterFirst
         hostNetwork: true
         hostPID: true
@@ -197,11 +193,11 @@ objects:
         terminationGracePeriodSeconds: 30
         volumes:
         - hostPath:
-            path: /var/run/docker.sock
+            path: /run/docker.sock
           name: docker
         - hostPath:
-            path: /var/run/netns
-          name: run
+            path: /run/netns
+          name: netns
         - hostPath:
             path: /run/runc
           name: runc
@@ -209,7 +205,10 @@ objects:
             path: /run/runc-ctrs
           name: runc-ctrs
         - hostPath:
-            path: /var/run/openvswitch/db.sock
+            path: /run/containerd/runc
+          name: containerd-runc
+        - hostPath:
+            path: /run/openvswitch/db.sock
           name: ovsdb
 - apiVersion: v1
   kind: Route
@@ -220,8 +219,26 @@ objects:
   spec:
     port:
       targetPort: api
+    tls:
+      termination: edge
     to:
       kind: Service
       name: skydive-analyzer
       weight: 100
     wildcardPolicy: None
+parameters:
+- description: Loglevel of Skydive agent and analyzer
+  displayName: Loglevel
+  name: SKYDIVE_LOGGING_LEVEL
+  required: true
+  value: INFO
+- description: Topology probes for anaylyser, default is empty. Add 'k8s' to add k8s/openshift objects to skydive
+  displayName: Analyzer topology probes
+  name: SKYDIVE_ANALYZER_TOPOLOGY_PROBES
+  required: false
+  value: ""
+- description: Probes for k8s/openshift, default is empty. If you only want same objects add those objects, for examples "namespace cluster service pod node"
+  displayName: K8s/OpenShift probes
+  name: SKYDIVE_ANALYZER_TOPOLOGY_K8S_PROBES
+  required: false
+  value: ""
