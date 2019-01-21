@@ -502,6 +502,10 @@ var TopologyComponent = {
     isK8SEnabled: function() {
       return app.getConfigValue('k8s_enabled') || (globalVars["probes"].indexOf("k8s") >= 0);
     },
+	
+    isIstioEnabled: function() {
+      return app.getConfigValue('istio_enabled')
+    },
 
     metadataLinks: function(m) {
       var self = this;
@@ -585,6 +589,14 @@ var TopologyComponent = {
       this.addFilterK8s(control, label, this.gremlinK8sTypes(types));
     },
 
+    addFilterIstio: function(control, label, gremlin) {
+      this.addFilter(control, "istio " + label, gremlin);
+    },
+
+    addFilterIstioTypes: function(control, label, types) {
+      this.addFilterIstio(control, label, this.gremlinK8sTypes(types));
+    },
+
     setGremlinFavoritesFromConfig: function() {
       var self = this;
 
@@ -631,6 +643,11 @@ var TopologyComponent = {
 
         self.addFilterK8sTypes(filter, "storage", ["cluster", "namespace", "persistentvolume", "persistentvolumeclaim", "storageclass"]);
         self.addFilterK8sTypes(highlight, "storage", ["persistentvolume", "persistentvolumeclaim", "storageclass"]);
+      }
+
+      if (self.isIstioEnabled()) {
+        self.addFilterIstioTypes(filter, "network", ["cluster", "container", "namespace", "pod", "virtualservice", "gateway"]);
+        self.addFilterIstioTypes(highlight, "network", ["pod", "virtualservice", "gateway"]);
       }
 
       var default_filter = app.getConfigValue('topology.default_filter');
