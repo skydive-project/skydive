@@ -360,13 +360,80 @@ func newInterfaceMetricsFromNetlink(link netlink.Link) *topology.InterfaceMetric
 	}
 }
 
+func (u *NetNsProbe) updateLinkNetNsName(intf *graph.Node, link netlink.Link, metadata graph.Metadata) {
+	var context *common.NetNSContext
+
+	lnsid := link.Attrs().NetNsID
+
+	nodes := u.Graph.GetNodes(graph.Metadata{"Type": "netns"})
+	for _, n := range nodes {
+		if path, err := n.GetFieldString("Path"); err == nil {
+			if u.NsPath != "" {
+				context, err = common.NewNetNsContext(u.NsPath)
+				if err != nil {
+					continue
+				}
+			}
+
+			fd, err := syscall.Open(path, syscall.O_RDONLY, 0)
+
+			if context != nil {
+				context.Close()
+			}
+
+			if err != nil {
+				continue
+			}
+
+			nsid, err := u.handle.GetNetNsIdByFd(fd)
+			syscall.Close(fd)
+
+			if err != nil {
+				continue
+			}
+
+			if lnsid == nsid {
+				if name, err := n.GetFieldString("Name"); err == nil {
+					metadata["LinkNetNsName"] = name
+				}
+
+				return
+			}
+		}
+	}
+}
+
+func (u *NetNsProbe) updateLinkNetNs(intf *graph.Node, link netlink.Link, metadata graph.Metadata) {
+	nnsid := int64(link.Attrs().NetNsID)
+	if nnsid == -1 {
+		return
+	}
+
+	onsid, err := intf.GetFieldInt64("LinkNetNsID")
+	if err != nil {
+		onsid = int64(-1)
+	}
+
+	onsname, _ := intf.GetFieldString("LinkNetNsName")
+
+	if nnsid != onsid {
+		metadata["LinkNetNsID"] = int64(nnsid)
+		metadata["LinkNetNsName"] = ""
+	} else if onsname != "" {
+		return
+	}
+
+	u.updateLinkNetNsName(intf, link, metadata)
+}
+
 func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
-	driver, _ := u.ethtool.DriverName(link.Attrs().Name)
+	attrs := link.Attrs()
+
+	driver, _ := u.ethtool.DriverName(attrs.Name)
 	if driver == "" && link.Type() == "bridge" {
 		driver = "bridge"
 	}
 
-	attrs := link.Attrs()
 	linkType := link.Type()
 
 	// force the veth type when driver if veth as a veth in bridge can have device type
@@ -485,6 +552,8 @@ func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 	u.Lock()
 	u.links[attrs.Name] = intf
 	u.Unlock()
+
+	u.updateLinkNetNs(intf, link, metadata)
 
 	// merge metadata
 	tr := u.Graph.StartMetadataTransaction(intf)
@@ -712,9 +781,11 @@ func (u *NetNsProbe) initialize() {
 	}
 
 	for _, link := range links {
-		logging.GetLogger().Debugf("Initialize ADD %s(%d,%s) within %s", link.Attrs().Name, link.Attrs().Index, link.Type(), u.Root.ID)
+		attrs := link.Attrs()
+
+		logging.GetLogger().Debugf("Initialize ADD %s(%d,%s) within %s", attrs.Name, attrs.Index, link.Type(), u.Root.ID)
 		u.Graph.Lock()
-		if u.Graph.LookupFirstChild(u.Root, graph.Metadata{"Name": link.Attrs().Name, "IfIndex": int64(link.Attrs().Index)}) == nil {
+		if u.Graph.LookupFirstChild(u.Root, graph.Metadata{"Name": attrs.Name, "IfIndex": int64(attrs.Index)}) == nil {
 			u.addLinkToTopology(link)
 		}
 		u.Graph.Unlock()
@@ -844,7 +915,18 @@ func (u *NetNsProbe) updateIntfMetric(now, last time.Time) {
 	}
 }
 
-func (u *NetNsProbe) updateIntfFeatures() {
+func (u *NetNsProbe) updateIntfFeatures(name string, metadata graph.Metadata) {
+	features, err := u.ethtool.Features(name)
+	if err != nil {
+		logging.GetLogger().Warningf("Unable to retrieve feature of %s: %s", name, err)
+	}
+
+	if len(features) > 0 {
+		metadata["Features"] = features
+	}
+}
+
+func (u *NetNsProbe) updateIntfs() {
 	for name, node := range u.cloneLinkNodes() {
 		u.Graph.RLock()
 		driver, _ := node.GetFieldString("Driver")
@@ -854,18 +936,22 @@ func (u *NetNsProbe) updateIntfFeatures() {
 			continue
 		}
 
-		features, err := u.ethtool.Features(name)
-		if err != nil {
-			logging.GetLogger().Warningf("Unable to retrieve feature of %s: %s", name, err)
+		metadata := make(graph.Metadata)
+		u.updateIntfFeatures(name, metadata)
+
+		if link, err := u.handle.LinkByName(name); err == nil {
+			u.Graph.RLock()
+			u.updateLinkNetNs(node, link, metadata)
+			u.Graph.RUnlock()
 		}
 
-		if len(features) > 0 {
-			u.Graph.Lock()
-			if err := u.Graph.AddMetadata(node, "Features", features); err != nil {
-				logging.GetLogger().Error(err)
-			}
-			u.Graph.Unlock()
+		u.Graph.Lock()
+		tr := u.Graph.StartMetadataTransaction(node)
+		for k, v := range metadata {
+			tr.AddMetadata(k, v)
 		}
+		tr.Commit()
+		u.Graph.Unlock()
 	}
 }
 
@@ -902,14 +988,14 @@ Ready:
 	metricTicker := time.NewTicker(time.Duration(seconds) * time.Second)
 	defer metricTicker.Stop()
 
-	featureTicker := time.NewTicker(5 * time.Second)
-	defer featureTicker.Stop()
+	updateIntfsTicker := time.NewTicker(5 * time.Second)
+	defer updateIntfsTicker.Stop()
 
 	last := time.Now().UTC()
 	for {
 		select {
-		case <-featureTicker.C:
-			u.updateIntfFeatures()
+		case <-updateIntfsTicker.C:
+			u.updateIntfs()
 		case t := <-metricTicker.C:
 			now := t.UTC()
 			u.updateIntfMetric(now, last)
