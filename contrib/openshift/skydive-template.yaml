@@ -237,7 +237,7 @@ parameters:
   name: SKYDIVE_ANALYZER_TOPOLOGY_PROBES
   required: false
   value: ""
-- description: Probes for k8s/openshift, default is empty. If you only want same objects add those objects, for examples "cluster service pod node"
+- description: Probes for k8s/openshift, default is empty. If you only want same objects add those objects, for examples "namespace cluster service pod node"
   displayName: K8s/OpenShift probes
   name: SKYDIVE_ANALYZER_TOPOLOGY_K8S_PROBES
   required: false
