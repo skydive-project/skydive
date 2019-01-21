@@ -28,6 +28,8 @@ import (
 	"os"
 	"strings"
 
+        "github.com/Jaganathancse/openstack-nfv-params/openstacknfv"
+
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/host"
 
@@ -50,6 +52,19 @@ type CPUInfo struct {
 	Mhz        int64  `json:"Mhz,omitempty"`
 	CacheSize  int64  `json:"CacheSize,omitempty"`
 	Microcode  string `json:"Microcode,omitempty"`
+}
+
+// Openstack NFV parameters
+type OpenstackNfvParams struct {
+        Role string
+        OvsPmdCoreList string         `json:"OvsPmdCoreList,omitempty"`
+        OvsDpdkSocketMemory string    `json:"OvsDPDKSocketMemory,omitempty"`
+        IsolCpusList string           `json:"IsolCpusList,omitempty"`
+        OvsDpdkMemoryChannels string  `json:"OvsDpdkMemoryChannels,omitempty"`
+        KernelArgs string             `json:"KernelArgs,omitempty"`
+        NovaReservedHostMemory int    `json:"NovaReservedHostMemory,omitempty"`
+        NovaVcpuPinSet string         `json:"NovaVcpuPinSet,omitempty"`
+        HostCpusList string           `json:"HostCpusList,omitempty"`
 }
 
 // createRootNode creates a graph.Node based on the host properties and aims to have an unique ID
@@ -106,6 +121,38 @@ func createRootNode(g *graph.Graph) (*graph.Node, error) {
 	}
 
 	m.SetField("CPU", cpus)
+
+        // Gets Openstack NFV parameters
+        opentackNfv, err := openstacknfv.GetOpenstackNfvParams()
+        if err == nil {
+            var params *OpenstackNfvParams
+            if (opentackNfv.ovsDpdkParams != nil && 
+                opentackNfv.hostParams != nil) {
+                 params = &OpenstackNfvParams{
+                      Role: opentackNfv.role,
+                      OvsPmdCoreList: opentackNfv.ovsDpdkParams.PmdCpus,
+                      OvsDpdkSocketMemory: opentackNfv.ovsDpdkParams.SocketMemory,
+                      OvsDpdkMemoryChannels: opentackNfv.ovsDpdkParams.MemoryChannels,
+                      HostCpusList: opentackNfv.ovsDpdkParams.HostCpus,
+                      IsolCpusList: opentackNfv.hostParams.IsolCpus,
+                      KernelArgs: opentackNfv.hostParams.KernelArgs,
+                      NovaReservedHostMemory: opentackNfv.hostParams.NovaReservedMemory,
+                      NovaVcpuPinSet: opentackNfv.hostParams.NovaCpus,
+                 }
+            } else if (opentackNfv.ovsDpdkParams == nil &&
+                       opentackNfv.hostParams != nil) {
+                 params = &OpenstackNfvParams{
+                      Role: opentackNfv.role,
+                      IsolCpusList: opentackNfv.hostParams.IsolCpus,
+                      KernelArgs: opentackNfv.hostParams.KernelArgs,
+                      NovaReservedHostMemory: opentackNfv.hostParams.NovaReservedMemory,
+                      NovaVcpuPinSet: opentackNfv.hostParams.NovaCpus,
+                 }
+            }
+            m.SetField("Openstack", params)
+        } else {
+                logging.GetLogger().Warningf("Unable to determine Openstack NFV parameters")
+        }
 
 	hostInfo, err := host.Info()
 	if err != nil {

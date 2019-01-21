@@ -38,6 +38,16 @@
 			"revision": "fff283ad5116362ca252298cfc9b95828956d85d",
 			"revisionTime": "2017-02-01T00:43:30Z"
 		},
+                {
+                        "checksumSHA1": "cy+uvqhBOOCkvnGZYQBLV5U0d+c=",
+                        "path": "github.com/Jaganathancse/openstack-nfv-params",
+                        "revision": "3b400903929295c9c05f7b1c2e451eb1420dfefe",
+                        "revisionTime": "2018-12-14T07:59:34Z"
+                },
+                {
+                        "path": "github.com/Jaganathancse/openstack-nfv-params/openstacknfv",
+                        "revision": ""
+                },
 		{
 			"checksumSHA1": "nJrp/CKnvpO+vzTfOeR8qmzRZ4c=",
 			"path": "github.com/PuerkitoBio/purell",
