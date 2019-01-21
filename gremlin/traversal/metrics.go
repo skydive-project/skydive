@@ -43,6 +43,7 @@ type MetricsTraversalExtension struct {
 // MetricsGremlinTraversalStep describes the Metrics gremlin traversal step
 type MetricsGremlinTraversalStep struct {
 	traversal.GremlinTraversalContext
+	key string
 }
 
 // NewMetricsTraversalExtension returns a new graph traversal extension
@@ -65,16 +66,40 @@ func (e *MetricsTraversalExtension) ScanIdent(s string) (traversal.Token, bool) 
 func (e *MetricsTraversalExtension) ParseStep(t traversal.Token, p traversal.GremlinTraversalContext) (traversal.GremlinTraversalStep, error) {
 	switch t {
 	case e.MetricsToken:
-		return &MetricsGremlinTraversalStep{GremlinTraversalContext: p}, nil
+	default:
+		return nil, nil
 	}
-	return nil, nil
+	var key string
+	switch len(p.Params) {
+	case 0:
+		key = "LastUpdateMetric"
+	case 1:
+		k, ok := p.Params[0].(string)
+		if !ok {
+			return nil, errors.New("Metrics parameter have to be a string")
+		}
+		switch k {
+		case "LastUpdateMetric", "SFlow.LastUpdateMetric", "sflow":
+		default:
+			return nil, fmt.Errorf("Metric field unknown : %v", p.Params)
+		}
+		if k == "sflow" {
+			key = "SFlow.LastUpdateMetric"
+		} else {
+			key = k
+		}
+	default:
+		return nil, fmt.Errorf("Metrics accepts one parameter : %v", p.Params)
+	}
+
+	return &MetricsGremlinTraversalStep{GremlinTraversalContext: p, key: key}, nil
 }
 
 // Exec executes the metrics step
 func (s *MetricsGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
 	switch tv := last.(type) {
 	case *traversal.GraphTraversalV:
-		return InterfaceMetrics(s.StepContext, tv), nil
+		return InterfaceMetrics(s.StepContext, tv, s.key), nil
 	case *FlowTraversalStep:
 		return tv.FlowMetrics(s.StepContext), nil
 	}

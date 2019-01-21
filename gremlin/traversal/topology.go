@@ -23,7 +23,6 @@
 package traversal
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/skydive-project/skydive/common"
@@ -35,12 +34,15 @@ import (
 )
 
 // InterfaceMetrics returns a Metrics step from interface metric metadata
-func InterfaceMetrics(ctx traversal.StepContext, tv *traversal.GraphTraversalV) *MetricsTraversalStep {
+func InterfaceMetrics(ctx traversal.StepContext, tv *traversal.GraphTraversalV, key string) *MetricsTraversalStep {
 	if tv.Error() != nil {
 		return NewMetricsTraversalStepFromError(tv.Error())
 	}
 
-	tv = tv.Dedup(ctx, "ID", "LastUpdateMetric.Start", "SFlow.LastUpdateMetric.Start").Sort(ctx, common.SortAscending, "LastUpdateMetric.Start")
+	startField := key + ".Start"
+
+	tv = tv.Dedup(ctx, "ID", startField).Sort(ctx, common.SortAscending, startField)
+
 	if tv.Error() != nil {
 		return NewMetricsTraversalStepFromError(tv.Error())
 	}
@@ -58,24 +60,19 @@ nodeloop:
 			break nodeloop
 		}
 
-		m, _ := n.GetField("LastUpdateMetric")
-		if m == nil {
-			sf, _ := n.GetField("SFlow.LastUpdateMetric")
-			if sf == nil {
-				continue
-			}
-			sflastMetric, ok := sf.(*sflow.SFMetric)
+		m, _ := n.GetField(key)
+		lastMetric, ok := m.(*topology.InterfaceMetric)
+
+		if !ok {
+			sflastMetric, ok := m.(*sflow.SFMetric)
+
 			if !ok {
-				return NewMetricsTraversalStepFromError(errors.New("wrong interface metric type"))
+				continue
 			}
 			if gslice == nil || (sflastMetric.Start > gslice.Start && sflastMetric.Last < gslice.Last) && it.Next() {
 				metrics[string(n.ID)] = append(metrics[string(n.ID)], sflastMetric)
 			}
 		} else {
-			lastMetric, ok := m.(*topology.InterfaceMetric)
-			if !ok {
-				return NewMetricsTraversalStepFromError(errors.New("wrong interface metric type"))
-			}
 			if gslice == nil || (lastMetric.Start > gslice.Start && lastMetric.Last < gslice.Last) && it.Next() {
 				metrics[string(n.ID)] = append(metrics[string(n.ID)], lastMetric)
 			}
