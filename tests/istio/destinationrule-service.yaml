@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: skydive-test-destinationrule-service
+  labels:
+    app: reviews.prod.svc.cluster.local
+spec:
+  ports:
+  - port: 9080
+    name: http
+  selector:
+    app: reviews.prod.svc.cluster.local
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: skydive-test-destinationrule-service
+spec:
+  host: reviews.prod.svc.cluster.local
+  subsets:
+  - name: v1
+    labels:
+      version: v1

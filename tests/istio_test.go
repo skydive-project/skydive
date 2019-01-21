@@ -22,7 +22,6 @@ package tests
 import (
 	"testing"
 
-	"github.com/skydive-project/skydive/graffiti/graph"
 	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/topology/probes/istio"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
@@ -53,10 +52,6 @@ func TestIstioVirtualServiceNode(t *testing.T) {
 	testNodeCreationFromConfig(t, istio.Manager, "virtualservice", objName+"-virtualservice")
 }
 
-func checkEdgeVirtualService(t *testing.T, c *CheckContext, from, to *graph.Node, edgeArgs ...interface{}) error {
-	return checkEdge(t, c, from, to, "virtualservice", edgeArgs...)
-}
-
 func TestIstioVirtualServicePodScenario(t *testing.T) {
 	file := "virtualservice-pod"
 	name := objName + "-" + file
@@ -70,15 +65,37 @@ func TestIstioVirtualServicePodScenario(t *testing.T) {
 				if err != nil {
 					return err
 				}
-				_, err = checkNodeCreation(t, c, istio.Manager, "destinationrule", name)
-				if err != nil {
-					return err
-				}
 				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", name)
 				if err != nil {
 					return err
 				}
-				if err = checkEdgeVirtualService(t, c, virtualservice, pod); err != nil {
+				if err = checkEdge(t, c, virtualservice, pod, "virtualservice"); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+	)
+}
+
+func TestIstioDestinationRuleServiceScenario(t *testing.T) {
+	file := "destinationrule-service"
+	name := objName + "-" + file
+	testRunner(
+		t,
+		setupFromConfigFile(istio.Manager, file),
+		tearDownFromConfigFile(istio.Manager, file),
+		[]CheckFunction{
+			func(c *CheckContext) error {
+				destinationrule, err := checkNodeCreation(t, c, istio.Manager, "destinationrule", name)
+				if err != nil {
+					return err
+				}
+				service, err := checkNodeCreation(t, c, k8s.Manager, "service", name)
+				if err != nil {
+					return err
+				}
+				if err = checkEdge(t, c, destinationrule, service, "destinationrule"); err != nil {
 					return err
 				}
 				return nil
@@ -160,14 +177,6 @@ func TestBookInfoScenario(t *testing.T) {
 				// check edges exist
 
 				if err = checkEdge(t, c, vs, podProductpage, "virtualservice"); err != nil {
-					return err
-				}
-
-				if err = checkEdge(t, c, vs, serviceProductpage, "virtualservice"); err != nil {
-					return err
-				}
-
-				if err = checkEdge(t, c, vs, drProductpage, "virtualservice"); err != nil {
 					return err
 				}
 
