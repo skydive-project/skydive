@@ -99,6 +99,23 @@ type SFMetric struct {
 	IfOutBroadcastPkts int64 `json:"IfOutBroadcastPkts,omitempty"`
 	IfOutDiscards      int64 `json:"IfOutDiscards,omitempty"`
 	IfOutErrors        int64 `json:"IfOutErrors,omitempty"`
+	OvsdpNHit          int64 `json:"OvsdpNHit,omitempty"`
+	OvsdpNMissed       int64 `json:"OvsdpNMissed,omitempty"`
+	OvsdpNLost         int64 `json:"OvsdpNLost,omitempty"`
+	OvsdpNMaskHit      int64 `json:"OvsdpNMaskHit,omitempty"`
+	OvsdpNFlows        int64 `json:"OvsdpNFlows,omitempty"`
+	OvsdpNMasks        int64 `json:"OvsdpNMasks,omitempty"`
+	OvsAppFdOpen       int64 `json:"OvsAppFdOpen,omitempty"`
+	OvsAppFdMax        int64 `json:"OvsAppFdMax,omitempty"`
+	OvsAppConnOpen     int64 `json:"OvsAppConnOpen,omitempty"`
+	OvsAppConnMax      int64 `json:"OvsAppConnMax,omitempty"`
+	OvsAppMemUsed      int64 `json:"OvsAppMemUsed,omitempty"`
+	OvsAppMemMax       int64 `json:"OvsAppMemMax,omitempty"`
+	VlanOctets         int64 `json:"VlanOctets,omitempty"`
+	VlanUcastPkts      int64 `json:"VlanUcastPkts,omitempty"`
+	VlanMulticastPkts  int64 `json:"VlanMulticastPkts,omitempty"`
+	VlanBroadcastPkts  int64 `json:"VlanBroadcastPkts,omitempty"`
+	VlanDiscards       int64 `json:"VlanDiscards,omitempty"`
 }
 
 // GetStart returns start time
@@ -154,6 +171,40 @@ func (sm *SFMetric) GetFieldInt64(field string) (int64, error) {
 		return sm.IfOutDiscards, nil
 	case "IfOutErrors":
 		return sm.IfOutErrors, nil
+	case "OvsdpNHit":
+		return sm.OvsdpNHit, nil
+	case "OvsdpNMissed":
+		return sm.OvsdpNMissed, nil
+	case "OvsdpNLost":
+		return sm.OvsdpNLost, nil
+	case "OvsdpNMaskHit":
+		return sm.OvsdpNMaskHit, nil
+	case "OvsdpNFlows":
+		return sm.OvsdpNFlows, nil
+	case "OvsdpNMasks":
+		return sm.OvsdpNMasks, nil
+	case "OvsAppFdOpen":
+		return sm.OvsAppFdOpen, nil
+	case "OvsAppFdMax":
+		return sm.OvsAppFdMax, nil
+	case "OvsAppConnOpen":
+		return sm.OvsAppConnOpen, nil
+	case "OvsAppConnMax":
+		return sm.OvsAppConnMax, nil
+	case "OvsAppMemUsed":
+		return sm.OvsAppMemUsed, nil
+	case "OvsAppMemMax":
+		return sm.OvsAppMemMax, nil
+	case "VlanOctets":
+		return sm.VlanOctets, nil
+	case "VlanUcastPkts":
+		return sm.VlanUcastPkts, nil
+	case "VlanMulticastPkts":
+		return sm.VlanMulticastPkts, nil
+	case "VlanBroadcastPkts":
+		return sm.VlanBroadcastPkts, nil
+	case "VlanDiscards":
+		return sm.VlanDiscards, nil
 	}
 
 	return 0, common.ErrFieldNotFound
@@ -171,7 +222,6 @@ func (sm *SFMetric) GetFieldString(key string) (string, error) {
 
 // Add sum two metrics and return a new Metrics object
 func (sm *SFMetric) Add(m common.Metric) common.Metric {
-	om := m.(*SFMetric)
 	om, ok := m.(*SFMetric)
 	if !ok {
 		return sm
@@ -193,6 +243,23 @@ func (sm *SFMetric) Add(m common.Metric) common.Metric {
 		IfOutBroadcastPkts: sm.IfOutBroadcastPkts + om.IfOutBroadcastPkts,
 		IfOutDiscards:      sm.IfOutDiscards + om.IfOutDiscards,
 		IfOutErrors:        sm.IfOutErrors + om.IfOutErrors,
+		OvsdpNHit:          sm.OvsdpNHit + om.OvsdpNHit,
+		OvsdpNMissed:       sm.OvsdpNMissed + om.OvsdpNMissed,
+		OvsdpNLost:         sm.OvsdpNLost + om.OvsdpNLost,
+		OvsdpNMaskHit:      sm.OvsdpNMaskHit + om.OvsdpNMaskHit,
+		OvsdpNFlows:        sm.OvsdpNFlows + om.OvsdpNFlows,
+		OvsdpNMasks:        sm.OvsdpNMasks + om.OvsdpNMasks,
+		OvsAppFdOpen:       sm.OvsAppFdOpen + om.OvsAppFdOpen,
+		OvsAppFdMax:        sm.OvsAppFdMax + om.OvsAppFdMax,
+		OvsAppConnOpen:     sm.OvsAppConnOpen + om.OvsAppConnOpen,
+		OvsAppConnMax:      sm.OvsAppConnMax + om.OvsAppConnMax,
+		OvsAppMemUsed:      sm.OvsAppMemUsed + om.OvsAppMemUsed,
+		OvsAppMemMax:       sm.OvsAppMemMax + om.OvsAppMemMax,
+		VlanOctets:         sm.VlanOctets + om.VlanOctets,
+		VlanUcastPkts:      sm.VlanUcastPkts + om.VlanUcastPkts,
+		VlanMulticastPkts:  sm.VlanMulticastPkts + om.VlanMulticastPkts,
+		VlanBroadcastPkts:  sm.VlanBroadcastPkts + om.VlanBroadcastPkts,
+		VlanDiscards:       sm.VlanDiscards + om.VlanDiscards,
 	}
 }
 
@@ -219,6 +286,23 @@ func (sm *SFMetric) Sub(m common.Metric) common.Metric {
 		IfOutBroadcastPkts: sm.IfOutBroadcastPkts - om.IfOutBroadcastPkts,
 		IfOutDiscards:      sm.IfOutDiscards - om.IfOutDiscards,
 		IfOutErrors:        sm.IfOutErrors - om.IfOutErrors,
+		OvsdpNHit:          sm.OvsdpNHit - om.OvsdpNHit,
+		OvsdpNMissed:       sm.OvsdpNMissed - om.OvsdpNMissed,
+		OvsdpNLost:         sm.OvsdpNLost - om.OvsdpNLost,
+		OvsdpNMaskHit:      sm.OvsdpNMaskHit - om.OvsdpNMaskHit,
+		OvsdpNFlows:        sm.OvsdpNFlows - om.OvsdpNFlows,
+		OvsdpNMasks:        sm.OvsdpNMasks - om.OvsdpNMasks,
+		OvsAppFdOpen:       sm.OvsAppFdOpen - om.OvsAppFdOpen,
+		OvsAppFdMax:        sm.OvsAppFdMax - om.OvsAppFdMax,
+		OvsAppConnOpen:     sm.OvsAppConnOpen - om.OvsAppConnOpen,
+		OvsAppConnMax:      sm.OvsAppConnMax - om.OvsAppConnMax,
+		OvsAppMemUsed:      sm.OvsAppMemUsed - om.OvsAppMemUsed,
+		OvsAppMemMax:       sm.OvsAppMemMax - om.OvsAppMemMax,
+		VlanOctets:         sm.VlanOctets - om.VlanOctets,
+		VlanUcastPkts:      sm.VlanUcastPkts - om.VlanUcastPkts,
+		VlanMulticastPkts:  sm.VlanMulticastPkts - om.VlanMulticastPkts,
+		VlanBroadcastPkts:  sm.VlanBroadcastPkts - om.VlanBroadcastPkts,
+		VlanDiscards:       sm.VlanDiscards - om.VlanDiscards,
 	}
 }
 
@@ -237,7 +321,24 @@ func (sm *SFMetric) IsZero() bool {
 		sm.IfOutMulticastPkts +
 		sm.IfOutBroadcastPkts +
 		sm.IfOutDiscards +
-		sm.IfOutErrors) == 0
+		sm.IfOutErrors +
+		sm.OvsdpNHit +
+		sm.OvsdpNMissed +
+		sm.OvsdpNLost +
+		sm.OvsdpNMaskHit +
+		sm.OvsdpNFlows +
+		sm.OvsdpNMasks +
+		sm.OvsAppFdOpen +
+		sm.OvsAppFdMax +
+		sm.OvsAppConnOpen +
+		sm.OvsAppConnMax +
+		sm.OvsAppMemUsed +
+		sm.OvsAppMemMax +
+		sm.VlanOctets +
+		sm.VlanUcastPkts +
+		sm.VlanMulticastPkts +
+		sm.VlanBroadcastPkts +
+		sm.VlanDiscards) == 0
 }
 
 func (sm *SFMetric) applyRatio(ratio float64) *SFMetric {
@@ -257,6 +358,23 @@ func (sm *SFMetric) applyRatio(ratio float64) *SFMetric {
 		IfOutBroadcastPkts: int64(float64(sm.IfOutBroadcastPkts) * ratio),
 		IfOutDiscards:      int64(float64(sm.IfOutDiscards) * ratio),
 		IfOutErrors:        int64(float64(sm.IfOutErrors) * ratio),
+		OvsdpNHit:          int64(float64(sm.OvsdpNHit) * ratio),
+		OvsdpNMissed:       int64(float64(sm.OvsdpNMissed) * ratio),
+		OvsdpNLost:         int64(float64(sm.OvsdpNLost) * ratio),
+		OvsdpNMaskHit:      int64(float64(sm.OvsdpNMaskHit) * ratio),
+		OvsdpNFlows:        int64(float64(sm.OvsdpNFlows) * ratio),
+		OvsdpNMasks:        int64(float64(sm.OvsdpNMasks) * ratio),
+		OvsAppFdOpen:       int64(float64(sm.OvsAppFdOpen) * ratio),
+		OvsAppFdMax:        int64(float64(sm.OvsAppFdMax) * ratio),
+		OvsAppConnOpen:     int64(float64(sm.OvsAppConnOpen) * ratio),
+		OvsAppConnMax:      int64(float64(sm.OvsAppConnMax) * ratio),
+		OvsAppMemUsed:      int64(float64(sm.OvsAppMemUsed) * ratio),
+		OvsAppMemMax:       int64(float64(sm.OvsAppMemMax) * ratio),
+		VlanOctets:         int64(float64(sm.VlanOctets) * ratio),
+		VlanUcastPkts:      int64(float64(sm.VlanUcastPkts) * ratio),
+		VlanMulticastPkts:  int64(float64(sm.VlanMulticastPkts) * ratio),
+		VlanBroadcastPkts:  int64(float64(sm.VlanBroadcastPkts) * ratio),
+		VlanDiscards:       int64(float64(sm.VlanDiscards) * ratio),
 	}
 }
 
@@ -279,13 +397,13 @@ func (sm *SFMetric) Split(cut int64) (common.Metric, common.Metric) {
 	ratio1 := float64(cut-sm.Start) / duration
 	ratio2 := float64(sm.Last-cut) / duration
 
-	m1 := sm.applyRatio(ratio1)
-	m1.Last = cut
+	sm1 := sm.applyRatio(ratio1)
+	sm1.Last = cut
 
-	m2 := sm.applyRatio(ratio2)
-	m2.Start = cut
+	sm2 := sm.applyRatio(ratio2)
+	sm2.Start = cut
 
-	return m1, m2
+	return sm1, sm2
 }
 
 // GetFieldKeys implements Getter and Metrics interfaces

@@ -111,75 +111,105 @@ func (sfa *Agent) feedFlowTable() {
 			// SFlow Counter Samples
 			Countersamples := sflowPacket.CounterSamples
 
+			var gen layers.SFlowGenericInterfaceCounters
+			var ovsdp layers.SFlowOVSDPCounters
+			var app layers.SFlowAppresourcesCounters
+			var vlan layers.SFlowVLANCounters
+
 			for _, sample := range sflowPacket.CounterSamples {
 				records := sample.GetRecords()
 
 				for _, record := range records {
 					switch record.(type) {
 					case layers.SFlowGenericInterfaceCounters:
-						gen := record.(layers.SFlowGenericInterfaceCounters) //Adding Generic Interface Counters
-						tr := sfa.Graph.StartMetadataTransaction(sfa.Node)
-						Uint64ToInt64 := func(key uint64) int64 {
-							if key == 18446744073709551615 {
-								key = 0
-							}
-							return int64(float64(key))
-						}
-						Uint32ToInt64 := func(key uint32) int64 {
-							if key == 4294967295 {
-								key = 0
-							}
-							return int64(float64(key))
-						}
-						currMetric := &SFMetric{
-							IfInOctets:         Uint64ToInt64(gen.IfInOctets),
-							IfInUcastPkts:      Uint32ToInt64(gen.IfInUcastPkts),
-							IfInMulticastPkts:  Uint32ToInt64(gen.IfInMulticastPkts),
-							IfInBroadcastPkts:  Uint32ToInt64(gen.IfInBroadcastPkts),
-							IfInDiscards:       Uint32ToInt64(gen.IfInDiscards),
-							IfInErrors:         Uint32ToInt64(gen.IfInErrors),
-							IfInUnknownProtos:  Uint32ToInt64(gen.IfInUnknownProtos),
-							IfOutOctets:        Uint64ToInt64(gen.IfOutOctets),
-							IfOutUcastPkts:     Uint32ToInt64(gen.IfOutUcastPkts),
-							IfOutMulticastPkts: Uint32ToInt64(gen.IfOutMulticastPkts),
-							IfOutBroadcastPkts: Uint32ToInt64(gen.IfOutBroadcastPkts),
-							IfOutDiscards:      Uint32ToInt64(gen.IfOutDiscards),
-							IfOutErrors:        Uint32ToInt64(gen.IfOutErrors),
-						}
-						now := time.Now()
-
-						currMetric.Last = int64(common.UnixMillis(now))
-
-						var prevMetric, lastUpdateMetric, totalMetric *SFMetric
-
-						if metric, err := sfa.Node.GetField("SFlow.Metric"); err == nil {
-							prevMetric = metric.(*SFMetric)
-							lastUpdateMetric = currMetric
-							totalMetric = currMetric.Add(prevMetric).(*SFMetric)
-							totalMetric.Last = int64(common.UnixMillis(now))
-						} else {
-							totalMetric = currMetric
-						}
-
-						// nothing changed since last update
-						if lastUpdateMetric != nil && !lastUpdateMetric.IsZero() {
-							lastUpdateMetric.Start = prevMetric.Last
-							lastUpdateMetric.Last = int64(common.UnixMillis(now))
-						} else {
-							lastUpdateMetric = currMetric
-						}
-
-						sfl := &SFlow{
-							Counters:         Countersamples,
-							Metric:           totalMetric,
-							LastUpdateMetric: lastUpdateMetric,
-						}
-
-						tr.AddMetadata("SFlow", sfl)
-						tr.Commit()
+						gen = record.(layers.SFlowGenericInterfaceCounters) //Adding Generic Interface Counters
+					case layers.SFlowOVSDPCounters:
+						ovsdp = record.(layers.SFlowOVSDPCounters) //Adding OVSDP Counters
+					case layers.SFlowAppresourcesCounters:
+						app = record.(layers.SFlowAppresourcesCounters) //Adding OVSAppresources Counters
+					case layers.SFlowVLANCounters:
+						vlan = record.(layers.SFlowVLANCounters) //Adding Vlan Counters
 					}
 				}
 			}
+			tr := sfa.Graph.StartMetadataTransaction(sfa.Node)
+
+			Uint64ToInt64 := func(key uint64) int64 {
+				if key == 18446744073709551615 {
+					key = 0
+				}
+				return int64(float64(key))
+			}
+			Uint32ToInt64 := func(key uint32) int64 {
+				if key == 4294967295 {
+					key = 0
+				}
+				return int64(float64(key))
+			}
+			currMetric := &SFMetric{
+				IfInOctets:         Uint64ToInt64(gen.IfInOctets),
+				IfInUcastPkts:      Uint32ToInt64(gen.IfInUcastPkts),
+				IfInMulticastPkts:  Uint32ToInt64(gen.IfInMulticastPkts),
+				IfInBroadcastPkts:  Uint32ToInt64(gen.IfInBroadcastPkts),
+				IfInDiscards:       Uint32ToInt64(gen.IfInDiscards),
+				IfInErrors:         Uint32ToInt64(gen.IfInErrors),
+				IfInUnknownProtos:  Uint32ToInt64(gen.IfInUnknownProtos),
+				IfOutOctets:        Uint64ToInt64(gen.IfOutOctets),
+				IfOutUcastPkts:     Uint32ToInt64(gen.IfOutUcastPkts),
+				IfOutMulticastPkts: Uint32ToInt64(gen.IfOutMulticastPkts),
+				IfOutBroadcastPkts: Uint32ToInt64(gen.IfOutBroadcastPkts),
+				IfOutDiscards:      Uint32ToInt64(gen.IfOutDiscards),
+				IfOutErrors:        Uint32ToInt64(gen.IfOutErrors),
+				OvsdpNHit:          Uint32ToInt64(ovsdp.NHit),
+				OvsdpNMissed:       Uint32ToInt64(ovsdp.NMissed),
+				OvsdpNLost:         Uint32ToInt64(ovsdp.NLost),
+				OvsdpNMaskHit:      Uint32ToInt64(ovsdp.NMaskHit),
+				OvsdpNFlows:        Uint32ToInt64(ovsdp.NFlows),
+				OvsdpNMasks:        Uint32ToInt64(ovsdp.NMasks),
+				OvsAppFdOpen:       Uint32ToInt64(app.FdOpen),
+				OvsAppFdMax:        Uint32ToInt64(app.FdMax),
+				OvsAppConnOpen:     Uint32ToInt64(app.ConnOpen),
+				OvsAppConnMax:      Uint32ToInt64(app.ConnMax),
+				OvsAppMemUsed:      Uint64ToInt64(app.MemUsed),
+				OvsAppMemMax:       Uint64ToInt64(app.MemMax),
+				VlanOctets:         Uint64ToInt64(vlan.Octets),
+				VlanUcastPkts:      Uint32ToInt64(vlan.UcastPkts),
+				VlanMulticastPkts:  Uint32ToInt64(vlan.MulticastPkts),
+				VlanBroadcastPkts:  Uint32ToInt64(vlan.BroadcastPkts),
+				VlanDiscards:       Uint32ToInt64(vlan.Discards),
+			}
+			now := time.Now()
+
+			currMetric.Last = int64(common.UnixMillis(now))
+
+			var prevMetric, lastUpdateMetric, totalMetric *SFMetric
+
+			if metric, err := sfa.Node.GetField("SFlow.Metric"); err == nil {
+				prevMetric = metric.(*SFMetric)
+				lastUpdateMetric = currMetric
+				totalMetric = currMetric.Add(prevMetric).(*SFMetric)
+				totalMetric.Last = int64(common.UnixMillis(now))
+			} else {
+				totalMetric = currMetric
+			}
+
+			// nothing changed since last update
+			if lastUpdateMetric != nil && !lastUpdateMetric.IsZero() {
+				lastUpdateMetric.Start = prevMetric.Last
+				lastUpdateMetric.Last = int64(common.UnixMillis(now))
+			} else {
+				lastUpdateMetric = currMetric
+			}
+
+			sfl := &SFlow{
+				Counters:         Countersamples,
+				Metric:           totalMetric,
+				LastUpdateMetric: lastUpdateMetric,
+			}
+
+			tr.AddMetadata("SFlow", sfl)
+
+			tr.Commit()
 		}
 
 	}
