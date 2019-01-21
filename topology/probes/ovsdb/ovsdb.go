@@ -113,6 +113,15 @@ func (o *Probe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libo
 	for k, v := range otherConfig.GoMap {
 		tr.AddMetadata("Ovs.OtherConfig."+k.(string), v.(string))
 	}
+
+	if protocolSet, ok := row.New.Fields["protocols"].(libovsdb.OvsSet); ok {
+		protocols := make([]string, len(protocolSet.GoSet))
+		for i, protocol := range protocolSet.GoSet {
+			protocols[i] = protocol.(string)
+		}
+		tr.AddMetadata("Ovs.Protocols", protocols)
+	}
+
 	tr.Commit()
 
 	switch row.New.Fields["ports"].(type) {
