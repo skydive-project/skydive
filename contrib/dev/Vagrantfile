@@ -117,7 +117,7 @@ EOF
 SCRIPT
 
 def fedora_box(override, type)
-  major = "27"
+  major = "29"
   override.vm.box = "fedora/#{major}-cloud-base"
 end
 
