@@ -344,6 +344,52 @@ func TestNameSpaceVeth(t *testing.T) {
 	RunTest(t, test)
 }
 
+func TestNameSpaceTwoVeth(t *testing.T) {
+	test := &Test{
+		setupCmds: []Cmd{
+			{"ip netns add ns1", true},
+			{"ip netns add ns2", true},
+			{"ip l add vm1-veth0 type veth peer name vm2-veth0 netns ns1", true},
+			{"ip l set vm1-veth0 netns ns2", true},
+		},
+
+		tearDownCmds: []Cmd{
+			{"ip netns exec ns1 ip link del vm2-veth0", true},
+			{"ip netns del ns1", true},
+			{"ip netns del ns2", true},
+		},
+
+		mode: Replay,
+
+		checks: []CheckFunction{func(c *CheckContext) error {
+			gh := c.gh
+			prefix := c.gremlin
+
+			nodes, err := gh.GetNodes(prefix.V().Has("LinkNetNsName", "ns1"))
+			if err != nil {
+				return err
+			}
+
+			if len(nodes) != 1 {
+				return fmt.Errorf("Expected 1 node, got %+v", nodes)
+			}
+
+			nodes, err = gh.GetNodes(prefix.V().Has("LinkNetNsName", "ns2"))
+			if err != nil {
+				return err
+			}
+
+			if len(nodes) != 1 {
+				return fmt.Errorf("Expected 1 node, got %+v", nodes)
+			}
+
+			return nil
+		}},
+	}
+
+	RunTest(t, test)
+}
+
 func TestNameSpaceOVSInterface(t *testing.T) {
 	test := &Test{
 		setupCmds: []Cmd{
@@ -775,6 +821,7 @@ func TestEdgeRuleCreate(t *testing.T) {
 		setupCmds: []Cmd{
 			{"ovs-vsctl add-br br-srcnode", true},
 			{"ovs-vsctl add-br br-dstnode", true},
+			{"sleep 5", false},
 		},
 
 		setupFunction: func(c *TestContext) error {
@@ -799,7 +846,7 @@ func TestEdgeRuleCreate(t *testing.T) {
 				query = query.BothE().Has("RelationType", "layer2")
 				query = query.BothV().Has("Name", "br-dstnode", "Type", "ovsbridge")
 				if _, err := c.gh.GetNode(query); err != nil {
-					return errors.New("Failed to find a layer2 link")
+					return fmt.Errorf("Failed to find a layer2 link, error: %v", err)
 				}
 
 				return nil

@@ -147,8 +147,7 @@ func (fb *Probe) Start() {
 
 	fb.Graph.AddEventListener(fb)
 
-	list := config.GetStringSlice("analyzer.topology.fabric")
-	for _, link := range list {
+	for _, link := range config.GetStringSlice("analyzer.topology.fabric") {
 		l2OnlyLink := false
 		pc := strings.Split(link, "-->")
 		if len(pc) == 2 {
@@ -237,11 +236,13 @@ func (fb *Probe) Stop() {
 }
 
 // NewProbe creates a new probe to enhance the graph
-func NewProbe(g *graph.Graph) *Probe {
-	fb := &Probe{
-		Graph: g,
-		links: make(map[*graph.Node][]fabricLink),
+func NewProbe(g *graph.Graph) (*Probe, error) {
+	if _, ok := config.Get("analyzer.topology.fabric").([]interface{}); config.IsSet("analyzer.topology.fabric") && !ok {
+		return nil, fmt.Errorf("Fabric configuration should be a list of entries")
 	}
 
-	return fb
+	return &Probe{
+		Graph: g,
+		links: make(map[*graph.Node][]fabricLink),
+	}, nil
 }

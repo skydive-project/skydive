@@ -66,7 +66,7 @@ type Alert struct {
 	CreateTime  time.Time
 }
 
-// NewAlert creates a New empty Alert, only UUID and CreateTime are set.
+// NewAlert creates a New empty Alert, only CreateTime is set.
 func NewAlert() *Alert {
 	return &Alert{
 		CreateTime: time.Now().UTC(),

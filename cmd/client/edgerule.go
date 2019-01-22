@@ -175,7 +175,7 @@ func addCreateEdgeRuleFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&description, "description", "", "", "rule description")
 	cmd.Flags().StringVarP(&src, "src", "", "", "src node gremlin expression")
 	cmd.Flags().StringVarP(&dst, "dst", "", "", "dst node gremlin expression")
-	cmd.Flags().StringVarP(&relationType, "relationtype", "", "", "relation type: 'layer2', 'ownership' and 'both'")
+	cmd.Flags().StringVarP(&relationType, "relationtype", "", "", "relation type of the link")
 	cmd.Flags().StringVarP(&metadata, "metadata", "", "", "edge metadata")
 }
 

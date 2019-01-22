@@ -199,12 +199,13 @@ class SkydiveWSTest(unittest.TestCase):
 
         noderule1 = restclient.noderule_create(
             "create", metadata={"Name": "node1", "Type": "fabric"})
+
         noderule2 = restclient.noderule_create(
             "create", metadata={"Name": "node2", "Type": "fabric"})
 
         time.sleep(1)
 
-        edgerule = restclient.edgerule_create(
+        edgerule1 = restclient.edgerule_create(
                 "G.V().Has('Name', 'node1')", "G.V().Has('Name', 'node2')",
                 {"RelationType": "layer2", "EdgeName": "my_edge"})
 
@@ -220,9 +221,29 @@ class SkydiveWSTest(unittest.TestCase):
                 "G.E().Has('RelationType', 'layer2', 'EdgeName', 'my_edge')")
         self.assertEqual(len(edge), 1, "should find only one edge")
 
-        restclient.edgerule_delete(edgerule.uuid)
+        noderules = restclient.noderule_list()
+        self.assertGreaterEqual(len(noderules), 2, "no noderules found")
+        found = False
+        for noderule in noderules:
+            if (noderule.uuid == noderule1.uuid):
+                found = True
+                break
+
+        self.assertTrue(found, "created noderule not found")
+
+        edgerules = restclient.edgerule_list()
+        self.assertGreaterEqual(len(edgerules), 1, "no edgerules found")
+        found = False
+        for edgerule in edgerules:
+            if (edgerule.uuid == edgerule1.uuid):
+                found = True
+                break
+
+        self.assertTrue(found, "created edgerule not found")
+        restclient.edgerule_delete(edgerule1.uuid)
         restclient.noderule_delete(noderule1.uuid)
         restclient.noderule_delete(noderule2.uuid)
+
     
     @classmethod
     def test_injections(self):
@@ -260,4 +281,4 @@ class SkydiveWSTest(unittest.TestCase):
 
         self.assertEqual(num_injections_after_deletion, num_injections_before,
                         "injection deletion didn's succeed")
-                        
+        

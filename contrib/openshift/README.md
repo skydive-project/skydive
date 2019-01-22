@@ -1,50 +1,51 @@
 # OpenShift template for skydive agent
 
-This OpenShift template allows you to instantiate skydive in OpenShift.
+This OpenShift template allows you to instantiate skydive in OpenShift. 
 
-Assuming you work on project skydive:
+**Important**: For Skydive installation you need cluster-admin privileges. During the installation you have to grant same privileges to skydive.
 
-```
-oc new-project skydive
-```
-
-Install the template
+#### Create a new project with an empty node selector to asume that Skydive runs on all nodes. 
 
 ```
-oc create -f skydive-template.yaml
+oc adm new-project --node-selector='' skydive
+oc project skydive
 ```
 
-You need the DeploymentConfig to run in privileged:
+####  Skype analyzer and agent need  extended  privileges
 
 ```
-oc adm policy add-scc-to-user privileged system:serviceaccount:skydive:default
+# analyzer and agent run as privileged container
+oc adm policy add-scc-to-user privileged -z default
+# analyzer need cluster-reader access get all informations from the cluster
+oc adm policy add-cluster-role-to-user cluster-reader -z default
 ```
 
-Instanciate the template:
+
+####  Install from OpenShift template
 
 ```
-oc new-app --template=skydive
+# adjust VERSION for the current version - for example: v0.20.1 or master
+VERSION=master
+oc process -f https://raw.githubusercontent.com/skydive-project/skydive/${VERSION}/contrib/openshift/skydive-template.yaml | oc apply -f -
 ```
 
-Check that everything is working and created:
+#### Check that everything is working and created:
+
+ - Overall status: `oc status`
+ - List all pods: `oc get pods`
+ - List all daemonsets: `oc get daemonset`
+ - List all routes: `oc get routes`
+
+# Installation parameters
+
+The skydive template provide some installation 
 
 ```
-oc get pods
-oc get ds
+$ VERSION=v0.20.1
+$ oc process --parameters -f https://raw.githubusercontent.com/skydive-project/skydive/${VERSION}/contrib/openshift/skydive-template.yaml
+NAME                    DESCRIPTION                              GENERATOR           VALUE
+SKYDIVE_LOGGING_LEVEL   Loglevel of Skydive agent and analyzer                       INFO
+
+# Installation with loglevel debug:
+$ oc process --param=SKYDIVE_LOGGING_LEVEL=DEBUG -f https://raw.githubusercontent.com/skydive-project/skydive/${VERSION}/contrib/openshift/skydive-template.yaml  | oc apply -f -
 ```
-
-Expose your route:
-
-```
-oc delete route skydive-analyzer
-oc expose svc skydive-analyzer
-```
-
-# FAQ
-
-## How to deploy the skydive agent on all nodes
-
-The current template only deploys the skydive agents to default compute nodes with selectors in `osm_default_node_selector` or in  `_openshift_node_group_name_` as there is no **node-selector** defined in the `skydive-template.yaml`.
-You can execute the command below to add the skydive agent to the other nodes.
-
-`oc patch namespace skydive -p '{"metadata": {"annotations": {"openshift.io/node-selector": ""}}}'`

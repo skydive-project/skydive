@@ -750,3 +750,25 @@
       - junit:
           results: tests.xml
       - chuck-norris
+
+- job:
+    name: 'skydive-functional-tests-ebpf'
+    defaults: skydive
+    parameters:
+      - skydive-default-parameters
+      - skydive-labels:
+          slave-name: baremetal
+    triggers:
+      - skydive-pull-request:
+          name: "functional-tests-ebpf"
+          trigger-prefix: "(all )?"
+          only-trigger-phrase: false
+          cancel-builds-on-update: true
+    builders:
+      - skydive-cleanup
+      - skydive-test:
+          test: BACKEND=elasticsearch WITH_EBPF=true TEST_PATTERN=EBPF scripts/ci/run-functional-tests.sh
+    publishers:
+      - junit:
+          results: tests.xml
+      - chuck-norris

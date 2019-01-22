@@ -63,6 +63,7 @@ type EBPFFlow struct {
 	start time.Time
 	last  time.Time
 	lastK int64
+	Kflow C.struct_flow
 }
 
 type EBPFProbe struct {
@@ -83,7 +84,8 @@ type EBPFProbesHandler struct {
 	wg         sync.WaitGroup
 }
 
-func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, updatedAt int64) *flow.Flow {
+func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, updatedAt int64) *flow.Flow {
+	kernFlow := ebpfFlow.Kflow
 	f := flow.NewFlow()
 	f.Init(common.UnixMillis(ebpfFlow.start), p.probeNodeTID, flow.UUIDs{})
 	f.Last = common.UnixMillis(ebpfFlow.last)
@@ -154,7 +156,6 @@ func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, up
 				A:        portA,
 				B:        portB,
 			}
-
 			p := gopacket.NewPacket(C.GoBytes(unsafe.Pointer(&kernFlow.payload[0]), C.PAYLOAD_LENGTH), layers.LayerTypeTCP, gopacket.DecodeOptions{})
 			if p.Layer(gopacket.LayerTypeDecodeFailure) == nil {
 				path, app := flow.LayersPath(p.Layers())
@@ -207,7 +208,27 @@ func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, up
 
 	return f
 }
+func updateFromEBPF(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow) { //Maintaining a huge flow table that is accessed via syscalls is expensive.
+	//Therefore, we remove every flow after extracting its data and we keep
+	//a local copy that we update continuously to preserve correctness.
+	if ebpfFlow.Kflow.link_layer._hash_src == kernFlow.link_layer._hash_src {
+		ebpfFlow.Kflow.metrics.ab_packets += kernFlow.metrics.ab_packets
+		ebpfFlow.Kflow.metrics.ab_bytes += kernFlow.metrics.ab_bytes
+		ebpfFlow.Kflow.metrics.ba_packets += kernFlow.metrics.ba_packets
+		ebpfFlow.Kflow.metrics.ba_bytes += kernFlow.metrics.ba_bytes
+	} else {
+		ebpfFlow.Kflow.metrics.ab_packets += kernFlow.metrics.ba_packets
+		ebpfFlow.Kflow.metrics.ab_bytes += kernFlow.metrics.ba_bytes
+		ebpfFlow.Kflow.metrics.ba_packets += kernFlow.metrics.ab_packets
+		ebpfFlow.Kflow.metrics.ba_bytes += kernFlow.metrics.ab_bytes
+	}
 
+	if ebpfFlow.Kflow.metrics.ab_packets >= 1 && ebpfFlow.Kflow.metrics.ba_packets >= 1 && ebpfFlow.Kflow._flags != 1 {
+		ebpfFlow.Kflow.rtt = kernFlow.last - ebpfFlow.Kflow.start
+		ebpfFlow.Kflow._flags = 1
+	}
+	ebpfFlow.Kflow.last = kernFlow.last
+}
 func (p *EBPFProbe) run() {
 	var info syscall.Sysinfo_t
 	syscall.Sysinfo(&info)
@@ -219,7 +240,6 @@ func (p *EBPFProbe) run() {
 	var start time.Time
 
 	ebpfFlows := make(map[C.__u64]*EBPFFlow)
-
 	updateTicker := time.NewTicker(ebpfUpdate)
 	defer updateTicker.Stop()
 
@@ -250,16 +270,20 @@ func (p *EBPFProbe) run() {
 			kernFlow := C.struct_flow{}
 			var key, nextKey C.__u64
 			for {
+
 				found, _ := p.module.LookupNextElement(p.fmap, unsafe.Pointer(&key), unsafe.Pointer(&nextKey), unsafe.Pointer(&kernFlow))
 				if !found {
 					break
 				}
 				key = nextKey
+				// delete every entry after we read the entry value
+				p.module.DeleteElement(p.fmap, unsafe.Pointer(&key))
 
 				lastK := int64(kernFlow.last)
 
 				ebpfFlow, ok := ebpfFlows[kernFlow.key]
 				if !ok {
+
 					startK := int64(kernFlow.start)
 
 					// check that the local time computed from the kernel time is not greater than Now
@@ -271,21 +295,28 @@ func (p *EBPFProbe) run() {
 					ebpfFlow = &EBPFFlow{
 						start: now,
 						last:  start.Add(time.Duration(lastK - startKTimeNs)),
+						Kflow: kernFlow,
 					}
 					ebpfFlows[kernFlow.key] = ebpfFlow
+
+				}
+				if ok {
+					updateFromEBPF(ebpfFlow, &kernFlow)
 				}
 
 				if lastK != ebpfFlow.lastK {
 					ebpfFlow.lastK = lastK
 					ebpfFlow.last = start.Add(time.Duration(lastK - startKTimeNs))
 
-					fl := p.flowFromEBPF(ebpfFlow, &kernFlow, unow)
+					fl := p.flowFromEBPF(ebpfFlow, unow)
 					flowChan <- fl
-				}
 
-				if now.Sub(ebpfFlow.last).Seconds() > p.expire.Seconds() {
-					p.module.DeleteElement(p.fmap, unsafe.Pointer(&kernFlow.key))
-					delete(ebpfFlows, kernFlow.key)
+				}
+			}
+
+			for k, v := range ebpfFlows {
+				if time.Now().Sub(v.last).Seconds() > p.expire.Seconds() {
+					delete(ebpfFlows, k)
 				}
 			}
 		case <-p.quit:

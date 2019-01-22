@@ -22,6 +22,10 @@ function docker_rm() {
   done
 }
 
+function docker_volume_rm() {
+  docker volume rm -f $1
+}
+
 function cleanup() {
   # cleanup minikube
   "${CURDIR}/install-minikube.sh" stop
@@ -30,6 +34,7 @@ function cleanup() {
   cleanup_items intf "ip link del"
   cleanup_items ovsdb "ovs-vsctl del-br"
   cleanup_items docker "docker_rm"
+  cleanup_items docker-volumes "docker_volume_rm"
   cleanup_items lxd "lxc delete --force"
 
   # cleanup podman/runc
@@ -62,6 +67,7 @@ EOF
   systemctl restart libvirtd
 
   rm -rf /tmp/skydive_agent* /tmp/skydive-etcd
+  rm -rf /var/lib/jenkins/.vagrant.d/tmp
 
   # time to restart services
   sleep 8
@@ -82,6 +88,7 @@ function snapshot() {
   snapshot_items intf $ext "ip -o link show | awk -F': ' '{print \$2}' | cut -d '@' -f 1"
   snapshot_items ovsdb $ext "ovs-vsctl list-br"
   snapshot_items docker $ext "docker ps -a -q"
+  snapshot_items docker-volumes $ext "docker volume ls | grep -v govendor-cache | awk '{print \$2}'"
   snapshot_items lxd $ext "lxc list --format csv -c n"
 }
 
