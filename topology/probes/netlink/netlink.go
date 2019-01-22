@@ -457,6 +457,25 @@ func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 		metadata["MAC"] = mac
 	}
 
+	if bondSlave := attrs.BondSlave; bondSlave != nil {
+		slaveMetadata := map[string]interface{}{
+			"Type":                   bondSlave.Type,
+			"State":                  bondSlave.State.String(),
+			"MiiStatus":              bondSlave.MiiStatus.String(),
+			"LinkFailureCount":       int64(bondSlave.LinkFailureCount),
+			"QueueId":                int64(bondSlave.QueueId),
+			"AggregatorId":           int64(bondSlave.AggregatorId),
+			"AdActorOperPortState":   int64(bondSlave.AdActorOperPortState),
+			"AdPartnerOperPortState": int64(bondSlave.AdPartnerOperPortState),
+		}
+
+		if permMAC := bondSlave.PermHardwareAddr.String(); permMAC != "" {
+			slaveMetadata["PermMAC"] = permMAC
+		}
+
+		metadata["BondSlave"] = slaveMetadata
+	}
+
 	if attrs.MasterIndex != 0 {
 		metadata["MasterIndex"] = int64(attrs.MasterIndex)
 	}

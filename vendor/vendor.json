@@ -2325,16 +2325,18 @@
 			"revisionTime": "2017-01-07T13:32:03Z"
 		},
 		{
-			"checksumSHA1": "pM8xHSOdh8TqBFpABuy6ppVvUng=",
+			"checksumSHA1": "ECJTPO6zYwANY8d0jARwdMZghLw=",
+			"origin": "github.com/lebauce/netlink",
 			"path": "github.com/vishvananda/netlink",
-			"revision": "1e2e7ab670e05e2fd29bf5d0bcab2f9907e9f9f4",
-			"revisionTime": "2019-01-02T22:56:57Z"
+			"revision": "fa328be7c8d264c2e920e9ba7ec39444d89bf7c5",
+			"revisionTime": "2019-01-22T10:33:56Z"
 		},
 		{
-			"checksumSHA1": "oJA2n0pDDV6bxnZAwDyg6pWhpQk=",
+			"checksumSHA1": "X5zvw0Sx4QyDtZrF8Ic3ZGifXLo=",
+			"origin": "github.com/lebauce/netlink/nl",
 			"path": "github.com/vishvananda/netlink/nl",
-			"revision": "1e2e7ab670e05e2fd29bf5d0bcab2f9907e9f9f4",
-			"revisionTime": "2019-01-02T22:56:57Z"
+			"revision": "fa328be7c8d264c2e920e9ba7ec39444d89bf7c5",
+			"revisionTime": "2019-01-22T10:33:56Z"
 		},
 		{
 			"checksumSHA1": "JCH45h0NMsN7LFN18mwjzNgDaYI=",
