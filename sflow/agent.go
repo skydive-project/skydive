@@ -132,6 +132,8 @@ func (sfa *Agent) feedFlowTable() {
 					}
 				}
 			}
+
+			sfa.Graph.Lock()
 			tr := sfa.Graph.StartMetadataTransaction(sfa.Node)
 
 			Uint64ToInt64 := func(key uint64) int64 {
@@ -208,8 +210,8 @@ func (sfa *Agent) feedFlowTable() {
 			}
 
 			tr.AddMetadata("SFlow", sfl)
-
 			tr.Commit()
+			sfa.Graph.Unlock()
 		}
 
 	}

@@ -2030,7 +2030,7 @@ func TestSFlowCapture(t *testing.T) {
 			{"ip netns exec sfct-vm2 ip address add 169.254.29.12/24 dev sfct-intf2", true},
 			{"ip netns exec sfct-vm2 ip link set sfct-intf2 up", true},
 
-			{"ovs-vsctl --id=@sflow create sflow agent=lo target=\"127.0.0.1:6343\" header=128 sampling=1 polling=0 -- set bridge br-sfct sflow=@sflow", true},
+			{"ovs-vsctl --id=@sflow create sflow agent=lo target=\"127.0.0.1:6343\" header=128 sampling=1 polling=10 -- set bridge br-sfct sflow=@sflow", true},
 		},
 
 		injections: []TestInjection{{
