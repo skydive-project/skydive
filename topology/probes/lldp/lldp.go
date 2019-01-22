@@ -344,7 +344,10 @@ func (p *Probe) getOrCreate(id graph.Identifier, m graph.Metadata) *graph.Node {
 // - when the interface is listed in the configuration file or we are in auto discovery mode
 func (p *Probe) handleNode(n *graph.Node) {
 	firstLayerType, _ := probes.GoPacketFirstLayerType(n)
-	mac, _ := n.GetFieldString("MAC")
+	mac, _ := n.GetFieldString("BondSlave.PermMAC")
+	if mac == "" {
+		mac, _ = n.GetFieldString("MAC")
+	}
 	name, _ := n.GetFieldString("Name")
 
 	if name != "" && mac != "" && firstLayerType == layers.LayerTypeEthernet {
