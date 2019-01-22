@@ -1,6 +1,6 @@
 ARG  BASE=ubuntu:18.04
 FROM $BASE
-ARG  ARCH=x86_64
+ARG  ARCH=amd64
 RUN apt-get -y update \
     && apt-get -y install openvswitch-common libpcap0.8 libxml2 libvirt0 \
     && rm -rf /var/lib/apt/lists/*
