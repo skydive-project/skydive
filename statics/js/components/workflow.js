@@ -124,7 +124,7 @@ Vue.component('workflow-params', {
 })
 
 Vue.component('workflow-call', {
-  mixins: [apiMixin],
+  mixins: [apiMixin, notificationMixin],
 
   data() {
   	return {
