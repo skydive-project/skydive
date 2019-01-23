@@ -255,7 +255,6 @@ class SkydiveWSTest(unittest.TestCase):
         
         nodes = restclient.lookup("G.V().Has('Name', 'eth0')")
 
-        self.assertGreaterEqual(len(nodes), 1, "should find only one edge")
         eth0 = nodes[0]["Metadata"]["TID"]
     
 
