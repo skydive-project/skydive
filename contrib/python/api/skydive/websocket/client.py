@@ -222,7 +222,7 @@ class WSClient(WebSocketClientProtocol):
             if self.insecure:
                 context = ssl._create_unverified_context()
             else:
-                context = ssl._create_default_context()
+                context = ssl.create_default_context()
 
         coro = self.loop.create_connection(factory,
                                            self.url.hostname, self.url.port,
