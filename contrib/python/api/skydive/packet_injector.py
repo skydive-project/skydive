@@ -82,6 +82,7 @@ class PacketInjection(object):
             obj["Interval"] = self.interval
         if self.increment:
             obj["Increment"] = self.increment
+        return obj
 
     @classmethod
     def from_object(self, obj):
