@@ -244,8 +244,6 @@ class SkydiveWSTest(unittest.TestCase):
         restclient.noderule_delete(noderule1.uuid)
         restclient.noderule_delete(noderule2.uuid)
 
-    
-    @classmethod
     def test_injections(self):
         restclient = RESTClient("localhost:8082",
                                 scheme=self.schemeHTTP,
@@ -256,25 +254,18 @@ class SkydiveWSTest(unittest.TestCase):
         nodes = restclient.lookup("G.V().Has('Name', 'eth0')")
 
         eth0 = nodes[0]["Metadata"]["TID"]
-    
 
-        quary = "G.V().Has('TID', '" + eth0 + "')"
+        query = "G.V().Has('TID', '" + eth0 + "')"
         num_injections_before = len(restclient.injection_list())
         
-        time.sleep(1)
-        
-        injection_response = restclient.injection_create(quary, quary, count=1000)
+        injection_response = restclient.injection_create(query, query, count=1000)
 
-        time.sleep(1)
-        
         num_injections_after = len(restclient.injection_list())
         
         self.assertEqual(num_injections_after, num_injections_before + 1,
                         "injection creation didn's succeed")
 
         restclient.injection_delete(injection_response.uuid)
-        
-        time.sleep(1)
         
         num_injections_after_deletion = len(restclient.injection_list())
 
