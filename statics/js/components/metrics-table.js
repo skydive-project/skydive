@@ -91,7 +91,7 @@ Vue.component('sflow-metrics-table', {
 
     defaultKeys: {
       type: Array,
-      default: ['Last', 'IfInUcastPkts', 'IfOutUcastPkts', 'IfInMulticastPkts', 'IfOutUcastPkts', 'IfInDiscards', 'IfOutDiscards', 'IfInErrors', 'IfOutErrors']
+      default: ['Last', 'IfInUcastPkts', 'IfOutUcastPkts', 'IfInOctets', 'IfOutOctets', 'IfInDiscards', 'OvsdpNHit', 'OvsdpNMissed', 'OvsdpNMaskHit']
     }
   },
 

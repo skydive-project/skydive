@@ -24,6 +24,7 @@ package sflow
 
 import (
 	"errors"
+	"math"
 	"net"
 	"strconv"
 	"strings"
@@ -108,9 +109,6 @@ func (sfa *Agent) feedFlowTable() {
 				sfa.FlowTable.FeedWithSFlowSample(&sample, bpf)
 			}
 
-			// SFlow Counter Samples
-			Countersamples := sflowPacket.CounterSamples
-
 			var gen layers.SFlowGenericInterfaceCounters
 			var ovsdp layers.SFlowOVSDPCounters
 			var app layers.SFlowAppresourcesCounters
@@ -119,16 +117,63 @@ func (sfa *Agent) feedFlowTable() {
 			for _, sample := range sflowPacket.CounterSamples {
 				records := sample.GetRecords()
 
+				maxuint64 := func(key uint64) uint64 {
+					if key == math.MaxUint64 {
+						key = 0
+					}
+					return key
+				}
+				maxuint32 := func(key uint32) uint32 {
+					if key == math.MaxUint32 {
+						key = 0
+					}
+					return key
+				}
+
 				for _, record := range records {
 					switch record.(type) {
 					case layers.SFlowGenericInterfaceCounters:
-						gen = record.(layers.SFlowGenericInterfaceCounters) //Adding Generic Interface Counters
+						gen1 := record.(layers.SFlowGenericInterfaceCounters)
+						gen.IfInOctets += maxuint64(gen1.IfInOctets)
+						gen.IfInUcastPkts += maxuint32(gen1.IfInUcastPkts)
+						gen.IfInMulticastPkts += maxuint32(gen1.IfInMulticastPkts)
+						gen.IfInBroadcastPkts += maxuint32(gen1.IfInBroadcastPkts)
+						gen.IfInDiscards += maxuint32(gen1.IfInDiscards)
+						gen.IfInErrors += maxuint32(gen1.IfInErrors)
+						gen.IfInUnknownProtos += maxuint32(gen1.IfInUnknownProtos)
+						gen.IfOutOctets += maxuint64(gen1.IfOutOctets)
+						gen.IfOutUcastPkts += maxuint32(gen1.IfOutUcastPkts)
+						gen.IfOutMulticastPkts += maxuint32(gen1.IfOutMulticastPkts)
+						gen.IfOutBroadcastPkts += maxuint32(gen1.IfOutBroadcastPkts)
+						gen.IfOutDiscards += maxuint32(gen1.IfOutDiscards)
+						gen.IfOutErrors += maxuint32(gen1.IfOutErrors)
+
 					case layers.SFlowOVSDPCounters:
-						ovsdp = record.(layers.SFlowOVSDPCounters) //Adding OVSDP Counters
+						ovsdp1 := record.(layers.SFlowOVSDPCounters)
+						ovsdp.NHit += maxuint32(ovsdp1.NHit)
+						ovsdp.NMissed += maxuint32(ovsdp1.NMissed)
+						ovsdp.NLost += maxuint32(ovsdp1.NLost)
+						ovsdp.NMaskHit += maxuint32(ovsdp1.NMaskHit)
+						ovsdp.NFlows += maxuint32(ovsdp1.NFlows)
+						ovsdp.NMasks += maxuint32(ovsdp1.NMasks)
+
 					case layers.SFlowAppresourcesCounters:
-						app = record.(layers.SFlowAppresourcesCounters) //Adding OVSAppresources Counters
+						app1 := record.(layers.SFlowAppresourcesCounters)
+						app.FdOpen += maxuint32(app1.FdOpen)
+						app.FdMax += maxuint32(app1.FdMax)
+						app.ConnOpen += maxuint32(app1.ConnOpen)
+						app.ConnMax += maxuint32(app1.ConnMax)
+						app.MemUsed += maxuint64(app1.MemUsed)
+						app.MemMax += maxuint64(app1.MemMax)
+
 					case layers.SFlowVLANCounters:
-						vlan = record.(layers.SFlowVLANCounters) //Adding Vlan Counters
+						vlan1 := record.(layers.SFlowVLANCounters)
+						vlan.Octets += maxuint64(vlan1.Octets)
+						vlan.UcastPkts += maxuint32(vlan1.UcastPkts)
+						vlan.MulticastPkts += maxuint32(vlan1.MulticastPkts)
+						vlan.BroadcastPkts += maxuint32(vlan1.BroadcastPkts)
+						vlan.Discards += maxuint32(vlan1.Discards)
+
 					}
 				}
 			}
@@ -136,53 +181,41 @@ func (sfa *Agent) feedFlowTable() {
 			sfa.Graph.Lock()
 			tr := sfa.Graph.StartMetadataTransaction(sfa.Node)
 
-			Uint64ToInt64 := func(key uint64) int64 {
-				if key == 18446744073709551615 {
-					key = 0
-				}
-				return int64(float64(key))
-			}
-			Uint32ToInt64 := func(key uint32) int64 {
-				if key == 4294967295 {
-					key = 0
-				}
-				return int64(float64(key))
-			}
 			currMetric := &SFMetric{
-				IfInOctets:         Uint64ToInt64(gen.IfInOctets),
-				IfInUcastPkts:      Uint32ToInt64(gen.IfInUcastPkts),
-				IfInMulticastPkts:  Uint32ToInt64(gen.IfInMulticastPkts),
-				IfInBroadcastPkts:  Uint32ToInt64(gen.IfInBroadcastPkts),
-				IfInDiscards:       Uint32ToInt64(gen.IfInDiscards),
-				IfInErrors:         Uint32ToInt64(gen.IfInErrors),
-				IfInUnknownProtos:  Uint32ToInt64(gen.IfInUnknownProtos),
-				IfOutOctets:        Uint64ToInt64(gen.IfOutOctets),
-				IfOutUcastPkts:     Uint32ToInt64(gen.IfOutUcastPkts),
-				IfOutMulticastPkts: Uint32ToInt64(gen.IfOutMulticastPkts),
-				IfOutBroadcastPkts: Uint32ToInt64(gen.IfOutBroadcastPkts),
-				IfOutDiscards:      Uint32ToInt64(gen.IfOutDiscards),
-				IfOutErrors:        Uint32ToInt64(gen.IfOutErrors),
-				OvsdpNHit:          Uint32ToInt64(ovsdp.NHit),
-				OvsdpNMissed:       Uint32ToInt64(ovsdp.NMissed),
-				OvsdpNLost:         Uint32ToInt64(ovsdp.NLost),
-				OvsdpNMaskHit:      Uint32ToInt64(ovsdp.NMaskHit),
-				OvsdpNFlows:        Uint32ToInt64(ovsdp.NFlows),
-				OvsdpNMasks:        Uint32ToInt64(ovsdp.NMasks),
-				OvsAppFdOpen:       Uint32ToInt64(app.FdOpen),
-				OvsAppFdMax:        Uint32ToInt64(app.FdMax),
-				OvsAppConnOpen:     Uint32ToInt64(app.ConnOpen),
-				OvsAppConnMax:      Uint32ToInt64(app.ConnMax),
-				OvsAppMemUsed:      Uint64ToInt64(app.MemUsed),
-				OvsAppMemMax:       Uint64ToInt64(app.MemMax),
-				VlanOctets:         Uint64ToInt64(vlan.Octets),
-				VlanUcastPkts:      Uint32ToInt64(vlan.UcastPkts),
-				VlanMulticastPkts:  Uint32ToInt64(vlan.MulticastPkts),
-				VlanBroadcastPkts:  Uint32ToInt64(vlan.BroadcastPkts),
-				VlanDiscards:       Uint32ToInt64(vlan.Discards),
+				IfInOctets:         int64(gen.IfInOctets),
+				IfInUcastPkts:      int64(gen.IfInUcastPkts),
+				IfInMulticastPkts:  int64(gen.IfInMulticastPkts),
+				IfInBroadcastPkts:  int64(gen.IfInBroadcastPkts),
+				IfInDiscards:       int64(gen.IfInDiscards),
+				IfInErrors:         int64(gen.IfInErrors),
+				IfInUnknownProtos:  int64(gen.IfInUnknownProtos),
+				IfOutOctets:        int64(gen.IfOutOctets),
+				IfOutUcastPkts:     int64(gen.IfOutUcastPkts),
+				IfOutMulticastPkts: int64(gen.IfOutMulticastPkts),
+				IfOutBroadcastPkts: int64(gen.IfOutBroadcastPkts),
+				IfOutDiscards:      int64(gen.IfOutDiscards),
+				IfOutErrors:        int64(gen.IfOutErrors),
+				OvsdpNHit:          int64(ovsdp.NHit),
+				OvsdpNMissed:       int64(ovsdp.NMissed),
+				OvsdpNLost:         int64(ovsdp.NLost),
+				OvsdpNMaskHit:      int64(ovsdp.NMaskHit),
+				OvsdpNFlows:        int64(ovsdp.NFlows),
+				OvsdpNMasks:        int64(ovsdp.NMasks),
+				OvsAppFdOpen:       int64(app.FdOpen),
+				OvsAppFdMax:        int64(app.FdMax),
+				OvsAppConnOpen:     int64(app.ConnOpen),
+				OvsAppConnMax:      int64(app.ConnMax),
+				OvsAppMemUsed:      int64(app.MemUsed),
+				OvsAppMemMax:       int64(app.MemMax),
+				VlanOctets:         int64(vlan.Octets),
+				VlanUcastPkts:      int64(vlan.UcastPkts),
+				VlanMulticastPkts:  int64(vlan.MulticastPkts),
+				VlanBroadcastPkts:  int64(vlan.BroadcastPkts),
+				VlanDiscards:       int64(vlan.Discards),
 			}
-			now := time.Now()
+			now := int64(common.UnixMillis(time.Now()))
 
-			currMetric.Last = int64(common.UnixMillis(now))
+			currMetric.Last = now
 
 			var prevMetric, lastUpdateMetric, totalMetric *SFMetric
 
@@ -190,7 +223,7 @@ func (sfa *Agent) feedFlowTable() {
 				prevMetric = metric.(*SFMetric)
 				lastUpdateMetric = currMetric
 				totalMetric = currMetric.Add(prevMetric).(*SFMetric)
-				totalMetric.Last = int64(common.UnixMillis(now))
+				totalMetric.Last = now
 			} else {
 				totalMetric = currMetric
 			}
@@ -198,13 +231,12 @@ func (sfa *Agent) feedFlowTable() {
 			// nothing changed since last update
 			if lastUpdateMetric != nil && !lastUpdateMetric.IsZero() {
 				lastUpdateMetric.Start = prevMetric.Last
-				lastUpdateMetric.Last = int64(common.UnixMillis(now))
+				lastUpdateMetric.Last = now
 			} else {
 				lastUpdateMetric = currMetric
 			}
 
 			sfl := &SFlow{
-				Counters:         Countersamples,
 				Metric:           totalMetric,
 				LastUpdateMetric: lastUpdateMetric,
 			}

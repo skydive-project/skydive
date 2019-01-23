@@ -23,13 +23,12 @@
 package traversal
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
-	"github.com/skydive-project/skydive/sflow"
-	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
 )
 
@@ -61,21 +60,17 @@ nodeloop:
 		}
 
 		m, _ := n.GetField(key)
-		lastMetric, ok := m.(*topology.InterfaceMetric)
+		if m == nil {
+			continue
+		}
 
+		lastmetric, ok := m.(common.Metric)
 		if !ok {
-			sflastMetric, ok := m.(*sflow.SFMetric)
+			return NewMetricsTraversalStepFromError(errors.New("wrong interface metric type"))
+		}
 
-			if !ok {
-				continue
-			}
-			if gslice == nil || (sflastMetric.Start > gslice.Start && sflastMetric.Last < gslice.Last) && it.Next() {
-				metrics[string(n.ID)] = append(metrics[string(n.ID)], sflastMetric)
-			}
-		} else {
-			if gslice == nil || (lastMetric.Start > gslice.Start && lastMetric.Last < gslice.Last) && it.Next() {
-				metrics[string(n.ID)] = append(metrics[string(n.ID)], lastMetric)
-			}
+		if gslice == nil || (lastmetric.GetStart() > gslice.Start && lastmetric.GetLast() < gslice.Last) && it.Next() {
+			metrics[string(n.ID)] = append(metrics[string(n.ID)], lastmetric)
 		}
 	}
 

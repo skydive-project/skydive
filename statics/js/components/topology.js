@@ -233,7 +233,7 @@ var TopologyComponent = {
            <div v-show="currentNodeSFlowLastUpdateMetric && topologyTimeContext === 0">\
              <h2>Last metrics</h2>\
              <sflow-metrics-table :object="currentNodeSFlowLastUpdateMetric" :keys="globalVars[\'sflow-metric-keys\']" \
-                :defaultKeys="[\'Last\', \'IfInUcastPkts\', \'IfOutUcastPkts\', \'IfInMulticastPkts\', \'IfOutUcastPkts\', \'IfInDiscards\', \'IfOutDiscards\', \'IfInErrors\', \'IfOutErrors\']"></sflow-metrics-table>\
+                :defaultKeys="[\'Last\', \'IfInUcastPkts\', \'IfOutUcastPkts\', \'IfInOctets\', \'IfOutOctets\', \'IfInDiscards\', \'OvsdpNHit\', \'OvsdpNMissed\', \'OvsdpNMaskHit\']"></sflow-metrics-table>\
            </div>\
         </panel>\
         <panel id="routing-tabel" v-if="currentNodeMetadata && currentNode.metadata.RoutingTables"\
