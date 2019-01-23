@@ -1280,53 +1280,46 @@
 			"revisionTime": "2017-06-12T17:47:53Z"
 		},
 		{
-			"checksumSHA1": "YUHv0o6NCXLJGQ5nR8f8f0IK/ZI=",
-			"origin": "github.com/dvandra/gopacket",
+			"checksumSHA1": "ya0ZqXQqWm8vlRXF7Yg34RyfDto=",
 			"path": "github.com/google/gopacket",
-			"revision": "9d409306383f5c94f8263ddf387f9bc805b98c7b",
-			"revisionTime": "2019-01-21T12:55:42Z"
+			"revision": "102d5ca2098cc070c7fdc9d7dbd504658bc92363",
+			"revisionTime": "2019-01-23T01:18:26Z"
 		},
 		{
-			"checksumSHA1": "6BWy22N/CkrCUB61/lCZtLUp/A0=",
-			"origin": "github.com/dvandra/gopacket/afpacket",
+			"checksumSHA1": "PS5Gm5bHjKEAgonKZ6eAF5lpEE8=",
 			"path": "github.com/google/gopacket/afpacket",
-			"revision": "9d409306383f5c94f8263ddf387f9bc805b98c7b",
-			"revisionTime": "2019-01-21T12:55:42Z"
+			"revision": "102d5ca2098cc070c7fdc9d7dbd504658bc92363",
+			"revisionTime": "2019-01-23T01:18:26Z"
 		},
 		{
-			"checksumSHA1": "d1XG2Ex84jvLIHmb0BB0wO/S0WM=",
-			"origin": "github.com/dvandra/gopacket/ip4defrag",
+			"checksumSHA1": "/YPHQTyoSLi/2lmkeI/Loak/szw=",
 			"path": "github.com/google/gopacket/ip4defrag",
-			"revision": "9d409306383f5c94f8263ddf387f9bc805b98c7b",
-			"revisionTime": "2019-01-21T12:55:42Z"
+			"revision": "102d5ca2098cc070c7fdc9d7dbd504658bc92363",
+			"revisionTime": "2019-01-23T01:18:26Z"
 		},
 		{
-			"checksumSHA1": "adTmsPqcR6YV+P5ugWqOZ3TpXZY=",
-			"origin": "github.com/dvandra/gopacket/layers",
+			"checksumSHA1": "gxBCAY7d3dahFBZSUHfqVZNovBc=",
 			"path": "github.com/google/gopacket/layers",
-			"revision": "9d409306383f5c94f8263ddf387f9bc805b98c7b",
-			"revisionTime": "2019-01-21T12:55:42Z"
+			"revision": "102d5ca2098cc070c7fdc9d7dbd504658bc92363",
+			"revisionTime": "2019-01-23T01:18:26Z"
 		},
 		{
-			"checksumSHA1": "xDZ93qPS7HY5SkgjHGjHtgfZRjY=",
-			"origin": "github.com/dvandra/gopacket/pcap",
+			"checksumSHA1": "dNOtSoJlU2s+0SF1eIV3QOEtsFM=",
 			"path": "github.com/google/gopacket/pcap",
-			"revision": "9d409306383f5c94f8263ddf387f9bc805b98c7b",
-			"revisionTime": "2019-01-21T12:55:42Z"
+			"revision": "102d5ca2098cc070c7fdc9d7dbd504658bc92363",
+			"revisionTime": "2019-01-23T01:18:26Z"
 		},
 		{
-			"checksumSHA1": "fw0H3stsMVbz3Ecy8MglAbKJVGY=",
-			"origin": "github.com/dvandra/gopacket/pcapgo",
+			"checksumSHA1": "n3CYtQIDNVuK9d8VaSzEeSh1Sd8=",
 			"path": "github.com/google/gopacket/pcapgo",
-			"revision": "9d409306383f5c94f8263ddf387f9bc805b98c7b",
-			"revisionTime": "2019-01-21T12:55:42Z"
+			"revision": "102d5ca2098cc070c7fdc9d7dbd504658bc92363",
+			"revisionTime": "2019-01-23T01:18:26Z"
 		},
 		{
 			"checksumSHA1": "JB3iiLLoJSfHofXOz5cZLh9y+Eo=",
-			"origin": "github.com/dvandra/gopacket/tcpassembly",
 			"path": "github.com/google/gopacket/tcpassembly",
-			"revision": "9d409306383f5c94f8263ddf387f9bc805b98c7b",
-			"revisionTime": "2019-01-21T12:55:42Z"
+			"revision": "102d5ca2098cc070c7fdc9d7dbd504658bc92363",
+			"revisionTime": "2019-01-23T01:18:26Z"
 		},
 		{
 			"checksumSHA1": "Nf/pN/E1Rutz925nyJR4eEeghwg=",
