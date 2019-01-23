@@ -250,25 +250,25 @@ class SkydiveWSTest(unittest.TestCase):
                                 username=self.username,
                                 password=self.password,
                                 insecure=True)
-        
+
         nodes = restclient.lookup("G.V().Has('Name', 'eth0')")
 
         eth0 = nodes[0]["Metadata"]["TID"]
 
         query = "G.V().Has('TID', '" + eth0 + "')"
         num_injections_before = len(restclient.injection_list())
-        
-        injection_response = restclient.injection_create(query, query, count=1000)
+
+        injection_response = restclient.injection_create(query, query,
+                                                         count=1000)
 
         num_injections_after = len(restclient.injection_list())
-        
+
         self.assertEqual(num_injections_after, num_injections_before + 1,
-                        "injection creation didn's succeed")
+                         "injection creation didn's succeed")
 
         restclient.injection_delete(injection_response.uuid)
-        
+
         num_injections_after_deletion = len(restclient.injection_list())
 
         self.assertEqual(num_injections_after_deletion, num_injections_before,
-                        "injection deletion didn's succeed")
-        
+                         "injection deletion didn's succeed")

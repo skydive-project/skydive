@@ -25,9 +25,10 @@ class PacketInjection(object):
         Definition of a Skydive packet injection.
     """
 
-    def __init__(self, uuid="", src="", dst="", srcip="", dstip="", srcmac="", dstmac="", 
-                srcport="", dstport="", type="", payload="", trackingid="", icmpid="", 
-                count="", interval="", increment="", starttime=""):
+    def __init__(self, uuid="", src="", dst="", srcip="", dstip="", srcmac="",
+                 dstmac="", srcport="", dstport="", type="", payload="",
+                 trackingid="", icmpid="", count="", interval="",
+                 increment="", starttime=""):
         self.uuid = uuid
         self.src = src
         self.dst = dst
@@ -48,40 +49,39 @@ class PacketInjection(object):
 
     def repr_json(self):
         obj = {}
-        
-        if self.uuid:
-            obj["UUID"] = self.uuid 
-        if self.src:
-            obj["Src"] = self.src 
-        if self.dst:
-            obj["Dst"] = self.dst 
-        if self.srcip:
-            obj["SrcIP"] = self.srcip 
-        if self.dstip:
-            obj["DstIP"] = self.dstip 
-        if self.srcmac:
-            obj["SrcMAC"] = self.srcmac 
-        if self.dstmac:
-            obj["DstMAC"] = self.dstmac 
-        if self.srcport:
-            obj["SrcPort"] = self.srcport 
-        if self.dstport:
-            obj["DstPort"] = self.dstport 
-        if self.type:
-            obj["Type"] = self.type 
-        if self.payload:
-            obj["Payload"] = self.payload 
-        if self.trackingid:
-            obj["TrackingID"] = self.trackingid 
-        if self.icmpid:
-            obj["ICMPID"] = self.icmpid 
-        if self.count:
-            obj["Count"] = self.count 
-        if self.interval:
-            obj["Interval"] = self.interval 
-        if self.increment:
-            obj["Increment"] = self.increment 
 
+        if self.uuid:
+            obj["UUID"] = self.uuid
+        if self.src:
+            obj["Src"] = self.src
+        if self.dst:
+            obj["Dst"] = self.dst
+        if self.srcip:
+            obj["SrcIP"] = self.srcip
+        if self.dstip:
+            obj["DstIP"] = self.dstip
+        if self.srcmac:
+            obj["SrcMAC"] = self.srcmac
+        if self.dstmac:
+            obj["DstMAC"] = self.dstmac
+        if self.srcport:
+            obj["SrcPort"] = self.srcport
+        if self.dstport:
+            obj["DstPort"] = self.dstport
+        if self.type:
+            obj["Type"] = self.type
+        if self.payload:
+            obj["Payload"] = self.payload
+        if self.trackingid:
+            obj["TrackingID"] = self.trackingid
+        if self.icmpid:
+            obj["ICMPID"] = self.icmpid
+        if self.count:
+            obj["Count"] = self.count
+        if self.interval:
+            obj["Interval"] = self.interval
+        if self.increment:
+            obj["Increment"] = self.increment
 
     @classmethod
     def from_object(self, obj):
@@ -101,4 +101,3 @@ class PacketInjection(object):
                     count=obj.get("Count"),
                     interval=obj.get("Interval"),
                     increment=obj.get("Increment"))
-

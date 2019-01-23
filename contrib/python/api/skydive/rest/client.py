@@ -231,10 +231,10 @@ class RESTClient:
             "Payload": payload,
             "Increment": increment
         })
-        
+
         r = self.request(self.INJECTION_PATH, method="POST", data=data)
         return PacketInjection.from_object(r)
-        
+
     def injection_delete(self, injection_id):
         path = self.INJECTION_PATH+"/"+injection_id
         return self.request(path, method="DELETE")
@@ -242,4 +242,3 @@ class RESTClient:
     def injection_list(self):
         objs = self.request(self.INJECTION_PATH)
         return [PacketInjection.from_object(o) for o in objs.values()]
-
