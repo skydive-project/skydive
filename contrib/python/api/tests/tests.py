@@ -251,11 +251,11 @@ class SkydiveWSTest(unittest.TestCase):
                                 password=self.password,
                                 insecure=True)
 
-        nodes = restclient.lookup("G.V().Has('Name', 'eth0')")
+        nodes = restclient.lookup("G.V().Has('MAC', NE('ee:ee:ee:ee:ee:ee'))")
 
-        eth0 = nodes[0]["Metadata"]["TID"]
+        testnode = nodes[0]["Metadata"]["TID"]
 
-        query = "G.V().Has('TID', '" + eth0 + "')"
+        query = "G.V().Has('TID', '" + testnode + "')"
         num_injections_before = len(restclient.injection_list())
 
         injection_response = restclient.injection_create(query, query,
