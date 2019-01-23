@@ -59,13 +59,14 @@ const (
 	ebpfUpdate = 2 * time.Second
 )
 
+// EBPFFlow describes the userland side of an eBPF flow
 type EBPFFlow struct {
 	start time.Time
 	last  time.Time
 	lastK int64
-	Kflow C.struct_flow
 }
 
+// EBPFProbe the eBPF probe
 type EBPFProbe struct {
 	probeNodeTID string
 	fd           int
@@ -76,6 +77,7 @@ type EBPFProbe struct {
 	quit         chan bool
 }
 
+// EBPFProbesHandler creates new eBPF probes
 type EBPFProbesHandler struct {
 	graph      *graph.Graph
 	probes     map[graph.Identifier]*EBPFProbe
@@ -84,8 +86,13 @@ type EBPFProbesHandler struct {
 	wg         sync.WaitGroup
 }
 
-func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, updatedAt int64) *flow.Flow {
-	kernFlow := ebpfFlow.Kflow
+func kernFlowKey(kernFlow *C.struct_flow) string {
+	hasher := sha1.New()
+	hasher.Write(C.GoBytes(unsafe.Pointer(&kernFlow.key), C.sizeof___u64))
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+func (p *EBPFProbe) newFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow) *flow.Operation {
 	f := flow.NewFlow()
 	f.Init(common.UnixMillis(ebpfFlow.start), p.probeNodeTID, flow.UUIDs{})
 	f.Last = common.UnixMillis(ebpfFlow.last)
@@ -186,8 +193,6 @@ func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, updatedAt int64) *flow.Flow
 		}
 	}
 
-	f.RTT = int64(kernFlow.rtt)
-
 	appLayers := strings.Split(f.LayersPath, "/")
 	f.Application = appLayers[len(appLayers)-1]
 
@@ -200,40 +205,44 @@ func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, updatedAt int64) *flow.Flow
 		Last:      f.Last,
 	}
 
-	hasher := sha1.New()
-	hasher.Write(C.GoBytes(unsafe.Pointer(&kernFlow.key), C.sizeof___u64))
-	key := hex.EncodeToString(hasher.Sum(nil))
+	key := kernFlowKey(kernFlow)
 
 	f.UpdateUUID(key, flow.Opts{})
 
-	return f
+	return &flow.Operation{
+		Type: flow.ReplaceOperation,
+		Flow: f,
+		Key:  key,
+	}
 }
-func updateFromEBPF(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow) { //Maintaining a huge flow table that is accessed via syscalls is expensive.
-	//Therefore, we remove every flow after extracting its data and we keep
-	//a local copy that we update continuously to preserve correctness.
-	if ebpfFlow.Kflow.link_layer._hash_src == kernFlow.link_layer._hash_src {
-		ebpfFlow.Kflow.metrics.ab_packets += kernFlow.metrics.ab_packets
-		ebpfFlow.Kflow.metrics.ab_bytes += kernFlow.metrics.ab_bytes
-		ebpfFlow.Kflow.metrics.ba_packets += kernFlow.metrics.ba_packets
-		ebpfFlow.Kflow.metrics.ba_bytes += kernFlow.metrics.ba_bytes
-	} else {
-		ebpfFlow.Kflow.metrics.ab_packets += kernFlow.metrics.ba_packets
-		ebpfFlow.Kflow.metrics.ab_bytes += kernFlow.metrics.ba_bytes
-		ebpfFlow.Kflow.metrics.ba_packets += kernFlow.metrics.ab_packets
-		ebpfFlow.Kflow.metrics.ba_bytes += kernFlow.metrics.ab_bytes
+
+func (p *EBPFProbe) updateFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow) *flow.Operation {
+	f := flow.NewFlow()
+	f.Last = common.UnixMillis(ebpfFlow.last)
+
+	f.Metric = &flow.FlowMetric{
+		ABBytes:   int64(kernFlow.metrics.ab_bytes),
+		ABPackets: int64(kernFlow.metrics.ab_packets),
+		BABytes:   int64(kernFlow.metrics.ba_bytes),
+		BAPackets: int64(kernFlow.metrics.ba_packets),
+		Start:     f.Start,
+		Last:      f.Last,
 	}
 
-	if ebpfFlow.Kflow.metrics.ab_packets >= 1 && ebpfFlow.Kflow.metrics.ba_packets >= 1 && ebpfFlow.Kflow._flags != 1 {
-		ebpfFlow.Kflow.rtt = kernFlow.last - ebpfFlow.Kflow.start
-		ebpfFlow.Kflow._flags = 1
+	key := kernFlowKey(kernFlow)
+
+	return &flow.Operation{
+		Type: flow.UpdateOperation,
+		Flow: f,
+		Key:  key,
 	}
-	ebpfFlow.Kflow.last = kernFlow.last
 }
+
 func (p *EBPFProbe) run() {
 	var info syscall.Sysinfo_t
 	syscall.Sysinfo(&info)
 
-	_, flowChan := p.flowTable.Start()
+	_, flowChanOperation := p.flowTable.Start()
 	defer p.flowTable.Stop()
 
 	var startKTimeNs int64
@@ -246,8 +255,6 @@ func (p *EBPFProbe) run() {
 	for {
 		select {
 		case now := <-updateTicker.C:
-			unow := common.UnixMillis(now)
-
 			// try to get start monotonic time
 			if startKTimeNs == 0 {
 				cmap := p.module.Map("u64_config_values")
@@ -270,7 +277,6 @@ func (p *EBPFProbe) run() {
 			kernFlow := C.struct_flow{}
 			var key, nextKey C.__u64
 			for {
-
 				found, _ := p.module.LookupNextElement(p.fmap, unsafe.Pointer(&key), unsafe.Pointer(&nextKey), unsafe.Pointer(&kernFlow))
 				if !found {
 					break
@@ -280,10 +286,10 @@ func (p *EBPFProbe) run() {
 				p.module.DeleteElement(p.fmap, unsafe.Pointer(&key))
 
 				lastK := int64(kernFlow.last)
+				last := start.Add(time.Duration(lastK - startKTimeNs))
 
 				ebpfFlow, ok := ebpfFlows[kernFlow.key]
 				if !ok {
-
 					startK := int64(kernFlow.start)
 
 					// check that the local time computed from the kernel time is not greater than Now
@@ -294,23 +300,16 @@ func (p *EBPFProbe) run() {
 
 					ebpfFlow = &EBPFFlow{
 						start: now,
-						last:  start.Add(time.Duration(lastK - startKTimeNs)),
-						Kflow: kernFlow,
+						last:  last,
 					}
 					ebpfFlows[kernFlow.key] = ebpfFlow
 
-				}
-				if ok {
-					updateFromEBPF(ebpfFlow, &kernFlow)
-				}
-
-				if lastK != ebpfFlow.lastK {
 					ebpfFlow.lastK = lastK
-					ebpfFlow.last = start.Add(time.Duration(lastK - startKTimeNs))
+					ebpfFlow.last = last
 
-					fl := p.flowFromEBPF(ebpfFlow, unow)
-					flowChan <- fl
-
+					flowChanOperation <- p.newFlowOperation(ebpfFlow, &kernFlow)
+				} else {
+					flowChanOperation <- p.updateFlowOperation(ebpfFlow, &kernFlow)
 				}
 			}
 

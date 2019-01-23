@@ -80,46 +80,63 @@ type TableOpts struct {
 
 // Table store the flow table and related metrics mechanism
 type Table struct {
-	Opts          TableOpts
-	packetSeqChan chan *PacketSequence
-	flowChan      chan *Flow
-	table         map[string]*Flow
-	flush         chan bool
-	flushDone     chan bool
-	query         chan *TableQuery
-	reply         chan *TableReply
-	state         int64
-	lockState     common.RWMutex
-	wg            sync.WaitGroup
-	quit          chan bool
-	updateHandler *Handler
-	lastUpdate    int64
-	updateVersion int64
-	expireHandler *Handler
-	lastExpire    int64
-	nodeTID       string
-	ipDefragger   *IPDefragger
-	tcpAssembler  *TCPAssembler
-	flowOpts      Opts
-	appPortMap    *ApplicationPortMap
+	Opts              TableOpts
+	packetSeqChan     chan *PacketSequence
+	flowChanOperation chan *Operation
+	table             map[string]*Flow
+	flush             chan bool
+	flushDone         chan bool
+	query             chan *TableQuery
+	reply             chan *TableReply
+	state             int64
+	lockState         common.RWMutex
+	wg                sync.WaitGroup
+	quit              chan bool
+	updateHandler     *Handler
+	lastUpdate        int64
+	updateVersion     int64
+	expireHandler     *Handler
+	lastExpire        int64
+	nodeTID           string
+	ipDefragger       *IPDefragger
+	tcpAssembler      *TCPAssembler
+	flowOpts          Opts
+	appPortMap        *ApplicationPortMap
+}
+
+// OperationType operation type of a Flow in a flow table
+type OperationType int
+
+const (
+	// ReplaceOperation replace the flow
+	ReplaceOperation OperationType = iota
+	// UpdateOperation update the flow
+	UpdateOperation
+)
+
+// Operation describes a flow operation
+type Operation struct {
+	Key  string
+	Flow *Flow
+	Type OperationType
 }
 
 // NewTable creates a new flow table
 func NewTable(updateHandler *Handler, expireHandler *Handler, nodeTID string, opts ...TableOpts) *Table {
 	t := &Table{
-		packetSeqChan: make(chan *PacketSequence, 1000),
-		flowChan:      make(chan *Flow, 1000),
-		table:         make(map[string]*Flow),
-		flush:         make(chan bool),
-		flushDone:     make(chan bool),
-		state:         common.StoppedState,
-		quit:          make(chan bool),
-		updateHandler: updateHandler,
-		expireHandler: expireHandler,
-		nodeTID:       nodeTID,
-		ipDefragger:   NewIPDefragger(),
-		tcpAssembler:  NewTCPAssembler(),
-		appPortMap:    NewApplicationPortMapFromConfig(),
+		packetSeqChan:     make(chan *PacketSequence, 1000),
+		flowChanOperation: make(chan *Operation, 1000),
+		table:             make(map[string]*Flow),
+		flush:             make(chan bool),
+		flushDone:         make(chan bool),
+		state:             common.StoppedState,
+		quit:              make(chan bool),
+		updateHandler:     updateHandler,
+		expireHandler:     expireHandler,
+		nodeTID:           nodeTID,
+		ipDefragger:       NewIPDefragger(),
+		tcpAssembler:      NewTCPAssembler(),
+		appPortMap:        NewApplicationPortMapFromConfig(),
 	}
 	if len(opts) > 0 {
 		t.Opts = opts[0]
@@ -405,13 +422,36 @@ func (ft *Table) processPacketSeq(ps *PacketSequence) {
 	}
 }
 
-func (ft *Table) processFlow(fl *Flow) {
-	prev := ft.replaceFlow(fl.UUID, fl)
-	if prev != nil {
-		fl.LastUpdateMetric = prev.LastUpdateMetric
+func (ft *Table) processFlowOP(op *Operation) {
+	switch op.Type {
+	case ReplaceOperation:
+		fl := op.Flow
 
-		fl.XXX_state = prev.XXX_state
-		fl.XXX_state.updateVersion = ft.updateVersion + 1
+		prev := ft.replaceFlow(op.Key, fl)
+		if prev != nil {
+			fl.LastUpdateMetric = prev.LastUpdateMetric
+
+			fl.XXX_state = prev.XXX_state
+			fl.XXX_state.updateVersion = ft.updateVersion + 1
+		}
+	case UpdateOperation:
+		fl := ft.table[op.Key]
+		if fl == nil {
+			return
+		}
+
+		// NOTE(safchain) keep it simple for now. Need to add TCPMetric and some
+		// other metrics.
+		fl.Metric.ABBytes += op.Flow.Metric.ABBytes
+		fl.Metric.BABytes += op.Flow.Metric.BABytes
+		fl.Metric.ABPackets += op.Flow.Metric.ABPackets
+		fl.Metric.BAPackets += op.Flow.Metric.BAPackets
+
+		fl.Last = op.Flow.Last
+
+		if fl.RTT == 0 && fl.Metric.ABPackets > 0 && fl.Metric.BAPackets > 0 {
+			fl.RTT = fl.Last - fl.Start
+		}
 	}
 }
 
@@ -463,8 +503,8 @@ func (ft *Table) Run() {
 			}
 		case ps := <-ft.packetSeqChan:
 			ft.processPacketSeq(ps)
-		case fl := <-ft.flowChan:
-			ft.processFlow(fl)
+		case op := <-ft.flowChanOperation:
+			ft.processFlowOP(op)
 		case now := <-ctTicker.C:
 			t := now.Add(-ctDuration)
 			ft.tcpAssembler.FlushOlderThan(t)
@@ -496,9 +536,9 @@ func (ft *Table) FeedWithSFlowSample(sample *layers.SFlowFlowSample, bpf *BPF) {
 }
 
 // Start the flow table
-func (ft *Table) Start() (chan *PacketSequence, chan *Flow) {
+func (ft *Table) Start() (chan *PacketSequence, chan *Operation) {
 	go ft.Run()
-	return ft.packetSeqChan, ft.flowChan
+	return ft.packetSeqChan, ft.flowChanOperation
 }
 
 // Stop the flow table
@@ -518,13 +558,13 @@ func (ft *Table) Stop() {
 			ft.processPacketSeq(ps)
 		}
 
-		for len(ft.flowChan) != 0 {
-			fl := <-ft.flowChan
-			ft.processFlow(fl)
+		for len(ft.flowChanOperation) != 0 {
+			op := <-ft.flowChanOperation
+			ft.processFlowOP(op)
 		}
 
 		close(ft.packetSeqChan)
-		close(ft.flowChan)
+		close(ft.flowChanOperation)
 	}
 
 	ft.expireNow()
