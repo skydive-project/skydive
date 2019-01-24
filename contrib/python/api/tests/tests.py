@@ -48,7 +48,7 @@ class SkydiveWSTest(unittest.TestCase):
         subprocess.call(["docker", "run", "--name",
                          "skydive-docker-python-tests", "-p", "8082:8082"] +
                         extraArgs +
-                        ["-d", "skydive/skydive:devel", "analyzer"])
+                        ["-d", "skydive/skydive:devel", "allinone"])
         time.sleep(10)
 
     @classmethod
