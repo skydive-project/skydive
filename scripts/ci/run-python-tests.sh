@@ -87,7 +87,7 @@ stateOrProvinceName_default = Paris
 localityName_default = Paris
 organizationalUnitName_default = Skydive Team
 commonName = skydive
-commonName_max	= 64
+commonName_max = 64
 
 [ v3_req ]
 # Extensions to add to a certificate request
@@ -109,8 +109,9 @@ chmod 444 $CERT_DIR/rootCA.crt
 
 openssl genrsa -out $CERT_DIR/analyzer.key 2048
 chmod 400 $CERT_DIR/analyzer.key
+
 yes '' | openssl req -new -key $CERT_DIR/analyzer.key -out $CERT_DIR/analyzer.csr -subj "/CN=analyzer" -config $CONF_SSL
-openssl x509 -req -days 365 -signkey $CERT_DIR/analyzer.key -in $CERT_DIR/analyzer.csr -out $CERT_DIR/analyzer.crt -extfile $CONF_SSL -extensions v3_req
+openssl x509 -req -days 365 -in $CERT_DIR/analyzer.csr -CA $CERT_DIR/rootCA.crt -CAkey $CERT_DIR/rootCA.key -CAcreateserial -out $CERT_DIR/analyzer.crt -extfile $CONF_SSL -extensions v3_req
 chmod 444 $CERT_DIR/analyzer.crt
 
 CONF=$(mktemp /tmp/skydive.yml.XXXXXX)
@@ -121,6 +122,7 @@ tls:
   client_key: /etc/skydive.analyzer.key
   server_cert: /etc/skydive.analyzer.crt
   server_key: /etc/skydive.analyzer.key
+
 agent:
   topology:
     probes:
@@ -129,6 +131,9 @@ agent:
 
 analyzer:
   listen: 0.0.0.0:8082
+
+analyzers:
+  - 127.0.0.1:8082
 EOF
 
 export SKYDIVE_PYTHON_TESTS_MAPFILE="$CONF:/etc/skydive.yml,$CERT_DIR/rootCA.crt:/etc/skydive.ca.crt,$CERT_DIR/analyzer.crt:/etc/skydive.analyzer.crt,$CERT_DIR/analyzer.key:/etc/skydive.analyzer.key"
