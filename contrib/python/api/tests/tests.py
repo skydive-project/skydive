@@ -264,11 +264,11 @@ class SkydiveWSTest(unittest.TestCase):
         num_injections_after = len(restclient.injection_list())
 
         self.assertEqual(num_injections_after, num_injections_before + 1,
-                         "injection creation didn's succeed")
+                         "injection creation didn't succeed")
 
         restclient.injection_delete(injection_response.uuid)
 
         num_injections_after_deletion = len(restclient.injection_list())
 
         self.assertEqual(num_injections_after_deletion, num_injections_before,
-                         "injection deletion didn's succeed")
+                         "injection deletion didn't succeed")
