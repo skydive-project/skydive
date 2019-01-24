@@ -26,6 +26,7 @@ import (
 	"sync"
 
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/topology"
 
 	libvirtgo "github.com/libvirt/libvirt-go"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -144,8 +145,8 @@ func (itf *Interface) ProcessNode(g *graph.Graph, node *graph.Node) bool {
 	tr.AddMetadata("Libvirt.Alias", itf.Alias.Name)
 	tr.AddMetadata("PeerIntfMAC", itf.Mac.Address)
 	tr.Commit()
-	if !g.AreLinked(node, itf.Host, graph.Metadata{"RelationType": "vlayer2"}) {
-		if _, err := g.Link(node, itf.Host, graph.Metadata{"RelationType": "vlayer2"}); err != nil {
+	if !topology.HaveLink(g, node, itf.Host, "vlayer2") {
+		if _, err := topology.AddLink(g, node, itf.Host, "vlayer2", nil); err != nil {
 			logging.GetLogger().Error(err)
 		}
 	}
@@ -173,7 +174,6 @@ func (probe *Probe) createOrUpdateDomain(d *libvirtgo.Domain) *graph.Node {
 	}
 
 	var err error
-
 	domainNode := g.LookupFirstNode(metadata)
 	if domainNode == nil {
 		domainNode, err = g.NewNode(graph.GenID(), metadata)
@@ -181,19 +181,22 @@ func (probe *Probe) createOrUpdateDomain(d *libvirtgo.Domain) *graph.Node {
 			logging.GetLogger().Error(err)
 			return nil
 		}
-		if _, err = g.Link(probe.root, domainNode, graph.Metadata{"RelationType": "ownership"}); err != nil {
+
+		if _, err = topology.AddOwnershipLink(g, probe.root, domainNode, graph.Metadata{"RelationType": "ownership"}); err != nil {
 			logging.GetLogger().Error(err)
 			return nil
 		}
 	}
+
 	state, _, err := d.GetState()
 	if err != nil {
 		logging.GetLogger().Errorf("Cannot update domain state for %s", domainName)
 	} else {
 		tr := g.StartMetadataTransaction(domainNode)
-		defer tr.Commit()
 		tr.AddMetadata("State", DomainStateMap[state])
+		tr.Commit()
 	}
+
 	return domainNode
 }
 

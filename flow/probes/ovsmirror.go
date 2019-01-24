@@ -530,7 +530,7 @@ func (o *ovsMirrorPortHandler) OnNodeAdded(n *graph.Node) {
 		return
 	}
 
-	o.oph.Graph.Link(n, ovsProbe.node, graph.Metadata{"RelationType": "mirroring"})
+	topology.AddLink(o.oph.Graph, n, ovsProbe.node, "mirroring", nil)
 }
 
 func (o *ovsMirrorInterfaceHandler) OnNodeDeleted(n *graph.Node) {
