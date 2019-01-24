@@ -128,12 +128,14 @@ Vue.component('workflow-call', {
 
   data() {
   	return {
+      "visible": false,
       "currentWorkflow": {},
       "result": {
         "value": null
       },
       "workflows": {},
-      "display": false
+      "display": false,
+      "fileContent": "",
     }
   },
 
@@ -145,25 +147,40 @@ Vue.component('workflow-call', {
   },
 
   template: `
-    <div class="form-group">
+    <div>
       <div class="form-group">
-        <label for="workflow">Workflows</label>
-        <select id="workflow" v-model="currentWorkflow" class="form-control custom-select">
-          <option selected :value="{}">Select a workflow</option>\
-          <option v-for="(workflow, id) in workflows" :value="workflow">{{ workflow.Name }} ({{ workflow.Description }})</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <workflow-params :workflow="currentWorkflow"></workflow-params>
-      </div>
-      <div class="form-group" v-if="display">
-        <h1><span class="workflow-title">Result</span></h1>
-        <div class="form-group" v-if="result.value">
-          <textarea readonly id="workflow-output" type="text" class="form-control input-sm" rows="5" v-model="result.value" v-if="result.value && (typeof result.value) != 'object'"></textarea>
-          <object-detail v-else-if="typeof result.value == 'object'" id="workflow-output" :object="result.value"></object-detail>\
+        <div class="form-group">
+          <select id="workflow" v-model="currentWorkflow" class="form-control custom-select">
+            <option selected :value="{}">Select/Upload a workflow</option>\
+            <option value="__upload__">New workflow</option>\
+            <option v-for="(workflow, id) in workflows" :value="workflow">{{ workflow.Name }} ({{ workflow.Description }})</option>
+          </select>
         </div>
-        <div class="form-group" v-else>
-          <i class="fa fa-circle-o-notch fa-spin fa-2x fa-fw"></i>
+
+        <div v-if="currentWorkflow == '__upload__'">
+        <input type="file" id="file_selector" @change="openfile($event)" style="display:none;">
+        <button type="button"\
+                id="create-workflow"\
+                class="btn btn-primary"\
+                @click="uploadFile">
+          Upload
+        </button>
+        </div>
+
+        <hr/>
+
+        <div class="form-group">
+          <workflow-params :workflow="currentWorkflow"></workflow-params>
+        </div>
+        <div class="form-group" v-if="display">
+          <h1><span class="workflow-title">Result</span></h1>
+          <div class="form-group" v-if="result.value">
+            <textarea readonly id="workflow-output" type="text" class="form-control input-sm" rows="5" v-model="result.value" v-if="result.value && (typeof result.value) != 'object'"></textarea>
+            <object-detail v-else-if="typeof result.value == 'object'" id="workflow-output" :object="result.value"></object-detail>\
+          </div>
+          <div class="form-group" v-else>
+            <i class="fa fa-circle-o-notch fa-spin fa-2x fa-fw"></i>
+          </div>
         </div>
       </div>
     </div>
@@ -176,30 +193,71 @@ Vue.component('workflow-call', {
   },
 
   created: function() {
-    var self = this;
-    self.workflowAPI.list()
-      .then(function(data) {
-        self.workflows = data;
-
-        // setting default
-        for (var i in this.workflow.Parameters) {
-          var param = this.workflow.Parameters[i];
-          param.Values = param.Default;
-        }
-      })
-      .catch(function (e) {
-        if (e.status === 405) { // not allowed
-          return $.Deferred().promise([]);
-        }
-        self.$error({message: 'Error while listing workflows: ' + e.responseText});
-        return e;
-      });
+    this.loadWorkflows();
   },
 
   methods: {
+    loadWorkflows: function() {
+      var self = this;
+      self.workflowAPI.list()
+        .then(function(data) {
+          self.workflows = data;
+
+          // setting default
+          for (var i in this.workflow.Parameters) {
+            var param = this.workflow.Parameters[i];
+            param.Values = param.Default;
+          }
+        })
+        .catch(function (e) {
+          if (e.status === 405) { // not allowed
+            return $.Deferred().promise([]);
+          }
+          self.$error({message: 'Error while listing workflows: ' + e.responseText});
+          return e;
+        });
+    },
+
     toggleResultDisplay: function(status) {
       this.display = status;
       this.result.value = undefined;
-    }
+    },
+
+    create: function() {
+      var self = this;
+      if (this.fileContent == "") {
+        this.$error({message: "Select a file first"});
+        return;
+      }
+      $.ajax({
+        dataType: "json",
+        url: "/api/workflow",
+        data: self.fileContent,
+        contentType: "application/yaml",
+        method: "POST",
+      })
+      .then(function() {
+        self.$success({message: "workflow created"});
+        self.loadWorkflows();
+      })
+      .fail(function(e){
+        self.$error({message: "workflow create error: " + e.responseText});
+      })
+    },
+
+    openfile: function(event) {
+      var self = this;
+      file = event.target.files[0];
+      r = new FileReader();
+      r.onload = function(e) {
+        self.fileContent = e.target.result;
+        self.create();
+      };
+      r.readAsText(file);
+    },
+
+    uploadFile: function() {
+      document.getElementById('file_selector').click();
+    },
   }
 })
