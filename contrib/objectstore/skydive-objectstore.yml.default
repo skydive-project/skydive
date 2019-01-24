@@ -8,3 +8,22 @@
 # subscriber_username:
 # subscriber_password:
 # max_seconds_per_stream: 86400
+# excluded_fields:
+    # Application:
+    # Link:
+    # ICMP:
+    # DHCPv4:
+    # DNS:
+    # VRRPv2:
+    # TCPMetric:
+    # IPMetric:
+    # RTT:
+    # TrackingID:
+    # L3TrackingID:
+    # ParentUUID:
+    # NodeTID:
+    # LastRawPackets:
+    # RawPacketsCaptured:
+    # XXX_state:
+    # Metric.Start:
+    # Metric.Last:

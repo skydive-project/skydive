@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 
 	"github.com/skydive-project/skydive/contrib/objectstore/subscriber/client"
+	"github.com/skydive-project/skydive/contrib/objectstore/subscriber/fieldexcluder"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 	ws "github.com/skydive-project/skydive/websocket"
@@ -28,11 +29,12 @@ type stream struct {
 
 // Subscriber describes a Flows subscriber writing to an object storage service
 type Subscriber struct {
-	bucket            string
-	objectPrefix      string
-	currentStream     stream
-	maxStreamDuration time.Duration
-	objectStoreClient client.Client
+	bucket                string
+	objectPrefix          string
+	currentStream         stream
+	maxStreamDuration     time.Duration
+	objectStoreClient     client.Client
+	excludeFieldsFunction func(interface{}) map[string]interface{}
 }
 
 // OnStructMessage is triggered when WS server sends us a message.
@@ -57,7 +59,19 @@ func (s *Subscriber) StoreFlows(flows []*flow.Flow) error {
 		return nil
 	}
 
-	flowsString, err := json.Marshal(flows)
+	var flowsStringBytes []byte
+	var err error
+	if s.excludeFieldsFunction == nil {
+		flowsStringBytes, err = json.Marshal(flows)
+	} else {
+		// remove excluded fields
+		convertedFlows := make([]map[string]interface{}, len(flows))
+		for i, flow := range flows {
+			convertedFlows[i] = s.excludeFieldsFunction(*flow)
+		}
+		flowsStringBytes, err = json.Marshal(convertedFlows)
+	}
+
 	if err != nil {
 		logging.GetLogger().Error("Error encoding flows: ", err)
 		return err
@@ -82,7 +96,7 @@ func (s *Subscriber) StoreFlows(flows []*flow.Flow) error {
 	// gzip
 	var b bytes.Buffer
 	w := gzip.NewWriter(&b)
-	w.Write([]byte(flowsString))
+	w.Write(flowsStringBytes)
 	w.Close()
 
 	currentStream := s.currentStream
@@ -105,13 +119,14 @@ func (s *Subscriber) StoreFlows(flows []*flow.Flow) error {
 }
 
 // New returns a new flows subscriber writing to an object storage service
-func New(endpoint, region, bucket, accessKey, secretKey, objectPrefix string, maxSecondsPerStream int) *Subscriber {
+func New(endpoint, region, bucket, accessKey, secretKey, objectPrefix string, maxSecondsPerStream int, excludedFields []string) *Subscriber {
 	objectStoreClient := client.New(endpoint, region, accessKey, secretKey)
 	s := &Subscriber{
-		bucket:            bucket,
-		objectPrefix:      objectPrefix,
-		maxStreamDuration: time.Second * time.Duration(maxSecondsPerStream),
-		objectStoreClient: objectStoreClient,
+		bucket:                bucket,
+		objectPrefix:          objectPrefix,
+		maxStreamDuration:     time.Second * time.Duration(maxSecondsPerStream),
+		objectStoreClient:     objectStoreClient,
+		excludeFieldsFunction: fieldexcluder.GenerateExcludeFieldsFunction(flow.Flow{}, excludedFields),
 	}
 	return s
 }

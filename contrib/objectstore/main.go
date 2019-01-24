@@ -39,6 +39,12 @@ func main() {
 	subscriberUsername := cfg.GetString("subscriber_username")
 	subscriberPassword := cfg.GetString("subscriber_password")
 	maxSecondsPerStream := cfg.GetInt("max_seconds_per_stream")
+	excludedFieldsMap := cfg.GetStringMap("excluded_fields")
+
+	excludedFields := make([]string, 0, len(excludedFieldsMap))
+	for field := range excludedFieldsMap {
+		excludedFields = append(excludedFields, field)
+	}
 
 	authOptions := &shttp.AuthenticationOpts{
 		Username: subscriberUsername,
@@ -58,7 +64,7 @@ func main() {
 	}
 	structClient := wsClient.UpgradeToStructSpeaker()
 
-	s := subscriber.New(endpoint, region, bucket, accessKey, secretKey, objectPrefix, maxSecondsPerStream)
+	s := subscriber.New(endpoint, region, bucket, accessKey, secretKey, objectPrefix, maxSecondsPerStream, excludedFields)
 
 	// subscribe to the flow updates
 	structClient.AddStructMessageHandler(s, []string{"flow"})
