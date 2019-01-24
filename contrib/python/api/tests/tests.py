@@ -48,7 +48,7 @@ class SkydiveWSTest(unittest.TestCase):
         subprocess.call(["docker", "run", "--name",
                          "skydive-docker-python-tests", "-p", "8082:8082"] +
                         extraArgs +
-                        ["-d", "skydive/skydive:devel", "analyzer"])
+                        ["-d", "skydive/skydive:devel", "allinone"])
         time.sleep(10)
 
     @classmethod
@@ -251,7 +251,7 @@ class SkydiveWSTest(unittest.TestCase):
                                 password=self.password,
                                 insecure=True)
 
-        nodes = restclient.lookup("G.V().Has('MAC', NE('ee:ee:ee:ee:ee:ee'))")
+        nodes = restclient.lookup("G.V().Has('Name', 'eth0')")
 
         testnode = nodes[0]["Metadata"]["TID"]
 
