@@ -45,6 +45,7 @@ import (
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/ui"
+	"github.com/skydive-project/skydive/websocket"
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
@@ -67,7 +68,7 @@ type Agent struct {
 
 // NewAnalyzerStructClientPool creates a new http WebSocket client Pool
 // with authentification
-func NewAnalyzerStructClientPool(authOptions *shttp.AuthenticationOpts) (*ws.StructClientPool, error) {
+func NewAnalyzerStructClientPool(authOpts *shttp.AuthenticationOpts) (*ws.StructClientPool, error) {
 	pool := ws.NewStructClientPool("AnalyzerClientPool")
 
 	addresses, err := config.GetAnalyzerServiceAddresses()
@@ -81,7 +82,8 @@ func NewAnalyzerStructClientPool(authOptions *shttp.AuthenticationOpts) (*ws.Str
 	}
 
 	for _, sa := range addresses {
-		c, err := config.NewWSClient(common.AgentService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/agent/topology"), authOptions, nil)
+		url := config.GetURL("ws", sa.Addr, sa.Port, "/ws/agent/topology")
+		c, err := config.NewWSClient(common.AgentService, url, websocket.ClientOpts{AuthOpts: authOpts, Protocol: websocket.ProtobufProtocol})
 		if err != nil {
 			return nil, err
 		}

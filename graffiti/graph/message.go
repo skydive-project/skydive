@@ -86,32 +86,31 @@ func UnmarshalMessage(msg *ws.StructMessage) (string, interface{}, error) {
 	switch msg.Type {
 	case SyncRequestMsgType:
 		var syncRequest SyncRequestMsg
-		if err := msg.UnmarshalObj(&syncRequest); err != nil {
+		if err := json.Unmarshal(msg.Obj, &syncRequest); err != nil {
 			return "", msg, err
 		}
-
 		return msg.Type, &syncRequest, nil
 	case SyncMsgType, SyncReplyMsgType:
 		var syncMsg SyncMsg
-		if err := msg.UnmarshalObj(&syncMsg); err != nil {
+		if err := json.Unmarshal(msg.Obj, &syncMsg); err != nil {
 			return "", msg, err
 		}
 		return msg.Type, &syncMsg, nil
 	case OriginGraphDeletedMsgType:
 		var origin string
-		if err := msg.UnmarshalObj(&origin); err != nil {
+		if err := json.Unmarshal(msg.Obj, &origin); err != nil {
 			return "", msg, err
 		}
 		return msg.Type, origin, nil
 	case NodeUpdatedMsgType, NodeDeletedMsgType, NodeAddedMsgType:
 		var node Node
-		if err := msg.UnmarshalObj(&node); err != nil {
+		if err := json.Unmarshal(msg.Obj, &node); err != nil {
 			return "", msg, err
 		}
 		return msg.Type, &node, nil
 	case EdgeUpdatedMsgType, EdgeDeletedMsgType, EdgeAddedMsgType:
 		var edge Edge
-		if err := msg.UnmarshalObj(&edge); err != nil {
+		if err := json.Unmarshal(msg.Obj, &edge); err != nil {
 			return "", msg, err
 		}
 		return msg.Type, &edge, nil

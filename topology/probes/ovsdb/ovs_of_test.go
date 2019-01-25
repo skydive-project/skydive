@@ -193,7 +193,9 @@ func (r ExecuteForTest) ExecCommand(com string, args ...string) ([]byte, error) 
 	return []byte(result), nil
 }
 
-func (r ExecuteForTest) ExecCommandPipe(ctx context.Context, com string, args ...string) (io.Reader, interface{ Wait() error }, error) {
+func (r ExecuteForTest) ExecCommandPipe(ctx context.Context, com string, args ...string) (io.Reader, interface {
+	Wait() error
+}, error) {
 	return strings.NewReader(r.Flow), r, nil
 }
 

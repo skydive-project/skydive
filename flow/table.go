@@ -23,12 +23,10 @@
 package flow
 
 import (
-	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 
@@ -37,22 +35,8 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-// TableQuery contains a type and a query obj as an array of bytes.
-// The query can be encoded in different ways according the type.
-type TableQuery struct {
-	Type string
-	Obj  []byte
-}
-
-// TableReply is the response to a TableQuery containing a Status and an array
-// of replies that can be encoded in many ways, ex: json, protobuf.
-type TableReply struct {
-	Obj    [][]byte
-	status int
-}
-
 // ExpireUpdateFunc defines expire and updates callback
-type ExpireUpdateFunc func(f []*Flow)
+type ExpireUpdateFunc func(f *FlowArray)
 
 // Handler defines a flow callback called every time
 type Handler struct {
@@ -87,7 +71,7 @@ type Table struct {
 	flush             chan bool
 	flushDone         chan bool
 	query             chan *TableQuery
-	reply             chan *TableReply
+	reply             chan []byte
 	state             int64
 	lockState         common.RWMutex
 	wg                sync.WaitGroup
@@ -225,7 +209,7 @@ func (ft *Table) expire(expireBefore int64) {
 	}
 
 	/* Advise Clients */
-	ft.expireHandler.callback(expiredFlows)
+	ft.expireHandler.callback(&FlowArray{Flows: expiredFlows})
 
 	flowTableSz := len(ft.table)
 	logging.GetLogger().Debugf("Expire Flow : removed %v ; new size %v", flowTableSzBefore-flowTableSz, flowTableSz)
@@ -282,7 +266,7 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 
 	if len(updatedFlows) != 0 {
 		/* Advise Clients */
-		ft.updateHandler.callback(updatedFlows)
+		ft.updateHandler.callback(&FlowArray{Flows: updatedFlows})
 		logging.GetLogger().Debugf("Send updated Flows: %d", len(updatedFlows))
 
 		// cleanup raw packets
@@ -304,52 +288,25 @@ func (ft *Table) expireAt(now time.Time) {
 	ft.lastExpire = common.UnixMillis(now)
 }
 
-func (ft *Table) onSearchQueryMessage(fsq *filters.SearchQuery) (*FlowSearchReply, int) {
-	flowset := ft.getFlows(fsq)
-	if len(flowset.Flows) == 0 {
-		return &FlowSearchReply{
-			FlowSet: flowset,
-		}, http.StatusNoContent
-	}
-
-	return &FlowSearchReply{
-		FlowSet: flowset,
-	}, http.StatusOK
-}
-
-func (ft *Table) onQuery(query *TableQuery) *TableReply {
-	reply := &TableReply{
-		status: http.StatusBadRequest,
-		Obj:    make([][]byte, 0),
-	}
-
-	switch query.Type {
+func (ft *Table) onQuery(tq *TableQuery) []byte {
+	switch tq.Type {
 	case "SearchQuery":
-		var fsq filters.SearchQuery
-		if err := proto.Unmarshal(query.Obj, &fsq); err != nil {
-			logging.GetLogger().Errorf("Unable to decode the flow search query: %s", err)
-			break
+		fs := ft.getFlows(tq.Query)
+
+		// marshal early to avoid race outside of query loop
+		b, err := fs.Marshal()
+		if err != nil {
+			return nil
 		}
 
-		fsr, status := ft.onSearchQueryMessage(&fsq)
-		if status != http.StatusOK {
-			reply.status = status
-			break
-		}
-		pb, _ := proto.Marshal(fsr)
-
-		// TableReply returns an array of replies so in that case an array of
-		// protobuf replies
-		reply.Obj = append(reply.Obj, pb)
-
-		reply.status = http.StatusOK
+		return b
 	}
 
-	return reply
+	return nil
 }
 
 // Query a flow table
-func (ft *Table) Query(query *TableQuery) *TableReply {
+func (ft *Table) Query(query *TableQuery) []byte {
 	ft.lockState.Lock()
 	defer ft.lockState.Unlock()
 
@@ -481,7 +438,7 @@ func (ft *Table) Run() {
 	defer nowTicker.Stop()
 
 	ft.query = make(chan *TableQuery, 100)
-	ft.reply = make(chan *TableReply, 100)
+	ft.reply = make(chan []byte, 100)
 
 	atomic.StoreInt64(&ft.state, common.RunningState)
 	for {

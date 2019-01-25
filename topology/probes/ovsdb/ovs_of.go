@@ -310,7 +310,9 @@ func makeFilter(rule *Rule) string {
 // Execute exposes an interface to command launch on the OS
 type Execute interface {
 	ExecCommand(string, ...string) ([]byte, error)
-	ExecCommandPipe(context.Context, string, ...string) (io.Reader, interface{ Wait() error }, error)
+	ExecCommandPipe(context.Context, string, ...string) (io.Reader, interface {
+		Wait() error
+	}, error)
 }
 
 // RealExecute is the actual implementation given below. It can be overridden for tests.
@@ -326,7 +328,9 @@ func (r RealExecute) ExecCommand(com string, args ...string) ([]byte, error) {
 }
 
 // ExecCommandPipe executes a command on a host and gives back a pipe to control it.
-func (r RealExecute) ExecCommandPipe(ctx context.Context, com string, args ...string) (io.Reader, interface{ Wait() error }, error) {
+func (r RealExecute) ExecCommandPipe(ctx context.Context, com string, args ...string) (io.Reader, interface {
+	Wait() error
+}, error) {
 	/* #nosec */
 	command := exec.CommandContext(ctx, com, args...)
 	out, err := command.StdoutPipe()

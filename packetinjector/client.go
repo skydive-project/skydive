@@ -23,6 +23,7 @@
 package packetinjector
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -71,7 +72,7 @@ func (pc *Client) StopInjection(host string, uuid string) error {
 	}
 
 	var reply Reply
-	if err := resp.UnmarshalObj(&reply); err != nil {
+	if err := json.Unmarshal(resp.Obj, &reply); err != nil {
 		return fmt.Errorf("Failed to parse response from %s: %s", host, err.Error())
 	}
 
@@ -93,7 +94,7 @@ func (pc *Client) InjectPackets(host string, pp *PacketInjectionParams) (string,
 	}
 
 	var reply Reply
-	if err := resp.UnmarshalObj(&reply); err != nil {
+	if err := json.Unmarshal(resp.Obj, &reply); err != nil {
 		return "", fmt.Errorf("Failed to parse response from %s: %s", host, err.Error())
 	}
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -12,6 +11,7 @@ import (
 	"github.com/skydive-project/skydive/contrib/objectstore/subscriber"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/websocket"
 )
 
 const defaultConfigurationFile = "/etc/skydive/skydive-objectstore.yml"
@@ -40,7 +40,7 @@ func main() {
 	subscriberPassword := cfg.GetString("subscriber_password")
 	maxSecondsPerStream := cfg.GetInt("max_seconds_per_stream")
 
-	authOptions := &shttp.AuthenticationOpts{
+	authOpts := &shttp.AuthenticationOpts{
 		Username: subscriberUsername,
 		Password: subscriberPassword,
 	}
@@ -51,7 +51,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	wsClient, err := config.NewWSClient(common.AnalyzerService, subscriberURL, authOptions, http.Header{})
+	wsClient, err := config.NewWSClient(common.AnalyzerService, subscriberURL, websocket.ClientOpts{AuthOpts: authOpts})
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to create websocket client: %s", err)
 		os.Exit(1)

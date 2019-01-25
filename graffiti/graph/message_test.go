@@ -23,7 +23,6 @@
 package graph
 
 import (
-	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -33,15 +32,12 @@ import (
 func TestNullNodesEdges(t *testing.T) {
 	nodesNull := []byte(`{"Nodes": null}`)
 
-	raw := json.RawMessage(nodesNull)
-
 	msg := &ws.StructMessage{
-		Protocol:  ws.JSONProtocol,
 		Namespace: Namespace,
 		Type:      SyncMsgType,
 		UUID:      "aaa",
 		Status:    http.StatusOK,
-		JSONObj:   &raw,
+		Obj:       nodesNull,
 	}
 
 	if _, _, err := UnmarshalMessage(msg); err != nil {
@@ -50,15 +46,12 @@ func TestNullNodesEdges(t *testing.T) {
 
 	edgesNull := []byte(`{"Nodes": [{"ID": "aaa"}], "Edges": null}`)
 
-	raw = json.RawMessage(edgesNull)
-
 	msg = &ws.StructMessage{
-		Protocol:  ws.JSONProtocol,
 		Namespace: Namespace,
 		Type:      SyncMsgType,
 		UUID:      "bbb",
 		Status:    http.StatusOK,
-		JSONObj:   &raw,
+		Obj:       edgesNull,
 	}
 
 	if _, _, err := UnmarshalMessage(msg); err != nil {
@@ -69,15 +62,12 @@ func TestNullNodesEdges(t *testing.T) {
 func TestID(t *testing.T) {
 	idMissing := []byte(`{"Nodes": [{"AAA": 123}]}`)
 
-	raw := json.RawMessage(idMissing)
-
 	msg := &ws.StructMessage{
-		Protocol:  ws.JSONProtocol,
 		Namespace: Namespace,
 		Type:      SyncMsgType,
 		UUID:      "aaa",
 		Status:    http.StatusOK,
-		JSONObj:   &raw,
+		Obj:       idMissing,
 	}
 
 	if _, _, err := UnmarshalMessage(msg); err == nil {
@@ -86,15 +76,12 @@ func TestID(t *testing.T) {
 
 	idWrongType := []byte(`{"Nodes": [{"ID": 123}]}`)
 
-	raw = json.RawMessage(idWrongType)
-
 	msg = &ws.StructMessage{
-		Protocol:  ws.JSONProtocol,
 		Namespace: Namespace,
 		Type:      SyncMsgType,
 		UUID:      "aaa",
 		Status:    http.StatusOK,
-		JSONObj:   &raw,
+		Obj:       idWrongType,
 	}
 
 	if _, _, err := UnmarshalMessage(msg); err == nil {
@@ -105,15 +92,12 @@ func TestID(t *testing.T) {
 func TestHost(t *testing.T) {
 	hostWrongType := []byte(`{"Nodes": [{"Host": 123}]}`)
 
-	raw := json.RawMessage(hostWrongType)
-
 	msg := &ws.StructMessage{
-		Protocol:  ws.JSONProtocol,
 		Namespace: Namespace,
 		Type:      SyncMsgType,
 		UUID:      "aaa",
 		Status:    http.StatusOK,
-		JSONObj:   &raw,
+		Obj:       hostWrongType,
 	}
 
 	if _, _, err := UnmarshalMessage(msg); err == nil {

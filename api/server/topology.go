@@ -30,7 +30,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/abbot/go-http-auth"
+	auth "github.com/abbot/go-http-auth"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -193,7 +193,7 @@ func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(res); err != nil {
-			logging.GetLogger().Warningf("Error while writing response: %s", err)
+			logging.GetLogger().Errorf("Error while writing response: %s", err)
 		}
 	}
 }

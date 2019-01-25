@@ -23,13 +23,14 @@
 package websocket
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
 	"testing"
 	"time"
 
+	proto "github.com/gogo/protobuf/proto"
 	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
 )
@@ -114,7 +115,12 @@ func TestMessageSubscription(t *testing.T) {
 
 	u, _ := url.Parse("ws://localhost:59999/wstest")
 
-	wsclient := NewClient("myhost", common.AgentService, u, nil, http.Header{}, 1000, true, nil)
+	opts := ClientOpts{
+		QueueSize:        1000,
+		WriteCompression: true,
+	}
+
+	wsclient := NewClient("myhost", common.AgentService, u, opts)
 
 	wspool := NewStructClientPool("TestMessageSubscription")
 	wspool.AddClient(wsclient)
@@ -158,5 +164,112 @@ func TestMessageSubscription(t *testing.T) {
 
 	if err != nil {
 		t.Error(err)
+	}
+}
+
+type fakeJSONObj struct {
+	Desc string
+}
+
+func TestMessageJsonProtocol(t *testing.T) {
+	obj := fakeJSONObj{
+		Desc: "json",
+	}
+
+	msg := NewStructMessage("test", "test", &obj)
+
+	// first test a full json
+	b, err := msg.Bytes(JSONProtocol)
+	if err != nil {
+		t.Error(err)
+	}
+
+	var i map[string]interface{}
+	if err = json.Unmarshal(b, &i); err != nil {
+		t.Error(err)
+	}
+
+	if i["Obj"].(map[string]interface{})["Desc"].(string) != "json" {
+		t.Error("wrong json format")
+	}
+
+	if err = msg.unmarshalByProtocol(b, JSONProtocol); err != nil {
+		t.Error(err)
+	}
+
+	if err = json.Unmarshal(msg.Obj, &obj); err != nil {
+		t.Error(err)
+	}
+
+	if obj.Desc != "json" {
+		t.Error("unexpected value")
+	}
+}
+
+type fakeProtobufObj struct {
+	Desc string `protobuf:"bytes,1,opt,name=Desc,proto3"`
+}
+
+func (f *fakeProtobufObj) Reset()         {}
+func (f *fakeProtobufObj) String() string { return "" }
+func (f *fakeProtobufObj) ProtoMessage()  {}
+
+func (f *fakeProtobufObj) Marshal() ([]byte, error) {
+	return []byte{0x11, 0x07, 0x74, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x67}, nil
+}
+
+func (f *fakeProtobufObj) Unmarshal(b []byte) error {
+	f.Desc = "protobuf unmarshal"
+	return nil
+}
+
+func TestMessageProtobufProtocol(t *testing.T) {
+	// test fallback first
+	jsonObj := fakeJSONObj{
+		Desc: "json",
+	}
+
+	msg := NewStructMessage("test", "test", &jsonObj)
+
+	// first test a json object
+	b, err := msg.Bytes(ProtobufProtocol)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if err = msg.unmarshalByProtocol(b, ProtobufProtocol); err != nil {
+		t.Error(err)
+	}
+
+	if err = json.Unmarshal(msg.Obj, &jsonObj); err != nil {
+		t.Error(err)
+	}
+
+	if jsonObj.Desc != "json" {
+		t.Error("unexpected value")
+	}
+
+	// test with full protobuf
+	pbObj := fakeProtobufObj{
+		Desc: "protobuf",
+	}
+
+	msg = NewStructMessage("test", "test", &pbObj)
+
+	b, err = msg.Bytes(ProtobufProtocol)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if err = msg.unmarshalByProtocol(b, ProtobufProtocol); err != nil {
+		t.Error(err)
+	}
+
+	if err = proto.Unmarshal(msg.Obj, &pbObj); err != nil {
+		t.Error(err)
+	}
+
+	if pbObj.Desc != "protobuf unmarshal" {
+		t.Error("Unexpected desc")
 	}
 }

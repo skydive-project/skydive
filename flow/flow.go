@@ -33,7 +33,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/spaolacci/murmur3"
@@ -504,28 +503,6 @@ func (f *Flow) UpdateUUID(key string, opts Opts) {
 	hasher.Write([]byte(key))
 
 	f.UUID = hex.EncodeToString(hasher.Sum(nil))
-}
-
-// FromData deserialize a protobuf message to a Flow
-func FromData(data []byte) (*Flow, error) {
-	flow := new(Flow)
-
-	err := proto.Unmarshal(data, flow)
-	if err != nil {
-		return nil, err
-	}
-
-	return flow, nil
-}
-
-// GetData serialize a Flow to a protobuf
-func (f *Flow) GetData() ([]byte, error) {
-	data, err := proto.Marshal(f)
-	if err != nil {
-		return []byte{}, err
-	}
-
-	return data, nil
 }
 
 // LinkType returns the Link type of the flow according the its first available layer.

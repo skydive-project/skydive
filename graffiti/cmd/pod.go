@@ -23,7 +23,6 @@
 package cmd
 
 import (
-	"crypto/tls"
 	"fmt"
 	"net/url"
 	"os"
@@ -49,12 +48,12 @@ var (
 	serviceType = common.ServiceType("Pod")
 )
 
-func newHubClientPool(host string, addresses []common.ServiceAddress, authOptions *shttp.AuthenticationOpts, writeCompression bool, queueSize int, tlsConfig *tls.Config) *websocket.StructClientPool {
+func newHubClientPool(host string, addresses []common.ServiceAddress, opts websocket.ClientOpts) *websocket.StructClientPool {
 	pool := websocket.NewStructClientPool("HubClientPool")
 
 	for _, sa := range addresses {
 		url, _ := url.Parse(fmt.Sprintf("ws://%s:%d/ws/pod", sa.Addr, sa.Port))
-		client := websocket.NewClient(host, serviceType, url, authOptions, nil, queueSize, writeCompression, tlsConfig)
+		client := websocket.NewClient(host, serviceType, url, opts)
 		pool.AddClient(client)
 	}
 
@@ -127,7 +126,13 @@ var PodCmd = &cobra.Command{
 			logging.GetLogger().Info("Pod is running in standalone mode")
 		}
 
-		clientPool := newHubClientPool(hostname, addresses, clusterAuthOptions, writeCompression, queueSize, nil)
+		opts := websocket.ClientOpts{
+			AuthOpts:         clusterAuthOptions,
+			WriteCompression: writeCompression,
+			QueueSize:        queueSize,
+		}
+
+		clientPool := newHubClientPool(hostname, addresses, opts)
 
 		pod, err := pod.NewPod(apiServer, clientPool, g, authBackend, nil, tr, writeCompression, queueSize, time.Second*time.Duration(pingDelay), time.Second*time.Duration(pongTimeout))
 		if err != nil {

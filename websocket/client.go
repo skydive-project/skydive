@@ -52,7 +52,7 @@ type ConnState int32
 // ConnStatus describes the status of a WebSocket connection
 type ConnStatus struct {
 	ServiceType       common.ServiceType
-	ClientProtocol    string
+	ClientProtocol    Protocol
 	Addr              string
 	Port              int
 	Host              string      `json:"-"`
@@ -93,15 +93,15 @@ func (s *ConnState) UnmarshalJSON(b []byte) error {
 
 // Message is the interface of a message to send over the wire
 type Message interface {
-	Bytes(protocol string) []byte
+	Bytes(protocol Protocol) ([]byte, error)
 }
 
 // RawMessage represents a raw message (array of bytes)
 type RawMessage []byte
 
 // Bytes returns the string representation of the raw message
-func (m RawMessage) Bytes(protocol string) []byte {
-	return m
+func (m RawMessage) Bytes(protocol Protocol) ([]byte, error) {
+	return m, nil
 }
 
 // Speaker is the interface for a websocket speaking client. It is used for outgoing
@@ -111,7 +111,7 @@ type Speaker interface {
 	GetHost() string
 	GetAddrPort() (string, int)
 	GetServiceType() common.ServiceType
-	GetClientProtocol() string
+	GetClientProtocol() Protocol
 	GetHeaders() http.Header
 	GetURL() *url.URL
 	IsConnected() bool
@@ -154,6 +154,16 @@ type Client struct {
 	Path      string
 	AuthOpts  *shttp.AuthenticationOpts
 	tlsConfig *tls.Config
+}
+
+// ClientOpts defines some options that can be set when creating a new client
+type ClientOpts struct {
+	Protocol         Protocol
+	AuthOpts         *shttp.AuthenticationOpts
+	Headers          http.Header
+	QueueSize        int
+	WriteCompression bool
+	TLSConfig        *tls.Config
 }
 
 // SpeakerEventHandler is the interface to be implement by the client events listeners.
@@ -221,7 +231,12 @@ func (c *Conn) SendMessage(m Message) error {
 		return errors.New("Not connected")
 	}
 
-	c.send <- m.Bytes(c.GetClientProtocol())
+	b, err := m.Bytes(c.GetClientProtocol())
+	if err != nil {
+		return err
+	}
+
+	c.send <- b
 
 	return nil
 }
@@ -243,7 +258,7 @@ func (c *Conn) GetServiceType() common.ServiceType {
 }
 
 // GetClientProtocol returns the websocket protocol.
-func (c *Conn) GetClientProtocol() string {
+func (c *Conn) GetClientProtocol() Protocol {
 	return c.ClientProtocol
 }
 
@@ -419,7 +434,7 @@ func (c *Conn) Stop() {
 	c.wg.Wait()
 }
 
-func newConn(host string, clientType common.ServiceType, clientProtocol string, url *url.URL, headers http.Header, queueSize int, writeCompression bool) *Conn {
+func newConn(host string, clientType common.ServiceType, clientProtocol Protocol, url *url.URL, headers http.Header, queueSize int, writeCompression bool) *Conn {
 	if headers == nil {
 		headers = http.Header{}
 	}
@@ -464,7 +479,7 @@ func (c *Client) Connect() error {
 		"X-Host-ID":             {c.Host},
 		"Origin":                {endpoint},
 		"X-Client-Type":         {c.ServiceType.String()},
-		"X-Client-Protocol":     {ProtobufProtocol},
+		"X-Client-Protocol":     {c.ClientProtocol.String()},
 		"X-Websocket-Namespace": {WildcardNamespace},
 	}
 
@@ -521,11 +536,6 @@ func (c *Client) Connect() error {
 		l.OnConnected(c)
 	}
 
-	// in case of a handler disconnect the client directly
-	if !c.IsConnected() {
-		return errors.New("Aborting connection to the server")
-	}
-
 	return nil
 }
 
@@ -534,7 +544,10 @@ func (c *Client) Start() {
 	go func() {
 		for c.running.Load() == true {
 			if err := c.Connect(); err == nil {
-				c.Run()
+				// in case of a handler disconnect the client directly
+				if c.IsConnected() {
+					c.Run()
+				}
 			} else {
 				logging.GetLogger().Error(err)
 			}
@@ -544,12 +557,12 @@ func (c *Client) Start() {
 }
 
 // NewClient returns a Client with a new connection.
-func NewClient(host string, clientType common.ServiceType, url *url.URL, authOpts *shttp.AuthenticationOpts, headers http.Header, queueSize int, writeCompression bool, tlsConfig *tls.Config) *Client {
-	wsconn := newConn(host, clientType, ProtobufProtocol, url, headers, queueSize, writeCompression)
+func NewClient(host string, clientType common.ServiceType, url *url.URL, opts ClientOpts) *Client {
+	wsconn := newConn(host, clientType, opts.Protocol, url, opts.Headers, opts.QueueSize, opts.WriteCompression)
 	c := &Client{
 		Conn:      wsconn,
-		AuthOpts:  authOpts,
-		tlsConfig: tlsConfig,
+		AuthOpts:  opts.AuthOpts,
+		tlsConfig: opts.TLSConfig,
 	}
 	wsconn.wsSpeaker = c
 	return c

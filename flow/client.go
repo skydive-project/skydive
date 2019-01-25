@@ -44,19 +44,18 @@ type WSTableClient struct {
 }
 
 func (f *WSTableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearchQuery filters.SearchQuery) {
-	obj, _ := proto.Marshal(&flowSearchQuery)
-	tq := TableQuery{Type: "SearchQuery", Obj: obj}
+	tq := &TableQuery{Type: "SearchQuery", Query: &flowSearchQuery}
 	msg := ws.NewStructMessage(Namespace, "TableQuery", tq)
 
 	resp, err := f.structServer.Request(host, msg, ws.DefaultRequestTimeout)
 	if err != nil {
-		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", host, err.Error())
+		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", host, err)
 		flowset <- NewFlowSet()
 		return
 	}
 
 	var reply TableReply
-	if resp == nil || resp.UnmarshalObj(&reply) != nil {
+	if resp == nil || proto.Unmarshal(resp.Obj, &reply) != nil {
 		logging.GetLogger().Errorf("Error returned while reading TableReply from: %s", host)
 		flowset <- NewFlowSet()
 	}
@@ -69,13 +68,14 @@ func (f *WSTableClient) lookupFlows(flowset chan *FlowSet, host string, flowSear
 		Dedup:     flowSearchQuery.Dedup,
 		DedupBy:   flowSearchQuery.DedupBy,
 	}
-	for _, b := range reply.Obj {
-		var fsr FlowSearchReply
-		if err := proto.Unmarshal(b, &fsr); err != nil {
-			logging.GetLogger().Errorf("Unable to decode flow search reply from: %s", host)
-			continue
+	for _, b := range reply.FlowSetBytes {
+		var f FlowSet
+		if err := f.Unmarshal(b); err != nil {
+			logging.GetLogger().Errorf("Error returned while reading TableReply from: %s", host)
+			flowset <- NewFlowSet()
 		}
-		fs.Merge(fsr.FlowSet, context)
+
+		fs.Merge(&f, context)
 	}
 	flowset <- fs
 }
