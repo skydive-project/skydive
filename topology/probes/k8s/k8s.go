@@ -100,6 +100,7 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		newNetworkPolicyLinker,
 		newServiceEndpointsLinker,
 		newServicePodLinker,
+		newStatefulSetPodLinker,
 	}
 
 	linkers := InitLinkers(linkerHandlers, g)
