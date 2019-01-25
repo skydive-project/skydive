@@ -35,6 +35,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/sflow"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
 )
@@ -178,6 +179,25 @@ func (g *GremlinQueryHelper) GetInterfaceMetrics(query interface{}) (map[string]
 	return result[0], nil
 }
 
+// GetSFlowMetrics from Gremlin query
+func (g *GremlinQueryHelper) GetSFlowMetrics(query interface{}) (map[string][]*sflow.SFMetric, error) {
+	data, err := g.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []map[string][]*sflow.SFMetric
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, err
+	}
+
+	if len(result) == 0 {
+		return nil, nil
+	}
+
+	return result[0], nil
+}
+
 // GetFlowMetrics from Gremlin query
 func (g *GremlinQueryHelper) GetFlowMetrics(query interface{}) (map[string][]*flow.FlowMetric, error) {
 	data, err := g.Query(query)
@@ -220,6 +240,21 @@ func (g *GremlinQueryHelper) GetInterfaceMetric(query interface{}) (*topology.In
 	}
 
 	var result topology.InterfaceMetric
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// GetSFlowMetric from Gremlin query
+func (g *GremlinQueryHelper) GetSFlowMetric(query interface{}) (*sflow.SFMetric, error) {
+	data, err := g.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	var result sflow.SFMetric
 	if err := json.Unmarshal(data, &result); err != nil {
 		return nil, err
 	}
