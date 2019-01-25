@@ -1055,13 +1055,13 @@ func TestSFlowMetric(t *testing.T) {
 			{"ip link set vm1-eth0 up", true},
 			{"ovs-vsctl add-port br-sfmt vm1-eth0", true},
 			{"ip netns exec vm1 ip link set eth0 up", true},
-			{"ip netns exec vm1 ip address add 192.168.0.1/24 dev eth0", true},
+			{"ip netns exec vm1 ip address add 192.168.0.11/24 dev eth0", true},
 			{"ip netns add vm2", true},
 			{"ip link add vm2-eth0 type veth peer name eth0 netns vm2", true},
 			{"ip link set vm2-eth0 up", true},
 			{"ovs-vsctl add-port br-sfmt vm2-eth0", true},
 			{"ip netns exec vm2 ip link set eth0 up", true},
-			{"ip netns exec vm2 ip address add 192.168.0.2/24 dev eth0", true},
+			{"ip netns exec vm2 ip address add 192.168.0.21/24 dev eth0", true},
 		},
 
 		injections: []TestInjection{{
@@ -1087,7 +1087,7 @@ func TestSFlowMetric(t *testing.T) {
 		mode: OneShot,
 
 		checks: []CheckFunction{func(c *CheckContext) error {
-			sfmetrics, err := c.gh.GetSFlowMetrics(c.gremlin.V().Metrics("SFlow").Aggregates())
+			sfmetrics, err := c.gh.GetSFlowMetrics(c.gremlin.V().Metrics("SFlow.LastUpdateMetric").Aggregates())
 			if err != nil {
 				return err
 			}
@@ -1118,9 +1118,9 @@ func TestSFlowMetric(t *testing.T) {
 				return fmt.Errorf("Expected at least IfInUcastPkts, got %d", totalInUc)
 			}
 
-			m, err := c.gh.GetSFlowMetric(c.gremlin.V().Metrics("SFlow").Aggregates().Sum())
+			m, err := c.gh.GetSFlowMetric(c.gremlin.V().Metrics("SFlow.LastUpdateMetric").Aggregates().Sum())
 			if err != nil {
-				return fmt.Errorf("Could not find metrics with: %s", "c.gremlin.V().Metrics('SFlow').Aggregates().Sum()")
+				return fmt.Errorf("Could not find metrics with: %s", "c.gremlin.V().Metrics('SFlow.LastUpdateMetric').Aggregates().Sum()")
 			}
 
 			if inUc, _ := m.GetFieldInt64("IfInUcastPkts"); inUc != totalInUc {

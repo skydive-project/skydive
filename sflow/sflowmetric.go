@@ -25,13 +25,15 @@ package sflow
 import (
 	"encoding/json"
 
+	"github.com/google/gopacket/layers"
 	"github.com/skydive-project/skydive/common"
 )
 
 //SFlow all sflow information
 type SFlow struct {
-	Metric           *SFMetric `json:"Metric,omitempty"`
-	LastUpdateMetric *SFMetric `json:"LastUpdateMetric,omitempty"`
+	Counters         []layers.SFlowCounterSample `json:"Counters,omitempty"`
+	Metric           *SFMetric                   `json:"Metric,omitempty"`
+	LastUpdateMetric *SFMetric                   `json:"LastUpdateMetric,omitempty"`
 }
 
 //SFMetadataDecoder implements a json message raw decoder
@@ -51,6 +53,8 @@ func (sf *SFlow) GetField(key string) (interface{}, error) {
 		return sf.Metric, nil
 	case "LastUpdateMetric":
 		return sf.LastUpdateMetric, nil
+	case "Counters":
+		return sf.Counters, nil
 	}
 
 	return nil, common.ErrFieldNotFound
