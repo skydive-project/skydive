@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/probe"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -39,8 +40,8 @@ func (h *persistentVolumeClaimHandler) Map(obj interface{}) (graph.Identifier, g
 
 	m := NewMetadataFields(&pvc.ObjectMeta)
 	m.SetFieldAndNormalize("AccessModes", pvc.Spec.AccessModes)
-	m.SetFieldAndNormalize("VolumeName", pvc.Spec.VolumeName)             // FIXME: replace by link to PersistentVolume
-	m.SetFieldAndNormalize("StorageClassName", pvc.Spec.StorageClassName) // FIXME: replace by link to StorageClass
+	m.SetFieldAndNormalize("VolumeName", pvc.Spec.VolumeName)
+	m.SetFieldAndNormalize("StorageClassName", pvc.Spec.StorageClassName)
 	m.SetFieldAndNormalize("VolumeMode", pvc.Spec.VolumeMode)
 	m.SetFieldAndNormalize("Status", pvc.Status.Phase)
 
@@ -49,4 +50,14 @@ func (h *persistentVolumeClaimHandler) Map(obj interface{}) (graph.Identifier, g
 
 func newPersistentVolumeClaimProbe(client interface{}, g *graph.Graph) Subprobe {
 	return NewResourceCache(client.(*kubernetes.Clientset).CoreV1().RESTClient(), &v1.PersistentVolumeClaim{}, "persistentvolumeclaims", g, &persistentVolumeClaimHandler{})
+}
+
+func pvPVCAreLinked(a, b interface{}) bool {
+	pvc := a.(*v1.PersistentVolumeClaim)
+	pv := b.(*v1.PersistentVolume)
+	return pvc.Spec.VolumeName == pv.Name
+}
+
+func newPVPVCLinker(g *graph.Graph) probe.Probe {
+	return NewABLinker(g, Manager, "persistentvolumeclaim", Manager, "persistentvolume", pvPVCAreLinked)
 }

@@ -96,6 +96,10 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		newServiceEndpointsLinker,
 		newServicePodLinker,
 		newStatefulSetPodLinker,
+		newPodPVCLinker,
+		newPVPVCLinker,
+		newStorageClassPVCLinker,
+		newStorageClassPVLinker,
 	}
 
 	linkers := InitLinkers(linkerHandlers, g)
@@ -106,7 +110,6 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		"namespace",
 		"node",
 		"persistentvolume",
-		"persistentvolumeclaim",
 		"storageclass",
 	)
 
@@ -119,6 +122,7 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		"job",
 		"networkpolicy",
 		"pod",
+		"persistentvolumeclaim",
 		"replicaset",
 		"replicationcontroller",
 		"service",
