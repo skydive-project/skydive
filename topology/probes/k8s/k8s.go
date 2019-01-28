@@ -67,6 +67,7 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 
 	subprobeHandlers := map[string]SubprobeHandler{
 		"cluster":               newClusterProbe,
+		"configmap":             newConfigMapProbe,
 		"container":             newContainerProbe,
 		"cronjob":               newCronJobProbe,
 		"daemonset":             newDaemonSetProbe,
@@ -82,6 +83,7 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		"pod":                   newPodProbe,
 		"replicaset":            newReplicaSetProbe,
 		"replicationcontroller": newReplicationControllerProbe,
+		"secret":                newSecretProbe,
 		"service":               newServiceProbe,
 		"statefulset":           newStatefulSetProbe,
 		"storageclass":          newStorageClassProbe,
@@ -116,6 +118,7 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 	)
 
 	probe.AppendNamespaceLinkers(
+		"configmap",
 		"cronjob",
 		"deployment",
 		"daemonset",
@@ -126,6 +129,7 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		"pod",
 		"replicaset",
 		"replicationcontroller",
+		"secret",
 		"service",
 		"statefulset",
 	)

@@ -128,6 +128,7 @@ analyzer:
       # if list is empty then will resolve to all existing (sub) probes.
       probes:
         - cluster
+        - configmap
         - container
         - cronjob
         - deployment
@@ -142,6 +143,7 @@ analyzer:
         - pod
         - replicaset
         - replicationcontroller
+        - secret
         - service
         - statefulset
         - storageclass

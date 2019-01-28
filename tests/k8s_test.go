@@ -191,6 +191,10 @@ func TestK8sClusterNode(t *testing.T) {
 	testNodeCreation(t, nil, nil, k8s.Manager, "cluster", k8s.ClusterName)
 }
 
+func TestK8sConfigMapNode(t *testing.T) {
+	testNodeCreationFromConfig(t, k8s.Manager, "configmap", objName+"-configmap")
+}
+
 func TestK8sContainerNode(t *testing.T) {
 	testNodeCreationFromConfig(t, k8s.Manager, "container", objName+"-container", "Image", "Pod")
 }
@@ -249,6 +253,10 @@ func TestK8sReplicaSetNode(t *testing.T) {
 
 func TestK8sReplicationControllerNode(t *testing.T) {
 	testNodeCreationFromConfig(t, k8s.Manager, "replicationcontroller", objName+"-replicationcontroller")
+}
+
+func TestK8sSecretNode(t *testing.T) {
+	testNodeCreationFromConfig(t, k8s.Manager, "secret", objName+"-secret", "Type")
 }
 
 func TestK8sServiceNode(t *testing.T) {
