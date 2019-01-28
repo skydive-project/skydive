@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 
 	"github.com/skydive-project/skydive/contrib/objectstore/subscriber/client"
+	"github.com/skydive-project/skydive/contrib/objectstore/subscriber/flowtransformer"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 	ws "github.com/skydive-project/skydive/websocket"
@@ -33,6 +34,7 @@ type Subscriber struct {
 	currentStream     stream
 	maxStreamDuration time.Duration
 	objectStoreClient client.Client
+	flowTransformer   flowtransformer.FlowTransformer
 }
 
 // OnStructMessage is triggered when WS server sends us a message.
@@ -58,7 +60,21 @@ func (s *Subscriber) StoreFlows(flows []*flow.Flow) error {
 		return nil
 	}
 
-	flowsString, err := json.Marshal(flows)
+	var jsonMarshalInput interface{}
+	if s.flowTransformer == nil {
+		jsonMarshalInput = flows
+	} else {
+		transformedFlows := make([]interface{}, 0, len(flows))
+		for _, f := range flows {
+			transformedFlow := s.flowTransformer.Transform(f)
+			if transformedFlow != nil {
+				transformedFlows = append(transformedFlows, transformedFlow)
+			}
+		}
+		jsonMarshalInput = transformedFlows
+	}
+
+	flowsBytes, err := json.Marshal(jsonMarshalInput)
 	if err != nil {
 		logging.GetLogger().Error("Error encoding flows: ", err)
 		return err
@@ -83,7 +99,7 @@ func (s *Subscriber) StoreFlows(flows []*flow.Flow) error {
 	// gzip
 	var b bytes.Buffer
 	w := gzip.NewWriter(&b)
-	w.Write([]byte(flowsString))
+	w.Write(flowsBytes)
 	w.Close()
 
 	currentStream := s.currentStream
@@ -106,13 +122,14 @@ func (s *Subscriber) StoreFlows(flows []*flow.Flow) error {
 }
 
 // New returns a new flows subscriber writing to an object storage service
-func New(endpoint, region, bucket, accessKey, secretKey, objectPrefix string, maxSecondsPerStream int) *Subscriber {
+func New(endpoint, region, bucket, accessKey, secretKey, objectPrefix string, maxSecondsPerStream int, flowTransformer flowtransformer.FlowTransformer) *Subscriber {
 	objectStoreClient := client.New(endpoint, region, accessKey, secretKey)
 	s := &Subscriber{
 		bucket:            bucket,
 		objectPrefix:      objectPrefix,
 		maxStreamDuration: time.Second * time.Duration(maxSecondsPerStream),
 		objectStoreClient: objectStoreClient,
+		flowTransformer:   flowTransformer,
 	}
 	return s
 }

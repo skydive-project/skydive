@@ -9,6 +9,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/contrib/objectstore/subscriber"
+	"github.com/skydive-project/skydive/contrib/objectstore/subscriber/flowtransformer"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/websocket"
@@ -39,6 +40,13 @@ func main() {
 	subscriberUsername := cfg.GetString("subscriber_username")
 	subscriberPassword := cfg.GetString("subscriber_password")
 	maxSecondsPerStream := cfg.GetInt("max_seconds_per_stream")
+	flowTransformerName := cfg.GetString("flow_transformer")
+
+	flowTransformer, err := flowtransformer.New(flowTransformerName)
+	if err != nil {
+		logging.GetLogger().Errorf("Failed to initialize flow transformer: %s", err.Error())
+		os.Exit(1)
+	}
 
 	authOpts := &shttp.AuthenticationOpts{
 		Username: subscriberUsername,
@@ -58,7 +66,7 @@ func main() {
 	}
 	structClient := wsClient.UpgradeToStructSpeaker()
 
-	s := subscriber.New(endpoint, region, bucket, accessKey, secretKey, objectPrefix, maxSecondsPerStream)
+	s := subscriber.New(endpoint, region, bucket, accessKey, secretKey, objectPrefix, maxSecondsPerStream, flowTransformer)
 
 	// subscribe to the flow updates
 	structClient.AddStructMessageHandler(s, []string{"flow"})
