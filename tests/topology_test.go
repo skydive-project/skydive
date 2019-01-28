@@ -26,7 +26,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"reflect"
 	"sync/atomic"
@@ -634,7 +633,13 @@ func TestQueryMetadata(t *testing.T) {
 			hostname, _ := os.Hostname()
 			wspool := ws.NewStructClientPool("TestQueryMetadata")
 			for _, sa := range addresses {
-				client := ws.NewClient(hostname+"-cli", common.UnknownService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher"), authOptions, http.Header{}, 1000, true, nil)
+				opts := ws.ClientOpts{
+					AuthOpts:         authOptions,
+					QueueSize:        1000,
+					WriteCompression: true,
+				}
+
+				client := ws.NewClient(hostname+"-cli", common.UnknownService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher"), opts)
 				wspool.AddClient(client)
 			}
 

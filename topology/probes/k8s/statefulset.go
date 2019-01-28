@@ -26,8 +26,10 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/probe"
 
 	"k8s.io/api/apps/v1beta1"
+	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -57,4 +59,12 @@ func (h *statefulSetHandler) Map(obj interface{}) (graph.Identifier, graph.Metad
 
 func newStatefulSetProbe(client interface{}, g *graph.Graph) Subprobe {
 	return NewResourceCache(client.(*kubernetes.Clientset).AppsV1beta1().RESTClient(), &v1beta1.StatefulSet{}, "statefulsets", g, &statefulSetHandler{})
+}
+
+func statefulSetPodAreLinked(a, b interface{}) bool {
+	return matchLabelSelector(b.(*v1.Pod), a.(*v1beta1.StatefulSet).Spec.Selector)
+}
+
+func newStatefulSetPodLinker(g *graph.Graph) probe.Probe {
+	return NewABLinker(g, Manager, "statefulset", Manager, "pod", statefulSetPodAreLinked)
 }

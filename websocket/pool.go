@@ -239,8 +239,7 @@ func (s *Pool) SendMessageTo(m Message, host string) error {
 		return common.ErrNotFound
 	}
 
-	c.SendMessage(m)
-	return nil
+	return c.SendMessage(m)
 }
 
 // BroadcastMessage broadcasts the given message.
@@ -249,7 +248,11 @@ func (s *Pool) BroadcastMessage(m Message) {
 	defer s.RUnlock()
 
 	for _, c := range s.speakers {
-		r := m.Bytes(c.GetClientProtocol())
+		r, err := m.Bytes(c.GetClientProtocol())
+		if err != nil {
+			logging.GetLogger().Errorf("Unable to send raw message: %s", err)
+		}
+
 		if err := c.SendRaw(r); err != nil {
 			logging.GetLogger().Errorf("Unable to send raw message: %s", err)
 		}

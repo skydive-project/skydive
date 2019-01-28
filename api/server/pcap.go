@@ -26,7 +26,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/abbot/go-http-auth"
+	auth "github.com/abbot/go-http-auth"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/storage"
@@ -40,10 +40,10 @@ type PcapAPI struct {
 	Storage storage.Storage
 }
 
-func (p *PcapAPI) flowExpireUpdate(flows []*flow.Flow) {
-	if p.Storage != nil && len(flows) > 0 {
-		p.Storage.StoreFlows(flows)
-		logging.GetLogger().Debugf("%d flows stored", len(flows))
+func (p *PcapAPI) flowExpireUpdate(flowArray *flow.FlowArray) {
+	if p.Storage != nil && len(flowArray.Flows) > 0 {
+		p.Storage.StoreFlows(flowArray.Flows)
+		logging.GetLogger().Debugf("%d flows stored", len(flowArray.Flows))
 	}
 }
 

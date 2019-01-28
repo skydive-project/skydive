@@ -29,7 +29,7 @@ endef
 
 define PROTOC_GEN
 $(call VENDOR_RUN,${PROTOC_GEN_GOFAST_GITHUB})
-$(call VENDOR_RUN,${PROTOC_GEN_GO_GITHUB}) protoc -Ivendor -I. --plugin=${BUILD_TOOLS}/protoc-gen-gogofaster --gogofaster_out . $1
+$(call VENDOR_RUN,${PROTOC_GEN_GO_GITHUB}) protoc -Ivendor -I. --plugin=${BUILD_TOOLS}/protoc-gen-gogofaster --gogofaster_out $$GOPATH/src $1
 endef
 
 VERSION?=$(shell $(VERSION_CMD))
@@ -211,8 +211,8 @@ debug.analyzer:
 %.pb.go: %.proto
 	$(call PROTOC_GEN,$<)
 
-flow/flow.pb.go: flow/flow.proto
-	$(call PROTOC_GEN,$<)
+flow/flow.pb.go: flow/flow.proto filters/filters.proto
+	$(call PROTOC_GEN,flow/flow.proto)
 
 	# always export flow.ParentUUID as we need to store this information to know
 	# if it's a Outer or Inner packet.
@@ -232,9 +232,16 @@ flow/flow.pb.go: flow/flow.proto
 flow/layers/generated.proto: flow/layers/layers.go
 	$(call VENDOR_RUN,${PROTEUS_GITHUB}) proteus proto -f $${GOPATH}/src -p github.com/skydive-project/skydive/flow/layers
 	sed -e 's/^package .*;/package layers;/' -i $@
+	sed -e 's/^option go_package = "layers"/option go_package = "github.com\/skydive-project\/skydive\/flow\/layers"/' -i $@
 	sed -e 's/^message Layer/message /' -i $@
 	sed -e 's/option (gogoproto.typedecl) = false;//' -i $@
 	sed 's/\((gogoproto\.customname) = "\([^\"]*\)"\)/\1, (gogoproto.jsontag) = "\2,omitempty"/' -i $@
+
+websocket/structmessage.pb.go: websocket/structmessage.proto
+	$(call PROTOC_GEN,$<)
+
+	sed -e 's/type StructMessage struct {/type StructMessage struct { XXX_state structMessageState `json:"-"`/' -i websocket/structmessage.pb.go
+	gofmt -s -w $@
 
 .proto: govendor flow/layers/generated.pb.go flow/flow.pb.go filters/filters.pb.go websocket/structmessage.pb.go
 

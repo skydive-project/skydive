@@ -123,8 +123,7 @@ func (t *TopologySubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Struc
 		defer t.Graph.RUnlock()
 
 		syncMsg, status := obj.(*graph.SyncRequestMsg), http.StatusOK
-		g, err := t.Graph.CloneWithContext(syncMsg.Context)
-		var result interface{} = g
+		result, err := t.Graph.CloneWithContext(syncMsg.Context)
 		if err != nil {
 			logging.GetLogger().Errorf("unable to get a graph with context %+v: %s", syncMsg, err)
 			result, status = nil, http.StatusBadRequest

@@ -23,6 +23,7 @@
 package packetinjector
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -44,7 +45,7 @@ type Server struct {
 
 func (pis *Server) stopPI(msg *ws.StructMessage) error {
 	var uuid string
-	if err := msg.UnmarshalObj(&uuid); err != nil {
+	if err := json.Unmarshal(msg.Obj, &uuid); err != nil {
 		return err
 	}
 	pis.Channels.Lock()
@@ -59,7 +60,7 @@ func (pis *Server) stopPI(msg *ws.StructMessage) error {
 
 func (pis *Server) injectPacket(msg *ws.StructMessage) (string, error) {
 	var params PacketInjectionParams
-	if err := msg.UnmarshalObj(&params); err != nil {
+	if err := json.Unmarshal(msg.Obj, &params); err != nil {
 		return "", fmt.Errorf("Unable to decode packet inject param message %v", msg)
 	}
 

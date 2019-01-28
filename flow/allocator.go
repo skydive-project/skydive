@@ -47,38 +47,22 @@ func (a *TableAllocator) Update() time.Duration {
 	return a.update
 }
 
-func (a *TableAllocator) aggregateReplies(query *TableQuery, replies []*TableReply) *TableReply {
-	reply := &TableReply{
-		status: http.StatusOK,
-		Obj:    make([][]byte, 0),
-	}
-
-	for _, r := range replies {
-		if r.status >= http.StatusBadRequest {
-			// FIX, 207 => http.StatusMultiStatus when moving to >= 1.7
-			reply.status = 207
-			continue
-		}
-		reply.Obj = append(reply.Obj, r.Obj...)
-	}
-
-	return reply
-}
-
 // QueryTable search/query within the flow table
-func (a *TableAllocator) QueryTable(query *TableQuery) *TableReply {
+func (a *TableAllocator) QueryTable(tq *TableQuery) *TableReply {
 	a.RLock()
 	defer a.RUnlock()
 
-	var replies []*TableReply
+	reply := &TableReply{
+		Status: int32(http.StatusOK),
+	}
+
 	for table := range a.tables {
-		reply := table.Query(query)
-		if reply != nil {
-			replies = append(replies, reply)
+		if b := table.Query(tq); b != nil {
+			reply.FlowSetBytes = append(reply.FlowSetBytes, b)
 		}
 	}
 
-	return a.aggregateReplies(query, replies)
+	return reply
 }
 
 // Alloc instanciate/allocate a new table

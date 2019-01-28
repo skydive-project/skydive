@@ -26,10 +26,6 @@
 #include <linux/if_ether.h>
 
 enum {
-	RTT_SET = 1
-};
-
-enum {
 	START_TIME_NS    = 0,
 
 	LINK_LAYER       = 1,
@@ -97,9 +93,6 @@ struct flow {
 	struct icmp_layer      icmp_layer;
 
 	struct flow_metrics    metrics;
-
-	// time between the first patch seen and the second one
-	__u64                  rtt;
 
 	__u64                  start;
 	__u64                  last;

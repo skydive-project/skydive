@@ -71,24 +71,11 @@ type fakeTableClient struct {
 }
 
 func (tc *fakeTableClient) LookupFlows(flowSearchQuery filters.SearchQuery) (*flow.FlowSet, error) {
-	obj, _ := proto.Marshal(&flowSearchQuery)
-	resp := tc.t.Query(&flow.TableQuery{Type: "SearchQuery", Obj: obj})
-
-	context := flow.MergeContext{
-		Sort:      flowSearchQuery.Sort,
-		SortBy:    flowSearchQuery.SortBy,
-		SortOrder: common.SortOrder(flowSearchQuery.SortOrder),
-		Dedup:     flowSearchQuery.Dedup,
-		DedupBy:   flowSearchQuery.DedupBy,
-	}
+	resp := tc.t.Query(&flow.TableQuery{Type: "SearchQuery", Query: &flowSearchQuery})
 
 	fs := flow.NewFlowSet()
-	for _, b := range resp.Obj {
-		var fsr flow.FlowSearchReply
-		if err := proto.Unmarshal(b, &fsr); err != nil {
-			return nil, errors.New("Unable to decode flow search reply")
-		}
-		fs.Merge(fsr.FlowSet, context)
+	if err := proto.Unmarshal(resp, fs); err != nil {
+		return nil, errors.New("Unable to decode flow search reply")
 	}
 
 	return fs, nil
@@ -116,8 +103,8 @@ func execTraversalQuery(t *testing.T, tc *fakeTableClient, query string) travers
 }
 
 func newTable(nodeID string) *flow.Table {
-	updHandler := flow.NewFlowHandler(func(f []*flow.Flow) {}, time.Second)
-	expHandler := flow.NewFlowHandler(func(f []*flow.Flow) {}, 300*time.Second)
+	updHandler := flow.NewFlowHandler(func(f *flow.FlowArray) {}, time.Second)
+	expHandler := flow.NewFlowHandler(func(f *flow.FlowArray) {}, 300*time.Second)
 
 	return flow.NewTable(updHandler, expHandler, "", flow.TableOpts{})
 }
@@ -150,8 +137,8 @@ func TestHasStep(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	flowChan <- newICMPFlow(222)
-	flowChan <- newICMPFlow(444)
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(222), Key: strconv.Itoa(rand.Int())}
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(444), Key: strconv.Itoa(rand.Int())}
 
 	time.Sleep(time.Second)
 
@@ -207,8 +194,8 @@ func TestLimitStep(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	flowChan <- newICMPFlow(222)
-	flowChan <- newICMPFlow(444)
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(222), Key: strconv.Itoa(rand.Int())}
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(444), Key: strconv.Itoa(rand.Int())}
 
 	time.Sleep(time.Second)
 
@@ -234,8 +221,8 @@ func TestDedupStep(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	flowChan <- newICMPFlow(222)
-	flowChan <- newICMPFlow(222)
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(222), Key: strconv.Itoa(rand.Int())}
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(222), Key: strconv.Itoa(rand.Int())}
 
 	time.Sleep(time.Second)
 
@@ -273,11 +260,11 @@ func TestCaptureNodeStep(t *testing.T) {
 
 	icmp := newICMPFlow(222)
 	icmp.NodeTID = "123"
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	icmp = newICMPFlow(444)
 	icmp.NodeTID = "456"
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	time.Sleep(time.Second)
 
@@ -321,15 +308,15 @@ func TestInStep(t *testing.T) {
 
 	icmp := newICMPFlow(222)
 	icmp.Link = &flow.FlowLayer{A: "123"}
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	icmp = newICMPFlow(444)
 	icmp.Link = &flow.FlowLayer{A: "456"}
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	icmp = newICMPFlow(666)
 	icmp.Link = &flow.FlowLayer{A: "123"}
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	time.Sleep(time.Second)
 
@@ -367,15 +354,15 @@ func TestOutStep(t *testing.T) {
 
 	icmp := newICMPFlow(222)
 	icmp.Link = &flow.FlowLayer{B: "123"}
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	icmp = newICMPFlow(444)
 	icmp.Link = &flow.FlowLayer{B: "456"}
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	icmp = newICMPFlow(666)
 	icmp.Link = &flow.FlowLayer{B: "123"}
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	time.Sleep(time.Second)
 
@@ -413,15 +400,15 @@ func TestBothStep(t *testing.T) {
 
 	icmp := newICMPFlow(222)
 	icmp.Link = &flow.FlowLayer{A: "123"}
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	icmp = newICMPFlow(444)
 	icmp.Link = &flow.FlowLayer{B: "456"}
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	icmp = newICMPFlow(666)
 	icmp.Link = &flow.FlowLayer{B: "123"}
-	flowChan <- icmp
+	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: strconv.Itoa(rand.Int())}
 
 	time.Sleep(time.Second)
 

@@ -115,7 +115,12 @@ var AllInOneCmd = &cobra.Command{
 			logging.GetLogger().Errorf("Can't start Skydive analyzer: %v", err)
 			os.Exit(1)
 		}
-		restClient := http.NewRestClient(config.GetURL("http", svcAddr.Addr, svcAddr.Port, ""), authOptions, tlsConfig)
+		addr := svcAddr.Addr
+		if addr == "0.0.0.0" {
+			addr = "127.0.0.1"
+		}
+
+		restClient := http.NewRestClient(config.GetURL("http", addr, svcAddr.Port, ""), authOptions, tlsConfig)
 
 		err = common.Retry(func() error {
 			_, err := restClient.Request("GET", "/api", nil, nil)

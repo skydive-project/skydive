@@ -27,7 +27,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 
 	"github.com/skydive-project/skydive/common"
@@ -75,9 +74,9 @@ var TopologyImport = &cobra.Command{
 		}
 
 		url := config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher")
-		headers := http.Header{}
-		headers.Add("X-Persistence-Policy", string(hub.Persistent))
-		client, err := config.NewWSClient(common.UnknownService, url, &AuthenticationOpts, headers)
+		opts := websocket.ClientOpts{AuthOpts: &AuthenticationOpts}
+		opts.Headers.Add("X-Persistence-Policy", string(hub.Persistent))
+		client, err := config.NewWSClient(common.UnknownService, url, opts)
 		if err != nil {
 			exitOnError(err)
 		}

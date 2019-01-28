@@ -23,7 +23,6 @@
 package config
 
 import (
-	"net/http"
 	"net/url"
 	"time"
 
@@ -33,16 +32,19 @@ import (
 )
 
 // NewWSClient creates a Client based on the configuration
-func NewWSClient(clientType common.ServiceType, url *url.URL, authOpts *shttp.AuthenticationOpts, headers http.Header) (*websocket.Client, error) {
+func NewWSClient(clientType common.ServiceType, url *url.URL, opts websocket.ClientOpts) (*websocket.Client, error) {
 	host := GetString("host_id")
-	queueSize := GetInt("http.ws.queue_size")
-	writeCompression := GetBool("http.ws.enable_write_compression")
+
+	// override some of the options with config value
+	opts.QueueSize = GetInt("http.ws.queue_size")
+	opts.WriteCompression = GetBool("http.ws.enable_write_compression")
 	tlsConfig, err := GetTLSClientConfig(true)
 	if err != nil {
 		return nil, err
 	}
+	opts.TLSConfig = tlsConfig
 
-	return websocket.NewClient(host, clientType, url, authOpts, headers, queueSize, writeCompression, tlsConfig), nil
+	return websocket.NewClient(host, clientType, url, opts), nil
 }
 
 // NewWSServer creates a Server based on the configuration

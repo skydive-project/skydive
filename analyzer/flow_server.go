@@ -101,11 +101,15 @@ type FlowServer struct {
 
 // OnMessage event
 func (c *FlowServerWebSocketConn) OnMessage(client ws.Speaker, m ws.Message) {
-	f, err := flow.FromData(m.Bytes(client.GetClientProtocol()))
-	if err != nil {
+	// rawmessage at this point
+	b, _ := m.Bytes(ws.RawProtocol)
+
+	var f flow.Flow
+	if err := f.Unmarshal(b); err != nil {
 		logging.GetLogger().Errorf("Error while parsing flow: %s", err)
 		return
 	}
+
 	logging.GetLogger().Debugf("New flow from Websocket connection: %+v", f)
 	if len(c.ch) >= c.maxFlowBufferSize {
 		c.numOfLostFlows++
@@ -118,7 +122,7 @@ func (c *FlowServerWebSocketConn) OnMessage(client ws.Speaker, m ws.Message) {
 		return
 	}
 
-	c.ch <- f
+	c.ch <- &f
 }
 
 // Serve starts a WebSocket flow server
@@ -161,8 +165,8 @@ func (c *FlowServerUDPConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sy
 					logging.GetLogger().Errorf("Error while reading: %s", err)
 				}
 
-				f, err := flow.FromData(data[0:n])
-				if err != nil {
+				var f flow.Flow
+				if err := f.Unmarshal(data[0:n]); err != nil {
 					logging.GetLogger().Errorf("Error while parsing flow: %s", err)
 					continue
 				}
@@ -178,7 +182,7 @@ func (c *FlowServerUDPConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sy
 					}
 					return
 				}
-				ch <- f
+				ch <- &f
 			}
 		}
 	}()
@@ -202,13 +206,13 @@ func NewFlowServerUDPConn(addr string, port int) (*FlowServerUDPConn, error) {
 	return &FlowServerUDPConn{conn: conn, maxFlowBufferSize: flowsMax}, err
 }
 
-func (s *FlowServer) storeFlows(flows []*flow.Flow) {
-	if len(flows) > 0 {
+func (s *FlowServer) storeFlows(flows *flow.FlowArray) {
+	if len(flows.Flows) > 0 {
 		if s.storage != nil {
-			if err := s.storage.StoreFlows(flows); err != nil {
+			if err := s.storage.StoreFlows(flows.Flows); err != nil {
 				logging.GetLogger().Error(err)
 			} else {
-				logging.GetLogger().Debugf("%d flows stored", len(flows))
+				logging.GetLogger().Debugf("%d flows stored", len(flows.Flows))
 			}
 		}
 
@@ -228,21 +232,21 @@ func (s *FlowServer) Start() {
 		dlTimer := time.NewTicker(s.bulkInsertDeadline)
 		defer dlTimer.Stop()
 
-		var flowBuffer []*flow.Flow
-		defer s.storeFlows(flowBuffer)
+		var flowArray flow.FlowArray
+		defer s.storeFlows(&flowArray)
 
 		for {
 			select {
 			case <-s.quit:
 				return
 			case <-dlTimer.C:
-				s.storeFlows(flowBuffer)
-				flowBuffer = flowBuffer[:0]
+				s.storeFlows(&flowArray)
+				flowArray.Flows = flowArray.Flows[:0]
 			case f := <-s.ch:
-				flowBuffer = append(flowBuffer, f)
-				if len(flowBuffer) >= s.bulkInsert {
-					s.storeFlows(flowBuffer)
-					flowBuffer = flowBuffer[:0]
+				flowArray.Flows = append(flowArray.Flows, f)
+				if len(flowArray.Flows) >= s.bulkInsert {
+					s.storeFlows(&flowArray)
+					flowArray.Flows = flowArray.Flows[:0]
 				}
 			}
 		}

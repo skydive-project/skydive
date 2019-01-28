@@ -23,6 +23,7 @@
 package flow
 
 import (
+	"github.com/golang/protobuf/proto"
 	"github.com/skydive-project/skydive/logging"
 	ws "github.com/skydive-project/skydive/websocket"
 )
@@ -40,13 +41,13 @@ type WSTableServer struct {
 // OnTableQuery event
 func (s *WSTableServer) OnTableQuery(c ws.Speaker, msg *ws.StructMessage) {
 	var query TableQuery
-	if err := msg.UnmarshalObj(&query); err != nil {
+	if err := proto.Unmarshal(msg.Obj, &query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode search flow message %v", msg)
 		return
 	}
 
 	result := s.TableAllocator.QueryTable(&query)
-	reply := msg.Reply(result, "TableResult", result.status)
+	reply := msg.Reply(result, "TableResult", int(result.Status))
 	c.SendMessage(reply)
 }
 

@@ -65,7 +65,7 @@ class Authenticate:
             if self.insecure:
                 context = ssl._create_unverified_context()
             else:
-                context = ssl._create_default_context()
+                context = ssl.create_default_context()
             handlers.append(request.HTTPSHandler(debuglevel=self.debug,
                                                  context=context))
 

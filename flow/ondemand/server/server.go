@@ -23,6 +23,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -183,7 +184,7 @@ func (p *activeProbe) OnStopped() {
 // OnStructMessage websocket message, valid message type are CaptureStart, CaptureStop
 func (o *OnDemandProbeServer) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	var query ondemand.CaptureQuery
-	if err := msg.UnmarshalObj(&query); err != nil {
+	if err := json.Unmarshal(msg.Obj, &query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode capture %v", msg)
 		return
 	}

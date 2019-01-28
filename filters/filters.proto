@@ -24,6 +24,12 @@ syntax = "proto3";
 
 package filters;
 
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option go_package = "github.com/skydive-project/skydive/filters";
+option (gogoproto.protosizer_all) = true;
+option (gogoproto.sizer_all) = false;
+
 enum BoolFilterOp {
   OR = 0;
   AND = 1;
