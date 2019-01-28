@@ -34,7 +34,7 @@ type FlowSubscriberEndpoint struct {
 
 // SendFlows sends flow to the subscribers
 func (fs *FlowSubscriberEndpoint) SendFlows(flowArray *flow.FlowArray) {
-	msg := ws.NewStructMessage("flow", "store", flowArray)
+	msg := ws.NewStructMessage("flow", "store", flowArray.Flows)
 	fs.pool.BroadcastMessage(msg)
 }
 
