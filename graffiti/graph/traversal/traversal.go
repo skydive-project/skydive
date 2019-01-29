@@ -890,7 +890,9 @@ func (tv *GraphTraversalV) Sort(ctx StepContext, keys ...interface{}) *GraphTrav
 		sortBy = defaultSortBy
 	}
 
+	tv.GraphTraversal.RLock()
 	graph.SortNodes(tv.nodes, sortBy, sortOrder)
+	tv.GraphTraversal.RUnlock()
 
 	return tv
 }
