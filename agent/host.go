@@ -19,16 +19,21 @@ package agent
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 
+	"github.com/fsnotify/fsnotify"
+	"github.com/mitchellh/mapstructure"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/host"
+	"github.com/spf13/viper"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/logging"
 )
 
 // CPUInfo defines host information
@@ -141,5 +146,62 @@ func createRootNode(g *graph.Graph) (*graph.Node, error) {
 		m.SetField("KernelCmdLine", kernelArgs)
 	}
 
-	return g.NewNode(graph.GenID(), m)
+	hostNode, err := g.NewNode(graph.GenID(), m)
+	if err != nil {
+		return nil, err
+	}
+
+	parseMetadataConfigFiles(g, hostNode)
+
+	return hostNode, nil
+}
+
+type metadataConfigFile struct {
+	Path     string
+	Type     string
+	Name     string
+	Selector string
+}
+
+func parseMetadataConfigFiles(g *graph.Graph, hostNode *graph.Node) error {
+	files := config.Get("agent.metadata_config.files")
+	if files == nil {
+		return nil
+	}
+
+	var mcfs []metadataConfigFile
+	if err := mapstructure.Decode(files, &mcfs); err != nil {
+		return fmt.Errorf("Unable to read agent.metadata_config.files: %s", err)
+	}
+
+	updatedHostNode := func(v *viper.Viper, mcf metadataConfigFile) {
+		s := v.GetString(mcf.Selector)
+
+		g.Lock()
+		g.AddMetadata(hostNode, fmt.Sprintf("Config.%s", mcf.Name), s)
+		g.Unlock()
+	}
+
+	for _, mcf := range mcfs {
+		v := viper.New()
+		v.SetConfigFile(mcf.Path)
+
+		typ := mcf.Type
+		if typ == "ini" {
+			typ = "toml"
+		}
+
+		v.SetConfigType(typ)
+		v.OnConfigChange(func(in fsnotify.Event) {
+			updatedHostNode(v, mcf)
+		})
+		v.WatchConfig()
+		if err := v.ReadInConfig(); err != nil {
+			logging.GetLogger().Errorf("Unable to read %s: %s", mcf.Path, err)
+			continue
+		}
+		updatedHostNode(v, mcf)
+	}
+
+	return nil
 }

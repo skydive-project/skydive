@@ -174,7 +174,6 @@ agent:
   # Default addr is 127.0.0.1
   # listen: :8081
 
-
   auth:
     # auth section for API request
     api:
@@ -235,6 +234,18 @@ agent:
   capture:
     # Period in second to get capture stats from the probe. Note this
     # stats_update: 1
+
+  # Add metadata to the host node
+  metadata_config:
+    # list of files which can be used to fill the metadata.
+    # Supported types json, toml, ini, yaml, yml, properties, props, prop
+    # the selector path (dot notation) is used to retrieve the value. The value will be stored
+    # in the host node `Config` section using the `name` parameter as key.
+    files:
+      # - path: /etc/ex.yml
+      #   type: ini
+      #   name: metadata_key_name
+      #   selector: path.of.config.key
 
   metadata:
     # info: This is compute node
