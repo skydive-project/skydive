@@ -1049,3 +1049,92 @@ func TestInterfaceFeatures(t *testing.T) {
 	}
 	RunTest(t, test)
 }
+
+func TestSFlowMetric(t *testing.T) {
+	test := &Test{
+		setupCmds: []Cmd{
+			{"ovs-vsctl add-br br-sfmt", true},
+
+			{"ip netns add vm1", true},
+			{"ip link add vm1-eth0 type veth peer name eth0 netns vm1", true},
+			{"ip link set vm1-eth0 up", true},
+			{"ovs-vsctl add-port br-sfmt vm1-eth0", true},
+			{"ip netns exec vm1 ip link set eth0 up", true},
+			{"ip netns exec vm1 ip address add 192.168.0.11/24 dev eth0", true},
+			{"ip netns add vm2", true},
+			{"ip link add vm2-eth0 type veth peer name eth0 netns vm2", true},
+			{"ip link set vm2-eth0 up", true},
+			{"ovs-vsctl add-port br-sfmt vm2-eth0", true},
+			{"ip netns exec vm2 ip link set eth0 up", true},
+			{"ip netns exec vm2 ip address add 192.168.0.21/24 dev eth0", true},
+		},
+
+		injections: []TestInjection{{
+			from:  g.G.V().Has("Name", "vm1").Out().Has("Name", "eth0"),
+			to:    g.G.V().Has("Name", "vm2").Out().Has("Name", "eth0"),
+			count: 1,
+		}},
+
+		tearDownCmds: []Cmd{
+			{"ovs-vsctl del-br br-sfmt", true},
+			{"ip link set vm1-eth0 down", true},
+			{"ip link del vm1-eth0", true},
+			{"ip netns del vm1", true},
+			{"ip link set vm2-eth0 down", true},
+			{"ip link del vm2-eth0", true},
+			{"ip netns del vm2", true},
+		},
+
+		captures: []TestCapture{
+			{gremlin: g.G.V().Has("Type", "host").Out().Has("Name", "br-sfmt", "Type", "ovsbridge"), kind: "ovssflow"},
+		},
+
+		mode: OneShot,
+
+		checks: []CheckFunction{func(c *CheckContext) error {
+			sfmetrics, err := c.gh.GetSFlowMetrics(c.gremlin.V().Metrics("SFlow.LastUpdateMetric").Aggregates())
+			if err != nil {
+				return err
+			}
+
+			if len(sfmetrics) != 1 {
+				return fmt.Errorf("We should receive only one unique element in  Array of Metric, got: %d", len(sfmetrics))
+			}
+
+			if len(sfmetrics["Aggregated"]) < 1 {
+				return fmt.Errorf("Should have one or more metrics entry, got %+v", sfmetrics["Aggregated"])
+			}
+
+			var start, totalInUc int64
+			for _, m := range sfmetrics["Aggregated"] {
+				if m.GetStart() < start {
+					j, _ := json.MarshalIndent(sfmetrics, "", "\t")
+					return fmt.Errorf("Metrics not correctly sorted (%+v)", string(j))
+				}
+				start = m.GetStart()
+
+				inUc, _ := m.GetFieldInt64("IfInUcastPkts")
+				totalInUc += inUc
+			}
+
+			// due to ratio applied during the aggregation we can't expect to get exactly
+			// the sum of the metrics.
+			if totalInUc <= 1 {
+				return fmt.Errorf("Expected at least IfInUcastPkts, got %d", totalInUc)
+			}
+
+			m, err := c.gh.GetSFlowMetric(c.gremlin.V().Metrics("SFlow.LastUpdateMetric").Aggregates().Sum())
+			if err != nil {
+				return fmt.Errorf("Could not find metrics with: %s", "c.gremlin.V().Metrics('SFlow.LastUpdateMetric').Aggregates().Sum()")
+			}
+
+			if inUc, _ := m.GetFieldInt64("IfInUcastPkts"); inUc != totalInUc {
+				return fmt.Errorf("Sum error %d vs %d", totalInUc, inUc)
+			}
+
+			return nil
+		}},
+	}
+
+	RunTest(t, test)
+}

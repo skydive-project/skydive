@@ -47,6 +47,7 @@ import (
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/probe"
+	"github.com/skydive-project/skydive/sflow"
 	"github.com/skydive-project/skydive/topology"
 	usertopology "github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
@@ -223,6 +224,7 @@ func NewServerFromConfig() (*Server, error) {
 	uiServer.AddGlobalVar("ui", config.Get("ui"))
 	uiServer.AddGlobalVar("flow-metric-keys", (&flow.FlowMetric{}).GetFieldKeys())
 	uiServer.AddGlobalVar("interface-metric-keys", (&topology.InterfaceMetric{}).GetFieldKeys())
+	uiServer.AddGlobalVar("sflow-metric-keys", (&sflow.SFMetric{}).GetFieldKeys())
 	uiServer.AddGlobalVar("probes", config.Get("analyzer.topology.probes"))
 
 	persistent, err := newGraphBackendFromConfig(etcdClient)
@@ -383,4 +385,5 @@ func init() {
 	graph.NodeMetadataDecoders["Neighbors"] = netlink.NeighborMetadataDecoder
 	graph.NodeMetadataDecoders["Metric"] = topology.InterfaceMetricMetadataDecoder
 	graph.NodeMetadataDecoders["LastUpdateMetric"] = topology.InterfaceMetricMetadataDecoder
+	graph.NodeMetadataDecoders["SFlow"] = sflow.SFMetadataDecoder
 }

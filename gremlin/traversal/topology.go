@@ -29,17 +29,19 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
-	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
 )
 
 // InterfaceMetrics returns a Metrics step from interface metric metadata
-func InterfaceMetrics(ctx traversal.StepContext, tv *traversal.GraphTraversalV) *MetricsTraversalStep {
+func InterfaceMetrics(ctx traversal.StepContext, tv *traversal.GraphTraversalV, key string) *MetricsTraversalStep {
 	if tv.Error() != nil {
 		return NewMetricsTraversalStepFromError(tv.Error())
 	}
 
-	tv = tv.Dedup(ctx, "ID", "LastUpdateMetric.Start").Sort(ctx, common.SortAscending, "LastUpdateMetric.Start")
+	startField := key + ".Start"
+
+	tv = tv.Dedup(ctx, "ID", startField).Sort(ctx, common.SortAscending, startField)
+
 	if tv.Error() != nil {
 		return NewMetricsTraversalStepFromError(tv.Error())
 	}
@@ -57,18 +59,18 @@ nodeloop:
 			break nodeloop
 		}
 
-		m, _ := n.GetField("LastUpdateMetric")
+		m, _ := n.GetField(key)
 		if m == nil {
 			continue
 		}
 
-		lastMetric, ok := m.(*topology.InterfaceMetric)
+		lastmetric, ok := m.(common.Metric)
 		if !ok {
 			return NewMetricsTraversalStepFromError(errors.New("wrong interface metric type"))
 		}
 
-		if gslice == nil || (lastMetric.Start > gslice.Start && lastMetric.Last < gslice.Last) && it.Next() {
-			metrics[string(n.ID)] = append(metrics[string(n.ID)], lastMetric)
+		if gslice == nil || (lastmetric.GetStart() > gslice.Start && lastmetric.GetLast() < gslice.Last) && it.Next() {
+			metrics[string(n.ID)] = append(metrics[string(n.ID)], lastmetric)
 		}
 	}
 
