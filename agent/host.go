@@ -129,5 +129,17 @@ func createRootNode(g *graph.Graph) (*graph.Node, error) {
 		m.SetField("VirtualizationRole", hostInfo.VirtualizationRole)
 	}
 
+	if cmdline, err := ioutil.ReadFile("/proc/cmdline"); err == nil {
+		kernelArgs := make(map[string]interface{})
+		for _, arg := range strings.Split(string(cmdline), " ") {
+			if splitted := strings.SplitN(arg, "=", 2); len(splitted) == 1 {
+				kernelArgs[splitted[0]] = true
+			} else {
+				kernelArgs[splitted[0]] = splitted[1]
+			}
+		}
+		m.SetField("KernelCmdLine", kernelArgs)
+	}
+
 	return g.NewNode(graph.GenID(), m)
 }
