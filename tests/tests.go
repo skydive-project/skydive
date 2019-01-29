@@ -105,6 +105,18 @@ agent:
         value: 1
       - name: last
         value: 10
+    myarrays:
+      integers:
+      - 1
+      - 2
+      - 3
+      bools:
+      - true
+      - true
+      strings:
+      - dog
+      - cat
+      - frog
 
 flow:
   expire: 600
