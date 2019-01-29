@@ -52,13 +52,13 @@ func (b *BasicResource) SetID(i string) {
 
 // Alert is a set of parameters, the Alert Action will Trigger according to its Expression.
 type Alert struct {
-	BasicResource
-	Name        string `json:",omitempty"`
-	Description string `json:",omitempty"`
-	Expression  string `json:",omitempty" valid:"nonzero"`
-	Action      string `json:",omitempty" valid:"regexp=^(|http://|https://|file://).*$"`
-	Trigger     string `json:",omitempty" valid:"regexp=^(graph|duration:.+|)$"`
-	CreateTime  time.Time
+	BasicResource `yaml:",inline"`
+	Name          string `json:",omitempty" yaml:"Name"`
+	Description   string `json:",omitempty" yaml:"Description"`
+	Expression    string `json:",omitempty" valid:"nonzero" yaml:"Expression"`
+	Action        string `json:",omitempty" valid:"regexp=^(|http://|https://|file://).*$" yaml:"Action"`
+	Trigger       string `json:",omitempty" valid:"regexp=^(graph|duration:.+|)$" yaml:"Trigger"`
+	CreateTime    time.Time
 }
 
 // NewAlert creates a New empty Alert, only CreateTime is set.
@@ -70,22 +70,22 @@ func NewAlert() *Alert {
 
 // Capture describes a capture API
 type Capture struct {
-	BasicResource
-	GremlinQuery   string           `json:"GremlinQuery,omitempty" valid:"isGremlinExpr"`
-	BPFFilter      string           `json:"BPFFilter,omitempty" valid:"isBPFFilter"`
-	Name           string           `json:"Name,omitempty"`
-	Description    string           `json:"Description,omitempty"`
-	Type           string           `json:"Type,omitempty"`
-	Count          int              `json:"Count"`
-	PCAPSocket     string           `json:"PCAPSocket,omitempty"`
-	Port           int              `json:"Port,omitempty"`
-	RawPacketLimit int              `json:"RawPacketLimit,omitempty" valid:"isValidRawPacketLimit"`
-	HeaderSize     int              `json:"HeaderSize,omitempty" valid:"isValidCaptureHeaderSize"`
-	ExtraTCPMetric bool             `json:"ExtraTCPMetric"`
-	IPDefrag       bool             `json:"IPDefrag"`
-	ReassembleTCP  bool             `json:"ReassembleTCP"`
-	LayerKeyMode   string           `json:"LayerKeyMode,omitempty" valid:"isValidLayerKeyMode"`
-	ExtraLayers    flow.ExtraLayers `json:"ExtraLayers,omitempty"`
+	BasicResource  `yaml:",inline"`
+	GremlinQuery   string           `json:"GremlinQuery,omitempty" valid:"isGremlinExpr" yaml:"GremlinQuery"`
+	BPFFilter      string           `json:"BPFFilter,omitempty" valid:"isBPFFilter" yaml:"BPFFilter"`
+	Name           string           `json:"Name,omitempty" yaml:"Name"`
+	Description    string           `json:"Description,omitempty" yaml:"Description"`
+	Type           string           `json:"Type,omitempty" yaml:"Type"`
+	Count          int              `json:"Count" yaml:"Count"`
+	PCAPSocket     string           `json:"PCAPSocket,omitempty" yaml:"PCAPSocket"`
+	Port           int              `json:"Port,omitempty" yaml:"Port"`
+	RawPacketLimit int              `json:"RawPacketLimit,omitempty" valid:"isValidRawPacketLimit" yaml:"RawPacketLimit"`
+	HeaderSize     int              `json:"HeaderSize,omitempty" valid:"isValidCaptureHeaderSize" yaml:"HeaderSize"`
+	ExtraTCPMetric bool             `json:"ExtraTCPMetric" yaml:"ExtraTCPMetric"`
+	IPDefrag       bool             `json:"IPDefrag" yaml:"IPDefrag"`
+	ReassembleTCP  bool             `json:"ReassembleTCP" yaml:"ReassembleTCP"`
+	LayerKeyMode   string           `json:"LayerKeyMode,omitempty" valid:"isValidLayerKeyMode" yaml:"LayerKeyMode"`
+	ExtraLayers    flow.ExtraLayers `json:"ExtraLayers,omitempty" yaml:"ExtraLayers"`
 }
 
 // NewCapture creates a new capture
@@ -98,12 +98,12 @@ func NewCapture(query string, bpfFilter string) *Capture {
 
 // EdgeRule describes a edge rule
 type EdgeRule struct {
-	BasicResource
-	Name        string
-	Description string
-	Src         string `valid:"isGremlinExpr"`
-	Dst         string `valid:"isGremlinExpr"`
-	Metadata    graph.Metadata
+	BasicResource `yaml:",inline"`
+	Name          string         `yaml:"Name"`
+	Description   string         `yaml:"Description"`
+	Src           string         `valid:"isGremlinExpr" yaml:"Src"`
+	Dst           string         `valid:"isGremlinExpr" yaml:"Dst"`
+	Metadata      graph.Metadata `yaml:"Metadata"`
 }
 
 // Validate verifies the nodedgee rule does not create invalid edges
@@ -116,12 +116,12 @@ func (e *EdgeRule) Validate() error {
 
 // NodeRule describes a node rule
 type NodeRule struct {
-	BasicResource
-	Name        string
-	Description string
-	Metadata    graph.Metadata
-	Action      string `valid:"regexp=^(create|update)$"`
-	Query       string `valid:"isGremlinOrEmpty"`
+	BasicResource `yaml:",inline"`
+	Name          string         `yaml:"Name"`
+	Description   string         `yaml:"Description"`
+	Metadata      graph.Metadata `yaml:"Metadata"`
+	Action        string         `valid:"regexp=^(create|update)$" yaml:"Action"`
+	Query         string         `valid:"isGremlinOrEmpty" yaml:"Query"`
 }
 
 // Validate verifies the node rule does not create invalid node or change
@@ -142,25 +142,25 @@ func (n *NodeRule) Validate() error {
 
 // PacketInjection packet injector API parameters
 type PacketInjection struct {
-	BasicResource
-	Src              string
-	Dst              string
-	SrcIP            string
-	DstIP            string
-	SrcMAC           string
-	DstMAC           string
-	SrcPort          int64
-	DstPort          int64
-	Type             string
-	Payload          string
+	BasicResource    `yaml:",inline"`
+	Src              string `yaml:"Src"`
+	Dst              string `yaml:"Dst"`
+	SrcIP            string `yaml:"SrcIP"`
+	DstIP            string `yaml:"DstIP"`
+	SrcMAC           string `yaml:"SrcMAC"`
+	DstMAC           string `yaml:"DstMAC"`
+	SrcPort          int64  `yaml:"SrcPort"`
+	DstPort          int64  `yaml:"DstPort"`
+	Type             string `yaml:"Type"`
+	Payload          string `yaml:"Payload"`
 	TrackingID       string
-	ICMPID           int64
-	Count            int64
-	Interval         int64
-	Increment        bool
-	IncrementPayload int64
+	ICMPID           int64 `yaml:"ICMPID"`
+	Count            int64 `yaml:"Count"`
+	Interval         int64 `yaml:"Interval"`
+	Increment        bool  `yaml:"Increment"`
+	IncrementPayload int64 `yaml:"IncrementPayload"`
 	StartTime        time.Time
-	Pcap             []byte
+	Pcap             []byte `yaml:"Pcap"`
 }
 
 // Validate verifies the packet injection type is supported
@@ -174,31 +174,31 @@ func (pi *PacketInjection) Validate() error {
 
 // TopologyParam topology API parameter
 type TopologyParam struct {
-	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr"`
+	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr" yaml:"GremlinQuery"`
 }
 
 // WorkflowChoice describes one value within a choice
 type WorkflowChoice struct {
-	Value       string `yaml:"value"`
-	Description string `yaml:"description"`
+	Value       string `yaml:"Value"`
+	Description string `yaml:"Description"`
 }
 
 // WorkflowParam describes a workflow parameter
 type WorkflowParam struct {
-	Name        string
-	Description string
-	Type        string
-	Default     interface{}
-	Values      []WorkflowChoice
+	Name        string           `yaml:"Name"`
+	Description string           `yaml:"Description"`
+	Type        string           `yaml:"Type"`
+	Default     interface{}      `yaml:"Default"`
+	Values      []WorkflowChoice `yaml:"Values"`
 }
 
 // Workflow describes a workflow
 type Workflow struct {
 	BasicResource `yaml:",inline"`
-	Name          string          `yaml:"name" valid:"nonzero"`
-	Description   string          `yaml:"description"`
-	Parameters    []WorkflowParam `yaml:"parameters"`
-	Source        string          `valid:"isValidWorkflow" yaml:"source"`
+	Name          string          `yaml:"Name" valid:"nonzero"`
+	Description   string          `yaml:"Description"`
+	Parameters    []WorkflowParam `yaml:"Parameters"`
+	Source        string          `valid:"isValidWorkflow" yaml:"Source"`
 }
 
 func init() {
