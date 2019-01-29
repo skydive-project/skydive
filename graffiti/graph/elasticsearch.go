@@ -43,7 +43,7 @@ const graphElementMapping = `
 				"path_match": "*",
 				"path_unmatch": "*.Extra.*",
 				"match_mapping_type": "string",
-                                "mapping": {
+				"mapping": {
 					"type": "keyword"
 				}
 			}
