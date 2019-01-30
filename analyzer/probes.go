@@ -60,7 +60,6 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.Bundle, error) {
 		case "istio":
 			probes[t], err = istio.NewIstioProbe(g)
 		case "nsm":
-			logging.GetLogger().Infof("adding nsm probe")
 			probes[t], err = nsm.NewNsmProbe(g)
 		default:
 			logging.GetLogger().Errorf("unknown probe type: %s", t)

@@ -168,7 +168,7 @@ func (b *baseConnectionPair) GetNodes(g *graph.Graph) (*graph.Node, *graph.Node,
 
 }
 
-// This function create the Edge with correct metadata
+// This function creates the Edge with correct metadata
 // graph and probe should be locked
 func (l *localConnectionPair) AddEdge(g *graph.Graph) {
 	srcNode, dstNode, err := l.GetNodes(g)
@@ -228,7 +228,6 @@ func (l *localConnectionPair) createMetadatas() graph.Metadata {
 }
 
 func (r *remoteConnectionPair) AddEdge(g *graph.Graph) {
-
 	srcNode, dstNode, err := r.GetNodes(g)
 	if err != nil {
 		logging.GetLogger().Debugf("NSM: cannot create Edge in the graph, %v", err)
