@@ -513,6 +513,9 @@ func RunTest(t *testing.T, test *Test) {
 		t.Fatalf("Failed to setup captures: %s", err)
 	}
 
+	// wait a bit after the capture creation
+	time.Sleep(2 * time.Second)
+
 	retries := test.retries
 	if retries <= 0 {
 		retries = 30

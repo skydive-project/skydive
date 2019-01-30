@@ -109,7 +109,7 @@ func (sfa *Agent) feedFlowTable() {
 		}
 
 		// SFlow Counter Samples
-		var Countersamples []layers.SFlowCounterSample
+		var counterSamples []layers.SFlowCounterSample
 		var gen layers.SFlowGenericInterfaceCounters
 		var ovsdp layers.SFlowOVSDPCounters
 		var app layers.SFlowAppresourcesCounters
@@ -244,11 +244,8 @@ func (sfa *Agent) feedFlowTable() {
 
 				}
 			}
-			Countersamples = append(Countersamples, counter)
+			counterSamples = append(counterSamples, counter)
 		}
-
-		sfa.Graph.Lock()
-		tr := sfa.Graph.StartMetadataTransaction(sfa.Node)
 
 		currMetric := &SFMetric{
 			IfInOctets:         int64(gen.IfInOctets),
@@ -282,37 +279,36 @@ func (sfa *Agent) feedFlowTable() {
 			VlanBroadcastPkts:  int64(vlan.BroadcastPkts),
 			VlanDiscards:       int64(vlan.Discards),
 		}
-		now := int64(common.UnixMillis(time.Now()))
 
+		if currMetric.IsZero() {
+			continue
+		}
+
+		now := int64(common.UnixMillis(time.Now()))
 		currMetric.Last = now
 
-		var prevMetric, lastUpdateMetric, totalMetric *SFMetric
+		sfa.Graph.Lock()
 
+		var totalMetric *SFMetric
 		if metric, err := sfa.Node.GetField("SFlow.Metric"); err == nil {
-			prevMetric = metric.(*SFMetric)
-			lastUpdateMetric = currMetric
-			totalMetric = currMetric.Add(prevMetric).(*SFMetric)
+			prevMetric := metric.(*SFMetric)
+			currMetric.Start = prevMetric.Last
+
+			totalMetric = prevMetric.Add(currMetric).(*SFMetric)
+			totalMetric.Start = prevMetric.Start
 			totalMetric.Last = now
 		} else {
+			currMetric.Start = now
 			totalMetric = currMetric
 		}
 
-		// nothing changed since last update
-		if lastUpdateMetric != nil && !lastUpdateMetric.IsZero() {
-			lastUpdateMetric.Start = prevMetric.Last
-			lastUpdateMetric.Last = now
-		} else {
-			lastUpdateMetric = currMetric
-		}
-
 		sfl := &SFlow{
-			Counters:         Countersamples,
+			Counters:         counterSamples,
 			Metric:           totalMetric,
-			LastUpdateMetric: lastUpdateMetric,
+			LastUpdateMetric: currMetric,
 		}
 
-		tr.AddMetadata("SFlow", sfl)
-		tr.Commit()
+		sfa.Graph.AddMetadata(sfa.Node, "SFlow", sfl)
 		sfa.Graph.Unlock()
 	}
 }
