@@ -25,8 +25,8 @@ package nsm
 import (
 	"fmt"
 
-	localconn "github.com/ligato/networkservicemesh/controlplane/pkg/apis/local/connection"
-	remoteconn "github.com/ligato/networkservicemesh/controlplane/pkg/apis/remote/connection"
+	localconn "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/local/connection"
+	remoteconn "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/remote/connection"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"

@@ -31,9 +31,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
-	cc "github.com/ligato/networkservicemesh/controlplane/pkg/apis/crossconnect"
-	localconn "github.com/ligato/networkservicemesh/controlplane/pkg/apis/local/connection"
-	"github.com/ligato/networkservicemesh/k8s/pkg/networkservice/clientset/versioned"
+	cc "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/crossconnect"
+	localconn "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/local/connection"
+	"github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/clientset/versioned"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
