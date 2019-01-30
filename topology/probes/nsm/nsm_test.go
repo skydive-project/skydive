@@ -47,7 +47,6 @@ func createLocalConn() *localconn.Connection {
 	c := &localconn.Connection{
 		NetworkService: ns,
 		Mechanism:      mech,
-		Context:        make(map[string]string),
 		Labels:         make(map[string]string),
 	}
 	return c
@@ -71,7 +70,7 @@ func createLocalDest() *cc.CrossConnect_LocalDestination {
 
 func TestOnConnLocal_create_and_delete(t *testing.T) {
 	config.Set("logging.level", "DEBUG")
-	backend, err := graph.NewBackendByName("memory", nil)
+	backend, err := graph.NewMemoryBackend()
 	if err != nil {
 		t.Errorf("Can't create the skydive backend, error: %v", err)
 	}
@@ -108,13 +107,13 @@ func TestOnConnLocal_create_and_delete(t *testing.T) {
 	m1 := graph.Metadata{
 		"Inode": 1,
 	}
-	n1 := p.g.NewNode(graph.GenID(), m1)
+	n1, _ := p.g.NewNode(graph.GenID(), m1)
 	p.g.AddNode(n1)
 
 	m2 := graph.Metadata{
 		"Inode": 2,
 	}
-	n2 := p.g.NewNode(graph.GenID(), m2)
+	n2, _ := p.g.NewNode(graph.GenID(), m2)
 	p.g.AddNode(n2)
 
 	// Ensure Edge is created
@@ -144,7 +143,6 @@ func CreateConnectionWithRemote(inodeSrc string, inodeDst string) (*cc.CrossConn
 	remote := &remoteconn.Connection{
 		Id:             strconv.Itoa(rand.Int()),
 		NetworkService: ns,
-		Context:        make(map[string]string),
 		Labels:         make(map[string]string),
 	}
 
@@ -170,7 +168,7 @@ func CreateConnectionWithRemote(inodeSrc string, inodeDst string) (*cc.CrossConn
 }
 
 func TestOnConnRemote_create_and_delete(t *testing.T) {
-	backend, err := graph.NewBackendByName("memory", nil)
+	backend, err := graph.NewMemoryBackend()
 	if err != nil {
 		t.Errorf("Can't create the skydive backend, error: %v", err)
 	}
@@ -194,13 +192,13 @@ func TestOnConnRemote_create_and_delete(t *testing.T) {
 	m1 := graph.Metadata{
 		"Inode": 1,
 	}
-	n1 := p.g.NewNode(graph.GenID(), m1)
+	n1, _ := p.g.NewNode(graph.GenID(), m1)
 	p.g.AddNode(n1)
 
 	m2 := graph.Metadata{
 		"Inode": 2,
 	}
-	n2 := p.g.NewNode(graph.GenID(), m2)
+	n2, _ := p.g.NewNode(graph.GenID(), m2)
 	p.g.AddNode(n2)
 
 	// Ensure Edge is created
@@ -225,7 +223,7 @@ func TestOnConnRemote_create_and_delete(t *testing.T) {
 // This test creates two skydive connection
 // One connection has its localSource equal to the localDest of the other
 func TestOnConnTwoCrossConnectsWithTheSameSourceAndDest_create_and_delete(t *testing.T) {
-	backend, err := graph.NewBackendByName("memory", nil)
+	backend, err := graph.NewMemoryBackend()
 	if err != nil {
 		t.Errorf("Can't create the skydive backend, error: %v", err)
 	}
@@ -254,19 +252,19 @@ func TestOnConnTwoCrossConnectsWithTheSameSourceAndDest_create_and_delete(t *tes
 	m1 := graph.Metadata{
 		"Inode": 1,
 	}
-	n1 := p.g.NewNode(graph.GenID(), m1)
+	n1, _ := p.g.NewNode(graph.GenID(), m1)
 	p.g.AddNode(n1)
 
 	m2 := graph.Metadata{
 		"Inode": 2,
 	}
-	n2 := p.g.NewNode(graph.GenID(), m2)
+	n2, _ := p.g.NewNode(graph.GenID(), m2)
 	p.g.AddNode(n2)
 
 	m3 := graph.Metadata{
 		"Inode": 3,
 	}
-	n3 := p.g.NewNode(graph.GenID(), m3)
+	n3, _ := p.g.NewNode(graph.GenID(), m3)
 	p.g.AddNode(n3)
 
 	// Ensure Edges are created
