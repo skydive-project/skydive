@@ -77,6 +77,9 @@ EOF
   rm -rf /tmp/skydive_agent* /tmp/skydive-etcd
   rm -rf /var/lib/jenkins/.vagrant.d/tmp
 
+  rm -rf /tmp/skydive-memory.prof*
+  rm -rf /tmp/skydive-cpu.prof*
+
   # time to restart services
   sleep 8
   ip l del virbr0
