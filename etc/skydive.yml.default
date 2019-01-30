@@ -110,6 +110,7 @@ analyzer:
     probes:
       # - k8s
       # - istio
+      # - nsm
       # - ovn
 
     k8s:
@@ -160,6 +161,9 @@ analyzer:
       - serviceentry
       - virtualservice
 
+    nsm:
+     # list of nsm daemons to connect to in order to monitor nsm cross connections
+     - 127.0.0.1:5007
     ovn:
       # OVN northbound address. Format can be either:
       # * tcp://addr:port
