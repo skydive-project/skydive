@@ -27,6 +27,7 @@ import (
 
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
 	// Viper remote client need to be internally initialized
 	_ "github.com/spf13/viper/remote"
 
@@ -143,6 +144,7 @@ func init() {
 	cfg.SetDefault("ovs.ovsdb", "unix:///var/run/openvswitch/db.sock")
 	cfg.SetDefault("ovs.oflow.enable", false)
 	cfg.SetDefault("ovs.oflow.openflow_versions", []string{"OpenFlow10"})
+	cfg.SetDefault("ovs.enable_stats", false)
 
 	cfg.SetDefault("sflow.port_min", 6345)
 	cfg.SetDefault("sflow.port_max", 6355)

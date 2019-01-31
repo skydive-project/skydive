@@ -52,6 +52,7 @@ type Probe struct {
 	portToIntf   map[string]*graph.Node
 	portToBridge map[string]*graph.Node
 	cancel       context.CancelFunc
+	enableStats  bool
 }
 
 func isOvsInterfaceType(t string) bool {
@@ -402,7 +403,7 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 		}
 	}
 
-	if field, ok := row.New.Fields["statistics"]; ok {
+	if field, ok := row.New.Fields["statistics"]; ok && o.enableStats {
 		now := time.Now()
 
 		statistics := field.(libovsdb.OvsMap)
@@ -626,10 +627,12 @@ func (o *Probe) Stop() {
 }
 
 // NewProbe creates a new graph OVS database probe
-func NewProbe(g *graph.Graph, n *graph.Node, p string, t string) *Probe {
+func NewProbe(g *graph.Graph, n *graph.Node, p string, t string, enableStats bool) *Probe {
 	mon := ovsdb.NewOvsMonitor(p, t)
 	mon.ExcludeColumn("*", "statistics")
-	mon.IncludeColumn("Interface", "statistics")
+	if enableStats {
+		mon.IncludeColumn("Interface", "statistics")
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	o := &Probe{
@@ -643,6 +646,7 @@ func NewProbe(g *graph.Graph, n *graph.Node, p string, t string) *Probe {
 		OvsMon:       mon,
 		OvsOfProbe:   NewOvsOfProbe(ctx, g, n, mon.Target),
 		cancel:       cancel,
+		enableStats:  enableStats,
 	}
 
 	return o
@@ -672,6 +676,7 @@ func NewProbeFromConfig(g *graph.Graph, n *graph.Node) *Probe {
 		protocol = "tcp"
 		target = fmt.Sprintf("%s:%d", sa.Addr, sa.Port)
 	}
+	enableStats := config.GetBool("ovs.enable_stats")
 
-	return NewProbe(g, n, protocol, target)
+	return NewProbe(g, n, protocol, target, enableStats)
 }
