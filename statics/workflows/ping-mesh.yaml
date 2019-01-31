@@ -1,0 +1,103 @@
+---
+UUID: "784c3329-0f47-449b-5c58-2d207bcfb501"
+Name: "Ping Mesh (ICMP/TCP/UDP)"
+Description: "Check Connectivity from Multiple Source to Single Destination"
+Parameters:
+  - Name: protocol
+    Description: Protocol
+    Type:  choice
+    Default: icmp4
+    Values:
+      - Description: "Protocol : ICMPv4/Echo request"
+        Value: icmp4
+      - Description: "Protocol : TCP/IPv4"
+        Value: tcp4
+      - Description: "Protocol : UDP/IPv4"
+        Value: udp4
+  - Name: source
+    Description: Source Nodes (Enter a Gremlin Query to select Source Nodes)
+    Type: string
+  - Name: destination
+    Description: Destination Node (Select Destination Node)
+    Type: node
+Source: |
+  function PingMesh(protocol, src, dst) {
+    var sources = [];
+    var result = {};
+    var pktform = {};
+    client.gremlin.query(src).then(function(nodes) {
+      nodes.forEach(function(node) {
+        if (node.Metadata.TID == dst) { return; }
+        sources.push(node.Metadata.TID);
+      });
+    })
+    var capture = new Capture();
+    capture.GremlinQuery = "G.V().Has('TID', '" + dst + "')";
+    return client.captures.create(capture).then(function (c) {
+      capture = c
+    }).then(function () {
+      return sleep(1000)
+    }).then(function () {
+      sources.forEach(function(s) {
+        var packetInjection = new PacketInjection();
+        packetInjection.Src = "G.V().Has('TID', '" + s + "')"
+        packetInjection.Dst = "G.V().Has('TID', '" + dst + "')"
+        packetInjection.Count = 5
+        return client.G.V().Has("TID", dst).then(
+        function (nodes) {
+          if (nodes[0].Metadata.Neutron && nodes[0].Metadata.Neutron.IPV4) {
+            packetInjection.DstIP = nodes[0].Metadata.Neutron.IPV4[0]
+          }
+          if (nodes[0].Metadata.ExtID && nodes[0].Metadata.ExtID["attached-mac"]) {
+            packetInjection.DstMAC = nodes[0].Metadata.ExtID["attached-mac"]
+          }
+          if (protocol == "icmp4") {
+            packetInjection.Type = protocol;
+            packetInjection.ICMPID = Math.floor(Math.random() * 65535);
+          }
+          if (protocol == "tcp4" || protocol == "udp4") {
+            packetInjection.Type = protocol;
+            packetInjection.SrcPort = 1024 + Math.floor(Math.random() * (65535-1024));
+            packetInjection.DstPort = 1024 + Math.floor(Math.random() * (65535-1024));
+          }
+        }).then(function () {
+          return client.G.V().Has("TID", s)
+        }).then(function (nodes) {
+          if (nodes[0].Metadata.Neutron && nodes[0].Metadata.Neutron.IPV4) {
+            packetInjection.SrcIP = nodes[0].Metadata.Neutron.IPV4[0]
+          }
+          if (nodes[0].Metadata.ExtID && nodes[0].Metadata.ExtID["attached-mac"]) {
+            packetInjection.SrcMAC = nodes[0].Metadata.ExtID["attached-mac"]
+          } else {
+            packetInjection.SrcIP = nodes[0].Metadata.IPV4[0]
+          }
+          pktform[s] = packetInjection;
+          pktform[s].SrcIP = pktform[s].SrcIP.split("/")[0]
+          return client.packetInjections.create(packetInjection)
+        })
+      });
+    }).then(function () {
+      return sleep(1000)
+    }).then(function () {
+      sources.forEach(function(s) {
+        if (protocol == "icmp4") {
+          client.G.Flows().Has("ICMP.ID", pktform[s].ICMPID, "Network.A", pktform[s].SrcIP).then(function(flows) {
+            result[s] = {"Connected" : flows.length > 0 && flows[0].Metric.ABPackets > 0, "Replied" : flows.length > 0 && flows[0].Metric.BAPackets > 0};
+            return result
+          })
+        } else {
+          transport_protocol = protocol.toUpperCase().split(4)[0];
+          client.G.Flows().Has("Transport.A", pktform[s].SrcPort, "Transport.B", pktform[s].DstPort, "Transport.Protocol", transport_protocol, "Network.A", pktform[s].SrcIP).then(function(flows) {
+            result[s] = {"Connected" : flows.length > 0 && flows[0].Metric.ABPackets > 0, "Replied" : flows.length > 0 && flows[0].Metric.BAPackets > 0};
+            return result
+          })
+        }
+      });
+    }).then(function () {
+      return result
+    }).finally(function () {
+      return client.captures.delete(capture.UUID)
+    }).catch(function () {
+      return client.captures.delete(capture.UUID)
+    });
+  }
