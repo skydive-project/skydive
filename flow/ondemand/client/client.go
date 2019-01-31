@@ -47,9 +47,14 @@ type OnDemandProbeClient struct {
 	subscriberPool       ws.StructSpeakerPool
 	captures             map[string]*types.Capture
 	watcher              api.StoppableWatcher
-	registeredNodes      map[string]string
+	registeredNodes      map[string]*captureNodeState
 	deletedNodeCache     *cache.Cache
 	checkForRegistration *common.Debouncer
+}
+
+type captureNodeState struct {
+	uuid    string
+	started bool
 }
 
 type nodeProbe struct {
@@ -160,7 +165,7 @@ func (o *OnDemandProbeClient) registerProbe(np nodeProbe) bool {
 		return false
 	}
 	o.Lock()
-	o.registeredNodes[np.id] = cq.Capture.ID()
+	o.registeredNodes[np.id] = &captureNodeState{uuid: cq.Capture.ID()}
 	o.Unlock()
 
 	return true
@@ -243,14 +248,25 @@ func (o *OnDemandProbeClient) OnNodeAdded(n *graph.Node) {
 
 // OnNodeUpdated graph event
 func (o *OnDemandProbeClient) OnNodeUpdated(n *graph.Node) {
+	o.RLock()
+	if state, ok := o.registeredNodes[string(n.ID)]; ok {
+		if !state.started {
+			if s, _ := n.GetFieldString("Capture.State"); s == "active" {
+				state.started = true
+				o.subscriberPool.BroadcastMessage(ws.NewStructMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", state.uuid))
+			}
+		}
+	}
+	o.RUnlock()
+
 	o.checkForRegistration.Call()
 }
 
 // OnNodeDeleted graph event
 func (o *OnDemandProbeClient) OnNodeDeleted(n *graph.Node) {
 	o.RLock()
-	if uuid, ok := o.registeredNodes[string(n.ID)]; ok {
-		o.subscriberPool.BroadcastMessage(ws.NewStructMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", uuid))
+	if state, ok := o.registeredNodes[string(n.ID)]; ok {
+		o.subscriberPool.BroadcastMessage(ws.NewStructMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", state.uuid))
 	}
 	o.RUnlock()
 }
@@ -383,7 +399,7 @@ func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, agentPool
 		agentPool:        agentPool,
 		subscriberPool:   subscriberPool,
 		captures:         captures,
-		registeredNodes:  make(map[string]string),
+		registeredNodes:  make(map[string]*captureNodeState),
 		deletedNodeCache: cache.New(election.TTL()*2, election.TTL()*2),
 	}
 	o.checkForRegistration = common.NewDebouncer(time.Second, o.checkForRegistrationCallback)
