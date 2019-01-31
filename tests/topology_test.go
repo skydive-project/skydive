@@ -21,21 +21,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"reflect"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	g "github.com/skydive-project/skydive/gremlin"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
-	ws "github.com/skydive-project/skydive/websocket"
 )
 
 func TestBridgeOVS(t *testing.T) {
@@ -607,116 +602,6 @@ func TestOVSOwnershipLink(t *testing.T) {
 	RunTest(t, test)
 }
 
-type TopologyInjecter struct {
-	ws.DefaultSpeakerEventHandler
-	connected int32
-}
-
-func (t *TopologyInjecter) OnConnected(c ws.Speaker) {
-	atomic.StoreInt32(&t.connected, 1)
-}
-
-func TestQueryMetadata(t *testing.T) {
-	test := &Test{
-		setupFunction: func(c *TestContext) error {
-			authOptions := &shttp.AuthenticationOpts{}
-			addresses, err := config.GetAnalyzerServiceAddresses()
-			if err != nil || len(addresses) == 0 {
-				return fmt.Errorf("Unable to get the analyzers list: %s", err.Error())
-			}
-
-			hostname, _ := os.Hostname()
-			wspool := ws.NewStructClientPool("TestQueryMetadata")
-			for _, sa := range addresses {
-				opts := ws.ClientOpts{
-					AuthOpts:         authOptions,
-					QueueSize:        1000,
-					WriteCompression: true,
-				}
-
-				client := ws.NewClient(hostname+"-cli", common.UnknownService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher"), opts)
-				wspool.AddClient(client)
-			}
-
-			masterElection := ws.NewMasterElection(wspool)
-
-			eventHandler := &TopologyInjecter{}
-			wspool.AddEventHandler(eventHandler)
-			wspool.ConnectAll()
-
-			err = common.Retry(func() error {
-				if atomic.LoadInt32(&eventHandler.connected) != 1 {
-					return errors.New("Not connected through WebSocket")
-				}
-				return nil
-			}, 10, time.Second)
-
-			if err != nil {
-				return err
-			}
-
-			m := graph.Metadata{
-				"A": map[string]interface{}{
-					"B": map[string]interface{}{
-						"C": 123,
-						"D": []interface{}{1, 2, 3},
-						"E": []interface{}{"a", "b", "c"},
-					},
-					"F": map[string]interface{}{
-						"G": 123,
-						"H": []interface{}{true, true},
-					},
-				},
-			}
-			n := graph.CreateNode(graph.Identifier("123"), m, graph.TimeUTC(), "test", common.AgentService)
-
-			// The first message should be rejected as it has no 'Type' attribute
-			msg := ws.NewStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
-			masterElection.SendMessageToMaster(msg)
-
-			m.SetField("Type", "external")
-			m.SetField("Name", "testNode")
-
-			msg = ws.NewStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
-			masterElection.SendMessageToMaster(msg)
-
-			return nil
-		},
-
-		mode: Replay,
-
-		checks: []CheckFunction{func(c *CheckContext) error {
-			gh := c.gh
-			prefix := c.gremlin
-
-			_, err := gh.GetNode(prefix.V().Has("A.F.G", 123))
-			if err != nil {
-				return err
-			}
-
-			_, err = gh.GetNode(prefix.V().Has("A.B.C", 123))
-			if err != nil {
-				return err
-			}
-
-			_, err = gh.GetNode(prefix.V().Has("A.B.D", 1))
-			if err != nil {
-				return err
-			}
-
-			_, err = gh.GetNode(prefix.V().Has("A.B.E", "b"))
-			if err != nil {
-				return err
-			}
-
-			_, err = gh.GetNode(prefix.V().Has("A.F.H", true))
-			return err
-		}},
-	}
-
-	RunTest(t, test)
-}
-
 func TestNodeRuleCreate(t *testing.T) {
 	nodeRule := &types.NodeRule{
 		Action:   "create",
@@ -879,10 +764,19 @@ func TestAgentMetadata(t *testing.T) {
 		checks: []CheckFunction{
 			func(c *CheckContext) error {
 				if _, err := c.gh.GetNode(c.gremlin.V().Has("mydict.value", 123)); err != nil {
-					return fmt.Errorf("Failed to find the host node with mydict.value metadata")
+					return err
 				}
 
-				return nil
+				if _, err := c.gh.GetNode(c.gremlin.V().Has("myarrays.integers", 1)); err != nil {
+					return err
+				}
+
+				if _, err := c.gh.GetNode(c.gremlin.V().Has("myarrays.strings", "cat")); err != nil {
+					return err
+				}
+
+				_, err := c.gh.GetNode(c.gremlin.V().Has("myarrays.bools", true))
+				return err
 			},
 		},
 	}

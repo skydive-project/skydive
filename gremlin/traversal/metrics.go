@@ -28,6 +28,7 @@ import (
 
 const (
 	defaultAggregatesSliceLength = int64(30000) // 30 seconds
+	aggregatesMaxSlices          = 10000
 )
 
 // MetricsTraversalExtension describes a new extension to enhance the topology
@@ -261,6 +262,10 @@ func (m *MetricsTraversalStep) Aggregates(ctx traversal.StepContext, s ...interf
 	steps := (last - start) / sliceLength
 	if (last-start)%sliceLength != 0 {
 		steps++
+	}
+
+	if steps > aggregatesMaxSlices {
+		return NewMetricsTraversalStepFromError(fmt.Errorf("Aggregates available slices exceeded: %d/%d", steps, aggregatesMaxSlices))
 	}
 
 	aggregated := make([]common.Metric, steps, steps)

@@ -129,7 +129,7 @@ var AllInOneCmd = &cobra.Command{
 
 		os.Setenv("SKYDIVE_ANALYZERS", fmt.Sprintf("%s:%d", addr, svcAddr.Port))
 		os.Setenv("SKYDIVE_LOGGING_FILE_PATH", logFile+"-agent"+extension)
-		
+
 		agentAttr := &os.ProcAttr{
 			Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
 			Env:   os.Environ(),

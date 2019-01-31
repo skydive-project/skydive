@@ -34,19 +34,18 @@ func InterfaceMetrics(ctx traversal.StepContext, tv *traversal.GraphTraversalV, 
 	}
 
 	startField := key + ".Start"
-
 	tv = tv.Dedup(ctx, "ID", startField).Sort(ctx, common.SortAscending, startField)
 
 	if tv.Error() != nil {
 		return NewMetricsTraversalStepFromError(tv.Error())
 	}
 
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
+
 	metrics := make(map[string][]common.Metric)
 	it := ctx.PaginationRange.Iterator()
 	gslice := tv.GraphTraversal.Graph.GetContext().TimeSlice
-
-	tv.GraphTraversal.RLock()
-	defer tv.GraphTraversal.RUnlock()
 
 nodeloop:
 	for _, n := range tv.GetNodes() {

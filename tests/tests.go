@@ -100,6 +100,18 @@ agent:
         value: 1
       - name: last
         value: 10
+    myarrays:
+      integers:
+      - 1
+      - 2
+      - 3
+      bools:
+      - true
+      - true
+      strings:
+      - dog
+      - cat
+      - frog
 
 flow:
   expire: 600
@@ -495,6 +507,9 @@ func RunTest(t *testing.T, test *Test) {
 		context.postmortem(t, test, time.Now())
 		t.Fatalf("Failed to setup captures: %s", err)
 	}
+
+	// wait a bit after the capture creation
+	time.Sleep(2 * time.Second)
 
 	retries := test.retries
 	if retries <= 0 {
