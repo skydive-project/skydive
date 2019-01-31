@@ -2199,12 +2199,6 @@
 			"revisionTime": "2016-03-15T20:05:05Z"
 		},
 		{
-			"checksumSHA1": "FV1FxF/25G8cx+qzKUGwbdJusrw=",
-			"path": "github.com/opencontainers/runc/libcontainer/user",
-			"revision": "8fa5343b0058459296399a89bc532aa5508de28d",
-			"revisionTime": "2016-03-30T02:39:07Z"
-		},
-		{
 			"checksumSHA1": "aaGxJeYZxM1cbxVEac4vO4XeUys=",
 			"path": "github.com/openshift/api/project/v1",
 			"revision": "cc577cdc22a21a372000477f72df3d4409197ea8",
