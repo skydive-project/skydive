@@ -70,7 +70,7 @@ func (p *Probe) Start() {
 	// check if CRD is installed
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		logging.GetLogger().Errorf("Unable to get in cluster config, attempting to fall back to kubeconfig", err)
+		logging.GetLogger().Errorf("Unable to get in K8S cluster config, make sure the analyzer is running inside a K8S pod", err)
 		return
 	}
 
@@ -296,7 +296,6 @@ func (p *Probe) onConnRemoteLocal(t cc.CrossConnectEventType, conn *cc.CrossConn
 }
 
 // OnNodeAdded event
-// We assume skydive has locked the graph before calling this function
 func (p *Probe) OnNodeAdded(n *graph.Node) {
 	p.Lock()
 	defer p.Unlock()
@@ -320,7 +319,6 @@ func (p *Probe) OnNodeAdded(n *graph.Node) {
 }
 
 // OnNodeDeleted event
-// We assume skydive has locked the graph before calling this function
 func (p *Probe) OnNodeDeleted(n *graph.Node) {
 	if i, err := n.GetFieldInt64("Inode"); err == nil {
 		logging.GetLogger().Infof("NSM: node deleted with inode %v", i)
