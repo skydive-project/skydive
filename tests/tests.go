@@ -87,9 +87,9 @@ agent:
       - ovsdb
       - docker
       - lxd
-      - opencontrail
       - lldp
       - runc
+      {{.OpencontrailProbe}}
     netlink:
       metrics_update: 5
     lldp:
@@ -219,6 +219,7 @@ var (
 	noOFTests         bool
 	standalone        bool
 	topologyBackend   string
+	opencontrailProbe bool
 )
 
 func initConfig(conf string, params ...helperParams) error {
@@ -267,6 +268,9 @@ func initConfig(conf string, params ...helperParams) error {
 	}
 	if analyzerProbes != "" {
 		params[0]["AnalyzerProbes"] = strings.Split(analyzerProbes, ",")
+	}
+	if opencontrailProbe {
+		params[0]["OpencontrailProbe"] = "- opencontrail"
 	}
 
 	tmpl, err := template.New("config").Parse(conf)
@@ -782,6 +786,7 @@ func init() {
 	flag.StringVar(&flowBackend, "analyzer.flow.backend", "", "Specify the flow storage backend used")
 	flag.StringVar(&analyzerListen, "analyzer.listen", "0.0.0.0:64500", "Specify the analyzer listen address")
 	flag.StringVar(&analyzerProbes, "analyzer.topology.probes", "", "Specify the analyzer probes to enable")
+	flag.BoolVar(&opencontrailProbe, "opencontrail", false, "Enable opencontrail probe")
 	flag.Parse()
 
 	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 100
