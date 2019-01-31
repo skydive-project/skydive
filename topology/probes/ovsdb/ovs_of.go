@@ -741,7 +741,7 @@ func (probe *BridgeOfProbe) monitorGroup() error {
 	}
 	if _, err = launchOnSwitch(command); err != nil {
 		logging.GetLogger().Warningf("OpenFlow 1.5 not supported on %s", probe.Bridge)
-		return err
+		return nil
 	}
 	randBytes := make([]byte, 16)
 	rand.Read(randBytes)
