@@ -8,3 +8,4 @@
 # subscriber_username:
 # subscriber_password:
 # max_seconds_per_stream: 86400
+# flow_transformer: custom1
