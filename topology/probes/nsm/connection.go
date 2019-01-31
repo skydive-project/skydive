@@ -35,7 +35,7 @@ type connection interface {
 	GetSource() *localconn.Connection
 	GetDest() *localconn.Connection
 	GetInodes() (int64, int64)
-	createMetadatas() graph.Metadata
+	createMetadata() graph.Metadata
 }
 
 type baseConnectionPair struct {
@@ -104,8 +104,8 @@ type baseConnectionMetadata struct {
 
 // easyjson:json
 type localConnectionMetadata struct {
-	IP string
 	baseConnectionMetadata
+	IP string
 }
 
 // easyjson:json
@@ -126,16 +126,16 @@ type baseNSMMetadata struct {
 
 // easyjson:json
 type localNSMMetadata struct {
-	CrossConnectID string
 	baseNSMMetadata
+	CrossConnectID string
 }
 
 // easyjson:json
 type remoteNSMMetadata struct {
+	baseNSMMetadata
 	SourceCrossConnectID      string
 	DestinationCrossConnectID string
-	baseNSMMetadata
-	Via remoteConnectionMetadata
+	Via                       remoteConnectionMetadata
 }
 
 func (b *baseConnectionPair) GetNodes(g *graph.Graph) (*graph.Node, *graph.Node, error) {
@@ -177,7 +177,7 @@ func (l *localConnectionPair) AddEdge(g *graph.Graph) {
 	// create Edge
 	if !g.AreLinked(srcNode, dstNode, nil) {
 		// generate metadatas
-		g.Link(srcNode, dstNode, l.createMetadatas())
+		g.Link(srcNode, dstNode, l.createMetadata())
 	}
 }
 
@@ -194,7 +194,7 @@ func (l *localConnectionPair) DelEdge(g *graph.Graph) {
 	}
 }
 
-func (l *localConnectionPair) createMetadatas() graph.Metadata {
+func (l *localConnectionPair) createMetadata() graph.Metadata {
 	metadata := graph.Metadata{
 		"NSM": localNSMMetadata{
 			CrossConnectID: l.ID,
@@ -234,7 +234,7 @@ func (r *remoteConnectionPair) AddEdge(g *graph.Graph) {
 	// create Edge
 	if !g.AreLinked(srcNode, dstNode, nil) {
 
-		g.Link(srcNode, dstNode, r.createMetadatas())
+		g.Link(srcNode, dstNode, r.createMetadata())
 	}
 }
 
@@ -251,7 +251,7 @@ func (r *remoteConnectionPair) DelEdge(g *graph.Graph) {
 	}
 }
 
-func (r *remoteConnectionPair) createMetadatas() graph.Metadata {
+func (r *remoteConnectionPair) createMetadata() graph.Metadata {
 	metadata := graph.Metadata{
 		"NSM": remoteNSMMetadata{
 			SourceCrossConnectID:      r.srcID,

@@ -65,19 +65,6 @@ func NewNsmProbe(g *graph.Graph) (*Probe, error) {
 // Start ...
 func (p *Probe) Start() {
 	p.g.AddEventListener(p)
-	go p.run()
-}
-
-// Stop ....
-func (p *Probe) Stop() {
-	atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState)
-	p.g.RemoveEventListener(p)
-	for _, conn := range p.nsmds {
-		conn.Close()
-	}
-}
-
-func (p *Probe) run() {
 	atomic.StoreInt64(&p.state, common.RunningState)
 
 	// check if CRD is installed
@@ -103,13 +90,20 @@ func (p *Probe) run() {
 	for _, mgr := range result.Items {
 		//TODO: loop each nsmd servers monitoring in dedicated goroutines
 		if _, ok := p.nsmds[mgr.Status.URL]; !ok {
-
 			logging.GetLogger().Infof("Found nsmd: %s at %s", mgr.Name, mgr.Status.URL)
 			go p.monitorCrossConnects(mgr.Status.URL)
 		}
 	}
-	for atomic.LoadInt64(&p.state) == common.RunningState {
-		time.Sleep(1 * time.Second)
+}
+
+// Stop ....
+func (p *Probe) Stop() {
+	if !atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState) {
+		return
+	}
+	p.g.RemoveEventListener(p)
+	for _, conn := range p.nsmds {
+		conn.Close()
 	}
 }
 
@@ -202,10 +196,7 @@ func (p *Probe) onConnLocalLocal(t cc.CrossConnectEventType, conn *cc.CrossConne
 				p.g.Lock()
 				l.DelEdge(p.g)
 				p.g.Unlock()
-				//move last elem to position i and truncate the slice
-				p.connections[i] = p.connections[len(p.connections)-1]
-				p.connections[len(p.connections)-1] = nil
-				p.connections = p.connections[:len(p.connections)-1]
+				p.removeConnectionItem(i)
 				break
 			}
 		}
@@ -215,16 +206,19 @@ func (p *Probe) onConnLocalLocal(t cc.CrossConnectEventType, conn *cc.CrossConne
 func (p *Probe) onConnLocalRemote(t cc.CrossConnectEventType, conn *cc.CrossConnect) {
 	p.Lock()
 	defer p.Unlock()
-	var c *remoteConnectionPair
-	var i int
-	c, i = p.getConnectionWithRemote(conn.GetRemoteDestination().GetId())
+	c, i := p.getConnectionWithRemote(conn.GetRemoteDestination().GetId())
 	if t != cc.CrossConnectEventType_DELETE {
 		if c == nil {
-			c = new(remoteConnectionPair)
-			c.remote = conn.GetRemoteDestination()
+			c = &remoteConnectionPair{
+				baseConnectionPair: baseConnectionPair{
+					src:     conn.GetLocalSource(),
+					payload: conn.GetPayload(),
+				},
+				remote: conn.GetRemoteDestination(),
+				srcID:  conn.GetId(),
+				//TODO: compare payloads, they should be identical
+			}
 			p.connections = append(p.connections, c)
-			c.src = conn.GetLocalSource()
-			c.srcID = conn.GetId()
 			//TODO: we erase previous payload if exist
 			c.payload = conn.GetPayload()
 
@@ -249,10 +243,7 @@ func (p *Probe) onConnLocalRemote(t cc.CrossConnectEventType, conn *cc.CrossConn
 
 		// Delete the link only if dst is also empty
 		if c.dst == nil {
-			p.connections[i] = p.connections[len(p.connections)-1]
-			p.connections[len(p.connections)-1] = nil
-			p.connections = p.connections[:len(p.connections)-1]
-
+			p.removeConnectionItem(i)
 		} else {
 			c.src = nil
 		}
@@ -262,19 +253,19 @@ func (p *Probe) onConnLocalRemote(t cc.CrossConnectEventType, conn *cc.CrossConn
 func (p *Probe) onConnRemoteLocal(t cc.CrossConnectEventType, conn *cc.CrossConnect) {
 	p.Lock()
 	defer p.Unlock()
-	var c *remoteConnectionPair
-	var i int
-	c, i = p.getConnectionWithRemote(conn.GetRemoteSource().GetId())
+	c, i := p.getConnectionWithRemote(conn.GetRemoteSource().GetId())
 	if t != cc.CrossConnectEventType_DELETE {
 		if c == nil {
-			c = new(remoteConnectionPair)
-			c.remote = conn.GetRemoteSource()
+			c = &remoteConnectionPair{
+				baseConnectionPair: baseConnectionPair{
+					dst:     conn.GetLocalDestination(),
+					payload: conn.GetPayload(),
+				},
+				remote: conn.GetRemoteSource(),
+				dstID:  conn.GetId(),
+				//TODO: compare payloads, they should be identical
+			}
 			p.connections = append(p.connections, c)
-			c.dst = conn.GetLocalDestination()
-			c.dstID = conn.GetId()
-			//TODO: compare payloads, they should be identical
-			c.payload = conn.GetPayload()
-
 		} else {
 			c.dst = conn.GetLocalDestination()
 			c.dstID = conn.GetId()
@@ -297,10 +288,7 @@ func (p *Probe) onConnRemoteLocal(t cc.CrossConnectEventType, conn *cc.CrossConn
 
 		// Delete the link only if src is also empty
 		if c.GetSource() == nil {
-			p.connections[i] = p.connections[len(p.connections)-1]
-			p.connections[len(p.connections)-1] = nil
-			p.connections = p.connections[:len(p.connections)-1]
-
+			p.removeConnectionItem(i)
 		} else {
 			c.dst = nil
 		}
@@ -375,6 +363,15 @@ func (p *Probe) getConnectionWithRemote(id string) (*remoteConnectionPair, int) 
 		}
 	}
 	return nil, 0
+}
+
+// remove the connection located at place i of the list
+// the probe has to be locked before calling this function
+func (p *Probe) removeConnectionItem(i int) {
+	//move last elem to position i and truncate the slice
+	p.connections[i] = p.connections[len(p.connections)-1]
+	p.connections[len(p.connections)-1] = nil
+	p.connections = p.connections[:len(p.connections)-1]
 }
 
 func dial(ctx context.Context, network string, address string) (*grpc.ClientConn, error) {
