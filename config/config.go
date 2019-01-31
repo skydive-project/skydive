@@ -119,6 +119,8 @@ func init() {
 	cfg.SetDefault("flow.expire", 600)
 	cfg.SetDefault("flow.update", 60)
 	cfg.SetDefault("flow.protocol", "udp")
+	cfg.SetDefault("flow.application_timeout.arp", 10)
+	cfg.SetDefault("flow.application_timeout.dns", 10)
 
 	cfg.SetDefault("host_id", host)
 
