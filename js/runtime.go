@@ -392,6 +392,38 @@ func (r *Runtime) Exec(code string) (v otto.Value, err error) {
 	return v, err
 }
 
+func (r *Runtime) CallFunction(source string, params ...interface{}) (otto.Value, error) {
+	result, err := r.Exec("(" + source + ")")
+	if err != nil {
+		return otto.UndefinedValue(), fmt.Errorf("Error while compile source %s: %s", source, result.String())
+	}
+
+	result, err = result.Call(result, params...)
+	if err != nil {
+		return otto.UndefinedValue(), fmt.Errorf("Error while executing workflow: %s", result.String())
+	}
+
+	if !result.IsObject() {
+		return otto.UndefinedValue(), fmt.Errorf("Workflow is expected to return a promise, returned %s", result.Class())
+	}
+
+	done := make(chan otto.Value)
+	promise := result.Object()
+
+	finally, err := r.ToValue(func(call otto.FunctionCall) otto.Value {
+		result := call.Argument(0)
+		done <- result
+		return result
+	})
+
+	result, _ = promise.Call("then", finally)
+	promise = result.Object()
+	promise.Call("catch", finally)
+
+	result = <-done
+	return result, nil
+}
+
 // Start the runtime evaluation loop
 func (r *Runtime) Start() {
 	go r.runEventLoop()
