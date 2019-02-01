@@ -74,6 +74,7 @@ type NetNsProbe struct {
 	state                int64
 	wg                   sync.WaitGroup
 	quit                 chan bool
+	netNsNameTry         map[graph.Identifier]int
 }
 
 // Probe describes a list NetLink NameSpace probe to enhance the graph
@@ -355,7 +356,7 @@ func newInterfaceMetricsFromNetlink(link netlink.Link) *topology.InterfaceMetric
 	}
 }
 
-func (u *NetNsProbe) updateLinkNetNsName(intf *graph.Node, link netlink.Link, metadata graph.Metadata) {
+func (u *NetNsProbe) updateLinkNetNsName(intf *graph.Node, link netlink.Link, metadata graph.Metadata) bool {
 	var context *common.NetNSContext
 
 	lnsid := link.Attrs().NetNsID
@@ -392,10 +393,12 @@ func (u *NetNsProbe) updateLinkNetNsName(intf *graph.Node, link netlink.Link, me
 					metadata["LinkNetNsName"] = name
 				}
 
-				return
+				return true
 			}
 		}
 	}
+
+	return false
 }
 
 func (u *NetNsProbe) updateLinkNetNs(intf *graph.Node, link netlink.Link, metadata graph.Metadata) {
@@ -418,7 +421,22 @@ func (u *NetNsProbe) updateLinkNetNs(intf *graph.Node, link netlink.Link, metada
 		return
 	}
 
-	u.updateLinkNetNsName(intf, link, metadata)
+	const try = 3
+
+	i := u.netNsNameTry[intf.ID]
+	if i > try*3 {
+		// try again after a while
+		i = 0
+	}
+
+	if i < try {
+		if u.updateLinkNetNsName(intf, link, metadata) {
+			// avoid resolution if success
+			i = try - 1
+		}
+	}
+
+	u.netNsNameTry[intf.ID] = i + 1
 }
 
 func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
@@ -653,6 +671,8 @@ func (u *NetNsProbe) onLinkDeleted(link netlink.Link) {
 		if driver == "openvswitch" && uuid != "" {
 			err = u.Graph.Unlink(u.Root, intf)
 		} else {
+			delete(u.netNsNameTry, intf.ID)
+
 			err = u.Graph.DelNode(intf)
 		}
 
@@ -662,8 +682,9 @@ func (u *NetNsProbe) onLinkDeleted(link netlink.Link) {
 	}
 	u.Graph.Unlock()
 
-	u.Lock()
 	delete(u.indexToChildrenQueue, index)
+
+	u.Lock()
 	delete(u.links, link.Attrs().Name)
 	u.Unlock()
 }
@@ -1084,6 +1105,7 @@ func newNetNsProbe(g *graph.Graph, root *graph.Node, nsPath string) (*NetNsProbe
 		indexToChildrenQueue: make(map[int64][]pendingLink),
 		links:                make(map[string]*graph.Node),
 		quit:                 make(chan bool),
+		netNsNameTry:         make(map[graph.Identifier]int),
 	}
 
 	var context *common.NetNSContext
