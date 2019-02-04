@@ -29,6 +29,7 @@ var nodeImgMap = setupFixedImages({
   "default": "intf",
   // k8s
   "cluster": "cluster",
+  "configmap": "configmap",
   "container": "container",
   "cronjob": "cronjob",
   "daemonset": "daemonset",
@@ -44,6 +45,7 @@ var nodeImgMap = setupFixedImages({
   "namespace": "ns",
   "replicaset": "replicaset",
   "replicationcontroller": "replicationcontroller",
+  "secret": "secret",
   "service": "service",
   "statefulset": "statefulset",
   "storageclass": "storageclass",
