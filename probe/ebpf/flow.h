@@ -65,6 +65,13 @@ struct transport_layer {
 	__be16 port_src;
 	__be16 port_dst;
 
+	__u64  ab_syn;
+	__u64  ab_fin;
+	__u64  ab_rst;
+	__u64  ba_syn;
+	__u64  ba_fin;
+	__u64  ba_rst;
+
 	__u64  _hash;
 };
 
