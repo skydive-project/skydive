@@ -31,4 +31,6 @@ function require(m) {
     return {}
 }
 
+var api = require("./api");
+
 Promise.prototype.finally = Promise.prototype.done
