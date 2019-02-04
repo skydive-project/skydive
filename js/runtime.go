@@ -27,6 +27,7 @@ import (
 	"math/rand"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/robertkrimen/otto"
@@ -55,6 +56,7 @@ type jsTimer struct {
 // Runtime is a Skydive JavaScript runtime environment
 type Runtime struct {
 	*otto.Otto
+	sync.Mutex
 	evalQueue     chan *evalReq
 	stopEventLoop chan bool
 	closed        chan struct{}
@@ -386,33 +388,51 @@ func (r *Runtime) Do(fn func(*otto.Otto)) {
 	<-done
 }
 
-// Exec executes some JavaScript code
+// Exec queues the execution of some JavaScript code
 func (r *Runtime) Exec(code string) (v otto.Value, err error) {
 	r.Do(func(vm *otto.Otto) { v, err = vm.Run(code) })
 	return v, err
 }
 
+// ExecFunction queues a CallFunction method
+func (r *Runtime) ExecFunction(source string, params ...interface{}) (v otto.Value, err error) {
+	r.Do(func(vm *otto.Otto) { v, err = r.CallFunction(source, params...) })
+	return v, err
+}
+
+// ExecPromise executes a promise and return its result
+func (r *Runtime) ExecPromise(source string, params ...interface{}) (v otto.Value, err error) {
+	var done chan otto.Value
+	r.Do(func(vm *otto.Otto) { done, err = r.CallPromise(source, params...) })
+	v = <-done
+	return v, err
+}
+
 // CallFunction takes the source of a function and evaluate it with the specifed parameters
 func (r *Runtime) CallFunction(source string, params ...interface{}) (otto.Value, error) {
-	result, err := r.Exec("(" + source + ")")
+	result, err := r.Run("(" + source + ")")
 	if err != nil {
 		return otto.UndefinedValue(), fmt.Errorf("Error while compile source %s: %s", source, result.String())
 	}
 
-	result, err = result.Call(result, params...)
+	return result.Call(result, params...)
+}
+
+// CallPromise takes the source of a promise and evaluate it with the specifed parameters
+func (r *Runtime) CallPromise(source string, params ...interface{}) (chan otto.Value, error) {
+	result, err := r.CallFunction(source, params...)
 	if err != nil {
-		return otto.UndefinedValue(), fmt.Errorf("Error while executing workflow: %s", result.String())
+		return nil, fmt.Errorf("Error while executing function: %s", err)
 	}
 
 	if !result.IsObject() {
-		return otto.UndefinedValue(), fmt.Errorf("Workflow is expected to return a promise, returned %s", result.Class())
+		return nil, fmt.Errorf("Workflow is expected to return a promise, returned %s", result.Class())
 	}
 
 	done := make(chan otto.Value)
 	promise := result.Object()
-
 	finally, err := r.ToValue(func(call otto.FunctionCall) otto.Value {
-		result := call.Argument(0)
+		result = call.Argument(0)
 		done <- result
 		return result
 	})
@@ -421,8 +441,7 @@ func (r *Runtime) CallFunction(source string, params ...interface{}) (otto.Value
 	promise = result.Object()
 	promise.Call("catch", finally)
 
-	result = <-done
-	return result, nil
+	return done, nil
 }
 
 // Start the runtime evaluation loop

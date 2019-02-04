@@ -175,7 +175,7 @@ var WorkflowCall = &cobra.Command{
 			params[i] = arg
 		}
 
-		result, err := runtime.CallFunction(workflow.Source, params...)
+		result, err := runtime.ExecPromise(workflow.Source, params...)
 		if err != nil {
 			exitOnError(err)
 		}
