@@ -12,7 +12,7 @@ var store = new Vuex.Store({
     history: null,
     currentNode: null,
     currentEdge: null,
-    emphasizedNodes: [],
+    emphasizedIDs: [],
     highlightedNodes: [],
     highlightInprogress: new Map(),
     notifications: [],
@@ -96,11 +96,11 @@ var store = new Vuex.Store({
     },
 
     emphasize: function(state, id) {
-      if (state.emphasizedNodes.indexOf(id) < 0) state.emphasizedNodes.push(id);
+      if (state.emphasizedIDs.indexOf(id) < 0) state.emphasizedIDs.push(id);
     },
 
     deemphasize: function(state, id) {
-      state.emphasizedNodes = state.emphasizedNodes.filter(function(_id) {
+      state.emphasizedIDs = state.emphasizedIDs.filter(function(_id) {
         return id !== _id;
       });
     },
