@@ -43,8 +43,6 @@ func (s *EBPFSocketInfoProbe) TCPEventV4(tcpV4 tracer.TcpV4) {
 	srcAddr := &net.TCPAddr{IP: tcpV4.SAddr.To4(), Port: int(tcpV4.SPort)}
 	dstAddr := &net.TCPAddr{IP: tcpV4.DAddr.To4(), Port: int(tcpV4.DPort)}
 
-	logging.GetLogger().Debugf("Got new TCPv4 event: %+v", tcpV4)
-
 	switch tcpV4.Type {
 	case tracer.EventConnect, tracer.EventAccept:
 		if processInfo, err := getProcessInfo(int(tcpV4.Pid)); err == nil {
