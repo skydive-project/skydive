@@ -20,6 +20,8 @@ parameters:
     type: boolean
 source: |
     function FlowMatrix(useFlows, format, debug) {
+        format = format || "graph"
+
         var G = client.gremlin.G()
         var at;
         var listenPorts = []
@@ -30,8 +32,8 @@ source: |
         var hostAddresses = {}
 
         var isLoopback = function(addr) {
-            return addr.startsWith("127.") ||
-                   addr.startsWith("::1/")
+            return addr.indexOf("127.") == 0 ||
+                   addr.indexOf("::1/") == 0
         }
 
         var isListenSocket = function(socket) {
@@ -251,7 +253,7 @@ source: |
             }
         }
 
-        var buildGraph = function() {
+        var outputGraph = function() {
             log("Matrix", matrix)
 
             var endpoints = buildEndpoints()
@@ -311,7 +313,7 @@ source: |
                 case "dot":
                     return outputDot()
                 case "graph":
-                    return buildGraph()
+                    return outputGraph()
             }
         }
 
