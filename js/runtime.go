@@ -392,6 +392,7 @@ func (r *Runtime) Exec(code string) (v otto.Value, err error) {
 	return v, err
 }
 
+// CallFunction takes the source of a function and evaluate it with the specifed parameters
 func (r *Runtime) CallFunction(source string, params ...interface{}) (otto.Value, error) {
 	result, err := r.Exec("(" + source + ")")
 	if err != nil {
@@ -431,6 +432,7 @@ func (r *Runtime) Start() {
 
 // Stop the runtime evaluation loop
 func (r *Runtime) Stop() {
+	r.stopEventLoop <- true
 }
 
 // NewRuntime returns a new JavaScript runtime environment

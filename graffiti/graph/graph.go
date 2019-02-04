@@ -103,14 +103,14 @@ type graphElement struct {
 
 // Node of the graph
 type Node struct {
-	graphElement
+	graphElement `mapstructure:",squash"`
 }
 
 // Edge of the graph linked by a parent and a child
 type Edge struct {
-	graphElement
-	Parent Identifier
-	Child  Identifier
+	graphElement `mapstructure:",squash"`
+	Parent       Identifier
+	Child        Identifier
 }
 
 // Graph errors
