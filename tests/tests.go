@@ -84,6 +84,7 @@ agent:
       - lxd
       - lldp
       - runc
+      - socketinfo
       {{.OpencontrailProbe}}
     netlink:
       metrics_update: 5
