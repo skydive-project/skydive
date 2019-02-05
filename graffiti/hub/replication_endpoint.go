@@ -18,8 +18,6 @@
 package hub
 
 import (
-	"fmt"
-	"net/http"
 	"net/url"
 	"sync"
 	"sync/atomic"
@@ -27,6 +25,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	gws "github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/websocket"
@@ -45,14 +44,17 @@ type TopologyReplicatorPeer struct {
 	endpoint  *TopologyReplicationEndpoint
 }
 
+type peerState struct {
+	cnt int
+}
+
 // TopologyReplicationEndpoint serves the local Graph and send local modification to its peers.
 type TopologyReplicationEndpoint struct {
 	common.RWMutex
 	ws.DefaultSpeakerEventHandler
 	in           ws.StructSpeakerPool
 	out          *ws.StructClientPool
-	inByHost     map[string]ws.Speaker
-	outByHost    map[string]*url.URL
+	peerStates   map[string]*peerState
 	candidates   []*TopologyReplicatorPeer
 	Graph        *graph.Graph
 	cached       *graph.CachedBackend
@@ -67,13 +69,20 @@ func (t *TopologyReplicationEndpoint) debug() bool {
 // OnConnected is called when the peer gets connected then the whole graph
 // is send to initialize it.
 func (p *TopologyReplicatorPeer) OnConnected(c ws.Speaker) {
-	p.Graph.RLock()
-	defer p.Graph.RUnlock()
-
 	p.endpoint.Lock()
 	defer p.endpoint.Unlock()
 
+	p.Graph.RLock()
+	defer p.Graph.RUnlock()
+
 	host := c.GetRemoteHost()
+
+	state, ok := p.endpoint.peerStates[host]
+	if !ok {
+		state = &peerState{}
+		p.endpoint.peerStates[host] = state
+	}
+	state.cnt++
 
 	if host == config.GetString("host_id") {
 		logging.GetLogger().Debugf("Disconnecting from %s since it's me", p.URL.String())
@@ -81,17 +90,20 @@ func (p *TopologyReplicatorPeer) OnConnected(c ws.Speaker) {
 		return
 	}
 
-	// disconnect as can be connect to the same host from different addresses.
-	if u, ok := p.endpoint.outByHost[host]; ok {
-		logging.GetLogger().Debugf("Disconnecting from %s as already connected through", p.URL.String(), u.String())
+	// disconnect as can be connected to the same host from different addresses.
+	if state.cnt > 1 {
+		logging.GetLogger().Debugf("Disconnecting from %s as already connected through %s", p.URL.String(), c.GetURL().String())
 		c.Stop()
 		return
 	}
 
-	p.wsspeaker.SendMessage(ws.NewStructMessage(graph.Namespace, graph.SyncMsgType, p.Graph))
+	msg := &gws.SyncMsg{
+		Elements: p.Graph.Elements(),
+	}
+
+	p.wsspeaker.SendMessage(gws.NewStructMessage(gws.SyncMsgType, msg))
 
 	p.endpoint.out.AddClient(c)
-	p.endpoint.outByHost[host] = c.GetURL()
 }
 
 // OnDisconnected is called when the peer gets disconnected
@@ -99,7 +111,27 @@ func (p *TopologyReplicatorPeer) OnDisconnected(c ws.Speaker) {
 	p.endpoint.Lock()
 	defer p.endpoint.Unlock()
 
-	delete(p.endpoint.outByHost, c.GetRemoteHost())
+	host := c.GetRemoteHost()
+
+	state := p.endpoint.peerStates[host]
+	state.cnt--
+	if state.cnt > 0 {
+		return
+	}
+
+	origin := clientOrigin(c)
+	if p.Graph.Origin() == origin {
+		return
+	}
+
+	logging.GetLogger().Debugf("Peer unregistered, delete resources of %s", origin)
+
+	p.Graph.Lock()
+	delSubGraphOfOrigin(p.endpoint.cached, p.Graph, origin)
+	p.Graph.Unlock()
+
+	p.endpoint.out.RemoveClient(c)
+	delete(p.endpoint.peerStates, host)
 }
 
 func (p *TopologyReplicatorPeer) connect(wg *sync.WaitGroup) {
@@ -117,7 +149,7 @@ func (p *TopologyReplicatorPeer) connect(wg *sync.WaitGroup) {
 	structClient.AddEventHandler(p)
 
 	// subscribe to the graph messages
-	structClient.AddStructMessageHandler(p.endpoint, []string{graph.Namespace})
+	structClient.AddStructMessageHandler(p.endpoint, []string{gws.Namespace})
 
 	p.wsspeaker = structClient
 	p.wsspeaker.Start()
@@ -171,13 +203,12 @@ func (t *TopologyReplicationEndpoint) DisconnectPeers() {
 
 // OnStructMessage is triggered by message coming from an other peer.
 func (t *TopologyReplicationEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
-	host := c.GetRemoteHost()
-	if host == config.GetString("host_id") {
+	if c.GetRemoteHost() == config.GetString("host_id") {
 		logging.GetLogger().Debugf("Ignore message from myself(%s), %s", c.GetURL().String())
 		return
 	}
 
-	msgType, obj, err := graph.UnmarshalMessage(msg)
+	msgType, obj, err := gws.UnmarshalMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
 		return
@@ -189,6 +220,7 @@ func (t *TopologyReplicationEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Stru
 	t.replicateMsg.Store(false)
 	defer t.replicateMsg.Store(true)
 
+	// replicated graph, do not used persistent backend, another hub will handle this
 	t.cached.SetMode(graph.CacheOnlyMode)
 	defer t.cached.SetMode(graph.DefaultMode)
 
@@ -196,45 +228,41 @@ func (t *TopologyReplicationEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Stru
 		b, _ := msg.Bytes(ws.JSONProtocol)
 		logging.GetLogger().Debugf("Received message from peer %s: %s", c.GetURL().String(), string(b))
 	}
+
 	switch msgType {
-	case graph.SyncRequestMsgType:
-		reply := msg.Reply(t.Graph, graph.SyncReplyMsgType, http.StatusOK)
-		c.SendMessage(reply)
-	case graph.OriginGraphDeletedMsgType:
-		logging.GetLogger().Debugf("Got %s message for origin %s", graph.OriginGraphDeletedMsgType, obj.(string))
-		t.Graph.DelOriginGraph(obj.(string))
-	case graph.SyncMsgType, graph.SyncReplyMsgType:
-		r := obj.(*graph.SyncMsg)
+	case gws.SyncMsgType:
+		r := obj.(*gws.SyncMsg)
+
 		for _, n := range r.Nodes {
 			if t.Graph.GetNode(n.ID) == nil {
 				if err := t.Graph.NodeAdded(n); err != nil {
-					logging.GetLogger().Error(err)
+					logging.GetLogger().Errorf("%s, %+v", err, n)
 				}
 			}
 		}
 		for _, e := range r.Edges {
 			if t.Graph.GetEdge(e.ID) == nil {
 				if err := t.Graph.EdgeAdded(e); err != nil {
-					logging.GetLogger().Error(err)
+					logging.GetLogger().Errorf("%s, %+v", err, e)
 				}
 			}
 		}
-	case graph.NodeUpdatedMsgType:
+	case gws.NodeUpdatedMsgType:
 		err = t.Graph.NodeUpdated(obj.(*graph.Node))
-	case graph.NodeDeletedMsgType:
+	case gws.NodeDeletedMsgType:
 		err = t.Graph.NodeDeleted(obj.(*graph.Node))
-	case graph.NodeAddedMsgType:
+	case gws.NodeAddedMsgType:
 		err = t.Graph.NodeAdded(obj.(*graph.Node))
-	case graph.EdgeUpdatedMsgType:
+	case gws.EdgeUpdatedMsgType:
 		err = t.Graph.EdgeUpdated(obj.(*graph.Edge))
-	case graph.EdgeDeletedMsgType:
-		err = t.Graph.EdgeDeleted(obj.(*graph.Edge))
-	case graph.EdgeAddedMsgType:
+	case gws.EdgeDeletedMsgType:
+		t.Graph.EdgeDeleted(obj.(*graph.Edge))
+	case gws.EdgeAddedMsgType:
 		err = t.Graph.EdgeAdded(obj.(*graph.Edge))
 	}
 
 	if err != nil {
-		logging.GetLogger().Error(err)
+		logging.GetLogger().Errorf("Error while processing message type %s: %s", msgType, err)
 	}
 }
 
@@ -244,6 +272,7 @@ func (t *TopologyReplicationEndpoint) notifyPeers(msg *ws.StructMessage) {
 		b, _ := msg.Bytes(ws.JSONProtocol)
 		logging.GetLogger().Debugf("Broadcasting message to all peers: %s", string(b))
 	}
+
 	t.in.BroadcastMessage(msg)
 	t.out.BroadcastMessage(msg)
 }
@@ -251,7 +280,7 @@ func (t *TopologyReplicationEndpoint) notifyPeers(msg *ws.StructMessage) {
 // OnNodeUpdated graph node updated event. Implements the EventListener interface.
 func (t *TopologyReplicationEndpoint) OnNodeUpdated(n *graph.Node) {
 	if t.replicateMsg.Load() == true {
-		msg := ws.NewStructMessage(graph.Namespace, graph.NodeUpdatedMsgType, n)
+		msg := gws.NewStructMessage(gws.NodeUpdatedMsgType, n)
 		t.notifyPeers(msg)
 	}
 }
@@ -259,7 +288,7 @@ func (t *TopologyReplicationEndpoint) OnNodeUpdated(n *graph.Node) {
 // OnNodeAdded graph node added event. Implements the EventListener interface.
 func (t *TopologyReplicationEndpoint) OnNodeAdded(n *graph.Node) {
 	if t.replicateMsg.Load() == true {
-		msg := ws.NewStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
+		msg := gws.NewStructMessage(gws.NodeAddedMsgType, n)
 		t.notifyPeers(msg)
 	}
 }
@@ -267,7 +296,7 @@ func (t *TopologyReplicationEndpoint) OnNodeAdded(n *graph.Node) {
 // OnNodeDeleted graph node deleted event. Implements the EventListener interface.
 func (t *TopologyReplicationEndpoint) OnNodeDeleted(n *graph.Node) {
 	if t.replicateMsg.Load() == true {
-		msg := ws.NewStructMessage(graph.Namespace, graph.NodeDeletedMsgType, n)
+		msg := gws.NewStructMessage(gws.NodeDeletedMsgType, n)
 		t.notifyPeers(msg)
 	}
 }
@@ -275,7 +304,7 @@ func (t *TopologyReplicationEndpoint) OnNodeDeleted(n *graph.Node) {
 // OnEdgeUpdated graph edge updated event. Implements the EventListener interface.
 func (t *TopologyReplicationEndpoint) OnEdgeUpdated(e *graph.Edge) {
 	if t.replicateMsg.Load() == true {
-		msg := ws.NewStructMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e)
+		msg := gws.NewStructMessage(gws.EdgeUpdatedMsgType, e)
 		t.notifyPeers(msg)
 	}
 }
@@ -283,7 +312,7 @@ func (t *TopologyReplicationEndpoint) OnEdgeUpdated(e *graph.Edge) {
 // OnEdgeAdded graph edge added event. Implements the EventListener interface.
 func (t *TopologyReplicationEndpoint) OnEdgeAdded(e *graph.Edge) {
 	if t.replicateMsg.Load() == true {
-		msg := ws.NewStructMessage(graph.Namespace, graph.EdgeAddedMsgType, e)
+		msg := gws.NewStructMessage(gws.EdgeAddedMsgType, e)
 		t.notifyPeers(msg)
 	}
 }
@@ -291,7 +320,7 @@ func (t *TopologyReplicationEndpoint) OnEdgeAdded(e *graph.Edge) {
 // OnEdgeDeleted graph edge deleted event. Implements the EventListener interface.
 func (t *TopologyReplicationEndpoint) OnEdgeDeleted(e *graph.Edge) {
 	if t.replicateMsg.Load() == true {
-		msg := ws.NewStructMessage(graph.Namespace, graph.EdgeDeletedMsgType, e)
+		msg := gws.NewStructMessage(gws.EdgeDeletedMsgType, e)
 		t.notifyPeers(msg)
 	}
 }
@@ -303,22 +332,36 @@ func (t *TopologyReplicationEndpoint) GetSpeakers() []ws.Speaker {
 
 // OnConnected is called when an incoming peer got connected.
 func (t *TopologyReplicationEndpoint) OnConnected(c ws.Speaker) {
-	t.Graph.RLock()
-	defer t.Graph.RUnlock()
-
 	t.Lock()
 	defer t.Unlock()
 
+	t.Graph.RLock()
+	defer t.Graph.RUnlock()
+
 	host := c.GetRemoteHost()
-	if speaker := t.inByHost[host]; speaker != nil {
-		logging.GetLogger().Debugf("Disconnecting %s from %s as already connected from %s", host, c.GetURL(), speaker.GetURL())
+
+	state, ok := t.peerStates[host]
+	if !ok {
+		state = &peerState{}
+		t.peerStates[host] = state
+	}
+	state.cnt++
+
+	if state.cnt > 1 {
+		logging.GetLogger().Debugf("Disconnecting %s from %s as already connected", host, c.GetURL())
+
 		c.Stop()
 		return
 	}
 
 	// subscribe to websocket structured messages
-	c.(*ws.StructSpeaker).AddStructMessageHandler(t, []string{graph.Namespace})
-	c.SendMessage(ws.NewStructMessage(graph.Namespace, graph.SyncMsgType, t.Graph))
+	c.(*ws.StructSpeaker).AddStructMessageHandler(t, []string{gws.Namespace})
+
+	msg := &gws.SyncMsg{
+		Elements: t.Graph.Elements(),
+	}
+
+	c.SendMessage(gws.NewStructMessage(gws.SyncMsgType, msg))
 }
 
 // OnDisconnected is called when an incoming peer got disconnected.
@@ -326,27 +369,40 @@ func (t *TopologyReplicationEndpoint) OnDisconnected(c ws.Speaker) {
 	t.Lock()
 	defer t.Unlock()
 
-	delete(t.inByHost, c.GetRemoteHost())
+	host := c.GetRemoteHost()
+
+	state := t.peerStates[host]
+	state.cnt--
+	if state.cnt > 0 {
+		return
+	}
+
+	origin := clientOrigin(c)
+	if t.Graph.Origin() == origin {
+		return
+	}
+
+	logging.GetLogger().Debugf("Peer unregistered, delete resources of %s", origin)
+
+	t.Graph.Lock()
+	delSubGraphOfOrigin(t.cached, t.Graph, origin)
+	t.Graph.Unlock()
+
+	delete(t.peerStates, host)
 }
 
 // NewTopologyReplicationEndpoint returns a new server to be used by other analyzers for replication.
-func NewTopologyReplicationEndpoint(pool ws.StructSpeakerPool, auth *shttp.AuthenticationOpts, cached *graph.CachedBackend, g *graph.Graph) (*TopologyReplicationEndpoint, error) {
-	addresses, err := config.GetAnalyzerServiceAddresses()
-	if err != nil {
-		return nil, fmt.Errorf("Unable to get the analyzers list: %s", err)
-	}
-
+func NewTopologyReplicationEndpoint(pool ws.StructSpeakerPool, auth *shttp.AuthenticationOpts, cached *graph.CachedBackend, g *graph.Graph, peers []common.ServiceAddress) (*TopologyReplicationEndpoint, error) {
 	t := &TopologyReplicationEndpoint{
-		Graph:     g,
-		cached:    cached,
-		in:        pool,
-		out:       ws.NewStructClientPool("TopologyReplicationEndpoint"),
-		inByHost:  make(map[string]ws.Speaker),
-		outByHost: make(map[string]*url.URL),
+		Graph:      g,
+		cached:     cached,
+		in:         pool,
+		out:        ws.NewStructClientPool("TopologyReplicationEndpoint"),
+		peerStates: make(map[string]*peerState),
 	}
 	t.replicateMsg.Store(true)
 
-	for _, sa := range addresses {
+	for _, sa := range peers {
 		t.addCandidate(config.GetURL("ws", sa.Addr, sa.Port, "/ws/replication"), auth)
 	}
 

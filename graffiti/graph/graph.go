@@ -30,8 +30,6 @@ import (
 )
 
 const (
-	// Namespace used for WebSocket message
-	Namespace = "Graph"
 	maxEvents = 50
 )
 
@@ -162,6 +160,12 @@ type Graph struct {
 	context      Context
 	host         string
 	service      common.ServiceType
+}
+
+// Elements struct containing nodes and edges
+type Elements struct {
+	Nodes []*Node
+	Edges []*Edge
 }
 
 // MetadataDecoder defines a json rawmessage decoder which has to return a object
@@ -1258,14 +1262,12 @@ func (g *Graph) DelNode(n *Node) error {
 	return g.delNode(n, TimeUTC())
 }
 
-// DelOriginGraph delete the associated node with the origin
-func (g *Graph) DelOriginGraph(origin string) error {
+// DelNodes deletes nodes for given matcher
+func (g *Graph) DelNodes(m ElementMatcher) error {
 	t := TimeUTC()
-	for _, node := range g.GetNodes(nil) {
-		if node.Origin == origin {
-			if err := g.delNode(node, t); err != nil {
-				return err
-			}
+	for _, node := range g.GetNodes(m) {
+		if err := g.delNode(node, t); err != nil {
+			return err
 		}
 	}
 
@@ -1306,21 +1308,23 @@ func (g *Graph) Origin() string {
 	return o
 }
 
-// MarshalJSON serialize the graph in JSON
-func (g *Graph) MarshalJSON() ([]byte, error) {
+// Elements returns graph elements
+func (g *Graph) Elements() *Elements {
 	nodes := g.GetNodes(nil)
 	SortNodes(nodes, "CreatedAt", common.SortAscending)
 
 	edges := g.GetEdges(nil)
 	SortEdges(edges, "CreatedAt", common.SortAscending)
 
-	return json.Marshal(&struct {
-		Nodes []*Node
-		Edges []*Edge
-	}{
+	return &Elements{
 		Nodes: nodes,
 		Edges: edges,
-	})
+	}
+}
+
+// MarshalJSON serialize the graph in JSON
+func (g *Graph) MarshalJSON() ([]byte, error) {
+	return json.Marshal(g.Elements())
 }
 
 // CloneWithContext creates a new graph based on the given one and the given context

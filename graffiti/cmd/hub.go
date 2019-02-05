@@ -31,6 +31,7 @@ import (
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/websocket"
 	"github.com/spf13/cobra"
 )
 
@@ -91,7 +92,7 @@ var HubCmd = &cobra.Command{
 
 		authBackend := shttp.NewNoAuthenticationBackend()
 
-		// declare all extension available throught API and filtering
+		// declare all extension available through API and filtering
 		tr := traversal.NewGremlinTraversalParser()
 		tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
 
@@ -101,7 +102,14 @@ var HubCmd = &cobra.Command{
 		}
 		api.RegisterTopologyAPI(httpServer, g, tr, authBackend)
 
-		hub, err := hub.NewHub(httpServer, g, cached, authBackend, authBackend, nil, "/ws/pod", writeCompression, queueSize, time.Second*time.Duration(pingDelay), time.Second*time.Duration(pongTimeout))
+		serverOpts := websocket.ServerOpts{
+			WriteCompression: writeCompression,
+			QueueSize:        queueSize,
+			PingDelay:        time.Second * time.Duration(pingDelay),
+			PongTimeout:      time.Second * time.Duration(pongTimeout),
+		}
+
+		hub, err := hub.NewHub(httpServer, g, cached, authBackend, authBackend, nil, "/ws/pod", nil, serverOpts)
 		if err != nil {
 			logging.GetLogger().Error(err)
 			os.Exit(1)

@@ -26,6 +26,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	gws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/logging"
 	ws "github.com/skydive-project/skydive/websocket"
 )
@@ -106,18 +107,18 @@ func (t *TopologySubscriberEndpoint) OnDisconnected(c ws.Speaker) {
 // OnStructMessage is triggered when receiving a message from a subscriber.
 // It only responds to SyncRequestMsgType messages
 func (t *TopologySubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
-	msgType, obj, err := graph.UnmarshalMessage(msg)
+	msgType, obj, err := gws.UnmarshalMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
 		return
 	}
 
 	// this kind of message usually comes from external clients like the WebUI
-	if msgType == graph.SyncRequestMsgType {
+	if msgType == gws.SyncRequestMsgType {
 		t.Graph.RLock()
 		defer t.Graph.RUnlock()
 
-		syncMsg, status := obj.(*graph.SyncRequestMsg), http.StatusOK
+		syncMsg, status := obj.(*gws.SyncRequestMsg), http.StatusOK
 		result, err := t.Graph.CloneWithContext(syncMsg.Context)
 		if err != nil {
 			logging.GetLogger().Errorf("unable to get a graph with context %+v: %s", syncMsg, err)
@@ -140,7 +141,7 @@ func (t *TopologySubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Struc
 			t.Unlock()
 		}
 
-		reply := msg.Reply(result, graph.SyncReplyMsgType, status)
+		reply := msg.Reply(result, gws.SyncReplyMsgType, status)
 		c.SendMessage(reply)
 
 		return
@@ -166,19 +167,19 @@ func (t *TopologySubscriberEndpoint) notifyClients(msg *ws.StructMessage) {
 			addedNodes, removedNodes, addedEdges, removedEdges := subscriber.graph.Diff(g)
 
 			for _, n := range addedNodes {
-				c.SendMessage(ws.NewStructMessage(graph.Namespace, graph.NodeAddedMsgType, n))
+				c.SendMessage(gws.NewStructMessage(gws.NodeAddedMsgType, n))
 			}
 
 			for _, n := range removedNodes {
-				c.SendMessage(ws.NewStructMessage(graph.Namespace, graph.NodeDeletedMsgType, n))
+				c.SendMessage(gws.NewStructMessage(gws.NodeDeletedMsgType, n))
 			}
 
 			for _, e := range addedEdges {
-				c.SendMessage(ws.NewStructMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
+				c.SendMessage(gws.NewStructMessage(gws.EdgeAddedMsgType, e))
 			}
 
 			for _, e := range removedEdges {
-				c.SendMessage(ws.NewStructMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
+				c.SendMessage(gws.NewStructMessage(gws.EdgeDeletedMsgType, e))
 			}
 
 			subscriber.graph = g
@@ -190,32 +191,32 @@ func (t *TopologySubscriberEndpoint) notifyClients(msg *ws.StructMessage) {
 
 // OnNodeUpdated graph node updated event. Implements the GraphEventListener interface.
 func (t *TopologySubscriberEndpoint) OnNodeUpdated(n *graph.Node) {
-	t.notifyClients(ws.NewStructMessage(graph.Namespace, graph.NodeUpdatedMsgType, n))
+	t.notifyClients(gws.NewStructMessage(gws.NodeUpdatedMsgType, n))
 }
 
 // OnNodeAdded graph node added event. Implements the GraphEventListener interface.
 func (t *TopologySubscriberEndpoint) OnNodeAdded(n *graph.Node) {
-	t.notifyClients(ws.NewStructMessage(graph.Namespace, graph.NodeAddedMsgType, n))
+	t.notifyClients(gws.NewStructMessage(gws.NodeAddedMsgType, n))
 }
 
 // OnNodeDeleted graph node deleted event. Implements the GraphEventListener interface.
 func (t *TopologySubscriberEndpoint) OnNodeDeleted(n *graph.Node) {
-	t.notifyClients(ws.NewStructMessage(graph.Namespace, graph.NodeDeletedMsgType, n))
+	t.notifyClients(gws.NewStructMessage(gws.NodeDeletedMsgType, n))
 }
 
 // OnEdgeUpdated graph edge updated event. Implements the GraphEventListener interface.
 func (t *TopologySubscriberEndpoint) OnEdgeUpdated(e *graph.Edge) {
-	t.notifyClients(ws.NewStructMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e))
+	t.notifyClients(gws.NewStructMessage(gws.EdgeUpdatedMsgType, e))
 }
 
 // OnEdgeAdded graph edge added event. Implements the GraphEventListener interface.
 func (t *TopologySubscriberEndpoint) OnEdgeAdded(e *graph.Edge) {
-	t.notifyClients(ws.NewStructMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
+	t.notifyClients(gws.NewStructMessage(gws.EdgeAddedMsgType, e))
 }
 
 // OnEdgeDeleted graph edge deleted event. Implements the GraphEventListener interface.
 func (t *TopologySubscriberEndpoint) OnEdgeDeleted(e *graph.Edge) {
-	t.notifyClients(ws.NewStructMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
+	t.notifyClients(gws.NewStructMessage(gws.EdgeDeletedMsgType, e))
 }
 
 // NewTopologySubscriberEndpoint returns a new server to be used by external subscribers,
@@ -231,7 +232,7 @@ func NewTopologySubscriberEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, tr
 	pool.AddEventHandler(t)
 
 	// subscribe to the graph messages
-	pool.AddStructMessageHandler(t, []string{graph.Namespace})
+	pool.AddStructMessageHandler(t, []string{gws.Namespace})
 
 	// subscribe to the local graph event
 	g.AddEventListener(t)

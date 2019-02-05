@@ -30,7 +30,7 @@ import (
 	es "github.com/skydive-project/skydive/storage/elasticsearch"
 )
 
-// NewESConfig returns a new elasticsearch configution for the given backend name
+// NewESConfig returns a new elasticsearch configuration for the given backend name
 func NewESConfig(name ...string) es.Config {
 	cfg := es.Config{}
 

@@ -95,9 +95,6 @@ func (f *fakeOrientDBClient) CreateDatabase() (*orientdb.Result, error) {
 	return nil, nil
 }
 func (f *fakeOrientDBClient) SQL(query string) (*orientdb.Result, error) {
-	return nil, nil
-}
-func (f *fakeOrientDBClient) Search(query string) (*orientdb.Result, error) {
 	f.ops = append(f.ops, op{name: "Search", data: query})
 
 	result := f.result[0]

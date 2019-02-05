@@ -99,7 +99,14 @@ func TestMessageSubscription(t *testing.T) {
 	httpserver.ListenAndServe()
 	defer httpserver.Stop()
 
-	wsserver := NewStructServer(NewServer(httpserver, "/wstest", shttp.NewNoAuthenticationBackend(), true, 100, 2*time.Second, 5*time.Second))
+	serverOpts := ServerOpts{
+		WriteCompression: true,
+		QueueSize:        100,
+		PingDelay:        2 * time.Second,
+		PongTimeout:      5 * time.Second,
+	}
+
+	wsserver := NewStructServer(NewServer(httpserver, "/wstest", shttp.NewNoAuthenticationBackend(), serverOpts))
 
 	serverHandler := &fakeMessageServerSubscriptionHandler{t: t, server: wsserver, received: make(map[string]bool)}
 	wsserver.AddEventHandler(serverHandler)
@@ -110,12 +117,12 @@ func TestMessageSubscription(t *testing.T) {
 
 	u, _ := url.Parse("ws://localhost:59999/wstest")
 
-	opts := ClientOpts{
+	clientOpts := ClientOpts{
 		QueueSize:        1000,
 		WriteCompression: true,
 	}
 
-	wsclient := NewClient("myhost", common.AgentService, u, opts)
+	wsclient := NewClient("myhost", common.AgentService, u, clientOpts)
 
 	wspool := NewStructClientPool("TestMessageSubscription")
 	wspool.AddClient(wsclient)

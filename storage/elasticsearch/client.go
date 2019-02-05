@@ -74,6 +74,7 @@ type Index struct {
 
 // Client describes a ElasticSearch client connection
 type Client struct {
+	sync.RWMutex
 	url           *url.URL
 	esClient      *elastic.Client
 	bulkProcessor *elastic.BulkProcessor

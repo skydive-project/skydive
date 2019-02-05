@@ -22,21 +22,26 @@ import (
 	"errors"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	ws "github.com/skydive-project/skydive/websocket"
+)
+
+const (
+	// Namespace used for WebSocket message
+	Namespace = "Graph"
 )
 
 // Graph message type
 const (
-	SyncMsgType               = "Sync"
-	SyncRequestMsgType        = "SyncRequest"
-	SyncReplyMsgType          = "SyncReply"
-	OriginGraphDeletedMsgType = "OriginGraphDeleted"
-	NodeUpdatedMsgType        = "NodeUpdated"
-	NodeDeletedMsgType        = "NodeDeleted"
-	NodeAddedMsgType          = "NodeAdded"
-	EdgeUpdatedMsgType        = "EdgeUpdated"
-	EdgeDeletedMsgType        = "EdgeDeleted"
-	EdgeAddedMsgType          = "EdgeAdded"
+	SyncMsgType        = "Sync"
+	SyncRequestMsgType = "SyncRequest"
+	SyncReplyMsgType   = "SyncReply"
+	NodeUpdatedMsgType = "NodeUpdated"
+	NodeDeletedMsgType = "NodeDeleted"
+	NodeAddedMsgType   = "NodeAdded"
+	EdgeUpdatedMsgType = "EdgeUpdated"
+	EdgeDeletedMsgType = "EdgeDeleted"
+	EdgeAddedMsgType   = "EdgeAdded"
 )
 
 // Graph error message
@@ -47,14 +52,18 @@ var (
 
 // SyncRequestMsg describes a graph synchro request message
 type SyncRequestMsg struct {
-	Context
+	graph.Context
 	GremlinFilter string
 }
 
 // SyncMsg describes graph synchro message
 type SyncMsg struct {
-	Nodes []*Node
-	Edges []*Edge
+	*graph.Elements
+}
+
+// NewStructMessage returns a new graffiti websocket StructMessage
+func NewStructMessage(typ string, i interface{}) *ws.StructMessage {
+	return ws.NewStructMessage(Namespace, typ, i)
 }
 
 // UnmarshalJSON custom unmarshal function
@@ -91,20 +100,14 @@ func UnmarshalMessage(msg *ws.StructMessage) (string, interface{}, error) {
 			return "", msg, err
 		}
 		return msg.Type, &syncMsg, nil
-	case OriginGraphDeletedMsgType:
-		var origin string
-		if err := json.Unmarshal(msg.Obj, &origin); err != nil {
-			return "", msg, err
-		}
-		return msg.Type, origin, nil
 	case NodeUpdatedMsgType, NodeDeletedMsgType, NodeAddedMsgType:
-		var node Node
+		var node graph.Node
 		if err := json.Unmarshal(msg.Obj, &node); err != nil {
 			return "", msg, err
 		}
 		return msg.Type, &node, nil
 	case EdgeUpdatedMsgType, EdgeDeletedMsgType, EdgeAddedMsgType:
-		var edge Edge
+		var edge graph.Edge
 		if err := json.Unmarshal(msg.Obj, &edge); err != nil {
 			return "", msg, err
 		}

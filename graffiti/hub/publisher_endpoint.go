@@ -23,6 +23,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	gws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
 	ws "github.com/skydive-project/skydive/websocket"
@@ -47,6 +48,7 @@ type TopologyPublisherEndpoint struct {
 	Graph           *graph.Graph
 	schemaValidator *topology.SchemaValidator
 	gremlinParser   *traversal.GremlinTraversalParser
+	cached          *graph.CachedBackend
 }
 
 // OnDisconnected called when a publisher got disconnected.
@@ -56,35 +58,30 @@ func (t *TopologyPublisherEndpoint) OnDisconnected(c ws.Speaker) {
 		return
 	}
 
-	origin := string(c.GetServiceType())
-	if len(c.GetRemoteHost()) > 0 {
-		origin += "." + c.GetRemoteHost()
-	}
-	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources %s", origin)
+	origin := clientOrigin(c)
+
+	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources of %s", origin)
 
 	t.Graph.Lock()
-	t.Graph.DelOriginGraph(origin)
+	delSubGraphOfOrigin(t.cached, t.Graph, origin)
 	t.Graph.Unlock()
 }
 
 // OnStructMessage is triggered by message coming from a publisher.
 func (t *TopologyPublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
-	msgType, obj, err := graph.UnmarshalMessage(msg)
+	msgType, obj, err := gws.UnmarshalMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
 		return
 	}
 
-	origin := string(c.GetServiceType())
-	if len(c.GetRemoteHost()) > 0 {
-		origin += "." + c.GetRemoteHost()
-	}
+	origin := clientOrigin(c)
 
 	switch msgType {
-	case graph.NodeAddedMsgType, graph.NodeUpdatedMsgType, graph.NodeDeletedMsgType:
+	case gws.NodeAddedMsgType, gws.NodeUpdatedMsgType, gws.NodeDeletedMsgType:
 		obj.(*graph.Node).Origin = origin
 		err = t.schemaValidator.ValidateNode(obj.(*graph.Node))
-	case graph.EdgeAddedMsgType, graph.EdgeUpdatedMsgType, graph.EdgeDeletedMsgType:
+	case gws.EdgeAddedMsgType, gws.EdgeUpdatedMsgType, gws.EdgeDeletedMsgType:
 		obj.(*graph.Edge).Origin = origin
 		err = t.schemaValidator.ValidateEdge(obj.(*graph.Edge))
 	}
@@ -98,17 +95,14 @@ func (t *TopologyPublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Struct
 	defer t.Graph.Unlock()
 
 	switch msgType {
-	case graph.SyncRequestMsgType:
-		reply := msg.Reply(t.Graph, graph.SyncReplyMsgType, http.StatusOK)
+	case gws.SyncRequestMsgType:
+		reply := msg.Reply(t.Graph, gws.SyncReplyMsgType, http.StatusOK)
 		c.SendMessage(reply)
-	case graph.OriginGraphDeletedMsgType:
-		// OriginGraphDeletedMsgType is handled specifically as we need to be sure to not use the
-		// cache while deleting otherwise the delete mechanism is using the cache to walk through
-		// the graph.
-		logging.GetLogger().Debugf("Got %s message for origin %s", graph.OriginGraphDeletedMsgType, obj.(string))
-		t.Graph.DelOriginGraph(obj.(string))
-	case graph.SyncMsgType, graph.SyncReplyMsgType:
-		r := obj.(*graph.SyncMsg)
+	case gws.SyncMsgType, gws.SyncReplyMsgType:
+		r := obj.(*gws.SyncMsg)
+
+		delSubGraphOfOrigin(t.cached, t.Graph, clientOrigin(c))
+
 		for _, n := range r.Nodes {
 			if t.Graph.GetNode(n.ID) == nil {
 				if err := t.Graph.NodeAdded(n); err != nil {
@@ -123,17 +117,17 @@ func (t *TopologyPublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Struct
 				}
 			}
 		}
-	case graph.NodeUpdatedMsgType:
+	case gws.NodeUpdatedMsgType:
 		err = t.Graph.NodeUpdated(obj.(*graph.Node))
-	case graph.NodeDeletedMsgType:
+	case gws.NodeDeletedMsgType:
 		err = t.Graph.NodeDeleted(obj.(*graph.Node))
-	case graph.NodeAddedMsgType:
+	case gws.NodeAddedMsgType:
 		err = t.Graph.NodeAdded(obj.(*graph.Node))
-	case graph.EdgeUpdatedMsgType:
+	case gws.EdgeUpdatedMsgType:
 		err = t.Graph.EdgeUpdated(obj.(*graph.Edge))
-	case graph.EdgeDeletedMsgType:
+	case gws.EdgeDeletedMsgType:
 		err = t.Graph.EdgeDeleted(obj.(*graph.Edge))
-	case graph.EdgeAddedMsgType:
+	case gws.EdgeAddedMsgType:
 		err = t.Graph.EdgeAdded(obj.(*graph.Edge))
 	}
 
@@ -143,7 +137,7 @@ func (t *TopologyPublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Struct
 }
 
 // NewTopologyPublisherEndpoint returns a new server for external publishers.
-func NewTopologyPublisherEndpoint(pool ws.StructSpeakerPool, g *graph.Graph) (*TopologyPublisherEndpoint, error) {
+func NewTopologyPublisherEndpoint(pool ws.StructSpeakerPool, cached *graph.CachedBackend, g *graph.Graph) (*TopologyPublisherEndpoint, error) {
 	schemaValidator, err := topology.NewSchemaValidator()
 	if err != nil {
 		return nil, err
@@ -154,12 +148,13 @@ func NewTopologyPublisherEndpoint(pool ws.StructSpeakerPool, g *graph.Graph) (*T
 		pool:            pool,
 		schemaValidator: schemaValidator,
 		gremlinParser:   traversal.NewGremlinTraversalParser(),
+		cached:          cached,
 	}
 
 	pool.AddEventHandler(t)
 
 	// subscribe to the graph messages
-	pool.AddStructMessageHandler(t, []string{graph.Namespace})
+	pool.AddStructMessageHandler(t, []string{gws.Namespace})
 
 	return t, nil
 }

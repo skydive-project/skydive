@@ -44,10 +44,14 @@ func NewWSClient(clientType common.ServiceType, url *url.URL, opts websocket.Cli
 
 // NewWSServer creates a Server based on the configuration
 func NewWSServer(server *shttp.Server, endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
-	queueSize := GetInt("http.ws.queue_size")
-	writeCompression := GetBool("http.ws.enable_write_compression")
 	pingDelay := time.Duration(GetInt("http.ws.ping_delay")) * time.Second
-	pongTimeout := time.Duration(GetInt("http.ws.pong_timeout"))*time.Second + pingDelay
 
-	return websocket.NewServer(server, endpoint, authBackend, writeCompression, queueSize, pingDelay, pongTimeout)
+	opts := websocket.ServerOpts{
+		WriteCompression: GetBool("http.ws.enable_write_compression"),
+		QueueSize:        GetInt("http.ws.queue_size"),
+		PingDelay:        pingDelay,
+		PongTimeout:      time.Duration(GetInt("http.ws.pong_timeout"))*time.Second + pingDelay,
+	}
+
+	return websocket.NewServer(server, endpoint, authBackend, opts)
 }

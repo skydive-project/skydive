@@ -19,6 +19,7 @@ package graph
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/olivere/elastic"
@@ -115,8 +116,9 @@ var topologyArchiveIndex = es.Index{
 // ElasticSearchBackend describes a presisent backend based on ElasticSearch
 type ElasticSearchBackend struct {
 	Backend
-	client       es.ClientInterface
-	prevRevision map[Identifier]*rawData
+	client          es.ClientInterface
+	prevRevision    map[Identifier]*rawData
+	electionService common.MasterElectionService
 }
 
 // TimedSearchQuery describes a search query within a time slice and metadata filters
@@ -523,15 +525,69 @@ func (b *ElasticSearchBackend) IsHistorySupported() bool {
 	return true
 }
 
+func (b *ElasticSearchBackend) DelOriginGraph(origin string) error {
+	tsq := &TimedSearchQuery{
+		TimeFilter: filters.NewNullFilter("DeletedAt"),
+		SearchQuery: filters.SearchQuery{
+			Filter: filters.NewTermStringFilter("Origin", origin),
+		},
+	}
+
+	var fails bool
+	for _, e := range b.searchEdges(tsq) {
+		if err := b.EdgeDeleted(e); err != nil {
+			fails = true
+		}
+	}
+	for _, n := range b.searchNodes(tsq) {
+		if err := b.NodeDeleted(n); err != nil {
+			fails = true
+		}
+	}
+
+	if fails {
+		return errors.New("Error while deleting the graph")
+	}
+
+	return nil
+}
+
+func (b *ElasticSearchBackend) DelGraph() error {
+	tsq := &TimedSearchQuery{
+		TimeFilter: filters.NewNullFilter("DeletedAt"),
+	}
+
+	var fails bool
+	for _, e := range b.searchEdges(tsq) {
+		if err := b.EdgeDeleted(e); err != nil {
+			fails = true
+		}
+	}
+	for _, n := range b.searchNodes(tsq) {
+		if err := b.NodeDeleted(n); err != nil {
+			fails = true
+		}
+	}
+
+	if fails {
+		return errors.New("Error while deleting the graph")
+	}
+
+	return nil
+}
+
 // NewElasticSearchBackendFromClient creates a new graph backend using the given elasticsearch
 // client connection
-func NewElasticSearchBackendFromClient(client es.ClientInterface) (*ElasticSearchBackend, error) {
+func NewElasticSearchBackendFromClient(client es.ClientInterface, electionService common.MasterElectionService) (*ElasticSearchBackend, error) {
+	c := &ElasticSearchBackend{
+		client:          client,
+		prevRevision:    make(map[Identifier]*rawData),
+		electionService: electionService,
+	}
+
 	client.Start()
 
-	return &ElasticSearchBackend{
-		client:       client,
-		prevRevision: make(map[Identifier]*rawData),
-	}, nil
+	return c, nil
 }
 
 // NewElasticSearchBackendFromConfig creates a new graph backend from an ES configuration structure
@@ -546,5 +602,5 @@ func NewElasticSearchBackendFromConfig(cfg es.Config, electionService common.Mas
 		return nil, err
 	}
 
-	return NewElasticSearchBackendFromClient(client)
+	return NewElasticSearchBackendFromClient(client, electionService)
 }

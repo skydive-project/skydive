@@ -159,7 +159,7 @@ func (r *rollIndexService) stop() {
 }
 
 // SetRollingRate override the default rolling index rate. Has to be called before client
-// intantiation.
+// instantiation.
 func SetRollingRate(rate time.Duration) {
 	rollingRateLock.Lock()
 	RollingRate = rate

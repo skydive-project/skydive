@@ -47,6 +47,7 @@ import (
 	usertopology "github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
 	"github.com/skydive-project/skydive/ui"
+	"github.com/skydive-project/skydive/websocket"
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
@@ -251,8 +252,20 @@ func NewServerFromConfig() (*Server, error) {
 
 	uiServer.RegisterLoginRoute(apiAuthBackend)
 
+	peers, err := config.GetAnalyzerServiceAddresses()
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get the analyzers list: %s", err)
+	}
+
+	opts := websocket.ServerOpts{
+		WriteCompression: true,
+		QueueSize:        10000,
+		PingDelay:        2 * time.Second,
+		PongTimeout:      5 * time.Second,
+	}
+
 	clusterAuthOptions := ClusterAuthenticationOpts()
-	hub, err := hub.NewHub(hserver, g, cached, apiAuthBackend, clusterAuthBackend, clusterAuthOptions, "/ws/agent/topology", true, 10000, 2*time.Second, 5*time.Second)
+	hub, err := hub.NewHub(hserver, g, cached, apiAuthBackend, clusterAuthBackend, clusterAuthOptions, "/ws/agent/topology", peers, opts)
 	if err != nil {
 		return nil, err
 	}

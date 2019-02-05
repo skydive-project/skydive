@@ -539,10 +539,7 @@ func (c *Client) Start() {
 	go func() {
 		for c.running.Load() == true {
 			if err := c.Connect(); err == nil {
-				// in case of a handler disconnect the client directly
-				if c.IsConnected() {
-					c.Run()
-				}
+				c.Run()
 			} else {
 				logging.GetLogger().Error(err)
 			}
