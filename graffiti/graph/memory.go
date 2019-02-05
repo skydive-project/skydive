@@ -39,6 +39,18 @@ type MemoryBackend struct {
 
 // MetadataUpdated return true
 func (m *MemoryBackend) MetadataUpdated(i interface{}) error {
+	switch i := i.(type) {
+	case *Node:
+		if _, ok := m.nodes[i.ID]; !ok {
+
+			return ErrNodeNotFound
+		}
+	case *Edge:
+		if _, ok := m.edges[i.ID]; !ok {
+			return ErrEdgeNotFound
+		}
+	}
+
 	return nil
 }
 

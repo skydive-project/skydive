@@ -15,7 +15,7 @@ let
   testScript = ''
     # This is to wait until OpenContrail is ready
     $machine->waitUntilSucceeds("curl -s http://localhost:8083/Snh_ShowBgpNeighborSummaryReq | grep machine | grep -q Established");
-    $machine->succeed("${skydiveTestFunctionals} -test.run TestOpenContrail -standalone");
+    $machine->succeed("${skydiveTestFunctionals} -test.run TestOpenContrail -standalone -opencontrail");
   '';
 
 in 

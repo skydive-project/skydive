@@ -71,14 +71,14 @@ func (t *TopologyAgentEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMess
 		for _, n := range r.Nodes {
 			if t.Graph.GetNode(n.ID) == nil {
 				if err := t.Graph.NodeAdded(n); err != nil {
-					logging.GetLogger().Error(err)
+					logging.GetLogger().Errorf("%s, %+v", err, n)
 				}
 			}
 		}
 		for _, e := range r.Edges {
 			if t.Graph.GetEdge(e.ID) == nil {
 				if err := t.Graph.EdgeAdded(e); err != nil {
-					logging.GetLogger().Error(err)
+					logging.GetLogger().Errorf("%s, %+v", err, e)
 				}
 			}
 		}
@@ -97,7 +97,7 @@ func (t *TopologyAgentEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMess
 	}
 
 	if err != nil {
-		logging.GetLogger().Error(err)
+		logging.GetLogger().Errorf("%s, %+v", err, obj)
 	}
 }
 

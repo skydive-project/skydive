@@ -162,6 +162,7 @@ endif
 
 ifeq ($(WITH_OPENCONTRAIL), true)
   BUILD_TAGS+=opencontrail
+  EXTRA_ARGS+=-opencontrail
 ifeq ($(OS_RHEL),Y)
   STATIC_LIBS+=libxml2.a
 endif

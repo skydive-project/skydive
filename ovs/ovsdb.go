@@ -211,6 +211,10 @@ func (o *OvsMonitor) bridgeAdded(bridgeUUID string, row *libovsdb.RowUpdate) {
 }
 
 func (o *OvsMonitor) bridgeDeleted(bridgeUUID string, row *libovsdb.RowUpdate) {
+	// for some reason ovs can trigger multiple time this event
+	if _, ok := o.bridgeCache[bridgeUUID]; !ok {
+		return
+	}
 	delete(o.bridgeCache, bridgeUUID)
 
 	logging.GetLogger().Infof("Bridge \"%s(%s)\" got deleted",
@@ -262,6 +266,10 @@ func (o *OvsMonitor) interfaceAdded(interfaceUUID string, row *libovsdb.RowUpdat
 }
 
 func (o *OvsMonitor) interfaceDeleted(interfaceUUID string, row *libovsdb.RowUpdate) {
+	// for some reason ovs can trigger multiple time this event
+	if _, ok := o.interfaceCache[interfaceUUID]; !ok {
+		return
+	}
 	delete(o.interfaceCache, interfaceUUID)
 
 	logging.GetLogger().Infof("Interface \"%s(%s)\" got deleted",
@@ -312,6 +320,10 @@ func (o *OvsMonitor) portAdded(portUUID string, row *libovsdb.RowUpdate) {
 }
 
 func (o *OvsMonitor) portDeleted(portUUID string, row *libovsdb.RowUpdate) {
+	// for some reason ovs can trigger multiple time this event
+	if _, ok := o.portCache[portUUID]; !ok {
+		return
+	}
 	delete(o.portCache, portUUID)
 
 	logging.GetLogger().Infof("Port \"%s(%s)\" got deleted",
