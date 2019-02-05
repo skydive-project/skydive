@@ -314,17 +314,15 @@ statics/bindata.go: .typescript ebpf.build $(shell find statics -type f \( ! -in
 .PHONY: compile
 compile:
 	CGO_CFLAGS_ALLOW='.*' CGO_LDFLAGS_ALLOW='.*' $(BUILD_CMD) install \
-		-ldflags="-X $(SKYDIVE_GITHUB_VERSION) \
-		-B $(BUILD_ID)" \
+		-ldflags="${LDFLAGS} -B $(BUILD_ID) -X $(SKYDIVE_GITHUB_VERSION)" \
 		${GOFLAGS} -tags="${BUILD_TAGS}" ${VERBOSE_FLAGS} \
 		${SKYDIVE_GITHUB}
 
 .PHONY: compile.static
 compile.static:
 	$(BUILD_CMD) install \
-		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) \
-		-extldflags \"-static $(STATIC_LIBS_ABS)\" \
-		-B $(BUILD_ID)" \
+		-ldflags="${LDFLAGS} -B $(BUILD_ID) -X $(SKYDIVE_GITHUB_VERSION) '-extldflags=-static $(STATIC_LIBS_ABS)'" \
+		${GOFLAGS} \
 		${VERBOSE_FLAGS} -tags "netgo ${BUILD_TAGS}" \
 		-installsuffix netgo || true
 
@@ -399,7 +397,7 @@ test.functionals.static: govendor genlocalfiles
 	$(GOVENDOR) test -tags "netgo ${BUILD_TAGS} test" \
 		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) -extldflags \"-static $(STATIC_LIBS_ABS)\"" \
 		-installsuffix netgo \
-		${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} \
+		-ldflags="${LDFLAGS}" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} \
 		-c -o tests/functionals ./tests/
 
 .PHONY: test.functionals.run
@@ -442,10 +440,10 @@ ifeq ($(COVERAGE), true)
 else
 ifneq ($(TEST_PATTERN),)
 	set -v ; \
-	$(GOVENDOR) test -tags "${BUILD_TAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -test.run ${TEST_PATTERN} ${UT_PACKAGES}
+	$(GOVENDOR) test -tags "${BUILD_TAGS} test" -ldflags="${LDFLAGS}" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -test.run ${TEST_PATTERN} ${UT_PACKAGES}
 else
 	set -v ; \
-	$(GOVENDOR) test -tags "${BUILD_TAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
+	$(GOVENDOR) test -tags "${BUILD_TAGS} test" -ldflags="${LDFLAGS}" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
 endif
 endif
 
