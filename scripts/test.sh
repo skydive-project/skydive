@@ -189,6 +189,46 @@ test_neutron() {
     fi
 }
 
+test_libvirt() {
+    count=$( $skydive client query "G.V().HasKey('Libvirt')" | jq '. | length' )
+    if [ $? -ne 0 ]; then
+        failed "libvirt node request error"
+    else
+        success "libvirt node request succeed"
+    fi
+
+    if [ -z "$count" ] || [ $count -eq 0 ]; then
+        failed "no libvirt node found"
+    else
+        success "$count libvirt node found"
+    fi
+
+    count=$( $skydive client query "G.V().HasKey('Libvirt.Domain')" | jq '. | length' )
+    if [ $? -ne 0 ]; then
+        failed "libvirt domain node request error"
+    else
+        success "libvirt domain node request succeed"
+    fi
+
+    if [ -z "$count" ] || [ $count -eq 0 ]; then
+        failed "no libvirt domain node found"
+    else
+        success "$count libvirt domain node found"
+    fi
+
+    count=$( $skydive client query "G.V().Has('Type', 'libvirt')" | jq '. | length' )
+    if [ $? -ne 0 ]; then
+        failed "libvirt type node request error"
+    else
+        success "libvirt type node request succeed"
+    fi
+
+    if [ -z "$count" ] || [ $count -eq 0 ]; then
+        failed "no libvirt type node found"
+    else
+        success "$count libvirt type node found"
+    fi
+}
 
 usage() {
     echo "$0 -a <analyzer address>"
@@ -200,6 +240,7 @@ usage() {
     echo "  -i, --injection     test packet injection"
     echo "  -o, --ovs           test OpenvSwitch reported"
     echo "  -n, --neutron       test OpenStack Neutron reported"
+    echo "  -l, --libvirt       test LibVirt reported"
 }
 
 # tests status
@@ -209,11 +250,12 @@ success=0
 failed=0
 errors=()
 
-agents=0
+agents=1
 capture=0
 injection=0
 ovs=0
 neutron=0
+libvirt=0
 
 while [ "$1" != "" ]; do
     case $1 in
@@ -249,6 +291,10 @@ while [ "$1" != "" ]; do
         -n | --neutron )
             neutron=1
             tests=$(( $tests + 2 ))
+            ;;
+        -l | --libvirt )
+            libvirt=1
+            tests=$(( $tests + 5 ))
             ;;
         -h | --help )           
             usage
@@ -299,6 +345,10 @@ fi
 
 if [ $neutron -ne 0 ]; then
     test_neutron
+fi
+
+if [ $libvirt -ne 0 ]; then
+    test_libvirt
 fi
 
 # summarize
