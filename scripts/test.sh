@@ -189,6 +189,21 @@ test_ofrule() {
     fi
 }
 
+test_ofgroup() {
+    count=$( $skydive client query "G.V().Has('Type', 'ofgroup')" | jq '. | length' )
+    if [ $? -ne 0 ]; then
+        failed "openflow group node request error"
+    else
+        success "openflow group node request succeed"
+    fi
+
+    if [ -z "$count" ] || [ $count -eq 0 ]; then
+        failed "no openflow group node found"
+    else
+        success "$count openflow group node found"
+    fi
+}
+
 test_neutron() {
     count=$( $skydive client query "G.V().HasKey('Neutron')" | jq '. | length' )
     if [ $? -ne 0 ]; then
@@ -255,6 +270,7 @@ usage() {
     echo "  -i, --injection     test packet injection"
     echo "  -o, --ovs           test OpenvSwitch reported"
     echo "  -r, --ofrule        test OpenvSwitch OpenFlow rules reported"
+    echo "  -g, --ofgroup       test OpenvSwitch OpenFlow groups reported"
     echo "  -n, --neutron       test OpenStack Neutron reported"
     echo "  -l, --libvirt       test LibVirt reported"
 }
@@ -271,6 +287,7 @@ capture=0
 injection=0
 ovs=0
 ofrule=0
+ofgroup=0
 neutron=0
 libvirt=0
 
@@ -307,6 +324,10 @@ while [ "$1" != "" ]; do
             ;;
         -r | --ofrule )
             ofrule=1
+            tests=$(( $tests + 2 ))
+            ;;
+        -g | --ofgroup )
+            ofgroup=1
             tests=$(( $tests + 2 ))
             ;;
         -n | --neutron )
@@ -366,6 +387,10 @@ fi
 
 if [ $ofrule -ne 0 ]; then
     test_ofrule
+fi
+
+if [ $ofgroup -ne 0 ]; then
+    test_ofgroup
 fi
 
 if [ $neutron -ne 0 ]; then
