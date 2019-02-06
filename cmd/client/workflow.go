@@ -18,13 +18,10 @@
 package client
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 
 	"gopkg.in/yaml.v2"
-
-	"github.com/robertkrimen/otto"
 
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
@@ -173,39 +170,15 @@ var WorkflowCall = &cobra.Command{
 		runtime.Start()
 		runtime.RegisterAPIClient(client)
 
-		result, err := runtime.Exec("(" + workflow.Source + ")")
-		if err != nil {
-			exitOnError(fmt.Errorf("Error while compile workflow %s: %s", workflow.Source, result.String()))
-		}
-
 		params := make([]interface{}, len(args)-1)
 		for i, arg := range args[1:] {
 			params[i] = arg
 		}
 
-		result, err = result.Call(result, params...)
+		result, err := runtime.ExecPromise(workflow.Source, params...)
 		if err != nil {
-			exitOnError(fmt.Errorf("Error while executing workflow: %s", result.String()))
+			exitOnError(err)
 		}
-
-		if !result.IsObject() {
-			exitOnError(fmt.Errorf("Workflow is expected to return a promise, returned %s", result.Class()))
-		}
-
-		done := make(chan otto.Value)
-		promise := result.Object()
-
-		finally, err := runtime.ToValue(func(call otto.FunctionCall) otto.Value {
-			result := call.Argument(0)
-			done <- result
-			return result
-		})
-
-		result, _ = promise.Call("then", finally)
-		promise = result.Object()
-		promise.Call("catch", finally)
-
-		result = <-done
 
 		runtime.Set("result", result)
 		runtime.Exec("console.log(JSON.stringify(result))")
