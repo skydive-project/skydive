@@ -630,6 +630,7 @@ func (o *Probe) Stop() {
 func NewProbe(g *graph.Graph, n *graph.Node, p string, t string, enableStats bool) *Probe {
 	mon := ovsdb.NewOvsMonitor(p, t)
 	mon.ExcludeColumn("*", "statistics")
+	mon.ExcludeColumn("Port", "rstp_statistics")
 	if enableStats {
 		mon.IncludeColumn("Interface", "statistics")
 	}
