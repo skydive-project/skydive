@@ -188,7 +188,7 @@ var TopologyComponent = {
         </panel>\
         <panel id="edge-metadata" v-if="currentEdge"\
                title="Metadata">\
-          <object-detail :object="currentEdge.metadata"></object-detail>\
+          <object-detail :object="currentEdgeMetadata"></object-detail>\
         </panel>\
         <panel id="docker-metadata" v-if="currentNodeDocker"\
                title="Docker">\
@@ -416,6 +416,12 @@ var TopologyComponent = {
 
     currentEdge: function() {
       return this.$store.state.currentEdge;
+    },
+
+    currentEdgeMetadata: function() {
+      if (!this.currentEdge) return null;
+      return this.extractMetadata(this.currentEdge.metadata,
+        ['Directed']);
     },
 
     currentNodeMetadata: function() {

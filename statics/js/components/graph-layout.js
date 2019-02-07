@@ -321,6 +321,18 @@ var TopologyGraphLayout = function(vm, selector) {
   networkpolicyMarker("egress", "allow", "end");
   kubeDefaultMarker("default")
 
+  self.svg.append("defs").append("marker")
+    .attr("id", "arrowhead")
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", 4)
+    .attr("refY", 0)
+    .attr("markerWidth", 4)
+    .attr("markerHeight", 4)
+    .attr("orient", "auto")
+    .append("path")
+      .attr("fill", "#111")
+      .attr("d", "M0,-1L1,0L0,1");
+
   this.g = this.svg.append("g");
 
   this.group = this.g.append("g").attr('class', 'groups').selectAll(".group");
@@ -1557,6 +1569,11 @@ TopologyGraphLayout.prototype = {
         return "url(#arrowhead-default)";
       }
     }
+
+    if (link.metadata["Directed"]) {
+       return "url(#arrowhead)";
+    }
+
     return "url(#arrowhead-none)";
   },
 
