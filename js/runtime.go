@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
@@ -112,7 +113,7 @@ func (r *Runtime) RegisterAPIServer(g *graph.Graph, gremlinParser *traversal.Gre
 		method := call.Argument(1).String()
 		data := []byte(call.Argument(2).String())
 
-		subs := strings.Split(url, "/") // filepath.Base(url)
+		subs := strings.Split(url, "/")
 		if len(subs) < 3 {
 			return r.MakeCustomError("WrongArgument", fmt.Sprintf("Malformed URL %s", url))
 		}
@@ -168,7 +169,13 @@ func (r *Runtime) RegisterAPIServer(g *graph.Graph, gremlinParser *traversal.Gre
 			}
 		}
 
-		value, err := otto.ToValue(content)
+		hdrContentType := http.Header{}
+		hdrContentType.Set("Content-Type", "application/json; charset=utf-8")
+		value, err := otto.ToValue(map[string]interface{}{
+			"body":    content,
+			"headers": hdrContentType,
+			"status":  200,
+		})
 		if err != nil {
 			return r.MakeCustomError("WrongValue", err.Error())
 		}
@@ -188,7 +195,9 @@ func (r *Runtime) RegisterAPIClient(client *shttp.CrudClient) {
 		method := call.Argument(1).String()
 		data := []byte(call.Argument(2).String())
 
-		resp, err := client.Request(method, url, bytes.NewReader(data), nil)
+		hdrContentType := http.Header{}
+		hdrContentType.Set("Content-Type", "application/json; charset=utf-8")
+		resp, err := client.Request(method, url, bytes.NewReader(data), hdrContentType)
 		if err != nil {
 			return r.MakeCustomError("WrongRequest", err.Error())
 		}
@@ -199,7 +208,11 @@ func (r *Runtime) RegisterAPIClient(client *shttp.CrudClient) {
 			return r.MakeCustomError("WrongResponse", err.Error())
 		}
 
-		value, err := otto.ToValue(string(content))
+		value, err := r.ToValue(map[string]interface{}{
+			"body":    string(content),
+			"headers": resp.Header,
+			"status":  resp.StatusCode,
+		})
 		if err != nil {
 			return r.MakeCustomError("WrongValue", err.Error())
 		}

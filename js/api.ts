@@ -74,13 +74,18 @@ if (jsEnv) {
             var err: any
             var data: any
             try {
-                var output = request(url, method, body)
-                if (output && output.length > 0) {
-                    data = JSON.parse(output)
+                var resp = request(url, method, body)
+                if (resp.headers && resp.headers["Content-Type"].length > 0 && resp.headers["Content-Type"][0].indexOf("application/json") >= 0) {
+                    data = JSON.parse(resp.body)
                 } else {
-                    data = null
+                    data = resp.body
                 }
-                resolve(data)
+
+                if (resp.status >= 400) {
+                    reject(resp.body)
+                } else {
+                    resolve(data)
+                }
             }
             catch(e) {
                 reject(e)
