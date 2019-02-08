@@ -310,7 +310,7 @@ var TopologyGraphLayout = function(vm, selector) {
     let id = "arrowhead-"+label;
     defsMarker(id, marker_refX, marker_refY, marker_black, marker_arrow);
   }
- 
+
   networkpolicyMarker("ingress", "deny", "begin");
   networkpolicyMarker("ingress", "deny", "end");
   networkpolicyMarker("ingress", "allow", "begin");
@@ -812,7 +812,7 @@ TopologyGraphLayout.prototype = {
       }
     }
 
-    if (node.metadata.Capture && node.metadata.Capture.State === "active" && 
+    if (node.metadata.Capture && node.metadata.Capture.State === "active" &&
         (!node._metadata.Capture || node._metadata.Capture.State !== "active")) {
       this.captureStarted(node);
     } else if (!node.metadata.Capture && node._metadata.Capture) {
@@ -1518,19 +1518,15 @@ TopologyGraphLayout.prototype = {
       .classed("link-label-alert",  function(d) { return d.alert; })
       .text(function(d) { return d.text; });
 
-    this.linkLabel.each(function(d) {
+    enter.each(function(d) {
       self.g.select("#link-" + d.link.id)
         .classed("link-label-active", d.active)
         .classed("link-label-warning", d.warning)
         .classed("link-label-alert", d.alert)
         .style("stroke-dasharray", self.styleStrokeDasharray(d))
         .style("stroke-dashoffset", self.styleStrokeDashoffset(d))
-        .style("animation", self.styleAnimation(d))
         .style("stroke", self.styleStroke(d));
     });
-
-    // force a tick
-    this.tick();
   },
 
   delLinkLabel: function(link) {
@@ -1656,6 +1652,9 @@ TopologyGraphLayout.prototype = {
       .attr("class", this.linkWrapClass)
       .attr("marker-end", function(d) { return self.arrowhead(d.link); });
 
+    linkWrapEnter.filter(function(d) { return d._emphasized; })
+      .each(this.emphasizeEdge.bind(this));
+
     this.linkWrap = linkWrapEnter.merge(this.linkWrap);
 
     this.group = this.group.data(this.groups, function(d) { return d.id; });
@@ -1674,7 +1673,7 @@ TopologyGraphLayout.prototype = {
   },
 
   highlightLink: function(d) {
-    if(d.collapse) return;
+    if(d.collapse || d._emphasized) return;
     var t = d3.transition()
       .duration(300)
       .ease(d3.easeLinear);
@@ -1683,7 +1682,7 @@ TopologyGraphLayout.prototype = {
   },
 
   unhighlightLink: function(d) {
-    if(d.collapse) return;
+    if(d.collapse || d._emphasized) return;
     var t = d3.transition()
       .duration(300)
       .ease(d3.easeLinear);
@@ -1724,6 +1723,8 @@ TopologyGraphLayout.prototype = {
   emphasizeNodeID: function(id) {
     var self = this;
 
+    if (!(id in this.nodes) && !(id in this._nodes)) return;
+
     if (id in this.nodes) this.nodes[id]._emphasized = true;
     if (id in this._nodes) this._nodes[id]._emphasized = true;
 
@@ -1741,15 +1742,50 @@ TopologyGraphLayout.prototype = {
       .attr("r", function(d) { return self.nodeSize(d) + 8; });
   },
 
-  deemphasizeNodeID: function(id) {
+  emphasizeEdgeID: function(id) {
+    var self = this;
+
+    if (!(id in this.links) && !(id in this._links)) return;
+
+    if (id in this.links) this.links[id]._emphasized = true;
+    if (id in this._links) this._links[id]._emphasized = true;
+
+    var t = d3.transition()
+      .duration(300)
+      .ease(d3.easeLinear);
+
+    this.g.select("#link-wrap-" + id).transition(t).style("stroke", "rgba(25, 251, 104, 0.50)");
+    this.g.select("#link-" + id).transition(t).style("stroke-width", 2);
+  },
+
+  emphasizeID: function(id) {
+    this.emphasizeNodeID(id);
+    this.emphasizeEdgeID(id);
+  },
+
+  deemphasizeID: function(id) {
     if (id in this.nodes) this.nodes[id]._emphasized = false;
     if (id in this._nodes) this._nodes[id]._emphasized = false;
 
+    if (id in this.links) this.links[id]._emphasized = false;
+    if (id in this._links) this._links[id]._emphasized = false;
+
     this.g.select("#node-emphasize-" + id).remove();
+
+    var t = d3.transition()
+      .duration(300)
+      .ease(d3.easeLinear);
+
+    this.g.select("#link-wrap-" + id).transition(t).style("stroke", null);
+    this.g.select("#link-" + id).transition(t).style("stroke-width", null);
   },
 
   emphasizeNode: function(d) {
     this.emphasizeNodeID(d.id);
+  },
+
+  emphasizeEdge: function(d) {
+    this.emphasizeEdgeID(d.id);
   },
 
   nodeClass: function(d) {
