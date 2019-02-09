@@ -41,16 +41,16 @@ var (
 // TopologyCmd skydive topology root command
 var TopologyCmd = &cobra.Command{
 	Use:          "topology",
-	Short:        "Request on topology [deprecated: use 'client query' instead]",
-	Long:         "Request on topology [deprecated: use 'client query' instead]",
+	Short:        "Request on topology",
+	Long:         "Request on topology",
 	SilenceUsage: false,
 }
 
 // TopologyRequest skydive topology query command
 var TopologyRequest = &cobra.Command{
 	Use:   "query",
-	Short: "query topology",
-	Long:  "query topology",
+	Short: "query topology [deprecated: use 'client query' instead]",
+	Long:  "query topology [deprecated: use 'client query' instead]",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Fprintln(os.Stderr, "The 'client topology query' command is deprecated. Please use 'client query' instead")
 		QueryCmd.Run(cmd, []string{gremlinQuery})
