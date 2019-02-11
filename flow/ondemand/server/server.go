@@ -207,6 +207,15 @@ func (o *OnDemandProbeServer) OnStructMessage(c ws.Speaker, msg *ws.StructMessag
 				if query.Capture.Name != "" {
 					tr.AddMetadata("Capture.Name", query.Capture.Name)
 				}
+				if query.Capture.Description != "" {
+					tr.AddMetadata("Capture.Description", query.Capture.Description)
+				}
+				if query.Capture.Type != "" {
+					tr.AddMetadata("Capture.Type", query.Capture.Type)
+				}
+				if query.Capture.BPFFilter != "" {
+					tr.AddMetadata("Capture.BPFFilter", query.Capture.BPFFilter)
+				}
 				tr.Commit()
 			} else {
 				status = http.StatusInternalServerError
