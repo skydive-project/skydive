@@ -143,6 +143,24 @@ var TopologyComponent = {
                  :class="{\'glyphicon-resize-full\': currentNode.group.collapsed, \'glyphicon-resize-small\': !currentNode.group.collapsed}" aria-hidden="true"></span>\
             </span>\
           </button>\
+          <button id="pin-all" type="button" class="btn btn-primary" \
+                  title="Collapse" @click="pinAll">\
+            <span class="expand-icon-stack">\
+              <i class="glyphicon glyphicon-pushpin icon-main"></i>\
+            </span>\
+            <span class="expand-icon-stack">\
+              <i class="glyphicon glyphicon-ok-circle icon-sub"></i>\
+            </span>\
+          </button>\
+          <button id="unpin-all" type="button" class="btn btn-primary" \
+                title="Collapse" @click="unPinAll">\
+          <span class="expand-icon-stack">\
+            <i class="glyphicon glyphicon-pushpin icon-main"></i>\
+          </span>\
+          <span class="expand-icon-stack">\
+            <i class="glyphicon glyphicon-remove-circle icon-sub"></i>\
+          </span>\
+        </button>\
         </div>\
       </div>\
       <div id="info-panel" class="col-sm-5 sidebar">\
@@ -550,6 +568,14 @@ var TopologyComponent = {
 
     zoomFit: function() {
       this.layout.zoomFit();
+    },
+
+    pinAll: function() {
+      this.layout.pinAll();
+    },
+
+    unPinAll: function() {
+      this.layout.unPinAll();
     },
 
     topologyFilterClear: function () {
