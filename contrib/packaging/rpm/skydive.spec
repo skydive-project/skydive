@@ -24,6 +24,12 @@
 %global selinux_semanage_pkg policycoreutils-python
 %endif
 
+%if 0%{?fedora} >= 29 || 0%{?rhel} >= 8
+%global ldflags -compressdwarf=false
+%else
+%global ldflags %{nil}
+%endif
+
 %if %{defined fullver}
 %define vertag %extracttag %{fullver}
 %if "%{vertag}" != ""
@@ -47,7 +53,7 @@ BuildRequires:  libpcap-devel libxml2-devel libvirt-devel
 %if 0%{?fedora} >= 27
 BuildRequires:  llvm clang kernel-headers
 %endif
-BuildRequires:  selinux-policy-devel, policycoreutils-devel
+BuildRequires:  selinux-policy-devel, policycoreutils-devel, perl
 Requires:       %{name}-selinux = %{version}-%{release}
 Requires:       libpcap libxml2 libvirt-libs coreutils
 Requires(pre):  /usr/sbin/useradd
@@ -115,7 +121,7 @@ This package installs and sets up the SELinux policy security module for Skydive
 
 %build
 export GOPATH=%{_builddir}/skydive-%{fullver}
-make compile BUILD_CMD=go VERSION=%{fullver} %{with_features}
+make compile BUILD_CMD=go VERSION=%{fullver} LDFLAGS=%{ldflags} %{with_features}
 %{_builddir}/skydive-%{fullver}/bin/skydive bash-completion
 
 # SELinux build
