@@ -49,6 +49,7 @@ type OvsMonitorHandler interface {
 	OnOvsPortAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
 	OnOvsPortDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
 	OnOvsPortUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
+	OnOvsUpdate(monitor *OvsMonitor, row *libovsdb.RowUpdate)
 }
 
 // DefaultOvsMonitorHandler default implementation of an handler
@@ -97,6 +98,10 @@ func (d *DefaultOvsMonitorHandler) OnOvsPortDel(monitor *OvsMonitor, uuid string
 
 //OnOvsPortUpdate default implementation
 func (d *DefaultOvsMonitorHandler) OnOvsPortUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
+//OnOvsUpdate default implementation
+func (d *DefaultOvsMonitorHandler) OnOvsUpdate(monitor *OvsMonitor, row *libovsdb.RowUpdate) {
 }
 
 // OvsMonitor describes an OVS client Monitor
@@ -353,6 +358,20 @@ func (o *OvsMonitor) portUpdateHandler(updates *libovsdb.TableUpdate) {
 	}
 }
 
+func (o *OvsMonitor) ovsUpdate(row *libovsdb.RowUpdate) {
+	logging.GetLogger().Info("OpenvSwitch system updated")
+
+	for _, handler := range o.MonitorHandlers {
+		handler.OnOvsUpdate(o, row)
+	}
+}
+
+func (o *OvsMonitor) ovsUpdateHandler(updates *libovsdb.TableUpdate) {
+	for _, row := range updates.Rows {
+		o.ovsUpdate(&row)
+	}
+}
+
 func (o *OvsMonitor) updateHandler(updates *libovsdb.TableUpdates) {
 	for name, tableUpdate := range updates.Updates {
 		switch name {
@@ -362,7 +381,10 @@ func (o *OvsMonitor) updateHandler(updates *libovsdb.TableUpdates) {
 			o.bridgeUpdateHandler(&tableUpdate)
 		case "Port":
 			o.portUpdateHandler(&tableUpdate)
+		case "Open_vSwitch":
+			o.ovsUpdateHandler(&tableUpdate)
 		}
+
 	}
 }
 
@@ -494,6 +516,11 @@ func (o *OvsMonitor) monitorOvsdb() error {
 	}
 
 	err = o.setMonitorRequests("Port", &requests)
+	if err != nil {
+		return err
+	}
+
+	err = o.setMonitorRequests("Open_vSwitch", &requests)
 	if err != nil {
 		return err
 	}
