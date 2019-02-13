@@ -144,7 +144,7 @@ var TopologyComponent = {
             </span>\
           </button>\
           <button id="pin-all" type="button" class="btn btn-primary" \
-                  title="Collapse" @click="pinAll">\
+                  title="Pin all nodes" @click="pinAll">\
             <span class="expand-icon-stack">\
               <i class="glyphicon glyphicon-pushpin icon-main"></i>\
             </span>\
@@ -153,7 +153,7 @@ var TopologyComponent = {
             </span>\
           </button>\
           <button id="unpin-all" type="button" class="btn btn-primary" \
-                title="Collapse" @click="unPinAll">\
+                title="Unpin all nodes" @click="unPinAll">\
           <span class="expand-icon-stack">\
             <i class="glyphicon glyphicon-pushpin icon-main"></i>\
           </span>\
