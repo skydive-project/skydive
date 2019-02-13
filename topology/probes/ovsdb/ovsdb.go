@@ -19,6 +19,7 @@ package ovsdb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -612,6 +613,38 @@ func (o *Probe) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovs
 	delete(o.uuidToPort, uuid)
 	delete(o.portToBridge, uuid)
 	delete(o.portToIntf, uuid)
+}
+
+// OnOvsUpdate event
+func (o *Probe) OnOvsUpdate(monitor *ovsdb.OvsMonitor, row *libovsdb.RowUpdate) {
+	// retry as for the first bridge created the interface can be seen by netlink before the
+	// db update
+	retry := func() error {
+		o.Graph.Lock()
+		defer o.Graph.Unlock()
+
+		ovsSsys := o.Graph.LookupFirstChild(o.Root, graph.Metadata{"Name": "ovs-system", "Type": "openvswitch"})
+		if ovsSsys == nil {
+			return errors.New("ovs-system not found")
+		}
+
+		tr := o.Graph.StartMetadataTransaction(ovsSsys)
+
+		dbVersion := columnStringValue(&row.New, "db_version")
+		ovsVersion := columnStringValue(&row.New, "ovs_version")
+
+		tr.AddMetadata("Ovs.Version", ovsVersion)
+		tr.AddMetadata("Ovs.DBVersion", dbVersion)
+
+		otherConfig := row.New.Fields["other_config"].(libovsdb.OvsMap)
+		for k, v := range otherConfig.GoMap {
+			tr.AddMetadata("Ovs.OtherConfig."+k.(string), v.(string))
+		}
+		tr.Commit()
+
+		return nil
+	}
+	go common.Retry(retry, 2, 500*time.Millisecond)
 }
 
 // Start the probe
