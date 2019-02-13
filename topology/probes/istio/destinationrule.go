@@ -22,7 +22,9 @@ import (
 
 	kiali "github.com/kiali/kiali/kubernetes"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
+	"k8s.io/api/core/v1"
 )
 
 type destinationRuleHandler struct {
@@ -43,4 +45,18 @@ func (h *destinationRuleHandler) Dump(obj interface{}) string {
 
 func newDestinationRuleProbe(client interface{}, g *graph.Graph) k8s.Subprobe {
 	return k8s.NewResourceCache(client.(*kiali.IstioClient).GetIstioNetworkingApi(), &kiali.DestinationRule{}, "destinationrules", g, &destinationRuleHandler{})
+}
+
+type destinationRuleSpec struct {
+	App string `mapstructure:"host"`
+}
+
+func destinationRuleServiceAreLinked(a, b interface{}) bool {
+	dr := a.(*kiali.DestinationRule)
+	service := b.(*v1.Service)
+	return dr.Spec["host"] == service.Labels["app"]
+}
+
+func newDestinationRuleServiceLinker(g *graph.Graph) probe.Probe {
+	return k8s.NewABLinker(g, Manager, "destinationrule", k8s.Manager, "service", destinationRuleServiceAreLinked)
 }
