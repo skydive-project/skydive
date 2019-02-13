@@ -63,7 +63,8 @@ func newGraphBackendFromConfig(etcdClient *etcd.Client) (graph.Backend, error) {
 		cfg := NewESConfig(backend)
 		return graph.NewElasticSearchBackendFromConfig(cfg, etcdClient)
 	case "memory":
-		return graph.NewMemoryBackend()
+		// cached memory will be used
+		return nil, nil
 	case "orientdb":
 		addr := config.GetString(configPath + ".addr")
 		database := config.GetString(configPath + ".database")

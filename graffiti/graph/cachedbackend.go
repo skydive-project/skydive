@@ -53,7 +53,7 @@ func (c *CachedBackend) NodeAdded(n *Node) error {
 		return err
 	}
 
-	if mode != CacheOnlyMode {
+	if mode != CacheOnlyMode && c.persistent != nil {
 		if err := c.persistent.NodeAdded(n); err != nil {
 			return err
 		}
@@ -70,7 +70,7 @@ func (c *CachedBackend) NodeDeleted(n *Node) error {
 		return err
 	}
 
-	if mode != CacheOnlyMode {
+	if mode != CacheOnlyMode && c.persistent != nil {
 		if err := c.persistent.NodeDeleted(n); err != nil {
 			return err
 		}
@@ -83,7 +83,7 @@ func (c *CachedBackend) NodeDeleted(n *Node) error {
 func (c *CachedBackend) GetNode(i Identifier, t Context) []*Node {
 	mode := c.cacheMode.Load()
 
-	if t.TimeSlice == nil || mode == CacheOnlyMode {
+	if t.TimeSlice == nil || mode == CacheOnlyMode || c.persistent == nil {
 		return c.memory.GetNode(i, t)
 	}
 
@@ -94,15 +94,11 @@ func (c *CachedBackend) GetNode(i Identifier, t Context) []*Node {
 func (c *CachedBackend) GetNodeEdges(n *Node, t Context, m ElementMatcher) (edges []*Edge) {
 	mode := c.cacheMode.Load()
 
-	if t.TimeSlice == nil || mode == CacheOnlyMode {
+	if t.TimeSlice == nil || mode == CacheOnlyMode || c.persistent == nil {
 		return c.memory.GetNodeEdges(n, t, m)
 	}
 
-	if mode != CacheOnlyMode {
-		return c.persistent.GetNodeEdges(n, t, m)
-	}
-
-	return edges
+	return c.persistent.GetNodeEdges(n, t, m)
 }
 
 // EdgeAdded add an edge in the cache
@@ -113,7 +109,7 @@ func (c *CachedBackend) EdgeAdded(e *Edge) error {
 		return err
 	}
 
-	if mode != CacheOnlyMode {
+	if mode != CacheOnlyMode && c.persistent != nil {
 		if err := c.persistent.EdgeAdded(e); err != nil {
 			return err
 		}
@@ -130,7 +126,7 @@ func (c *CachedBackend) EdgeDeleted(e *Edge) error {
 		return err
 	}
 
-	if mode != CacheOnlyMode {
+	if mode != CacheOnlyMode && c.persistent != nil {
 		if err := c.persistent.EdgeDeleted(e); err != nil {
 			return err
 		}
@@ -143,22 +139,18 @@ func (c *CachedBackend) EdgeDeleted(e *Edge) error {
 func (c *CachedBackend) GetEdge(i Identifier, t Context) []*Edge {
 	mode := c.cacheMode.Load()
 
-	if t.TimeSlice == nil || mode == CacheOnlyMode {
+	if t.TimeSlice == nil || mode == CacheOnlyMode || c.persistent == nil {
 		return c.memory.GetEdge(i, t)
 	}
 
-	if mode != CacheOnlyMode {
-		return c.persistent.GetEdge(i, t)
-	}
-
-	return nil
+	return c.persistent.GetEdge(i, t)
 }
 
 // GetEdgeNodes retrieve a list of nodes from an edge within a time slice, matching metadata
 func (c *CachedBackend) GetEdgeNodes(e *Edge, t Context, parentMetadata, childMetadata ElementMatcher) ([]*Node, []*Node) {
 	mode := c.cacheMode.Load()
 
-	if t.TimeSlice == nil || mode == CacheOnlyMode {
+	if t.TimeSlice == nil || mode == CacheOnlyMode || c.persistent == nil {
 		return c.memory.GetEdgeNodes(e, t, parentMetadata, childMetadata)
 	}
 
@@ -173,7 +165,7 @@ func (c *CachedBackend) MetadataUpdated(i interface{}) error {
 		return err
 	}
 
-	if mode != CacheOnlyMode {
+	if mode != CacheOnlyMode && c.persistent != nil {
 		if err := c.persistent.MetadataUpdated(i); err != nil {
 			return err
 		}
@@ -185,7 +177,7 @@ func (c *CachedBackend) MetadataUpdated(i interface{}) error {
 func (c *CachedBackend) GetNodes(t Context, m ElementMatcher) []*Node {
 	mode := c.cacheMode.Load()
 
-	if t.TimeSlice == nil || mode == CacheOnlyMode {
+	if t.TimeSlice == nil || mode == CacheOnlyMode || c.persistent == nil {
 		return c.memory.GetNodes(t, m)
 	}
 
@@ -196,7 +188,7 @@ func (c *CachedBackend) GetNodes(t Context, m ElementMatcher) []*Node {
 func (c *CachedBackend) GetEdges(t Context, m ElementMatcher) []*Edge {
 	mode := c.cacheMode.Load()
 
-	if t.TimeSlice == nil || mode == CacheOnlyMode {
+	if t.TimeSlice == nil || mode == CacheOnlyMode || c.persistent == nil {
 		return c.memory.GetEdges(t, m)
 	}
 	return c.persistent.GetEdges(t, m)
