@@ -1,15 +1,15 @@
 ---
 UUID: "85757b38-6e21-11e8-b42d-28d2442e1325"
-name: "CheckMTU"
-description: "Check MTU on a path between two interfaces"
-parameters:
-  - name: source
-    description: Source node
-    type: node
-  - name: destination
-    description: Destination node
-    type: node
-source: |
+Name: "CheckMTU"
+Description: "Check MTU on a path between two interfaces"
+Parameters:
+  - Name: source
+    Description: Source node
+    Type: node
+  - Name: destination
+    Description: Destination node
+    Type: node
+Source: |
     function CheckMTU(from, to) {
         var MTU
         var G = client.gremlin.G()

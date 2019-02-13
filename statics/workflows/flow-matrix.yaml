@@ -1,24 +1,24 @@
 ---
 UUID: "bcc2e200-7a57-11e8-913c-28d2442e1325"
-name: "FlowMatrix"
-description: "Create a flow matrix of the running processes"
-parameters:
-  - name: useFlows
-    description: Also use flows to build matrix
-    type: boolean
-  - name: format
-    description: Flow matrix output format
-    type: choice
-    default: graph
-    values:
-      - description: "Add nodes and edges to the current topology"
-        value: graph
-      - description: "Graphviz output"
-        value: dot
-  - name: debug
-    description: Show debug logs in the JavaScript console
-    type: boolean
-source: |
+Name: "FlowMatrix"
+Description: "Create a flow matrix of the running processes"
+Parameters:
+  - Name: useFlows
+    Description: Also use flows to build matrix
+    Type: boolean
+  - Name: format
+    Description: Flow matrix output format
+    Type: choice
+    Default: graph
+    Values:
+      - Description: "Add nodes and edges to the current topology"
+        Value: graph
+      - Description: "Graphviz output"
+        Value: dot
+  - Name: debug
+    Description: Show debug logs in the JavaScript console
+    Type: boolean
+Source: |
     function FlowMatrix(useFlows, format, debug) {
         format = format || "graph"
 
