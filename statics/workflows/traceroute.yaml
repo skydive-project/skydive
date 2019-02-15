@@ -1,0 +1,110 @@
+UUID: "9b598b28-b52e-488f-7b1c-402ac07e59b5"
+Name: "Traceroute"
+Description: "Traceroute"
+Parameters:
+  - Name: protocol
+    Description: Protocol
+    Type:  choice
+    Default: icmp4
+    Values:
+      - Description: "Protocol : ICMPv4/Echo request"
+        Value: icmp4
+      - Description: "Protocol : TCP/IPv4"
+        Value: tcp4
+  - Name: source
+    Description: Source Node
+    Type: node
+  - Name: destination
+    Description: Destination Node
+    Type: node
+Source: |
+  function Traceroute(protocol, src, dst) {
+    var sources = [];
+    var result = {};
+    var pktform = {};
+    var G = client.gremlin.G()
+    G.V().Has('TID', src).ShortestPathTo(Metadata('TID', dst)).then(function(nodes) {
+      for (var i in nodes) {
+        if (nodes[0][i].Metadata && nodes[0][i].Metadata.IPV4 && nodes[0][i].Metadata.MAC != null) {
+          sources.push(nodes[0][i].Metadata);
+        }else {
+          if ((nodes[0][i].Metadata && nodes[0][i].Metadata.Neutron && nodes[0][i].Metadata.Neutron.IPV4 != null) && (nodes[0][i].Metadata && nodes[0][i].Metadata.ExtID && nodes[0][i].Metadata.ExtID["attached-mac"] != null)) {
+            sources.push(nodes[0][i].Metadata);
+          }
+        }
+      }
+    })
+    var capture = new Capture();
+    capture.GremlinQuery = "G.V().Has('TID', '" + src + "')";
+    return client.captures.create(capture).then(function (c) {
+      capture = c
+    }).then(function () {
+      return sleep(1000)
+    }).then(function () {
+      for (i=0; i+1<sources.length; i++) {
+        var packetInjection = new PacketInjection();
+        packetInjection.Src = "G.V().Has('TID', '" + sources[i].TID + "')"
+        packetInjection.Dst = "G.V().Has('TID', '" + sources[i+1].TID + "')"
+        packetInjection.Count = 3
+        if (sources[i].Neutron && sources[i].Neutron.IPV4) {
+          packetInjection.SrcIP = sources[i].Neutron.IPV4[0]
+        }
+        if (sources[i].ExtID && sources[i].ExtID["attached-mac"]) {
+          packetInjection.SrcMAC = sources[i].ExtID["attached-mac"]
+        }
+        if (protocol == "icmp4") {
+          packetInjection.Type = protocol;
+          packetInjection.ICMPID = Math.floor(Math.random() * 65535);
+        }
+        if (protocol == "tcp4" || protocol == "udp4") {
+          packetInjection.Type = protocol;
+          packetInjection.SrcPort = 1024 + Math.floor(Math.random() * (65535-1024));
+          packetInjection.DstPort = 1024 + Math.floor(Math.random() * (65535-1024));
+        }
+        if (sources[i+1].Neutron && sources[i+1].Neutron.IPV4) {
+          packetInjection.DstIP = sources[i+1].Neutron.IPV4[0]
+        }
+        if (sources[i+1].ExtID && sources[i+1].ExtID["attached-mac"]) {
+          packetInjection.DstMAC = sources[i+1].ExtID["attached-mac"]
+        } else {
+          packetInjection.SrcIP = sources[i].IPV4[0]
+          packetInjection.DstIP = sources[i+1].IPV4[0]
+        }
+        pktform[sources[i+1].TID] = packetInjection;
+        pktform[sources[i+1].TID].DstIP = pktform[sources[i+1].TID].DstIP.split("/")[0]
+        pktform[sources[i+1].TID].SrcIP = pktform[sources[i+1].TID].SrcIP.split("/")[0]
+        client.packetInjections.create(packetInjection)
+      }
+    }).then(function () {
+      return sleep(1000)
+    }).then(function () {
+      for (i=0; i+1<sources.length; i++) {
+        result[pktform[sources[i+1].TID].SrcIP + "- To -" + pktform[sources[i+1].TID].DstIP] = {"Connected" : false};
+        if (protocol == "icmp4") {
+          client.G.Flows().Has("ICMP.ID", pktform[sources[i+1].TID].ICMPID, "Network.A", pktform[sources[i+1].TID].SrcIP, "Network.B", pktform[sources[i+1].TID].DstIP).then(function(flows) {
+            if (flows.length > 0 && flows[0].Metric.ABPackets > 0 && flows[0].Metric.BAPackets > 0) {
+              result[flows[0].Network.A + "- To -" + flows[0].Network.B] = {"Connected" : true, "RTT" : (flows[0].RTT / 1000000).toFixed(3) + " ms" };
+            }
+            return result
+          })
+        } else {
+          client.G.Flows().Has("Transport.A", pktform[sources[i+1].TID].SrcPort, "Transport.B", pktform[sources[i+1].TID].DstPort, "Transport.Protocol", "TCP", "Network.A", pktform[sources[i+1].TID].SrcIP, "Network.B", pktform[sources[i+1].TID].DstIP).then(function(flows) {
+            if (flows.length > 0 && flows[0].Metric.ABPackets > 0 && flows[0].Metric.BAPackets > 0) {
+              result[flows[0].Network.A + "- To -" + flows[0].Network.B] = {"Connected" : true, "RTT" : (flows[0].RTT / 1000000).toFixed(3) + " ms" };
+            }
+            return result
+          })
+        }
+      }
+      return result
+    }).then(function () {
+      return {
+        "Trace Route" : sources[0].IPV4[0] + "- To -" + sources[sources.length - 1].IPV4[0],
+        "Path" : result
+      }
+    }).finally(function () {
+      return client.captures.delete(capture.UUID)
+    }).catch(function () {
+      return client.captures.delete(capture.UUID)
+    });
+  }
