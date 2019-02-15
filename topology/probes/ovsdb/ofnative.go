@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sort"
 	"sync"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 	goloxi "github.com/skydive-project/goloxi"
 	"github.com/skydive-project/goloxi/of14"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/openflow"
@@ -291,7 +293,30 @@ func (probe *ofProbe) Monitor(ctx context.Context) (err error) {
 		return err
 	}
 
-	probe.client, err = openflow.NewClient(probe.address, nil)
+	versions := config.GetStringSlice("ovs.oflow.openflow_versions")
+	sort.Strings(versions)
+
+	var protocols []openflow.Protocol
+	for _, version := range versions {
+		switch version {
+		case "OpenFlow10":
+			protocols = append(protocols, openflow.OpenFlow10)
+		case "OpenFlow11":
+			protocols = append(protocols, openflow.OpenFlow11)
+		case "OpenFlow12":
+			protocols = append(protocols, openflow.OpenFlow12)
+		case "OpenFlow13":
+			protocols = append(protocols, openflow.OpenFlow13)
+		case "OpenFlow14":
+			protocols = append(protocols, openflow.OpenFlow14)
+		case "OpenFlow15":
+			protocols = append(protocols, openflow.OpenFlow15)
+		default:
+			return fmt.Errorf("Unsupported version '%s", version)
+		}
+	}
+
+	probe.client, err = openflow.NewClient(probe.address, protocols)
 	if err != nil {
 		return err
 	}
@@ -333,6 +358,8 @@ func (probe *ofProbe) Monitor(ctx context.Context) (err error) {
 func (probe *ofProbe) queryStats(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	probe.sendGroupStatsDescRequest()
 
 	timer := time.NewTicker(time.Second * 10)
 	defer timer.Stop()

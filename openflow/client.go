@@ -316,8 +316,8 @@ func (c *Client) GetProtocol() Protocol {
 
 // NewClient returns a new OpenFlow client using either a UNIX socket or a TCP socket
 func NewClient(addr string, protocols []Protocol) (*Client, error) {
-	if protocols == nil {
-		protocols = []Protocol{OpenFlow10, OpenFlow11, OpenFlow12, OpenFlow13, OpenFlow14}
+	if len(protocols) == 0 {
+		protocols = []Protocol{OpenFlow10, OpenFlow11, OpenFlow12, OpenFlow13, OpenFlow14, OpenFlow15}
 	}
 	client := &Client{
 		addr:               addr,
