@@ -37,7 +37,7 @@ func TestLxdSimple(t *testing.T) {
 
 	test := &Test{
 		setupCmds: []Cmd{
-			{"lxc launch images:fedora/27 test-skydive-lxd-simple", false},
+			{"lxc launch images:ubuntu/bionic test-skydive-lxd-simple", false},
 		},
 
 		tearDownCmds: []Cmd{
