@@ -41,7 +41,7 @@ metadata:
     app: skydive-agent
   name: skydive-agent-config
 data:
-  SKYDIVE_AGENT_TOPOLOGY_PROBES: "runc docker"
+  SKYDIVE_AGENT_TOPOLOGY_PROBES: runc docker
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -105,6 +105,8 @@ spec:
         env:
         - name: SKYDIVE_ANALYZERS
           value: "$(SKYDIVE_ANALYZER_SERVICE_HOST):$(SKYDIVE_ANALYZER_SERVICE_PORT_API)"
+        - name: SKYDIVE_AGENT_TOPOLOGY_RUNC_RUN_PATH
+          value: /var/run/runc /var/run/runc-ctrs /var/run/containerd/runc
         envFrom:
         - configMapRef:
             name: skydive-agent-config
@@ -117,10 +119,12 @@ spec:
           mountPath: /host/run
         - name: ovsdb
           mountPath: /var/run/openvswitch/db.sock
-        - mountPath: /var/run/runc
-          name: runc
-        - mountPath: /var/run/runc-ctrs
-          name: runc-ctrs
+        - name: runc
+          mountPath: /var/run/runc
+        - name: runc-ctrs
+          mountPath: /var/run/runc-ctrs
+        - name: containerd-runc
+          mountPath: /var/run/containerd/runc
       volumes:
       - name: docker
         hostPath:
@@ -131,9 +135,12 @@ spec:
       - name: ovsdb
         hostPath:
           path: /var/run/openvswitch/db.sock
-      - hostPath:
-          path: /run/runc
-        name: runc
-      - hostPath:
-          path: /run/runc-ctrs
-        name: runc-ctrs
+      - name: runc
+        hostPath:
+          path: /var/run/runc
+      - name: runc-ctrs
+        hostPath:
+          path: /var/run/runc-ctrs
+      - name: containerd-runc
+        hostPath:
+          path: /var/run/containerd/runc

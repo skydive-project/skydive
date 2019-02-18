@@ -162,7 +162,7 @@ objects:
             value: ${SKYDIVE_LOGGING_LEVEL}
           - name: SKYDIVE_AGENT_TOPOLOGY_PROBES
             value: "ovsdb runc docker"
-          - name: SKYDIVE_RUNC_PATH
+          - name: SKYDIVE_AGENT_TOPOLOGY_RUNC_RUN_PATH
             value: "/run/containerd/runc /run/runc /run/runc-ctrs"
           image: skydive/skydive
           imagePullPolicy: Always
