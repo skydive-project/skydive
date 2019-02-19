@@ -66,6 +66,12 @@ func (probe *Probe) containerNamespace(pid int) string {
 
 type initProcessStart int64
 
+// mount contains source (host machine) to destination (guest machine) mappings
+type mount struct {
+	Source      string `json:"source"`
+	Destination string `json:"destination"`
+}
+
 type containerState struct {
 	path             string
 	ID               string           `json:"id"`
@@ -73,6 +79,7 @@ type containerState struct {
 	InitProcessStart initProcessStart `json:"init_process_start"`
 	Config           struct {
 		Labels []string `json:"labels"`
+		Mounts []mount  `json:"mounts"`
 	} `json:"config"`
 }
 
@@ -172,6 +179,31 @@ func parseState(path string) (*containerState, error) {
 	return &state, nil
 }
 
+func getHostsFromState(state *containerState) (string, error) {
+	const path = "/etc/hosts"
+	for _, mount := range state.Config.Mounts {
+		if mount.Destination == path {
+			return mount.Source, nil
+		}
+	}
+	return "", fmt.Errorf("Unable to find binding of %s", path)
+}
+
+func parseHosts(state *containerState) *hosts {
+	path, err := getHostsFromState(state)
+	if err != nil {
+		return nil
+	}
+
+	hosts, err := readHosts(path)
+	if err != nil {
+		logging.GetLogger().Error(err)
+		return nil
+	}
+
+	return hosts
+}
+
 func getMetadata(state *containerState) graph.Metadata {
 	m := graph.Metadata{
 		"ContainerID": state.ID,
@@ -189,6 +221,10 @@ func getMetadata(state *containerState) graph.Metadata {
 				m["CreateConfig"] = cc
 			}
 		}
+	}
+
+	if hosts := parseHosts(state); hosts != nil {
+		m["Hosts"] = *hosts
 	}
 
 	return m
