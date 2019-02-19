@@ -364,6 +364,7 @@ func NewServerFromConfig() (*Server, error) {
 	api.RegisterPcapAPI(hserver, storage, apiAuthBackend)
 	api.RegisterConfigAPI(hserver, apiAuthBackend)
 	api.RegisterStatusAPI(hserver, s, apiAuthBackend)
+	api.RegisterWorkflowCallAPI(hserver, apiAuthBackend, apiServer, g, tr)
 
 	if config.GetBool("analyzer.ssh_enabled") {
 		if err := dede.RegisterHandler("terminal", "/dede", hserver.Router); err != nil {

@@ -408,7 +408,7 @@ func NewServer(apiServer *api.Server, pool ws.StructSpeakerPool, graph *graph.Gr
 	}
 
 	runtime.Start()
-	runtime.RegisterAPIServer(graph, parser, apiServer)
+	api.RegisterAPIServer(runtime, graph, parser, apiServer)
 
 	as := &Server{
 		MasterElection: election,

@@ -201,6 +201,11 @@ type Workflow struct {
 	Source        string          `valid:"isValidWorkflow" yaml:"Source"`
 }
 
+// WorkflowCall describes workflow call
+type WorkflowCall struct {
+	Params []interface{}
+}
+
 func init() {
 	var err error
 	if schemaValidator, err = topology.NewSchemaValidator(); err != nil {

@@ -144,7 +144,7 @@ func (c *CrudClient) Get(resource string, id string, value interface{}) error {
 }
 
 // Create does a POST request to create a new resource
-func (c *CrudClient) Create(resource string, value interface{}) error {
+func (c *CrudClient) Create(resource string, value interface{}, res ...interface{}) error {
 	s, err := json.Marshal(value)
 	if err != nil {
 		return err
@@ -161,6 +161,9 @@ func (c *CrudClient) Create(resource string, value interface{}) error {
 		return fmt.Errorf("Failed to create %s, %s: %s", resource, resp.Status, readBody(resp))
 	}
 
+	if len(res) > 0 {
+		return common.JSONDecode(resp.Body, res[0])
+	}
 	return common.JSONDecode(resp.Body, value)
 }
 
