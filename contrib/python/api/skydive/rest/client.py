@@ -119,7 +119,9 @@ class RESTClient:
 
     def capture_create(self, query, name="", description="",
                        extra_tcp_metric=False, ip_defrag=False,
-                       reassemble_tcp=False, layer_key_mode="L2"):
+                       reassemble_tcp=False, layer_key_mode="L2",
+                       bpf_filter="", capture_type="", port=0,
+                       raw_pkt_limit=0, header_size=0):
         data = {
             "GremlinQuery": query,
             "LayerKeyMode": layer_key_mode,
@@ -135,6 +137,16 @@ class RESTClient:
             data["IPDefrag"] = True
         if reassemble_tcp:
             data["ReassembleTCP"] = True
+        if bpf_filter:
+            data["BPFFilter"] = bpf_filter
+        if capture_type:
+            data["Type"] = capture_type
+        if raw_pkt_limit:
+            data["RawPacketLimit"] = raw_pkt_limit
+        if header_size:
+            data["HeaderSize"] = header_size
+        if port:
+            data["Port"] = port
 
         c = self.request("/api/capture", method="POST", data=json.dumps(data))
         return Capture.from_object(c)
