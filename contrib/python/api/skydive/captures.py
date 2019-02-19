@@ -23,7 +23,9 @@ class Capture(object):
     def __init__(self, uuid,  query,
                  name="", description="", count=0,
                  extra_tcp_metric=False, ip_defrag=False,
-                 reassemble_tcp=False, layer_key_mode="L2"):
+                 reassemble_tcp=False, layer_key_mode="L2",
+                 bpf_filter="", capture_type="", raw_pkt_limit=0,
+                 port=0, header_size=0):
         self.uuid = uuid
         self.name = name
         self.description = description
@@ -33,6 +35,11 @@ class Capture(object):
         self.ip_defrag = ip_defrag
         self.reassemble_tcp = reassemble_tcp
         self.layer_key_mode = layer_key_mode
+        self.bpf_filter = bpf_filter
+        self.capture_type = capture_type
+        self.raw_pkt_limit = raw_pkt_limit
+        self.port = port
+        self.header_size = header_size
 
     def repr_json(self):
         obj = {
@@ -51,6 +58,16 @@ class Capture(object):
             obj["IPDefrag"] = True
         if self.reassemble_tcp:
             obj["ReassembleTCP"] = True
+        if self.bpf_filter:
+            obj["BPFFilter"] = self.bpf_filter
+        if self.capture_type:
+            obj["Type"] = self.capture_type
+        if self.raw_pkt_limit:
+            obj["RawPacketLimit"] = self.raw_pkt_limit
+        if self.header_size:
+            obj["HeaderSize"] = self.header_size
+        if self.port:
+            obj["Port"] = self.port
         return obj
 
     @classmethod
@@ -62,5 +79,10 @@ class Capture(object):
                     extra_tcp_metric=obj.get("ExtraTCPMetric"),
                     ip_defrag=obj.get("IPDefrag"),
                     reassemble_tcp=obj.get("ReassembleTCP"),
-                    layer_key_mode=obj.get("LayerKeyMode")
+                    layer_key_mode=obj.get("LayerKeyMode"),
+                    bpf_filter=obj.get("BPFFilter"),
+                    capture_type=obj.get("Type"),
+                    raw_pkt_limit=obj.get("RawPacketLimit"),
+                    header_size=obj.get("HeaderSize"),
+                    port=obj.get("Port")
                     )
