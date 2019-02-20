@@ -16,6 +16,7 @@
     exec_start: |
       /usr/bin/docker run --rm \
         {{ skydive_analyzer_docker_extra_env }} --name=skydive-analyzer-{{ ansible_hostname }} \
+        --net=host \
         --user {{ skydive_sysuser_result.uid }}:{{ skydive_sysuser_result.group }} \
         -v /etc/skydive/skydive.yml:/etc/skydive.yml \
         -v /var/lib/skydive:/var/lib/skydive \
