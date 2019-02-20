@@ -22,6 +22,7 @@ import (
 
 	"github.com/mohae/deepcopy"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/probe"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -62,4 +63,22 @@ func (h *podHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 
 func newPodProbe(client interface{}, g *graph.Graph) Subprobe {
 	return NewResourceCache(client.(*kubernetes.Clientset).CoreV1().RESTClient(), &v1.Pod{}, "pods", g, &podHandler{graph: g})
+}
+
+func podPVCAreLinked(a, b interface{}) bool {
+	pod := a.(*v1.Pod)
+	pvc := b.(*v1.PersistentVolumeClaim)
+	if pod.Namespace != pvc.Namespace {
+		return false
+	}
+	for _, vol := range pod.Spec.Volumes {
+		if vol.VolumeSource.PersistentVolumeClaim != nil && vol.VolumeSource.PersistentVolumeClaim.ClaimName == pvc.Name {
+			return true
+		}
+	}
+	return false
+}
+
+func newPodPVCLinker(g *graph.Graph) probe.Probe {
+	return NewABLinker(g, Manager, "pod", Manager, "persistentvolumeclaim", podPVCAreLinked)
 }

@@ -563,3 +563,61 @@ func TestK8sServicePodScenario(t *testing.T) {
 		},
 	)
 }
+
+func TestStorageScenario(t *testing.T) {
+	storage := "./k8s/storage.sh"
+	testRunner(
+		t,
+		[]Cmd{
+			{storage + " start", true},
+		},
+		[]Cmd{
+			{storage + " stop", false},
+		},
+		[]CheckFunction{
+			func(c *CheckContext) error {
+				// check nodes exist
+				sc, err := checkNodeCreation(t, c, k8s.Manager, "storageclass", "standard")
+				if err != nil {
+					return err
+				}
+
+				pv, err := checkNodeCreation(t, c, k8s.Manager, "persistentvolume", "task-pv-volume")
+				if err != nil {
+					return err
+				}
+
+				pvc, err := checkNodeCreation(t, c, k8s.Manager, "persistentvolumeclaim", "task-pv-claim")
+				if err != nil {
+					return err
+				}
+
+				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", "task-pv-pod")
+				if err != nil {
+					return err
+				}
+
+				// check edges exist
+				if err = checkEdge(t, c, sc, pv, "storageclass"); err != nil {
+					return err
+				}
+
+				// FIXME: works when stepping with debugger
+				// if err = checkEdge(t, c, sc, pvc, "storageclass"); err != nil {
+				// 	return err
+				// }
+
+				if err = checkEdge(t, c, pod, pvc, "pod"); err != nil {
+					return err
+				}
+
+				// FIXME: works when stepping with debugger
+				// if err = checkEdge(t, c, pvc, pv, "persistentvolumeclaim"); err != nil {
+				// 	return err
+				// }
+
+				return nil
+			},
+		},
+	)
+}

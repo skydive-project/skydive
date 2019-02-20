@@ -668,8 +668,8 @@ var TopologyComponent = {
         self.addFilterK8sTypes(filter, "service", ["cluster", "container", "endpoints", "ingress", "namespace", "networkpolicy", "pod", "service"]);
         self.addFilterK8sTypes(highlight, "service", ["endpoints", "ingress", "service"]);
 
-        self.addFilterK8sTypes(filter, "storage", ["cluster", "namespace", "persistentvolume", "persistentvolumeclaim", "storageclass"]);
-        self.addFilterK8sTypes(highlight, "storage", ["persistentvolume", "persistentvolumeclaim", "storageclass"]);
+        self.addFilterK8sTypes(filter, "storage", ["cluster", "container", "namespace", "persistentvolume", "persistentvolumeclaim", "pod", "storageclass"]);
+        self.addFilterK8sTypes(highlight, "storage", ["container", "persistentvolume", "persistentvolumeclaim", "pod", "storageclass"]);
       }
 
       if (self.isIstioEnabled()) {
