@@ -138,9 +138,9 @@ func createRootNode(g *graph.Graph) (*graph.Node, error) {
 		kernelArgs := make(map[string]interface{})
 		for _, arg := range strings.Split(string(cmdline), " ") {
 			if splitted := strings.SplitN(arg, "=", 2); len(splitted) == 1 {
-				kernelArgs[splitted[0]] = true
+				kernelArgs[strings.TrimSpace(splitted[0])] = true
 			} else {
-				kernelArgs[splitted[0]] = splitted[1]
+				kernelArgs[strings.TrimSpace(splitted[0])] = strings.TrimSpace(splitted[1])
 			}
 		}
 		m.SetField("KernelCmdLine", kernelArgs)
