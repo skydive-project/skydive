@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/skydive-project/skydive/api/types"
@@ -178,7 +179,7 @@ func TestFlowMatrixWorkflow(t *testing.T) {
 			}
 
 			if process == nil {
-				return fmt.Errorf("Expected to find a process named 'functionals' with port %d", sa.Port)
+				return fmt.Errorf("Expected to find a process named 'functionals' with port %d in %s", sa.Port, spew.Sdump(g.Nodes))
 			}
 
 			var connection *graph.Edge

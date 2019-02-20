@@ -93,14 +93,8 @@ agent:
       - lldp0
 
   metadata:
-    info: This is compute node
     mydict:
       value: 123
-      onearray:
-      - name: first
-        value: 1
-      - name: last
-        value: 10
     myarrays:
       integers:
       - 1

@@ -61,7 +61,8 @@ function run_functional_tests {
   if [ "$mode" = "container" ]; then
       OPT="-nooftests"
   fi
-  vagrant ssh agent1 -c "AGENT1_IP=$AGENT1_IP SKYDIVE_ANALYZERS=\"$ANALYZER1_IP:8082\" sudo -E ./functionals -agenttestsonly -test.v $OPT"
+
+  vagrant ssh agent1 -c "AGENT1_IP=$AGENT1_IP SKYDIVE_ANALYZERS=\"$ANALYZER1_IP:8082\" sudo -E ./functionals -analyzer.listen $ANALYZER1_IP:8082 -agenttestsonly -test.v $OPT"
 
   if [ "$mode" = "package" ]; then
       for a in analyzer1 agent1; do
@@ -104,6 +105,7 @@ do
   vagrant ssh analyzer1 -- sudo ntpdate fr.pool.ntp.org
   vagrant ssh agent1 -- sudo ntpdate fr.pool.ntp.org
 
+  export ANSIBLE_EXTRA_CONFIG='{"agent":{"metadata":{"mydict":{"value":123},"myarrays":{"integers":[1,2,3],"bools":[true,true],"strings":["dog","cat","frog"]}}}}'
   DEPLOYMENT_MODE=$mode vagrant provision
 
   vagrant ssh analyzer1 -- sudo cat /etc/skydive/skydive.yml

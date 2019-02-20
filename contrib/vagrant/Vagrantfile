@@ -14,6 +14,8 @@ DEVMODE = ENV.fetch("DEVMODE", "") == "true" ? true : false
 AGENT_EXTRA_PROVISION_SCRIPT=ENV.fetch("AGENT_EXTRA_PROVISION_SCRIPT", "")
 ANALYZER_EXTRA_PROVISION_SCRIPT=ENV.fetch("ANALYZER_EXTRA_PROVISION_SCRIPT", "")
 
+ANSIBLE_EXTRA_CONFIG=ENV.fetch("ANSIBLE_EXTRA_CONFIG", "{}")
+
 $install_agent_deps = <<SCRIPT
 yum -y update centos-release
 yum -y install centos-release-openstack-queens
@@ -34,11 +36,10 @@ yum -y install libpcap libvirt-libs podman libselinux-python bridge-utils net-to
 #lxd init --auto
 SCRIPT
 
-$skydive_extra_config = {
-  "http.ws.pong_timeout" => 10,
-  "agent.topology.probes" => ["ovsdb", "docker"],
-  "agent.topology.netlink.metrics_update" => 5,
-}
+$skydive_extra_config = eval(ANSIBLE_EXTRA_CONFIG)
+$skydive_extra_config["http.ws.pong_timeout"] = 10
+$skydive_extra_config["agent.topology.probes"] = ["ovsdb", "docker"]
+$skydive_extra_config["agent.topology.netlink.metrics_update"] = 5
 
 if DEVMODE then
   # default config from tests/tests.go:testConfig
