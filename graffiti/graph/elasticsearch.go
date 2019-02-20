@@ -19,7 +19,6 @@ package graph
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/olivere/elastic"
@@ -113,12 +112,12 @@ var topologyArchiveIndex = es.Index{
 	RollIndex: true,
 }
 
-// ElasticSearchBackend describes a presisent backend based on ElasticSearch
+// ElasticSearchBackend describes a persistent backend based on ElasticSearch
 type ElasticSearchBackend struct {
 	Backend
-	client          es.ClientInterface
-	prevRevision    map[Identifier]*rawData
-	electionService common.MasterElectionService
+	client       es.ClientInterface
+	prevRevision map[Identifier]*rawData
+	election     common.MasterElection
 }
 
 // TimedSearchQuery describes a search query within a time slice and metadata filters
@@ -525,66 +524,43 @@ func (b *ElasticSearchBackend) IsHistorySupported() bool {
 	return true
 }
 
-func (b *ElasticSearchBackend) DelOriginGraph(origin string) error {
-	tsq := &TimedSearchQuery{
-		TimeFilter: filters.NewNullFilter("DeletedAt"),
-		SearchQuery: filters.SearchQuery{
-			Filter: filters.NewTermStringFilter("Origin", origin),
-		},
-	}
+func (b *ElasticSearchBackend) flushGraph() error {
+	logging.GetLogger().Info("Flush graph elements")
 
-	var fails bool
-	for _, e := range b.searchEdges(tsq) {
-		if err := b.EdgeDeleted(e); err != nil {
-			fails = true
-		}
-	}
-	for _, n := range b.searchNodes(tsq) {
-		if err := b.NodeDeleted(n); err != nil {
-			fails = true
-		}
-	}
+	query := es.FormatFilter(filters.NewNullFilter("DeletedAt"), "")
 
-	if fails {
-		return errors.New("Error while deleting the graph")
-	}
+	script := elastic.NewScript("ctx._source.DeletedAt = params.now; ctx._source.ArchivedAt = params.now;")
+	script.Lang("painless")
+	script.Params(map[string]interface{}{
+		"now": TimeUTC().Unix(),
+	})
 
-	return nil
+	return b.client.UpdateByScript("graph_element", query, script, topologyLiveIndex.Alias(), topologyArchiveIndex.IndexWildcard())
 }
 
-func (b *ElasticSearchBackend) DelGraph() error {
-	tsq := &TimedSearchQuery{
-		TimeFilter: filters.NewNullFilter("DeletedAt"),
-	}
-
-	var fails bool
-	for _, e := range b.searchEdges(tsq) {
-		if err := b.EdgeDeleted(e); err != nil {
-			fails = true
+// OnStarted implements storage client listener interface
+func (b *ElasticSearchBackend) OnStarted() {
+	if b.election != nil && b.election.IsMaster() {
+		if err := b.flushGraph(); err != nil {
+			logging.GetLogger().Errorf("Unable to flush graph element: %s", err)
 		}
 	}
-	for _, n := range b.searchNodes(tsq) {
-		if err := b.NodeDeleted(n); err != nil {
-			fails = true
-		}
-	}
-
-	if fails {
-		return errors.New("Error while deleting the graph")
-	}
-
-	return nil
 }
 
 // NewElasticSearchBackendFromClient creates a new graph backend using the given elasticsearch
 // client connection
 func NewElasticSearchBackendFromClient(client es.ClientInterface, electionService common.MasterElectionService) (*ElasticSearchBackend, error) {
 	c := &ElasticSearchBackend{
-		client:          client,
-		prevRevision:    make(map[Identifier]*rawData),
-		electionService: electionService,
+		client:       client,
+		prevRevision: make(map[Identifier]*rawData),
 	}
 
+	if electionService != nil {
+		c.election = electionService.NewElection("es-graph-flush")
+		c.election.StartAndWait()
+	}
+
+	client.AddEventListener(c)
 	client.Start()
 
 	return c, nil

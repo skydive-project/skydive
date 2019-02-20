@@ -270,7 +270,7 @@ func (c *Storage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filter
 		}
 	}
 
-	result, err := c.client.Search(sql)
+	result, err := c.client.SQL(sql)
 	if err != nil {
 		return nil, err
 	}
@@ -316,7 +316,7 @@ func (c *Storage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.F
 		}
 	}
 
-	result, err := c.client.Search(sql)
+	result, err := c.client.SQL(sql)
 	if err != nil {
 		return nil, err
 	}

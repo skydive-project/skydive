@@ -28,9 +28,11 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/storage"
 )
 
 // Result describes an orientdb request result
@@ -55,13 +57,14 @@ type ClientInterface interface {
 	GetDatabase() (*Result, error)
 	CreateDatabase() (*Result, error)
 	SQL(query string) (*Result, error)
-	Search(query string) (*Result, error)
 	Query(obj string, query *filters.SearchQuery) (*Result, error)
 	Connect() error
+	AddEventListener(listener storage.EventListener)
 }
 
 // Client describes a OrientDB client database
 type Client struct {
+	sync.RWMutex
 	url           string
 	authenticated bool
 	database      string
@@ -69,6 +72,7 @@ type Client struct {
 	password      string
 	cookies       []*http.Cookie
 	client        *http.Client
+	listeners     []storage.EventListener
 }
 
 // Session describes a OrientDB client session
@@ -269,11 +273,29 @@ func NewClient(url string, database string, username string, password string) (*
 		}
 	}
 
-	if err := client.Connect(); err != nil {
-		return nil, err
+	return client, nil
+}
+
+// Connect to the OrientDB server
+func (c *Client) Connect() error {
+	if err := c.reconnect(); err != nil {
+		return err
 	}
 
-	return client, nil
+	c.RLock()
+	for _, l := range c.listeners {
+		l.OnStarted()
+	}
+	c.RUnlock()
+
+	return nil
+}
+
+// AddEventListener add event listener
+func (c *Client) AddEventListener(listener storage.EventListener) {
+	c.Lock()
+	c.listeners = append(c.listeners, listener)
+	c.Unlock()
 }
 
 // Request send a request to the OrientDB server
@@ -301,7 +323,7 @@ func (c *Client) Request(method string, url string, body io.Reader) (*http.Respo
 	}
 
 	if resp.StatusCode == 401 {
-		if err := c.Connect(); err != nil {
+		if err := c.reconnect(); err != nil {
 			return nil, err
 		}
 		resp, err = c.client.Do(request)
@@ -531,11 +553,6 @@ func (c *Client) SQL(query string) (*Result, error) {
 	return parseResponse(resp)
 }
 
-// Search send a search query to the OrientDB server
-func (c *Client) Search(query string) (*Result, error) {
-	return c.SQL(query)
-}
-
 // Query the OrientDB based on filters
 func (c *Client) Query(obj string, query *filters.SearchQuery) (*Result, error) {
 	interval := query.PaginationRange
@@ -561,8 +578,7 @@ func (c *Client) Query(obj string, query *filters.SearchQuery) (*Result, error) 
 	return c.SQL(sql)
 }
 
-// Connect to the OrientDB server
-func (c *Client) Connect() error {
+func (c *Client) reconnect() error {
 	url := fmt.Sprintf("%s/connect/%s", c.url, c.database)
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {

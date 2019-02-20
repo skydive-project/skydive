@@ -27,6 +27,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/storage"
 	es "github.com/skydive-project/skydive/storage/elasticsearch"
 )
 
@@ -85,12 +86,17 @@ func (f *fakeESClient) Search(typ string, query elastic.Query, fsq filters.Searc
 }
 func (f *fakeESClient) Start() {
 }
+func (f *fakeESClient) AddEventListener(l storage.EventListener) {
+}
+func (f *fakeESClient) UpdateByScript(typ string, query elastic.Query, script *elastic.Script, indices ...string) error {
+	return nil
+}
 
 func newElasticsearchGraph(t *testing.T) (*Graph, *fakeESClient) {
 	client := &fakeESClient{
 		indices: make(map[string]*fakeESIndex),
 	}
-	b, err := NewElasticSearchBackendFromClient(client)
+	b, err := NewElasticSearchBackendFromClient(client, nil)
 	client.searchResult.Hits = &elastic.SearchHits{}
 
 	if err != nil {
