@@ -34,7 +34,7 @@
 %endif
 %endif
 
-%{!?fullver:%global fullver 0.21.0}
+%{!?fullver:%global fullver 0.22.0}
 %define version %{extractversion %{fullver}}
 %{!?tag:%global tag 1}
 
@@ -247,6 +247,9 @@ fi
 %attr(0644,root,root) %{_mandir}/man8/skydive-selinux.8.*
 
 %changelog
+* Thu Mar 21 2019 Sylvain Afchain <safchain@redhat.com> - 0.22.0-1
+- Bump to version 0.22.0
+
 * Fri Nov 30 2018 Sylvain Baubeau <sbaubeau@redhat.com> - 0.21.0-1
 - Add dependency on libvirt
 - Remove skydive-ansible dependency on skydive
