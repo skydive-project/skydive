@@ -188,7 +188,7 @@ agent:
   topology:
     # Probes used to capture topology information like interfaces,
     # bridges, namespaces, etc...
-    # Available: ovsdb, docker, neutron, opencontrail, socketinfo, lxd, lldp
+    # Available: ovsdb, docker, neutron, opencontrail, socketinfo, lxd, lldp, libvirt, runc
     probes:
       # - ovsdb
       # - docker
@@ -197,6 +197,7 @@ agent:
       # - socketinfo
       # - lxd
       # - lldp
+      # - libvirt
       # - runc
 
     netlink:
