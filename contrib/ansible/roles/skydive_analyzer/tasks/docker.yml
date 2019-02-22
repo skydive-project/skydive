@@ -23,7 +23,7 @@
         -p {{ skydive_analyzer_port }}:{{ skydive_analyzer_port }}/udp \
         -p {{ skydive_etcd_port }}:{{ skydive_etcd_port }} \
         -p {{ skydive_etcd_port + 1 }}:{{ skydive_etcd_port + 1 }} \
-        {{ skydive_docker_registry }}/{{ skydive_analyzer_docker_image }}:{{ skydive_docker_image_tag }} \
+        {{ skydive_docker_registry }}/{{ skydive_analyzer_docker_image }}:{{ skydive_analyzer_docker_image_tag or skydive_docker_image_tag }} \
         {{ skydive_analyzer_docker_command }}
     exec_stop_post: /usr/bin/docker stop skydive-analyzer-{{ ansible_hostname }}
     user: root
