@@ -66,6 +66,7 @@ func TestMetadataIndexer(t *testing.T) {
 	nodes, values := tidCache.Get("00:11:22:33:44:55")
 	if len(nodes) != 1 || len(values) != 1 {
 		t.Errorf("Expected one node and one value: got %+v, %+v", nodes, values)
+		return
 	}
 
 	if tid, _ := nodes[0].GetFieldString("TID"); tid != "123" {
@@ -113,5 +114,84 @@ func TestMetadataIndexer(t *testing.T) {
 	nodes, _ = dockerCache.Get("kube-system", "mypod", "mycontainer")
 	if len(nodes) != 1 {
 		t.Errorf("Expected 1 one, got %+v", nodes)
+	}
+}
+
+func TestMetadataIndexerWithArray(t *testing.T) {
+	g := newGraph(t)
+
+	vfCache := NewMetadataIndexer(g, g, nil, "VFS.MAC")
+	vfCache.Start()
+
+	macCache := NewMetadataIndexer(g, g, nil, "MAC")
+	macCache.Start()
+
+	vf1 := Metadata{
+		"Name": "vf1",
+		"VFS": []interface{}{
+			map[string]interface{}{
+				"MAC": "00:11:22:33:44:55",
+			},
+			map[string]interface{}{
+				"MAC": "01:23:45:67:89:ab",
+			},
+		},
+	}
+
+	m1 := Metadata{
+		"Name": "m1",
+		"MAC":  "00:11:22:33:44:55",
+	}
+
+	m2 := Metadata{
+		"Name": "m2",
+		"MAC":  "01:23:45:67:89:ab",
+	}
+
+	n1, _ := g.NewNode(GenID(), vf1, "host")
+	g.NewNode(GenID(), m1, "host")
+	g.NewNode(GenID(), m2, "host")
+
+	nodes, values := vfCache.Get("00:11:22:33:44:55")
+	if len(nodes) != 1 || len(values) != 1 {
+		t.Errorf("Expected one node and 1 value: got %+v, %+v", nodes, values)
+	}
+
+	nodes, values = vfCache.Get("01:23:45:67:89:ab")
+	if len(nodes) != 1 || len(values) != 1 {
+		t.Errorf("Expected one node and 1 value: got %+v, %+v", nodes, values)
+	}
+
+	g.SetMetadata(n1, Metadata{
+		"Name": "vf1",
+		"VFS": []interface{}{
+			map[string]interface{}{
+				"MAC": "00:11:22:33:44:55",
+			},
+		},
+	})
+
+	nodes, values = vfCache.Get("00:11:22:33:44:55")
+	if len(nodes) != 1 || len(values) != 1 {
+		t.Errorf("Expected one node and 1 value: got %+v, %+v", nodes, values)
+	}
+
+	nodes, values = vfCache.Get("01:23:45:67:89:ab")
+	if len(nodes) != 0 || len(values) != 0 {
+		t.Errorf("Expected zero node and zero value: got %+v, %+v", nodes, values)
+	}
+
+	g.SetMetadata(n1, Metadata{
+		"Name": "vf1",
+	})
+
+	nodes, values = vfCache.Get("00:11:22:33:44:55")
+	if len(nodes) != 0 || len(values) != 0 {
+		t.Errorf("Expected zero node and zero value: got %+v, %+v", nodes, values)
+	}
+
+	nodes, values = vfCache.Get("01:23:45:67:89:ab")
+	if len(nodes) != 0 || len(values) != 0 {
+		t.Errorf("Expected zero node and zero value: got %+v, %+v", nodes, values)
 	}
 }

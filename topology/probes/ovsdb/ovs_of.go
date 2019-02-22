@@ -34,6 +34,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/skydive-project/skydive/topology"
+
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
@@ -515,7 +517,8 @@ func (probe *BridgeOfProbe) addRule(rule *Rule) {
 		logging.GetLogger().Error(err)
 		return
 	}
-	if _, err := g.Link(bridgeNode, ruleNode, graph.Metadata{"RelationType": "ownership"}); err != nil {
+
+	if _, err := topology.AddOwnershipLink(g, bridgeNode, ruleNode, nil); err != nil {
 		logging.GetLogger().Error(err)
 	}
 }
@@ -556,7 +559,7 @@ func (probe *BridgeOfProbe) addGroup(group *Group) {
 		return
 	}
 	probe.Groups[group.ID] = groupNode
-	if _, err := g.Link(bridgeNode, groupNode, graph.Metadata{"RelationType": "ownership"}); err != nil {
+	if _, err := topology.AddOwnershipLink(g, bridgeNode, groupNode, nil); err != nil {
 		logging.GetLogger().Error(err)
 	}
 }

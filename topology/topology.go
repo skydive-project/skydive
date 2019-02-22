@@ -110,7 +110,7 @@ func BuildHostNodeTIDMap(nodes []*graph.Node) HostNodeTIDMap {
 
 // HaveOwnershipLink returns true if parent and child have an ownership link
 func HaveOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node) bool {
-	return g.AreLinked(parent, child, OwnershipMetadata())
+	return HaveLink(g, parent, child, OwnershipLink)
 }
 
 // IsOwnershipLinked checks whether the node has an OwnershipLink
@@ -125,50 +125,44 @@ func GetOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node) *gr
 }
 
 // AddOwnershipLink Link between the parent and the child node, the child can have only one parent, previous will be overwritten
-func AddOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, metadata graph.Metadata, h ...string) *graph.Edge {
+func AddOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, metadata graph.Metadata) (*graph.Edge, error) {
 	// a child node can only have one parent of type ownership, so delete the previous link
 	for _, e := range g.GetNodeEdges(child, OwnershipMetadata()) {
 		if e.Child == child.ID {
 			logging.GetLogger().Debugf("Delete previous ownership link: %v", e)
-			g.DelEdge(e)
+			if err := g.DelEdge(e); err != nil {
+				return nil, err
+			}
 		}
 	}
 
-	m := graph.Metadata{"RelationType": OwnershipLink}
+	return AddLink(g, parent, child, OwnershipLink, metadata)
+}
+
+// HaveLink returns true if parent and child are linked
+func HaveLink(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, relationType string) bool {
+	return g.AreLinked(node1, node2, graph.Metadata{"RelationType": relationType})
+}
+
+// AddLink minks the parent and the child node with the specified relation type and metadata
+func AddLink(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, relationType string, metadata graph.Metadata) (*graph.Edge, error) {
+	m := graph.Metadata{"RelationType": relationType}
 	for k, v := range metadata {
 		m[k] = v
 	}
 
-	id, _ := uuid.NewV5(uuid.NamespaceOID, []byte(parent.ID+child.ID+OwnershipLink))
-	edge, err := g.NewEdge(graph.Identifier(id.String()), parent, child, m, h...)
-	if err != nil {
-		logging.GetLogger().Error(err)
-		return nil
-	}
-
-	return edge
+	id, _ := uuid.NewV5(uuid.NamespaceOID, []byte(node1.ID+node2.ID+graph.Identifier(relationType)))
+	return g.NewEdge(graph.Identifier(id.String()), node1, node2, m)
 }
 
 // HaveLayer2Link returns true if parent and child have the same layer 2
 func HaveLayer2Link(g *graph.Graph, node1 *graph.Node, node2 *graph.Node) bool {
-	return g.AreLinked(node1, node2, Layer2Metadata())
+	return HaveLink(g, node1, node2, Layer2Link)
 }
 
-// AddLayer2Link Link the parent and the child node
-func AddLayer2Link(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, metadata graph.Metadata) *graph.Edge {
-	m := graph.Metadata{"RelationType": Layer2Link}
-	for k, v := range metadata {
-		m[k] = v
-	}
-
-	id, _ := uuid.NewV5(uuid.NamespaceOID, []byte(node1.ID+node2.ID+Layer2Link))
-	edge, err := g.NewEdge(graph.Identifier(id.String()), node1, node2, m)
-	if err != nil {
-		logging.GetLogger().Error(err)
-		return nil
-	}
-
-	return edge
+// AddLayer2Link links the parent and the child node
+func AddLayer2Link(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, metadata graph.Metadata) (*graph.Edge, error) {
+	return AddLink(g, node1, node2, Layer2Link, metadata)
 }
 
 // IsInterfaceUp returns whether an interface has the flag UP set

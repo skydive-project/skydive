@@ -22,8 +22,11 @@ package netlink
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"net"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -55,8 +58,9 @@ var flagNames = []string{
 }
 
 type pendingLink struct {
-	ID       graph.Identifier
-	Metadata graph.Metadata
+	id           graph.Identifier
+	relationType string
+	metadata     graph.Metadata
 }
 
 // NetNsProbe describes a topology probe based on netlink in a network namespace
@@ -99,16 +103,16 @@ func (u *NetNsProbe) linkPendingChildren(intf *graph.Node, index int64) {
 	// add children of this interface that was previously added
 	if children, ok := u.indexToChildrenQueue[index]; ok {
 		for _, link := range children {
-			child := u.Graph.GetNode(link.ID)
+			child := u.Graph.GetNode(link.id)
 			if child != nil {
-				topology.AddLayer2Link(u.Graph, intf, child, link.Metadata)
+				topology.AddLink(u.Graph, intf, child, link.relationType, link.metadata)
 			}
 		}
 		delete(u.indexToChildrenQueue, index)
 	}
 }
 
-func (u *NetNsProbe) linkIntfToIndex(intf *graph.Node, index int64, m graph.Metadata) {
+func (u *NetNsProbe) linkIntfToIndex(intf *graph.Node, index int64, relationType string, m graph.Metadata) {
 	// assuming we have only one master with this index
 	parent := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
 	if parent != nil {
@@ -119,12 +123,13 @@ func (u *NetNsProbe) linkIntfToIndex(intf *graph.Node, index int64, m graph.Meta
 			return
 		}
 
-		if !topology.HaveLayer2Link(u.Graph, parent, intf) {
-			topology.AddLayer2Link(u.Graph, parent, intf, m)
+		if !topology.HaveLink(u.Graph, parent, intf, relationType) {
+			topology.AddLink(u.Graph, parent, intf, relationType, m)
 		}
 	} else {
 		// not yet the bridge so, enqueue for a later add
-		u.indexToChildrenQueue[index] = append(u.indexToChildrenQueue[index], pendingLink{ID: intf.ID, Metadata: m})
+		link := pendingLink{id: intf.ID, relationType: relationType, metadata: m}
+		u.indexToChildrenQueue[index] = append(u.indexToChildrenQueue[index], link)
 	}
 }
 
@@ -134,12 +139,12 @@ func (u *NetNsProbe) handleIntfIsChild(intf *graph.Node, link netlink.Link) {
 
 	// interface being a part of a bridge
 	if link.Attrs().MasterIndex != 0 {
-		u.linkIntfToIndex(intf, int64(link.Attrs().MasterIndex), nil)
+		u.linkIntfToIndex(intf, int64(link.Attrs().MasterIndex), topology.Layer2Link, nil)
 	}
 
 	if link.Attrs().ParentIndex != 0 {
 		if _, err := intf.GetFieldInt64("Vlan"); err == nil {
-			u.linkIntfToIndex(intf, int64(int64(link.Attrs().ParentIndex)), graph.Metadata{"Type": "vlan"})
+			u.linkIntfToIndex(intf, int64(int64(link.Attrs().ParentIndex)), topology.Layer2Link, graph.Metadata{"Type": "vlan"})
 		}
 	}
 }
@@ -201,6 +206,20 @@ func (u *NetNsProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 	}
 }
 
+func (u *NetNsProbe) handleIntfIsVF(intf *graph.Node, link netlink.Link) {
+	attrs := link.Attrs()
+	physfnNetPath := fmt.Sprintf("/sys/class/net/%s/device/physfn/net", attrs.Name)
+	if fileinfos, err := ioutil.ReadDir(physfnNetPath); err == nil {
+		physfnIfIndexPath := filepath.Join(physfnNetPath, fileinfos[0].Name(), "ifindex")
+		if content, err := ioutil.ReadFile(physfnIfIndexPath); err == nil {
+			// The interface is a VF
+			if physfnIfIndex, err := strconv.Atoi(strings.TrimSpace(string(content))); err == nil {
+				u.linkIntfToIndex(intf, int64(physfnIfIndex), "vf", nil)
+			}
+		}
+	}
+}
+
 func (u *NetNsProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
 	index := int64(link.Attrs().Index)
 
@@ -235,8 +254,8 @@ func (u *NetNsProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metadata
 }
 
 func (u *NetNsProbe) addOvsLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
-	name := link.Attrs().Name
 	attrs := link.Attrs()
+	name := attrs.Name
 
 	filter := filters.NewAndFilter(
 		filters.NewTermStringFilter("Name", name),
@@ -484,6 +503,22 @@ func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 		}
 	}
 
+	if len(attrs.Vfs) > 0 {
+		vfs := make([]interface{}, len(attrs.Vfs))
+		for i, vf := range attrs.Vfs {
+			vfs[i] = map[string]interface{}{
+				"ID":        int64(vf.ID),
+				"LinkState": int64(vf.LinkState),
+				"MAC":       vf.Mac.String(),
+				"Qos":       int64(vf.Qos),
+				"Spoofchk":  vf.Spoofchk,
+				"TxRate":    int64(vf.TxRate),
+				"Vlan":      int64(vf.Vlan),
+			}
+		}
+		metadata["VFS"] = vfs
+	}
+
 	if neighbors := u.getNeighbors(attrs.Index, syscall.AF_BRIDGE); len(*neighbors) > 0 {
 		metadata["FDB"] = neighbors
 	}
@@ -577,6 +612,7 @@ func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 
 	u.handleIntfIsChild(intf, link)
 	u.handleIntfIsVeth(intf, link)
+	u.handleIntfIsVF(intf, link)
 }
 
 func (u *NetNsProbe) getRoutingTables(link netlink.Link, table int) *RoutingTables {
@@ -1253,12 +1289,10 @@ func NewProbe(g *graph.Graph, hostNode *graph.Node) (*Probe, error) {
 		return nil, fmt.Errorf("Failed to create epoll: %s", err)
 	}
 
-	nlProbe := &Probe{
+	return &Probe{
 		Graph:    g,
 		hostNode: hostNode,
 		epollFd:  epfd,
 		probes:   make(map[int32]*NetNsProbe),
-	}
-
-	return nlProbe, nil
+	}, nil
 }

@@ -98,21 +98,23 @@ func (processor *Processor) Cancel(values ...interface{}) {
 
 // OnNodeAdded event
 func (processor *Processor) OnNodeAdded(n *Node) {
-	if values, err := getFieldsAsArray(n, processor.MetadataIndexer.indexes); err == nil {
-		hash := Hash(values...)
-		processor.Lock()
-		defer processor.Unlock()
-		if actions, ok := processor.actions[hash]; ok {
-			var keep []deferred
-			for _, action := range actions {
-				if action.action.ProcessNode(processor.MetadataIndexer.graph, n) {
-					keep = append(keep, action)
+	if vValues, err := getFieldsAsArray(n, processor.MetadataIndexer.indexes); err == nil {
+		for _, values := range vValues {
+			hash := Hash(values...)
+			processor.Lock()
+			defer processor.Unlock()
+			if actions, ok := processor.actions[hash]; ok {
+				var keep []deferred
+				for _, action := range actions {
+					if action.action.ProcessNode(processor.MetadataIndexer.graph, n) {
+						keep = append(keep, action)
+					}
 				}
-			}
-			if len(keep) == 0 {
-				delete(processor.actions, hash)
-			} else {
-				processor.actions[hash] = keep
+				if len(keep) == 0 {
+					delete(processor.actions, hash)
+				} else {
+					processor.actions[hash] = keep
+				}
 			}
 		}
 	}
