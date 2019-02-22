@@ -24,7 +24,7 @@
         -e SKYDIVE_NETNS_RUN_PATH=/host/run {{ skydive_agent_docker_extra_env }} \
         -p {{ skydive_agent_port }}:{{ skydive_agent_port }} \
         --name=skydive-agent-{{ ansible_hostname }} \
-        {{ skydive_docker_registry }}/{{ skydive_agent_docker_image }}:{{ skydive_docker_image_tag }} \
+        {{ skydive_docker_registry }}/{{ skydive_agent_docker_image }}:{{ skydive_agent_docker_image_tag or skydive_docker_image_tag }} \
         {{ skydive_agent_docker_command }}
     exec_stop_post: /usr/bin/docker stop skydive-agent-{{ ansible_hostname }}
     user: root
