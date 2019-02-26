@@ -905,6 +905,20 @@ func (f *Flow) newApplicationLayer(packet *Packet, opts Opts) error {
 				NSCount: d.NSCount,
 				QDCount: d.QDCount,
 			}
+			if len(d.Questions) > 0 {
+				questions := make([]string, len(d.Questions))
+				for i, v := range d.Questions {
+					questions[i] = string(v.Name)
+				}
+				f.DNS.DNSQuestions = questions
+			}
+			if len(d.Answers) > 0 {
+				answers := make([]string, len(d.Answers))
+				for i, v := range d.Answers {
+					answers[i] = string(v.IP)
+				}
+				f.DNS.DNSAnswers = answers
+			}
 			return nil
 		}
 	}
