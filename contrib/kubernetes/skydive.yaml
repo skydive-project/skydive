@@ -125,6 +125,10 @@ spec:
           mountPath: /var/run/runc-ctrs
         - name: containerd-runc
           mountPath: /var/run/containerd/runc
+        - name: data-kubelet
+          mountPath: /var/data/kubelet
+        - name: lib-kubelet
+          mountPath: /var/lib/kubelet
       volumes:
       - name: docker
         hostPath:
@@ -144,3 +148,9 @@ spec:
       - name: containerd-runc
         hostPath:
           path: /var/run/containerd/runc
+      - name: data-kubelet
+        hostPath:
+          path: /var/data/kubelet
+      - name: lib-kubelet
+        hostPath:
+          path: /var/lib/kubelet
