@@ -41,12 +41,17 @@ type IncomerHandler func(*websocket.Conn, *auth.AuthenticatedRequest) (Speaker, 
 type Server struct {
 	common.RWMutex
 	*incomerPool
-	server           *shttp.Server
-	incomerHandler   IncomerHandler
-	writeCompression bool
-	queueSize        int
-	pingDelay        time.Duration
-	pongTimeout      time.Duration
+	server         *shttp.Server
+	incomerHandler IncomerHandler
+	opts           ServerOpts
+}
+
+// ServerOpts defines server options
+type ServerOpts struct {
+	WriteCompression bool
+	QueueSize        int
+	PingDelay        time.Duration
+	PongTimeout      time.Duration
 }
 
 func getRequestParameter(r *http.Request, name string) string {
@@ -128,7 +133,7 @@ func (s *Server) newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRe
 	svc, _ := common.ServiceAddressFromString(conn.RemoteAddr().String())
 	url, _ := url.Parse(fmt.Sprintf("http://%s:%d%s", svc.Addr, svc.Port, r.URL.Path+"?"+r.URL.RawQuery))
 
-	wsconn := newConn(s.server.Host, clientType, clientProtocol, url, r.Header, s.queueSize, s.writeCompression)
+	wsconn := newConn(s.server.Host, clientType, clientProtocol, url, r.Header, s.opts.QueueSize, s.opts.WriteCompression)
 	wsconn.conn = conn
 	wsconn.RemoteHost = getRequestParameter(&r.Request, "X-Host-ID")
 
@@ -139,9 +144,9 @@ func (s *Server) newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRe
 	}
 
 	conn.SetReadLimit(maxMessageSize)
-	conn.SetReadDeadline(time.Now().Add(s.pongTimeout))
+	conn.SetReadDeadline(time.Now().Add(s.opts.PongTimeout))
 	conn.SetPongHandler(func(string) error {
-		conn.SetReadDeadline(time.Now().Add(s.pongTimeout))
+		conn.SetReadDeadline(time.Now().Add(s.opts.PongTimeout))
 		return nil
 	})
 
@@ -156,7 +161,7 @@ func (s *Server) newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRe
 	// first ping before doing something
 	c.sendPing()
 
-	wsconn.pingTicker = time.NewTicker(s.pingDelay)
+	wsconn.pingTicker = time.NewTicker(s.opts.PingDelay)
 
 	c.Start()
 
@@ -164,14 +169,11 @@ func (s *Server) newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRe
 }
 
 // NewServer returns a new Server. The given auth backend will validate the credentials
-func NewServer(server *shttp.Server, endpoint string, authBackend shttp.AuthenticationBackend, writeCompression bool, queueSize int, pingDelay, pongTimeout time.Duration) *Server {
+func NewServer(server *shttp.Server, endpoint string, authBackend shttp.AuthenticationBackend, opts ServerOpts) *Server {
 	s := &Server{
-		incomerPool:      newIncomerPool(endpoint), // server inherits from a Speaker pool
-		server:           server,
-		writeCompression: writeCompression,
-		queueSize:        queueSize,
-		pingDelay:        pingDelay,
-		pongTimeout:      pongTimeout,
+		incomerPool: newIncomerPool(endpoint), // server inherits from a Speaker pool
+		server:      server,
+		opts:        opts,
 	}
 
 	s.incomerHandler = func(conn *websocket.Conn, r *auth.AuthenticatedRequest) (Speaker, error) {

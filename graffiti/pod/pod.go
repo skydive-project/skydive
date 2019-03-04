@@ -92,8 +92,15 @@ func (p *Pod) TopologyForwarder() *TopologyForwarder {
 
 // NewPod returns a new pod
 func NewPod(server *api.Server, clientPool *websocket.StructClientPool, g *graph.Graph, apiAuthBackend shttp.AuthenticationBackend, clusterAuthOptions *shttp.AuthenticationOpts, tr *traversal.GremlinTraversalParser, writeCompression bool, queueSize int, pingDelay, pongTimeout time.Duration) (*Pod, error) {
+	opts := websocket.ServerOpts{
+		WriteCompression: writeCompression,
+		QueueSize:        queueSize,
+		PingDelay:        time.Duration(pingDelay) * time.Second,
+		PongTimeout:      time.Duration(pongTimeout) * time.Second,
+	}
+
 	newWSServer := func(endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
-		return websocket.NewServer(server.HTTPServer, endpoint, authBackend, writeCompression, queueSize, time.Duration(pingDelay)*time.Second, time.Duration(pongTimeout)*time.Second)
+		return websocket.NewServer(server.HTTPServer, endpoint, authBackend, opts)
 	}
 
 	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", apiAuthBackend))

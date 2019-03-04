@@ -132,7 +132,7 @@ func (fb *Probe) getOrCreateFabricNodeFromDef(nodeDef string) (*graph.Node, erro
 
 	metadata["Probe"] = "fabric"
 
-	return fb.Graph.NewNode(id, metadata, "")
+	return fb.Graph.NewNode(id, metadata)
 }
 
 // Start the probe

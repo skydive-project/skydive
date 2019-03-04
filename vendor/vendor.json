@@ -1995,10 +1995,10 @@
 			"revision": "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
 		},
 		{
-			"checksumSHA1": "nAraxoe54PKPlnhiCkRx/FLbISU=",
+			"checksumSHA1": "d9UVWieXRdQWAsf0Qw/2GbC/XeI=",
 			"path": "github.com/olivere/elastic",
-			"revision": "4eb0cace57d54aa19e2c709e13979daeb20130a6",
-			"revisionTime": "2018-04-30T15:37:50Z",
+			"revision": "f82cf7c66881f3f18d0354a68086e9aa2f9a48d1",
+			"revisionTime": "2019-02-04T16:05:16Z",
 			"version": "release-branch.v6",
 			"versionExact": "release-branch.v6"
 		},

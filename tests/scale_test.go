@@ -311,8 +311,8 @@ func TestScaleHA(t *testing.T) {
 
 	gh := gclient.NewGremlinQueryHelper(authOptions)
 
-	// expected 2 for because of 1 incoming and 1 outgoer
-	if err = common.Retry(func() error { return checkPeers(client, 2, common.RunningState) }, 5, time.Second); err != nil {
+	// expected 1 either Incomer or Outgoer
+	if err = common.Retry(func() error { return checkPeers(client, 1, common.RunningState) }, 5, time.Second); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
@@ -453,7 +453,7 @@ func TestScaleHA(t *testing.T) {
 	execCmds(t, setupCmds...)
 
 	if err = common.Retry(func() error {
-		return checkPeers(client, 2, common.RunningState)
+		return checkPeers(client, 1, common.RunningState)
 	}, 15, time.Second); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)

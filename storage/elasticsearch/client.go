@@ -35,6 +35,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/storage"
 )
 
 const (
@@ -61,6 +62,8 @@ type ClientInterface interface {
 	BulkDelete(index Index, id string) error
 	Search(typ string, query elastic.Query, pagination filters.SearchQuery, indices ...string) (*elastic.SearchResult, error)
 	Start()
+	AddEventListener(listener storage.EventListener)
+	UpdateByScript(typ string, query elastic.Query, script *elastic.Script, indices ...string) error
 }
 
 // Index defines a Client Index
@@ -74,6 +77,7 @@ type Index struct {
 
 // Client describes a ElasticSearch client connection
 type Client struct {
+	sync.RWMutex
 	url           *url.URL
 	esClient      *elastic.Client
 	bulkProcessor *elastic.BulkProcessor
@@ -83,6 +87,7 @@ type Client struct {
 	cfg           Config
 	indices       map[string]Index
 	rollService   *rollIndexService
+	listeners     []storage.EventListener
 }
 
 var (
@@ -219,6 +224,12 @@ func (c *Client) start() error {
 
 	logging.GetLogger().Infof("client started for %s", strings.Join(aliases, ", "))
 
+	c.RLock()
+	for _, l := range c.listeners {
+		l.OnStarted()
+	}
+	c.RUnlock()
+
 	return nil
 }
 
@@ -336,6 +347,14 @@ func (c *Client) BulkDelete(index Index, id string) error {
 	return nil
 }
 
+// UpdateByScript updates the document using the given script
+func (c *Client) UpdateByScript(typ string, query elastic.Query, script *elastic.Script, indices ...string) error {
+	if _, err := c.esClient.UpdateByQuery(indices...).Type(typ).Query(query).Script(script).Do(context.Background()); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Search an object
 func (c *Client) Search(typ string, query elastic.Query, opts filters.SearchQuery, indices ...string) (*elastic.SearchResult, error) {
 	searchQuery := c.esClient.
@@ -391,6 +410,12 @@ func (c *Client) Stop() {
 
 		c.esClient.Stop()
 	}
+
+	c.RLock()
+	for _, l := range c.listeners {
+		l.OnStarted()
+	}
+	c.RUnlock()
 }
 
 // Started is the client already started ?
@@ -414,6 +439,13 @@ func urlFromHost(host string) (*url.URL, error) {
 // GetClient returns the elastic client object
 func (c *Client) GetClient() *elastic.Client {
 	return c.esClient
+}
+
+// AddEventListener add event listener
+func (c *Client) AddEventListener(listener storage.EventListener) {
+	c.Lock()
+	c.listeners = append(c.listeners, listener)
+	c.Unlock()
 }
 
 // NewClient creates a new ElasticSearch client based on configuration

@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/storage/orientdb"
@@ -30,7 +31,8 @@ import (
 // OrientDBBackend describes an OrientDB backend
 type OrientDBBackend struct {
 	Backend
-	client orientdb.ClientInterface
+	client   orientdb.ClientInterface
+	election common.MasterElection
 }
 
 type eventTime struct {
@@ -89,7 +91,7 @@ func (o *OrientDBBackend) updateTimes(e string, id string, events ...eventTime) 
 		attrs = append(attrs, fmt.Sprintf("%s = %d", event.name, event.t.Unix()))
 	}
 	query := fmt.Sprintf("UPDATE %s SET %s WHERE DeletedAt IS NULL AND ArchivedAt IS NULL AND ID = '%s'", e, strings.Join(attrs, ", "), id)
-	result, err := o.client.Search(query)
+	result, err := o.client.SQL(query)
 	if err != nil {
 		return fmt.Errorf("Error while deleting %s: %s", id, err)
 	}
@@ -144,7 +146,7 @@ func (o *OrientDBBackend) searchNodes(t Context, where string) []*Node {
 		query += " ORDER BY UpdatedAt"
 	}
 
-	result, err := o.client.Search(query)
+	result, err := o.client.SQL(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving nodes: %s", err)
 		return nil
@@ -171,7 +173,7 @@ func (o *OrientDBBackend) searchEdges(t Context, where string) []*Edge {
 		query += " ORDER BY UpdatedAt"
 	}
 
-	result, err := o.client.Search(query)
+	result, err := o.client.SQL(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving edges: %s", err)
 		return nil
@@ -319,7 +321,44 @@ func (o *OrientDBBackend) IsHistorySupported() bool {
 	return true
 }
 
-func newOrientDBBackend(client orientdb.ClientInterface) (*OrientDBBackend, error) {
+func (o *OrientDBBackend) flushGraph() error {
+	logging.GetLogger().Info("Flush graph elements")
+
+	now := TimeUTC().Unix()
+
+	query := fmt.Sprintf("UPDATE Node SET DeletedAt = %d, ArchivedAt = %d WHERE DeletedAt IS NULL", now, now)
+	if _, err := o.client.SQL(query); err != nil {
+		return fmt.Errorf("Error while flushing graph: %s", err)
+	}
+
+	query = fmt.Sprintf("UPDATE Edge SET DeletedAt = %d, ArchivedAt = %d WHERE DeletedAt IS NULL", now, now)
+	if _, err := o.client.SQL(query); err != nil {
+		return fmt.Errorf("Error while flushing graph: %s", err)
+	}
+
+	return nil
+}
+
+// OnStarted implements storage client listener interface
+func (o *OrientDBBackend) OnStarted() {
+	if o.election != nil && o.election.IsMaster() {
+		o.flushGraph()
+	}
+}
+
+func newOrientDBBackend(client orientdb.ClientInterface, electionService common.MasterElectionService) (*OrientDBBackend, error) {
+	o := &OrientDBBackend{
+		client: client,
+	}
+
+	if electionService != nil {
+		o.election = electionService.NewElection("orientdb-graph-flush")
+		o.election.StartAndWait()
+	}
+
+	client.AddEventListener(o)
+	client.Connect()
+
 	if _, err := client.GetDocumentClass("Node"); err != nil {
 		class := orientdb.ClassDefinition{
 			Name:       "Node",
@@ -370,18 +409,16 @@ func newOrientDBBackend(client orientdb.ClientInterface) (*OrientDBBackend, erro
 		}
 	}
 
-	return &OrientDBBackend{
-		client: client,
-	}, nil
+	return o, nil
 }
 
 // NewOrientDBBackend creates a new graph backend and
 // connect to an OrientDB instance
-func NewOrientDBBackend(addr string, database string, username string, password string) (*OrientDBBackend, error) {
+func NewOrientDBBackend(addr string, database string, username string, password string, electionService common.MasterElectionService) (*OrientDBBackend, error) {
 	client, err := orientdb.NewClient(addr, database, username, password)
 	if err != nil {
 		return nil, err
 	}
 
-	return newOrientDBBackend(client)
+	return newOrientDBBackend(client, electionService)
 }

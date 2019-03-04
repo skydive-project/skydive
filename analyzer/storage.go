@@ -30,7 +30,7 @@ import (
 	es "github.com/skydive-project/skydive/storage/elasticsearch"
 )
 
-// NewESConfig returns a new elasticsearch configution for the given backend name
+// NewESConfig returns a new elasticsearch configuration for the given backend name
 func NewESConfig(name ...string) es.Config {
 	cfg := es.Config{}
 
@@ -63,13 +63,14 @@ func newGraphBackendFromConfig(etcdClient *etcd.Client) (graph.Backend, error) {
 		cfg := NewESConfig(backend)
 		return graph.NewElasticSearchBackendFromConfig(cfg, etcdClient)
 	case "memory":
-		return graph.NewMemoryBackend()
+		// cached memory will be used
+		return nil, nil
 	case "orientdb":
 		addr := config.GetString(configPath + ".addr")
 		database := config.GetString(configPath + ".database")
 		username := config.GetString(configPath + ".username")
 		password := config.GetString(configPath + ".password")
-		return graph.NewOrientDBBackend(addr, database, username, password)
+		return graph.NewOrientDBBackend(addr, database, username, password, etcdClient)
 	default:
 		return nil, fmt.Errorf("Topology backend driver '%s' not supported", driver)
 	}

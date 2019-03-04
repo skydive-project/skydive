@@ -20,6 +20,7 @@ package hub
 import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	gws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/logging"
 	ws "github.com/skydive-project/skydive/websocket"
 )
@@ -28,29 +29,49 @@ import (
 type TopologyAgentEndpoint struct {
 	common.RWMutex
 	ws.DefaultSpeakerEventHandler
-	pool   ws.StructSpeakerPool
-	Graph  *graph.Graph
-	cached *graph.CachedBackend
+	pool    ws.StructSpeakerPool
+	Graph   *graph.Graph
+	cached  *graph.CachedBackend
+	authors map[string]bool
 }
 
 // OnDisconnected called when an agent disconnected.
 func (t *TopologyAgentEndpoint) OnDisconnected(c ws.Speaker) {
-	host := c.GetRemoteHost()
+	origin := clientOrigin(c)
 
-	origin := string(c.GetServiceType())
-	if len(host) > 0 {
-		origin += "." + host
+	t.RLock()
+	_, ok := t.authors[origin]
+	t.RUnlock()
+
+	// not an author so do not delete resources
+	if !ok {
+		return
 	}
 
+	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources of %s", origin)
+
 	t.Graph.Lock()
-	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources %s", origin)
-	t.Graph.DelOriginGraph(origin)
+	delSubGraphOfOrigin(t.cached, t.Graph, origin)
 	t.Graph.Unlock()
+
+	t.Lock()
+	delete(t.authors, origin)
+	t.Unlock()
 }
 
 // OnStructMessage is triggered when a message from the agent is received.
 func (t *TopologyAgentEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
-	msgType, obj, err := graph.UnmarshalMessage(msg)
+	origin := clientOrigin(c)
+
+	t.Lock()
+	// received a message thus the pod has chosen this hub as master
+	if _, ok := t.authors[origin]; !ok {
+		t.authors[origin] = true
+		logging.GetLogger().Debugf("Authoritative client registered %s", origin)
+	}
+	t.Unlock()
+
+	msgType, obj, err := gws.UnmarshalMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event : %s", err)
 		return
@@ -60,14 +81,11 @@ func (t *TopologyAgentEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMess
 	defer t.Graph.Unlock()
 
 	switch msgType {
-	case graph.OriginGraphDeletedMsgType:
-		// OriginGraphDeletedMsgType is handled specifically as we need to be sure to not use the
-		// cache while deleting otherwise the delete mechanism is using the cache to walk through
-		// the graph.
-		logging.GetLogger().Debugf("Got %s message for host %s", graph.OriginGraphDeletedMsgType, obj.(string))
-		t.Graph.DelOriginGraph(obj.(string))
-	case graph.SyncMsgType, graph.SyncReplyMsgType:
-		r := obj.(*graph.SyncMsg)
+	case gws.SyncMsgType, gws.SyncReplyMsgType:
+		r := obj.(*gws.SyncMsg)
+
+		delSubGraphOfOrigin(t.cached, t.Graph, origin)
+
 		for _, n := range r.Nodes {
 			if t.Graph.GetNode(n.ID) == nil {
 				if err := t.Graph.NodeAdded(n); err != nil {
@@ -82,17 +100,17 @@ func (t *TopologyAgentEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMess
 				}
 			}
 		}
-	case graph.NodeUpdatedMsgType:
+	case gws.NodeUpdatedMsgType:
 		err = t.Graph.NodeUpdated(obj.(*graph.Node))
-	case graph.NodeDeletedMsgType:
+	case gws.NodeDeletedMsgType:
 		err = t.Graph.NodeDeleted(obj.(*graph.Node))
-	case graph.NodeAddedMsgType:
+	case gws.NodeAddedMsgType:
 		err = t.Graph.NodeAdded(obj.(*graph.Node))
-	case graph.EdgeUpdatedMsgType:
+	case gws.EdgeUpdatedMsgType:
 		err = t.Graph.EdgeUpdated(obj.(*graph.Edge))
-	case graph.EdgeDeletedMsgType:
+	case gws.EdgeDeletedMsgType:
 		err = t.Graph.EdgeDeleted(obj.(*graph.Edge))
-	case graph.EdgeAddedMsgType:
+	case gws.EdgeAddedMsgType:
 		err = t.Graph.EdgeAdded(obj.(*graph.Edge))
 	}
 
@@ -104,15 +122,16 @@ func (t *TopologyAgentEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMess
 // NewTopologyPodEndpoint returns a new server that handles messages from the agents
 func NewTopologyPodEndpoint(pool ws.StructSpeakerPool, cached *graph.CachedBackend, g *graph.Graph) (*TopologyAgentEndpoint, error) {
 	t := &TopologyAgentEndpoint{
-		Graph:  g,
-		pool:   pool,
-		cached: cached,
+		Graph:   g,
+		pool:    pool,
+		cached:  cached,
+		authors: make(map[string]bool),
 	}
 
 	pool.AddEventHandler(t)
 
 	// subscribe to the graph messages
-	pool.AddStructMessageHandler(t, []string{graph.Namespace})
+	pool.AddStructMessageHandler(t, []string{gws.Namespace})
 
 	return t, nil
 }

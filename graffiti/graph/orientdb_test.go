@@ -28,6 +28,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/storage"
 	"github.com/skydive-project/skydive/storage/orientdb"
 )
 
@@ -95,9 +96,6 @@ func (f *fakeOrientDBClient) CreateDatabase() (*orientdb.Result, error) {
 	return nil, nil
 }
 func (f *fakeOrientDBClient) SQL(query string) (*orientdb.Result, error) {
-	return nil, nil
-}
-func (f *fakeOrientDBClient) Search(query string) (*orientdb.Result, error) {
 	f.ops = append(f.ops, op{name: "Search", data: query})
 
 	result := f.result[0]
@@ -111,11 +109,12 @@ func (f *fakeOrientDBClient) Query(obj string, query *filters.SearchQuery) (*ori
 func (f *fakeOrientDBClient) Connect() error {
 	return nil
 }
+func (f *fakeOrientDBClient) AddEventListener(l storage.EventListener) {
+}
 
 func newOrientDBGraph(t *testing.T) (*Graph, *fakeOrientDBClient) {
 	client := &fakeOrientDBClient{}
-	b, err := newOrientDBBackend(client)
-
+	b, err := newOrientDBBackend(client, nil)
 	if err != nil {
 		t.Error(err)
 	}

@@ -88,7 +88,14 @@ func TestSubscription(t *testing.T) {
 	httpServer.ListenAndServe()
 	defer httpServer.Stop()
 
-	wsServer := NewServer(httpServer, "/wstest", shttp.NewNoAuthenticationBackend(), true, 100, 2*time.Second, 5*time.Second)
+	serverOpts := ServerOpts{
+		WriteCompression: true,
+		QueueSize:        100,
+		PingDelay:        2 * time.Second,
+		PongTimeout:      5 * time.Second,
+	}
+
+	wsServer := NewServer(httpServer, "/wstest", shttp.NewNoAuthenticationBackend(), serverOpts)
 
 	serverHandler := &fakeServerSubscriptionHandler{t: t, server: wsServer, connected: 0, received: 0}
 	wsServer.AddEventHandler(serverHandler)

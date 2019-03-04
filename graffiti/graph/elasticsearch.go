@@ -112,11 +112,12 @@ var topologyArchiveIndex = es.Index{
 	RollIndex: true,
 }
 
-// ElasticSearchBackend describes a presisent backend based on ElasticSearch
+// ElasticSearchBackend describes a persistent backend based on ElasticSearch
 type ElasticSearchBackend struct {
 	Backend
 	client       es.ClientInterface
 	prevRevision map[Identifier]*rawData
+	election     common.MasterElection
 }
 
 // TimedSearchQuery describes a search query within a time slice and metadata filters
@@ -523,15 +524,46 @@ func (b *ElasticSearchBackend) IsHistorySupported() bool {
 	return true
 }
 
+func (b *ElasticSearchBackend) flushGraph() error {
+	logging.GetLogger().Info("Flush graph elements")
+
+	query := es.FormatFilter(filters.NewNullFilter("DeletedAt"), "")
+
+	script := elastic.NewScript("ctx._source.DeletedAt = params.now; ctx._source.ArchivedAt = params.now;")
+	script.Lang("painless")
+	script.Params(map[string]interface{}{
+		"now": TimeUTC().Unix(),
+	})
+
+	return b.client.UpdateByScript("graph_element", query, script, topologyLiveIndex.Alias(), topologyArchiveIndex.IndexWildcard())
+}
+
+// OnStarted implements storage client listener interface
+func (b *ElasticSearchBackend) OnStarted() {
+	if b.election != nil && b.election.IsMaster() {
+		if err := b.flushGraph(); err != nil {
+			logging.GetLogger().Errorf("Unable to flush graph element: %s", err)
+		}
+	}
+}
+
 // NewElasticSearchBackendFromClient creates a new graph backend using the given elasticsearch
 // client connection
-func NewElasticSearchBackendFromClient(client es.ClientInterface) (*ElasticSearchBackend, error) {
-	client.Start()
-
-	return &ElasticSearchBackend{
+func NewElasticSearchBackendFromClient(client es.ClientInterface, electionService common.MasterElectionService) (*ElasticSearchBackend, error) {
+	c := &ElasticSearchBackend{
 		client:       client,
 		prevRevision: make(map[Identifier]*rawData),
-	}, nil
+	}
+
+	if electionService != nil {
+		c.election = electionService.NewElection("es-graph-flush")
+		c.election.StartAndWait()
+	}
+
+	client.AddEventListener(c)
+	client.Start()
+
+	return c, nil
 }
 
 // NewElasticSearchBackendFromConfig creates a new graph backend from an ES configuration structure
@@ -546,5 +578,5 @@ func NewElasticSearchBackendFromConfig(cfg es.Config, electionService common.Mas
 		return nil, err
 	}
 
-	return NewElasticSearchBackendFromClient(client)
+	return NewElasticSearchBackendFromClient(client, electionService)
 }

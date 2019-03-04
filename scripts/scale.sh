@@ -63,6 +63,8 @@ function create_host() {
 	sudo ip netns exec $NAME ip address add $ADDR/24 dev eth0
 	sudo ip netns exec $NAME ip route add 0.0.0.0/0 via $GW_ADDR
 
+	sudo ip netns exec $NAME bash -c "echo 0 >/proc/sys/net/ipv4/icmp_echo_ignore_broadcasts"
+
 	sudo brctl addif br-central $NAME-eth0
 }
 
@@ -239,6 +241,7 @@ EOF
 
 		sudo ip netns exec $NAME-vm$VM_I ip link set eth0 up
 		sudo ip netns exec $NAME-vm$VM_I ip address add $VM_PREFIX.$IDX.$VM_I/16 dev eth0
+		sudo ip netns exec $NAME-vm$VM_I bash -c "echo 0 >/proc/sys/net/ipv4/icmp_echo_ignore_broadcasts"
 
 		sudo ip netns exec $NAME ovs-vsctl --db=unix:$TEMP_DIR/$NAME.sock add-port $NAME vm$VM_I-eth0
 	done

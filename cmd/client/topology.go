@@ -26,8 +26,8 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/hub"
+	gws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/websocket"
 	"github.com/spf13/cobra"
 )
@@ -91,7 +91,7 @@ var TopologyImport = &cobra.Command{
 			exitOnError(err)
 		}
 
-		syncMsg := []*graph.SyncMsg{}
+		syncMsg := []*gws.SyncMsg{}
 		if err := json.Unmarshal(content, &syncMsg); err != nil {
 			exitOnError(err)
 		}
@@ -101,14 +101,14 @@ var TopologyImport = &cobra.Command{
 		}
 
 		for _, node := range syncMsg[0].Nodes {
-			msg := websocket.NewStructMessage(graph.Namespace, graph.NodeAddedMsgType, node)
+			msg := gws.NewStructMessage(gws.NodeAddedMsgType, node)
 			if err := client.SendMessage(msg); err != nil {
 				exitOnError(fmt.Errorf("Failed to send message: %s", err))
 			}
 		}
 
 		for _, edge := range syncMsg[0].Edges {
-			msg := websocket.NewStructMessage(graph.Namespace, graph.EdgeAddedMsgType, edge)
+			msg := gws.NewStructMessage(gws.EdgeAddedMsgType, edge)
 			if err := client.SendMessage(msg); err != nil {
 				exitOnError(fmt.Errorf("Failed to send message: %s", err))
 			}

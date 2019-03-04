@@ -18,8 +18,7 @@
 package hub
 
 import (
-	"time"
-
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/pod"
@@ -31,17 +30,15 @@ import (
 // Hub describes a graph hub that accepts incoming connections
 // from pods, other hubs, subscribers or external publishers
 type Hub struct {
-	server                 *shttp.Server
-	apiAuthBackend         shttp.AuthenticationBackend
-	clusterAuthBackend     shttp.AuthenticationBackend
-	writeCompression       bool
-	queueSize              int
-	pingDelay, pongTimeout time.Duration
-	podWSServer            *websocket.StructServer
-	publisherWSServer      *websocket.StructServer
-	replicationWSServer    *websocket.StructServer
-	replicationEndpoint    *TopologyReplicationEndpoint
-	subscriberWSServer     *websocket.StructServer
+	server              *shttp.Server
+	apiAuthBackend      shttp.AuthenticationBackend
+	clusterAuthBackend  shttp.AuthenticationBackend
+	opts                websocket.ServerOpts
+	podWSServer         *websocket.StructServer
+	publisherWSServer   *websocket.StructServer
+	replicationWSServer *websocket.StructServer
+	replicationEndpoint *TopologyReplicationEndpoint
+	subscriberWSServer  *websocket.StructServer
 }
 
 // PeersStatus describes the state of a peer
@@ -109,9 +106,9 @@ func (h *Hub) SubscriberServer() *websocket.StructServer {
 }
 
 // NewHub returns a new hub
-func NewHub(server *shttp.Server, g *graph.Graph, cached *graph.CachedBackend, apiAuthBackend, clusterAuthBackend shttp.AuthenticationBackend, clusterAuthOptions *shttp.AuthenticationOpts, podEndpoint string, writeCompression bool, queueSize int, pingDelay, pongTimeout time.Duration) (*Hub, error) {
+func NewHub(server *shttp.Server, g *graph.Graph, cached *graph.CachedBackend, apiAuthBackend, clusterAuthBackend shttp.AuthenticationBackend, clusterAuthOptions *shttp.AuthenticationOpts, podEndpoint string, peers []common.ServiceAddress, opts websocket.ServerOpts) (*Hub, error) {
 	newWSServer := func(endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
-		return websocket.NewServer(server, endpoint, authBackend, writeCompression, queueSize, pingDelay, pongTimeout)
+		return websocket.NewServer(server, endpoint, authBackend, opts)
 	}
 
 	podWSServer := websocket.NewStructServer(newWSServer(podEndpoint, clusterAuthBackend))
@@ -121,13 +118,13 @@ func NewHub(server *shttp.Server, g *graph.Graph, cached *graph.CachedBackend, a
 	}
 
 	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", apiAuthBackend))
-	_, err = NewTopologyPublisherEndpoint(publisherWSServer, g)
+	_, err = NewTopologyPublisherEndpoint(publisherWSServer, cached, g)
 	if err != nil {
 		return nil, err
 	}
 
 	replicationWSServer := websocket.NewStructServer(newWSServer("/ws/replication", clusterAuthBackend))
-	replicationEndpoint, err := NewTopologyReplicationEndpoint(replicationWSServer, clusterAuthOptions, cached, g)
+	replicationEndpoint, err := NewTopologyReplicationEndpoint(replicationWSServer, clusterAuthOptions, cached, g, peers)
 	if err != nil {
 		return nil, err
 	}
@@ -143,14 +140,24 @@ func NewHub(server *shttp.Server, g *graph.Graph, cached *graph.CachedBackend, a
 		server:              server,
 		apiAuthBackend:      apiAuthBackend,
 		clusterAuthBackend:  clusterAuthBackend,
-		writeCompression:    writeCompression,
-		queueSize:           queueSize,
-		pingDelay:           pingDelay,
-		pongTimeout:         pongTimeout,
+		opts:                opts,
 		podWSServer:         podWSServer,
 		replicationEndpoint: replicationEndpoint,
 		replicationWSServer: replicationWSServer,
 		publisherWSServer:   publisherWSServer,
 		subscriberWSServer:  subscriberWSServer,
 	}, nil
+}
+
+func clientOrigin(c websocket.Speaker) string {
+	origin := string(c.GetServiceType())
+	if len(c.GetRemoteHost()) > 0 {
+		origin += "." + c.GetRemoteHost()
+	}
+
+	return origin
+}
+
+func delSubGraphOfOrigin(cached *graph.CachedBackend, g *graph.Graph, origin string) {
+	g.DelNodes(graph.Metadata{"Origin": origin})
 }
