@@ -1,0 +1,18 @@
+---
+- package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+     - openvswitch-ovn-common
+     - openvswitch-ovn-central
+
+- name: Allow accessing OVN using TCP
+  copy:
+    content: "OVN_NORTHD_OPTS=--ovn-northd-nb-db=tcp:127.0.0.1:6641 --db-nb-create-insecure-remote=yes"
+    dest: /etc/sysconfig/ovn-northd
+    mode: 0640
+
+- service:
+    name: ovn-northd
+    state: started
+    enabled: yes
