@@ -58,6 +58,16 @@ func (i *Indexer) Get(values ...interface{}) ([]*Node, []interface{}) {
 	return i.FromHash(Hash(values...))
 }
 
+// GetNode computes the hash of the passed parameters and returns the first
+// matching node with its respective value
+func (i *Indexer) GetNode(values ...interface{}) (*Node, interface{}) {
+	nodes, values := i.Get(values...)
+	if len(nodes) > 0 && len(values) > 0 {
+		return nodes[0], values[0]
+	}
+	return nil, nil
+}
+
 func (i *Indexer) index(id Identifier, h string, value interface{}) {
 	if _, found := i.hashToValues[h]; !found {
 		i.hashToValues[h] = make(map[Identifier]interface{})
@@ -73,16 +83,16 @@ func (i *Indexer) unindex(id Identifier, h string) {
 	}
 }
 
-// cacheNode indexes a node with a set of hash -> value map
-func (i *Indexer) cacheNode(n *Node, kv map[string]interface{}) {
+// Index indexes a node with a set of hash -> value map
+func (i *Indexer) Index(id Identifier, n *Node, kv map[string]interface{}) {
 	i.Lock()
 	defer i.Unlock()
 
-	if hashes, found := i.nodeToHashes[n.ID]; !found {
+	if hashes, found := i.nodeToHashes[id]; !found {
 		// Node was not in the cache
-		i.nodeToHashes[n.ID] = make(map[string]bool)
+		i.nodeToHashes[id] = make(map[string]bool)
 		for k, v := range kv {
-			i.index(n.ID, k, v)
+			i.index(id, k, v)
 		}
 
 		i.eventHandler.NotifyEvent(NodeAdded, n)
@@ -91,28 +101,28 @@ func (i *Indexer) cacheNode(n *Node, kv map[string]interface{}) {
 		if !i.appendOnly {
 			for h := range hashes {
 				if _, found := kv[h]; !found {
-					i.unindex(n.ID, h)
+					i.unindex(id, h)
 				}
 			}
 		}
 
 		for k, v := range kv {
-			i.index(n.ID, k, v)
+			i.index(id, k, v)
 		}
 
 		i.eventHandler.NotifyEvent(NodeUpdated, n)
 	}
 }
 
-// forgetNode removes the node and its associated hashes from the index
-func (i *Indexer) forgetNode(n *Node) {
+// Unindex removes the node and its associated hashes from the index
+func (i *Indexer) Unindex(id Identifier, n *Node) {
 	i.Lock()
 	defer i.Unlock()
 
-	if hashes, found := i.nodeToHashes[n.ID]; found {
-		delete(i.nodeToHashes, n.ID)
+	if hashes, found := i.nodeToHashes[id]; found {
+		delete(i.nodeToHashes, id)
 		for h := range hashes {
-			delete(i.hashToValues[h], n.ID)
+			delete(i.hashToValues[h], id)
 		}
 
 		i.eventHandler.NotifyEvent(NodeDeleted, n)
@@ -122,22 +132,22 @@ func (i *Indexer) forgetNode(n *Node) {
 // OnNodeAdded event
 func (i *Indexer) OnNodeAdded(n *Node) {
 	if kv := i.hashNode(n); len(kv) != 0 {
-		i.cacheNode(n, kv)
+		i.Index(n.ID, n, kv)
 	}
 }
 
 // OnNodeUpdated event
 func (i *Indexer) OnNodeUpdated(n *Node) {
 	if kv := i.hashNode(n); len(kv) != 0 {
-		i.cacheNode(n, kv)
+		i.Index(n.ID, n, kv)
 	} else {
-		i.forgetNode(n)
+		i.Unindex(n.ID, n)
 	}
 }
 
 // OnNodeDeleted event
 func (i *Indexer) OnNodeDeleted(n *Node) {
-	i.forgetNode(n)
+	i.Unindex(n.ID, n)
 }
 
 // FromHash returns the nodes mapped by a hash along with their associated values
@@ -153,12 +163,16 @@ func (i *Indexer) FromHash(hash string) (nodes []*Node, values []interface{}) {
 
 // Start registers the graph indexer as a graph listener
 func (i *Indexer) Start() {
-	i.listenerHandler.AddEventListener(i)
+	if i.listenerHandler != nil {
+		i.listenerHandler.AddEventListener(i)
+	}
 }
 
 // Stop removes the graph indexer from the graph listeners
 func (i *Indexer) Stop() {
-	i.listenerHandler.RemoveEventListener(i)
+	if i.listenerHandler != nil {
+		i.listenerHandler.RemoveEventListener(i)
+	}
 }
 
 // AddEventListener subscribes a new graph listener
