@@ -80,8 +80,7 @@
   tags:
     - vagrant
 
-- include_tasks: docker.yml
-  when: skydive_container_cli == "docker"
+- include_tasks: docker-ce.yml
   tags:
     - vagrant
 

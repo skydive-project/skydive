@@ -1,0 +1,25 @@
+---
+- group:
+    name: docker
+    state: present
+
+- user:
+    name: vagrant
+    groups: docker
+    append: yes
+
+- name: download Docker CE repository
+  get_url:
+    url: https://download.docker.com/linux/fedora/docker-ce.repo
+    dest: /etc/yum.repos.d/docker-ce.repo
+    mode: 0600
+    force: yes
+
+- package:
+    name: docker-ce
+    state: present
+
+- service:
+    name: docker
+    state: restarted
+    enabled: yes

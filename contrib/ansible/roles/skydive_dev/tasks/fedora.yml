@@ -1,8 +1,7 @@
 ---
 - name: "Installing the rpmfusion repo packages"
-  dnf: name={{ item }}
+  dnf: name=['http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-{{ ansible_distribution_version }}.noarch.rpm']
        state=present
-  with_items:
-    - http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-{{ ansible_distribution_version }}.noarch.rpm
+
 - name: "Updating packages"
   shell: "dnf update -y"

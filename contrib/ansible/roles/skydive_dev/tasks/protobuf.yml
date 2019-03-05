@@ -33,5 +33,5 @@
     unzip -o protoc-3.1.0-linux-x86_64.zip
     rm -rf /usr/include/google
     chmod -R 755 include/google
-    mv include/google /usr/include
+    mv -f include/google /usr/include
   when: ansible_architecture == "ppc64le"
