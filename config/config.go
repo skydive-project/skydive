@@ -97,6 +97,7 @@ func init() {
 	cfg.SetDefault("analyzer.topology.backend", "memory")
 	cfg.SetDefault("analyzer.topology.probes", []string{})
 	cfg.SetDefault("analyzer.topology.k8s.config_file", "/etc/skydive/kubeconfig")
+	cfg.SetDefault("analyzer.topology.ovn.address", "unix:///var/run/openvswitch/ovnnb_db.sock")
 	cfg.SetDefault("analyzer.topology.istio.config_file", "/etc/skydive/kubeconfig")
 
 	cfg.SetDefault("auth.basic.type", "basic") // defined for backward compatibility

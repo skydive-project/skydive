@@ -110,6 +110,7 @@ analyzer:
     probes:
       # - k8s
       # - istio
+      # - ovn
 
     k8s:
       # kubeconfig resolution order:
@@ -158,6 +159,12 @@ analyzer:
       - quotaspecbinding
       - serviceentry
       - virtualservice
+
+    ovn:
+      # OVN northbound address. Format can be either:
+      # * tcp://addr:port
+      # * unix:///var/run/openvswitch/ovnnb_db.sock
+      # address: unix:///var/run/openvswitch/ovnnb_db.sock
 
   replication:
     # debug: false
