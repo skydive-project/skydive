@@ -7,5 +7,5 @@ DIR="$(dirname "$0")"
 
 . "$DIR/run-tests-utils.sh"
 network_setup
-WITH_OPENCONTRAIL=false tests_run
+WITH_OVN=true WITH_OPENCONTRAIL=false tests_run
 exit $RETCODE
