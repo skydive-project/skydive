@@ -19,6 +19,7 @@ package topology
 
 import (
 	"fmt"
+	"time"
 
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/skydive-project/skydive/common"
@@ -144,15 +145,28 @@ func HaveLink(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, relationType
 	return g.AreLinked(node1, node2, graph.Metadata{"RelationType": relationType})
 }
 
-// AddLink minks the parent and the child node with the specified relation type and metadata
-func AddLink(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, relationType string, metadata graph.Metadata) (*graph.Edge, error) {
+// NewLink creates a link between a parent and a child node with the specified relation type and metadata
+func NewLink(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, relationType string, metadata graph.Metadata) (*graph.Edge, error) {
 	m := graph.Metadata{"RelationType": relationType}
 	for k, v := range metadata {
 		m[k] = v
 	}
 
 	id, _ := uuid.NewV5(uuid.NamespaceOID, []byte(node1.ID+node2.ID+graph.Identifier(relationType)))
-	return g.NewEdge(graph.Identifier(id.String()), node1, node2, m)
+	edge := g.CreateEdge(graph.Identifier(id.String()), node1, node2, m, graph.Time(time.Now()))
+	if edge == nil {
+		return nil, fmt.Errorf("Failed to create edge with id %s", id.String())
+	}
+	return edge, nil
+}
+
+// AddLink links the parent and the child node with the specified relation type and metadata
+func AddLink(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, relationType string, metadata graph.Metadata) (*graph.Edge, error) {
+	edge, err := NewLink(g, node1, node2, relationType, metadata)
+	if err != nil {
+		return nil, err
+	}
+	return edge, g.AddEdge(edge)
 }
 
 // HaveLayer2Link returns true if parent and child have the same layer 2
