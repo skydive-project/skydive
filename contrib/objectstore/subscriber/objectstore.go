@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2019 IBM, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy ofthe License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specificlanguage governing permissions and
+ * limitations under the License.
+ *
+ */
+
 package subscriber
 
 import (
@@ -5,15 +22,13 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 
-	"github.com/skydive-project/skydive/contrib/objectstore/subscriber/client"
-	"github.com/skydive-project/skydive/contrib/objectstore/subscriber/flowtransformer"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 	ws "github.com/skydive-project/skydive/websocket"
@@ -31,10 +46,18 @@ type stream struct {
 type Subscriber struct {
 	bucket            string
 	objectPrefix      string
-	currentStream     stream
+	currentStream     map[Tag]stream
+	maxFlowsPerObject int
+	maxFlowArraySize  int
 	maxStreamDuration time.Duration
-	objectStoreClient client.Client
-	flowTransformer   flowtransformer.FlowTransformer
+	maxObjectDuration time.Duration
+	objectStoreClient Client
+	flowTransformer   FlowTransformer
+	flowClassifier    FlowClassifier
+	flows             map[Tag][]interface{}
+	flowsMutex        sync.Mutex
+	lastFlushTime     map[Tag]time.Time
+	flushTimers       map[Tag]*time.Timer
 }
 
 // OnStructMessage is triggered when WS server sends us a message.
@@ -54,45 +77,111 @@ func (s *Subscriber) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	}
 }
 
-// StoreFlows writes a set of flows to the object storage service
+// StoreFlows store flows in memory, before being written to the object store
 func (s *Subscriber) StoreFlows(flows []*flow.Flow) error {
+	endTime := time.Now()
+
+	s.flowsMutex.Lock()
+	defer s.flowsMutex.Unlock()
+
+	// transform flows and save to in-memory arrays, based on tag
+	if flows != nil {
+		for _, fl := range flows {
+			var transformedFlow interface{}
+			if s.flowTransformer != nil {
+				transformedFlow = s.flowTransformer.Transform(fl)
+			} else {
+				transformedFlow = fl
+			}
+			if transformedFlow != nil {
+				flowTag := s.flowClassifier.GetFlowTag(fl)
+				s.flows[flowTag] = append(s.flows[flowTag], transformedFlow)
+			}
+		}
+	}
+
+	// check which flows needs to be flushed to the object store
+	flushedTags := make(map[Tag]bool)
+	tagsToTimerReset := make(map[Tag]bool)
+	for tag := range s.flows {
+		if _, ok := s.lastFlushTime[tag]; !ok {
+			s.lastFlushTime[tag] = endTime
+			tagsToTimerReset[tag] = true
+		}
+		for {
+			flowsLength := len(s.flows[tag])
+			if flowsLength == 0 {
+				break
+			}
+			if flowsLength < s.maxFlowsPerObject && time.Since(s.lastFlushTime[tag]) < s.maxObjectDuration {
+				break
+			}
+
+			if s.flushFlowsToObject(tag, endTime) != nil {
+				break
+			}
+
+			flushedTags[tag] = true
+			tagsToTimerReset[tag] = true
+		}
+
+		// check if need to trim flow array
+		overflowCount := len(s.flows["tag"]) - s.maxFlowArraySize
+		if overflowCount > 0 {
+			logging.GetLogger().Warningf("Flow array for tag '%s' overflowed maximum size. Discarding %d flows", string(tag), overflowCount)
+			s.flows["tag"] = s.flows["tag"][overflowCount:]
+		}
+	}
+
+	for tag := range flushedTags {
+		// copy slice to free up memory of already flushed flows
+		newArray := make([]interface{}, 0, len(s.flows[tag]))
+		copy(newArray, s.flows[tag])
+		s.flows[tag] = newArray
+	}
+
+	for tag := range tagsToTimerReset {
+		// stop old flush timers
+		oldTimer, ok := s.flushTimers[tag]
+		if ok {
+			oldTimer.Stop()
+		}
+	}
+
+	// set a timer for next flush
+	for tag := range tagsToTimerReset {
+		s.flushTimers[tag] = time.AfterFunc(s.maxObjectDuration-time.Since(endTime), func() { s.StoreFlows(nil) })
+
+		// a single timer will cover all of the flushed tags
+		break
+	}
+
+	return nil
+}
+
+func (s *Subscriber) flushFlowsToObject(tag Tag, endTime time.Time) error {
+	flows := s.flows[tag]
 	if len(flows) == 0 {
 		return nil
 	}
 
-	var jsonMarshalInput interface{}
-	if s.flowTransformer == nil {
-		jsonMarshalInput = flows
-	} else {
-		transformedFlows := make([]interface{}, 0, len(flows))
-		for _, f := range flows {
-			transformedFlow := s.flowTransformer.Transform(f)
-			if transformedFlow != nil {
-				transformedFlows = append(transformedFlows, transformedFlow)
-			}
-		}
-		jsonMarshalInput = transformedFlows
+	if len(flows) > s.maxFlowsPerObject {
+		flows = flows[:s.maxFlowsPerObject]
 	}
 
-	flowsBytes, err := json.Marshal(jsonMarshalInput)
+	flowsBytes, err := json.Marshal(flows)
 	if err != nil {
 		logging.GetLogger().Error("Error encoding flows: ", err)
 		return err
 	}
 
-	var firstTime int64 = math.MaxInt64
-	var lastTime int64
-	for _, fl := range flows {
-		if fl.Last < firstTime {
-			firstTime = fl.Last
-		}
-		if fl.Last > lastTime {
-			lastTime = fl.Last
-		}
-	}
+	startTime := s.lastFlushTime[tag]
+	startTimeString := strconv.FormatInt(startTime.UTC().UnixNano()/int64(time.Millisecond), 10)
+	endTimeString := strconv.FormatInt(endTime.UTC().UnixNano()/int64(time.Millisecond), 10)
+
 	metadata := map[string]*string{
-		"first-timestamp": aws.String(strconv.FormatInt(firstTime, 10)),
-		"last-timestamp":  aws.String(strconv.FormatInt(lastTime, 10)),
+		"start-timestamp": aws.String(startTimeString),
+		"end-timestamp":   aws.String(endTimeString),
 		"num-records":     aws.String(strconv.Itoa(len(flows))),
 	}
 
@@ -102,12 +191,12 @@ func (s *Subscriber) StoreFlows(flows []*flow.Flow) error {
 	w.Write(flowsBytes)
 	w.Close()
 
-	currentStream := s.currentStream
-	if time.Since(currentStream.ID) >= s.maxStreamDuration {
-		currentStream = stream{ID: time.Now()}
+	currentStream := s.currentStream[tag]
+	if endTime.Sub(currentStream.ID) >= s.maxStreamDuration {
+		currentStream = stream{ID: endTime}
 	}
 
-	objectKey := strings.Join([]string{s.objectPrefix, currentStream.ID.UTC().Format("20060102T150405Z"), fmt.Sprintf("%08d.gz", currentStream.SeqNumber)}, "/")
+	objectKey := strings.Join([]string{s.objectPrefix, string(tag), currentStream.ID.UTC().Format("20060102T150405Z"), fmt.Sprintf("%08d.gz", currentStream.SeqNumber)}, "/")
 	err = s.objectStoreClient.WriteObject(s.bucket, objectKey, string(b.Bytes()), "application/json", "gzip", metadata)
 
 	if err != nil {
@@ -115,21 +204,31 @@ func (s *Subscriber) StoreFlows(flows []*flow.Flow) error {
 		return err
 	}
 
+	// flush was successful, update state
+	s.lastFlushTime[tag] = endTime
 	currentStream.SeqNumber++
-	s.currentStream = currentStream
+	s.currentStream[tag] = currentStream
+	s.flows[tag] = s.flows[tag][len(flows):]
 
 	return nil
 }
 
 // New returns a new flows subscriber writing to an object storage service
-func New(endpoint, region, bucket, accessKey, secretKey, objectPrefix string, maxSecondsPerStream int, flowTransformer flowtransformer.FlowTransformer) *Subscriber {
-	objectStoreClient := client.New(endpoint, region, accessKey, secretKey)
+func New(objectStoreClient Client, bucket, objectPrefix string, maxFlowArraySize, maxFlowsPerObject, maxSecondsPerObject, maxSecondsPerStream int, flowTransformer FlowTransformer, flowClassifier FlowClassifier) *Subscriber {
 	s := &Subscriber{
 		bucket:            bucket,
 		objectPrefix:      objectPrefix,
+		maxFlowsPerObject: maxFlowsPerObject,
+		maxFlowArraySize:  maxFlowArraySize,
+		maxObjectDuration: time.Second * time.Duration(maxSecondsPerObject),
 		maxStreamDuration: time.Second * time.Duration(maxSecondsPerStream),
 		objectStoreClient: objectStoreClient,
 		flowTransformer:   flowTransformer,
+		flowClassifier:    flowClassifier,
+		currentStream:     make(map[Tag]stream),
+		flows:             make(map[Tag][]interface{}),
+		lastFlushTime:     make(map[Tag]time.Time),
+		flushTimers:       make(map[Tag]*time.Timer),
 	}
 	return s
 }
