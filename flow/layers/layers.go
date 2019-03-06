@@ -29,6 +29,8 @@ type LayerDHCPv4 struct {
 //proteus:generate
 type LayerDNS struct {
 	*layers.DNS
+	DNSQuestions []string
+	DNSAnswers   []string
 }
 
 // LayerVRRPv2 wrapper to generate extra layer
