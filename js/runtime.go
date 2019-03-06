@@ -404,6 +404,9 @@ func (r *Runtime) ExecFunction(source string, params ...interface{}) (v otto.Val
 func (r *Runtime) ExecPromise(source string, params ...interface{}) (v otto.Value, err error) {
 	var done chan otto.Value
 	r.Do(func(vm *otto.Otto) { done, err = r.CallPromise(source, params...) })
+	if err != nil {
+		return otto.UndefinedValue(), err
+	}
 	v = <-done
 	return v, err
 }
