@@ -122,7 +122,7 @@ func (p *EBPFProbe) newFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow
 			netA := C.GoBytes(unsafe.Pointer(&kernFlow.network_layer.ip_src[0]), net.IPv6len)
 			netB := C.GoBytes(unsafe.Pointer(&kernFlow.network_layer.ip_dst[0]), net.IPv6len)
 			f.Network = &flow.FlowLayer{
-				Protocol: flow.FlowProtocol_IPV4,
+				Protocol: flow.FlowProtocol_IPV6,
 				A:        net.IP(netA).String(),
 				B:        net.IP(netB).String(),
 			}
