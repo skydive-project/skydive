@@ -27,19 +27,23 @@ import (
 // AreLinked return true if (a, b) should be linked
 type AreLinked func(a, b interface{}) bool
 
+// GetMetadata returns the metadata of the edge
+type GetMetadata func(a, b interface{}, typeA, typeB, manager string) graph.Metadata
+
 // ABLinker basis for a simple A to B linker
 type ABLinker struct {
-	manager   string
-	typ       string
-	graph     *graph.Graph
-	aCache    *ResourceCache
-	bCache    *ResourceCache
-	areLinked AreLinked
+	manager     string
+	typeA       string
+	typeB       string
+	graph       *graph.Graph
+	aCache      *ResourceCache
+	bCache      *ResourceCache
+	areLinked   AreLinked
+	getMetadata GetMetadata
 }
 
-func (l *ABLinker) newEdge(parent, child *graph.Node) *graph.Edge {
-	id := graph.GenID(string(parent.ID), string(child.ID), "RelationType", l.typ)
-	m := NewEdgeMetadata(l.manager, l.typ)
+func (l *ABLinker) newEdge(parent, child *graph.Node, m graph.Metadata) *graph.Edge {
+	id := graph.GenID(string(parent.ID), string(child.ID), "RelationType", l.typeA)
 	return l.graph.CreateEdge(id, parent, child, m, graph.TimeUTC(), "")
 }
 
@@ -51,7 +55,8 @@ func (l *ABLinker) GetABLinks(aNode *graph.Node) (edges []*graph.Edge) {
 			uid := b.(metav1.Object).GetUID()
 			if bNode := l.graph.GetNode(graph.Identifier(uid)); bNode != nil {
 				if l.areLinked(a, b) {
-					edges = append(edges, l.newEdge(aNode, bNode))
+					m := l.getMetadata(a, b, l.typeA, l.typeB, l.manager)
+					edges = append(edges, l.newEdge(aNode, bNode, m))
 				}
 			}
 		}
@@ -67,7 +72,8 @@ func (l *ABLinker) GetBALinks(bNode *graph.Node) (edges []*graph.Edge) {
 			uid := a.(metav1.Object).GetUID()
 			if aNode := l.graph.GetNode(graph.Identifier(uid)); aNode != nil {
 				if l.areLinked(a, b) {
-					edges = append(edges, l.newEdge(aNode, bNode))
+					m := l.getMetadata(a, b, l.typeA, l.typeB, l.manager)
+					edges = append(edges, l.newEdge(aNode, bNode, m))
 				}
 			}
 		}
@@ -76,7 +82,7 @@ func (l *ABLinker) GetBALinks(bNode *graph.Node) (edges []*graph.Edge) {
 }
 
 // NewABLinker create and initialize an ABLinker based linker
-func NewABLinker(g *graph.Graph, aManager, aType, bManager, bType string, areLinked AreLinked) probe.Probe {
+func NewABLinker(g *graph.Graph, aManager, aType, bManager, bType string, areLinked AreLinked, getMetadata ...GetMetadata) probe.Probe {
 	aProbe := GetSubprobe(aManager, aType)
 	bProbe := GetSubprobe(bManager, bType)
 
@@ -86,11 +92,19 @@ func NewABLinker(g *graph.Graph, aManager, aType, bManager, bType string, areLin
 
 	innerLinker := new(ABLinker)
 	innerLinker.manager = aManager
-	innerLinker.typ = aType
+	innerLinker.typeA = aType
+	innerLinker.typeB = bType
 	innerLinker.graph = g
 	innerLinker.aCache = aProbe.(*ResourceCache)
 	innerLinker.bCache = bProbe.(*ResourceCache)
+	innerLinker.getMetadata = func(a, b interface{}, typeA, typeB, manager string) graph.Metadata {
+		return NewEdgeMetadata(manager, typeA)
+	}
 	innerLinker.areLinked = areLinked
+
+	if len(getMetadata) > 0 {
+		innerLinker.getMetadata = getMetadata[0]
+	}
 
 	rl := graph.NewResourceLinker(
 		g,

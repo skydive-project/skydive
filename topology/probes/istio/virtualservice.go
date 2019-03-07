@@ -55,6 +55,7 @@ type virtualServiceSpec struct {
 				App     string `mapstructure:"host"`
 				Version string `mapstructure:"subset"`
 			} `mapstructure:"destination"`
+			Weight int `mapstructure:"weight"`
 		} `mapstructure:"route"`
 	} `mapstructure:"http"`
 }
@@ -69,6 +70,30 @@ func (vsSpec virtualServiceSpec) getAppsVersions() map[string][]string {
 		}
 	}
 	return appsVersions
+}
+
+func virtualServicePodMetadata(a, b interface{}, typeA, typeB, manager string) graph.Metadata {
+	vs := a.(*kiali.VirtualService)
+	pod := b.(*v1.Pod)
+	vsSpec := &virtualServiceSpec{}
+	if err := mapstructure.Decode(vs.Spec, vsSpec); err != nil {
+		return nil
+	}
+	m := k8s.NewEdgeMetadata(manager, typeA)
+	weight := 0
+	for _, http := range vsSpec.HTTP {
+		for _, route := range http.Route {
+			app := route.Destination.App
+			version := route.Destination.Version
+			if app == pod.Labels["app"] && version == pod.Labels["version"] {
+				weight += route.Weight
+			}
+		}
+	}
+	if weight > 0 {
+		m["weight"] = weight
+	}
+	return m
 }
 
 func virtualServicePodAreLinked(a, b interface{}) bool {
@@ -92,5 +117,5 @@ func virtualServicePodAreLinked(a, b interface{}) bool {
 }
 
 func newVirtualServicePodLinker(g *graph.Graph) probe.Probe {
-	return k8s.NewABLinker(g, Manager, "virtualservice", k8s.Manager, "pod", virtualServicePodAreLinked)
+	return k8s.NewABLinker(g, Manager, "virtualservice", k8s.Manager, "pod", virtualServicePodAreLinked, virtualServicePodMetadata)
 }
