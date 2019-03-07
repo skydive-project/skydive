@@ -1658,40 +1658,40 @@
 			"revisionTime": "2017-12-04T15:54:27Z"
 		},
 		{
-			"checksumSHA1": "dY0KFmKy0CuFTgKzrIxlT8aW7+g=",
+			"checksumSHA1": "+7AX606dK1An0NDJWOJ+2Wl+XgQ=",
 			"path": "github.com/jbowtie/gokogiri",
-			"revision": "e2644e49d5b4a4d2382d1a4b28dfbb313a4ffb0c",
-			"revisionTime": "2016-07-04T00:25:24Z"
+			"revision": "37f655d3078ff30b0a3aabbc2329480ae1d25097",
+			"revisionTime": "2019-03-01T02:16:39Z"
 		},
 		{
 			"checksumSHA1": "pYPwTpovW+lIUb58aOZuTZftG+c=",
 			"path": "github.com/jbowtie/gokogiri/help",
-			"revision": "e2644e49d5b4a4d2382d1a4b28dfbb313a4ffb0c",
-			"revisionTime": "2016-07-04T00:25:24Z"
+			"revision": "37f655d3078ff30b0a3aabbc2329480ae1d25097",
+			"revisionTime": "2019-03-01T02:16:39Z"
 		},
 		{
 			"checksumSHA1": "xJD3yhxwE8VXS741wgWplhEdzsQ=",
 			"path": "github.com/jbowtie/gokogiri/html",
-			"revision": "e2644e49d5b4a4d2382d1a4b28dfbb313a4ffb0c",
-			"revisionTime": "2016-07-04T00:25:24Z"
+			"revision": "37f655d3078ff30b0a3aabbc2329480ae1d25097",
+			"revisionTime": "2019-03-01T02:16:39Z"
 		},
 		{
 			"checksumSHA1": "GYnhzFMWYi7kfsdt6Eh0y9VaBUA=",
 			"path": "github.com/jbowtie/gokogiri/util",
-			"revision": "e2644e49d5b4a4d2382d1a4b28dfbb313a4ffb0c",
-			"revisionTime": "2016-07-04T00:25:24Z"
+			"revision": "37f655d3078ff30b0a3aabbc2329480ae1d25097",
+			"revisionTime": "2019-03-01T02:16:39Z"
 		},
 		{
-			"checksumSHA1": "/kcC0I9eEONlz1Owk/w7G6ZItCw=",
+			"checksumSHA1": "TUeQWOb9CHhfD1N+FB9quiBT6qU=",
 			"path": "github.com/jbowtie/gokogiri/xml",
-			"revision": "e2644e49d5b4a4d2382d1a4b28dfbb313a4ffb0c",
-			"revisionTime": "2016-07-04T00:25:24Z"
+			"revision": "37f655d3078ff30b0a3aabbc2329480ae1d25097",
+			"revisionTime": "2019-03-01T02:16:39Z"
 		},
 		{
 			"checksumSHA1": "9fLUX2ttIRXryNOBjb/hvqRSeIg=",
 			"path": "github.com/jbowtie/gokogiri/xpath",
-			"revision": "e2644e49d5b4a4d2382d1a4b28dfbb313a4ffb0c",
-			"revisionTime": "2016-07-04T00:25:24Z"
+			"revision": "37f655d3078ff30b0a3aabbc2329480ae1d25097",
+			"revisionTime": "2019-03-01T02:16:39Z"
 		},
 		{
 			"checksumSHA1": "0ZrwvB6KoGPj2PoDNSEJwxQ6Mog=",
