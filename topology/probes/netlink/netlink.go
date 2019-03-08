@@ -92,6 +92,17 @@ type Probe struct {
 	wg       sync.WaitGroup
 }
 
+// VFS describes a vfs fields
+type VFS struct {
+	ID        int64
+	LinkState int64
+	MAC       string
+	QoS       int64
+	SpoofChk  bool
+	TxRate    int64
+	Vlan      int64
+}
+
 func (u *NetNsProbe) linkPendingChildren(intf *graph.Node, index int64) {
 	// ignore ovs-system interface as it doesn't make any sense according to
 	// the following thread:
@@ -504,16 +515,16 @@ func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 	}
 
 	if len(attrs.Vfs) > 0 {
-		vfs := make([]interface{}, len(attrs.Vfs))
+		vfs := make([]VFS, len(attrs.Vfs))
 		for i, vf := range attrs.Vfs {
-			vfs[i] = map[string]interface{}{
-				"ID":        int64(vf.ID),
-				"LinkState": int64(vf.LinkState),
-				"MAC":       vf.Mac.String(),
-				"Qos":       int64(vf.Qos),
-				"Spoofchk":  vf.Spoofchk,
-				"TxRate":    int64(vf.TxRate),
-				"Vlan":      int64(vf.Vlan),
+			vfs[i] = VFS{
+				ID:        int64(vf.ID),
+				LinkState: int64(vf.LinkState),
+				MAC:       vf.Mac.String(),
+				QoS:       int64(vf.Qos),
+				SpoofChk:  vf.Spoofchk,
+				TxRate:    int64(vf.TxRate),
+				Vlan:      int64(vf.Vlan),
 			}
 		}
 		metadata["VFS"] = vfs
