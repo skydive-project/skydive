@@ -137,7 +137,8 @@ func newContainerProbe(client interface{}, g *graph.Graph) Subprobe {
 	}
 
 	containerFilter := newTypesFilter(Manager, "container")
-	c.containerIndexer = newObjectIndexerFromFilter(g, c.EventHandler, containerFilter, MetadataFields("Namespace", "Pod")...)
+	c.containerIndexer = newObjectIndexerFromFilter(g, c, containerFilter, MetadataFields("Namespace", "Pod")...)
+	c.containerIndexer.Start()
 	c.KubeCache = RegisterKubeCache(client.(*kubernetes.Clientset).CoreV1().RESTClient(), &v1.Pod{}, "pods", c)
 	return c
 }
