@@ -622,3 +622,47 @@ func TestStorageScenario(t *testing.T) {
 		},
 	)
 }
+
+func TestWordpressScenario(t *testing.T) {
+	storage := "./k8s/wordpress.sh"
+	testRunner(
+		t,
+		[]Cmd{
+			{storage + " start", true},
+		},
+		[]Cmd{
+			{storage + " stop", false},
+		},
+		[]CheckFunction{
+			func(c *CheckContext) error {
+				// check wordpress-mysql nodes
+				if _, err := checkNodeCreation(t, c, k8s.Manager, "persistentvolumeclaim", "mysql-pv-claim"); err != nil {
+					return err
+				}
+
+				if _, err := checkNodeCreation(t, c, k8s.Manager, "deployment", "wordpress-mysql"); err != nil {
+					return err
+				}
+
+				if _, err := checkNodeCreation(t, c, k8s.Manager, "service", "wordpress-mysql"); err != nil {
+					return err
+				}
+
+				// check wordpress nodes
+				if _, err := checkNodeCreation(t, c, k8s.Manager, "persistentvolumeclaim", "wp-pv-claim"); err != nil {
+					return err
+				}
+
+				if _, err := checkNodeCreation(t, c, k8s.Manager, "deployment", "wordpress"); err != nil {
+					return err
+				}
+
+				if _, err := checkNodeCreation(t, c, k8s.Manager, "service", "wordpress"); err != nil {
+					return err
+				}
+
+				return nil
+			},
+		},
+	)
+}
