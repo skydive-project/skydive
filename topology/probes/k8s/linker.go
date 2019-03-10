@@ -45,9 +45,8 @@ func (l *ABLinker) newEdge(parent, child *graph.Node) *graph.Edge {
 
 // GetABLinks implementing graph.Linker
 func (l *ABLinker) GetABLinks(aNode *graph.Node) (edges []*graph.Edge) {
-	namespace, _ := aNode.GetFieldString(MetadataField("Namespace"))
 	if a := l.aCache.GetByNode(aNode); a != nil {
-		for _, b := range l.bCache.getByNamespace(namespace) {
+		for _, b := range l.bCache.List() {
 			uid := b.(metav1.Object).GetUID()
 			if bNode := l.graph.GetNode(graph.Identifier(uid)); bNode != nil {
 				if l.areLinked(a, b) {
@@ -61,9 +60,8 @@ func (l *ABLinker) GetABLinks(aNode *graph.Node) (edges []*graph.Edge) {
 
 // GetBALinks implementing graph.Linker
 func (l *ABLinker) GetBALinks(bNode *graph.Node) (edges []*graph.Edge) {
-	namespace, _ := bNode.GetFieldString(MetadataField("Namespace"))
 	if b := l.bCache.GetByNode(bNode); b != nil {
-		for _, a := range l.aCache.getByNamespace(namespace) {
+		for _, a := range l.aCache.List() {
 			uid := a.(metav1.Object).GetUID()
 			if aNode := l.graph.GetNode(graph.Identifier(uid)); aNode != nil {
 				if l.areLinked(a, b) {

@@ -57,7 +57,9 @@ func newStatefulSetProbe(client interface{}, g *graph.Graph) Subprobe {
 }
 
 func statefulSetPodAreLinked(a, b interface{}) bool {
-	return matchLabelSelector(b.(*v1.Pod), a.(*v1beta1.StatefulSet).Spec.Selector)
+	statefulset := a.(*v1beta1.StatefulSet)
+	pod := b.(*v1.Pod)
+	return MatchNamespace(pod, statefulset) && matchLabelSelector(pod, statefulset.Spec.Selector)
 }
 
 func newStatefulSetPodLinker(g *graph.Graph) probe.Probe {

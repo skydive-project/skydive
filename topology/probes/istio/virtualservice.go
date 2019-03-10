@@ -74,6 +74,11 @@ func (vsSpec virtualServiceSpec) getAppsVersions() map[string][]string {
 func virtualServicePodAreLinked(a, b interface{}) bool {
 	vs := a.(*kiali.VirtualService)
 	pod := b.(*v1.Pod)
+
+	if !k8s.MatchNamespace(vs, pod) {
+		return false
+	}
+
 	vsSpec := &virtualServiceSpec{}
 	if err := mapstructure.Decode(vs.Spec, vsSpec); err != nil {
 		return false

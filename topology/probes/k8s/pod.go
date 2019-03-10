@@ -68,9 +68,11 @@ func newPodProbe(client interface{}, g *graph.Graph) Subprobe {
 func podPVCAreLinked(a, b interface{}) bool {
 	pod := a.(*v1.Pod)
 	pvc := b.(*v1.PersistentVolumeClaim)
-	if pod.Namespace != pvc.Namespace {
+
+	if !MatchNamespace(pod, pvc) {
 		return false
 	}
+
 	for _, vol := range pod.Spec.Volumes {
 		if vol.VolumeSource.PersistentVolumeClaim != nil && vol.VolumeSource.PersistentVolumeClaim.ClaimName == pvc.Name {
 			return true

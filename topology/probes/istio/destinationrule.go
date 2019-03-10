@@ -54,7 +54,7 @@ type destinationRuleSpec struct {
 func destinationRuleServiceAreLinked(a, b interface{}) bool {
 	dr := a.(*kiali.DestinationRule)
 	service := b.(*v1.Service)
-	return dr.Spec["host"] == service.Labels["app"]
+	return k8s.MatchNamespace(dr, service) && dr.Spec["host"] == service.Labels["app"]
 }
 
 func newDestinationRuleServiceLinker(g *graph.Graph) probe.Probe {
