@@ -602,16 +602,17 @@ func TestStorageScenario(t *testing.T) {
 					return err
 				}
 
-				// FIXME: works when stepping with debugger
-				// if err = checkEdge(t, c, sc, pvc, "storageclass"); err != nil {
-				// 	return err
-				// }
+				if err = checkEdge(t, c, sc, pvc, "storageclass"); err != nil {
+					return err
+				}
 
 				if err = checkEdge(t, c, pod, pvc, "pod"); err != nil {
 					return err
 				}
 
-				// FIXME: works when stepping with debugger
+				// FIXME: disabled as we can't guaranty that
+				// k8s will fulfill pvc:task-pv-claim with
+				// pv:task-pv-volume and not an existing pv
 				// if err = checkEdge(t, c, pvc, pv, "persistentvolumeclaim"); err != nil {
 				// 	return err
 				// }
