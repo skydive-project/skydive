@@ -70,6 +70,15 @@ func NewMetadata(manager, ty string, kubeMeta graph.Metadata, extra interface{},
 	return m
 }
 
+// SetState field of node metadata
+func SetState(m *graph.Metadata, isUp bool) {
+	state := "DOWN"
+	if isUp {
+		state = "UP"
+	}
+	m.SetField("State", state)
+}
+
 // NewEdgeMetadata creates a new edge metadata
 func NewEdgeMetadata(manager, name string) graph.Metadata {
 	m := graph.Metadata{

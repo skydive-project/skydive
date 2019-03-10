@@ -45,7 +45,10 @@ func (h *persistentVolumeClaimHandler) Map(obj interface{}) (graph.Identifier, g
 	m.SetFieldAndNormalize("VolumeMode", pvc.Spec.VolumeMode)
 	m.SetFieldAndNormalize("Status", pvc.Status.Phase)
 
-	return graph.Identifier(pvc.GetUID()), NewMetadata(Manager, "persistentvolumeclaim", m, pvc, pvc.Name)
+	metadata := NewMetadata(Manager, "persistentvolumeclaim", m, pvc, pvc.Name)
+	SetState(&metadata, pvc.Status.Phase == "Bound")
+
+	return graph.Identifier(pvc.GetUID()), metadata
 }
 
 func newPersistentVolumeClaimProbe(client interface{}, g *graph.Graph) Subprobe {

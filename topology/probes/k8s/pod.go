@@ -58,7 +58,10 @@ func (h *podHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	}
 	m.SetField("Status", reason)
 
-	return graph.Identifier(pod.GetUID()), NewMetadata(Manager, "pod", m, pod, pod.Name)
+	metadata := NewMetadata(Manager, "pod", m, pod, pod.Name)
+	SetState(&metadata, reason == "Running")
+
+	return graph.Identifier(pod.GetUID()), metadata
 }
 
 func newPodProbe(client interface{}, g *graph.Graph) Subprobe {

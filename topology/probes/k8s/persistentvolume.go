@@ -47,7 +47,10 @@ func (h *persistentVolumeHandler) Map(obj interface{}) (graph.Identifier, graph.
 		m.SetFieldAndNormalize("ClaimRef", pv.Spec.ClaimRef.Name)
 	}
 
-	return graph.Identifier(pv.GetUID()), NewMetadata(Manager, "persistentvolume", m, pv, pv.Name)
+	metadata := NewMetadata(Manager, "persistentvolume", m, pv, pv.Name)
+	SetState(&metadata, pv.Status.Phase != "Failed")
+
+	return graph.Identifier(pv.GetUID()), metadata
 }
 
 func newPersistentVolumeProbe(client interface{}, g *graph.Graph) Subprobe {
