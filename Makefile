@@ -89,6 +89,7 @@ BUILD_TAGS?=$(TAGS)
 WITH_LXD?=true
 WITH_OPENCONTRAIL?=true
 WITH_LIBVIRT?=true
+WITH_EBPF_DOCKER_BUILDER?=false
 
 export PATH:=$(BUILD_TOOLS):$(PATH)
 
@@ -377,7 +378,11 @@ dpdk.clean:
 .PHONY: ebpf.build
 ebpf.build:
 ifeq ($(WITH_EBPF), true)
-	$(MAKE) -C probe/ebpf
+ifeq ($(WITH_EBPF_DOCKER_BUILDER), true)
+	$(MAKE) -C probe/ebpf docker-ebpf-build
+else
+	$(MAKE) -C probe/ebpf ebpf-build
+endif
 endif
 
 .PHONY: ebpf.clean
