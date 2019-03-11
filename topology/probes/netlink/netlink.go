@@ -22,11 +22,8 @@ package netlink
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"net"
-	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -79,17 +76,19 @@ type NetNsProbe struct {
 	wg                   sync.WaitGroup
 	quit                 chan bool
 	netNsNameTry         map[graph.Identifier]int
+	sriovProcessor       *graph.Processor
 }
 
 // Probe describes a list NetLink NameSpace probe to enhance the graph
 type Probe struct {
 	common.RWMutex
-	Graph    *graph.Graph
-	hostNode *graph.Node
-	epollFd  int
-	probes   map[int32]*NetNsProbe
-	state    int64
-	wg       sync.WaitGroup
+	Graph          *graph.Graph
+	hostNode       *graph.Node
+	epollFd        int
+	probes         map[int32]*NetNsProbe
+	state          int64
+	wg             sync.WaitGroup
+	sriovProcessor *graph.Processor
 }
 
 func (u *NetNsProbe) linkPendingChildren(intf *graph.Node, index int64) {
@@ -203,49 +202,6 @@ func (u *NetNsProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 				}
 			}()
 		}
-	}
-}
-
-func (u *NetNsProbe) handleVF(intf *graph.Node, ifName string) error {
-	physfnNetPath := fmt.Sprintf("/sys/class/net/%s/device/physfn/net", ifName)
-	fileinfos, err := ioutil.ReadDir(physfnNetPath)
-	if err != nil {
-		return err
-	} else if len(fileinfos) == 0 {
-		return fmt.Errorf("Failed to find PV for %s", ifName)
-	}
-
-	physfnIfIndexPath := filepath.Join(physfnNetPath, fileinfos[0].Name(), "ifindex")
-	content, err := ioutil.ReadFile(physfnIfIndexPath)
-	if err != nil {
-		return err
-	}
-
-	// The interface is a VF
-	physfnIfIndex, err := strconv.Atoi(strings.TrimSpace(string(content)))
-	if err != nil {
-		return err
-	}
-
-	u.linkIntfToIndex(intf, int64(physfnIfIndex), "vf", nil)
-	return nil
-}
-
-func (u *NetNsProbe) handleIntfIsVF(intf *graph.Node, link netlink.Link) {
-	attrs := link.Attrs()
-	ifName := attrs.Name
-	if u.handleVF(intf, ifName) != nil {
-		// It has been seen cases where the folder was existing but it was empty
-		// We suspect this is a race so we retry a few times
-		go common.Retry(func() error {
-			u.Graph.Lock()
-			defer u.Graph.Unlock()
-
-			u.Lock()
-			defer u.Unlock()
-
-			return u.handleVF(intf, ifName)
-		}, 3, time.Second)
 	}
 }
 
@@ -551,22 +507,6 @@ func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 		}
 	}
 
-	if len(attrs.Vfs) > 0 {
-		vfs := make([]interface{}, len(attrs.Vfs))
-		for i, vf := range attrs.Vfs {
-			vfs[i] = map[string]interface{}{
-				"ID":        int64(vf.ID),
-				"LinkState": int64(vf.LinkState),
-				"MAC":       vf.Mac.String(),
-				"Qos":       int64(vf.Qos),
-				"Spoofchk":  vf.Spoofchk,
-				"TxRate":    int64(vf.TxRate),
-				"Vlan":      int64(vf.Vlan),
-			}
-		}
-		metadata["VFS"] = vfs
-	}
-
 	if neighbors := u.getNeighbors(attrs.Index, syscall.AF_BRIDGE); len(*neighbors) > 0 {
 		metadata["FDB"] = neighbors
 	}
@@ -624,6 +564,14 @@ func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 		metadata["BondMode"] = link.(*netlink.Bond).Mode.String()
 	}
 
+	businfo, err := u.ethtool.BusInfo(attrs.Name)
+	if err != nil && err != syscall.ENODEV {
+		logging.GetLogger().Debugf(
+			"Unable get Bus Info from ethtool (%s): %s", attrs.Name, err)
+	} else {
+		metadata["BusInfo"] = businfo
+	}
+
 	var intf *graph.Node
 
 	switch driver {
@@ -644,10 +592,11 @@ func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 	if intf == nil {
 		return
 	}
-
 	u.Lock()
 	u.links[attrs.Name] = intf
 	u.Unlock()
+
+	go u.handleSriov(u.Graph, intf, attrs.Index, businfo, attrs.Vfs, attrs.Name)
 
 	u.updateLinkNetNs(intf, link, metadata)
 
@@ -660,7 +609,6 @@ func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 
 	u.handleIntfIsChild(intf, link)
 	u.handleIntfIsVeth(intf, link)
-	u.handleIntfIsVF(intf, link)
 }
 
 func (u *NetNsProbe) getRoutingTables(link netlink.Link, table int) *RoutingTables {
@@ -1181,7 +1129,7 @@ func (u *NetNsProbe) stop() {
 	u.closeFds()
 }
 
-func newNetNsProbe(g *graph.Graph, root *graph.Node, nsPath string) (*NetNsProbe, error) {
+func newNetNsProbe(g *graph.Graph, root *graph.Node, nsPath string, sriovProcessor *graph.Processor) (*NetNsProbe, error) {
 	probe := &NetNsProbe{
 		Graph:                g,
 		Root:                 root,
@@ -1190,8 +1138,8 @@ func newNetNsProbe(g *graph.Graph, root *graph.Node, nsPath string) (*NetNsProbe
 		links:                make(map[string]*graph.Node),
 		quit:                 make(chan bool),
 		netNsNameTry:         make(map[graph.Identifier]int),
+		sriovProcessor:       sriovProcessor,
 	}
-
 	var context *common.NetNSContext
 	var err error
 
@@ -1235,7 +1183,7 @@ func newNetNsProbe(g *graph.Graph, root *graph.Node, nsPath string) (*NetNsProbe
 
 // Register a new network netlink/namespace probe in the graph
 func (u *Probe) Register(nsPath string, root *graph.Node) (*NetNsProbe, error) {
-	probe, err := newNetNsProbe(u.Graph, root, nsPath)
+	probe, err := newNetNsProbe(u.Graph, root, nsPath, u.sriovProcessor)
 	if err != nil {
 		return nil, err
 	}
@@ -1308,7 +1256,6 @@ func (u *Probe) start() {
 // Start the probe
 func (u *Probe) Start() {
 	u.Register("", u.hostNode)
-
 	go u.start()
 }
 
@@ -1319,6 +1266,7 @@ func (u *Probe) Stop() {
 
 		u.RLock()
 		defer u.RUnlock()
+		u.sriovProcessor.Stop()
 
 		for _, probe := range u.probes {
 			go probe.stop()
@@ -1336,11 +1284,13 @@ func NewProbe(g *graph.Graph, hostNode *graph.Node) (*Probe, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create epoll: %s", err)
 	}
-
+	sriovProcessor := graph.NewProcessor(g, g, graph.Metadata{"Type": "device"}, "BusInfo")
+	sriovProcessor.Start()
 	return &Probe{
-		Graph:    g,
-		hostNode: hostNode,
-		epollFd:  epfd,
-		probes:   make(map[int32]*NetNsProbe),
+		Graph:          g,
+		hostNode:       hostNode,
+		epollFd:        epfd,
+		probes:         make(map[int32]*NetNsProbe),
+		sriovProcessor: sriovProcessor,
 	}, nil
 }
