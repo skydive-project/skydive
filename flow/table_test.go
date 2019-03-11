@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/gopacket/layers"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 )
 
@@ -200,5 +201,39 @@ func TestUpdate(t *testing.T) {
 
 	if received != 3 {
 		t.Errorf("Should have been notified : %+v", flow2)
+	}
+}
+
+func TestAppSpecificTimeout(t *testing.T) {
+	var received int
+	callback := func(f *FlowArray) {
+		received += len(f.Flows)
+	}
+	updHandler := NewFlowHandler(callback, time.Second)
+	expHandler := NewFlowHandler(func(f *FlowArray) {}, 300*time.Second)
+
+	config.GetConfig().Set("flow.application_timeout.arp", 10)
+	config.GetConfig().Set("flow.application_timeout.dns", 20)
+
+	table := NewTable(updHandler, expHandler, "", TableOpts{})
+
+	flowsTime := time.Now()
+
+	arpFlow, _ := table.getOrCreateFlow("arpFlow")
+	arpFlow.Last = common.UnixMillis(flowsTime)
+	arpFlow.Application = "ARP"
+
+	dnsFlow, _ := table.getOrCreateFlow("dnsFlow")
+	dnsFlow.Last = common.UnixMillis(flowsTime)
+	dnsFlow.Application = "DNS"
+
+	table.updateAt(flowsTime.Add(time.Duration(15) * time.Second))
+
+	if received == 0 || arpFlow.FinishType != FlowFinishType_TIMEOUT {
+		t.Errorf("Should have been notified : %+v", arpFlow)
+	}
+
+	if received > 1 || dnsFlow.FinishType != FlowFinishType_NOT_FINISHED {
+		t.Errorf("Should not have been notified : %+v", dnsFlow)
 	}
 }

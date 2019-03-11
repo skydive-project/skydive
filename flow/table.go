@@ -18,6 +18,7 @@
 package flow
 
 import (
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -26,6 +27,7 @@ import (
 	"github.com/google/gopacket/layers"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 )
@@ -81,6 +83,7 @@ type Table struct {
 	tcpAssembler      *TCPAssembler
 	flowOpts          Opts
 	appPortMap        *ApplicationPortMap
+	appTimeout        map[string]int64
 }
 
 // OperationType operation type of a Flow in a flow table
@@ -102,6 +105,12 @@ type Operation struct {
 
 // NewTable creates a new flow table
 func NewTable(updateHandler *Handler, expireHandler *Handler, nodeTID string, opts ...TableOpts) *Table {
+	appTimeout := make(map[string]int64)
+	for key := range config.GetConfig().GetStringMap("flow.application_timeout") {
+		// convert seconds to milleseconds
+		appTimeout[strings.ToUpper(key)] = int64(1000 * config.GetConfig().GetInt("flow.application_timeout."+key))
+	}
+
 	t := &Table{
 		packetSeqChan:     make(chan *PacketSequence, 1000),
 		flowChanOperation: make(chan *Operation, 1000),
@@ -116,6 +125,7 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, nodeTID string, op
 		ipDefragger:       NewIPDefragger(),
 		tcpAssembler:      NewTCPAssembler(),
 		appPortMap:        NewApplicationPortMapFromConfig(),
+		appTimeout:        appTimeout,
 	}
 	if len(opts) > 0 {
 		t.Opts = opts[0]
@@ -252,6 +262,10 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 			if f.FinishType != FlowFinishType_NOT_FINISHED {
 				delete(ft.table, k)
 			}
+		} else if updateTime-f.Last > ft.appTimeout[f.Application] && ft.appTimeout[f.Application] > 0 {
+			updatedFlows = append(updatedFlows, f)
+			f.FinishType = FlowFinishType_TIMEOUT
+			delete(ft.table, k)
 		} else {
 			f.LastUpdateMetric = &FlowMetric{Start: updateFrom, Last: updateTime}
 		}

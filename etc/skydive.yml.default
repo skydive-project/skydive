@@ -458,6 +458,12 @@ flow:
     udp:
       # 1194: OPENVPN
 
+  # application specific flow timeout, in seconds
+  # this timeout is enforced in addition to the general flow.expire timeout
+  application_timeout:
+    # - arp: 10
+    # - dns: 10
+
 ui:
   # Specify the extra assets folder. Javascript and CSS files present in this
   # folder will be added to the WebUI.
