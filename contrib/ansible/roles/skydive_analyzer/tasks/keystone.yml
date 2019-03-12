@@ -1,109 +1,113 @@
 ---
-- name: Install Keystone requirements (yum)
-  package:
-    name: python2-shade
-    state: present
-    use: yum
-  when:
-    - ansible_os_family == "RedHat"
-    - ansible_distribution_major_version|int == 7
-  ignore_errors: yes
+- name: Handle Keystone authentication
+  delegate_to: localhost
+  become: no
+  block:
+    - name: Install Keystone requirements (yum)
+      package:
+        name: python2-shade
+        state: present
+        use: yum
+      when:
+        - ansible_os_family == "RedHat"
+        - ansible_distribution_major_version|int == 7
+      ignore_errors: yes
 
-- name: Install Keystone requirements (dnf)
-  package:
-    name: python2-shade
-    state: present
-    use: dnf
-  when: (ansible_os_family == 'RedHat' and ansible_distribution_major_version|int > 7) or (ansible_distribution == 'Fedora')
-  ignore_errors: yes
+    - name: Install Keystone requirements (dnf)
+      package:
+        name: python2-shade
+        state: present
+        use: dnf
+      when: (ansible_os_family == 'RedHat' and ansible_distribution_major_version|int > 7) or (ansible_distribution == 'Fedora')
+      ignore_errors: yes
 
-- name: Install Keystone requirements (apt)
-  package:
-    name: python-shade
-    state: present
-    use: apt
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
-  ignore_errors: yes
+    - name: Install Keystone requirements (apt)
+      package:
+        name: python-shade
+        state: present
+        use: apt
+      when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+      ignore_errors: yes
 
-- name: Create a Skydive tenant
-  environment:
-    OS_AUTH_TOKEN: ""
-    OS_AUTH_URL: "{{ os_auth_url }}"
-    OS_USERNAME: "{{ os_username }}"
-    OS_PASSWORD: "{{ os_password }}"
-    OS_PROJECT_NAME: "{{ os_tenant_name }}"
-    OS_USER_DOMAIN_NAME: "{{ os_user_domain_name }}"
-    OS_PROJECT_DOMAIN_NAME: "{{ os_project_domain_name }}"
-    OS_IDENTITY_API_VERSION: "{{ os_identity_api_version }}"
-  os_project:
-    name: "{{ skydive_auth_os_tenant_name }}"
-    description: "Skydive admin users"
-    domain_id: "{{ skydive_auth_os_domain_id }}"
-    enabled: True
-    state: present
+    - name: Create a Skydive tenant
+      environment:
+        OS_AUTH_TOKEN: ""
+        OS_AUTH_URL: "{{ os_auth_url }}"
+        OS_USERNAME: "{{ os_username }}"
+        OS_PASSWORD: "{{ os_password }}"
+        OS_PROJECT_NAME: "{{ os_tenant_name }}"
+        OS_USER_DOMAIN_NAME: "{{ os_user_domain_name }}"
+        OS_PROJECT_DOMAIN_NAME: "{{ os_project_domain_name }}"
+        OS_IDENTITY_API_VERSION: "{{ os_identity_api_version }}"
+      os_project:
+        name: "{{ skydive_auth_os_tenant_name }}"
+        description: "Skydive admin users"
+        domain_id: "{{ skydive_auth_os_domain_id }}"
+        enabled: True
+        state: present
 
-- name: Create a Skydive keystone API user
-  environment:
-    OS_AUTH_TOKEN: ""
-    OS_AUTH_URL: "{{ os_auth_url }}"
-    OS_USERNAME: "{{ os_username }}"
-    OS_PASSWORD: "{{ os_password }}"
-    OS_PROJECT_NAME: "{{ os_tenant_name }}"
-    OS_USER_DOMAIN_NAME: "{{ os_user_domain_name }}"
-    OS_PROJECT_DOMAIN_NAME: "{{ os_project_domain_name }}"
-    OS_IDENTITY_API_VERSION: "{{ os_identity_api_version }}"
-  os_user:
-    name: "{{ skydive_username }}"
-    password: "{{ skydive_password }}"
-    domain: "{{ skydive_auth_os_domain_name }}"
-    default_project: "{{ skydive_auth_os_tenant_name }}"
-    state: present
+    - name: Create a Skydive keystone API user
+      environment:
+        OS_AUTH_TOKEN: ""
+        OS_AUTH_URL: "{{ os_auth_url }}"
+        OS_USERNAME: "{{ os_username }}"
+        OS_PASSWORD: "{{ os_password }}"
+        OS_PROJECT_NAME: "{{ os_tenant_name }}"
+        OS_USER_DOMAIN_NAME: "{{ os_user_domain_name }}"
+        OS_PROJECT_DOMAIN_NAME: "{{ os_project_domain_name }}"
+        OS_IDENTITY_API_VERSION: "{{ os_identity_api_version }}"
+      os_user:
+        name: "{{ skydive_username }}"
+        password: "{{ skydive_password }}"
+        domain: "{{ skydive_auth_os_domain_name }}"
+        default_project: "{{ skydive_auth_os_tenant_name }}"
+        state: present
 
-- name: Set skydive Keystone API user role
-  environment:
-    OS_AUTH_TOKEN: ""
-    OS_AUTH_URL: "{{ os_auth_url }}"
-    OS_USERNAME: "{{ os_username }}"
-    OS_PASSWORD: "{{ os_password }}"
-    OS_PROJECT_NAME: "{{ os_tenant_name }}"
-    OS_USER_DOMAIN_NAME: "{{ os_user_domain_name }}"
-    OS_PROJECT_DOMAIN_NAME: "{{ os_project_domain_name }}"
-    OS_IDENTITY_API_VERSION: "{{ os_identity_api_version }}"
-  os_user_role:
-    user: "{{ skydive_username }}"
-    role: "{{ skydive_auth_os_user_role }}"
-    project: "{{ skydive_auth_os_tenant_name }}"
-    state: present
+    - name: Set skydive Keystone API user role
+      environment:
+        OS_AUTH_TOKEN: ""
+        OS_AUTH_URL: "{{ os_auth_url }}"
+        OS_USERNAME: "{{ os_username }}"
+        OS_PASSWORD: "{{ os_password }}"
+        OS_PROJECT_NAME: "{{ os_tenant_name }}"
+        OS_USER_DOMAIN_NAME: "{{ os_user_domain_name }}"
+        OS_PROJECT_DOMAIN_NAME: "{{ os_project_domain_name }}"
+        OS_IDENTITY_API_VERSION: "{{ os_identity_api_version }}"
+      os_user_role:
+        user: "{{ skydive_username }}"
+        role: "{{ skydive_auth_os_user_role }}"
+        project: "{{ skydive_auth_os_tenant_name }}"
+        state: present
 
-- name: Create a Skydive keystone service user
-  environment:
-    OS_AUTH_TOKEN: ""
-    OS_AUTH_URL: "{{ os_auth_url }}"
-    OS_USERNAME: "{{ os_username }}"
-    OS_PASSWORD: "{{ os_password }}"
-    OS_PROJECT_NAME: "{{ os_tenant_name }}"
-    OS_USER_DOMAIN_NAME: "{{ os_user_domain_name }}"
-    OS_PROJECT_DOMAIN_NAME: "{{ os_project_domain_name }}"
-    OS_IDENTITY_API_VERSION: "{{ os_identity_api_version }}"
-  os_user:
-    name: "{{ skydive_os_service_username }}"
-    password: "{{ skydive_os_service_password }}"
-    domain: "{{ skydive_os_service_domain_name }}"
-    default_project: "{{ skydive_os_service_tenant_name }}"
-    state: present
+    - name: Create a Skydive keystone service user
+      environment:
+        OS_AUTH_TOKEN: ""
+        OS_AUTH_URL: "{{ os_auth_url }}"
+        OS_USERNAME: "{{ os_username }}"
+        OS_PASSWORD: "{{ os_password }}"
+        OS_PROJECT_NAME: "{{ os_tenant_name }}"
+        OS_USER_DOMAIN_NAME: "{{ os_user_domain_name }}"
+        OS_PROJECT_DOMAIN_NAME: "{{ os_project_domain_name }}"
+        OS_IDENTITY_API_VERSION: "{{ os_identity_api_version }}"
+      os_user:
+        name: "{{ skydive_os_service_username }}"
+        password: "{{ skydive_os_service_password }}"
+        domain: "{{ skydive_os_service_domain_name }}"
+        default_project: "{{ skydive_os_service_tenant_name }}"
+        state: present
 
-- name: Set skydive Keystone service user role
-  environment:
-    OS_AUTH_TOKEN: ""
-    OS_AUTH_URL: "{{ os_auth_url }}"
-    OS_USERNAME: "{{ os_username }}"
-    OS_PASSWORD: "{{ os_password }}"
-    OS_PROJECT_NAME: "{{ os_tenant_name }}"
-    OS_USER_DOMAIN_NAME: "{{ os_user_domain_name }}"
-    OS_PROJECT_DOMAIN_NAME: "{{ os_project_domain_name }}"
-    OS_IDENTITY_API_VERSION: "{{ os_identity_api_version }}"
-  os_user_role:
-    user: "{{ skydive_os_service_username }}"
-    role: "{{ skydive_os_service_user_role }}"
-    project: "{{ skydive_os_service_tenant_name }}"
-    state: present
+    - name: Set skydive Keystone service user role
+      environment:
+        OS_AUTH_TOKEN: ""
+        OS_AUTH_URL: "{{ os_auth_url }}"
+        OS_USERNAME: "{{ os_username }}"
+        OS_PASSWORD: "{{ os_password }}"
+        OS_PROJECT_NAME: "{{ os_tenant_name }}"
+        OS_USER_DOMAIN_NAME: "{{ os_user_domain_name }}"
+        OS_PROJECT_DOMAIN_NAME: "{{ os_project_domain_name }}"
+        OS_IDENTITY_API_VERSION: "{{ os_identity_api_version }}"
+      os_user_role:
+        user: "{{ skydive_os_service_username }}"
+        role: "{{ skydive_os_service_user_role }}"
+        project: "{{ skydive_os_service_tenant_name }}"
+        state: present
