@@ -32,3 +32,5 @@ skydive_auth_os_tenant_name: skydive
 skydive_auth_os_domain_name: Default
 skydive_auth_os_domain_id: default
 skydive_auth_os_user_role: admin
+
+skydive_deployment_test: yes

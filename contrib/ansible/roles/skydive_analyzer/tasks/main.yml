@@ -45,3 +45,4 @@
     tasks_from: permissions
 
 - include_tasks: tests.yml
+  when: skydive_deployment_test|bool
