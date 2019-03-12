@@ -2,5 +2,5 @@ skydive_agent_port: 8081
 skydive_agent_docker_extra_env:
 skydive_agent_docker_image: skydive/skydive
 skydive_agent_docker_command: agent
-skydive_agent_docker_image_tag: latest
+skydive_agent_docker_image_tag:
 skydive_topology_probes:

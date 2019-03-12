@@ -5,6 +5,7 @@
     tasks_from: docker
   vars:
     skydive_docker_image: "{{ skydive_agent_docker_image }}"
+    skydive_service_docker_image_tag: "{{ skydive_agent_docker_image_tag }}"
 
 - name: Create systemd unit file
   include_role:

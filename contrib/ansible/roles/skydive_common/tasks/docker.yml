@@ -11,7 +11,7 @@
     enabled: yes
 
 - name: Pull skydive image
-  shell: "docker pull {{ skydive_docker_registry }}/{{ skydive_docker_image }}:{{ skydive_docker_image_tag }}"
+  shell: "docker pull {{ skydive_docker_registry }}/{{ skydive_docker_image }}:{{ skydive_service_docker_image_tag or skydive_docker_image_tag }}"
   when: skydive_load_docker_image is not defined
 
 - name: Run docker registry
@@ -35,9 +35,9 @@
   when: skydive_load_docker_image is defined
 
 - name: Tag skydive image
-  shell: "docker tag skydive/skydive:devel {{ skydive_docker_registry }}/{{ skydive_docker_image }}:{{ skydive_docker_image_tag }}"
+  shell: "docker tag skydive/skydive:devel {{ skydive_docker_registry }}/{{ skydive_docker_image }}:{{ skydive_service_docker_image_tag or skydive_docker_image_tag }}"
   when: skydive_load_docker_image is defined
 
 - name: Push skydive image to registry
-  shell: "docker push {{ skydive_docker_registry }}/{{ skydive_docker_image }}:{{ skydive_docker_image_tag }}"
+  shell: "docker push {{ skydive_docker_registry }}/{{ skydive_docker_image }}:{{ skydive_service_docker_image_tag or skydive_docker_image_tag }}"
   when: skydive_load_docker_image is defined

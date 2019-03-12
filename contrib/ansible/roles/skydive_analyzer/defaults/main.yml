@@ -2,7 +2,7 @@
 skydive_analyzer_docker_extra_env:
 skydive_analyzer_docker_image: skydive/skydive
 skydive_analyzer_docker_command: analyzer
-skydive_analyzer_docker_image_tag: latest
+skydive_analyzer_docker_image_tag:
 skydive_etcd_embedded: yes
 skydive_etcd_port: 12379
 skydive_etcd_scheme: http
