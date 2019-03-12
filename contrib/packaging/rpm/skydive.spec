@@ -1,9 +1,6 @@
 %global import_path     github.com/skydive-project/skydive
 %global gopath          %{_datadir}/gocode
 
-%if 0%{?fedora} >= 27
-%define with_features WITH_EBPF=true
-%endif
 %{!?with_features:%global with_features %{nil}}
 
 %if !%{defined gotest}

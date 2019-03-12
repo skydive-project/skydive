@@ -53,6 +53,7 @@ docker_skydive_builder() {
     docker rm $image || true
     docker run --name $image \
         --env UID=$uid \
+        --env TOPLEVEL_GOPATH=$GOPATH \
         --volume $TOPLEVEL_VOL:$TOPLEVEL_DIR \
         --volume $GOVENDOR_VOL:$GOVENDOR_DIR \
         --volume $GOBUILD_VOL:$GOBUILD_DIR \

@@ -78,8 +78,8 @@ static inline void fill_payload_bucket(struct __sk_buff *skb, int offset, __u8 *
 
 static inline void fill_payload(struct __sk_buff *skb, int offset, struct flow *flow, int len)
 {
-	// TODO add more data
-	fill_payload_bucket(skb, offset, flow->payload, 30);
+	// NOTE(safchain) currently not used and need to be fixed
+	//fill_payload_bucket(skb, offset, flow->payload, 30);
 }
 
 static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, int offset,
@@ -199,7 +199,7 @@ static inline void fill_ipv6(struct __sk_buff *skb, int offset, __u8 *dst, __u64
 	update_hash_word(hash, w);
 }
 
-static inline void fill_network(struct __sk_buff *skb, __u16 protocol, int offset,
+static inline void fill_network(struct __sk_buff *skb, __u16 netproto, int offset,
 	struct flow *flow)
 {
 	struct network_layer *layer = &flow->network_layer;
@@ -207,11 +207,13 @@ static inline void fill_network(struct __sk_buff *skb, __u16 protocol, int offse
 	int len = skb->len - sizeof(struct ethhdr);
 	int frag = 0;
 
+	__u8 transproto = 0;
+
 	__u64 hash_src = 0;
 	__u64 hash_dst = 0;
 
-	layer->protocol = protocol;
-	switch (protocol) {
+	layer->protocol = netproto;
+	switch (netproto) {
 		case ETH_P_IP:
 			frag = load_half(skb, offset + offsetof(struct iphdr, frag_off)) & (IP_MF | IP_OFFSET);
 			if (frag) {
@@ -219,12 +221,12 @@ static inline void fill_network(struct __sk_buff *skb, __u16 protocol, int offse
 				return;
 			}
 
-			protocol = load_byte(skb, offset + offsetof(struct iphdr, protocol));
+			transproto = load_byte(skb, offset + offsetof(struct iphdr, protocol));
 			fill_ipv4(skb, offset + offsetof(struct iphdr, saddr), layer->ip_src, &hash_src);
 			fill_ipv4(skb, offset + offsetof(struct iphdr, daddr), layer->ip_dst, &hash_dst);
 			break;
 		case ETH_P_IPV6:
-			protocol = load_byte(skb, offset + offsetof(struct ipv6hdr, nexthdr));
+			transproto = load_byte(skb, offset + offsetof(struct ipv6hdr, nexthdr));
 			fill_ipv6(skb, offset + offsetof(struct ipv6hdr, saddr), layer->ip_src, &hash_src);
 			fill_ipv6(skb, offset + offsetof(struct ipv6hdr, daddr), layer->ip_dst, &hash_dst);
 			break;
@@ -237,7 +239,7 @@ static inline void fill_network(struct __sk_buff *skb, __u16 protocol, int offse
 
 	len -= (verlen & 0xF) << 2;
 
-	switch (protocol) {
+	switch (transproto) {
 		case IPPROTO_GRE:
 			// TODO
 			break;
@@ -245,7 +247,7 @@ static inline void fill_network(struct __sk_buff *skb, __u16 protocol, int offse
 			// TODO
 		case IPPROTO_UDP:
 		case IPPROTO_TCP:
-			fill_transport(skb, protocol, offset, flow, len);
+			fill_transport(skb, transproto, offset, flow, len);
 			break;
 		case IPPROTO_ICMP:
 			fill_icmpv4(skb, offset, flow);
@@ -257,7 +259,7 @@ static inline void fill_network(struct __sk_buff *skb, __u16 protocol, int offse
 			fill_payload(skb, offset, flow, len);
 	}
 
-	layer->_hash = FNV_BASIS ^ hash_src ^ hash_dst ^ protocol;
+	layer->_hash = FNV_BASIS ^ hash_src ^ hash_dst ^ netproto ^ transproto;
 
 	flow->layers |= NETWORK_LAYER;
 }
@@ -282,12 +284,12 @@ static inline void fill_link(struct __sk_buff *skb, int offset, struct flow *flo
 
 	update_hash_half(&layer->_hash_src, layer->mac_src[0] << 8 | layer->mac_src[1]);
 	update_hash_half(&layer->_hash_src, layer->mac_src[2] << 8 | layer->mac_src[3]);
-	update_hash_half(&layer->_hash_src, layer->mac_src[3] << 8 | layer->mac_src[5]);
+	update_hash_half(&layer->_hash_src, layer->mac_src[4] << 8 | layer->mac_src[5]);
 
 	__u64 hash_dst = 0;
 	update_hash_half(&hash_dst, layer->mac_dst[0] << 8 | layer->mac_dst[1]);
 	update_hash_half(&hash_dst, layer->mac_dst[2] << 8 | layer->mac_dst[3]);
-	update_hash_half(&hash_dst, layer->mac_dst[3] << 8 | layer->mac_dst[5]);
+	update_hash_half(&hash_dst, layer->mac_dst[4] << 8 | layer->mac_dst[5]);
 
 	layer->_hash = FNV_BASIS ^ layer->_hash_src ^ hash_dst;
 
