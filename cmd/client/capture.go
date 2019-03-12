@@ -38,6 +38,8 @@ var (
 	captureType        string
 	nodeTID            string
 	port               int
+	samplingRate       uint32
+	pollingInterval    uint32
 	headerSize         int
 	rawPacketLimit     int
 	extraTCPMetric     bool
@@ -84,6 +86,8 @@ var CaptureCreate = &cobra.Command{
 		capture.Description = captureDescription
 		capture.Type = captureType
 		capture.Port = port
+		capture.SamplingRate = samplingRate
+		capture.PollingInterval = pollingInterval
 		capture.HeaderSize = headerSize
 		capture.ExtraTCPMetric = extraTCPMetric
 		capture.IPDefrag = ipDefrag
@@ -181,6 +185,8 @@ func addCaptureFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&captureDescription, "description", "", "", "capture description")
 	cmd.Flags().StringVarP(&captureType, "type", "", "", helpText)
 	cmd.Flags().IntVarP(&port, "port", "", 0, "capture port")
+	cmd.Flags().Uint32VarP(&samplingRate, "samplingrate", "", 1, "Sampling Rate for SFlow Flow Sampling, 0 - no flow samples, default: 1")
+	cmd.Flags().Uint32VarP(&pollingInterval, "pollinginterval", "", 10, "Polling Interval for SFlow Counter Sampling, 0 - no counter samples, default: 10")
 	cmd.Flags().IntVarP(&headerSize, "header-size", "", 0, fmt.Sprintf("Header size of packet used, default: %d", flow.MaxCaptureLength))
 	cmd.Flags().IntVarP(&rawPacketLimit, "rawpacket-limit", "", 0, "Set the limit of raw packet captured, 0 no packet, -1 infinite, default: 0")
 	cmd.Flags().BoolVarP(&extraTCPMetric, "extra-tcp-metric", "", false, "Add additional TCP metric to flows, default: false")

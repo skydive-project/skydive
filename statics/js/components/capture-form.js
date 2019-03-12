@@ -68,9 +68,15 @@ Vue.component('capture-form', {
               <label for="port">Port</label>\
               <input id="port" type="number" class="form-control input-sm" v-model.number="port" min="0"/>\
             </div>\
+            <div class="form-group" v-if="captureType == \'ovssflow\'">\
+              <label for="samplingRate">Flow Sampling Rate (0 = No FLows)</label>\
+              <input id="samplingRate" type="number" class="form-control input-sm" v-model.number="samplingRate"/>\
+              <label for="pollingInterval">Counter Polling Interval (0 = No Counters)</label>\
+              <input id="pollingInterval" type="number" class="form-control input-sm" v-model.number="pollingInterval"/>\
+            </div>\
             <div class="form-group">\
               <label for="capture-layer-key-mode">Layers used for Flow Key</label>\
-              <select id="capture-layer-key-mode" v-model="captureLayerKeyMode" class="form-control custom-select">\
+              <select id="capture-layer-key-mode" v-model="layerKeyMode" class="form-control custom-select">\
                 <option disabled value="">Select layers to be used</option>\
                 <option value="" selected>Default</option>\
                 <option value="L2">L2 (uses Layer 2 and beyond)</option>\
@@ -134,10 +140,12 @@ Vue.component('capture-form', {
       mode: "selection",
       visible: false,
       captureType: "",
-      captureLayerKeyMode: "",
+      layerKeyMode: "",
       nodeType: "",
       typeAllowed: false,
       port: 0,
+      samplingRate: 1,
+      pollingInterval: 10,
       isPacketCaptureEnabled: true,
     };
   },
@@ -280,7 +288,7 @@ Vue.component('capture-form', {
       this.reassembleTCP = false;
       this.visible = false;
       this.captureType = "";
-      this.captureLayerKeyMode = "";
+      this.layerKeyMode = "";
     },
 
     checkQuery: function(query) {
@@ -315,12 +323,14 @@ Vue.component('capture-form', {
       capture.BPFFilter = this.bpf;
       capture.HeaderSize = this.headerSize;
       capture.RawPacketLimit = this.rawPackets;
-      capture.ExtraTCPMetric = this.tcpMetric;
+      capture.ExtraTCPMetric = this.extraTCPMetric;
       capture.Type = this.captureType;
       capture.Port = this.port;
       capture.IPDefrag = this.ipDefrag;
       capture.ReassembleTCP = this.reassembleTCP;
-      capture.LayerKeyMode = this.layerKeyMode
+      capture.LayerKeyMode = this.layerKeyMode;
+      capture.SamplingRate = this.samplingRate;
+      capture.PollingInterval = this.pollingInterval;
       return self.captureAPI.create(capture)
       .then(function(data) {
         self.$success({message: 'Capture created'});

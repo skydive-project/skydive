@@ -70,22 +70,24 @@ func NewAlert() *Alert {
 
 // Capture describes a capture API
 type Capture struct {
-	BasicResource  `yaml:",inline"`
-	GremlinQuery   string           `json:"GremlinQuery,omitempty" valid:"isGremlinExpr" yaml:"GremlinQuery"`
-	BPFFilter      string           `json:"BPFFilter,omitempty" valid:"isBPFFilter" yaml:"BPFFilter"`
-	Name           string           `json:"Name,omitempty" yaml:"Name"`
-	Description    string           `json:"Description,omitempty" yaml:"Description"`
-	Type           string           `json:"Type,omitempty" valid:"isValidCaptureType" yaml:"Type"`
-	Count          int              `json:"Count" yaml:"Count"`
-	PCAPSocket     string           `json:"PCAPSocket,omitempty" yaml:"PCAPSocket"`
-	Port           int              `json:"Port,omitempty" yaml:"Port"`
-	RawPacketLimit int              `json:"RawPacketLimit,omitempty" valid:"isValidRawPacketLimit" yaml:"RawPacketLimit"`
-	HeaderSize     int              `json:"HeaderSize,omitempty" valid:"isValidCaptureHeaderSize" yaml:"HeaderSize"`
-	ExtraTCPMetric bool             `json:"ExtraTCPMetric" yaml:"ExtraTCPMetric"`
-	IPDefrag       bool             `json:"IPDefrag" yaml:"IPDefrag"`
-	ReassembleTCP  bool             `json:"ReassembleTCP" yaml:"ReassembleTCP"`
-	LayerKeyMode   string           `json:"LayerKeyMode,omitempty" valid:"isValidLayerKeyMode" yaml:"LayerKeyMode"`
-	ExtraLayers    flow.ExtraLayers `json:"ExtraLayers,omitempty" yaml:"ExtraLayers"`
+	BasicResource   `yaml:",inline"`
+	GremlinQuery    string           `json:"GremlinQuery,omitempty" valid:"isGremlinExpr" yaml:"GremlinQuery"`
+	BPFFilter       string           `json:"BPFFilter,omitempty" valid:"isBPFFilter" yaml:"BPFFilter"`
+	Name            string           `json:"Name,omitempty" yaml:"Name"`
+	Description     string           `json:"Description,omitempty" yaml:"Description"`
+	Type            string           `json:"Type,omitempty" valid:"isValidCaptureType" yaml:"Type"`
+	Count           int              `json:"Count" yaml:"Count"`
+	PCAPSocket      string           `json:"PCAPSocket,omitempty" yaml:"PCAPSocket"`
+	Port            int              `json:"Port,omitempty" yaml:"Port"`
+	SamplingRate    uint32           `json:"SamplingRate" yaml:"SamplingRate"`
+	PollingInterval uint32           `json:"PollingInterval" yaml:"PollingInterval"`
+	RawPacketLimit  int              `json:"RawPacketLimit,omitempty" valid:"isValidRawPacketLimit" yaml:"RawPacketLimit"`
+	HeaderSize      int              `json:"HeaderSize,omitempty" valid:"isValidCaptureHeaderSize" yaml:"HeaderSize"`
+	ExtraTCPMetric  bool             `json:"ExtraTCPMetric" yaml:"ExtraTCPMetric"`
+	IPDefrag        bool             `json:"IPDefrag" yaml:"IPDefrag"`
+	ReassembleTCP   bool             `json:"ReassembleTCP" yaml:"ReassembleTCP"`
+	LayerKeyMode    string           `json:"LayerKeyMode,omitempty" valid:"isValidLayerKeyMode" yaml:"LayerKeyMode"`
+	ExtraLayers     flow.ExtraLayers `json:"ExtraLayers,omitempty" yaml:"ExtraLayers"`
 }
 
 // NewCapture creates a new capture
