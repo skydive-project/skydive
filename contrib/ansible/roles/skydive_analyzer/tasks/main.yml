@@ -22,26 +22,26 @@
   tags:
     - config
 
-- include: config.yml
+- include_tasks: config.yml
   tags:
     - config
 
-- include: keystone.yml
+- include_tasks: keystone.yml
   when: skydive_auth_type == "keystone"
   tags:
     - keystone
 
-- include: docker.yml
+- include_tasks: docker.yml
   when: skydive_deployment_mode == "container"
 
-- include: package.yml
+- include_tasks: package.yml
   when: skydive_deployment_mode == "package"
 
-- include: binary.yml
+- include_tasks: binary.yml
   when: skydive_deployment_mode == "binary"
 
 - include_role:
     name: skydive_common
     tasks_from: permissions
 
-- include: tests.yml
+- include_tasks: tests.yml
