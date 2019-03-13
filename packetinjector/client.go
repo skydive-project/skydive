@@ -145,9 +145,12 @@ func (pc *Client) requestToParams(pi *types.PacketInjection) (string, *PacketInj
 		}
 
 		if pi.SrcIP == "" {
-			ips, _ := srcNode.GetFieldStringList(ipField)
+			ips, _ := srcNode.GetFieldStringList("Neutron." + ipField)
 			if len(ips) == 0 {
-				return "", nil, errors.New("No source IP in node and user input")
+				ips, _ = srcNode.GetFieldStringList(ipField)
+				if len(ips) == 0 {
+					return "", nil, errors.New("No source IP in node and user input")
+				}
 			}
 			pi.SrcIP = ips[0]
 		} else {
@@ -156,9 +159,12 @@ func (pc *Client) requestToParams(pi *types.PacketInjection) (string, *PacketInj
 
 		if pi.DstIP == "" {
 			if dstNode != nil {
-				ips, _ := dstNode.GetFieldStringList(ipField)
+				ips, _ := dstNode.GetFieldStringList("Neutron." + ipField)
 				if len(ips) == 0 {
-					return "", nil, errors.New("No dest IP in node and user input")
+					ips, _ = dstNode.GetFieldStringList(ipField)
+					if len(ips) == 0 {
+						return "", nil, errors.New("No dest IP in node and user input")
+					}
 				}
 				pi.DstIP = ips[0]
 			} else {
@@ -170,9 +176,12 @@ func (pc *Client) requestToParams(pi *types.PacketInjection) (string, *PacketInj
 
 		if pi.SrcMAC == "" {
 			if srcNode != nil {
-				mac, _ := srcNode.GetFieldString("MAC")
+				mac, _ := srcNode.GetFieldString("ExtID.attached-mac")
 				if mac == "" {
-					return "", nil, errors.New("No source MAC in node and user input")
+					mac, _ = srcNode.GetFieldString("MAC")
+					if mac == "" {
+						return "", nil, errors.New("No source MAC in node and user input")
+					}
 				}
 				pi.SrcMAC = mac
 			} else {
@@ -182,9 +191,12 @@ func (pc *Client) requestToParams(pi *types.PacketInjection) (string, *PacketInj
 
 		if pi.DstMAC == "" {
 			if dstNode != nil {
-				mac, _ := dstNode.GetFieldString("MAC")
+				mac, _ := dstNode.GetFieldString("ExtID.attached-mac")
 				if mac == "" {
-					return "", nil, errors.New("No dest MAC in node and user input")
+					mac, _ = dstNode.GetFieldString("MAC")
+					if mac == "" {
+						return "", nil, errors.New("No dest MAC in node and user input")
+					}
 				}
 				pi.DstMAC = mac
 			} else {
