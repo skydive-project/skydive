@@ -1,8 +1,8 @@
 ---
-- include: fedora.yml
+- include_tasks: fedora.yml
   when: ansible_distribution == "Fedora"
 
-- include: centos.yml
+- include_tasks: centos.yml
   when: ansible_distribution == "CentOS"
 
 - package:
@@ -64,17 +64,17 @@
     - openvswitch
     - docker
 
-- include: lxd.yml
+- include_tasks: lxd.yml
   when: ansible_distribution == "Fedora" and ansible_architecture == "x86_64"
 
-- include: protobuf.yml
+- include_tasks: protobuf.yml
 
-- include: static.yml
+- include_tasks: static.yml
 
-- include: gimme.yml
+- include_tasks: gimme.yml
   tags:
     - vagrant
 
-- include: docker.yml
+- include_tasks: docker.yml
   tags:
     - vagrant

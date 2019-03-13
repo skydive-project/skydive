@@ -19,12 +19,12 @@
     - config
     - tests
 
-- include: config.yml
+- include_tasks: config.yml
   tags:
     - config
 
-- include: binary.yml
+- include_tasks: binary.yml
   when: skydive_deployment_mode == "binary"
 
-- include: package.yml
+- include_tasks: package.yml
   when: skydive_deployment_mode == "package"
