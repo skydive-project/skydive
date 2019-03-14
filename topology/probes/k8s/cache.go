@@ -151,6 +151,11 @@ func (c *KubeCache) onDelete(obj interface{}) {
 	}
 }
 
+// MatchNamespace true if namespaces are identical
+func MatchNamespace(obj1, obj2 metav1.Object) bool {
+	return obj1.GetNamespace() == obj2.GetNamespace()
+}
+
 func matchSelector(obj metav1.Object, selector labels.Selector) bool {
 	return selector.Matches(labels.Set(obj.GetLabels()))
 }

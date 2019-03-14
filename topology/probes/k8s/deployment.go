@@ -54,7 +54,9 @@ func newDeploymentProbe(client interface{}, g *graph.Graph) Subprobe {
 }
 
 func deploymentPodAreLinked(a, b interface{}) bool {
-	return matchLabelSelector(b.(*v1.Pod), a.(*v1beta1.Deployment).Spec.Selector)
+	deployment := a.(*v1beta1.Deployment)
+	pod := b.(*v1.Pod)
+	return MatchNamespace(pod, deployment) && matchLabelSelector(pod, deployment.Spec.Selector)
 }
 
 func newDeploymentPodLinker(g *graph.Graph) probe.Probe {
@@ -62,7 +64,9 @@ func newDeploymentPodLinker(g *graph.Graph) probe.Probe {
 }
 
 func deploymentReplicaSetAreLinked(a, b interface{}) bool {
-	return matchLabelSelector(b.(*v1beta1.ReplicaSet), a.(*v1beta1.Deployment).Spec.Selector)
+	deployment := a.(*v1beta1.Deployment)
+	replicaset := b.(*v1beta1.ReplicaSet)
+	return MatchNamespace(replicaset, deployment) && matchLabelSelector(replicaset, deployment.Spec.Selector)
 }
 
 func newDeploymentReplicaSetLinker(g *graph.Graph) probe.Probe {

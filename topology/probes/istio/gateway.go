@@ -49,6 +49,11 @@ func newGatewayProbe(client interface{}, g *graph.Graph) k8s.Subprobe {
 func gatewayVirtualServiceAreLinked(a, b interface{}) bool {
 	gateway := a.(*kiali.Gateway)
 	vs := b.(*kiali.VirtualService)
+
+	if !k8s.MatchNamespace(gateway, vs) {
+		return false
+	}
+
 	if gateways, ok := vs.Spec["gateways"]; ok {
 		gatewaysList := gateways.([]interface{})
 		for _, g := range gatewaysList {

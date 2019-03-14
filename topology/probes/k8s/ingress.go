@@ -55,6 +55,10 @@ func ingressServiceAreLinked(a, b interface{}) bool {
 	ingress := a.(*v1beta1.Ingress)
 	service := b.(*v1.Service)
 
+	if !MatchNamespace(ingress, service) {
+		return false
+	}
+
 	if ingress.Spec.Backend != nil && ingress.Spec.Backend.ServiceName == service.Name {
 		return true
 	}
