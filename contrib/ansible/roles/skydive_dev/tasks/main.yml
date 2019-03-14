@@ -49,7 +49,7 @@
      - selinux-policy-devel
      - policycoreutils-devel
      - mock
-     - yum-utils
+     - dnf-utils
      - manifest-tool
      - ffmpeg
      - npm

@@ -66,6 +66,13 @@ EOF
   virsh net-destroy vagrant-libvirt
   systemctl restart libvirtd
 
+  for vm in dev_dev vagrant_analyzer1 vagrant_agent1 devstack_devstack
+  do
+    virsh destroy $vm
+    virsh undefine $vm
+    virsh vol-delete $vm.img default
+  done
+
   rm -rf /tmp/skydive_agent* /tmp/skydive-etcd
   rm -rf /var/lib/jenkins/.vagrant.d/tmp
 
