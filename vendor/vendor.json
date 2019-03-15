@@ -3,6 +3,48 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "La4K82Zzpp5fDwr2uaxeR9E+FoI=",
+			"path": "git.fd.io/govpp.git",
+			"revision": "5f1917fd11e8562ef4094b7ce3a89af66ace5792",
+			"revisionTime": "2018-12-13T12:03:49Z"
+		},
+		{
+			"checksumSHA1": "Mdwnnas0/iWaJB9Nnt431mdhtqE=",
+			"path": "git.fd.io/govpp.git/adapter",
+			"revision": "5f1917fd11e8562ef4094b7ce3a89af66ace5792",
+			"revisionTime": "2018-12-13T12:03:49Z"
+		},
+		{
+			"checksumSHA1": "Tg3uL/d82jzlcgYgAS6x/jfTtXA=",
+			"path": "git.fd.io/govpp.git/adapter/vppapiclient",
+			"revision": "5f1917fd11e8562ef4094b7ce3a89af66ace5792",
+			"revisionTime": "2018-12-13T12:03:49Z"
+		},
+		{
+			"checksumSHA1": "xOv5nUyKl6k5UtnuHXzclRL2Ft0=",
+			"path": "git.fd.io/govpp.git/api",
+			"revision": "5f1917fd11e8562ef4094b7ce3a89af66ace5792",
+			"revisionTime": "2018-12-13T12:03:49Z"
+		},
+		{
+			"checksumSHA1": "acVIG72zY8zZO7NJk4hkb5xb2Pg=",
+			"path": "git.fd.io/govpp.git/cmd/binapi-generator",
+			"revision": "5f1917fd11e8562ef4094b7ce3a89af66ace5792",
+			"revisionTime": "2018-12-13T12:03:49Z"
+		},
+		{
+			"checksumSHA1": "+ddD9b0cOZfcbA7EkSxDRcrv9Nc=",
+			"path": "git.fd.io/govpp.git/codec",
+			"revision": "5f1917fd11e8562ef4094b7ce3a89af66ace5792",
+			"revisionTime": "2018-12-13T12:03:49Z"
+		},
+		{
+			"checksumSHA1": "WVXlXfatukFeSsvl0LvzODuXTPQ=",
+			"path": "git.fd.io/govpp.git/core",
+			"revision": "5f1917fd11e8562ef4094b7ce3a89af66ace5792",
+			"revisionTime": "2018-12-13T12:03:49Z"
+		},
+		{
 			"checksumSHA1": "VyTWDfmf9jOJWlwjNJ91LMHl71Y=",
 			"path": "github.com/GehirnInc/crypt",
 			"revision": "5a3fafaa7c86150c096504f50630ca6ac8cff681",
@@ -49,12 +91,6 @@
 			"path": "github.com/PuerkitoBio/urlesc",
 			"revision": "de5bf2ad457846296e2031421a34e2568e304e35",
 			"revisionTime": "2017-08-10T14:37:23Z"
-		},
-		{
-			"checksumSHA1": "DWPL08pD/SQ2GzLfoR7ZXnjj7Sw=",
-			"path": "github.com/Sirupsen/logrus",
-			"revision": "4b6ea7319e214d98c938f12692336f7ca9348d6b",
-			"revisionTime": "2016-03-17T14:11:10Z"
 		},
 		{
 			"checksumSHA1": "QC55lHNOv1+UAL2xtIHw17MJ8J8=",
@@ -270,6 +306,12 @@
 			"path": "github.com/aws/aws-sdk-go/service/sts",
 			"revision": "803c35f732cb53e133b968e27fb7fbd337524a22",
 			"revisionTime": "2018-10-24T19:23:52Z"
+		},
+		{
+			"checksumSHA1": "716UDJWUBriyNbRbjE6UFtq0rb4=",
+			"path": "github.com/bennyscetbun/jsongo",
+			"revision": "88b16279eead33f9fb0749ee13858472cf01b25c",
+			"revisionTime": "2018-10-11T16:05:14Z"
 		},
 		{
 			"checksumSHA1": "4QnLdmB1kG3N+KlDd1N+G9TWAGQ=",
@@ -1784,6 +1826,12 @@
 			"revisionTime": "2018-10-02T10:20:28Z"
 		},
 		{
+			"checksumSHA1": "r6ZMyP/HsdeToXIxvgP3ntL6Bds=",
+			"path": "github.com/konsorten/go-windows-terminal-sequences",
+			"revision": "5c8c8bd35d3832f5d134ae1e1e375b69a4d25242",
+			"revisionTime": "2018-10-04T22:41:46Z"
+		},
+		{
 			"checksumSHA1": "KQhA4EQp4Ldwj9nJZnEURlE6aQw=",
 			"path": "github.com/kr/fs",
 			"revision": "2788f0dbd16903de03cb8186e5c7d97b69ad387b",
@@ -1800,6 +1848,12 @@
 			"path": "github.com/libvirt/libvirt-go",
 			"revision": "9c5bdce3c18faad94cb383e7ec42f5122a8c7fa1",
 			"revisionTime": "2018-10-05T09:27:46Z"
+		},
+		{
+			"checksumSHA1": "D5EG5yMsbtHqKbzBVbxFMKEMDNY=",
+			"path": "github.com/lunixbochs/struc",
+			"revision": "02e4c2afbb2ac4bae6876f52c8273fc4cf5a4b0a",
+			"revisionTime": "2018-04-08T20:38:00Z"
 		},
 		{
 			"checksumSHA1": "E6lbuGqlBGB0dnklAzqfNZ8wd6s=",
@@ -2207,6 +2261,12 @@
 			"path": "github.com/shirou/w32",
 			"revision": "bb4de0191aa41b5507caa14b0650cdbddcd9280b",
 			"revisionTime": "2016-09-30T03:27:40Z"
+		},
+		{
+			"checksumSHA1": "Rq+zqkFV0wJgi0MARcgx0QT+9lE=",
+			"path": "github.com/sirupsen/logrus",
+			"revision": "2067ea4241cec716fbd0ac90f42f339f963bff92",
+			"revisionTime": "2018-12-15T15:21:19Z"
 		},
 		{
 			"checksumSHA1": "2GMUQoP70/aoHkEYR9gHtUd/HAE=",

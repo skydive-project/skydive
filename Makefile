@@ -61,6 +61,7 @@ EASYJSON_FILES_TAG_LINUX=\
 	topology/probes/socketinfo/connection.go
 EASYJSON_FILES_TAG_OPENCONTRAIL=\
 	topology/probes/opencontrail/routing_table.go
+VPPBINAPI_GITHUB:=git.fd.io/govpp.git/cmd/binapi-generator
 VERBOSE_FLAGS?=-v
 VERBOSE_TESTS_FLAGS?=-test.v
 VERBOSE?=true
@@ -90,6 +91,7 @@ WITH_LXD?=true
 WITH_OPENCONTRAIL?=true
 WITH_LIBVIRT?=true
 WITH_EBPF_DOCKER_BUILDER?=false
+WITH_VPP?=false
 
 export PATH:=$(BUILD_TOOLS):$(PATH)
 
@@ -180,6 +182,10 @@ endif
 
 ifeq ($(WITH_LIBVIRT), true)
   BUILD_TAGS+=libvirt
+endif
+
+ifeq ($(WITH_VPP), true)
+  BUILD_TAGS+=vpp
 endif
 
 STATIC_LIBS_ABS := $(addprefix $(STATIC_DIR)/,$(STATIC_LIBS))
@@ -280,6 +286,14 @@ topology/probes/opencontrail/routing_table_easyjson.go: $(EASYJSON_FILES_TAG_OPE
 .easyjson.clean:
 	find . \( -name *_easyjson.go ! -path './vendor/*' \) -exec rm {} \;
 
+.PHONY: .binapigenerator
+binapigenerator: vendor/${VPPBINAPI_GITHUB}
+	$(call VENDOR_RUN,${VPPBINAPI_GITHUB})
+
+.PHONY: .vppbinapi.clean
+.vppbinapi.clean:
+	rm -rf topology/probes/vpp/bin_api
+
 BINDATA_DIRS := \
 	js/*.js \
 	rbac/policy.csv \
@@ -311,6 +325,11 @@ npm.install:
 statics/bindata.go: .typescript ebpf.build $(shell find statics -type f \( ! -iname "bindata.go" \))
 	$(call VENDOR_RUN,${GO_BINDATA_GITHUB}) go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go $(BINDATA_DIRS)
 	gofmt -w -s statics/bindata.go
+
+.PHONY: .vppbinapi
+.vppbinapi: binapigenerator
+	$(GOVENDOR) generate -tags "${BUILD_TAGS}" \
+		github.com/skydive-project/skydive/topology/probes/vpp
 
 .PHONY: compile
 compile:
@@ -458,6 +477,7 @@ govendor:
 	$(GOVENDOR) sync
 	patch -p0 < dpdk/dpdk.govendor.patch
 	rm -rf vendor/github.com/weaveworks/tcptracer-bpf/vendor/github.com/
+	find vendor/github.com/docker/go-connections -name "*.go" | xargs -n 1 perl -i -pe 's|github.com/Sirupsen|github.com/sirupsen|g'
 
 .PHONY: fmt
 fmt: govendor genlocalfiles
@@ -510,10 +530,10 @@ lint: gometalinter
 	gometalinter --disable=gotype ${GOMETALINTER_FLAGS} --vendor -e '.*\.pb.go' -e '.*\._easyjson.go' -e 'statics/bindata.go' --skip=statics/... --deadline 10m --sort=path ./... --json | tee lint.json || true
 
 .PHONY: genlocalfiles
-genlocalfiles: .proto .bindata .easyjson
+genlocalfiles: .proto .bindata .easyjson .vppbinapi
 
 .PHONY: clean
-clean: skydive.clean test.functionals.clean dpdk.clean contribs.clean ebpf.clean .easyjson.clean .proto.clean .typescript.clean
+clean: skydive.clean test.functionals.clean dpdk.clean contribs.clean ebpf.clean .easyjson.clean .proto.clean .typescript.clean .vppbinapi.clean
 	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
 
 .PHONY: srpm

@@ -767,7 +767,7 @@
     builders:
       - skydive-cleanup
       - skydive-test:
-          test: BACKEND=elasticsearch WITH_EBPF=true WITH_EBPF_DOCKER_BUILDER=true TEST_PATTERN='\(EBPF\|SRIOV\)' TAGS="$TAGS sriov_tests" scripts/ci/run-functional-tests.sh
+          test: BACKEND=elasticsearch WITH_EBPF=true WITH_VPP=true WITH_EBPF_DOCKER_BUILDER=true TEST_PATTERN='\(EBPF\|SRIOV\|VPP\)' TAGS="$TAGS sriov_tests" scripts/ci/run-functional-tests.sh
     publishers:
       - junit:
           results: tests.xml

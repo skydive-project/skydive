@@ -36,6 +36,7 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/ovsdb"
 	"github.com/skydive-project/skydive/topology/probes/runc"
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
+	"github.com/skydive-project/skydive/topology/probes/vpp"
 )
 
 // NewTopologyProbeBundleFromConfig creates a new topology probe.Bundle based on the configuration
@@ -116,6 +117,12 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 				return nil, fmt.Errorf("Failed to initialize runc probe: %s", err)
 			}
 			probes[t] = runc
+		case "vpp":
+			vpp, err := vpp.NewProbeFromConfig(g, hostNode)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to initialize vpp probe: %s", err)
+			}
+			probes[t] = vpp
 		default:
 			logging.GetLogger().Errorf("unknown probe type %s", t)
 		}

@@ -78,3 +78,5 @@
 - include_tasks: docker.yml
   tags:
     - vagrant
+
+- include_tasks: vpp.yml
