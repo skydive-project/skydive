@@ -62,10 +62,6 @@ EOF
   systemctl restart orientdb
   systemctl restart lxd
 
-  virsh net-destroy vagrant0
-  virsh net-destroy vagrant-libvirt
-  systemctl restart libvirtd
-
   for vm in dev_dev vagrant_analyzer1 vagrant_agent1 devstack_devstack
   do
     virsh destroy $vm
@@ -73,11 +69,16 @@ EOF
     virsh vol-delete $vm.img default
   done
 
+  virsh net-destroy vagrant0
+  virsh net-destroy vagrant-libvirt
+  systemctl restart libvirtd
+
   rm -rf /tmp/skydive_agent* /tmp/skydive-etcd
   rm -rf /var/lib/jenkins/.vagrant.d/tmp
 
   # time to restart services
   sleep 8
+  ip l del virbr0
 }
 
 function snapshot_items() {

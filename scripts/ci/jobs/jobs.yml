@@ -542,6 +542,7 @@
           only-trigger-phrase: true
           cancel-builds-on-update: false
     builders:
+      - skydive-cleanup
       - skydive-test:
           test: scripts/ci/run-kolla-tests.sh
     wrappers:
@@ -569,6 +570,7 @@
           only-trigger-phrase: true
           cancel-builds-on-update: false
     builders:
+      - skydive-cleanup
       - skydive-test:
           test: VAGRANT_DEFAULT_PROVIDER=libvirt scripts/ci/run-vagrant-tests.sh
     wrappers:
