@@ -122,7 +122,7 @@ circle.emphasized  {
 }
 
 .links path.istio {
-  stroke: rgb(93, 109, 126);
+  stroke: rgb(0, 221, 221);
   stroke-width: 1.5;
   opacity: 0.8;
 }
