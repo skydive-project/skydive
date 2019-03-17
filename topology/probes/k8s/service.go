@@ -56,7 +56,7 @@ func newServiceProbe(client interface{}, g *graph.Graph) Subprobe {
 func servicePodAreLinked(a, b interface{}) bool {
 	service := a.(*v1.Service)
 	pod := b.(*v1.Pod)
-	return MatchNamespace(pod, service) && matchMapSelector(pod, service.Spec.Selector)
+	return MatchNamespace(pod, service) && matchMapSelector(pod, service.Spec.Selector, false)
 }
 
 func newServicePodLinker(g *graph.Graph) probe.Probe {
@@ -66,7 +66,7 @@ func newServicePodLinker(g *graph.Graph) probe.Probe {
 func serviceEndpointsAreLinked(a, b interface{}) bool {
 	endpoints := b.(*v1.Endpoints)
 	service := a.(*v1.Service)
-	return MatchNamespace(endpoints, service) && matchMapSelector(endpoints, service.Spec.Selector)
+	return MatchNamespace(endpoints, service) && (endpoints.Name == service.Name || matchMapSelector(endpoints, service.Spec.Selector, false))
 }
 
 func newServiceEndpointsLinker(g *graph.Graph) probe.Probe {
