@@ -1,0 +1,11 @@
+---
+- package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - akmod-VirtualBox
+    - VirtualBox
+    - kernel-devel
+    - "kernel-devel-{{ ansible_kernel }}"
+
+- shell: "akmods --kernels `uname -r`"
