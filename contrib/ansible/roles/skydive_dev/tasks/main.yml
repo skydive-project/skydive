@@ -80,3 +80,5 @@
     - vagrant
 
 - include_tasks: vpp.yml
+
+- include_tasks: virtualbox.yml
