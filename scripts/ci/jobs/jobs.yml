@@ -338,11 +338,11 @@
           test: scripts/ci/run-opencontrail-tests.sh
 
 - job:
-    name: 'skydive-functional-tests-backend-elasticsearch'
+    name: skydive-functional-tests-backend-elasticsearch
     defaults: skydive
     triggers:
       - skydive-pull-request:
-          name: "functional-tests-backend-elasticsearch"
+          name: functional-tests-backend-elasticsearch
           trigger-prefix: "(all )?"
           only-trigger-phrase: false
           cancel-builds-on-update: true
@@ -356,11 +356,11 @@
       - chuck-norris
 
 - job:
-    name: 'skydive-functional-tests-backend-orientdb'
+    name: skydive-functional-tests-backend-orientdb
     defaults: skydive
     triggers:
       - skydive-pull-request:
-          name: "functional-tests-backend-orientdb"
+          name: functional-tests-backend-orientdb
           trigger-prefix: "(all )?"
           only-trigger-phrase: false
           cancel-builds-on-update: true
@@ -754,7 +754,7 @@
       - chuck-norris
 
 - job:
-    name: 'skydive-functional-hw-tests'
+    name: skydive-functional-hw-tests
     defaults: skydive
     parameters:
       - skydive-default-parameters
@@ -762,7 +762,7 @@
           slave-name: baremetal
     triggers:
       - skydive-pull-request:
-          name: "functional-tests-ebpf"
+          name: functional-hw-tests
           trigger-prefix: "(all )?"
           only-trigger-phrase: false
           cancel-builds-on-update: true
