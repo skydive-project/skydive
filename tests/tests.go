@@ -85,6 +85,7 @@ agent:
       - lldp
       - runc
       - socketinfo
+      {{.VppProbe}}
       {{.OpencontrailProbe}}
     netlink:
       metrics_update: 5
@@ -222,6 +223,7 @@ var (
 	standalone        bool
 	topologyBackend   string
 	opencontrailProbe bool
+	vppProbe          bool
 )
 
 func initConfig(conf string, params ...helperParams) error {
@@ -273,6 +275,9 @@ func initConfig(conf string, params ...helperParams) error {
 	}
 	if opencontrailProbe {
 		params[0]["OpencontrailProbe"] = "- opencontrail"
+	}
+	if vppProbe {
+		params[0]["VppProbe"] = "- vpp"
 	}
 
 	tmpl, err := template.New("config").Parse(conf)
@@ -425,6 +430,8 @@ func (c *TestContext) postmortem(t *testing.T, test *Test, timestamp time.Time) 
 // - execute the cleanup functions and commands
 // - replay the tests against the history with the recorded timestamps
 func RunTest(t *testing.T, test *Test) {
+	runStandalone()
+
 	client, err := gclient.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
 	if err != nil {
 		t.Fatalf("Failed to create client: %s", err)
@@ -781,6 +788,30 @@ func delaySec(sec int, err ...error) error {
 	return delay(time.Duration(sec)*time.Second, err...)
 }
 
+var initStandalone = false
+
+func runStandalone() {
+	if initStandalone == true {
+		return
+	}
+	server, err := analyzer.NewServerFromConfig()
+	if err != nil {
+		panic(err)
+	}
+	server.Start()
+
+	agent, err := agent.NewAgent()
+	if err != nil {
+		panic(err)
+	}
+
+	agent.Start()
+
+	// TODO: check for storage status instead of sleeping
+	time.Sleep(3 * time.Second)
+	initStandalone = true
+}
+
 func init() {
 	flag.BoolVar(&standalone, "standalone", false, "Start an analyzer and an agent")
 	flag.BoolVar(&agentTestsOnly, "agenttestsonly", false, "run agent test only")
@@ -792,6 +823,7 @@ func init() {
 	flag.StringVar(&analyzerListen, "analyzer.listen", "0.0.0.0:64500", "Specify the analyzer listen address")
 	flag.StringVar(&analyzerProbes, "analyzer.topology.probes", "", "Specify the analyzer probes to enable")
 	flag.BoolVar(&opencontrailProbe, "opencontrail", false, "Enable opencontrail probe")
+	flag.BoolVar(&vppProbe, "vpp", false, "Enable VPP probe")
 	flag.Parse()
 
 	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 100
@@ -802,23 +834,5 @@ func init() {
 
 	if err := config.InitLogging(); err != nil {
 		panic(fmt.Sprintf("Failed to initialize logging system: %s", err))
-	}
-
-	if standalone {
-		server, err := analyzer.NewServerFromConfig()
-		if err != nil {
-			panic(err)
-		}
-		server.Start()
-
-		agent, err := agent.NewAgent()
-		if err != nil {
-			panic(err)
-		}
-
-		agent.Start()
-
-		// TODO: check for storage status instead of sleeping
-		time.Sleep(3 * time.Second)
 	}
 }

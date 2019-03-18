@@ -213,7 +213,7 @@
   - user:
       name: jenkins
       group: jenkins
-      groups: jenkins,libvirt,docker,lxd,mock,vagrant
+      groups: jenkins,libvirt,docker,lxd,mock,vagrant,vpp
       home: /var/lib/jenkins
   - service:
       name: "{{ item }}"
