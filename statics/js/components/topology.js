@@ -282,6 +282,7 @@ var TopologyComponent = {
       topologyMode: "live",
       topologyHumanTimeContext: "",
       isTopologyOptionsVisible: false,
+      defaultFilter: "",
       timeType: "absolute",
       topologyRelTime: "1m",
       metadataCollapseState: {
@@ -579,7 +580,7 @@ var TopologyComponent = {
     },
 
     topologyFilterClear: function () {
-      this.topologyFilter = '';
+      this.topologyFilter = this.defaultFilter;
       this.topologyFilterQuery();
      },
 
@@ -679,8 +680,8 @@ var TopologyComponent = {
 
       var default_filter = app.getConfigValue('topology.default_filter');
       if (default_filter) {
-        var value = favorites[default_filter];
-        if (value) self.topologyFilter = value;
+        self.defaultFilter = favorites[default_filter];
+        if (self.defaultFilter) self.topologyFilter = self.defaultFilter;
       }
 
       var default_highlight = app.getConfigValue('topology.default_highlight');
