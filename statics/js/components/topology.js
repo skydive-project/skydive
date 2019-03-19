@@ -896,17 +896,18 @@ var TopologyComponent = {
     },
 
     normalizeMetric: function(metric) {
-      if (metric.Start && metric.Last && (metric.Last - metric.Start) > 0) {
-        bps = Math.floor(1000 * 8 * ((metric.RxBytes || 0) + (metric.TxBytes || 0)) / (metric.Last - metric.Start));
-        metric["Bandwidth"] = bandwidthToString(bps);
+      var metricCopy = JSON.parse(JSON.stringify(metric));
+      if (metricCopy.Start && metricCopy.Last && (metricCopy.Last - metricCopy.Start) > 0) {
+        bps = Math.floor(1000 * 8 * ((metricCopy.RxBytes || 0) + (metricCopy.TxBytes || 0)) / (metricCopy.Last - metricCopy.Start));
+        metricCopy["Bandwidth"] = bandwidthToString(bps);
       }
 
       ['Start', 'Last'].forEach(function(k) {
-        if (metric[k] && typeof metric[k] === 'number') {
-          metric[k] = new Date(metric[k]).toLocaleTimeString();
+        if (metricCopy[k] && typeof metricCopy[k] === 'number') {
+          metricCopy[k] = new Date(metricCopy[k]).toLocaleTimeString();
         }
       });
-      return metric;
+      return metricCopy;
     },
 
     extractMetadata: function(metadata, exclude) {
