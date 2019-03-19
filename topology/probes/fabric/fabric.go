@@ -149,10 +149,11 @@ func (fb *Probe) Start() {
 			l2OnlyLink = true
 		} else {
 			pc = strings.Split(link, "->")
-			if len(pc) != 2 {
-				logging.GetLogger().Errorf("Fabric link definition should have two endpoints: %s", link)
-				continue
-			}
+		}
+
+		if len(pc) != 2 || pc[0] == "" || pc[1] == "" {
+			logging.GetLogger().Errorf("Fabric link definition should have two endpoints: %s", link)
+			continue
 		}
 
 		parentDef := strings.TrimSpace(pc[0])
@@ -232,10 +233,6 @@ func (fb *Probe) Stop() {
 
 // NewProbe creates a new probe to enhance the graph
 func NewProbe(g *graph.Graph) (*Probe, error) {
-	if _, ok := config.Get("analyzer.topology.fabric").([]interface{}); config.IsSet("analyzer.topology.fabric") && !ok {
-		return nil, fmt.Errorf("Fabric configuration should be a list of entries")
-	}
-
 	return &Probe{
 		Graph: g,
 		links: make(map[*graph.Node][]fabricLink),
