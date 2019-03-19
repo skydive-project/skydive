@@ -1,0 +1,45 @@
+---
+- package:
+    name: "{{ item }}"
+    state: absent
+  with_items:
+     - docker
+     - docker-client
+     - docker-client-latest
+     - docker-common
+     - docker-latest
+     - docker-latest-logrotate
+     - docker-logrotate
+     - docker-selinux
+     - docker-engine-selinux
+     - docker-engine
+
+- yum_repository:
+    state: present
+    name: docker-ce-stable
+    description: "Docker CE Stable - $basearch"
+    gpgcheck: true
+    gpgkey: https://download.docker.com/linux/fedora/gpg
+    baseurl: "https://download.docker.com/linux/fedora/$releasever/$basearch/stable"
+
+- group:
+    name: docker
+    state: present
+
+- user:
+    name: vagrant
+    groups: docker
+    append: yes
+
+- package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+     - docker-ce
+     - docker-ce-cli
+     - containerd.io
+
+- service:
+    name: docker
+    state: restarted
+    enabled: yes
