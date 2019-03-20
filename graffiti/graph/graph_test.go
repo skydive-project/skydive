@@ -289,6 +289,11 @@ func TestPath(t *testing.T) {
 		t.Errorf("Shouldn't have true returned: %v", r)
 	}
 
+	r = g.LookupShortestPath(n4, Metadata{"Value": 2}, Metadata{"Type": "Layer6"})
+	if len(r) > 0 {
+		t.Errorf("Shouldn't have true returned: %v", r)
+	}
+
 	// add a shorter link in order to validate edge validator
 	g.Link(n1, n4, Metadata{"Type": "Layer3"})
 
