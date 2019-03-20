@@ -38,6 +38,7 @@ func (h *secretHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) 
 	secret := obj.(*v1.Secret)
 	m := NewMetadataFields(&secret.ObjectMeta)
 	m.SetField("Type", secret.Type)
+	m.SetField("Data", mapBytesToList(secret.Data))
 	return graph.Identifier(secret.GetUID()), NewMetadata(Manager, "secret", m, secret, secret.Name)
 }
 
