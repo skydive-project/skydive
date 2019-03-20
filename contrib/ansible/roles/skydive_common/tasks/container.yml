@@ -1,0 +1,45 @@
+---
+- name: "Install {{ skydive_container_cli }}"
+  package:
+    name: "{{ skydive_container_cli }}"
+    state: present
+
+- name: Enable Docker service
+  service:
+    name: docker
+    state: started
+    enabled: yes
+  when: skydive_container_cli == "docker"
+
+- name: Pull skydive image
+  shell: "{{ skydive_container_cli }} pull {{ skydive_docker_registry }}/{{ skydive_docker_image }}:{{ skydive_docker_image_tag }}"
+  when: skydive_load_docker_image is not defined
+
+- name: Run docker registry v2
+  # TODO: run this container in systemd when podman is used, so it can restart on failure.
+  shell: "{{ skydive_container_cli }} run -d -p 5000:5000 {% if skydive_container_cli == 'docker' %}--restart=always{% endif %} --name registry registry:2"
+  when: skydive_load_docker_image is defined
+
+- name: Set facts
+  set_fact: "skydive_docker_registry=localhost:5000"
+  when: skydive_load_docker_image is defined
+
+- name: Copy skydive image
+  copy:
+    src: "{{ skydive_load_docker_image | replace('file://', '') }}"
+    dest: /tmp
+    force: true
+    mode: 0755
+  when: skydive_load_docker_image is defined
+
+- name: Import skydive image
+  shell: "{{ skydive_container_cli }} load -i /tmp/{{ skydive_load_docker_image | replace('file://', '') | basename }}"
+  when: skydive_load_docker_image is defined
+
+- name: Tag skydive image
+  shell: "{{ skydive_container_cli }} tag skydive/skydive:devel {{ skydive_docker_registry }}/{{ skydive_docker_image }}:{{ skydive_docker_image_tag }}"
+  when: skydive_load_docker_image is defined
+
+- name: Push skydive image to registry
+  shell: "{{ skydive_container_cli }} push {{ skydive_docker_registry }}/{{ skydive_docker_image }}:{{ skydive_docker_image_tag }}"
+  when: skydive_load_docker_image is defined

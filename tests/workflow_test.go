@@ -19,18 +19,21 @@ package tests
 
 import (
 	"fmt"
+	"net"
 	"testing"
+	"time"
 
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/js"
 )
 
-func lookupWorkflow(client *http.CrudClient, name string) (*types.Workflow, error) {
+func lookupWorkflow(client *shttp.CrudClient, name string) (*types.Workflow, error) {
 	var workflows map[string]types.Workflow
 	if err := client.List("workflow", &workflows); err != nil {
 		return nil, err
@@ -110,21 +113,73 @@ func TestCheckMTUWorkflow(t *testing.T) {
 	RunTest(t, test)
 }
 
+func flowMatrixServer(t *testing.T, readyChan chan bool) net.Listener {
+	l, err := net.Listen("tcp", ":22222")
+	if err != nil {
+		t.Fatal(err)
+	}
+	readyChan <- true
+
+	go func() {
+
+		c, err := l.Accept()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for {
+			var buf []byte
+
+			if _, err := c.Write(buf); err != nil {
+				return
+			}
+
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
+
+	return l
+}
+
+func flowMatrixClient(t *testing.T) {
+	c, err := net.Dial("tcp", "127.0.0.1:22222")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for {
+		var buf []byte
+
+		if _, err := c.Read(buf); err != nil {
+			return
+		}
+	}
+}
+
 func TestFlowMatrixWorkflow(t *testing.T) {
 	runtime, err := js.NewRuntime()
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	var l net.Listener
+	readyChan := make(chan bool, 1)
+
 	test := &Test{
 		setupFunction: func(c *TestContext) error {
 			runtime.Start()
 			runtime.RegisterAPIClient(c.client)
 
+			l = flowMatrixServer(t, readyChan)
+			<-readyChan
+
+			go flowMatrixClient(t)
+
 			return nil
 		},
 
 		tearDownFunction: func(c *TestContext) error {
+			l.Close()
+
 			return nil
 		},
 
@@ -139,9 +194,9 @@ func TestFlowMatrixWorkflow(t *testing.T) {
 				return fmt.Errorf("Error while calling workflow: %s", err)
 			}
 
-			g := &struct {
-				Nodes map[string]graph.Node `mapstructure:"nodes"`
-				Edges map[string]graph.Edge `mapstructure:"edges"`
+			subgraph := &struct {
+				Nodes map[string]*graph.Node `mapstructure:"nodes"`
+				Edges map[string]*graph.Edge `mapstructure:"edges"`
 			}{}
 
 			obj, err := result.Export()
@@ -149,7 +204,7 @@ func TestFlowMatrixWorkflow(t *testing.T) {
 				return fmt.Errorf("Failed to export: %s", err)
 			}
 
-			if err := mapstructure.Decode(obj, g); err != nil {
+			if err := mapstructure.Decode(obj, subgraph); err != nil {
 				return fmt.Errorf("Failed to map: %s", err)
 			}
 
@@ -162,37 +217,23 @@ func TestFlowMatrixWorkflow(t *testing.T) {
 				return fmt.Errorf("Expected FlowMatrix workflow to return true")
 			}
 
-			sa, err := common.ServiceAddressFromString(analyzerListen)
-			if err != nil {
-				return err
+			backend, _ := graph.NewMemoryBackend()
+			g := graph.NewGraph("test", backend, common.UnknownService)
+
+			for _, n := range subgraph.Nodes {
+				g.NodeAdded(n)
 			}
 
-			var process *graph.Node
-			for _, n := range g.Nodes {
-				name, _ := n.GetFieldString("Name")
-				port, _ := n.GetFieldInt64("Port")
-				if name == "functionals" && port == int64(sa.Port) {
-					process = &n
-					break
-				}
+			for _, e := range subgraph.Edges {
+				g.EdgeAdded(e)
 			}
 
-			if process == nil {
-				return fmt.Errorf("Expected to find a process named 'functionals' with port %d", sa.Port)
-			}
+			tr := traversal.NewGraphTraversal(g, false)
 
-			var connection *graph.Edge
-			for _, e := range g.Edges {
-				port, _ := e.GetFieldInt64("ServicePort")
-				relationType, _ := e.GetFieldString("RelationType")
-				if e.Parent == process.ID && e.Child == process.ID && port == int64(sa.Port) && relationType == "connection" {
-					connection = &e
-					break
-				}
-			}
-
-			if connection == nil {
-				return fmt.Errorf("Expected to find a connection 'functionals' and itself on port 64500")
+			ctx := traversal.StepContext{}
+			tv := tr.V(ctx).Has(ctx, "Name", "functionals", "ServiceType", "client").OutE(ctx).Has(ctx, "RelationType", "connection", "Port", 22222).OutV(ctx).Has(ctx, "ServiceType", "server", "Name", "functionals")
+			if len(tv.Values()) != 0 {
+				return fmt.Errorf("Should return at least one connection node, returned: %v, graph: %v, subgraph: %v", tv.Values(), g.String(), subgraph)
 			}
 
 			return nil

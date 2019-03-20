@@ -259,49 +259,72 @@ Source: |
             var endpoints = buildEndpoints()
             var g = new api.Graph()
 
-            for (var k in endpoints) {
-                var endpoint = endpoints[k]
-                for (var name in endpoint) {
-                    var nodeID = new UUID(5, "ns:URL", k+name).toString();
-                    var metadata = {
-                        "Name": name,
-                        "Type": "service",
-                        "Process": endpoint[name].serviceProcess,
-                        "Port": endpoint[name].servicePort
-                    }
-                    var node = new api.GraphNode()
-                    node.ID = nodeID.toString()
-                    node.Host = k
-                    node.Metadata = metadata
-                    g.nodes[node.ID] = node
-
-                    var edgeID = new UUID(5, "ns:URL", hosts[k].ID+nodeID.toString())
-                    var edge = new api.GraphEdge()
-                    edge.ID = edgeID.toString()
-                    edge.Host = k
-                    edge.Metadata = { "RelationType": "ownership" }
-                    edge.Parent = hosts[k].ID
-                    edge.Child = nodeID.toString()
-                    g.edges[edge.ID] = edge
-                }
-            }
-
             for (var i in matrix) {
                 var entry = matrix[i]
 
-                var parent = new UUID(5, "ns:URL", entry.clientHost+entry.clientName).toString()
-                var child = new UUID(5, "ns:URL", entry.serviceHost+entry.serviceName).toString()
-                var edgeID = new UUID(5, "ns:URL", parent+child)
+                var metadata = {
+                    "Name": entry.serviceName,
+                    "Type": "process",
+                    "ServiceType": "server",
+                    "Process": entry.serviceProcess,
+                    "Ports": []
+                }
 
+                var parentNodeID = new UUID(5, "ns:URL", entry.serviceHost+entry.serviceProcess+"service").toString()
+                if (parentNodeID in g.nodes) {
+                    metadata["Ports"] = g.nodes[parentNodeID].Metadata["Ports"]
+                }
+                if (metadata["Ports"].indexOf(entry.servicePort) == -1) {
+                    metadata["Ports"].push(entry.servicePort)
+                }
+
+                var parentNode = new api.GraphNode()
+                parentNode.ID = parentNodeID
+                parentNode.Host = entry.serviceHost
+                parentNode.Metadata = metadata
+                g.nodes[parentNodeID] = parentNode
+
+                var ownerEdgeID = new UUID(5, "ns:URL", hosts[entry.serviceHost].ID+parentNodeID).toString()
+                var ownerEdge = new api.GraphEdge()
+                ownerEdge.ID = ownerEdgeID
+                ownerEdge.Host = entry.serviceHost
+                ownerEdge.Metadata = { "RelationType": "ownership" }
+                ownerEdge.Parent = hosts[entry.serviceHost].ID
+                ownerEdge.Child = parentNodeID
+                g.edges[ownerEdgeID] = ownerEdge
+
+                var childNodeID = new UUID(5, "ns:URL", entry.clientHost+entry.clientProcess+"client").toString()
+                var metadata = {
+                    "Name": entry.clientName,
+                    "Type": "process",
+                    "ServiceType": "client",
+                    "Process": entry.clientProcess
+                }
+                var childNode = new api.GraphNode()
+                childNode.ID = childNodeID
+                childNode.Host = entry.clientHost
+                childNode.Metadata = metadata
+                g.nodes[childNodeID] = childNode
+
+                ownerEdgeID = new UUID(5, "ns:URL", hosts[entry.clientHost].ID+childNodeID).toString()
+                ownerEdge = new api.GraphEdge()
+                ownerEdge.ID = ownerEdgeID
+                ownerEdge.Host =  entry.clientHost
+                ownerEdge.Metadata = { "RelationType": "ownership" }
+                ownerEdge.Parent = hosts[entry.clientHost].ID
+                ownerEdge.Child = childNodeID
+                g.edges[ownerEdgeID] = ownerEdge
+
+                var edgeID = new UUID(5, "ns:URL", childNodeID+parentNodeID).toString()
                 var edge = new api.GraphEdge()
-                edge.ID = edgeID.toString()
+                edge.ID = edgeID
                 edge.Host = entry.serviceHost
                 edge.Metadata = { "RelationType": "connection",
-                                  "ServicePort": entry.servicePort }
-                edge.Parent = parent
-                edge.Child = child
+                                "Port": entry.servicePort }
+                edge.Parent = childNodeID
+                edge.Child = parentNodeID
 
-                g.edges[edge.ID] = edge
+                g.edges[edgeID] = edge
             }
 
             return g
@@ -309,11 +332,16 @@ Source: |
 
         var outputResult = function() {
             log("Output result in " + format)
-            switch (format) {
-                case "dot":
-                    return outputDot()
-                case "graph":
-                    return outputGraph()
+
+            try {
+                switch (format) {
+                    case "dot":
+                        return outputDot()
+                    case "graph":
+                        return outputGraph()
+                }
+            } catch(error) {
+                log("Error", error)
             }
         }
 

@@ -22,10 +22,12 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/hub"
 	gws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/websocket"
@@ -69,7 +71,7 @@ var TopologyImport = &cobra.Command{
 		}
 
 		url := config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher")
-		opts := websocket.ClientOpts{AuthOpts: &AuthenticationOpts}
+		opts := websocket.ClientOpts{AuthOpts: &AuthenticationOpts, Headers: http.Header{}}
 		opts.Headers.Add("X-Persistence-Policy", string(hub.Persistent))
 		client, err := config.NewWSClient(common.UnknownService, url, opts)
 		if err != nil {
@@ -91,23 +93,23 @@ var TopologyImport = &cobra.Command{
 			exitOnError(err)
 		}
 
-		syncMsg := []*gws.SyncMsg{}
-		if err := json.Unmarshal(content, &syncMsg); err != nil {
+		els := []*graph.Elements{}
+		if err := json.Unmarshal(content, &els); err != nil {
 			exitOnError(err)
 		}
 
-		if len(syncMsg) != 1 {
+		if len(els) != 1 {
 			exitOnError(errors.New("Invalid graph format"))
 		}
 
-		for _, node := range syncMsg[0].Nodes {
+		for _, node := range els[0].Nodes {
 			msg := gws.NewStructMessage(gws.NodeAddedMsgType, node)
 			if err := client.SendMessage(msg); err != nil {
 				exitOnError(fmt.Errorf("Failed to send message: %s", err))
 			}
 		}
 
-		for _, edge := range syncMsg[0].Edges {
+		for _, edge := range els[0].Edges {
 			msg := gws.NewStructMessage(gws.EdgeAddedMsgType, edge)
 			if err := client.SendMessage(msg); err != nil {
 				exitOnError(fmt.Errorf("Failed to send message: %s", err))

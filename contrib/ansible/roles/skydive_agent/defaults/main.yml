@@ -4,3 +4,4 @@ skydive_agent_docker_image: skydive/skydive
 skydive_agent_docker_command: agent
 skydive_agent_docker_image_tag:
 skydive_topology_probes:
+skydive_container_cli: docker

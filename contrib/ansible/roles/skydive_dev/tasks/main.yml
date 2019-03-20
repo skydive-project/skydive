@@ -57,12 +57,15 @@
      - podman
 
 - service:
-    name: "{{ item }}"
+    name: openvswitch
     state: started
     enabled: yes
-  with_items:
-    - openvswitch
-    - docker
+
+- service:
+    name: docker
+    state: started
+    enabled: yes
+  when: skydive_container_cli == "docker"
 
 - include_tasks: lxd.yml
   when: ansible_distribution == "Fedora" and ansible_architecture == "x86_64"
@@ -76,7 +79,10 @@
     - vagrant
 
 - include_tasks: docker.yml
+  when: skydive_container_cli == "docker"
   tags:
     - vagrant
 
 - include_tasks: vpp.yml
+
+- include_tasks: virtualbox.yml

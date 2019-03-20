@@ -16,7 +16,7 @@
   tags:
     - config
 
-- include_tasks: docker.yml
+- include_tasks: container.yml
   when: skydive_deployment_mode == "container"
 
 - include_tasks: package.yml
