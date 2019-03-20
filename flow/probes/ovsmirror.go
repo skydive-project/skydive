@@ -30,7 +30,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/ovs"
+	ovsdb "github.com/skydive-project/skydive/ovs"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	op "github.com/skydive-project/skydive/topology/probes/ovsdb"
@@ -308,6 +308,10 @@ func (o *OvsMirrorProbesHandler) RegisterProbeOnPort(n *graph.Node, portUUID str
 		capture: capture,
 		graph:   o.Graph,
 		node:    n,
+	}
+
+	if id, _ := n.GetFieldString("ExtID.skydive-probe-id"); id != "" {
+		return fmt.Errorf("Mirror on mirrored interface is not allowed")
 	}
 
 	if err := o.registerProbeOnPort(probe, portUUID); err != nil {

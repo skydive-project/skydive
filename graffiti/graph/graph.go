@@ -940,6 +940,10 @@ func (g *Graph) LookupShortestPath(n *Node, m ElementMatcher, em ElementMatcher)
 		node = prevNode
 	}
 
+	if node.ID != target.ID {
+		return []*Node{}
+	}
+
 	return retNodes
 }
 
