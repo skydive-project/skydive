@@ -25,8 +25,7 @@ import (
 	"testing"
 	"time"
 
-	g "github.com/skydive-project/skydive/gremlin"
-	"github.com/skydive-project/skydive/topology/probe/vpp"
+	"github.com/skydive-project/skydive/topology/probes/vpp"
 )
 
 func createLoopback(t *testing.T) string {
@@ -62,25 +61,25 @@ func TestVPPLoopback(t *testing.T) {
 		mode: Replay,
 
 		checks: []CheckFunction{func(c *CheckContext) error {
-			loop1 := createLoopback()
+			loop1 := createLoopback(t)
 			gremlin := c.gremlin.Has("Driver", "vpp", "Name", loop1)
 			if len(gremlin) < 1 {
 				return fmt.Errorf("Expected one interface, got %+v", gremlin)
 			}
 
-			loop2 := createLoopback()
-			gremlin := c.gremlin.Has("Driver", "vpp", "Name", loop2)
+			loop2 := createLoopback(t)
+			gremlin = c.gremlin.Has("Driver", "vpp", "Name", loop2)
 			if len(gremlin) < 1 {
 				return fmt.Errorf("Expected one interface, got %+v", gremlin)
 			}
 
-			deleteLoopback(loop1)
-			gremlin := c.gremlin.Has("Driver", "vpp", "Name", loop1)
+			deleteLoopback(t, loop1)
+			gremlin = c.gremlin.Has("Driver", "vpp", "Name", loop1)
 			if len(gremlin) != 0 {
 				return fmt.Errorf("Expected no interface, got %+v", gremlin)
 			}
 
-			deleteLoopback(loop2)
+			deleteLoopback(t, loop2)
 
 			return nil
 		}},
