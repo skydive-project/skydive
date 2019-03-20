@@ -472,6 +472,7 @@
               variable: VAGRANTCLOUD_TOKEN
       - skydive-wrappers
     builders:
+      - skydive-cleanup
       - skydive-test:
           test: scripts/ci/create-vagrant-boxes.sh
 
@@ -600,6 +601,7 @@
           only-trigger-phrase: true
           cancel-builds-on-update: true
     builders:
+      - skydive-cleanup
       - skydive-test:
           test: scripts/ci/run-python-tests.sh
 
