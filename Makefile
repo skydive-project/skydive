@@ -186,6 +186,7 @@ endif
 
 ifeq ($(WITH_VPP), true)
   BUILD_TAGS+=vpp
+  EXTRA_ARGS+=-vpp
 endif
 
 STATIC_LIBS_ABS := $(addprefix $(STATIC_DIR)/,$(STATIC_LIBS))

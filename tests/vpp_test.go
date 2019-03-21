@@ -22,20 +22,22 @@ package tests
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/topology/probes/vpp"
 )
 
 func createLoopback(t *testing.T) string {
-	cmd := "vppctl loopback create-interface | tr -d '\r'"
+	cmd := "vppctl loopback create-interface"
 	out, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		t.Error("Can't create vpp loopback interface ", err)
 	}
-	time.Sleep(vpp.VPPPollingTime * time.Millisecond)
-	return string(out)
+	time.Sleep(2 * vpp.VPPPollingTime * time.Millisecond)
+	return strings.Trim(string(out), "\r\n")
 }
 
 func deleteLoopback(t *testing.T, intf string) string {
@@ -44,8 +46,8 @@ func deleteLoopback(t *testing.T, intf string) string {
 	if err != nil {
 		t.Error("Can't delete vpp loopback interface ", intf, " : ", err)
 	}
-	time.Sleep(vpp.VPPPollingTime * time.Millisecond)
-	return string(out)
+	time.Sleep(2 * vpp.VPPPollingTime * time.Millisecond)
+	return strings.Trim(string(out), "\r\n")
 }
 
 func TestVPPLoopback(t *testing.T) {
@@ -58,25 +60,36 @@ func TestVPPLoopback(t *testing.T) {
 			{"vppctl show interface", true},
 		},
 
-		mode: Replay,
+		mode: OneShot,
 
 		checks: []CheckFunction{func(c *CheckContext) error {
+			var nodes []*graph.Node
+			var err error
 			loop1 := createLoopback(t)
-			gremlin := c.gremlin.Has("Driver", "vpp", "Name", loop1)
-			if len(gremlin) < 1 {
-				return fmt.Errorf("Expected one interface, got %+v", gremlin)
+			gremlin := c.gremlin.V().Has("Driver", "vpp", "Name", loop1)
+			if nodes, err = c.gh.GetNodes(gremlin); err != nil {
+				return err
+			}
+			if len(nodes) < 1 {
+				return fmt.Errorf("Expected one interface, got %+v", nodes)
 			}
 
 			loop2 := createLoopback(t)
-			gremlin = c.gremlin.Has("Driver", "vpp", "Name", loop2)
-			if len(gremlin) < 1 {
-				return fmt.Errorf("Expected one interface, got %+v", gremlin)
+			gremlin = c.gremlin.V().Has("Driver", "vpp", "Name", loop2)
+			if nodes, err = c.gh.GetNodes(gremlin); err != nil {
+				return err
+			}
+			if len(nodes) < 1 {
+				return fmt.Errorf("Expected one interface, got %+v", nodes)
 			}
 
 			deleteLoopback(t, loop1)
-			gremlin = c.gremlin.Has("Driver", "vpp", "Name", loop1)
-			if len(gremlin) != 0 {
-				return fmt.Errorf("Expected no interface, got %+v", gremlin)
+			gremlin = c.gremlin.V().Has("Driver", "vpp", "Name", loop1)
+			if nodes, err = c.gh.GetNodes(gremlin); err != nil {
+				return err
+			}
+			if len(nodes) != 0 {
+				return fmt.Errorf("Expected no interface, got %+v", nodes)
 			}
 
 			deleteLoopback(t, loop2)
