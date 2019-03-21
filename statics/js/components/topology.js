@@ -283,6 +283,7 @@ var TopologyComponent = {
       topologyHumanTimeContext: "",
       isTopologyOptionsVisible: false,
       defaultFilter: "",
+      defaultEmphasize: "",
       timeType: "absolute",
       topologyRelTime: "1m",
       metadataCollapseState: {
@@ -585,7 +586,7 @@ var TopologyComponent = {
      },
 
     topologyEmphasizeClear: function () {
-      this.topologyEmphasize = '';
+      this.topologyEmphasize = this.defaultEmphasize;
       this.emphasizeGremlinExpr();
      },
 
@@ -686,8 +687,8 @@ var TopologyComponent = {
 
       var default_highlight = app.getConfigValue('topology.default_highlight');
       if (default_highlight) {
-        var value = favorites[default_highlight];
-        if (value) self.topologyEmphasize = value;
+        self.defaultEmphasize = favorites[default_highlight];
+        if (self.defaultEmphasize) self.topologyEmphasize = value;
       }
     },
 
