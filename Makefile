@@ -419,9 +419,9 @@ test.functionals.compile: govendor genlocalfiles
 .PHONY: test.functionals.static
 test.functionals.static: govendor genlocalfiles
 	$(GOVENDOR) test -tags "netgo ${BUILD_TAGS} test" \
-		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) -extldflags \"-static $(STATIC_LIBS_ABS)\"" \
+		-ldflags "${LDFLAGS} -X $(SKYDIVE_GITHUB_VERSION) -extldflags \"-static $(STATIC_LIBS_ABS)\"" \
 		-installsuffix netgo \
-		-ldflags="${LDFLAGS}" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} \
+		${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} \
 		-c -o tests/functionals ./tests/
 
 .PHONY: test.functionals.run
