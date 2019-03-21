@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.22.0] - 2019-03-21
+### Added
+- SRIO-V support
+- SFlow Counters support
+- Add VPP probe
+- Flow life cycle Fields to track TCP sessions
+- TCP fields support to eBPF probe
+- NetLink probe reports permanent hardware address
+- Report kernel command line as metadata
+- Mechanism to report config file fields as metadata
+- Report global OVS information as metadata
+- UI:
+  - Add collapse/expand support for dict/map
+  - Add edge highlighting support
+- Gremlin:
+  - Add Without predicate
+- Python:
+  - Add injection to REST API
+  - Add alert to REST API
+
+### Changed
+- Improve eBPF probe performances
+- General agent performance improvements
+- Kubernetes and Istio support improvements
+- Fix TTL field setting for ICMPV4 packet injection
+- Improve communication performances between agent and analyzer
+- Fix datastore replication issue
+
 ## [0.21.0] - 2018-11-30
 ### Added
 - LLDP topology probe for topology auto discovery
