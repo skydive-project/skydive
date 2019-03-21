@@ -170,11 +170,11 @@
       - string:
           name: REF
           default: "{ref}"
-          description: "The tag or branch to build (ex: origin/pr/1234/merge for the PR 1234)"
+          description: "The tag or branch to build (ex: origin/pr/1234/merge for the PR 1234, v0.20.1 for the corresponding tag or devel for the branch named devel)"
       - string:
           name: REFSPEC
           default: "{refspec}"
-          description: "Refspec (ex: +refs/pull/*:refs/remotes/origin/pr/* for a PR, +refs/tags/*:refs/remotes/origin/tags/* for a tag)"
+          description: "Refspec (ex: +refs/pull/*:refs/remotes/origin/pr/* for a PR, +refs/tags/*:refs/remotes/origin/tags/* for a tag, +refs/heads/*:refs/remotes/origin/* for a branch)"
       - string:
           name: DRY_RUN
           default: "{dry-run}"
@@ -472,6 +472,7 @@
               variable: VAGRANTCLOUD_TOKEN
       - skydive-wrappers
     builders:
+      - skydive-cleanup
       - skydive-test:
           test: scripts/ci/create-vagrant-boxes.sh
 
@@ -600,6 +601,7 @@
           only-trigger-phrase: true
           cancel-builds-on-update: true
     builders:
+      - skydive-cleanup
       - skydive-test:
           test: scripts/ci/run-python-tests.sh
 

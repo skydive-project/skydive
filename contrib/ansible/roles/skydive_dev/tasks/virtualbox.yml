@@ -7,5 +7,7 @@
     - VirtualBox
     - kernel-devel
     - "kernel-devel-{{ ansible_kernel }}"
+    - kernel-headers
+    - "kernel-headers-{{ ansible_kernel }}"
 
-- shell: "akmods --kernels `uname -r`"
+- shell: "akmods"
