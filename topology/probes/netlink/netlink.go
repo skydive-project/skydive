@@ -206,17 +206,46 @@ func (u *NetNsProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 	}
 }
 
+func (u *NetNsProbe) handleVF(intf *graph.Node, ifName string) error {
+	physfnNetPath := fmt.Sprintf("/sys/class/net/%s/device/physfn/net", ifName)
+	fileinfos, err := ioutil.ReadDir(physfnNetPath)
+	if err != nil {
+		return err
+	} else if len(fileinfos) == 0 {
+		return fmt.Errorf("Failed to find PV for %s", ifName)
+	}
+
+	physfnIfIndexPath := filepath.Join(physfnNetPath, fileinfos[0].Name(), "ifindex")
+	content, err := ioutil.ReadFile(physfnIfIndexPath)
+	if err != nil {
+		return err
+	}
+
+	// The interface is a VF
+	physfnIfIndex, err := strconv.Atoi(strings.TrimSpace(string(content)))
+	if err != nil {
+		return err
+	}
+
+	u.linkIntfToIndex(intf, int64(physfnIfIndex), "vf", nil)
+	return nil
+}
+
 func (u *NetNsProbe) handleIntfIsVF(intf *graph.Node, link netlink.Link) {
 	attrs := link.Attrs()
-	physfnNetPath := fmt.Sprintf("/sys/class/net/%s/device/physfn/net", attrs.Name)
-	if fileinfos, err := ioutil.ReadDir(physfnNetPath); err == nil {
-		physfnIfIndexPath := filepath.Join(physfnNetPath, fileinfos[0].Name(), "ifindex")
-		if content, err := ioutil.ReadFile(physfnIfIndexPath); err == nil {
-			// The interface is a VF
-			if physfnIfIndex, err := strconv.Atoi(strings.TrimSpace(string(content))); err == nil {
-				u.linkIntfToIndex(intf, int64(physfnIfIndex), "vf", nil)
-			}
-		}
+	ifName := attrs.Name
+	if u.handleVF(intf, ifName) != nil {
+		// It has been seen cases where the folder was existing but it was empty
+		// We suspect this is a race so we retry a few times
+		go common.Retry(func() error {
+			u.Graph.Lock()
+			defer u.Graph.Unlock()
+
+			u.Lock()
+			defer u.Unlock()
+
+			return u.handleVF(intf, ifName)
+		}, 3, time.Second)
 	}
 }
 

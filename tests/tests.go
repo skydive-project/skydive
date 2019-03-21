@@ -430,7 +430,9 @@ func (c *TestContext) postmortem(t *testing.T, test *Test, timestamp time.Time) 
 // - execute the cleanup functions and commands
 // - replay the tests against the history with the recorded timestamps
 func RunTest(t *testing.T, test *Test) {
-	runStandalone()
+	if standalone && !initStandalone {
+		runStandalone()
+	}
 
 	client, err := gclient.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
 	if err != nil {
@@ -791,9 +793,6 @@ func delaySec(sec int, err ...error) error {
 var initStandalone = false
 
 func runStandalone() {
-	if initStandalone == true {
-		return
-	}
 	server, err := analyzer.NewServerFromConfig()
 	if err != nil {
 		panic(err)
