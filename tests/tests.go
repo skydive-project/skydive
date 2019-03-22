@@ -69,7 +69,7 @@ analyzer:
   analyzer_password: password
   topology:
     backend: {{.TopologyBackend}}
-    probes: {{block "list" .}}{{"\n"}}{{range .AnalyzerProbes}}{{println "    -" .}}{{end}}{{end}}
+    probes: {{block "analyzerprobes" .}}{{"\n"}}{{range .AnalyzerProbes}}{{println "    -" .}}{{end}}{{end}}
   startup:
     capture_gremlin: "g.V().Has('Name','startup-vm2')"
 
@@ -77,16 +77,13 @@ agent:
   listen: {{.AgentAddr}}:{{.AgentPort}}
   topology:
     probes:
-      - netlink
-      - netns
-      - ovsdb
-      - docker
-      - lxd
-      - lldp
-      - runc
-      - socketinfo
-      {{.VppProbe}}
-      {{.OpencontrailProbe}}
+    - netns
+    - ovsdb
+    - docker
+    - lxd
+    - lldp
+    - runc
+    - socketinfo{{block "agentProbes" .}}{{"\n"}}{{range .AgentProbes}}{{println "    -" .}}{{end}}{{end}}
     netlink:
       metrics_update: 5
     lldp:
@@ -214,6 +211,7 @@ type Test struct {
 
 var (
 	agentTestsOnly    bool
+	agentProbes       string
 	analyzerListen    string
 	analyzerProbes    string
 	etcdServer        string
@@ -222,8 +220,6 @@ var (
 	noOFTests         bool
 	standalone        bool
 	topologyBackend   string
-	opencontrailProbe bool
-	vppProbe          bool
 )
 
 func initConfig(conf string, params ...helperParams) error {
@@ -273,11 +269,8 @@ func initConfig(conf string, params ...helperParams) error {
 	if analyzerProbes != "" {
 		params[0]["AnalyzerProbes"] = strings.Split(analyzerProbes, ",")
 	}
-	if opencontrailProbe {
-		params[0]["OpencontrailProbe"] = "- opencontrail"
-	}
-	if vppProbe {
-		params[0]["VppProbe"] = "- vpp"
+	if agentProbes != "" {
+		params[0]["AgentProbes"] = strings.Split(agentProbes, ",")
 	}
 
 	tmpl, err := template.New("config").Parse(conf)
@@ -821,8 +814,7 @@ func init() {
 	flag.StringVar(&flowBackend, "analyzer.flow.backend", "", "Specify the flow storage backend used")
 	flag.StringVar(&analyzerListen, "analyzer.listen", "0.0.0.0:64500", "Specify the analyzer listen address")
 	flag.StringVar(&analyzerProbes, "analyzer.topology.probes", "", "Specify the analyzer probes to enable")
-	flag.BoolVar(&opencontrailProbe, "opencontrail", false, "Enable opencontrail probe")
-	flag.BoolVar(&vppProbe, "vpp", false, "Enable VPP probe")
+	flag.StringVar(&agentProbes, "agent.topology.probes", "", "Specify the extra agent probes to enable")
 	flag.Parse()
 
 	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 100

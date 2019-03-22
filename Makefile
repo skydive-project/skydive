@@ -71,7 +71,7 @@ ifeq ($(VERBOSE), false)
 endif
 ifeq ($(COVERAGE), true)
   TEST_COVERPROFILE?=../functionals.cover
-  EXTRA_ARGS+= -test.coverprofile=${TEST_COVERPROFILE}
+  EXTRA_ARGS+=-test.coverprofile=${TEST_COVERPROFILE}
 endif
 TIMEOUT?=1m
 TEST_PATTERN?=
@@ -151,16 +151,16 @@ endif
 
 ifeq ($(WITH_K8S), true)
   BUILD_TAGS+=k8s
-  TEST_PROBES+=k8s
+  ANALYZER_TEST_PROBES+=k8s
 endif
 
 ifeq ($(WITH_ISTIO), true)
   BUILD_TAGS+=k8s istio
-  TEST_PROBES+=istio
+  ANALYZER_TEST_PROBES+=istio
 endif
 
 ifeq ($(WITH_OVN), true)
-  TEST_PROBES+=ovn
+  ANALYZER_TEST_PROBES+=ovn
 endif
 
 ifeq ($(WITH_HELM), true)
@@ -169,7 +169,7 @@ endif
 
 ifeq ($(WITH_OPENCONTRAIL), true)
   BUILD_TAGS+=opencontrail
-  EXTRA_ARGS+= -opencontrail
+  AGENT_TEST_EXTRA_PROBES+=opencontrail
 ifeq ($(OS_RHEL),Y)
   STATIC_LIBS+=libxml2.a
 endif
@@ -190,13 +190,13 @@ endif
 
 ifeq ($(WITH_VPP), true)
   BUILD_TAGS+=vpp
-  EXTRA_ARGS+=-vpp
+  AGENT_TEST_EXTRA_PROBES+=vpp
 endif
 
 comma:= ,
 empty:=
 space:= $(empty) $(empty)
-EXTRA_ARGS+= -analyzer.topology.probes=$(subst $(space),$(comma),$(TEST_PROBES))
+EXTRA_ARGS+=-analyzer.topology.probes=$(subst $(space),$(comma),$(ANALYZER_TEST_PROBES)) -agent.topology.probes=$(subst $(space),$(comma),$(AGENT_TEST_EXTRA_PROBES))
 STATIC_LIBS_ABS := $(addprefix $(STATIC_DIR)/,$(STATIC_LIBS))
 STATIC_BUILD_TAGS := $(filter-out libvirt,$(BUILD_TAGS))
 
