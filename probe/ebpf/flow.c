@@ -28,14 +28,19 @@
 #include "bpf.h"
 #include "flow.h"
 
-#define DEBUG 1
-
 // Fowler/Noll/Vo hash
 #define FNV_BASIS ((__u64)14695981039346656037U)
 #define FNV_PRIME ((__u64)1099511628211U)
 
 #define IP_MF     0x2000
 #define IP_OFFSET	0x1FFF
+
+#define MAX_VLAN_LAYERS 5
+struct vlan {
+	__u16		tci;
+	__u16		ethertype;
+};
+
 
 MAP(u64_config_values) {
 	.type = BPF_MAP_TYPE_ARRAY,
@@ -264,6 +269,45 @@ static inline void fill_network(struct __sk_buff *skb, __u16 netproto, int offse
 	flow->layers |= NETWORK_LAYER;
 }
 
+static inline __u16 fill_vlan(struct __sk_buff *skb, int offset, struct flow *flow)
+{
+	struct link_layer *layer = &flow->link_layer;
+
+	__u16 tci = load_half(skb, offset + offsetof(struct vlan, tci));
+	__u16 protocol = load_half(skb, offset + offsetof(struct vlan, ethertype));
+	__u16 vlanID = tci & 0x0fff;
+
+	__u64 hash_vlan = 0;
+	update_hash_half(&hash_vlan, vlanID);
+
+	layer->_hash ^= hash_vlan;
+	layer->id = (layer->id << 12) | vlanID;
+	layer->vlans++;
+
+	return protocol;
+}
+
+static inline void fill_vlans(struct __sk_buff *skb, __u16 *protocol, int *offset, struct flow *flow) {
+	if (*protocol == ETH_P_8021Q) {
+		#pragma unroll
+		for(int i=0;i<MAX_VLAN_LAYERS;i++) {
+			*protocol = fill_vlan(skb, *offset, flow);
+			*offset += 4;
+			if (*protocol != ETH_P_8021Q) {
+				break;
+			}
+		}
+	}
+
+	struct link_layer *layer = &flow->link_layer;
+	if (skb->vlan_present) {
+		__u16 vlanID = skb->vlan_tci & 0x0fff;
+		layer->_hash ^= vlanID;
+		layer->id = (layer->id << 12) | vlanID;
+		layer->vlans++;
+	}
+}
+
 static inline void fill_haddr(struct __sk_buff *skb, int offset,
 	unsigned char *mac)
 {
@@ -309,20 +353,21 @@ static inline void update_metrics(struct __sk_buff *skb, struct flow *flow, __u6
 	}
 }
 
-static void fill_flow(struct __sk_buff *skb, struct flow *flow)
+static inline void fill_flow(struct __sk_buff *skb, struct flow *flow)
 {
 	flow->ifindex = skb->ifindex;
 
 	fill_link(skb, 0, flow);
 
 	__u16 protocol = load_half(skb, offsetof(struct ethhdr, h_proto));
+	int offset = ETH_HLEN;
+
+	fill_vlans(skb, &protocol, &offset, flow);
+
 	switch (protocol) {
-	case ETH_P_8021Q:
-		// TODO
-		break;
 	case ETH_P_IP:
 	case ETH_P_IPV6:
-		fill_network(skb, (__u16)protocol, ETH_HLEN, flow);
+		fill_network(skb, (__u16)protocol, offset, flow);
 		break;
 	}
 

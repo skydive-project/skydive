@@ -35,7 +35,9 @@ struct link_layer {
 	__u8   protocol;	// currenlty only supporting ethernet
 	__u8   mac_src[ETH_ALEN];
 	__u8   mac_dst[ETH_ALEN];
+	__u8   vlans;
 
+	__u64 id;
 	__u64 _hash;
 	__u64 _hash_src;
 };

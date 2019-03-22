@@ -101,8 +101,14 @@ func (p *EBPFProbe) newFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow
 		Protocol: flow.FlowProtocol_ETHERNET,
 		A:        net.HardwareAddr(linkA).String(),
 		B:        net.HardwareAddr(linkB).String(),
+		ID:       int64(kernFlow.link_layer.id),
 	}
 	f.LayersPath = "Ethernet"
+
+	nVLAN := uint8(kernFlow.link_layer.vlans)
+	for i := uint8(0); i < nVLAN; i++ {
+		f.LayersPath += "/Dot1Q"
+	}
 
 	// NETWORK
 	if layersFlag&uint8(C.NETWORK_LAYER) > 0 {
