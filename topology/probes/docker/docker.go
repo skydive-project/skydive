@@ -110,7 +110,7 @@ func (probe *Probe) registerContainer(id string) {
 
 	dockerMetadata := graph.Metadata{
 		"ContainerID":   info.ID,
-		"ContainerName": info.Name,
+		"ContainerName": info.Name[1:],
 	}
 
 	if len(info.Config.Labels) != 0 {
