@@ -78,5 +78,7 @@ func newHostNodeLinker(g *graph.Graph) probe.Probe {
 }
 
 func newNodePodLinker(g *graph.Graph) probe.Probe {
-	return newResourceLinker(g, GetSubprobesMap(Manager), "node", MetadataFields("Name"), "pod", MetadataFields("Node"), NewEdgeMetadata(Manager, "association"))
+	nodeIndexer := newResourceIndexer(g, Manager, "node", MetadataFields("Name"))
+	podIndexer := newResourceIndexer(g, Manager, "pod", MetadataFields("Node"))
+	return newResourceLinker(g, nodeIndexer, podIndexer, NewEdgeMetadata(Manager, "association"))
 }
