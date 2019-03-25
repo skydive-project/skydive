@@ -237,3 +237,35 @@ func TestAppSpecificTimeout(t *testing.T) {
 		t.Errorf("Should not have been notified : %+v", dnsFlow)
 	}
 }
+
+func TestHold(t *testing.T) {
+	updHandler := NewFlowHandler(func(f *FlowArray) {}, 60*time.Second)
+	expHandler := NewFlowHandler(func(f *FlowArray) {}, 600*time.Second)
+
+	table := NewTable(updHandler, expHandler, "", TableOpts{})
+
+	flowTime := time.Now()
+
+	flow1, _ := table.getOrCreateFlow("flow1")
+	flow1.Last = common.UnixMillis(flowTime)
+	flow1.FinishType = FlowFinishType_TCP_FIN
+
+	table.updateAt(flowTime.Add(time.Duration(5) * time.Second))
+	if len(table.table) != 1 {
+		t.Error("Flow should not have been deleted by update")
+	}
+	table.updateAt(flowTime.Add(time.Duration(15) * time.Second))
+	if len(table.table) != 0 {
+		t.Error("Flow should have been deleted by update")
+	}
+
+	flow2, _ := table.getOrCreateFlow("flow2")
+	flow2.Last = common.UnixMillis(flowTime)
+	flow2.FinishType = FlowFinishType_TCP_FIN
+	table.updateAt(flowTime.Add(time.Duration(5) * time.Second))
+	flow2.FinishType = FlowFinishType_NOT_FINISHED
+	table.updateAt(flowTime.Add(time.Duration(15) * time.Second))
+	if len(table.table) != 1 {
+		t.Error("Updated flow should not have been deleted by update")
+	}
+}

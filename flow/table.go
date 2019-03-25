@@ -32,6 +32,9 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
+// HoldTimeoutMilliseconds is the number of milliseconds for holding ended flows before they get deleted from the flow table
+const HoldTimeoutMilliseconds = int64(time.Duration(15) * time.Second / time.Millisecond)
+
 // ExpireUpdateFunc defines expire and updates callback
 type ExpireUpdateFunc func(f *FlowArray)
 
@@ -205,8 +208,10 @@ func (ft *Table) expire(expireBefore int64) {
 			}
 
 			logging.GetLogger().Debugf("Expire flow %s Duration %v", f.UUID, duration)
-			f.FinishType = FlowFinishType_TIMEOUT
-			expiredFlows = append(expiredFlows, f)
+			if f.FinishType == FlowFinishType_NOT_FINISHED {
+				f.FinishType = FlowFinishType_TIMEOUT
+				expiredFlows = append(expiredFlows, f)
+			}
 
 			// need to use the key as the key could be not equal to the UUID
 			delete(ft.table, k)
@@ -259,9 +264,6 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 		if f.XXX_state.updateVersion > ft.updateVersion {
 			ft.updateMetric(f, updateFrom, updateTime)
 			updatedFlows = append(updatedFlows, f)
-			if f.FinishType != FlowFinishType_NOT_FINISHED {
-				delete(ft.table, k)
-			}
 		} else if updateTime-f.Last > ft.appTimeout[f.Application] && ft.appTimeout[f.Application] > 0 {
 			updatedFlows = append(updatedFlows, f)
 			f.FinishType = FlowFinishType_TIMEOUT
@@ -271,6 +273,10 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 		}
 
 		f.XXX_state.lastMetric = f.Metric.Copy()
+
+		if f.FinishType != FlowFinishType_NOT_FINISHED && updateTime-f.Last >= HoldTimeoutMilliseconds {
+			delete(ft.table, k)
+		}
 	}
 
 	if len(updatedFlows) != 0 {
