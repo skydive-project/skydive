@@ -67,7 +67,7 @@ func newHostNodeLinker(g *graph.Graph) probe.Probe {
 	nodeIndexer := graph.NewMetadataIndexer(g, nodeProbe, graph.Metadata{"Type": "node"}, MetadataField("Name"))
 	nodeIndexer.Start()
 
-	ml := graph.NewMetadataIndexerLinker(g, hostIndexer, nodeIndexer, NewEdgeMetadata(Manager, "association"))
+	ml := graph.NewMetadataIndexerLinker(g, hostIndexer, nodeIndexer, NewEdgeMetadata(Manager, "node"))
 
 	linker := &Linker{
 		ResourceLinker: ml.ResourceLinker,
@@ -80,5 +80,5 @@ func newHostNodeLinker(g *graph.Graph) probe.Probe {
 func newNodePodLinker(g *graph.Graph) probe.Probe {
 	nodeIndexer := newResourceIndexer(g, Manager, "node", MetadataFields("Name"))
 	podIndexer := newResourceIndexer(g, Manager, "pod", MetadataFields("Node"))
-	return newResourceLinker(g, nodeIndexer, podIndexer, NewEdgeMetadata(Manager, "association"))
+	return newResourceLinker(g, nodeIndexer, podIndexer, NewEdgeMetadata(Manager, "node"))
 }

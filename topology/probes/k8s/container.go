@@ -174,7 +174,7 @@ func newContainerDockerLinker(g *graph.Graph) probe.Probe {
 	dockerIndexer := newDockerIndexer(g)
 	dockerIndexer.Start()
 
-	ml := graph.NewMetadataIndexerLinker(g, containerIndexer, dockerIndexer, NewEdgeMetadata(Manager, "association"))
+	ml := graph.NewMetadataIndexerLinker(g, containerIndexer, dockerIndexer, NewEdgeMetadata(Manager, "container"))
 
 	linker := &Linker{
 		ResourceLinker: ml.ResourceLinker,
