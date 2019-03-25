@@ -35,4 +35,4 @@ skydive_auth_os_user_role: admin
 
 skydive_deployment_test: yes
 
-skydive_container_cli: docker
+skydive_iptables_rules: false

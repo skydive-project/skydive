@@ -21,10 +21,16 @@
         {%- endif -%}
   tags:
     - config
+    - iptables
 
 - include_tasks: config.yml
   tags:
     - config
+
+- include_tasks: iptables.yml
+  when: skydive_iptables_rules | bool
+  tags:
+    - iptables
 
 - include_tasks: keystone.yml
   when: skydive_auth_type == "keystone"
