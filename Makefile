@@ -414,9 +414,9 @@ dpdk.clean:
 ebpf.build:
 ifeq ($(WITH_EBPF), true)
 ifeq ($(WITH_EBPF_DOCKER_BUILDER), true)
-	$(MAKE) -C probe/ebpf docker-ebpf-build
+	$(MAKE) -C probe/ebpf clean docker-ebpf-build
 else
-	$(MAKE) -C probe/ebpf ebpf-build
+	$(MAKE) -C probe/ebpf clean ebpf-build
 endif
 endif
 

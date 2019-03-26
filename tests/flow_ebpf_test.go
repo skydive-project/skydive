@@ -147,3 +147,12 @@ func TestFlowsVLANEBPF(t *testing.T) {
 	}
 	RunTest(t, test)
 }
+
+func TestFlowsGREEBPF(t *testing.T) {
+	test := testFlowTunnel(t, "br-greebpf", "gre", false, "192.168.0.1", "192.168.0.2",
+		"172.16.0.1", "172.16.0.2", "192.168.0.0/24")
+	for i, _ := range test.captures {
+		test.captures[i].kind = "ebpf"
+	}
+	RunTest(t, test)
+}
