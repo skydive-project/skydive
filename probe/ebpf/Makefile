@@ -1,3 +1,4 @@
+SHELL=/bin/sh -o pipefail
 LLC ?= llc
 CLANG ?= clang
 DOCKER_FILE ?= Dockerfile
@@ -23,7 +24,6 @@ clean:
 
 build-ebpf-docker-image:
 	docker build -t $(DOCKER_IMAGE) -f $(DOCKER_FILE) .
-
 
 docker-ebpf-build: build-ebpf-docker-image
 	docker run --rm \

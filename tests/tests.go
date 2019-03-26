@@ -439,9 +439,9 @@ func RunTest(t *testing.T, test *Test) {
 		t.Fatalf("Failed to create client: %s", err)
 	}
 
-	t.Log("Removing existing captures")
 	var captures []*types.Capture
 	defer func() {
+		t.Log("Removing existing captures")
 		for _, capture := range captures {
 			client.Delete("capture", capture.ID())
 		}
