@@ -90,17 +90,6 @@ def generate_inventory(configs, inventory, path, extra_vars=None,
         'skydive_iptables_rules': True,
     }
 
-    ret = {
-        'analyzers': {
-            'hosts': {},
-            'vars': copy.deepcopy(global_vars),
-        },
-        'agents': {
-            'hosts': {},
-            'vars': copy.deepcopy(global_vars),
-        }
-    }
-
     keystone_url = inventory.stack_outputs.get('KeystoneURL')
     if keystone_url:
         global_vars['os_auth_url'] = keystone_url + "/v3"
@@ -119,6 +108,17 @@ def generate_inventory(configs, inventory, path, extra_vars=None,
     role_net_ip_map = inventory.stack_outputs.get('RoleNetIpMap', {})
     role_net_hostname_map = inventory.stack_outputs.get(
         'RoleNetHostnameMap', {})
+
+    ret = {
+        'analyzers': {
+            'hosts': {},
+            'vars': copy.deepcopy(global_vars),
+        },
+        'agents': {
+            'hosts': {},
+            'vars': copy.deepcopy(global_vars),
+        }
+    }
 
     analyzer_hosts = {}
     agent_hosts = {}
