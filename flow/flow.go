@@ -528,6 +528,8 @@ func (f *Flow) Init(now int64, nodeTID string, uuids UUIDs) {
 
 	f.NodeTID = nodeTID
 	f.ParentUUID = uuids.ParentUUID
+
+	f.FinishType = FlowFinishType_NOT_FINISHED
 }
 
 // initFromPacket initializes the flow based on packet data, flow key and ids
