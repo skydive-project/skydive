@@ -8,7 +8,7 @@ SCRIPT
 
 $testscript = <<SCRIPT
 sudo yum -y install https://www.rdoproject.org/repos/rdo-release.rpm
-sudo yum -y install libpcap libxml2 openvswitch
+sudo yum -y install libpcap libxml2 openvswitch libvirt-libs
 cd /skydive
 source /etc/kolla/admin-openrc.sh
 export SKYDIVE_ANALYZERS=192.168.50.200:8085
