@@ -38,19 +38,28 @@ const (
 	k8sRetry = 3
 	k8sDelay = 10 * time.Second
 	objName  = "skydive-test"
+	contrib  = "../contrib/kubernetes/skydive.yaml"
 )
 
-func setupFromConfigFile(mngr, file string) []Cmd {
+func setupFromConfigPath(path string) []Cmd {
 	return []Cmd{
-		{"kubectl create -f " + k8sConfigFile(mngr, file), true},
+		{"kubectl create -f " + path, true},
 	}
 }
 
-func tearDownFromConfigFile(mngr, file string) []Cmd {
+func tearDownFromConfigPath(path string) []Cmd {
 	return []Cmd{
-		{"kubectl delete --grace-period=0 --force -f " + k8sConfigFile(mngr, file), false},
+		{"kubectl delete --grace-period=0 --force -f " + path, false},
 		{"sleep 10", true},
 	}
+}
+
+func setupFromConfigFile(mngr, file string) []Cmd {
+	return setupFromConfigPath(k8sConfigFile(mngr, file))
+}
+
+func tearDownFromConfigFile(mngr, file string) []Cmd {
+	return tearDownFromConfigPath(k8sConfigFile(mngr, file))
 }
 
 func makeHasArgsType(mngr, ty interface{}, args1 ...interface{}) []interface{} {
@@ -665,4 +674,30 @@ func TestWordpressScenario(t *testing.T) {
 			},
 		},
 	)
+}
+
+func TestK8sContrib(t *testing.T) {
+	test := &Test{
+		retries:      3,
+		setupCmds:    setupFromConfigPath(contrib),
+		tearDownCmds: tearDownFromConfigPath(contrib),
+		checks: []CheckFunction{
+			func(c *CheckContext) error {
+				if _, err := checkNodeCreation(t, c, k8s.Manager, "deployment", "skydive-analyzer"); err != nil {
+					return err
+				}
+
+				if _, err := checkNodeCreation(t, c, k8s.Manager, "service", "skydive-analyzer"); err != nil {
+					return err
+				}
+
+				if _, err := checkNodeCreation(t, c, k8s.Manager, "daemonset", "skydive-agent"); err != nil {
+					return err
+				}
+
+				return nil
+			},
+		},
+	}
+	RunTest(t, test)
 }
