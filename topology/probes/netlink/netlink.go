@@ -789,7 +789,9 @@ func (u *NetNsProbe) onRoutingTablesChanged(index int64, rts *RoutingTables) {
 
 	intf := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
 	if intf == nil {
-		logging.GetLogger().Errorf("No interface with index %d to add a new Route", index)
+		if _, err := u.handle.LinkByIndex(int(index)); err == nil {
+			logging.GetLogger().Errorf("Unable to find interface with index %d to add a new Route", index)
+		}
 		return
 	}
 	_, err := intf.GetField("RoutingTables")
@@ -812,7 +814,9 @@ func (u *NetNsProbe) onAddressAdded(addr netlink.Addr, family int, index int64) 
 
 	intf := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
 	if intf == nil {
-		logging.GetLogger().Errorf("No interface with index %d for new address %s", index, addr.IPNet.String())
+		if _, err := u.handle.LinkByIndex(int(index)); err == nil {
+			logging.GetLogger().Errorf("Unable to find interface with index %d to add address %s", index, addr.IPNet)
+		}
 		return
 	}
 
@@ -842,7 +846,9 @@ func (u *NetNsProbe) onAddressDeleted(addr netlink.Addr, family int, index int64
 
 	intf := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
 	if intf == nil {
-		logging.GetLogger().Debugf("No interface with index %d for new address %s", index, addr.IPNet.String())
+		if _, err := u.handle.LinkByIndex(int(index)); err == nil {
+			logging.GetLogger().Errorf("Unable to find interface with index %d to del address %s", index, addr.IPNet)
+		}
 		return
 	}
 
