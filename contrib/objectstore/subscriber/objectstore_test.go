@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2019 IBM, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy ofthe License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specificlanguage governing permissions and
+ * limitations under the License.
+ *
+ */
+
 package subscriber
 
 import (
@@ -9,10 +26,25 @@ import (
 	"io/ioutil"
 	"runtime"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/skydive-project/skydive/flow"
+)
+
+const (
+	bucket              = "myBucket"
+	objectPrefix        = "myPrefix"
+	maxFlowsPerObject   = 6000
+	maxSecondsPerObject = 60
+	maxSecondsPerStream = 86400
+	maxFlowArraySize    = 100000
+)
+
+var (
+	flowClassifier  = &FakeFlowClassifier{}
+	flowTransformer FlowTransformer
 )
 
 // FakeClient is a mock Object Storage client
@@ -58,10 +90,20 @@ func (c *FakeClient) ListObjects(bucket, prefix string) ([]*string, error) {
 	return nil, nil
 }
 
-func generateFlowArray(count int) []*flow.Flow {
+// FakeFlowClassifier is a mock flow classifier
+type FakeFlowClassifier struct {
+}
+
+// GetFlowTag tag flows according to their UUID
+func (fc *FakeFlowClassifier) GetFlowTag(fl *flow.Flow) Tag {
+	return Tag(fl.UUID)
+}
+
+func generateFlowArray(count int, tag string) []*flow.Flow {
 	flows := make([]*flow.Flow, count)
 	for i := 0; i < count; i++ {
 		fl := &flow.Flow{}
+		fl.UUID = tag
 		flows[i] = fl
 	}
 
@@ -69,15 +111,8 @@ func generateFlowArray(count int) []*flow.Flow {
 }
 
 func newTestSubscriber() (*Subscriber, *FakeClient) {
-	fakeClient := &FakeClient{}
-	ds := &Subscriber{
-		maxStreamDuration: time.Duration(24 * time.Hour),
-		bucket:            "myBucket",
-		objectPrefix:      "myPrefix",
-		objectStoreClient: fakeClient,
-	}
-
-	return ds, fakeClient
+	client := &FakeClient{}
+	return New(client, bucket, objectPrefix, maxFlowArraySize, maxFlowsPerObject, maxSecondsPerObject, maxSecondsPerStream, flowTransformer, flowClassifier), client
 }
 
 func assertEqual(t *testing.T, expected, actual interface{}) {
@@ -102,19 +137,73 @@ func assertNotEqual(t *testing.T, notExpected, actual interface{}) {
 	}
 }
 
-func Test_StoreFlows_Positive(t *testing.T) {
-	c, fakeClient := newTestSubscriber()
-	flows := generateFlowArray(10)
-	for i := 0; i < 10; i++ {
-		flows[i].Last = int64(i)
-	}
+func Test_flushFlowsToObject_NoFlows(t *testing.T) {
+	s, client := newTestSubscriber()
+	assertEqual(t, nil, s.flushFlowsToObject("tag", time.Now()))
+	assertEqual(t, 0, client.WriteCounter)
+}
 
-	assertEqual(t, nil, c.StoreFlows(flows))
-	assertEqual(t, 1, fakeClient.WriteCounter)
-	assertEqual(t, 1, c.currentStream.SeqNumber)
+func Test_flushFlowsToObject_MarshalError(t *testing.T) {
+	s, client := newTestSubscriber()
+	s.flows["tag"] = []interface{}{make(chan int)}
+	err := s.flushFlowsToObject("tag", time.Now())
+	assertNotEqual(t, nil, err)
+	assertEqual(t, 0, client.WriteCounter)
+	assertEqual(t, 1, len(s.flows["tag"]))
+	_, ok := err.(*json.UnsupportedTypeError)
+	assertEqual(t, true, ok)
+}
+
+func Test_flushFlowsToObject_maxStreamDuration(t *testing.T) {
+	s, _ := newTestSubscriber()
+	s.maxStreamDuration = time.Second * time.Duration(2)
+
+	s.flows["tag"] = make([]interface{}, 1)
+	assertEqual(t, nil, s.flushFlowsToObject("tag", time.Unix(60, 0)))
+	assertEqual(t, 1, s.currentStream["tag"].SeqNumber)
+	assertEqual(t, time.Unix(60, 0), s.currentStream["tag"].ID)
+
+	s.flows["tag"] = make([]interface{}, 1)
+	assertEqual(t, nil, s.flushFlowsToObject("tag", time.Unix(61, 0)))
+	assertEqual(t, 2, s.currentStream["tag"].SeqNumber)
+	assertEqual(t, time.Unix(60, 0), s.currentStream["tag"].ID)
+
+	time.Sleep(time.Second)
+
+	s.flows["tag"] = make([]interface{}, 1)
+	assertEqual(t, nil, s.flushFlowsToObject("tag", time.Unix(62, 0)))
+	assertEqual(t, 1, s.currentStream["tag"].SeqNumber)
+	assertEqual(t, time.Unix(62, 0), s.currentStream["tag"].ID)
+}
+
+func Test_flushFlowsToObject_WriteObjectError(t *testing.T) {
+	s, client := newTestSubscriber()
+	client.WriteError = errors.New("my error")
+
+	s.flows["tag"] = make([]interface{}, 1)
+	assertEqual(t, client.WriteError, s.flushFlowsToObject("tag", time.Now()))
+	assertEqual(t, 1, len(s.flows["tag"]))
+}
+
+func Test_flushFlowsToObject_Positive(t *testing.T) {
+	s, client := newTestSubscriber()
+	s.flows["tag"] = make([]interface{}, 10)
+	s.lastFlushTime["tag"] = time.Unix(1, 0)
+	assertEqual(t, nil, s.flushFlowsToObject("tag", time.Unix(2, 0)))
+	assertEqual(t, 0, len(s.flows["tag"]))
+	assertEqual(t, 1, s.currentStream["tag"].SeqNumber)
+
+	assertEqual(t, 1, client.WriteCounter)
+	assertEqual(t, bucket, client.LastBucket)
+	assertEqual(t, "gzip", client.LastContentEncoding)
+	assertEqual(t, "application/json", client.LastContentType)
+	assertEqual(t, true, strings.Contains(client.LastObjectKey, objectPrefix))
+	assertEqual(t, true, strings.Contains(client.LastObjectKey, "tag"))
+	assertEqual(t, true, strings.Contains(client.LastObjectKey, s.currentStream["tag"].ID.UTC().Format("20060102T150405Z")))
+	assertEqual(t, true, strings.Contains(client.LastObjectKey, "00000000.gz"))
 
 	// gzip decompress
-	r, err := gzip.NewReader(bytes.NewBuffer([]byte(fakeClient.LastData)))
+	r, err := gzip.NewReader(bytes.NewBuffer([]byte(client.LastData)))
 	defer r.Close()
 	if err != nil {
 		t.Fatal("Error in gzip decompress: ", err)
@@ -124,42 +213,61 @@ func Test_StoreFlows_Positive(t *testing.T) {
 		t.Fatal("Error in gzip reading: ", err)
 	}
 
-	var decodedFlows []*flow.Flow
+	var decodedFlows []interface{}
 	if err := json.Unmarshal(uncompressedData, &decodedFlows); err != nil {
 		t.Fatal("JSON parsing failed: ", err)
 	}
 
-	assertEqual(t, len(flows), len(decodedFlows))
-	assertEqual(t, "0", *fakeClient.LastMetadata["first-timestamp"])
-	assertEqual(t, "9", *fakeClient.LastMetadata["last-timestamp"])
-	assertEqual(t, strconv.Itoa(len(flows)), *fakeClient.LastMetadata["num-records"])
+	assertEqual(t, 10, len(decodedFlows))
 
-	assertEqual(t, "application/json", fakeClient.LastContentType)
-	assertEqual(t, "gzip", fakeClient.LastContentEncoding)
+	assertEqual(t, "1000", *client.LastMetadata["start-timestamp"])
+	assertEqual(t, "2000", *client.LastMetadata["end-timestamp"])
+	assertEqual(t, strconv.FormatInt(s.lastFlushTime["tag"].UTC().UnixNano()/int64(time.Millisecond), 10), *client.LastMetadata["end-timestamp"])
+	assertEqual(t, "10", *client.LastMetadata["num-records"])
 }
 
-func Test_StoreFlows_maxStreamDuration(t *testing.T) {
-	c, _ := newTestSubscriber()
-	c.maxStreamDuration = time.Second
+func Test_StoreFlows_MaxFlowsPerObject(t *testing.T) {
+	s, client := newTestSubscriber()
+	s.maxFlowsPerObject = 10
+	assertEqual(t, nil, s.StoreFlows(generateFlowArray(5, "tag")))
+	assertEqual(t, 0, client.WriteCounter)
+	assertEqual(t, nil, s.StoreFlows(generateFlowArray(5, "tag")))
+	assertEqual(t, 1, client.WriteCounter)
+	client.WriteCounter = 0
+	assertEqual(t, nil, s.StoreFlows(generateFlowArray(35, "tag")))
+	assertEqual(t, 3, client.WriteCounter)
+}
 
-	c.StoreFlows(generateFlowArray(1))
-	assertEqual(t, 1, c.currentStream.SeqNumber)
-	streamID := c.currentStream.ID
-	c.StoreFlows(generateFlowArray(1))
-	assertEqual(t, 2, c.currentStream.SeqNumber)
-	assertEqual(t, streamID, c.currentStream.ID)
+func Test_StoreFlows_MaxObjectDuration(t *testing.T) {
+	s, client := newTestSubscriber()
+	s.maxObjectDuration = time.Second
+	assertEqual(t, nil, s.StoreFlows(generateFlowArray(1, "tag")))
+	assertEqual(t, 0, client.WriteCounter)
+	time.Sleep(time.Second / 2)
+	assertEqual(t, nil, s.StoreFlows(generateFlowArray(1, "tag")))
+	s.flowsMutex.Lock()
+	assertEqual(t, 0, client.WriteCounter)
+	s.flowsMutex.Unlock()
 
+	// Wait half a second + little (to avoid racing)
 	time.Sleep(time.Second)
-
-	c.StoreFlows(generateFlowArray(1))
-	assertEqual(t, 1, c.currentStream.SeqNumber)
-	assertNotEqual(t, streamID, c.currentStream.ID)
+	s.flowsMutex.Lock()
+	assertEqual(t, 1, client.WriteCounter)
+	s.flowsMutex.Unlock()
 }
 
-func Test_StoreFlows_WriteObjectError(t *testing.T) {
-	c, fakeClient := newTestSubscriber()
-	myError := errors.New("my error")
-	fakeClient.WriteError = myError
+func Test_StoreFlows_WriteError(t *testing.T) {
+	s, client := newTestSubscriber()
+	s.maxFlowsPerObject = 1
+	client.WriteError = errors.New("my error")
+	assertEqual(t, nil, s.StoreFlows(generateFlowArray(1, "tag")))
+	assertEqual(t, 1, len(s.flows["tag"]))
+}
 
-	assertEqual(t, myError, c.StoreFlows(generateFlowArray(1)))
+func Test_StoreFlows_maxFlowArraySize(t *testing.T) {
+	s, client := newTestSubscriber()
+	s.maxFlowArraySize = 10
+	client.WriteError = errors.New("my error")
+	assertEqual(t, nil, s.StoreFlows(generateFlowArray(11, "tag")))
+	assertEqual(t, 10, len(s.flows["tag"]))
 }

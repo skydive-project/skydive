@@ -1,4 +1,21 @@
-package client
+/*
+ * Copyright (C) 2019 IBM, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy ofthe License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specificlanguage governing permissions and
+ * limitations under the License.
+ *
+ */
+
+package subscriber
 
 import (
 	"bytes"
@@ -76,8 +93,8 @@ func (s *S3Client) ListObjects(bucket, prefix string) ([]*string, error) {
 	return objectKeys, nil
 }
 
-// New creates a new S3-compatible object storage client
-func New(endpoint, region, accessKey, secretKey string) Client {
+// NewClient creates a new S3-compatible object storage client
+func NewClient(endpoint, region, accessKey, secretKey string) Client {
 	s3Client := s3.New(session.New(&aws.Config{
 		S3ForcePathStyle: aws.Bool(true),
 		Endpoint:         aws.String(endpoint),

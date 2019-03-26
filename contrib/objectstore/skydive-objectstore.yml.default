@@ -7,5 +7,12 @@
 # subscriber_url: wss://127.0.0.1:8082/ws/subscriber/flow
 # subscriber_username:
 # subscriber_password:
+# max_flows_per_object: 6000
+# max_seconds_per_object: 60
 # max_seconds_per_stream: 86400
-# flow_transformer: custom1
+# max_flow_array_size: 100000
+# flow_transformer: security-advisor
+# cluster_net_masks:
+  # - 10.0.0.0/8
+  # - 172.16.0.0/12
+  # - 192.168.0.0/16
