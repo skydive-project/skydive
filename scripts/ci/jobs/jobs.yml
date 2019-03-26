@@ -691,7 +691,7 @@
           ref: "refs/heads/master"
           refspec: "+refs/heads/*:refs/remotes/origin/*"
     triggers:
-      - skydive-github-trigger
+      - timed: "@midnight"
     builders:
       - multijob:
           name: skydive-create-deliverables
