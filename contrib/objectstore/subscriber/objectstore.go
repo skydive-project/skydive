@@ -87,14 +87,15 @@ func (s *Subscriber) StoreFlows(flows []*flow.Flow) error {
 	// transform flows and save to in-memory arrays, based on tag
 	if flows != nil {
 		for _, fl := range flows {
+			flowTag := s.flowClassifier.GetFlowTag(fl)
+
 			var transformedFlow interface{}
 			if s.flowTransformer != nil {
-				transformedFlow = s.flowTransformer.Transform(fl)
+				transformedFlow = s.flowTransformer.Transform(fl, flowTag)
 			} else {
 				transformedFlow = fl
 			}
 			if transformedFlow != nil {
-				flowTag := s.flowClassifier.GetFlowTag(fl)
 				s.flows[flowTag] = append(s.flows[flowTag], transformedFlow)
 			}
 		}
