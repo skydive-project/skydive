@@ -5,14 +5,14 @@
 		{
 			"checksumSHA1": "SH2IysaLK6ERzkGGZTMiV1RAgDs=",
 			"path": "git.fd.io/govpp.git",
-			"revision": "29e1639101b093c5f66331b0f1385564c88db1c7",
-			"revisionTime": "2019-03-20T13:14:10Z"
+			"revision": "345201eedce4cefae4db6914067a34000a7f978f",
+			"revisionTime": "2019-03-21T22:05:05Z"
 		},
 		{
 			"checksumSHA1": "BUxHVGdvCMW5sBjIHElZUsYFJjs=",
 			"path": "git.fd.io/govpp.git/adapter",
-			"revision": "29e1639101b093c5f66331b0f1385564c88db1c7",
-			"revisionTime": "2019-03-20T13:14:10Z"
+			"revision": "345201eedce4cefae4db6914067a34000a7f978f",
+			"revisionTime": "2019-03-21T22:05:05Z"
 		},
 		{
 			"checksumSHA1": "Tg3uL/d82jzlcgYgAS6x/jfTtXA=",
