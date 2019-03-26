@@ -462,7 +462,7 @@ func (o *Probe) OnOvsInterfaceDel(monitor *ovsdb.OvsMonitor, uuid string, row *l
 
 	// do not delete if not an openvswitch interface
 	if driver, _ := intf.GetFieldString("Driver"); driver == "openvswitch" {
-		if err := o.Graph.DelNode(intf); err != nil {
+		if err := o.Graph.DelNode(intf); err != nil && err != graph.ErrNodeNotFound {
 			logging.GetLogger().Error(err)
 		}
 	}
