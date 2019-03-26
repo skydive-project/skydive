@@ -17,6 +17,7 @@
       {%- endfor %}
   tags:
     - config
+    - iptables
     - tests
 
 - include_tasks: config.yml

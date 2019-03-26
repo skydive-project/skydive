@@ -1,0 +1,217 @@
+#!/usr/bin/python2
+
+from __future__ import print_function
+
+import copy
+import os
+import sys
+import traceback
+import yaml
+
+from heatclient import client as heat_client
+from oslo_config import cfg
+from six.moves import configparser
+
+from tripleo_common.inventory import TripleoInventory
+from tripleo_validations.utils import get_auth_session
+
+
+opts = [
+    cfg.StrOpt('username', default=os.environ.get('OS_USERNAME')),
+    cfg.StrOpt('password', default=os.environ.get('OS_PASSWORD')),
+    cfg.StrOpt('auth-url', default=os.environ.get('OS_AUTH_URL')),
+    cfg.StrOpt('auth-token', default=os.environ.get('OS_AUTH_TOKEN')),
+    cfg.StrOpt('cacert', default=os.environ.get('OS_CACERT')),
+    cfg.StrOpt('project-name', default=os.environ.get(
+        'OS_PROJECT_NAME', os.environ.get('OS_TENANT_NAME'))),
+    cfg.StrOpt('plan', default=os.environ.get('TRIPLEO_PLAN_NAME')),
+    cfg.StrOpt('ansible-ssh-user', default=os.environ.get('ANSIBLE_SSH_USER',
+                                                          'heat-admin')),
+    cfg.StrOpt('undercloud-params-file', help='undercloud params file'),
+    cfg.StrOpt('extra-file', help='extra vars file'),
+    cfg.StrOpt('analyzer-extra-file', help='extra vars analyzer file'),
+    cfg.StrOpt('agent-extra-file', help='extra vars agent file'),
+    cfg.StrOpt('inventory-file', help='file to be written',
+               default='skydive-inventory.yaml'),
+]
+
+
+def load_yaml_file(path):
+    with open(path, 'r') as file:
+        return yaml.load(file)
+
+
+def parse_config():
+    default_config = os.environ.get('TRIPLEO_INVENTORY_CONFIG')
+    if default_config:
+        default_config = [default_config]
+
+    configs = cfg.ConfigOpts()
+    configs.register_cli_opts(opts)
+    configs(prog='skydive-tripleo',
+            default_config_files=default_config)
+    if configs.auth_url is None:
+        print('ERROR: auth-url not defined and OS_AUTH_URL environment '
+              'variable missing, unable to proceed.', file=sys.stderr)
+        sys.exit(1)
+    if '/v2.0' in configs.auth_url:
+        configs.auth_url = configs.auth_url.replace('/v2.0', '/v3')
+    if not configs.plan:
+        configs.plan = 'overcloud'
+    return configs
+
+
+def generate_inventory(configs, inventory, path, extra_vars=None,
+                       analyzer_extra_vars=None, agent_extra_vars=None,
+                       undercloud_params=None, host_network='ctlplane'):
+    docker_registry = ''
+    if undercloud_params:
+        addresses = undercloud_params['parameter_defaults'].get(
+            'DockerInsecureRegistryAddress')
+        if addresses:
+            docker_registry = addresses[0]
+
+    global_vars = {
+        'skydive_docker_registry': docker_registry,
+        'skydive_docker_image_tag': 'latest',
+        'skydive_analyzer_docker_image': 'rhosp14/openstack-skydive-analyzer',
+        'skydive_analyzer_docker_command': '/usr/bin/skydive analyzer --conf /etc/skydive.yml',
+        'skydive_agent_docker_image': 'rhosp14/openstack-skydive-agent',
+        'skydive_agent_docker_command': '/usr/bin/skydive agent --conf /etc/skydive.yml',
+        'os_auth_url': '',
+        'os_username': 'admin',
+        'os_password': '',
+        'os_tenant_name': 'admin',
+        'skydive_auth_type': 'keystone',
+        'skydive_os_auth_url': '',
+        'skydive_deployment_mode': 'container',
+        'skydive_flow_protocol': 'websocket',
+        'skydive_topology_probes': ['neutron', 'ovsdb', 'docker'],
+        'skydive_iptables_rules': True,
+    }
+
+    ret = {
+        'analyzers': {
+            'hosts': {},
+            'vars': copy.deepcopy(global_vars),
+        },
+        'agents': {
+            'hosts': {},
+            'vars': copy.deepcopy(global_vars),
+        }
+    }
+
+    keystone_url = inventory.stack_outputs.get('KeystoneURL')
+    if keystone_url:
+        global_vars['os_auth_url'] = keystone_url + "/v3"
+    admin_password = inventory.get_overcloud_environment().get(
+        'parameter_defaults', {}).get('AdminPassword')
+    if admin_password:
+        global_vars['os_password'] = admin_password
+
+    role_data = inventory.stack_outputs.get('RoleData')
+    if role_data:
+        controller = role_data.get('Controller')
+        settings = controller.get('merged_config_settings')
+        global_vars['skydive_os_auth_url'] = \
+            settings.get('neutron::keystone::authtoken::auth_url') + "/v3"
+
+    role_net_ip_map = inventory.stack_outputs.get('RoleNetIpMap', {})
+    role_net_hostname_map = inventory.stack_outputs.get(
+        'RoleNetHostnameMap', {})
+
+    analyzer_hosts = {}
+    agent_hosts = {}
+
+    for role, hostnames in role_net_hostname_map.items():
+        if hostnames:
+
+            names = hostnames.get(host_network) or []
+            shortnames = [n.split(".%s." % host_network)[0].lower()
+                          for n in names]
+            ips = role_net_ip_map[role][host_network]
+
+            for idx, name in enumerate(shortnames):
+                if role == "Compute" or role == "Controller":
+                    agent_hosts[name] = {}
+                    agent_hosts[name].update({
+                        'ansible_become': True,
+                        'ansible_host': ips[idx],
+                        'ansible_user': configs.ansible_ssh_user})
+
+                if role == "Controller":
+                    analyzer_hosts[name] = {}
+                    analyzer_hosts[name].update({
+                        'ansible_become': True,
+                        'ansible_host': ips[idx],
+                        'ansible_user': configs.ansible_ssh_user,
+                        'skydive_listen_ip': ips[idx]})
+
+    ret['analyzers']['hosts'] = analyzer_hosts
+    ret['agents']['hosts'] = agent_hosts
+
+    if extra_vars:
+        ret['analyzers']['vars'].update(extra_vars)
+        ret['agents']['vars'].update(extra_vars)
+
+    if analyzer_extra_vars:
+        ret['analyzers']['vars'].update(analyzer_extra_vars)
+
+    if agent_extra_vars:
+        ret['agents']['vars'].update(agent_extra_vars)
+
+    noalias_dumper = yaml.dumper.SafeDumper
+    noalias_dumper.ignore_aliases = lambda self, data: True
+
+    with open(path, 'w') as file:
+        yaml.dump(ret, file, default_flow_style=False, Dumper=noalias_dumper)
+
+
+def main():
+    configs = parse_config()
+    session = get_auth_session(configs.auth_url,
+                               configs.username,
+                               configs.project_name,
+                               configs.password,
+                               configs.auth_token,
+                               configs.cacert)
+    hclient = heat_client.Client('1', session=session)
+    inventory = TripleoInventory(
+        session=session,
+        hclient=hclient,
+        auth_url=configs.auth_url,
+        cacert=configs.cacert,
+        project_name=configs.project_name,
+        username=configs.username,
+        ansible_ssh_user=configs.ansible_ssh_user,
+        plan_name=configs.plan)
+
+    try:
+        extra_vars = {}
+        if configs.extra_file:
+            extra_vars = load_yaml_file(configs.extra_file)
+
+        analyzer_extra_vars = {}
+        if configs.analyzer_extra_file:
+            analyzer_extra_vars = load_yaml_file(configs.analyzer_extra_file)
+
+        agent_extra_vars = {}
+        if configs.agent_extra_file:
+            agent_extra_vars = load_yaml_file(configs.agent_extra_file)
+
+        undercloud_params = {}
+        if configs.undercloud_params_file:
+            undercloud_params = load_yaml_file(configs.undercloud_params_file)
+
+        generate_inventory(configs, inventory, configs.inventory_file,
+                           extra_vars, analyzer_extra_vars, agent_extra_vars,
+                           undercloud_params)
+    except Exception as e:
+        print("Error creating skydive inventory: {}".format(e),
+              file=sys.stderr)
+        sys.exit(1)
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
