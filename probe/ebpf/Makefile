@@ -1,4 +1,3 @@
-SHELL=/bin/sh -o pipefail
 LLC ?= llc
 CLANG ?= clang
 DOCKER_FILE ?= Dockerfile
