@@ -672,6 +672,9 @@ var TopologyComponent = {
 
         self.addFilterK8sTypes(filter, "storage", ["cluster", "container", "namespace", "persistentvolume", "persistentvolumeclaim", "pod", "storageclass"]);
         self.addFilterK8sTypes(highlight, "storage", ["container", "persistentvolume", "persistentvolumeclaim", "pod", "storageclass"]);
+
+        self.addFilterK8sTypes(filter, "config", ["cluster", "configmap", "container", "namespace", "pod", "secret"]);
+        self.addFilterK8sTypes(highlight, "config", ["configmap", "secret"]);
       }
 
       if (self.isIstioEnabled()) {
