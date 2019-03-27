@@ -189,6 +189,8 @@ ifeq ($(WITH_VPP), true)
   EXTRA_ARGS+=-vpp
 endif
 
+STATIC_BUILD_TAGS := $(filter-out libvirt,$(BUILD_TAGS))
+
 STATIC_LIBS_ABS := $(addprefix $(STATIC_DIR)/,$(STATIC_LIBS))
 
 .PHONY: all install
@@ -344,7 +346,7 @@ compile.static:
 	$(BUILD_CMD) install \
 		-ldflags="${LDFLAGS} -B $(BUILD_ID) -X $(SKYDIVE_GITHUB_VERSION) '-extldflags=-static $(STATIC_LIBS_ABS)'" \
 		${GOFLAGS} \
-		${VERBOSE_FLAGS} -tags "netgo ${BUILD_TAGS}" \
+		${VERBOSE_FLAGS} -tags "netgo ${STATIC_BUILD_TAGS}" \
 		-installsuffix netgo || true
 
 .PHONY: skydive
@@ -373,7 +375,7 @@ bench.flow: bench.flow.traces
 
 .PHONY: static
 static: skydive.clean govendor genlocalfiles
-	$(MAKE) compile.static WITH_LIBVIRT=false
+	$(MAKE) compile.static
 
 .PHONY: contribs.clean
 contribs.clean:
@@ -419,10 +421,10 @@ test.functionals.compile: govendor genlocalfiles
 
 .PHONY: test.functionals.static
 test.functionals.static: govendor genlocalfiles
-	$(GOVENDOR) test -tags "netgo ${BUILD_TAGS} test" \
-		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) -extldflags \"-static $(STATIC_LIBS_ABS)\"" \
+	$(GOVENDOR) test -tags "netgo ${STATIC_BUILD_TAGS} test" \
+		-ldflags "${LDFLAGS} -X $(SKYDIVE_GITHUB_VERSION) -extldflags \"-static $(STATIC_LIBS_ABS)\"" \
 		-installsuffix netgo \
-		-ldflags="${LDFLAGS}" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} \
+		${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} \
 		-c -o tests/functionals ./tests/
 
 .PHONY: test.functionals.run
