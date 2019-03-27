@@ -87,3 +87,73 @@ func podPVCAreLinked(a, b interface{}) bool {
 func newPodPVCLinker(g *graph.Graph) probe.Probe {
 	return NewABLinker(g, Manager, "pod", Manager, "persistentvolumeclaim", podPVCAreLinked)
 }
+
+func podConfigMapAreLinked(a, b interface{}) bool {
+	pod := a.(*v1.Pod)
+	cm := b.(*v1.ConfigMap)
+
+	if !MatchNamespace(pod, cm) {
+		return false
+	}
+
+	for _, container := range pod.Spec.Containers {
+		for _, envVar := range container.Env {
+			if envVar.ValueFrom != nil && envVar.ValueFrom.ConfigMapKeyRef != nil && envVar.ValueFrom.ConfigMapKeyRef.Name == cm.Name {
+				return true
+			}
+		}
+
+		for _, envFrom := range container.EnvFrom {
+			if envFrom.ConfigMapRef != nil && envFrom.ConfigMapRef.Name == cm.Name {
+				return true
+			}
+		}
+	}
+
+	for _, vol := range pod.Spec.Volumes {
+		if vol.ConfigMap != nil && vol.ConfigMap.Name == cm.Name {
+			return true
+		}
+	}
+
+	return false
+}
+
+func newPodConfigMapLinker(g *graph.Graph) probe.Probe {
+	return NewABLinker(g, Manager, "pod", Manager, "configmap", podConfigMapAreLinked)
+}
+
+func podSecretAreLinked(a, b interface{}) bool {
+	pod := a.(*v1.Pod)
+	secret := b.(*v1.Secret)
+
+	if !MatchNamespace(pod, secret) {
+		return false
+	}
+
+	for _, container := range pod.Spec.Containers {
+		for _, envVar := range container.Env {
+			if envVar.ValueFrom != nil && envVar.ValueFrom.SecretKeyRef != nil && envVar.ValueFrom.SecretKeyRef.Name == secret.Name {
+				return true
+			}
+		}
+
+		for _, envFrom := range container.EnvFrom {
+			if envFrom.SecretRef != nil && envFrom.SecretRef.Name == secret.Name {
+				return true
+			}
+		}
+	}
+
+	for _, vol := range pod.Spec.Volumes {
+		if vol.Secret != nil && vol.Secret.SecretName == secret.Name {
+			return true
+		}
+	}
+
+	return false
+}
+
+func newPodSecretLinker(g *graph.Graph) probe.Probe {
+	return NewABLinker(g, Manager, "pod", Manager, "secret", podSecretAreLinked)
+}
