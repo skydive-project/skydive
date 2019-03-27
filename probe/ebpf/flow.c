@@ -365,6 +365,10 @@ static inline void fill_flow(struct __sk_buff *skb, struct flow *flow)
 	fill_vlans(skb, &protocol, &offset, flow);
 
 	switch (protocol) {
+	case ETH_P_ARP:
+		update_hash_half(&flow->link_layer._hash, protocol);
+		flow->layers |= ARP_LAYER;
+		break;
 	case ETH_P_IP:
 	case ETH_P_IPV6:
 		fill_network(skb, (__u16)protocol, offset, flow);

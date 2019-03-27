@@ -23,10 +23,11 @@
 enum {
 	START_TIME_NS    = 0,
 
-	LINK_LAYER       = 1,
-	NETWORK_LAYER    = 2,
-	TRANSPORT_LAYER  = 4,
-	ICMP_LAYER       = 8,
+	LINK_LAYER       = (1<<0),
+	NETWORK_LAYER    = (1<<1),
+	TRANSPORT_LAYER  = (1<<2),
+	ICMP_LAYER       = (1<<3),
+	ARP_LAYER        = (1<<4),
 
 	PAYLOAD_LENGTH   = 30
 };

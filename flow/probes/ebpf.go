@@ -110,6 +110,10 @@ func (p *EBPFProbe) newFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow
 		f.LayersPath += "/Dot1Q"
 	}
 
+	if layersFlag&uint8(C.ARP_LAYER) > 0 {
+		f.LayersPath += "/ARP"
+	}
+
 	// NETWORK
 	if layersFlag&uint8(C.NETWORK_LAYER) > 0 {
 		protocol := uint16(kernFlow.network_layer.protocol)
