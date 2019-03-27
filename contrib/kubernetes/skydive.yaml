@@ -89,6 +89,19 @@ spec:
           protocol: UDP
         - containerPort: 12379
         - containerPort: 12380
+        readinessProbe:
+          httpGet:
+            port: 8082
+            path: /api/status
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            port: 8082
+            path: /api/status
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          failureThreshold: 10
         envFrom:
         - configMapRef:
             name: skydive-analyzer-config
@@ -124,6 +137,19 @@ spec:
         - agent
         ports:
         - containerPort: 8081
+        readinessProbe:
+          httpGet:
+            port: 8081
+            path: /api/status
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            port: 8081
+            path: /api/status
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          failureThreshold: 10
         env:
         - name: SKYDIVE_ANALYZERS
           value: "$(SKYDIVE_ANALYZER_SERVICE_HOST):$(SKYDIVE_ANALYZER_SERVICE_PORT_API)"
