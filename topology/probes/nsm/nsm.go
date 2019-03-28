@@ -39,8 +39,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-// Probe ...
-type Probe struct {
+type nsmProbe struct {
 	common.RWMutex
 	graph.DefaultGraphListener
 	g     *graph.Graph
@@ -51,10 +50,10 @@ type Probe struct {
 	connections []connection
 }
 
-// NewNsmProbe ...
-func NewNsmProbe(g *graph.Graph) (*Probe, error) {
+// create the NsmProbe
+func NewNsmProbe(g *graph.Graph) (*nsmProbe, error) {
 	logging.GetLogger().Debug("creating probe")
-	probe := &Probe{
+	probe := &nsmProbe{
 		g:     g,
 		nsmds: make(map[string]*grpc.ClientConn),
 	}
@@ -63,7 +62,7 @@ func NewNsmProbe(g *graph.Graph) (*Probe, error) {
 }
 
 // Start ...
-func (p *Probe) Start() {
+func (p *nsmProbe) Start() {
 	p.g.AddEventListener(p)
 	atomic.StoreInt64(&p.state, common.RunningState)
 
@@ -97,7 +96,7 @@ func (p *Probe) Start() {
 }
 
 // Stop ....
-func (p *Probe) Stop() {
+func (p *nsmProbe) Stop() {
 	if !atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState) {
 		return
 	}
@@ -107,7 +106,7 @@ func (p *Probe) Stop() {
 	}
 }
 
-func (p *Probe) monitorCrossConnects(url string) {
+func (p *nsmProbe) monitorCrossConnects(url string) {
 	var err error
 	p.nsmds[url], err = dial(context.Background(), "tcp", url)
 	if err != nil {
@@ -158,7 +157,7 @@ func (p *Probe) monitorCrossConnects(url string) {
 	}
 }
 
-func (p *Probe) onConnLocalLocal(t cc.CrossConnectEventType, conn *cc.CrossConnect) {
+func (p *nsmProbe) onConnLocalLocal(t cc.CrossConnectEventType, conn *cc.CrossConnect) {
 	srcInode, err := getLocalInode(conn.GetLocalSource())
 	if err != nil {
 		return
@@ -184,7 +183,7 @@ func (p *Probe) onConnLocalLocal(t cc.CrossConnectEventType, conn *cc.CrossConne
 		logging.GetLogger().Infof("adding link %+v", l)
 		p.connections = append(p.connections, l)
 		p.g.Lock()
-		l.AddEdge(p.g)
+		l.addEdge(p.g)
 		p.g.Unlock()
 	} else {
 		for i := range p.connections {
@@ -194,7 +193,7 @@ func (p *Probe) onConnLocalLocal(t cc.CrossConnectEventType, conn *cc.CrossConne
 			}
 			if l.srcInode == srcInode && l.dstInode == dstInode {
 				p.g.Lock()
-				l.DelEdge(p.g)
+				l.delEdge(p.g)
 				p.g.Unlock()
 				p.removeConnectionItem(i)
 				break
@@ -203,7 +202,7 @@ func (p *Probe) onConnLocalLocal(t cc.CrossConnectEventType, conn *cc.CrossConne
 	}
 }
 
-func (p *Probe) onConnLocalRemote(t cc.CrossConnectEventType, conn *cc.CrossConnect) {
+func (p *nsmProbe) onConnLocalRemote(t cc.CrossConnectEventType, conn *cc.CrossConnect) {
 	p.Lock()
 	defer p.Unlock()
 	c, i := p.getConnectionWithRemote(conn.GetRemoteDestination().GetId())
@@ -228,7 +227,7 @@ func (p *Probe) onConnLocalRemote(t cc.CrossConnectEventType, conn *cc.CrossConn
 			//TODO: we erase previous payload if exist
 			c.payload = conn.GetPayload()
 			p.g.Lock()
-			c.AddEdge(p.g)
+			c.addEdge(p.g)
 			p.g.Unlock()
 		}
 	} else {
@@ -238,7 +237,7 @@ func (p *Probe) onConnLocalRemote(t cc.CrossConnectEventType, conn *cc.CrossConn
 		}
 
 		p.g.Lock()
-		c.DelEdge(p.g)
+		c.delEdge(p.g)
 		p.g.Unlock()
 
 		// Delete the link only if dst is also empty
@@ -250,7 +249,7 @@ func (p *Probe) onConnLocalRemote(t cc.CrossConnectEventType, conn *cc.CrossConn
 	}
 }
 
-func (p *Probe) onConnRemoteLocal(t cc.CrossConnectEventType, conn *cc.CrossConnect) {
+func (p *nsmProbe) onConnRemoteLocal(t cc.CrossConnectEventType, conn *cc.CrossConnect) {
 	p.Lock()
 	defer p.Unlock()
 	c, i := p.getConnectionWithRemote(conn.GetRemoteSource().GetId())
@@ -272,7 +271,7 @@ func (p *Probe) onConnRemoteLocal(t cc.CrossConnectEventType, conn *cc.CrossConn
 			//TODO: compare payloads, they should be identical
 			c.payload = conn.GetPayload()
 			p.g.Lock()
-			c.AddEdge(p.g)
+			c.addEdge(p.g)
 			p.g.Unlock()
 		}
 	} else {
@@ -283,11 +282,11 @@ func (p *Probe) onConnRemoteLocal(t cc.CrossConnectEventType, conn *cc.CrossConn
 		}
 
 		p.g.Lock()
-		c.DelEdge(p.g)
+		c.delEdge(p.g)
 		p.g.Unlock()
 
 		// Delete the link only if src is also empty
-		if c.GetSource() == nil {
+		if c.getSource() == nil {
 			p.removeConnectionItem(i)
 		} else {
 			c.dst = nil
@@ -295,8 +294,7 @@ func (p *Probe) onConnRemoteLocal(t cc.CrossConnectEventType, conn *cc.CrossConn
 	}
 }
 
-// OnNodeAdded event
-func (p *Probe) OnNodeAdded(n *graph.Node) {
+func (p *nsmProbe) OnNodeAdded(n *graph.Node) {
 	p.Lock()
 	defer p.Unlock()
 	if i, err := n.GetFieldInt64("Inode"); err == nil {
@@ -313,13 +311,12 @@ func (p *Probe) OnNodeAdded(n *graph.Node) {
 		}
 
 		for i := range c {
-			c[i].AddEdge(p.g)
+			c[i].addEdge(p.g)
 		}
 	}
 }
 
-// OnNodeDeleted event
-func (p *Probe) OnNodeDeleted(n *graph.Node) {
+func (p *nsmProbe) OnNodeDeleted(n *graph.Node) {
 	if i, err := n.GetFieldInt64("Inode"); err == nil {
 		logging.GetLogger().Infof("NSM: node deleted with inode %v", i)
 	}
@@ -328,14 +325,14 @@ func (p *Probe) OnNodeDeleted(n *graph.Node) {
 	// but it should be done by corresponding CrossConnect DELETE events received from nsmds
 }
 
-func (p *Probe) getConnectionWithInode(inode int64) ([]connection, error) {
+func (p *nsmProbe) getConnectionWithInode(inode int64) ([]connection, error) {
 	var c []connection
 	for i := range p.connections {
-		srcInode, err := getLocalInode(p.connections[i].GetSource())
+		srcInode, err := getLocalInode(p.connections[i].getSource())
 		if err != nil {
 			return nil, err
 		}
-		dstInode, err := getLocalInode(p.connections[i].GetDest())
+		dstInode, err := getLocalInode(p.connections[i].getDest())
 		if err != nil {
 			return nil, err
 		}
@@ -347,9 +344,8 @@ func (p *Probe) getConnectionWithInode(inode int64) ([]connection, error) {
 	return c, nil
 }
 
-// return the connection from p.connections
-// the probe has to be locked before calling this function
-func (p *Probe) getConnectionWithRemote(id string) (*remoteConnectionPair, int) {
+func (p *nsmProbe) getConnectionWithRemote(id string) (*remoteConnectionPair, int) {
+	// the probe has to be locked before calling this function
 	for i := range p.connections {
 		c, ok := p.connections[i].(*remoteConnectionPair)
 		if !ok {
@@ -363,10 +359,10 @@ func (p *Probe) getConnectionWithRemote(id string) (*remoteConnectionPair, int) 
 	return nil, 0
 }
 
-// remove the connection located at place i of the list
-// the probe has to be locked before calling this function
-func (p *Probe) removeConnectionItem(i int) {
-	//move last elem to position i and truncate the slice
+func (p *nsmProbe) removeConnectionItem(i int) {
+	// the probe has to be locked before calling this function
+
+	// move last elem to position i and truncate the slice
 	p.connections[i] = p.connections[len(p.connections)-1]
 	p.connections[len(p.connections)-1] = nil
 	p.connections = p.connections[:len(p.connections)-1]

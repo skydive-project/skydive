@@ -30,11 +30,11 @@ import (
 )
 
 type connection interface {
-	AddEdge(*graph.Graph)
-	DelEdge(*graph.Graph)
-	GetSource() *localconn.Connection
-	GetDest() *localconn.Connection
-	GetInodes() (int64, int64)
+	addEdge(*graph.Graph)
+	delEdge(*graph.Graph)
+	getSource() *localconn.Connection
+	getDest() *localconn.Connection
+	getInodes() (int64, int64)
 	createMetadata() graph.Metadata
 }
 
@@ -46,15 +46,15 @@ type baseConnectionPair struct {
 	dst      *localconn.Connection
 }
 
-func (b *baseConnectionPair) GetSource() *localconn.Connection {
+func (b *baseConnectionPair) getSource() *localconn.Connection {
 	return b.src
 }
 
-func (b *baseConnectionPair) GetDest() *localconn.Connection {
+func (b *baseConnectionPair) getDest() *localconn.Connection {
 	return b.dst
 }
 
-func (b *baseConnectionPair) GetSourceInode() int64 {
+func (b *baseConnectionPair) getSourceInode() int64 {
 	if b.src == nil {
 		return 0
 	}
@@ -65,7 +65,7 @@ func (b *baseConnectionPair) GetSourceInode() int64 {
 	return i
 }
 
-func (b *baseConnectionPair) GetDestInode() int64 {
+func (b *baseConnectionPair) getDestInode() int64 {
 	if b.dst == nil {
 		return 0
 	}
@@ -76,8 +76,8 @@ func (b *baseConnectionPair) GetDestInode() int64 {
 	return i
 }
 
-func (b *baseConnectionPair) GetInodes() (int64, int64) {
-	return b.GetSourceInode(), b.GetDestInode()
+func (b *baseConnectionPair) getInodes() (int64, int64) {
+	return b.getSourceInode(), b.getDestInode()
 }
 
 // A local connection is composed of only one cross-connect
@@ -138,8 +138,8 @@ type remoteNSMMetadata struct {
 	Via                       remoteConnectionMetadata
 }
 
-func (b *baseConnectionPair) GetNodes(g *graph.Graph) (*graph.Node, *graph.Node, error) {
-	srcInode, dstInode := b.GetInodes()
+func (b *baseConnectionPair) getNodes(g *graph.Graph) (*graph.Node, *graph.Node, error) {
+	srcInode, dstInode := b.getInodes()
 
 	if srcInode == 0 || dstInode == 0 {
 		// remote connection: src or dst is not ready
@@ -165,10 +165,8 @@ func (b *baseConnectionPair) GetNodes(g *graph.Graph) (*graph.Node, *graph.Node,
 
 }
 
-// This function creates the Edge with correct metadata
-// graph and probe should be locked
-func (l *localConnectionPair) AddEdge(g *graph.Graph) {
-	srcNode, dstNode, err := l.GetNodes(g)
+func (l *localConnectionPair) addEdge(g *graph.Graph) {
+	srcNode, dstNode, err := l.getNodes(g)
 	if err != nil {
 		logging.GetLogger().Debugf("NSM: cannot create Edge in the graph, %v", err)
 		return
@@ -181,8 +179,8 @@ func (l *localConnectionPair) AddEdge(g *graph.Graph) {
 	}
 }
 
-func (l *localConnectionPair) DelEdge(g *graph.Graph) {
-	srcNode, dstNode, err := l.GetNodes(g)
+func (l *localConnectionPair) delEdge(g *graph.Graph) {
+	srcNode, dstNode, err := l.getNodes(g)
 	if err != nil {
 		logging.GetLogger().Debugf("NSM: cannot delete Edge in the graph, %v", err)
 		return
@@ -200,20 +198,20 @@ func (l *localConnectionPair) createMetadata() graph.Metadata {
 			CrossConnectID: l.ID,
 			baseNSMMetadata: baseNSMMetadata{
 				Payload:        l.payload,
-				NetworkService: l.GetSource().GetNetworkService(),
+				NetworkService: l.getSource().GetNetworkService(),
 				Source: localConnectionMetadata{
 					baseConnectionMetadata: baseConnectionMetadata{
-						MechanismType:       l.GetSource().GetMechanism().GetType().String(),
-						MechanismParameters: l.GetSource().GetMechanism().GetParameters(),
-						Labels:              l.GetSource().GetLabels(),
+						MechanismType:       l.getSource().GetMechanism().GetType().String(),
+						MechanismParameters: l.getSource().GetMechanism().GetParameters(),
+						Labels:              l.getSource().GetLabels(),
 					},
 				},
 				Destination: localConnectionMetadata{
-					IP: l.GetDest().GetContext().GetDstIpAddr(),
+					IP: l.getDest().GetContext().GetDstIpAddr(),
 					baseConnectionMetadata: baseConnectionMetadata{
-						MechanismType:       l.GetDest().GetMechanism().GetType().String(),
-						MechanismParameters: l.GetDest().GetMechanism().GetParameters(),
-						Labels:              l.GetDest().GetLabels(),
+						MechanismType:       l.getDest().GetMechanism().GetType().String(),
+						MechanismParameters: l.getDest().GetMechanism().GetParameters(),
+						Labels:              l.getDest().GetLabels(),
 					},
 				},
 			},
@@ -224,8 +222,8 @@ func (l *localConnectionPair) createMetadata() graph.Metadata {
 	return metadata
 }
 
-func (r *remoteConnectionPair) AddEdge(g *graph.Graph) {
-	srcNode, dstNode, err := r.GetNodes(g)
+func (r *remoteConnectionPair) addEdge(g *graph.Graph) {
+	srcNode, dstNode, err := r.getNodes(g)
 	if err != nil {
 		logging.GetLogger().Debugf("NSM: cannot create Edge in the graph, %v", err)
 		return
@@ -238,8 +236,8 @@ func (r *remoteConnectionPair) AddEdge(g *graph.Graph) {
 	}
 }
 
-func (r *remoteConnectionPair) DelEdge(g *graph.Graph) {
-	srcNode, dstNode, err := r.GetNodes(g)
+func (r *remoteConnectionPair) delEdge(g *graph.Graph) {
+	srcNode, dstNode, err := r.getNodes(g)
 	if err != nil {
 		logging.GetLogger().Debugf("NSM: cannot delete Edge in the graph, %v", err)
 		return
@@ -257,22 +255,22 @@ func (r *remoteConnectionPair) createMetadata() graph.Metadata {
 			SourceCrossConnectID:      r.srcID,
 			DestinationCrossConnectID: r.dstID,
 			baseNSMMetadata: baseNSMMetadata{
-				NetworkService: r.GetSource().GetNetworkService(),
+				NetworkService: r.getSource().GetNetworkService(),
 				Payload:        r.payload,
 				Source: localConnectionMetadata{
-					IP: r.GetSource().GetContext().GetSrcIpAddr(),
+					IP: r.getSource().GetContext().GetSrcIpAddr(),
 					baseConnectionMetadata: baseConnectionMetadata{
-						MechanismType:       r.GetSource().GetMechanism().GetType().String(),
-						MechanismParameters: r.GetSource().GetMechanism().GetParameters(),
-						Labels:              r.GetSource().GetLabels(),
+						MechanismType:       r.getSource().GetMechanism().GetType().String(),
+						MechanismParameters: r.getSource().GetMechanism().GetParameters(),
+						Labels:              r.getSource().GetLabels(),
 					},
 				},
 				Destination: localConnectionMetadata{
-					IP: r.GetDest().GetContext().GetDstIpAddr(),
+					IP: r.getDest().GetContext().GetDstIpAddr(),
 					baseConnectionMetadata: baseConnectionMetadata{
-						MechanismType:       r.GetDest().GetMechanism().GetType().String(),
-						MechanismParameters: r.GetDest().GetMechanism().GetParameters(),
-						Labels:              r.GetDest().GetLabels(),
+						MechanismType:       r.getDest().GetMechanism().GetType().String(),
+						MechanismParameters: r.getDest().GetMechanism().GetParameters(),
+						Labels:              r.getDest().GetLabels(),
 					},
 				},
 			},

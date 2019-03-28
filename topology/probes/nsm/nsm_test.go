@@ -180,7 +180,7 @@ func TestOnConnRemote_create_and_delete(t *testing.T) {
 	p.onConnLocalRemote(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn1)
 	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn2)
 
-	srcInode, dstInode := p.connections[0].GetInodes()
+	srcInode, dstInode := p.connections[0].getInodes()
 	if srcInode != 1 || dstInode != 2 {
 		t.Errorf("Probe doesn't have the correct connection.\nNumber of conn : %d.\nConnections are: \n %+v", len(p.connections), p.connections)
 	}
