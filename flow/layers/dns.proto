@@ -1,0 +1,103 @@
+syntax = "proto3";
+package layers;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "google/protobuf/timestamp.proto";
+
+option (gogoproto.protosizer_all) = true;
+option (gogoproto.sizer_all) = false;
+option go_package = "github.com/skydive-project/skydive/flow/layers";
+
+// DNSMX specifies the mail server responsible for accepting email messages on behalf of a domain name.
+message DNSMX {
+	option (gogoproto.goproto_getters) = false;
+	
+	uint32 preference = 1 [(gogoproto.casttype) = "uint16"];
+	string name = 2;
+}
+
+// DNSQuestion stores the question for a DNS query
+message DNSQuestion {
+	option (gogoproto.goproto_getters) = false;
+	
+	string name = 1;
+	string type = 2;
+	string class = 3;
+}
+
+// DNSResourceRecord holds resource records for DNS structs
+message DNSResourceRecord {
+	option (gogoproto.goproto_getters) = false;
+	
+	string name = 1;
+	string type = 2;
+	string class = 3;
+	uint32 ttl = 4 [(gogoproto.customname) = "TTL", (gogoproto.jsontag) = "TTL,omitempty"];
+	uint32 data_length = 5 [(gogoproto.casttype) = "uint16"];
+	string ip = 6 [(gogoproto.customname) = "IP", (gogoproto.jsontag) = "IP,omitempty"];
+	string ns = 7 [(gogoproto.customname) = "NS", (gogoproto.jsontag) = "NS,omitempty"];
+	string cname = 8 [(gogoproto.customname) = "CNAME", (gogoproto.jsontag) = "CNAME,omitempty"];
+	string ptr = 9 [(gogoproto.customname) = "PTR", (gogoproto.jsontag) = "PTR,omitempty"];
+	repeated string txts = 10 [(gogoproto.customname) = "TXTs", (gogoproto.jsontag) = "TXTs,omitempty"];
+	DNSSOA soa = 11 [(gogoproto.customname) = "SOA", (gogoproto.jsontag) = "SOA,omitempty"];
+	DNSSRV srv = 12 [(gogoproto.customname) = "SRV", (gogoproto.jsontag) = "SRV,omitempty"];
+	DNSMX mx = 13 [(gogoproto.customname) = "MX", (gogoproto.jsontag) = "MX,omitempty"];
+	repeated DNSOPT opt = 14 [(gogoproto.customname) = "OPT", (gogoproto.jsontag) = "OPT,omitempty"];
+}
+
+// DNSSOA is a type of resource record in the Domain Name System (DNS) containing administrative information
+// about the zone, especially regarding zone transfers.
+message DNSSOA {
+	option (gogoproto.goproto_getters) = false;
+	
+	string mname = 1 [(gogoproto.customname) = "MName", (gogoproto.jsontag) = "MName,omitempty"];
+	string rname = 2 [(gogoproto.customname) = "RName", (gogoproto.jsontag) = "RName,omitempty"];
+	uint32 serial = 3;
+	uint32 refresh = 4;
+	uint32 retry = 5;
+	uint32 expire = 6;
+	uint32 minimum = 7;
+}
+
+// DNSSRV is a specification of data in the Domain Name System defining the
+// location, i.e. the hostname and port number, of servers for specified services.
+message DNSSRV {
+	option (gogoproto.goproto_getters) = false;
+	
+	uint32 priority = 1 [(gogoproto.casttype) = "uint16"];
+	uint32 weight = 2 [(gogoproto.casttype) = "uint16"];
+	uint32 port = 3 [(gogoproto.casttype) = "uint16"];
+	string name = 4;
+}
+
+// DNSOPT is a DNS Option, see RFC6891, section 6.1.2
+message DNSOPT {
+        option (gogoproto.goproto_getters) = false;
+
+        string code = 1 [(gogoproto.customname) = "Code", (gogoproto.jsontag) = "Code,omitempty"];
+        string data = 2 [(gogoproto.customname) = "Data", (gogoproto.jsontag) = "Data,omitempty"];
+}
+
+// LayerDNS wrapper to generate extra layer
+message DNS {
+	option (gogoproto.goproto_getters) = false;
+	
+	uint32 id = 1 [(gogoproto.casttype) = "uint16", (gogoproto.customname) = "ID", (gogoproto.jsontag) = "ID,omitempty"];
+	bool qr = 2 [(gogoproto.customname) = "QR", (gogoproto.jsontag) = "QR,omitempty"];
+	string op_code = 3;
+	bool aa = 4 [(gogoproto.customname) = "AA", (gogoproto.jsontag) = "AA,omitempty"];
+	bool tc = 5 [(gogoproto.customname) = "TC", (gogoproto.jsontag) = "TC,omitempty"];
+	bool rd = 6 [(gogoproto.customname) = "RD", (gogoproto.jsontag) = "RD,omitempty"];
+	bool ra = 7 [(gogoproto.customname) = "RA", (gogoproto.jsontag) = "RA,omitempty"];
+	uint32 z = 8 [(gogoproto.casttype) = "uint8"];
+	string response_code = 9;
+	uint32 qdcount = 10 [(gogoproto.casttype) = "uint16", (gogoproto.customname) = "QDCount", (gogoproto.jsontag) = "QDCount,omitempty"];
+	uint32 ancount = 11 [(gogoproto.casttype) = "uint16", (gogoproto.customname) = "ANCount", (gogoproto.jsontag) = "ANCount,omitempty"];
+	uint32 nscount = 12 [(gogoproto.casttype) = "uint16", (gogoproto.customname) = "NSCount", (gogoproto.jsontag) = "NSCount,omitempty"];
+	uint32 arcount = 13 [(gogoproto.casttype) = "uint16", (gogoproto.customname) = "ARCount", (gogoproto.jsontag) = "ARCount,omitempty"];
+	repeated DNSQuestion questions = 14 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "questions,omitempty"];
+	repeated DNSResourceRecord answers = 15 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "answers,omitempty"];
+	repeated DNSResourceRecord authorities = 16 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "authorities,omitempty"];
+	repeated DNSResourceRecord additionals = 17 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "additionals,omitempty"];
+	google.protobuf.Timestamp timestamp = 18 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+}

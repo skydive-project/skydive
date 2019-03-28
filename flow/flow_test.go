@@ -25,12 +25,14 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	v "github.com/gima/govalid/v1"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"github.com/skydive-project/skydive/filters"
+	fl "github.com/skydive-project/skydive/flow/layers"
 )
 
 func TestFlowReflection(t *testing.T) {
@@ -111,6 +113,712 @@ func TestFlowSimpleIPv4(t *testing.T) {
 	if flows[0].Metric.RTT != 33000 {
 		t.Errorf("Flow RTT must be 33000 got : %v", flows[0].Metric.RTT)
 	}
+}
+
+func TestFlowsDNS(t *testing.T) {
+	timeStr := []string{"2019-06-06T06:40:14.984235+03:00", "2019-06-06T06:40:24.62057+03:00", "2019-06-06T06:40:32.546622+03:00",
+		"2019-06-06T06:40:45.385335+03:00", "2019-06-06T06:40:45.395144+03:00", "2019-06-06T06:40:45.40624+03:00"}
+	times := make([]time.Time, 0, 6)
+	for _, s := range timeStr {
+		t, _ := time.Parse(time.RFC3339Nano, s)
+		times = append(times, t)
+	}
+	opts := TableOpts{ExtraTCPMetric: true, ReassembleTCP: true, IPDefrag: true, ExtraLayers: ExtraLayers(2)}
+	expected := []*Flow{
+		{
+			LayersPath:  "Ethernet/IPv4/UDP/DNS",
+			Application: "DNS",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "14:4f:8a:d7:59:3d",
+				B:        "40:9b:cd:d2:7b:11",
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "10.0.0.12",
+				B:        "10.0.0.138",
+			},
+			Transport: &TransportLayer{
+				Protocol: FlowProtocol_UDP,
+				A:        41278,
+				B:        53,
+			},
+			Metric: &FlowMetric{
+				ABPackets: 2,
+				ABBytes:   150,
+				BAPackets: 2,
+				BABytes:   683,
+			},
+			DNS: &fl.DNS{
+				ID:           38125,
+				QR:           true,
+				OpCode:       "Query",
+				RD:           true,
+				RA:           true,
+				ResponseCode: "No Error",
+				QDCount:      1,
+				ANCount:      2,
+				NSCount:      1,
+				Questions: []fl.DNSQuestion{
+					{
+						Name:  "c.go-mpulse.net",
+						Type:  "AAAA",
+						Class: "IN",
+					},
+				},
+				Answers: []fl.DNSResourceRecord{
+					{
+						Name:       "c.go-mpulse.net",
+						Type:       "CNAME",
+						Class:      "IN",
+						TTL:        728,
+						DataLength: 33,
+						CNAME:      "wildcard.go-mpulse.net.edgekey.net",
+					},
+					{
+						Name:       "wildcard.go-mpulse.net.edgekey.net",
+						Type:       "CNAME",
+						Class:      "IN",
+						TTL:        2924,
+						DataLength: 21,
+						CNAME:      "e4518.x.akamaiedge.net",
+					},
+				},
+				Authorities: []fl.DNSResourceRecord{
+					{
+						Name:       "x.akamaiedge.net",
+						Type:       "SOA",
+						Class:      "IN",
+						TTL:        5,
+						DataLength: 49,
+						SOA: &fl.DNSSOA{
+							MName:   "n0x.akamaiedge.net",
+							RName:   "hostmaster.akamai.com",
+							Serial:  1559791419,
+							Refresh: 1000,
+							Retry:   1000,
+							Expire:  1000,
+							Minimum: 1800,
+						},
+					},
+				},
+				Timestamp: times[0],
+			},
+		},
+		{
+			LayersPath:  "Ethernet/IPv4/UDP/DNS",
+			Application: "DNS",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "14:4f:8a:d7:59:3d",
+				B:        "40:9b:cd:d2:7b:11",
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "10.0.0.12",
+				B:        "10.0.0.138",
+			},
+			Transport: &TransportLayer{
+				Protocol: FlowProtocol_UDP,
+				A:        33823,
+				B:        53,
+			},
+			Metric: &FlowMetric{
+				ABPackets: 1,
+				ABBytes:   77,
+				BAPackets: 1,
+				BABytes:   294,
+			},
+			DNS: &fl.DNS{
+				ID:           40590,
+				QR:           true,
+				OpCode:       "Query",
+				RD:           true,
+				RA:           true,
+				ResponseCode: "No Error",
+				QDCount:      1,
+				ANCount:      2,
+				NSCount:      3,
+				ARCount:      5,
+				Questions: []fl.DNSQuestion{
+					{
+						Name:  "fedoraproject.org",
+						Type:  "AAAA",
+						Class: "IN",
+					},
+				},
+				Answers: []fl.DNSResourceRecord{
+					{
+						Name:       "fedoraproject.org",
+						Type:       "AAAA",
+						Class:      "IN",
+						TTL:        7,
+						DataLength: 16,
+						IP:         "2610:28:3090:3001:dead:beef:cafe:fed3",
+					},
+					{
+						Name:       "fedoraproject.org",
+						Type:       "AAAA",
+						Class:      "IN",
+						TTL:        7,
+						DataLength: 16,
+						IP:         "2604:1580:fe00:0:dead:beef:cafe:fed1",
+					},
+				},
+				Authorities: []fl.DNSResourceRecord{
+					{
+						Name:       "fedoraproject.org",
+						Type:       "NS",
+						Class:      "IN",
+						TTL:        67350,
+						DataLength: 7,
+						NS:         "ns04.fedoraproject.org",
+					},
+					{
+						Name:       "fedoraproject.org",
+						Type:       "NS",
+						Class:      "IN",
+						TTL:        67350,
+						DataLength: 7,
+						NS:         "ns02.fedoraproject.org",
+					},
+					{
+						Name:       "fedoraproject.org",
+						Type:       "NS",
+						Class:      "IN",
+						TTL:        67350,
+						DataLength: 7,
+						NS:         "ns05.fedoraproject.org",
+					},
+				},
+				Additionals: []fl.DNSResourceRecord{
+					{
+						Name:       "ns02.fedoraproject.org",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        85167,
+						DataLength: 4,
+						IP:         "152.19.134.139",
+					},
+					{
+						Name:       "ns04.fedoraproject.org",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        85167,
+						DataLength: 4,
+						IP:         "209.132.181.17",
+					},
+					{
+						Name:       "ns05.fedoraproject.org",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        85167,
+						DataLength: 4,
+						IP:         "85.236.55.10",
+					},
+					{
+						Name:       "ns02.fedoraproject.org",
+						Type:       "AAAA",
+						Class:      "IN",
+						TTL:        85167,
+						DataLength: 16,
+						IP:         "2610:28:3090:3001:dead:beef:cafe:fed5",
+					},
+					{
+						Name:       "ns05.fedoraproject.org",
+						Type:       "AAAA",
+						Class:      "IN",
+						TTL:        85167,
+						DataLength: 16,
+						IP:         "2001:4178:2:1269:dead:beef:cafe:fed5",
+					},
+				},
+				Timestamp: times[1],
+			},
+		},
+		{
+			LayersPath:  "Ethernet/IPv4/UDP/DNS",
+			Application: "DNS",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "14:4f:8a:d7:59:3d",
+				B:        "40:9b:cd:d2:7b:11",
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "10.0.0.12",
+				B:        "10.0.0.138",
+			},
+			Transport: &TransportLayer{
+				Protocol: FlowProtocol_UDP,
+				A:        56656,
+				B:        53,
+			},
+			Metric: &FlowMetric{
+				ABPackets: 2,
+				ABBytes:   148,
+				BAPackets: 2,
+				BABytes:   510,
+			},
+			DNS: &fl.DNS{
+				ID:           28799,
+				QR:           true,
+				OpCode:       "Query",
+				RD:           true,
+				RA:           true,
+				ResponseCode: "No Error",
+				QDCount:      1,
+				NSCount:      1,
+				Questions: []fl.DNSQuestion{
+					{
+						Name:  "ipv4.adrta.com",
+						Type:  "AAAA",
+						Class: "IN",
+					},
+				},
+				Authorities: []fl.DNSResourceRecord{
+					{
+						Name:       "adrta.com",
+						Type:       "SOA",
+						Class:      "IN",
+						TTL:        900,
+						DataLength: 69,
+						SOA: &fl.DNSSOA{
+							MName:   "ns-615.awsdns-12.net",
+							RName:   "awsdns-hostmaster.amazon.com",
+							Serial:  1,
+							Refresh: 7200,
+							Retry:   900,
+							Expire:  1209600,
+							Minimum: 86400,
+						},
+					},
+				},
+				Timestamp: times[2],
+			},
+		},
+		{
+			LayersPath:  "Ethernet/IPv4/UDP/DNS",
+			Application: "DNS",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "14:4f:8a:d7:59:3d",
+				B:        "40:9b:cd:d2:7b:11",
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "10.0.0.12",
+				B:        "10.0.0.138",
+			},
+			Transport: &TransportLayer{
+				Protocol: FlowProtocol_UDP,
+				A:        54893,
+				B:        53,
+			},
+			Metric: &FlowMetric{
+				ABPackets: 1,
+				ABBytes:   77,
+				BAPackets: 1,
+				BABytes:   354,
+			},
+			DNS: &fl.DNS{
+				ID:           27181,
+				QR:           true,
+				OpCode:       "Query",
+				RD:           true,
+				RA:           true,
+				ResponseCode: "No Error",
+				QDCount:      1,
+				ANCount:      9,
+				NSCount:      3,
+				ARCount:      4,
+				Questions: []fl.DNSQuestion{
+					{
+						Name:  "fedoraproject.org",
+						Type:  "A",
+						Class: "IN",
+					},
+				},
+				Answers: []fl.DNSResourceRecord{
+					{
+						Name:       "fedoraproject.org",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        44,
+						DataLength: 4,
+						IP:         "209.132.181.16",
+					},
+					{
+						Name:       "fedoraproject.org",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        44,
+						DataLength: 4,
+						IP:         "209.132.181.15",
+					},
+					{
+						Name:       "fedoraproject.org",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        44,
+						DataLength: 4,
+						IP:         "8.43.85.67",
+					},
+					{
+						Name:       "fedoraproject.org",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        44,
+						DataLength: 4,
+						IP:         "67.219.144.68",
+					},
+					{
+						Name:       "fedoraproject.org",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        44,
+						DataLength: 4,
+						IP:         "152.19.134.198",
+					},
+					{
+						Name:       "fedoraproject.org",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        44,
+						DataLength: 4,
+						IP:         "209.132.190.2",
+					},
+					{
+						Name:       "fedoraproject.org",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        44,
+						DataLength: 4,
+						IP:         "140.211.169.206",
+					},
+					{
+						Name:       "fedoraproject.org",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        44,
+						DataLength: 4,
+						IP:         "185.141.165.254",
+					},
+					{
+						Name:       "fedoraproject.org",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        44,
+						DataLength: 4,
+						IP:         "152.19.134.142",
+					},
+				},
+				Authorities: []fl.DNSResourceRecord{
+					{
+						Name:       "fedoraproject.org",
+						Type:       "NS",
+						Class:      "IN",
+						TTL:        67329,
+						DataLength: 7,
+						NS:         "ns04.fedoraproject.org",
+					},
+					{
+						Name:       "fedoraproject.org",
+						Type:       "NS",
+						Class:      "IN",
+						TTL:        67329,
+						DataLength: 7,
+						NS:         "ns02.fedoraproject.org",
+					},
+					{
+						Name:       "fedoraproject.org",
+						Type:       "NS",
+						Class:      "IN",
+						TTL:        67329,
+						DataLength: 7,
+						NS:         "ns05.fedoraproject.org",
+					},
+				},
+				Additionals: []fl.DNSResourceRecord{
+					{
+						Name:       "ns02.fedoraproject.org",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        85146,
+						DataLength: 4,
+						IP:         "152.19.134.139",
+					},
+					{
+						Name:       "ns04.fedoraproject.org",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        85146,
+						DataLength: 4,
+						IP:         "209.132.181.17",
+					},
+					{
+						Name:       "ns05.fedoraproject.org",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        85146,
+						DataLength: 4,
+						IP:         "85.236.55.10",
+					},
+					{
+						Name:       "ns02.fedoraproject.org",
+						Type:       "AAAA",
+						Class:      "IN",
+						TTL:        85146,
+						DataLength: 16,
+						IP:         "2610:28:3090:3001:dead:beef:cafe:fed5",
+					},
+				},
+				Timestamp: times[3],
+			},
+		},
+		{
+			LayersPath:  "Ethernet/IPv4/UDP/DNS",
+			Application: "DNS",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "14:4f:8a:d7:59:3d",
+				B:        "40:9b:cd:d2:7b:11",
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "10.0.0.12",
+				B:        "10.0.0.138",
+			},
+			Transport: &TransportLayer{
+				Protocol: FlowProtocol_UDP,
+				A:        42992,
+				B:        53,
+			},
+			Metric: &FlowMetric{
+				ABPackets: 1,
+				ABBytes:   74,
+				BAPackets: 1,
+				BABytes:   440,
+			},
+			DNS: &fl.DNS{
+				ID:           43789,
+				QR:           true,
+				OpCode:       "Query",
+				RD:           true,
+				RA:           true,
+				ResponseCode: "No Error",
+				QDCount:      1,
+				ANCount:      2,
+				NSCount:      8,
+				ARCount:      6,
+				Questions: []fl.DNSQuestion{
+					{
+						Name:  "www.github.com",
+						Type:  "A",
+						Class: "IN",
+					},
+				},
+				Answers: []fl.DNSResourceRecord{
+					{
+						Name:       "www.github.com",
+						Type:       "CNAME",
+						Class:      "IN",
+						TTL:        2154,
+						DataLength: 2,
+						CNAME:      "github.com",
+					},
+					{
+						Name:       "github.com",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        60,
+						DataLength: 4,
+						IP:         "140.82.118.4",
+					},
+				},
+				Authorities: []fl.DNSResourceRecord{
+					{
+						Name:       "github.com",
+						Type:       "NS",
+						Class:      "IN",
+						TTL:        154873,
+						DataLength: 20,
+						NS:         "ns3.p16.dynect.net",
+					},
+					{
+						Name:       "github.com",
+						Type:       "NS",
+						Class:      "IN",
+						TTL:        154873,
+						DataLength: 6,
+						NS:         "ns4.p16.dynect.net",
+					},
+					{
+						Name:       "github.com",
+						Type:       "NS",
+						Class:      "IN",
+						TTL:        154873,
+						DataLength: 23,
+						NS:         "ns-1283.awsdns-32.org",
+					},
+					{
+						Name:       "github.com",
+						Type:       "NS",
+						Class:      "IN",
+						TTL:        154873,
+						DataLength: 22,
+						NS:         "ns-421.awsdns-52.COM",
+					},
+					{
+						Name:       "github.com",
+						Type:       "NS",
+						Class:      "IN",
+						TTL:        154873,
+						DataLength: 19,
+						NS:         "ns-520.awsdns-01.net",
+					},
+					{
+						Name:       "github.com",
+						Type:       "NS",
+						Class:      "IN",
+						TTL:        154873,
+						DataLength: 6,
+						NS:         "ns2.p16.dynect.net",
+					},
+					{
+						Name:       "github.com",
+						Type:       "NS",
+						Class:      "IN",
+						TTL:        154873,
+						DataLength: 25,
+						NS:         "ns-1707.awsdns-21.co.uk",
+					},
+					{
+						Name:       "github.com",
+						Type:       "NS",
+						Class:      "IN",
+						TTL:        154873,
+						DataLength: 6,
+						NS:         "ns1.p16.dynect.net",
+					},
+				},
+				Additionals: []fl.DNSResourceRecord{
+					{
+						Name:       "ns1.p16.dynect.net",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        42402,
+						DataLength: 4,
+						IP:         "208.78.70.16",
+					},
+					{
+						Name:       "ns2.p16.dynect.net",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        71546,
+						DataLength: 4,
+						IP:         "204.13.250.16",
+					},
+					{
+						Name:       "ns-421.awsdns-52.com",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        106592,
+						DataLength: 4,
+						IP:         "205.251.193.165",
+					},
+					{
+						Name:       "ns-520.awsdns-01.net",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        66060,
+						DataLength: 4,
+						IP:         "205.251.194.8",
+					},
+					{
+						Name:       "ns-1283.awsdns-32.org",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        38047,
+						DataLength: 4,
+						IP:         "205.251.197.3",
+					},
+					{
+						Name:       "ns-1707.awsdns-21.co.uk",
+						Type:       "A",
+						Class:      "IN",
+						TTL:        44919,
+						DataLength: 4,
+						IP:         "205.251.198.171",
+					},
+				},
+				Timestamp: times[4],
+			},
+		},
+		{
+			LayersPath:  "Ethernet/IPv4/UDP/DNS",
+			Application: "DNS",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "14:4f:8a:d7:59:3d",
+				B:        "40:9b:cd:d2:7b:11",
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "10.0.0.12",
+				B:        "10.0.0.138",
+			},
+			Transport: &TransportLayer{
+				Protocol: FlowProtocol_UDP,
+				A:        57048,
+				B:        53,
+			},
+			Metric: &FlowMetric{
+				ABPackets: 1,
+				ABBytes:   70,
+				BAPackets: 1,
+				BABytes:   154,
+			},
+			DNS: &fl.DNS{
+				ID:           64755,
+				QR:           true,
+				OpCode:       "Query",
+				RD:           true,
+				RA:           true,
+				ResponseCode: "No Error",
+				QDCount:      1,
+				NSCount:      1,
+				Questions: []fl.DNSQuestion{
+					{
+						Name:  "github.com",
+						Type:  "AAAA",
+						Class: "IN",
+					},
+				},
+				Authorities: []fl.DNSResourceRecord{
+					{
+						Name:       "github.com",
+						Type:       "SOA",
+						Class:      "IN",
+						TTL:        851,
+						DataLength: 72,
+						SOA: &fl.DNSSOA{
+							MName:   "ns-1707.awsdns-21.co.uk",
+							RName:   "awsdns-hostmaster.amazon.com",
+							Serial:  1,
+							Refresh: 7200,
+							Retry:   900,
+							Expire:  1209600,
+							Minimum: 86400,
+						},
+					},
+				},
+				Timestamp: times[5],
+			},
+		},
+	}
+
+	validatePCAP(t, "pcaptraces/dns.pcap", layers.LinkTypeEthernet, nil, expected, opts)
 }
 
 func TestFlowSimpleIPv6(t *testing.T) {
@@ -285,6 +993,167 @@ func compareFlowMetric(expected, tested *FlowMetric) bool {
 		expected.BABytes == tested.BABytes && expected.BAPackets == tested.BAPackets
 }
 
+func compareDNSSOA(expected, tested *fl.DNSSOA) bool {
+	if expected == nil && tested == nil {
+		return true
+	}
+	if expected == nil || tested == nil {
+		return false
+	}
+
+	return expected.MName == tested.MName && expected.RName == tested.RName && expected.Serial == tested.Serial &&
+		expected.Refresh == tested.Refresh && expected.Retry == tested.Retry && expected.Expire == tested.Expire &&
+		expected.Minimum == tested.Minimum
+}
+
+func compareDNSSRV(expected, tested *fl.DNSSRV) bool {
+	if expected == nil && tested == nil {
+		return true
+	}
+	if expected == nil || tested == nil {
+		return false
+	}
+
+	return expected.Priority == tested.Priority && expected.Weight == tested.Weight && expected.Port == tested.Port &&
+		expected.Name == tested.Name
+}
+
+func compareDNSMX(expected, tested *fl.DNSMX) bool {
+	if expected == nil && tested == nil {
+		return true
+	}
+	if expected == nil || tested == nil {
+		return false
+	}
+
+	return expected.Preference == tested.Preference && expected.Name == tested.Name
+}
+
+func compareDNSTXTs(expected, tested []string) bool {
+	if expected == nil && tested == nil {
+		return true
+	}
+	if expected == nil || tested == nil {
+		return false
+	}
+	if len(tested) != len(expected) {
+		return false
+	}
+
+	for _, e := range expected {
+		found := false
+		for _, t := range tested {
+			if e == t {
+				found = true
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+
+	return true
+}
+
+func compareDNSQuestions(expected, tested []fl.DNSQuestion) bool {
+	if expected == nil && tested == nil {
+		return true
+	}
+	if expected == nil || tested == nil {
+		return false
+	}
+	if len(tested) != len(expected) {
+		return false
+	}
+	for _, e := range expected {
+		found := false
+		for _, t := range tested {
+			if e.Name == t.Name && e.Type == t.Type && e.Class == t.Class {
+				found = true
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+
+	return true
+}
+
+func compareDNSResourceRecords(expected, tested []fl.DNSResourceRecord) bool {
+	if expected == nil && tested == nil {
+		return true
+	}
+	if expected == nil || tested == nil {
+		return false
+	}
+	if len(tested) != len(expected) {
+		return false
+	}
+	for _, e := range expected {
+		found := false
+		for _, t := range tested {
+			if e.Name == t.Name && e.Type == t.Type && e.Class == t.Class && e.TTL == t.TTL &&
+				e.DataLength == t.DataLength && e.IP == t.IP && e.NS == t.NS && e.CNAME == t.CNAME &&
+				e.PTR == t.PTR && compareDNSTXTs(e.TXTs, t.TXTs) && compareDNSSOA(e.SOA, t.SOA) &&
+				compareDNSSRV(e.SRV, t.SRV) && compareDNSMX(e.MX, t.MX) {
+				found = true
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+
+	return true
+}
+
+func compareDNSLayer(expected, tested *fl.DNS) bool {
+	if expected == nil && tested == nil {
+		return true
+	}
+	if expected == nil || tested == nil {
+		return false
+	}
+
+	if expected.ID != tested.ID || expected.QR != tested.QR || expected.OpCode != tested.OpCode ||
+		expected.RD != tested.RD || expected.RA != tested.RA || expected.Z != tested.Z || expected.ResponseCode != tested.ResponseCode ||
+		expected.QDCount != tested.QDCount || expected.ANCount != tested.ANCount || expected.NSCount != tested.NSCount ||
+		expected.ARCount != tested.ARCount || expected.Timestamp.UTC() != tested.Timestamp.UTC() {
+		return false
+	}
+
+	if (expected.Questions != nil && tested.Questions == nil) || (expected.Questions == nil && tested.Questions != nil) {
+		return false
+	}
+	if expected.Questions != nil && !compareDNSQuestions(expected.Questions, tested.Questions) {
+		return false
+	}
+
+	if (expected.Answers != nil && tested.Answers == nil) || (expected.Answers == nil && tested.Answers != nil) {
+		return false
+	}
+	if expected.Answers != nil && !compareDNSResourceRecords(expected.Answers, tested.Answers) {
+		return false
+	}
+
+	if (expected.Authorities != nil && tested.Authorities == nil) || (expected.Authorities == nil && tested.Authorities != nil) {
+		return false
+	}
+	if expected.Authorities != nil && !compareDNSResourceRecords(expected.Authorities, tested.Authorities) {
+		return false
+	}
+
+	if (expected.Additionals != nil && tested.Additionals == nil) || (expected.Additionals == nil && tested.Additionals != nil) {
+		return false
+	}
+	if expected.Additionals != nil && !compareDNSResourceRecords(expected.Additionals, tested.Additionals) {
+		return false
+	}
+
+	return true
+}
+
 func compareFlow(expected, tested *Flow) bool {
 	if expected.LayersPath != "" && expected.LayersPath != tested.LayersPath {
 		return false
@@ -312,6 +1181,12 @@ func compareFlow(expected, tested *Flow) bool {
 	}
 	if expected.LastUpdateMetric != nil && !compareFlowMetric(expected.LastUpdateMetric,
 		tested.LastUpdateMetric) {
+		return false
+	}
+	if (expected.DNS == nil && tested.DNS != nil) || (expected.DNS != nil && tested.DNS == nil) {
+		return false
+	}
+	if expected.DNS != nil && !compareDNSLayer(expected.DNS, tested.DNS) {
 		return false
 	}
 

@@ -1,0 +1,23 @@
+syntax = "proto3";
+package layers;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.protosizer_all) = true;
+option (gogoproto.sizer_all) = false;
+option go_package = "github.com/skydive-project/skydive/flow/layers";
+
+// LayerDHCPv4 wrapper to generate extra layer
+message DHCPv4 {
+	option (gogoproto.goproto_getters) = false;
+	
+	bytes contents = 1;
+	bytes payload = 2;
+	uint32 hardware_len = 3 [(gogoproto.casttype) = "uint8"];
+	uint32 hardware_opts = 4 [(gogoproto.casttype) = "uint8"];
+	uint32 xid = 5;
+	uint32 secs = 6 [(gogoproto.casttype) = "uint16"];
+	uint32 flags = 7 [(gogoproto.casttype) = "uint16"];
+	bytes server_name = 8;
+	bytes file = 9;
+}

@@ -275,21 +275,13 @@ flow/flow.pb.go: flow/flow.proto filters/filters.proto
 	sed -e 's/type TCPMetric struct {/\/\/ gendecoder\ntype TCPMetric struct {/' -i $@
 	gofmt -s -w $@
 
-flow/layers/generated.proto: flow/layers/layers.go
-	$(call VENDOR_RUN,${PROTEUS_GITHUB}) proteus proto -f $${GOPATH}/src -p github.com/skydive-project/skydive/flow/layers
-	sed -e 's/^package .*;/package layers;/' -i $@
-	sed -e 's/^option go_package = "layers"/option go_package = "github.com\/skydive-project\/skydive\/flow\/layers"/' -i $@
-	sed -e 's/^message Layer/message /' -i $@
-	sed -e 's/option (gogoproto.typedecl) = false;//' -i $@
-	sed 's/\((gogoproto\.customname) = "\([^\"]*\)"\)/\1, (gogoproto.jsontag) = "\2,omitempty"/' -i $@
-
 websocket/structmessage.pb.go: websocket/structmessage.proto
 	$(call PROTOC_GEN,$<)
 
 	sed -e 's/type StructMessage struct {/type StructMessage struct { XXX_state structMessageState `json:"-"`/' -i websocket/structmessage.pb.go
 	gofmt -s -w $@
 
-.proto: govendor flow/layers/generated.pb.go flow/flow.pb.go filters/filters.pb.go websocket/structmessage.pb.go
+.proto: govendor flow/layers/dns.pb.go flow/layers/vrrpv2.pb.go flow/layers/dhcpv4.pb.go flow/flow.pb.go filters/filters.pb.go websocket/structmessage.pb.go
 
 .PHONY: .proto.clean
 .proto.clean:
@@ -635,7 +627,9 @@ SKYDIVE_PROTO_FILES:= \
 	flow/flow.proto \
 	filters/filters.proto \
 	websocket/structmessage.proto \
-	flow/layers/generated.proto
+	flow/layers/dns.proto\
+	flow/layers/vrrpv2.proto\
+	flow/layers/dhcpv4.proto
 
 SKYDIVE_TAR_INPUT:= \
 	vendor \
