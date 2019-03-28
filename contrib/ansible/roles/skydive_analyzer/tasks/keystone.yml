@@ -1,6 +1,7 @@
 ---
 - name: Handle Keystone authentication
   delegate_to: localhost
+  run_once: true
   become: no
   block:
     - name: Install Keystone requirements (yum)
