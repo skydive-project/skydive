@@ -30,3 +30,5 @@ skydive_sys_username: skydive
 skydive_sys_groupname: skydive
 
 skydive_container_cli: docker
+
+skydive_deployment_source:
