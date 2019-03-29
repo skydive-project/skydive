@@ -29,6 +29,6 @@ skydive_cluster_password: secret
 skydive_sys_username: skydive
 skydive_sys_groupname: skydive
 
-skydive_container_cli: docker
+skydive_container_cli:
 
 skydive_deployment_source:
