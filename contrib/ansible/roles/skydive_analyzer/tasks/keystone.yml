@@ -1,6 +1,7 @@
 ---
 - name: Handle Keystone authentication
   delegate_to: localhost
+  run_once: true
   become: no
   block:
     - name: Install Keystone requirements (yum)
@@ -18,7 +19,7 @@
         name: python2-shade
         state: present
         use: dnf
-      when: (ansible_os_family == 'RedHat' and ansible_distribution_major_version|int > 7) or (ansible_distribution == 'Fedora')
+      when: (ansible_os_family == 'RedHat' and ansible_distribution_major_version|int == 7) or (ansible_distribution == 'Fedora')
       ignore_errors: yes
 
     - name: Install Keystone requirements (apt)

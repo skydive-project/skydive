@@ -1,4 +1,18 @@
 ---
+- name: Detect container runtime
+  set_fact:
+    skydive_container_cli: "podman"
+  when:
+    - skydive_container_cli is none or skydive_container_cli == ""
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_major_version|int >= 8
+
+- name: Use docker as container runtime
+  set_fact:
+    skydive_container_cli: "docker"
+  when:
+    - skydive_container_cli is none or skydive_container_cli == ""
+
 - name: "Install {{ skydive_container_cli }}"
   package:
     name: "{{ skydive_container_cli }}"
