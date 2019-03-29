@@ -71,7 +71,7 @@ type NetNsProbe struct {
 	handle               *netlink.Handle
 	socket               *nl.NetlinkSocket
 	indexToChildrenQueue map[int64][]pendingLink
-	links                map[string]*graph.Node
+	links                map[int]*graph.Node
 	state                int64
 	wg                   sync.WaitGroup
 	quit                 chan bool
@@ -593,7 +593,7 @@ func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 		return
 	}
 	u.Lock()
-	u.links[attrs.Name] = intf
+	u.links[attrs.Index] = intf
 	u.Unlock()
 
 	go u.handleSriov(u.Graph, intf, attrs.Index, businfo, attrs.Vfs, attrs.Name)
@@ -717,7 +717,7 @@ func (u *NetNsProbe) onLinkDeleted(link netlink.Link) {
 	delete(u.indexToChildrenQueue, index)
 
 	u.Lock()
-	delete(u.links, link.Attrs().Name)
+	delete(u.links, link.Attrs().Index)
 	u.Unlock()
 }
 
@@ -912,11 +912,11 @@ func (u *NetNsProbe) isRunning() bool {
 	return atomic.LoadInt64(&u.state) == common.RunningState
 }
 
-func (u *NetNsProbe) cloneLinkNodes() map[string]*graph.Node {
+func (u *NetNsProbe) cloneLinkNodes() map[int]*graph.Node {
 	// do a copy of the original in order to avoid inter locks
 	// between graph lock and netlink lock while iterating
 	u.RLock()
-	links := make(map[string]*graph.Node)
+	links := make(map[int]*graph.Node)
 	for k, v := range u.links {
 		links[k] = v
 	}
@@ -926,8 +926,8 @@ func (u *NetNsProbe) cloneLinkNodes() map[string]*graph.Node {
 }
 
 func (u *NetNsProbe) updateIntfMetric(now, last time.Time) {
-	for name, node := range u.cloneLinkNodes() {
-		if link, err := u.handle.LinkByName(name); err == nil {
+	for index, node := range u.cloneLinkNodes() {
+		if link, err := u.handle.LinkByIndex(index); err == nil {
 			currMetric := newInterfaceMetricsFromNetlink(link)
 			if currMetric == nil || currMetric.IsZero() {
 				continue
@@ -975,9 +975,10 @@ func (u *NetNsProbe) updateIntfFeatures(name string, metadata graph.Metadata) {
 }
 
 func (u *NetNsProbe) updateIntfs() {
-	for name, node := range u.cloneLinkNodes() {
+	for _, node := range u.cloneLinkNodes() {
 		u.Graph.RLock()
 		driver, _ := node.GetFieldString("Driver")
+		name, _ := node.GetFieldString("Name")
 		u.Graph.RUnlock()
 
 		if driver == "" {
@@ -1135,7 +1136,7 @@ func newNetNsProbe(g *graph.Graph, root *graph.Node, nsPath string, sriovProcess
 		Root:                 root,
 		NsPath:               nsPath,
 		indexToChildrenQueue: make(map[int64][]pendingLink),
-		links:                make(map[string]*graph.Node),
+		links:                make(map[int]*graph.Node),
 		quit:                 make(chan bool),
 		netNsNameTry:         make(map[graph.Identifier]int),
 		sriovProcessor:       sriovProcessor,
