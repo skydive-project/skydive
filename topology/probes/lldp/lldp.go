@@ -61,11 +61,11 @@ type Probe struct {
 	sync.RWMutex
 	graph.DefaultGraphListener
 	g             *graph.Graph
-	hostNode      *graph.Node     // graph node of the running host
-	interfaceMap  map[string]bool // map interface names to the capturing state
-	state         int64           // state of the probe (running or stopped)
-	wg            sync.WaitGroup  // capture goroutines wait group
-	autoDiscovery bool            // capture LLDP traffic on all capable interfaces
+	hostNode      *graph.Node                      // graph node of the running host
+	interfaceMap  map[string]*probes.GoPacketProbe // map interface names to the packet probes
+	state         int64                            // state of the probe (running or stopped)
+	wg            sync.WaitGroup                   // capture goroutines wait group
+	autoDiscovery bool                             // capture LLDP traffic on all capable interfaces
 }
 
 type ifreq struct {
@@ -300,7 +300,7 @@ func (p *Probe) startCapture(ifName, mac string, n *graph.Node) error {
 	}
 
 	// Set capturing state to true
-	p.interfaceMap[ifName] = true
+	p.interfaceMap[ifName] = packetProbe
 
 	p.wg.Add(1)
 
@@ -309,7 +309,7 @@ func (p *Probe) startCapture(ifName, mac string, n *graph.Node) error {
 			logging.GetLogger().Infof("Stopping LLDP capture on %s", ifName)
 
 			p.Lock()
-			p.interfaceMap[ifName] = false
+			p.interfaceMap[ifName] = nil
 			p.Unlock()
 
 			p.wg.Done()
@@ -355,7 +355,7 @@ func (p *Probe) handleNode(n *graph.Node) {
 	name, _ := n.GetFieldString("Name")
 
 	if name != "" && mac != "" && firstLayerType == layers.LayerTypeEthernet {
-		if active, found := p.interfaceMap[name]; (found || p.autoDiscovery) && !active {
+		if activeProbe, found := p.interfaceMap[name]; (found || p.autoDiscovery) && activeProbe == nil {
 			logging.GetLogger().Infof("Starting LLDP capture on %s (MAC: %s)", name, mac)
 			if err := p.startCapture(name, mac, n); err != nil {
 				logging.GetLogger().Error(err)
@@ -412,14 +412,18 @@ func (p *Probe) Start() {
 func (p *Probe) Stop() {
 	p.g.RemoveEventListener(p)
 	atomic.StoreInt64(&p.state, common.StoppingState)
+	for intf, activeProbe := range p.interfaceMap {
+		logging.GetLogger().Debugf("Stopping probe on %s", intf)
+		activeProbe.Stop()
+	}
 	p.wg.Wait()
 }
 
 // NewProbe returns a new LLDP probe
 func NewProbe(g *graph.Graph, hostNode *graph.Node, interfaces []string) (*Probe, error) {
-	interfaceMap := make(map[string]bool)
+	interfaceMap := make(map[string]*probes.GoPacketProbe)
 	for _, intf := range interfaces {
-		interfaceMap[intf] = false
+		interfaceMap[intf] = nil
 	}
 
 	return &Probe{

@@ -168,8 +168,6 @@ func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e FlowProbeEve
 	statsUpdate := config.GetInt("agent.capture.stats_update")
 	statsTicker := time.NewTicker(time.Duration(statsUpdate) * time.Second)
 
-	wg.Add(1)
-
 	// manage BPF outside namespace because of syscall
 	if p.bpf != "" {
 		if err := p.packetProbe.SetBPFFilter(p.bpf); err != nil {
@@ -179,6 +177,7 @@ func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e FlowProbeEve
 
 	// notify active
 	if e != nil {
+		wg.Add(1)
 		go p.updateStats(p.graph, p.n, statsTicker, statsDone, &wg)
 
 		e.OnStarted()
