@@ -15,34 +15,34 @@
 			"revisionTime": "2019-03-21T22:05:05Z"
 		},
 		{
-			"checksumSHA1": "Tg3uL/d82jzlcgYgAS6x/jfTtXA=",
+			"checksumSHA1": "U1EaufkgT21WmJc4VUVQVv6Yz7k=",
 			"path": "git.fd.io/govpp.git/adapter/vppapiclient",
-			"revision": "29e1639101b093c5f66331b0f1385564c88db1c7",
-			"revisionTime": "2019-03-20T13:14:10Z"
+			"revision": "345201eedce4cefae4db6914067a34000a7f978f",
+			"revisionTime": "2019-03-21T22:05:05Z"
 		},
 		{
 			"checksumSHA1": "xyblyhJxpdnMFKfHFM6CC3zfhO0=",
 			"path": "git.fd.io/govpp.git/api",
-			"revision": "29e1639101b093c5f66331b0f1385564c88db1c7",
-			"revisionTime": "2019-03-20T13:14:10Z"
+			"revision": "345201eedce4cefae4db6914067a34000a7f978f",
+			"revisionTime": "2019-03-21T22:05:05Z"
 		},
 		{
 			"checksumSHA1": "TXHuKkGNgdJSVl0BXFLk0NyuqwM=",
 			"path": "git.fd.io/govpp.git/cmd/binapi-generator",
-			"revision": "29e1639101b093c5f66331b0f1385564c88db1c7",
-			"revisionTime": "2019-03-20T13:14:10Z"
+			"revision": "345201eedce4cefae4db6914067a34000a7f978f",
+			"revisionTime": "2019-03-21T22:05:05Z"
 		},
 		{
 			"checksumSHA1": "+ddD9b0cOZfcbA7EkSxDRcrv9Nc=",
 			"path": "git.fd.io/govpp.git/codec",
-			"revision": "29e1639101b093c5f66331b0f1385564c88db1c7",
-			"revisionTime": "2019-03-20T13:14:10Z"
+			"revision": "345201eedce4cefae4db6914067a34000a7f978f",
+			"revisionTime": "2019-03-21T22:05:05Z"
 		},
 		{
 			"checksumSHA1": "3KnpwrlX21kCIQ934KFkpQRhjb0=",
 			"path": "git.fd.io/govpp.git/core",
-			"revision": "29e1639101b093c5f66331b0f1385564c88db1c7",
-			"revisionTime": "2019-03-20T13:14:10Z"
+			"revision": "345201eedce4cefae4db6914067a34000a7f978f",
+			"revisionTime": "2019-03-21T22:05:05Z"
 		},
 		{
 			"checksumSHA1": "VyTWDfmf9jOJWlwjNJ91LMHl71Y=",
