@@ -385,7 +385,7 @@ int bpf_flow_table(struct __sk_buff *skb)
 	__u64 tm = bpf_ktime_get_ns();
 
 	__u32 key = START_TIME_NS;
-	__u32 *sns = bpf_map_lookup_element(&u64_config_values, &key);
+	__u64 *sns = bpf_map_lookup_element(&u64_config_values, &key);
 	if (sns != NULL && *sns == 0) {
 		bpf_map_update_element(&u64_config_values, &key, &tm, BPF_ANY);
 	}
