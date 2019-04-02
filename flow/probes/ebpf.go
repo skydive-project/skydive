@@ -87,7 +87,17 @@ func kernFlowKey(kernFlow *C.struct_flow) string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
-func (p *EBPFProbe) newFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow) *flow.Operation {
+func tcpFlagTime(prevFlagTime int64, currFlagTime C.__u64, startKTimeNs int64, start time.Time) int64 {
+	if prevFlagTime != 0 {
+		return prevFlagTime
+	}
+	if currFlagTime == 0 {
+		return 0
+	}
+	return common.UnixMillis(start.Add(time.Duration(int64(currFlagTime) - startKTimeNs)))
+}
+
+func (p *EBPFProbe) newFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, startKTimeNs int64, start time.Time) *flow.Operation {
 	f := flow.NewFlow()
 	f.Init(common.UnixMillis(ebpfFlow.start), p.probeNodeTID, flow.UUIDs{})
 	f.Last = common.UnixMillis(ebpfFlow.last)
@@ -168,6 +178,14 @@ func (p *EBPFProbe) newFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow
 				A:        portA,
 				B:        portB,
 			}
+			f.TCPMetric = &flow.TCPMetric{
+				ABSynStart: tcpFlagTime(0, kernFlow.transport_layer.ab_syn, startKTimeNs, start),
+				BASynStart: tcpFlagTime(0, kernFlow.transport_layer.ba_syn, startKTimeNs, start),
+				ABFinStart: tcpFlagTime(0, kernFlow.transport_layer.ab_fin, startKTimeNs, start),
+				BAFinStart: tcpFlagTime(0, kernFlow.transport_layer.ba_fin, startKTimeNs, start),
+				ABRstStart: tcpFlagTime(0, kernFlow.transport_layer.ab_rst, startKTimeNs, start),
+				BARstStart: tcpFlagTime(0, kernFlow.transport_layer.ba_rst, startKTimeNs, start),
+			}
 			p := gopacket.NewPacket(C.GoBytes(unsafe.Pointer(&kernFlow.payload[0]), C.PAYLOAD_LENGTH), layers.LayerTypeTCP, gopacket.DecodeOptions{})
 			if p.Layer(gopacket.LayerTypeDecodeFailure) == nil {
 				path, app := flow.LayersPath(p.Layers())
@@ -221,10 +239,24 @@ func (p *EBPFProbe) newFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow
 	}
 }
 
-func (p *EBPFProbe) updateFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow) *flow.Operation {
+func (p *EBPFProbe) updateFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, startKTimeNs int64, start time.Time) *flow.Operation {
 	f := flow.NewFlow()
 	f.Last = common.UnixMillis(ebpfFlow.last)
-
+	layersFlag := uint8(kernFlow.layers)
+	if layersFlag&uint8(C.TRANSPORT_LAYER) > 0 {
+		protocol := uint8(kernFlow.transport_layer.protocol)
+		switch protocol {
+		case syscall.IPPROTO_TCP:
+			f.TCPMetric = &flow.TCPMetric{
+				ABSynStart: tcpFlagTime(f.TCPMetric.ABSynStart, kernFlow.transport_layer.ab_syn, startKTimeNs, start),
+				BASynStart: tcpFlagTime(f.TCPMetric.BASynStart, kernFlow.transport_layer.ba_syn, startKTimeNs, start),
+				ABFinStart: tcpFlagTime(f.TCPMetric.ABFinStart, kernFlow.transport_layer.ab_fin, startKTimeNs, start),
+				BAFinStart: tcpFlagTime(f.TCPMetric.BAFinStart, kernFlow.transport_layer.ba_fin, startKTimeNs, start),
+				ABRstStart: tcpFlagTime(f.TCPMetric.ABRstStart, kernFlow.transport_layer.ab_rst, startKTimeNs, start),
+				BARstStart: tcpFlagTime(f.TCPMetric.BARstStart, kernFlow.transport_layer.ba_rst, startKTimeNs, start),
+			}
+		}
+	}
 	f.Metric = &flow.FlowMetric{
 		ABBytes:   int64(kernFlow.metrics.ab_bytes),
 		ABPackets: int64(kernFlow.metrics.ab_packets),
@@ -312,9 +344,9 @@ func (p *EBPFProbe) run() {
 					ebpfFlow.lastK = lastK
 					ebpfFlow.last = last
 
-					flowChanOperation <- p.newFlowOperation(ebpfFlow, &kernFlow)
+					flowChanOperation <- p.newFlowOperation(ebpfFlow, &kernFlow, startKTimeNs, start)
 				} else {
-					flowChanOperation <- p.updateFlowOperation(ebpfFlow, &kernFlow)
+					flowChanOperation <- p.updateFlowOperation(ebpfFlow, &kernFlow, startKTimeNs, start)
 				}
 			}
 

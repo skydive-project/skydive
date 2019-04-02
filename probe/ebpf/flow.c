@@ -41,7 +41,6 @@ struct vlan {
 	__u16		ethertype;
 };
 
-
 MAP(u64_config_values) {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(__u32),
@@ -88,7 +87,7 @@ static inline void fill_payload(struct __sk_buff *skb, int offset, struct flow *
 }
 
 static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, int offset,
-	struct flow *flow, int len)
+	struct flow *flow, int len, __u64 tm)
 {
 	struct transport_layer *layer = &flow->transport_layer;
 
@@ -102,13 +101,21 @@ static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, int offs
 	__u64 hash_dst = 0;
 	update_hash_half(&hash_dst, layer->port_dst);
 
+	__u8 flags = 0;
+
 	switch (protocol) {
 		case IPPROTO_UDP:
-			//len -= sizeof(struct udphdr);
+			offset+=sizeof(struct udphdr);
+			len -= sizeof(struct udphdr);
 			fill_payload(skb, offset, flow, len);
 			break;
 		case IPPROTO_TCP:
-			//len -= sizeof(struct tcphdr);
+			flags = load_byte(skb, offset + 14);
+			layer->ab_syn = (flags & 0x02) > 0 ? tm : 0;
+			layer->ab_fin = (flags & 0x01) > 0 ? tm : 0;
+			layer->ab_rst = (flags & 0x04) > 0 ? tm : 0;
+			offset+=sizeof(struct tcphdr);
+			len -= sizeof(struct tcphdr);
 			fill_payload(skb, offset, flow, len);
 			break;
 	}
@@ -205,7 +212,7 @@ static inline void fill_ipv6(struct __sk_buff *skb, int offset, __u8 *dst, __u64
 }
 
 static inline void fill_network(struct __sk_buff *skb, __u16 netproto, int offset,
-	struct flow *flow)
+	struct flow *flow, __u64 tm)
 {
 	struct network_layer *layer = &flow->network_layer;
 
@@ -252,7 +259,7 @@ static inline void fill_network(struct __sk_buff *skb, __u16 netproto, int offse
 			// TODO
 		case IPPROTO_UDP:
 		case IPPROTO_TCP:
-			fill_transport(skb, transproto, offset, flow, len);
+			fill_transport(skb, transproto, offset, flow, len, tm);
 			break;
 		case IPPROTO_ICMP:
 			fill_icmpv4(skb, offset, flow);
@@ -353,7 +360,7 @@ static inline void update_metrics(struct __sk_buff *skb, struct flow *flow, __u6
 	}
 }
 
-static inline void fill_flow(struct __sk_buff *skb, struct flow *flow)
+static inline void fill_flow(struct __sk_buff *skb, struct flow *flow, __u64 tm)
 {
 	flow->ifindex = skb->ifindex;
 
@@ -371,7 +378,7 @@ static inline void fill_flow(struct __sk_buff *skb, struct flow *flow)
 		break;
 	case ETH_P_IP:
 	case ETH_P_IPV6:
-		fill_network(skb, (__u16)protocol, offset, flow);
+		fill_network(skb, (__u16)protocol, offset, flow, tm);
 		break;
 	}
 
@@ -391,13 +398,38 @@ int bpf_flow_table(struct __sk_buff *skb)
 	}
 
 	struct flow flow = {}, *prev;
-	fill_flow(skb, &flow);
+	fill_flow(skb, &flow,tm);
 
 	prev = bpf_map_lookup_element(&flow_table, &flow.key);
 	if (prev) {
 		update_metrics(skb, prev, tm,
-			flow.link_layer._hash_src == prev->link_layer._hash_src);
+					   flow.link_layer._hash_src == prev->link_layer._hash_src);
 		__sync_fetch_and_add(&prev->last, tm - prev->last);
+
+		if (prev->layers & flow.layers & TRANSPORT_LAYER > 0) {
+			if (prev->transport_layer.port_src == flow.transport_layer.port_src) {
+				if (prev->transport_layer.ab_syn == 0 && flow.transport_layer.ab_syn != 0) {
+					__sync_fetch_and_add(&prev->transport_layer.ab_syn, flow.transport_layer.ab_syn);
+				}
+				if (prev->transport_layer.ab_fin == 0 && flow.transport_layer.ab_fin != 0) {
+					__sync_fetch_and_add(&prev->transport_layer.ab_fin, flow.transport_layer.ab_fin);
+				}
+				if (prev->transport_layer.ab_rst == 0 && flow.transport_layer.ab_rst != 0) {
+					__sync_fetch_and_add(&prev->transport_layer.ab_rst, flow.transport_layer.ab_rst);
+				}
+			}
+			else {
+				if (prev->transport_layer.ba_syn == 0 && flow.transport_layer.ab_syn != 0) {
+					__sync_fetch_and_add(&prev->transport_layer.ba_syn, flow.transport_layer.ab_syn);
+				}
+				if (prev->transport_layer.ba_fin == 0 && flow.transport_layer.ab_fin != 0) {
+					__sync_fetch_and_add(&prev->transport_layer.ba_fin, flow.transport_layer.ab_fin);
+				}
+				if (prev->transport_layer.ba_rst == 0 && flow.transport_layer.ab_rst != 0) {
+					__sync_fetch_and_add(&prev->transport_layer.ba_rst, flow.transport_layer.ab_rst);
+				}
+			}
+		}
 	} else {
 		update_metrics(skb, &flow, tm, 1);
 		__sync_fetch_and_add(&flow.start, tm);
