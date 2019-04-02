@@ -531,6 +531,10 @@ ui:
     # default_highlight: "layer2"
     # Filter Gremlin expression used by default and applied on WebUI load.
     # default_filter: "layer2"
+    metadata:
+      hidden_fields:
+        #- CPU
+        #- FDB
 
   # update rate of links in seconds
   bandwidth_update_rate: 5

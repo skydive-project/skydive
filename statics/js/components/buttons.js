@@ -52,6 +52,9 @@ Vue.component('button-dropdown', {
     // Button css classes
     bClass: {},
 
+    // List css classes
+    lClass: {},
+
     // Can be also up/down
     // auto will calculate if there is enough
     // room to put the menu down, if not it will
@@ -81,7 +84,10 @@ Vue.component('button-dropdown', {
             {{text}}\
           </slot>\
       </button>\
-      <ul class="dropdown-menu" v-if="open" @click="itemSelected">\
+      <ul class="dropdown-menu"\
+          :class="lClass"\
+          v-if="open"\
+          @click="itemSelected">\
         <slot></slot>\
       </ul>\
     </div>\

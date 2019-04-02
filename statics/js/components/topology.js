@@ -204,7 +204,9 @@ var TopologyComponent = {
           </template>\
           <object-detail :object="currentNodeMetadata"\
                          :links="metadataLinks(currentNodeMetadata)"\
-                         :collapsed="metadataCollapseState">\
+                         :collapsed="metadataCollapseState"\
+                         :hideFields="hiddenFields"\
+                         :filterIcon="true">\
           </object-detail>\
         </panel>\
         <panel id="edge-metadata" v-if="currentEdge"\
@@ -301,6 +303,7 @@ var TopologyComponent = {
       defaultEmphasize: "",
       timeType: "absolute",
       topologyRelTime: "1m",
+      hiddenFields: [],
       metadataCollapseState: {
         IPV4: false,
         IPV6: false,
@@ -367,6 +370,7 @@ var TopologyComponent = {
     });
 
     this.setGremlinFavoritesFromConfig();
+    this.setHiddenFields();
 
     if (typeof(this.$route.query.highlight) !== "undefined") {
       this.topologyEmphasize = this.$route.query.highlight;
@@ -661,6 +665,11 @@ var TopologyComponent = {
 
     addFilterIstioTypes: function(control, label, types) {
       this.addFilterIstio(control, label, this.gremlinK8sTypes(types));
+    },
+
+    setHiddenFields: function() {
+      let fields = app.getConfigValue('topology.metadata.hidden_fields')
+      this.hiddenFields = fields || []
     },
 
     setGremlinFavoritesFromConfig: function() {

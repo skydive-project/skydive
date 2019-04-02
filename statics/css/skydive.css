@@ -523,11 +523,18 @@ circle.manager {
   padding: 1px 5px;
   display: inline-block;
   border-radius: 0;
+  background: #eee;
 }
 
 .dark .dynamic-table .fa-cog, .dark .dynamic-table .btn, .dark .dynamic-table .btn[active], .dark .dynamic-table .btn[focus] {
   color: white !important;
   background-color: #1b1e23 !important;
+}
+
+.dark .object-detail-filter .fa-cog, .dark .object-detail-filter .btn, .dark .object-detail-filter .btn[active],
+.dark .object-detail-filter .btn[focus] {
+  color: white !important;
+  background-color: #292e34 !important;
 }
 
 .dynamic-table .dynamic-table-wrapper {
@@ -550,6 +557,21 @@ circle.manager {
   display: inline-flex;
 }
 
+.object-detail-filter {
+  position: absolute;
+  background: #84878c;
+  color: white;
+  display: inline-flex;
+  right: 15px;
+}
+
+.bg-color {
+  background: #eee;
+}
+
+.left-side {
+  left: -150px;
+}
 .dynmic-table-actions-item {
   display: inline-block;
   margin-right: 1px;

@@ -31,11 +31,21 @@ Vue.component('object-detail', {
       default: function() { return {}; },
     },
 
+    hideFields: {
+      type: Array,
+      default: function() { return []; },
+    },
+
+    filterIcon: {
+      type: Boolean,
+      default: false,
+    },
   },
 
   template: '\
     <div class="object-detail">\
       <div class="object-key-value" v-for="(value, key) in object" :class="[typeof(key) == \'string\' ? key.toLowerCase() : key]">\
+      <div v-if="hiddenFields.indexOf(key) < 0">\
         <div v-if="Array.isArray(value)">\
           <collapse :collapsed="collapsedState(path(key))">\
             <div slot="collapse-header" slot-scope="props" class="object-key">\
@@ -83,12 +93,36 @@ Vue.component('object-detail', {
           <i v-if="links && links[key]" :class="links[key].class" @click="links[key].onClick" \
             @mouseover="links[key].onMouseOver" @mouseout="links[key].onMouseOut"></i>\
         </div>\
+        </div>\
+      </div>\
+      <div v-if="filterIcon" class="object-detail-filter dynamic-table">\
+          <button-dropdown b-class="btn-xs bg-color" :auto-close="false" l-class="left-side">\
+            <span slot="button-text">\
+              <i class="fa fa-cog" aria-hidden="true"></i>\
+            </span>\
+            <li v-for="(field, index) in toggleElements()">\
+              <a href="#" @click="toggleField(field)">\
+                <small><i class="fa fa-check text-success pull-right"\
+                  aria-hidden="true" v-show="hiddenFields.indexOf(field) < 0"></i>\
+                {{field}}</small>\
+              </a>\
+            </li>\
+          </button-dropdown>\
       </div>\
     </div>\
   ',
 
-  methods: {
+  data: function() {
+    return {
+      hiddenFields: [],
+    }
+  },
 
+  created: function() {
+    this.hiddenFields = Array.from(this.hideFields)
+  },
+
+  methods: {
     path: function(key) {
       if (this.pathPrefix) {
         return this.pathPrefix + "." + key;
@@ -103,6 +137,19 @@ Vue.component('object-detail', {
         return this.transformer(this.path(key), value);
       }
       return value;
+    },
+
+    toggleField: function(key) {
+      let i = this.hiddenFields.indexOf(key)
+      if (i < 0) {
+        this.hiddenFields.push(key)
+      } else {
+        this.hiddenFields.splice(i, 1)
+      }
+    },
+
+    toggleElements: function() {
+      return Object.keys(this.object)
     },
 
     collapsedState: function(path) {
