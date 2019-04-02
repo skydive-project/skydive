@@ -23,6 +23,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/ibmcreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
@@ -94,11 +95,18 @@ func (s *S3Client) ListObjects(bucket, prefix string) ([]*string, error) {
 }
 
 // NewClient creates a new S3-compatible object storage client
-func NewClient(endpoint, region, accessKey, secretKey string) Client {
+func NewClient(endpoint, region, accessKey, secretKey, apiKey, iamEndpoint string) Client {
+	var sdkCreds *credentials.Credentials
+	if apiKey != "" {
+		sdkCreds = ibmcreds.NewCredentialsClient(apiKey, "", iamEndpoint)
+	} else {
+		sdkCreds = credentials.NewStaticCredentials(accessKey, secretKey, "")
+	}
+
 	s3Client := s3.New(session.New(&aws.Config{
 		S3ForcePathStyle: aws.Bool(true),
 		Endpoint:         aws.String(endpoint),
-		Credentials:      credentials.NewStaticCredentials(accessKey, secretKey, ""),
+		Credentials:      sdkCreds,
 		Region:           aws.String(region),
 	}))
 	return &S3Client{

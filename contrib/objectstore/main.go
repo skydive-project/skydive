@@ -51,6 +51,8 @@ func main() {
 	bucket := cfg.GetString("bucket")
 	accessKey := cfg.GetString("access_key")
 	secretKey := cfg.GetString("secret_key")
+	apiKey := cfg.GetString("api_key")
+	iamEndpoint := cfg.GetString("iam_endpoint")
 	objectPrefix := cfg.GetString("object_prefix")
 	subscriberURLString := cfg.GetString("subscriber_url")
 	subscriberUsername := cfg.GetString("subscriber_username")
@@ -72,7 +74,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	objectStoreClient := subscriber.NewClient(endpoint, region, accessKey, secretKey)
+	objectStoreClient := subscriber.NewClient(endpoint, region, accessKey, secretKey, apiKey, iamEndpoint)
 
 	authOpts := &shttp.AuthenticationOpts{
 		Username: subscriberUsername,
