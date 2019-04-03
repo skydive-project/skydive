@@ -4,7 +4,7 @@
     chain: INPUT
     protocol: tcp
     match: tcp
-    source: "{{ item | regex_replace('([^:]*).*', '\\1') }}"
+    source: "{{ item | regex_replace('([^:]*).+', '\\1') }}"
     destination_port: "{{ skydive_etcd_port | string }}"
     jump: ACCEPT
     comment: "Skydive: embedded etcd port"
@@ -17,7 +17,7 @@
     chain: INPUT
     protocol: tcp
     match: tcp
-    source: "{{ item | regex_replace('([^:]*).*', '\\1') }}"
+    source: "{{ item | regex_replace('([^:]*).+', '\\1') }}"
     destination_port: "{{ (skydive_etcd_port + 1) | string }}"
     jump: ACCEPT
     action: insert

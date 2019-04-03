@@ -102,8 +102,8 @@ do
       install_skydive_selinux_enforcing agent1
   fi
 
-  vagrant ssh analyzer1 -- sudo ntpdate fr.pool.ntp.org
-  vagrant ssh agent1 -- sudo ntpdate fr.pool.ntp.org
+  vagrant ssh analyzer1 -- sudo ntpdate 10.11.160.238 fr.pool.ntp.org || true
+  vagrant ssh agent1 -- sudo ntpdate 10.11.160.238 fr.pool.ntp.org || true
 
   export ANSIBLE_EXTRA_CONFIG='{"agent":{"metadata":{"mydict":{"value":123},"myarrays":{"integers":[1,2,3],"bools":[true,true],"strings":["dog","cat","frog"]}}}}'
   DEPLOYMENT_MODE=$mode vagrant provision

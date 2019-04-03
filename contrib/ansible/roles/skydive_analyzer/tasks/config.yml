@@ -61,14 +61,14 @@
 - name: Setup Etcd embedded servers list
   yedit:
     src: "{{ skydive_config_file }}"
-    key: "etcd.servers"
-    value: "{{ analyzers.split(',') | map('regex_replace', '([^:]*).*', skydive_etcd_scheme + '://\\1:' + (skydive_etcd_port | string)) | list }}"
+    key: etcd.servers
+    value: "{{ analyzers.split(',') | map('regex_replace', '([^:]*).+', skydive_etcd_scheme + '://\\1:' + (skydive_etcd_port | string)) | list }}"
   when: (skydive_etcd_embedded | bool) and (analyzers.split(',') | list | length > 1)
 
 - name: Setup Etcd server list
   yedit:
     src: "{{ skydive_config_file }}"
-    key: "etcd.servers"
+    key: etcd.servers
     value: "{{ skydive_etcd_servers }}"
   when: not (skydive_etcd_embedded | bool)
 
@@ -76,7 +76,7 @@
   yedit:
     src: "{{ skydive_config_file }}"
     key: "{{ 'etcd.peers.' + hostvars[item[0]]['ansible_hostname'] }}"
-    value: "{{ skydive_etcd_scheme + '://' + (item[1] | regex_replace('([^:]*).*', '\\1:')) + ((skydive_etcd_port + 1) | string) }}"
+    value: "{{ skydive_etcd_scheme + '://' + (item[1] | regex_replace('([^:]*).+', '\\1:')) + ((skydive_etcd_port + 1) | string) }}"
   with_together:
     - "{{ groups['analyzers'] }}"
     - "{{ analyzers.split(',') | list }}"
