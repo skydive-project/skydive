@@ -57,8 +57,6 @@ func NewProcessor(g *Graph, listenerHandler ListenerHandler, m ElementMatcher, i
 
 // DoAction will perform the action for nodes matching values.
 func (processor *Processor) DoAction(action NodeAction, values ...interface{}) {
-	processor.Lock()
-	defer processor.Unlock()
 	nodes, _ := processor.MetadataIndexer.Get(values...)
 	kont := true
 	for _, node := range nodes {
@@ -70,12 +68,14 @@ func (processor *Processor) DoAction(action NodeAction, values ...interface{}) {
 	if kont {
 		act := deferred{action: action}
 		hash := Hash(values...)
+		processor.Lock()
 		if actions, ok := processor.actions[hash]; ok {
-			actions = append(actions, act)
+			processor.actions[hash] = append(actions, act)
 		} else {
 			actions := []deferred{act}
 			processor.actions[hash] = actions
 		}
+		processor.Unlock()
 	}
 }
 
@@ -96,25 +96,33 @@ func (processor *Processor) Cancel(values ...interface{}) {
 	processor.Unlock()
 }
 
+// OnNodeUpdated event
+func (processor *Processor) OnNodeUpdated(n *Node) {
+	processor.OnNodeAdded(n)
+}
+
 // OnNodeAdded event
 func (processor *Processor) OnNodeAdded(n *Node) {
 	if vValues, err := getFieldsAsArray(n, processor.MetadataIndexer.indexes); err == nil {
 		for _, values := range vValues {
 			hash := Hash(values...)
-			processor.Lock()
-			defer processor.Unlock()
-			if actions, ok := processor.actions[hash]; ok {
+			processor.RLock()
+			actions, ok := processor.actions[hash]
+			processor.RUnlock()
+			if ok {
 				var keep []deferred
 				for _, action := range actions {
 					if action.action.ProcessNode(processor.MetadataIndexer.graph, n) {
 						keep = append(keep, action)
 					}
 				}
+				processor.Lock()
 				if len(keep) == 0 {
 					delete(processor.actions, hash)
 				} else {
 					processor.actions[hash] = keep
 				}
+				processor.Unlock()
 			}
 		}
 	}
