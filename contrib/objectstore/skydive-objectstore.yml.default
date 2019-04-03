@@ -3,6 +3,8 @@
 # bucket: bucket
 # access_key: user
 # secret_key: password
+# api_key: key
+# iam_endpoint: https://iam.bluemix.net
 # object_prefix: logs
 # subscriber_url: wss://127.0.0.1:8082/ws/subscriber/flow
 # subscriber_username:
