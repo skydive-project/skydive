@@ -27,7 +27,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
+	"github.com/IBM/ibm-cos-sdk-go/aws"
 
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"

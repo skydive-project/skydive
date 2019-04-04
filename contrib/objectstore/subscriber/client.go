@@ -21,11 +21,11 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/ibmcreds"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/IBM/ibm-cos-sdk-go/aws"
+	"github.com/IBM/ibm-cos-sdk-go/aws/credentials"
+	"github.com/IBM/ibm-cos-sdk-go/aws/credentials/ibmiam"
+	"github.com/IBM/ibm-cos-sdk-go/aws/session"
+	"github.com/IBM/ibm-cos-sdk-go/service/s3"
 )
 
 // Client allows uploading objects to an object storage service
@@ -75,18 +75,18 @@ func (s *S3Client) ReadObject(bucket, objectKey string) ([]byte, error) {
 
 // ListObjects lists objects withing a bucket
 func (s *S3Client) ListObjects(bucket, prefix string) ([]*string, error) {
-	params := &s3.ListObjectsV2Input{
+	params := &s3.ListObjectsInput{
 		Bucket: aws.String(bucket),
 		Prefix: aws.String(prefix),
 	}
 	objectKeys := make([]*string, 0)
-	fn := func(page *s3.ListObjectsV2Output, lastPage bool) bool {
+	fn := func(page *s3.ListObjectsOutput, lastPage bool) bool {
 		for _, object := range page.Contents {
 			objectKeys = append(objectKeys, object.Key)
 		}
 		return true
 	}
-	err := s.s3Client.ListObjectsV2Pages(params, fn)
+	err := s.s3Client.ListObjectsPages(params, fn)
 	if err != nil {
 		return nil, err
 	}
@@ -98,17 +98,20 @@ func (s *S3Client) ListObjects(bucket, prefix string) ([]*string, error) {
 func NewClient(endpoint, region, accessKey, secretKey, apiKey, iamEndpoint string) Client {
 	var sdkCreds *credentials.Credentials
 	if apiKey != "" {
-		sdkCreds = ibmcreds.NewCredentialsClient(apiKey, "", iamEndpoint)
+		sdkCreds = ibmiam.NewStaticCredentials(aws.NewConfig(), iamEndpoint, apiKey, "")
 	} else {
 		sdkCreds = credentials.NewStaticCredentials(accessKey, secretKey, "")
 	}
 
-	s3Client := s3.New(session.New(&aws.Config{
-		S3ForcePathStyle: aws.Bool(true),
-		Endpoint:         aws.String(endpoint),
-		Credentials:      sdkCreds,
-		Region:           aws.String(region),
-	}))
+	conf := aws.NewConfig().
+		WithEndpoint(endpoint).
+		WithCredentials(sdkCreds).
+		WithS3ForcePathStyle(true).
+		WithRegion(region)
+
+	sess := session.Must(session.NewSession())
+	s3Client := s3.New(sess, conf)
+
 	return &S3Client{
 		s3Client: s3Client,
 	}
