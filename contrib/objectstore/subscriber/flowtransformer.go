@@ -26,7 +26,7 @@ import (
 // FlowTransformer allows generic transformations of a flow
 type FlowTransformer interface {
 	// Transform transforms a flow before being stored
-	Transform(flow *flow.Flow) interface{}
+	Transform(flow *flow.Flow, tag Tag) interface{}
 }
 
 // NewFlowTransformer creates a new flow transformer based on a name string

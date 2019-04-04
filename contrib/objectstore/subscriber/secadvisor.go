@@ -44,7 +44,12 @@ type SecurityAdvisorFlowTransformer struct {
 }
 
 // Transform transforms a flow before being stored
-func (ft *SecurityAdvisorFlowTransformer) Transform(f *flow.Flow) interface{} {
+func (ft *SecurityAdvisorFlowTransformer) Transform(f *flow.Flow, tag Tag) interface{} {
+	// do not report flows that are neither ingress or egress
+	if tag != tagIngress && tag != tagEgress {
+		return nil
+	}
+
 	// do not report new flows (i.e. the first time you see them)
 	if f.FinishType != flow.FlowFinishType_TIMEOUT {
 		_, seen := ft.seenFlows.Get(f.UUID)
