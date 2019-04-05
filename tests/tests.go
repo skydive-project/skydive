@@ -79,13 +79,13 @@ agent:
   listen: {{.AgentAddr}}:{{.AgentPort}}
   topology:
     probes:
-    - netns
     - ovsdb
     - docker
     - lxd
     - lldp
     - runc
-    - socketinfo{{block "agentProbes" .}}{{"\n"}}{{range .AgentProbes}}{{println "    -" .}}{{end}}{{end}}
+    - socketinfo
+    - libvirt{{block "agentProbes" .}}{{"\n"}}{{range .AgentProbes}}{{println "    -" .}}{{end}}{{end}}
     netlink:
       metrics_update: 5
     lldp:
