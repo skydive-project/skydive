@@ -48,28 +48,33 @@ func newVirtualServiceProbe(client interface{}, g *graph.Graph) k8s.Subprobe {
 	return k8s.NewResourceCache(client.(*kiali.IstioClient).GetIstioNetworkingApi(), &kiali.VirtualService{}, "virtualservices", g, &virtualServiceHandler{})
 }
 
-type virtualServiceSpec struct {
-	HTTP []struct {
-		Route []struct {
-			Destination struct {
-				App     string `mapstructure:"host"`
-				Version string `mapstructure:"subset"`
-			} `mapstructure:"destination"`
-			Weight int `mapstructure:"weight"`
-		} `mapstructure:"route"`
-	} `mapstructure:"http"`
+type rule struct {
+	Routes []struct {
+		Destination struct {
+			App     string `mapstructure:"host"`
+			Version string `mapstructure:"subset"`
+		} `mapstructure:"destination"`
+		Weight int `mapstructure:"weight"`
+	} `mapstructure:"route"`
 }
 
-func (vsSpec virtualServiceSpec) getAppsVersions() map[string][]string {
-	appsVersions := make(map[string][]string)
-	for _, http := range vsSpec.HTTP {
-		for _, route := range http.Route {
+type virtualServiceSpec struct {
+	HTTP []rule `mapstructure:"http"`
+	TLS  []rule `mapstructure:"tls"`
+	TCP  []rule `mapstructure:"tcp"`
+}
+
+func getInstances(rules []rule, instances map[string][]string) {
+	for _, vsRule := range rules {
+		for _, route := range vsRule.Routes {
 			app := route.Destination.App
+			if app == "" {
+				continue
+			}
 			version := route.Destination.Version
-			appsVersions[app] = append(appsVersions[app], version)
+			instances[app] = append(instances[app], version)
 		}
 	}
-	return appsVersions
 }
 
 func virtualServicePodMetadata(a, b interface{}, typeA, typeB, manager string) graph.Metadata {
@@ -80,12 +85,16 @@ func virtualServicePodMetadata(a, b interface{}, typeA, typeB, manager string) g
 		return nil
 	}
 	m := k8s.NewEdgeMetadata(manager, typeA)
+	if pod.Labels["app"] == "" {
+		return m
+	}
 	weight := 0
 	for _, http := range vsSpec.HTTP {
-		for _, route := range http.Route {
-			app := route.Destination.App
-			version := route.Destination.Version
-			if app == pod.Labels["app"] && version == pod.Labels["version"] {
+		for _, route := range http.Routes {
+			if route.Destination.App != pod.Labels["app"] {
+				continue
+			}
+			if route.Destination.Version == pod.Labels["version"] || route.Destination.Version == "" {
 				weight += route.Weight
 			}
 		}
@@ -108,8 +117,13 @@ func virtualServicePodAreLinked(a, b interface{}) bool {
 	if err := mapstructure.Decode(vs.Spec, vsSpec); err != nil {
 		return false
 	}
-	vsAppsVersions := vsSpec.getAppsVersions()
-	for app, versions := range vsAppsVersions {
+
+	instances := make(map[string][]string)
+	getInstances(vsSpec.HTTP, instances)
+	getInstances(vsSpec.TLS, instances)
+	getInstances(vsSpec.TCP, instances)
+
+	for app, versions := range instances {
 		if app == pod.Labels["app"] {
 			for _, version := range versions {
 				if version == "" || version == pod.Labels["version"] {
