@@ -135,6 +135,52 @@ func virtualServicePodAreLinked(a, b interface{}) bool {
 	return false
 }
 
+func findMissingGateways(g *graph.Graph) {
+	cache := k8s.GetSubprobe(Manager, "virtualservice")
+	if cache == nil {
+		return
+	}
+	vsCache := cache.(*k8s.ResourceCache)
+	vsList := vsCache.List()
+	for _, vs := range vsList {
+		vs := vs.(*kiali.VirtualService)
+		if vsNode := g.GetNode(graph.Identifier(vs.GetUID())); vsNode != nil {
+			k8s.SetState(&vsNode.Metadata, true)
+			if vs.Spec["gateways"] != nil {
+				vsGateways := vs.Spec["gateways"].([]interface{})
+				for _, vsGateway := range vsGateways {
+					if isGatewayMissing(vsGateway.(string)) {
+						k8s.SetState(&vsNode.Metadata, false)
+					}
+				}
+			}
+		}
+	}
+}
+
+func isGatewayMissing(name string) bool {
+	cache := k8s.GetSubprobe(Manager, "gateway")
+	if cache == nil {
+		return true
+	}
+	gatewayCache := cache.(*k8s.ResourceCache)
+	gatewaysList := gatewayCache.List()
+	for _, gateway := range gatewaysList {
+		gateway := gateway.(*kiali.Gateway)
+		if gateway.Name == name {
+			return false
+		}
+	}
+	return true
+}
+
 func newVirtualServicePodLinker(g *graph.Graph) probe.Probe {
 	return k8s.NewABLinker(g, Manager, "virtualservice", k8s.Manager, "pod", virtualServicePodAreLinked, virtualServicePodMetadata)
+}
+
+func newVirtualServiceGatewayVerifier(g *graph.Graph) *resourceVerifier {
+	vsProbe := k8s.GetSubprobe(Manager, "virtualservice")
+	gatewayProbe := k8s.GetSubprobe(Manager, "gateway")
+	handlers := []graph.ListenerHandler{vsProbe, gatewayProbe}
+	return newResourceVerifier(g, handlers, findMissingGateways)
 }

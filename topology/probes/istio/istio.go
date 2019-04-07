@@ -31,8 +31,6 @@ type Probe struct {
 	*k8s.Probe
 }
 
-type resourceHandler func(client *kiali.IstioClient, g *graph.Graph) k8s.Subprobe
-
 // NewIstioProbe creates the probe for tracking istio events
 func NewIstioProbe(g *graph.Graph) (*k8s.Probe, error) {
 	configFile := config.GetString("analyzer.topology.istio.config_file")
@@ -58,6 +56,12 @@ func NewIstioProbe(g *graph.Graph) (*k8s.Probe, error) {
 
 	k8s.InitSubprobes(enabledSubprobes, subprobeHandlers, client, g, Manager)
 
+	verifierHandlers := []verifierHandler{
+		newVirtualServiceGatewayVerifier,
+	}
+
+	verifiers := initResourceVerifiers(verifierHandlers, g)
+
 	linkerHandlers := []k8s.LinkHandler{
 		newVirtualServicePodLinker,
 		newDestinationRuleServiceLinker,
@@ -66,7 +70,7 @@ func NewIstioProbe(g *graph.Graph) (*k8s.Probe, error) {
 
 	linkers := k8s.InitLinkers(linkerHandlers, g)
 
-	probe := k8s.NewProbe(g, Manager, k8s.GetSubprobesMap(Manager), linkers)
+	probe := k8s.NewProbe(g, Manager, k8s.GetSubprobesMap(Manager), linkers, verifiers)
 
 	probe.AppendNamespaceLinkers(
 		"destinationrule",
