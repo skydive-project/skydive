@@ -25,7 +25,6 @@ import (
 
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/js"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/validator"
 
@@ -152,36 +151,25 @@ var WorkflowCall = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		var workflow types.Workflow
+		var workflowcall types.WorkflowCall
+		var result interface{}
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			exitOnError(err)
 		}
-
-		if err := client.Get("workflow", args[0], &workflow); err != nil {
-			exitOnError(err)
-		}
-
-		runtime, err := js.NewRuntime()
-		if err != nil {
-			exitOnError(err)
-		}
-
-		runtime.Start()
-		runtime.RegisterAPIClient(client)
 
 		params := make([]interface{}, len(args)-1)
 		for i, arg := range args[1:] {
 			params[i] = arg
 		}
 
-		result, err := runtime.ExecPromise(workflow.Source, params...)
-		if err != nil {
+		workflowcall.Params = params
+
+		if err := client.Create("workflow/"+args[0]+"/call", &workflowcall, &result); err != nil {
 			exitOnError(err)
 		}
 
-		runtime.Set("result", result)
-		runtime.Exec("console.log(JSON.stringify(result))")
+		printJSON(result)
 	},
 }
 

@@ -21,6 +21,7 @@ p, admin, noderule, read, allow
 p, admin, noderule, write, allow
 p, admin, edgerule, read, allow
 p, admin, edgerule, write, allow
+p, admin, workflow.call, write, allow
 
 p, guest, alert, read, deny
 p, guest, alert, write, deny

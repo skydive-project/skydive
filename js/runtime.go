@@ -21,20 +21,14 @@ import (
 	"bytes"
 	crand "crypto/rand"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/robertkrimen/otto"
-	"github.com/skydive-project/skydive/api/server"
-	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/statics"
@@ -62,119 +56,6 @@ type Runtime struct {
 	closed        chan struct{}
 	timers        map[*jsTimer]*jsTimer
 	timerReady    chan *jsTimer
-}
-
-// RegisterAPIServer exports Go functions required by the API
-// to run inside the JS VM
-func (r *Runtime) RegisterAPIServer(g *graph.Graph, gremlinParser *traversal.GremlinTraversalParser, server *server.Server) {
-	queryGremlin := func(query string) otto.Value {
-		ts, err := gremlinParser.Parse(strings.NewReader(query))
-		if err != nil {
-			return r.MakeCustomError("ParseError", err.Error())
-		}
-
-		result, err := ts.Exec(g, false)
-		if err != nil {
-			return r.MakeCustomError("ExecuteError", err.Error())
-		}
-
-		source, err := result.MarshalJSON()
-		if err != nil {
-			return r.MakeCustomError("MarshalError", err.Error())
-		}
-
-		jsonObj, err := r.Object("obj = " + string(source))
-		if err != nil {
-			return r.MakeCustomError("JSONError", err.Error())
-		}
-
-		logging.GetLogger().Infof("Gremlin returned %+v (from %s, query %s)", jsonObj, source, query)
-		r, _ := r.ToValue(jsonObj)
-		return r
-	}
-
-	r.Set("Gremlin", func(call otto.FunctionCall) otto.Value {
-		if len(call.ArgumentList) < 1 || !call.Argument(0).IsString() {
-			return r.MakeCustomError("MissingQueryArgument", "Gremlin requires a string parameter")
-		}
-
-		query := call.Argument(0).String()
-
-		return queryGremlin(query)
-	})
-
-	r.Set("request", func(call otto.FunctionCall) otto.Value {
-		if len(call.ArgumentList) < 3 || !call.Argument(0).IsString() || !call.Argument(1).IsString() || !call.Argument(2).IsString() {
-			return r.MakeCustomError("WrongArguments", "Import requires 3 string parameters")
-		}
-
-		url := call.Argument(0).String()
-		method := call.Argument(1).String()
-		data := []byte(call.Argument(2).String())
-
-		subs := strings.Split(url, "/") // filepath.Base(url)
-		if len(subs) < 3 {
-			return r.MakeCustomError("WrongArgument", fmt.Sprintf("Malformed URL %s", url))
-		}
-		resource := subs[2]
-
-		// For topology query, we directly call the Gremlin engine
-		if resource == "topology" {
-			query := types.TopologyParam{}
-			if err := json.Unmarshal(data, &query); err != nil {
-				return r.MakeCustomError("WrongArgument", fmt.Sprintf("Invalid query %s", string(data)))
-			}
-
-			return queryGremlin(query.GremlinQuery)
-		}
-
-		// This a CRUD call
-		handler := server.GetHandler(resource)
-
-		var err error
-		var content interface{}
-
-		switch method {
-		case "POST":
-			res := handler.New()
-			if err := json.Unmarshal([]byte(data), res); err != nil {
-				return r.MakeCustomError("UnmarshalError", err.Error())
-			}
-			if err := handler.Create(res); err != nil {
-				return r.MakeCustomError("CreateError", err.Error())
-			}
-			b, _ := json.Marshal(res)
-			content = string(b)
-
-		case "DELETE":
-			if len(subs) < 4 {
-				return r.MakeCustomError("WrongArgument", "No ID specified")
-			}
-			handler.Delete(subs[3])
-
-		case "GET":
-			if len(subs) < 4 {
-				resources := handler.Index()
-				b, _ := json.Marshal(resources)
-				content = string(b)
-			} else {
-				id := subs[3]
-				obj, found := handler.Get(id)
-				if !found {
-					return r.MakeCustomError("NotFound", fmt.Sprintf("%s %s could not be found", resource, id))
-				}
-				b, _ := json.Marshal(obj)
-				content = string(b)
-			}
-		}
-
-		value, err := otto.ToValue(content)
-		if err != nil {
-			return r.MakeCustomError("WrongValue", err.Error())
-		}
-
-		return value
-	})
 }
 
 // RegisterAPIClient exports Go function required by the API to run inside the client JS VM
