@@ -64,7 +64,13 @@ type virtualServiceSpec struct {
 	TCP  []rule `mapstructure:"tcp"`
 }
 
-func getInstances(rules []rule, instances map[string][]string) {
+type instanceMap map[string][]string
+
+func newInstanceMap() instanceMap {
+	return make(map[string][]string)
+}
+
+func (im instanceMap) addInstancesByRules(rules []rule) {
 	for _, vsRule := range rules {
 		for _, route := range vsRule.Routes {
 			app := route.Destination.App
@@ -72,9 +78,22 @@ func getInstances(rules []rule, instances map[string][]string) {
 				continue
 			}
 			version := route.Destination.Version
-			instances[app] = append(instances[app], version)
+			im[app] = append(im[app], version)
 		}
 	}
+}
+
+func (im instanceMap) has(instanceApp, instanceVersion string) bool {
+	for app, versions := range im {
+		if app == instanceApp {
+			for _, version := range versions {
+				if version == "" || version == instanceVersion {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func virtualServicePodMetadata(a, b interface{}, typeA, typeB, manager string) graph.Metadata {
@@ -88,21 +107,54 @@ func virtualServicePodMetadata(a, b interface{}, typeA, typeB, manager string) g
 	if pod.Labels["app"] == "" {
 		return m
 	}
+
+	app, version := pod.Labels["app"], pod.Labels["version"]
+
 	weight := 0
 	for _, http := range vsSpec.HTTP {
 		for _, route := range http.Routes {
-			if route.Destination.App != pod.Labels["app"] {
+			if route.Destination.App != app {
 				continue
 			}
-			if route.Destination.Version == pod.Labels["version"] || route.Destination.Version == "" {
+			if route.Destination.Version == version || route.Destination.Version == "" {
 				weight += route.Weight
 			}
 		}
 	}
 	if weight > 0 {
-		m["weight"] = weight
+		m["Weight"] = weight
 	}
+
+	protocols := []string{}
+
+	if findInstance(vsSpec.HTTP, app, version) {
+		protocols = append(protocols, "HTTP")
+	}
+	if findInstance(vsSpec.TLS, app, version) {
+		protocols = append(protocols, "TLS")
+	}
+	if findInstance(vsSpec.TCP, app, version) {
+		protocols = append(protocols, "TCP")
+	}
+
+	p := arrayToString(protocols)
+	m.SetField("Protocol", p)
+
 	return m
+}
+
+func arrayToString(arr []string) string {
+	s := arr[0]
+	for _, elem := range arr[1:] {
+		s = s + ", " + elem
+	}
+	return s
+}
+
+func findInstance(r []rule, app, version string) bool {
+	instances := newInstanceMap()
+	instances.addInstancesByRules(r)
+	return instances.has(app, version)
 }
 
 func virtualServicePodAreLinked(a, b interface{}) bool {
@@ -113,26 +165,14 @@ func virtualServicePodAreLinked(a, b interface{}) bool {
 		return false
 	}
 
+	app, version := pod.Labels["app"], pod.Labels["version"]
+
 	vsSpec := &virtualServiceSpec{}
 	if err := mapstructure.Decode(vs.Spec, vsSpec); err != nil {
 		return false
 	}
 
-	instances := make(map[string][]string)
-	getInstances(vsSpec.HTTP, instances)
-	getInstances(vsSpec.TLS, instances)
-	getInstances(vsSpec.TCP, instances)
-
-	for app, versions := range instances {
-		if app == pod.Labels["app"] {
-			for _, version := range versions {
-				if version == "" || version == pod.Labels["version"] {
-					return true
-				}
-			}
-		}
-	}
-	return false
+	return findInstance(vsSpec.HTTP, app, version) || findInstance(vsSpec.TLS, app, version) || findInstance(vsSpec.TCP, app, version)
 }
 
 func findMissingGateways(g *graph.Graph) {

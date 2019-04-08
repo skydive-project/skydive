@@ -65,11 +65,18 @@ func TestIstioVirtualServicePodScenario(t *testing.T) {
 				if err != nil {
 					return err
 				}
-				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", name)
+				podv1, err := checkNodeCreation(t, c, k8s.Manager, "pod", "podv1")
 				if err != nil {
 					return err
 				}
-				if err = checkEdge(t, c, virtualservice, pod, "virtualservice"); err != nil {
+				podv2, err := checkNodeCreation(t, c, k8s.Manager, "pod", "podv2")
+				if err != nil {
+					return err
+				}
+				if err = checkEdge(t, c, virtualservice, podv1, "virtualservice", "Protocol", "HTTP", "Weight", 90); err != nil {
+					return err
+				}
+				if err = checkEdge(t, c, virtualservice, podv2, "virtualservice", "Protocol", "HTTP", "Weight", 10); err != nil {
 					return err
 				}
 				return nil
@@ -202,7 +209,7 @@ func TestBookInfoScenario(t *testing.T) {
 
 				// check edges exist
 
-				if err = checkEdge(t, c, vs, podProductpage, "virtualservice"); err != nil {
+				if err = checkEdge(t, c, vs, podProductpage, "virtualservice", "Protocol", "HTTP"); err != nil {
 					return err
 				}
 

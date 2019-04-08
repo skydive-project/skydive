@@ -1506,11 +1506,11 @@ TopologyGraphLayout.prototype = {
 	}
       }
 
-      if (link.metadata.hasOwnProperty('weight')) {
+      if (link.metadata.hasOwnProperty('Weight')) {
         this.linkLabelData[link.id] = {
 	  id: "link-label-" + link.id,
 	  link: link,
-	  text: `${link.metadata.weight}%`,
+	  text: `${link.metadata.Weight}%`,
 	};
       }
     }
