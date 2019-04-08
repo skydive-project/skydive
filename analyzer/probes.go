@@ -25,6 +25,7 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/fabric"
 	"github.com/skydive-project/skydive/topology/probes/istio"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
+	"github.com/skydive-project/skydive/topology/probes/ovn"
 	"github.com/skydive-project/skydive/topology/probes/peering"
 )
 
@@ -50,6 +51,9 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.Bundle, error) {
 		var err error
 
 		switch t {
+		case "ovn":
+			addr := config.GetString("analyzer.topology.ovn.address")
+			probes[t], err = ovn.NewProbe(g, addr)
 		case "k8s":
 			probes[t], err = k8s.NewK8sProbe(g)
 		case "istio":

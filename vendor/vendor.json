@@ -385,6 +385,24 @@
 			"revisionTime": "2016-04-27T17:01:38Z"
 		},
 		{
+			"checksumSHA1": "72zRy5zCQvI87HDwbIfwhfOBXew=",
+			"path": "github.com/cenkalti/hub",
+			"revision": "11382a9960d39b0ecda16fd01c424c11ff765a34",
+			"revisionTime": "2016-05-27T10:32:12Z"
+		},
+		{
+			"checksumSHA1": "9JJjVaXs5sRFpNXNbb75Hw9+Wnc=",
+			"path": "github.com/cenkalti/rpc2",
+			"revision": "9642ea02d0aad04b8efb5e1a6bbc63daf8d0903d",
+			"revisionTime": "2018-07-27T07:14:39Z"
+		},
+		{
+			"checksumSHA1": "SV8XkMo9habP+09CWxEKm7ojrOA=",
+			"path": "github.com/cenkalti/rpc2/jsonrpc",
+			"revision": "9642ea02d0aad04b8efb5e1a6bbc63daf8d0903d",
+			"revisionTime": "2018-07-27T07:14:39Z"
+		},
+		{
 			"checksumSHA1": "P5K4CjghK/BoaRKoZ8bUMbRC5N4=",
 			"path": "github.com/cnf/structhash",
 			"revision": "7710f1f78fb9c581deeeab57ecfb7978901b36bc",
@@ -1155,6 +1173,18 @@
 			"revision": "5d2041e26a699eaca682e2ea41c8f891e1060444"
 		},
 		{
+			"checksumSHA1": "FjBFoAy86qwN8CFX0Qq7cWO9gHg=",
+			"path": "github.com/ebay/go-ovn",
+			"revision": "c0bd774dc3ed8223283d215c6d0a0a0cca5a8d53",
+			"revisionTime": "2019-03-28T21:07:50Z"
+		},
+		{
+			"checksumSHA1": "KSt5jSuJQ8wDsaWmpBrgEt3Pf+g=",
+			"path": "github.com/ebay/libovsdb",
+			"revision": "c6f109972ce3e4175600eaa5a80537bff108d6df",
+			"revisionTime": "2019-03-23T08:03:07Z"
+		},
+		{
 			"checksumSHA1": "g3z4plpw9F/ho3hdJb+X/bN/OgE=",
 			"path": "github.com/emicklei/go-restful",
 			"revision": "68c9750c36bb8cb433f1b88c807b4b30df4acc40",
@@ -1350,6 +1380,12 @@
 			"path": "github.com/google/gopacket/tcpassembly",
 			"revision": "102d5ca2098cc070c7fdc9d7dbd504658bc92363",
 			"revisionTime": "2019-01-23T01:18:26Z"
+		},
+		{
+			"checksumSHA1": "Kh/EnzmngEgl6DxIndgpflFLm00=",
+			"path": "github.com/google/uuid",
+			"revision": "0cd6bf5da1e1c83f8b45653022c74f71af0538a4",
+			"revisionTime": "2019-02-27T21:05:49Z"
 		},
 		{
 			"checksumSHA1": "Nf/pN/E1Rutz925nyJR4eEeghwg=",

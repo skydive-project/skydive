@@ -71,7 +71,7 @@ ifeq ($(VERBOSE), false)
 endif
 ifeq ($(COVERAGE), true)
   TEST_COVERPROFILE?=../functionals.cover
-  EXTRA_ARGS+= -test.coverprofile=${TEST_COVERPROFILE}
+  EXTRA_ARGS+=-test.coverprofile=${TEST_COVERPROFILE}
 endif
 TIMEOUT?=1m
 TEST_PATTERN?=
@@ -151,12 +151,16 @@ endif
 
 ifeq ($(WITH_K8S), true)
   BUILD_TAGS+=k8s
-  EXTRA_ARGS+=-analyzer.topology.probes=k8s
+  ANALYZER_TEST_PROBES+=k8s
 endif
 
 ifeq ($(WITH_ISTIO), true)
   BUILD_TAGS+=k8s istio
-  EXTRA_ARGS+=-analyzer.topology.probes=k8s,istio
+  ANALYZER_TEST_PROBES+=istio
+endif
+
+ifeq ($(WITH_OVN), true)
+  ANALYZER_TEST_PROBES+=ovn
 endif
 
 ifeq ($(WITH_HELM), true)
@@ -165,7 +169,7 @@ endif
 
 ifeq ($(WITH_OPENCONTRAIL), true)
   BUILD_TAGS+=opencontrail
-  EXTRA_ARGS+=-opencontrail
+  AGENT_TEST_EXTRA_PROBES+=opencontrail
 ifeq ($(OS_RHEL),Y)
   STATIC_LIBS+=libxml2.a
 endif
@@ -186,12 +190,15 @@ endif
 
 ifeq ($(WITH_VPP), true)
   BUILD_TAGS+=vpp
-  EXTRA_ARGS+=-vpp
+  AGENT_TEST_EXTRA_PROBES+=vpp
 endif
 
-STATIC_BUILD_TAGS := $(filter-out libvirt,$(BUILD_TAGS))
-
+comma:= ,
+empty:=
+space:= $(empty) $(empty)
+EXTRA_ARGS+=-analyzer.topology.probes=$(subst $(space),$(comma),$(ANALYZER_TEST_PROBES)) -agent.topology.probes=$(subst $(space),$(comma),$(AGENT_TEST_EXTRA_PROBES))
 STATIC_LIBS_ABS := $(addprefix $(STATIC_DIR)/,$(STATIC_LIBS))
+STATIC_BUILD_TAGS := $(filter-out libvirt,$(BUILD_TAGS))
 
 .PHONY: all install
 all install: skydive
@@ -433,20 +440,20 @@ test.functionals.run:
 
 .PHONY: tests.functionals.all
 test.functionals.all: test.functionals.compile
-	$(MAKE) TIMEOUT="8m" ARGS="${ARGS} ${EXTRA_ARGS}" test.functionals.run
+	$(MAKE) TIMEOUT="8m" ARGS="${ARGS}" test.functionals.run EXTRA_ARGS="${EXTRA_ARGS}"
 
 .PHONY: test.functionals.batch
 test.functionals.batch: test.functionals.compile
 ifneq ($(TEST_PATTERN),)
-	set -e ; $(MAKE) ARGS="${ARGS} ${EXTRA_ARGS} -test.run ${TEST_PATTERN}" test.functionals.run
+	set -e ; $(MAKE) ARGS="${ARGS} -test.run ${TEST_PATTERN}" test.functionals.run EXTRA_ARGS="${EXTRA_ARGS}"
 else
-	set -e ; $(MAKE) ARGS="${ARGS} ${EXTRA_ARGS}" test.functionals.run
+	set -e ; $(MAKE) ARGS="${ARGS} " test.functionals.run EXTRA_ARGS="${EXTRA_ARGS}"
 endif
 
 .PHONY: test.functionals
 test.functionals: test.functionals.compile
 	for functest in ${FUNC_TESTS} ; do \
-		$(MAKE) ARGS="-test.run $$functest$$\$$ ${ARGS} ${EXTRA_ARGS}" test.functionals.run; \
+		$(MAKE) ARGS="-test.run $$functest$$\$$ ${ARGS}" test.functionals.run EXTRA_ARGS="${EXTRA_ARGS}"; \
 	done
 
 .PHONY: functional

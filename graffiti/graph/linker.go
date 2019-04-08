@@ -53,8 +53,11 @@ func mapOfLinks(edges []*Edge) map[Identifier]*Edge {
 	return m
 }
 
-func (l *listener) nodeEvent(node *Node) {
-	newLinks := mapOfLinks(l.newLinksFunc(node))
+func (l *listener) nodeEvent(node *Node, deleted bool) {
+	var newLinks map[Identifier]*Edge
+	if !deleted {
+		newLinks = mapOfLinks(l.newLinksFunc(node))
+	}
 	existingLinks := mapOfLinks(l.existingLinksFunc(node))
 
 	for id, newLink := range newLinks {
@@ -89,15 +92,15 @@ func (l *listener) nodeEvent(node *Node) {
 }
 
 func (l *listener) OnNodeAdded(node *Node) {
-	l.nodeEvent(node)
+	l.nodeEvent(node, false)
 }
 
 func (l *listener) OnNodeUpdated(node *Node) {
-	l.nodeEvent(node)
+	l.nodeEvent(node, false)
 }
 
 func (l *listener) OnNodeDeleted(node *Node) {
-	l.nodeEvent(node)
+	l.nodeEvent(node, true)
 }
 
 // DefaultLinker returns a linker that does nothing

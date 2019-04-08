@@ -64,5 +64,6 @@ var managerImgMap = setupFixedImages({
   "neutron": "openstack",
   "k8s": "k8s",
   "istio": "istio",
-  "runc": "runc"
+  "runc": "runc",
+  "ovn": "ovn",
 });

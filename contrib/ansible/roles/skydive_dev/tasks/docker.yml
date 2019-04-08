@@ -9,8 +9,6 @@
     append: yes
 
 - service:
-    name: "{{ item }}"
+    name: docker
     state: restarted
     enabled: yes
-  with_items:
-    - docker

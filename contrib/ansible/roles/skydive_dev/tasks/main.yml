@@ -72,14 +72,15 @@
 
 - include_tasks: protobuf.yml
 
+- include_tasks: ovn.yml
+
 - include_tasks: static.yml
 
 - include_tasks: gimme.yml
   tags:
     - vagrant
 
-- include_tasks: docker.yml
-  when: skydive_container_cli == "docker"
+- include_tasks: docker-ce.yml
   tags:
     - vagrant
 
