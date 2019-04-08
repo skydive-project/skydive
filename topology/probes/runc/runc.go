@@ -453,7 +453,8 @@ func (probe *Probe) start() {
 				}
 			}
 		case err := <-probe.watcher.Errors:
-			logging.GetLogger().Errorf("Error while watching runc state folder: %s", err)
+			// in case runC does not exist we emit a warnings not an errors
+			logging.GetLogger().Warningf("Error while watching runc state folder: %s", err)
 		case <-ticker.C:
 		}
 	}

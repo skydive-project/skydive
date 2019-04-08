@@ -192,7 +192,8 @@ func (probe *Probe) connect() error {
 	defer probe.client.Close()
 
 	if _, err := probe.client.ServerVersion(context.Background()); err != nil {
-		logging.GetLogger().Errorf("Failed to connect to Docker daemon: %s", err)
+		// in case docker does not exist we emit warnings not and errors
+		logging.GetLogger().Warningf("Failed to connect to Docker daemon: %s", err)
 		return err
 	}
 
