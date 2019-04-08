@@ -90,19 +90,23 @@ Vue.component('workflow-params', {
     submit: function() {
       this.toggleResultDisplay(true);
       var self = this;
-      var source = "(" + this.workflow.Source + ")";
-      var f = eval(source);
-      if (typeof f !== "function") {
-        throw "Source is not a function";
-      }
+
       var args = [];
       for (var i in this.workflow.Parameters) {
         var param = this.workflow.Parameters[i];
         args.push(this.formData[param.Name]);
       }
-      var promise = f.apply({}, args);
-      promise.then(function (result) {
-        self.result.value = result;
+
+      let url = "/api/workflow/" + this.workflow.UUID + "/call"
+      $.ajax({
+        dataType: "json",
+        url: url,
+        data: JSON.stringify({"Params": args}),
+        contentType: "application/json",
+        method: "POST",
+      })
+      .then(function(result) {
+        self.result.value = result
         if (typeof result == "object") {
           if (result.nodes && result.edges) {
             var g = topologyComponent.graph;
@@ -116,8 +120,9 @@ Vue.component('workflow-params', {
             }
           }
         }
-      }).catch(function (e) {
-        self.result.value = e.toString();
+      })
+      .fail(function(e){
+        self.result.value = e.toString()
       })
     }
   }
