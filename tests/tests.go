@@ -32,6 +32,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kballard/go-shellquote"
 	"github.com/skydive-project/skydive/agent"
 	"github.com/skydive-project/skydive/analyzer"
 	gclient "github.com/skydive-project/skydive/api/client"
@@ -290,7 +291,10 @@ func initConfig(conf string, params ...helperParams) error {
 
 func execCmds(t *testing.T, cmds ...Cmd) (e error) {
 	for _, cmd := range cmds {
-		args := strings.Split(cmd.Cmd, " ")
+		args, err := shellquote.Split(cmd.Cmd)
+		if err != nil {
+			return err
+		}
 		command := exec.Command(args[0], args[1:]...)
 		logging.GetLogger().Debugf("Executing command %+v", args)
 		stdouterr, err := command.CombinedOutput()
