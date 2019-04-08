@@ -29,7 +29,22 @@ import (
 
 /* -- test creation of single resource -- */
 func TestIstioDestinationRuleNode(t *testing.T) {
-	testNodeCreationFromConfig(t, istio.Manager, "destinationrule", objName+"-destinationrule")
+	file := "destinationrule"
+	name := objName + "-" + file
+	testRunner(
+		t,
+		setupFromConfigFile(istio.Manager, file),
+		tearDownFromConfigFile(istio.Manager, file),
+		[]CheckFunction{
+			func(c *CheckContext) error {
+				_, err := checkNodeCreation(t, c, istio.Manager, "destinationrule", name, "TrafficPolicy", false, "HostName", "c")
+				if err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+	)
 }
 
 func TestIstioGatewayNode(t *testing.T) {
