@@ -220,7 +220,7 @@ class RESTClient:
                          payload="", interval=1000, src_ip="",
                          dst_ip="", src_mac="", dst_mac="",
                          count=1, icmp_id=0, src_port=0, dst_port=0,
-                         increment=False):
+                         increment=False, ttl=64):
 
         data = json.dumps({
             "Src": src_query,
@@ -236,7 +236,8 @@ class RESTClient:
             "ICMPID": icmp_id,
             "Interval": interval,
             "Payload": payload,
-            "Increment": increment
+            "Increment": increment,
+            "TTL": ttl
         })
 
         r = self.request(self.INJECTION_PATH, method="POST", data=data)
