@@ -46,6 +46,7 @@ var (
 	interval         int64
 	increment        bool
 	incrementPayload int64
+	ttl              uint8
 )
 
 // PacketInjectorCmd skydive inject-packet root command
@@ -98,6 +99,7 @@ var PacketInjectionCreate = &cobra.Command{
 			Interval:         interval,
 			Increment:        increment,
 			IncrementPayload: incrementPayload,
+			TTL:              ttl,
 		}
 
 		if err = validator.Validate(packet); err != nil {
@@ -198,6 +200,7 @@ func addInjectPacketFlags(cmd *cobra.Command) {
 	cmd.Flags().Int64VarP(&incrementPayload, "incrementPayload", "", 0, "increase payload for each packet")
 	cmd.Flags().Int64VarP(&count, "count", "", 1, "number of packets to be generated")
 	cmd.Flags().Int64VarP(&interval, "interval", "", 1000, "wait interval milliseconds between sending each packet")
+	cmd.Flags().Uint8VarP(&ttl, "ttl", "", 64, "time-to-live")
 }
 
 func init() {

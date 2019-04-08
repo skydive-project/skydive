@@ -231,6 +231,7 @@ func (pc *Client) requestToParams(pi *types.PacketInjection) (string, *PacketInj
 		ID:               pi.ICMPID,
 		Increment:        pi.Increment,
 		IncrementPayload: pi.IncrementPayload,
+		TTL:              pi.TTL,
 	}
 
 	if errs := validator.Validate(pip); errs != nil {

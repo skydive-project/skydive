@@ -43,7 +43,7 @@ type ForgedPacketGenerator struct {
 	srcIP, dstIP   net.IP
 }
 
-func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC net.HardwareAddr, srcIP, dstIP net.IP, srcPort, dstPort int64, ID int64, data string) ([]byte, gopacket.Packet, error) {
+func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC net.HardwareAddr, TTL uint8, srcIP, dstIP net.IP, srcPort, dstPort int64, ID int64, data string) ([]byte, gopacket.Packet, error) {
 	var l []gopacket.SerializableLayer
 
 	payload := gopacket.Payload([]byte(data))
@@ -61,7 +61,7 @@ func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC
 
 	switch packetType {
 	case "icmp4":
-		ipLayer := &layers.IPv4{Version: 4, SrcIP: srcIP, DstIP: dstIP, Protocol: layers.IPProtocolICMPv4, TTL: 64}
+		ipLayer := &layers.IPv4{Version: 4, SrcIP: srcIP, DstIP: dstIP, Protocol: layers.IPProtocolICMPv4, TTL: TTL}
 		icmpLayer := &layers.ICMPv4{
 			TypeCode: layers.CreateICMPv4TypeCode(layers.ICMPv4TypeEchoRequest, 0),
 			Id:       uint16(ID),
@@ -80,7 +80,7 @@ func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC
 		}
 		l = append(l, ipLayer, icmpLayer, echoLayer)
 	case "tcp4":
-		ipLayer := &layers.IPv4{SrcIP: srcIP, DstIP: dstIP, Version: 4, Protocol: layers.IPProtocolTCP, TTL: 64}
+		ipLayer := &layers.IPv4{SrcIP: srcIP, DstIP: dstIP, Version: 4, Protocol: layers.IPProtocolTCP, TTL: TTL}
 		srcPort := layers.TCPPort(srcPort)
 		dstPort := layers.TCPPort(dstPort)
 		tcpLayer := &layers.TCP{SrcPort: srcPort, DstPort: dstPort, Seq: rand.Uint32(), SYN: true}
@@ -94,7 +94,7 @@ func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC
 		tcpLayer.SetNetworkLayerForChecksum(ipLayer)
 		l = append(l, ipLayer, tcpLayer)
 	case "udp4":
-		ipLayer := &layers.IPv4{SrcIP: srcIP, DstIP: dstIP, Version: 4, Protocol: layers.IPProtocolUDP, TTL: 64}
+		ipLayer := &layers.IPv4{SrcIP: srcIP, DstIP: dstIP, Version: 4, Protocol: layers.IPProtocolUDP, TTL: TTL}
 		srcPort := layers.UDPPort(srcPort)
 		dstPort := layers.UDPPort(dstPort)
 		udpLayer := &layers.UDP{SrcPort: srcPort, DstPort: dstPort}
@@ -142,7 +142,7 @@ func (f *ForgedPacketGenerator) PacketSource() chan *Packet {
 				payload = payload + common.RandString(int(f.IncrementPayload))
 			}
 
-			packetData, packet, err := forgePacket(f.Type, f.layerType, f.srcMAC, f.dstMAC, f.srcIP, f.dstIP, f.SrcPort, f.DstPort, id, payload)
+			packetData, packet, err := forgePacket(f.Type, f.layerType, f.srcMAC, f.dstMAC, f.TTL, f.srcIP, f.dstIP, f.SrcPort, f.DstPort, id, payload)
 			if err != nil {
 				logging.GetLogger().Error(err)
 				return

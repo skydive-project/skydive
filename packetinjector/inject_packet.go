@@ -59,6 +59,7 @@ type PacketInjectionParams struct {
 	IncrementPayload int64
 	Payload          string
 	Pcap             []byte
+	TTL              uint8
 }
 
 type channels struct {
