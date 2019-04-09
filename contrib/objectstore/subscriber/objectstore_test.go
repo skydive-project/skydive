@@ -220,9 +220,9 @@ func Test_flushFlowsToObject_Positive(t *testing.T) {
 
 	assertEqual(t, 10, len(decodedFlows))
 
-	assertEqual(t, "1000", *client.LastMetadata["start-timestamp"])
-	assertEqual(t, "2000", *client.LastMetadata["end-timestamp"])
-	assertEqual(t, strconv.FormatInt(s.lastFlushTime["tag"].UTC().UnixNano()/int64(time.Millisecond), 10), *client.LastMetadata["end-timestamp"])
+	assertEqual(t, "1000", *client.LastMetadata["first-timestamp"])
+	assertEqual(t, "2000", *client.LastMetadata["last-timestamp"])
+	assertEqual(t, strconv.FormatInt(s.lastFlushTime["tag"].UTC().UnixNano()/int64(time.Millisecond), 10), *client.LastMetadata["last-timestamp"])
 	assertEqual(t, "10", *client.LastMetadata["num-records"])
 }
 

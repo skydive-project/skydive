@@ -181,8 +181,8 @@ func (s *Subscriber) flushFlowsToObject(tag Tag, endTime time.Time) error {
 	endTimeString := strconv.FormatInt(endTime.UTC().UnixNano()/int64(time.Millisecond), 10)
 
 	metadata := map[string]*string{
-		"start-timestamp": aws.String(startTimeString),
-		"end-timestamp":   aws.String(endTimeString),
+		"first-timestamp": aws.String(startTimeString),
+		"last-timestamp":  aws.String(endTimeString),
 		"num-records":     aws.String(strconv.Itoa(len(flows))),
 	}
 

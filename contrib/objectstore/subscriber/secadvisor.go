@@ -25,22 +25,71 @@ import (
 	"github.com/skydive-project/skydive/flow"
 )
 
+const version = "1.0.8"
+
 // SecurityAdvisorFlow represents a transformed flow
 type SecurityAdvisorFlow struct {
 	UUID             string
 	LayersPath       string
+	Version          string
+	Status           string
+	FinishType       string
 	Network          *flow.FlowLayer
 	Transport        *flow.TransportLayer
 	LastUpdateMetric *flow.FlowMetric
 	Metric           *flow.FlowMetric
 	Start            int64
 	Last             int64
-	FinishType       flow.FlowFinishType
+	UpdateCount      int64
 }
 
 // SecurityAdvisorFlowTransformer is a custom transformer for flows
 type SecurityAdvisorFlowTransformer struct {
-	seenFlows *cache.Cache
+	flowUpdateCount *cache.Cache
+}
+
+func (ft *SecurityAdvisorFlowTransformer) setUpadateCount(f *flow.Flow) int64 {
+	var count int64
+	if countRaw, ok := ft.flowUpdateCount.Get(f.UUID); ok {
+		count = countRaw.(int64)
+	}
+
+	if f.FinishType != flow.FlowFinishType_TIMEOUT {
+		if f.FinishType == flow.FlowFinishType_NOT_FINISHED {
+			ft.flowUpdateCount.Set(f.UUID, count+1, cache.DefaultExpiration)
+		} else {
+			ft.flowUpdateCount.Set(f.UUID, count+1, time.Minute)
+		}
+	} else {
+		ft.flowUpdateCount.Delete(f.UUID)
+	}
+
+	return count
+}
+
+func (ft *SecurityAdvisorFlowTransformer) getStatus(f *flow.Flow, updateCount int64) string {
+	if f.FinishType != flow.FlowFinishType_NOT_FINISHED {
+		return "ENDED"
+	}
+
+	if updateCount == 0 {
+		return "STARTED"
+	}
+
+	return "UPDATED"
+}
+
+func (ft *SecurityAdvisorFlowTransformer) getFinishType(f *flow.Flow) string {
+	if f.FinishType == flow.FlowFinishType_TCP_FIN {
+		return "SYN_FIN"
+	}
+	if f.FinishType == flow.FlowFinishType_TCP_RST {
+		return "SYN_RST"
+	}
+	if f.FinishType == flow.FlowFinishType_TIMEOUT {
+		return "Timeout"
+	}
+	return ""
 }
 
 // Transform transforms a flow before being stored
@@ -50,37 +99,33 @@ func (ft *SecurityAdvisorFlowTransformer) Transform(f *flow.Flow, tag Tag) inter
 		return nil
 	}
 
+	updateCount := ft.setUpadateCount(f)
+	status := ft.getStatus(f, updateCount)
+
 	// do not report new flows (i.e. the first time you see them)
-	if f.FinishType != flow.FlowFinishType_TIMEOUT {
-		_, seen := ft.seenFlows.Get(f.UUID)
-		if f.FinishType == flow.FlowFinishType_NOT_FINISHED {
-			ft.seenFlows.Set(f.UUID, true, cache.DefaultExpiration)
-			if !seen {
-				return nil
-			}
-		} else {
-			ft.seenFlows.Set(f.UUID, true, time.Minute)
-		}
-	} else {
-		ft.seenFlows.Delete(f.UUID)
+	if status == "STARTED" {
+		return nil
 	}
 
 	return &SecurityAdvisorFlow{
 		UUID:             f.UUID,
 		LayersPath:       f.LayersPath,
+		Version:          version,
+		Status:           status,
+		FinishType:       ft.getFinishType(f),
 		Network:          f.Network,
 		Transport:        f.Transport,
 		LastUpdateMetric: f.LastUpdateMetric,
 		Metric:           f.Metric,
 		Start:            f.Start,
 		Last:             f.Last,
-		FinishType:       f.FinishType,
+		UpdateCount:      updateCount,
 	}
 }
 
 // NewSecurityAdvisorFlowTransformer returns a new SecurityAdvisorFlowTransformer
 func NewSecurityAdvisorFlowTransformer() *SecurityAdvisorFlowTransformer {
 	return &SecurityAdvisorFlowTransformer{
-		seenFlows: cache.New(10*time.Minute, 10*time.Minute),
+		flowUpdateCount: cache.New(10*time.Minute, 10*time.Minute),
 	}
 }
