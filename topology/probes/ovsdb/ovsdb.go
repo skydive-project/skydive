@@ -19,7 +19,10 @@ package ovsdb
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -51,6 +54,122 @@ type Probe struct {
 	portToBridge map[string]*graph.Node
 	cancel       context.CancelFunc
 	enableStats  bool
+}
+
+// OvsMetadata describe Ovs metadata sub section
+// easyjson:json
+type OvsMetadata struct {
+	OtherConfig      map[string]string         `json:"OtherConfig,omitempty"`
+	Options          map[string]string         `json:"Options,omitempty"`
+	Protocols        []string                  `json:"Protocols,omitempty"`
+	DBVersion        string                    `json:"DBVersion,omitempty"`
+	Version          string                    `json:"Version,omitempty"`
+	Error            string                    `json:"Error,omitempty"`
+	Metric           *topology.InterfaceMetric `json:"Metric,omitempty"`
+	LastUpdateMetric *topology.InterfaceMetric `json:"LastUpdateMetric,omitempty"`
+}
+
+// OvsMetadataDecoder implements a json message raw decoder
+func OvsMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+	var ovs OvsMetadata
+	if err := json.Unmarshal(raw, &ovs); err != nil {
+		return nil, fmt.Errorf("unable to unmarshal ovs metadata %s: %s", string(raw), err)
+	}
+
+	return &ovs, nil
+}
+
+// GetFieldString implements Getter interface
+func (o *OvsMetadata) GetFieldString(key string) (string, error) {
+	fields := strings.Split(key, ".")
+
+	switch fields[0] {
+	case "DBVersion":
+		return o.DBVersion, nil
+	case "Version":
+		return o.Version, nil
+	case "Error":
+		return o.Error, nil
+	}
+
+	// sub field
+	if len(fields) != 3 {
+		return "", common.ErrFieldNotFound
+	}
+
+	switch fields[1] {
+	case "OtherConfig":
+		return o.OtherConfig[fields[2]], nil
+	case "Options":
+		return o.Options[fields[2]], nil
+	}
+
+	return "", common.ErrFieldNotFound
+}
+
+// GetFieldInt64 implements Getter interface
+func (o *OvsMetadata) GetFieldInt64(key string) (int64, error) {
+	fields := strings.Split(key, ".")
+	if len(fields) < 2 {
+		return 0, common.ErrFieldNotFound
+	}
+
+	switch fields[0] {
+	case "Metric":
+		if o.Metric != nil {
+			return o.Metric.GetFieldInt64(fields[1])
+		}
+		return new(topology.InterfaceMetric).GetFieldInt64(fields[1])
+	case "LastUpdateMetric":
+		if o.LastUpdateMetric != nil {
+			return o.LastUpdateMetric.GetFieldInt64(fields[1])
+		}
+		return new(topology.InterfaceMetric).GetFieldInt64(fields[1])
+	}
+
+	return 0, common.ErrFieldNotFound
+}
+
+// GetField implements Getter interface
+func (o *OvsMetadata) GetField(key string) (interface{}, error) {
+	fields := strings.Split(key, ".")
+
+	if len(fields) == 1 {
+		switch fields[0] {
+		case "Metric":
+			if o.Metric != nil {
+				return o.Metric, nil
+			}
+			return nil, common.ErrFieldNotFound
+		case "LastUpdateMetric":
+			if o.LastUpdateMetric != nil {
+				return o.LastUpdateMetric, nil
+			}
+			return nil, common.ErrFieldNotFound
+		case "Options":
+			return o.Options, nil
+		case "OtherConfig":
+			return o.OtherConfig, nil
+		}
+	}
+
+	switch fields[0] {
+	case "Metric", "LastUpdateMetric":
+		return o.GetFieldInt64(key)
+	}
+
+	return o.GetFieldString(key)
+}
+
+// GetFieldKeys returns the list of valid field of a Flow
+func (o *OvsMetadata) GetFieldKeys() []string {
+	return ovsFields
+}
+
+var ovsFields []string
+
+func init() {
+	ovsFields = common.StructFieldKeys(OvsMetadata{})
 }
 
 func isOvsInterfaceType(t string) bool {
@@ -92,6 +211,8 @@ func (o *Probe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libo
 	name := row.New.Fields["name"].(string)
 
 	o.Graph.Lock()
+	defer o.Graph.Unlock()
+
 	bridge := o.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
 	if bridge == nil {
 		var err error
@@ -104,22 +225,24 @@ func (o *Probe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libo
 		topology.AddOwnershipLink(o.Graph, o.Root, bridge, nil)
 	}
 
-	tr := o.Graph.StartMetadataTransaction(bridge)
+	ovsMetadata := &OvsMetadata{
+		OtherConfig: make(map[string]string),
+	}
 
 	otherConfig := row.New.Fields["other_config"].(libovsdb.OvsMap)
 	for k, v := range otherConfig.GoMap {
-		tr.AddMetadata("Ovs.OtherConfig."+k.(string), v.(string))
+		ovsMetadata.OtherConfig[k.(string)] = v.(string)
 	}
 
 	if protocolSet, ok := row.New.Fields["protocols"].(libovsdb.OvsSet); ok {
-		protocols := make([]string, len(protocolSet.GoSet))
+		ovsMetadata.Protocols = make([]string, len(protocolSet.GoSet))
 		for i, protocol := range protocolSet.GoSet {
-			protocols[i] = protocol.(string)
+			ovsMetadata.Protocols[i] = protocol.(string)
 		}
-		tr.AddMetadata("Ovs.Protocols", protocols)
+
 	}
 
-	tr.Commit()
+	o.Graph.AddMetadata(bridge, "Ovs", ovsMetadata)
 
 	switch row.New.Fields["ports"].(type) {
 	case libovsdb.OvsSet:
@@ -155,7 +278,6 @@ func (o *Probe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libo
 	if o.OvsOfProbe != nil {
 		o.OvsOfProbe.OnOvsBridgeAdd(bridge)
 	}
-	o.Graph.Unlock()
 }
 
 // OnOvsBridgeDel event
@@ -329,11 +451,22 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 		}
 	}
 
+	var ovsMetadata OvsMetadata
+	if ovs, err := intf.GetField("Ovs"); err == nil {
+		// need to recopy metric as it is used to get the last update metric
+		// and LastUpdateMetric as it could have been zero between two update
+		ovsMetadata.Metric = ovs.(*OvsMetadata).Metric
+		ovsMetadata.LastUpdateMetric = ovs.(*OvsMetadata).LastUpdateMetric
+	}
+	ovsMetadata.Options = make(map[string]string)
+	ovsMetadata.OtherConfig = make(map[string]string)
+
+	ovsMetadata.Error = oerror
+
 	tr := o.Graph.StartMetadataTransaction(intf)
 	defer tr.Commit()
 
 	tr.AddMetadata("UUID", uuid)
-	tr.AddMetadata("Ovs.Error", oerror)
 
 	driver := goMapStringValue(&row.New, "status", "driver_name")
 	if driver == "" {
@@ -366,12 +499,12 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 
 	options := row.New.Fields["options"].(libovsdb.OvsMap)
 	for k, v := range options.GoMap {
-		tr.AddMetadata("Ovs.Options."+k.(string), v.(string))
+		ovsMetadata.Options[k.(string)] = v.(string)
 	}
 
 	otherConfig := row.New.Fields["other_config"].(libovsdb.OvsMap)
 	for k, v := range otherConfig.GoMap {
-		tr.AddMetadata("Ovs.OtherConfig."+k.(string), v.(string))
+		ovsMetadata.OtherConfig[k.(string)] = v.(string)
 	}
 
 	o.uuidToIntf[uuid] = intf
@@ -419,20 +552,19 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 
 		var prevMetric, lastUpdateMetric *topology.InterfaceMetric
 
-		if ovs, err := intf.GetField("Ovs"); err == nil {
-			prevMetric, ok = ovs.(map[string]interface{})["Metric"].(*topology.InterfaceMetric)
-			if ok {
-				lastUpdateMetric = currMetric.Sub(prevMetric).(*topology.InterfaceMetric)
-			}
+		if ovsMetadata.Metric != nil {
+			prevMetric = ovsMetadata.Metric
+			lastUpdateMetric = currMetric.Sub(prevMetric).(*topology.InterfaceMetric)
 		}
 
-		tr.AddMetadata("Ovs.Metric", currMetric)
+		ovsMetadata.Metric = currMetric
 
 		// nothing changed since last update
 		if lastUpdateMetric != nil && !lastUpdateMetric.IsZero() {
 			lastUpdateMetric.Start = prevMetric.Last
 			lastUpdateMetric.Last = int64(common.UnixMillis(now))
-			tr.AddMetadata("Ovs.LastUpdateMetric", lastUpdateMetric)
+
+			ovsMetadata.LastUpdateMetric = lastUpdateMetric
 		}
 	}
 
@@ -446,6 +578,8 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 			o.linkIntfTOBridge(bridge, intf)
 		}
 	}
+
+	tr.AddMetadata("Ovs", &ovsMetadata)
 }
 
 // OnOvsInterfaceUpdate event
@@ -527,9 +661,13 @@ func (o *Probe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovs
 		tr.AddMetadata("ExtID."+k.(string), v.(string))
 	}
 
+	ovsMetadata := &OvsMetadata{
+		OtherConfig: make(map[string]string),
+	}
+
 	otherConfig := row.New.Fields["other_config"].(libovsdb.OvsMap)
 	for k, v := range otherConfig.GoMap {
-		tr.AddMetadata("Ovs.OtherConfig."+k.(string), v.(string))
+		ovsMetadata.OtherConfig[k.(string)] = v.(string)
 	}
 
 	// vlan tag
@@ -592,6 +730,8 @@ func (o *Probe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovs
 			o.linkIntfTOBridge(bridge, intf)
 		}
 	}
+
+	tr.AddMetadata("Ovs", ovsMetadata)
 }
 
 // OnOvsPortUpdate event
@@ -635,18 +775,22 @@ func (o *Probe) OnOvsUpdate(monitor *ovsdb.OvsMonitor, row *libovsdb.RowUpdate) 
 		}
 
 		tr := o.Graph.StartMetadataTransaction(ovsSsys)
+		defer tr.Commit()
 
 		dbVersion := columnStringValue(&row.New, "db_version")
 		ovsVersion := columnStringValue(&row.New, "ovs_version")
 
-		tr.AddMetadata("Ovs.Version", ovsVersion)
-		tr.AddMetadata("Ovs.DBVersion", dbVersion)
+		ovsMetadata := &OvsMetadata{
+			OtherConfig: make(map[string]string),
+			Version:     ovsVersion,
+			DBVersion:   dbVersion,
+		}
 
 		otherConfig := row.New.Fields["other_config"].(libovsdb.OvsMap)
 		for k, v := range otherConfig.GoMap {
-			tr.AddMetadata("Ovs.OtherConfig."+k.(string), v.(string))
+			ovsMetadata.OtherConfig[k.(string)] = v.(string)
 		}
-		tr.Commit()
+		tr.AddMetadata("Ovs", ovsMetadata)
 
 		return nil
 	}

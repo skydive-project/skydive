@@ -79,6 +79,8 @@ func (e *MetricsTraversalExtension) ParseStep(t traversal.Token, p traversal.Gre
 			key = k
 		case "SFlow.LastUpdateMetric", "SFlow":
 			key = "SFlow.LastUpdateMetric"
+		case "Ovs.LastUpdateMetric", "Ovs":
+			key = "Ovs.LastUpdateMetric"
 		default:
 			return nil, fmt.Errorf("Metric field unknown : %v", p.Params)
 		}

@@ -46,6 +46,7 @@ import (
 	"github.com/skydive-project/skydive/topology"
 	usertopology "github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
+	"github.com/skydive-project/skydive/topology/probes/ovsdb"
 	"github.com/skydive-project/skydive/ui"
 	"github.com/skydive-project/skydive/websocket"
 	ws "github.com/skydive-project/skydive/websocket"
@@ -395,4 +396,5 @@ func init() {
 	graph.NodeMetadataDecoders["Metric"] = topology.InterfaceMetricMetadataDecoder
 	graph.NodeMetadataDecoders["LastUpdateMetric"] = topology.InterfaceMetricMetadataDecoder
 	graph.NodeMetadataDecoders["SFlow"] = sflow.SFMetadataDecoder
+	graph.NodeMetadataDecoders["Ovs"] = ovsdb.OvsMetadataDecoder
 }

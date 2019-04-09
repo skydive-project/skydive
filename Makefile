@@ -55,7 +55,8 @@ EASYJSON_FILES_TAG=\
 	sflow/sflowmetric.go \
 	topology/metrics.go \
 	topology/probes/netlink/route.go \
-	topology/probes/netlink/neighbor.go
+	topology/probes/netlink/neighbor.go \
+	topology/probes/ovsdb/ovsdb.go
 EASYJSON_FILES_TAG_LINUX=\
 	topology/probes/netlink/netlink.go \
 	topology/probes/socketinfo/connection.go
@@ -288,6 +289,9 @@ topology/probes/socketinfo/connection_easyjson.go: topology/probes/socketinfo/co
 
 topology/probes/opencontrail/routing_table_easyjson.go: $(EASYJSON_FILES_TAG_OPENCONTRAIL)
 	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags opencontrail $<
+
+topology/probes/ovsdb/ovsdb.pb_easyjson.go: topology/probes/ovsdb/ovsdb.go
+	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson $<
 
 .PHONY: .easyjson
 .easyjson: flow/flow.pb_easyjson.go $(GEN_EASYJSON_FILES_TAG) $(GEN_EASYJSON_FILES_TAG_LINUX) $(GEN_EASYJSON_FILES_TAG_OPENCONTRAIL)
