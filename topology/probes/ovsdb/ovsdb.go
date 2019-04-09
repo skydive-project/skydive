@@ -242,7 +242,14 @@ func (o *Probe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libo
 
 	}
 
-	o.Graph.AddMetadata(bridge, "Ovs", ovsMetadata)
+	tr := o.Graph.StartMetadataTransaction(bridge)
+	tr.AddMetadata("Ovs", ovsMetadata)
+
+	extIds := row.New.Fields["external_ids"].(libovsdb.OvsMap)
+	for k, v := range extIds.GoMap {
+		tr.AddMetadata("ExtID."+k.(string), v.(string))
+	}
+	tr.Commit()
 
 	switch row.New.Fields["ports"].(type) {
 	case libovsdb.OvsSet:
@@ -769,12 +776,12 @@ func (o *Probe) OnOvsUpdate(monitor *ovsdb.OvsMonitor, row *libovsdb.RowUpdate) 
 		o.Graph.Lock()
 		defer o.Graph.Unlock()
 
-		ovsSsys := o.Graph.LookupFirstChild(o.Root, graph.Metadata{"Name": "ovs-system", "Type": "openvswitch"})
-		if ovsSsys == nil {
+		ovsSys := o.Graph.LookupFirstChild(o.Root, graph.Metadata{"Name": "ovs-system", "Type": "openvswitch"})
+		if ovsSys == nil {
 			return errors.New("ovs-system not found")
 		}
 
-		tr := o.Graph.StartMetadataTransaction(ovsSsys)
+		tr := o.Graph.StartMetadataTransaction(ovsSys)
 		defer tr.Commit()
 
 		dbVersion := columnStringValue(&row.New, "db_version")
@@ -791,6 +798,11 @@ func (o *Probe) OnOvsUpdate(monitor *ovsdb.OvsMonitor, row *libovsdb.RowUpdate) 
 			ovsMetadata.OtherConfig[k.(string)] = v.(string)
 		}
 		tr.AddMetadata("Ovs", ovsMetadata)
+
+		extIds := row.New.Fields["external_ids"].(libovsdb.OvsMap)
+		for k, v := range extIds.GoMap {
+			tr.AddMetadata("ExtID."+k.(string), v.(string))
+		}
 
 		return nil
 	}
