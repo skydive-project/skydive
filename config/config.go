@@ -44,6 +44,7 @@ var (
 		"agent.auth.cluster.password":       {"auth.analyzer_password"},
 		"agent.auth.cluster.username":       {"auth.analyzer_username"},
 		"agent.capture.stats_update":        {"agent.flow.stats_update"},
+		"agent.topology.netns.run_path":     {"netns.run_path"},
 		"analyzer.auth.api.backend":         {"auth.type"},
 		"analyzer.auth.cluster.backend":     {"auth.type"},
 		"analyzer.auth.cluster.password":    {"auth.analyzer_password"},
@@ -78,6 +79,7 @@ func init() {
 	cfg.SetDefault("agent.topology.probes", []string{"ovsdb"})
 	cfg.SetDefault("agent.topology.libvirt.url", "qemu:///system")
 	cfg.SetDefault("agent.topology.netlink.metrics_update", 30)
+	cfg.SetDefault("agent.topology.netns.run_path", "/var/run/netns")
 	cfg.SetDefault("agent.topology.neutron.domain_name", "Default")
 	cfg.SetDefault("agent.topology.neutron.endpoint_type", "public")
 	cfg.SetDefault("agent.topology.neutron.ssl_insecure", false)
@@ -138,8 +140,6 @@ func init() {
 	cfg.SetDefault("logging.file.path", "/var/log/skydive.log")
 	cfg.SetDefault("logging.level", "INFO")
 	cfg.SetDefault("logging.syslog.tag", "skydive")
-
-	cfg.SetDefault("netns.run_path", "/var/run/netns")
 
 	cfg.SetDefault("opencontrail.host", "localhost")
 	cfg.SetDefault("opencontrail.mpls_udp_port", 51234)
