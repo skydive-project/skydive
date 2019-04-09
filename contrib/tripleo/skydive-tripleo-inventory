@@ -4,17 +4,125 @@ from __future__ import print_function
 
 import copy
 import os
+import re
+import subprocess
 import sys
 import traceback
 import yaml
 
-from heatclient import client as heat_client
 from oslo_config import cfg
 from six.moves import configparser
 
-from tripleo_common.inventory import TripleoInventory
-from tripleo_validations.utils import get_auth_session
+try:
+    from tripleo_validations.utils import get_auth_session
+    from tripleo_common.inventory import TripleoInventory
+    from heatclient.client import Client as HeatClient
 
+    def get_roles(configs, inventory, host_network):
+        role_net_ip_map = inventory.stack_outputs.get('RoleNetIpMap', {})
+        role_net_hostname_map = inventory.stack_outputs.get(
+            'RoleNetHostnameMap', {})
+
+        analyzer_hosts = {}
+        agent_hosts = {}
+
+        for role, hostnames in role_net_hostname_map.items():
+            if hostnames:
+
+                names = hostnames.get(host_network) or []
+                shortnames = [n.split(".%s." % host_network)[0].lower()
+                              for n in names]
+                ips = role_net_ip_map[role][host_network]
+
+                for idx, name in enumerate(shortnames):
+                    if role == "Compute" or role == "Controller":
+                        agent_hosts[name] = {
+                            'ansible_become': True,
+                            'ansible_host': ips[idx],
+                            'ansible_user': configs.ansible_ssh_user}
+
+                    if role == "Controller":
+                        analyzer_hosts[name] = {
+                            'ansible_become': True,
+                            'ansible_host': ips[idx],
+                            'ansible_user': configs.ansible_ssh_user,
+                            'skydive_listen_ip': ips[idx]}
+
+        return analyzer_hosts, agent_hosts
+except:
+    class HeatClient:
+        def __init__(self, version, session=None):
+            pass
+
+    def get_auth_session(auth_url, username, project_name, password,
+                         auth_token, cacert):
+        pass
+
+    class TripleoInventory:
+
+        class StackOutputs:
+            def __init__(self, plan_name="overcloud"):
+                self.plan_name = plan_name
+
+            def get(self, key, default=None):
+                out = subprocess.Popen(['openstack', 'stack', 'output', 'show',
+                                        self.plan_name, key,
+                                        '-c', 'output_value', '-f', 'value'],
+                                       stdout=subprocess.PIPE).stdout.read()
+                out = out.rstrip()
+
+                if not out:
+                    return default
+
+                try:
+                    return eval(out)
+                except Exception as e:
+                    return out
+
+        def __init__(self, plan_name="overcloud", **kwargs):
+            self.plan_name = plan_name
+
+            self.stack_outputs = self.StackOutputs(plan_name)
+
+        def get_overcloud_environment(self):
+            out = subprocess.Popen(['openstack', 'stack', 'environment',
+                                    'show', self.plan_name],
+                                   stdout=subprocess.PIPE).stdout.read()
+            return yaml.load(out)
+
+    def get_roles(configs, inventory, host_network):
+        out = subprocess.Popen(['openstack', 'server', 'list', '-c', 'Name',
+                                '-c', 'Networks', '-f', 'yaml'],
+                               stdout=subprocess.PIPE).stdout.read()
+        res = yaml.load(out)
+
+        analyzer_hosts = {}
+        agent_hosts = {}
+
+        for entry in res:
+            m = re.search(
+                'ctlplane=(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})',
+                entry["Networks"])
+            if not m:
+                continue
+            ip = m.group(1)
+
+            name = entry["Name"]
+
+            if name.startswith("compute") or name.startswith("controller"):
+                agent_hosts[name] = {
+                    'ansible_become': True,
+                    'ansible_host': ip,
+                    'ansible_user': configs.ansible_ssh_user}
+
+            if name.startswith("controller"):
+                analyzer_hosts[name] = {
+                    'ansible_become': True,
+                    'ansible_host': ip,
+                    'ansible_user': configs.ansible_ssh_user,
+                    'skydive_listen_ip': ip}
+
+        return analyzer_hosts, agent_hosts
 
 opts = [
     cfg.StrOpt('username', default=os.environ.get('OS_USERNAME')),
@@ -48,7 +156,7 @@ def parse_config():
 
     configs = cfg.ConfigOpts()
     configs.register_cli_opts(opts)
-    configs(prog='skydive-tripleo',
+    configs(prog='skydive-tripleo-inventory',
             default_config_files=default_config)
     if configs.auth_url is None:
         print('ERROR: auth-url not defined and OS_AUTH_URL environment '
@@ -75,9 +183,11 @@ def generate_inventory(configs, inventory, path, extra_vars=None,
         'skydive_docker_registry': docker_registry,
         'skydive_docker_image_tag': 'latest',
         'skydive_analyzer_docker_image': 'rhosp14/openstack-skydive-analyzer',
-        'skydive_analyzer_docker_command': '/usr/bin/skydive analyzer --conf /etc/skydive.yml',
+        'skydive_analyzer_docker_command':
+            '/usr/bin/skydive analyzer --conf /etc/skydive.yml',
         'skydive_agent_docker_image': 'rhosp14/openstack-skydive-agent',
-        'skydive_agent_docker_command': '/usr/bin/skydive agent --conf /etc/skydive.yml',
+        'skydive_agent_docker_command':
+            '/usr/bin/skydive agent --conf /etc/skydive.yml',
         'os_auth_url': '',
         'os_username': 'admin',
         'os_password': '',
@@ -98,16 +208,10 @@ def generate_inventory(configs, inventory, path, extra_vars=None,
     if admin_password:
         global_vars['os_password'] = admin_password
 
-    role_data = inventory.stack_outputs.get('RoleData')
-    if role_data:
-        controller = role_data.get('Controller')
-        settings = controller.get('merged_config_settings')
-        global_vars['skydive_os_auth_url'] = \
-            settings.get('neutron::keystone::authtoken::auth_url') + "/v3"
-
-    role_net_ip_map = inventory.stack_outputs.get('RoleNetIpMap', {})
-    role_net_hostname_map = inventory.stack_outputs.get(
-        'RoleNetHostnameMap', {})
+    endpoint_map = inventory.stack_outputs.get('EndpointMap')
+    if endpoint_map:
+        internal = endpoint_map.get('KeystoneInternal')
+        global_vars['skydive_os_auth_url'] = internal.get('uri')
 
     ret = {
         'analyzers': {
@@ -120,35 +224,8 @@ def generate_inventory(configs, inventory, path, extra_vars=None,
         }
     }
 
-    analyzer_hosts = {}
-    agent_hosts = {}
-
-    for role, hostnames in role_net_hostname_map.items():
-        if hostnames:
-
-            names = hostnames.get(host_network) or []
-            shortnames = [n.split(".%s." % host_network)[0].lower()
-                          for n in names]
-            ips = role_net_ip_map[role][host_network]
-
-            for idx, name in enumerate(shortnames):
-                if role == "Compute" or role == "Controller":
-                    agent_hosts[name] = {}
-                    agent_hosts[name].update({
-                        'ansible_become': True,
-                        'ansible_host': ips[idx],
-                        'ansible_user': configs.ansible_ssh_user})
-
-                if role == "Controller":
-                    analyzer_hosts[name] = {}
-                    analyzer_hosts[name].update({
-                        'ansible_become': True,
-                        'ansible_host': ips[idx],
-                        'ansible_user': configs.ansible_ssh_user,
-                        'skydive_listen_ip': ips[idx]})
-
-    ret['analyzers']['hosts'] = analyzer_hosts
-    ret['agents']['hosts'] = agent_hosts
+    ret['analyzers']['hosts'], ret['agents']['hosts'] = get_roles(
+        configs, inventory, host_network)
 
     if extra_vars:
         ret['analyzers']['vars'].update(extra_vars)
@@ -175,7 +252,7 @@ def main():
                                configs.password,
                                configs.auth_token,
                                configs.cacert)
-    hclient = heat_client.Client('1', session=session)
+    hclient = HeatClient('1', session=session)
     inventory = TripleoInventory(
         session=session,
         hclient=hclient,
