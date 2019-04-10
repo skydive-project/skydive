@@ -205,6 +205,12 @@ agent:
       # - runc
       # - vpp
 
+    docker:
+      # url: unix:///var/run/docker.sock
+      netns:
+        # allow to specify where the docker probe is watching network namespaces
+        # run_path: /var/run/docker/netns
+
     netlink:
       # delay in seconds between two metric updates
       # metrics_update: 30
@@ -323,9 +329,6 @@ ovs:
     address:
       # Map translating bridge names into URL for remote connection
       # - bridge: ssl:xxx.yyy.zzz.ttt:port
-
-docker:
-  # url: unix:///var/run/docker.sock
 
 netns:
   # allow to specify where the netns probe is watching network namespace
