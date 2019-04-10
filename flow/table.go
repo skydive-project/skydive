@@ -106,6 +106,13 @@ type Operation struct {
 	Type OperationType
 }
 
+func updateTCPFlagTime(prevFlagTime int64, currFlagTime int64) int64 {
+	if prevFlagTime != 0 {
+		return prevFlagTime
+	}
+	return currFlagTime
+}
+
 // NewTable creates a new flow table
 func NewTable(updateHandler *Handler, expireHandler *Handler, nodeTID string, opts ...TableOpts) *Table {
 	appTimeout := make(map[string]int64)
@@ -412,15 +419,22 @@ func (ft *Table) processFlowOP(op *Operation) {
 			return
 		}
 
-		// NOTE(safchain) keep it simple for now. Need to add TCPMetric and some
-		// other metrics.
 		fl.Metric.ABBytes += op.Flow.Metric.ABBytes
 		fl.Metric.BABytes += op.Flow.Metric.BABytes
 		fl.Metric.ABPackets += op.Flow.Metric.ABPackets
 		fl.Metric.BAPackets += op.Flow.Metric.BAPackets
 
 		fl.Last = op.Flow.Last
-
+		if fl.Transport != nil && fl.Transport.Protocol == FlowProtocol_TCP && fl.TCPMetric != nil {
+			fl.TCPMetric = &TCPMetric{
+				ABSynStart: updateTCPFlagTime(fl.TCPMetric.ABSynStart, op.Flow.TCPMetric.ABSynStart),
+				BASynStart: updateTCPFlagTime(fl.TCPMetric.BASynStart, op.Flow.TCPMetric.BASynStart),
+				ABFinStart: updateTCPFlagTime(fl.TCPMetric.ABFinStart, op.Flow.TCPMetric.ABFinStart),
+				BAFinStart: updateTCPFlagTime(fl.TCPMetric.BAFinStart, op.Flow.TCPMetric.BAFinStart),
+				ABRstStart: updateTCPFlagTime(fl.TCPMetric.ABRstStart, op.Flow.TCPMetric.ABRstStart),
+				BARstStart: updateTCPFlagTime(fl.TCPMetric.BARstStart, op.Flow.TCPMetric.BARstStart),
+			}
+		}
 		if fl.RTT == 0 && fl.Metric.ABPackets > 0 && fl.Metric.BAPackets > 0 {
 			fl.RTT = fl.Last - fl.Start
 		}
