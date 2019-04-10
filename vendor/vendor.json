@@ -1825,6 +1825,12 @@
 			"revisionTime": "2016-08-11T00:15:26Z"
 		},
 		{
+			"checksumSHA1": "aaUR0FaTkm9HdCovPv3tecD71/s=",
+			"path": "github.com/kballard/go-shellquote",
+			"revision": "95032a82bc518f77982ea72343cc1ade730072f0",
+			"revisionTime": "2018-04-28T03:00:07Z"
+		},
+		{
 			"checksumSHA1": "C7yvER9JhLMqv404MVb+PILiGVw=",
 			"path": "github.com/kiali/kiali/config",
 			"revision": "f86edc2d20df8a3d9c3f239b7fa40d06e9f460d2",

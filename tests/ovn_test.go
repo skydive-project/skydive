@@ -57,7 +57,7 @@ func TestOVNLpAdd(t *testing.T) {
 		},
 
 		tearDownCmds: []Cmd{
-			{"ovn-nbctl lsp-del ls-test lsp-test", false},
+			{"ovn-nbctl lsp-del lsp-test", false},
 			{"ovn-nbctl ls-del ls-test", false},
 		},
 
