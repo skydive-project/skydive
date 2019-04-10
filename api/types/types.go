@@ -161,6 +161,7 @@ type PacketInjection struct {
 	IncrementPayload int64 `yaml:"IncrementPayload"`
 	StartTime        time.Time
 	Pcap             []byte `yaml:"Pcap"`
+	TTL              uint8  `yaml:"TTL"`
 }
 
 // Validate verifies the packet injection type is supported

@@ -21,9 +21,9 @@ class PacketInjection(object):
     """
 
     def __init__(self, uuid="", src="", dst="", srcip="", dstip="", srcmac="",
-                 dstmac="", srcport="", dstport="", type="", payload="",
-                 trackingid="", icmpid="", count="", interval="",
-                 increment="", starttime=""):
+                 dstmac="", srcport=0, dstport=0, type="icmp4", payload="",
+                 trackingid="", icmpid=0, count=1, interval=0,
+                 increment=False, starttime="", ttl=64):
         self.uuid = uuid
         self.src = src
         self.dst = dst
@@ -41,6 +41,7 @@ class PacketInjection(object):
         self.interval = interval
         self.increment = increment
         self.starttime = starttime
+        self.ttl = ttl
 
     def repr_json(self):
         obj = {}
@@ -77,6 +78,8 @@ class PacketInjection(object):
             obj["Interval"] = self.interval
         if self.increment:
             obj["Increment"] = self.increment
+        if self.ttl:
+            obj["TTL"] = self.ttl
         return obj
 
     @classmethod
@@ -96,4 +99,5 @@ class PacketInjection(object):
                     icmpid=obj.get("ICMPID"),
                     count=obj.get("Count"),
                     interval=obj.get("Interval"),
-                    increment=obj.get("Increment"))
+                    increment=obj.get("Increment"),
+                    ttl=obj.get("TTL"))
