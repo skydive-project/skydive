@@ -37,7 +37,7 @@ if DEVMODE then
       "strings": ["dog", "cat", "frog"]
     }
   }
-  $skydive_extra_config["agent.topology.probes"] = "netlink netns ovsdb docker lldp runc socketinfo"
+  $skydive_extra_config["agent.topology.probes"] = "netlink netns ovsdb docker lldp runc socketinfo lxd"
   $skydive_extra_config["agent.topology.metrics_update"] = "5"
   $skydive_extra_config["analyzer.topology.probes"] = "ovn"
   $skydive_extra_config["analyzer.startup.capture_gremlin"] = "g.V().Has('Name','startup-vm2')"
