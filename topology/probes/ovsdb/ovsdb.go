@@ -551,11 +551,11 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 	}
 
 	if field, ok := row.New.Fields["statistics"]; ok && o.enableStats {
-		now := time.Now()
+		now := int64(common.UnixMillis(time.Now()))
 
 		statistics := field.(libovsdb.OvsMap)
 		currMetric := newInterfaceMetricsFromOVSDB(statistics)
-		currMetric.Last = int64(common.UnixMillis(now))
+		currMetric.Last = now
 
 		var prevMetric, lastUpdateMetric *topology.InterfaceMetric
 
@@ -569,7 +569,7 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 		// nothing changed since last update
 		if lastUpdateMetric != nil && !lastUpdateMetric.IsZero() {
 			lastUpdateMetric.Start = prevMetric.Last
-			lastUpdateMetric.Last = int64(common.UnixMillis(now))
+			lastUpdateMetric.Last = now
 
 			ovsMetadata.LastUpdateMetric = lastUpdateMetric
 		}
