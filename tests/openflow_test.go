@@ -14,12 +14,6 @@ type ruleCmd struct {
 	add  bool
 }
 
-func checkTest(t *testing.T) {
-	if noOFTests {
-		t.Skip("Don't run OpenFlows test as /usr/bin/ovs-ofctl didn't exist in agent process namespace")
-	}
-}
-
 func verify(c *CheckContext, bridge string, expected []int) error {
 	for i, e := range expected {
 		actions := fmt.Sprintf(`resubmit(;%d)`, i+1)
@@ -37,7 +31,6 @@ func verify(c *CheckContext, bridge string, expected []int) error {
 }
 
 func makeTest(t *testing.T, suffix string, rules []ruleCmd, expected []int) {
-	checkTest(t)
 	bridge := "br-of" + suffix
 	intf1 := "intf1-" + suffix
 	intf2 := "intf2-" + suffix
@@ -109,7 +102,6 @@ func TestSuperimposedOFRule(t *testing.T) {
 }
 
 func TestDelRuleWithBridgeOFRule(t *testing.T) {
-	checkTest(t)
 	setupCmds := []Cmd{
 		{"ovs-vsctl --if-exists del-br br-of4", true},
 		{"ovs-vsctl add-br br-of4", true},
@@ -172,7 +164,6 @@ func verifyGroup(c *CheckContext, bridge string, expected int) error {
 }
 
 func TestAddOFGroup(t *testing.T) {
-	checkTest(t)
 	setupCmds := []Cmd{
 		{"ovs-vsctl --if-exists del-br br-of6", true},
 		{"ovs-vsctl add-br br-of6", true},
@@ -196,7 +187,6 @@ func TestAddOFGroup(t *testing.T) {
 }
 
 func TestModOFGroup(t *testing.T) {
-	checkTest(t)
 	setupCmds := []Cmd{
 		{"ovs-vsctl --if-exists del-br br-of7", true},
 		{"ovs-vsctl add-br br-of7", true},
@@ -221,7 +211,6 @@ func TestModOFGroup(t *testing.T) {
 }
 
 func TestDelOFGroup(t *testing.T) {
-	checkTest(t)
 	setupCmds := []Cmd{
 		{"ovs-vsctl --if-exists del-br br-of4", true},
 		{"ovs-vsctl add-br br-of8", true},

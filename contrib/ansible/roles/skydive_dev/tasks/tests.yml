@@ -1,0 +1,49 @@
+---
+- include_tasks: docker-ce.yml
+  tags:
+    - vagrant
+
+- package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - openvswitch
+    - screen
+    - iperf
+    - libselinux-python
+    - bridge-utils
+    - rpmlint
+    - libvirt-client
+    - ansible
+    - kubernetes-client
+    - tcpdump
+    - socat
+    - python2-virtualenv
+    - selinux-policy-devel
+    - policycoreutils-devel
+    - mock
+    - podman
+    - bc
+
+- package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - perl-Graph-Easy
+    - python3-virtualenv
+    - inotify-tools
+    - jq
+    - aria2
+  when: ansible_distribution == "Fedora"
+
+- service:
+    name: openvswitch
+    state: started
+    enabled: yes
+
+- include_tasks: lxd.yml
+  when: ansible_architecture == "x86_64"
+
+- include_tasks: ovn.yml
+
+- include_tasks: vpp.yml

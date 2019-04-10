@@ -211,14 +211,12 @@ type Test struct {
 }
 
 var (
-	agentTestsOnly    bool
 	agentProbes       string
 	analyzerListen    string
 	analyzerProbes    string
 	etcdServer        string
 	flowBackend       string
 	graphOutputFormat string
-	noOFTests         bool
 	standalone        bool
 	topologyBackend   string
 )
@@ -698,7 +696,7 @@ func RunTest(t *testing.T, test *Test) {
 
 	execCmds(t, test.tearDownCmds...)
 
-	if test.mode == Replay && agentTestsOnly == false {
+	if test.mode == Replay {
 		if topologyBackend != "memory" {
 			for i, check := range test.checks {
 				checkContext := test.checkContexts[i]
@@ -810,8 +808,6 @@ func runStandalone() {
 
 func init() {
 	flag.BoolVar(&standalone, "standalone", false, "Start an analyzer and an agent")
-	flag.BoolVar(&agentTestsOnly, "agenttestsonly", false, "run agent test only")
-	flag.BoolVar(&noOFTests, "nooftests", false, "dont't run OpenFlow tests")
 	flag.StringVar(&etcdServer, "etcd.server", "", "Etcd server")
 	flag.StringVar(&topologyBackend, "analyzer.topology.backend", "memory", "Specify the graph storage backend used")
 	flag.StringVar(&graphOutputFormat, "graph.output", "", "Graph output format (json, dot or ascii)")

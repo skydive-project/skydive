@@ -1,0 +1,14 @@
+- package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+     - ffmpeg
+     - gifsicle
+     - libvirt
+     - vagrant-libvirt
+     - virt-what
+     - ansible
+     - dnf-utils
+     - manifest-tool
+
+- include_tasks: virtualbox.yml

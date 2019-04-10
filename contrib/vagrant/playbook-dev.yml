@@ -1,0 +1,16 @@
+---
+- name: Deploy dev role
+  hosts: all
+  become: yes
+  tasks:
+  - include_role:
+      name: skydive_dev
+      tasks_from: centos
+  - include_role:
+      name: skydive_dev
+      tasks_from: runtime
+  - include_role:
+      name: skydive_dev
+      tasks_from: tests
+    tags:
+    - skydive_functional_tests
