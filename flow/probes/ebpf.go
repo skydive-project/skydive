@@ -87,10 +87,7 @@ func kernFlowKey(kernFlow *C.struct_flow) string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
-func tcpFlagTime(prevFlagTime int64, currFlagTime C.__u64, startKTimeNs int64, start time.Time) int64 {
-	if prevFlagTime != 0 {
-		return prevFlagTime
-	}
+func tcpFlagTime(currFlagTime C.__u64, startKTimeNs int64, start time.Time) int64 {
 	if currFlagTime == 0 {
 		return 0
 	}
@@ -179,12 +176,12 @@ func (p *EBPFProbe) newFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow
 				B:        portB,
 			}
 			f.TCPMetric = &flow.TCPMetric{
-				ABSynStart: tcpFlagTime(0, kernFlow.transport_layer.ab_syn, startKTimeNs, start),
-				BASynStart: tcpFlagTime(0, kernFlow.transport_layer.ba_syn, startKTimeNs, start),
-				ABFinStart: tcpFlagTime(0, kernFlow.transport_layer.ab_fin, startKTimeNs, start),
-				BAFinStart: tcpFlagTime(0, kernFlow.transport_layer.ba_fin, startKTimeNs, start),
-				ABRstStart: tcpFlagTime(0, kernFlow.transport_layer.ab_rst, startKTimeNs, start),
-				BARstStart: tcpFlagTime(0, kernFlow.transport_layer.ba_rst, startKTimeNs, start),
+				ABSynStart: tcpFlagTime(kernFlow.transport_layer.ab_syn, startKTimeNs, start),
+				BASynStart: tcpFlagTime(kernFlow.transport_layer.ba_syn, startKTimeNs, start),
+				ABFinStart: tcpFlagTime(kernFlow.transport_layer.ab_fin, startKTimeNs, start),
+				BAFinStart: tcpFlagTime(kernFlow.transport_layer.ba_fin, startKTimeNs, start),
+				ABRstStart: tcpFlagTime(kernFlow.transport_layer.ab_rst, startKTimeNs, start),
+				BARstStart: tcpFlagTime(kernFlow.transport_layer.ba_rst, startKTimeNs, start),
 			}
 			p := gopacket.NewPacket(C.GoBytes(unsafe.Pointer(&kernFlow.payload[0]), C.PAYLOAD_LENGTH), layers.LayerTypeTCP, gopacket.DecodeOptions{})
 			if p.Layer(gopacket.LayerTypeDecodeFailure) == nil {
@@ -248,12 +245,12 @@ func (p *EBPFProbe) updateFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_f
 		switch protocol {
 		case syscall.IPPROTO_TCP:
 			f.TCPMetric = &flow.TCPMetric{
-				ABSynStart: tcpFlagTime(f.TCPMetric.ABSynStart, kernFlow.transport_layer.ab_syn, startKTimeNs, start),
-				BASynStart: tcpFlagTime(f.TCPMetric.BASynStart, kernFlow.transport_layer.ba_syn, startKTimeNs, start),
-				ABFinStart: tcpFlagTime(f.TCPMetric.ABFinStart, kernFlow.transport_layer.ab_fin, startKTimeNs, start),
-				BAFinStart: tcpFlagTime(f.TCPMetric.BAFinStart, kernFlow.transport_layer.ba_fin, startKTimeNs, start),
-				ABRstStart: tcpFlagTime(f.TCPMetric.ABRstStart, kernFlow.transport_layer.ab_rst, startKTimeNs, start),
-				BARstStart: tcpFlagTime(f.TCPMetric.BARstStart, kernFlow.transport_layer.ba_rst, startKTimeNs, start),
+				ABSynStart: tcpFlagTime(kernFlow.transport_layer.ab_syn, startKTimeNs, start),
+				BASynStart: tcpFlagTime(kernFlow.transport_layer.ba_syn, startKTimeNs, start),
+				ABFinStart: tcpFlagTime(kernFlow.transport_layer.ab_fin, startKTimeNs, start),
+				BAFinStart: tcpFlagTime(kernFlow.transport_layer.ba_fin, startKTimeNs, start),
+				ABRstStart: tcpFlagTime(kernFlow.transport_layer.ab_rst, startKTimeNs, start),
+				BARstStart: tcpFlagTime(kernFlow.transport_layer.ba_rst, startKTimeNs, start),
 			}
 		}
 	}
