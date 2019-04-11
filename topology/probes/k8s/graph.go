@@ -109,18 +109,21 @@ func newObjectIndexerFromFilter(g *graph.Graph, h graph.ListenerHandler, filter 
 	return graph.NewMetadataIndexer(g, h, m, indexes...)
 }
 
-func newResourceLinker(g *graph.Graph, subprobes map[string]Subprobe, srcType string, srcAttrs []string, dstType string, dstAttrs []string, edgeMetadata graph.Metadata) probe.Probe {
-	srcCache := subprobes[srcType]
-	dstCache := subprobes[dstType]
-	if srcCache == nil || dstCache == nil {
+func newResourceIndexer(g *graph.Graph, manager, ty string, attrs []string) *graph.MetadataIndexer {
+	cache := GetSubprobe(manager, ty)
+	if cache == nil {
 		return nil
 	}
+	metadata := graph.Metadata{"Manager": manager, "Type": ty}
+	indexer := graph.NewMetadataIndexer(g, cache, metadata, attrs...)
+	indexer.Start()
+	return indexer
+}
 
-	srcIndexer := graph.NewMetadataIndexer(g, srcCache, graph.Metadata{"Type": srcType}, srcAttrs...)
-	srcIndexer.Start()
-
-	dstIndexer := graph.NewMetadataIndexer(g, dstCache, graph.Metadata{"Type": dstType}, dstAttrs...)
-	dstIndexer.Start()
+func newResourceLinker(g *graph.Graph, srcIndexer, dstIndexer *graph.MetadataIndexer, edgeMetadata graph.Metadata) probe.Probe {
+	if srcIndexer == nil || dstIndexer == nil {
+		return nil
+	}
 
 	ml := graph.NewMetadataIndexerLinker(g, srcIndexer, dstIndexer, edgeMetadata)
 
