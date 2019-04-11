@@ -39,6 +39,8 @@ type Probe struct {
 	wg          sync.WaitGroup
 	socketfile  string
 	protocol    string
+	server      string
+	port        int
 	ovndbapi    goovn.OVNDBApi
 	switchPorts map[string]*goovn.LogicalSwitch
 	eventChan   chan ovnEvent
@@ -425,7 +427,7 @@ func (p *Probe) Start() {
 
 	var err error
 	logging.GetLogger().Debugf("Trying to get an OVN DB api")
-	p.ovndbapi, err = goovn.GetInstance(p.socketfile, p.protocol, "", 0, p)
+	p.ovndbapi, err = goovn.GetInstance(p.socketfile, p.protocol, p.server, p.port, p)
 	if err != nil {
 		logging.GetLogger().Error(err)
 		return
@@ -486,14 +488,19 @@ func (p *Probe) Stop() {
 
 // NewProbe creates a new graph OVS database probe
 func NewProbe(g *graph.Graph, address string) (*Probe, error) {
-	var protocol, socketfile string
+	var server, protocol, socketfile string
+	var port int
 	switch {
 	case strings.HasPrefix(address, "unix://"):
 		protocol = goovn.UNIX
 		socketfile = address[7:]
 	case strings.HasPrefix(address, "tcp://"):
 		protocol = goovn.TCP
-		socketfile = address[6:]
+		sa, err := common.ServiceAddressFromString(address[6:])
+		if err != nil {
+			return nil, err
+		}
+		server, port = sa.Addr, sa.Port
 	default:
 		return nil, fmt.Errorf("unsupported protocol %s", protocol)
 	}
@@ -502,6 +509,8 @@ func NewProbe(g *graph.Graph, address string) (*Probe, error) {
 		graph:      g,
 		protocol:   protocol,
 		socketfile: socketfile,
+		server:     server,
+		port:       port,
 		eventChan:  make(chan ovnEvent, 50),
 		aclIndexer: graph.NewIndexer(g, nil, uuidHasher, false),
 		lsIndexer:  graph.NewIndexer(g, nil, uuidHasher, false),
