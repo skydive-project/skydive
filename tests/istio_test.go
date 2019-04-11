@@ -104,6 +104,32 @@ func TestIstioDestinationRuleServiceScenario(t *testing.T) {
 	)
 }
 
+func TestIstioDestinationRuleServiceEntryScenario(t *testing.T) {
+	file := "destinationrule-serviceentry"
+	name := objName + "-" + file
+	testRunner(
+		t,
+		setupFromConfigFile(istio.Manager, file),
+		tearDownFromConfigFile(istio.Manager, file),
+		[]CheckFunction{
+			func(c *CheckContext) error {
+				destinationrule, err := checkNodeCreation(t, c, istio.Manager, "destinationrule", name)
+				if err != nil {
+					return err
+				}
+				serviceentry, err := checkNodeCreation(t, c, istio.Manager, "serviceentry", name)
+				if err != nil {
+					return err
+				}
+				if err = checkEdge(t, c, destinationrule, serviceentry, "destinationrule"); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+	)
+}
+
 func TestIstioGatewayVirtualServiceScenario(t *testing.T) {
 	file := "gateway-virtualservice"
 	name := objName + "-" + file

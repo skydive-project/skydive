@@ -57,6 +57,28 @@ func destinationRuleServiceAreLinked(a, b interface{}) bool {
 	return k8s.MatchNamespace(dr, service) && dr.Spec["host"] == service.Labels["app"]
 }
 
+func destinationRuleServiceEntryAreLinked(a, b interface{}) bool {
+	dr := a.(*kiali.DestinationRule)
+	se := b.(*kiali.ServiceEntry)
+	if !k8s.MatchNamespace(dr, se) {
+		return false
+	}
+	if dr.Spec["host"] == nil || se.Spec["hosts"] == nil {
+		return false
+	}
+	seHosts := se.Spec["hosts"].([]interface{})
+	for _, seHost := range seHosts {
+		if seHost == dr.Spec["host"] {
+			return true
+		}
+	}
+	return false
+}
+
 func newDestinationRuleServiceLinker(g *graph.Graph) probe.Probe {
 	return k8s.NewABLinker(g, Manager, "destinationrule", k8s.Manager, "service", destinationRuleServiceAreLinked)
+}
+
+func newDestinationRuleServiceEntryLinker(g *graph.Graph) probe.Probe {
+	return k8s.NewABLinker(g, Manager, "destinationrule", Manager, "serviceentry", destinationRuleServiceEntryAreLinked)
 }
