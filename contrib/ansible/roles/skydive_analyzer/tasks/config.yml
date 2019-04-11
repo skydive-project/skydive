@@ -48,7 +48,7 @@
   yedit:
     src: "{{ skydive_config_file }}"
     key: "etcd.listen"
-    value: "{{ hostvars[groups['analyzers'][0]].skydive_analyzer_ip }}:{{ skydive_etcd_port }}"
+    value: "{{ skydive_analyzer_ip }}:{{ skydive_etcd_port }}"
   when: skydive_deployment_mode != "container"
 
 - name: Setup Etcd embedded server name
