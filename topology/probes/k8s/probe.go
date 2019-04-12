@@ -81,6 +81,7 @@ type Probe struct {
 	manager   string
 	subprobes map[string]Subprobe
 	linkers   []probe.Probe
+	verifiers []probe.Probe
 }
 
 // Subprobe describes a probe for a specific Kubernetes resource
@@ -110,6 +111,10 @@ func (p *Probe) Start() {
 	for _, subprobe := range p.subprobes {
 		subprobe.Start()
 	}
+
+	for _, verifier := range p.verifiers {
+		verifier.Start()
+	}
 }
 
 // Stop k8s probe
@@ -120,6 +125,10 @@ func (p *Probe) Stop() {
 
 	for _, subprobe := range p.subprobes {
 		subprobe.Stop()
+	}
+
+	for _, verifier := range p.verifiers {
+		verifier.Stop()
 	}
 }
 
@@ -138,7 +147,7 @@ func (p *Probe) AppendNamespaceLinkers(types ...string) {
 }
 
 // NewProbe creates the probe for tracking k8s events
-func NewProbe(g *graph.Graph, manager string, subprobes map[string]Subprobe, linkers []probe.Probe) *Probe {
+func NewProbe(g *graph.Graph, manager string, subprobes map[string]Subprobe, linkers []probe.Probe, verifiers []probe.Probe) *Probe {
 	names := []string{}
 	for k := range subprobes {
 		names = append(names, k)
@@ -149,6 +158,7 @@ func NewProbe(g *graph.Graph, manager string, subprobes map[string]Subprobe, lin
 		manager:   manager,
 		subprobes: subprobes,
 		linkers:   linkers,
+		verifiers: verifiers,
 	}
 }
 
