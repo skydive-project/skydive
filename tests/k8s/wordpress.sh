@@ -19,10 +19,31 @@ stop() {
         delete pvc -l app=wordpress
 }
 
-start() {
-        local password=abc123
+secret_set() {
+        local password=$1
+        : ${password:=abc123}
+        echo "secret/mysql-pass password: $password"
+        kubectl delete secret mysql-pass
         kubectl create secret generic mysql-pass \
                 --from-literal="password=$password"
+        kubectl label secret mysql-pass app=wordpress
+}
+
+secret_get_pod() {
+        local tier=$1
+        local var=$2
+        local pod=$(kubectl get pods -l=app=wordpress,tier=$1 -o jsonpath='{.items[0].metadata.name}')
+        local password=$(kubectl exec -it $pod -- sh -c "echo \$$var")
+        echo "pod/$pod password: $password"
+}
+
+secret_get() {
+        secret_get_pod frontend WORDPRESS_DB_PASSWORD
+        secret_get_pod mysql MYSQL_ROOT_PASSWORD
+}
+
+start() {
+        secret
         apply -f $SRC/mysql-deployment.yaml
         apply -f $SRC/wordpress-deployment.yaml
 }
@@ -48,11 +69,17 @@ case "$1" in
         status)
                 status
                 ;;
+        secret-set)
+                secret_set $2
+                ;;
+        secret-get)
+                secret_get
+                ;;
         url)
                 url
                 ;;
         *)
-                echo "$0 [stop|start|status|url|help]"
+                echo "$0 [stop|start|status|secret-get|secret-set|url|help]"
                 exit 1
                 ;;
 esac

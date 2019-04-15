@@ -37,6 +37,7 @@ func (h *configMapHandler) Dump(obj interface{}) string {
 func (h *configMapHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	cm := obj.(*v1.ConfigMap)
 	m := NewMetadataFields(&cm.ObjectMeta)
+	m.SetField("Data", mapStringToList(cm.Data))
 	return graph.Identifier(cm.GetUID()), NewMetadata(Manager, "configmap", m, cm, cm.Name)
 }
 

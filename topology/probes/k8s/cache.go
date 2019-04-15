@@ -262,3 +262,19 @@ func NewResourceCache(restClient rest.Interface, objType runtime.Object, resourc
 	c.KubeCache = RegisterKubeCache(restClient, objType, resources, c)
 	return c
 }
+
+func mapStringToList(data map[string]string) []string {
+	newData := []string{}
+	for key := range data {
+		newData = append(newData, key)
+	}
+	return newData
+}
+
+func mapBytesToList(data map[string][]byte) []string {
+	newData := []string{}
+	for key := range data {
+		newData = append(newData, key)
+	}
+	return newData
+}
