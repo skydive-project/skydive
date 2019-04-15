@@ -542,7 +542,7 @@ func NewProbe(g *graph.Graph, address string) (*Probe, error) {
 	lspIndexer := graph.NewMetadataIndexer(g, probe.lspIndexer, nil, "Options.router-port")
 	lspIndexer.Start()
 
-	lrpIndexer := graph.NewMetadataIndexer(g, probe.lrpIndexer, nil, "Name")
+	lrpIndexer := graph.NewMetadataIndexer(g, probe.lrpIndexer, graph.Metadata{"Type": "logical_port"}, "Name")
 	lrpIndexer.Start()
 
 	probe.srLinker = graph.NewMetadataIndexerLinker(g, lspIndexer, lrpIndexer, graph.Metadata{"RelationType": "layer2"})
@@ -553,7 +553,7 @@ func NewProbe(g *graph.Graph, address string) (*Probe, error) {
 	ifaceIndexer := graph.NewMetadataIndexer(g, g, nil, "ExtID.iface-id")
 	ifaceIndexer.Start()
 
-	lspIndexer = graph.NewMetadataIndexer(g, probe.lspIndexer, nil, "Name")
+	lspIndexer = graph.NewMetadataIndexer(g, probe.lspIndexer, graph.Metadata{"Type": "logical_port"}, "Name")
 	lspIndexer.Start()
 
 	probe.ifaceLinker = graph.NewMetadataIndexerLinker(g, ifaceIndexer, lspIndexer, graph.Metadata{"RelationType": "mapping"})
