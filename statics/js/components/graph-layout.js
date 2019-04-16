@@ -94,7 +94,7 @@ var LinkLabelLatency = Vue.extend({
 
     updateLatency: function(link, a, b) {
       link.latencyTimestamp = Math.max(a.Last, b.Last);
-      link.latency = Math.abs(a.RTT - b.RTT) / 1000000;
+      link.latency = Math.abs(a.Metric.RTT - b.Metric.RTT) / 1000000;
     },
 
     flowQuery: function(nodeTID, trackingID, limit) {
@@ -102,7 +102,7 @@ var LinkLabelLatency = Vue.extend({
       if (typeof trackingID !== 'undefined') {
         has += `"TrackingID", ${trackingID}`;
       }
-      has += `"RTT", NE(0)`;
+      has += `"Metric.RTT", NE(0)`;
       let query = `G.Flows().Has(${has}).Sort().Limit(${limit})`;
       return this.$topologyQuery(query)
     },

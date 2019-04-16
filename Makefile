@@ -241,6 +241,8 @@ flow/flow.pb.go: flow/flow.proto filters/filters.proto
 		-e 's/ICMPType\(.*\),omitempty\(.*\)/ICMPType\1\2/' \
 		-e 's/int64\(.*\),omitempty\(.*\)/int64\1\2/' \
 		-i $@
+	# add omitempty to RTT as it is not always filled
+	sed -e 's/json:"RTT"/json:"RTT,omitempty"/' -i $@
 	# do not export LastRawPackets used internally
 	sed -e 's/json:"LastRawPackets,omitempty"/json:"-"/g' -i $@
 	# add flowState to flow generated struct

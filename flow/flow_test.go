@@ -56,6 +56,7 @@ func TestFlowMetric(t *testing.T) {
 		ABBytes:   344,
 		BAPackets: 3,
 		BABytes:   206,
+		RTT:       33000,
 		Start:     m.Start,
 		Last:      m.Last,
 	}
@@ -85,6 +86,7 @@ func TestFlowTruncatedMetric(t *testing.T) {
 		ABBytes:   1066,
 		BAPackets: 1,
 		BABytes:   1066,
+		RTT:       13104000,
 		Start:     m.Start,
 		Last:      m.Last,
 	}
@@ -106,8 +108,8 @@ func TestFlowSimpleIPv4(t *testing.T) {
 	if flows[0].LayersPath != "Ethernet/IPv4/TCP" {
 		t.Errorf("Flow LayersPath must be Ethernet/IPv4/TCP got : %s", flows[0].LayersPath)
 	}
-	if flows[0].RTT != 33000 {
-		t.Errorf("Flow RTT must be 33000 got : %v", flows[0].RTT)
+	if flows[0].Metric.RTT != 33000 {
+		t.Errorf("Flow RTT must be 33000 got : %v", flows[0].Metric.RTT)
 	}
 }
 
@@ -119,8 +121,8 @@ func TestFlowSimpleIPv6(t *testing.T) {
 	if flows[0].LayersPath != "Ethernet/IPv6/TCP" {
 		t.Errorf("Flow LayersPath must be Ethernet/IPv6/TCP got : %s", flows[0].LayersPath)
 	}
-	if flows[0].RTT != 28000 {
-		t.Errorf("Flow RTT must be 28000 got : %v", flows[0].RTT)
+	if flows[0].Metric.RTT != 28000 {
+		t.Errorf("Flow RTT must be 28000 got : %v", flows[0].Metric.RTT)
 	}
 }
 

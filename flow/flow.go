@@ -59,10 +59,9 @@ const (
 // flowState is used internally to track states within the flow table.
 // it is added to the generated Flow struct by Makefile
 type flowState struct {
-	lastMetric       *FlowMetric
-	link1stPacket    int64
-	network1stPacket int64
-	updateVersion    int64
+	lastMetric    *FlowMetric
+	rtt1stPacket  int64
+	updateVersion int64
 }
 
 // Packet describes one packet
@@ -578,6 +577,10 @@ func (f *Flow) Update(packet *Packet, opts Opts) {
 			f.updateMetricsWithNetworkLayer(packet, 0)
 		}
 	}
+
+	f.updateRTT(packet)
+
+	// depends on options
 	if f.TCPMetric != nil {
 		f.updateTCPMetrics(packet)
 	}
@@ -619,6 +622,52 @@ func getLinkLayerLength(packet *layers.Ethernet) int64 {
 	return 14 + int64(len(packet.Payload))
 }
 
+func (f *Flow) updateRTT(packet *Packet) {
+	icmpLayer := packet.Layer(layers.LayerTypeICMPv4)
+	if icmp, ok := icmpLayer.(*layers.ICMPv4); ok {
+		switch icmp.TypeCode.Type() {
+		case layers.ICMPv4TypeEchoRequest:
+			if f.XXX_state.rtt1stPacket == 0 {
+				f.XXX_state.rtt1stPacket = packet.GoPacket.Metadata().Timestamp.UnixNano()
+			}
+		case layers.ICMPv4TypeEchoReply:
+			if f.XXX_state.rtt1stPacket != 0 {
+				f.Metric.RTT = packet.GoPacket.Metadata().Timestamp.UnixNano() - f.XXX_state.rtt1stPacket
+				f.XXX_state.rtt1stPacket = 0
+			}
+		}
+
+		return
+	}
+
+	icmpLayer = packet.Layer(layers.LayerTypeICMPv6)
+	if icmp, ok := icmpLayer.(*layers.ICMPv6); ok {
+		switch icmp.TypeCode.Type() {
+		case layers.ICMPv6TypeEchoRequest:
+			if f.XXX_state.rtt1stPacket == 0 {
+				f.XXX_state.rtt1stPacket = packet.GoPacket.Metadata().Timestamp.UnixNano()
+			}
+		case layers.ICMPv6TypeEchoReply:
+			if f.XXX_state.rtt1stPacket != 0 {
+				f.Metric.RTT = packet.GoPacket.Metadata().Timestamp.UnixNano() - f.XXX_state.rtt1stPacket
+				f.XXX_state.rtt1stPacket = 0
+			}
+		}
+
+		return
+	}
+
+	tcpLayer := packet.Layer(layers.LayerTypeTCP)
+	if tcpPacket, ok := tcpLayer.(*layers.TCP); ok {
+		if tcpPacket.SYN && f.XXX_state.rtt1stPacket == 0 {
+			f.XXX_state.rtt1stPacket = packet.GoPacket.Metadata().Timestamp.UnixNano()
+		} else if f.XXX_state.rtt1stPacket != 0 && (tcpPacket.SYN && tcpPacket.ACK) || tcpPacket.RST {
+			f.Metric.RTT = packet.GoPacket.Metadata().Timestamp.UnixNano() - f.XXX_state.rtt1stPacket
+			f.XXX_state.rtt1stPacket = 0
+		}
+	}
+}
+
 func (f *Flow) updateMetricsWithLinkLayer(packet *Packet) bool {
 	ethernetPacket := getLinkLayer(packet)
 	if ethernetPacket == nil || f.Link == nil {
@@ -636,14 +685,6 @@ func (f *Flow) updateMetricsWithLinkLayer(packet *Packet) bool {
 	} else {
 		f.Metric.BAPackets++
 		f.Metric.BABytes += length
-	}
-
-	if f.XXX_state.link1stPacket == 0 {
-		f.XXX_state.link1stPacket = packet.GoPacket.Metadata().Timestamp.UnixNano()
-	} else {
-		if (f.RTT == 0) && (f.Link.A == ethernetPacket.DstMAC.String()) {
-			f.RTT = packet.GoPacket.Metadata().Timestamp.UnixNano() - f.XXX_state.link1stPacket
-		}
 	}
 
 	return true
@@ -715,14 +756,6 @@ func (f *Flow) updateMetricsWithNetworkLayer(packet *Packet, length int64) error
 			f.Metric.BABytes += length
 		}
 
-		// update RTT
-		if f.XXX_state.network1stPacket == 0 {
-			f.XXX_state.network1stPacket = packet.GoPacket.Metadata().Timestamp.UnixNano()
-		} else {
-			if (f.RTT == 0) && (f.Network.A == ipv4Packet.DstIP.String()) {
-				f.RTT = packet.GoPacket.Metadata().Timestamp.UnixNano() - f.XXX_state.network1stPacket
-			}
-		}
 		return nil
 	}
 	ipv6Layer := packet.Layer(layers.LayerTypeIPv6)
@@ -738,14 +771,6 @@ func (f *Flow) updateMetricsWithNetworkLayer(packet *Packet, length int64) error
 			f.Metric.BABytes += length
 		}
 
-		// update RTT
-		if f.XXX_state.network1stPacket == 0 {
-			f.XXX_state.network1stPacket = packet.GoPacket.Metadata().Timestamp.UnixNano()
-		} else {
-			if (f.RTT == 0) && (f.Network.A == ipv6Packet.DstIP.String()) {
-				f.RTT = packet.GoPacket.Metadata().Timestamp.UnixNano() - f.XXX_state.network1stPacket
-			}
-		}
 		return nil
 	}
 
@@ -758,6 +783,7 @@ func (f *Flow) updateTCPMetrics(packet *Packet) error {
 	if f.Network == nil || f.Transport == nil || f.Transport.Protocol != FlowProtocol_TCP {
 		return nil
 	}
+
 	var metadata *gopacket.PacketMetadata
 	if metadata = packet.GoPacket.Metadata(); metadata == nil {
 		return nil
@@ -803,16 +829,12 @@ func (f *Flow) updateTCPMetrics(packet *Packet) error {
 
 	switch {
 	case tcpPacket.SYN:
-		if f.Network.A == srcIP {
-			if f.TCPMetric.ABSynStart == 0 {
-				f.TCPMetric.ABSynStart = captureTime
-				f.TCPMetric.ABSynTTL = timeToLive
-			}
-		} else {
-			if f.TCPMetric.BASynStart == 0 {
-				f.TCPMetric.BASynStart = captureTime
-				f.TCPMetric.BASynTTL = timeToLive
-			}
+		if f.Network.A == srcIP && f.TCPMetric.ABSynStart == 0 {
+			f.TCPMetric.ABSynStart = captureTime
+			f.TCPMetric.ABSynTTL = timeToLive
+		} else if f.TCPMetric.BASynStart == 0 {
+			f.TCPMetric.BASynStart = captureTime
+			f.TCPMetric.BASynTTL = timeToLive
 		}
 	case tcpPacket.FIN:
 		if f.Network.A == srcIP {
@@ -849,8 +871,7 @@ func (f *Flow) newTransportLayer(packet *Packet, opts Opts) error {
 
 		if transportPacket.FIN {
 			f.FinishType = FlowFinishType_TCP_FIN
-		}
-		if transportPacket.RST {
+		} else if transportPacket.RST {
 			f.FinishType = FlowFinishType_TCP_RST
 		}
 	} else if layer := packet.Layer(layers.LayerTypeUDP); layer != nil {
@@ -1298,8 +1319,6 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 		return f.Last, nil
 	case "Start":
 		return f.Start, nil
-	case "RTT":
-		return f.RTT, nil
 	}
 
 	fields := strings.Split(field, ".")

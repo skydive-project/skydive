@@ -132,6 +132,11 @@ func (q QueryString) Count() QueryString {
 	return q.newQueryString("Count")
 }
 
+// Values append a Vaies() operation to query
+func (q QueryString) Values(key string) QueryString {
+	return q.newQueryString("Values", key)
+}
+
 // Dedup append a Dedup() operation to query
 func (q QueryString) Dedup() QueryString {
 	return q.newQueryString("Dedup")
