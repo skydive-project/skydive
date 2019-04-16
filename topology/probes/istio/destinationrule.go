@@ -34,7 +34,10 @@ type destinationRuleHandler struct {
 func (h *destinationRuleHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	dr := obj.(*kiali.DestinationRule)
 	m := k8s.NewMetadataFields(&dr.ObjectMeta)
-	return graph.Identifier(dr.GetUID()), k8s.NewMetadata(Manager, "destinationrule", m, dr, dr.Name)
+	metadata := k8s.NewMetadata(Manager, "destinationrule", m, dr, dr.Name)
+	metadata.SetField("TrafficPolicy", dr.Spec["trafficPolicy"] != nil)
+	metadata.SetField("HostName", dr.Spec["host"])
+	return graph.Identifier(dr.GetUID()), metadata
 }
 
 // Dump k8s resource
@@ -45,10 +48,6 @@ func (h *destinationRuleHandler) Dump(obj interface{}) string {
 
 func newDestinationRuleProbe(client interface{}, g *graph.Graph) k8s.Subprobe {
 	return k8s.NewResourceCache(client.(*kiali.IstioClient).GetIstioNetworkingApi(), &kiali.DestinationRule{}, "destinationrules", g, &destinationRuleHandler{})
-}
-
-type destinationRuleSpec struct {
-	App string `mapstructure:"host"`
 }
 
 func destinationRuleServiceAreLinked(a, b interface{}) bool {
