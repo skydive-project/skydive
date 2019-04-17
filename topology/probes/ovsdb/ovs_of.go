@@ -20,8 +20,10 @@ package ovsdb
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"sync"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
@@ -56,12 +58,16 @@ type bridgeOfProbe struct {
 
 // newbridgeOfProbe creates a probe and launch the active process
 func (o *OvsOfProbe) newbridgeOfProbe(host string, bridge string, uuid string, bridgeNode *graph.Node) (*bridgeOfProbe, error) {
-	ctx, cancel := context.WithCancel(o.ctx)
 	address, ok := o.Translation[bridge]
 	if !ok {
-		logging.GetLogger().Warningf("Could not find translation address for %s in %v", bridge, o.Translation)
-		address = fmt.Sprintf("unix:/var/run/openvswitch/%s.mgmt", bridge)
+		protocol, target, err := common.ParseAddr(config.GetString("ovs.ovsdb"))
+		if err != nil || protocol != "unix" {
+			return nil, fmt.Errorf("Could not find translation unix address for %s in %v", bridge, o.Translation)
+		}
+		address = "unix://" + filepath.Join(filepath.Dir(target), fmt.Sprintf("%s.mgmt", bridge))
 	}
+
+	ctx, cancel := context.WithCancel(o.ctx)
 
 	var prober BridgeOfProber
 	if o.useNative {

@@ -19,7 +19,6 @@ package ovn
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/skydive-project/skydive/common"
@@ -488,19 +487,23 @@ func (p *Probe) Stop() {
 
 // NewProbe creates a new graph OVS database probe
 func NewProbe(g *graph.Graph, address string) (*Probe, error) {
-	var server, protocol, socketfile string
-	var port int
-	switch {
-	case strings.HasPrefix(address, "unix://"):
-		protocol = goovn.UNIX
-		socketfile = address[7:]
-	case strings.HasPrefix(address, "tcp://"):
-		protocol = goovn.TCP
-		sa, err := common.ServiceAddressFromString(address[6:])
+	port, socketfile, server := 0, "", ""
+
+	protocol, target, err := common.ParseAddr(address)
+	if err != nil {
+		return nil, err
+	}
+
+	switch protocol {
+	case "unix":
+		protocol, socketfile = goovn.UNIX, target
+	case "tcp":
+
+		sa, err := common.ServiceAddressFromString(target)
 		if err != nil {
 			return nil, err
 		}
-		server, port = sa.Addr, sa.Port
+		protocol, server, port = goovn.TCP, sa.Addr, sa.Port
 	default:
 		return nil, fmt.Errorf("unsupported protocol %s", protocol)
 	}

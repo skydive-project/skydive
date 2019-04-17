@@ -20,15 +20,12 @@ package ovsdb
 import (
 	"context"
 	"errors"
-	"fmt"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/socketplane/libovsdb"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
@@ -696,30 +693,11 @@ func NewProbe(g *graph.Graph, n *graph.Node, p string, t string, enableStats boo
 }
 
 // NewProbeFromConfig creates a new probe based on configuration
-func NewProbeFromConfig(g *graph.Graph, n *graph.Node) *Probe {
-	address := config.GetString("ovs.ovsdb")
-
-	var protocol string
-	var target string
-
-	if strings.HasPrefix(address, "unix://") {
-		target = strings.TrimPrefix(address, "unix://")
-		protocol = "unix"
-	} else if strings.HasPrefix(address, "tcp://") {
-		target = strings.TrimPrefix(address, "tcp://")
-		protocol = "tcp"
-	} else {
-		// fallback to the original address format addr:port
-		sa, err := common.ServiceAddressFromString("ovs.ovsdb")
-		if err != nil {
-			logging.GetLogger().Errorf("Configuration error: %s", err.Error())
-			return nil
-		}
-
-		protocol = "tcp"
-		target = fmt.Sprintf("%s:%d", sa.Addr, sa.Port)
+func NewProbeFromConfig(g *graph.Graph, n *graph.Node, address string, enableStats bool) (*Probe, error) {
+	protocol, target, err := common.ParseAddr(address)
+	if err != nil {
+		return nil, err
 	}
-	enableStats := config.GetBool("ovs.enable_stats")
 
-	return NewProbe(g, n, protocol, target, enableStats)
+	return NewProbe(g, n, protocol, target, enableStats), nil
 }

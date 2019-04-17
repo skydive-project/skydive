@@ -24,13 +24,13 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/skydive-project/goloxi"
 	"github.com/skydive-project/goloxi/of13"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -67,11 +67,10 @@ type Listener interface {
 }
 
 func (c *Client) connect(addr string) (net.Conn, error) {
-	split := strings.SplitN(addr, ":", 2)
-	if len(split) < 2 {
-		return nil, fmt.Errorf("Invalid connection scheme: '%s'", addr)
+	scheme, addr, err := common.ParseAddr(addr)
+	if err != nil {
+		return nil, err
 	}
-	scheme, addr := split[0], split[1]
 
 	switch scheme {
 	case "tcp":
