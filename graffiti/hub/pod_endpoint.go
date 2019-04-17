@@ -109,7 +109,9 @@ func (t *TopologyAgentEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMess
 	case gws.EdgeUpdatedMsgType:
 		err = t.Graph.EdgeUpdated(obj.(*graph.Edge))
 	case gws.EdgeDeletedMsgType:
-		err = t.Graph.EdgeDeleted(obj.(*graph.Edge))
+		if err = t.Graph.EdgeDeleted(obj.(*graph.Edge)); err == graph.ErrEdgeNotFound {
+			return
+		}
 	case gws.EdgeAddedMsgType:
 		err = t.Graph.EdgeAdded(obj.(*graph.Edge))
 	}
