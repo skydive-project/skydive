@@ -65,6 +65,7 @@ func NewIstioProbe(g *graph.Graph) (*k8s.Probe, error) {
 	linkerHandlers := []k8s.LinkHandler{
 		newVirtualServicePodLinker,
 		newDestinationRuleServiceLinker,
+		newDestinationRuleServiceEntryLinker,
 		newGatewayVirtualServiceLinker,
 	}
 

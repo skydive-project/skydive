@@ -1,0 +1,20 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: skydive-test-destinationrule-serviceentry
+spec:
+  hosts:
+  - example.unix.local
+  location: MESH_EXTERNAL
+  ports:
+  - number: 80
+    name: http
+    protocol: HTTP
+  resolution: STATIC
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: skydive-test-destinationrule-serviceentry
+spec:
+  host: example.unix.local
