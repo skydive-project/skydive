@@ -69,7 +69,13 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 
 		switch t {
 		case "ovsdb":
-			probes[t] = ovsdb.NewProbeFromConfig(g, hostNode)
+			addr := config.GetString("ovs.ovsdb")
+			enableStats := config.GetBool("ovs.enable_stats")
+			ovsProbe, err := ovsdb.NewProbeFromConfig(g, hostNode, addr, enableStats)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to initialize OVS probe: %s", err)
+			}
+			probes[t] = ovsProbe
 		case "lxd":
 			lxdURL := config.GetConfig().GetString("lxd.url")
 			lxdProbe, err := lxd.NewProbe(nsProbe, lxdURL)

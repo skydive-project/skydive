@@ -28,6 +28,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -114,6 +115,9 @@ flow:
 ovs:
   oflow:
     enable: true
+    native: {{.OvsOflowNative}}
+    address:
+      br-test: tcp://127.0.0.1:16633
 
 storage:
   orientdb:
@@ -217,6 +221,7 @@ var (
 	etcdServer        string
 	flowBackend       string
 	graphOutputFormat string
+	ovsOflowNative    bool
 	standalone        bool
 	topologyBackend   string
 )
@@ -239,6 +244,7 @@ func initConfig(conf string, params ...helperParams) error {
 	params[0]["AnalyzerPort"] = sa.Port
 	params[0]["AgentAddr"] = sa.Addr
 	params[0]["AgentPort"] = sa.Port - 1
+	params[0]["OvsOflowNative"] = strconv.FormatBool(ovsOflowNative)
 
 	if testing.Verbose() {
 		params[0]["LogLevel"] = "DEBUG"
@@ -301,7 +307,7 @@ func execCmds(t *testing.T, cmds ...Cmd) (e error) {
 		}
 		if err != nil {
 			if cmd.Check {
-				t.Fatal("cmd : ("+cmd.Cmd+") returned ", err.Error(), string(stdouterr))
+				return fmt.Errorf("cmd : (%s) returned error %s with output %s", cmd.Cmd, err, string(stdouterr))
 			}
 			e = err
 		}
@@ -458,7 +464,11 @@ func RunTest(t *testing.T, test *Test) {
 	if test.preCleanup {
 		execCmds(t, test.tearDownCmds...)
 	}
-	execCmds(t, test.setupCmds...)
+
+	if err := execCmds(t, test.setupCmds...); err != nil {
+		execCmds(t, test.tearDownCmds...)
+		t.Fatal(err)
+	}
 
 	context := &TestContext{
 		gh:       gclient.NewGremlinQueryHelper(&shttp.AuthenticationOpts{}),
@@ -694,7 +704,9 @@ func RunTest(t *testing.T, test *Test) {
 		}
 	}
 
-	execCmds(t, test.tearDownCmds...)
+	if err := execCmds(t, test.tearDownCmds...); err != nil {
+		t.Fatal(err)
+	}
 
 	if test.mode == Replay {
 		if topologyBackend != "memory" {
@@ -815,6 +827,7 @@ func init() {
 	flag.StringVar(&analyzerListen, "analyzer.listen", "0.0.0.0:64500", "Specify the analyzer listen address")
 	flag.StringVar(&analyzerProbes, "analyzer.topology.probes", "", "Specify the analyzer probes to enable")
 	flag.StringVar(&agentProbes, "agent.topology.probes", "", "Specify the extra agent probes to enable")
+	flag.BoolVar(&ovsOflowNative, "ovs.oflow.native", false, "Use native OpenFlow protocol instead of ovs-ofctl")
 	flag.Parse()
 
 	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 100

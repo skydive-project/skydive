@@ -39,10 +39,10 @@ Vue.component('object-detail', {
         <div v-if="Array.isArray(value)">\
           <collapse :collapsed="collapsedState(path(key))">\
             <div slot="collapse-header" slot-scope="props" class="object-key">\
-              {{key}} :\
-              <span class="pull-right">\
-                <i class="glyphicon glyphicon-chevron-left rotate" :class="{\'down\': props.active}"></i>\
-              </span>\
+            {{key}} :\
+            <span class="pull-right">\
+              <i class="glyphicon glyphicon-chevron-left rotate" :class="{\'down\': props.active}"></i>\
+            </span>\
             </div>\
             <div slot="collapse-body">\
               <div v-for="(v, index) in value">\

@@ -148,7 +148,7 @@ func init() {
 
 	cfg.SetDefault("ovs.ovsdb", "unix:///var/run/openvswitch/db.sock")
 	cfg.SetDefault("ovs.oflow.enable", false)
-	cfg.SetDefault("ovs.oflow.openflow_versions", []string{"OpenFlow10"})
+	cfg.SetDefault("ovs.oflow.openflow_versions", []string{"OpenFlow10", "OpenFlow11", "OpenFlow12", "OpenFlow13", "OpenFlow14"})
 	cfg.SetDefault("ovs.enable_stats", false)
 
 	cfg.SetDefault("sflow.port_min", 6345)
