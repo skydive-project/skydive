@@ -1,0 +1,66 @@
+---
+- name: Set facts
+  set_fact:
+    minio_path: "/usr/local/bin/minio"
+    minio_client_path: "/usr/local/bin/minioc"
+    minio_data_path: "/opt/minio/data"
+    minio_systemd_service_path: "/etc/systemd/system/minio.service"
+    minio_service_confiugration_path: "/etc/default/minio"
+    minio_endpoint: "http://127.0.0.1:9000"
+    minio_cluster_name: "local"
+    minio_access_key: "user"
+    minio_secret_key: "password"
+    bucket_name: "bucket"
+
+- name: Download minio
+  get_url:
+    url: https://dl.minio.io/server/minio/release/linux-amd64/minio
+    dest: "{{ minio_path }}"
+    mode: 0775
+
+- name: Download minio client
+  get_url:
+    url: https://dl.minio.io/client/mc/release/linux-amd64/mc
+    dest: "{{ minio_client_path }}"
+    mode: 0775
+
+- name: Download minio systemd service
+  get_url:
+    url: https://raw.githubusercontent.com/minio/minio-service/master/linux-systemd/minio.service
+    dest: "{{ minio_systemd_service_path }}"
+
+- name: Remove user/group from minio service definition
+  replace:
+    path: "{{ minio_systemd_service_path }}"
+    regexp: 'User=minio-user\nGroup=minio-user\n'
+    replace: ''
+    backup: no
+
+- name: Create minio service configuration file
+  blockinfile:
+    path: "{{ minio_service_confiugration_path }}"
+    create: yes
+    block: |
+      # Volume to be used for Minio server.
+      MINIO_VOLUMES="{{ minio_data_path }}"
+      # Access Key of the server.
+      MINIO_ACCESS_KEY={{ minio_access_key }}
+      # Secret key of the server.
+      MINIO_SECRET_KEY={{ minio_secret_key }}
+
+- name: Create minio data directory
+  file:
+    path: "{{ minio_data_path }}"
+    state: directory
+    mode: 0755
+
+- name: Start minio service
+  systemd:
+    name: minio
+    state: started
+
+- name: Configure minio client
+  shell: "{{ minio_client_path }} config host add {{ minio_cluster_name }} {{ minio_endpoint }} {{ minio_access_key }} {{ minio_secret_key }} {{ minio_data_path }} --api S3v4"
+
+- name: Create bucket
+  shell: "{{ minio_client_path }} mb {{ minio_cluster_name }}/{{ bucket_name }}"

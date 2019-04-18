@@ -57,11 +57,19 @@ DROP DATABASE remote:localhost/Skydive root root plocal
 EOF
   /opt/orientdb/bin/console.sh /tmp/commands.txt
 
+  # clean objectstore
+  minioc rm -r --force local/bucket
+  minioc rb local/bucket
+
   systemctl restart openvswitch
   systemctl restart elasticsearch
   systemctl restart orientdb
+  systemctl restart minio
   systemctl restart lxd
   systemctl restart vpp
+
+  # create objectstorage bucket
+  minioc mb local/bucket
 
   for vm in dev_dev vagrant_analyzer1 vagrant_agent1 devstack_devstack
   do

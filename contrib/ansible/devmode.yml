@@ -8,4 +8,5 @@
   roles:
   - role: elasticsearch
   - role: orientdb
+  - role: objectstore
   - role: skydive_dev
