@@ -15,39 +15,31 @@ AGENT_EXTRA_PROVISION_SCRIPT=ENV.fetch("AGENT_EXTRA_PROVISION_SCRIPT", "")
 ANALYZER_EXTRA_PROVISION_SCRIPT=ENV.fetch("ANALYZER_EXTRA_PROVISION_SCRIPT", "")
 
 ANSIBLE_EXTRA_CONFIG=ENV.fetch("ANSIBLE_EXTRA_CONFIG", "{}")
-
-$install_agent_deps = <<SCRIPT
-yum -y update centos-release
-yum -y install centos-release-openstack-queens
-yum -y install openvswitch docker
-systemctl start openvswitch
-systemctl start docker
-systemctl enable openvswitch
-systemctl enable docker
-yum -y install libpcap libvirt-libs podman libselinux-python bridge-utils net-tools yum-plugin-copr.noarch
-#curl -o /etc/yum.repos.d/_copr_ganto-lxc3.repo https://copr.fedorainfracloud.org/coprs/ganto/lxc3/repo/epel-7/ganto-lxc3-epel-7.repo
-#yum repolist
-#yum -y install lxd
-#grep -q 'root:1000000:65536' /etc/subuid || echo 'root:1000000:65536' >> /etc/subuid
-#grep -q 'root:1000000:65536' /etc/subgid || echo 'root:1000000:65536' >> /etc/subgid
-#systemctl start lxd
-#ln -s /var/run/lxd.socket /var/lib/lxd/unix.socket
-#systemctl enable lxd
-#lxd init --auto
-SCRIPT
+ANSIBLE_SKIP_TAGS=ENV.fetch("ANSIBLE_SKIP_TAGS", "skydive_functional_tests").split
 
 $skydive_extra_config = eval(ANSIBLE_EXTRA_CONFIG)
 $skydive_extra_config["http.ws.pong_timeout"] = 10
 $skydive_extra_config["agent.topology.probes"] = ["ovsdb", "docker"]
 $skydive_extra_config["agent.topology.netlink.metrics_update"] = 5
+$skydive_extra_config["analyzer.topology.ovn.address"] = "tcp://127.0.0.1:6641"
 
 if DEVMODE then
   # default config from tests/tests.go:testConfig
   $skydive_extra_config["flow.expire"] = "600"
   $skydive_extra_config["flow.update"] = "10"
-  $skydive_extra_config["agent.topology.probes"] = "netlink netns ovsdb docker lldp runc socketinfo"
+  $skydive_extra_config["agent.metadata"] = {
+    "mydict": {
+      "value": 123
+    },
+    "myarrays": {
+      "integers": [1,2,3],
+      "bools": [true, true],
+      "strings": ["dog", "cat", "frog"]
+    }
+  }
+  $skydive_extra_config["agent.topology.probes"] = "netlink netns ovsdb docker lldp runc socketinfo lxd"
   $skydive_extra_config["agent.topology.metrics_update"] = "5"
-  $skydive_extra_config["agent.metadata.mydict.value"] = "123"
+  $skydive_extra_config["analyzer.topology.probes"] = "ovn"
   $skydive_extra_config["analyzer.startup.capture_gremlin"] = "g.V().Has('Name','startup-vm2')"
   $skydive_extra_config["ovs.oflow.enable"] = "true"
   $skydive_extra_config["logging.level"] = "DEBUG"
@@ -88,12 +80,13 @@ def populate_os_config(os, ip)
 end
 
 def provision_es(vm, hosts)
-  vm.provision :ansible do |ansible|
+  vm.provision "elasticsearch", type: "ansible" do |ansible|
     ansible.playbook = "playbook-es.yml"
     ansible.groups = { "elasticsearch": hosts.map { |h| h["name"] } }
     ansible.limit = "all"
     ansible.galaxy_role_file = 'requirements.yml'
     ansible.become = true
+    ansible.skip_tags = ["xpack"] + ANSIBLE_SKIP_TAGS
   end
 
   $skydive_extra_config["analyzer.flow.backend"] = "elasticsearch"
@@ -113,7 +106,7 @@ Vagrant.configure(2) do |config|
       end
 
       agent.vm.provider :libvirt do |domain, override|
-        domain.memory = 1536
+        domain.memory = 2560
         override.vm.box = "centos/7"
         override.ssh.username = 'vagrant'
       end
@@ -123,7 +116,6 @@ Vagrant.configure(2) do |config|
       agent.vm.synced_folder ".", "/vagrant", :disabled => true
       agent.vm.provision "networking", type: "shell", inline: ifcfg_config("eth1", "#{ADDR_PREFIX}.0", "255.255.255.0", ip)
       agent.vm.provision "common", type: "shell", path: "setup-common.sh"
-      agent.vm.provision "agent-deps", type: "shell", inline: $install_agent_deps
 
       if AGENT_EXTRA_PROVISION_SCRIPT != ""
         agent.vm.provision "extra", type: "shell", path: AGENT_EXTRA_PROVISION_SCRIPT
@@ -154,6 +146,9 @@ Vagrant.configure(2) do |config|
     end
   end
 
+  analyzers = Array.new(ANALYZER_COUNT){ |i| "analyzer#{(i+1).to_s}" }
+  agents = Array.new(AGENT_COUNT){ |i| "agent#{(i+1).to_s}" }
+
   (1..ANALYZER_COUNT).each do |i|
     ip = "#{ADDR_PREFIX}.#{i*10}"
 
@@ -168,7 +163,18 @@ Vagrant.configure(2) do |config|
           provision_es(analyzer.vm, Array.new(ANALYZER_COUNT){ |i| { "ip" => "#{ADDR_PREFIX}.#{(i+1)*10}", "name" => "analyzer#{(i+1).to_s}" } })
         end
 
-        analyzer.vm.provision :ansible do |ansible|
+        analyzer.vm.provision "dev", type: "ansible" do |ansible|
+          ansible.playbook = "playbook-dev.yml"
+          ansible.groups = {
+            "analyzers" => analyzers,
+            "agents" => agents,
+          }
+          ansible.limit = "all"
+          ansible.verbose = true
+          ansible.skip_tags = ANSIBLE_SKIP_TAGS
+        end
+
+        analyzer.vm.provision "deploy", type: "ansible" do |ansible|
           ansible_extra_vars = {
             "skydive_deployment_mode" => DEPLOYMENT_MODE,
             "skydive_extra_config" => $skydive_extra_config,
@@ -193,11 +199,12 @@ Vagrant.configure(2) do |config|
           ansible.playbook = "provisioning/playbook.yml.sample"
           ansible.extra_vars = ansible_extra_vars
           ansible.groups = {
-            "analyzers" => Array.new(ANALYZER_COUNT){ |i| "analyzer#{(i+1).to_s}" },
-            "agents" => Array.new(AGENT_COUNT){ |i| "agent#{(i+1).to_s}" },
+            "analyzers" => analyzers,
+            "agents" => analyzers + agents,
           }
           ansible.limit = "all"
           ansible.verbose = true
+          ansible.skip_tags = ANSIBLE_SKIP_TAGS
         end
       end
 
@@ -211,7 +218,7 @@ Vagrant.configure(2) do |config|
       end
 
       analyzer.vm.provider :libvirt do |domain, override|
-        domain.memory = 1536
+        domain.memory = 4096
         domain.graphics_type = "none"
         override.vm.box = "centos/7"
         override.ssh.username = 'vagrant'

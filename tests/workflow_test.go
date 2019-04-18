@@ -232,7 +232,7 @@ func TestFlowMatrixWorkflow(t *testing.T) {
 
 			ctx := traversal.StepContext{}
 			tv := tr.V(ctx).Has(ctx, "Name", "functionals", "ServiceType", "client").OutE(ctx).Has(ctx, "RelationType", "connection", "Port", 22222).OutV(ctx).Has(ctx, "ServiceType", "server", "Name", "functionals")
-			if len(tv.Values()) != 0 {
+			if len(tv.Values()) == 0 {
 				return fmt.Errorf("Should return at least one connection node, returned: %v, graph: %v, subgraph: %v", tv.Values(), g.String(), subgraph)
 			}
 

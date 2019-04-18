@@ -20,12 +20,12 @@
     - iptables
     - tests
 
-- include_tasks: config.yml
-  tags:
-    - config
-
 - include_tasks: binary.yml
   when: skydive_deployment_mode == "binary"
 
 - include_tasks: package.yml
   when: skydive_deployment_mode == "package"
+
+- include_tasks: config.yml
+  tags:
+    - config

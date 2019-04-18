@@ -28,9 +28,6 @@ func TestLxdSimple(t *testing.T) {
 	if runtime.GOARCH == "ppc64le" {
 		t.Skip("lxd won't run on ppc64le")
 	}
-	if exec.Command("grep", "CentOS", "/etc/os-release").Run() == nil {
-		t.Skip("lxd won't run on CentOS")
-	}
 	if exec.Command("grep", "Red Hat Enterprise Linux", "/etc/os-release").Run() == nil {
 		t.Skip("lxd won't run on RHEL")
 	}

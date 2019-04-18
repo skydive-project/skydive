@@ -3,7 +3,11 @@
     policy: targeted
     state: permissive
 
-- shell: "dnf copr enable -y ganto/lxc3"
+- package:
+    name: yum-plugin-copr
+    state: present
+
+- shell: yum -y copr enable ganto/lxc3
 
 - package:
     name: lxc
@@ -20,6 +24,17 @@
 - lineinfile:
     path: /etc/subgid
     line: 'root:1000000:65536'
+
+- shell: |
+    grubby --args="user_namespace.enable=1" --update-kernel="$(grubby --default-kernel)"
+    grubby --args="namespace.unpriv_enable=1" --update-kernel="$(grubby --default-kernel)"
+  when: ansible_distribution == "CentOS"
+
+- copy:
+    content: user.max_user_namespaces=3883
+    dest: /etc/sysctl.d/99-userns.conf
+    mode: 0644
+  when: ansible_distribution == "CentOS"
 
 - service:
     name: lxd

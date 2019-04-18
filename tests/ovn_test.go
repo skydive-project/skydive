@@ -167,47 +167,53 @@ func TestOVNRouting(t *testing.T) {
 			gremlin := c.gremlin.V().Has("Name", "dmz", "Type", "logical_switch")
 			_, err := c.gh.GetNode(gremlin)
 			if err != nil {
-				return fmt.Errorf("Failed to find switch 'dmz'")
+				return fmt.Errorf("Failed to find switch 'dmz': %s", err)
 			}
 
 			gremlin = gremlin.Out().Has("Name", "dmz-tenant1", "Type", "logical_port")
 			if _, err = c.gh.GetNode(gremlin); err != nil {
-				return fmt.Errorf("Failed to find port 'dmz-tenant1'")
+				return fmt.Errorf("Failed to find port 'dmz-tenant1': %s", err)
 			}
 
 			gremlin = gremlin.Out().Has("Name", "tenant1-dmz", "Type", "logical_port")
 			if _, err = c.gh.GetNode(gremlin); err != nil {
-				return fmt.Errorf("Failed to find router port 'tenant1-dmz'")
+				return fmt.Errorf("Failed to find router port 'tenant1-dmz': %s", err)
 			}
 
 			gremlin = gremlin.In().Has("Name", "tenant1", "Type", "logical_router")
 			if _, err = c.gh.GetNode(gremlin); err != nil {
-				return fmt.Errorf("Failed to find logical router 'tenant1'")
+				return fmt.Errorf("Failed to find logical router 'tenant1': %s", err)
 			}
 
 			gremlin = gremlin.Out().Has("Name", "tenant1-inside", "Type", "logical_port")
 			if _, err = c.gh.GetNode(gremlin); err != nil {
-				return fmt.Errorf("Failed to find logical port 'tenant1-inside'")
+				return fmt.Errorf("Failed to find logical port 'tenant1-inside': %s", err)
 			}
 
 			gremlin = gremlin.In().Has("Name", "inside-tenant1", "Type", "logical_port")
 			if _, err = c.gh.GetNode(gremlin); err != nil {
-				return fmt.Errorf("Failed to find logical port 'inside-tenant1'")
+				return fmt.Errorf("Failed to find logical port 'inside-tenant1': %s", err)
 			}
 
 			gremlin = gremlin.In().Has("Name", "inside", "Type", "logical_switch")
 			if _, err = c.gh.GetNode(gremlin); err != nil {
-				return fmt.Errorf("Failed to find logical switch 'inside'")
+				return fmt.Errorf("Failed to find logical switch 'inside': %s", err)
 			}
 
 			gremlin = gremlin.Out().Has("Name", "inside-vm3", "Type", "logical_port")
 			if _, err = c.gh.GetNode(gremlin); err != nil {
-				return fmt.Errorf("Failed to find logical switch 'inside'")
+				return fmt.Errorf("Failed to find logical switch 'inside': %s", err)
 			}
 
-			gremlin = gremlin.In().Has("Name", "vm3", "Driver", "openvswitch")
+			gremlin = gremlin.In()
+			if _, err = c.gh.GetNodes(gremlin); err != nil {
+				return fmt.Errorf("Failed to find parent node for 'inside-vm3': %s", err)
+			}
+
+			gremlin = gremlin.Has("Name", "vm3", "Driver", "openvswitch")
 			if _, err = c.gh.GetNode(gremlin); err != nil {
-				return fmt.Errorf("Failed to find interface 'vm3' linked to switch 'inside'")
+				bytes, _ := c.gh.Query(gremlin.String())
+				return fmt.Errorf("Failed to find interface 'vm3' linked to switch 'inside-vm3': %s (%s) (%s)", err, gremlin, string(bytes))
 			}
 
 			return nil

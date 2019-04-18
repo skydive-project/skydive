@@ -223,10 +223,6 @@ func TestAlertWebhook(t *testing.T) {
 }
 
 func TestAlertScript(t *testing.T) {
-	if agentTestsOnly {
-		t.Skip("this test works only when agent and analyzers are on the same host")
-	}
-
 	var (
 		err        error
 		al         *types.Alert

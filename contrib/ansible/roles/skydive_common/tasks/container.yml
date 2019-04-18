@@ -29,10 +29,16 @@
   shell: "{{ skydive_container_cli }} pull {{ skydive_docker_registry }}/{{ skydive_docker_image }}:{{ skydive_docker_image_tag }}"
   when: skydive_load_docker_image is not defined
 
-- name: Run docker registry v2
-  # TODO: run this container in systemd when podman is used, so it can restart on failure.
-  shell: "{{ skydive_container_cli }} run -d -p 5000:5000 {% if skydive_container_cli == 'docker' %}--restart=always{% endif %} --name registry registry:2"
+- name: Check docker registry
+  shell: "{{ skydive_container_cli }} inspect registry"
   when: skydive_load_docker_image is defined
+  ignore_errors: yes
+  register: docker_inspect_registry
+
+  # TODO: run this container in systemd when podman is used, so it can restart on failure.
+- name: Run docker registry v2
+  shell: "{{ skydive_container_cli }} run -d -p 5000:5000 {% if skydive_container_cli == 'docker' %}--restart=always{% endif %} --name registry registry:2"
+  when: skydive_load_docker_image is defined and docker_inspect_registry.rc != 0
 
 - name: Set facts
   set_fact: "skydive_docker_registry=localhost:5000"

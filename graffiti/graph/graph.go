@@ -1235,13 +1235,7 @@ func (g *Graph) DelEdge(e *Edge) error {
 
 // NodeDeleted event
 func (g *Graph) NodeDeleted(n *Node) error {
-	if err := g.backend.NodeDeleted(n); err != nil {
-		return err
-	}
-
-	g.eventHandler.NotifyEvent(NodeDeleted, n)
-
-	return nil
+	return g.delNode(n, n.DeletedAt)
 }
 
 func (g *Graph) delNode(n *Node, t Time) error {
