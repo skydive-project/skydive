@@ -15,7 +15,7 @@
  *
  */
 
-package analyzer
+package client
 
 import (
 	"fmt"

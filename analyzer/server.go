@@ -32,6 +32,7 @@ import (
 	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/client"
+	"github.com/skydive-project/skydive/flow/server"
 	"github.com/skydive-project/skydive/flow/storage"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
@@ -44,6 +45,7 @@ import (
 	"github.com/skydive-project/skydive/sflow"
 	"github.com/skydive-project/skydive/topology"
 	usertopology "github.com/skydive-project/skydive/topology/enhancers"
+	"github.com/skydive-project/skydive/topology/probes/lldp"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
 	"github.com/skydive-project/skydive/topology/probes/ovsdb"
 	"github.com/skydive-project/skydive/ui"
@@ -76,7 +78,7 @@ type Server struct {
 	onDemandClient  *ondemand.OnDemandProbeClient
 	piClient        *packetinjector.Client
 	topologyManager *usertopology.TopologyManager
-	flowServer      *FlowServer
+	flowServer      *server.FlowServer
 	probeBundle     *probe.Bundle
 	storage         storage.Storage
 	embeddedEtcd    *etcd.EmbeddedEtcd
@@ -301,7 +303,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	// new flow subscriber endpoints
 	flowSubscriberWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/subscriber/flow", apiAuthBackend))
-	flowSubscriberEndpoint := NewFlowSubscriberEndpoint(flowSubscriberWSServer)
+	flowSubscriberEndpoint := server.NewFlowSubscriberEndpoint(flowSubscriberWSServer)
 
 	apiServer, err := api.NewAPI(hserver, etcdClient.KeysAPI, service, apiAuthBackend)
 	if err != nil {
@@ -339,7 +341,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	onDemandClient := ondemand.NewOnDemandProbeClient(g, captureAPIHandler, hub.PodServer(), hub.SubscriberServer(), etcdClient)
 
-	flowServer, err := NewFlowServer(hserver, g, storage, flowSubscriberEndpoint, probeBundle, clusterAuthBackend)
+	flowServer, err := server.NewFlowServer(hserver, g, storage, flowSubscriberEndpoint, probeBundle, clusterAuthBackend)
 	if err != nil {
 		return nil, err
 	}
@@ -401,4 +403,5 @@ func init() {
 	graph.NodeMetadataDecoders["LastUpdateMetric"] = topology.InterfaceMetricMetadataDecoder
 	graph.NodeMetadataDecoders["SFlow"] = sflow.SFMetadataDecoder
 	graph.NodeMetadataDecoders["Ovs"] = ovsdb.OvsMetadataDecoder
+	graph.NodeMetadataDecoders["LLDP"] = lldp.MetadataDecoder
 }

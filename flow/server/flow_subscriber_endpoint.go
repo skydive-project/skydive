@@ -15,7 +15,7 @@
  *
  */
 
-package analyzer
+package server
 
 import (
 	"github.com/skydive-project/skydive/flow"

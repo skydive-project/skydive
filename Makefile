@@ -54,6 +54,7 @@ EASYJSON_FILES_TAG=\
 	graffiti/graph/elasticsearch.go \
 	sflow/sflow.go \
 	topology/metrics.go \
+	topology/probes/lldp/metadata.go \
 	topology/probes/netlink/route.go \
 	topology/probes/netlink/neighbor.go \
 	topology/probes/nsm/nsm.go \
@@ -292,6 +293,9 @@ GEN_EASYJSON_FILES_TAG_OPENCONTRAIL := $(patsubst %.go,%_easyjson.go,$(EASYJSON_
 
 flow/flow.pb_easyjson.go: flow/flow.pb.go
 	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -all $<
+
+topology/probes/lldp/lldp_easyjson.go: topology/probes/lldp/lldp.go
+	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags linux $<
 
 topology/probes/netlink/netlink_easyjson.go: topology/probes/netlink/netlink.go
 	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags linux $<

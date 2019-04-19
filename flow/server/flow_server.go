@@ -15,7 +15,7 @@
  *
  */
 
-package analyzer
+package server
 
 import (
 	"errors"

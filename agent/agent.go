@@ -23,11 +23,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/skydive-project/skydive/analyzer"
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/client"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/server"
 	fprobes "github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -54,7 +54,7 @@ type Agent struct {
 	topologyProbeBundle *probe.Bundle
 	flowProbeBundle     *probe.Bundle
 	flowTableAllocator  *flow.TableAllocator
-	flowClientPool      *analyzer.FlowClientPool
+	flowClientPool      *client.FlowClientPool
 	onDemandProbeServer *ondemand.OnDemandProbeServer
 	httpServer          *shttp.Server
 	tidMapper           *topology.TIDMapper
@@ -239,7 +239,7 @@ func NewAgent() (*Agent, error) {
 
 	packetinjector.NewServer(g, analyzerClientPool)
 
-	flowClientPool := analyzer.NewFlowClientPool(analyzerClientPool, clusterAuthOptions)
+	flowClientPool := client.NewFlowClientPool(analyzerClientPool, clusterAuthOptions)
 
 	flowProbeBundle := fprobes.NewFlowProbeBundle(topologyProbeBundle, g, flowTableAllocator, flowClientPool)
 

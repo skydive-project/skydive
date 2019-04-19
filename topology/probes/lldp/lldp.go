@@ -122,10 +122,12 @@ func (p *Probe) handlePacket(n *graph.Node, ifName string, packet gopacket.Packe
 			return string(bytes.Trim(b, "\x00"))
 		}
 
+		chassisLLDPMetadata := &Metadata{
+			ChassisIDType: lldpLayer.ChassisID.Subtype.String(),
+		}
+
 		chassisMetadata := graph.Metadata{
-			"LLDP": map[string]interface{}{
-				"ChassisIDType": lldpLayer.ChassisID.Subtype.String(),
-			},
+			"LLDP":  chassisLLDPMetadata,
 			"Type":  "switch",
 			"Probe": "lldp",
 		}
@@ -138,13 +140,14 @@ func (p *Probe) handlePacket(n *graph.Node, ifName string, packet gopacket.Packe
 		default:
 			chassisID = bytesToString(lldpLayer.ChassisID.ID)
 		}
-		common.SetField(chassisMetadata, "LLDP.ChassisID", chassisID)
+		chassisLLDPMetadata.ChassisID = chassisID
 		common.SetField(chassisMetadata, "Name", chassisID)
 
+		portLLDPMetadata := &Metadata{
+			PortIDType: lldpLayer.PortID.Subtype.String(),
+		}
 		portMetadata := graph.Metadata{
-			"LLDP": map[string]interface{}{
-				"PortIDType": lldpLayer.PortID.Subtype.String(),
-			},
+			"LLDP":  portLLDPMetadata,
 			"Type":  "switchport",
 			"Probe": "lldp",
 		}
@@ -156,7 +159,7 @@ func (p *Probe) handlePacket(n *graph.Node, ifName string, packet gopacket.Packe
 		default:
 			portID = bytesToString(lldpLayer.PortID.ID)
 		}
-		common.SetField(portMetadata, "LLDP.PortID", portID)
+		portLLDPMetadata.PortID = portID
 		common.SetField(portMetadata, "Name", portID)
 
 		if lldpLayerInfo := packet.Layer(layers.LayerTypeLinkLayerDiscoveryInfo); lldpLayerInfo != nil {
@@ -167,17 +170,17 @@ func (p *Probe) handlePacket(n *graph.Node, ifName string, packet gopacket.Packe
 				if portDescription == ifName {
 					return
 				}
-				common.SetField(portMetadata, "LLDP.Description", portDescription)
+				portLLDPMetadata.Description = portDescription
 				portMetadata["Name"] = bytesToString([]byte(portDescription))
 			}
 
 			if lldpLayerInfo.SysDescription != "" {
-				common.SetField(chassisMetadata, "LLDP.Description", bytesToString([]byte(lldpLayerInfo.SysDescription)))
+				chassisLLDPMetadata.Description = bytesToString([]byte(lldpLayerInfo.SysDescription))
 			}
 
 			if sysName := bytesToString([]byte(lldpLayerInfo.SysName)); sysName != "" {
 				chassisDiscriminators = append(chassisDiscriminators, sysName, "SysName")
-				common.SetField(chassisMetadata, "LLDP.SysName", sysName)
+				chassisLLDPMetadata.SysName = sysName
 				chassisMetadata["Name"] = sysName
 			}
 
@@ -192,52 +195,46 @@ func (p *Probe) handlePacket(n *graph.Node, ifName string, packet gopacket.Packe
 
 				if addr != "" {
 					chassisDiscriminators = append(chassisDiscriminators, addr, "MgmtAddress")
-					common.SetField(chassisMetadata, "LLDP.MgmtAddress", addr)
+					chassisLLDPMetadata.MgmtAddress = addr
 				}
 			}
 
 			if lldp8201Q, err := lldpLayerInfo.Decode8021(); err == nil {
 				if lldp8201Q.LinkAggregation.Supported {
-					common.SetField(portMetadata, "LLDP.LinkAggregation", map[string]interface{}{
-						"Enabled":   lldp8201Q.LinkAggregation.Enabled,
-						"PortID":    int64(lldp8201Q.LinkAggregation.PortID),
-						"Supported": lldp8201Q.LinkAggregation.Supported,
-					})
+					portLLDPMetadata.LinkAggregation = &LinkAggregationMetadata{
+						Enabled:   lldp8201Q.LinkAggregation.Enabled,
+						PortID:    int64(lldp8201Q.LinkAggregation.PortID),
+						Supported: lldp8201Q.LinkAggregation.Supported,
+					}
 				}
 
 				if lldp8201Q.PVID != 0 {
-					common.SetField(portMetadata, "LLDP.PVID", int64(lldp8201Q.PVID))
+					portLLDPMetadata.PVID = int64(lldp8201Q.PVID)
 				}
 
 				if lldp8201Q.VIDUsageDigest != 0 {
-					common.SetField(portMetadata, "LLDP.VIDUsageDigest", int64(lldp8201Q.VIDUsageDigest))
+					portLLDPMetadata.VIDUsageDigest = int64(lldp8201Q.VIDUsageDigest)
 				}
 
 				if lldp8201Q.ManagementVID != 0 {
-					common.SetField(portMetadata, "LLDP.ManagementVID", int64(lldp8201Q.ManagementVID))
+					portLLDPMetadata.ManagementVID = int64(lldp8201Q.ManagementVID)
 				}
 
 				if len(lldp8201Q.VLANNames) != 0 {
-					vlanNames := make([]interface{}, len(lldp8201Q.VLANNames))
+					portLLDPMetadata.VLANNames = make([]VLANNameMetadata, len(lldp8201Q.VLANNames))
 					for i, vlan := range lldp8201Q.VLANNames {
-						vlanNames[i] = map[string]interface{}{
-							"ID":   vlan.ID,
-							"Name": bytesToString([]byte(vlan.Name)),
-						}
+						portLLDPMetadata.VLANNames[i].ID = int64(vlan.ID)
+						portLLDPMetadata.VLANNames[i].Name = bytesToString([]byte(vlan.Name))
 					}
-					common.SetField(portMetadata, "LLDP.VLANNames", vlanNames)
 				}
 
 				if len(lldp8201Q.PPVIDs) != 0 {
-					ppvids := make([]interface{}, len(lldp8201Q.PPVIDs))
+					portLLDPMetadata.PPVIDs = make([]PPVIDMetadata, len(lldp8201Q.PPVIDs))
 					for i, ppvid := range lldp8201Q.PPVIDs {
-						ppvids[i] = map[string]interface{}{
-							"Enabled":   ppvid.Enabled,
-							"ID":        int64(ppvid.ID),
-							"Supported": ppvid.Supported,
-						}
+						portLLDPMetadata.PPVIDs[i].Enabled = ppvid.Enabled
+						portLLDPMetadata.PPVIDs[i].ID = int64(ppvid.ID)
+						portLLDPMetadata.PPVIDs[i].Supported = ppvid.Supported
 					}
-					common.SetField(portMetadata, "LLDP.PPVIDs", ppvids)
 				}
 			}
 
