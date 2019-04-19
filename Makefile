@@ -354,8 +354,15 @@ statics/bindata.go: .typescript ebpf.build $(shell find statics -type f \( ! -in
 
 .PHONY: .vppbinapi
 .vppbinapi: binapigenerator
-	$(GOVENDOR) generate -tags "${BUILD_TAGS}" \
-		github.com/skydive-project/skydive/topology/probes/vpp
+	$(GOVENDOR) generate -tags "${BUILD_TAGS}" ${SKYDIVE_GITHUB}/topology/probes/vpp
+
+.PHONY: .go-generate
+.go-generate:
+	$(GOVENDOR) generate -tags="${BUILD_TAGS}" ${SKYDIVE_GITHUB}/...
+
+.PHONY: .go-generate.clean
+.go-generate.clean:
+	find . \( -name *_gendecoder.go ! -path './vendor/*' \) -exec rm {} \;
 
 .PHONY: compile
 compile:
@@ -586,13 +593,13 @@ gometalinter: $(LINTER_COMMANDS)
 .PHONY: lint
 lint: gometalinter
 	@echo "+ $@"
-	gometalinter --disable=gotype ${GOMETALINTER_FLAGS} --vendor -e '.*\.pb.go' -e '.*\._easyjson.go' -e 'statics/bindata.go' --skip=statics/... --deadline 10m --sort=path ./... --json | tee lint.json || true
+	gometalinter --disable=gotype ${GOMETALINTER_FLAGS} --vendor -e '.*\.pb.go' -e '.*\._easyjson.go' -e '.*\._gendecoder.go' -e 'statics/bindata.go' --skip=statics/... --deadline 10m --sort=path ./... --json | tee lint.json || true
 
 .PHONY: genlocalfiles
-genlocalfiles: .proto .bindata .easyjson .vppbinapi
+genlocalfiles: .proto .go-generate .bindata .easyjson .vppbinapi
 
 .PHONY: clean
-clean: skydive.clean test.functionals.clean dpdk.clean contribs.clean ebpf.clean .easyjson.clean .proto.clean .typescript.clean .vppbinapi.clean
+clean: skydive.clean test.functionals.clean dpdk.clean contribs.clean ebpf.clean .easyjson.clean .proto.clean .go-generate.clean .typescript.clean .vppbinapi.clean
 	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
 
 .PHONY: srpm
@@ -620,7 +627,6 @@ SKYDIVE_TAR_INPUT:= \
 	$(patsubst %.proto,%.pb.go,$(SKYDIVE_PROTO_FILES)) \
 	$(GEN_EASYJSON_FILES_ALL) \
 	$(GEN_EASYJSON_FILES_TAG) \
-	$(GEN_EASYJSON_FILES_TAG_LINUX) \
 	$(GEN_EASYJSON_FILES_TAG_OPENCONTRAIL)
 
 SKYDIVE_TAR:=${DESTDIR}/$(SKYDIVE_PKG).tar
@@ -629,14 +635,19 @@ define TAR_CMD
 tar $1 -f $(SKYDIVE_TAR) --transform="s||$(SKYDIVE_PATH)|" $2
 endef
 
+define TAR_APPEND
+$(call TAR_CMD,--append,$(SKYDIVE_TAR_INPUT))
+find -type f -name *_gendecoder.go -printf '%P\n' -exec tar --append -f $(SKYDIVE_TAR) --transform="s||$(SKYDIVE_PATH)|" {} \;
+endef
+
 .PHONY: localdist
 localdist: govendor genlocalfiles
 	git ls-files | $(call TAR_CMD,--create,--files-from -)
-	$(call TAR_CMD,--append,$(SKYDIVE_TAR_INPUT))
+	$(call TAR_APPEND,)
 	gzip -f $(SKYDIVE_TAR)
 
 .PHONY: dist
 dist: govendor genlocalfiles
 	git archive -o $(SKYDIVE_TAR) --prefix $(SKYDIVE_PATH) HEAD
-	$(call TAR_CMD,--append,$(SKYDIVE_TAR_INPUT))
+	$(call TAR_APPEND,)
 	gzip -f $(SKYDIVE_TAR)
