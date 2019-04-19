@@ -276,15 +276,9 @@ func (im *InterfaceMetric) applyRatio(ratio float64) *InterfaceMetric {
 
 // Split splits a metric into two parts
 func (im *InterfaceMetric) Split(cut int64) (common.Metric, common.Metric) {
-	if cut < im.Start {
+	if cut <= im.Start {
 		return nil, im
-	} else if cut > im.Last {
-		return im, nil
-	} else if im.Start == im.Last {
-		return im, nil
-	} else if cut == im.Start {
-		return nil, im
-	} else if cut == im.Last {
+	} else if cut >= im.Last || im.Start == im.Last {
 		return im, nil
 	}
 
