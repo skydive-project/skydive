@@ -48,14 +48,17 @@ func newVirtualServiceProbe(client interface{}, g *graph.Graph) k8s.Subprobe {
 	return k8s.NewResourceCache(client.(*kiali.IstioClient).GetIstioNetworkingApi(), &kiali.VirtualService{}, "virtualservices", g, &virtualServiceHandler{})
 }
 
+type route struct {
+	Destination struct {
+		App     string `mapstructure:"host"`
+		Version string `mapstructure:"subset"`
+	} `mapstructure:"destination"`
+	Weight int `mapstructure:"weight"`
+}
+
 type rule struct {
-	Routes []struct {
-		Destination struct {
-			App     string `mapstructure:"host"`
-			Version string `mapstructure:"subset"`
-		} `mapstructure:"destination"`
-		Weight int `mapstructure:"weight"`
-	} `mapstructure:"route"`
+	Match  interface{} `mapstructure:"match"`
+	Routes []route     `mapstructure:"route"`
 }
 
 type virtualServiceSpec struct {
@@ -96,6 +99,14 @@ func (im instanceMap) has(instanceApp, instanceVersion string) bool {
 	return false
 }
 
+func matchRoute(r route, app, version string) bool {
+	if r.Destination.App != app {
+		return false
+	}
+
+	return r.Destination.Version == version || r.Destination.Version == ""
+}
+
 func virtualServicePodMetadata(a, b interface{}, typeA, typeB, manager string) graph.Metadata {
 	vs := a.(*kiali.VirtualService)
 	pod := b.(*v1.Pod)
@@ -110,19 +121,24 @@ func virtualServicePodMetadata(a, b interface{}, typeA, typeB, manager string) g
 
 	app, version := pod.Labels["app"], pod.Labels["version"]
 
-	weight := 0
 	for _, http := range vsSpec.HTTP {
+		if http.Match != nil {
+			// weights calculation - only for the default unconditional rule
+			continue
+		}
+
+		if len(http.Routes) == 1 && matchRoute(http.Routes[0], app, version) {
+			m["Weight"] = 100
+			break
+		}
+
 		for _, route := range http.Routes {
-			if route.Destination.App != app {
-				continue
-			}
-			if route.Destination.Version == version || route.Destination.Version == "" {
-				weight += route.Weight
+			if matchRoute(route, app, version) {
+				m["Weight"] = route.Weight
+				break
 			}
 		}
-	}
-	if weight > 0 {
-		m["Weight"] = weight
+
 	}
 
 	protocols := []string{}
