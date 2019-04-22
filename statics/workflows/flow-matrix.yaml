@@ -345,26 +345,13 @@ Source: |
             }
         }
 
-        var nodes
-        return G.V().Has('Type', 'host').HasKey('Sockets')
-            .then(function (data) {
-                nodes = data
-                return G.V().HasKey('IPV4')
-            })
-            .then(function (interfaces) {
-                buildCaches(nodes, interfaces)
-
-                topologyMatrix(nodes)
-
-                if (useFlows) {
-                    return G.Flows().Has('Transport', NE('')).Sockets().then(
-                        function (sockets) {
-                            flowMatrix(sockets)
-                            return outputResult()
-                        }
-                    )
-                }
-
-                return outputResult()
-            })
+        var nodes = G.V().Has('Type', 'host').HasKey('Sockets').result()
+        var interfaces = G.V().HasKey('IPV4').result()
+        buildCaches(nodes, interfaces)
+        topologyMatrix(nodes)
+        if (useFlows) {
+            var sockets = G.Flows().Has('Transport', NE('')).Sockets().result()
+            flowMatrix(sockets)
+        }
+        return outputResult()
     }

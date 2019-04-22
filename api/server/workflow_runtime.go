@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/skydive-project/skydive/js"
 
@@ -30,32 +31,46 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 )
 
-// RegisterAPIServer exports Go functions required by the API
-// to run inside the JS VM
-func RegisterAPIServer(r *js.Runtime, g *graph.Graph, gremlinParser *traversal.GremlinTraversalParser, server *Server) {
+// NewWorkflowRuntime returns a new Workflow runtime
+func NewWorkflowRuntime(g *graph.Graph, tr *traversal.GremlinTraversalParser, server *Server) (*js.Runtime, error) {
+	runtime, err := js.NewRuntime()
+	if err != nil {
+		return nil, err
+	}
+	runtime.Start()
+
 	queryGremlin := func(query string) otto.Value {
-		ts, err := gremlinParser.Parse(strings.NewReader(query))
+		ts, err := tr.Parse(strings.NewReader(query))
 		if err != nil {
-			return r.MakeCustomError("ParseError", err.Error())
+			return runtime.MakeCustomError("ParseError", err.Error())
 		}
 
 		result, err := ts.Exec(g, false)
 		if err != nil {
-			return r.MakeCustomError("ExecuteError", err.Error())
+			return runtime.MakeCustomError("ExecuteError", err.Error())
 		}
 
 		source, err := result.MarshalJSON()
 		if err != nil {
-			return r.MakeCustomError("MarshalError", err.Error())
+			return runtime.MakeCustomError("MarshalError", err.Error())
 		}
 
-		r, _ := r.ToValue(string(source))
+		r, _ := runtime.ToValue(string(source))
 		return r
 	}
 
-	r.Set("Gremlin", func(call otto.FunctionCall) otto.Value {
+	runtime.Set("sleep", func(call otto.FunctionCall) otto.Value {
+		if len(call.ArgumentList) != 1 || !call.Argument(0).IsNumber() {
+			return runtime.MakeCustomError("MissingArgument", "Sleep requires a number parameter")
+		}
+		t, _ := call.Argument(0).ToInteger()
+		time.Sleep(time.Duration(t) * time.Millisecond)
+		return otto.NullValue()
+	})
+
+	runtime.Set("Gremlin", func(call otto.FunctionCall) otto.Value {
 		if len(call.ArgumentList) < 1 || !call.Argument(0).IsString() {
-			return r.MakeCustomError("MissingQueryArgument", "Gremlin requires a string parameter")
+			return runtime.MakeCustomError("MissingQueryArgument", "Gremlin requires a string parameter")
 		}
 
 		query := call.Argument(0).String()
@@ -63,9 +78,9 @@ func RegisterAPIServer(r *js.Runtime, g *graph.Graph, gremlinParser *traversal.G
 		return queryGremlin(query)
 	})
 
-	r.Set("request", func(call otto.FunctionCall) otto.Value {
+	runtime.Set("request", func(call otto.FunctionCall) otto.Value {
 		if len(call.ArgumentList) < 3 || !call.Argument(0).IsString() || !call.Argument(1).IsString() || !call.Argument(2).IsString() {
-			return r.MakeCustomError("WrongArguments", "Import requires 3 string parameters")
+			return runtime.MakeCustomError("WrongArguments", "Import requires 3 string parameters")
 		}
 
 		url := call.Argument(0).String()
@@ -74,7 +89,7 @@ func RegisterAPIServer(r *js.Runtime, g *graph.Graph, gremlinParser *traversal.G
 
 		subs := strings.Split(url, "/") // filepath.Base(url)
 		if len(subs) < 3 {
-			return r.MakeCustomError("WrongArgument", fmt.Sprintf("Malformed URL %s", url))
+			return runtime.MakeCustomError("WrongArgument", fmt.Sprintf("Malformed URL %s", url))
 		}
 		resource := subs[2]
 
@@ -82,7 +97,7 @@ func RegisterAPIServer(r *js.Runtime, g *graph.Graph, gremlinParser *traversal.G
 		if resource == "topology" {
 			query := types.TopologyParam{}
 			if err := json.Unmarshal(data, &query); err != nil {
-				return r.MakeCustomError("WrongArgument", fmt.Sprintf("Invalid query %s", string(data)))
+				return runtime.MakeCustomError("WrongArgument", fmt.Sprintf("Invalid query %s", string(data)))
 			}
 
 			return queryGremlin(query.GremlinQuery)
@@ -98,17 +113,17 @@ func RegisterAPIServer(r *js.Runtime, g *graph.Graph, gremlinParser *traversal.G
 		case "POST":
 			res := handler.New()
 			if err := json.Unmarshal([]byte(data), res); err != nil {
-				return r.MakeCustomError("UnmarshalError", err.Error())
+				return runtime.MakeCustomError("UnmarshalError", err.Error())
 			}
 			if err := handler.Create(res); err != nil {
-				return r.MakeCustomError("CreateError", err.Error())
+				return runtime.MakeCustomError("CreateError", err.Error())
 			}
 			b, _ := json.Marshal(res)
 			content = string(b)
 
 		case "DELETE":
 			if len(subs) < 4 {
-				return r.MakeCustomError("WrongArgument", "No ID specified")
+				return runtime.MakeCustomError("WrongArgument", "No ID specified")
 			}
 			handler.Delete(subs[3])
 
@@ -121,7 +136,7 @@ func RegisterAPIServer(r *js.Runtime, g *graph.Graph, gremlinParser *traversal.G
 				id := subs[3]
 				obj, found := handler.Get(id)
 				if !found {
-					return r.MakeCustomError("NotFound", fmt.Sprintf("%s %s could not be found", resource, id))
+					return runtime.MakeCustomError("NotFound", fmt.Sprintf("%s %s could not be found", resource, id))
 				}
 				b, _ := json.Marshal(obj)
 				content = string(b)
@@ -130,9 +145,11 @@ func RegisterAPIServer(r *js.Runtime, g *graph.Graph, gremlinParser *traversal.G
 
 		value, err := otto.ToValue(content)
 		if err != nil {
-			return r.MakeCustomError("WrongValue", err.Error())
+			return runtime.MakeCustomError("WrongValue", err.Error())
 		}
 
 		return value
 	})
+
+	return runtime, nil
 }

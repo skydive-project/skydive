@@ -92,7 +92,7 @@ func TestCheckMTUWorkflow(t *testing.T) {
 			srcNodeTID, _ := srcNode.GetFieldString("TID")
 			dstNodeTID, _ := dstNode.GetFieldString("TID")
 
-			result, err := runtime.ExecPromise(checkMTU.Source, srcNodeTID, dstNodeTID)
+			result, err := runtime.ExecFunction(checkMTU.Source, srcNodeTID, dstNodeTID)
 			if err != nil {
 				return fmt.Errorf("Error while calling workflow: %s", err)
 			}
@@ -189,7 +189,7 @@ func TestFlowMatrixWorkflow(t *testing.T) {
 				return err
 			}
 
-			result, err := runtime.ExecPromise(flowMatrix.Source, false, "graph", true)
+			result, err := runtime.ExecFunction(flowMatrix.Source, false, "graph", true)
 			if err != nil {
 				return fmt.Errorf("Error while calling workflow: %s", err)
 			}

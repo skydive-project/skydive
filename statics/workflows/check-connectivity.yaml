@@ -11,6 +11,7 @@ Parameters:
     Type: node
 Source: |
     function CheckConnectivity(from, to) {
+      try {
         var capture = new Capture();
         capture.GremlinQuery = "G.V().Has('TID', '" + from + "').ShortestPathTo(Metadata('TID', '" + to + "'))";
 
@@ -21,39 +22,19 @@ Source: |
         packetInjection.ICMPID = Math.floor(Math.random() * 1000);
         packetInjection.Count = 5
 
-        return client.captures.create(capture).then(function (c) {
-            capture = c
-            return sleep(2000)
-        }).then(function () {
-            return client.G.V().Has("TID", from)
-        }).then(function (nodes) {
-            if (nodes[0].Metadata.Neutron && nodes[0].Metadata.Neutron.IPV4) {
-                packetInjection.SrcIP = nodes[0].Metadata.Neutron.IPV4[0]
-            }
-            if (nodes[0].Metadata.ExtID && nodes[0].Metadata.ExtID["attached-mac"]) {
-                packetInjection.SrcMAC = nodes[0].Metadata.ExtID["attached-mac"]
-            }
-            return client.G.V().Has("TID", to)
-        }).then(function (nodes) {
-            if (nodes[0].Metadata.Neutron && nodes[0].Metadata.Neutron.IPV4) {
-                packetInjection.DstIP = nodes[0].Metadata.Neutron.IPV4[0]
-            }
-            if (nodes[0].Metadata.ExtID && nodes[0].Metadata.ExtID["attached-mac"]) {
-                packetInjection.DstMAC = nodes[0].Metadata.ExtID["attached-mac"]
-            }
-            return client.packetInjections.create(packetInjection)
-        }).then(function () {
-            return sleep(2000)
-        }).then(function () {
-            return client.G.Flows().Has("ICMP.ID", packetInjection.ICMPID)
-        }).then(function (flows) {
-            console.log("Flows requested ! :-)")
-            console.log(flows)
-            return {
+        capture = client.captures.create(capture)
+        sleep(1000)
+        client.packetInjections.create(packetInjection)
+        sleep(1000)
+
+        var flows = client.G.Flows().Has("ICMP.ID", packetInjection.ICMPID).result()
+        return {
                 "State": flows.length > 0 && flows[0].Metric.ABPackets > 0 && flows[0].Metric.BAPackets > 0,
                 "Flows": flows
-            }
-        }).finally(function () {
-            client.captures.delete(capture.UUID)
-        })
+        };
+      } catch (e) {
+        console.log(e)
+      } finally {
+        if (capture && capture.UUID) client.captures.delete(capture.UUID)
+      }
     }
