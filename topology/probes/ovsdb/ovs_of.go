@@ -19,6 +19,7 @@ package ovsdb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -56,6 +57,11 @@ type bridgeOfProbe struct {
 	prober BridgeOfProber
 }
 
+var (
+	// ErrGroupNotSupported is reported when group monitoring is not supported by ovs
+	ErrGroupNotSupported = errors.New("Group monitoring is only possible on OpenFlow 1.5 and later because of an OVS bug")
+)
+
 // newbridgeOfProbe creates a probe and launch the active process
 func (o *OvsOfProbe) newbridgeOfProbe(host string, bridge string, uuid string, bridgeNode *graph.Node) (*bridgeOfProbe, error) {
 	address, ok := o.Translation[bridge]
@@ -83,7 +89,11 @@ func (o *OvsOfProbe) newbridgeOfProbe(host string, bridge string, uuid string, b
 	}
 
 	if err := prober.MonitorGroup(); err != nil {
-		logging.GetLogger().Errorf("Cannot add group probe on %s - %s", bridge, err)
+		if err == ErrGroupNotSupported {
+			logging.GetLogger().Warningf("Cannot add group probe on %s - %s", bridge, err)
+		} else {
+			logging.GetLogger().Errorf("Cannot add group probe on %s - %s", bridge, err)
+		}
 	}
 
 	return &bridgeOfProbe{cancel: cancel, prober: prober}, nil
@@ -95,17 +105,21 @@ func (o *OvsOfProbe) OnOvsBridgeAdd(bridgeNode *graph.Node) {
 	defer o.Unlock()
 
 	uuid, _ := bridgeNode.GetFieldString("UUID")
+	bridgeName, _ := bridgeNode.GetFieldString("Name")
+
 	if probe, ok := o.bridgeOfProbes[uuid]; ok {
 		if err := probe.prober.MonitorGroup(); err != nil {
-			logging.GetLogger().Debug(err)
+			if err == ErrGroupNotSupported {
+				logging.GetLogger().Warningf("Cannot add group probe on %s - %s", bridgeName, err)
+			} else {
+				logging.GetLogger().Errorf("Cannot add group probe on %s - %s", bridgeName, err)
+			}
 		}
 		return
 	}
 
-	bridgeName, _ := bridgeNode.GetFieldString("Name")
 	bridgeOfProbe, err := o.newbridgeOfProbe(o.Host, bridgeName, uuid, bridgeNode)
 	if err != nil {
-		logging.GetLogger().Errorf("Cannot add probe for bridge %s on %s (%s): %s", bridgeName, o.Host, uuid, err)
 		return
 	}
 

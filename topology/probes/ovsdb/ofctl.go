@@ -675,8 +675,7 @@ func (probe *OfctlProbe) MonitorGroup() error {
 		return err
 	}
 	if _, err = launchOnSwitch(command); err != nil {
-		logging.GetLogger().Warningf("OpenFlow 1.5 not supported on %s", probe.Bridge)
-		return err
+		return ErrGroupNotSupported
 	}
 	randBytes := make([]byte, 16)
 	rand.Read(randBytes)
@@ -690,20 +689,16 @@ func (probe *OfctlProbe) MonitorGroup() error {
 	probe.groupMonitored = true
 	lines, err := launchContinuousOnSwitch(probe.ctx, command)
 	if err != nil {
-		logging.GetLogger().Errorf("Group monitor failed %s: %s", probe.Bridge, err)
-		return err
+		return fmt.Errorf("Group monitor failed %s: %s", probe.Bridge, err)
 	}
 	if err = waitForFile(controlChannel); err != nil {
-		logging.GetLogger().Errorf("No control channel for group monitor failed %s: %s", probe.Bridge, err)
-		return err
+		return fmt.Errorf("No control channel for group monitor failed %s: %s", probe.Bridge, err)
 	}
 	if err = sendOpenflow(controlChannel, openflowSetSlave); err != nil {
-		logging.GetLogger().Errorf("Openflow command 'set slave' for group monitor failed %s: %s", probe.Bridge, err)
-		return err
+		return fmt.Errorf("Openflow command 'set slave' for group monitor failed %s: %s", probe.Bridge, err)
 	}
 	if err = sendOpenflow(controlChannel, openflowActivateForwardRequest); err != nil {
-		logging.GetLogger().Errorf("Openflow command 'activate forward request' for group monitor failed %s: %s", probe.Bridge, err)
-		return err
+		return fmt.Errorf("Openflow command 'activate forward request' for group monitor failed %s: %s", probe.Bridge, err)
 	}
 	go func() {
 		logging.GetLogger().Debugf("Launching goroutine for monitor groups %s", probe.Bridge)

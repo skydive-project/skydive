@@ -377,7 +377,7 @@ func (probe *ofProbe) queryStats(ctx context.Context) {
 
 func (probe *ofProbe) MonitorGroup() error {
 	if probe.handler.GetVersion() < goloxi.VERSION_1_5 {
-		return fmt.Errorf("Group monitoring is only possible on OpenFlow 1.5 and later because of an OVS bug")
+		return ErrGroupNotSupported
 	}
 
 	msg, err := probe.handler.NewRoleRequest()
