@@ -90,7 +90,7 @@ BOOTSTRAP_ARGS?=
 BUILD_TAGS?=$(TAGS)
 WITH_LXD?=true
 WITH_OPENCONTRAIL?=true
-WITH_LIBVIRT?=true
+WITH_LIBVIRT_GO?=true
 WITH_EBPF_DOCKER_BUILDER?=false
 WITH_VPP?=false
 
@@ -185,7 +185,7 @@ ifeq ($(WITH_LXD), true)
   BUILD_TAGS+=lxd
 endif
 
-ifeq ($(WITH_LIBVIRT), true)
+ifeq ($(WITH_LIBVIRT_GO), true)
   BUILD_TAGS+=libvirt
 endif
 
@@ -386,7 +386,7 @@ bench.flow: bench.flow.traces
 
 .PHONY: static
 static: skydive.clean govendor genlocalfiles
-	$(MAKE) compile.static
+	$(MAKE) compile.static WITH_LIBVIRT_GO=false
 
 .PHONY: contribs.clean
 contribs.clean:

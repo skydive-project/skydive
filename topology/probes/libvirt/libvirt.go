@@ -1,4 +1,4 @@
-// +build libvirt,linux
+// +build linux
 
 /*
  * Copyright (C) 2018 Orange.
@@ -30,7 +30,7 @@ import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/topology"
 
-	libvirtgo "github.com/libvirt/libvirt-go"
+	libvirt "github.com/digitalocean/go-libvirt"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 )
@@ -39,14 +39,25 @@ import (
 type Probe struct {
 	sync.Mutex
 	graph        *graph.Graph          // the graph
-	conn         *libvirtgo.Connect    // libvirt conection
+	conn         monitor               // libvirt connection
 	interfaceMap map[string]*Interface // Found interfaces not yet connected.
-	cidLifecycle int                   // libvirt callback id of monitor to unregister
-	cidDevAdded  int                   // second monitor on devices added to domains
 	uri          string                // uri of the libvirt connection
 	cancel       context.CancelFunc    // cancel function
 	root         *graph.Node           // root node for ownership
 	tunProcessor *graph.Processor      // metadata indexer for regular interfaces
+}
+
+// monitor abstracts a libvirt monitor
+type monitor interface {
+	AllDomains() ([]domain, error)
+	Stop()
+}
+
+// domain abstracts a libvirt domain
+type domain interface {
+	GetName() (string, error)
+	GetState() (DomainState, int, error)
+	GetXML() ([]byte, error)
 }
 
 // Address describes the XML coding of the pci addres of an interface in libvirt
@@ -58,20 +69,24 @@ type Address struct {
 	Function string `xml:"function,attr"`
 }
 
+// Source describe the XML coding of a libvirt source
 type Source struct {
 	Address *Address `xml:"address"`
 }
 
+// DomainState describes the state of a domain
+type DomainState = libvirt.DomainState
+
 // DomainStateMap stringifies the state of a domain
-var DomainStateMap = map[libvirtgo.DomainState]string{
-	libvirtgo.DOMAIN_NOSTATE:     "UNDEFINED",
-	libvirtgo.DOMAIN_RUNNING:     "UP",
-	libvirtgo.DOMAIN_BLOCKED:     "BLOCKED",
-	libvirtgo.DOMAIN_PAUSED:      "PAUSED",
-	libvirtgo.DOMAIN_SHUTDOWN:    "DOWN",
-	libvirtgo.DOMAIN_CRASHED:     "CRASHED",
-	libvirtgo.DOMAIN_PMSUSPENDED: "PMSUSPENDED",
-	libvirtgo.DOMAIN_SHUTOFF:     "DOWN",
+var DomainStateMap = map[DomainState]string{
+	libvirt.DomainNostate:     "UNDEFINED",
+	libvirt.DomainRunning:     "UP",
+	libvirt.DomainBlocked:     "BLOCKED",
+	libvirt.DomainPaused:      "PAUSED",
+	libvirt.DomainShutdown:    "DOWN",
+	libvirt.DomainCrashed:     "CRASHED",
+	libvirt.DomainPmsuspended: "PMSUSPENDED",
+	libvirt.DomainShutoff:     "DOWN",
 }
 
 // Interface is XML coding of an interface in libvirt
@@ -116,17 +131,17 @@ type Domain struct {
 // getDomainInterfaces uses libvirt to get information on the interfaces of a
 // domain.
 func (probe *Probe) getDomainInterfaces(
-	domain *libvirtgo.Domain, // domain to query
+	domain domain, // domain to query
 	domainNode *graph.Node, // Node representing the domain
 	constraint string, // to restrict the search to a single interface (by alias)
 ) (interfaces []*Interface, hostdevs []*HostDev) {
-	rawXML, err := domain.GetXMLDesc(0)
+	rawXML, err := domain.GetXML()
 	if err != nil {
 		logging.GetLogger().Errorf("Cannot get XMLDesc: %s", err)
 		return
 	}
 	d := Domain{}
-	if err = xml.Unmarshal([]byte(rawXML), &d); err != nil {
+	if err = xml.Unmarshal(rawXML, &d); err != nil {
 		logging.GetLogger().Errorf("XML parsing error: %s", err)
 		return
 	}
@@ -278,12 +293,13 @@ func enrichHostDev(hostdev *HostDev, g *graph.Graph, node *graph.Node) {
 }
 
 // getDomain access the graph node representing a libvirt domain
-func (probe *Probe) getDomain(d *libvirtgo.Domain) *graph.Node {
+func (probe *Probe) getDomain(d domain) *graph.Node {
 	domainName, err := d.GetName()
 	if err != nil {
 		logging.GetLogger().Error(err)
 		return nil
 	}
+
 	probe.graph.RLock()
 	defer probe.graph.RUnlock()
 	return probe.graph.LookupFirstNode(graph.Metadata{"Name": domainName, "Type": "libvirt"})
@@ -291,7 +307,7 @@ func (probe *Probe) getDomain(d *libvirtgo.Domain) *graph.Node {
 
 // createOrUpdateDomain creates a new graph node representing a libvirt domain
 // if necessary and updates its state.
-func (probe *Probe) createOrUpdateDomain(d *libvirtgo.Domain) *graph.Node {
+func (probe *Probe) createOrUpdateDomain(d domain) *graph.Node {
 	g := probe.graph
 	g.Lock()
 	defer g.Unlock()
@@ -334,7 +350,7 @@ func (probe *Probe) createOrUpdateDomain(d *libvirtgo.Domain) *graph.Node {
 }
 
 // deleteDomain deletes the graph node representing a libvirt domain
-func (probe *Probe) deleteDomain(d *libvirtgo.Domain) {
+func (probe *Probe) deleteDomain(d domain) {
 	domainNode := probe.getDomain(d)
 	if domainNode != nil {
 		probe.graph.Lock()
@@ -347,89 +363,36 @@ func (probe *Probe) deleteDomain(d *libvirtgo.Domain) {
 
 // Start get all domains attached to a libvirt connection
 func (probe *Probe) Start() {
-	// The event loop must be registered WITH its poll loop active BEFORE the
-	// connection is opened. Otherwise it just does not work.
-	if err := libvirtgo.EventRegisterDefaultImpl(); err != nil {
-		logging.GetLogger().Errorf("libvirt event handler:  %s", err)
-	}
 	ctx, cancel := context.WithCancel(context.Background())
 	probe.cancel = cancel
-	go func() {
-		for ctx.Err() == nil {
-			if err := libvirtgo.EventRunDefaultImpl(); err != nil {
-				logging.GetLogger().Errorf("libvirt poll loop problem: %s", err)
-			}
-		}
-	}()
-	conn, err := libvirtgo.NewConnectReadOnly(probe.uri)
-	if err != nil {
-		logging.GetLogger().Errorf("Failed to create libvirt connect")
-		return
-	}
-	probe.conn = conn
-	callback := func(
-		c *libvirtgo.Connect, d *libvirtgo.Domain,
-		event *libvirtgo.DomainEventLifecycle,
-	) {
-		switch event.Event {
-		case libvirtgo.DOMAIN_EVENT_UNDEFINED:
-			probe.deleteDomain(d)
-		case libvirtgo.DOMAIN_EVENT_STARTED:
-			domainNode := probe.createOrUpdateDomain(d)
-			interfaces, hostdevs := probe.getDomainInterfaces(d, domainNode, "")
-			probe.registerInterfaces(interfaces, hostdevs)
-		case libvirtgo.DOMAIN_EVENT_DEFINED, libvirtgo.DOMAIN_EVENT_SUSPENDED,
-			libvirtgo.DOMAIN_EVENT_RESUMED, libvirtgo.DOMAIN_EVENT_STOPPED,
-			libvirtgo.DOMAIN_EVENT_SHUTDOWN, libvirtgo.DOMAIN_EVENT_PMSUSPENDED,
-			libvirtgo.DOMAIN_EVENT_CRASHED:
-			probe.createOrUpdateDomain(d)
-		}
-	}
-	probe.cidLifecycle, err = conn.DomainEventLifecycleRegister(nil, callback)
-	if err != nil {
-		logging.GetLogger().Errorf(
-			"Could not register the lifecycle event handler %s", err)
-	}
-	callbackDeviceAdded := func(
-		c *libvirtgo.Connect, d *libvirtgo.Domain,
-		event *libvirtgo.DomainEventDeviceAdded,
-	) {
-		domainNode := probe.getDomain(d)
-		interfaces, hostdevs := probe.getDomainInterfaces(d, domainNode, event.DevAlias)
-		probe.registerInterfaces(interfaces, hostdevs) // 0 or 1 device changed.
-	}
-	probe.cidDevAdded, err = conn.DomainEventDeviceAddedRegister(nil, callbackDeviceAdded)
-	if err != nil {
-		logging.GetLogger().Errorf(
-			"Could not register the device added event handler %s", err)
-	}
-	domains, err := probe.conn.ListAllDomains(0)
+
+	conn, err := newMonitor(ctx, probe)
 	if err != nil {
 		logging.GetLogger().Error(err)
 		return
 	}
+	probe.conn = conn
+
+	domains, err := probe.conn.AllDomains()
+	if err != nil {
+		logging.GetLogger().Error(err)
+		return
+	}
+
 	for _, domain := range domains {
-		domainNode := probe.createOrUpdateDomain(&domain)
-		interfaces, hostdevs := probe.getDomainInterfaces(&domain, domainNode, "")
+		domainNode := probe.createOrUpdateDomain(domain)
+		interfaces, hostdevs := probe.getDomainInterfaces(domain, domainNode, "")
 		probe.registerInterfaces(interfaces, hostdevs)
 	}
 }
 
 // Stop stops the probe
 func (probe *Probe) Stop() {
+	if probe.conn != nil {
+		probe.conn.Stop()
+	}
 	probe.cancel()
 	probe.tunProcessor.Stop()
-	if probe.cidLifecycle != -1 {
-		if err := probe.conn.DomainEventDeregister(probe.cidLifecycle); err != nil {
-			logging.GetLogger().Errorf("Problem during deregistration: %s", err)
-		}
-		if err := probe.conn.DomainEventDeregister(probe.cidDevAdded); err != nil {
-			logging.GetLogger().Errorf("Problem during deregistration: %s", err)
-		}
-	}
-	if _, err := probe.conn.Close(); err != nil {
-		logging.GetLogger().Errorf("Problem during close: %s", err)
-	}
 }
 
 // NewProbe creates a libvirt topology probe
@@ -438,7 +401,6 @@ func NewProbe(g *graph.Graph, uri string, root *graph.Node) *Probe {
 	probe := &Probe{
 		graph:        g,
 		interfaceMap: make(map[string]*Interface),
-		cidLifecycle: -1,
 		uri:          uri,
 		root:         root,
 		tunProcessor: tunProcessor,

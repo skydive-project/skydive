@@ -1,4 +1,4 @@
-// +build !linux !libvirt
+// +build !linux
 
 /*
  * Copyright (C) 2018 Orange

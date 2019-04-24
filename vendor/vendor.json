@@ -1005,6 +1005,24 @@
 			"versionExact": "v3.0.0"
 		},
 		{
+			"checksumSHA1": "b+uQ8YJYcYbMBQDaDS26AfVNGc8=",
+			"path": "github.com/digitalocean/go-libvirt",
+			"revision": "5ea6f2a136d87dc4763b937eca7d21b3dc66452b",
+			"revisionTime": "2019-04-04T07:41:16Z"
+		},
+		{
+			"checksumSHA1": "i+X7LQSRtB2+wlf7VicgQ4UPbtM=",
+			"path": "github.com/digitalocean/go-libvirt/internal/constants",
+			"revision": "5ea6f2a136d87dc4763b937eca7d21b3dc66452b",
+			"revisionTime": "2019-04-04T07:41:16Z"
+		},
+		{
+			"checksumSHA1": "ec0UPQkMPVIjrR+9uwzBsE5JNLk=",
+			"path": "github.com/digitalocean/go-libvirt/internal/go-xdr/xdr2",
+			"revision": "5ea6f2a136d87dc4763b937eca7d21b3dc66452b",
+			"revisionTime": "2019-04-04T07:41:16Z"
+		},
+		{
 			"checksumSHA1": "f1wARLDzsF/JoyN01yoxXEwFIp8=",
 			"path": "github.com/docker/distribution/digest",
 			"revision": "325b0804fef3a66309d962357aac3c2ce3f4d329",

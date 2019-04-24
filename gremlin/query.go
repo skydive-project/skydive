@@ -158,28 +158,28 @@ func (q QueryString) Hops() QueryString {
 }
 
 // In append a In() operation to query
-func (q QueryString) In() QueryString {
-	return q.newQueryString("In")
+func (q QueryString) In(list ...interface{}) QueryString {
+	return q.newQueryString("In", list...)
 }
 
 // InE append a InE() operation to query
-func (q QueryString) InE() QueryString {
-	return q.newQueryString("InE")
+func (q QueryString) InE(list ...interface{}) QueryString {
+	return q.newQueryString("InE", list...)
 }
 
 // InV append a InV() operation to query
-func (q QueryString) InV() QueryString {
-	return q.newQueryString("InV")
+func (q QueryString) InV(list ...interface{}) QueryString {
+	return q.newQueryString("InV", list...)
 }
 
 // BothE append a BothE() operation to query
-func (q QueryString) BothE() QueryString {
-	return q.newQueryString("BothE")
+func (q QueryString) BothE(list ...interface{}) QueryString {
+	return q.newQueryString("BothE", list...)
 }
 
 // BothV append a BothV() operation to query
-func (q QueryString) BothV() QueryString {
-	return q.newQueryString("BothV")
+func (q QueryString) BothV(list ...interface{}) QueryString {
+	return q.newQueryString("BothV", list...)
 }
 
 // Metrics append a Metrics() operation to query
