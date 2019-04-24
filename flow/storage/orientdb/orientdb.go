@@ -82,6 +82,7 @@ type metricDoc struct {
 	ABBytes   int64
 	BAPackets int64
 	BABytes   int64
+	RTT       int64
 	Start     int64
 	Last      int64
 }
@@ -121,6 +122,7 @@ func metricToDoc(rid string, m *flow.FlowMetric) *metricDoc {
 		ABPackets: m.ABPackets,
 		BABytes:   m.BABytes,
 		BAPackets: m.BAPackets,
+		RTT:       m.RTT,
 		Start:     m.Start,
 		Last:      m.Last,
 	}
@@ -132,6 +134,7 @@ func (m *metricDoc) metric() *flow.FlowMetric {
 		ABPackets: m.ABPackets,
 		BABytes:   m.BABytes,
 		BAPackets: m.BAPackets,
+		RTT:       m.RTT,
 		Start:     m.Start,
 		Last:      m.Last,
 	}
@@ -303,7 +306,7 @@ func (c *Storage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filter
 // SearchMetrics searches flow metrics matching filters in the database
 func (c *Storage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]common.Metric, error) {
 	filter := fsq.Filter
-	sql := "SELECT ABBytes, ABPackets, BABytes, BAPackets, Start, Last, Flow.UUID FROM FlowMetric"
+	sql := "SELECT ABBytes, ABPackets, BABytes, BAPackets, RTT, Start, Last, Flow.UUID FROM FlowMetric"
 	sql += " WHERE " + orient.FilterToExpression(metricFilter, nil)
 	if conditional := orient.FilterToExpression(filter, func(s string) string { return "Flow." + s }); conditional != "" {
 		sql += " AND " + conditional
@@ -389,6 +392,7 @@ func New(backend string) (*Storage, error) {
 				{Name: "ABPackets", Type: "INTEGER", Mandatory: true, NotNull: true},
 				{Name: "BABytes", Type: "INTEGER", Mandatory: true, NotNull: true},
 				{Name: "BAPackets", Type: "INTEGER", Mandatory: true, NotNull: true},
+				{Name: "RTT", Type: "INTEGER", Mandatory: false, NotNull: true},
 				{Name: "Start", Type: "LONG", Mandatory: true, NotNull: true},
 				{Name: "Last", Type: "LONG", Mandatory: true, NotNull: true},
 			},

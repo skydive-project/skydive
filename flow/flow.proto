@@ -89,6 +89,7 @@ message FlowMetric {
   int64 BABytes = 5;
   int64 Start = 6;
   int64 Last = 7;
+  int64 RTT = 8;
 }
 
 message RawPacket {
@@ -165,7 +166,6 @@ message Flow {
 
   int64 Start = 10;
   int64 Last = 11;
-  int64 RTT = 14;
 
 /* Flow Tracking IDentifier, from 1st packet bytes
    flow.TrackingID could be used to identify an unique flow whatever it has

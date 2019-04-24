@@ -82,6 +82,8 @@ func (fm *FlowMetric) GetFieldInt64(field string) (int64, error) {
 		return fm.BAPackets, nil
 	case "BABytes":
 		return fm.BABytes, nil
+	case "RTT":
+		return fm.RTT, nil
 	}
 	return 0, common.ErrFieldNotFound
 }

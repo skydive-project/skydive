@@ -247,6 +247,7 @@ func (ft *Table) updateMetric(f *Flow, start, last int64) {
 	f.LastUpdateMetric.ABBytes = f.Metric.ABBytes
 	f.LastUpdateMetric.BAPackets = f.Metric.BAPackets
 	f.LastUpdateMetric.BABytes = f.Metric.BABytes
+	f.LastUpdateMetric.RTT = f.Metric.RTT
 
 	// subtract previous values to get the diff so that we store the
 	// amount of data between two updates
@@ -435,8 +436,11 @@ func (ft *Table) processFlowOP(op *Operation) {
 				BARstStart: updateTCPFlagTime(fl.TCPMetric.BARstStart, op.Flow.TCPMetric.BARstStart),
 			}
 		}
-		if fl.RTT == 0 && fl.Metric.ABPackets > 0 && fl.Metric.BAPackets > 0 {
-			fl.RTT = fl.Last - fl.Start
+
+		// TODO(safchain) remove this should be provided by the sender
+		// with a good time resolution
+		if fl.Metric.RTT == 0 && fl.Metric.ABPackets > 0 && fl.Metric.BAPackets > 0 {
+			fl.Metric.RTT = fl.Last - fl.Start
 		}
 	}
 }

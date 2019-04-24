@@ -662,6 +662,11 @@ func TestFlowMetrics(t *testing.T) {
 				return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 			}
 
+			metric, err = getFirstFlowMetric(gremlin.Has("Metric.RTT", g.Gt(0)))
+			if err != nil || metric == nil {
+				return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
+			}
+
 			return nil
 		}},
 	}
