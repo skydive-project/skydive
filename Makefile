@@ -259,6 +259,12 @@ flow/flow.pb.go: flow/flow.proto filters/filters.proto
 	sed -e 's/type Flow struct {/type Flow struct { XXX_state flowState `json:"-"`/' -i $@
 	# to fix generated layers import
 	sed -e 's/layers "flow\/layers"/layers "github.com\/skydive-project\/skydive\/flow\/layers"/' -i $@
+	sed -e 's/type FlowMetric struct {/\/\/ gendecoder\ntype FlowMetric struct {/' -i $@
+	sed -e 's/type FlowLayer struct {/\/\/ gendecoder\ntype FlowLayer struct {/' -i $@
+	sed -e 's/type TransportLayer struct {/\/\/ gendecoder\ntype TransportLayer struct {/' -i $@
+	sed -e 's/type ICMPLayer struct {/\/\/ gendecoder\ntype ICMPLayer struct {/' -i $@
+	sed -e 's/type IPMetric struct {/\/\/ gendecoder\ntype IPMetric struct {/' -i $@
+	sed -e 's/type TCPMetric struct {/\/\/ gendecoder\ntype TCPMetric struct {/' -i $@
 	gofmt -s -w $@
 
 flow/layers/generated.proto: flow/layers/layers.go

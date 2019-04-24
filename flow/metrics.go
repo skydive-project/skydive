@@ -1,3 +1,5 @@
+//go:generate go run ../scripts/gendecoder.go -filename flow.pb.go
+
 /*
  * Copyright (C) 2016 Red Hat, Inc.
  *
@@ -71,33 +73,6 @@ func (tm *TCPMetric) Copy() *TCPMetric {
 	}
 }
 
-// GetFieldInt64 implements Getter and Metrics interface
-func (fm *FlowMetric) GetFieldInt64(field string) (int64, error) {
-	switch field {
-	case "ABPackets":
-		return fm.ABPackets, nil
-	case "ABBytes":
-		return fm.ABBytes, nil
-	case "BAPackets":
-		return fm.BAPackets, nil
-	case "BABytes":
-		return fm.BABytes, nil
-	case "RTT":
-		return fm.RTT, nil
-	}
-	return 0, common.ErrFieldNotFound
-}
-
-// GetFieldString implements Getter interface
-func (fm *FlowMetric) GetFieldString(field string) (string, error) {
-	return "", common.ErrFieldNotFound
-}
-
-// GetField implements Getter interface
-func (fm *FlowMetric) GetField(field string) (interface{}, error) {
-	return fm.GetFieldInt64(field)
-}
-
 // Add sum flow metrics
 func (fm *FlowMetric) Add(m common.Metric) common.Metric {
 	f2 := m.(*FlowMetric)
@@ -164,15 +139,4 @@ func (fm *FlowMetric) Split(cut int64) (common.Metric, common.Metric) {
 	m2.(*FlowMetric).Start = cut
 
 	return m1, m2
-}
-
-// GetFieldKeys implements Getter and Metrics interface
-func (fm *FlowMetric) GetFieldKeys() []string {
-	return metricsFields
-}
-
-var metricsFields []string
-
-func init() {
-	metricsFields = common.StructFieldKeys(FlowMetric{})
 }
