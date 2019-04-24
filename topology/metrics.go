@@ -1,3 +1,5 @@
+//go:generate go run ../scripts/gendecoder.go
+
 /*
  * Copyright (C) 2016 Red Hat, Inc.
  *
@@ -25,6 +27,7 @@ import (
 
 // InterfaceMetric the interface packets counters
 // easyjson:json
+// gendecoder
 type InterfaceMetric struct {
 	Collisions        int64 `json:"Collisions,omitempty"`
 	Multicast         int64 `json:"Multicast,omitempty"`
@@ -81,73 +84,6 @@ func (im *InterfaceMetric) GetLast() int64 {
 // SetLast set last tome
 func (im *InterfaceMetric) SetLast(last int64) {
 	im.Last = last
-}
-
-// GetFieldInt64 implements Getter and Metrics interfaces
-func (im *InterfaceMetric) GetFieldInt64(field string) (int64, error) {
-	switch field {
-	case "Start":
-		return im.Start, nil
-	case "Last":
-		return im.Last, nil
-	case "RxPackets":
-		return im.RxPackets, nil
-	case "TxPackets":
-		return im.TxPackets, nil
-	case "RxBytes":
-		return im.RxBytes, nil
-	case "TxBytes":
-		return im.TxBytes, nil
-	case "RxErrors":
-		return im.RxErrors, nil
-	case "TxErrors":
-		return im.TxErrors, nil
-	case "RxDropped":
-		return im.RxDropped, nil
-	case "TxDropped":
-		return im.TxDropped, nil
-	case "Multicast":
-		return im.Multicast, nil
-	case "Collisions":
-		return im.Collisions, nil
-	case "RxLengthErrors":
-		return im.RxLengthErrors, nil
-	case "RxOverErrors":
-		return im.RxOverErrors, nil
-	case "RxCrcErrors":
-		return im.RxCrcErrors, nil
-	case "RxFrameErrors":
-		return im.RxFrameErrors, nil
-	case "RxFifoErrors":
-		return im.RxFifoErrors, nil
-	case "RxMissedErrors":
-		return im.RxMissedErrors, nil
-	case "TxAbortedErrors":
-		return im.TxAbortedErrors, nil
-	case "TxCarrierErrors":
-		return im.TxCarrierErrors, nil
-	case "TxFifoErrors":
-		return im.TxFifoErrors, nil
-	case "TxHeartbeatErrors":
-		return im.TxHeartbeatErrors, nil
-	case "TxWindowErrors":
-		return im.TxWindowErrors, nil
-	case "RxCompressed":
-		return im.RxCompressed, nil
-	case "TxCompressed":
-		return im.TxCompressed, nil
-	}
-	return 0, common.ErrFieldNotFound
-}
-
-// GetField implements Getter interface
-func (im *InterfaceMetric) GetField(key string) (interface{}, error) {
-	return im.GetFieldInt64(key)
-}
-
-// GetFieldString implements Getter interface
-func (im *InterfaceMetric) GetFieldString(key string) (string, error) {
-	return "", common.ErrFieldNotFound
 }
 
 // Add sum two metrics and return a new Metrics object
@@ -294,15 +230,4 @@ func (im *InterfaceMetric) Split(cut int64) (common.Metric, common.Metric) {
 	m2.Start = cut
 
 	return m1, m2
-}
-
-// GetFieldKeys implements Getter and Metrics interfaces
-func (im *InterfaceMetric) GetFieldKeys() []string {
-	return metricsFields
-}
-
-var metricsFields []string
-
-func init() {
-	metricsFields = common.StructFieldKeys(InterfaceMetric{})
 }
