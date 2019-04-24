@@ -1,3 +1,5 @@
+//go:generate go run ../../../scripts/gendecoder.go -package github.com/skydive-project/skydive/topology/probes/socketinfo
+
 /*
  * Copyright (C) 2018 Red Hat, Inc.
  *
@@ -28,7 +30,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/pmylund/go-cache"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 )
 
@@ -44,6 +45,7 @@ type ConnectionState string
 
 // ConnectionInfo describes a connection and its corresponding process
 // easyjson:json
+// gendecoder
 type ConnectionInfo struct {
 	ProcessInfo   `mapstructure:",squash"`
 	LocalAddress  string
@@ -57,60 +59,6 @@ type ConnectionInfo struct {
 // Hash computes the hash of a connection
 func (c *ConnectionInfo) Hash() string {
 	return HashTuple(c.Protocol, net.ParseIP(c.LocalAddress), c.LocalPort, net.ParseIP(c.RemoteAddress), c.RemotePort)
-}
-
-// GetFieldInt64 returns the value of a connection field of type int64
-func (c *ConnectionInfo) GetFieldInt64(name string) (int64, error) {
-	switch name {
-	case "Pid":
-		return c.Pid, nil
-	case "LocalPort":
-		return c.LocalPort, nil
-	case "RemotePort":
-		return c.RemotePort, nil
-	default:
-		return 0, common.ErrNotFound
-	}
-}
-
-// GetFieldString returns the value of a connection field of type string
-func (c *ConnectionInfo) GetFieldString(name string) (string, error) {
-	switch name {
-	case "Process":
-		return c.Process, nil
-	case "Name":
-		return c.Name, nil
-	case "LocalAddress":
-		return c.LocalAddress, nil
-	case "RemoteAddress":
-		return c.RemoteAddress, nil
-	case "State":
-		return string(c.State), nil
-	case "Protocol":
-		return c.Protocol.String(), nil
-	default:
-		return "", common.ErrNotFound
-	}
-}
-
-// GetField returns the value of a field
-func (c *ConnectionInfo) GetField(field string) (interface{}, error) {
-	if i, err := c.GetFieldInt64(field); err == nil {
-		return i, nil
-	}
-
-	return c.GetFieldString(field)
-}
-
-// GetFieldKeys returns the list of valid field of a Flow
-func (c *ConnectionInfo) GetFieldKeys() []string {
-	return connInfoFieldKeys
-}
-
-var connInfoFieldKeys []string
-
-func init() {
-	connInfoFieldKeys = common.StructFieldKeys(ConnectionInfo{})
 }
 
 // Decode an JSON object to connection info

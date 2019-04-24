@@ -58,10 +58,9 @@ EASYJSON_FILES_TAG=\
 	topology/probes/netlink/route.go \
 	topology/probes/netlink/neighbor.go \
 	topology/probes/nsm/nsm.go \
-	topology/probes/ovsdb/ovsdb.go
-EASYJSON_FILES_TAG_LINUX=\
-	topology/probes/netlink/netlink.go \
 	topology/probes/socketinfo/connection.go
+EASYJSON_FILES_TAG_LINUX=\
+	topology/probes/netlink/netlink.go
 EASYJSON_FILES_TAG_OPENCONTRAIL=\
 	topology/probes/opencontrail/routing_table.go
 VPPBINAPI_GITHUB:=git.fd.io/govpp.git/cmd/binapi-generator
