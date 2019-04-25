@@ -399,6 +399,7 @@ func init() {
 	graph.NodeMetadataDecoders["RoutingTables"] = netlink.RoutingTablesMetadataDecoder
 	graph.NodeMetadataDecoders["FDB"] = netlink.NeighborMetadataDecoder
 	graph.NodeMetadataDecoders["Neighbors"] = netlink.NeighborMetadataDecoder
+	graph.NodeMetadataDecoders["Vfs"] = netlink.VFSMetadataDecoder
 	graph.NodeMetadataDecoders["Metric"] = topology.InterfaceMetricMetadataDecoder
 	graph.NodeMetadataDecoders["LastUpdateMetric"] = topology.InterfaceMetricMetadataDecoder
 	graph.NodeMetadataDecoders["SFlow"] = sflow.SFMetadataDecoder

@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
@@ -93,9 +92,9 @@ func getNextHops(nodes []*graph.Node, ip net.IP) map[string]*NextHop {
 
 nodeloop:
 	for _, node := range nodes {
-		neighbors, err := common.GetField(node.Metadata, "Neighbors")
+		neighbors, err := node.GetField("Neighbors")
 
-		tables, err := common.GetField(node.Metadata, "RoutingTables")
+		tables, err := node.GetField("RoutingTables")
 		if err != nil {
 			continue
 		}
@@ -104,10 +103,11 @@ nodeloop:
 			var defaultRouteIP net.IP
 			var defaultIfIndex int64
 			for _, r := range t.Routes {
+				ipnet := net.IPNet(r.Prefix)
 				if r.Prefix.IsDefaultRoute() {
 					defaultRouteIP = r.NextHops[0].IP
 					defaultIfIndex = r.NextHops[0].IfIndex
-				} else if r.Prefix.Contains(ip) {
+				} else if ipnet.Contains(ip) {
 					nextIP := r.NextHops[0].IP
 					if nextIP == nil {
 						nexthops[string(node.ID)] = &NextHop{IfIndex: r.NextHops[0].IfIndex}

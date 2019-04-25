@@ -55,12 +55,9 @@ EASYJSON_FILES_TAG=\
 	sflow/sflow.go \
 	topology/metrics.go \
 	topology/probes/lldp/metadata.go \
-	topology/probes/netlink/route.go \
-	topology/probes/netlink/neighbor.go \
+	topology/probes/netlink/metadata.go \
 	topology/probes/nsm/nsm.go \
 	topology/probes/socketinfo/connection.go
-EASYJSON_FILES_TAG_LINUX=\
-	topology/probes/netlink/netlink.go
 EASYJSON_FILES_TAG_OPENCONTRAIL=\
 	topology/probes/opencontrail/routing_table.go
 VPPBINAPI_GITHUB:=git.fd.io/govpp.git/cmd/binapi-generator
@@ -290,7 +287,6 @@ websocket/structmessage.pb.go: websocket/structmessage.proto
 
 GEN_EASYJSON_FILES_ALL := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_ALL))
 GEN_EASYJSON_FILES_TAG := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_TAG))
-GEN_EASYJSON_FILES_TAG_LINUX := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_TAG_LINUX))
 GEN_EASYJSON_FILES_TAG_OPENCONTRAIL := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_TAG_OPENCONTRAIL))
 
 %_easyjson.go: %.go
@@ -315,7 +311,7 @@ topology/probes/ovsdb/ovsdb.pb_easyjson.go: topology/probes/ovsdb/ovsdb.go
 	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson $<
 
 .PHONY: .easyjson
-.easyjson: flow/flow.pb_easyjson.go $(GEN_EASYJSON_FILES_TAG) $(GEN_EASYJSON_FILES_TAG_LINUX) $(GEN_EASYJSON_FILES_TAG_OPENCONTRAIL)
+.easyjson: flow/flow.pb_easyjson.go $(GEN_EASYJSON_FILES_TAG) $(GEN_EASYJSON_FILES_TAG_OPENCONTRAIL)
 
 .PHONY: .easyjson.clean
 .easyjson.clean:
