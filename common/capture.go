@@ -40,7 +40,10 @@ const (
 )
 
 var (
-	// CaptureTypes contains all registred capture type and associated probes
+	// ProbeTypes returns a list of all the capture probes
+	ProbeTypes = []string{"ovssflow", "pcapsocket", "ovsmirror", "dpdk", "afpacket", "pcap", "ebpf", "sflow"}
+
+	// CaptureTypes contains all registered capture type and associated probes
 	CaptureTypes = map[string]CaptureType{}
 
 	// ProbeCapabilities defines capability per probes
@@ -94,10 +97,10 @@ func CheckProbeCapabilities(probeType string, capability ProbeCapability) bool {
 
 // ProbeTypeForNode returns the appropriate probe type for the given node type
 // and capture type.
-func ProbeTypeForNode(nodeTYpe string, captureType string) (string, error) {
+func ProbeTypeForNode(nodeType string, captureType string) (string, error) {
 	probeType := ""
 	if captureType != "" {
-		types := CaptureTypes[nodeTYpe].Allowed
+		types := CaptureTypes[nodeType].Allowed
 		for _, t := range types {
 			if t == captureType {
 				probeType = t
@@ -105,11 +108,11 @@ func ProbeTypeForNode(nodeTYpe string, captureType string) (string, error) {
 			}
 		}
 		if probeType == "" {
-			return "", fmt.Errorf("Capture type %s not allowed on this node type: %s", captureType, nodeTYpe)
+			return "", fmt.Errorf("Capture type %s not allowed on this node type: %s", captureType, nodeType)
 		}
 	} else {
-		// no capture type defined for this type of node, ex: ovsport
-		c, ok := CaptureTypes[nodeTYpe]
+		// no capture type defined for this type of node
+		c, ok := CaptureTypes[nodeType]
 		if !ok {
 			return "", nil
 		}

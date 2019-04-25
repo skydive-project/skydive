@@ -26,6 +26,7 @@ import (
 	"github.com/google/gopacket/layers"
 	valid "gopkg.in/validator.v2"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
@@ -62,6 +63,10 @@ var (
 	//LayerKeyModeNotValid validator
 	LayerKeyModeNotValid = func() error {
 		return valid.TextErr{Err: errors.New("Not a valid layer key mode")}
+	}
+	//CaptureTypeNotValid validator
+	CaptureTypeNotValid = func(t string) error {
+		return valid.TextErr{Err: fmt.Errorf("Not a valid capture type: %s, available types: %v", t, common.ProbeTypes)}
 	}
 )
 
@@ -163,6 +168,25 @@ func isValidWorkflow(v interface{}, param string) error {
 	return nil
 }
 
+func isValidCaptureType(v interface{}, param string) error {
+	typ, ok := v.(string)
+	if !ok {
+		return CaptureTypeNotValid("null")
+	}
+
+	if len(typ) == 0 {
+		return nil
+	}
+
+	for _, t := range common.ProbeTypes {
+		if t == typ {
+			return nil
+		}
+	}
+
+	return CaptureTypeNotValid(typ)
+}
+
 // Validate an object based on previously (at init) registered function
 func Validate(value interface{}) error {
 	if err := skydiveValidator.Validate(value); err != nil {
@@ -185,5 +209,6 @@ func init() {
 	skydiveValidator.SetValidationFunc("isValidRawPacketLimit", isValidRawPacketLimit)
 	skydiveValidator.SetValidationFunc("isValidLayerKeyMode", isValidLayerKeyMode)
 	skydiveValidator.SetValidationFunc("isValidWorkflow", isValidWorkflow)
+	skydiveValidator.SetValidationFunc("isValidCaptureType", isValidCaptureType)
 	skydiveValidator.SetTag("valid")
 }
