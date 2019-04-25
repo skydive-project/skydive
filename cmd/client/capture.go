@@ -47,7 +47,7 @@ var (
 	extraLayers        []string
 )
 
-// CaptureCmd skdyive capture root command
+// CaptureCmd skydive capture root command
 var CaptureCmd = &cobra.Command{
 	Use:          "capture",
 	Short:        "Manage captures",
@@ -173,17 +173,7 @@ var CaptureDelete = &cobra.Command{
 }
 
 func addCaptureFlags(cmd *cobra.Command) {
-	types := []string{}
-	found := map[string]bool{}
-	for _, v := range common.CaptureTypes {
-		for _, t := range v.Allowed {
-			if found[t] != true {
-				found[t] = true
-				types = append(types, t)
-			}
-		}
-	}
-	helpText := fmt.Sprintf("Allowed capture types: %v", types)
+	helpText := fmt.Sprintf("Allowed capture types: %v", common.ProbeTypes)
 	cmd.Flags().StringVarP(&gremlinQuery, "gremlin", "", "", "Gremlin Query")
 	cmd.Flags().StringVarP(&nodeTID, "node", "", "", "node TID")
 	cmd.Flags().StringVarP(&bpfFilter, "bpf", "", "", "BPF filter")

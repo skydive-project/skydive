@@ -75,7 +75,7 @@ type Capture struct {
 	BPFFilter      string           `json:"BPFFilter,omitempty" valid:"isBPFFilter" yaml:"BPFFilter"`
 	Name           string           `json:"Name,omitempty" yaml:"Name"`
 	Description    string           `json:"Description,omitempty" yaml:"Description"`
-	Type           string           `json:"Type,omitempty" yaml:"Type"`
+	Type           string           `json:"Type,omitempty" valid:"isValidCaptureType" yaml:"Type"`
 	Count          int              `json:"Count" yaml:"Count"`
 	PCAPSocket     string           `json:"PCAPSocket,omitempty" yaml:"PCAPSocket"`
 	Port           int              `json:"Port,omitempty" yaml:"Port"`
