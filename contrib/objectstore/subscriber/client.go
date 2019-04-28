@@ -26,26 +26,31 @@ import (
 	"github.com/IBM/ibm-cos-sdk-go/aws/credentials/ibmiam"
 	"github.com/IBM/ibm-cos-sdk-go/aws/session"
 	"github.com/IBM/ibm-cos-sdk-go/service/s3"
+	"github.com/skydive-project/skydive/logging"
 )
 
-// Client allows uploading objects to an object storage service
-type Client interface {
+// objectStoreClient allows uploading objects to an object storage service
+type objectStoreClient interface {
 	// WriteObject stores a single object
 	WriteObject(bucket, objectKey, data, contentType, contentEncoding string, metadata map[string]*string) error
 	// ReadObject reads a single object
 	ReadObject(bucket, objectKey string) ([]byte, error)
+	// ReadObjectMetadata returns an object metadata
+	ReadObjectMetadata(bucket, objectKey string) (map[string]*string, error)
 	// ListObjects lists objects withing a bucket
 	ListObjects(bucket, prefix string) ([]*string, error)
+	// DeleteObject deletes a single object
+	DeleteObject(bucket, objectKey string) error
 }
 
-// S3Client allows uploading objects to an S3-compatible object storage service
-type S3Client struct {
-	s3Client *s3.S3
+// s3Client allows uploading objects to an S3-compatible object storage service
+type s3Client struct {
+	s3c *s3.S3
 }
 
 // WriteObject stores a single object
-func (s *S3Client) WriteObject(bucket, objectKey, data, contentType, contentEncoding string, metadata map[string]*string) error {
-	_, err := s.s3Client.PutObject(&s3.PutObjectInput{
+func (s *s3Client) WriteObject(bucket, objectKey, data, contentType, contentEncoding string, metadata map[string]*string) error {
+	_, err := s.s3c.PutObject(&s3.PutObjectInput{
 		Body:            strings.NewReader(data),
 		Bucket:          aws.String(bucket),
 		ContentType:     aws.String(contentType),
@@ -54,15 +59,19 @@ func (s *S3Client) WriteObject(bucket, objectKey, data, contentType, contentEnco
 		Metadata:        metadata,
 	})
 
+	logging.GetLogger().Infof("WriteObject %s result: %v", objectKey, err)
+
 	return err
 }
 
 // ReadObject reads a single object
-func (s *S3Client) ReadObject(bucket, objectKey string) ([]byte, error) {
-	getObjectOutput, err := s.s3Client.GetObject(&s3.GetObjectInput{
+func (s *s3Client) ReadObject(bucket, objectKey string) ([]byte, error) {
+	getObjectOutput, err := s.s3c.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(objectKey),
 	})
+
+	logging.GetLogger().Infof("ReadObject %s result: %v", objectKey, err)
 
 	if err != nil {
 		return nil, err
@@ -73,8 +82,36 @@ func (s *S3Client) ReadObject(bucket, objectKey string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// ReadObjectMetadata returns an object metadata
+func (s *s3Client) ReadObjectMetadata(bucket, objectKey string) (map[string]*string, error) {
+	headObjectOutput, err := s.s3c.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(objectKey),
+	})
+
+	logging.GetLogger().Infof("ReadObjectMetadata %s result: %v", objectKey, err)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return headObjectOutput.Metadata, nil
+}
+
+// DeleteObject deletes a single object
+func (s *s3Client) DeleteObject(bucket, objectKey string) error {
+	_, err := s.s3c.DeleteObject(&s3.DeleteObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(objectKey),
+	})
+
+	logging.GetLogger().Infof("DeleteObject %s result: %v", objectKey, err)
+
+	return err
+}
+
 // ListObjects lists objects withing a bucket
-func (s *S3Client) ListObjects(bucket, prefix string) ([]*string, error) {
+func (s *s3Client) ListObjects(bucket, prefix string) ([]*string, error) {
 	params := &s3.ListObjectsInput{
 		Bucket: aws.String(bucket),
 		Prefix: aws.String(prefix),
@@ -86,7 +123,8 @@ func (s *S3Client) ListObjects(bucket, prefix string) ([]*string, error) {
 		}
 		return true
 	}
-	err := s.s3Client.ListObjectsPages(params, fn)
+	err := s.s3c.ListObjectsPages(params, fn)
+	logging.GetLogger().Infof("ListObjects result: %d, %v", len(objectKeys), err)
 	if err != nil {
 		return nil, err
 	}
@@ -94,8 +132,8 @@ func (s *S3Client) ListObjects(bucket, prefix string) ([]*string, error) {
 	return objectKeys, nil
 }
 
-// NewClient creates a new S3-compatible object storage client
-func NewClient(endpoint, region, accessKey, secretKey, apiKey, iamEndpoint string) Client {
+// newClient creates a new S3-compatible object storage client
+func newClient(endpoint, region, accessKey, secretKey, apiKey, iamEndpoint string) objectStoreClient {
 	var sdkCreds *credentials.Credentials
 	if apiKey != "" {
 		sdkCreds = ibmiam.NewStaticCredentials(aws.NewConfig(), iamEndpoint, apiKey, "")
@@ -110,9 +148,9 @@ func NewClient(endpoint, region, accessKey, secretKey, apiKey, iamEndpoint strin
 		WithRegion(region)
 
 	sess := session.Must(session.NewSession())
-	s3Client := s3.New(sess, conf)
+	s3c := s3.New(sess, conf)
 
-	return &S3Client{
-		s3Client: s3Client,
+	return &s3Client{
+		s3c: s3c,
 	}
 }

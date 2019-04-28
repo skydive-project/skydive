@@ -43,12 +43,11 @@ const (
 )
 
 var (
-	flowClassifier  = &FakeFlowClassifier{}
-	flowTransformer FlowTransformer
+	testFlowClassifier  = &fakeFlowClassifier{}
+	testFlowTransformer flowTransformer
 )
 
-// FakeClient is a mock Object Storage client
-type FakeClient struct {
+type fakeClient struct {
 	// WriteError holds the error that should be returned on WriteObject
 	WriteError error
 	// WriteCounter holds the number of times that WriteObject was called
@@ -68,7 +67,7 @@ type FakeClient struct {
 }
 
 // WriteObject stores a single object
-func (c *FakeClient) WriteObject(bucket, objectKey, data, contentType, contentEncoding string, metadata map[string]*string) error {
+func (c *fakeClient) WriteObject(bucket, objectKey, data, contentType, contentEncoding string, metadata map[string]*string) error {
 	c.WriteCounter++
 	c.LastBucket = bucket
 	c.LastObjectKey = objectKey
@@ -81,22 +80,32 @@ func (c *FakeClient) WriteObject(bucket, objectKey, data, contentType, contentEn
 }
 
 // ReadObject reads a single object
-func (c *FakeClient) ReadObject(bucket, objectKey string) ([]byte, error) {
+func (c *fakeClient) ReadObject(bucket, objectKey string) ([]byte, error) {
 	return nil, nil
+}
+
+// ReadObjectMetadata returns an object metadata
+func (c *fakeClient) ReadObjectMetadata(bucket, objectKey string) (map[string]*string, error) {
+	return nil, nil
+}
+
+// DeleteObject deletes a single object
+func (c *fakeClient) DeleteObject(bucket, objectKey string) error {
+	return nil
 }
 
 // ListObjects lists objects withing a bucket
-func (c *FakeClient) ListObjects(bucket, prefix string) ([]*string, error) {
+func (c *fakeClient) ListObjects(bucket, prefix string) ([]*string, error) {
 	return nil, nil
 }
 
-// FakeFlowClassifier is a mock flow classifier
-type FakeFlowClassifier struct {
+// fakeFlowClassifier is a mock flow classifier
+type fakeFlowClassifier struct {
 }
 
 // GetFlowTag tag flows according to their UUID
-func (fc *FakeFlowClassifier) GetFlowTag(fl *flow.Flow) Tag {
-	return Tag(fl.UUID)
+func (fc *fakeFlowClassifier) GetFlowTag(fl *flow.Flow) tag {
+	return tag(fl.UUID)
 }
 
 func generateFlowArray(count int, tag string) []*flow.Flow {
@@ -110,9 +119,9 @@ func generateFlowArray(count int, tag string) []*flow.Flow {
 	return flows
 }
 
-func newTestSubscriber() (*Subscriber, *FakeClient) {
-	client := &FakeClient{}
-	return New(client, bucket, objectPrefix, maxFlowArraySize, maxFlowsPerObject, maxSecondsPerObject, maxSecondsPerStream, flowTransformer, flowClassifier), client
+func newTestStorage() (*Storage, *fakeClient) {
+	client := &fakeClient{}
+	return newStorage(client, bucket, objectPrefix, maxFlowArraySize, maxFlowsPerObject, maxSecondsPerObject, maxSecondsPerStream, testFlowTransformer, testFlowClassifier, []string{}), client
 }
 
 func assertEqual(t *testing.T, expected, actual interface{}) {
@@ -138,13 +147,13 @@ func assertNotEqual(t *testing.T, notExpected, actual interface{}) {
 }
 
 func Test_flushFlowsToObject_NoFlows(t *testing.T) {
-	s, client := newTestSubscriber()
+	s, client := newTestStorage()
 	assertEqual(t, nil, s.flushFlowsToObject("tag", time.Now()))
 	assertEqual(t, 0, client.WriteCounter)
 }
 
 func Test_flushFlowsToObject_MarshalError(t *testing.T) {
-	s, client := newTestSubscriber()
+	s, client := newTestStorage()
 	s.flows["tag"] = []interface{}{make(chan int)}
 	err := s.flushFlowsToObject("tag", time.Now())
 	assertNotEqual(t, nil, err)
@@ -155,7 +164,7 @@ func Test_flushFlowsToObject_MarshalError(t *testing.T) {
 }
 
 func Test_flushFlowsToObject_maxStreamDuration(t *testing.T) {
-	s, _ := newTestSubscriber()
+	s, _ := newTestStorage()
 	s.maxStreamDuration = time.Second * time.Duration(2)
 
 	s.flows["tag"] = make([]interface{}, 1)
@@ -177,7 +186,7 @@ func Test_flushFlowsToObject_maxStreamDuration(t *testing.T) {
 }
 
 func Test_flushFlowsToObject_WriteObjectError(t *testing.T) {
-	s, client := newTestSubscriber()
+	s, client := newTestStorage()
 	client.WriteError = errors.New("my error")
 
 	s.flows["tag"] = make([]interface{}, 1)
@@ -186,7 +195,7 @@ func Test_flushFlowsToObject_WriteObjectError(t *testing.T) {
 }
 
 func Test_flushFlowsToObject_Positive(t *testing.T) {
-	s, client := newTestSubscriber()
+	s, client := newTestStorage()
 	s.flows["tag"] = make([]interface{}, 10)
 	s.lastFlushTime["tag"] = time.Unix(1, 0)
 	assertEqual(t, nil, s.flushFlowsToObject("tag", time.Unix(2, 0)))
@@ -227,7 +236,7 @@ func Test_flushFlowsToObject_Positive(t *testing.T) {
 }
 
 func Test_StoreFlows_MaxFlowsPerObject(t *testing.T) {
-	s, client := newTestSubscriber()
+	s, client := newTestStorage()
 	s.maxFlowsPerObject = 10
 	assertEqual(t, nil, s.StoreFlows(generateFlowArray(5, "tag")))
 	assertEqual(t, 0, client.WriteCounter)
@@ -239,7 +248,7 @@ func Test_StoreFlows_MaxFlowsPerObject(t *testing.T) {
 }
 
 func Test_StoreFlows_MaxObjectDuration(t *testing.T) {
-	s, client := newTestSubscriber()
+	s, client := newTestStorage()
 	s.maxObjectDuration = time.Second
 	assertEqual(t, nil, s.StoreFlows(generateFlowArray(1, "tag")))
 	assertEqual(t, 0, client.WriteCounter)
@@ -257,7 +266,7 @@ func Test_StoreFlows_MaxObjectDuration(t *testing.T) {
 }
 
 func Test_StoreFlows_WriteError(t *testing.T) {
-	s, client := newTestSubscriber()
+	s, client := newTestStorage()
 	s.maxFlowsPerObject = 1
 	client.WriteError = errors.New("my error")
 	assertEqual(t, nil, s.StoreFlows(generateFlowArray(1, "tag")))
@@ -265,9 +274,17 @@ func Test_StoreFlows_WriteError(t *testing.T) {
 }
 
 func Test_StoreFlows_maxFlowArraySize(t *testing.T) {
-	s, client := newTestSubscriber()
+	s, client := newTestStorage()
 	s.maxFlowArraySize = 10
 	client.WriteError = errors.New("my error")
 	assertEqual(t, nil, s.StoreFlows(generateFlowArray(11, "tag")))
 	assertEqual(t, 10, len(s.flows["tag"]))
+}
+
+func Test_StoreFlows_ExcludedTags(t *testing.T) {
+	s, client := newTestStorage()
+	s.excludedTags["tag"] = true
+	assertEqual(t, nil, s.StoreFlows(generateFlowArray(1, "tag")))
+	assertEqual(t, 0, client.WriteCounter)
+	assertEqual(t, 0, len(s.flows["tag"]))
 }

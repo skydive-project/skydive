@@ -18,37 +18,124 @@
 package subscriber
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/pmylund/go-cache"
 
+	"github.com/skydive-project/skydive/api/client"
+	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	g "github.com/skydive-project/skydive/gremlin"
+	"github.com/skydive-project/skydive/logging"
 )
 
 const version = "1.0.8"
 
-// SecurityAdvisorFlow represents a transformed flow
+// SecurityAdvisorFlowLayer is the flow layer for a security advisor flow
+type SecurityAdvisorFlowLayer struct {
+	Protocol string `json:"Protocol,omitempty"`
+	A        string `json:"A,omitempty"`
+	B        string `json:"B,omitempty"`
+	AName    string `json:"A_Name,omitempty"`
+	BName    string `json:"B_Name,omitempty"`
+}
+
+// SecurityAdvisorFlow represents a security advisor flow
 type SecurityAdvisorFlow struct {
-	UUID             string
-	LayersPath       string
-	Version          string
-	Status           string
-	FinishType       string
-	Network          *flow.FlowLayer
-	Transport        *flow.TransportLayer
-	LastUpdateMetric *flow.FlowMetric
-	Metric           *flow.FlowMetric
-	Start            int64
-	Last             int64
-	UpdateCount      int64
+	UUID             string                    `json:"UUID,omitempty"`
+	LayersPath       string                    `json:"LayersPath,omitempty"`
+	Version          string                    `json:"Version,omitempty"`
+	Status           string                    `json:"Status,omitempty"`
+	FinishType       string                    `json:"FinishType,omitempty"`
+	Network          *SecurityAdvisorFlowLayer `json:"Network,omitempty"`
+	Transport        *SecurityAdvisorFlowLayer `json:"Transport,omitempty"`
+	LastUpdateMetric *flow.FlowMetric          `json:"LastUpdateMetric,omitempty"`
+	Metric           *flow.FlowMetric          `json:"Metric,omitempty"`
+	Start            int64                     `json:"Start"`
+	Last             int64                     `json:"Last"`
+	UpdateCount      int64                     `json:"UpdateCount"`
+	NodeType         string                    `json:"NodeType,omitempty"`
+}
+
+type securityAdvisorGraphClient interface {
+	getContainerName(ipString, nodeTID string) (string, error)
+	getNodeType(nodeTID string) (string, error)
 }
 
 // SecurityAdvisorFlowTransformer is a custom transformer for flows
-type SecurityAdvisorFlowTransformer struct {
-	flowUpdateCount *cache.Cache
+type securityAdvisorFlowTransformer struct {
+	flowUpdateCount     *cache.Cache
+	graphClient         securityAdvisorGraphClient
+	containerName       *cache.Cache
+	nodeType            *cache.Cache
+	excludeStartedFlows bool
 }
 
-func (ft *SecurityAdvisorFlowTransformer) setUpadateCount(f *flow.Flow) int64 {
+type securityAdvisorGremlinClient struct {
+	gremlinClient *client.GremlinQueryHelper
+}
+
+func (c *securityAdvisorGremlinClient) getContainerName(ipString, nodeTID string) (string, error) {
+	node, err := c.gremlinClient.GetNode(g.G.V().Has("Runc.Hosts.IP", ipString).ShortestPathTo(g.Metadata("TID", nodeTID)))
+	if err != nil {
+		return "", err
+	}
+
+	return node.Metadata["Runc"].(map[string]interface{})["Hosts"].(map[string]interface{})["Hostname"].(string), nil
+}
+
+func (c *securityAdvisorGremlinClient) getNodeType(nodeTID string) (string, error) {
+	node, err := c.gremlinClient.GetNode(g.G.V().Has("TID", nodeTID))
+	if err != nil {
+		return "", err
+	}
+
+	return node.Metadata["Type"].(string), nil
+}
+
+func (ft *securityAdvisorFlowTransformer) getContainerName(ipString, nodeTID string) string {
+	if ipString == "" {
+		return ""
+	}
+	containerName, ok := ft.containerName.Get(ipString)
+	if !ok {
+		var err error
+		if containerName, err = ft.graphClient.getContainerName(ipString, nodeTID); err != nil {
+			containerName = ""
+		} else {
+			containerName = "0_0_" + containerName.(string) + "_0"
+		}
+		if err != nil && err != common.ErrNotFound {
+			logging.GetLogger().Warningf("Failed to query container name for IP '%s': %s", ipString, err.Error())
+		} else {
+			ft.containerName.Set(ipString, containerName, cache.DefaultExpiration)
+		}
+	}
+
+	return containerName.(string)
+}
+
+func (ft *securityAdvisorFlowTransformer) getNodeType(f *flow.Flow) string {
+	tid := f.NodeTID
+	nodeType, ok := ft.nodeType.Get(tid)
+	if !ok {
+		var err error
+		if nodeType, err = ft.graphClient.getNodeType(tid); err != nil {
+			nodeType = ""
+		}
+		if err != nil && err != common.ErrNotFound {
+			logging.GetLogger().Warningf("Failed to query node type for TID '%s': %s", tid, err.Error())
+		} else {
+			ft.nodeType.Set(tid, nodeType, cache.DefaultExpiration)
+		}
+	}
+
+	return nodeType.(string)
+}
+
+func (ft *securityAdvisorFlowTransformer) setUpdateCount(f *flow.Flow) int64 {
 	var count int64
 	if countRaw, ok := ft.flowUpdateCount.Get(f.UUID); ok {
 		count = countRaw.(int64)
@@ -67,7 +154,7 @@ func (ft *SecurityAdvisorFlowTransformer) setUpadateCount(f *flow.Flow) int64 {
 	return count
 }
 
-func (ft *SecurityAdvisorFlowTransformer) getStatus(f *flow.Flow, updateCount int64) string {
+func (ft *securityAdvisorFlowTransformer) getStatus(f *flow.Flow, updateCount int64) string {
 	if f.FinishType != flow.FlowFinishType_NOT_FINISHED {
 		return "ENDED"
 	}
@@ -79,7 +166,7 @@ func (ft *SecurityAdvisorFlowTransformer) getStatus(f *flow.Flow, updateCount in
 	return "UPDATED"
 }
 
-func (ft *SecurityAdvisorFlowTransformer) getFinishType(f *flow.Flow) string {
+func (ft *securityAdvisorFlowTransformer) getFinishType(f *flow.Flow) string {
 	if f.FinishType == flow.FlowFinishType_TCP_FIN {
 		return "SYN_FIN"
 	}
@@ -92,18 +179,39 @@ func (ft *SecurityAdvisorFlowTransformer) getFinishType(f *flow.Flow) string {
 	return ""
 }
 
-// Transform transforms a flow before being stored
-func (ft *SecurityAdvisorFlowTransformer) Transform(f *flow.Flow, tag Tag) interface{} {
-	// do not report flows that are neither ingress or egress
-	if tag != tagIngress && tag != tagEgress {
+func (ft *securityAdvisorFlowTransformer) getNetwork(f *flow.Flow) *SecurityAdvisorFlowLayer {
+	if f.Network == nil {
 		return nil
 	}
 
-	updateCount := ft.setUpadateCount(f)
+	return &SecurityAdvisorFlowLayer{
+		Protocol: f.Network.Protocol.String(),
+		A:        f.Network.A,
+		B:        f.Network.B,
+		AName:    ft.getContainerName(f.Network.A, f.NodeTID),
+		BName:    ft.getContainerName(f.Network.B, f.NodeTID),
+	}
+}
+
+func (ft *securityAdvisorFlowTransformer) getTransport(f *flow.Flow) *SecurityAdvisorFlowLayer {
+	if f.Transport == nil {
+		return nil
+	}
+
+	return &SecurityAdvisorFlowLayer{
+		Protocol: f.Transport.Protocol.String(),
+		A:        strconv.FormatInt(f.Transport.A, 10),
+		B:        strconv.FormatInt(f.Transport.B, 10),
+	}
+}
+
+// Transform transforms a flow before being stored
+func (ft *securityAdvisorFlowTransformer) Transform(f *flow.Flow) interface{} {
+	updateCount := ft.setUpdateCount(f)
 	status := ft.getStatus(f, updateCount)
 
 	// do not report new flows (i.e. the first time you see them)
-	if status == "STARTED" {
+	if ft.excludeStartedFlows && status == "STARTED" {
 		return nil
 	}
 
@@ -113,19 +221,28 @@ func (ft *SecurityAdvisorFlowTransformer) Transform(f *flow.Flow, tag Tag) inter
 		Version:          version,
 		Status:           status,
 		FinishType:       ft.getFinishType(f),
-		Network:          f.Network,
-		Transport:        f.Transport,
+		Network:          ft.getNetwork(f),
+		Transport:        ft.getTransport(f),
 		LastUpdateMetric: f.LastUpdateMetric,
 		Metric:           f.Metric,
 		Start:            f.Start,
 		Last:             f.Last,
 		UpdateCount:      updateCount,
+		NodeType:         ft.getNodeType(f),
 	}
 }
 
-// NewSecurityAdvisorFlowTransformer returns a new SecurityAdvisorFlowTransformer
-func NewSecurityAdvisorFlowTransformer() *SecurityAdvisorFlowTransformer {
-	return &SecurityAdvisorFlowTransformer{
-		flowUpdateCount: cache.New(10*time.Minute, 10*time.Minute),
+// newSecurityAdvisorFlowTransformer returns a new SecurityAdvisorFlowTransformer
+func newSecurityAdvisorFlowTransformer(gremlinClient *client.GremlinQueryHelper) *securityAdvisorFlowTransformer {
+	cfg := config.GetConfig()
+	cfgPrefix := "objectstore.security_advisor."
+
+	excludeStartedFlows := cfg.GetBool(cfgPrefix + "exclude_started_flows")
+	return &securityAdvisorFlowTransformer{
+		flowUpdateCount:     cache.New(10*time.Minute, 10*time.Minute),
+		graphClient:         &securityAdvisorGremlinClient{gremlinClient},
+		containerName:       cache.New(5*time.Minute, 10*time.Minute),
+		nodeType:            cache.New(5*time.Minute, 10*time.Minute),
+		excludeStartedFlows: excludeStartedFlows,
 	}
 }
