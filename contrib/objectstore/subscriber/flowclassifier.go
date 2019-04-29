@@ -26,29 +26,29 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-// FlowClassifier classifies flows to different tags (strings)
-type FlowClassifier interface {
+// flowClassifier classifies flows to different tags (strings)
+type flowClassifier interface {
 	// GetFlowTag returns the tag of the given flow
-	GetFlowTag(fl *flow.Flow) Tag
+	GetFlowTag(fl *flow.Flow) tag
 }
 
-// Tag represents the flow classification
-type Tag string
+// tag represents the flow classification
+type tag string
 
 const (
-	tagOther    Tag = "other"
-	tagEgress   Tag = "egress"
-	tagIngress  Tag = "ingress"
-	tagInternal Tag = "internal"
+	tagOther    tag = "other"
+	tagEgress   tag = "egress"
+	tagIngress  tag = "ingress"
+	tagInternal tag = "internal"
 )
 
-// FlowDirectionClassifier classifies flows by their direction (ingress, egress, etc)
-type FlowDirectionClassifier struct {
+// flowDirectionClassifier classifies flows by their direction (ingress, egress, etc)
+type flowDirectionClassifier struct {
 	clusterNetMasks []*net.IPNet
 }
 
 // GetFlowTag tag flows based on src and dst IP ranges
-func (fc *FlowDirectionClassifier) GetFlowTag(fl *flow.Flow) Tag {
+func (fc *flowDirectionClassifier) GetFlowTag(fl *flow.Flow) tag {
 	if fl == nil || fl.Network == nil {
 		return tagOther
 	}
@@ -75,7 +75,7 @@ func (fc *FlowDirectionClassifier) GetFlowTag(fl *flow.Flow) Tag {
 }
 
 // isClusterIP check if IP is in defined subnet
-func (fc *FlowDirectionClassifier) isClusterIP(ip string) (bool, error) {
+func (fc *flowDirectionClassifier) isClusterIP(ip string) (bool, error) {
 	var err error
 	clusterIP := false
 	netIP := net.ParseIP(ip)
@@ -94,8 +94,8 @@ func (fc *FlowDirectionClassifier) isClusterIP(ip string) (bool, error) {
 	return false, nil
 }
 
-// NewFlowClassifier returns a new FlowDirectionClassifier, based on the given cluster net masks
-func NewFlowClassifier(clusterNetMasks []string) (*FlowDirectionClassifier, error) {
+// newFlowClassifier returns a new FlowDirectionClassifier, based on the given cluster net masks
+func newFlowClassifier(clusterNetMasks []string) (*flowDirectionClassifier, error) {
 	parsedNetMasks := make([]*net.IPNet, 0, len(clusterNetMasks))
 	for _, netMask := range clusterNetMasks {
 		_, sa, err := net.ParseCIDR(netMask)
@@ -104,5 +104,5 @@ func NewFlowClassifier(clusterNetMasks []string) (*FlowDirectionClassifier, erro
 		}
 		parsedNetMasks = append(parsedNetMasks, sa)
 	}
-	return &FlowDirectionClassifier{clusterNetMasks: parsedNetMasks}, nil
+	return &flowDirectionClassifier{clusterNetMasks: parsedNetMasks}, nil
 }
