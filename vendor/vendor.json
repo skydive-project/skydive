@@ -1005,7 +1005,7 @@
 			"versionExact": "v3.0.0"
 		},
 		{
-			"checksumSHA1": "b+uQ8YJYcYbMBQDaDS26AfVNGc8=",
+			"checksumSHA1": "8uYFJoK50QjSxjRSRDN/wZx4lg0=",
 			"path": "github.com/digitalocean/go-libvirt",
 			"revision": "5ea6f2a136d87dc4763b937eca7d21b3dc66452b",
 			"revisionTime": "2019-04-04T07:41:16Z"
@@ -1415,8 +1415,8 @@
 			"checksumSHA1": "JB3iiLLoJSfHofXOz5cZLh9y+Eo=",
 			"origin": "github.com/safchain/gopacket/tcpassembly",
 			"path": "github.com/google/gopacket/tcpassembly",
-			"revision": "f8d3f99b21569a547d1777127a74825197a0e91f",
-			"revisionTime": "2019-04-19T15:37:13Z",
+			"revision": "d1816d7a675cad725c35e5197e188be42cd4ffb6",
+			"revisionTime": "2019-04-23T16:55:05Z",
 			"version": "fix-sflow-portname",
 			"versionExact": "fix-sflow-portname"
 		},
