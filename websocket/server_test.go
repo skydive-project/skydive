@@ -111,7 +111,7 @@ func TestSubscription(t *testing.T) {
 	}
 
 	wsClient := NewClient("myhost", common.AgentService, u, opts)
-	wsPool := NewClientPool("TestSubscription")
+	wsPool := NewClientPool("TestSubscription", PoolOpts{})
 
 	wsPool.AddClient(wsClient)
 

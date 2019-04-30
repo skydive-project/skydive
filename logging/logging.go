@@ -27,13 +27,33 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// Logger describes an identifier logger
-type Logger struct {
+// Logger is an logger interface
+type Logger interface {
+	Fatal(args ...interface{})
+	Fatalf(format string, args ...interface{})
+	Panic(args ...interface{})
+	Panicf(format string, args ...interface{})
+	Critical(args ...interface{})
+	Criticalf(format string, args ...interface{})
+	Error(args ...interface{})
+	Errorf(format string, args ...interface{})
+	Warning(args ...interface{})
+	Warningf(format string, args ...interface{})
+	Notice(args ...interface{})
+	Noticef(format string, args ...interface{})
+	Info(args ...interface{})
+	Infof(format string, args ...interface{})
+	Debug(args ...interface{})
+	Debugf(format string, args ...interface{})
+}
+
+// DefaultLogger describes an identifier logger
+type DefaultLogger struct {
 	*zap.Logger
 	id string
 }
 
-var currentLogger *Logger
+var currentLogger Logger
 
 type level int
 
@@ -47,7 +67,7 @@ const (
 	DEBUG
 )
 
-func (l *Logger) logf(level level, format *string, args ...interface{}) {
+func (l *DefaultLogger) logf(level level, format *string, args ...interface{}) {
 	s := l.Sugar()
 	fmt := l.id
 	if format != nil {
@@ -94,91 +114,91 @@ func getZapLevel(level string) zapcore.Level {
 }
 
 // Fatal is equivalent to l.Critical(fmt.Sprint()) followed by a call to os.Exit(1).
-func (l *Logger) Fatal(args ...interface{}) {
+func (l *DefaultLogger) Fatal(args ...interface{}) {
 	l.logf(CRITICAL, nil, args...)
 	os.Exit(1)
 }
 
 // Fatalf is equivalent to l.Critical followed by a call to os.Exit(1).
-func (l *Logger) Fatalf(format string, args ...interface{}) {
+func (l *DefaultLogger) Fatalf(format string, args ...interface{}) {
 	l.logf(CRITICAL, &format, args...)
 	os.Exit(1)
 }
 
 // Panic is equivalent to l.Critical(fmt.Sprint()) followed by a call to panic().
-func (l *Logger) Panic(args ...interface{}) {
+func (l *DefaultLogger) Panic(args ...interface{}) {
 	l.logf(CRITICAL, nil, args...)
 	panic(fmt.Sprint(args...))
 }
 
 // Panicf is equivalent to l.Critical followed by a call to panic().
-func (l *Logger) Panicf(format string, args ...interface{}) {
+func (l *DefaultLogger) Panicf(format string, args ...interface{}) {
 	l.logf(CRITICAL, &format, args...)
 	panic(fmt.Sprintf(format, args...))
 }
 
 // Critical logs a message using CRITICAL as log level.
-func (l *Logger) Critical(args ...interface{}) {
+func (l *DefaultLogger) Critical(args ...interface{}) {
 	l.logf(CRITICAL, nil, args...)
 }
 
 // Criticalf logs a message using CRITICAL as log level.
-func (l *Logger) Criticalf(format string, args ...interface{}) {
+func (l *DefaultLogger) Criticalf(format string, args ...interface{}) {
 	l.logf(CRITICAL, &format, args...)
 }
 
 // Error logs a message using ERROR as log level.
-func (l *Logger) Error(args ...interface{}) {
+func (l *DefaultLogger) Error(args ...interface{}) {
 	l.logf(ERROR, nil, args...)
 }
 
 // Errorf logs a message using ERROR as log level.
-func (l *Logger) Errorf(format string, args ...interface{}) {
+func (l *DefaultLogger) Errorf(format string, args ...interface{}) {
 	l.logf(ERROR, &format, args...)
 }
 
 // Warning logs a message using WARNING as log level.
-func (l *Logger) Warning(args ...interface{}) {
+func (l *DefaultLogger) Warning(args ...interface{}) {
 	l.logf(WARNING, nil, args...)
 }
 
 // Warningf logs a message using WARNING as log level.
-func (l *Logger) Warningf(format string, args ...interface{}) {
+func (l *DefaultLogger) Warningf(format string, args ...interface{}) {
 	l.logf(WARNING, &format, args...)
 }
 
 // Notice logs a message using NOTICE as log level.
-func (l *Logger) Notice(args ...interface{}) {
+func (l *DefaultLogger) Notice(args ...interface{}) {
 	l.logf(NOTICE, nil, args...)
 }
 
 // Noticef logs a message using NOTICE as log level.
-func (l *Logger) Noticef(format string, args ...interface{}) {
+func (l *DefaultLogger) Noticef(format string, args ...interface{}) {
 	l.logf(NOTICE, &format, args...)
 }
 
 // Info logs a message using INFO as log level.
-func (l *Logger) Info(args ...interface{}) {
+func (l *DefaultLogger) Info(args ...interface{}) {
 	l.logf(INFO, nil, args...)
 }
 
 // Infof logs a message using INFO as log level.
-func (l *Logger) Infof(format string, args ...interface{}) {
+func (l *DefaultLogger) Infof(format string, args ...interface{}) {
 	l.logf(INFO, &format, args...)
 }
 
 // Debug logs a message using DEBUG as log level.
-func (l *Logger) Debug(args ...interface{}) {
+func (l *DefaultLogger) Debug(args ...interface{}) {
 	l.logf(DEBUG, nil, args...)
 }
 
 // Debugf logs a message using DEBUG as log level.
-func (l *Logger) Debugf(format string, args ...interface{}) {
+func (l *DefaultLogger) Debugf(format string, args ...interface{}) {
 	l.logf(DEBUG, &format, args...)
 }
 
 // Write implements the io.Writer interface
-func (l *Logger) Write(p []byte) (n int, err error) {
+func (l *DefaultLogger) Write(p []byte) (n int, err error) {
 	s := strings.TrimRight(string(p), "\n")
 	l.Debug(s)
 	return len(s), nil
@@ -309,7 +329,7 @@ func InitLogging(id string, color bool, loggers []*LoggerConfig) (err error) {
 		return err
 	}
 
-	currentLogger = &Logger{
+	currentLogger = &DefaultLogger{
 		Logger: z,
 		id:     id,
 	}
@@ -318,7 +338,7 @@ func InitLogging(id string, color bool, loggers []*LoggerConfig) (err error) {
 }
 
 // GetLogger returns the current logger instance
-func GetLogger() (log *Logger) {
+func GetLogger() (log Logger) {
 	return currentLogger
 }
 

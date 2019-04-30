@@ -44,7 +44,7 @@ var (
 )
 
 func newHubClientPool(host string, addresses []common.ServiceAddress, opts websocket.ClientOpts) *websocket.StructClientPool {
-	pool := websocket.NewStructClientPool("HubClientPool")
+	pool := websocket.NewStructClientPool("HubClientPool", websocket.PoolOpts{Logger: opts.Logger})
 
 	for _, sa := range addresses {
 		url, _ := url.Parse(fmt.Sprintf("ws://%s:%d/ws/pod", sa.Addr, sa.Port))
@@ -121,15 +121,24 @@ var PodCmd = &cobra.Command{
 			logging.GetLogger().Info("Pod is running in standalone mode")
 		}
 
-		opts := websocket.ClientOpts{
+		clientOpts := websocket.ClientOpts{
 			AuthOpts:         clusterAuthOptions,
 			WriteCompression: writeCompression,
 			QueueSize:        queueSize,
 		}
 
-		clientPool := newHubClientPool(hostname, addresses, opts)
+		clientPool := newHubClientPool(hostname, addresses, clientOpts)
 
-		pod, err := pod.NewPod(apiServer, clientPool, g, authBackend, nil, tr, writeCompression, queueSize, time.Second*time.Duration(pingDelay), time.Second*time.Duration(pongTimeout))
+		podOpts := pod.Opts{
+			ServerOpts: websocket.ServerOpts{
+				WriteCompression: writeCompression,
+				QueueSize:        queueSize,
+				PingDelay:        time.Second * time.Duration(pingDelay),
+				PongTimeout:      time.Second * time.Duration(pongTimeout),
+			},
+		}
+
+		pod, err := pod.NewPod(apiServer, clientPool, g, authBackend, nil, tr, podOpts)
 		if err != nil {
 			logging.GetLogger().Error(err)
 			os.Exit(1)

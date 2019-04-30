@@ -81,7 +81,7 @@ func (fc *flowDirectionClassifier) isClusterIP(ip string) (bool, error) {
 	netIP := net.ParseIP(ip)
 	if netIP == nil {
 		err = errors.New("Cannot parse IP " + ip)
-		logging.GetLogger().Warn(err.Error())
+		logging.GetLogger().Warning(err.Error())
 		return false, err
 	}
 

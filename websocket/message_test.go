@@ -124,7 +124,7 @@ func TestMessageSubscription(t *testing.T) {
 
 	wsclient := NewClient("myhost", common.AgentService, u, clientOpts)
 
-	wspool := NewStructClientPool("TestMessageSubscription")
+	wspool := NewStructClientPool("TestMessageSubscription", PoolOpts{})
 	wspool.AddClient(wsclient)
 
 	clientHandler := &fakeMessageClientSubscriptionHandler{t: t, received: make(map[string]bool)}

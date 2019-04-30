@@ -135,6 +135,7 @@ type Conn struct {
 	eventHandlers    []SpeakerEventHandler
 	wsSpeaker        Speaker // speaker owning the connection
 	writeCompression bool
+	logger           logging.Logger
 }
 
 // wsIncomingClient is only used internally to handle incoming client. It embeds a Conn.
@@ -148,7 +149,8 @@ type Client struct {
 	*Conn
 	Path      string
 	AuthOpts  *shttp.AuthenticationOpts
-	tlsConfig *tls.Config
+	TLSConfig *tls.Config
+	Opts      ClientOpts
 }
 
 // ClientOpts defines some options that can be set when creating a new client
@@ -159,6 +161,7 @@ type ClientOpts struct {
 	QueueSize        int
 	WriteCompression bool
 	TLSConfig        *tls.Config
+	Logger           logging.Logger
 }
 
 // SpeakerEventHandler is the interface to be implement by the client events listeners.
@@ -325,7 +328,7 @@ func (c *Conn) run() {
 	// write the message to the wire
 	handleSentMessage := func(m []byte) {
 		if err := c.write(m); err != nil {
-			logging.GetLogger().Errorf("Error while writing to the WebSocket: %s", err)
+			c.logger.Errorf("Error while writing to the WebSocket: %s", err)
 		}
 	}
 
@@ -373,7 +376,7 @@ func (c *Conn) run() {
 				})
 			case <-c.pingTicker.C:
 				if err := c.sendPing(); err != nil {
-					logging.GetLogger().Errorf("Error while sending ping to %+v: %s", c, err)
+					c.logger.Errorf("Error while sending ping to %+v: %s", c, err)
 
 					// stop the ticker and request a quit
 					c.pingTicker.Stop()
@@ -429,7 +432,7 @@ func (c *Conn) Stop() {
 	c.wg.Wait()
 }
 
-func newConn(host string, clientType common.ServiceType, clientProtocol Protocol, url *url.URL, headers http.Header, queueSize int, writeCompression bool) *Conn {
+func newConn(host string, clientType common.ServiceType, clientProtocol Protocol, url *url.URL, headers http.Header, opts ClientOpts) *Conn {
 	if headers == nil {
 		headers = http.Header{}
 	}
@@ -447,12 +450,13 @@ func newConn(host string, clientType common.ServiceType, clientProtocol Protocol
 			Headers:        headers,
 			ConnectTime:    time.Now(),
 		},
-		send:             make(chan []byte, queueSize),
-		read:             make(chan []byte, queueSize),
+		send:             make(chan []byte, opts.QueueSize),
+		read:             make(chan []byte, opts.QueueSize),
 		flush:            make(chan struct{}),
 		quit:             make(chan bool, 2),
 		pingTicker:       &time.Ticker{},
-		writeCompression: writeCompression,
+		writeCompression: opts.WriteCompression,
+		logger:           opts.Logger,
 	}
 	*c.State = common.StoppedState
 	c.running.Store(true)
@@ -460,7 +464,7 @@ func newConn(host string, clientType common.ServiceType, clientProtocol Protocol
 }
 
 func (c *Client) scheme() string {
-	if c.tlsConfig != nil {
+	if c.TLSConfig != nil {
 		return "wss://"
 	}
 	return "ws://"
@@ -482,7 +486,7 @@ func (c *Client) Connect() error {
 		headers[k] = v
 	}
 
-	logging.GetLogger().Infof("Connecting to %s", endpoint)
+	c.Opts.Logger.Infof("Connecting to %s", endpoint)
 
 	if c.AuthOpts != nil {
 		shttp.SetAuthHeaders(&headers, c.AuthOpts)
@@ -493,7 +497,7 @@ func (c *Client) Connect() error {
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 	}
-	d.TLSClientConfig = c.tlsConfig
+	d.TLSClientConfig = c.TLSConfig
 
 	var resp *http.Response
 	c.conn, resp, err = d.Dial(endpoint, headers)
@@ -506,7 +510,7 @@ func (c *Client) Connect() error {
 
 	atomic.StoreInt32((*int32)(c.State), common.RunningState)
 
-	logging.GetLogger().Infof("Connected to %s", endpoint)
+	c.Opts.Logger.Infof("Connected to %s", endpoint)
 
 	c.RemoteHost = resp.Header.Get("X-Host-ID")
 
@@ -541,7 +545,7 @@ func (c *Client) Start() {
 			if err := c.Connect(); err == nil {
 				c.Run()
 			} else {
-				logging.GetLogger().Error(err)
+				c.Opts.Logger.Error(err)
 			}
 			time.Sleep(1 * time.Second)
 		}
@@ -550,12 +554,18 @@ func (c *Client) Start() {
 
 // NewClient returns a Client with a new connection.
 func NewClient(host string, clientType common.ServiceType, url *url.URL, opts ClientOpts) *Client {
-	wsconn := newConn(host, clientType, opts.Protocol, url, opts.Headers, opts.QueueSize, opts.WriteCompression)
+	if opts.Logger == nil {
+		opts.Logger = logging.GetLogger()
+	}
+
+	wsconn := newConn(host, clientType, opts.Protocol, url, opts.Headers, opts)
 	c := &Client{
 		Conn:      wsconn,
 		AuthOpts:  opts.AuthOpts,
-		tlsConfig: opts.TLSConfig,
+		TLSConfig: opts.TLSConfig,
+		Opts:      opts,
 	}
+
 	wsconn.wsSpeaker = c
 	return c
 }

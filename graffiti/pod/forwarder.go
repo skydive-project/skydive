@@ -50,7 +50,7 @@ func (t *Forwarder) triggerResync() {
 // such case a "Re-sync" is triggered in order to be in sync with the new master.
 func (t *Forwarder) OnNewMaster(c ws.Speaker) {
 	if c == nil {
-		logging.GetLogger().Warn("Lost connection to master")
+		logging.GetLogger().Warning("Lost connection to master")
 	} else {
 		addr, port := c.GetAddrPort()
 		logging.GetLogger().Infof("Using %s:%d as master of topology forwarder", addr, port)

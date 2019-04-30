@@ -399,7 +399,7 @@ func NewReplicationEndpoint(pool ws.StructSpeakerPool, auth *shttp.Authenticatio
 		Graph:      g,
 		cached:     cached,
 		in:         pool,
-		out:        ws.NewStructClientPool("ReplicationEndpoint"),
+		out:        ws.NewStructClientPool("ReplicationEndpoint", ws.PoolOpts{}),
 		peerStates: make(map[string]*peerState),
 	}
 	t.replicateMsg.Store(true)
