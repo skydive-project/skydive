@@ -363,7 +363,7 @@ compile.static:
 		-installsuffix netgo || true
 
 .PHONY: skydive
-skydive: govendor genlocalfiles dpdk.build contribs compile
+skydive: govendor genlocalfiles dpdk.build compile
 
 .PHONY: skydive.clean
 skydive.clean:
@@ -396,7 +396,7 @@ contribs.clean:
 	$(MAKE) -C contrib/objectstore clean
 
 .PHONY: contribs
-contribs:
+contribs: govendor genlocalfiles
 	$(MAKE) -C contrib/snort
 	$(MAKE) -C contrib/objectstore
 
