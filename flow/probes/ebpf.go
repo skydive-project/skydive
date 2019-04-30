@@ -33,8 +33,6 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
 	"github.com/iovisor/gobpf/elf"
 
 	"github.com/skydive-project/skydive/api/types"
@@ -51,6 +49,7 @@ import (
 import "C"
 
 const (
+	BPF_ANY    = 0
 	ebpfUpdate = 2 * time.Second
 )
 
@@ -81,6 +80,12 @@ type EBPFProbesHandler struct {
 	wg         sync.WaitGroup
 }
 
+func kernFlowKeyOuter(kernFlow *C.struct_flow) string {
+	hasher := sha1.New()
+	hasher.Write(C.GoBytes(unsafe.Pointer(&kernFlow.key_outer), C.sizeof___u64))
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+
 func kernFlowKey(kernFlow *C.struct_flow) string {
 	hasher := sha1.New()
 	hasher.Write(C.GoBytes(unsafe.Pointer(&kernFlow.key), C.sizeof___u64))
@@ -94,35 +99,119 @@ func tcpFlagTime(currFlagTime C.__u64, startKTimeNs int64, start time.Time) int6
 	return common.UnixMillis(start.Add(time.Duration(int64(currFlagTime) - startKTimeNs)))
 }
 
-func (p *EBPFProbe) newFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, startKTimeNs int64, start time.Time) *flow.Operation {
+func kernLayersPath(kernFlow *C.struct_flow) (layersPath string, hasGRE bool) {
+	notFirst := false
+	path := uint64(kernFlow.layers_path)
+	for i := C.LAYERS_PATH_LEN - 1; i >= 0; i-- {
+		layer := (path & (uint64(C.LAYERS_PATH_MASK) << uint(i*C.LAYERS_PATH_SHIFT))) >> uint(i*C.LAYERS_PATH_SHIFT)
+		if layer == 0 {
+			continue
+		}
+		if notFirst {
+			layersPath += "/"
+		}
+		notFirst = true
+		switch layer {
+		case C.ETH_LAYER:
+			layersPath += "Ethernet"
+		case C.ARP_LAYER:
+			layersPath += "ARP"
+		case C.DOT1Q_LAYER:
+			layersPath += "Dot1Q"
+		case C.IP4_LAYER:
+			layersPath += "IPv4"
+		case C.IP6_LAYER:
+			layersPath += "IPv6"
+		case C.ICMP4_LAYER:
+			layersPath += "ICMPv4"
+		case C.ICMP6_LAYER:
+			layersPath += "ICMPv6"
+		case C.UDP_LAYER:
+			layersPath += "UDP"
+		case C.TCP_LAYER:
+			layersPath += "TCP"
+		case C.SCTP_LAYER:
+			layersPath += "SCTP"
+		case C.GRE_LAYER:
+			hasGRE = true
+			layersPath += "GRE"
+		default:
+			layersPath += "Unknown"
+		}
+	}
+	return layersPath, hasGRE
+}
+
+func (p *EBPFProbe) newFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, startKTimeNs int64, start time.Time) []*flow.Operation {
+
+	var fops []*flow.Operation
 	f := flow.NewFlow()
 	f.Init(common.UnixMillis(ebpfFlow.start), p.probeNodeTID, flow.UUIDs{})
 	f.Last = common.UnixMillis(ebpfFlow.last)
 
-	layersFlag := uint8(kernFlow.layers)
+	layersInfo := uint8(kernFlow.layers_info)
 
 	// LINK
-	linkA := C.GoBytes(unsafe.Pointer(&kernFlow.link_layer.mac_src[0]), C.ETH_ALEN)
-	linkB := C.GoBytes(unsafe.Pointer(&kernFlow.link_layer.mac_dst[0]), C.ETH_ALEN)
-	f.Link = &flow.FlowLayer{
-		Protocol: flow.FlowProtocol_ETHERNET,
-		A:        net.HardwareAddr(linkA).String(),
-		B:        net.HardwareAddr(linkB).String(),
-		ID:       int64(kernFlow.link_layer.id),
-	}
-	f.LayersPath = "Ethernet"
-
-	nVLAN := uint8(kernFlow.link_layer.vlans)
-	for i := uint8(0); i < nVLAN; i++ {
-		f.LayersPath += "/Dot1Q"
+	if layersInfo&uint8(C.LINK_LAYER_INFO) > 0 {
+		linkA := C.GoBytes(unsafe.Pointer(&kernFlow.link_layer.mac_src[0]), C.ETH_ALEN)
+		linkB := C.GoBytes(unsafe.Pointer(&kernFlow.link_layer.mac_dst[0]), C.ETH_ALEN)
+		f.Link = &flow.FlowLayer{
+			Protocol: flow.FlowProtocol_ETHERNET,
+			A:        net.HardwareAddr(linkA).String(),
+			B:        net.HardwareAddr(linkB).String(),
+			ID:       int64(kernFlow.link_layer.id),
+		}
 	}
 
-	if layersFlag&uint8(C.ARP_LAYER) > 0 {
-		f.LayersPath += "/ARP"
+	var hasGRE bool
+	f.LayersPath, hasGRE = kernLayersPath(kernFlow)
+
+	if hasGRE {
+		pathSplitAt := strings.Index(f.LayersPath, "/GRE/")
+		innerLayerPath := f.LayersPath[pathSplitAt+len("/GRE/"):]
+
+		parent := f
+		parent.LayersPath = f.LayersPath[:pathSplitAt] + "/GRE"
+
+		// NETWORK
+		if layersInfo&uint8(C.NETWORK_LAYER_INFO) > 0 {
+			protocol := uint16(kernFlow.network_layer_outer.protocol)
+
+			switch protocol {
+			case syscall.ETH_P_IP:
+				netA := C.GoBytes(unsafe.Pointer(&kernFlow.network_layer_outer.ip_src[12]), net.IPv4len)
+				netB := C.GoBytes(unsafe.Pointer(&kernFlow.network_layer_outer.ip_dst[12]), net.IPv4len)
+				parent.Network = &flow.FlowLayer{
+					Protocol: flow.FlowProtocol_IPV4,
+					A:        net.IP(netA).To4().String(),
+					B:        net.IP(netB).To4().String(),
+				}
+			case syscall.ETH_P_IPV6:
+				netA := C.GoBytes(unsafe.Pointer(&kernFlow.network_layer_outer.ip_src[0]), net.IPv6len)
+				netB := C.GoBytes(unsafe.Pointer(&kernFlow.network_layer_outer.ip_dst[0]), net.IPv6len)
+				parent.Network = &flow.FlowLayer{
+					Protocol: flow.FlowProtocol_IPV6,
+					A:        net.IP(netA).String(),
+					B:        net.IP(netB).String(),
+				}
+			}
+		}
+		key := kernFlowKeyOuter(kernFlow)
+		parent.UpdateUUID(key, flow.Opts{LayerKeyMode: flow.L3PreferedKeyMode})
+		fops = append(fops, &flow.Operation{
+			Type: flow.ReplaceOperation,
+			Flow: parent,
+			Key:  key,
+		})
+		// upper layer
+		f = flow.NewFlow()
+		f.Init(common.UnixMillis(ebpfFlow.start), p.probeNodeTID, flow.UUIDs{ParentUUID: parent.UUID})
+		f.Last = common.UnixMillis(ebpfFlow.last)
+		f.LayersPath = innerLayerPath
 	}
 
 	// NETWORK
-	if layersFlag&uint8(C.NETWORK_LAYER) > 0 {
+	if layersInfo&uint8(C.NETWORK_LAYER_INFO) > 0 {
 		protocol := uint16(kernFlow.network_layer.protocol)
 
 		switch protocol {
@@ -134,7 +223,6 @@ func (p *EBPFProbe) newFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow
 				A:        net.IP(netA).To4().String(),
 				B:        net.IP(netB).To4().String(),
 			}
-			f.LayersPath += "/IPv4"
 		case syscall.ETH_P_IPV6:
 			netA := C.GoBytes(unsafe.Pointer(&kernFlow.network_layer.ip_src[0]), net.IPv6len)
 			netB := C.GoBytes(unsafe.Pointer(&kernFlow.network_layer.ip_dst[0]), net.IPv6len)
@@ -143,12 +231,11 @@ func (p *EBPFProbe) newFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow
 				A:        net.IP(netA).String(),
 				B:        net.IP(netB).String(),
 			}
-			f.LayersPath += "/IPv6"
 		}
 	}
 
 	// TRANSPORT
-	if layersFlag&uint8(C.TRANSPORT_LAYER) > 0 {
+	if layersInfo&uint8(C.TRANSPORT_LAYER_INFO) > 0 {
 		portA := int64(kernFlow.transport_layer.port_src)
 		portB := int64(kernFlow.transport_layer.port_dst)
 		protocol := uint8(kernFlow.transport_layer.protocol)
@@ -161,14 +248,14 @@ func (p *EBPFProbe) newFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow
 				B:        portB,
 			}
 
+			/* disabled for now as no payload is sent
 			p := gopacket.NewPacket(C.GoBytes(unsafe.Pointer(&kernFlow.payload[0]), C.PAYLOAD_LENGTH), layers.LayerTypeUDP, gopacket.DecodeOptions{})
 			if p.Layer(gopacket.LayerTypeDecodeFailure) == nil {
 				path, app := flow.LayersPath(p.Layers())
 				f.LayersPath += "/" + path
 				f.Application = app
-			} else {
-				f.LayersPath += "/UDP"
 			}
+			*/
 		case syscall.IPPROTO_TCP:
 			f.Transport = &flow.TransportLayer{
 				Protocol: flow.FlowProtocol_TCP,
@@ -183,19 +270,19 @@ func (p *EBPFProbe) newFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow
 				ABRstStart: tcpFlagTime(kernFlow.transport_layer.ab_rst, startKTimeNs, start),
 				BARstStart: tcpFlagTime(kernFlow.transport_layer.ba_rst, startKTimeNs, start),
 			}
+			/* disabled for now as no payload is sent
 			p := gopacket.NewPacket(C.GoBytes(unsafe.Pointer(&kernFlow.payload[0]), C.PAYLOAD_LENGTH), layers.LayerTypeTCP, gopacket.DecodeOptions{})
 			if p.Layer(gopacket.LayerTypeDecodeFailure) == nil {
 				path, app := flow.LayersPath(p.Layers())
 				f.LayersPath += "/" + path
 				f.Application = app
-			} else {
-				f.LayersPath += "/TCP"
 			}
+			*/
 		}
 	}
 
 	// ICMP
-	if layersFlag&uint8(C.ICMP_LAYER) > 0 {
+	if layersInfo&uint8(C.ICMP_LAYER_INFO) > 0 {
 		kind := uint8(kernFlow.icmp_layer.kind)
 		code := uint8(kernFlow.icmp_layer.code)
 		id := uint16(kernFlow.icmp_layer.id)
@@ -206,10 +293,8 @@ func (p *EBPFProbe) newFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow
 		}
 		if f.Network != nil && f.Network.Protocol == flow.FlowProtocol_IPV4 {
 			f.ICMP.Type = flow.ICMPv4TypeToFlowICMPType(kind)
-			f.LayersPath += "/ICMPv4"
 		} else {
 			f.ICMP.Type = flow.ICMPv6TypeToFlowICMPType(kind)
-			f.LayersPath += "/ICMPv6"
 		}
 	}
 
@@ -227,20 +312,21 @@ func (p *EBPFProbe) newFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow
 
 	key := kernFlowKey(kernFlow)
 
-	f.UpdateUUID(key, flow.Opts{})
+	f.UpdateUUID(key, flow.Opts{LayerKeyMode: flow.L3PreferedKeyMode})
 
-	return &flow.Operation{
+	fops = append(fops, &flow.Operation{
 		Type: flow.ReplaceOperation,
 		Flow: f,
 		Key:  key,
-	}
+	})
+	return fops
 }
 
 func (p *EBPFProbe) updateFlowOperation(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, startKTimeNs int64, start time.Time) *flow.Operation {
 	f := flow.NewFlow()
 	f.Last = common.UnixMillis(ebpfFlow.last)
-	layersFlag := uint8(kernFlow.layers)
-	if layersFlag&uint8(C.TRANSPORT_LAYER) > 0 {
+	layersInfo := uint8(kernFlow.layers_info)
+	if layersInfo&uint8(C.TRANSPORT_LAYER_INFO) > 0 {
 		protocol := uint8(kernFlow.transport_layer.protocol)
 		switch protocol {
 		case syscall.IPPROTO_TCP:
@@ -311,8 +397,8 @@ func (p *EBPFProbe) run() {
 			kernFlow := C.struct_flow{}
 			var key, nextKey C.__u64
 			for {
-				found, _ := p.module.LookupNextElement(p.fmap, unsafe.Pointer(&key), unsafe.Pointer(&nextKey), unsafe.Pointer(&kernFlow))
-				if !found {
+				found, err := p.module.LookupNextElement(p.fmap, unsafe.Pointer(&key), unsafe.Pointer(&nextKey), unsafe.Pointer(&kernFlow))
+				if !found || err != nil {
 					break
 				}
 				key = nextKey
@@ -341,7 +427,9 @@ func (p *EBPFProbe) run() {
 					ebpfFlow.lastK = lastK
 					ebpfFlow.last = last
 
-					flowChanOperation <- p.newFlowOperation(ebpfFlow, &kernFlow, startKTimeNs, start)
+					for _, fops := range p.newFlowOperation(ebpfFlow, &kernFlow, startKTimeNs, start) {
+						flowChanOperation <- fops
+					}
 				} else {
 					flowChanOperation <- p.updateFlowOperation(ebpfFlow, &kernFlow, startKTimeNs, start)
 				}
@@ -384,7 +472,7 @@ func (p *EBPFProbesHandler) registerProbe(n *graph.Node, capture *types.Capture,
 
 	module, err := loadModule()
 	if err != nil {
-		return nil
+		return err
 	}
 
 	fmap := module.Map("flow_table")
@@ -409,6 +497,7 @@ func (p *EBPFProbesHandler) registerProbe(n *graph.Node, capture *types.Capture,
 	fd := rs.GetFd()
 
 	if err := elf.AttachSocketFilter(socketFilter, fd); err != nil {
+		rs.Close()
 		return fmt.Errorf("Unable to attach socket filter to node: %s", n.ID)
 	}
 
@@ -424,9 +513,7 @@ func (p *EBPFProbesHandler) registerProbe(n *graph.Node, capture *types.Capture,
 		quit:         make(chan bool),
 	}
 
-	p.probesLock.Lock()
 	p.probes[n.ID] = probe
-	p.probesLock.Unlock()
 
 	p.wg.Add(1)
 	go func() {
@@ -439,6 +526,7 @@ func (p *EBPFProbesHandler) registerProbe(n *graph.Node, capture *types.Capture,
 		if err := elf.DetachSocketFilter(socketFilter, fd); err != nil {
 			logging.GetLogger().Errorf("Unable to detach eBPF probe: %s", err)
 		}
+		rs.Close()
 		module.Close()
 
 		e.OnStopped()
@@ -447,6 +535,9 @@ func (p *EBPFProbesHandler) registerProbe(n *graph.Node, capture *types.Capture,
 }
 
 func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+	p.probesLock.Lock()
+	defer p.probesLock.Unlock()
+
 	err := p.registerProbe(n, capture, e)
 	if err != nil {
 		go e.OnError(err)
@@ -489,6 +580,29 @@ func (p *EBPFProbesHandler) Stop() {
 	p.wg.Wait()
 }
 
+func LoadJumpMap(module *elf.Module) error {
+	var jmpTable []string = []string{"socket_network_layer"}
+
+	jmpTableMap := module.Map("jmp_map")
+	if jmpTableMap == nil {
+		return fmt.Errorf("Map: jmp_map not found")
+	}
+	for i, sym := range jmpTable {
+		entry := module.SocketFilter(sym)
+		if entry == nil {
+			return fmt.Errorf("Symbol %s not found", sym)
+		}
+
+		index := uint32(i)
+		fd := uint32(entry.Fd())
+		err := module.UpdateElement(jmpTableMap, unsafe.Pointer(&index), unsafe.Pointer(&fd), BPF_ANY)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func loadModule() (*elf.Module, error) {
 	data, err := statics.Asset("probe/ebpf/flow.o")
 	if err != nil {
@@ -510,15 +624,13 @@ func loadModule() (*elf.Module, error) {
 
 		return nil, fmt.Errorf("Unable to load eBPF elf binary (host %s) from bindata: %s", runtime.GOARCH, errs[0])
 	}
-
+	if err = LoadJumpMap(module); err != nil {
+		return nil, err
+	}
 	return module, nil
 }
 
 func NewEBPFProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*EBPFProbesHandler, error) {
-	if _, err := loadModule(); err != nil {
-		return nil, err
-	}
-
 	return &EBPFProbesHandler{
 		graph:  g,
 		probes: make(map[graph.Identifier]*EBPFProbe),

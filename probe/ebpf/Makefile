@@ -4,19 +4,29 @@ DOCKER_FILE ?= Dockerfile
 DOCKER_IMAGE ?= skydive/ebpf-builder
 TOPLEVEL_GOPATH ?= $(GOPATH)
 UID ?= $(shell id -u)
+GID ?= $(shell id -g)
+GOVENDOR:=$(TOPLEVEL_GOPATH)/bin/govendor
 
-all: ebpf-build
+.PHONY: all ebpf-build clean build-ebpf-docker-image docker-ebpf-build
+
+all: clean ebpf-build
 
 ebpf-build: flow.o
 
 %.o: %.c
 	$(CLANG) \
 		-I ../../vendor/github.com/iovisor/gobpf/elf \
-		-I /usr/include/bcc/compat \
 		-D__KERNEL__ -D__ASM_SYSREG_H -Wno-unused-value -Wno-pointer-sign \
 		-Wno-compare-distinct-pointer-types \
+		-Wno-gnu-variable-sized-type-not-at-end \
+		-Wno-address-of-packed-member -Wno-tautological-compare \
+		-Wno-compare-distinct-pointer-types \
 		-fno-stack-protector \
-		-O2 -emit-llvm -c $< -o -| $(LLC) -march=bpf -filetype=obj -o $@
+		-fno-jump-tables \
+		-fno-common \
+		-O2 -g -emit-llvm -c $< -o ebpf.bc
+	$(LLC) -march=bpf -filetype=obj -mattr=dwarfris -o $@ ebpf.bc
+	rm -f ebpf.bc
 
 clean:
 	rm -f *.o
@@ -26,8 +36,9 @@ build-ebpf-docker-image:
 
 docker-ebpf-build: build-ebpf-docker-image
 	docker run --rm \
-		--env UID=$(UID) \
+		--env=UID=$(UID) \
+		--env=GID=$(GID) \
 		-v $(TOPLEVEL_GOPATH):/go \
 		--workdir=/go/src/github.com/skydive-project/skydive/probe/ebpf \
 		$(DOCKER_IMAGE) \
-		sh -c "make ebpf-build && chown -R $(UID):$(UID) ."
+		sh -c "make ebpf-build && chown -R $(UID):$(GID) ."

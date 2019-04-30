@@ -1733,34 +1733,34 @@
 			"revisionTime": "2017-10-04T13:30:35Z"
 		},
 		{
-			"checksumSHA1": "V98GluE66LVH04Rl7zO0JKYs4ck=",
+			"checksumSHA1": "zo8bhzQSj7BMjJF6kPqxoGR9G8A=",
 			"path": "github.com/iovisor/gobpf/elf",
-			"revision": "dd767a9fd5f868874ed117811461410100cea403",
-			"revisionTime": "2017-12-04T15:54:27Z"
+			"revision": "e0d8d785d368abfb47287693c4daa1c760e2b558",
+			"revisionTime": "2019-03-29T16:34:44Z"
 		},
 		{
-			"checksumSHA1": "5WkG5igak593xRbqa+dmbEr4VDs=",
+			"checksumSHA1": "pfwftTJRtc7w311xPBpZKKHxW4c=",
 			"path": "github.com/iovisor/gobpf/elf/include",
-			"revision": "78e59123840b27e16b7b4e7ca54f2ce9493b7271",
-			"revisionTime": "2017-11-23T12:31:45Z"
+			"revision": "e0d8d785d368abfb47287693c4daa1c760e2b558",
+			"revisionTime": "2019-03-29T16:34:44Z"
 		},
 		{
 			"checksumSHA1": "taxk9ohyf2kf2ZZ8XrVLJ6KnBKs=",
 			"path": "github.com/iovisor/gobpf/pkg",
-			"revision": "78e59123840b27e16b7b4e7ca54f2ce9493b7271",
-			"revisionTime": "2017-11-23T12:31:45Z"
+			"revision": "e0d8d785d368abfb47287693c4daa1c760e2b558",
+			"revisionTime": "2019-03-29T16:34:44Z"
 		},
 		{
-			"checksumSHA1": "oCkTxswYPo40CSinHng80yaFFmo=",
+			"checksumSHA1": "8Hjxpu9eaOK5C92srTLQKXzR1+Y=",
 			"path": "github.com/iovisor/gobpf/pkg/bpffs",
-			"revision": "dd767a9fd5f868874ed117811461410100cea403",
-			"revisionTime": "2017-12-04T15:54:27Z"
+			"revision": "e0d8d785d368abfb47287693c4daa1c760e2b558",
+			"revisionTime": "2019-03-29T16:34:44Z"
 		},
 		{
 			"checksumSHA1": "MZgRY/E4XdxUWP7E/OmFSPnPJbI=",
 			"path": "github.com/iovisor/gobpf/pkg/cpuonline",
-			"revision": "dd767a9fd5f868874ed117811461410100cea403",
-			"revisionTime": "2017-12-04T15:54:27Z"
+			"revision": "e0d8d785d368abfb47287693c4daa1c760e2b558",
+			"revisionTime": "2019-03-29T16:34:44Z"
 		},
 		{
 			"checksumSHA1": "+7AX606dK1An0NDJWOJ+2Wl+XgQ=",
