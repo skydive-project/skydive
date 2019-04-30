@@ -39,9 +39,9 @@ const (
 	DeleteOnDisconnect PersistencePolicy = "DeleteOnDisconnect"
 )
 
-// TopologyPublisherEndpoint serves the graph for external publishers, for instance
+// PublisherEndpoint serves the graph for external publishers, for instance
 // an external program that interacts with the Skydive graph.
-type TopologyPublisherEndpoint struct {
+type PublisherEndpoint struct {
 	common.RWMutex
 	ws.DefaultSpeakerEventHandler
 	pool            ws.StructSpeakerPool
@@ -52,7 +52,7 @@ type TopologyPublisherEndpoint struct {
 }
 
 // OnDisconnected called when a publisher got disconnected.
-func (t *TopologyPublisherEndpoint) OnDisconnected(c ws.Speaker) {
+func (t *PublisherEndpoint) OnDisconnected(c ws.Speaker) {
 	policy := PersistencePolicy(c.GetHeaders().Get("X-Persistence-Policy"))
 	if policy == Persistent {
 		return
@@ -68,7 +68,7 @@ func (t *TopologyPublisherEndpoint) OnDisconnected(c ws.Speaker) {
 }
 
 // OnStructMessage is triggered by message coming from a publisher.
-func (t *TopologyPublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
+func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	msgType, obj, err := gws.UnmarshalMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
@@ -138,14 +138,14 @@ func (t *TopologyPublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Struct
 	}
 }
 
-// NewTopologyPublisherEndpoint returns a new server for external publishers.
-func NewTopologyPublisherEndpoint(pool ws.StructSpeakerPool, cached *graph.CachedBackend, g *graph.Graph) (*TopologyPublisherEndpoint, error) {
+// NewPublisherEndpoint returns a new server for external publishers.
+func NewPublisherEndpoint(pool ws.StructSpeakerPool, cached *graph.CachedBackend, g *graph.Graph) (*PublisherEndpoint, error) {
 	schemaValidator, err := topology.NewSchemaValidator()
 	if err != nil {
 		return nil, err
 	}
 
-	t := &TopologyPublisherEndpoint{
+	t := &PublisherEndpoint{
 		Graph:           g,
 		pool:            pool,
 		schemaValidator: schemaValidator,

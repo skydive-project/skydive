@@ -31,24 +31,24 @@ import (
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
-type topologySubscriber struct {
+type subscriber struct {
 	graph         *graph.Graph
 	gremlinFilter string
 	ts            *traversal.GremlinTraversalSequence
 }
 
-// TopologySubscriberEndpoint sends all the modifications to its subscribers.
-type TopologySubscriberEndpoint struct {
+// SubscriberEndpoint sends all the modifications to its subscribers.
+type SubscriberEndpoint struct {
 	common.RWMutex
 	ws.DefaultSpeakerEventHandler
 	pool          ws.StructSpeakerPool
 	Graph         *graph.Graph
 	wg            sync.WaitGroup
 	gremlinParser *traversal.GremlinTraversalParser
-	subscribers   map[string]*topologySubscriber
+	subscribers   map[string]*subscriber
 }
 
-func (t *TopologySubscriberEndpoint) getGraph(gremlinQuery string, ts *traversal.GremlinTraversalSequence, lockGraph bool) (*graph.Graph, error) {
+func (t *SubscriberEndpoint) getGraph(gremlinQuery string, ts *traversal.GremlinTraversalSequence, lockGraph bool) (*graph.Graph, error) {
 	res, err := ts.Exec(t.Graph, lockGraph)
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (t *TopologySubscriberEndpoint) getGraph(gremlinQuery string, ts *traversal
 	return tv.Graph, nil
 }
 
-func (t *TopologySubscriberEndpoint) newTopologySubscriber(host string, gremlinFilter string, lockGraph bool) (*topologySubscriber, error) {
+func (t *SubscriberEndpoint) newSubscriber(host string, gremlinFilter string, lockGraph bool) (*subscriber, error) {
 	ts, err := t.gremlinParser.Parse(strings.NewReader(gremlinFilter))
 	if err != nil {
 		return nil, fmt.Errorf("Invalid Gremlin filter '%s' for client %s", gremlinFilter, host)
@@ -73,11 +73,11 @@ func (t *TopologySubscriberEndpoint) newTopologySubscriber(host string, gremlinF
 		return nil, err
 	}
 
-	return &topologySubscriber{graph: g, ts: ts, gremlinFilter: gremlinFilter}, nil
+	return &subscriber{graph: g, ts: ts, gremlinFilter: gremlinFilter}, nil
 }
 
 // OnConnected called when a subscriber got connected.
-func (t *TopologySubscriberEndpoint) OnConnected(c ws.Speaker) {
+func (t *SubscriberEndpoint) OnConnected(c ws.Speaker) {
 	gremlinFilter := c.GetHeaders().Get("X-Gremlin-Filter")
 	if gremlinFilter == "" {
 		gremlinFilter = c.GetURL().Query().Get("x-gremlin-filter")
@@ -86,7 +86,7 @@ func (t *TopologySubscriberEndpoint) OnConnected(c ws.Speaker) {
 	if gremlinFilter != "" {
 		host := c.GetRemoteHost()
 
-		subscriber, err := t.newTopologySubscriber(host, gremlinFilter, false)
+		subscriber, err := t.newSubscriber(host, gremlinFilter, false)
 		if err != nil {
 			logging.GetLogger().Error(err)
 			return
@@ -98,7 +98,7 @@ func (t *TopologySubscriberEndpoint) OnConnected(c ws.Speaker) {
 }
 
 // OnDisconnected called when a subscriber got disconnected.
-func (t *TopologySubscriberEndpoint) OnDisconnected(c ws.Speaker) {
+func (t *SubscriberEndpoint) OnDisconnected(c ws.Speaker) {
 	t.Lock()
 	delete(t.subscribers, c.GetRemoteHost())
 	t.Unlock()
@@ -106,7 +106,7 @@ func (t *TopologySubscriberEndpoint) OnDisconnected(c ws.Speaker) {
 
 // OnStructMessage is triggered when receiving a message from a subscriber.
 // It only responds to SyncRequestMsgType messages
-func (t *TopologySubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
+func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	msgType, obj, err := gws.UnmarshalMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
@@ -128,7 +128,7 @@ func (t *TopologySubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Struc
 		if syncMsg.GremlinFilter != "" {
 			host := c.GetRemoteHost()
 
-			subscriber, err := t.newTopologySubscriber(host, syncMsg.GremlinFilter, false)
+			subscriber, err := t.newSubscriber(host, syncMsg.GremlinFilter, false)
 			if err != nil {
 				logging.GetLogger().Error(err)
 				return
@@ -151,7 +151,7 @@ func (t *TopologySubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.Struc
 // notifyClients forwards local graph modification to subscribers. If a subscriber
 // specified a Gremlin filter, a 'Diff' is applied between the previous graph state
 // for this subscriber and the current graph state.
-func (t *TopologySubscriberEndpoint) notifyClients(msg *ws.StructMessage) {
+func (t *SubscriberEndpoint) notifyClients(msg *ws.StructMessage) {
 	for _, c := range t.pool.GetSpeakers() {
 		t.RLock()
 		subscriber, found := t.subscribers[c.GetRemoteHost()]
@@ -190,42 +190,42 @@ func (t *TopologySubscriberEndpoint) notifyClients(msg *ws.StructMessage) {
 }
 
 // OnNodeUpdated graph node updated event. Implements the GraphEventListener interface.
-func (t *TopologySubscriberEndpoint) OnNodeUpdated(n *graph.Node) {
+func (t *SubscriberEndpoint) OnNodeUpdated(n *graph.Node) {
 	t.notifyClients(gws.NewStructMessage(gws.NodeUpdatedMsgType, n))
 }
 
 // OnNodeAdded graph node added event. Implements the GraphEventListener interface.
-func (t *TopologySubscriberEndpoint) OnNodeAdded(n *graph.Node) {
+func (t *SubscriberEndpoint) OnNodeAdded(n *graph.Node) {
 	t.notifyClients(gws.NewStructMessage(gws.NodeAddedMsgType, n))
 }
 
 // OnNodeDeleted graph node deleted event. Implements the GraphEventListener interface.
-func (t *TopologySubscriberEndpoint) OnNodeDeleted(n *graph.Node) {
+func (t *SubscriberEndpoint) OnNodeDeleted(n *graph.Node) {
 	t.notifyClients(gws.NewStructMessage(gws.NodeDeletedMsgType, n))
 }
 
 // OnEdgeUpdated graph edge updated event. Implements the GraphEventListener interface.
-func (t *TopologySubscriberEndpoint) OnEdgeUpdated(e *graph.Edge) {
+func (t *SubscriberEndpoint) OnEdgeUpdated(e *graph.Edge) {
 	t.notifyClients(gws.NewStructMessage(gws.EdgeUpdatedMsgType, e))
 }
 
 // OnEdgeAdded graph edge added event. Implements the GraphEventListener interface.
-func (t *TopologySubscriberEndpoint) OnEdgeAdded(e *graph.Edge) {
+func (t *SubscriberEndpoint) OnEdgeAdded(e *graph.Edge) {
 	t.notifyClients(gws.NewStructMessage(gws.EdgeAddedMsgType, e))
 }
 
 // OnEdgeDeleted graph edge deleted event. Implements the GraphEventListener interface.
-func (t *TopologySubscriberEndpoint) OnEdgeDeleted(e *graph.Edge) {
+func (t *SubscriberEndpoint) OnEdgeDeleted(e *graph.Edge) {
 	t.notifyClients(gws.NewStructMessage(gws.EdgeDeletedMsgType, e))
 }
 
-// NewTopologySubscriberEndpoint returns a new server to be used by external subscribers,
+// NewSubscriberEndpoint returns a new server to be used by external subscribers,
 // for instance the WebUI.
-func NewTopologySubscriberEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, tr *traversal.GremlinTraversalParser) *TopologySubscriberEndpoint {
-	t := &TopologySubscriberEndpoint{
+func NewSubscriberEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, tr *traversal.GremlinTraversalParser) *SubscriberEndpoint {
+	t := &SubscriberEndpoint{
 		Graph:         g,
 		pool:          pool,
-		subscribers:   make(map[string]*topologySubscriber),
+		subscribers:   make(map[string]*subscriber),
 		gremlinParser: tr,
 	}
 

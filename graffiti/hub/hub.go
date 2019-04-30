@@ -37,7 +37,7 @@ type Hub struct {
 	podWSServer         *websocket.StructServer
 	publisherWSServer   *websocket.StructServer
 	replicationWSServer *websocket.StructServer
-	replicationEndpoint *TopologyReplicationEndpoint
+	replicationEndpoint *ReplicationEndpoint
 	subscriberWSServer  *websocket.StructServer
 }
 
@@ -112,19 +112,19 @@ func NewHub(server *shttp.Server, g *graph.Graph, cached *graph.CachedBackend, a
 	}
 
 	podWSServer := websocket.NewStructServer(newWSServer(podEndpoint, clusterAuthBackend))
-	_, err := NewTopologyPodEndpoint(podWSServer, cached, g)
+	_, err := NewPodEndpoint(podWSServer, cached, g)
 	if err != nil {
 		return nil, err
 	}
 
 	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", apiAuthBackend))
-	_, err = NewTopologyPublisherEndpoint(publisherWSServer, cached, g)
+	_, err = NewPublisherEndpoint(publisherWSServer, cached, g)
 	if err != nil {
 		return nil, err
 	}
 
 	replicationWSServer := websocket.NewStructServer(newWSServer("/ws/replication", clusterAuthBackend))
-	replicationEndpoint, err := NewTopologyReplicationEndpoint(replicationWSServer, clusterAuthOptions, cached, g, peers)
+	replicationEndpoint, err := NewReplicationEndpoint(replicationWSServer, clusterAuthOptions, cached, g, peers)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +134,7 @@ func NewHub(server *shttp.Server, g *graph.Graph, cached *graph.CachedBackend, a
 	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
 
 	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", apiAuthBackend))
-	pod.NewTopologySubscriberEndpoint(subscriberWSServer, g, tr)
+	pod.NewSubscriberEndpoint(subscriberWSServer, g, tr)
 
 	return &Hub{
 		server:              server,

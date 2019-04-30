@@ -32,7 +32,7 @@ import (
 type Pod struct {
 	subscriberWSServer *websocket.StructServer
 	publisherWSServer  *websocket.StructServer
-	forwarder          *TopologyForwarder
+	forwarder          *Forwarder
 	clientPool         *websocket.StructClientPool
 }
 
@@ -87,8 +87,8 @@ func (p *Pod) SubscriberServer() *websocket.StructServer {
 	return p.subscriberWSServer
 }
 
-// TopologyForwarder returns the pod topology forwarder
-func (p *Pod) TopologyForwarder() *TopologyForwarder {
+// Forwarder returns the pod topology forwarder
+func (p *Pod) Forwarder() *Forwarder {
 	return p.forwarder
 }
 
@@ -106,9 +106,9 @@ func NewPod(server *api.Server, clientPool *websocket.StructClientPool, g *graph
 	}
 
 	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", apiAuthBackend))
-	NewTopologySubscriberEndpoint(subscriberWSServer, g, tr)
+	NewSubscriberEndpoint(subscriberWSServer, g, tr)
 
-	forwarder := NewTopologyForwarder(server.HTTPServer.Host, g, clientPool)
+	forwarder := NewForwarder(server.HTTPServer.Host, g, clientPool)
 
 	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", apiAuthBackend))
 	if _, err := NewPublisherEndpoint(publisherWSServer, g); err != nil {
