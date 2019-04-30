@@ -59,7 +59,7 @@ type ConnStatus struct {
 	RemoteServiceType common.ServiceType `json:",omitempty"`
 }
 
-// MarshalJSON marshal the connexion state to JSON
+// MarshalJSON marshal the connection state to JSON
 func (s *ConnState) MarshalJSON() ([]byte, error) {
 	switch *s {
 	case common.RunningState:
@@ -70,7 +70,7 @@ func (s *ConnState) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Invalid state: %d", s)
 }
 
-// UnmarshalJSON deserialize a connection state
+// UnmarshalJSON de-serialize a connection state
 func (s *ConnState) UnmarshalJSON(b []byte) error {
 	var state bool
 	if err := json.Unmarshal(b, &state); err != nil {

@@ -62,7 +62,7 @@ type Agent struct {
 }
 
 // NewAnalyzerStructClientPool creates a new http WebSocket client Pool
-// with authentification
+// with authentication
 func NewAnalyzerStructClientPool(authOpts *shttp.AuthenticationOpts) (*ws.StructClientPool, error) {
 	pool := ws.NewStructClientPool("AnalyzerClientPool")
 
@@ -142,7 +142,7 @@ func (a *Agent) Stop() {
 	a.tidMapper.Stop()
 }
 
-// NewAgent instanciates a new Agent aiming to launch probes (topology and flow)
+// NewAgent instantiates a new Agent aiming to launch probes (topology and flow)
 func NewAgent() (*Agent, error) {
 	backend, err := graph.NewMemoryBackend()
 	if err != nil {
@@ -180,7 +180,7 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	// declare all extension available throught API and filtering
+	// declare all extension available through API and filtering
 	tr := traversal.NewGremlinTraversalParser()
 	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
