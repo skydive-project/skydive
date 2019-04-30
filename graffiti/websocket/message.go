@@ -33,15 +33,17 @@ const (
 
 // Graph message type
 const (
-	SyncMsgType        = "Sync"
-	SyncRequestMsgType = "SyncRequest"
-	SyncReplyMsgType   = "SyncReply"
-	NodeUpdatedMsgType = "NodeUpdated"
-	NodeDeletedMsgType = "NodeDeleted"
-	NodeAddedMsgType   = "NodeAdded"
-	EdgeUpdatedMsgType = "EdgeUpdated"
-	EdgeDeletedMsgType = "EdgeDeleted"
-	EdgeAddedMsgType   = "EdgeAdded"
+	SyncMsgType                 = "Sync"
+	SyncRequestMsgType          = "SyncRequest"
+	SyncReplyMsgType            = "SyncReply"
+	NodeUpdatedMsgType          = "NodeUpdated"
+	NodeDeletedMsgType          = "NodeDeleted"
+	NodeAddedMsgType            = "NodeAdded"
+	EdgeUpdatedMsgType          = "EdgeUpdated"
+	EdgeDeletedMsgType          = "EdgeDeleted"
+	EdgeAddedMsgType            = "EdgeAdded"
+	NodePartiallyUpdatedMsgType = "NodePartiallyUpdated"
+	EdgePartiallyUpdatedMsgType = "EdgePartiallyUpdated"
 )
 
 // Graph error message
@@ -59,6 +61,12 @@ type SyncRequestMsg struct {
 // SyncMsg describes graph synchro message
 type SyncMsg struct {
 	*graph.Elements
+}
+
+// PartiallyUpdatedMsg describes multiple graph modifications
+type PartiallyUpdatedMsg struct {
+	ID  graph.Identifier
+	Ops []graph.PartiallyUpdatedOp
 }
 
 // NewStructMessage returns a new graffiti websocket StructMessage
@@ -112,6 +120,13 @@ func UnmarshalMessage(msg *ws.StructMessage) (string, interface{}, error) {
 			return "", msg, err
 		}
 		return msg.Type, &edge, nil
+	case NodePartiallyUpdatedMsgType, EdgePartiallyUpdatedMsgType:
+		var pu PartiallyUpdatedMsg
+		if err := json.Unmarshal(msg.Obj, &pu); err != nil {
+			return "", msg, err
+		}
+
+		return msg.Type, &pu, nil
 	}
 
 	return "", msg, nil

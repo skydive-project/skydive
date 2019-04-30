@@ -18,6 +18,7 @@
 package pod
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/skydive-project/skydive/common"
@@ -48,17 +49,17 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 		return
 	}
 
-	/*switch msgType {
+	switch msgType {
 	case gws.NodeAddedMsgType, gws.NodeUpdatedMsgType, gws.NodeDeletedMsgType:
 		err = t.schemaValidator.ValidateNode(obj.(*graph.Node))
 	case gws.EdgeAddedMsgType, gws.EdgeUpdatedMsgType, gws.EdgeDeletedMsgType:
 		err = t.schemaValidator.ValidateEdge(obj.(*graph.Edge))
-	}*/
+	}
 
-	/*if err != nil {
+	if err != nil {
 		logging.GetLogger().Error(err)
 		return
-	}*/
+	}
 
 	t.Graph.Lock()
 	defer t.Graph.Unlock()
@@ -81,6 +82,42 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 		}
 	case gws.EdgeAddedMsgType:
 		err = t.Graph.EdgeAdded(obj.(*graph.Edge))
+	case gws.NodePartiallyUpdatedMsgType:
+		updated := obj.(*gws.PartiallyUpdatedMsg)
+		node := t.Graph.GetNode(updated.ID)
+		if node == nil {
+			err = fmt.Errorf("Partial update node not found: %s", updated.ID)
+			break
+		}
+
+		tr := t.Graph.StartMetadataTransaction(node)
+		for _, op := range updated.Ops {
+			// TODO(safchain) should use a decoder here for each key/value to keep
+			// the type of the metadata
+			if op.Type == graph.PartiallyUpdatedAddOpType {
+				tr.AddMetadata(op.Key, op.Value)
+			} else {
+				tr.DelMetadata(op.Key)
+			}
+		}
+		tr.Commit()
+	case gws.EdgePartiallyUpdatedMsgType:
+		updated := obj.(*gws.PartiallyUpdatedMsg)
+		edge := t.Graph.GetEdge(updated.ID)
+		if edge == nil {
+			err = fmt.Errorf("Partial update edge not found: %s", updated.ID)
+			break
+		}
+
+		tr := t.Graph.StartMetadataTransaction(edge)
+		for _, op := range updated.Ops {
+			if op.Type == graph.PartiallyUpdatedAddOpType {
+				tr.AddMetadata(op.Key, op.Value)
+			} else {
+				tr.DelMetadata(op.Key)
+			}
+		}
+		tr.Commit()
 	}
 
 	if err != nil {

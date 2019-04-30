@@ -223,6 +223,35 @@ type EventHandler struct {
 	currentEventListener EventListener
 }
 
+// PartiallyUpdatedOpType operation type add/del
+type PartiallyUpdatedOpType int
+
+const (
+	// PartiallyUpdatedAddOpType add metadata
+	PartiallyUpdatedAddOpType PartiallyUpdatedOpType = iota + 1
+	// PartiallyUpdatedDelOpType del metadata
+	PartiallyUpdatedDelOpType
+)
+
+// PartiallyUpdatedOp describes a way to update partially node or edge
+type PartiallyUpdatedOp struct {
+	Type  PartiallyUpdatedOpType
+	Key   string
+	Value interface{}
+}
+
+// NodePartiallyUpdated partial updates of a node
+type NodePartiallyUpdated struct {
+	Node *Node
+	Ops  []PartiallyUpdatedOp
+}
+
+// EdgePartiallyUpdated partial updates of a edge
+type EdgePartiallyUpdated struct {
+	Edge *Edge
+	Ops  []PartiallyUpdatedOp
+}
+
 func (g *EventHandler) notifyListeners(ge graphEvent) {
 	// notify only once per listener as if more than once we are in a recursion
 	// and we wont to notify a listener which generated a graph element
