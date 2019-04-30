@@ -407,6 +407,7 @@ func (c *Client) UpgradeToStructSpeaker() *StructSpeaker {
 	s := newStructSpeaker(c)
 	c.Lock()
 	c.wsSpeaker = s
+	s.nsSubscribed[WildcardNamespace] = true
 	c.Unlock()
 	return s
 }
@@ -526,7 +527,7 @@ func NewStructServer(server *Server) *StructServer {
 			}
 		}
 
-		// if empty use wilcard for backward compatibility
+		// if empty use wildcard for backward compatibility
 		if len(c.nsSubscribed) == 0 {
 			c.nsSubscribed[WildcardNamespace] = true
 		}
