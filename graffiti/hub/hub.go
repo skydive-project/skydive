@@ -19,9 +19,9 @@ package hub
 
 import (
 	"github.com/skydive-project/skydive/common"
+	gc "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
-	"github.com/skydive-project/skydive/graffiti/pod"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/websocket"
@@ -134,7 +134,7 @@ func NewHub(server *shttp.Server, g *graph.Graph, cached *graph.CachedBackend, a
 	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
 
 	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", apiAuthBackend))
-	pod.NewSubscriberEndpoint(subscriberWSServer, g, tr)
+	gc.NewSubscriberEndpoint(subscriberWSServer, g, tr)
 
 	return &Hub{
 		server:              server,

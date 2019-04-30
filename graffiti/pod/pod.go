@@ -21,6 +21,7 @@ import (
 	"time"
 
 	api "github.com/skydive-project/skydive/api/server"
+	"github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	shttp "github.com/skydive-project/skydive/http"
@@ -106,7 +107,7 @@ func NewPod(server *api.Server, clientPool *websocket.StructClientPool, g *graph
 	}
 
 	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", apiAuthBackend))
-	NewSubscriberEndpoint(subscriberWSServer, g, tr)
+	common.NewSubscriberEndpoint(subscriberWSServer, g, tr)
 
 	forwarder := NewForwarder(server.HTTPServer.Host, g, clientPool)
 

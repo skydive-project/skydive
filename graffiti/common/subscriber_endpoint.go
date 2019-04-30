@@ -15,7 +15,7 @@
  *
  */
 
-package pod
+package common
 
 import (
 	"fmt"
