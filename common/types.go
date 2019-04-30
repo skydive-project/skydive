@@ -139,6 +139,7 @@ func MaxInt64(a, b int64) int64 {
 // NormalizeValue returns a version of the passed value
 // that can be safely marshalled to JSON
 func NormalizeValue(obj interface{}) interface{} {
+	obj = deepcopy.Copy(obj)
 	if structs.IsStruct(obj) {
 		obj = structs.Map(obj)
 	}
@@ -170,7 +171,7 @@ func NormalizeValue(obj interface{}) interface{} {
 	case nil:
 		return ""
 	}
-	return deepcopy.Copy(obj)
+	return obj
 }
 
 // JSONDecode wrapper to UseNumber during JSON decoding
