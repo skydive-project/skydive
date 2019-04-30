@@ -24,9 +24,9 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/validator"
 	gws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology"
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
@@ -35,10 +35,10 @@ import (
 type PublisherEndpoint struct {
 	common.RWMutex
 	ws.DefaultSpeakerEventHandler
-	pool            ws.StructSpeakerPool
-	Graph           *graph.Graph
-	schemaValidator *topology.SchemaValidator
-	gremlinParser   *traversal.GremlinTraversalParser
+	pool          ws.StructSpeakerPool
+	Graph         *graph.Graph
+	validator     validator.Validator
+	gremlinParser *traversal.GremlinTraversalParser
 }
 
 // OnStructMessage is triggered by message coming from a publisher.
@@ -49,16 +49,18 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 		return
 	}
 
-	switch msgType {
-	case gws.NodeAddedMsgType, gws.NodeUpdatedMsgType, gws.NodeDeletedMsgType:
-		err = t.schemaValidator.ValidateNode(obj.(*graph.Node))
-	case gws.EdgeAddedMsgType, gws.EdgeUpdatedMsgType, gws.EdgeDeletedMsgType:
-		err = t.schemaValidator.ValidateEdge(obj.(*graph.Edge))
-	}
+	if t.validator != nil {
+		switch msgType {
+		case gws.NodeAddedMsgType, gws.NodeUpdatedMsgType, gws.NodeDeletedMsgType:
+			err = t.validator.ValidateNode(obj.(*graph.Node))
+		case gws.EdgeAddedMsgType, gws.EdgeUpdatedMsgType, gws.EdgeDeletedMsgType:
+			err = t.validator.ValidateEdge(obj.(*graph.Edge))
+		}
 
-	if err != nil {
-		logging.GetLogger().Error(err)
-		return
+		if err != nil {
+			logging.GetLogger().Error(err)
+			return
+		}
 	}
 
 	t.Graph.Lock()
@@ -126,17 +128,12 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 }
 
 // NewPublisherEndpoint returns a new server for external publishers.
-func NewPublisherEndpoint(pool ws.StructSpeakerPool, g *graph.Graph) (*PublisherEndpoint, error) {
-	schemaValidator, err := topology.NewSchemaValidator()
-	if err != nil {
-		return nil, err
-	}
-
+func NewPublisherEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, validator validator.Validator) (*PublisherEndpoint, error) {
 	t := &PublisherEndpoint{
-		Graph:           g,
-		pool:            pool,
-		schemaValidator: schemaValidator,
-		gremlinParser:   traversal.NewGremlinTraversalParser(),
+		Graph:         g,
+		pool:          pool,
+		validator:     validator,
+		gremlinParser: traversal.NewGremlinTraversalParser(),
 	}
 
 	pool.AddEventHandler(t)

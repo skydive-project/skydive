@@ -204,7 +204,22 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	pod, err := pod.NewPod(apiServer, analyzerClientPool, g, apiAuthBackend, clusterAuthOptions, tr, true, 10000, 2*time.Second, 5*time.Second)
+	validator, err := topology.NewSchemaValidator()
+	if err != nil {
+		return nil, fmt.Errorf("Unable to instantiate a schema validator: %s", err)
+	}
+
+	opts := pod.Opts{
+		ServerOpts: websocket.ServerOpts{
+			WriteCompression: true,
+			QueueSize:        10000,
+			PingDelay:        2 * time.Second,
+			PongTimeout:      5 * time.Second,
+		},
+		Validator: validator,
+	}
+
+	pod, err := pod.NewPod(apiServer, analyzerClientPool, g, apiAuthBackend, clusterAuthOptions, tr, opts)
 	if err != nil {
 		return nil, err
 	}

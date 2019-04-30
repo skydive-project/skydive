@@ -18,15 +18,20 @@
 package pod
 
 import (
-	"time"
-
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/validator"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/websocket"
 )
+
+// Opts defines pod server options
+type Opts struct {
+	ServerOpts websocket.ServerOpts
+	Validator  validator.Validator
+}
 
 // Pod describes a graph pod. It maintains a local graph
 // in memory and forward any event to graph hubs
@@ -94,16 +99,9 @@ func (p *Pod) Forwarder() *Forwarder {
 }
 
 // NewPod returns a new pod
-func NewPod(server *api.Server, clientPool *websocket.StructClientPool, g *graph.Graph, apiAuthBackend shttp.AuthenticationBackend, clusterAuthOptions *shttp.AuthenticationOpts, tr *traversal.GremlinTraversalParser, writeCompression bool, queueSize int, pingDelay, pongTimeout time.Duration) (*Pod, error) {
-	opts := websocket.ServerOpts{
-		WriteCompression: writeCompression,
-		QueueSize:        queueSize,
-		PingDelay:        time.Duration(pingDelay) * time.Second,
-		PongTimeout:      time.Duration(pongTimeout) * time.Second,
-	}
-
+func NewPod(server *api.Server, clientPool *websocket.StructClientPool, g *graph.Graph, apiAuthBackend shttp.AuthenticationBackend, clusterAuthOptions *shttp.AuthenticationOpts, tr *traversal.GremlinTraversalParser, opts Opts) (*Pod, error) {
 	newWSServer := func(endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
-		return websocket.NewServer(server.HTTPServer, endpoint, authBackend, opts)
+		return websocket.NewServer(server.HTTPServer, endpoint, authBackend, opts.ServerOpts)
 	}
 
 	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", apiAuthBackend))
@@ -112,7 +110,7 @@ func NewPod(server *api.Server, clientPool *websocket.StructClientPool, g *graph
 	forwarder := NewForwarder(server.HTTPServer.Host, g, clientPool)
 
 	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", apiAuthBackend))
-	if _, err := NewPublisherEndpoint(publisherWSServer, g); err != nil {
+	if _, err := NewPublisherEndpoint(publisherWSServer, g, opts.Validator); err != nil {
 		return nil, err
 	}
 

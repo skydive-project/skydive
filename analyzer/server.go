@@ -257,11 +257,19 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, fmt.Errorf("Unable to get the analyzers list: %s", err)
 	}
 
-	opts := websocket.ServerOpts{
-		WriteCompression: true,
-		QueueSize:        10000,
-		PingDelay:        2 * time.Second,
-		PongTimeout:      5 * time.Second,
+	validator, err := topology.NewSchemaValidator()
+	if err != nil {
+		return nil, fmt.Errorf("Unable to instantiate a schema validator: %s", err)
+	}
+
+	opts := hub.Opts{
+		ServerOpts: websocket.ServerOpts{
+			WriteCompression: true,
+			QueueSize:        10000,
+			PingDelay:        2 * time.Second,
+			PongTimeout:      5 * time.Second,
+		},
+		Validator: validator,
 	}
 
 	clusterAuthOptions := ClusterAuthenticationOpts()
