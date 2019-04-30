@@ -59,7 +59,7 @@ func DefToMetadata(def string, metadata graph.Metadata) (graph.Metadata, error) 
 		key := strings.Trim(kv[0], `"`)
 		value := strings.Trim(kv[1], `"`)
 
-		common.SetField(metadata, key, value)
+		metadata.SetField(key, value)
 	}
 
 	return metadata, nil
@@ -134,7 +134,7 @@ func (tm *TopologyManager) nodeID(node *types.NodeRule) graph.Identifier {
 
 func (tm *TopologyManager) createNode(node *types.NodeRule) error {
 	id := tm.nodeID(node)
-	common.SetField(node.Metadata, "TID", string(id))
+	node.Metadata.SetField("TID", string(id))
 
 	//check node already exist
 	if n := tm.graph.GetNode(id); n != nil {
@@ -142,7 +142,7 @@ func (tm *TopologyManager) createNode(node *types.NodeRule) error {
 	}
 
 	if node.Metadata["Type"] == "fabric" {
-		common.SetField(node.Metadata, "Probe", "fabric")
+		node.Metadata["Probe"] = "fabric"
 	}
 
 	tm.graph.NewNode(id, node.Metadata, "")

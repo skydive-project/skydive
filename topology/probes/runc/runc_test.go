@@ -65,7 +65,7 @@ func TestLabels(t *testing.T) {
 	}
 
 	labels := getLabels(state.Config.Labels)
-	value, err := common.GetField(labels, "io.kubernetes.container.ports.containerPort")
+	value, err := common.GetMapField(labels, "io.kubernetes.container.ports.containerPort")
 	if err != nil || value.(float64) != 9090 {
 		t.Error("unable to find expected label value")
 	}

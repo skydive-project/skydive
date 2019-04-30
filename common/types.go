@@ -61,12 +61,25 @@ const (
 	SortDescending SortOrder = "DESC"
 )
 
+// BoolPredicate is a function that applies a test against a boolean
+type BoolPredicate func(b bool) bool
+
+// Int64Predicate is a function that applies a test against an integer
+type Int64Predicate func(i int64) bool
+
+// StringPredicate is a function that applies a test against a string
+type StringPredicate func(s string) bool
+
 // Getter describes filter getter fields
 type Getter interface {
 	GetField(field string) (interface{}, error)
 	GetFieldKeys() []string
+	GetFieldBool(field string) (bool, error)
 	GetFieldInt64(field string) (int64, error)
 	GetFieldString(field string) (string, error)
+	MatchBool(field string, predicate BoolPredicate) bool
+	MatchInt64(field string, predicate Int64Predicate) bool
+	MatchString(field string, predicate StringPredicate) bool
 }
 
 // ToInt64 Convert all number like type to int64
@@ -259,19 +272,19 @@ func NormalizeValue(obj interface{}) interface{} {
 	case map[string]interface{}:
 		m := make(map[string]interface{}, len(v))
 		for key, value := range v {
-			SetField(m, key, NormalizeValue(value))
+			SetMapField(m, key, NormalizeValue(value))
 		}
 		return m
 	case map[interface{}]interface{}:
 		m := make(map[string]interface{}, len(v))
 		for key, value := range v {
-			SetField(m, key.(string), NormalizeValue(value))
+			SetMapField(m, key.(string), NormalizeValue(value))
 		}
 		return m
 	case map[string]string:
 		m := make(map[string]interface{}, len(v))
 		for key, value := range v {
-			SetField(m, key, value)
+			SetMapField(m, key, value)
 		}
 		return m
 	case []interface{}:
@@ -325,8 +338,8 @@ type Metric interface {
 	IsZero() bool
 }
 
-// SetField set a value in a tree based on dot key ("a.b.c.d" = "ok")
-func SetField(obj map[string]interface{}, k string, v interface{}) bool {
+// SetMapField set a value in a tree based on dot key ("a.b.c.d" = "ok")
+func SetMapField(obj map[string]interface{}, k string, v interface{}) bool {
 	components := strings.Split(k, ".")
 	for n, component := range components {
 		if n == len(components)-1 {
@@ -370,8 +383,8 @@ func DelField(obj map[string]interface{}, k string) bool {
 	return removed
 }
 
-// GetField retrieves a value from a tree from the dot key like "a.b.c.d"
-func GetField(obj map[string]interface{}, k string) (interface{}, error) {
+// GetMapField retrieves a value from a tree from the dot key like "a.b.c.d"
+func GetMapField(obj map[string]interface{}, k string) (interface{}, error) {
 	components := strings.Split(k, ".")
 	for n, component := range components {
 		i, ok := obj[component]
@@ -397,7 +410,7 @@ func GetField(obj map[string]interface{}, k string) (interface{}, error) {
 						results = append(results, obj)
 					}
 				case map[string]interface{}:
-					if obj, err := GetField(v, subkey); err == nil {
+					if obj, err := GetMapField(v, subkey); err == nil {
 						results = append(results, obj)
 					}
 				}
@@ -438,8 +451,8 @@ func getFieldKeys(obj map[string]interface{}, path string) []string {
 	return fields
 }
 
-// GetFieldKeys returns all the keys using dot notation
-func GetFieldKeys(obj map[string]interface{}) []string {
+// GetMapFieldKeys returns all the keys using dot notation
+func GetMapFieldKeys(obj map[string]interface{}) []string {
 	return getFieldKeys(obj, "")
 }
 

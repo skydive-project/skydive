@@ -102,7 +102,7 @@ func TestSimpleLinker(t *testing.T) {
 	m := NewElementFilter(filter)
 
 	if l := len(g.GetEdges(m)); l != 1 {
-		t.Errorf("there should be only one node between node1 and node2, got %d", l)
+		t.Errorf("there should be only one edge between node1 and node2, got %d", l)
 	}
 
 	g.DelNode(n1)

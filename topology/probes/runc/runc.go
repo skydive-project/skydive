@@ -117,9 +117,9 @@ func getLabels(raw []string) map[string]interface{} {
 		case 2:
 			var value interface{}
 			if err := json.Unmarshal([]byte(kv[1]), &value); err != nil {
-				common.SetField(labels, kv[0], common.NormalizeValue(kv[1]))
+				common.SetMapField(labels, kv[0], common.NormalizeValue(kv[1]))
 			} else {
-				common.SetField(labels, kv[0], common.NormalizeValue(value))
+				common.SetMapField(labels, kv[0], common.NormalizeValue(value))
 			}
 		}
 	}

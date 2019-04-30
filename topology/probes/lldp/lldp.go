@@ -141,7 +141,7 @@ func (p *Probe) handlePacket(n *graph.Node, ifName string, packet gopacket.Packe
 			chassisID = bytesToString(lldpLayer.ChassisID.ID)
 		}
 		chassisLLDPMetadata.ChassisID = chassisID
-		common.SetField(chassisMetadata, "Name", chassisID)
+		chassisMetadata.SetField("Name", chassisID)
 
 		portLLDPMetadata := &Metadata{
 			PortIDType: lldpLayer.PortID.Subtype.String(),
@@ -160,7 +160,7 @@ func (p *Probe) handlePacket(n *graph.Node, ifName string, packet gopacket.Packe
 			portID = bytesToString(lldpLayer.PortID.ID)
 		}
 		portLLDPMetadata.PortID = portID
-		common.SetField(portMetadata, "Name", portID)
+		portMetadata.SetField("Name", portID)
 
 		if lldpLayerInfo := packet.Layer(layers.LayerTypeLinkLayerDiscoveryInfo); lldpLayerInfo != nil {
 			lldpLayerInfo := lldpLayerInfo.(*layers.LinkLayerDiscoveryInfo)

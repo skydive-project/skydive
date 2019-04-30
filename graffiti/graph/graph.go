@@ -75,11 +75,6 @@ type ElementFilter struct {
 	filter *filters.Filter
 }
 
-// Metadata describes the graph node metadata type. It implements ElementMatcher
-// based only on Metadata.
-// easyjson:json
-type Metadata map[string]interface{}
-
 // MetadataTransaction describes a metadata transaction in the graph
 type MetadataTransaction struct {
 	graph        *Graph
@@ -343,51 +338,6 @@ func GenID(s ...string) Identifier {
 	return Identifier(u.String())
 }
 
-func (m Metadata) String() string {
-	j, _ := json.Marshal(m)
-	return string(j)
-}
-
-// Match returns true if the the given element matches the metadata.
-func (m Metadata) Match(g common.Getter) bool {
-	for k, v := range m {
-		nv, err := g.GetField(k)
-		if err != nil || !reflect.DeepEqual(nv, v) {
-			return false
-		}
-	}
-	return true
-}
-
-// Filter returns a filter corresponding to the metadata
-func (m Metadata) Filter() (*filters.Filter, error) {
-	var termFilters []*filters.Filter
-	for k, v := range m {
-		switch v := v.(type) {
-		case int64:
-			termFilters = append(termFilters, filters.NewTermInt64Filter(k, v))
-		case string:
-			termFilters = append(termFilters, filters.NewTermStringFilter(k, v))
-		case bool:
-			termFilters = append(termFilters, filters.NewTermBoolFilter(k, v))
-		case map[string]interface{}:
-			sm := Metadata(v)
-			filters, err := sm.Filter()
-			if err != nil {
-				return nil, err
-			}
-			termFilters = append(termFilters, filters)
-		default:
-			i, err := common.ToInt64(v)
-			if err != nil {
-				return nil, err
-			}
-			termFilters = append(termFilters, filters.NewTermInt64Filter(k, i))
-		}
-	}
-	return filters.NewAndFilter(termFilters...), nil
-}
-
 // Match returns true if the given element matches the filter.
 func (mf *ElementFilter) Match(g common.Getter) bool {
 	return mf.filter.Eval(g)
@@ -403,32 +353,12 @@ func NewElementFilter(f *filters.Filter) *ElementFilter {
 	return &ElementFilter{filter: f}
 }
 
+func (e *graphElement) GetFieldBool(field string) (_ bool, err error) {
+	return e.Metadata.GetFieldBool(field)
+}
+
 func (e *graphElement) GetFieldInt64(field string) (_ int64, err error) {
-	f, err := e.GetField(field)
-	if err != nil {
-		return 0, err
-	}
-	return common.ToInt64(f)
-}
-
-func (e *graphElement) GetFieldString(field string) (_ string, err error) {
-	f, err := e.GetField(field)
-	if err != nil {
-		return "", err
-	}
-	s, ok := f.(string)
-	if !ok {
-		return "", common.ErrFieldNotFound
-	}
-	return s, nil
-}
-
-func (e *graphElement) GetField(name string) (interface{}, error) {
-	switch name {
-	case "ID":
-		return string(e.ID), nil
-	case "Host":
-		return e.Host, nil
+	switch field {
 	case "CreatedAt":
 		return e.CreatedAt.Unix(), nil
 	case "UpdatedAt":
@@ -437,41 +367,119 @@ func (e *graphElement) GetField(name string) (interface{}, error) {
 		return e.DeletedAt.Unix(), nil
 	case "Revision":
 		return e.Revision, nil
-	case "Origin":
-		return e.Origin, nil
 	default:
-		return common.GetField(e.Metadata, name)
+		return e.Metadata.GetFieldInt64(field)
 	}
 }
 
-func (e *graphElement) GetFieldKeys() []string {
-	keys := []string{"ID", "Host", "CreatedAt", "UpdatedAt", "DeletedAt", "Revision", "Origin"}
-	subkeys := common.GetFieldKeys(e.Metadata)
-	return append(keys, subkeys...)
+func (e *graphElement) GetFieldString(field string) (_ string, err error) {
+	switch field {
+	case "ID":
+		return string(e.ID), nil
+	case "Host":
+		return e.Host, nil
+	case "Origin":
+		return e.Origin, nil
+	default:
+		return e.Metadata.GetFieldString(field)
+	}
 }
 
-// GetFieldStringList returns a list a string for the given field name
-func (e *graphElement) GetFieldStringList(name string) ([]string, error) {
-	v, err := e.GetField(name)
+func (e *graphElement) GetField(name string) (interface{}, error) {
+	if i, err := e.GetFieldInt64(name); err == nil {
+		return i, nil
+	}
+
+	if s, err := e.GetFieldString(name); err == nil {
+		return s, nil
+	}
+
+	return e.Metadata.GetField(name)
+}
+
+var graphElementKeys = map[string]bool{"ID": false, "Host": false, "Origin": false, "CreatedAt": false, "UpdatedAt": false, "DeletedAt": false, "Revision": false}
+
+func (e *graphElement) GetFieldKeys() []string {
+	keys := make([]string, len(graphElementKeys))
+	i := 0
+	for key := range graphElementKeys {
+		keys[i] = key
+		i++
+	}
+	return append(keys, e.Metadata.GetFieldKeys()...)
+}
+
+func (e *graphElement) MatchBool(field string, predicate common.BoolPredicate) bool {
+	if index := strings.Index(field, "."); index != -1 {
+		first := field[index+1:]
+		if v, found := e.Metadata[first]; found {
+			if getter, found := v.(common.Getter); found {
+				return getter.MatchBool(field[index+1:], predicate)
+			}
+		}
+	}
+	return e.Metadata.MatchBool(field, predicate)
+}
+
+func (e *graphElement) MatchInt64(field string, predicate common.Int64Predicate) bool {
+	if _, found := graphElementKeys[field]; found {
+		if n, err := e.GetFieldInt64(field); err == nil {
+			return predicate(n)
+		}
+	}
+
+	if index := strings.Index(field, "."); index != -1 {
+		first := field[index+1:]
+		if v, found := e.Metadata[first]; found {
+			if getter, found := v.(common.Getter); found {
+				return getter.MatchInt64(field[index+1:], predicate)
+			}
+		}
+	}
+
+	return e.Metadata.MatchInt64(field, predicate)
+}
+
+func (e *graphElement) MatchString(field string, predicate common.StringPredicate) bool {
+	if _, found := graphElementKeys[field]; found {
+		if s, err := e.GetFieldString(field); err == nil {
+			return predicate(s)
+		}
+	}
+
+	if index := strings.Index(field, "."); index != -1 {
+		first := field[index+1:]
+		if v, found := e.Metadata[first]; found {
+			if getter, found := v.(common.Getter); found {
+				return getter.MatchString(field[index+1:], predicate)
+			}
+		}
+	}
+
+	return e.Metadata.MatchString(field, predicate)
+}
+
+func (e *graphElement) GetFieldStringList(key string) ([]string, error) {
+	value, err := e.GetField(key)
 	if err != nil {
 		return nil, err
 	}
 
-	switch l := v.(type) {
+	switch value := value.(type) {
 	case []interface{}:
-		var l2 []string
-		for _, i := range l {
-			s, ok := i.(string)
-			if !ok {
+		var strings []string
+		for _, s := range value {
+			if s, ok := s.(string); ok {
+				strings = append(strings, s)
+			} else {
 				return nil, common.ErrFieldWrongType
 			}
-			l2 = append(l2, s)
 		}
-		return l2, nil
+		return strings, nil
 	case []string:
-		return l, nil
+		return value, nil
 	default:
-		return nil, common.ErrFieldWrongType
+		return nil, common.ErrFieldNotFound
 	}
 }
 
@@ -583,15 +591,39 @@ func (e *Edge) MatchMetadata(f ElementMatcher) bool {
 	return f.Match(e)
 }
 
-// GetField returns the associated field name
-func (e *Edge) GetField(name string) (interface{}, error) {
+// MatchBool implements Getter interface
+func (e *Edge) MatchBool(name string, predicate common.BoolPredicate) bool {
+	if b, err := e.GetFieldBool(name); err == nil {
+		return predicate(b)
+	}
+	return false
+}
+
+// MatchInt64 implements Getter interface
+func (e *Edge) MatchInt64(name string, predicate common.Int64Predicate) bool {
+	if n, err := e.GetFieldInt64(name); err == nil {
+		return predicate(n)
+	}
+	return false
+}
+
+// MatchString implements Getter interface
+func (e *Edge) MatchString(name string, predicate common.StringPredicate) bool {
+	if s, err := e.GetFieldString(name); err == nil {
+		return predicate(s)
+	}
+	return false
+}
+
+// GetFieldString implements Getter interface
+func (e *Edge) GetFieldString(name string) (string, error) {
 	switch name {
 	case "Parent":
 		return string(e.Parent), nil
 	case "Child":
 		return string(e.Child), nil
 	default:
-		return e.graphElement.GetField(name)
+		return e.graphElement.GetFieldString(name)
 	}
 }
 
@@ -757,16 +789,6 @@ func (g *Graph) DelMetadata(i interface{}, k string) error {
 
 	g.eventHandler.NotifyEvent(kind, i)
 	return nil
-}
-
-// SetField set metadata value based on dot key ("a.b.c.d" = "ok")
-func (m *Metadata) SetField(k string, v interface{}) bool {
-	return common.SetField(*m, k, v)
-}
-
-// SetFieldAndNormalize set metadata value after normalization (and deepcopy)
-func (m *Metadata) SetFieldAndNormalize(k string, v interface{}) bool {
-	return common.SetField(*m, k, common.NormalizeValue(v))
 }
 
 func (g *Graph) addMetadata(i interface{}, k string, v interface{}, t Time) error {
@@ -1061,8 +1083,8 @@ func (g *Graph) Unlink(n1 *Node, n2 *Node) error {
 }
 
 // GetFirstLink get Link between the parent and the child node
-func (g *Graph) GetFirstLink(parent, child *Node, metadata Metadata) *Edge {
-	for _, e := range g.GetNodeEdges(parent, metadata) {
+func (g *Graph) GetFirstLink(parent, child *Node, m ElementMatcher) *Edge {
+	for _, e := range g.GetNodeEdges(parent, m) {
 		if e.Child == child.ID {
 			return e
 		}

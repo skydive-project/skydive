@@ -148,15 +148,15 @@ func TestSetField(t *testing.T) {
 		},
 	}
 
-	if SetField(actual, "a.b.c", true) {
+	if SetMapField(actual, "a.b.c", true) {
 		t.Errorf("Expected SetField to not overwrite any key")
 	}
 
-	if !SetField(actual, "a.b", false) {
+	if !SetMapField(actual, "a.b", false) {
 		t.Errorf("Expected SetField to overwrite a.b")
 	}
 
-	if !SetField(actual, "a.d.c", true) {
+	if !SetMapField(actual, "a.d.c", true) {
 		t.Errorf("Expected SetField to create a.d.c key")
 	}
 

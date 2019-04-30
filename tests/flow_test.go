@@ -839,10 +839,8 @@ func TestFlowHops(t *testing.T) {
 			}
 
 			found := false
-			m := nodes[0].Metadata
 			for _, n := range tnodes {
-				if n.MatchMetadata(m) == true {
-					found = true
+				if found = n.ID == nodes[0].ID; found {
 					break
 				}
 			}
@@ -949,9 +947,8 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 			}
 
 			found := false
-			m := nodes[0].Metadata
 			for _, n := range tnodes {
-				if n.MatchMetadata(m) == true {
+				if n.ID == nodes[0].ID {
 					found = true
 					break
 				}
