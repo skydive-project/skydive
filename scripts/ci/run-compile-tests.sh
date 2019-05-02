@@ -15,6 +15,9 @@ if [ $(echo -n $d | wc -l) -ne 0 ] ; then
     exit 1
 fi
 
+# Compile all contribs
+make contribs
+
 # Compile with default options
 make
 make test.functionals.compile TAGS=${TAGS}
