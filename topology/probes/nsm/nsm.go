@@ -30,14 +30,20 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	cc "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/crossconnect"
 	localconn "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/local/connection"
+	v1 "github.com/networkservicemesh/networkservicemesh/k8s/pkg/apis/networkservice/v1"
 	"github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/clientset/versioned"
+	"github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/informers/externalversions"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"google.golang.org/grpc"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 )
+
+const nsmResource = "networkservicemanagers"
+
+var informer_stopper chan struct{}
 
 // Probe represents the NSM probe
 type Probe struct {
@@ -82,18 +88,23 @@ func (p *Probe) Start() {
 		return
 	}
 
-	result, err := nsmClientSet.Networkservicemesh().NetworkServiceManagers("default").List(metav1.ListOptions{})
+	factory := externalversions.NewSharedInformerFactory(nsmClientSet, 0)
+	genericInformer, err := factory.ForResource(v1.SchemeGroupVersion.WithResource(nsmResource))
 	if err != nil {
-		logging.GetLogger().Errorf("Unable to find NSMs, are they running?", err)
+		logging.GetLogger().Errorf("Unable to create the K8S cache factory", err)
 		return
 	}
-	for _, mgr := range result.Items {
-		//TODO: loop each nsmd servers monitoring in dedicated goroutines
-		if _, ok := p.nsmds[mgr.Status.URL]; !ok {
-			logging.GetLogger().Infof("Found nsmd: %s at %s", mgr.Name, mgr.Status.URL)
-			go p.monitorCrossConnects(mgr.Status.URL)
-		}
-	}
+
+	informer := genericInformer.Informer()
+	informer_stopper := make(chan struct{})
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			nsm := obj.(*v1.NetworkServiceManager)
+			logging.GetLogger().Infof("New NSMgr Added: %v", nsm)
+			go p.monitorCrossConnects(nsm.Status.URL)
+		},
+	})
+	go informer.Run(informer_stopper)
 }
 
 // Stop ....
@@ -105,6 +116,7 @@ func (p *Probe) Stop() {
 	for _, conn := range p.nsmds {
 		conn.Close()
 	}
+	close(informer_stopper)
 }
 
 func (p *Probe) monitorCrossConnects(url string) {

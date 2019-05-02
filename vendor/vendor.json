@@ -2134,6 +2134,36 @@
 			"revisionTime": "2019-02-22T10:03:47Z"
 		},
 		{
+			"checksumSHA1": "+e/bbOFlKKNrgzMh8lstI39llu4=",
+			"path": "github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/informers/externalversions",
+			"revision": "5597276f898c9d33d08a271951092c07b22f6480",
+			"revisionTime": "2019-04-30T12:36:17Z"
+		},
+		{
+			"checksumSHA1": "8ewGTb7/st2hkO3HmY7wwmEwjDs=",
+			"path": "github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/informers/externalversions/internalinterfaces",
+			"revision": "5597276f898c9d33d08a271951092c07b22f6480",
+			"revisionTime": "2019-04-30T12:36:17Z"
+		},
+		{
+			"checksumSHA1": "lqNce13x8FVv+ZQyziGzPZeKPd8=",
+			"path": "github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/informers/externalversions/networkservice",
+			"revision": "5597276f898c9d33d08a271951092c07b22f6480",
+			"revisionTime": "2019-04-30T12:36:17Z"
+		},
+		{
+			"checksumSHA1": "f00yuMe7hQoK6bsup66YqJg/3F4=",
+			"path": "github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/informers/externalversions/networkservice/v1",
+			"revision": "5597276f898c9d33d08a271951092c07b22f6480",
+			"revisionTime": "2019-04-30T12:36:17Z"
+		},
+		{
+			"checksumSHA1": "ZBgRK7nBUhtIW0zy7KTX0SBEye0=",
+			"path": "github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/listers/networkservice/v1",
+			"revision": "5597276f898c9d33d08a271951092c07b22f6480",
+			"revisionTime": "2019-04-30T12:36:17Z"
+		},
+		{
 			"checksumSHA1": "1DXU/ZEPCA5FHxdf4B+xRJgz1iY=",
 			"path": "github.com/networkservicemesh/networkservicemesh/pkg/tools",
 			"revision": "4e7eb7f742843cb92a7b8dbd699268198f635b0c",
