@@ -15,8 +15,12 @@ if [ $(echo -n $d | wc -l) -ne 0 ] ; then
     exit 1
 fi
 
+# prepare collectd build
+rm -rf /tmp/collectd
+git clone https://github.com/collectd/collectd.git /tmp/collectd
+
 # Compile all contribs
-make contribs
+COLLECTD_SRC=/tmp/collectd make contribs
 
 # Compile with default options
 make
