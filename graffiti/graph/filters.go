@@ -24,6 +24,32 @@ import (
 	"github.com/skydive-project/skydive/filters"
 )
 
+// ElementMatcher defines an interface used to match an element
+type ElementMatcher interface {
+	Match(g common.Getter) bool
+	Filter() (*filters.Filter, error)
+}
+
+// ElementFilter implements ElementMatcher interface based on filter
+type ElementFilter struct {
+	filter *filters.Filter
+}
+
+// Match returns true if the given element matches the filter.
+func (mf *ElementFilter) Match(g common.Getter) bool {
+	return mf.filter.Eval(g)
+}
+
+// Filter returns the filter
+func (mf *ElementFilter) Filter() (*filters.Filter, error) {
+	return mf.filter, nil
+}
+
+// NewElementFilter returns a new ElementFilter
+func NewElementFilter(f *filters.Filter) *ElementFilter {
+	return &ElementFilter{filter: f}
+}
+
 // NewFilterForEdge creates a filter based on parent or child
 func NewFilterForEdge(parent Identifier, child Identifier) *filters.Filter {
 	return filters.NewOrFilter(

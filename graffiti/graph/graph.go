@@ -26,7 +26,6 @@ import (
 	uuid "github.com/nu7hatch/gouuid"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/filters"
 )
 
 const (
@@ -62,25 +61,6 @@ type graphEvent struct {
 	kind     graphEventType
 	element  interface{}
 	listener EventListener
-}
-
-// ElementMatcher defines an interface used to match an element
-type ElementMatcher interface {
-	Match(g common.Getter) bool
-	Filter() (*filters.Filter, error)
-}
-
-// ElementFilter implements ElementMatcher interface based on filter
-type ElementFilter struct {
-	filter *filters.Filter
-}
-
-// MetadataTransaction describes a metadata transaction in the graph
-type MetadataTransaction struct {
-	graph        *Graph
-	graphElement interface{}
-	adds         map[string]interface{}
-	removes      []string
 }
 
 type graphElement struct {
@@ -336,21 +316,6 @@ func GenID(s ...string) Identifier {
 
 	u, _ := uuid.NewV4()
 	return Identifier(u.String())
-}
-
-// Match returns true if the given element matches the filter.
-func (mf *ElementFilter) Match(g common.Getter) bool {
-	return mf.filter.Eval(g)
-}
-
-// Filter returns the filter
-func (mf *ElementFilter) Filter() (*filters.Filter, error) {
-	return mf.filter, nil
-}
-
-// NewElementFilter returns a new ElementFilter
-func NewElementFilter(f *filters.Filter) *ElementFilter {
-	return &ElementFilter{filter: f}
 }
 
 func (e *graphElement) GetFieldBool(field string) (_ bool, err error) {
@@ -826,60 +791,6 @@ func (g *Graph) addMetadata(i interface{}, k string, v interface{}, t Time) erro
 // AddMetadata add a metadata to an associated edge or node
 func (g *Graph) AddMetadata(i interface{}, k string, v interface{}) error {
 	return g.addMetadata(i, k, v, TimeUTC())
-}
-
-// AddMetadata in the current transaction
-func (t *MetadataTransaction) AddMetadata(k string, v interface{}) {
-	t.adds[k] = v
-}
-
-// DelMetadata in the current transaction
-func (t *MetadataTransaction) DelMetadata(k string) {
-	t.removes = append(t.removes, k)
-}
-
-// Commit the current transaction to the graph
-func (t *MetadataTransaction) Commit() error {
-	var e *graphElement
-	var kind graphEventType
-
-	switch t.graphElement.(type) {
-	case *Node:
-		e = &t.graphElement.(*Node).graphElement
-		kind = NodeUpdated
-	case *Edge:
-		e = &t.graphElement.(*Edge).graphElement
-		kind = EdgeUpdated
-	}
-
-	var updated bool
-	for k, v := range t.adds {
-		if o, ok := e.Metadata[k]; ok && reflect.DeepEqual(o, v) {
-			continue
-		}
-
-		if e.Metadata.SetField(k, v) {
-			updated = true
-		}
-	}
-
-	for _, k := range t.removes {
-		updated = common.DelField(e.Metadata, k) || updated
-	}
-	if !updated {
-		return nil
-	}
-
-	e.UpdatedAt = TimeUTC()
-	e.Revision++
-
-	if err := t.graph.backend.MetadataUpdated(t.graphElement); err != nil {
-		return err
-	}
-
-	t.graph.eventHandler.NotifyEvent(kind, t.graphElement)
-
-	return nil
 }
 
 // StartMetadataTransaction start a new transaction
