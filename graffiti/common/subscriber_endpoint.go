@@ -131,6 +131,14 @@ func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage
 			subscriber, err := t.newSubscriber(host, syncMsg.GremlinFilter, false)
 			if err != nil {
 				logging.GetLogger().Error(err)
+
+				reply := msg.Reply(err.Error(), gws.SyncReplyMsgType, http.StatusBadRequest)
+				c.SendMessage(reply)
+
+				t.Lock()
+				t.subscribers[host] = nil
+				t.Unlock()
+
 				return
 			}
 
@@ -158,6 +166,11 @@ func (t *SubscriberEndpoint) notifyClients(msg *ws.StructMessage) {
 		t.RUnlock()
 
 		if found {
+			// in the case of a error during the subscription we got a nil subscriber
+			if subscriber == nil {
+				return
+			}
+
 			g, err := t.getGraph(subscriber.gremlinFilter, subscriber.ts, false)
 			if err != nil {
 				logging.GetLogger().Error(err)
