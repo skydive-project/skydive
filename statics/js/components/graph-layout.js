@@ -352,15 +352,13 @@ var TopologyGraphLayout = function(vm, selector) {
 
 TopologyGraphLayout.prototype = {
 
-  linkL2LabelFactory: function(link) {
-    let type, driver;
+  linkL2LabelFactory: function() {
+    let driver;
     switch (this.linkLabelType) {
       case "latency":
-        type = "latency";
         driver = new LinkLabelLatency();
         break;
       default:
-        type = "bandwidth";
         driver = new LinkLabelBandwidth();
         break;
     }
@@ -717,7 +715,7 @@ TopologyGraphLayout.prototype = {
       if (link.target.isGroupOwner("ownership") && this.hasOutsideLink(link.target.group)) return;
     }
 
-   var sourceGroup = link.source.group, targetGroup = link.target.group;
+    var sourceGroup = link.source.group, targetGroup = link.target.group;
     if (targetGroup && targetGroup.type === "ownership" && this.hasOutsideLink(targetGroup) &&
         targetGroup.owner.linkToParent) this.delLink(targetGroup.owner.linkToParent);
     if (sourceGroup && sourceGroup.type === "ownership" && this.hasOutsideLink(sourceGroup) &&
@@ -727,10 +725,12 @@ TopologyGraphLayout.prototype = {
       return ["bridge", "ovsbridge", "bond", "vlan", "ovsport"].indexOf(type) >= 0;
     }
 
+    var isNS = function(type) {
+      return ["host", "netns"].indexOf(type) >= 0;
+    }
 
     var source = link.source, target = link.target;
-    if (isHub(target.metadata.Type) && source.linkToParent && source.metadata.Type != "netns") this.delLink(source.linkToParent);
-    if (isHub(source.metadata.Type) && target.linkToParent && target.metadata.Type != "netns") this.delLink(target.linkToParent);
+    if (isHub(source.metadata.Type) && target.linkToParent && !isNS(target.metadata.Type)) this.delLink(target.linkToParent);
 
     if (!source.visible && !target.visible) {
       this._links[link.id] = link;
@@ -1485,26 +1485,26 @@ TopologyGraphLayout.prototype = {
       if (link.metadata.RelationType === "layer2") {
         l2.updateData(link);
 
-	if (l2.hasData(link)) {
-	  this.linkLabelData[link.id] = {
-	    id: "link-label-" + link.id,
-	    link: link,
-	    text: driver.getText(link),
-	    active: driver.isActive(link),
-	    warning: driver.isWarning(link),
-	    alert: driver.isAlert(link),
-	  };
-	} else {
-	  delete this.linkLabelData[link.id];
-	}
+        if (l2.hasData(link)) {
+          this.linkLabelData[link.id] = {
+            id: "link-label-" + link.id,
+            link: link,
+            text: l2.getText(link),
+            active: l2.isActive(link),
+            warning: l2.isWarning(link),
+            alert: l2.isAlert(link),
+          };
+        } else {
+          delete this.linkLabelData[link.id];
+        }
       }
 
       if (link.metadata.hasOwnProperty('Weight')) {
         this.linkLabelData[link.id] = {
-	  id: "link-label-" + link.id,
-	  link: link,
-	  text: `${link.metadata.Weight}%`,
-	};
+          id: "link-label-" + link.id,
+          link: link,
+          text: `${link.metadata.Weight}%`,
+        };
       }
     }
   },
