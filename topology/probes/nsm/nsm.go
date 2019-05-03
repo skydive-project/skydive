@@ -43,7 +43,7 @@ import (
 
 const nsmResource = "networkservicemanagers"
 
-var informer_stopper chan struct{}
+var informerStopper chan struct{}
 
 // Probe represents the NSM probe
 type Probe struct {
@@ -84,7 +84,7 @@ func (p *Probe) Start() {
 	// Initialize clientset
 	nsmClientSet, err := versioned.NewForConfig(config)
 	if err != nil {
-		logging.GetLogger().Errorf("Unable to initialize nsmd-k8s", err)
+		logging.GetLogger().Errorf("Unable to initialize the NSM probe", err)
 		return
 	}
 
@@ -96,7 +96,7 @@ func (p *Probe) Start() {
 	}
 
 	informer := genericInformer.Informer()
-	informer_stopper := make(chan struct{})
+	informerStopper := make(chan struct{})
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			nsm := obj.(*v1.NetworkServiceManager)
@@ -104,7 +104,7 @@ func (p *Probe) Start() {
 			go p.monitorCrossConnects(nsm.Status.URL)
 		},
 	})
-	go informer.Run(informer_stopper)
+	go informer.Run(informerStopper)
 }
 
 // Stop ....
@@ -116,7 +116,7 @@ func (p *Probe) Stop() {
 	for _, conn := range p.nsmds {
 		conn.Close()
 	}
-	close(informer_stopper)
+	close(informerStopper)
 }
 
 func (p *Probe) monitorCrossConnects(url string) {
