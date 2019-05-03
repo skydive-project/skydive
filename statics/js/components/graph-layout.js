@@ -694,7 +694,7 @@ TopologyGraphLayout.prototype = {
       var d = members[i], links = d.links;
       for (var j in links) {
         var e = links[j];
-        if (e.metadata.RelationType !== "ownership" && e.source.group !== e.source.target) return true;
+        if (e.metadata.RelationType !== "ownership" && e.source.group !== e.source.target && e.source.metadata.Type === "host") return true;
       }
     }
 
@@ -717,27 +717,20 @@ TopologyGraphLayout.prototype = {
       if (link.target.isGroupOwner("ownership") && this.hasOutsideLink(link.target.group)) return;
     }
 
-    var sourceGroup = link.source.group, targetGroup = link.target.group;
+   var sourceGroup = link.source.group, targetGroup = link.target.group;
     if (targetGroup && targetGroup.type === "ownership" && this.hasOutsideLink(targetGroup) &&
         targetGroup.owner.linkToParent) this.delLink(targetGroup.owner.linkToParent);
     if (sourceGroup && sourceGroup.type === "ownership" && this.hasOutsideLink(sourceGroup) &&
         sourceGroup.owner.linkToParent) this.delLink(sourceGroup.owner.linkToParent);
 
-    var i, noc, edges, metadata, source = link.source, target = link.target;
-    if (Object.values(target.edges).length >= 2 && target.linkToParent) {
-      noc = 0; edges = target.edges;
-      for (i in edges) {
-        metadata = edges[i].metadata;
-        if (metadata.RelationType !== "ownership" && target.metadata.Type !== "bridge" && metadata.Type !== "vlan" && ++noc >= 2) this.delLink(target.linkToParent);
-      }
+    var isHub = function(type) {
+      return ["bridge", "ovsbridge", "bond", "vlan", "ovsport"].indexOf(type) >= 0;
     }
-    if (Object.keys(source.edges).length >= 2 && source.linkToParent) {
-      noc = 0; edges = link.source.edges;
-      for (i in edges) {
-        metadata = edges[i].metadata;
-        if (metadata.RelationType !== "ownership" && source.metadata.Type !== "bridge" && metadata.Type !== "vlan" && ++noc >= 2) this.delLink(source.linkToParent);
-      }
-    }
+
+
+    var source = link.source, target = link.target;
+    if (isHub(target.metadata.Type) && source.linkToParent && source.metadata.Type != "netns") this.delLink(source.linkToParent);
+    if (isHub(source.metadata.Type) && target.linkToParent && target.metadata.Type != "netns") this.delLink(target.linkToParent);
 
     if (!source.visible && !target.visible) {
       this._links[link.id] = link;
