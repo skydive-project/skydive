@@ -28,6 +28,38 @@ import (
 
 var regexpCache *cache.Cache
 
+func evalStringField(g common.Getter, key string, predicate func(string) bool) bool {
+	if s, err := common.GetFieldString(g, key); err == nil {
+		return predicate(s)
+	}
+
+	if strings, err := common.GetFieldStringList(g, key); err == nil {
+		for _, s := range strings {
+			if predicate(s) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func evalInt64Field(g common.Getter, key string, predicate func(int64) bool) bool {
+	if s, err := common.GetFieldInt64(g, key); err == nil {
+		return predicate(s)
+	}
+
+	if integers, err := common.GetFieldInt64List(g, key); err == nil {
+		for _, i := range integers {
+			if predicate(i) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // Eval evaluates a filter
 func (f *Filter) Eval(g common.Getter) bool {
 	if f.BoolFilter != nil {
@@ -85,117 +117,49 @@ func (b *BoolFilter) Eval(g common.Getter) bool {
 
 // Eval evaluates an int64 > filter
 func (r *GtInt64Filter) Eval(g common.Getter) bool {
-	field, err := g.GetFieldInt64(r.Key)
-	if err != nil {
-		return false
-	}
-
-	if field > r.Value {
-		return true
-	}
-	return false
+	return evalInt64Field(g, r.Key, func(i int64) bool {
+		return i > r.Value
+	})
 }
 
 // Eval evaluates an int64 < filter
 func (r *LtInt64Filter) Eval(g common.Getter) bool {
-	field, err := g.GetFieldInt64(r.Key)
-	if err != nil {
-		return false
-	}
-
-	if field < r.Value {
-		return true
-	}
-	return false
+	return evalInt64Field(g, r.Key, func(i int64) bool {
+		return i < r.Value
+	})
 }
 
 // Eval evaluates an int64 >= filter
 func (r *GteInt64Filter) Eval(g common.Getter) bool {
-	field, err := g.GetFieldInt64(r.Key)
-	if err != nil {
-		return false
-	}
-
-	if field >= r.Value {
-		return true
-	}
-	return false
+	return evalInt64Field(g, r.Key, func(i int64) bool {
+		return i >= r.Value
+	})
 }
 
 // Eval evaluates an int64 <= filter
 func (r *LteInt64Filter) Eval(g common.Getter) bool {
-	field, err := g.GetFieldInt64(r.Key)
-	if err != nil {
-		return false
-	}
-
-	if field <= r.Value {
-		return true
-	}
-	return false
+	return evalInt64Field(g, r.Key, func(i int64) bool {
+		return i <= r.Value
+	})
 }
 
 // Eval evaluates an string type filter
 func (t *TermStringFilter) Eval(g common.Getter) bool {
-	field, err := g.GetField(t.Key)
-	if err != nil {
-		return false
-	}
-	switch field := field.(type) {
-	case []interface{}:
-		for _, intf := range field {
-			if s, ok := intf.(string); ok && s == t.Value {
-				return true
-			}
-		}
-	case []string:
-		for _, s := range field {
-			if s == t.Value {
-				return true
-			}
-		}
-	case string:
-		if field == t.Value {
-			return true
-		}
-	}
-	return false
+	return evalStringField(g, t.Key, func(s string) bool {
+		return s == t.Value
+	})
 }
 
 // Eval evaluates an int64 type filter
 func (t *TermInt64Filter) Eval(g common.Getter) bool {
-	field, err := g.GetField(t.Key)
-	if err != nil {
-		return false
-	}
-	switch field := field.(type) {
-	case []interface{}:
-		for _, intf := range field {
-			if v, err := common.ToInt64(intf); err == nil && v == t.Value {
-				return true
-			}
-		}
-	case []int64:
-		for _, v := range field {
-			if v == t.Value {
-				return true
-			}
-		}
-	case int64:
-		if field == t.Value {
-			return true
-		}
-	default:
-		if v, err := common.ToInt64(field); err == nil && v == t.Value {
-			return true
-		}
-	}
-	return false
+	return evalInt64Field(g, t.Key, func(i int64) bool {
+		return i == t.Value
+	})
 }
 
 // Eval evaluates a bool type filter
 func (t *TermBoolFilter) Eval(g common.Getter) bool {
-	field, err := g.GetField(t.Key)
+	field, err := common.GetField(g, t.Key)
 	if err != nil {
 		return false
 	}
@@ -222,35 +186,15 @@ func (t *TermBoolFilter) Eval(g common.Getter) bool {
 
 // Eval evaluates an regex filter
 func (r *RegexFilter) Eval(g common.Getter) bool {
-	field, err := g.GetField(r.Key)
-	if err != nil {
-		return false
-	}
-
 	re, found := regexpCache.Get(r.Value)
 	if !found {
 		re = regexp.MustCompile(r.Value)
 		regexpCache.Set(r.Value, re, cache.DefaultExpiration)
 	}
 
-	switch field := field.(type) {
-	case []interface{}:
-		for _, intf := range field {
-			if s, ok := intf.(string); ok && re.(*regexp.Regexp).MatchString(s) {
-				return true
-			}
-		}
-	case []string:
-		for _, s := range field {
-			if re.(*regexp.Regexp).MatchString(s) {
-				return true
-			}
-		}
-	case string:
-		return re.(*regexp.Regexp).MatchString(field)
-	}
-
-	return false
+	return evalStringField(g, r.Key, func(s string) bool {
+		return re.(*regexp.Regexp).MatchString(s)
+	})
 }
 
 // NewRegexFilter returns a new regular expression based filter
@@ -266,7 +210,7 @@ func NewRegexFilter(key string, pattern string) (*RegexFilter, error) {
 
 // Eval evaluates an null filter (not string and not int64 types)
 func (n *NullFilter) Eval(g common.Getter) bool {
-	if _, err := g.GetField(n.Key); err == nil {
+	if _, err := common.GetField(g, n.Key); err == nil {
 		return false
 	}
 	return true
@@ -274,11 +218,6 @@ func (n *NullFilter) Eval(g common.Getter) bool {
 
 // Eval evaluates an ipv4 range filter
 func (r *IPV4RangeFilter) Eval(g common.Getter) bool {
-	field, err := g.GetField(r.Key)
-	if err != nil {
-		return false
-	}
-
 	re, found := regexpCache.Get(r.Value)
 	if !found {
 		// ignore error at this point should have been check in the contructor
@@ -287,24 +226,9 @@ func (r *IPV4RangeFilter) Eval(g common.Getter) bool {
 		regexpCache.Set(r.Value, re, cache.DefaultExpiration)
 	}
 
-	switch field := field.(type) {
-	case []interface{}:
-		for _, intf := range field {
-			if s, ok := intf.(string); ok && re.(*regexp.Regexp).MatchString(s) {
-				return true
-			}
-		}
-	case []string:
-		for _, s := range field {
-			if re.(*regexp.Regexp).MatchString(s) {
-				return true
-			}
-		}
-	case string:
-		return re.(*regexp.Regexp).MatchString(field)
-	}
-
-	return false
+	return evalStringField(g, r.Key, func(s string) bool {
+		return re.(*regexp.Regexp).MatchString(s)
+	})
 }
 
 // NewIPV4RangeFilter creates a regex based filter corresponding to the ip range
