@@ -18,10 +18,15 @@ RUN apt-get -y update \
     && apt-get -y update; \
     apt-get -y install git make flex bison wget unzip golang npm \
                    zlib1g-dev:$DEBARCH \
+                   zlib1g:$DEBARCH \
                    liblzma-dev:$DEBARCH \
+                   liblzma:$DEBARCH \
                    libc++-dev:$DEBARCH \
+                   libc++:$DEBARCH \
                    libc-dev:$DEBARCH \
+                   libc:$DEBARCH \
                    libpcap0.8-dev:$DEBARCH \
+                   libpcap0.8:$DEBARCH \
                    linux-libc-dev:$DEBARCH \
                    gcc-${TARGET_ARCH}-linux-gnu \
     && rm -rf /var/lib/apt/lists/*
