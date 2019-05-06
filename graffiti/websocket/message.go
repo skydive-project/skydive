@@ -55,7 +55,7 @@ var (
 // SyncRequestMsg describes a graph synchro request message
 type SyncRequestMsg struct {
 	graph.Context
-	GremlinFilter string
+	GremlinFilter *string
 }
 
 // SyncMsg describes graph synchro message
@@ -78,7 +78,7 @@ func NewStructMessage(typ string, i interface{}) *ws.StructMessage {
 func (s *SyncRequestMsg) UnmarshalJSON(b []byte) error {
 	raw := struct {
 		Time          int64
-		GremlinFilter string
+		GremlinFilter *string
 	}{}
 
 	if err := json.Unmarshal(b, &raw); err != nil {

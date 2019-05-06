@@ -1309,6 +1309,8 @@ Graph.prototype = {
 
     if (filter) {
       obj.GremlinFilter = filter + ".SubGraph()";
+    } else {
+      obj.GremlinFilter = "";
     }
     var msg = {"Namespace": "Graph", "Type": "SyncRequest", "Obj": obj};
     this.websocket.send(msg);

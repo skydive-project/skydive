@@ -92,7 +92,7 @@ func (t *SubscriberEndpoint) OnConnected(c ws.Speaker) {
 			return
 		}
 
-		logging.GetLogger().Infof("Client %s subscribed with filter %s", host, gremlinFilter)
+		logging.GetLogger().Infof("Client %s subscribed with filter %s during the connection", host, gremlinFilter)
 		t.subscribers[host] = subscriber
 	}
 }
@@ -122,31 +122,49 @@ func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage
 		result, err := t.Graph.CloneWithContext(syncMsg.Context)
 		if err != nil {
 			logging.GetLogger().Errorf("unable to get a graph with context %+v: %s", syncMsg, err)
-			result, status = nil, http.StatusBadRequest
+			reply := msg.Reply(nil, gws.SyncReplyMsgType, http.StatusBadRequest)
+			c.SendMessage(reply)
+			return
 		}
 
-		if syncMsg.GremlinFilter != "" {
-			host := c.GetRemoteHost()
+		host := c.GetRemoteHost()
 
-			subscriber, err := t.newSubscriber(host, syncMsg.GremlinFilter, false)
-			if err != nil {
-				logging.GetLogger().Error(err)
+		if syncMsg.GremlinFilter != nil {
+			// filter reset
+			if *syncMsg.GremlinFilter == "" {
+				t.Lock()
+				delete(t.subscribers, host)
+				t.Unlock()
+			} else {
+				subscriber, err := t.newSubscriber(host, *syncMsg.GremlinFilter, false)
+				if err != nil {
+					logging.GetLogger().Error(err)
 
-				reply := msg.Reply(err.Error(), gws.SyncReplyMsgType, http.StatusBadRequest)
-				c.SendMessage(reply)
+					reply := msg.Reply(err.Error(), gws.SyncReplyMsgType, http.StatusBadRequest)
+					c.SendMessage(reply)
+
+					t.Lock()
+					t.subscribers[host] = nil
+					t.Unlock()
+
+					return
+				}
+
+				logging.GetLogger().Infof("Client %s requested subscription with filter %s", host, *syncMsg.GremlinFilter)
+				result = subscriber.graph
 
 				t.Lock()
-				t.subscribers[host] = nil
+				t.subscribers[host] = subscriber
 				t.Unlock()
-
-				return
 			}
+		} else {
+			t.RLock()
+			subscriber := t.subscribers[host]
+			t.RUnlock()
 
-			logging.GetLogger().Infof("Client %s subscribed with filter %s", host, syncMsg.GremlinFilter)
-			result = subscriber.graph
-			t.Lock()
-			t.subscribers[host] = subscriber
-			t.Unlock()
+			if subscriber != nil {
+				result = subscriber.graph
+			}
 		}
 
 		reply := msg.Reply(result, gws.SyncReplyMsgType, status)
