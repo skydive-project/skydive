@@ -28,7 +28,7 @@ RUN PROTOC_VER=3.5.1; \
 RUN mkdir -p /root/go/bin && chmod a+wrx /root/go/bin
 
 RUN arch="$(dpkg --print-architecture)" \
-    && wget --no-verbose -O /gosu "https://github.com/tianon/gosu/releases/download/1.10/gosu-${arch##*-}" \
+    && wget --no-verbose -O /gosu "https://github.com/tianon/gosu/releases/download/1.11/gosu-${arch##*-}" \
     && chmod a+x /gosu
 
 ENV UID=$UID
