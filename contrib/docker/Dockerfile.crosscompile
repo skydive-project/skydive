@@ -15,6 +15,7 @@ RUN apt-get -y update \
     && add-apt-repository -y ppa:ubuntu-toolchain-r/ppa \
     && dpkg --add-architecture $DEBARCH \
     && echo "deb [arch=$DEBARCH] http://ports.ubuntu.com/ubuntu-ports bionic main universe" >> /etc/apt/sources.list \
+    && echo "deb [arch=$DEBARCH] http://ports.ubuntu.com/ubuntu-ports bionic-updates main universe" >> /etc/apt/sources.list \
     && apt-get -y update; \
     apt-get -y install git make flex bison wget unzip golang npm \
                    zlib1g-dev:$DEBARCH \
