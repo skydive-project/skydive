@@ -18,12 +18,15 @@ RUN apt-get -y update \
 
 # EBPF requires llvm-6.0 clang-6.0 however the cross compulation docker image can't install them
 
-RUN PROTOC_VER=3.5.1; \
-    wget --no-verbose https://github.com/google/protobuf/releases/download/v${PROTOC_VER}/protoc-${PROTOC_VER}-linux-$(uname -m).zip \
-    && unzip protoc-${PROTOC_VER}-linux-$(uname -m).zip \
+RUN PROTOC_VER=3.7.1; \
+    ARCH=$(uname -m); \
+    if [ $ARCH != x86_64 ]; then ARCH=${ARCH%%64*}${ARCH##*64}_64 ; fi ; \
+    FILE=protoc-${PROTOC_VER}-linux-${ARCH}.zip; \
+    wget --no-verbose https://github.com/google/protobuf/releases/download/v${PROTOC_VER}/${FILE} \
+    && unzip ${FILE} \
     && mv bin/protoc /usr/bin/ \
     && mv include/google /usr/include \
-    && rm protoc-${PROTOC_VER}-linux-$(uname -m).zip
+    && rm "${FILE}"
 
 RUN mkdir -p /root/go/bin && chmod a+wrx /root/go/bin
 
