@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	"reflect"
 
 	"github.com/skydive-project/skydive/common"
 )
@@ -81,7 +80,7 @@ func (p *Prefix) UnmarshalJSON(b []byte) error {
 // GetRoute returns route for the given protocol and prefix
 func (rt *RoutingTable) GetRoute(protocol int64, prefix net.IPNet) *Route {
 	for _, r := range rt.Routes {
-		if r.Protocol == protocol && reflect.DeepEqual(r.Prefix, Prefix{prefix}) {
+		if r.Protocol == protocol && r.Prefix.IP.Equal(prefix.IP) && r.Prefix.Mask.String() == prefix.Mask.String() {
 			return r
 		}
 	}
