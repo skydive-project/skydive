@@ -352,15 +352,13 @@ var TopologyGraphLayout = function(vm, selector) {
 
 TopologyGraphLayout.prototype = {
 
-  linkL2LabelFactory: function(link) {
-    let type, driver;
+  linkL2LabelFactory: function() {
+    let driver;
     switch (this.linkLabelType) {
       case "latency":
-        type = "latency";
         driver = new LinkLabelLatency();
         break;
       default:
-        type = "bandwidth";
         driver = new LinkLabelBandwidth();
         break;
     }
@@ -694,7 +692,7 @@ TopologyGraphLayout.prototype = {
       var d = members[i], links = d.links;
       for (var j in links) {
         var e = links[j];
-        if (e.metadata.RelationType !== "ownership" && e.source.group !== e.source.target) return true;
+        if (e.metadata.RelationType !== "ownership" && e.source.group !== e.source.target && e.source.metadata.Type === "host") return true;
       }
     }
 
@@ -723,21 +721,16 @@ TopologyGraphLayout.prototype = {
     if (sourceGroup && sourceGroup.type === "ownership" && this.hasOutsideLink(sourceGroup) &&
         sourceGroup.owner.linkToParent) this.delLink(sourceGroup.owner.linkToParent);
 
-    var i, noc, edges, metadata, source = link.source, target = link.target;
-    if (Object.values(target.edges).length >= 2 && target.linkToParent) {
-      noc = 0; edges = target.edges;
-      for (i in edges) {
-        metadata = edges[i].metadata;
-        if (metadata.RelationType !== "ownership" && target.metadata.Type !== "bridge" && metadata.Type !== "vlan" && ++noc >= 2) this.delLink(target.linkToParent);
-      }
+    var isHub = function(type) {
+      return ["bridge", "ovsbridge", "bond", "vlan", "ovsport"].indexOf(type) >= 0;
     }
-    if (Object.keys(source.edges).length >= 2 && source.linkToParent) {
-      noc = 0; edges = link.source.edges;
-      for (i in edges) {
-        metadata = edges[i].metadata;
-        if (metadata.RelationType !== "ownership" && source.metadata.Type !== "bridge" && metadata.Type !== "vlan" && ++noc >= 2) this.delLink(source.linkToParent);
-      }
+
+    var isNS = function(type) {
+      return ["host", "netns"].indexOf(type) >= 0;
     }
+
+    var source = link.source, target = link.target;
+    if (isHub(source.metadata.Type) && target.linkToParent && !isNS(target.metadata.Type)) this.delLink(target.linkToParent);
 
     if (!source.visible && !target.visible) {
       this._links[link.id] = link;
@@ -1492,26 +1485,26 @@ TopologyGraphLayout.prototype = {
       if (link.metadata.RelationType === "layer2") {
         l2.updateData(link);
 
-	if (l2.hasData(link)) {
-	  this.linkLabelData[link.id] = {
-	    id: "link-label-" + link.id,
-	    link: link,
-	    text: driver.getText(link),
-	    active: driver.isActive(link),
-	    warning: driver.isWarning(link),
-	    alert: driver.isAlert(link),
-	  };
-	} else {
-	  delete this.linkLabelData[link.id];
-	}
+        if (l2.hasData(link)) {
+          this.linkLabelData[link.id] = {
+            id: "link-label-" + link.id,
+            link: link,
+            text: l2.getText(link),
+            active: l2.isActive(link),
+            warning: l2.isWarning(link),
+            alert: l2.isAlert(link),
+          };
+        } else {
+          delete this.linkLabelData[link.id];
+        }
       }
 
       if (link.metadata.hasOwnProperty('Weight')) {
         this.linkLabelData[link.id] = {
-	  id: "link-label-" + link.id,
-	  link: link,
-	  text: `${link.metadata.Weight}%`,
-	};
+          id: "link-label-" + link.id,
+          link: link,
+          text: `${link.metadata.Weight}%`,
+        };
       }
     }
   },
