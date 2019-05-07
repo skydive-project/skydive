@@ -162,7 +162,6 @@ func (b *baseConnectionPair) getNodes(g *graph.Graph) (*graph.Node, *graph.Node,
 	}
 
 	return srcNode, dstNode, nil
-
 }
 
 func (l *localConnectionPair) addEdge(g *graph.Graph) {
@@ -175,6 +174,7 @@ func (l *localConnectionPair) addEdge(g *graph.Graph) {
 	// create Edge
 	if !g.AreLinked(srcNode, dstNode, nil) {
 		// generate metadatas
+		logging.GetLogger().Debugf("NSM: adding edge from %v to %v", srcNode, dstNode)
 		g.Link(srcNode, dstNode, l.createMetadata())
 	}
 }
@@ -186,10 +186,8 @@ func (l *localConnectionPair) delEdge(g *graph.Graph) {
 		return
 	}
 
-	// delete Edge
-	if g.AreLinked(srcNode, dstNode, nil) {
-		g.Unlink(srcNode, dstNode)
-	}
+	logging.GetLogger().Debugf("NSM: deleting edge from %v to %v", srcNode, dstNode)
+	g.Unlink(srcNode, dstNode)
 }
 
 func (l *localConnectionPair) createMetadata() graph.Metadata {
@@ -231,7 +229,7 @@ func (r *remoteConnectionPair) addEdge(g *graph.Graph) {
 
 	// create Edge
 	if !g.AreLinked(srcNode, dstNode, nil) {
-
+		logging.GetLogger().Debugf("NSM: creating Edge from %v to %v", srcNode, dstNode)
 		g.Link(srcNode, dstNode, r.createMetadata())
 	}
 }
@@ -243,10 +241,8 @@ func (r *remoteConnectionPair) delEdge(g *graph.Graph) {
 		return
 	}
 
-	// delete Edge
-	if g.AreLinked(srcNode, dstNode, nil) {
-		g.Unlink(srcNode, dstNode)
-	}
+	logging.GetLogger().Debugf("NSM: deleting Edge from %v to %v", srcNode, dstNode)
+	g.Unlink(srcNode, dstNode)
 }
 
 func (r *remoteConnectionPair) createMetadata() graph.Metadata {

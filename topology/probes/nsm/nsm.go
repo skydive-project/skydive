@@ -21,6 +21,7 @@ package nsm
 
 import (
 	"context"
+	"errors"
 	"net"
 	"strconv"
 	"sync/atomic"
@@ -109,6 +110,8 @@ func (p *Probe) Start() {
 
 // Stop ....
 func (p *Probe) Stop() {
+	p.Lock()
+	defer p.Unlock()
 	if !atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState) {
 		return
 	}
@@ -116,23 +119,32 @@ func (p *Probe) Stop() {
 	for _, conn := range p.nsmds {
 		conn.Close()
 	}
-	close(informerStopper)
+	if informerStopper != nil {
+		close(informerStopper)
+	}
+}
+
+func (p *Probe) getNSMgrClient(url string) (cc.MonitorCrossConnectClient, error) {
+	conn, err := dial(context.Background(), "tcp", url)
+	if err != nil {
+		logging.GetLogger().Errorf("NSM: unable to create grpc dialer, error: %+v", err)
+		return nil, err
+	}
+	p.Lock()
+	defer p.Unlock()
+	p.nsmds[url] = conn
+	return cc.NewMonitorCrossConnectClient(p.nsmds[url]), nil
 }
 
 func (p *Probe) monitorCrossConnects(url string) {
-	var err error
-	p.nsmds[url], err = dial(context.Background(), "tcp", url)
-	if err != nil {
-		logging.GetLogger().Errorf("NSM: unable to create grpc dialer, error: %+v", err)
-		return
-	}
-
-	client := cc.NewMonitorCrossConnectClient(p.nsmds[url])
-	//TODO: grpc is automagically trying to reconnect
-	// better understand the process to handle corner cases
-	stream, err := client.MonitorCrossConnects(context.Background(), &empty.Empty{})
+	client, err := p.getNSMgrClient(url)
 	if err != nil {
 		logging.GetLogger().Errorf("NSM: unable to connect to grpc server, error: %+v.", err)
+		return
+	}
+	stream, err := client.MonitorCrossConnects(context.Background(), &empty.Empty{})
+	if err != nil {
+		logging.GetLogger().Errorf("NSM: unable to stream the grpc connection, error: %+v.", err)
 		return
 	}
 
@@ -193,8 +205,9 @@ func (p *Probe) onConnLocalLocal(t cc.CrossConnectEventType, conn *cc.CrossConne
 				dst:      conn.GetLocalDestination(),
 			},
 		}
-		logging.GetLogger().Infof("adding link %+v", l)
+		logging.GetLogger().Debugf("NSM: adding local to local connection %+v", l)
 		p.connections = append(p.connections, l)
+		logging.GetLogger().Debugf("NSM: locking the graph for adding an Edge")
 		p.g.Lock()
 		l.addEdge(p.g)
 		p.g.Unlock()
@@ -205,10 +218,13 @@ func (p *Probe) onConnLocalLocal(t cc.CrossConnectEventType, conn *cc.CrossConne
 				continue
 			}
 			if l.srcInode == srcInode && l.dstInode == dstInode {
+				logging.GetLogger().Debugf("NSM: removing local to local connection %+v", l)
+				logging.GetLogger().Debugf("NSM: locking the graph for deleting an Edge")
 				p.g.Lock()
 				l.delEdge(p.g)
 				p.g.Unlock()
 				p.removeConnectionItem(i)
+				logging.GetLogger().Debugf("NSM: %v connection left", len(p.connections))
 				break
 			}
 		}
@@ -230,15 +246,18 @@ func (p *Probe) onConnLocalRemote(t cc.CrossConnectEventType, conn *cc.CrossConn
 				srcID:  conn.GetId(),
 				//TODO: compare payloads, they should be identical
 			}
+			logging.GetLogger().Debugf("NSM: adding local to remote connection %+v", c)
 			p.connections = append(p.connections, c)
 			//TODO: we erase previous payload if exist
 			c.payload = conn.GetPayload()
 
 		} else {
+			logging.GetLogger().Debugf("NSM: adding source to local to remote connection %+v", c)
 			c.src = conn.GetLocalSource()
 			c.srcID = conn.GetId()
 			//TODO: we erase previous payload if exist
 			c.payload = conn.GetPayload()
+			logging.GetLogger().Debugf("NSM: locking the graph for adding an Edge")
 			p.g.Lock()
 			c.addEdge(p.g)
 			p.g.Unlock()
@@ -249,14 +268,18 @@ func (p *Probe) onConnLocalRemote(t cc.CrossConnectEventType, conn *cc.CrossConn
 			return
 		}
 
+		logging.GetLogger().Debugf("NSM: locking the graph for deleting an Edge")
 		p.g.Lock()
 		c.delEdge(p.g)
 		p.g.Unlock()
 
 		// Delete the link only if dst is also empty
 		if c.dst == nil {
+			logging.GetLogger().Debugf("NSM: deleting local to remote connection %+v", c)
 			p.removeConnectionItem(i)
+			logging.GetLogger().Debugf("NSM: %v connection left", len(p.connections))
 		} else {
+			logging.GetLogger().Debugf("NSM: removing source from local to remote connection %+v", c)
 			c.src = nil
 		}
 	}
@@ -277,12 +300,15 @@ func (p *Probe) onConnRemoteLocal(t cc.CrossConnectEventType, conn *cc.CrossConn
 				dstID:  conn.GetId(),
 				//TODO: compare payloads, they should be identical
 			}
+			logging.GetLogger().Debugf("NSM: adding remote to local connection %+v", c)
 			p.connections = append(p.connections, c)
 		} else {
+			logging.GetLogger().Debugf("NSM: adding destination to remote to local connection %+v", c)
 			c.dst = conn.GetLocalDestination()
 			c.dstID = conn.GetId()
 			//TODO: compare payloads, they should be identical
 			c.payload = conn.GetPayload()
+			logging.GetLogger().Debugf("NSM: locking the graph for adding an Edge")
 			p.g.Lock()
 			c.addEdge(p.g)
 			p.g.Unlock()
@@ -291,17 +317,20 @@ func (p *Probe) onConnRemoteLocal(t cc.CrossConnectEventType, conn *cc.CrossConn
 		if c == nil {
 			logging.GetLogger().Warning("NSM: received cross connect delete event for a connection that does not exist")
 			return
-
 		}
 
+		logging.GetLogger().Debugf("NSM: locking the graph for deleting an Edge")
 		p.g.Lock()
 		c.delEdge(p.g)
 		p.g.Unlock()
 
 		// Delete the link only if src is also empty
 		if c.getSource() == nil {
+			logging.GetLogger().Debugf("NSM: deleting local to remote connection %+v", c)
 			p.removeConnectionItem(i)
+			logging.GetLogger().Debugf("NSM: %v connection left", len(p.connections))
 		} else {
+			logging.GetLogger().Debugf("NSM: removing destination from remote to local connection %+v", c)
 			c.dst = nil
 		}
 	}
@@ -309,18 +338,18 @@ func (p *Probe) onConnRemoteLocal(t cc.CrossConnectEventType, conn *cc.CrossConn
 
 // OnNodeAdded tell this probe a node in the graph has been added
 func (p *Probe) OnNodeAdded(n *graph.Node) {
-	p.Lock()
-	defer p.Unlock()
 	if i, err := n.GetFieldInt64("Inode"); err == nil {
 		// Find connections with matching inode
 		logging.GetLogger().Debugf("NSM: node added with inode: %v", i)
-		c, err := p.getConnectionWithInode(i)
+		p.Lock()
+		defer p.Unlock()
+		c, err := p.getConnectionsWithInode(i)
 		if err != nil {
 			logging.GetLogger().Errorf("NSM: error retreiving connections with inodes : %v", err)
 			return
 		}
 		if len(c) == 0 {
-			logging.GetLogger().Debugf("NSM: no connection with inode %v", i)
+			logging.GetLogger().Debugf("NSM: no connection ready with inode %v", i)
 			return
 		}
 
@@ -337,12 +366,19 @@ func (p *Probe) OnNodeDeleted(n *graph.Node) {
 	}
 	// If a graph node has been deleted, skydive should have automatically deleted egdes that was having this node as source or dest
 	// TODO: Consider removing the corresponding connection from the connection list,
-	// but it should be done by corresponding CrossConnect DELETE events received from nsmds
+	// but it should be done by the corresponding CrossConnect DELETE events received from nsmds
 }
 
-func (p *Probe) getConnectionWithInode(inode int64) ([]connection, error) {
+// getConnectionsWithInode returns every connection that involves the inode, with a non empty source and/or destinatio
+func (p *Probe) getConnectionsWithInode(inode int64) ([]connection, error) {
 	var c []connection
 	for i := range p.connections {
+		src := p.connections[i].getSource()
+		dst := p.connections[i].getDest()
+		if src == nil || dst == nil {
+			logging.GetLogger().Debugf("NSM: nil source or destination for connection %v", p.connections[i])
+			continue
+		}
 		srcInode, err := getLocalInode(p.connections[i].getSource())
 		if err != nil {
 			return nil, err
@@ -394,7 +430,12 @@ func dial(ctx context.Context, network string, address string) (*grpc.ClientConn
 
 //TODO: consider moving this function to nsm helper functions in the local/connection package
 func getLocalInode(conn *localconn.Connection) (int64, error) {
-	inodeStr := conn.Mechanism.Parameters[localconn.NetNsInodeKey]
+	inodeStr, ok := conn.Mechanism.Parameters[localconn.NetNsInodeKey]
+	if !ok {
+		err := errors.New("NSM: no inodes in the connection parameters")
+		logging.GetLogger().Error(err)
+		return 0, err
+	}
 	inode, err := strconv.ParseInt(inodeStr, 10, 64)
 	if err != nil {
 		logging.GetLogger().Errorf("NSM: error converting inode %s to int64", inodeStr)
