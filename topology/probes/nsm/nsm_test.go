@@ -240,7 +240,7 @@ func TestOnConnTwoCrossConnectsWithTheSameSourceAndDest_create_and_delete(t *tes
 	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn4)
 
 	//ensure that two connections are avalaible in the connection list when looking for inode 2
-	c, _ := p.getConnectionWithInode(2)
+	c, _ := p.getConnectionsWithInode(2)
 	if len(c) != 2 {
 		t.Fatalf("Two connections should be available with inode 2, but only %d is retreived", len(c))
 	}
