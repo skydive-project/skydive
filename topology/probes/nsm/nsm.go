@@ -27,10 +27,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
 	cc "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/crossconnect"
 	localconn "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/local/connection"
+	remoteconn "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/remote/connection"
 	v1 "github.com/networkservicemesh/networkservicemesh/k8s/pkg/apis/networkservice/v1"
 	"github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/clientset/versioned"
 	"github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/informers/externalversions"
@@ -156,7 +157,7 @@ func (p *Probe) monitorCrossConnects(url string) {
 			return
 		}
 
-		logging.GetLogger().Debugf("NSM: received monitoring event of type %s", event.Type)
+		logging.GetLogger().Debugf("NSM: received monitoring event of type %s from %s", event.GetType(), url)
 		for _, cconn := range event.GetCrossConnects() {
 			cconnStr := proto.MarshalTextString(cconn)
 
@@ -165,15 +166,32 @@ func (p *Probe) monitorCrossConnects(url string) {
 			lDst := cconn.GetLocalDestination()
 			rDst := cconn.GetRemoteDestination()
 
+			// we filter out UPDATE messages in DOWN state
+			// NSM will try to auto heal this kind of connection
+			// If the state goes DOWN because of a deletion of the cross connect
+			// we'll receive a DELETE message
+			isDelMsg := event.GetType() == cc.CrossConnectEventType_DELETE
 			switch {
 			case lSrc != nil && rSrc == nil && lDst != nil && rDst == nil:
-				logging.GetLogger().Debugf("NSM: Got local to local CrossConnect Msg \n%s", cconnStr)
-				p.onConnLocalLocal(event.GetType(), cconn) //cconn.GetId(), cconn.GetPayload(), lSrc, lDst)
+				logging.GetLogger().Debugf("NSM: Got local to local CrossConnect with id %s", cconnStr)
+				if !isDelMsg && (lSrc.GetState() == localconn.State_DOWN || lDst.GetState() == localconn.State_DOWN) {
+					logging.GetLogger().Debugf("NSM: one connection of the cross connect %s is in DOWN state, don't affect the skydive connections", cconn.GetId())
+					continue
+				}
+				p.onConnLocalLocal(event.GetType(), cconn)
 			case lSrc == nil && rSrc != nil && lDst != nil && rDst == nil:
-				logging.GetLogger().Debugf("NSM: Got remote to local CrossConnect Msg \n%s", cconnStr)
+				logging.GetLogger().Debugf("NSM: Got remote to local CrossConnect with id %s", cconnStr)
+				if !isDelMsg && (rSrc.GetState() == remoteconn.State_DOWN || lDst.GetState() == localconn.State_DOWN) {
+					logging.GetLogger().Debugf("NSM: one connection of the cross connect %s is in DOWN state, don't affect the skydive connections", cconn.GetId())
+					continue
+				}
 				p.onConnRemoteLocal(event.GetType(), cconn)
 			case lSrc != nil && rSrc == nil && lDst == nil && rDst != nil:
-				logging.GetLogger().Debugf("NSM: Got local to remote CrossConnect Msg \n%s", cconnStr)
+				logging.GetLogger().Debugf("NSM: Got local to remote CrossConnect with id %s", cconnStr)
+				if !isDelMsg && (lSrc.GetState() == localconn.State_DOWN || rDst.GetState() == remoteconn.State_DOWN) {
+					logging.GetLogger().Debugf("NSM: one connection of the cross connect %s is in DOWN state, don't affect the skydive connections", cconn.GetId())
+					continue
+				}
 				p.onConnLocalRemote(event.GetType(), cconn)
 			default:
 				logging.GetLogger().Errorf("NSM: Error parsing CrossConnect \n%s", cconnStr)
@@ -183,6 +201,7 @@ func (p *Probe) monitorCrossConnects(url string) {
 }
 
 func (p *Probe) onConnLocalLocal(t cc.CrossConnectEventType, conn *cc.CrossConnect) {
+
 	srcInode, err := getLocalInode(conn.GetLocalSource())
 	if err != nil {
 		return
