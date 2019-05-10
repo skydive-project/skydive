@@ -5,8 +5,7 @@ set -x
 set -e
 
 # Arches are the docker arch names
-: ${ARCHES:=amd64 ppc64le s390x}
-# arm64 waiting on  golang 1.11 (https://github.com/skydive-project/skydive/pull/1188#discussion_r204336060)
+: ${ARCHES:=amd64 arm64 ppc64le s390x}
 : ${DOCKER_IMAGE:=skydive/skydive}
 : ${DOCKER_IMAGE_SNAPSHOT:=skydive/snapshots}
 : ${DOCKER_USERNAME:=skydiveproject}
