@@ -186,10 +186,10 @@ func NewForgedPacketGenerator(pp *PacketInjectionParams, srcNode *graph.Node) (*
 
 	return &ForgedPacketGenerator{
 		PacketInjectionParams: pp,
-		srcIP:     srcIP,
-		dstIP:     dstIP,
-		srcMAC:    srcMAC,
-		dstMAC:    dstMAC,
-		layerType: layerType,
+		srcIP:                 srcIP,
+		dstIP:                 dstIP,
+		srcMAC:                srcMAC,
+		dstMAC:                dstMAC,
+		layerType:             layerType,
 	}, nil
 }
