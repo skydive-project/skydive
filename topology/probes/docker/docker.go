@@ -107,13 +107,13 @@ func (probe *Probe) registerContainer(id string) {
 
 	pid := int64(info.State.Pid)
 
-	dockerMetadata := graph.Metadata{
-		"ContainerID":   info.ID,
-		"ContainerName": info.Name[1:],
+	dockerMetadata := Metadata{
+		ContainerID:   info.ID,
+		ContainerName: info.Name[1:],
 	}
 
 	if len(info.Config.Labels) != 0 {
-		dockerMetadata["Labels"] = common.NormalizeValue(info.Config.Labels)
+		dockerMetadata.Labels = graph.Metadata(common.NormalizeValue(info.Config.Labels).(map[string]interface{}))
 	}
 
 	probe.Graph.Lock()

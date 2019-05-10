@@ -45,6 +45,7 @@ import (
 	"github.com/skydive-project/skydive/sflow"
 	"github.com/skydive-project/skydive/topology"
 	usertopology "github.com/skydive-project/skydive/topology/enhancers"
+	"github.com/skydive-project/skydive/topology/probes/docker"
 	"github.com/skydive-project/skydive/topology/probes/lldp"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
 	"github.com/skydive-project/skydive/topology/probes/ovsdb"
@@ -405,4 +406,5 @@ func init() {
 	graph.NodeMetadataDecoders["SFlow"] = sflow.SFMetadataDecoder
 	graph.NodeMetadataDecoders["Ovs"] = ovsdb.OvsMetadataDecoder
 	graph.NodeMetadataDecoders["LLDP"] = lldp.MetadataDecoder
+	graph.NodeMetadataDecoders["Docker"] = docker.MetadataDecoder
 }

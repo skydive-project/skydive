@@ -54,6 +54,7 @@ EASYJSON_FILES_TAG=\
 	graffiti/graph/elasticsearch.go \
 	sflow/sflow.go \
 	topology/metrics.go \
+	topology/probes/docker/metadata.go \
 	topology/probes/lldp/metadata.go \
 	topology/probes/netlink/metadata.go \
 	topology/probes/nsm/nsm.go \
