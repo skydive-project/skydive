@@ -1358,67 +1358,46 @@
 			"revisionTime": "2017-06-12T17:47:53Z"
 		},
 		{
-			"checksumSHA1": "wc9ggVnGiqRRkDnICSRv42CuS6c=",
-			"origin": "github.com/safchain/gopacket",
+			"checksumSHA1": "DTZ5GZB6CbiZyOv1/cDVNVtfMh4=",
 			"path": "github.com/google/gopacket",
-			"revision": "d1816d7a675cad725c35e5197e188be42cd4ffb6",
-			"revisionTime": "2019-04-23T16:55:05Z",
-			"version": "fix-sflow-portname",
-			"versionExact": "fix-sflow-portname"
+			"revision": "6d3e2615da4ed2ed2a349918fe74e7e6d03482fa",
+			"revisionTime": "2019-05-09T17:39:10Z"
 		},
 		{
-			"checksumSHA1": "Gfj2kQEHQbQWjtiVAvNqcg7SzNA=",
-			"origin": "github.com/safchain/gopacket/afpacket",
+			"checksumSHA1": "sN9Kuv7R0K4gjRYnyG95vEb0k9s=",
 			"path": "github.com/google/gopacket/afpacket",
-			"revision": "d1816d7a675cad725c35e5197e188be42cd4ffb6",
-			"revisionTime": "2019-04-23T16:55:05Z",
-			"version": "fix-sflow-portname",
-			"versionExact": "fix-sflow-portname"
+			"revision": "6d3e2615da4ed2ed2a349918fe74e7e6d03482fa",
+			"revisionTime": "2019-05-09T17:39:10Z"
 		},
 		{
 			"checksumSHA1": "/YPHQTyoSLi/2lmkeI/Loak/szw=",
-			"origin": "github.com/safchain/gopacket/ip4defrag",
 			"path": "github.com/google/gopacket/ip4defrag",
-			"revision": "d1816d7a675cad725c35e5197e188be42cd4ffb6",
-			"revisionTime": "2019-04-23T16:55:05Z",
-			"version": "fix-sflow-portname",
-			"versionExact": "fix-sflow-portname"
+			"revision": "6d3e2615da4ed2ed2a349918fe74e7e6d03482fa",
+			"revisionTime": "2019-05-09T17:39:10Z"
 		},
 		{
-			"checksumSHA1": "SLIJsoNZTNRCSHBK8vKQtHvTLNo=",
-			"origin": "github.com/safchain/gopacket/layers",
+			"checksumSHA1": "bsRFZmzhVEx/C45L32tRfQPVqk4=",
 			"path": "github.com/google/gopacket/layers",
-			"revision": "d1816d7a675cad725c35e5197e188be42cd4ffb6",
-			"revisionTime": "2019-04-23T16:55:05Z",
-			"version": "fix-sflow-portname",
-			"versionExact": "fix-sflow-portname"
+			"revision": "6d3e2615da4ed2ed2a349918fe74e7e6d03482fa",
+			"revisionTime": "2019-05-09T17:39:10Z"
 		},
 		{
 			"checksumSHA1": "WgGW8ymkFuYNzTcz6uF6cgZeKRU=",
-			"origin": "github.com/safchain/gopacket/pcap",
 			"path": "github.com/google/gopacket/pcap",
-			"revision": "d1816d7a675cad725c35e5197e188be42cd4ffb6",
-			"revisionTime": "2019-04-23T16:55:05Z",
-			"version": "fix-sflow-portname",
-			"versionExact": "fix-sflow-portname"
+			"revision": "6d3e2615da4ed2ed2a349918fe74e7e6d03482fa",
+			"revisionTime": "2019-05-09T17:39:10Z"
 		},
 		{
-			"checksumSHA1": "3VhZ05JYUSlgXNepPW+1V839aFE=",
-			"origin": "github.com/safchain/gopacket/pcapgo",
+			"checksumSHA1": "exZZnegw4Dlhq2ocMtP3ePc1kzY=",
 			"path": "github.com/google/gopacket/pcapgo",
-			"revision": "d1816d7a675cad725c35e5197e188be42cd4ffb6",
-			"revisionTime": "2019-04-23T16:55:05Z",
-			"version": "fix-sflow-portname",
-			"versionExact": "fix-sflow-portname"
+			"revision": "6d3e2615da4ed2ed2a349918fe74e7e6d03482fa",
+			"revisionTime": "2019-05-09T17:39:10Z"
 		},
 		{
 			"checksumSHA1": "JB3iiLLoJSfHofXOz5cZLh9y+Eo=",
-			"origin": "github.com/safchain/gopacket/tcpassembly",
 			"path": "github.com/google/gopacket/tcpassembly",
-			"revision": "d1816d7a675cad725c35e5197e188be42cd4ffb6",
-			"revisionTime": "2019-04-23T16:55:05Z",
-			"version": "fix-sflow-portname",
-			"versionExact": "fix-sflow-portname"
+			"revision": "6d3e2615da4ed2ed2a349918fe74e7e6d03482fa",
+			"revisionTime": "2019-05-09T17:39:10Z"
 		},
 		{
 			"checksumSHA1": "Kh/EnzmngEgl6DxIndgpflFLm00=",
