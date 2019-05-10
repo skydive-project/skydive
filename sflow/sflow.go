@@ -75,9 +75,14 @@ func (sf *SFlow) GetField(key string) (interface{}, error) {
 	return nil, common.ErrFieldNotFound
 }
 
+// GetFieldBool implements Getter interface
+func (sf *SFlow) GetFieldBool(key string) (bool, error) {
+	return false, common.ErrFieldNotFound
+}
+
 // GetFieldString implements Getter interface
 func (sf *SFlow) GetFieldString(key string) (string, error) {
-	return "", nil
+	return "", common.ErrFieldNotFound
 }
 
 // GetFieldInt64 implements Getter interface
@@ -101,6 +106,21 @@ func (sf *SFlow) GetFieldInt64(key string) (int64, error) {
 	}
 
 	return 0, common.ErrFieldNotFound
+}
+
+// MatchBool implements Getter interface
+func (sf *SFlow) MatchBool(key string, predicate common.BoolPredicate) bool {
+	return false
+}
+
+// MatchInt64 implements Getter interface
+func (sf *SFlow) MatchInt64(key string, predicate common.Int64Predicate) bool {
+	return false
+}
+
+// MatchString implements Getter interface
+func (sf *SFlow) MatchString(key string, predicate common.StringPredicate) bool {
+	return false
 }
 
 // GetFieldKeys implements Getter interface
