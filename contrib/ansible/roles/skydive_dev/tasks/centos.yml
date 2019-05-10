@@ -12,3 +12,8 @@
 - package:
     name: centos-release-openstack-queens
     state: present
+
+- name: "Install copr yum plugin"
+  package:
+    name: yum-plugin-copr
+    state: present
