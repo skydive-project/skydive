@@ -1,3 +1,5 @@
+//go:generate go run ../scripts/gendecoder.go -strict=false
+
 /*
  * Copyright (C) 2019 Red Hat, Inc.
  *
@@ -19,14 +21,13 @@ package sflow
 
 import (
 	"encoding/json"
-	"strings"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/topology"
 )
 
 // SFlow all sflow information
 // easyjson:json
+// gendecoder
 type SFlow struct {
 	IfMetrics        map[int64]*IfMetric `json:"IfMetrics,omitempty"`
 	Metric           *SFMetric           `json:"Metric,omitempty"`
@@ -43,99 +44,9 @@ func SFMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
 	return &sf, nil
 }
 
-// GetField implements Getter interface
-func (sf *SFlow) GetField(key string) (interface{}, error) {
-	fields := strings.Split(key, ".")
-
-	if len(fields) == 1 {
-		switch fields[0] {
-		case "IfMetrics":
-			if sf.Metric != nil {
-				return sf.IfMetrics, nil
-			}
-			return nil, common.ErrFieldNotFound
-		case "Metric":
-			if sf.Metric != nil {
-				return sf.Metric, nil
-			}
-			return nil, common.ErrFieldNotFound
-		case "LastUpdateMetric":
-			if sf.LastUpdateMetric != nil {
-				return sf.LastUpdateMetric, nil
-			}
-			return nil, common.ErrFieldNotFound
-		}
-	}
-
-	switch fields[0] {
-	case "Metric", "LastUpdateMetric":
-		return sf.GetFieldInt64(key)
-	}
-
-	return nil, common.ErrFieldNotFound
-}
-
-// GetFieldBool implements Getter interface
-func (sf *SFlow) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
-}
-
-// GetFieldString implements Getter interface
-func (sf *SFlow) GetFieldString(key string) (string, error) {
-	return "", common.ErrFieldNotFound
-}
-
-// GetFieldInt64 implements Getter interface
-func (sf *SFlow) GetFieldInt64(key string) (int64, error) {
-	fields := strings.Split(key, ".")
-	if len(fields) < 2 {
-		return 0, common.ErrFieldNotFound
-	}
-
-	switch fields[0] {
-	case "Metric":
-		if sf.Metric != nil {
-			return sf.Metric.GetFieldInt64(fields[1])
-		}
-		return new(topology.InterfaceMetric).GetFieldInt64(fields[1])
-	case "LastUpdateMetric":
-		if sf.LastUpdateMetric != nil {
-			return sf.LastUpdateMetric.GetFieldInt64(fields[1])
-		}
-		return new(SFMetric).GetFieldInt64(fields[1])
-	}
-
-	return 0, common.ErrFieldNotFound
-}
-
-// MatchBool implements Getter interface
-func (sf *SFlow) MatchBool(key string, predicate common.BoolPredicate) bool {
-	return false
-}
-
-// MatchInt64 implements Getter interface
-func (sf *SFlow) MatchInt64(key string, predicate common.Int64Predicate) bool {
-	return false
-}
-
-// MatchString implements Getter interface
-func (sf *SFlow) MatchString(key string, predicate common.StringPredicate) bool {
-	return false
-}
-
-// GetFieldKeys implements Getter interface
-func (sf *SFlow) GetFieldKeys() []string {
-	return sflowFields
-}
-
-var sflowFields []string
-
-func init() {
-	sflowFields = common.StructFieldKeys(SFlow{})
-}
-
 // SFMetric the SFlow Counter Samples
 // easyjson:json
+// gendecoder
 type SFMetric struct {
 	IfMetric
 	OvsMetric
@@ -148,6 +59,7 @@ type SFMetric struct {
 
 // EthMetric the SFlow ethernet counters
 // easyjson:json
+// gendecoder
 type EthMetric struct {
 	EthAlignmentErrors           int64 `json:"EthAlignmentErrors,omitempty"`
 	EthFCSErrors                 int64 `json:"EthFCSErrors,omitempty"`
@@ -166,6 +78,7 @@ type EthMetric struct {
 
 // VlanMetric the SFlow vlan counters
 // easyjson:json
+// gendecoder
 type VlanMetric struct {
 	VlanOctets        int64 `json:"VlanOctets,omitempty"`
 	VlanUcastPkts     int64 `json:"VlanUcastPkts,omitempty"`
@@ -176,6 +89,7 @@ type VlanMetric struct {
 
 // OvsMetric the SFlow ovs counters
 // easyjson:json
+// gendecoder
 type OvsMetric struct {
 	OvsDpNHit      int64 `json:"OvsDpNHit,omitempty"`
 	OvsDpNMissed   int64 `json:"OvsDpNMissed,omitempty"`
@@ -193,6 +107,7 @@ type OvsMetric struct {
 
 // IfMetric the SFlow Interface counters
 // easyjson:json
+// gendecoder
 type IfMetric struct {
 	IfInOctets         int64 `json:"IfInOctets,omitempty"`
 	IfInUcastPkts      int64 `json:"IfInUcastPkts,omitempty"`
@@ -227,114 +142,6 @@ func (sm *SFMetric) GetLast() int64 {
 // SetLast set last tome
 func (sm *SFMetric) SetLast(last int64) {
 	sm.Last = last
-}
-
-// GetFieldInt64 implements Getter and Metrics interfaces
-func (sm *SFMetric) GetFieldInt64(field string) (int64, error) {
-	switch field {
-	case "Start":
-		return sm.Start, nil
-	case "Last":
-		return sm.Last, nil
-	case "IfInOctets":
-		return sm.IfInOctets, nil
-	case "IfInUcastPkts":
-		return sm.IfInUcastPkts, nil
-	case "IfInMulticastPkts":
-		return sm.IfInMulticastPkts, nil
-	case "IfInBroadcastPkts":
-		return sm.IfInBroadcastPkts, nil
-	case "IfInDiscards":
-		return sm.IfInDiscards, nil
-	case "IfInErrors":
-		return sm.IfInErrors, nil
-	case "IfInUnknownProtos":
-		return sm.IfInUnknownProtos, nil
-	case "IfOutOctets":
-		return sm.IfOutOctets, nil
-	case "IfOutUcastPkts":
-		return sm.IfOutUcastPkts, nil
-	case "IfOutMulticastPkts":
-		return sm.IfOutMulticastPkts, nil
-	case "IfOutBroadcastPkts":
-		return sm.IfOutBroadcastPkts, nil
-	case "IfOutDiscards":
-		return sm.IfOutDiscards, nil
-	case "IfOutErrors":
-		return sm.IfOutErrors, nil
-	case "OvsDpNHit":
-		return sm.OvsDpNHit, nil
-	case "OvsDpNMissed":
-		return sm.OvsDpNMissed, nil
-	case "OvsDpNLost":
-		return sm.OvsDpNLost, nil
-	case "OvsDpNMaskHit":
-		return sm.OvsDpNMaskHit, nil
-	case "OvsDpNFlows":
-		return sm.OvsDpNFlows, nil
-	case "OvsDpNMasks":
-		return sm.OvsDpNMasks, nil
-	case "OvsAppFdOpen":
-		return sm.OvsAppFdOpen, nil
-	case "OvsAppFdMax":
-		return sm.OvsAppFdMax, nil
-	case "OvsAppConnOpen":
-		return sm.OvsAppConnOpen, nil
-	case "OvsAppConnMax":
-		return sm.OvsAppConnMax, nil
-	case "OvsAppMemUsed":
-		return sm.OvsAppMemUsed, nil
-	case "OvsAppMemMax":
-		return sm.OvsAppMemMax, nil
-	case "VlanOctets":
-		return sm.VlanOctets, nil
-	case "VlanUcastPkts":
-		return sm.VlanUcastPkts, nil
-	case "VlanMulticastPkts":
-		return sm.VlanMulticastPkts, nil
-	case "VlanBroadcastPkts":
-		return sm.VlanBroadcastPkts, nil
-	case "VlanDiscards":
-		return sm.VlanDiscards, nil
-	case "EthAlignmentErrors":
-		return sm.EthAlignmentErrors, nil
-	case "EthFCSErrors":
-		return sm.EthFCSErrors, nil
-	case "EthSingleCollisionFrames":
-		return sm.EthSingleCollisionFrames, nil
-	case "EthMultipleCollisionFrames":
-		return sm.EthMultipleCollisionFrames, nil
-	case "EthSQETestErrors":
-		return sm.EthSQETestErrors, nil
-	case "EthDeferredTransmissions":
-		return sm.EthDeferredTransmissions, nil
-	case "EthLateCollisions":
-		return sm.EthLateCollisions, nil
-	case "EthExcessiveCollisions":
-		return sm.EthExcessiveCollisions, nil
-	case "EthInternalMacReceiveErrors":
-		return sm.EthInternalMacReceiveErrors, nil
-	case "EthInternalMacTransmitErrors":
-		return sm.EthInternalMacTransmitErrors, nil
-	case "EthCarrierSenseErrors":
-		return sm.EthCarrierSenseErrors, nil
-	case "EthFrameTooLongs":
-		return sm.EthFrameTooLongs, nil
-	case "EthSymbolErrors":
-		return sm.EthSymbolErrors, nil
-	}
-
-	return 0, common.ErrFieldNotFound
-}
-
-// GetField implements Getter interface
-func (sm *SFMetric) GetField(key string) (interface{}, error) {
-	return sm.GetFieldInt64(key)
-}
-
-// GetFieldString implements Getter interface
-func (sm *SFMetric) GetFieldString(key string) (string, error) {
-	return "", common.ErrFieldNotFound
 }
 
 // Add sum two metrics and return a new Metrics object
@@ -591,19 +398,4 @@ func (sm *SFMetric) Split(cut int64) (common.Metric, common.Metric) {
 	sm2.Start = cut
 
 	return sm1, sm2
-}
-
-// GetFieldKeys implements Getter and Metrics interfaces
-func (sm *SFMetric) GetFieldKeys() []string {
-	return sflowMetricsFields
-}
-
-var sflowMetricsFields []string
-
-func init() {
-	sflowMetricsFields = append(sflowMetricsFields, "Start", "Last")
-	sflowMetricsFields = append(sflowMetricsFields, common.StructFieldKeys(IfMetric{})...)
-	sflowMetricsFields = append(sflowMetricsFields, common.StructFieldKeys(OvsMetric{})...)
-	sflowMetricsFields = append(sflowMetricsFields, common.StructFieldKeys(VlanMetric{})...)
-	sflowMetricsFields = append(sflowMetricsFields, common.StructFieldKeys(EthMetric{})...)
 }
