@@ -120,16 +120,16 @@ docker_build() {
             docker_native_build $arch
             ;;
           ppc64le)
-            TARGET_ARCH=powerpc64le TARGET_GOARCH=$arch DEBARCH=ppc64el BASE=${BASE:-${arch}/ubuntu} docker_cross_build $arch
+            TARGET_ARCH=powerpc64le TARGET_GOARCH=$arch DEBARCH=ppc64el BASE=${arch}/ubuntu docker_cross_build $arch
             ;;
           arm64)
-            TARGET_ARCH=aarch64 TARGET_GOARCH=$arch DEBARCH=$arch BASE=${BASE:-aarch64/ubuntu} docker_cross_build $arch
+            TARGET_ARCH=aarch64 TARGET_GOARCH=$arch DEBARCH=$arch BASE=aarch64/ubuntu docker_cross_build $arch
             ;;
           s390x)
-            TARGET_ARCH=$arch TARGET_GOARCH=$arch DEBARCH=$arch BASE=${BASE:-${arch}/ubuntu} docker_cross_build $arch
+            TARGET_ARCH=$arch TARGET_GOARCH=$arch DEBARCH=$arch BASE=${arch}/ubuntu docker_cross_build $arch
             ;;
           *)
-            TARGET_ARCH=$arch TARGET_GOARCH=$arch DEBARCH=$arch BASE=${BASE:-${arch}/ubuntu} docker_cross_build $arch
+            TARGET_ARCH=$arch TARGET_GOARCH=$arch DEBARCH=$arch BASE=${arch}/ubuntu docker_cross_build $arch
             ;;
         esac
     done
