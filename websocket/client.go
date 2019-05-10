@@ -115,6 +115,7 @@ type Speaker interface {
 	Connect() error
 	Start()
 	Stop()
+	StopAndWait()
 	AddEventHandler(SpeakerEventHandler)
 	GetRemoteHost() string
 	GetRemoteServiceType() common.ServiceType
@@ -357,13 +358,13 @@ func (c *Conn) run() {
 				handleReceivedMessage(m)
 			})
 
-			c.wg.Done()
-
 			c.RLock()
 			for _, l := range c.eventHandlers {
 				l.OnDisconnected(c.wsSpeaker)
 			}
 			c.RUnlock()
+
+			c.wg.Done()
 		}()
 
 		for {
@@ -423,12 +424,17 @@ func (c *Conn) Flush() {
 	c.flush <- struct{}{}
 }
 
-// Stop disconnect the speakers and wait for the goroutine to end
+// Stop disconnect the speaker
 func (c *Conn) Stop() {
 	c.running.Store(false)
 	if atomic.CompareAndSwapInt32((*int32)(c.State), common.RunningState, common.StoppingState) {
 		c.quit <- true
 	}
+}
+
+// StopAndWait disconnect the speaker and wait for the goroutine to end
+func (c *Conn) StopAndWait() {
+	c.Stop()
 	c.wg.Wait()
 }
 
@@ -544,6 +550,9 @@ func (c *Client) Start() {
 		for c.running.Load() == true {
 			if err := c.Connect(); err == nil {
 				c.Run()
+				if c.running.Load() == true {
+					c.wg.Wait()
+				}
 			} else {
 				c.Opts.Logger.Error(err)
 			}

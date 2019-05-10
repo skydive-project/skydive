@@ -81,6 +81,12 @@ func (sfa *Agent) feedFlowTable() {
 		logging.GetLogger().Error(err)
 	}
 
+	defer func() {
+		sfa.Graph.Lock()
+		sfa.Graph.DelMetadata(sfa.Node, "SFlow")
+		sfa.Graph.Unlock()
+	}()
+
 	var buf [maxDgramSize]byte
 	for {
 		n, _, err := sfa.Conn.ReadFromUDP(buf[:])
@@ -290,7 +296,6 @@ func (sfa *Agent) Stop() {
 	sfa.Lock()
 	defer sfa.Unlock()
 
-	sfa.Graph.DelMetadata(sfa.Node, "SFlow")
 	if sfa.Conn != nil {
 		sfa.Conn.Close()
 	}

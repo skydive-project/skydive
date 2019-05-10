@@ -204,11 +204,19 @@ func (s *Pool) DisconnectAll() {
 	s.eventHandlers = s.eventHandlers[:0]
 	s.eventHandlersLock.Unlock()
 
+	var wg sync.WaitGroup
+
 	s.RLock()
 	for _, c := range s.speakers {
-		c.Stop()
+		wg.Add(1)
+		go func(c Speaker) {
+			c.StopAndWait()
+			wg.Done()
+		}(c)
 	}
 	s.RUnlock()
+
+	wg.Wait()
 }
 
 // GetSpeakersByType returns Speakers matching the given type.
