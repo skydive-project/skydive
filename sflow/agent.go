@@ -179,8 +179,8 @@ func (sfa *Agent) feedFlowTable() {
 					sf.Metric.OvsDpNFlows += maxUint32(ovsdp.NFlows, prevMetric.OvsDpNFlows)
 					sf.Metric.OvsDpNMasks += maxUint32(ovsdp.NMasks, prevMetric.OvsDpNMasks)
 
-				case layers.SFlowAppResourcesCounters:
-					app := record.(layers.SFlowAppResourcesCounters)
+				case layers.SFlowAppresourcesCounters:
+					app := record.(layers.SFlowAppresourcesCounters)
 					// add for those that are gauge and not counters
 					sf.Metric.OvsAppFdOpen += maxUint32(app.FdOpen, prevMetric.OvsAppFdOpen)
 					sf.Metric.OvsAppFdMax = maxUint32(app.FdMax, prevMetric.OvsAppFdMax)
