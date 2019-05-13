@@ -285,6 +285,18 @@
 			"revisionTime": "2018-01-16T20:38:02Z"
 		},
 		{
+			"checksumSHA1": "j3OBW3NULgNE1UeWVlTX3uxo2a0=",
+			"path": "github.com/VerizonDigital/vflow/netflow/v5",
+			"revision": "eb30d936249eae49e0cb66498f05c243c03dcdf9",
+			"revisionTime": "2019-01-11T00:59:00Z"
+		},
+		{
+			"checksumSHA1": "GcPTllUUj3ejTMlv7MQKB0WsL1E=",
+			"path": "github.com/VerizonDigital/vflow/reader",
+			"revision": "eb30d936249eae49e0cb66498f05c243c03dcdf9",
+			"revisionTime": "2019-01-11T00:59:00Z"
+		},
+		{
 			"checksumSHA1": "lzh7lV7cnejOlSbSgoWr2Gq9NR4=",
 			"comment": "v0.3-10-gca62df3",
 			"path": "github.com/abbot/go-http-auth",

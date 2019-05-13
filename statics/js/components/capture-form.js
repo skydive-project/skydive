@@ -73,40 +73,48 @@ Vue.component('capture-form', {
               <input id="samplingRate" type="number" class="form-control input-sm" v-model.number="samplingRate"/>\
               <label for="pollingInterval">Counter Polling Interval (0 = No Counters)</label>\
               <input id="pollingInterval" type="number" class="form-control input-sm" v-model.number="pollingInterval"/>\
+              <label for="sflowTarget">sFlow target, if empty the agent will be used</label>\
+              <input id="sflowTarget" type="text" class="form-control input-sm" v-model="target"/>\
             </div>\
-            <div class="form-group">\
-              <label for="capture-layer-key-mode">Layers used for Flow Key</label>\
-              <select id="capture-layer-key-mode" v-model="layerKeyMode" class="form-control custom-select">\
-                <option disabled value="">Select layers to be used</option>\
-                <option value="" selected>Default</option>\
-                <option value="L2">L2 (uses Layer 2 and beyond)</option>\
-                <option value="L3">L3 (uses layer 3 and beyond)</option>\
-              </select>\
+            <div class="form-group" v-if="captureType == \'ovsnetflow\'">\
+              <label for="netflowTarget">NetFlow collector address, if empty the agent will be used</label>\
+              <input id="netflowTarget" type="text" class="form-control input-sm" v-model="target"/>\
             </div>\
-            <div class="form-group">\
-              <label for="capture-header-size">Header Size</label>\
-              <input id="capture-header-size" type="number" class="form-control input-sm" v-model.number="headerSize" min="0" />\
-            </div>\
-            <div class="form-group" v-if="isPacketCaptureEnabled">\
-              <label for="capture-raw-packets">Raw packets limit</label>\
-              <input id="capture-raw-packets" type="number" class="form-control input-sm" v-model.number="rawPackets" min="0" max="10"/>\
-            </div>\
-            <div class="form-group">\
-              <label class="form-check-label">\
-                <input id="capture-tcp-metric" type="checkbox" class="form-check-input" v-model="extraTCPMetric">\
-                Extra TCP metric\
-                <span class="checkmark"></span>\
-              </label>\
-              <label class="form-check-label">\
-                <input id="capture-ip-defrag" type="checkbox" class="form-check-input" v-model="ipDefrag">\
-                Defragment IPv4 packets\
-                <span class="checkmark"></span>\
-              </label>\
-              <label class="form-check-label">\
-                <input id="capture-reassemble-tcp" type="checkbox" class="form-check-input" v-model="reassembleTCP">\
-                Reassemble TCP packets\
-                <span class="checkmark"></span>\
-              </label>\
+            <div class="form-group" v-else>\
+              <div class="form-group">\
+                <label for="capture-layer-key-mode">Layers used for Flow Key</label>\
+                <select id="capture-layer-key-mode" v-model="layerKeyMode" class="form-control custom-select">\
+                  <option disabled value="">Select layers to be used</option>\
+                  <option value="" selected>Default</option>\
+                  <option value="L2">L2 (uses Layer 2 and beyond)</option>\
+                  <option value="L3">L3 (uses layer 3 and beyond)</option>\
+                </select>\
+              </div>\
+              <div class="form-group">\
+                <label for="capture-header-size">Header Size</label>\
+                <input id="capture-header-size" type="number" class="form-control input-sm" v-model.number="headerSize" min="0" />\
+              </div>\
+              <div class="form-group">\
+                <label class="form-check-label">\
+                  <input id="capture-tcp-metric" type="checkbox" class="form-check-input" v-model="extraTCPMetric">\
+                  Extra TCP metric\
+                  <span class="checkmark"></span>\
+                </label>\
+                <label class="form-check-label">\
+                  <input id="capture-ip-defrag" type="checkbox" class="form-check-input" v-model="ipDefrag">\
+                  Defragment IPv4 packets\
+                  <span class="checkmark"></span>\
+                </label>\
+                <label class="form-check-label">\
+                  <input id="capture-reassemble-tcp" type="checkbox" class="form-check-input" v-model="reassembleTCP">\
+                  Reassemble TCP packets\
+                  <span class="checkmark"></span>\
+                </label>\
+                <div class="form-group" v-if="isPacketCaptureEnabled">\
+                  <label for="capture-raw-packets">Raw packets limit</label>\
+                  <input id="capture-raw-packets" type="number" class="form-control input-sm" v-model.number="rawPackets" min="0" max="10"/>\
+                </div>\
+              </div>\
             </div>\
           </fieldset>\
         </collapse>\
@@ -147,6 +155,7 @@ Vue.component('capture-form', {
       samplingRate: 1,
       pollingInterval: 10,
       isPacketCaptureEnabled: true,
+      target: "",
     };
   },
 
@@ -169,6 +178,7 @@ Vue.component('capture-form', {
         ];
       }
       options.ovsbridge = [
+        {"type": "ovsnetflow", "desc": "Reading NetFlow from OVS"},
         {"type": "ovssflow", "desc": "Reading sFlow from OVS"},
         {"type": "pcapsocket", "desc": "Socket reading PCAP format data"}
       ];
@@ -289,6 +299,7 @@ Vue.component('capture-form', {
       this.visible = false;
       this.captureType = "";
       this.layerKeyMode = "";
+      this.target = "";
     },
 
     checkQuery: function(query) {
@@ -331,6 +342,7 @@ Vue.component('capture-form', {
       capture.LayerKeyMode = this.layerKeyMode;
       capture.SamplingRate = this.samplingRate;
       capture.PollingInterval = this.pollingInterval;
+      capture.Target = this.target;
       return self.captureAPI.create(capture)
       .then(function(data) {
         self.$success({message: 'Capture created'});

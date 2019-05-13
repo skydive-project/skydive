@@ -184,7 +184,7 @@ func (t *SubscriberEndpoint) notifyClients(msg *ws.StructMessage) {
 		t.RUnlock()
 
 		if found {
-			// in the case of a error during the subscription we got a nil subscriber
+			// in the case of an error during the subscription we got a nil subscriber
 			if subscriber == nil {
 				return
 			}
