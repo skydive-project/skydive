@@ -47,6 +47,7 @@ import (
 	usertopology "github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/probes/docker"
 	"github.com/skydive-project/skydive/topology/probes/lldp"
+	"github.com/skydive-project/skydive/topology/probes/lxd"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
 	"github.com/skydive-project/skydive/topology/probes/ovsdb"
 	"github.com/skydive-project/skydive/ui"
@@ -407,4 +408,5 @@ func init() {
 	graph.NodeMetadataDecoders["Ovs"] = ovsdb.OvsMetadataDecoder
 	graph.NodeMetadataDecoders["LLDP"] = lldp.MetadataDecoder
 	graph.NodeMetadataDecoders["Docker"] = docker.MetadataDecoder
+	graph.NodeMetadataDecoders["Lxd"] = lxd.MetadataDecoder
 }

@@ -56,6 +56,7 @@ EASYJSON_FILES_TAG=\
 	topology/metrics.go \
 	topology/probes/docker/metadata.go \
 	topology/probes/lldp/metadata.go \
+	topology/probes/lxd/metadata.go \
 	topology/probes/netlink/metadata.go \
 	topology/probes/nsm/nsm.go \
 	topology/probes/ovsdb/ovsdb.go \

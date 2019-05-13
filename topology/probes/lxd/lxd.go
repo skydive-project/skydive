@@ -37,19 +37,6 @@ import (
 	"github.com/vishvananda/netns"
 )
 
-type containerMetadata struct {
-	Architecture string
-	Config       map[string]interface{}
-	CreatedAt    string
-	Description  string
-	Devices      map[string]map[string]string
-	Ephemeral    string
-	Profiles     []string
-	Restore      string
-	Status       string
-	Stateful     string
-}
-
 type containerInfo struct {
 	Pid  int
 	Node *graph.Node
@@ -130,11 +117,16 @@ func (probe *Probe) registerContainer(id string) {
 		}
 	}
 
-	metadata := containerMetadata{
+	devices := graph.Metadata{}
+	for k, v := range container.Devices {
+		devices[k] = v
+	}
+
+	metadata := Metadata{
 		Architecture: container.Architecture,
 		CreatedAt:    container.CreatedAt.String(),
 		Description:  container.Description,
-		Devices:      container.Devices,
+		Devices:      devices,
 		Ephemeral:    strconv.FormatBool(container.Ephemeral),
 		Profiles:     container.Profiles,
 		Restore:      container.Restore,
@@ -143,7 +135,7 @@ func (probe *Probe) registerContainer(id string) {
 	}
 
 	if len(container.Config) != 0 {
-		metadata.Config = common.NormalizeValue(container.Config).(map[string]interface{})
+		metadata.Config = graph.Metadata(common.NormalizeValue(container.Config).(map[string]interface{}))
 	}
 
 	probe.Graph.Lock()
