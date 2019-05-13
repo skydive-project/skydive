@@ -47,6 +47,7 @@ var (
 	reassembleTCP      bool
 	layerKeyMode       string
 	extraLayers        []string
+	target             string
 )
 
 // CaptureCmd skydive capture root command
@@ -95,6 +96,7 @@ var CaptureCreate = &cobra.Command{
 		capture.LayerKeyMode = layerKeyMode
 		capture.RawPacketLimit = rawPacketLimit
 		capture.ExtraLayers = layers
+		capture.Target = target
 
 		if err := validator.Validate(capture); err != nil {
 			exitOnError(err)
@@ -194,6 +196,7 @@ func addCaptureFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&reassembleTCP, "reassamble-tcp", "", false, "Reassemble TCP packets, default: false")
 	cmd.Flags().StringVarP(&layerKeyMode, "layer-key-mode", "", "L2", "Defines the first layer used by flow key calculation, L2 or L3")
 	cmd.Flags().StringArrayVarP(&extraLayers, "extra-layer", "", []string{}, fmt.Sprintf("List of extra layers to be added to the flow, available: %s", flow.ExtraLayers(flow.ALLLayer)))
+	cmd.Flags().StringVarP(&target, "target", "", "", "Specify sFlow target, if empty the agent will be used")
 }
 
 func init() {

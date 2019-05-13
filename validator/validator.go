@@ -68,7 +68,28 @@ var (
 	CaptureTypeNotValid = func(t string) error {
 		return valid.TextErr{Err: fmt.Errorf("Not a valid capture type: %s, available types: %v", t, common.ProbeTypes)}
 	}
+	//AddressNotValid validator
+	AddressNotValid = func() error {
+		return valid.TextErr{Err: errors.New("Not a valid address")}
+	}
 )
+
+func isValidAddress(v interface{}, param string) error {
+	addr, ok := v.(string)
+	if !ok {
+		return AddressNotValid()
+	}
+
+	if addr == "" {
+		return nil
+	}
+
+	if _, err := common.ServiceAddressFromString(addr); err != nil {
+		return AddressNotValid()
+	}
+
+	return nil
+}
 
 func isIP(v interface{}, param string) error {
 	ip, ok := v.(string)
@@ -210,5 +231,6 @@ func init() {
 	skydiveValidator.SetValidationFunc("isValidLayerKeyMode", isValidLayerKeyMode)
 	skydiveValidator.SetValidationFunc("isValidWorkflow", isValidWorkflow)
 	skydiveValidator.SetValidationFunc("isValidCaptureType", isValidCaptureType)
+	skydiveValidator.SetValidationFunc("isValidAddress", isValidAddress)
 	skydiveValidator.SetTag("valid")
 }
