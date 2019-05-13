@@ -339,11 +339,11 @@ static inline void fill_network(struct __sk_buff *skb, __u16 netproto, size_t of
 #define TUNNEL
 #include "flow_network.c"
 
-	flow->key ^= flow->network_layer_outer._hash ^ flow->network_layer._hash ^
-		flow->transport_layer._hash ^ flow->icmp_layer._hash;
-
 	layer->_hash_src = hash_src;
 	layer->_hash ^= hash_src ^ hash_dst ^ netproto ^ transproto;
+
+	flow->key ^= flow->network_layer_outer._hash ^ flow->network_layer._hash ^
+		flow->transport_layer._hash ^ flow->icmp_layer._hash;
 
 	flow->layers_info |= NETWORK_LAYER_INFO;
 }
