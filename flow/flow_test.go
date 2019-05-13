@@ -966,8 +966,8 @@ func benchmarkPacketsFlowTable(b *testing.B, filename string, linkType layers.Li
 			})
 	}
 
-	b.Logf("packets %d flows %d", packets, len(ft.table))
-	b.Logf("packets per flows %d", packets/len(ft.table))
+	b.Logf("packets %d flows %d", packets, ft.table.Len())
+	b.Logf("packets per flows %d", packets/ft.table.Len())
 	fset := ft.getFlows(&filters.SearchQuery{
 		Filter: filters.NewTermStringFilter("Network.Protocol", "IPV4"),
 	})
@@ -981,7 +981,7 @@ func benchmarkPacketsFlowTable(b *testing.B, filename string, linkType layers.Li
 	if packets != 4679031 {
 		b.Fail()
 	}
-	if len(ft.table) != 9088 || nbFlows != 9088 {
+	if ft.table.Len() != 9088 || nbFlows != 9088 {
 		b.Fail()
 	}
 }
@@ -1012,7 +1012,7 @@ func BenchmarkQueryFlowTable(b *testing.B) {
 				ID: uint32(i),
 			},
 		}
-		t.table[strconv.Itoa(i)] = f
+		t.table.Add(strconv.Itoa(i), f)
 	}
 
 	query := &filters.SearchQuery{

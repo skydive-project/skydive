@@ -251,11 +251,11 @@ func TestHold(t *testing.T) {
 	flow1.FinishType = FlowFinishType_TCP_FIN
 
 	table.updateAt(flowTime.Add(time.Duration(5) * time.Second))
-	if len(table.table) != 1 {
+	if table.table.Len() != 1 {
 		t.Error("Flow should not have been deleted by update")
 	}
 	table.updateAt(flowTime.Add(time.Duration(15) * time.Second))
-	if len(table.table) != 0 {
+	if table.table.Len() != 0 {
 		t.Error("Flow should have been deleted by update")
 	}
 
@@ -265,7 +265,7 @@ func TestHold(t *testing.T) {
 	table.updateAt(flowTime.Add(time.Duration(5) * time.Second))
 	flow2.FinishType = FlowFinishType_NOT_FINISHED
 	table.updateAt(flowTime.Add(time.Duration(15) * time.Second))
-	if len(table.table) != 1 {
+	if table.table.Len() != 1 {
 		t.Error("Updated flow should not have been deleted by update")
 	}
 }

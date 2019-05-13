@@ -24,18 +24,18 @@ import (
 	"errors"
 	fmt "fmt"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"github.com/spaolacci/murmur3"
+	"github.com/pierrec/xxHash/xxHash64"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	fl "github.com/skydive-project/skydive/flow/layers"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/spaolacci/murmur3"
 )
 
 var (
@@ -312,25 +312,23 @@ func (p *Packet) TransportFlow() (gopacket.Flow, error) {
 // Key returns the unique flow key
 // The unique key is calculated based on parentUUID, network, transport and applicable layers
 func (p *Packet) Key(parentUUID string, opts Opts) string {
-	var uuid uint64
-
+	hasher := xxHash64.New(0)
 	// uses L2 is requested or if there is no network layer
 	if opts.LayerKeyMode == L2KeyMode || p.NetworkLayer() == nil {
 		if layer := p.LinkLayer(); layer != nil {
-			uuid ^= layer.LinkFlow().FastHash()
+			Hash(layer.LinkFlow(), hasher)
 		}
 	}
 	if layer := p.NetworkLayer(); layer != nil {
-		uuid ^= layer.NetworkFlow().FastHash()
+		Hash(layer.NetworkFlow(), hasher)
 	}
 	if tf, err := p.TransportFlow(); err == nil {
-		uuid ^= tf.FastHash()
+		Hash(tf, hasher)
 	}
 	if af, err := p.ApplicationFlow(); err == nil {
-		uuid ^= af.FastHash()
+		Hash(af, hasher)
 	}
-
-	return parentUUID + strconv.FormatUint(uuid, 10)
+	return parentUUID + hex.EncodeToString(hasher.Sum(nil))
 }
 
 // Value returns int32 value of a FlowProtocol

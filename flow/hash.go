@@ -18,9 +18,12 @@
 package flow
 
 import (
+	"bytes"
 	"encoding/binary"
 	"hash"
 	"strings"
+
+	"github.com/google/gopacket"
 )
 
 // Hash computes the hash of a ICMP layer
@@ -69,5 +72,21 @@ func (fl *FlowLayer) Hash(hasher hash.Hash) {
 
 	value64 := make([]byte, 8)
 	binary.BigEndian.PutUint64(value64, uint64(fl.ID))
+	hasher.Write(value64)
+}
+
+// Hash flow with custom func
+func Hash(f gopacket.Flow, hasher hash.Hash) {
+	src, dst := f.Endpoints()
+	if bytes.Compare(src.Raw(), dst.Raw()) > 0 {
+		hasher.Write(src.Raw())
+		hasher.Write(dst.Raw())
+	} else {
+		hasher.Write(dst.Raw())
+		hasher.Write(src.Raw())
+	}
+
+	value64 := make([]byte, 8)
+	binary.BigEndian.PutUint64(value64, uint64(f.EndpointType()))
 	hasher.Write(value64)
 }

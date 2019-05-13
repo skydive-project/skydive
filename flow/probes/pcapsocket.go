@@ -56,7 +56,7 @@ type PcapSocketProbeHandler struct {
 func (p *PcapSocketProbe) run() {
 	atomic.StoreInt64(&p.state, common.RunningState)
 
-	packetSeqChan, _ := p.flowTable.Start()
+	packetSeqChan, _, _ := p.flowTable.Start()
 	defer p.flowTable.Stop()
 
 	for atomic.LoadInt64(&p.state) == common.RunningState {
