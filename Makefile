@@ -63,6 +63,7 @@ EASYJSON_FILES_TAG=\
 	topology/probes/nsm/nsm.go \
 	topology/probes/ovn/ovn.go \
 	topology/probes/ovsdb/ovsdb.go \
+	topology/probes/runc/metadata.go \
 	topology/probes/socketinfo/connection.go
 EASYJSON_FILES_TAG_OPENCONTRAIL=\
 	topology/probes/opencontrail/routing_table.go

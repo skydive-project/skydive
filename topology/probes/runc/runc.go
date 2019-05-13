@@ -83,12 +83,6 @@ type containerState struct {
 	} `json:"config"`
 }
 
-type createConfig struct {
-	Image   string
-	ImageID string
-	Labels  map[string]interface{}
-}
-
 // UnmarshalJSON custom marshall to handle both string and int64
 func (ips *initProcessStart) UnmarshalJSON(data []byte) error {
 	var v interface{}
@@ -106,8 +100,8 @@ func (ips *initProcessStart) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func getLabels(raw []string) map[string]interface{} {
-	labels := make(map[string]interface{})
+func getLabels(raw []string) graph.Metadata {
+	labels := graph.Metadata{}
 
 	for _, label := range raw {
 		kv := strings.SplitN(label, "=", 2)
@@ -117,9 +111,9 @@ func getLabels(raw []string) map[string]interface{} {
 		case 2:
 			var value interface{}
 			if err := json.Unmarshal([]byte(kv[1]), &value); err != nil {
-				common.SetMapField(labels, kv[0], common.NormalizeValue(kv[1]))
+				labels.SetFieldAndNormalize(kv[0], kv[1])
 			} else {
-				common.SetMapField(labels, kv[0], common.NormalizeValue(value))
+				labels.SetFieldAndNormalize(kv[0], value)
 			}
 		}
 	}
@@ -127,7 +121,7 @@ func getLabels(raw []string) map[string]interface{} {
 	return labels
 }
 
-func getCreateConfig(path string) (*createConfig, error) {
+func getCreateConfig(path string) (*CreateConfig, error) {
 	body, err := ioutil.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -136,7 +130,7 @@ func getCreateConfig(path string) (*createConfig, error) {
 		return nil, fmt.Errorf("Unable to read create config %s: %s", path, err)
 	}
 
-	var cc createConfig
+	var cc CreateConfig
 	if err := json.Unmarshal(body, &cc); err != nil {
 		return nil, fmt.Errorf("Unable to parse create config %s: %s", path, err)
 	}
@@ -189,7 +183,7 @@ func getHostsFromState(state *containerState) (string, error) {
 	return "", fmt.Errorf("Unable to find binding of %s", path)
 }
 
-func parseHosts(state *containerState) *hosts {
+func parseHosts(state *containerState) *Hosts {
 	path, err := getHostsFromState(state)
 	if err != nil {
 		return nil
@@ -204,27 +198,27 @@ func parseHosts(state *containerState) *hosts {
 	return hosts
 }
 
-func getMetadata(state *containerState) graph.Metadata {
-	m := graph.Metadata{
-		"ContainerID": state.ID,
-		"Status":      getStatus(state),
+func getMetadata(state *containerState) Metadata {
+	m := Metadata{
+		ContainerID: state.ID,
+		Status:      getStatus(state),
 	}
 
 	if labels := getLabels(state.Config.Labels); len(labels) > 0 {
-		m["Labels"] = labels
+		m.Labels = labels
 
 		if b, ok := labels["bundle"]; ok {
 			cc, err := getCreateConfig(b.(string) + "/artifacts/create-config")
 			if err != nil {
 				logging.GetLogger().Error(err)
 			} else {
-				m["CreateConfig"] = cc
+				m.CreateConfig = cc
 			}
 		}
 	}
 
 	if hosts := parseHosts(state); hosts != nil {
-		m["Hosts"] = *hosts
+		m.Hosts = hosts
 	}
 
 	return m

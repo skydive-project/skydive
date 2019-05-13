@@ -24,21 +24,15 @@ import (
 	"net"
 	"os"
 	"strings"
+
+	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
-type hosts struct {
-	IP       string              `json:"IP,omitempty"`
-	Hostname string              `json:"Hostname,omitempty"`
-	ByIP     map[string][]string `json:"ByIP,omitempty"`
+func newHosts() *Hosts {
+	return &Hosts{ByIP: graph.Metadata{}}
 }
 
-func newHosts() *hosts {
-	hosts := new(hosts)
-	hosts.ByIP = make(map[string][]string)
-	return hosts
-}
-
-func readHosts(path string) (*hosts, error) {
+func readHosts(path string) (*Hosts, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -74,11 +68,12 @@ func readHosts(path string) (*hosts, error) {
 		}
 
 		hosts.IP = ip.String()
-		hosts.ByIP[hosts.IP] = make([]string, 0)
+		ips := make([]string, len(f))
 		for i := 1; i < len(f); i++ {
 			hosts.Hostname = strings.ToLower(f[i])
-			hosts.ByIP[hosts.IP] = append(hosts.ByIP[hosts.IP], hosts.Hostname)
+			ips[i-1] = hosts.Hostname
 		}
+		hosts.ByIP[hosts.IP] = ips
 	}
 
 	return hosts, nil
