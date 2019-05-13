@@ -46,6 +46,7 @@ import (
 	"github.com/skydive-project/skydive/topology"
 	usertopology "github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/probes/docker"
+	"github.com/skydive-project/skydive/topology/probes/libvirt"
 	"github.com/skydive-project/skydive/topology/probes/lldp"
 	"github.com/skydive-project/skydive/topology/probes/lxd"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
@@ -411,6 +412,7 @@ func init() {
 	graph.NodeMetadataDecoders["LLDP"] = lldp.MetadataDecoder
 	graph.NodeMetadataDecoders["Docker"] = docker.MetadataDecoder
 	graph.NodeMetadataDecoders["Lxd"] = lxd.MetadataDecoder
+	graph.NodeMetadataDecoders["Libvirt"] = libvirt.MetadataDecoder
 	graph.NodeMetadataDecoders["OVN"] = ovn.MetadataDecoder
 	graph.NodeMetadataDecoders["Neutron"] = neutron.MetadataDecoder
 }

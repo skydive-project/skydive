@@ -55,6 +55,7 @@ EASYJSON_FILES_TAG=\
 	sflow/sflow.go \
 	topology/metrics.go \
 	topology/probes/docker/metadata.go \
+	topology/probes/libvirt/metadata.go \
 	topology/probes/lldp/metadata.go \
 	topology/probes/lxd/metadata.go \
 	topology/probes/netlink/metadata.go \

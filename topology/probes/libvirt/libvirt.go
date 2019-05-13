@@ -248,20 +248,27 @@ func (itf *Interface) ProcessNode(g *graph.Graph, node *graph.Node) bool {
 		alias = itf.Alias.Name
 	}
 	logging.GetLogger().Debugf("enrich %s", alias)
-	tr := g.StartMetadataTransaction(node)
-	if itf.Mac != nil {
-		tr.AddMetadata("Libvirt.MAC", itf.Mac.Address)
-		tr.AddMetadata("PeerIntfMAC", itf.Mac.Address)
-	}
-	tr.AddMetadata("Libvirt.Domain", itf.Host.Metadata["Name"])
+
 	address := itf.Address
 	formatted := formatPciAddress(&address)
-	tr.AddMetadata("Libvirt.BusType", address.Type)
-	tr.AddMetadata("Libvirt.BusInfo", formatted)
-	tr.AddMetadata("Libvirt.Alias", alias)
+	metadata := Metadata{
+		MAC:     itf.Mac.Address,
+		Domain:  itf.Host.Metadata["Name"].(string),
+		BusType: address.Type,
+		BusInfo: formatted,
+		Alias:   alias,
+	}
+
+	tr := g.StartMetadataTransaction(node)
+	if itf.Mac != nil {
+		metadata.MAC = itf.Mac.Address
+		tr.AddMetadata("PeerIntfMAC", itf.Mac.Address)
+	}
+	tr.AddMetadata("Libvirt", metadata)
 	if err := tr.Commit(); err != nil {
 		logging.GetLogger().Errorf("Metadata transaction failed: %s", err)
 	}
+
 	if !topology.HaveLink(g, node, itf.Host, "vlayer2") {
 		if _, err := topology.AddLink(g, node, itf.Host, "vlayer2", nil); err != nil {
 			logging.GetLogger().Error(err)
