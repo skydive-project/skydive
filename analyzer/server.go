@@ -49,6 +49,7 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/lldp"
 	"github.com/skydive-project/skydive/topology/probes/lxd"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
+	"github.com/skydive-project/skydive/topology/probes/neutron"
 	"github.com/skydive-project/skydive/topology/probes/ovsdb"
 	"github.com/skydive-project/skydive/ui"
 	"github.com/skydive-project/skydive/websocket"
@@ -409,4 +410,5 @@ func init() {
 	graph.NodeMetadataDecoders["LLDP"] = lldp.MetadataDecoder
 	graph.NodeMetadataDecoders["Docker"] = docker.MetadataDecoder
 	graph.NodeMetadataDecoders["Lxd"] = lxd.MetadataDecoder
+	graph.NodeMetadataDecoders["Neutron"] = neutron.MetadataDecoder
 }

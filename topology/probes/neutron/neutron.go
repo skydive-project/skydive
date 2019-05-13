@@ -1,3 +1,5 @@
+//go:generate go run ../../../scripts/gendecoder.go -package github.com/skydive-project/skydive/topology/probes/neutron
+
 /*
  * Copyright (C) 2015 Red Hat, Inc.
  *
@@ -19,6 +21,7 @@ package neutron
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -56,15 +59,27 @@ type Probe struct {
 	availability    gophercloud.Availability
 }
 
-// attributes neutron attributes
-type attributes struct {
-	PortID      string
-	NetworkID   string
-	NetworkName string
-	TenantID    string
-	IPV4        []string
-	IPV6        []string
-	VNI         string
+// Metadata describes a Neutron port
+// easyjson:json
+// gendecoder
+type Metadata struct {
+	PortID      string   `json:",omitempty"`
+	TenantID    string   `json:",omitempty"`
+	NetworkID   string   `json:",omitempty"`
+	NetworkName string   `json:",omitempty"`
+	IPV4        []string `json:",omitempty"`
+	IPV6        []string `json:",omitempty"`
+	VNI         int64    `json:",omitempty"`
+}
+
+// MetadataDecoder implements a json message raw decoder
+func MetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+	var m Metadata
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil, fmt.Errorf("unable to unmarshal Neutron metadata %s: %s", string(raw), err)
+	}
+
+	return &m, nil
 }
 
 // portMetadata neutron metadata
@@ -142,7 +157,7 @@ func (mapper *Probe) retrievePort(portMd portMetadata) (port ports.Port, err err
 	return port, nil
 }
 
-func (mapper *Probe) retrieveAttributes(portMd portMetadata) (*attributes, error) {
+func (mapper *Probe) retrieveAttributes(portMd portMetadata) (*Metadata, error) {
 	port, err := mapper.retrievePort(portMd)
 	if err != nil {
 		return nil, err
@@ -175,14 +190,16 @@ func (mapper *Probe) retrieveAttributes(portMd portMetadata) (*attributes, error
 		}
 	}
 
-	a := &attributes{
+	VNI, _ := strconv.Atoi(network.SegmentationID)
+
+	a := &Metadata{
 		PortID:      port.ID,
 		NetworkID:   port.NetworkID,
 		NetworkName: network.Name,
 		TenantID:    port.TenantID,
 		IPV4:        IPV4,
 		IPV6:        IPV6,
-		VNI:         network.SegmentationID,
+		VNI:         int64(VNI),
 	}
 
 	return a, nil
@@ -222,61 +239,24 @@ func (mapper *Probe) nodeUpdater() {
 	logging.GetLogger().Debug("Stopping Neutron updater")
 }
 
-func (mapper *Probe) updateNode(node *graph.Node, attrs *attributes) {
+func (mapper *Probe) updateNode(node *graph.Node, attrs *Metadata) {
 	mapper.graph.Lock()
 	defer mapper.graph.Unlock()
-
-	metadata := make(map[string]interface{})
-
-	if attrs.PortID != "" {
-		metadata["Neutron.PortID"] = attrs.PortID
-	}
-
-	if attrs.TenantID != "" {
-		metadata["Neutron.TenantID"] = attrs.TenantID
-	}
-
-	if attrs.NetworkID != "" {
-		metadata["Neutron.NetworkID"] = attrs.NetworkID
-	}
-
-	if attrs.NetworkName != "" {
-		metadata["Neutron.NetworkName"] = attrs.NetworkName
-	}
-
-	if len(attrs.IPV4) != 0 {
-		metadata["Neutron.IPV4"] = attrs.IPV4
-	}
-
-	if len(attrs.IPV6) != 0 {
-		metadata["Neutron.IPV6"] = attrs.IPV6
-	}
-
-	if segID, err := strconv.Atoi(attrs.VNI); err != nil && segID > 0 {
-		metadata["Neutron.VNI"] = int64(segID)
-	}
-
-	tr := mapper.graph.StartMetadataTransaction(node)
-
-	metadata["Manager"] = "neutron"
-	for k, v := range metadata {
-		tr.AddMetadata(k, v)
-	}
-
-	tr.Commit()
 
 	name, _ := node.GetFieldString("Name")
 	if name == "" {
 		return
 	}
 
+	tr := mapper.graph.StartMetadataTransaction(node)
+	tr.AddMetadata("Manager", "neutron")
+	tr.AddMetadata("Neutron", attrs)
 	if strings.HasPrefix(name, "tap") {
 		if attachedMac, _ := node.GetFieldString("ExtID.attached-mac"); attachedMac != "" {
-			tr := mapper.graph.StartMetadataTransaction(node)
 			tr.AddMetadata("PeerIntfMAC", attachedMac)
-			tr.Commit()
 		}
 	}
+	tr.Commit()
 
 	if !strings.HasPrefix(name, "qvo") {
 		return
@@ -314,9 +294,6 @@ func (mapper *Probe) updateNode(node *graph.Node, attrs *attributes) {
 					tr := mapper.graph.StartMetadataTransaction(n)
 					tr.AddMetadata("ExtID.vm-uuid", uuid)
 					tr.AddMetadata("ExtID.attached-mac", attachedMac)
-					for k, v := range metadata {
-						tr.AddMetadata(k, v)
-					}
 
 					// add vm peering info, going to be used by peering probe
 					if i == len(path)-1 {
