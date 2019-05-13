@@ -270,7 +270,7 @@ websocket/structmessage.pb.go: websocket/structmessage.proto
 .PHONY: .proto.clean
 .proto.clean:
 	find . \( -name *.pb.go ! -path './vendor/*' \) -exec rm {} \;
-	rm flow/layers/generated.proto
+	rm -rf flow/layers/generated.proto
 
 GEN_EASYJSON_FILES_ALL := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_ALL))
 GEN_EASYJSON_FILES_TAG := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_TAG))
