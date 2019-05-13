@@ -150,6 +150,7 @@ func init() {
 	cfg.SetDefault("ovs.oflow.openflow_versions", []string{"OpenFlow10", "OpenFlow11", "OpenFlow12", "OpenFlow13", "OpenFlow14"})
 	cfg.SetDefault("ovs.enable_stats", false)
 
+	cfg.SetDefault("sflow.bind_address", "127.0.0.1")
 	cfg.SetDefault("sflow.port_min", 6345)
 	cfg.SetDefault("sflow.port_max", 6355)
 

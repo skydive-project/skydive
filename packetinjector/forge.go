@@ -43,7 +43,7 @@ type ForgedPacketGenerator struct {
 	srcIP, dstIP   net.IP
 }
 
-func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC net.HardwareAddr, TTL uint8, srcIP, dstIP net.IP, srcPort, dstPort int64, ID int64, data string) ([]byte, gopacket.Packet, error) {
+func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC net.HardwareAddr, TTL uint8, srcIP, dstIP net.IP, srcPort, dstPort uint16, ID uint64, data string) ([]byte, gopacket.Packet, error) {
 	var l []gopacket.SerializableLayer
 
 	payload := gopacket.Payload([]byte(data))
@@ -71,7 +71,7 @@ func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC
 		ipLayer := &layers.IPv6{Version: 6, SrcIP: srcIP, DstIP: dstIP, NextHeader: layers.IPProtocolICMPv6}
 		icmpLayer := &layers.ICMPv6{
 			TypeCode:  layers.CreateICMPv6TypeCode(layers.ICMPv6TypeEchoRequest, 0),
-			TypeBytes: []byte{byte(ID & int64(0xFF00) >> 8), byte(ID & int64(0xFF)), 0, 0},
+			TypeBytes: []byte{byte(ID & uint64(0xFF00) >> 8), byte(ID & uint64(0xFF)), 0, 0},
 		}
 		icmpLayer.SetNetworkLayerForChecksum(ipLayer)
 
@@ -132,8 +132,8 @@ func (f *ForgedPacketGenerator) PacketSource() chan *Packet {
 			payload = common.RandString(56)
 		}
 
-		for i := int64(0); i < f.Count; i++ {
-			id := int64(f.ID)
+		for i := uint64(0); i < f.Count; i++ {
+			id := uint64(f.ID)
 			if strings.HasPrefix(f.Type, "icmp") && f.Increment {
 				id += i
 			}

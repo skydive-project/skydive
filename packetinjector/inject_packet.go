@@ -47,14 +47,14 @@ type PacketInjectionParams struct {
 	SrcNodeID        graph.Identifier `valid:"nonzero"`
 	SrcIP            string
 	SrcMAC           string
-	SrcPort          int64 `valid:"min=0"`
+	SrcPort          uint16
 	DstIP            string
 	DstMAC           string
-	DstPort          int64  `valid:"min=0"`
+	DstPort          uint16
 	Type             string `valid:"regexp=^(icmp4|icmp6|tcp4|tcp6|udp4|udp6)$"`
-	Count            int64  `valid:"min=1"`
-	ID               int64  `valid:"min=0"`
-	Interval         int64  `valid:"min=0"`
+	Count            uint64 `valid:"min=1"`
+	ID               uint64
+	Interval         uint64
 	Increment        bool
 	IncrementPayload int64
 	Payload          string

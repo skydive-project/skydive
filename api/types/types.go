@@ -148,20 +148,20 @@ type PacketInjection struct {
 	BasicResource    `yaml:",inline"`
 	Src              string `yaml:"Src"`
 	Dst              string `yaml:"Dst"`
-	SrcIP            string `yaml:"SrcIP"`
-	DstIP            string `yaml:"DstIP"`
-	SrcMAC           string `yaml:"SrcMAC"`
-	DstMAC           string `yaml:"DstMAC"`
-	SrcPort          int64  `yaml:"SrcPort"`
-	DstPort          int64  `yaml:"DstPort"`
+	SrcIP            string `valid:"isIPOrCIDR" yaml:"SrcIP"`
+	DstIP            string `valid:"isIPOrCIDR" yaml:"DstIP"`
+	SrcMAC           string `valid:"isMAC" yaml:"SrcMAC"`
+	DstMAC           string `valid:"isMAC" yaml:"DstMAC"`
+	SrcPort          uint16 `yaml:"SrcPort"`
+	DstPort          uint16 `yaml:"DstPort"`
 	Type             string `yaml:"Type"`
 	Payload          string `yaml:"Payload"`
 	TrackingID       string
-	ICMPID           int64 `yaml:"ICMPID"`
-	Count            int64 `yaml:"Count"`
-	Interval         int64 `yaml:"Interval"`
-	Increment        bool  `yaml:"Increment"`
-	IncrementPayload int64 `yaml:"IncrementPayload"`
+	ICMPID           uint16 `yaml:"ICMPID"`
+	Count            uint64 `yaml:"Count"`
+	Interval         uint64 `yaml:"Interval"`
+	Increment        bool   `yaml:"Increment"`
+	IncrementPayload int64  `yaml:"IncrementPayload"`
 	StartTime        time.Time
 	Pcap             []byte `yaml:"Pcap"`
 	TTL              uint8  `yaml:"TTL"`
