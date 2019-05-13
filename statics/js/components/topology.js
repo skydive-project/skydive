@@ -186,6 +186,9 @@ var TopologyComponent = {
           <tab-pane title="Topology rules" v-if="topologyMode === \'live\'">\
             <topology-rules></topology-rules>\
           </tab-pane>\
+          <tab-pane title="Gremlin console">\
+             <gremlin-console></gremlin-console>\
+          </tab-pane>\
         </tabs>\
         <panel id="node-metadata" v-if="currentNodeMetadata"\
                :collapsed="false"\
