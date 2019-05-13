@@ -5,3 +5,8 @@
 
 - name: "Updating packages"
   shell: "dnf update -y"
+
+- name: "Install copr dnf plugin"
+  package:
+    name: dnf-plugins-core
+    state: present

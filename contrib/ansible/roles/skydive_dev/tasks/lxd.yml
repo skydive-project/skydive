@@ -3,10 +3,6 @@
     policy: targeted
     state: permissive
 
-- package:
-    name: yum-plugin-copr
-    state: present
-
 - shell: yum -y copr enable ganto/lxc3
 
 - package:
