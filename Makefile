@@ -61,6 +61,7 @@ EASYJSON_FILES_TAG=\
 	topology/probes/netlink/metadata.go \
 	topology/probes/neutron/neutron.go \
 	topology/probes/nsm/nsm.go \
+	topology/probes/opencontrail/metadata.go \
 	topology/probes/ovn/ovn.go \
 	topology/probes/ovsdb/ovsdb.go \
 	topology/probes/runc/metadata.go \

@@ -51,6 +51,7 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/lxd"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
 	"github.com/skydive-project/skydive/topology/probes/neutron"
+	"github.com/skydive-project/skydive/topology/probes/opencontrail"
 	"github.com/skydive-project/skydive/topology/probes/ovn"
 	"github.com/skydive-project/skydive/topology/probes/ovsdb"
 	"github.com/skydive-project/skydive/topology/probes/runc"
@@ -417,4 +418,5 @@ func init() {
 	graph.NodeMetadataDecoders["Libvirt"] = libvirt.MetadataDecoder
 	graph.NodeMetadataDecoders["OVN"] = ovn.MetadataDecoder
 	graph.NodeMetadataDecoders["Neutron"] = neutron.MetadataDecoder
+	graph.NodeMetadataDecoders["Contrail"] = opencontrail.MetadataDecoder
 }
