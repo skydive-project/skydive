@@ -70,22 +70,14 @@ if (jsEnv) {
     // exported by Skydive that makes use of the REST client
     // so we get support for authentication
     makeRequest = function (client: Client, url: string, method: string, body: string, opts: Object) : any {
-        return new Promise(function (resolve, reject) {
-            var err: any
-            var data: any
-            try {
-                var output = request(url, method, body)
-                if (output && output.length > 0) {
-                    data = JSON.parse(output)
-                } else {
-                    data = null
-                }
-                resolve(data)
-            }
-            catch(e) {
-                reject(e)
-            }
-        })
+        var data: any
+        var output = request(url, method, body)
+        if (output && output.length > 0) {
+            data = JSON.parse(output)
+        } else {
+            data = null
+        }
+        return {'then': function() { return data; } }
     }
 }
 
@@ -215,13 +207,9 @@ export class API<T extends APIObject> {
     get(id) {
         let resource = this.Resource;
         let factory = this.Factory;
-
         return this.client.request('/api/' + resource + "/" + id, "GET", "", {})
             .then(function (data) {
                 return SerializationHelper.toInstance(new factory(), data)
-            })
-            .catch(function (error) {
-                return Error("Capture not found")
             })
     }
 
@@ -325,12 +313,9 @@ export class Step implements Step {
         return this.previous.serialize(data);
     }
 
-    then(cb) {
-        let self = this;
-        return self.api.query(self.toString())
-            .then(function (data) {
-                return cb(self.serialize(data))
-            });
+    result() {
+        let data = this.api.query(this.toString())
+        return this.serialize(data)
     }
 }
 
@@ -936,8 +921,4 @@ export class Client {
         }
         return makeRequest(this, url, method, data, opts);
     }
-}
-
-export function sleep(time) {
-    return new Promise(function(resolve) { return setTimeout(resolve, time); })
 }

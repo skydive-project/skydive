@@ -21,8 +21,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
+	"github.com/gorilla/mux"
 	"github.com/skydive-project/skydive/js"
 	"github.com/skydive-project/skydive/rbac"
 
@@ -38,6 +38,7 @@ type WorkflowCallAPIHandler struct {
 	apiServer *Server
 	graph     *graph.Graph
 	parser    *traversal.GremlinTraversalParser
+	runtime   *js.Runtime
 }
 
 func (wc *WorkflowCallAPIHandler) executeWorkflow(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
@@ -46,7 +47,6 @@ func (wc *WorkflowCallAPIHandler) executeWorkflow(w http.ResponseWriter, r *auth
 		return
 	}
 
-	uriSegments := strings.Split(r.URL.Path, "/")
 	decoder := json.NewDecoder(r.Body)
 	var wfCall types.WorkflowCall
 	if err := decoder.Decode(&wfCall); err != nil {
@@ -54,21 +54,15 @@ func (wc *WorkflowCallAPIHandler) executeWorkflow(w http.ResponseWriter, r *auth
 		return
 	}
 
-	workflow, err := wc.getWorkflow(uriSegments[3])
+	vars := mux.Vars(&r.Request)
+
+	workflow, err := wc.getWorkflow(vars["ID"])
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	runtime, err := js.NewRuntime()
-	if err != nil {
-		writeError(w, http.StatusFailedDependency, err)
-		return
-	}
-
-	runtime.Start()
-	RegisterAPIServer(runtime, wc.graph, wc.parser, wc.apiServer)
-	ottoResult, err := runtime.ExecPromise(workflow.Source, wfCall.Params...)
+	ottoResult, err := wc.runtime.ExecFunction(workflow.Source, wfCall.Params...)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
@@ -100,7 +94,7 @@ func (wc *WorkflowCallAPIHandler) registerEndPoints(s *shttp.Server, authBackend
 		{
 			Name:        "WorkflowCall",
 			Method:      "POST",
-			Path:        "/api/workflow/{workflowID}/call",
+			Path:        "/api/workflow/{ID}/call",
 			HandlerFunc: wc.executeWorkflow,
 		},
 	}
@@ -109,11 +103,19 @@ func (wc *WorkflowCallAPIHandler) registerEndPoints(s *shttp.Server, authBackend
 }
 
 // RegisterWorkflowCallAPI registers a new workflow  call api handler
-func RegisterWorkflowCallAPI(s *shttp.Server, authBackend shttp.AuthenticationBackend, apiServer *Server, g *graph.Graph, tr *traversal.GremlinTraversalParser) {
+func RegisterWorkflowCallAPI(s *shttp.Server, authBackend shttp.AuthenticationBackend, apiServer *Server, g *graph.Graph, tr *traversal.GremlinTraversalParser) error {
+	runtime, err := NewWorkflowRuntime(g, tr, apiServer)
+	if err != nil {
+		return err
+	}
+
 	workflowCallAPIHandler := &WorkflowCallAPIHandler{
 		apiServer: apiServer,
 		graph:     g,
 		parser:    tr,
+		runtime:   runtime,
 	}
 	workflowCallAPIHandler.registerEndPoints(s, authBackend)
+
+	return nil
 }

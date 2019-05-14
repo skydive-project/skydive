@@ -37,4 +37,3 @@ window.EdgeRule = apiLib.EdgeRule
 window.NodeRule = apiLib.NodeRule
 window.PacketInjection = apiLib.PacketInjection
 window.Workflow = apiLib.Workflow
-window.sleep = apiLib.sleep
