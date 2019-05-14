@@ -45,7 +45,7 @@ type SubscriberEndpoint struct {
 	Graph         *graph.Graph
 	wg            sync.WaitGroup
 	gremlinParser *traversal.GremlinTraversalParser
-	subscribers   map[string]*subscriber
+	subscribers   map[ws.Speaker]*subscriber
 }
 
 func (t *SubscriberEndpoint) getGraph(gremlinQuery string, ts *traversal.GremlinTraversalSequence, lockGraph bool) (*graph.Graph, error) {
@@ -93,14 +93,14 @@ func (t *SubscriberEndpoint) OnConnected(c ws.Speaker) {
 		}
 
 		logging.GetLogger().Infof("Client %s subscribed with filter %s during the connection", host, gremlinFilter)
-		t.subscribers[host] = subscriber
+		t.subscribers[c] = subscriber
 	}
 }
 
 // OnDisconnected called when a subscriber got disconnected.
 func (t *SubscriberEndpoint) OnDisconnected(c ws.Speaker) {
 	t.Lock()
-	delete(t.subscribers, c.GetRemoteHost())
+	delete(t.subscribers, c)
 	t.Unlock()
 }
 
@@ -133,7 +133,7 @@ func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage
 			// filter reset
 			if *syncMsg.GremlinFilter == "" {
 				t.Lock()
-				delete(t.subscribers, host)
+				delete(t.subscribers, c)
 				t.Unlock()
 			} else {
 				subscriber, err := t.newSubscriber(host, *syncMsg.GremlinFilter, false)
@@ -144,7 +144,7 @@ func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage
 					c.SendMessage(reply)
 
 					t.Lock()
-					t.subscribers[host] = nil
+					t.subscribers[c] = nil
 					t.Unlock()
 
 					return
@@ -154,12 +154,12 @@ func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage
 				result = subscriber.graph
 
 				t.Lock()
-				t.subscribers[host] = subscriber
+				t.subscribers[c] = subscriber
 				t.Unlock()
 			}
 		} else {
 			t.RLock()
-			subscriber := t.subscribers[host]
+			subscriber := t.subscribers[c]
 			t.RUnlock()
 
 			if subscriber != nil {
@@ -180,7 +180,7 @@ func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage
 func (t *SubscriberEndpoint) notifyClients(msg *ws.StructMessage) {
 	for _, c := range t.pool.GetSpeakers() {
 		t.RLock()
-		subscriber, found := t.subscribers[c.GetRemoteHost()]
+		subscriber, found := t.subscribers[c]
 		t.RUnlock()
 
 		if found {
@@ -256,7 +256,7 @@ func NewSubscriberEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, tr *traver
 	t := &SubscriberEndpoint{
 		Graph:         g,
 		pool:          pool,
-		subscribers:   make(map[string]*subscriber),
+		subscribers:   make(map[ws.Speaker]*subscriber),
 		gremlinParser: tr,
 	}
 
