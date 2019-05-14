@@ -31,6 +31,7 @@ type Forwarder struct {
 	masterElection *ws.MasterElection
 	graph          *graph.Graph
 	host           string
+	synced         bool
 }
 
 func (t *Forwarder) triggerResync() {
@@ -51,11 +52,17 @@ func (t *Forwarder) triggerResync() {
 func (t *Forwarder) OnNewMaster(c ws.Speaker) {
 	if c == nil {
 		logging.GetLogger().Warning("Lost connection to master")
+
+		// do not forward message before re-sync
+		t.graph.RemoveEventListener(t)
 	} else {
 		addr, port := c.GetAddrPort()
 		logging.GetLogger().Infof("Using %s:%d as master of topology forwarder", addr, port)
 
 		t.triggerResync()
+
+		// synced can now listen the graph
+		t.graph.AddEventListener(t)
 	}
 }
 
@@ -106,7 +113,6 @@ func NewForwarder(host string, g *graph.Graph, pool ws.StructSpeakerPool) *Forwa
 	}
 
 	masterElection.AddEventHandler(t)
-	g.AddEventListener(t)
 
 	return t
 }

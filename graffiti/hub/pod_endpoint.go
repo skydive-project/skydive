@@ -117,7 +117,7 @@ func (t *AgentEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	}
 
 	if err != nil {
-		logging.GetLogger().Errorf("%s, %+v", err, obj)
+		logging.GetLogger().Errorf("%s, %+v", err, msg)
 	}
 }
 
