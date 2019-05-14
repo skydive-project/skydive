@@ -60,7 +60,7 @@ func TestSFlowProbeNode(t *testing.T) {
 		},
 
 		captures: []TestCapture{
-			{gremlin: g.G.V().Has("Name", "br-spn", "Type", "ovsbridge")},
+			{gremlin: g.G.V().Has("Name", "br-spn", "Type", "ovsbridge"), samplingRate: 1, pollingInterval: 10},
 		},
 
 		mode: Replay,
@@ -110,7 +110,7 @@ func TestSFlowNodeTIDOvsInternalNetNS(t *testing.T) {
 		},
 
 		captures: []TestCapture{
-			{gremlin: g.G.V().Has("Name", "br-sntoin", "Type", "ovsbridge")},
+			{gremlin: g.G.V().Has("Name", "br-sntoin", "Type", "ovsbridge"), samplingRate: 1, pollingInterval: 10},
 		},
 
 		mode: Replay,
@@ -183,8 +183,8 @@ func TestSFlowTwoNodeTID(t *testing.T) {
 		},
 
 		captures: []TestCapture{
-			{gremlin: `G.V().Has('Name', 'br-stnt1', 'Type', 'ovsbridge')`},
-			{gremlin: `G.V().Has('Name', 'br-stnt2', 'Type', 'ovsbridge')`},
+			{gremlin: `G.V().Has('Name', 'br-stnt1', 'Type', 'ovsbridge')`, samplingRate: 1, pollingInterval: 10},
+			{gremlin: `G.V().Has('Name', 'br-stnt2', 'Type', 'ovsbridge')`, samplingRate: 1, pollingInterval: 10},
 		},
 
 		mode: Replay,
@@ -387,7 +387,7 @@ func TestSFlowSrcDstPath(t *testing.T) {
 		},
 
 		captures: []TestCapture{
-			{gremlin: `G.V().Has('Name', 'br-ssdp', 'Type', 'ovsbridge')`},
+			{gremlin: `G.V().Has('Name', 'br-ssdp', 'Type', 'ovsbridge')`, samplingRate: 1, pollingInterval: 10},
 		},
 
 		mode: Replay,
@@ -450,7 +450,7 @@ func TestFlowGremlin(t *testing.T) {
 		},
 
 		captures: []TestCapture{
-			{gremlin: g.G.V().Has("Name", "br-fg", "Type", "ovsbridge")},
+			{gremlin: g.G.V().Has("Name", "br-fg", "Type", "ovsbridge"), samplingRate: 1, pollingInterval: 10},
 		},
 
 		mode: Replay,
@@ -541,7 +541,7 @@ func TestFlowMetrics(t *testing.T) {
 		},
 
 		captures: []TestCapture{
-			{gremlin: g.G.V().Has("Name", "br-fm", "Type", "ovsbridge")},
+			{gremlin: g.G.V().Has("Name", "br-fm", "Type", "ovsbridge"), samplingRate: 1, pollingInterval: 10},
 		},
 
 		mode: Replay,
@@ -799,7 +799,7 @@ func TestFlowHops(t *testing.T) {
 		},
 
 		captures: []TestCapture{
-			{gremlin: g.G.V().Has("Name", "br-fh", "Type", "ovsbridge")},
+			{gremlin: g.G.V().Has("Name", "br-fh", "Type", "ovsbridge"), samplingRate: 1, pollingInterval: 10},
 		},
 
 		mode: Replay,
@@ -908,7 +908,7 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 		},
 
 		captures: []TestCapture{
-			{gremlin: g.G.V().Has("Name", "br-ipv6fh", "Type", "ovsbridge")},
+			{gremlin: g.G.V().Has("Name", "br-ipv6fh", "Type", "ovsbridge"), samplingRate: 1, pollingInterval: 10},
 		},
 
 		// since the agent update ticker is about 10 sec according to the configuration
@@ -1015,7 +1015,7 @@ func TestICMP(t *testing.T) {
 		},
 
 		captures: []TestCapture{
-			{gremlin: g.G.V().Has("Name", "br-icmp", "Type", "ovsbridge")},
+			{gremlin: g.G.V().Has("Name", "br-icmp", "Type", "ovsbridge"), samplingRate: 1, pollingInterval: 10},
 		},
 
 		mode: Replay,
@@ -1601,7 +1601,7 @@ func TestFlowSumStep(t *testing.T) {
 		},
 
 		captures: []TestCapture{
-			{gremlin: g.G.V().Has("Name", "br-sum", "Type", "ovsbridge")},
+			{gremlin: g.G.V().Has("Name", "br-sum", "Type", "ovsbridge"), samplingRate: 1, pollingInterval: 10},
 		},
 
 		mode: Replay,
@@ -1653,7 +1653,7 @@ func TestFlowCaptureNodeStep(t *testing.T) {
 		},
 
 		captures: []TestCapture{
-			{gremlin: g.G.V().Has("Name", "br-fcn", "Type", "ovsbridge")},
+			{gremlin: g.G.V().Has("Name", "br-fcn", "Type", "ovsbridge"), samplingRate: 1, pollingInterval: 10},
 		},
 
 		injections: []TestInjection{

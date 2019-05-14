@@ -20,6 +20,7 @@ package probes
 import (
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/socketplane/libovsdb"
 
@@ -183,12 +184,16 @@ func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid str
 	opts := tableOptsFromCapture(capture)
 	ft := o.fpta.Alloc(tid, opts)
 
+	if capture.SamplingRate < 1 {
+		capture.SamplingRate = math.MaxUint32
+	}
+
 	probe := OvsSFlowProbe{
 		ID:         bridgeUUID,
 		Interface:  "lo",
 		HeaderSize: headerSize,
-		Sampling:   1,
-		Polling:    10,
+		Sampling:   capture.SamplingRate,
+		Polling:    capture.PollingInterval,
 		flowTable:  ft,
 	}
 

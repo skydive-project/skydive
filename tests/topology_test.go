@@ -975,7 +975,7 @@ func TestSFlowMetric(t *testing.T) {
 		},
 
 		captures: []TestCapture{
-			{gremlin: g.G.V().Has("Type", "host").Out().Has("Name", "br-sfmt", "Type", "ovsbridge"), kind: "ovssflow"},
+			{gremlin: g.G.V().Has("Type", "host").Out().Has("Name", "br-sfmt", "Type", "ovsbridge"), kind: "ovssflow", samplingRate: 1, pollingInterval: 10},
 		},
 
 		mode: OneShot,
