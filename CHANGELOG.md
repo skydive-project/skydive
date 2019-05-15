@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.23.0] - 2019-05-15
+### Added
+- OVN probe with support for logical switches, routers, ports and ACLs
+- Network Service Mesh (NSM) probe
+- Open vSwitch:
+  - Use JSON schema when using ovs-ofctl command line utility
+  - Use Golang OpenFlow decoder based on loxigen
+  - Support for Gremlin `Metric` step on OVS interfaces
+  - Add advanced options for `ovssflow` capture type
+- eBPF:
+  - 802.1q/VLAN support
+  - IP/GRE support
+- Libvirt:
+  - Associations to SRIO-V virtual functions
+  - Add pure Go implementation for static builds
+- Kubernetes:
+  - Add configmap/secret data keys to metadata
+  - Added health checks to Skydive template
+
+### Changed
+- Move workflow execution to server side
+- Move RTT from flows to metrics to keep history of it
+
 ## [0.22.0] - 2019-03-21
 ### Added
 - SRIO-V support
