@@ -603,6 +603,13 @@ func RunTest(t *testing.T, test *Test) {
 		t.Fatalf("Failed to setup test: %s", err)
 	}
 
+	defer func() {
+		t.Log("Removing existing injections")
+		for _, injection := range context.injections {
+			client.Delete("injectpacket", injection.ID())
+		}
+	}()
+
 	for _, injection := range test.injections {
 		ipVersion := 4
 		if injection.ipv6 {

@@ -40,12 +40,12 @@ type BasicResource struct {
 	UUID string `yaml:"UUID"`
 }
 
-// ID returns the alert ID
+// ID returns the resource ID
 func (b *BasicResource) ID() string {
 	return b.UUID
 }
 
-// SetID set ID
+// SetID sets the resource ID
 func (b *BasicResource) SetID(i string) {
 	b.UUID = i
 }
