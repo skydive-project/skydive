@@ -192,7 +192,7 @@ func testNodeCreationFromConfig(t *testing.T, mngr, ty string, name interface{},
 
 /* -- test creation of single resource -- */
 func TestK8sClusterNode(t *testing.T) {
-	testNodeCreation(t, nil, nil, k8s.Manager, "cluster", k8s.ClusterName)
+	testNodeCreation(t, nil, nil, k8s.Manager, "cluster", "minikube")
 }
 
 func TestK8sConfigMapNode(t *testing.T) {
@@ -317,7 +317,7 @@ func TestHelloNodeScenario(t *testing.T) {
 		[]CheckFunction{
 			func(c *CheckContext) error {
 				// check nodes exist
-				cluster, err := checkNodeCreation(t, c, k8s.Manager, "cluster", k8s.ClusterName)
+				cluster, err := checkNodeCreation(t, c, k8s.Manager, "cluster", "minikube")
 				if err != nil {
 					return err
 				}

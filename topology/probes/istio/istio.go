@@ -33,9 +33,9 @@ type Probe struct {
 
 // NewIstioProbe creates the probe for tracking istio events
 func NewIstioProbe(g *graph.Graph) (*k8s.Probe, error) {
-	configFile := config.GetString("analyzer.topology.istio.config_file")
+	kubeconfigPath := config.GetString("analyzer.topology.istio.config_file")
 	enabledSubprobes := config.GetStringSlice("analyzer.topology.istio.probes")
-	config, err := k8s.NewConfig(configFile)
+	config, _, err := k8s.NewConfig(kubeconfigPath)
 	if err != nil {
 		return nil, err
 	}

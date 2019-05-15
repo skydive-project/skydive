@@ -30,39 +30,60 @@ import (
 )
 
 // NewConfig returns a new Kubernetes configuration object
-func NewConfig(kubeConfig string) (*rest.Config, error) {
-	config, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
-	if err != nil {
-		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+func NewConfig(kubeconfigPath string) (*rest.Config, *clientcmd.ClientConfig, error) {
+	var err error
+	var cc *rest.Config
 
-		configOverrides := &clientcmd.ConfigOverrides{}
-
-		kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
-		config, err = kubeConfig.ClientConfig()
-		if err != nil {
-			return nil, fmt.Errorf("Failed to load Kubernetes config: %s", err)
+	if kubeconfigPath == "" {
+		cc, err := rest.InClusterConfig()
+		if err == nil {
+			return cc, nil, nil
 		}
 	}
-	return config, nil
+
+	kubeconfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath},
+		&clientcmd.ConfigOverrides{})
+
+	cc, err = kubeconfig.ClientConfig()
+	if err == nil {
+		return cc, &kubeconfig, nil
+	}
+
+	kubeconfig = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		clientcmd.NewDefaultClientConfigLoadingRules(),
+		&clientcmd.ConfigOverrides{})
+
+	cc, err = kubeconfig.ClientConfig()
+	if err == nil {
+		return cc, &kubeconfig, nil
+	}
+
+	return nil, nil, fmt.Errorf("Failed to load Kubernetes config: %s", err)
 }
 
 // NewK8sProbe returns a new Kubernetes probe
 func NewK8sProbe(g *graph.Graph) (*Probe, error) {
-	configFile := config.GetString("analyzer.topology.k8s.config_file")
+	kubeconfigPath := config.GetString("analyzer.topology.k8s.config_file")
 	enabledSubprobes := config.GetStringSlice("analyzer.topology.k8s.probes")
 
-	config, err := NewConfig(configFile)
+	clientconfig, kubeconfig, err := NewConfig(kubeconfigPath)
 	if err != nil {
 		return nil, err
 	}
 
-	clientset, err := kubernetes.NewForConfig(config)
+	clientset, err := kubernetes.NewForConfig(clientconfig)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create Kubernetes client: %s", err)
 	}
 
 	subprobeHandlers := map[string]SubprobeHandler{
-		"cluster":               newClusterProbe,
+		"cluster": newClusterProbe,
+	}
+
+	InitSubprobes(enabledSubprobes, subprobeHandlers, kubeconfig, g, Manager)
+
+	subprobeHandlers = map[string]SubprobeHandler{
 		"configmap":             newConfigMapProbe,
 		"container":             newContainerProbe,
 		"cronjob":               newCronJobProbe,
