@@ -23,10 +23,27 @@ Source: |
 
         return client.captures.create(capture).then(function (c) {
             capture = c
-            return sleep(1000)
+            return sleep(2000)
         }).then(function () {
-            client.packetInjections.create(packetInjection)
-            return sleep(1000)
+            return client.G.V().Has("TID", from)
+        }).then(function (nodes) {
+            if (nodes[0].Metadata.Neutron && nodes[0].Metadata.Neutron.IPV4) {
+                packetInjection.SrcIP = nodes[0].Metadata.Neutron.IPV4[0]
+            }
+            if (nodes[0].Metadata.ExtID && nodes[0].Metadata.ExtID["attached-mac"]) {
+                packetInjection.SrcMAC = nodes[0].Metadata.ExtID["attached-mac"]
+            }
+            return client.G.V().Has("TID", to)
+        }).then(function (nodes) {
+            if (nodes[0].Metadata.Neutron && nodes[0].Metadata.Neutron.IPV4) {
+                packetInjection.DstIP = nodes[0].Metadata.Neutron.IPV4[0]
+            }
+            if (nodes[0].Metadata.ExtID && nodes[0].Metadata.ExtID["attached-mac"]) {
+                packetInjection.DstMAC = nodes[0].Metadata.ExtID["attached-mac"]
+            }
+            return client.packetInjections.create(packetInjection)
+        }).then(function () {
+            return sleep(2000)
         }).then(function () {
             return client.G.Flows().Has("ICMP.ID", packetInjection.ICMPID)
         }).then(function (flows) {
