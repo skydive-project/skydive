@@ -22,8 +22,6 @@ import (
 	"fmt"
 	"math"
 	"net"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/google/gopacket"
@@ -49,10 +47,10 @@ var (
 type Agent struct {
 	common.RWMutex
 	UUID       string
-	Addr       string
-	Port       int
 	FlowTable  *flow.Table
 	Conn       *net.UDPConn
+	Addr       string
+	Port       int
 	BPFFilter  string
 	HeaderSize uint32
 	Graph      *graph.Graph
@@ -68,8 +66,7 @@ type AgentAllocator struct {
 
 // GetTarget returns the current used connection
 func (sfa *Agent) GetTarget() string {
-	target := []string{sfa.Addr, strconv.FormatInt(int64(sfa.Port), 10)}
-	return strings.Join(target, ":")
+	return fmt.Sprintf("%s:%d", sfa.Addr, sfa.Port)
 }
 
 func (sfa *Agent) feedFlowTable() {
@@ -89,7 +86,7 @@ func (sfa *Agent) feedFlowTable() {
 
 	var buf [maxDgramSize]byte
 	for {
-		n, _, err := sfa.Conn.ReadFromUDP(buf[:])
+		n, ra, err := sfa.Conn.ReadFromUDP(buf[:])
 		if err != nil {
 			return
 		}
@@ -256,7 +253,7 @@ func (sfa *Agent) feedFlowTable() {
 		sf.Metric.Last = now
 
 		if err := sfa.Graph.AddMetadata(sfa.Node, "SFlow", sf); err != nil {
-			logging.GetLogger().Errorf("Unable to add sflow metadata %d %s", sfa.Port, err)
+			logging.GetLogger().Errorf("Unable to add sflow metadata from: %s, %s", ra, err)
 		}
 
 		sfa.Graph.Unlock()
@@ -264,20 +261,6 @@ func (sfa *Agent) feedFlowTable() {
 }
 
 func (sfa *Agent) start() error {
-	sfa.Lock()
-	addr := net.UDPAddr{
-		Port: sfa.Port,
-		IP:   net.ParseIP(sfa.Addr),
-	}
-	conn, err := net.ListenUDP("udp", &addr)
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to listen on port %d: %s", sfa.Port, err)
-		sfa.Unlock()
-		return err
-	}
-	sfa.Conn = conn
-	sfa.Unlock()
-
 	sfa.FlowTable.Start()
 	defer sfa.FlowTable.Stop()
 
@@ -302,15 +285,16 @@ func (sfa *Agent) Stop() {
 }
 
 // NewAgent creates a new sFlow agent which will populate the given flowtable
-func NewAgent(u string, a *common.ServiceAddress, ft *flow.Table, bpfFilter string, headerSize uint32, n *graph.Node, g *graph.Graph) *Agent {
+func NewAgent(u string, conn *net.UDPConn, addr string, port int, ft *flow.Table, bpfFilter string, headerSize uint32, n *graph.Node, g *graph.Graph) *Agent {
 	if headerSize == 0 {
 		headerSize = flow.DefaultCaptureLength
 	}
 
 	return &Agent{
 		UUID:       u,
-		Addr:       a.Addr,
-		Port:       a.Port,
+		Conn:       conn,
+		Addr:       addr,
+		Port:       port,
 		FlowTable:  ft,
 		BPFFilter:  bpfFilter,
 		HeaderSize: headerSize,
@@ -350,7 +334,7 @@ func (a *AgentAllocator) ReleaseAll() {
 }
 
 // Alloc allocates a new sFlow agent
-func (a *AgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter string, headerSize uint32, addr *common.ServiceAddress, n *graph.Node, g *graph.Graph) (agent *Agent, _ error) {
+func (a *AgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter string, headerSize uint32, addr *common.ServiceAddress, n *graph.Node, g *graph.Graph) (*Agent, error) {
 	a.Lock()
 	defer a.Unlock()
 
@@ -361,14 +345,36 @@ func (a *AgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter string, he
 		}
 	}
 
-	// get port, if port is not given by user.
+	var port int
+	var conn *net.UDPConn
 	var err error
+
 	if addr.Port <= 0 {
-		if addr.Port, err = a.portAllocator.Allocate(); addr.Port <= 0 {
-			return nil, fmt.Errorf("failed to allocate sflow port: %s", err)
+		fnc := func(p int) error {
+			conn, err = net.ListenUDP("udp", &net.UDPAddr{
+				Port: p,
+				IP:   net.ParseIP(addr.Addr),
+			})
+			return err
 		}
+
+		if port, err = a.portAllocator.Allocate(fnc); err != nil {
+			logging.GetLogger().Errorf("failed to allocate sflow port: %s", err)
+			return nil, err
+		}
+	} else {
+		conn, err = net.ListenUDP("udp", &net.UDPAddr{
+			Port: addr.Port,
+			IP:   net.ParseIP(addr.Addr),
+		})
+		if err != nil {
+			logging.GetLogger().Errorf("Unable to listen on port %d: %s", addr.Port, err)
+			return nil, err
+		}
+		port = addr.Port
 	}
-	s := NewAgent(uuid, addr, ft, bpfFilter, headerSize, n, g)
+
+	s := NewAgent(uuid, conn, addr.Addr, port, ft, bpfFilter, headerSize, n, g)
 
 	a.agents = append(a.agents, s)
 

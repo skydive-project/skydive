@@ -22,8 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strconv"
-	"strings"
 	"time"
 
 	netflow "github.com/VerizonDigital/vflow/netflow/v5"
@@ -52,7 +50,6 @@ type Agent struct {
 	FlowTable    *flow.Table
 	Conn         *net.UDPConn
 	ProbeNodeTID string
-	flowOpChan   chan *flow.Operation
 }
 
 // AgentAllocator describes an NetFlow agent allocator to manage multiple NetFlow agent probe
@@ -64,17 +61,15 @@ type AgentAllocator struct {
 
 // GetTarget returns the current used connection
 func (nfa *Agent) GetTarget() string {
-	target := []string{nfa.Addr, strconv.FormatInt(int64(nfa.Port), 10)}
-	return strings.Join(target, ":")
+	return fmt.Sprintf("%s:%d", nfa.Addr, nfa.Port)
 }
-
 func intToIP(nn uint32) net.IP {
 	ip := make(net.IP, 4)
 	binary.BigEndian.PutUint32(ip, nn)
 	return ip
 }
 
-func (nfa *Agent) feedFlowTable() {
+func (nfa *Agent) feedFlowTable(flowOpChan chan *flow.Operation) {
 	var buf [maxDgramSize]byte
 	for {
 		n, addr, err := nfa.Conn.ReadFromUDP(buf[:])
@@ -146,31 +141,16 @@ func (nfa *Agent) feedFlowTable() {
 				Key:  f.UUID,
 			}
 
-			nfa.flowOpChan <- op
+			flowOpChan <- op
 		}
 	}
 }
 
 func (nfa *Agent) start() error {
-	nfa.Lock()
-	addr := net.UDPAddr{
-		Port: nfa.Port,
-		IP:   net.ParseIP(nfa.Addr),
-	}
-	conn, err := net.ListenUDP("udp", &addr)
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to listen on port %d: %s", nfa.Port, err)
-		nfa.Unlock()
-		return err
-	}
-	nfa.Conn = conn
-
-	_, nfa.flowOpChan = nfa.FlowTable.Start()
+	_, _, flowOpChan := nfa.FlowTable.Start()
 	defer nfa.FlowTable.Stop()
 
-	nfa.Unlock()
-
-	nfa.feedFlowTable()
+	nfa.feedFlowTable(flowOpChan)
 
 	return nil
 }
@@ -191,11 +171,12 @@ func (nfa *Agent) Stop() {
 }
 
 // NewAgent creates a new NetFlow agent which will populate the given flowtable
-func NewAgent(u string, a *common.ServiceAddress, ft *flow.Table, probeNodeTID string) *Agent {
+func NewAgent(u string, conn *net.UDPConn, addr string, port int, ft *flow.Table, probeNodeTID string) *Agent {
 	return &Agent{
 		UUID:         u,
-		Addr:         a.Addr,
-		Port:         a.Port,
+		Addr:         addr,
+		Port:         port,
+		Conn:         conn,
 		FlowTable:    ft,
 		ProbeNodeTID: probeNodeTID,
 	}
@@ -243,15 +224,36 @@ func (a *AgentAllocator) Alloc(uuid string, ft *flow.Table, addr *common.Service
 		}
 	}
 
-	// get port, if port is not given by user.
+	var port int
+	var conn *net.UDPConn
 	var err error
-	if addr.Port <= 0 {
-		if addr.Port, err = a.portAllocator.Allocate(); addr.Port <= 0 {
-			return nil, fmt.Errorf("failed to allocate netflow port: %s", err)
-		}
-	}
-	s := NewAgent(uuid, addr, ft, probeNodeTID)
 
+	if addr.Port <= 0 {
+		fnc := func(p int) error {
+			conn, err = net.ListenUDP("udp", &net.UDPAddr{
+				Port: p,
+				IP:   net.ParseIP(addr.Addr),
+			})
+			return err
+		}
+
+		if port, err = a.portAllocator.Allocate(fnc); err != nil {
+			logging.GetLogger().Errorf("failed to allocate netflow port: %s", err)
+			return nil, err
+		}
+	} else {
+		conn, err = net.ListenUDP("udp", &net.UDPAddr{
+			Port: addr.Port,
+			IP:   net.ParseIP(addr.Addr),
+		})
+		if err != nil {
+			logging.GetLogger().Errorf("Unable to listen on port %d: %s", addr.Port, err)
+			return nil, err
+		}
+		port = addr.Port
+	}
+
+	s := NewAgent(uuid, conn, addr.Addr, port, ft, probeNodeTID)
 	a.agents = append(a.agents, s)
 
 	s.Start()
