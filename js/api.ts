@@ -612,7 +612,7 @@ export class ShortestPath extends Step {
     serialize(data) {
         var items: GraphNode[][] = [];
         for (var obj in data) {
-            items.push(SerializationHelper.unmarshalArray(data, GraphNode));
+            items.push(SerializationHelper.unmarshalArray(data[obj], GraphNode));
         }
         return items;
     }

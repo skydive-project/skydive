@@ -12,10 +12,11 @@ Parameters:
 Source: |
     function CheckMTU(from, to) {
         var MTU
-        var path = client.gremlin.G().V().Has('TID', from).ShortestPathTo(Metadata('TID', to)).result()
+        var paths = client.gremlin.G().V().Has('TID', from).ShortestPathTo(Metadata('TID', to)).result()
+        // Shortestpath returns all possible paths, choose the first path
+        var path = paths[0]
         for (var i in path) {
           var node = path[i]
-          console.log(node)
           if (MTU != undefined && (node.Metadata === undefined || node.Metadata.MTU < MTU)) {
              console.log("MTU " + node.Metadata.MTU + " on node " + node.ID + " is inferior to " + MTU)
              return false
