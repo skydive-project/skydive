@@ -259,11 +259,11 @@ func (s *Pool) BroadcastMessage(m Message) {
 	for _, c := range s.speakers {
 		r, err := m.Bytes(c.GetClientProtocol())
 		if err != nil {
-			s.opts.Logger.Errorf("Unable to send raw message: %s", err)
+			s.opts.Logger.Errorf("Unable to serialize raw message from pool %s to %s: %s", s.name, c.GetRemoteHost(), err)
 		}
 
 		if err := c.SendRaw(r); err != nil {
-			s.opts.Logger.Errorf("Unable to send raw message: %s", err)
+			s.opts.Logger.Errorf("Unable to send raw message from pool %s to %s: %s", s.name, c.GetRemoteHost, err)
 		}
 	}
 }

@@ -199,7 +199,7 @@ func (o *OvsSFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid str
 		opts := tableOptsFromCapture(capture)
 		probe.flowTable = o.fpta.Alloc(tid, opts)
 
-		address := config.GetString("sflow.bind_address")
+		address := config.GetString("agent.flow.sflow.bind_address")
 		if address == "" {
 			address = "127.0.0.1"
 		}

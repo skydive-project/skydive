@@ -384,8 +384,8 @@ func (a *AgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter string, he
 
 // NewAgentAllocator creates a new sFlow agent allocator
 func NewAgentAllocator() (*AgentAllocator, error) {
-	min := config.GetInt("sflow.port_min")
-	max := config.GetInt("sflow.port_max")
+	min := config.GetInt("agent.flow.sflow.port_min")
+	max := config.GetInt("agent.flow.sflow.port_max")
 
 	portAllocator, err := common.NewPortAllocator(min, max)
 	if err != nil {
