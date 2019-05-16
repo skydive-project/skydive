@@ -34,8 +34,7 @@ type packetInjectorResourceHandler struct {
 // PacketInjectorAPI exposes the packet injector API
 type PacketInjectorAPI struct {
 	BasicAPIHandler
-	Graph      *graph.Graph
-	TrackingID chan string
+	Graph *graph.Graph
 }
 
 func (pirh *packetInjectorResourceHandler) Name() string {
@@ -54,7 +53,6 @@ func (pi *PacketInjectorAPI) Create(r types.Resource) error {
 		return err
 	}
 	e := pi.BasicAPIHandler.Create(ppr)
-	ppr.TrackingID = <-pi.TrackingID
 	return e
 }
 
@@ -130,8 +128,7 @@ func RegisterPacketInjectorAPI(g *graph.Graph, apiServer *Server, authBackend sh
 			ResourceHandler: &packetInjectorResourceHandler{},
 			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
 		},
-		Graph:      g,
-		TrackingID: make(chan string),
+		Graph: g,
 	}
 	if err := apiServer.RegisterAPIHandler(pia, authBackend); err != nil {
 		return nil, err

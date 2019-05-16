@@ -82,7 +82,7 @@ func ParseAddr(address string) (protocol string, target string, err error) {
 	return
 }
 
-// NormalizeIP addes a default netmask
+// NormalizeIP adds a default netmask
 func NormalizeIP(ip, ipFamily string) string {
 	if strings.Contains(ip, "/") {
 		return ip

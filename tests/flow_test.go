@@ -1040,8 +1040,6 @@ func TestICMP(t *testing.T) {
 		// since the agent update ticker is about 10 sec according to the configuration
 		// we should wait 11 sec to have the first update and the MetricRange filled
 		checks: []CheckFunction{func(c *CheckContext) error {
-			ipv4TrackingID := c.injections[0].TrackingID
-			ipv6TrackingID := c.injections[1].TrackingID
 			prefix := c.gremlin.V().Has("Name", "br-icmp", "Type", "ovsbridge")
 
 			gremlin := prefix.Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4", "ICMP.ID", 123)
@@ -1054,6 +1052,7 @@ func TestICMP(t *testing.T) {
 				return fmt.Errorf("We should receive one ICMPv4 flow with ID 123, got %s", flowsToString(icmpFlows))
 			}
 
+			ipv4TrackingID := icmpFlows[0].TrackingID
 			gremlin = prefix.Flows().Has("TrackingID", ipv4TrackingID)
 			icmpFlows, err = c.gh.GetFlows(gremlin)
 			if err != nil {
@@ -1074,6 +1073,7 @@ func TestICMP(t *testing.T) {
 				return fmt.Errorf("We should receive one ICMPv6 flow with ID 456, got %s", flowsToString(icmpFlows))
 			}
 
+			ipv6TrackingID := icmpFlows[0].TrackingID
 			gremlin = prefix.Flows().Has("TrackingID", ipv6TrackingID)
 			icmpFlows, err = c.gh.GetFlows(gremlin)
 			if err != nil {

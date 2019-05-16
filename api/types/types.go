@@ -187,7 +187,6 @@ type PacketInjection struct {
 	DstPort          uint16 `yaml:"DstPort"`
 	Type             string `yaml:"Type"`
 	Payload          string `yaml:"Payload"`
-	TrackingID       string
 	ICMPID           uint16 `yaml:"ICMPID"`
 	Count            uint64 `yaml:"Count"`
 	Interval         uint64 `yaml:"Interval"`

@@ -329,7 +329,8 @@ func NewServerFromConfig() (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	piClient := packetinjector.NewClient(hub.PodServer(), etcdClient, piAPIHandler, g)
+
+	piClient := packetinjector.NewOnDemandInjectionClient(g, piAPIHandler, hub.PodServer(), hub.SubscriberServer(), etcdClient)
 
 	nodeAPIHandler, err := api.RegisterNodeRuleAPI(apiServer, g, apiAuthBackend)
 	if err != nil {
@@ -407,6 +408,7 @@ func init() {
 	// object type between the agent and the analyzer
 	// Decoder will be used while unmarshal the metadata
 	graph.NodeMetadataDecoders["Captures"] = probes.CapturesMetadataDecoder
+	graph.NodeMetadataDecoders["PacketInjections"] = packetinjector.InjectionsMetadataDecoder
 	graph.NodeMetadataDecoders["RoutingTables"] = netlink.RoutingTablesMetadataDecoder
 	graph.NodeMetadataDecoders["FDB"] = netlink.NeighborMetadataDecoder
 	graph.NodeMetadataDecoders["Neighbors"] = netlink.NeighborMetadataDecoder

@@ -18,47 +18,28 @@
 package client
 
 import (
-	"fmt"
-	"io/ioutil"
-	"net"
 	"os"
 
 	"github.com/skydive-project/skydive/api/client"
 	api "github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/cmd/injector"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/validator"
 
 	"github.com/spf13/cobra"
 )
 
 var (
-	srcNode          string
-	dstNode          string
-	srcIP            string
-	srcMAC           string
-	srcPort          uint16
-	dstPort          uint16
-	dstIP            string
-	dstMAC           string
-	packetType       string
-	payload          string
-	pcap             string
-	id               uint64
-	count            uint64
-	interval         uint64
-	increment        bool
-	incrementPayload int64
-	ttl              uint8
+	srcNode string
+	dstNode string
 )
 
 // PacketInjectorCmd skydive inject-packet root command
 var PacketInjectorCmd = &cobra.Command{
-	Use:          "inject-packet",
+	Use:          "injection",
 	Short:        "Inject packets",
 	Long:         "Inject packets",
+	Aliases:      []string{"inject-packet"},
 	SilenceUsage: false,
 }
 
@@ -74,37 +55,41 @@ var PacketInjectionCreate = &cobra.Command{
 			exitOnError(err)
 		}
 
-		var pcapContent []byte
-		if pcap != "" {
-			f, err := os.Open(pcap)
-			if err != nil {
-				exitOnError(err)
-			}
-
-			pcapContent, err = ioutil.ReadAll(f)
-			if err != nil {
-				exitOnError(err)
-			}
+		request, err := injector.GetPacketInjectRequest()
+		if err != nil {
+			exitOnError(err)
 		}
 
 		packet := &api.PacketInjection{
 			Src:              srcNode,
 			Dst:              dstNode,
-			SrcIP:            srcIP,
-			SrcMAC:           srcMAC,
-			SrcPort:          srcPort,
-			DstIP:            dstIP,
-			DstMAC:           dstMAC,
-			DstPort:          dstPort,
-			Type:             packetType,
-			Payload:          payload,
-			Pcap:             pcapContent,
-			ICMPID:           uint16(id),
-			Count:            count,
-			Interval:         interval,
-			Increment:        increment,
-			IncrementPayload: incrementPayload,
-			TTL:              ttl,
+			SrcPort:          request.SrcPort,
+			DstPort:          request.DstPort,
+			Type:             request.Type,
+			Payload:          request.Payload,
+			Pcap:             request.Pcap,
+			ICMPID:           request.ICMPID,
+			Count:            request.Count,
+			Interval:         request.Interval,
+			Increment:        request.Increment,
+			IncrementPayload: request.IncrementPayload,
+			TTL:              request.TTL,
+		}
+
+		if request.SrcIP != nil {
+			packet.SrcIP = request.SrcIP.String()
+		}
+
+		if request.DstIP != nil {
+			packet.DstIP = request.DstIP.String()
+		}
+
+		if request.SrcMAC != nil {
+			packet.SrcMAC = request.SrcMAC.String()
+		}
+
+		if request.DstMAC != nil {
+			packet.DstMAC = request.DstMAC.String()
 		}
 
 		if err = validator.Validate(packet); err != nil {
@@ -188,121 +173,13 @@ var PacketInjectionDelete = &cobra.Command{
 	},
 }
 
-// PacketInjectionInject inject packet directly
-var PacketInjectionInject = &cobra.Command{
-	Use:          "inject",
-	Short:        "inject packet",
-	Long:         "inject packet",
-	SilenceUsage: false,
-	Run: func(cmd *cobra.Command, args []string) {
-		var pcapContent []byte
-		if pcap != "" {
-			f, err := os.Open(pcap)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Injection failed: failed to open pcap file, err: %s\n", err)
-				cmd.Usage()
-				os.Exit(1)
-			}
-
-			pcapContent, err = ioutil.ReadAll(f)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Injection failed: failed to read pcap file, err: %s\n", err)
-				cmd.Usage()
-				os.Exit(1)
-			}
-		}
-
-		ipField := "IPV4"
-		if packetType == "icmp6" || packetType == "tcp6" || packetType == "udp6" {
-			ipField = "IPV6"
-		}
-		sIP := packetinjector.GetIP(common.NormalizeIP(srcIP, ipField))
-		dIP := packetinjector.GetIP(common.NormalizeIP(dstIP, ipField))
-		if sIP == nil || dIP == nil {
-			fmt.Fprintf(os.Stderr, "Injection failed: source or destination IP is null\n")
-			cmd.Usage()
-			os.Exit(1)
-		}
-		sMAC, err := net.ParseMAC(srcMAC)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Injection failed: source MAC parse error, err: %s\n", err)
-			cmd.Usage()
-			os.Exit(1)
-		}
-		dMAC, err := net.ParseMAC(dstMAC)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Injection failed: destination MAC parse error, err: %s\n", err)
-			cmd.Usage()
-			os.Exit(1)
-		}
-
-		pip := &packetinjector.PacketInjectionParams{
-			SrcIP:            sIP,
-			SrcMAC:           sMAC,
-			SrcPort:          srcPort,
-			DstIP:            dIP,
-			DstMAC:           dMAC,
-			DstPort:          dstPort,
-			Type:             packetType,
-			Count:            count,
-			ID:               id,
-			Interval:         interval,
-			Increment:        increment,
-			IncrementPayload: incrementPayload,
-			Payload:          payload,
-			Pcap:             pcapContent,
-			TTL:              ttl,
-		}
-
-		injector.InjectPacket(pip)
-	},
-}
-
-func addInjectPacketCreateFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&srcNode, "src", "", "", "source node gremlin expression (mandatory)")
-	cmd.Flags().StringVarP(&dstNode, "dst", "", "", "destination node gremlin expression")
-	cmd.Flags().StringVarP(&srcIP, "srcIP", "", "", "source node IP")
-	cmd.Flags().StringVarP(&dstIP, "dstIP", "", "", "destination node IP")
-	cmd.Flags().StringVarP(&srcMAC, "srcMAC", "", "", "source node MAC")
-	cmd.Flags().StringVarP(&dstMAC, "dstMAC", "", "", "destination node MAC")
-	cmd.Flags().Uint16VarP(&srcPort, "srcPort", "", 0, "source port for TCP packet")
-	cmd.Flags().Uint16VarP(&dstPort, "dstPort", "", 0, "destination port for TCP packet")
-	cmd.Flags().StringVarP(&packetType, "type", "", "icmp4", "packet type: icmp4, icmp6, tcp4, tcp6, udp4 and udp6")
-	cmd.Flags().StringVarP(&payload, "payload", "", "", "payload")
-	cmd.Flags().StringVar(&pcap, "pcap", "", "PCAP file")
-	cmd.Flags().Uint64VarP(&id, "id", "", 0, "ICMP identification")
-	cmd.Flags().BoolVarP(&increment, "increment", "", false, "increment ICMP id for each packet")
-	cmd.Flags().Int64VarP(&incrementPayload, "incrementPayload", "", 0, "increase payload for each packet")
-	cmd.Flags().Uint64VarP(&count, "count", "", 1, "number of packets to be generated")
-	cmd.Flags().Uint64VarP(&interval, "interval", "", 0, "wait interval milliseconds between sending each packet")
-	cmd.Flags().Uint8VarP(&ttl, "ttl", "", 64, "time-to-live")
-}
-
-func addInjectPacketInjectFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&srcIP, "srcIP", "", "", "source node IP")
-	cmd.Flags().StringVarP(&dstIP, "dstIP", "", "", "destination node IP")
-	cmd.Flags().StringVarP(&srcMAC, "srcMAC", "", "", "source node MAC")
-	cmd.Flags().StringVarP(&dstMAC, "dstMAC", "", "", "destination node MAC")
-	cmd.Flags().Uint16VarP(&srcPort, "srcPort", "", 0, "source port for TCP packet")
-	cmd.Flags().Uint16VarP(&dstPort, "dstPort", "", 0, "destination port for TCP packet")
-	cmd.Flags().StringVarP(&packetType, "type", "", "icmp4", "packet type: icmp4, icmp6, tcp4, tcp6, udp4 and udp6")
-	cmd.Flags().StringVarP(&payload, "payload", "", "", "payload")
-	cmd.Flags().StringVar(&pcap, "pcap", "", "PCAP file")
-	cmd.Flags().Uint64VarP(&id, "id", "", 0, "ICMP identification")
-	cmd.Flags().BoolVarP(&increment, "increment", "", false, "increment ICMP id for each packet")
-	cmd.Flags().Int64VarP(&incrementPayload, "incrementPayload", "", 0, "increase payload for each packet")
-	cmd.Flags().Uint64VarP(&count, "count", "", 1, "number of packets to be generated")
-	cmd.Flags().Uint64VarP(&interval, "interval", "", 0, "wait interval milliseconds between sending each packet")
-	cmd.Flags().Uint8VarP(&ttl, "ttl", "", 64, "time-to-live")
-}
-
 func init() {
 	PacketInjectorCmd.AddCommand(PacketInjectionList)
 	PacketInjectorCmd.AddCommand(PacketInjectionGet)
 	PacketInjectorCmd.AddCommand(PacketInjectionDelete)
 	PacketInjectorCmd.AddCommand(PacketInjectionCreate)
-	PacketInjectorCmd.AddCommand(PacketInjectionInject)
 
-	addInjectPacketCreateFlags(PacketInjectionCreate)
-	addInjectPacketInjectFlags(PacketInjectionInject)
+	PacketInjectionCreate.Flags().StringVarP(&srcNode, "src", "", "", "source node gremlin expression (mandatory)")
+	PacketInjectionCreate.Flags().StringVarP(&dstNode, "dst", "", "", "destination node gremlin expression")
+	injector.AddInjectPacketInjectFlags(PacketInjectionCreate)
 }

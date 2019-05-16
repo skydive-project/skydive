@@ -56,6 +56,7 @@ EASYJSON_FILES_TAG=\
 	flow/storage/orientdb/orientdb.go \
 	graffiti/graph/elasticsearch.go \
 	ondemand/ondemand.go \
+	packetinjector/injector.go \
 	sflow/sflow.go \
 	topology/metrics.go \
 	topology/probes/docker/metadata.go \

@@ -100,54 +100,64 @@ func isValidAddress(v interface{}, param string) error {
 }
 
 func isIP(v interface{}, param string) error {
-	ip, ok := v.(string)
-	if !ok {
+	switch v := v.(type) {
+	case string:
+		/* Parse/Check IPv4 and IPv6 address */
+		if v == "" {
+			return nil
+		} else if n := net.ParseIP(v); n == nil {
+			return IPNotValid()
+		}
+		return nil
+	case net.IP:
+		return nil
+	default:
 		return IPNotValid()
 	}
-	/* Parse/Check IPv4 and IPv6 address */
-	if n := net.ParseIP(ip); n == nil {
-		return IPNotValid()
-	}
-	return nil
 }
 
 func isMAC(v interface{}, param string) error {
-	mac, ok := v.(string)
-	if !ok {
-		return IPNotValid()
-	}
-
-	if mac == "" {
-		return nil
-	}
-
-	if _, err := net.ParseMAC(mac); err != nil {
-		return MACNotValid()
+	switch v := v.(type) {
+	case string:
+		if v == "" {
+			return nil
+		} else if _, err := net.ParseMAC(v); err != nil {
+			return MACNotValid()
+		}
+	case net.HardwareAddr:
+		if len(v) == 0 {
+			return nil
+		}
+		if len(v) != 6 {
+			return MACNotValid()
+		}
 	}
 	return nil
 }
 
 func isIPOrCIDR(v interface{}, param string) error {
-	value, ok := v.(string)
-	if !ok {
+	switch v := v.(type) {
+	case string:
+		if v == "" {
+			return nil
+		}
+		if strings.Contains(v, "/") {
+			if _, _, err := net.ParseCIDR(v); err != nil {
+				return IPOrCIDRNotValid()
+			}
+		} else {
+			if n := net.ParseIP(v); n == nil {
+				return IPOrCIDRNotValid()
+			}
+		}
+		return nil
+	case net.IPNet:
+		return nil
+	case net.IP:
+		return nil
+	default:
 		return IPOrCIDRNotValid()
 	}
-
-	if value == "" {
-		return nil
-	}
-
-	if strings.Contains(value, "/") {
-		if _, _, err := net.ParseCIDR(value); err != nil {
-			return IPOrCIDRNotValid()
-		}
-	} else {
-		if n := net.ParseIP(value); n == nil {
-			return IPOrCIDRNotValid()
-		}
-	}
-
-	return nil
 }
 
 func isGremlinExpr(v interface{}, param string) error {

@@ -119,6 +119,7 @@ func (a *Agent) Start() {
 
 	a.topologyProbeBundle.Start()
 	a.flowProbeBundle.Start()
+	a.onDemandPIServer.Start()
 	a.onDemandProbeServer.Start()
 
 	// everything is ready, then initiate the websocket connection
@@ -132,6 +133,7 @@ func (a *Agent) Stop() {
 	a.topologyProbeBundle.Stop()
 	a.httpServer.Stop()
 	a.flowClientPool.Close()
+	a.onDemandPIServer.Stop()
 	a.onDemandProbeServer.Stop()
 
 	if tr, ok := http.DefaultTransport.(interface {
@@ -240,16 +242,14 @@ func NewAgent() (*Agent, error) {
 	// exposes a flow server through the client connections
 	flow.NewWSTableServer(flowTableAllocator, analyzerClientPool)
 
-	packetinjector.NewServer(g, analyzerClientPool)
-
 	flowProbeBundle := fprobes.NewFlowProbeBundle(topologyProbeBundle, g, flowTableAllocator)
 
-	onDemandPIServer, err := packetinjector.NewOnDemandProbeServer(g, analyzerClientPool)
+	onDemandPIServer, err := packetinjector.NewOnDemandInjectionServer(g, analyzerClientPool)
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize on-demand packet injection: %s", err)
 	}
 
-	onDemandFlowProbeServer, err := ondemand.NewOnDemandFlowProbeServer(flowProbeBundle, g, analyzerClientPool)
+	onDemandProbeServer, err := ondemand.NewOnDemandFlowProbeServer(flowProbeBundle, g, analyzerClientPool)
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize on-demand flow probe: %s", err)
 	}
@@ -263,7 +263,7 @@ func NewAgent() (*Agent, error) {
 		flowProbeBundle:     flowProbeBundle,
 		flowTableAllocator:  flowTableAllocator,
 		flowClientPool:      flowClientPool,
-		onDemandProbeServer: onDemandFlowProbeServer,
+		onDemandProbeServer: onDemandProbeServer,
 		onDemandPIServer:    onDemandPIServer,
 		httpServer:          hserver,
 		tidMapper:           tm,
