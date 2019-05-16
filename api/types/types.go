@@ -32,6 +32,7 @@ var schemaValidator *topology.SchemaValidator
 type Resource interface {
 	ID() string
 	SetID(string)
+	GetName() string
 }
 
 // BasicResource is a resource with a unique identifier
@@ -49,6 +50,11 @@ func (b *BasicResource) SetID(i string) {
 	b.UUID = i
 }
 
+// GetName returns the resource name
+func (b *BasicResource) GetName() string {
+	return "BasicResource"
+}
+
 // Alert is a set of parameters, the Alert Action will Trigger according to its Expression.
 type Alert struct {
 	BasicResource `yaml:",inline"`
@@ -58,6 +64,11 @@ type Alert struct {
 	Action        string `json:",omitempty" valid:"regexp=^(|http://|https://|file://).*$" yaml:"Action"`
 	Trigger       string `json:",omitempty" valid:"regexp=^(graph|duration:.+|)$" yaml:"Trigger"`
 	CreateTime    time.Time
+}
+
+// GetName returns the resource name
+func (a *Alert) GetName() string {
+	return "Alert"
 }
 
 // NewAlert creates a New empty Alert, only CreateTime is set.
@@ -91,6 +102,11 @@ type Capture struct {
 	TargetType      string           `json:"TargetType,omitempty" yaml:"TargetType"`
 }
 
+// GetName returns the resource name
+func (c *Capture) GetName() string {
+	return "Capture"
+}
+
 // NewCapture creates a new capture
 func NewCapture(query string, bpfFilter string) *Capture {
 	return &Capture{
@@ -109,6 +125,11 @@ type EdgeRule struct {
 	Metadata      graph.Metadata `yaml:"Metadata"`
 }
 
+// GetName returns the resource name
+func (e *EdgeRule) GetName() string {
+	return "EdgeRule"
+}
+
 // Validate verifies the edge rule does not create invalid edges
 func (e *EdgeRule) Validate() error {
 	n1 := graph.CreateNode(graph.GenID(), nil, graph.TimeUTC(), "", "")
@@ -125,6 +146,11 @@ type NodeRule struct {
 	Metadata      graph.Metadata `yaml:"Metadata"`
 	Action        string         `valid:"regexp=^(create|update)$" yaml:"Action"`
 	Query         string         `valid:"isGremlinOrEmpty" yaml:"Query"`
+}
+
+// GetName returns the resource name
+func (n *NodeRule) GetName() string {
+	return "NodeRule"
 }
 
 // Validate verifies the node rule does not create invalid node or change
@@ -165,6 +191,11 @@ type PacketInjection struct {
 	StartTime        time.Time
 	Pcap             []byte `yaml:"Pcap"`
 	TTL              uint8  `yaml:"TTL"`
+}
+
+// GetName returns the resource name
+func (pi *PacketInjection) GetName() string {
+	return "PacketInjection"
 }
 
 // Validate verifies the packet injection type is supported
