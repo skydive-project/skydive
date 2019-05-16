@@ -35,15 +35,15 @@ type connection interface {
 	getSource() *localconn.Connection
 	getDest() *localconn.Connection
 	getInodes() (int64, int64)
+	isCrossConnectOwner(string, string) bool
+	printCrossConnect() string
 	createMetadata() graph.Metadata
 }
 
 type baseConnectionPair struct {
-	payload  string
-	srcInode int64
-	dstInode int64
-	src      *localconn.Connection
-	dst      *localconn.Connection
+	payload string
+	src     *localconn.Connection
+	dst     *localconn.Connection
 }
 
 func (b *baseConnectionPair) getSource() *localconn.Connection {
@@ -80,18 +80,24 @@ func (b *baseConnectionPair) getInodes() (int64, int64) {
 	return b.getSourceInode(), b.getDestInode()
 }
 
+// what makes a crossConnect unique is the nsmgr that reports it, and its ID
+type crossConnect struct {
+	url string
+	ID  string
+}
+
 // A local connection is composed of only one cross-connect
 type localConnectionPair struct {
 	baseConnectionPair
-	ID string // crossConnectID
+	cc *crossConnect // crossConnectID
 }
 
 // A remote connection is composed of two cross-connects
 type remoteConnectionPair struct {
 	baseConnectionPair
 	remote *remoteconn.Connection // the remote connection shared between the two corss-connects
-	srcID  string                 // The id of the cross-connect with a local connection as source
-	dstID  string                 // The id of the cross-connect with a local connection as destination
+	srcCc  *crossConnect          // The id of the cross-connect with a local connection as source
+	dstCc  *crossConnect          // The id of the cross-connect with a local connection as destination
 
 }
 
@@ -164,6 +170,15 @@ func (b *baseConnectionPair) getNodes(g *graph.Graph) (*graph.Node, *graph.Node,
 	return srcNode, dstNode, nil
 }
 
+func (l *localConnectionPair) isCrossConnectOwner(url string, id string) bool {
+	return l.cc.ID == id && l.cc.url == url
+}
+
+func (l *localConnectionPair) printCrossConnect() string {
+	srcInode, dstInode := l.getInodes()
+	return fmt.Sprintf("local crossconnect url: %s, id: %s, source inode: %d, destination inode: %d", l.cc.url, l.cc.ID, srcInode, dstInode)
+}
+
 func (l *localConnectionPair) addEdge(g *graph.Graph) {
 	srcNode, dstNode, err := l.getNodes(g)
 	if err != nil {
@@ -193,7 +208,7 @@ func (l *localConnectionPair) delEdge(g *graph.Graph) {
 func (l *localConnectionPair) createMetadata() graph.Metadata {
 	metadata := graph.Metadata{
 		"NSM": localNSMMetadata{
-			CrossConnectID: l.ID,
+			CrossConnectID: l.cc.ID,
 			baseNSMMetadata: baseNSMMetadata{
 				Payload:        l.payload,
 				NetworkService: l.getSource().GetNetworkService(),
@@ -218,6 +233,33 @@ func (l *localConnectionPair) createMetadata() graph.Metadata {
 	}
 
 	return metadata
+}
+
+func (r *remoteConnectionPair) isCrossConnectOwner(url string, id string) bool {
+	if r.srcCc != nil && r.srcCc.ID == id && r.srcCc.url == url {
+		return true
+	}
+	if r.dstCc != nil && r.dstCc.ID == id && r.dstCc.url == url {
+		return true
+	}
+	return false
+}
+
+func (r *remoteConnectionPair) printCrossConnect() string {
+	srcInode, dstInode := r.getInodes()
+	s := fmt.Sprintf("remote crossconnects with remote id: %s", r.remote.Id)
+	if r.srcCc != nil {
+		s += fmt.Sprintf(", src url: %s, source crossconnect id: %s, source inode: %d", r.srcCc.url, r.srcCc.ID, srcInode)
+	} else {
+		s += ", source crossconnect is not set"
+	}
+	if r.dstCc != nil {
+		s += fmt.Sprintf(", destination url: %s, destination crossconnect id: %s, destination inode %d", r.dstCc.url, r.dstCc.ID, dstInode)
+	} else {
+		s += ", destination crossconnect is not set"
+	}
+
+	return s
 }
 
 func (r *remoteConnectionPair) addEdge(g *graph.Graph) {
@@ -248,8 +290,8 @@ func (r *remoteConnectionPair) delEdge(g *graph.Graph) {
 func (r *remoteConnectionPair) createMetadata() graph.Metadata {
 	metadata := graph.Metadata{
 		"NSM": remoteNSMMetadata{
-			SourceCrossConnectID:      r.srcID,
-			DestinationCrossConnectID: r.dstID,
+			SourceCrossConnectID:      r.srcCc.ID,
+			DestinationCrossConnectID: r.dstCc.ID,
 			baseNSMMetadata: baseNSMMetadata{
 				NetworkService: r.getSource().GetNetworkService(),
 				Payload:        r.payload,

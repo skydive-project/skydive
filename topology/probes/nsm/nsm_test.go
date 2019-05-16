@@ -116,37 +116,36 @@ func createConnectionWithRemote(inodeSrc string, inodeDst string) (*cc.CrossConn
 	return cconn1, cconn2
 }
 
-func setupProbe() (*Probe, error) {
+func setupProbe(t *testing.T) *Probe {
 	config.Set("logging.level", "DEBUG")
 	backend, err := graph.NewMemoryBackend()
-	if err != nil {
-		return nil, err
-	}
 
+	if err != nil {
+		t.Fatalf("Can't create the probe, error: %v", err)
+		return nil
+	}
 	g := graph.NewGraph("host_test", backend, common.AnalyzerService)
 	p, err := NewNsmProbe(g)
 	if err != nil {
-		return nil, err
+		t.Fatalf("Can't create the probe, error: %v", err)
+		return nil
 	}
 	p.Start()
 
-	return p, nil
+	return p
 }
 
 func TestOnConnLocal_create_and_delete(t *testing.T) {
-	p, err := setupProbe()
-	if err != nil {
-		t.Errorf("Can't create the probe, error: %v", err)
-	}
+	p := setupProbe(t)
 
 	cconn := createConnectionLocalOnly("1", "2")
 
-	p.onConnLocalLocal(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn)
+	p.onConnLocalLocal(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn, "url")
 
 	// Ensure the link is correctly created
 	// TODO: test the metadata is correct
-	c := p.connections[0].(*localConnectionPair)
-	if c.srcInode != 1 || c.dstInode != 2 {
+	srcInode, dstInode := p.connections[0].getInodes()
+	if srcInode != 1 || dstInode != 2 {
 		t.Error("probe doesn't have the correct link")
 	}
 
@@ -169,7 +168,7 @@ func TestOnConnLocal_create_and_delete(t *testing.T) {
 	}
 
 	// TODO: test metadatas
-	p.onConnLocalLocal(crossconnect.CrossConnectEventType_DELETE, cconn)
+	p.onConnLocalLocal(crossconnect.CrossConnectEventType_DELETE, cconn, "url")
 	if len(p.connections) != 0 {
 		t.Error("link list is not empty after deletion")
 	}
@@ -181,13 +180,10 @@ func TestOnConnLocal_create_and_delete(t *testing.T) {
 }
 
 func TestOnConnRemote_create_and_delete(t *testing.T) {
-	p, err := setupProbe()
-	if err != nil {
-		t.Errorf("Can't create the probe, error: %v", err)
-	}
+	p := setupProbe(t)
 	cconn1, cconn2 := createConnectionWithRemote("1", "2")
-	p.onConnLocalRemote(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn1)
-	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn2)
+	p.onConnLocalRemote(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn1, "url1")
+	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn2, "url2")
 
 	srcInode, dstInode := p.connections[0].getInodes()
 	if srcInode != 1 || dstInode != 2 {
@@ -212,14 +208,14 @@ func TestOnConnRemote_create_and_delete(t *testing.T) {
 		t.Error("link is not created in the graph")
 	}
 
-	p.onConnLocalRemote(crossconnect.CrossConnectEventType_DELETE, cconn1)
+	p.onConnLocalRemote(crossconnect.CrossConnectEventType_DELETE, cconn1, "url1")
 
 	// Ensure Edge is deleted
 	if p.g.AreLinked(n1, n2, nil) {
 		t.Error("link is not deleted in the graph")
 	}
 
-	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_DELETE, cconn2)
+	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_DELETE, cconn2, "url2")
 
 	if len(p.connections) != 0 {
 		t.Errorf("link list is not empty after deletion: %+v", p.connections)
@@ -229,22 +225,19 @@ func TestOnConnRemote_create_and_delete(t *testing.T) {
 // This test creates two skydive connections
 // One connection has its localSource equal to the localDest of the other
 // conn1->conn2->conn3
-// ensure that twok skydive edges are created in the graph
+// ensure that two skydive edges are created in the graph
 func TestOnConnTwoCrossConnectsWithTheSameSourceAndDest_create_and_delete(t *testing.T) {
-	p, err := setupProbe()
-	if err != nil {
-		t.Errorf("Can't create the probe, error: %v", err)
-	}
+	p := setupProbe(t)
 
 	cconn1, cconn2 := createConnectionWithRemote("1", "2")
-	p.onConnLocalRemote(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn1)
-	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn2)
+	p.onConnLocalRemote(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn1, "url1")
+	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn2, "url2")
 	cconn3, cconn4 := createConnectionWithRemote("2", "3")
-	p.onConnLocalRemote(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn3)
-	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn4)
+	p.onConnLocalRemote(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn3, "url2")
+	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn4, "url3")
 
 	//ensure that two connections are avalaible in the connection list when looking for inode 2
-	c, _ := p.getConnectionsWithInode(2)
+	c, _ := p.getConnectionsReadyWithInode(2)
 	if len(c) != 2 {
 		t.Fatalf("Two connections should be available with inode 2, but only %d is retreived", len(c))
 	}
@@ -276,10 +269,10 @@ func TestOnConnTwoCrossConnectsWithTheSameSourceAndDest_create_and_delete(t *tes
 		t.Errorf("link between inode 2 and inode 3 is not created in the graph : %v", p.connections)
 	}
 
-	p.onConnLocalRemote(crossconnect.CrossConnectEventType_DELETE, cconn1)
-	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_DELETE, cconn2)
-	p.onConnLocalRemote(crossconnect.CrossConnectEventType_DELETE, cconn3)
-	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_DELETE, cconn4)
+	p.onConnLocalRemote(crossconnect.CrossConnectEventType_DELETE, cconn1, "url1")
+	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_DELETE, cconn2, "url2")
+	p.onConnLocalRemote(crossconnect.CrossConnectEventType_DELETE, cconn3, "url2")
+	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_DELETE, cconn4, "url3")
 	// Ensure Edge is deleted
 	if p.g.AreLinked(n1, n2, nil) || p.g.AreLinked(n2, n3, nil) {
 		t.Error("connections are not deleted in the graph")
@@ -292,20 +285,27 @@ func TestOnConnTwoCrossConnectsWithTheSameSourceAndDest_create_and_delete(t *tes
 
 // Test that an UPDATE message for an existing connection doesn't add a new connection
 func TestUpdateExistingConnection(t *testing.T) {
-	p, err := setupProbe()
-	if err != nil {
-		t.Errorf("Can't create the probe, error: %v", err)
-	}
+	p := setupProbe(t)
+
 	cconn := createConnectionLocalOnly("1", "2")
 
-	p.onConnLocalLocal(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn)
+	p.onConnLocalLocal(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn, "url1")
 
-	p.onConnLocalLocal(crossconnect.CrossConnectEventType_UPDATE, cconn)
+	p.onConnLocalLocal(crossconnect.CrossConnectEventType_UPDATE, cconn, "url1")
 
 	if len(p.connections) != 1 {
 		t.Errorf("connection count should be equal to 1 after receiving an UPDATE message for an existing connection, connection count: %d", len(p.connections))
 	}
 
+}
+
+func TestConnectionsWithIdenticalRemoteId(t *testing.T) {
+	// TODO
+
+}
+
+func TestDownCrossConnectFilteredOut(t *testing.T) {
+	// TODO
 }
 
 // TODO : Test addconn/delconn/addNode/delNode with different orders

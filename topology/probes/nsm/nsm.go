@@ -156,10 +156,11 @@ func (p *Probe) monitorCrossConnects(url string) {
 			logging.GetLogger().Errorf("Error: %+v.", err)
 			return
 		}
+		t := proto.TextMarshaler{}
 
-		logging.GetLogger().Debugf("NSM: received monitoring event of type %s from %s", event.GetType(), url)
+		logging.GetLogger().Debugf("NSM: received monitoring event of type %s from %s with %v crossconnects", event.GetType(), url, len(event.GetCrossConnects()))
 		for _, cconn := range event.GetCrossConnects() {
-			cconnStr := proto.MarshalTextString(cconn)
+			cconnStr := t.Text(cconn)
 
 			lSrc := cconn.GetLocalSource()
 			rSrc := cconn.GetRemoteSource()
@@ -173,26 +174,34 @@ func (p *Probe) monitorCrossConnects(url string) {
 			isDelMsg := event.GetType() == cc.CrossConnectEventType_DELETE
 			switch {
 			case lSrc != nil && rSrc == nil && lDst != nil && rDst == nil:
-				logging.GetLogger().Debugf("NSM: Got local to local CrossConnect with id %s", cconnStr)
+				logging.GetLogger().Debugf("NSM: Got local to local CrossConnect:  %s", cconnStr)
 				if !isDelMsg && (lSrc.GetState() == localconn.State_DOWN || lDst.GetState() == localconn.State_DOWN) {
 					logging.GetLogger().Debugf("NSM: one connection of the cross connect %s is in DOWN state, don't affect the skydive connections", cconn.GetId())
 					continue
 				}
-				p.onConnLocalLocal(event.GetType(), cconn)
+				p.onConnLocalLocal(event.GetType(), cconn, url)
 			case lSrc == nil && rSrc != nil && lDst != nil && rDst == nil:
-				logging.GetLogger().Debugf("NSM: Got remote to local CrossConnect with id %s", cconnStr)
+				logging.GetLogger().Debugf("NSM: Got remote to local CrossConnect: %s", cconnStr)
 				if !isDelMsg && (rSrc.GetState() == remoteconn.State_DOWN || lDst.GetState() == localconn.State_DOWN) {
 					logging.GetLogger().Debugf("NSM: one connection of the cross connect %s is in DOWN state, don't affect the skydive connections", cconn.GetId())
 					continue
 				}
-				p.onConnRemoteLocal(event.GetType(), cconn)
+				if rSrc.GetId() == "-" {
+					logging.GetLogger().Warningf("NSM: received a crossconnect with remote id '-', filtering out this message")
+					continue
+				}
+				p.onConnRemoteLocal(event.GetType(), cconn, url)
 			case lSrc != nil && rSrc == nil && lDst == nil && rDst != nil:
-				logging.GetLogger().Debugf("NSM: Got local to remote CrossConnect with id %s", cconnStr)
+				logging.GetLogger().Debugf("NSM: Got local to remote CrossConnect:  %s", cconnStr)
 				if !isDelMsg && (lSrc.GetState() == localconn.State_DOWN || rDst.GetState() == remoteconn.State_DOWN) {
 					logging.GetLogger().Debugf("NSM: one connection of the cross connect %s is in DOWN state, don't affect the skydive connections", cconn.GetId())
 					continue
 				}
-				p.onConnLocalRemote(event.GetType(), cconn)
+				if rDst.GetId() == "-" {
+					logging.GetLogger().Warningf("NSM: received a crossconnect with remote id '-', filtering out this message")
+					continue
+				}
+				p.onConnLocalRemote(event.GetType(), cconn, url)
 			default:
 				logging.GetLogger().Errorf("NSM: Error parsing CrossConnect \n%s", cconnStr)
 			}
@@ -200,60 +209,45 @@ func (p *Probe) monitorCrossConnects(url string) {
 	}
 }
 
-func (p *Probe) onConnLocalLocal(t cc.CrossConnectEventType, conn *cc.CrossConnect) {
-
-	srcInode, err := getLocalInode(conn.GetLocalSource())
-	if err != nil {
-		return
-	}
-	dstInode, err := getLocalInode(conn.GetLocalDestination())
-	if err != nil {
-		return
-	}
+func (p *Probe) onConnLocalLocal(t cc.CrossConnectEventType, xconn *cc.CrossConnect, url string) {
 
 	p.Lock()
 	defer p.Unlock()
+	conn, i := p.getConnection(url, xconn.GetId())
 	if t != cc.CrossConnectEventType_DELETE {
-		l := &localConnectionPair{
-			ID: conn.GetId(),
-			baseConnectionPair: baseConnectionPair{
-				payload:  conn.GetPayload(),
-				srcInode: srcInode,
-				dstInode: dstInode,
-				src:      conn.GetLocalSource(),
-				dst:      conn.GetLocalDestination(),
-			},
+		if conn == nil {
+			l := &localConnectionPair{
+				cc: &crossConnect{
+					ID:  xconn.GetId(),
+					url: url,
+				},
+				baseConnectionPair: baseConnectionPair{
+					payload: xconn.GetPayload(),
+					src:     xconn.GetLocalSource(),
+					dst:     xconn.GetLocalDestination(),
+				},
+			}
+			p.addConnection(l)
+			p.g.Lock()
+			l.addEdge(p.g)
+			p.g.Unlock()
 		}
-		logging.GetLogger().Debugf("NSM: adding local to local connection %+v", l)
-		p.connections = append(p.connections, l)
-		logging.GetLogger().Debugf("NSM: locking the graph for adding an Edge")
-		p.g.Lock()
-		l.addEdge(p.g)
-		p.g.Unlock()
 	} else {
-		for i := range p.connections {
-			l, ok := p.connections[i].(*localConnectionPair)
-			if !ok {
-				continue
-			}
-			if l.srcInode == srcInode && l.dstInode == dstInode {
-				logging.GetLogger().Debugf("NSM: removing local to local connection %+v", l)
-				logging.GetLogger().Debugf("NSM: locking the graph for deleting an Edge")
-				p.g.Lock()
-				l.delEdge(p.g)
-				p.g.Unlock()
-				p.removeConnectionItem(i)
-				logging.GetLogger().Debugf("NSM: %v connection left", len(p.connections))
-				break
-			}
+		if conn != nil {
+			p.removeConnectionItem(i)
+			p.g.Lock()
+			conn.delEdge(p.g)
+			p.g.Unlock()
+		} else {
+			logging.GetLogger().Warningf("NSM: received a DELETE from %s for crossconnect id %s, but the connection does not exists in the probe", url, xconn.GetId())
 		}
 	}
 }
 
-func (p *Probe) onConnLocalRemote(t cc.CrossConnectEventType, conn *cc.CrossConnect) {
+func (p *Probe) onConnLocalRemote(t cc.CrossConnectEventType, conn *cc.CrossConnect, url string) {
 	p.Lock()
 	defer p.Unlock()
-	c, i := p.getConnectionWithRemote(conn.GetRemoteDestination().GetId())
+	c, i := p.getConnectionWithRemote(conn.GetRemoteDestination())
 	if t != cc.CrossConnectEventType_DELETE {
 		if c == nil {
 			c = &remoteConnectionPair{
@@ -262,21 +256,22 @@ func (p *Probe) onConnLocalRemote(t cc.CrossConnectEventType, conn *cc.CrossConn
 					payload: conn.GetPayload(),
 				},
 				remote: conn.GetRemoteDestination(),
-				srcID:  conn.GetId(),
-				//TODO: compare payloads, they should be identical
+				srcCc: &crossConnect{
+					ID:  conn.GetId(),
+					url: url,
+				},
 			}
-			logging.GetLogger().Debugf("NSM: adding local to remote connection %+v", c)
-			p.connections = append(p.connections, c)
-			//TODO: we erase previous payload if exist
-			c.payload = conn.GetPayload()
+			p.addConnection(c)
 
 		} else {
-			logging.GetLogger().Debugf("NSM: adding source to local to remote connection %+v", c)
 			c.src = conn.GetLocalSource()
-			c.srcID = conn.GetId()
-			//TODO: we erase previous payload if exist
+			c.srcCc = &crossConnect{
+				ID:  conn.GetId(),
+				url: url,
+			}
+			//TODO: compare payloads, they should be identical
 			c.payload = conn.GetPayload()
-			logging.GetLogger().Debugf("NSM: locking the graph for adding an Edge")
+			logging.GetLogger().Infof("NSM: local source added to remote connection %s", c.printCrossConnect())
 			p.g.Lock()
 			c.addEdge(p.g)
 			p.g.Unlock()
@@ -287,27 +282,25 @@ func (p *Probe) onConnLocalRemote(t cc.CrossConnectEventType, conn *cc.CrossConn
 			return
 		}
 
-		logging.GetLogger().Debugf("NSM: locking the graph for deleting an Edge")
 		p.g.Lock()
 		c.delEdge(p.g)
 		p.g.Unlock()
 
 		// Delete the link only if dst is also empty
 		if c.dst == nil {
-			logging.GetLogger().Debugf("NSM: deleting local to remote connection %+v", c)
 			p.removeConnectionItem(i)
-			logging.GetLogger().Debugf("NSM: %v connection left", len(p.connections))
 		} else {
-			logging.GetLogger().Debugf("NSM: removing source from local to remote connection %+v", c)
+			logging.GetLogger().Infof("NSM: removing source from local to remote connection %+v", c)
 			c.src = nil
+			c.srcCc = nil
 		}
 	}
 }
 
-func (p *Probe) onConnRemoteLocal(t cc.CrossConnectEventType, conn *cc.CrossConnect) {
+func (p *Probe) onConnRemoteLocal(t cc.CrossConnectEventType, conn *cc.CrossConnect, url string) {
 	p.Lock()
 	defer p.Unlock()
-	c, i := p.getConnectionWithRemote(conn.GetRemoteSource().GetId())
+	c, i := p.getConnectionWithRemote(conn.GetRemoteSource())
 	if t != cc.CrossConnectEventType_DELETE {
 		if c == nil {
 			c = &remoteConnectionPair{
@@ -316,18 +309,21 @@ func (p *Probe) onConnRemoteLocal(t cc.CrossConnectEventType, conn *cc.CrossConn
 					payload: conn.GetPayload(),
 				},
 				remote: conn.GetRemoteSource(),
-				dstID:  conn.GetId(),
-				//TODO: compare payloads, they should be identical
+				dstCc: &crossConnect{
+					ID:  conn.GetId(),
+					url: url,
+				},
 			}
-			logging.GetLogger().Debugf("NSM: adding remote to local connection %+v", c)
-			p.connections = append(p.connections, c)
+			p.addConnection(c)
 		} else {
-			logging.GetLogger().Debugf("NSM: adding destination to remote to local connection %+v", c)
 			c.dst = conn.GetLocalDestination()
-			c.dstID = conn.GetId()
+			c.dstCc = &crossConnect{
+				ID:  conn.GetId(),
+				url: url,
+			}
 			//TODO: compare payloads, they should be identical
 			c.payload = conn.GetPayload()
-			logging.GetLogger().Debugf("NSM: locking the graph for adding an Edge")
+			logging.GetLogger().Infof("NSM: local destination added to remote connection %s", c.printCrossConnect())
 			p.g.Lock()
 			c.addEdge(p.g)
 			p.g.Unlock()
@@ -338,37 +334,33 @@ func (p *Probe) onConnRemoteLocal(t cc.CrossConnectEventType, conn *cc.CrossConn
 			return
 		}
 
-		logging.GetLogger().Debugf("NSM: locking the graph for deleting an Edge")
 		p.g.Lock()
 		c.delEdge(p.g)
 		p.g.Unlock()
 
 		// Delete the link only if src is also empty
 		if c.getSource() == nil {
-			logging.GetLogger().Debugf("NSM: deleting local to remote connection %+v", c)
 			p.removeConnectionItem(i)
-			logging.GetLogger().Debugf("NSM: %v connection left", len(p.connections))
 		} else {
-			logging.GetLogger().Debugf("NSM: removing destination from remote to local connection %+v", c)
+			logging.GetLogger().Infof("NSM: removing destination from remote to local connection %+v", c)
 			c.dst = nil
+			c.dstCc = nil
 		}
 	}
 }
 
 // OnNodeAdded tell this probe a node in the graph has been added
 func (p *Probe) OnNodeAdded(n *graph.Node) {
-	if i, err := n.GetFieldInt64("Inode"); err == nil {
+	if inode, err := n.GetFieldInt64("Inode"); err == nil {
 		// Find connections with matching inode
-		logging.GetLogger().Debugf("NSM: node added with inode: %v", i)
 		p.Lock()
 		defer p.Unlock()
-		c, err := p.getConnectionsWithInode(i)
+		c, err := p.getConnectionsReadyWithInode(inode)
 		if err != nil {
 			logging.GetLogger().Errorf("NSM: error retreiving connections with inodes : %v", err)
 			return
 		}
 		if len(c) == 0 {
-			logging.GetLogger().Debugf("NSM: no connection ready with inode %v", i)
 			return
 		}
 
@@ -378,33 +370,17 @@ func (p *Probe) OnNodeAdded(n *graph.Node) {
 	}
 }
 
-// OnNodeDeleted tell this probe a node in the graph has been deleted
-func (p *Probe) OnNodeDeleted(n *graph.Node) {
-	if i, err := n.GetFieldInt64("Inode"); err == nil {
-		logging.GetLogger().Infof("NSM: node deleted with inode %v", i)
-	}
-	// If a graph node has been deleted, skydive should have automatically deleted egdes that was having this node as source or dest
-	// TODO: Consider removing the corresponding connection from the connection list,
-	// but it should be done by the corresponding CrossConnect DELETE events received from nsmds
-}
+// If a graph node has been deleted, skydive should have automatically deleted egdes that was having this node as source or dest
+// connection removal from the connection list should be done by the corresponding CrossConnect DELETE events received from nsmds
 
-// getConnectionsWithInode returns every connection that involves the inode, with a non empty source and/or destinatio
-func (p *Probe) getConnectionsWithInode(inode int64) ([]connection, error) {
+// getConnectionsReadyWithInode returns every connection that involves the inode, with a non empty source and/or destination
+func (p *Probe) getConnectionsReadyWithInode(inode int64) ([]connection, error) {
 	var c []connection
 	for i := range p.connections {
-		src := p.connections[i].getSource()
-		dst := p.connections[i].getDest()
-		if src == nil || dst == nil {
-			logging.GetLogger().Debugf("NSM: nil source or destination for connection %v", p.connections[i])
+		srcInode, dstInode := p.connections[i].getInodes()
+		if srcInode == 0 || dstInode == 0 {
+			logging.GetLogger().Debugf("NSM: nil source or destination for connection, %s", p.connections[i].printCrossConnect())
 			continue
-		}
-		srcInode, err := getLocalInode(p.connections[i].getSource())
-		if err != nil {
-			return nil, err
-		}
-		dstInode, err := getLocalInode(p.connections[i].getDest())
-		if err != nil {
-			return nil, err
 		}
 
 		if srcInode == inode || dstInode == inode {
@@ -414,28 +390,51 @@ func (p *Probe) getConnectionsWithInode(inode int64) ([]connection, error) {
 	return c, nil
 }
 
-func (p *Probe) getConnectionWithRemote(id string) (*remoteConnectionPair, int) {
+func (p *Probe) getConnection(url string, id string) (connection, int) {
+	for i := range p.connections {
+
+		if p.connections[i].isCrossConnectOwner(url, id) {
+			return p.connections[i], i
+		}
+	}
+	return nil, 0
+}
+
+func (p *Probe) getConnectionWithRemote(remote *remoteconn.Connection) (*remoteConnectionPair, int) {
 	// the probe has to be locked before calling this function
+
+	// since the remote crossconnect id is issued by the responder to the connection request,
+	//which is the DestinationNetworkServiceManagerName,
+	// it is unique only in the context of this nsmgr
+	// Then to check two remote connections are identical, we check the id and the destination nsmgr
 	for i := range p.connections {
 		c, ok := p.connections[i].(*remoteConnectionPair)
 		if !ok {
 			continue
 		}
 
-		if c.remote.GetId() == id {
+		if c.remote.GetId() == remote.GetId() && c.remote.GetDestinationNetworkServiceManagerName() == remote.GetDestinationNetworkServiceManagerName() {
 			return c, i
 		}
 	}
 	return nil, 0
 }
 
+func (p *Probe) addConnection(c connection) {
+	logging.GetLogger().Infof("NSM: adding connection, %+s", c.printCrossConnect())
+	p.connections = append(p.connections, c)
+	logging.GetLogger().Infof("NSM: connections count: %v", len(p.connections))
+}
+
 func (p *Probe) removeConnectionItem(i int) {
 	// the probe has to be locked before calling this function
 
+	logging.GetLogger().Infof("NSM: deleting connection, %s", p.connections[i].printCrossConnect())
 	// move last elem to position i and truncate the slice
 	p.connections[i] = p.connections[len(p.connections)-1]
 	p.connections[len(p.connections)-1] = nil
 	p.connections = p.connections[:len(p.connections)-1]
+	logging.GetLogger().Infof("NSM: %v connections left", len(p.connections))
 }
 
 func dial(ctx context.Context, network string, address string) (*grpc.ClientConn, error) {
