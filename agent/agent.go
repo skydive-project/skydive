@@ -50,7 +50,6 @@ type Agent struct {
 	pod                 *pod.Pod
 	graph               *graph.Graph
 	analyzerClientPool  *ws.StructClientPool
-	topologyEndpoint    *pod.TopologySubscriberEndpoint
 	rootNode            *graph.Node
 	topologyProbeBundle *probe.Bundle
 	flowProbeBundle     *probe.Bundle
@@ -62,9 +61,9 @@ type Agent struct {
 }
 
 // NewAnalyzerStructClientPool creates a new http WebSocket client Pool
-// with authentification
+// with authentication
 func NewAnalyzerStructClientPool(authOpts *shttp.AuthenticationOpts) (*ws.StructClientPool, error) {
-	pool := ws.NewStructClientPool("AnalyzerClientPool")
+	pool := ws.NewStructClientPool("AnalyzerClientPool", ws.PoolOpts{})
 
 	addresses, err := config.GetAnalyzerServiceAddresses()
 	if err != nil {
@@ -142,7 +141,7 @@ func (a *Agent) Stop() {
 	a.tidMapper.Stop()
 }
 
-// NewAgent instanciates a new Agent aiming to launch probes (topology and flow)
+// NewAgent instantiates a new Agent aiming to launch probes (topology and flow)
 func NewAgent() (*Agent, error) {
 	backend, err := graph.NewMemoryBackend()
 	if err != nil {
@@ -180,7 +179,7 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	// declare all extension available throught API and filtering
+	// declare all extension available through API and filtering
 	tr := traversal.NewGremlinTraversalParser()
 	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
@@ -205,7 +204,22 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	pod, err := pod.NewPod(apiServer, analyzerClientPool, g, apiAuthBackend, clusterAuthOptions, tr, true, 10000, 2*time.Second, 5*time.Second)
+	validator, err := topology.NewSchemaValidator()
+	if err != nil {
+		return nil, fmt.Errorf("Unable to instantiate a schema validator: %s", err)
+	}
+
+	opts := pod.Opts{
+		ServerOpts: websocket.ServerOpts{
+			WriteCompression: true,
+			QueueSize:        10000,
+			PingDelay:        2 * time.Second,
+			PongTimeout:      5 * time.Second,
+		},
+		Validator: validator,
+	}
+
+	pod, err := pod.NewPod(apiServer, analyzerClientPool, g, apiAuthBackend, clusterAuthOptions, tr, opts)
 	if err != nil {
 		return nil, err
 	}

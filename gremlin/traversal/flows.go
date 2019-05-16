@@ -910,7 +910,7 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 	}
 
 	if err != nil {
-		logging.GetLogger().Errorf("Error while looking for flows: %s", err.Error())
+		logging.GetLogger().Errorf("Error while looking for flows: %s", err)
 		return nil, err
 	}
 

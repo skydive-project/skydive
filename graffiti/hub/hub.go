@@ -19,13 +19,20 @@ package hub
 
 import (
 	"github.com/skydive-project/skydive/common"
+	gc "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
-	"github.com/skydive-project/skydive/graffiti/pod"
+	"github.com/skydive-project/skydive/graffiti/validator"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/websocket"
 )
+
+// Opts Hub options
+type Opts struct {
+	ServerOpts websocket.ServerOpts
+	Validator  validator.Validator
+}
 
 // Hub describes a graph hub that accepts incoming connections
 // from pods, other hubs, subscribers or external publishers
@@ -33,11 +40,10 @@ type Hub struct {
 	server              *shttp.Server
 	apiAuthBackend      shttp.AuthenticationBackend
 	clusterAuthBackend  shttp.AuthenticationBackend
-	opts                websocket.ServerOpts
 	podWSServer         *websocket.StructServer
 	publisherWSServer   *websocket.StructServer
 	replicationWSServer *websocket.StructServer
-	replicationEndpoint *TopologyReplicationEndpoint
+	replicationEndpoint *ReplicationEndpoint
 	subscriberWSServer  *websocket.StructServer
 }
 
@@ -106,25 +112,25 @@ func (h *Hub) SubscriberServer() *websocket.StructServer {
 }
 
 // NewHub returns a new hub
-func NewHub(server *shttp.Server, g *graph.Graph, cached *graph.CachedBackend, apiAuthBackend, clusterAuthBackend shttp.AuthenticationBackend, clusterAuthOptions *shttp.AuthenticationOpts, podEndpoint string, peers []common.ServiceAddress, opts websocket.ServerOpts) (*Hub, error) {
+func NewHub(server *shttp.Server, g *graph.Graph, cached *graph.CachedBackend, apiAuthBackend, clusterAuthBackend shttp.AuthenticationBackend, clusterAuthOptions *shttp.AuthenticationOpts, podEndpoint string, peers []common.ServiceAddress, opts Opts) (*Hub, error) {
 	newWSServer := func(endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
-		return websocket.NewServer(server, endpoint, authBackend, opts)
+		return websocket.NewServer(server, endpoint, authBackend, opts.ServerOpts)
 	}
 
 	podWSServer := websocket.NewStructServer(newWSServer(podEndpoint, clusterAuthBackend))
-	_, err := NewTopologyPodEndpoint(podWSServer, cached, g)
+	_, err := NewPodEndpoint(podWSServer, cached, g)
 	if err != nil {
 		return nil, err
 	}
 
 	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", apiAuthBackend))
-	_, err = NewTopologyPublisherEndpoint(publisherWSServer, cached, g)
+	_, err = NewPublisherEndpoint(publisherWSServer, cached, g, opts.Validator)
 	if err != nil {
 		return nil, err
 	}
 
 	replicationWSServer := websocket.NewStructServer(newWSServer("/ws/replication", clusterAuthBackend))
-	replicationEndpoint, err := NewTopologyReplicationEndpoint(replicationWSServer, clusterAuthOptions, cached, g, peers)
+	replicationEndpoint, err := NewReplicationEndpoint(replicationWSServer, clusterAuthOptions, cached, g, peers)
 	if err != nil {
 		return nil, err
 	}
@@ -134,13 +140,12 @@ func NewHub(server *shttp.Server, g *graph.Graph, cached *graph.CachedBackend, a
 	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
 
 	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", apiAuthBackend))
-	pod.NewTopologySubscriberEndpoint(subscriberWSServer, g, tr)
+	gc.NewSubscriberEndpoint(subscriberWSServer, g, tr)
 
 	return &Hub{
 		server:              server,
 		apiAuthBackend:      apiAuthBackend,
 		clusterAuthBackend:  clusterAuthBackend,
-		opts:                opts,
 		podWSServer:         podWSServer,
 		replicationEndpoint: replicationEndpoint,
 		replicationWSServer: replicationWSServer,

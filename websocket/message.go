@@ -320,6 +320,7 @@ type StructSpeaker struct {
 	nsSubscribed   map[string]bool
 	replyChanMutex common.RWMutex
 	replyChan      map[string]chan *StructMessage
+	logger         logging.Logger
 }
 
 // Send sends a message according to the namespace.
@@ -381,19 +382,20 @@ func (s *StructSpeaker) OnMessage(c Speaker, m Message) {
 
 		var structMsg StructMessage
 		if err := structMsg.unmarshalByProtocol(bytes, c.GetClientProtocol()); err != nil {
-			logging.GetLogger().Error(err)
+			s.logger.Error(err)
 			return
 		}
 		s.structSpeakerEventDispatcher.dispatchMessage(c, &structMsg)
 	}
 }
 
-func newStructSpeaker(c Speaker) *StructSpeaker {
+func newStructSpeaker(c Speaker, logger logging.Logger) *StructSpeaker {
 	s := &StructSpeaker{
 		Speaker: c,
 		structSpeakerEventDispatcher: newStructSpeakerEventDispatcher(),
 		nsSubscribed:                 make(map[string]bool),
 		replyChan:                    make(map[string]chan *StructMessage),
+		logger:                       logger,
 	}
 
 	// subscribing to itself so that the StructSpeaker can get Message and can convert them
@@ -404,15 +406,16 @@ func newStructSpeaker(c Speaker) *StructSpeaker {
 
 // UpgradeToStructSpeaker a WebSocket client to a StructSpeaker
 func (c *Client) UpgradeToStructSpeaker() *StructSpeaker {
-	s := newStructSpeaker(c)
+	s := newStructSpeaker(c, c.logger)
 	c.Lock()
 	c.wsSpeaker = s
+	s.nsSubscribed[WildcardNamespace] = true
 	c.Unlock()
 	return s
 }
 
 func (c *wsIncomingClient) upgradeToStructSpeaker() *StructSpeaker {
-	s := newStructSpeaker(c)
+	s := newStructSpeaker(c, c.logger)
 	c.Lock()
 	c.wsSpeaker = s
 	c.Unlock()
@@ -455,8 +458,8 @@ func (s *StructClientPool) Request(host string, request *StructMessage, timeout 
 }
 
 // NewStructClientPool returns a new StructClientPool.
-func NewStructClientPool(name string) *StructClientPool {
-	pool := NewClientPool(name)
+func NewStructClientPool(name string, opts PoolOpts) *StructClientPool {
+	pool := NewClientPool(name, opts)
 	return &StructClientPool{
 		ClientPool:                       pool,
 		structSpeakerPoolEventDispatcher: newStructSpeakerPoolEventDispatcher(pool),
@@ -526,7 +529,7 @@ func NewStructServer(server *Server) *StructServer {
 			}
 		}
 
-		// if empty use wilcard for backward compatibility
+		// if empty use wildcard for backward compatibility
 		if len(c.nsSubscribed) == 0 {
 			c.nsSubscribed[WildcardNamespace] = true
 		}

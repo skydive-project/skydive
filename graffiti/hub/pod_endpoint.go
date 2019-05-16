@@ -25,8 +25,8 @@ import (
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
-// TopologyAgentEndpoint serves the graph for agents.
-type TopologyAgentEndpoint struct {
+// AgentEndpoint serves the graph for agents.
+type AgentEndpoint struct {
 	common.RWMutex
 	ws.DefaultSpeakerEventHandler
 	pool    ws.StructSpeakerPool
@@ -36,7 +36,7 @@ type TopologyAgentEndpoint struct {
 }
 
 // OnDisconnected called when an agent disconnected.
-func (t *TopologyAgentEndpoint) OnDisconnected(c ws.Speaker) {
+func (t *AgentEndpoint) OnDisconnected(c ws.Speaker) {
 	origin := clientOrigin(c)
 
 	t.RLock()
@@ -60,7 +60,7 @@ func (t *TopologyAgentEndpoint) OnDisconnected(c ws.Speaker) {
 }
 
 // OnStructMessage is triggered when a message from the agent is received.
-func (t *TopologyAgentEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
+func (t *AgentEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	origin := clientOrigin(c)
 
 	t.Lock()
@@ -117,13 +117,13 @@ func (t *TopologyAgentEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMess
 	}
 
 	if err != nil {
-		logging.GetLogger().Errorf("%s, %+v", err, obj)
+		logging.GetLogger().Errorf("%s, %+v", err, msg)
 	}
 }
 
-// NewTopologyPodEndpoint returns a new server that handles messages from the agents
-func NewTopologyPodEndpoint(pool ws.StructSpeakerPool, cached *graph.CachedBackend, g *graph.Graph) (*TopologyAgentEndpoint, error) {
-	t := &TopologyAgentEndpoint{
+// NewPodEndpoint returns a new server that handles messages from the agents
+func NewPodEndpoint(pool ws.StructSpeakerPool, cached *graph.CachedBackend, g *graph.Graph) (*AgentEndpoint, error) {
+	t := &AgentEndpoint{
 		Graph:   g,
 		pool:    pool,
 		cached:  cached,

@@ -18,21 +18,27 @@
 package pod
 
 import (
-	"time"
-
 	api "github.com/skydive-project/skydive/api/server"
+	"github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/validator"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/websocket"
 )
+
+// Opts defines pod server options
+type Opts struct {
+	ServerOpts websocket.ServerOpts
+	Validator  validator.Validator
+}
 
 // Pod describes a graph pod. It maintains a local graph
 // in memory and forward any event to graph hubs
 type Pod struct {
 	subscriberWSServer *websocket.StructServer
-	topologyEndpoint   *TopologySubscriberEndpoint
-	tforwarder         *TopologyForwarder
+	publisherWSServer  *websocket.StructServer
+	forwarder          *Forwarder
 	clientPool         *websocket.StructClientPool
 }
 
@@ -51,18 +57,20 @@ type ConnStatus struct {
 // Start the pod
 func (p *Pod) Start() {
 	p.subscriberWSServer.Start()
+	p.publisherWSServer.Start()
 }
 
 // Stop the pod
 func (p *Pod) Stop() {
 	p.subscriberWSServer.Stop()
+	p.publisherWSServer.Stop()
 }
 
 // GetStatus returns the status of the pod
 func (p *Pod) GetStatus() *Status {
 	var masterAddr string
 	var masterPort int
-	if master := p.tforwarder.GetMaster(); master != nil {
+	if master := p.forwarder.GetMaster(); master != nil {
 		masterAddr, masterPort = master.GetAddrPort()
 	}
 
@@ -85,33 +93,31 @@ func (p *Pod) SubscriberServer() *websocket.StructServer {
 	return p.subscriberWSServer
 }
 
-// TopologyForwarder returns the pod topology forwarder
-func (p *Pod) TopologyForwarder() *TopologyForwarder {
-	return p.tforwarder
+// Forwarder returns the pod topology forwarder
+func (p *Pod) Forwarder() *Forwarder {
+	return p.forwarder
 }
 
 // NewPod returns a new pod
-func NewPod(server *api.Server, clientPool *websocket.StructClientPool, g *graph.Graph, apiAuthBackend shttp.AuthenticationBackend, clusterAuthOptions *shttp.AuthenticationOpts, tr *traversal.GremlinTraversalParser, writeCompression bool, queueSize int, pingDelay, pongTimeout time.Duration) (*Pod, error) {
-	opts := websocket.ServerOpts{
-		WriteCompression: writeCompression,
-		QueueSize:        queueSize,
-		PingDelay:        time.Duration(pingDelay) * time.Second,
-		PongTimeout:      time.Duration(pongTimeout) * time.Second,
-	}
-
+func NewPod(server *api.Server, clientPool *websocket.StructClientPool, g *graph.Graph, apiAuthBackend shttp.AuthenticationBackend, clusterAuthOptions *shttp.AuthenticationOpts, tr *traversal.GremlinTraversalParser, opts Opts) (*Pod, error) {
 	newWSServer := func(endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
-		return websocket.NewServer(server.HTTPServer, endpoint, authBackend, opts)
+		return websocket.NewServer(server.HTTPServer, endpoint, authBackend, opts.ServerOpts)
 	}
 
 	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", apiAuthBackend))
-	topologyEndpoint := NewTopologySubscriberEndpoint(subscriberWSServer, g, tr)
+	common.NewSubscriberEndpoint(subscriberWSServer, g, tr)
 
-	tforwarder := NewTopologyForwarder(server.HTTPServer.Host, g, clientPool)
+	forwarder := NewForwarder(server.HTTPServer.Host, g, clientPool)
+
+	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", apiAuthBackend))
+	if _, err := NewPublisherEndpoint(publisherWSServer, g, opts.Validator); err != nil {
+		return nil, err
+	}
 
 	return &Pod{
 		subscriberWSServer: subscriberWSServer,
-		topologyEndpoint:   topologyEndpoint,
-		tforwarder:         tforwarder,
+		publisherWSServer:  publisherWSServer,
+		forwarder:          forwarder,
 		clientPool:         clientPool,
 	}, nil
 }

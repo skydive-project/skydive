@@ -24,16 +24,17 @@ import (
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
-// TopologyForwarder forwards the topology to only one master server.
+// Forwarder forwards the topology to only one master server.
 // When switching from one analyzer to another one the agent does a full
 // re-sync since some messages could have been lost.
-type TopologyForwarder struct {
+type Forwarder struct {
 	masterElection *ws.MasterElection
 	graph          *graph.Graph
 	host           string
+	synced         bool
 }
 
-func (t *TopologyForwarder) triggerResync() {
+func (t *Forwarder) triggerResync() {
 	logging.GetLogger().Infof("Start a re-sync for %s", t.host)
 
 	t.graph.RLock()
@@ -48,65 +49,70 @@ func (t *TopologyForwarder) triggerResync() {
 
 // OnNewMaster is called by the master election mechanism when a new master is elected. In
 // such case a "Re-sync" is triggered in order to be in sync with the new master.
-func (t *TopologyForwarder) OnNewMaster(c ws.Speaker) {
+func (t *Forwarder) OnNewMaster(c ws.Speaker) {
 	if c == nil {
-		logging.GetLogger().Warn("Lost connection to master")
+		logging.GetLogger().Warning("Lost connection to master")
+
+		// do not forward message before re-sync
+		t.graph.RemoveEventListener(t)
 	} else {
 		addr, port := c.GetAddrPort()
 		logging.GetLogger().Infof("Using %s:%d as master of topology forwarder", addr, port)
 
 		t.triggerResync()
+
+		// synced can now listen the graph
+		t.graph.AddEventListener(t)
 	}
 }
 
 // OnNodeUpdated graph node updated event. Implements the EventListener interface.
-func (t *TopologyForwarder) OnNodeUpdated(n *graph.Node) {
+func (t *Forwarder) OnNodeUpdated(n *graph.Node) {
 	t.masterElection.SendMessageToMaster(gws.NewStructMessage(gws.NodeUpdatedMsgType, n))
 }
 
 // OnNodeAdded graph node added event. Implements the EventListener interface.
-func (t *TopologyForwarder) OnNodeAdded(n *graph.Node) {
+func (t *Forwarder) OnNodeAdded(n *graph.Node) {
 	t.masterElection.SendMessageToMaster(gws.NewStructMessage(gws.NodeAddedMsgType, n))
 }
 
 // OnNodeDeleted graph node deleted event. Implements the EventListener interface.
-func (t *TopologyForwarder) OnNodeDeleted(n *graph.Node) {
+func (t *Forwarder) OnNodeDeleted(n *graph.Node) {
 	t.masterElection.SendMessageToMaster(gws.NewStructMessage(gws.NodeDeletedMsgType, n))
 }
 
 // OnEdgeUpdated graph edge updated event. Implements the EventListener interface.
-func (t *TopologyForwarder) OnEdgeUpdated(e *graph.Edge) {
+func (t *Forwarder) OnEdgeUpdated(e *graph.Edge) {
 	t.masterElection.SendMessageToMaster(gws.NewStructMessage(gws.EdgeUpdatedMsgType, e))
 }
 
 // OnEdgeAdded graph edge added event. Implements the EventListener interface.
-func (t *TopologyForwarder) OnEdgeAdded(e *graph.Edge) {
+func (t *Forwarder) OnEdgeAdded(e *graph.Edge) {
 	t.masterElection.SendMessageToMaster(gws.NewStructMessage(gws.EdgeAddedMsgType, e))
 }
 
 // OnEdgeDeleted graph edge deleted event. Implements the EventListener interface.
-func (t *TopologyForwarder) OnEdgeDeleted(e *graph.Edge) {
+func (t *Forwarder) OnEdgeDeleted(e *graph.Edge) {
 	t.masterElection.SendMessageToMaster(gws.NewStructMessage(gws.EdgeDeletedMsgType, e))
 }
 
 // GetMaster returns the current analyzer the agent is sending its events to
-func (t *TopologyForwarder) GetMaster() ws.Speaker {
+func (t *Forwarder) GetMaster() ws.Speaker {
 	return t.masterElection.GetMaster()
 }
 
-// NewTopologyForwarder returns a new Graph forwarder which forwards event of the given graph
+// NewForwarder returns a new Graph forwarder which forwards event of the given graph
 // to the given WebSocket JSON speakers.
-func NewTopologyForwarder(host string, g *graph.Graph, pool ws.StructSpeakerPool) *TopologyForwarder {
+func NewForwarder(host string, g *graph.Graph, pool ws.StructSpeakerPool) *Forwarder {
 	masterElection := ws.NewMasterElection(pool)
 
-	t := &TopologyForwarder{
+	t := &Forwarder{
 		masterElection: masterElection,
 		graph:          g,
 		host:           host,
 	}
 
 	masterElection.AddEventHandler(t)
-	g.AddEventListener(t)
 
 	return t
 }

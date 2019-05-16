@@ -36,7 +36,6 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/hub"
-	"github.com/skydive-project/skydive/graffiti/pod"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -258,11 +257,19 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, fmt.Errorf("Unable to get the analyzers list: %s", err)
 	}
 
-	opts := websocket.ServerOpts{
-		WriteCompression: true,
-		QueueSize:        10000,
-		PingDelay:        2 * time.Second,
-		PongTimeout:      5 * time.Second,
+	validator, err := topology.NewSchemaValidator()
+	if err != nil {
+		return nil, fmt.Errorf("Unable to instantiate a schema validator: %s", err)
+	}
+
+	opts := hub.Opts{
+		ServerOpts: websocket.ServerOpts{
+			WriteCompression: true,
+			QueueSize:        10000,
+			PingDelay:        2 * time.Second,
+			PongTimeout:      5 * time.Second,
+		},
+		Validator: validator,
 	}
 
 	clusterAuthOptions := ClusterAuthenticationOpts()
@@ -286,9 +293,6 @@ func NewServerFromConfig() (*Server, error) {
 	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
-
-	subscriberWSServer := ws.NewStructServer(config.NewWSServer(hserver, "/ws/subscriber", apiAuthBackend))
-	pod.NewTopologySubscriberEndpoint(subscriberWSServer, g, tr)
 
 	probeBundle, err := NewTopologyProbeBundleFromConfig(g)
 	if err != nil {

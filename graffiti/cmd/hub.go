@@ -109,7 +109,11 @@ var HubCmd = &cobra.Command{
 			PongTimeout:      time.Second * time.Duration(pongTimeout),
 		}
 
-		hub, err := hub.NewHub(httpServer, g, cached, authBackend, authBackend, nil, "/ws/pod", nil, serverOpts)
+		hubOpts := hub.Opts{
+			ServerOpts: serverOpts,
+		}
+
+		hub, err := hub.NewHub(httpServer, g, cached, authBackend, authBackend, nil, "/ws/pod", nil, hubOpts)
 		if err != nil {
 			logging.GetLogger().Error(err)
 			os.Exit(1)

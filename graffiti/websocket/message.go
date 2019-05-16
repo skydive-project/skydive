@@ -33,15 +33,17 @@ const (
 
 // Graph message type
 const (
-	SyncMsgType        = "Sync"
-	SyncRequestMsgType = "SyncRequest"
-	SyncReplyMsgType   = "SyncReply"
-	NodeUpdatedMsgType = "NodeUpdated"
-	NodeDeletedMsgType = "NodeDeleted"
-	NodeAddedMsgType   = "NodeAdded"
-	EdgeUpdatedMsgType = "EdgeUpdated"
-	EdgeDeletedMsgType = "EdgeDeleted"
-	EdgeAddedMsgType   = "EdgeAdded"
+	SyncMsgType                 = "Sync"
+	SyncRequestMsgType          = "SyncRequest"
+	SyncReplyMsgType            = "SyncReply"
+	NodeUpdatedMsgType          = "NodeUpdated"
+	NodeDeletedMsgType          = "NodeDeleted"
+	NodeAddedMsgType            = "NodeAdded"
+	EdgeUpdatedMsgType          = "EdgeUpdated"
+	EdgeDeletedMsgType          = "EdgeDeleted"
+	EdgeAddedMsgType            = "EdgeAdded"
+	NodePartiallyUpdatedMsgType = "NodePartiallyUpdated"
+	EdgePartiallyUpdatedMsgType = "EdgePartiallyUpdated"
 )
 
 // Graph error message
@@ -53,12 +55,18 @@ var (
 // SyncRequestMsg describes a graph synchro request message
 type SyncRequestMsg struct {
 	graph.Context
-	GremlinFilter string
+	GremlinFilter *string
 }
 
 // SyncMsg describes graph synchro message
 type SyncMsg struct {
 	*graph.Elements
+}
+
+// PartiallyUpdatedMsg describes multiple graph modifications
+type PartiallyUpdatedMsg struct {
+	ID  graph.Identifier
+	Ops []graph.PartiallyUpdatedOp
 }
 
 // NewStructMessage returns a new graffiti websocket StructMessage
@@ -70,7 +78,7 @@ func NewStructMessage(typ string, i interface{}) *ws.StructMessage {
 func (s *SyncRequestMsg) UnmarshalJSON(b []byte) error {
 	raw := struct {
 		Time          int64
-		GremlinFilter string
+		GremlinFilter *string
 	}{}
 
 	if err := json.Unmarshal(b, &raw); err != nil {
@@ -112,6 +120,13 @@ func UnmarshalMessage(msg *ws.StructMessage) (string, interface{}, error) {
 			return "", msg, err
 		}
 		return msg.Type, &edge, nil
+	case NodePartiallyUpdatedMsgType, EdgePartiallyUpdatedMsgType:
+		var pu PartiallyUpdatedMsg
+		if err := json.Unmarshal(msg.Obj, &pu); err != nil {
+			return "", msg, err
+		}
+
+		return msg.Type, &pu, nil
 	}
 
 	return "", msg, nil

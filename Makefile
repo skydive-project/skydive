@@ -76,7 +76,7 @@ ifeq ($(COVERAGE), true)
 endif
 TIMEOUT?=1m
 TEST_PATTERN?=
-UT_PACKAGES?=$(shell $(GOVENDOR) list -no-status +local | grep -v '/tests')
+UT_PACKAGES?=$(shell $(GOVENDOR) list -no-status +local | grep -Ev '/tests|/contrib')
 FUNC_TESTS_CMD:="grep -e 'func Test${TEST_PATTERN}' tests/*.go | perl -pe 's|.*func (.*?)\(.*|\1|g' | shuf"
 FUNC_TESTS:=$(shell sh -c $(FUNC_TESTS_CMD))
 DOCKER_IMAGE?=skydive/skydive
@@ -391,14 +391,41 @@ static: skydive.clean govendor genlocalfiles
 	$(MAKE) compile.static WITH_LIBVIRT_GO=false
 
 .PHONY: contribs.clean
-contribs.clean:
-	$(MAKE) -C contrib/snort clean
-	$(MAKE) -C contrib/objectstore clean
+contribs.clean: contrib.objectstore.clean contrib.snort.clean contrib.collectd.clean
+
+.PHONY: contribs.test
+contribs.test: contrib.objectstore.test
 
 .PHONY: contribs
-contribs: govendor genlocalfiles
-	$(MAKE) -C contrib/snort
+contribs: contrib.objectstore contrib.snort contrib.collectd
+
+.PHONY: contrib.objectstore.clean
+contrib.objectstore.clean:
+	$(MAKE) -C contrib/objectstore clean
+
+.PHONY: contrib.objectstore
+contrib.objectstore: govendor genlocalfiles
 	$(MAKE) -C contrib/objectstore
+
+.PHONY: contrib.objectstore.test
+contrib.objectstore.test: govendor genlocalfiles
+	$(MAKE) -C contrib/objectstore test
+
+.PHONY: contribs.snort.clean
+contrib.snort.clean:
+	$(MAKE) -C contrib/snort clean
+
+.PHONY: contrib.snort
+contrib.snort:govendor genlocalfiles
+	$(MAKE) -C contrib/snort
+
+.PHONY: contrib.collectd.clean
+contrib.collectd.clean:
+	$(MAKE) -C contrib/collectd clean
+
+.PHONY: contrib.collectd
+contrib.collectd: govendor genlocalfiles
+	$(MAKE) -C contrib/collectd
 
 .PHONY: dpdk.build
 dpdk.build:

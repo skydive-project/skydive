@@ -39,6 +39,11 @@ type SpeakerPool interface {
 	SendMessageTo(m Message, host string) error
 }
 
+// PoolOpts defines pool options
+type PoolOpts struct {
+	Logger logging.Logger
+}
+
 // Pool is a connection container. It embed a list of Speaker.
 type Pool struct {
 	common.RWMutex
@@ -48,6 +53,7 @@ type Pool struct {
 	eventHandlers     []SpeakerEventHandler
 	eventHandlersLock common.RWMutex
 	speakers          []Speaker
+	opts              PoolOpts
 }
 
 // ClientPool is a pool of out going Speaker meaning connection to a remote
@@ -76,7 +82,7 @@ func (s *Pool) OnConnected(c Speaker) {
 
 // OnDisconnected forwards the OnConnected event to event listeners of the pool.
 func (s *Pool) OnDisconnected(c Speaker) {
-	logging.GetLogger().Debugf("OnDisconnected %s for pool %s ", c.GetRemoteHost(), s.GetName())
+	s.opts.Logger.Debugf("OnDisconnected %s for pool %s ", c.GetRemoteHost(), s.GetName())
 	s.eventHandlersLock.RLock()
 	for _, h := range s.eventHandlers {
 		h.OnDisconnected(c)
@@ -93,7 +99,7 @@ func (s *incomerPool) OnDisconnected(c Speaker) {
 
 // AddClient adds the given Speaker to the pool.
 func (s *Pool) AddClient(c Speaker) error {
-	logging.GetLogger().Debugf("AddClient %s for pool %s", c.GetRemoteHost(), s.GetName())
+	s.opts.Logger.Debugf("AddClient %s for pool %s", c.GetRemoteHost(), s.GetName())
 	s.Lock()
 	s.speakers = append(s.speakers, c)
 	s.Unlock()
@@ -106,7 +112,7 @@ func (s *Pool) AddClient(c Speaker) error {
 
 // AddClient adds the given Speaker to the incomerPool.
 func (s *incomerPool) AddClient(c Speaker) error {
-	logging.GetLogger().Debugf("AddClient %s for pool %s", c.GetRemoteHost(), s.GetName())
+	s.opts.Logger.Debugf("AddClient %s for pool %s", c.GetRemoteHost(), s.GetName())
 	s.Lock()
 	s.speakers = append(s.speakers, c)
 	s.Unlock()
@@ -134,12 +140,12 @@ func (s *Pool) RemoveClient(c Speaker) bool {
 	host := c.GetRemoteHost()
 	for i, ic := range s.speakers {
 		if ic.GetRemoteHost() == host {
-			logging.GetLogger().Debugf("Successfully removed client %s for pool %s", host, s.GetName())
+			s.opts.Logger.Debugf("Successfully removed client %s for pool %s", host, s.GetName())
 			s.speakers = append(s.speakers[:i], s.speakers[i+1:]...)
 			return true
 		}
 	}
-	logging.GetLogger().Debugf("Failed to remove client %s for pool %s", host, s.GetName())
+	s.opts.Logger.Debugf("Failed to remove client %s for pool %s", host, s.GetName())
 
 	return false
 }
@@ -198,11 +204,19 @@ func (s *Pool) DisconnectAll() {
 	s.eventHandlers = s.eventHandlers[:0]
 	s.eventHandlersLock.Unlock()
 
+	var wg sync.WaitGroup
+
 	s.RLock()
 	for _, c := range s.speakers {
-		c.Stop()
+		wg.Add(1)
+		go func(c Speaker) {
+			c.StopAndWait()
+			wg.Done()
+		}(c)
 	}
 	s.RUnlock()
+
+	wg.Wait()
 }
 
 // GetSpeakersByType returns Speakers matching the given type.
@@ -245,11 +259,11 @@ func (s *Pool) BroadcastMessage(m Message) {
 	for _, c := range s.speakers {
 		r, err := m.Bytes(c.GetClientProtocol())
 		if err != nil {
-			logging.GetLogger().Errorf("Unable to send raw message: %s", err)
+			s.opts.Logger.Errorf("Unable to send raw message: %s", err)
 		}
 
 		if err := c.SendRaw(r); err != nil {
-			logging.GetLogger().Errorf("Unable to send raw message: %s", err)
+			s.opts.Logger.Errorf("Unable to send raw message: %s", err)
 		}
 	}
 }
@@ -281,22 +295,27 @@ func (s *ClientPool) ConnectAll() {
 	s.RUnlock()
 }
 
-func newPool(name string) *Pool {
+func newPool(name string, opts PoolOpts) *Pool {
 	return &Pool{
 		name: name,
+		opts: opts,
 	}
 }
 
-func newIncomerPool(name string) *incomerPool {
+func newIncomerPool(name string, opts PoolOpts) *incomerPool {
 	return &incomerPool{
-		Pool: newPool(name),
+		Pool: newPool(name, opts),
 	}
 }
 
 // NewClientPool returns a new ClientPool meaning a pool of outgoing Client.
-func NewClientPool(name string) *ClientPool {
+func NewClientPool(name string, opts PoolOpts) *ClientPool {
+	if opts.Logger == nil {
+		opts.Logger = logging.GetLogger()
+	}
+
 	s := &ClientPool{
-		Pool: newPool(name),
+		Pool: newPool(name, opts),
 	}
 
 	s.Start()

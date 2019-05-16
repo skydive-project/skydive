@@ -18,9 +18,11 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -50,7 +52,7 @@ func shortID(s graph.Identifier) graph.Identifier {
 	return s
 }
 
-func (t *TopologyAPI) graphToDot(w http.ResponseWriter, g *graph.Graph) {
+func (t *TopologyAPI) graphToDot(w io.Writer, g *graph.Graph) {
 	g.RLock()
 	defer g.RUnlock()
 
@@ -103,18 +105,28 @@ func (t *TopologyAPI) topologyIndex(w http.ResponseWriter, r *auth.Authenticated
 		return
 	}
 
-	t.graph.RLock()
-	defer t.graph.RUnlock()
+	// use a buffer to render the result in order to limit the lock time
+	// if the client is slow
+	var b bytes.Buffer
 
 	w.WriteHeader(http.StatusOK)
 	if strings.Contains(r.Header.Get("Accept"), "vnd.graphviz") {
 		w.Header().Set("Content-Type", "text/vnd.graphviz; charset=UTF-8")
-		t.graphToDot(w, t.graph)
+		t.graphToDot(&b, t.graph)
 	} else {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		if err := json.NewEncoder(w).Encode(t.graph); err != nil {
-			logging.GetLogger().Warningf("Error while writing response: %s", err)
+
+		t.graph.RLock()
+		if err := json.NewEncoder(&b).Encode(t.graph); err != nil {
+			t.graph.RUnlock()
+			writeError(w, http.StatusNotAcceptable, fmt.Errorf("Error while encoding response: %s", err))
+			return
 		}
+		t.graph.RUnlock()
+	}
+
+	if _, err := w.Write(b.Bytes()); err != nil {
+		logging.GetLogger().Errorf("Error while writing response: %s", err)
 	}
 }
 
@@ -154,42 +166,55 @@ func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 		return
 	}
 
+	// use a buffer to render the result in order to limit the lock time
+	// if the client is slow
+	var b bytes.Buffer
+
 	if strings.Contains(r.Header.Get("Accept"), "vnd.graphviz") {
 		if graphTraversal, ok := res.(*traversal.GraphTraversal); ok {
 			w.Header().Set("Content-Type", "text/vnd.graphviz; charset=UTF-8")
 			w.WriteHeader(http.StatusOK)
-			t.graphToDot(w, graphTraversal.Graph)
+			t.graphToDot(&b, graphTraversal.Graph)
 		} else {
 			writeError(w, http.StatusNotAcceptable, errors.New("Only graph can be outputted as dot"))
+			return
 		}
 	} else if strings.Contains(r.Header.Get("Accept"), "vnd.tcpdump.pcap") {
 		if rawPacketsTraversal, ok := res.(*ge.RawPacketsTraversalStep); ok {
 			values := rawPacketsTraversal.Values()
 			if len(values) == 0 {
 				writeError(w, http.StatusNotFound, errors.New("No raw packet found, please check your Gremlin request and the time context"))
-			} else {
-				w.Header().Set("Content-Type", "application/vnd.tcpdump.pcap; charset=UTF-8")
-				w.WriteHeader(http.StatusOK)
+				return
+			}
+			w.Header().Set("Content-Type", "application/vnd.tcpdump.pcap; charset=UTF-8")
+			w.WriteHeader(http.StatusOK)
 
-				pw := flow.NewPcapWriter(w)
-				for _, pf := range values {
-					m := pf.(map[string]*flow.RawPackets)
-					for _, fr := range m {
-						if err = pw.WriteRawPackets(fr); err != nil {
-							writeError(w, http.StatusNotAcceptable, errors.New(err.Error()))
-						}
+			pw := flow.NewPcapWriter(&b)
+			for _, pf := range values {
+				m := pf.(map[string]*flow.RawPackets)
+				for _, fr := range m {
+					if err = pw.WriteRawPackets(fr); err != nil {
+						writeError(w, http.StatusNotAcceptable, err)
+						return
 					}
 				}
 			}
 		} else {
 			writeError(w, http.StatusNotAcceptable, errors.New("Only RawPackets step result can be outputted as pcap"))
+			return
 		}
 	} else {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(res); err != nil {
-			logging.GetLogger().Errorf("Error while writing response: %s", err)
+
+		if err := json.NewEncoder(&b).Encode(res); err != nil {
+			writeError(w, http.StatusNotAcceptable, fmt.Errorf("Error while encoding response: %s", err))
+			return
 		}
+	}
+
+	if _, err := w.Write(b.Bytes()); err != nil {
+		logging.GetLogger().Errorf("Error while writing response: %s", err)
 	}
 }
 
