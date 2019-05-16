@@ -30,12 +30,12 @@ type DPDKProbesHandler struct {
 }
 
 // RegisterProbe registers a gopacket probe
-func (p *DPDKProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
-	return nil
+func (p *DPDKProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error) {
+	return nil, nil
 }
 
 // UnregisterProbe unregisters gopacket probe
-func (p *DPDKProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
+func (p *DPDKProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, fp Probe) error {
 	return nil
 }
 

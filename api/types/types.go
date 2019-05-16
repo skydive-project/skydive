@@ -90,7 +90,6 @@ type Capture struct {
 	Description     string           `json:"Description,omitempty" yaml:"Description"`
 	Type            string           `json:"Type,omitempty" valid:"isValidCaptureType" yaml:"Type"`
 	Count           int              `json:"Count" yaml:"Count"`
-	PCAPSocket      string           `json:"PCAPSocket,omitempty" yaml:"PCAPSocket"`
 	Port            int              `json:"Port,omitempty" yaml:"Port"`
 	SamplingRate    uint32           `json:"SamplingRate" yaml:"SamplingRate"`
 	PollingInterval uint32           `json:"PollingInterval" yaml:"PollingInterval"`

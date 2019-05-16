@@ -32,6 +32,7 @@ import (
 	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/client"
+	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/flow/server"
 	"github.com/skydive-project/skydive/flow/storage"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -40,6 +41,7 @@ import (
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/ondemand/client"
 	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/sflow"
@@ -83,8 +85,8 @@ type Server struct {
 	uiServer        *ui.Server
 	hub             *hub.Hub
 	alertServer     *alert.Server
-	onDemandClient  *ondemand.OnDemandProbeClient
-	piClient        *packetinjector.Client
+	onDemandClient  *client.OnDemandClient
+	piClient        *client.OnDemandClient
 	topologyManager *usertopology.TopologyManager
 	flowServer      *server.FlowServer
 	probeBundle     *probe.Bundle
@@ -347,7 +349,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	onDemandClient := ondemand.NewOnDemandProbeClient(g, captureAPIHandler, hub.PodServer(), hub.SubscriberServer(), etcdClient)
+	onDemandClient := ondemand.NewOnDemandFlowProbeClient(g, captureAPIHandler, hub.PodServer(), hub.SubscriberServer(), etcdClient)
 
 	flowServer, err := server.NewFlowServer(hserver, g, storage, flowSubscriberEndpoint, probeBundle, clusterAuthBackend)
 	if err != nil {
@@ -404,6 +406,7 @@ func init() {
 	// add decoders for specific metadata keys, this aims to keep the same
 	// object type between the agent and the analyzer
 	// Decoder will be used while unmarshal the metadata
+	graph.NodeMetadataDecoders["Captures"] = probes.CapturesMetadataDecoder
 	graph.NodeMetadataDecoders["RoutingTables"] = netlink.RoutingTablesMetadataDecoder
 	graph.NodeMetadataDecoders["FDB"] = netlink.NeighborMetadataDecoder
 	graph.NodeMetadataDecoders["Neighbors"] = netlink.NeighborMetadataDecoder

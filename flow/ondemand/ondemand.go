@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Red Hat, Inc.
+ * Copyright (C) 2019 Red Hat, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,12 @@
 package ondemand
 
 import (
-	api "github.com/skydive-project/skydive/api/types"
-)
-
-// Namespace "OnDemand"
-const (
-	Namespace             = "OnDemand"
-	NotificationNamespace = "OnDemandNotification"
+	"github.com/skydive-project/skydive/api/types"
 )
 
 // CaptureQuery describes a query for the capture API
+// easyjson:json
 type CaptureQuery struct {
 	NodeID  string
-	Capture api.Capture
+	Capture types.Capture
 }

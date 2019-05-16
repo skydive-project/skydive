@@ -30,6 +30,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/skydive-project/skydive/flow/probes"
+
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcapgo"
 	gclient "github.com/skydive-project/skydive/api/client"
@@ -1253,6 +1255,7 @@ func testFlowTunnel(t *testing.T, bridge string, tunnelType string, ipv6 bool, I
 }
 
 func TestReplayCapture(t *testing.T) {
+	var pcapSocket string
 	var capture *types.Capture
 
 	sendPCAPFile := func(filename string, socket string) error {
@@ -1300,17 +1303,25 @@ func TestReplayCapture(t *testing.T) {
 
 		settleFunction: func(c *TestContext) error {
 			capture = c.captures[0]
-			// Wait for the capture to be created and the PCAPSocket attribute to be set
-			c.client.Get("capture", capture.UUID, capture)
-			if capture.PCAPSocket == "" {
-				return fmt.Errorf("Failed to retrieve PCAP socket for capture %s", capture.UUID)
+			n, err := c.gh.GetNode(g.G.V().Has("Captures.ID", capture.UUID))
+			if err != nil {
+				return err
+			}
+
+			field, _ := n.GetField("Captures")
+			captures := field.(*probes.Captures)
+			for _, c := range *captures {
+				if c.PCAPSocket == "" {
+					return fmt.Errorf("Failed to retrieve PCAP socket for capture %s", capture.UUID)
+				}
+				pcapSocket = c.PCAPSocket
 			}
 
 			return nil
 		},
 
 		setupFunction: func(c *TestContext) error {
-			return sendPCAPFile("pcaptraces/eth-ip4-arp-dns-req-http-google.pcap", capture.PCAPSocket)
+			return sendPCAPFile("pcaptraces/eth-ip4-arp-dns-req-http-google.pcap", pcapSocket)
 		},
 
 		tearDownCmds: []Cmd{
@@ -1996,10 +2007,16 @@ func TestOvsMirror(t *testing.T) {
 				return fmt.Errorf("Unable to find the expected Mirror interface: %s", err)
 			}
 
-			mirrorOf, err := node.GetFieldString("Capture.MirrorOf")
+			field, err := node.GetField("Captures")
 			if err != nil {
 				return err
 			}
+
+			captures, ok := field.(*probes.Captures)
+			if !ok || len(*captures) == 0 {
+				return fmt.Errorf("Failed to retrieve captures on %s", node.ID)
+			}
+			mirrorOf := (*captures)[0].MirrorOf
 
 			if mirrorOf != string(orig.ID) {
 				aa, err := c.gh.GetNode(c.gremlin.V(mirrorOf))

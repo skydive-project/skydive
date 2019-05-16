@@ -19,180 +19,68 @@ package client
 
 import (
 	"encoding/json"
-	"net/http"
-	"time"
+	"fmt"
 
-	cache "github.com/pmylund/go-cache"
+	"github.com/skydive-project/skydive/flow/probes"
 
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/etcd"
-	"github.com/skydive-project/skydive/filters"
-	"github.com/skydive-project/skydive/flow/ondemand"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/gremlin"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/ondemand/client"
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
-// OnDemandProbeClient describes an ondemand probe client based on a websocket
-type OnDemandProbeClient struct {
-	common.RWMutex
-	common.MasterElection
-	graph.DefaultGraphListener
-	graph                *graph.Graph
-	captureHandler       *api.CaptureAPIHandler
-	agentPool            ws.StructSpeakerPool
-	subscriberPool       ws.StructSpeakerPool
-	captures             map[string]*types.Capture
-	watcher              api.StoppableWatcher
-	registeredNodes      map[string]*captureNodeState
-	deletedNodeCache     *cache.Cache
-	checkForRegistration *common.Debouncer
+type onDemandFlowHandler struct {
+	graph         *graph.Graph
+	nodeTypeQuery string
 }
 
-type captureNodeState struct {
-	uuid    string
-	started bool
-}
-
-type nodeProbe struct {
-	id      string
-	host    string
-	capture *types.Capture
-}
-
-// OnStructMessage event, valid message type : CaptureStartReply or CaptureStopReply message
-func (o *OnDemandProbeClient) OnStructMessage(c ws.Speaker, m *ws.StructMessage) {
-	var query ondemand.CaptureQuery
-	if err := json.Unmarshal(m.Obj, &query); err != nil {
-		logging.GetLogger().Errorf("Unable to decode capture %v", m)
-		return
+func (h *onDemandFlowHandler) DecodeMessage(msg json.RawMessage) (types.Resource, error) {
+	var capture types.Capture
+	if err := json.Unmarshal(msg, &capture); err != nil {
+		return nil, fmt.Errorf("Unable to decode capture: %s", err)
 	}
-
-	switch m.Type {
-	case "CaptureStartReply":
-		// not registered thus remove from registered cache
-		if m.Status != http.StatusOK {
-			logging.GetLogger().Debugf("Capture start request failed %v", m.Debug())
-			o.Lock()
-			delete(o.registeredNodes, query.NodeID)
-			o.Unlock()
-		} else {
-			logging.GetLogger().Debugf("Capture start request succeeded %v", m.Debug())
-		}
-		o.subscriberPool.BroadcastMessage(ws.NewStructMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", query.Capture.UUID))
-	case "CaptureStopReply":
-		if m.Status == http.StatusOK {
-			logging.GetLogger().Debugf("Capture stop request succeeded %v", m.Debug())
-			o.Lock()
-			delete(o.registeredNodes, query.NodeID)
-			o.Unlock()
-		} else {
-			logging.GetLogger().Debugf("Capture stop request failed %v", m.Debug())
-		}
-	}
+	return &capture, nil
 }
 
-func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *types.Capture) {
-	toRegister := func(node *graph.Node, capture *types.Capture) (nodeID graph.Identifier, host string, register bool) {
-		o.graph.RLock()
-		defer o.graph.RUnlock()
+func (h *onDemandFlowHandler) EncodeMessage(nodeID graph.Identifier, resource types.Resource) (json.RawMessage, error) {
+	bytes, err := json.Marshal(resource)
+	return json.RawMessage(bytes), err
+}
 
-		// check not already registered
-		o.RLock()
-		_, ok := o.registeredNodes[string(node.ID)]
-		o.RUnlock()
-
-		if ok {
-			return
-		}
-
-		if _, err := node.GetFieldString("Capture.ID"); err == nil {
-			return
-		}
-
-		tp, _ := node.GetFieldString("Type")
-		if !common.IsCaptureAllowed(tp) {
-			return
-		}
-
-		if node.Host == "" {
-			return
-		}
-
-		return node.ID, node.Host, true
-	}
-
-	nps := map[graph.Identifier]nodeProbe{}
-	for _, i := range nodes {
-		switch i.(type) {
-		case *graph.Node:
-			node := i.(*graph.Node)
-			if nodeID, host, ok := toRegister(node, capture); ok {
-				nps[nodeID] = nodeProbe{string(nodeID), host, capture}
-			}
-		case []*graph.Node:
-			// case of shortestpath that returns a list of nodes
-			for _, node := range i.([]*graph.Node) {
-				if nodeID, host, ok := toRegister(node, capture); ok {
-					nps[nodeID] = nodeProbe{string(nodeID), host, capture}
-				}
+func (h *onDemandFlowHandler) CheckState(node *graph.Node, resource types.Resource) bool {
+	capture := resource.(*types.Capture)
+	if captures, err := node.GetField("Captures"); err == nil {
+		for _, c := range *captures.(*probes.Captures) {
+			if c.ID == capture.UUID && c.State == "active" {
+				return true
 			}
 		}
 	}
-
-	if len(nps) > 0 {
-		go func() {
-			for _, np := range nps {
-				o.registerProbe(np)
-			}
-		}()
-	}
+	return false
 }
 
-func (o *OnDemandProbeClient) registerProbe(np nodeProbe) bool {
-	cq := ondemand.CaptureQuery{
-		NodeID:  np.id,
-		Capture: *np.capture,
-	}
-
-	msg := ws.NewStructMessage(ondemand.Namespace, "CaptureStart", cq)
-
-	if err := o.agentPool.SendMessageTo(msg, np.host); err != nil {
-		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", np.host, err)
-		return false
-	}
-	o.Lock()
-	o.registeredNodes[np.id] = &captureNodeState{uuid: cq.Capture.ID()}
-	o.Unlock()
-
-	return true
+func (h *onDemandFlowHandler) ResourceName() string {
+	return "Capture"
 }
 
-func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node, capture *types.Capture) bool {
-	cq := ondemand.CaptureQuery{
-		NodeID:  string(node.ID),
-		Capture: *capture,
+func (h *onDemandFlowHandler) GetNodes(resource types.Resource) []interface{} {
+	capture := resource.(*types.Capture)
+	query := capture.GremlinQuery
+	query += fmt.Sprintf(".Dedup().Has('Captures.ID', NEE('%s'))", resource.ID())
+	if capture.Type != "" && !common.CheckProbeCapabilities(capture.Type, common.MultipleOnSameNodeCapability) {
+		query += fmt.Sprintf(".Has('Captures.Type', NEE('%s'))", capture.Type)
 	}
-
-	msg := ws.NewStructMessage(ondemand.Namespace, "CaptureStop", cq)
-
-	if _, err := node.GetFieldString("Capture.ID"); err != nil {
-		return false
-	}
-
-	if err := o.agentPool.SendMessageTo(msg, node.Host); err != nil {
-		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", node.Host, err)
-		return false
-	}
-
-	return true
+	return h.applyGremlinExpr(query)
 }
 
-func (o *OnDemandProbeClient) applyGremlinExpr(query string) []interface{} {
-	res, err := ge.TopologyGremlinQuery(o.graph, query)
+func (h *onDemandFlowHandler) applyGremlinExpr(query string) []interface{} {
+	res, err := ge.TopologyGremlinQuery(h.graph, query)
 	if err != nil {
 		logging.GetLogger().Errorf("Gremlin %s error: %s", query, err)
 		return nil
@@ -200,212 +88,14 @@ func (o *OnDemandProbeClient) applyGremlinExpr(query string) []interface{} {
 	return res.Values()
 }
 
-// checkForRegistration check the capture gremlin expression in order to
-// register new probe.
-func (o *OnDemandProbeClient) checkForRegistrationCallback() {
-	if !o.IsMaster() {
-		return
+// NewOnDemandFlowProbeClient creates a new ondemand probe client based on API, graph and websocket
+func NewOnDemandFlowProbeClient(g *graph.Graph, ch api.Handler, agentPool ws.StructSpeakerPool, subscriberPool ws.StructSpeakerPool, etcdClient *etcd.Client) *client.OnDemandClient {
+	nodeTypes := make([]interface{}, len(common.CaptureTypes))
+	i := 0
+	for nodeType := range common.CaptureTypes {
+		nodeTypes[i] = nodeType
+		i++
 	}
-
-	o.graph.RLock()
-	defer o.graph.RUnlock()
-
-	o.RLock()
-	defer o.RUnlock()
-
-	for _, capture := range o.captures {
-		res := o.applyGremlinExpr(capture.GremlinQuery)
-		if len(res) > 0 {
-			go o.registerProbes(res, capture)
-		}
-	}
-}
-
-// OnNodeAdded graph event
-func (o *OnDemandProbeClient) OnNodeAdded(n *graph.Node) {
-	// a node comes up with already a capture, this could be due to a re-connect of
-	// an agent. Check if the capture is still active.
-	if id, err := n.GetFieldString("Capture.ID"); err == nil {
-		if !o.IsMaster() {
-			return
-		}
-
-		o.RLock()
-		_, found := o.captures[id]
-		o.RUnlock()
-
-		if found {
-			return
-		}
-
-		// not present unregister it
-		logging.GetLogger().Debugf("Unregister remaining capture for node %s: %s", n.ID, id)
-		go o.unregisterProbe(n, &types.Capture{BasicResource: types.BasicResource{UUID: id}})
-	} else {
-		o.checkForRegistration.Call()
-	}
-}
-
-// OnNodeUpdated graph event
-func (o *OnDemandProbeClient) OnNodeUpdated(n *graph.Node) {
-	o.RLock()
-	if state, ok := o.registeredNodes[string(n.ID)]; ok {
-		if !state.started {
-			if s, _ := n.GetFieldString("Capture.State"); s == "active" {
-				state.started = true
-				o.subscriberPool.BroadcastMessage(ws.NewStructMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", state.uuid))
-			}
-		}
-	}
-	o.RUnlock()
-
-	o.checkForRegistration.Call()
-}
-
-// OnNodeDeleted graph event
-func (o *OnDemandProbeClient) OnNodeDeleted(n *graph.Node) {
-	o.RLock()
-	if state, ok := o.registeredNodes[string(n.ID)]; ok {
-		o.subscriberPool.BroadcastMessage(ws.NewStructMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", state.uuid))
-	}
-	o.RUnlock()
-}
-
-// OnEdgeAdded graph event
-func (o *OnDemandProbeClient) OnEdgeAdded(e *graph.Edge) {
-	o.checkForRegistration.Call()
-}
-
-func (o *OnDemandProbeClient) registerCapture(capture *types.Capture) {
-	o.graph.RLock()
-	defer o.graph.RUnlock()
-
-	o.Lock()
-	o.captures[capture.UUID] = capture
-	o.Unlock()
-
-	nodes := o.applyGremlinExpr(capture.GremlinQuery)
-	if len(nodes) > 0 {
-		go o.registerProbes(nodes, capture)
-	}
-}
-
-func (o *OnDemandProbeClient) onCaptureAdded(capture *types.Capture) {
-	if !o.IsMaster() {
-		return
-	}
-
-	o.registerCapture(capture)
-}
-
-func (o *OnDemandProbeClient) unregisterCapture(capture *types.Capture) {
-	o.graph.RLock()
-	defer o.graph.RUnlock()
-
-	o.deletedNodeCache.Delete(capture.UUID)
-
-	o.Lock()
-	delete(o.captures, capture.UUID)
-	o.Unlock()
-
-	filter := filters.NewTermStringFilter("Capture.ID", capture.UUID)
-	nodes := o.graph.GetNodes(graph.NewElementFilter(filter))
-	for _, node := range nodes {
-		o.unregisterProbe(node, capture)
-	}
-}
-
-func (o *OnDemandProbeClient) onCaptureDeleted(capture *types.Capture) {
-	if !o.IsMaster() {
-		// fill the cache with recent delete in order to be able to delete then
-		// in case we lose the master and nobody is master yet. This cache will
-		// be used when becoming master.
-		o.deletedNodeCache.Set(capture.UUID, capture, cache.DefaultExpiration)
-		return
-	}
-
-	o.unregisterCapture(capture)
-}
-
-// OnStartAsMaster event
-func (o *OnDemandProbeClient) OnStartAsMaster() {
-}
-
-// OnStartAsSlave event
-func (o *OnDemandProbeClient) OnStartAsSlave() {
-}
-
-// OnSwitchToMaster event
-func (o *OnDemandProbeClient) OnSwitchToMaster() {
-	// try to delete recently added capture to handle case where the api got a delete but wasn't yet master
-	for _, item := range o.deletedNodeCache.Items() {
-		capture := item.Object.(*types.Capture)
-		o.unregisterCapture(capture)
-	}
-
-	for _, resource := range o.captureHandler.Index() {
-		capture := resource.(*types.Capture)
-		o.onCaptureAdded(capture)
-	}
-}
-
-// OnSwitchToSlave event
-func (o *OnDemandProbeClient) OnSwitchToSlave() {
-}
-
-func (o *OnDemandProbeClient) onAPIWatcherEvent(action string, id string, resource types.Resource) {
-	logging.GetLogger().Debugf("New watcher event %s for %s", action, id)
-	capture := resource.(*types.Capture)
-	switch action {
-	case "init", "create", "set", "update":
-		o.subscriberPool.BroadcastMessage(ws.NewStructMessage(ondemand.NotificationNamespace, "CaptureAdded", capture))
-		o.onCaptureAdded(capture)
-	case "expire", "delete":
-		o.subscriberPool.BroadcastMessage(ws.NewStructMessage(ondemand.NotificationNamespace, "CaptureDeleted", capture))
-		o.onCaptureDeleted(capture)
-	}
-}
-
-// Start the probe
-func (o *OnDemandProbeClient) Start() {
-	o.MasterElection.StartAndWait()
-
-	o.checkForRegistration.Start()
-
-	o.watcher = o.captureHandler.AsyncWatch(o.onAPIWatcherEvent)
-	o.graph.AddEventListener(o)
-}
-
-// Stop the probe
-func (o *OnDemandProbeClient) Stop() {
-	o.watcher.Stop()
-	o.MasterElection.Stop()
-	o.checkForRegistration.Stop()
-}
-
-// NewOnDemandProbeClient creates a new ondemand probe client based on Capture API, graph and websocket
-func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, agentPool ws.StructSpeakerPool, subscriberPool ws.StructSpeakerPool, etcdClient *etcd.Client) *OnDemandProbeClient {
-	resources := ch.Index()
-	captures := make(map[string]*types.Capture)
-	for _, resource := range resources {
-		captures[resource.ID()] = resource.(*types.Capture)
-	}
-
-	election := etcdClient.NewElection("ondemand-client")
-	o := &OnDemandProbeClient{
-		MasterElection:   election,
-		graph:            g,
-		captureHandler:   ch,
-		agentPool:        agentPool,
-		subscriberPool:   subscriberPool,
-		captures:         captures,
-		registeredNodes:  make(map[string]*captureNodeState),
-		deletedNodeCache: cache.New(election.TTL()*2, election.TTL()*2),
-	}
-	o.checkForRegistration = common.NewDebouncer(time.Second, o.checkForRegistrationCallback)
-
-	election.AddEventListener(o)
-	agentPool.AddStructMessageHandler(o, []string{ondemand.Namespace})
-
-	return o
+	nodeTypeQuery := new(gremlin.QueryString).Has("Type", gremlin.Within(nodeTypes...)).String()
+	return client.NewOnDemandClient(g, ch, agentPool, subscriberPool, etcdClient, &onDemandFlowHandler{graph: g, nodeTypeQuery: nodeTypeQuery})
 }

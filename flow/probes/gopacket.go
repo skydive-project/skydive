@@ -49,7 +49,7 @@ const (
 
 // PacketProbe describes a probe responsible for capturing packets
 type PacketProbe interface {
-	Stats() (graph.Metadata, error)
+	Stats() (*CaptureStats, error)
 	SetBPFFilter(bpf string) error
 	PacketSource() *gopacket.PacketSource
 	Close()
@@ -77,14 +77,12 @@ type ftProbe struct {
 
 // GoPacketProbesHandler describes a flow probe handle in the graph
 type GoPacketProbesHandler struct {
-	graph      *graph.Graph
-	fta        *flow.TableAllocator
-	wg         sync.WaitGroup
-	probes     map[string]*ftProbe
-	probesLock common.RWMutex
+	graph *graph.Graph
+	fta   *flow.TableAllocator
+	wg    sync.WaitGroup
 }
 
-func (p *GoPacketProbe) updateStats(g *graph.Graph, n *graph.Node, ticker *time.Ticker, done chan bool, wg *sync.WaitGroup) {
+func (p *GoPacketProbe) updateStats(g *graph.Graph, n *graph.Node, captureStats *CaptureStats, ticker *time.Ticker, done chan bool, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for {
@@ -94,11 +92,12 @@ func (p *GoPacketProbe) updateStats(g *graph.Graph, n *graph.Node, ticker *time.
 				logging.GetLogger().Error(err)
 			} else if atomic.LoadInt64(&p.state) == common.RunningState {
 				g.Lock()
-				t := g.StartMetadataTransaction(n)
-				for k, v := range stats {
-					t.AddMetadata("Capture."+k, v)
-				}
-				t.Commit()
+				g.UpdateMetadata(n, "Captures", func(obj interface{}) bool {
+					captureStats.PacketsDropped = stats.PacketsDropped
+					captureStats.PacketsReceived = stats.PacketsReceived
+					captureStats.PacketsIfDropped = stats.PacketsIfDropped
+					return true
+				})
 				g.Unlock()
 			}
 		case <-done:
@@ -129,7 +128,7 @@ func (p *GoPacketProbe) listen(packetCallback func(gopacket.Packet)) {
 
 // Run starts capturing packet, calling the passed callback for every packet
 // and notifying the flow probe handler when the capture has started
-func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e FlowProbeEventHandler) error {
+func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e ProbeEventHandler) error {
 	atomic.StoreInt64(&p.state, common.RunningState)
 
 	var nsContext *common.NetNSContext
@@ -176,13 +175,12 @@ func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e FlowProbeEve
 		}
 	}
 
-	// notify active
-	if e != nil {
-		wg.Add(1)
-		go p.updateStats(p.graph, p.n, statsTicker, statsDone, &wg)
+	metadata := &CaptureMetadata{}
+	e.OnStarted(metadata)
 
-		e.OnStarted()
-	}
+	// notify active
+	wg.Add(1)
+	go p.updateStats(p.graph, p.n, &metadata.CaptureStats, statsTicker, statsDone, &wg)
 
 	p.listen(packetCallback)
 
@@ -204,7 +202,7 @@ func (p *GoPacketProbe) Stop() {
 }
 
 // NewGoPacketProbe returns a new Gopacket flow probe. It can use either `pcap` or `afpacket`
-func NewGoPacketProbe(g *graph.Graph, n *graph.Node, captureType string, bpfFilter string, headerSize uint32) (*GoPacketProbe, error) {
+func NewGoPacketProbe(g *graph.Graph, n *graph.Node, captureType, bpfFilter string, headerSize uint32) (*GoPacketProbe, error) {
 	ifName, _ := n.GetFieldString("Name")
 	if ifName == "" {
 		return nil, fmt.Errorf("No name for node %v", n)
@@ -231,30 +229,25 @@ func NewGoPacketProbe(g *graph.Graph, n *graph.Node, captureType string, bpfFilt
 	}, nil
 }
 
-func (p *GoPacketProbesHandler) registerProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+// RegisterProbe registers a gopacket probe
+func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error) {
 	name, _ := n.GetFieldString("Name")
 	if name == "" {
-		return fmt.Errorf("No name for node %v", n)
+		return nil, fmt.Errorf("No name for node %v", n)
 	}
 
 	if capture.Type == "pcap" && !topology.IsInterfaceUp(n) {
-		return fmt.Errorf("Can't start pcap capture on node down %s", name)
+		return nil, fmt.Errorf("Can't start pcap capture on node down %s", name)
 	}
 
 	encapType, _ := n.GetFieldString("EncapType")
 	if encapType == "" {
-		return fmt.Errorf("No EncapType for node %v", n)
+		return nil, fmt.Errorf("No EncapType for node %v", n)
 	}
 
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
-		return fmt.Errorf("No TID for node %v", n)
-	}
-
-	id := string(n.ID)
-
-	if _, ok := p.probes[id]; ok {
-		return fmt.Errorf("Already registered %s", name)
+		return nil, fmt.Errorf("No TID for node %v", n)
 	}
 
 	if port, err := n.GetFieldInt64("MPLSUDPPort"); err == nil {
@@ -275,7 +268,7 @@ func (p *GoPacketProbesHandler) registerProbe(n *graph.Node, capture *types.Capt
 
 	probe, err := NewGoPacketProbe(p.graph, n, capture.Type, bpfFilter, headerSize)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Apply temporarely the BPF in userspace to prevent non expected packet
@@ -284,18 +277,15 @@ func (p *GoPacketProbesHandler) registerProbe(n *graph.Node, capture *types.Capt
 	if bpfFilter != "" {
 		bpf, err = flow.NewBPF(probe.linkType, probe.headerSize, bpfFilter)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	target, err := targets.NewTarget(capture.TargetType, p.graph, n, capture, tid, bpf, p.fta)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	p.probesLock.Lock()
-	p.probes[id] = &ftProbe{probe: probe, target: target}
-	p.probesLock.Unlock()
 	p.wg.Add(1)
 
 	go func() {
@@ -324,34 +314,18 @@ func (p *GoPacketProbesHandler) registerProbe(n *graph.Node, capture *types.Capt
 		}
 	}()
 
-	return nil
+	return &ftProbe{probe: probe, target: target}, nil
 }
 
-// RegisterProbe registers a gopacket probe
-func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
-	err := p.registerProbe(n, capture, e)
-	if err != nil {
-		go e.OnError(err)
-	}
-	return err
-}
-
-func (p *GoPacketProbesHandler) unregisterProbe(id string) error {
-	if probe, ok := p.probes[id]; ok {
-		logging.GetLogger().Debugf("Terminating gopacket capture on %s", id)
-		probe.probe.Stop()
-		delete(p.probes, id)
-	}
-
+func (p *GoPacketProbesHandler) unregisterProbe(probe *ftProbe) error {
+	logging.GetLogger().Debugf("Terminating gopacket capture on %s", probe.probe.n.ID)
+	probe.probe.Stop()
 	return nil
 }
 
 // UnregisterProbe unregisters gopacket probe
-func (p *GoPacketProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
-	p.probesLock.Lock()
-	defer p.probesLock.Unlock()
-
-	err := p.unregisterProbe(string(n.ID))
+func (p *GoPacketProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, probe Probe) error {
+	err := p.unregisterProbe(probe.(*ftProbe))
 	if err != nil {
 		return err
 	}
@@ -366,21 +340,14 @@ func (p *GoPacketProbesHandler) Start() {
 
 // Stop probe
 func (p *GoPacketProbesHandler) Stop() {
-	p.probesLock.Lock()
-	defer p.probesLock.Unlock()
-
-	for id := range p.probes {
-		p.unregisterProbe(id)
-	}
 	p.wg.Wait()
 }
 
 // NewGoPacketProbesHandler creates a new gopacket probe in the graph
 func NewGoPacketProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*GoPacketProbesHandler, error) {
 	return &GoPacketProbesHandler{
-		graph:  g,
-		fta:    fta,
-		probes: make(map[string]*ftProbe),
+		graph: g,
+		fta:   fta,
 	}, nil
 }
 

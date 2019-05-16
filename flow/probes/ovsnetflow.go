@@ -52,11 +52,11 @@ type OvsNetFlowProbesHandler struct {
 	fta          *flow.TableAllocator
 	ovsClient    *ovsdb.OvsClient
 	allocator    *netflow.AgentAllocator
-	eventHandler FlowProbeEventHandler
+	eventHandler ProbeEventHandler
 	engineID     int
 }
 
-func newInsertNetFlowProbeOP(probe OvsNetFlowProbe) (*libovsdb.Operation, error) {
+func newInsertNetFlowProbeOP(probe *OvsNetFlowProbe) (*libovsdb.Operation, error) {
 	netFlowRow := make(map[string]interface{})
 	netFlowRow["add_id_to_interface"] = true
 	netFlowRow["targets"] = probe.Target
@@ -79,12 +79,8 @@ func newInsertNetFlowProbeOP(probe OvsNetFlowProbe) (*libovsdb.Operation, error)
 	}, nil
 }
 
-func (o *OvsNetFlowProbesHandler) registerNetFlowProbeOnBridge(probe OvsNetFlowProbe, bridgeUUID string) error {
-	o.probesLock.Lock()
-	o.probes[bridgeUUID] = probe
-	o.probesLock.Unlock()
-
-	probeUUID, err := ovsRetrieveSkydiveProbeRowUUID(o.ovsClient, "NetFlow", ovsProbeID(bridgeUUID))
+func (o *OvsNetFlowProbesHandler) registerNetFlowProbeOnBridge(probe *OvsNetFlowProbe) error {
+	probeUUID, err := ovsRetrieveSkydiveProbeRowUUID(o.ovsClient, "NetFlow", ovsProbeID(probe.ID))
 	if err != nil {
 		return err
 	}
@@ -112,7 +108,7 @@ func (o *OvsNetFlowProbesHandler) registerNetFlowProbeOnBridge(probe OvsNetFlowP
 	bridgeRow := make(map[string]interface{})
 	bridgeRow["netflow"] = uuid
 
-	condition := libovsdb.NewCondition("_uuid", "==", libovsdb.UUID{GoUUID: bridgeUUID})
+	condition := libovsdb.NewCondition("_uuid", "==", libovsdb.UUID{GoUUID: probe.ID})
 	updateOp := libovsdb.Operation{
 		Op:    "update",
 		Table: "Bridge",
@@ -145,7 +141,7 @@ func (o *OvsNetFlowProbesHandler) UnregisterNetFlowProbeFromBridge(bridgeUUID st
 	}
 	o.probesLock.RUnlock()
 
-	probeUUID, err := ovsRetrieveSkydiveProbeRowUUID(o.ovsClient, "NetFlow", ovsProbeID(bridgeUUID))
+	probeUUID, err := ovsRetrieveSkydiveProbeRowUUID(o.ovsClient, "NetFlow", ovsProbeID(probe.ID))
 	if err != nil {
 		return err
 	} else if probeUUID == "" {
@@ -170,8 +166,8 @@ func (o *OvsNetFlowProbesHandler) UnregisterNetFlowProbeFromBridge(bridgeUUID st
 	return err
 }
 
-func (o *OvsNetFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid string, capture *types.Capture) error {
-	probe := OvsNetFlowProbe{
+func (o *OvsNetFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid string, capture *types.Capture) (*OvsNetFlowProbe, error) {
+	probe := &OvsNetFlowProbe{
 		ID:       bridgeUUID,
 		EngineID: 1,
 	}
@@ -188,7 +184,7 @@ func (o *OvsNetFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid s
 		addr := common.ServiceAddress{Addr: address, Port: 0}
 		agent, err := o.allocator.Alloc(bridgeUUID, probe.flowTable, &addr, tid)
 		if err != nil && err != netflow.ErrAgentAlreadyAllocated {
-			return err
+			return nil, err
 		}
 
 		probe.Target = agent.GetTarget()
@@ -196,45 +192,45 @@ func (o *OvsNetFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid s
 		probe.Target = capture.Target
 	}
 
-	return o.registerNetFlowProbeOnBridge(probe, bridgeUUID)
-}
-
-func (o *OvsNetFlowProbesHandler) registerProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
-	tid, _ := n.GetFieldString("TID")
-	if tid == "" {
-		return fmt.Errorf("No TID for node %v", n)
+	if err := o.registerNetFlowProbeOnBridge(probe); err != nil {
+		return nil, err
 	}
 
-	if isOvsBridge(n) {
-		if uuid, _ := n.GetFieldString("UUID"); uuid != "" {
-			if err := o.registerProbeOnBridge(uuid, tid, capture); err != nil {
-				return err
-			}
-			go e.OnStarted()
-		}
-	}
-	return nil
+	return probe, nil
 }
 
 // RegisterProbe registers a probe on a graph node
-func (o *OvsNetFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
-	err := o.registerProbe(n, capture, e)
-	if err != nil {
-		go e.OnError(err)
+func (o *OvsNetFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error) {
+	tid, _ := n.GetFieldString("TID")
+	if tid == "" {
+		return nil, fmt.Errorf("No TID for node %v", n)
 	}
-	return err
+
+	uuid, _ := n.GetFieldString("UUID")
+	if uuid == "" {
+		return nil, fmt.Errorf("Node %s has no attribute 'UUID'", n.ID)
+	}
+
+	probe, err := o.registerProbeOnBridge(uuid, tid, capture)
+	if err != nil {
+		return nil, err
+	}
+
+	go e.OnStarted(&CaptureMetadata{})
+
+	return probe, nil
 }
 
 // UnregisterProbe at the graph node
-func (o *OvsNetFlowProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
-	if isOvsBridge(n) {
-		if uuid, _ := n.GetFieldString("UUID"); uuid != "" {
-			if err := o.UnregisterNetFlowProbeFromBridge(uuid); err != nil {
-				return err
-			}
-			go e.OnStopped()
-		}
+func (o *OvsNetFlowProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, p Probe) error {
+	probe := p.(*OvsNetFlowProbe)
+
+	if err := o.UnregisterNetFlowProbeFromBridge(probe.ID); err != nil {
+		return err
 	}
+
+	go e.OnStopped()
+
 	return nil
 }
 

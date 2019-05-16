@@ -41,6 +41,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/probes"
 	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -504,21 +505,32 @@ func RunTest(t *testing.T, test *Test) {
 					continue
 				}
 
-				captureID, err := node.GetFieldString("Capture.ID")
-				if err != nil {
-					return fmt.Errorf("Node %+v matched the capture but capture is not enabled, graph: %s", node, context.getWholeGraph(t, time.Time{}))
-				}
-				if captureID != capture.ID() {
-					return fmt.Errorf("Node %s matches multiple captures, graph: %s", node.ID, context.getWholeGraph(t, time.Time{}))
+				findCapture := func(id string) *probes.CaptureMetadata {
+					field, err := node.GetField("Captures")
+					if err != nil {
+						return nil
+					}
+
+					if captures, ok := field.(*probes.Captures); ok {
+						for _, capture := range *captures {
+							if capture.ID == id {
+								return capture
+							}
+						}
+					}
+					return nil
 				}
 
-				captureState, err := node.GetFieldString("Capture.State")
-				if err != nil {
-					return fmt.Errorf("Node %+v matched the capture but capture state is not set, graph: %s", node, context.getWholeGraph(t, time.Time{}))
+				captureMetadata := findCapture(capture.ID())
+				if captureMetadata == nil {
+					return fmt.Errorf("Node %+v matched the capture but capture %s is not enabled, graph: %s", node, capture.ID(), context.getWholeGraph(t, time.Time{}))
 				}
-				if captureState != "active" {
+
+				if captureMetadata.State != "active" {
 					return fmt.Errorf("Capture %s is not active, graph: %s", capture.ID(), context.getWholeGraph(t, time.Time{}))
 				}
+
+				return nil
 			}
 		}
 

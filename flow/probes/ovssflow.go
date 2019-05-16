@@ -49,17 +49,14 @@ type OvsSFlowProbe struct {
 
 // OvsSFlowProbesHandler describes a flow probe in running in the graph
 type OvsSFlowProbesHandler struct {
-	probes       map[string]OvsSFlowProbe
-	probesLock   common.RWMutex
-	Graph        *graph.Graph
-	Node         *graph.Node
+	graph        *graph.Graph
 	fta          *flow.TableAllocator
 	ovsClient    *ovsdb.OvsClient
 	allocator    *sflow.AgentAllocator
-	eventHandler FlowProbeEventHandler
+	eventHandler ProbeEventHandler
 }
 
-func newInsertSFlowProbeOP(probe OvsSFlowProbe) (*libovsdb.Operation, error) {
+func newInsertSFlowProbeOP(probe *OvsSFlowProbe) (*libovsdb.Operation, error) {
 	sFlowRow := make(map[string]interface{})
 	sFlowRow["agent"] = probe.Interface
 	sFlowRow["targets"] = probe.Target
@@ -85,11 +82,7 @@ func newInsertSFlowProbeOP(probe OvsSFlowProbe) (*libovsdb.Operation, error) {
 	return &insertOp, nil
 }
 
-func (o *OvsSFlowProbesHandler) registerSFlowProbeOnBridge(probe OvsSFlowProbe, bridgeUUID string) error {
-	o.probesLock.Lock()
-	o.probes[bridgeUUID] = probe
-	o.probesLock.Unlock()
-
+func (o *OvsSFlowProbesHandler) registerSFlowProbeOnBridge(probe *OvsSFlowProbe, bridgeUUID string) error {
 	probeUUID, err := ovsRetrieveSkydiveProbeRowUUID(o.ovsClient, "sFlow", ovsProbeID(bridgeUUID))
 	if err != nil {
 		return err
@@ -133,16 +126,9 @@ func (o *OvsSFlowProbesHandler) registerSFlowProbeOnBridge(probe OvsSFlowProbe, 
 }
 
 // UnregisterSFlowProbeFromBridge unregisters a flow probe from the bridge selected by UUID
-func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(bridgeUUID string) error {
+func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(probe *OvsSFlowProbe) error {
+	bridgeUUID := probe.ID
 	o.allocator.Release(bridgeUUID)
-
-	o.probesLock.RLock()
-	probe, ok := o.probes[bridgeUUID]
-	if !ok {
-		o.probesLock.RUnlock()
-		return fmt.Errorf("probe didn't exist on bridgeUUID %s", bridgeUUID)
-	}
-	o.probesLock.RUnlock()
 
 	if probe.flowTable != nil {
 		o.fta.Release(probe.flowTable)
@@ -152,8 +138,9 @@ func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(bridgeUUID string
 	if err != nil {
 		return err
 	}
+
 	if probeUUID == "" {
-		return nil
+		return fmt.Errorf("No active SFlow probe found on bridge %s", bridgeUUID)
 	}
 
 	operations := []libovsdb.Operation{}
@@ -171,13 +158,10 @@ func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(bridgeUUID string
 
 	operations = append(operations, updateOp)
 	_, err = o.ovsClient.Exec(operations...)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
-func (o *OvsSFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid string, capture *types.Capture, n *graph.Node) error {
+func (o *OvsSFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid string, capture *types.Capture, n *graph.Node) (*OvsSFlowProbe, error) {
 	headerSize := flow.DefaultCaptureLength
 	if capture.HeaderSize != 0 {
 		headerSize = uint32(capture.HeaderSize)
@@ -187,7 +171,7 @@ func (o *OvsSFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid str
 		capture.SamplingRate = math.MaxUint32
 	}
 
-	probe := OvsSFlowProbe{
+	probe := &OvsSFlowProbe{
 		ID:         bridgeUUID,
 		Interface:  "lo",
 		HeaderSize: headerSize,
@@ -207,9 +191,9 @@ func (o *OvsSFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid str
 		addr := common.ServiceAddress{Addr: address}
 		bfpFilter := NormalizeBPFFilter(capture)
 
-		agent, err := o.allocator.Alloc(bridgeUUID, probe.flowTable, bfpFilter, headerSize, &addr, n, o.Graph)
+		agent, err := o.allocator.Alloc(bridgeUUID, probe.flowTable, bfpFilter, headerSize, &addr, n, o.graph)
 		if err != nil && err != sflow.ErrAgentAlreadyAllocated {
-			return err
+			return nil, err
 		}
 
 		probe.Target = agent.GetTarget()
@@ -217,45 +201,43 @@ func (o *OvsSFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid str
 		probe.Target = capture.Target
 	}
 
-	return o.registerSFlowProbeOnBridge(probe, bridgeUUID)
-}
-
-func (o *OvsSFlowProbesHandler) registerProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
-	tid, _ := n.GetFieldString("TID")
-	if tid == "" {
-		return fmt.Errorf("No TID for node %v", n)
+	if err := o.registerSFlowProbeOnBridge(probe, bridgeUUID); err != nil {
+		return nil, err
 	}
 
-	if isOvsBridge(n) {
-		if uuid, _ := n.GetFieldString("UUID"); uuid != "" {
-			if err := o.registerProbeOnBridge(uuid, tid, capture, n); err != nil {
-				return err
-			}
-			go e.OnStarted()
-		}
-	}
-	return nil
+	return probe, nil
 }
 
 // RegisterProbe registers a probe on a graph node
-func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
-	err := o.registerProbe(n, capture, e)
-	if err != nil {
-		go e.OnError(err)
+func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error) {
+	tid, _ := n.GetFieldString("TID")
+	if tid == "" {
+		return nil, fmt.Errorf("No TID for node %v", n)
 	}
-	return err
+
+	uuid, _ := n.GetFieldString("UUID")
+	if uuid == "" {
+		return nil, fmt.Errorf("Node %s has no attribute 'UUID'", n.ID)
+	}
+
+	probe, err := o.registerProbeOnBridge(uuid, tid, capture, n)
+	if err != nil {
+		return nil, err
+	}
+
+	go e.OnStarted(&CaptureMetadata{})
+
+	return probe, nil
 }
 
 // UnregisterProbe at the graph node
-func (o *OvsSFlowProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
-	if isOvsBridge(n) {
-		if uuid, _ := n.GetFieldString("UUID"); uuid != "" {
-			if err := o.UnregisterSFlowProbeFromBridge(uuid); err != nil {
-				return err
-			}
-			go e.OnStopped()
-		}
+func (o *OvsSFlowProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, fp Probe) error {
+	if err := o.UnregisterSFlowProbeFromBridge(fp.(*OvsSFlowProbe)); err != nil {
+		return err
 	}
+
+	go e.OnStopped()
+
 	return nil
 }
 
@@ -282,8 +264,7 @@ func NewOvsSFlowProbesHandler(g *graph.Graph, fta *flow.TableAllocator, tb *prob
 	}
 
 	return &OvsSFlowProbesHandler{
-		probes:    make(map[string]OvsSFlowProbe),
-		Graph:     g,
+		graph:     g,
 		fta:       fta,
 		ovsClient: p.OvsMon.OvsClient,
 		allocator: allocator,

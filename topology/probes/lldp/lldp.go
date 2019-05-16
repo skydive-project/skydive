@@ -73,6 +73,17 @@ type ifreq struct {
 	ifrHwaddr syscall.RawSockaddr
 }
 
+type lldpCapture struct{}
+
+func (c *lldpCapture) OnStarted(*probes.CaptureMetadata) {
+}
+
+func (c *lldpCapture) OnStopped() {
+}
+
+func (c *lldpCapture) OnError(err error) {
+}
+
 // addMulticastAddr adds a multicast address to an interface using an ioctl call
 func addMulticastAddr(intf string, addr string) error {
 	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, 0)
@@ -314,7 +325,7 @@ func (p *Probe) startCapture(ifName, mac string, n *graph.Node) error {
 
 		packetProbe.Run(func(packet gopacket.Packet) {
 			p.handlePacket(n, ifName, packet)
-		}, nil)
+		}, &lldpCapture{})
 	}()
 
 	return err

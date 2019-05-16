@@ -62,11 +62,9 @@ type EBPFProbe struct {
 
 // EBPFProbesHandler creates new eBPF probes
 type EBPFProbesHandler struct {
-	graph      *graph.Graph
-	probes     map[graph.Identifier]*EBPFProbe
-	probesLock common.RWMutex
-	fta        *flow.TableAllocator
-	wg         sync.WaitGroup
+	graph *graph.Graph
+	fta   *flow.TableAllocator
+	wg    sync.WaitGroup
 }
 
 func (p *EBPFProbe) run() {
@@ -159,41 +157,38 @@ func (p *EBPFProbe) stop() {
 	p.quit <- true
 }
 
-func (p *EBPFProbesHandler) registerProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
-	if _, ok := p.probes[n.ID]; ok {
-		return nil
-	}
-
+// RegisterProbe registers an eBPF probe on an interface
+func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error) {
 	ifName, _ := n.GetFieldString("Name")
 	if ifName == "" {
-		return fmt.Errorf("No name for node %s", n.ID)
+		return nil, fmt.Errorf("No name for node %s", n.ID)
 	}
 
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
-		return fmt.Errorf("No tid for node %s", n.ID)
+		return nil, fmt.Errorf("No tid for node %s", n.ID)
 	}
 
 	_, nsPath, err := topology.NamespaceFromNode(p.graph, n)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	module, err := loadModule()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	fmap := module.Map("flow_table")
 	if fmap == nil {
 		module.Close()
-		return fmt.Errorf("Unable to find flow_table map")
+		return nil, fmt.Errorf("Unable to find flow_table map")
 	}
 
 	socketFilter := module.SocketFilter("socket_flow_table")
 	if socketFilter == nil {
 		module.Close()
-		return errors.New("No flow_table socket filter")
+		return nil, errors.New("No flow_table socket filter")
 	}
 
 	var rs *common.RawSocket
@@ -204,14 +199,14 @@ func (p *EBPFProbesHandler) registerProbe(n *graph.Node, capture *types.Capture,
 	}
 	if err != nil {
 		module.Close()
-		return err
+		return nil, err
 	}
 	fd := rs.GetFd()
 
 	if err := elf.AttachSocketFilter(socketFilter, fd); err != nil {
 		rs.Close()
 		module.Close()
-		return fmt.Errorf("Unable to attach socket filter to node: %s", n.ID)
+		return nil, fmt.Errorf("Unable to attach socket filter to node: %s", n.ID)
 	}
 
 	ft := p.fta.Alloc(tid, flow.TableOpts{})
@@ -226,13 +221,11 @@ func (p *EBPFProbesHandler) registerProbe(n *graph.Node, capture *types.Capture,
 		quit:         make(chan bool),
 	}
 
-	p.probes[n.ID] = probe
-
 	p.wg.Add(1)
 	go func() {
 		defer p.wg.Done()
 
-		e.OnStarted()
+		e.OnStarted(&CaptureMetadata{})
 
 		probe.run()
 
@@ -244,39 +237,13 @@ func (p *EBPFProbesHandler) registerProbe(n *graph.Node, capture *types.Capture,
 
 		e.OnStopped()
 	}()
-	return nil
+
+	return probe, nil
 }
 
-func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
-	p.probesLock.Lock()
-	defer p.probesLock.Unlock()
-
-	err := p.registerProbe(n, capture, e)
-	if err != nil {
-		go e.OnError(err)
-	}
-	return err
-}
-
-func (p *EBPFProbesHandler) unregisterProbe(id graph.Identifier) error {
-	if probe, ok := p.probes[id]; ok {
-		logging.GetLogger().Debugf("Terminating eBPF capture on %s", id)
-		probe.stop()
-		delete(p.probes, id)
-	}
-
-	return nil
-}
-
-func (p *EBPFProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
-	p.probesLock.Lock()
-	defer p.probesLock.Unlock()
-
-	err := p.unregisterProbe(n.ID)
-	if err != nil {
-		return err
-	}
-
+// UnregisterProbe stops an eBPF probe on an interface
+func (p *EBPFProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, fp Probe) error {
+	fp.(*EBPFProbe).stop()
 	return nil
 }
 
@@ -284,12 +251,6 @@ func (p *EBPFProbesHandler) Start() {
 }
 
 func (p *EBPFProbesHandler) Stop() {
-	p.probesLock.Lock()
-	defer p.probesLock.Unlock()
-
-	for id := range p.probes {
-		p.unregisterProbe(id)
-	}
 	p.wg.Wait()
 }
 
@@ -349,8 +310,7 @@ func loadModule() (*elf.Module, error) {
 
 func NewEBPFProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*EBPFProbesHandler, error) {
 	return &EBPFProbesHandler{
-		graph:  g,
-		probes: make(map[graph.Identifier]*EBPFProbe),
-		fta:    fta,
+		graph: g,
+		fta:   fta,
 	}, nil
 }

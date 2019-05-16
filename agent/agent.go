@@ -36,6 +36,7 @@ import (
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/ondemand/server"
 	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
@@ -55,7 +56,8 @@ type Agent struct {
 	flowProbeBundle     *probe.Bundle
 	flowTableAllocator  *flow.TableAllocator
 	flowClientPool      *client.FlowClientPool
-	onDemandProbeServer *ondemand.OnDemandProbeServer
+	onDemandProbeServer *server.OnDemandServer
+	onDemandPIServer    *server.OnDemandServer
 	httpServer          *shttp.Server
 	tidMapper           *topology.TIDMapper
 }
@@ -242,9 +244,14 @@ func NewAgent() (*Agent, error) {
 
 	flowProbeBundle := fprobes.NewFlowProbeBundle(topologyProbeBundle, g, flowTableAllocator)
 
-	onDemandProbeServer, err := ondemand.NewOnDemandProbeServer(flowProbeBundle, g, analyzerClientPool)
+	onDemandPIServer, err := packetinjector.NewOnDemandProbeServer(g, analyzerClientPool)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to initialize on-demand flow probe %s", err)
+		return nil, fmt.Errorf("unable to initialize on-demand packet injection: %s", err)
+	}
+
+	onDemandFlowProbeServer, err := ondemand.NewOnDemandFlowProbeServer(flowProbeBundle, g, analyzerClientPool)
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize on-demand flow probe: %s", err)
 	}
 
 	agent := &Agent{
@@ -256,7 +263,8 @@ func NewAgent() (*Agent, error) {
 		flowProbeBundle:     flowProbeBundle,
 		flowTableAllocator:  flowTableAllocator,
 		flowClientPool:      flowClientPool,
-		onDemandProbeServer: onDemandProbeServer,
+		onDemandProbeServer: onDemandFlowProbeServer,
+		onDemandPIServer:    onDemandPIServer,
 		httpServer:          hserver,
 		tidMapper:           tm,
 	}

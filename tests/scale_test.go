@@ -234,7 +234,7 @@ func checkIPerfFlows(gh *gclient.GremlinQueryHelper, flowExpected int) error {
 
 func checkCaptures(gh *gclient.GremlinQueryHelper, captureExpected int) error {
 	retry := func() error {
-		nodes, err := gh.GetNodes(g.G.V().Has("Capture.State", "active"))
+		nodes, err := gh.GetNodes(g.G.V().Has("Captures.State", "active"))
 		if err != nil {
 			return err
 		}

@@ -29,13 +29,13 @@ import (
 type EBPFProbesHandler struct {
 }
 
-// RegisterProbe registers a gopacket probe
-func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
-	return nil
+// RegisterProbe registers a probe
+func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error) {
+	return nil, nil
 }
 
-// UnregisterProbe unregisters gopacket probe
-func (p *EBPFProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
+// UnregisterProbe unregisters a probe
+func (p *EBPFProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, fp Probe) error {
 	return nil
 }
 
