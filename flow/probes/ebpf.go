@@ -477,11 +477,13 @@ func (p *EBPFProbesHandler) registerProbe(n *graph.Node, capture *types.Capture,
 
 	fmap := module.Map("flow_table")
 	if fmap == nil {
+		module.Close()
 		return fmt.Errorf("Unable to find flow_table map")
 	}
 
 	socketFilter := module.SocketFilter("socket_flow_table")
 	if socketFilter == nil {
+		module.Close()
 		return errors.New("No flow_table socket filter")
 	}
 
@@ -492,12 +494,14 @@ func (p *EBPFProbesHandler) registerProbe(n *graph.Node, capture *types.Capture,
 		rs, err = common.NewRawSocket(ifName, syscall.ETH_P_ALL)
 	}
 	if err != nil {
+		module.Close()
 		return err
 	}
 	fd := rs.GetFd()
 
 	if err := elf.AttachSocketFilter(socketFilter, fd); err != nil {
 		rs.Close()
+		module.Close()
 		return fmt.Errorf("Unable to attach socket filter to node: %s", n.ID)
 	}
 
