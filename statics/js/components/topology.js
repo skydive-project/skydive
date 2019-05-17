@@ -212,6 +212,18 @@ var TopologyComponent = {
                title="Docker">\
           <object-detail :object="currentNodeDocker"></object-detail>\
         </panel>\
+        <panel id="edge-src-metadata" v-if="currentEdgeSrc"\
+                title="Source">\
+          <object-detail :object="currentEdgeSrc"></object-detail>\
+        </panel>\
+        <panel id="edge-via-metadata" v-if="currentEdgeVia"\
+                title="Via">\
+          <object-detail :object="currentEdgeVia"></object-detail>\
+        </panel>\
+        <panel id="edge-dst-metadata" v-if="currentEdgeDst"\
+          title="Destination">\
+          <object-detail :object="currentEdgeDst"></object-detail>\
+        </panel>\
         <panel id="k8s-metadata" v-if="currentNodeK8s"\
                title="K8s.Extra">\
           <object-detail :object="currentNodeK8s"></object-detail>\
@@ -442,7 +454,7 @@ var TopologyComponent = {
     currentEdgeMetadata: function() {
       if (!this.currentEdge) return null;
       return this.extractMetadata(this.currentEdge.metadata,
-        ['Directed']);
+        ['Directed', 'NSM.Source', 'NSM.Via', 'NSM.Destination']);
     },
 
     currentNodeMetadata: function() {
@@ -460,6 +472,22 @@ var TopologyComponent = {
     currentNodeDocker: function() {
       if (!this.currentNodeMetadata || !this.currentNode.metadata.Docker) return null;
       return this.currentNode.metadata.Docker;
+    },
+
+    currentEdgeSrc: function() {
+      if (!this.currentEdgeMetadata || !this.currentEdge.metadata.NSM || !this.currentEdge.metadata.NSM.Source) return null;
+      return this.currentEdge.metadata.NSM.Source;
+    },
+
+    currentEdgeVia: function() {
+      if (!this.currentEdgeMetadata || !this.currentEdge.metadata.NSM || !this.currentEdge.metadata.NSM.Via) return null;
+      return this.currentEdge.metadata.NSM.Via;
+    },
+
+
+    currentEdgeDst: function() {
+      if (!this.currentEdgeMetadata || !this.currentEdge.metadata.NSM || !this.currentEdge.metadata.NSM.Destination) return null;
+      return this.currentEdge.metadata.NSM.Destination;
     },
 
     currentNodeK8s: function() {
@@ -529,7 +557,7 @@ var TopologyComponent = {
     isK8SEnabled: function() {
       return app.getConfigValue('k8s_enabled') || (globalVars["probes"].indexOf("k8s") >= 0);
     },
-	
+
     isIstioEnabled: function() {
       return app.getConfigValue('istio_enabled')
     },
@@ -697,7 +725,7 @@ var TopologyComponent = {
       var default_highlight = app.getConfigValue('topology.default_highlight');
       if (default_highlight) {
         self.defaultEmphasize = favorites[default_highlight];
-        if (self.defaultEmphasize) self.topologyEmphasize = value;
+        if (self.defaultEmphasize) self.topologyEmphasize = self.defaultEmphasize;
       }
     },
 
