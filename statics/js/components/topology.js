@@ -725,7 +725,7 @@ var TopologyComponent = {
       var default_highlight = app.getConfigValue('topology.default_highlight');
       if (default_highlight) {
         self.defaultEmphasize = favorites[default_highlight];
-        if (self.defaultEmphasize) self.topologyEmphasize = value;
+        if (self.defaultEmphasize) self.topologyEmphasize = self.defaultEmphasize;
       }
     },
 

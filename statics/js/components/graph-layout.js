@@ -1695,8 +1695,8 @@ TopologyGraphLayout.prototype = {
       .attr("class", this.linkWrapClass)
       .attr("marker-end", function(d) { return self.arrowhead(d.link); });
 
-    linkWrapEnter.filter(function(d) { return d._emphasized; })
-      .each(this.emphasizeEdge.bind(this));
+    linkWrapEnter.filter(function(d) { return d.link._emphasized; })
+      .each(function(d) { self.emphasizeEdge(d.link) });
 
     this.linkWrap = linkWrapEnter.merge(this.linkWrap);
 
