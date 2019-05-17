@@ -31,14 +31,10 @@ type Forwarder struct {
 	masterElection *ws.MasterElection
 	graph          *graph.Graph
 	host           string
-	synced         bool
 }
 
 func (t *Forwarder) triggerResync() {
 	logging.GetLogger().Infof("Start a re-sync for %s", t.host)
-
-	t.graph.RLock()
-	defer t.graph.RUnlock()
 
 	// re-add all the nodes and edges
 	msg := &gws.SyncMsg{
@@ -59,10 +55,14 @@ func (t *Forwarder) OnNewMaster(c ws.Speaker) {
 		addr, port := c.GetAddrPort()
 		logging.GetLogger().Infof("Using %s:%d as master of topology forwarder", addr, port)
 
+		t.graph.RLock()
+
 		t.triggerResync()
 
 		// synced can now listen the graph
 		t.graph.AddEventListener(t)
+
+		t.graph.RUnlock()
 	}
 }
 
