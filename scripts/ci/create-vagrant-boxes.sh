@@ -13,7 +13,7 @@ dir="$(dirname "$0")"
 
 # SKYDIVE_RELEASE is a relase tag (like "v0.1.2") or "master"
 export SKYDIVE_RELEASE=master
-BOXVERSION=0.22.0.alpha
+BOXVERSION=0.24.0.alpha
 tagname=$(git show-ref --tags $REF)
 if [ -n "$tagname" ]; then
     export SKYDIVE_RELEASE=$(echo $tagname | awk -F "/" "{print \$NF}")
