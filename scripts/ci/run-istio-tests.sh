@@ -29,6 +29,6 @@ network_setup
 istio_setup
 WITH_K8S=true
 WITH_ISTIO=true
-TEST_PATTERN='\(Istio\|K8s\)'
+TEST_PATTERN='(Istio|K8s)'
 tests_run
 exit $RETCODE

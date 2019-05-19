@@ -489,7 +489,7 @@ endif
 
 .PHONY: test.functionals.run
 test.functionals.run:
-	cd tests && sudo -E ./functionals ${VERBOSE_TESTS_FLAGS} -test.run ${TEST_PATTERN} -test.timeout ${TIMEOUT} ${ARGS} ${EXTRA_ARGS}
+	cd tests && sudo -E ./functionals ${VERBOSE_TESTS_FLAGS} -test.run "${TEST_PATTERN}" -test.timeout ${TIMEOUT} ${ARGS} ${EXTRA_ARGS}
 
 .PHONY: tests.functionals.all
 test.functionals.all: test.functionals.compile
@@ -497,11 +497,7 @@ test.functionals.all: test.functionals.compile
 
 .PHONY: test.functionals.batch
 test.functionals.batch: test.functionals.compile
-ifneq ($(TEST_PATTERN),)
-	set -e ; $(MAKE) ARGS="${ARGS} -test.run ${TEST_PATTERN}" test.functionals.run EXTRA_ARGS="${EXTRA_ARGS}"
-else
-	set -e ; $(MAKE) ARGS="${ARGS} " test.functionals.run EXTRA_ARGS="${EXTRA_ARGS}"
-endif
+	set -e ; $(MAKE) ARGS="${ARGS} " test.functionals.run EXTRA_ARGS="${EXTRA_ARGS}" TEST_PATTERN="${TEST_PATTERN}"
 
 .PHONY: test.functionals
 test.functionals: test.functionals.compile
@@ -511,7 +507,7 @@ test.functionals: test.functionals.compile
 
 .PHONY: functional
 functional:
-	$(MAKE) test.functionals VERBOSE=true TIMEOUT=10m ARGS='-standalone -analyzer.topology.backend elasticsearch -analyzer.flow.backend elasticsearch' TEST_PATTERN=${TEST_PATTERN}
+	$(MAKE) test.functionals VERBOSE=true TIMEOUT=10m ARGS='-standalone -analyzer.topology.backend elasticsearch -analyzer.flow.backend elasticsearch' TEST_PATTERN="${TEST_PATTERN}"
 
 .PHONY: test
 test: govendor genlocalfiles
