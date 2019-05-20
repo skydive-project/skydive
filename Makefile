@@ -195,6 +195,12 @@ ifeq ($(WITH_VPP), true)
   AGENT_TEST_EXTRA_PROBES+=vpp
 endif
 
+ifeq (${DEBUG}, true)
+GOFLAGS=-gcflags='-N -l'
+GO_BINDATA_FLAGS+=-debug
+export DEBUG
+endif
+
 comma:= ,
 empty:=
 space:= $(empty) $(empty)
@@ -212,22 +218,25 @@ version:
 skydive.yml: etc/skydive.yml.default
 	[ -e $@ ] || cp $< $@
 
-.PHONY: debug
-debug: GOFLAGS+=-gcflags='-N -l'
-debug: GO_BINDATA_FLAGS+=-debug
-debug: skydive skydive.yml
+DLV_FLAGS=--check-go-version=false
 
-define skydive_debug
-sudo $$(which dlv) --check-go-version=false exec $$(which skydive) -- $1 -c skydive.yml
+ifeq (${DEBUG}, true)
+define skydive_run
+sudo -E $$(which dlv) $(DLV_FLAGS) exec $$(which skydive) -- $1 -c skydive.yml
 endef
+else
+define skydive_run
+sudo -E $$(which skydive) $1 -c skydive.yml
+endef
+endif
 
 .PHONY: debug.agent
-debug.agent:
-	$(call skydive_debug,agent)
+run.agent:
+	$(call skydive_run,agent)
 
 .PHONY: debug.analyzer
-debug.analyzer:
-	$(call skydive_debug,analyzer)
+run.analyzer:
+	$(call skydive_run,analyzer)
 
 %.pb.go: %.proto
 	$(call PROTOC_GEN,$<)
@@ -468,9 +477,19 @@ test.functionals.static: govendor genlocalfiles
 		${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} \
 		-c -o tests/functionals ./tests/
 
+ifeq (${DEBUG}, true)
+define functionals_run
+cd tests && sudo -E $$(which dlv) $(DLV_FLAGS) exec ./functionals -- $1
+endef
+else
+define functionals_run
+cd tests && sudo -E ./functionals $1
+endef
+endif
+
 .PHONY: test.functionals.run
 test.functionals.run:
-	cd tests && sudo -E ./functionals ${VERBOSE_TESTS_FLAGS} -test.timeout ${TIMEOUT} ${ARGS} ${EXTRA_ARGS}
+	cd tests && sudo -E ./functionals ${VERBOSE_TESTS_FLAGS} -test.run ${TEST_PATTERN} -test.timeout ${TIMEOUT} ${ARGS} ${EXTRA_ARGS}
 
 .PHONY: tests.functionals.all
 test.functionals.all: test.functionals.compile
