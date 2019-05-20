@@ -5,3 +5,11 @@
     owner: "root"
     group: "{{ skydive_sys_groupname }}"
     mode: 0640
+
+- name: Ensure /var/lib permissions
+  file:
+    path: "/var/lib/skydive"
+    owner: "{{ skydive_sys_username }}"
+    group: "{{ skydive_sys_groupname }}"
+    mode: 0770
+    state: directory
