@@ -20,7 +20,7 @@
         --net=host \
         --user {{ skydive_sysuser_result.uid }}:{{ skydive_sysuser_result.group }} \
         -v /etc/skydive/skydive.yml:/etc/skydive.yml \
-        -v /var/lib/skydive:/var/lib/skydive \
+        -v /var/lib/skydive:/var/lib/skydive:Z \
         -p {{ skydive_analyzer_port }}:{{ skydive_analyzer_port }} \
         -p {{ skydive_analyzer_port }}:{{ skydive_analyzer_port }}/udp \
         -p {{ skydive_etcd_port }}:{{ skydive_etcd_port }} \
