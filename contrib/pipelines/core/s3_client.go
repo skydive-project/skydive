@@ -15,17 +15,20 @@
  *
  */
 
-package subscriber
+package core
 
 import (
 	"bytes"
 	"strings"
+
+	"github.com/spf13/viper"
 
 	"github.com/IBM/ibm-cos-sdk-go/aws"
 	"github.com/IBM/ibm-cos-sdk-go/aws/credentials"
 	"github.com/IBM/ibm-cos-sdk-go/aws/credentials/ibmiam"
 	"github.com/IBM/ibm-cos-sdk-go/aws/session"
 	"github.com/IBM/ibm-cos-sdk-go/service/s3"
+
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -133,7 +136,14 @@ func (s *s3Client) ListObjects(bucket, prefix string) ([]*string, error) {
 }
 
 // newClient creates a new S3-compatible object storage client
-func newClient(endpoint, region, accessKey, secretKey, apiKey, iamEndpoint string) objectStoreClient {
+func newClient(cfg *viper.Viper) objectStoreClient {
+	endpoint := cfg.GetString(CfgRoot + "store.s3.endpoint")
+	region := cfg.GetString(CfgRoot + "store.s3.region")
+	accessKey := cfg.GetString(CfgRoot + "store.s3.access_key")
+	secretKey := cfg.GetString(CfgRoot + "store.s3.secret_key")
+	apiKey := cfg.GetString(CfgRoot + "store.s3.api_key")
+	iamEndpoint := cfg.GetString(CfgRoot + "store.s3.iam_endpoint")
+
 	var sdkCreds *credentials.Credentials
 	if apiKey != "" {
 		sdkCreds = ibmiam.NewStaticCredentials(aws.NewConfig(), iamEndpoint, apiKey, "")

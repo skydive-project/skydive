@@ -15,7 +15,7 @@
  *
  */
 
-package subscriber
+package main
 
 import (
 	"strconv"
@@ -23,13 +23,29 @@ import (
 
 	"github.com/pmylund/go-cache"
 
+	"github.com/spf13/viper"
+
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/contrib/pipelines/core"
 	"github.com/skydive-project/skydive/flow"
 	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/logging"
 )
+
+// newTransform creates a new flow transformer based on a name string
+func newTransform(cfg *viper.Viper) (core.Transformer, error) {
+	gremlinClient := client.NewGremlinQueryHelper(core.CfgAuthOpts(cfg))
+
+	excludeStartedFlows := cfg.GetBool(core.CfgRoot + "transform.sa.exclude_started_flows")
+	return &securityAdvisorFlowTransformer{
+		flowUpdateCountCache: cache.New(10*time.Minute, 10*time.Minute),
+		graphClient:          &securityAdvisorGremlinClient{gremlinClient},
+		containerNameCache:   cache.New(5*time.Minute, 10*time.Minute),
+		nodeType:             cache.New(5*time.Minute, 10*time.Minute),
+		excludeStartedFlows:  excludeStartedFlows,
+	}, nil
+}
 
 const version = "1.0.8"
 
@@ -66,11 +82,11 @@ type securityAdvisorGraphClient interface {
 
 // SecurityAdvisorFlowTransformer is a custom transformer for flows
 type securityAdvisorFlowTransformer struct {
-	flowUpdateCount     *cache.Cache
-	graphClient         securityAdvisorGraphClient
-	containerName       *cache.Cache
-	nodeType            *cache.Cache
-	excludeStartedFlows bool
+	flowUpdateCountCache *cache.Cache
+	graphClient          securityAdvisorGraphClient
+	containerNameCache   *cache.Cache
+	nodeType             *cache.Cache
+	excludeStartedFlows  bool
 }
 
 type securityAdvisorGremlinClient struct {
@@ -99,22 +115,22 @@ func (ft *securityAdvisorFlowTransformer) getContainerName(ipString, nodeTID str
 	if ipString == "" {
 		return ""
 	}
-	containerName, ok := ft.containerName.Get(ipString)
+	name, ok := ft.containerNameCache.Get(ipString)
 	if !ok {
 		var err error
-		if containerName, err = ft.graphClient.getContainerName(ipString, nodeTID); err != nil {
-			containerName = ""
+		if name, err = ft.graphClient.getContainerName(ipString, nodeTID); err != nil {
+			name = ""
 		} else {
-			containerName = "0_0_" + containerName.(string) + "_0"
+			name = "0_0_" + name.(string) + "_0"
 		}
 		if err != nil && err != common.ErrNotFound {
 			logging.GetLogger().Warningf("Failed to query container name for IP '%s': %s", ipString, err.Error())
 		} else {
-			ft.containerName.Set(ipString, containerName, cache.DefaultExpiration)
+			ft.containerNameCache.Set(ipString, name, cache.DefaultExpiration)
 		}
 	}
 
-	return containerName.(string)
+	return name.(string)
 }
 
 func (ft *securityAdvisorFlowTransformer) getNodeType(f *flow.Flow) string {
@@ -137,18 +153,18 @@ func (ft *securityAdvisorFlowTransformer) getNodeType(f *flow.Flow) string {
 
 func (ft *securityAdvisorFlowTransformer) setUpdateCount(f *flow.Flow) int64 {
 	var count int64
-	if countRaw, ok := ft.flowUpdateCount.Get(f.UUID); ok {
+	if countRaw, ok := ft.flowUpdateCountCache.Get(f.UUID); ok {
 		count = countRaw.(int64)
 	}
 
 	if f.FinishType != flow.FlowFinishType_TIMEOUT {
 		if f.FinishType == flow.FlowFinishType_NOT_FINISHED {
-			ft.flowUpdateCount.Set(f.UUID, count+1, cache.DefaultExpiration)
+			ft.flowUpdateCountCache.Set(f.UUID, count+1, cache.DefaultExpiration)
 		} else {
-			ft.flowUpdateCount.Set(f.UUID, count+1, time.Minute)
+			ft.flowUpdateCountCache.Set(f.UUID, count+1, time.Minute)
 		}
 	} else {
-		ft.flowUpdateCount.Delete(f.UUID)
+		ft.flowUpdateCountCache.Delete(f.UUID)
 	}
 
 	return count
@@ -229,20 +245,5 @@ func (ft *securityAdvisorFlowTransformer) Transform(f *flow.Flow) interface{} {
 		Last:             f.Last,
 		UpdateCount:      updateCount,
 		NodeType:         ft.getNodeType(f),
-	}
-}
-
-// newSecurityAdvisorFlowTransformer returns a new SecurityAdvisorFlowTransformer
-func newSecurityAdvisorFlowTransformer(gremlinClient *client.GremlinQueryHelper) *securityAdvisorFlowTransformer {
-	cfg := config.GetConfig()
-	cfgPrefix := "objectstore.security_advisor."
-
-	excludeStartedFlows := cfg.GetBool(cfgPrefix + "exclude_started_flows")
-	return &securityAdvisorFlowTransformer{
-		flowUpdateCount:     cache.New(10*time.Minute, 10*time.Minute),
-		graphClient:         &securityAdvisorGremlinClient{gremlinClient},
-		containerName:       cache.New(5*time.Minute, 10*time.Minute),
-		nodeType:            cache.New(5*time.Minute, 10*time.Minute),
-		excludeStartedFlows: excludeStartedFlows,
 	}
 }

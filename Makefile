@@ -431,15 +431,15 @@ contribs: contrib.objectstore contrib.snort contrib.collectd
 
 .PHONY: contrib.objectstore.clean
 contrib.objectstore.clean:
-	$(MAKE) -C contrib/objectstore clean
+	$(MAKE) -C contrib/pipelines/secadvisor clean
 
 .PHONY: contrib.objectstore
 contrib.objectstore: govendor genlocalfiles
-	$(MAKE) -C contrib/objectstore
+	$(MAKE) -C contrib/pipelines/secadvisor
 
 .PHONY: contrib.objectstore.test
 contrib.objectstore.test: govendor genlocalfiles
-	$(MAKE) -C contrib/objectstore test
+	$(MAKE) -C contrib/pipelines/core test
 
 .PHONY: contribs.snort.clean
 contrib.snort.clean:

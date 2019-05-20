@@ -15,11 +15,9 @@
  *
  */
 
-package subscriber
+package core
 
 import (
-	"bytes"
-	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -27,11 +25,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/spf13/viper"
+
 	"github.com/IBM/ibm-cos-sdk-go/aws"
 
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
-	ws "github.com/skydive-project/skydive/websocket"
 )
 
 // stream is a series of consecutive persisted objects
@@ -42,44 +41,30 @@ type stream struct {
 	SeqNumber int
 }
 
-// Storage allows writing flows to an object storage service
-type Storage struct {
+// StoreS3 allows writing flows to an object storage service
+type StoreS3 struct {
 	bucket            string
 	objectPrefix      string
-	currentStream     map[tag]stream
+	currentStream     map[Tag]stream
 	maxFlowsPerObject int
 	maxFlowArraySize  int
 	maxStreamDuration time.Duration
 	maxObjectDuration time.Duration
 	client            objectStoreClient
-	flowTransformer   flowTransformer
-	flowClassifier    flowClassifier
-	excludedTags      map[tag]bool
-	flows             map[tag][]interface{}
+	pipeline          *Pipeline
+	flows             map[Tag][]interface{}
 	flowsMutex        sync.Mutex
-	lastFlushTime     map[tag]time.Time
-	flushTimers       map[tag]*time.Timer
+	lastFlushTime     map[Tag]time.Time
+	flushTimers       map[Tag]*time.Timer
 }
 
-// OnStructMessage is triggered when WS server sends us a message.
-func (s *Storage) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
-	switch msg.Type {
-	case "store":
-		var flows []*flow.Flow
-		if err := json.Unmarshal(msg.Obj, &flows); err != nil {
-			logging.GetLogger().Error("Failed to unmarshal flows: ", err)
-			return
-		}
-
-		s.StoreFlows(flows)
-
-	default:
-		logging.GetLogger().Error("Unknown message type: ", msg.Type)
-	}
+// SetPipeline setup
+func (s *StoreS3) SetPipeline(pipeline *Pipeline) {
+	s.pipeline = pipeline
 }
 
 // ListObjects lists all stored objects
-func (s *Storage) ListObjects() ([]*string, error) {
+func (s *StoreS3) ListObjects() ([]*string, error) {
 	objectKeys, err := s.client.ListObjects(s.bucket, s.objectPrefix)
 	if err != nil {
 		logging.GetLogger().Error("Failed to list objects: ", err)
@@ -90,7 +75,7 @@ func (s *Storage) ListObjects() ([]*string, error) {
 }
 
 // ReadObjectFlows reads flows from object
-func (s *Storage) ReadObjectFlows(objectKey *string, objectFlows interface{}) error {
+func (s *StoreS3) ReadObjectFlows(objectKey *string, objectFlows interface{}) error {
 	objectBytes, err := s.client.ReadObject(s.bucket, *objectKey)
 	if err != nil {
 		logging.GetLogger().Error("Failed to read object: ", err)
@@ -106,7 +91,7 @@ func (s *Storage) ReadObjectFlows(objectKey *string, objectFlows interface{}) er
 }
 
 // DeleteObject deletes an object
-func (s *Storage) DeleteObject(objectKey *string) error {
+func (s *StoreS3) DeleteObject(objectKey *string) error {
 	if err := s.client.DeleteObject(s.bucket, *objectKey); err != nil {
 		logging.GetLogger().Error("Failed to delete object: ", err)
 		return err
@@ -115,7 +100,7 @@ func (s *Storage) DeleteObject(objectKey *string) error {
 }
 
 // StoreFlows store flows in memory, before being written to the object store
-func (s *Storage) StoreFlows(flows []*flow.Flow) error {
+func (s *StoreS3) StoreFlows(flows []*flow.Flow) error {
 	endTime := time.Now()
 
 	s.flowsMutex.Lock()
@@ -124,17 +109,13 @@ func (s *Storage) StoreFlows(flows []*flow.Flow) error {
 	// transform flows and save to in-memory arrays, based on tag
 	if flows != nil {
 		for _, fl := range flows {
-			flowTag := s.flowClassifier.GetFlowTag(fl)
-			if _, ok := s.excludedTags[flowTag]; ok {
+			flowTag := s.pipeline.Classifier.GetFlowTag(fl)
+			if s.pipeline.Filterer.IsExcluded(flowTag) {
 				continue
 			}
 
-			var transformedFlow interface{}
-			if s.flowTransformer != nil {
-				transformedFlow = s.flowTransformer.Transform(fl)
-			} else {
-				transformedFlow = fl
-			}
+			transformedFlow := s.pipeline.Transformer.Transform(fl)
+
 			if transformedFlow != nil {
 				s.flows[flowTag] = append(s.flows[flowTag], transformedFlow)
 			}
@@ -142,8 +123,8 @@ func (s *Storage) StoreFlows(flows []*flow.Flow) error {
 	}
 
 	// check which flows needs to be flushed to the object store
-	flushedTags := make(map[tag]bool)
-	tagsToTimerReset := make(map[tag]bool)
+	flushedTags := make(map[Tag]bool)
+	tagsToTimerReset := make(map[Tag]bool)
 	for t := range s.flows {
 		if _, ok := s.lastFlushTime[t]; !ok {
 			s.lastFlushTime[t] = endTime
@@ -204,7 +185,7 @@ func (s *Storage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (s *Storage) flushFlowsToObject(t tag, endTime time.Time) error {
+func (s *StoreS3) flushFlowsToObject(t Tag, endTime time.Time) error {
 	flows := s.flows[t]
 	if len(flows) == 0 {
 		return nil
@@ -212,12 +193,6 @@ func (s *Storage) flushFlowsToObject(t tag, endTime time.Time) error {
 
 	if len(flows) > s.maxFlowsPerObject {
 		flows = flows[:s.maxFlowsPerObject]
-	}
-
-	flowsBytes, err := json.Marshal(flows)
-	if err != nil {
-		logging.GetLogger().Error("Error encoding flows: ", err)
-		return err
 	}
 
 	startTime := s.lastFlushTime[t]
@@ -230,15 +205,21 @@ func (s *Storage) flushFlowsToObject(t tag, endTime time.Time) error {
 		"num-records":     aws.String(strconv.Itoa(len(flows))),
 	}
 
-	// gzip
-	var b bytes.Buffer
-	w := gzip.NewWriter(&b)
-	w.Write(flowsBytes)
-	w.Close()
-
 	currentStream := s.currentStream[t]
 	if endTime.Sub(currentStream.ID) >= s.maxStreamDuration {
 		currentStream = stream{ID: endTime}
+	}
+
+	encodedFlows, err := s.pipeline.Encoder.Encode(flows)
+	if err != nil {
+		logging.GetLogger().Error("Failed to encode object: ", err)
+		return err
+	}
+
+	b, err := s.pipeline.Compressor.Compress(encodedFlows)
+	if err != nil {
+		logging.GetLogger().Error("Failed to compress object: ", err)
+		return err
 	}
 
 	objectKey := strings.Join([]string{s.objectPrefix, string(t), currentStream.ID.UTC().Format("20060102T150405Z"), fmt.Sprintf("%08d.gz", currentStream.SeqNumber)}, "/")
@@ -258,9 +239,22 @@ func (s *Storage) flushFlowsToObject(t tag, endTime time.Time) error {
 	return nil
 }
 
-// newStorage returns a new storage interface for storing flows to object store
-func newStorage(client objectStoreClient, bucket, objectPrefix string, maxFlowArraySize, maxFlowsPerObject, maxSecondsPerObject, maxSecondsPerStream int, flowTransformer flowTransformer, flowClassifier flowClassifier, excludedTags []string) *Storage {
-	s := &Storage{
+// NewStoreS3FromConfig returns a new storage interface for storing flows to object store
+func NewStoreS3FromConfig(cfg *viper.Viper) (*StoreS3, error) {
+	bucket := cfg.GetString(CfgRoot + "store.s3.bucket")
+	objectPrefix := cfg.GetString(CfgRoot + "store.s3.object_prefix")
+	maxFlowArraySize := cfg.GetInt(CfgRoot + "store.s3.max_flow_array_size")
+	maxFlowsPerObject := cfg.GetInt(CfgRoot + "store.s3.max_flows_per_object")
+	maxSecondsPerObject := cfg.GetInt(CfgRoot + "store.s3.max_seconds_per_object")
+	maxSecondsPerStream := cfg.GetInt(CfgRoot + "store.s3.max_seconds_per_stream")
+
+	client := newClient(cfg)
+	return NewStoreS3(client, bucket, objectPrefix, maxFlowArraySize, maxFlowsPerObject, maxSecondsPerObject, maxSecondsPerStream)
+}
+
+// NewStoreS3 creates a store
+func NewStoreS3(client objectStoreClient, bucket, objectPrefix string, maxFlowArraySize, maxFlowsPerObject, maxSecondsPerObject, maxSecondsPerStream int) (*StoreS3, error) {
+	s := &StoreS3{
 		bucket:            bucket,
 		objectPrefix:      objectPrefix,
 		maxFlowsPerObject: maxFlowsPerObject,
@@ -268,18 +262,11 @@ func newStorage(client objectStoreClient, bucket, objectPrefix string, maxFlowAr
 		maxObjectDuration: time.Second * time.Duration(maxSecondsPerObject),
 		maxStreamDuration: time.Second * time.Duration(maxSecondsPerStream),
 		client:            client,
-		flowTransformer:   flowTransformer,
-		flowClassifier:    flowClassifier,
-		excludedTags:      make(map[tag]bool),
-		currentStream:     make(map[tag]stream),
-		flows:             make(map[tag][]interface{}),
-		lastFlushTime:     make(map[tag]time.Time),
-		flushTimers:       make(map[tag]*time.Timer),
+		currentStream:     make(map[Tag]stream),
+		flows:             make(map[Tag][]interface{}),
+		lastFlushTime:     make(map[Tag]time.Time),
+		flushTimers:       make(map[Tag]*time.Timer),
 	}
 
-	for _, t := range excludedTags {
-		s.excludedTags[tag(t)] = true
-	}
-
-	return s
+	return s, nil
 }

@@ -15,7 +15,7 @@
  *
  */
 
-package subscriber
+package core
 
 import (
 	"bytes"
@@ -40,11 +40,6 @@ const (
 	maxSecondsPerObject = 60
 	maxSecondsPerStream = 86400
 	maxFlowArraySize    = 100000
-)
-
-var (
-	testFlowClassifier  = &fakeFlowClassifier{}
-	testFlowTransformer flowTransformer
 )
 
 type fakeClient struct {
@@ -104,8 +99,17 @@ type fakeFlowClassifier struct {
 }
 
 // GetFlowTag tag flows according to their UUID
-func (fc *fakeFlowClassifier) GetFlowTag(fl *flow.Flow) tag {
-	return tag(fl.UUID)
+func (fc *fakeFlowClassifier) GetFlowTag(fl *flow.Flow) Tag {
+	return Tag(fl.UUID)
+}
+
+// fakeFlowTransform is a mock flow classifier
+type fakeFlowTransform struct {
+}
+
+// Transform
+func (fc *fakeFlowTransform) Transform(f *flow.Flow) interface{} {
+	return f
 }
 
 func generateFlowArray(count int, tag string) []*flow.Flow {
@@ -119,9 +123,19 @@ func generateFlowArray(count int, tag string) []*flow.Flow {
 	return flows
 }
 
-func newTestStorage() (*Storage, *fakeClient) {
+func newTestStorage(excludedTags ...string) (*StoreS3, *fakeClient) {
 	client := &fakeClient{}
-	return newStorage(client, bucket, objectPrefix, maxFlowArraySize, maxFlowsPerObject, maxSecondsPerObject, maxSecondsPerStream, testFlowTransformer, testFlowClassifier, []string{}), client
+
+	filter, _ := NewFilter(excludedTags...)
+	encode, _ := NewEncodeJSON()
+	compress, _ := NewCompressGzip()
+	classify := &fakeFlowClassifier{}
+	transform := &fakeFlowTransform{}
+	store, _ := NewStoreS3(client, bucket, objectPrefix, maxFlowArraySize, maxFlowsPerObject, maxSecondsPerObject, maxSecondsPerStream)
+
+	NewPipeline(transform, classify, filter, encode, compress, store)
+
+	return store, client
 }
 
 func assertEqual(t *testing.T, expected, actual interface{}) {
@@ -282,8 +296,7 @@ func Test_StoreFlows_maxFlowArraySize(t *testing.T) {
 }
 
 func Test_StoreFlows_ExcludedTags(t *testing.T) {
-	s, client := newTestStorage()
-	s.excludedTags["tag"] = true
+	s, client := newTestStorage("tag")
 	assertEqual(t, nil, s.StoreFlows(generateFlowArray(1, "tag")))
 	assertEqual(t, 0, client.WriteCounter)
 	assertEqual(t, 0, len(s.flows["tag"]))
