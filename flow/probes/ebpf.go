@@ -603,26 +603,35 @@ func LoadJumpMap(module *elf.Module) error {
 	return nil
 }
 
-func loadModule() (*elf.Module, error) {
-	data, err := statics.Asset("probe/ebpf/flow.o")
+func loadModuleFromAsset(path string) (*elf.Module, error) {
+	data, err := statics.Asset(path)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to find eBPF elf binary in bindata")
 	}
 
-	reader := bytes.NewReader(data)
-
-	module := elf.NewModuleFromReader(reader)
-
-	// load to test if everything is ok
+	module := elf.NewModuleFromReader(bytes.NewReader(data))
 	err = module.Load(nil)
+
+	return module, err
+}
+
+func loadModule() (*elf.Module, error) {
+	module, err := loadModuleFromAsset("probe/ebpf/flow-gre.o")
 	if err != nil {
 		// split to skip to kernel stack trace
 		errs := strings.Split(err.Error(), ":")
 		if len(errs) > 1 {
 			logging.GetLogger().Debugf("eBPF kernel stacktrace: %s", errs[1])
 		}
+		logging.GetLogger().Errorf("Unable to load eBPF elf binary (host %s) from bindata: %s, trying to fallback", runtime.GOARCH, errs[0])
 
-		return nil, fmt.Errorf("Unable to load eBPF elf binary (host %s) from bindata: %s", runtime.GOARCH, errs[0])
+		module, err = loadModuleFromAsset("probe/ebpf/flow.o")
+		if err != nil {
+			return nil, fmt.Errorf("Unable to load eBPF elf binary (host %s) from bindata: %s", runtime.GOARCH, errs[0])
+		}
+		logging.GetLogger().Info("Using fallback eBPF program")
+
+		return module, nil
 	}
 	if err = LoadJumpMap(module); err != nil {
 		return nil, err

@@ -15,7 +15,7 @@
  *
  */
 
-#include <linux/stddef.h>
+#include <stddef.h>
 #include <linux/if_packet.h>
 #include <linux/ip.h>
 #include <linux/ipv6.h>
@@ -28,64 +28,23 @@
 #include "bpf.h"
 #include "flow.h"
 
-#ifndef offsetof
-#define offsetof(TYPE, MEMBER) __builtin_offsetof (TYPE, MEMBER)
-#endif
-#ifndef size_t
-#define size_t long
-#endif
-#ifndef NULL
-#define NULL ((void*)0)
-#endif
-
-
 // Fowler/Noll/Vo hash
-#define FNV_BASIS (14695981039346656037ULL)
-#define FNV_PRIME (1099511628211ULL)
+#define FNV_BASIS ((__u64)14695981039346656037U)
+#define FNV_PRIME ((__u64)1099511628211U)
 
 #define IP_MF     0x2000
 #define IP_OFFSET	0x1FFF
 
 #define MAX_VLAN_LAYERS 5
 struct vlan {
-	__be16		tci;
-	__be16		ethertype;
-};
-
-struct sctp {
-        __be16 src;
-        __be16 dst;
-        __be32 tag;
-        __be32 checksum;
-};
-
-#define MAX_GRE_ROUTING_INFO 4
-
-MAP(flow_nostack) {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(__u32),
-	.value_size = sizeof(struct flow),
-	.max_entries = 1,
-};
-
-MAP(jmp_map) {
-	.type = BPF_MAP_TYPE_PROG_ARRAY,
-	.key_size = sizeof(__u32),
-	.value_size = sizeof(__u32),
-	.max_entries = JMP_TABLE_SIZE,
+	__u16		tci;
+	__u16		ethertype;
 };
 
 MAP(u64_config_values) {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(__u32),
 	.value_size = sizeof(__u64),
-	.max_entries = 1,
-};
-
-MAP(l2_table) {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(__u32),
-	.value_size = sizeof(struct l2),
 	.max_entries = 1,
 };
 
@@ -96,48 +55,22 @@ MAP(flow_table) {
 	.max_entries = 500000,
 };
 
-#define __update_hash(key, data) do { \
-	*key ^= (__u64)(data);	      \
-	*key *= FNV_PRIME;            \
-} while (0)
-
 static inline void update_hash_byte(__u64 *key, __u8 byte)
 {
-	__update_hash(key, byte);
+	*key ^= (__u64)byte;
+	*key *= FNV_PRIME;
 }
 
-//FIXME(nplanel) bad code generated (llvm) (stack overflow)
-#if 0
 static inline void update_hash_half(__u64 *key, __u16 half)
 {
-	__update_hash(key, half >> 8);
-	__update_hash(key, half & 0xff);
+	update_hash_byte(key, (half >> 8) & 0xff);
+	update_hash_byte(key, half & 0xff);
 }
 
 static inline void update_hash_word(__u64 *key, __u32 word)
 {
-	__update_hash(key, word >> 24);
-	__update_hash(key, (word >> 16) & 0xff);
-	__update_hash(key, (word >> 8) & 0xff);
-	__update_hash(key, word & 0xff);
-}
-#else
-static inline void update_hash_half(__u64 *key, __u16 half)
-{
-	__update_hash(key, half);
-}
-
-static inline void update_hash_word(__u64 *key, __u32 word)
-{
-	__update_hash(key, word);
-}
-#endif
-
-static inline void add_layer_l2(struct l2 *l2, __u8 layer) {
-	if (l2->layers_path & (LAYERS_PATH_MASK << ((LAYERS_PATH_LEN-1)*LAYERS_PATH_SHIFT))) {
-		return;
-	}
-	l2->layers_path = (l2->layers_path << LAYERS_PATH_SHIFT) | layer;
+	update_hash_half(key, (word >> 16) & 0xffff);
+	update_hash_half(key, word & 0xffff);
 }
 
 static inline void add_layer(struct flow *flow, __u8 layer) {
@@ -147,52 +80,8 @@ static inline void add_layer(struct flow *flow, __u8 layer) {
 	flow->layers_path = (flow->layers_path << LAYERS_PATH_SHIFT) | layer;
 }
 
-static inline void fill_payload(struct __sk_buff *skb, size_t offset, struct flow *flow, int len)
-{
-//	bpf_skb_load_bytes(skb, offset, flow->payload, sizeof(flow->payload));
-}
-
-static inline __u16 fill_gre(struct __sk_buff *skb, size_t *offset, struct flow *flow)
-{
-	__u8 config = load_byte(skb, *offset);
-	__u8 cfg_checksum = config & 0x80;
-	__u8 cfg_routing = config & 0x40;
-	__u8 cfg_key = config & 0x20;
-	__u8 cfg_seq = config & 0x10;
-	__u8 flags = load_byte(skb, (*offset)+1);
-	__u8 cfg_ack = flags & 0x80;
-
-	__u16 protocol = load_half(skb, (*offset)+2);
-	(*offset) += 4;
-	if ((cfg_checksum > 0) || (cfg_routing > 0)) {
-		(*offset) += 4;
-	}
-	if (cfg_key > 0) {
-		(*offset) += 4;
-	}
-	if (cfg_seq > 0) {
-		(*offset) += 4;
-	}
-	if (cfg_routing > 0) {
-#pragma unroll
-		for(int i = 0;i < MAX_GRE_ROUTING_INFO; i++) {
-			__u16 addr_family = load_half(skb, *offset);
-			__u8 len_SRE = load_byte(skb, (*offset)+3);
-
-			*offset += (4 + len_SRE);
-			if (addr_family == 0 && len_SRE == 0) {
-				break;
-			}
-		}
-	}
-	if (cfg_ack > 0) {
-		(*offset) += 4;
-	}
-	return protocol;
-}
-
-static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, size_t offset, int len,
-	struct flow *flow)
+static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, int offset,
+	struct flow *flow, int len, __u64 tm)
 {
 	struct transport_layer *layer = &flow->transport_layer;
 
@@ -202,35 +91,26 @@ static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, size_t o
 
 	__u64 hash_src = 0;
 	update_hash_half(&hash_src, layer->port_src);
+
 	__u64 hash_dst = 0;
 	update_hash_half(&hash_dst, layer->port_dst);
 
+	__u8 flags = 0;
+
 	switch (protocol) {
-		case IPPROTO_SCTP:
+        case IPPROTO_SCTP:
 			add_layer(flow, SCTP_LAYER);
-			offset += sizeof(struct sctp);
-			len -= sizeof(struct sctp);
-			fill_payload(skb, offset, flow, len);
-			break;
+            break;
 		case IPPROTO_UDP:
-			add_layer(flow, UDP_LAYER);
-			offset += sizeof(struct udphdr);
-			len -= sizeof(struct udphdr);
-			fill_payload(skb, offset, flow, len);
+            add_layer(flow, UDP_LAYER);
 			break;
 		case IPPROTO_TCP:
-		{
-			__u64 tm = flow->last;
-			__u8 flags = load_byte(skb, offset + 13);
-			add_layer(flow, TCP_LAYER);
-			layer->ab_rst = (flags & 0x04) ? tm : 0;
-			layer->ab_syn = (flags & 0x02) ? tm : 0;
-			layer->ab_fin = (flags & 0x01) ? tm : 0;
-			offset += sizeof(struct tcphdr);
-			len -= sizeof(struct tcphdr);
-			fill_payload(skb, offset, flow, len);
+            add_layer(flow, TCP_LAYER);
+			flags = load_byte(skb, offset + 14);
+			layer->ab_syn = (flags & 0x02) > 0 ? tm : 0;
+			layer->ab_fin = (flags & 0x01) > 0 ? tm : 0;
+			layer->ab_rst = (flags & 0x04) > 0 ? tm : 0;
 			break;
-		}
 	}
 
 	layer->_hash = FNV_BASIS ^ hash_src ^ hash_dst;
@@ -238,7 +118,7 @@ static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, size_t o
 	flow->layers_info |= TRANSPORT_LAYER_INFO;
 }
 
-static inline void fill_icmpv4(struct __sk_buff *skb, size_t offset, struct flow *flow)
+static inline void fill_icmpv4(struct __sk_buff *skb, int offset, struct flow *flow)
 {
 	struct icmp_layer *layer = &flow->icmp_layer;
 
@@ -261,11 +141,11 @@ static inline void fill_icmpv4(struct __sk_buff *skb, size_t offset, struct flow
 
 	layer->_hash = FNV_BASIS ^ hash;
 
-	add_layer(flow, ICMP4_LAYER);
+    add_layer(flow, ICMP4_LAYER);
 	flow->layers_info |= ICMP_LAYER_INFO;
 }
 
-static inline void fill_icmpv6(struct __sk_buff *skb, size_t offset, struct flow *flow)
+static inline void fill_icmpv6(struct __sk_buff *skb, int offset, struct flow *flow)
 {
 	struct icmp_layer *layer = &flow->icmp_layer;
 
@@ -288,11 +168,11 @@ static inline void fill_icmpv6(struct __sk_buff *skb, size_t offset, struct flow
 
 	layer->_hash = FNV_BASIS ^ hash;
 
-	add_layer(flow, ICMP6_LAYER);
+    add_layer(flow, ICMP6_LAYER);
 	flow->layers_info |= ICMP_LAYER_INFO;
 }
 
-static inline void fill_word(__u32 src, __u8 *dst, size_t offset)
+static inline void fill_word(__u32 src, __u8 *dst, int offset)
 {
 	dst[offset] = (src >> 24) & 0xff;
 	dst[offset + 1] = (src >> 16) & 0xff;
@@ -300,14 +180,14 @@ static inline void fill_word(__u32 src, __u8 *dst, size_t offset)
 	dst[offset + 3] = src & 0xff;
 }
 
-static inline void fill_ipv4(struct __sk_buff *skb, size_t offset, __u8 *dst, __u64 *hash)
+static inline void fill_ipv4(struct __sk_buff *skb, int offset, __u8 *dst, __u64 *hash)
 {
 	__u32 w = load_word(skb, offset);
 	fill_word(w, dst, 12);
 	update_hash_word(hash, w);
 }
 
-static inline void fill_ipv6(struct __sk_buff *skb, size_t offset, __u8 *dst, __u64 *hash)
+static inline void fill_ipv6(struct __sk_buff *skb, int offset, __u8 *dst, __u64 *hash)
 {
 	__u32 w = load_word(skb, offset);
 	fill_word(w, dst, 0);
@@ -326,34 +206,75 @@ static inline void fill_ipv6(struct __sk_buff *skb, size_t offset, __u8 *dst, __
 	update_hash_word(hash, w);
 }
 
-static inline void fill_network(struct __sk_buff *skb, __u16 netproto, size_t offset, int len, struct flow *flow)
+static inline void fill_network(struct __sk_buff *skb, __u16 netproto, int offset,
+	struct flow *flow, __u64 tm)
 {
 	struct network_layer *layer = &flow->network_layer;
+
+	int len = skb->len - sizeof(struct ethhdr);
+	int frag = 0;
+
 	__u8 transproto = 0;
 
 	__u64 hash_src = 0;
 	__u64 hash_dst = 0;
 
-	layer->_hash = FNV_BASIS;
+	layer->protocol = netproto;
+	switch (netproto) {
+		case ETH_P_IP:
+			frag = load_half(skb, offset + offsetof(struct iphdr, frag_off)) & (IP_MF | IP_OFFSET);
+			if (frag) {
+				// TODO report fragment
+				return;
+			}
 
-#define TUNNEL
-#include "flow_network.c"
+			transproto = load_byte(skb, offset + offsetof(struct iphdr, protocol));
+			fill_ipv4(skb, offset + offsetof(struct iphdr, saddr), layer->ip_src, &hash_src);
+			fill_ipv4(skb, offset + offsetof(struct iphdr, daddr), layer->ip_dst, &hash_dst);
+			break;
+		case ETH_P_IPV6:
+			transproto = load_byte(skb, offset + offsetof(struct ipv6hdr, nexthdr));
+			fill_ipv6(skb, offset + offsetof(struct ipv6hdr, saddr), layer->ip_src, &hash_src);
+			fill_ipv6(skb, offset + offsetof(struct ipv6hdr, daddr), layer->ip_dst, &hash_dst);
+			break;
+		default:
+			return;
+	}
 
-	layer->_hash_src = hash_src;
-	layer->_hash ^= hash_src ^ hash_dst ^ netproto ^ transproto;
+	__u8 verlen = load_byte(skb, offset);
+	offset += (verlen & 0xF) << 2;
 
-	flow->key ^= flow->network_layer_outer._hash ^ flow->network_layer._hash ^
-		flow->transport_layer._hash ^ flow->icmp_layer._hash;
+	len -= (verlen & 0xF) << 2;
+
+	switch (transproto) {
+		case IPPROTO_GRE:
+			// TODO
+			break;
+		case IPPROTO_SCTP:
+			// TODO
+		case IPPROTO_UDP:
+		case IPPROTO_TCP:
+			fill_transport(skb, transproto, offset, flow, len, tm);
+			break;
+		case IPPROTO_ICMP:
+			fill_icmpv4(skb, offset, flow);
+			break;
+		case IPPROTO_ICMPV6:
+			fill_icmpv6(skb, offset, flow);
+			break;
+	}
+
+	layer->_hash = FNV_BASIS ^ hash_src ^ hash_dst ^ netproto ^ transproto;
 
 	flow->layers_info |= NETWORK_LAYER_INFO;
 }
 
-static inline __u16 fill_vlan(struct __sk_buff *skb, struct l2 *l2)
+static inline __u16 fill_vlan(struct __sk_buff *skb, int offset, struct flow *flow)
 {
-	struct link_layer *layer = &l2->link_layer;
+	struct link_layer *layer = &flow->link_layer;
 
-	__u16 tci = load_half(skb, l2->next_layer_offset + offsetof(struct vlan, tci));
-	__u16 protocol = load_half(skb, l2->next_layer_offset + offsetof(struct vlan, ethertype));
+	__u16 tci = load_half(skb, offset + offsetof(struct vlan, tci));
+	__u16 protocol = load_half(skb, offset + offsetof(struct vlan, ethertype));
 	__u16 vlanID = tci & 0x0fff;
 
 	__u64 hash_vlan = 0;
@@ -361,33 +282,35 @@ static inline __u16 fill_vlan(struct __sk_buff *skb, struct l2 *l2)
 
 	layer->_hash ^= hash_vlan;
 	layer->id = (layer->id << 12) | vlanID;
-	add_layer_l2(l2, DOT1Q_LAYER);
+
+    add_layer(flow, DOT1Q_LAYER);
 
 	return protocol;
 }
 
-static inline void fill_vlans(struct __sk_buff *skb, __u16 *protocol, struct l2 *l2) {
+static inline void fill_vlans(struct __sk_buff *skb, __u16 *protocol, int *offset, struct flow *flow) {
 	if (*protocol == ETH_P_8021Q) {
 		#pragma unroll
 		for(int i=0;i<MAX_VLAN_LAYERS;i++) {
-			*protocol = fill_vlan(skb, l2);
-			l2->next_layer_offset += 4;
+			*protocol = fill_vlan(skb, *offset, flow);
+			*offset += 4;
 			if (*protocol != ETH_P_8021Q) {
 				break;
 			}
 		}
 	}
 
-	struct link_layer *layer = &l2->link_layer;
+	struct link_layer *layer = &flow->link_layer;
 	if (skb->vlan_present) {
 		__u16 vlanID = skb->vlan_tci & 0x0fff;
 		layer->_hash ^= vlanID;
 		layer->id = (layer->id << 12) | vlanID;
-		add_layer_l2(l2, DOT1Q_LAYER);
+
+        add_layer(flow, DOT1Q_LAYER);
 	}
 }
 
-static inline void fill_haddr(struct __sk_buff *skb, size_t offset,
+static inline void fill_haddr(struct __sk_buff *skb, int offset,
 	unsigned char *mac)
 {
 	mac[0] = load_byte(skb, offset);
@@ -398,9 +321,9 @@ static inline void fill_haddr(struct __sk_buff *skb, size_t offset,
 	mac[5] = load_byte(skb, offset + 5);
 }
 
-static inline __u16 fill_link(struct __sk_buff *skb, size_t offset, struct l2 *l2)
+static inline void fill_link(struct __sk_buff *skb, int offset, struct flow *flow)
 {
-	struct link_layer *layer = &l2->link_layer;
+	struct link_layer *layer = &flow->link_layer;
 
 	fill_haddr(skb, offset + offsetof(struct ethhdr, h_source), layer->mac_src);
 	fill_haddr(skb, offset + offsetof(struct ethhdr, h_dest), layer->mac_dst);
@@ -414,15 +337,16 @@ static inline __u16 fill_link(struct __sk_buff *skb, size_t offset, struct l2 *l
 	update_hash_half(&hash_dst, layer->mac_dst[2] << 8 | layer->mac_dst[3]);
 	update_hash_half(&hash_dst, layer->mac_dst[4] << 8 | layer->mac_dst[5]);
 
-	__u16 ethertype = load_half(skb, offsetof(struct ethhdr, h_proto));
 	layer->_hash = FNV_BASIS ^ layer->_hash_src ^ hash_dst;
-	add_layer_l2(l2, ETH_LAYER);
 
-	return ethertype;
+    add_layer(flow, ETH_LAYER);
+	flow->layers_info |= LINK_LAYER_INFO; 
 }
 
-static inline void update_metrics(struct __sk_buff *skb, struct flow *flow, int ab)
+static inline void update_metrics(struct __sk_buff *skb, struct flow *flow, __u64 tm, int ab)
 {
+	struct link_layer *layer = &flow->link_layer;
+
 	if (ab) {
 		__sync_fetch_and_add(&flow->metrics.ab_packets, 1);
 		__sync_fetch_and_add(&flow->metrics.ab_bytes, skb->len);
@@ -432,31 +356,28 @@ static inline void update_metrics(struct __sk_buff *skb, struct flow *flow, int 
 	}
 }
 
-static inline __u16 fill_l2(struct __sk_buff *skb, struct l2 *l2)
+static inline void fill_flow(struct __sk_buff *skb, struct flow *flow, __u64 tm)
 {
-	__u16 protocol = bpf_ntohs((__u16)skb->protocol);
+	fill_link(skb, 0, flow);
 
-	if (((protocol == ETH_P_IP) || (protocol == ETH_P_IPV6)) && (skb->len >= 14)) {
-		__u16 eth_proto = load_half(skb, 12);
-		if ((eth_proto == ETH_P_IP) || (eth_proto == ETH_P_IPV6)) {
-			protocol = ETH_P_ALL;
-		}
+	__u16 protocol = load_half(skb, offsetof(struct ethhdr, h_proto));
+	int offset = ETH_HLEN;
+
+	fill_vlans(skb, &protocol, &offset, flow);
+
+	switch (protocol) {
+	case ETH_P_ARP:
+		update_hash_half(&flow->link_layer._hash, protocol);
+		flow->layers_info |= ARP_LAYER;
+		break;
+	case ETH_P_IP:
+	case ETH_P_IPV6:
+		fill_network(skb, (__u16)protocol, offset, flow, tm);
+		break;
 	}
 
-	if ((protocol != ETH_P_IP) && (protocol != ETH_P_IPV6)) {
-		protocol = fill_link(skb, 0, l2);
-		l2->next_layer_offset = ETH_HLEN;
-
-		fill_vlans(skb, &protocol, l2);
-
-		if (protocol == ETH_P_ARP) {
-			add_layer_l2(l2, ARP_LAYER);
-		}
-	}
-
-	update_hash_half(&l2->link_layer._hash, protocol);
-	l2->key = l2->link_layer._hash;
-	return protocol;
+	flow->key = flow->link_layer._hash ^ flow->network_layer._hash ^
+		flow->transport_layer._hash ^ flow->icmp_layer._hash;
 }
 
 SOCKET(flow_table)
@@ -470,93 +391,47 @@ int bpf_flow_table(struct __sk_buff *skb)
 		bpf_map_update_element(&u64_config_values, &key, &tm, BPF_ANY);
 	}
 
-	__u32 k32 = 0;
-	struct l2 *l2 = bpf_map_lookup_element(&l2_table, &k32);
-	if (l2 == NULL) {
-		bpf_printk("=== l2 not found bpf_flow_table ===\n");
-		return 0;
-	}
-	memset(l2, 0, sizeof(struct l2));
-	l2->last = tm;
+	struct flow flow = {}, *prev;
+	fill_flow(skb, &flow,tm);
 
-	l2->ethertype = fill_l2(skb, l2);
+	prev = bpf_map_lookup_element(&flow_table, &flow.key);
+	if (prev) {
+		update_metrics(skb, prev, tm,
+					   flow.link_layer._hash_src == prev->link_layer._hash_src);
+		__sync_fetch_and_add(&prev->last, tm - prev->last);
 
- 	bpf_tail_call(skb, &jmp_map, JMP_NETWORK_LAYER);
-	bpf_printk("=== no tail call l2 key %x %x ====\n", l2->key, l2->link_layer.id);
-	return 0;
-}
-
-SOCKET(network_layer)
-int network_layer(struct __sk_buff *skb)
-{
-	__u32 k32 = 0;
-	struct l2 *l2 = bpf_map_lookup_element(&l2_table, &k32);
-	if (l2 == NULL) {
-		bpf_printk("=== l2 not found network_layer ===\n");
-		return 0;
-	}
-
-	struct flow *new, *flow;
-	new = bpf_map_lookup_element(&flow_nostack, &k32);
-	if (new == NULL) {
-		bpf_printk("=== no free struct flow\n");
-		return 0;
-	}
-	memset(new, 0, sizeof(struct flow));
-	
-	new->key = l2->key;
-	new->layers_path = l2->layers_path;
-	new->link_layer = l2->link_layer;
-	new->last = l2->last;
-
-	if (l2->next_layer_offset != 0) {
-		new->layers_info |= LINK_LAYER_INFO;
-	}
-
-	/* L3/L4/... */
-	fill_network(skb, l2->ethertype, l2->next_layer_offset, skb->len - l2->next_layer_offset, new);
-
-	flow = bpf_map_lookup_element(&flow_table, &new->key);
-	if (flow == NULL) {
-		/* New flow */
-		new->start = new->last;
-		update_metrics(skb, new, 1);
-		bpf_map_update_element(&flow_table, &new->key, new, BPF_ANY);
-
-		return 0;
-	}
-
-	/* Update flow */
-	int ab;
-	int first_layer_ip = (l2->next_layer_offset == 0);
-	if (first_layer_ip == 0) {
-		ab = new->link_layer._hash_src == flow->link_layer._hash_src;
-	} else {
-		ab = new->network_layer._hash_src == flow->network_layer._hash_src;
-	}
-	update_metrics(skb, flow, ab);
-	if (flow->layers_info & TRANSPORT_LAYER_INFO) {
-#define update_transport_flags(ab, ba)					\
-		do {							\
-			if ((flow->transport_layer.ab == 0) && (new->transport_layer.ba != 0)) { \
-				flow->transport_layer.ab = new->transport_layer.ba; \
-			}						\
-		} while (0)
-
-		if (flow->transport_layer.port_src == new->transport_layer.port_src) {
-			update_transport_flags(ab_syn, ab_syn);
-			update_transport_flags(ab_fin, ab_fin);
-			update_transport_flags(ab_rst, ab_rst);
-		} else {
-			update_transport_flags(ba_syn, ab_syn);
-			update_transport_flags(ba_fin, ab_fin);
-			update_transport_flags(ba_rst, ab_rst);
+		if (prev->layers_info & flow.layers_info & TRANSPORT_LAYER_INFO > 0) {
+			if (prev->transport_layer.port_src == flow.transport_layer.port_src) {
+				if (prev->transport_layer.ab_syn == 0 && flow.transport_layer.ab_syn != 0) {
+					__sync_fetch_and_add(&prev->transport_layer.ab_syn, flow.transport_layer.ab_syn);
+				}
+				if (prev->transport_layer.ab_fin == 0 && flow.transport_layer.ab_fin != 0) {
+					__sync_fetch_and_add(&prev->transport_layer.ab_fin, flow.transport_layer.ab_fin);
+				}
+				if (prev->transport_layer.ab_rst == 0 && flow.transport_layer.ab_rst != 0) {
+					__sync_fetch_and_add(&prev->transport_layer.ab_rst, flow.transport_layer.ab_rst);
+				}
+			}
+			else {
+				if (prev->transport_layer.ba_syn == 0 && flow.transport_layer.ab_syn != 0) {
+					__sync_fetch_and_add(&prev->transport_layer.ba_syn, flow.transport_layer.ab_syn);
+				}
+				if (prev->transport_layer.ba_fin == 0 && flow.transport_layer.ab_fin != 0) {
+					__sync_fetch_and_add(&prev->transport_layer.ba_fin, flow.transport_layer.ab_fin);
+				}
+				if (prev->transport_layer.ba_rst == 0 && flow.transport_layer.ab_rst != 0) {
+					__sync_fetch_and_add(&prev->transport_layer.ba_rst, flow.transport_layer.ab_rst);
+				}
+			}
 		}
-#undef update_transport_flags
+	} else {
+		update_metrics(skb, &flow, tm, 1);
+		__sync_fetch_and_add(&flow.start, tm);
+		__sync_fetch_and_add(&flow.last, tm);
+
+		bpf_map_update_element(&flow_table, &flow.key, &flow, BPF_ANY);
 	}
 
 	return 0;
 }
-
 char _license[] LICENSE = "GPL";
-
