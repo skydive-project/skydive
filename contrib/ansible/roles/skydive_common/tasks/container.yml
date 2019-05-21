@@ -26,7 +26,7 @@
   when: skydive_container_cli == "docker"
 
 - name: Pull skydive image
-  shell: "{{ skydive_container_cli }} pull {{ skydive_docker_registry }}/{{ skydive_docker_image }}:{{ skydive_docker_image_tag }}"
+  shell: "{{ skydive_container_cli }} pull {{ skydive_docker_registry }}/{{ skydive_docker_image }}:{{ skydive_service_docker_image_tag or skydive_docker_image_tag }}"
   when: skydive_load_docker_image is not defined
 
 - name: Check docker registry
@@ -57,9 +57,9 @@
   when: skydive_load_docker_image is defined
 
 - name: Tag skydive image
-  shell: "{{ skydive_container_cli }} tag skydive/skydive:devel {{ skydive_docker_registry }}/{{ skydive_docker_image }}:{{ skydive_docker_image_tag }}"
+  shell: "{{ skydive_container_cli }} tag skydive/skydive:devel {{ skydive_docker_registry }}/{{ skydive_docker_image }}:{{ skydive_service_docker_image_tag or skydive_docker_image_tag }}"
   when: skydive_load_docker_image is defined
 
 - name: Push skydive image to registry
-  shell: "{{ skydive_container_cli }} push {{ skydive_docker_registry }}/{{ skydive_docker_image }}:{{ skydive_docker_image_tag }}"
+  shell: "{{ skydive_container_cli }} push {{ skydive_docker_registry }}/{{ skydive_docker_image }}:{{ skydive_service_docker_image_tag or skydive_docker_image_tag }}"
   when: skydive_load_docker_image is defined

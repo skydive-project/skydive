@@ -1,12 +1,4 @@
 ---
-- name: Ensure config file permissions
-  file:
-    path: "/var/lib/skydive"
-    owner: "{{ skydive_sys_username }}"
-    group: "{{ skydive_sys_groupname }}"
-    mode: 0770
-    state: directory
-
 - name: Set fabric nodes
   yedit:
     src: "{{ skydive_config_file }}"
