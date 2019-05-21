@@ -218,7 +218,7 @@ debug: GO_BINDATA_FLAGS+=-debug
 debug: skydive skydive.yml
 
 define skydive_debug
-sudo $$(which dlv) exec $$(which skydive) -- $1 -c skydive.yml
+sudo $$(which dlv) --check-go-version=false exec $$(which skydive) -- $1 -c skydive.yml
 endef
 
 .PHONY: debug.agent
