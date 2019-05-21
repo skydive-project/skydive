@@ -66,7 +66,11 @@ func newClusterProbe(kubeconfig interface{}, g *graph.Graph) Subprobe {
 		cc := (kubeconfig).(*clientcmd.ClientConfig)
 		rawconfig, err := (*cc).RawConfig()
 		if err == nil {
-			clusterName = rawconfig.Contexts[rawconfig.CurrentContext].Cluster
+			if context := rawconfig.Contexts[rawconfig.CurrentContext]; context != nil {
+				if context.Cluster != "" {
+					clusterName = context.Cluster
+				}
+			}
 		}
 	}
 
