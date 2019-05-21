@@ -101,49 +101,6 @@ type remoteConnectionPair struct {
 
 }
 
-// easyjson:json
-type baseConnectionMetadata struct {
-	MechanismType       string
-	MechanismParameters map[string]string
-	Labels              map[string]string
-}
-
-// easyjson:json
-type localConnectionMetadata struct {
-	baseConnectionMetadata
-	IP string
-}
-
-// easyjson:json
-type remoteConnectionMetadata struct {
-	baseConnectionMetadata
-	SourceNSM              string
-	DestinationNSM         string
-	NetworkServiceEndpoint string
-}
-
-// easyjson:json
-type baseNSMMetadata struct {
-	NetworkService string
-	Payload        string
-	Source         interface{}
-	Destination    interface{}
-}
-
-// easyjson:json
-type localNSMMetadata struct {
-	baseNSMMetadata
-	CrossConnectID string
-}
-
-// easyjson:json
-type remoteNSMMetadata struct {
-	baseNSMMetadata
-	SourceCrossConnectID      string
-	DestinationCrossConnectID string
-	Via                       remoteConnectionMetadata
-}
-
 func (b *baseConnectionPair) getNodes(g *graph.Graph) (*graph.Node, *graph.Node, error) {
 	srcInode, dstInode := b.getInodes()
 
@@ -207,26 +164,28 @@ func (l *localConnectionPair) delEdge(g *graph.Graph) {
 
 func (l *localConnectionPair) createMetadata() graph.Metadata {
 	metadata := graph.Metadata{
-		"NSM": localNSMMetadata{
-			CrossConnectID: l.cc.ID,
-			baseNSMMetadata: baseNSMMetadata{
+		"NSM": &EdgeMetadata{
+			BaseNSMMetadata: BaseNSMMetadata{
 				Payload:        l.payload,
 				NetworkService: l.getSource().GetNetworkService(),
-				Source: localConnectionMetadata{
-					baseConnectionMetadata: baseConnectionMetadata{
+				Source: LocalConnectionMetadata{
+					BaseConnectionMetadata: BaseConnectionMetadata{
 						MechanismType:       l.getSource().GetMechanism().GetType().String(),
 						MechanismParameters: l.getSource().GetMechanism().GetParameters(),
 						Labels:              l.getSource().GetLabels(),
 					},
 				},
-				Destination: localConnectionMetadata{
+				Destination: LocalConnectionMetadata{
 					IP: l.getDest().GetContext().GetDstIpAddr(),
-					baseConnectionMetadata: baseConnectionMetadata{
+					BaseConnectionMetadata: BaseConnectionMetadata{
 						MechanismType:       l.getDest().GetMechanism().GetType().String(),
 						MechanismParameters: l.getDest().GetMechanism().GetParameters(),
 						Labels:              l.getDest().GetLabels(),
 					},
 				},
+			},
+			LocalNSMMetadata: LocalNSMMetadata{
+				CrossConnectID: l.cc.ID,
 			},
 		},
 		"Directed": "true",
@@ -289,38 +248,40 @@ func (r *remoteConnectionPair) delEdge(g *graph.Graph) {
 
 func (r *remoteConnectionPair) createMetadata() graph.Metadata {
 	metadata := graph.Metadata{
-		"NSM": remoteNSMMetadata{
-			SourceCrossConnectID:      r.srcCc.ID,
-			DestinationCrossConnectID: r.dstCc.ID,
-			baseNSMMetadata: baseNSMMetadata{
+		"NSM": &EdgeMetadata{
+			BaseNSMMetadata: BaseNSMMetadata{
 				NetworkService: r.getSource().GetNetworkService(),
 				Payload:        r.payload,
-				Source: localConnectionMetadata{
+				Source: LocalConnectionMetadata{
 					IP: r.getSource().GetContext().GetSrcIpAddr(),
-					baseConnectionMetadata: baseConnectionMetadata{
+					BaseConnectionMetadata: BaseConnectionMetadata{
 						MechanismType:       r.getSource().GetMechanism().GetType().String(),
 						MechanismParameters: r.getSource().GetMechanism().GetParameters(),
 						Labels:              r.getSource().GetLabels(),
 					},
 				},
-				Destination: localConnectionMetadata{
+				Destination: LocalConnectionMetadata{
 					IP: r.getDest().GetContext().GetDstIpAddr(),
-					baseConnectionMetadata: baseConnectionMetadata{
+					BaseConnectionMetadata: BaseConnectionMetadata{
 						MechanismType:       r.getDest().GetMechanism().GetType().String(),
 						MechanismParameters: r.getDest().GetMechanism().GetParameters(),
 						Labels:              r.getDest().GetLabels(),
 					},
 				},
 			},
-			Via: remoteConnectionMetadata{
-				baseConnectionMetadata: baseConnectionMetadata{
-					MechanismType:       r.remote.GetMechanism().GetType().String(),
-					MechanismParameters: r.remote.GetMechanism().GetParameters(),
-					Labels:              r.remote.GetLabels(),
+			RemoteNSMMetadata: RemoteNSMMetadata{
+				SourceCrossConnectID:      r.srcCc.ID,
+				DestinationCrossConnectID: r.dstCc.ID,
+				Via: RemoteConnectionMetadata{
+					BaseConnectionMetadata: BaseConnectionMetadata{
+						MechanismType:       r.remote.GetMechanism().GetType().String(),
+						MechanismParameters: r.remote.GetMechanism().GetParameters(),
+						Labels:              r.remote.GetLabels(),
+					},
+					SourceNSM:              r.remote.GetSourceNetworkServiceManagerName(),
+					DestinationNSM:         r.remote.GetDestinationNetworkServiceManagerName(),
+					NetworkServiceEndpoint: r.remote.GetNetworkServiceEndpointName(),
 				},
-				SourceNSM:              r.remote.GetSourceNetworkServiceManagerName(),
-				DestinationNSM:         r.remote.GetDestinationNetworkServiceManagerName(),
-				NetworkServiceEndpoint: r.remote.GetNetworkServiceEndpointName(),
 			},
 		},
 		"Directed": "true",
