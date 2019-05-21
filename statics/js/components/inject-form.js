@@ -215,7 +215,7 @@ Vue.component('inject-form', {
     },
 
     getIP: function(node) {
-      md = node.metadata;
+      md = node.metadata.Neutron ? node.metadata.Neutron : node.metadata;
       ipFamily = this.type.slice(-1);
       if (ipFamily == "4" && "IPV4" in md) {
         return md.IPV4[0];
@@ -227,6 +227,7 @@ Vue.component('inject-form', {
     },
 
     getMAC: function(node) {
+      if (node.metadata.ExtID && node.metadata.ExtID["attached-mac"]) return node.metadata.ExtID["attached-mac"];
       return node.metadata.MAC || "";
     },
 
