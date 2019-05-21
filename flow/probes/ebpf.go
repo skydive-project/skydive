@@ -618,16 +618,11 @@ func loadModuleFromAsset(path string) (*elf.Module, error) {
 func loadModule() (*elf.Module, error) {
 	module, err := loadModuleFromAsset("probe/ebpf/flow-gre.o")
 	if err != nil {
-		// split to skip to kernel stack trace
-		errs := strings.Split(err.Error(), ":")
-		if len(errs) > 1 {
-			logging.GetLogger().Debugf("eBPF kernel stacktrace: %s", errs[1])
-		}
-		logging.GetLogger().Errorf("Unable to load eBPF elf binary (host %s) from bindata: %s, trying to fallback", runtime.GOARCH, errs[0])
+		logging.GetLogger().Errorf("Unable to load eBPF elf binary (host %s) from bindata: %s, trying to fallback", runtime.GOARCH, err)
 
 		module, err = loadModuleFromAsset("probe/ebpf/flow.o")
 		if err != nil {
-			return nil, fmt.Errorf("Unable to load eBPF elf binary (host %s) from bindata: %s", runtime.GOARCH, errs[0])
+			return nil, fmt.Errorf("Unable to load fallback eBPF elf binary (host %s) from bindata: %s", runtime.GOARCH, err)
 		}
 		logging.GetLogger().Info("Using fallback eBPF program")
 

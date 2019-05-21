@@ -147,11 +147,6 @@ static inline void add_layer(struct flow *flow, __u8 layer) {
 	flow->layers_path = (flow->layers_path << LAYERS_PATH_SHIFT) | layer;
 }
 
-static inline void fill_payload(struct __sk_buff *skb, size_t offset, struct flow *flow, int len)
-{
-//	bpf_skb_load_bytes(skb, offset, flow->payload, sizeof(flow->payload));
-}
-
 static inline __u16 fill_gre(struct __sk_buff *skb, size_t *offset, struct flow *flow)
 {
 	__u8 config = load_byte(skb, *offset);
@@ -208,15 +203,9 @@ static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, size_t o
 	switch (protocol) {
 		case IPPROTO_SCTP:
 			add_layer(flow, SCTP_LAYER);
-			offset += sizeof(struct sctp);
-			len -= sizeof(struct sctp);
-			fill_payload(skb, offset, flow, len);
 			break;
 		case IPPROTO_UDP:
 			add_layer(flow, UDP_LAYER);
-			offset += sizeof(struct udphdr);
-			len -= sizeof(struct udphdr);
-			fill_payload(skb, offset, flow, len);
 			break;
 		case IPPROTO_TCP:
 		{
@@ -226,9 +215,6 @@ static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, size_t o
 			layer->ab_rst = (flags & 0x04) ? tm : 0;
 			layer->ab_syn = (flags & 0x02) ? tm : 0;
 			layer->ab_fin = (flags & 0x01) ? tm : 0;
-			offset += sizeof(struct tcphdr);
-			len -= sizeof(struct tcphdr);
-			fill_payload(skb, offset, flow, len);
 			break;
 		}
 	}

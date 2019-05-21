@@ -61,9 +61,6 @@
 		case IPPROTO_ICMPV6:
 			fill_icmpv6(skb, offset, flow);
 			break;
-		default:
-			fill_payload(skb, offset, flow, len);
-			break;
 #ifdef TUNNEL
 #undef TUNNEL
 	case IPPROTO_GRE:
