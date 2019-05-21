@@ -36,6 +36,7 @@ type Resource interface {
 }
 
 // BasicResource is a resource with a unique identifier
+// easyjson:json
 type BasicResource struct {
 	UUID string `yaml:"UUID"`
 }
@@ -56,6 +57,7 @@ func (b *BasicResource) GetName() string {
 }
 
 // Alert is a set of parameters, the Alert Action will Trigger according to its Expression.
+// easyjson:json
 type Alert struct {
 	BasicResource `yaml:",inline"`
 	Name          string `json:",omitempty" yaml:"Name"`
@@ -79,6 +81,7 @@ func NewAlert() *Alert {
 }
 
 // Capture describes a capture API
+// easyjson:json
 type Capture struct {
 	BasicResource   `yaml:",inline"`
 	GremlinQuery    string           `json:"GremlinQuery,omitempty" valid:"isGremlinExpr" yaml:"GremlinQuery"`
@@ -116,6 +119,7 @@ func NewCapture(query string, bpfFilter string) *Capture {
 }
 
 // EdgeRule describes a edge rule
+// easyjson:json
 type EdgeRule struct {
 	BasicResource `yaml:",inline"`
 	Name          string         `yaml:"Name"`
@@ -139,6 +143,7 @@ func (e *EdgeRule) Validate() error {
 }
 
 // NodeRule describes a node rule
+// easyjson:json
 type NodeRule struct {
 	BasicResource `yaml:",inline"`
 	Name          string         `yaml:"Name"`
@@ -170,6 +175,7 @@ func (n *NodeRule) Validate() error {
 }
 
 // PacketInjection packet injector API parameters
+// easyjson:json
 type PacketInjection struct {
 	BasicResource    `yaml:",inline"`
 	Src              string `yaml:"Src"`
@@ -208,17 +214,20 @@ func (pi *PacketInjection) Validate() error {
 }
 
 // TopologyParam topology API parameter
+// easyjson:json
 type TopologyParam struct {
 	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr" yaml:"GremlinQuery"`
 }
 
 // WorkflowChoice describes one value within a choice
+// easyjson:json
 type WorkflowChoice struct {
 	Value       string `yaml:"Value"`
 	Description string `yaml:"Description"`
 }
 
 // WorkflowParam describes a workflow parameter
+// easyjson:json
 type WorkflowParam struct {
 	Name        string           `yaml:"Name"`
 	Description string           `yaml:"Description"`
@@ -228,6 +237,7 @@ type WorkflowParam struct {
 }
 
 // Workflow describes a workflow
+// easyjson:json
 type Workflow struct {
 	BasicResource `yaml:",inline"`
 	Name          string          `yaml:"Name" valid:"nonzero"`
