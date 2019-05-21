@@ -22,10 +22,9 @@ import (
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
-)
 
-// ClusterName is the name of the k8s cluster
-const ClusterName = "cluster"
+	"k8s.io/client-go/tools/clientcmd"
+)
 
 var clusterNode *graph.Node
 
@@ -34,20 +33,20 @@ type clusterCache struct {
 	graph *graph.Graph
 }
 
-func (c *clusterCache) addClusterNode() {
+func (c *clusterCache) addClusterNode(clusterName string) {
 	c.graph.Lock()
 	defer c.graph.Unlock()
 
-	m := graph.Metadata{"Name": ClusterName}
+	m := graph.Metadata{"Name": clusterName}
 
 	var err error
-	clusterNode, err = c.graph.NewNode(graph.GenID(), NewMetadata(Manager, "cluster", m, nil, ClusterName), "")
+	clusterNode, err = c.graph.NewNode(graph.GenID(), NewMetadata(Manager, "cluster", m, nil, clusterName), "")
 	if err != nil {
 		logging.GetLogger().Error(err)
 		return
 	}
 	c.NotifyEvent(graph.NodeAdded, clusterNode)
-	logging.GetLogger().Debugf("Added cluster{Name: %s}", ClusterName)
+	logging.GetLogger().Debugf("Added cluster{Name: %s}", clusterName)
 }
 
 func (c *clusterCache) Start() {
@@ -56,12 +55,22 @@ func (c *clusterCache) Start() {
 func (c *clusterCache) Stop() {
 }
 
-func newClusterProbe(clientset interface{}, g *graph.Graph) Subprobe {
+func newClusterProbe(kubeconfig interface{}, g *graph.Graph) Subprobe {
 	c := &clusterCache{
 		EventHandler: graph.NewEventHandler(100),
 		graph:        g,
 	}
-	c.addClusterNode()
+
+	clusterName := "cluster"
+	if kubeconfig != nil {
+		cc := (kubeconfig).(*clientcmd.ClientConfig)
+		rawconfig, err := (*cc).RawConfig()
+		if err == nil {
+			clusterName = rawconfig.Contexts[rawconfig.CurrentContext].Cluster
+		}
+	}
+
+	c.addClusterNode(clusterName)
 	return c
 }
 

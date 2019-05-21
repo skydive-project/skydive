@@ -167,8 +167,10 @@ type SubprobeHandler func(client interface{}, g *graph.Graph) Subprobe
 
 // InitSubprobes initializes only the subprobes which are enabled
 func InitSubprobes(enabled []string, subprobeHandlers map[string]SubprobeHandler, client interface{}, g *graph.Graph, manager string) {
+	if subprobes[manager] == nil {
+		subprobes[manager] = make(map[string]Subprobe)
+	}
 
-	subprobes[manager] = make(map[string]Subprobe)
 	if len(enabled) == 0 {
 		for name := range subprobeHandlers {
 			enabled = append(enabled, name)
@@ -176,8 +178,10 @@ func InitSubprobes(enabled []string, subprobeHandlers map[string]SubprobeHandler
 	}
 
 	for _, name := range enabled {
-		handler := subprobeHandlers[name]
-		PutSubprobe(manager, name, handler(client, g))
+		if handler := subprobeHandlers[name]; handler != nil {
+			subprobe := handler(client, g)
+			PutSubprobe(manager, name, subprobe)
+		}
 	}
 }
 
