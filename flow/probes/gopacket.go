@@ -34,6 +34,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/targets"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
@@ -294,19 +295,34 @@ func (p *GoPacketProbesHandler) registerProbe(n *graph.Node, capture *types.Capt
 	go func() {
 		defer p.wg.Done()
 
-		flowTable.Start()
-		defer flowTable.Stop()
+		var err error
 
-		count := 0
-		err := probe.Run(func(packet gopacket.Packet) {
-			flowTable.FeedWithGoPacket(packet, bpfFilter)
-			// NOTE: bpf usperspace filter is applied to the few first packets in order to avoid
-			// to get unexpected packets between capture start and bpf applying
-			if count > 50 {
-				bpfFilter = nil
+		if false {
+			flowTable.Start()
+			defer flowTable.Stop()
+
+			count := 0
+			err = probe.Run(func(packet gopacket.Packet) {
+				flowTable.FeedWithGoPacket(packet, bpfFilter)
+				// NOTE: bpf userspace filter is applied to the few first packets in order to avoid
+				// to get unexpected packets between capture start and bpf applying
+				if count > 50 {
+					bpfFilter = nil
+				}
+				count++
+			}, e)
+		} else {
+			var target *targets.NetFlowV5Target
+			target, err = targets.NewNetFlowV5Target(capture)
+			if err == nil {
+				target.Start()
+
+				err = probe.Run(func(packet gopacket.Packet) {
+					target.Send(packet)
+				}, e)
 			}
-			count++
-		}, e)
+		}
+
 		if err != nil {
 			logging.GetLogger().Error(err)
 
