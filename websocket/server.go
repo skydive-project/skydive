@@ -34,8 +34,10 @@ import (
 	"github.com/skydive-project/skydive/rbac"
 )
 
+type clientPromoter func(c *wsIncomingClient) (Speaker, error)
+
 // IncomerHandler incoming client handler interface.
-type IncomerHandler func(*websocket.Conn, *auth.AuthenticatedRequest) (Speaker, error)
+type IncomerHandler func(*websocket.Conn, *auth.AuthenticatedRequest, clientPromoter) (Speaker, error)
 
 // Server implements a websocket server. It owns a Pool of incoming Speakers.
 type Server struct {
@@ -102,7 +104,7 @@ func (s *Server) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReque
 	}
 
 	// call the incomerHandler that will create the Speaker
-	c, err = s.incomerHandler(conn, r)
+	c, err = s.incomerHandler(conn, r, func(c *wsIncomingClient) (Speaker, error) { return c, nil })
 	if err != nil {
 		s.opts.Logger.Warningf("Unable to accept incomer from %s: %s", r.RemoteAddr, err)
 		w.Header().Set("Connection", "close")
@@ -110,15 +112,9 @@ func (s *Server) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReque
 		w.Write([]byte(err.Error()))
 		return
 	}
-
-	// add the new Speaker to the server pool
-	s.AddClient(c)
-
-	// notify the pool listeners that the speaker is connected
-	s.OnConnected(c)
 }
 
-func (s *Server) newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRequest) (*wsIncomingClient, error) {
+func (s *Server) newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRequest, promoter clientPromoter) (*wsIncomingClient, error) {
 	s.opts.Logger.Infof("New WebSocket Connection from %s : URI path %s", conn.RemoteAddr().String(), r.URL.Path)
 
 	clientType := common.ServiceType(getRequestParameter(&r.Request, "X-Client-Type"))
@@ -162,7 +158,18 @@ func (s *Server) newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRe
 	}
 	wsconn.wsSpeaker = c
 
+	pc, err := promoter(c)
+	if err != nil {
+		return nil, err
+	}
+
 	atomic.StoreInt32((*int32)(c.State), common.RunningState)
+
+	// add the new Speaker to the server pool
+	s.AddClient(pc)
+
+	// notify the pool listeners that the speaker is connected
+	s.OnConnected(pc)
 
 	// send a first ping to help firefox and some other client which wait for a
 	// first ping before doing something
@@ -191,8 +198,8 @@ func NewServer(server *shttp.Server, endpoint string, authBackend shttp.Authenti
 		opts:        opts,
 	}
 
-	s.incomerHandler = func(conn *websocket.Conn, r *auth.AuthenticatedRequest) (Speaker, error) {
-		return s.newIncomingClient(conn, r)
+	s.incomerHandler = func(conn *websocket.Conn, r *auth.AuthenticatedRequest, promoter clientPromoter) (Speaker, error) {
+		return s.newIncomingClient(conn, r, promoter)
 	}
 
 	server.HandleFunc(endpoint, s.serveMessages, authBackend)

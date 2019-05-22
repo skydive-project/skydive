@@ -506,37 +506,40 @@ func NewStructServer(server *Server) *StructServer {
 	// This incomerHandler upgrades the incomers to StructSpeaker thus being able to parse StructMessage.
 	// The server set also the StructSpeaker with the proper namspaces it subscribes to thanks to the
 	// headers.
-	s.Server.incomerHandler = func(conn *websocket.Conn, r *auth.AuthenticatedRequest) (Speaker, error) {
+	s.Server.incomerHandler = func(conn *websocket.Conn, r *auth.AuthenticatedRequest, promoter clientPromoter) (Speaker, error) {
 		// the default incomer handler creates a standard wsIncomingClient that we upgrade to a StructSpeaker
 		// being able to handle the StructMessage
-		ic, err := s.Server.newIncomingClient(conn, r)
+		uc, err := s.Server.newIncomingClient(conn, r, func(ic *wsIncomingClient) (Speaker, error) {
+			c := ic.upgradeToStructSpeaker()
+
+			// from headers
+			if namespaces, ok := r.Header["X-Websocket-Namespace"]; ok {
+				for _, ns := range namespaces {
+					c.nsSubscribed[ns] = true
+				}
+			}
+
+			// from parameter, useful for browser client
+			if namespaces, ok := r.URL.Query()["x-websocket-namespace"]; ok {
+				for _, ns := range namespaces {
+					c.nsSubscribed[ns] = true
+				}
+			}
+
+			// if empty use wildcard for backward compatibility
+			if len(c.nsSubscribed) == 0 {
+				c.nsSubscribed[WildcardNamespace] = true
+			}
+
+			s.structSpeakerPoolEventDispatcher.AddStructSpeaker(c)
+
+			return c, nil
+		})
 		if err != nil {
 			return nil, err
 		}
-		c := ic.upgradeToStructSpeaker()
 
-		// from headers
-		if namespaces, ok := r.Header["X-Websocket-Namespace"]; ok {
-			for _, ns := range namespaces {
-				c.nsSubscribed[ns] = true
-			}
-		}
-
-		// from parameter, useful for browser client
-		if namespaces, ok := r.URL.Query()["x-websocket-namespace"]; ok {
-			for _, ns := range namespaces {
-				c.nsSubscribed[ns] = true
-			}
-		}
-
-		// if empty use wildcard for backward compatibility
-		if len(c.nsSubscribed) == 0 {
-			c.nsSubscribed[WildcardNamespace] = true
-		}
-
-		s.structSpeakerPoolEventDispatcher.AddStructSpeaker(c)
-
-		return c, nil
+		return uc, nil
 	}
 
 	return s
