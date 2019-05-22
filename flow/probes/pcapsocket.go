@@ -45,7 +45,7 @@ type PcapSocketProbe struct {
 // PcapSocketProbeHandler describes a Pcap socket probe in the graph
 type PcapSocketProbeHandler struct {
 	graph         *graph.Graph
-	fpta          *FlowProbeTableAllocator
+	fta           *flow.TableAllocator
 	addr          *net.TCPAddr
 	wg            sync.WaitGroup
 	probes        map[string]*PcapSocketProbe
@@ -108,7 +108,7 @@ func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, capture *types.Cap
 	}
 
 	opts := TableOptsFromCapture(capture)
-	ft := p.fpta.Alloc(tid, opts)
+	ft := p.fta.Alloc(tid, opts)
 
 	probe := &PcapSocketProbe{
 		graph:     p.graph,
@@ -163,7 +163,7 @@ func (p *PcapSocketProbeHandler) UnregisterProbe(n *graph.Node, e FlowProbeEvent
 	if !ok {
 		return fmt.Errorf("No registered probe for %s", tid)
 	}
-	p.fpta.Release(probe.flowTable)
+	p.fta.Release(probe.flowTable)
 	delete(p.probes, tid)
 
 	atomic.StoreInt64(&probe.state, common.StoppingState)
@@ -190,7 +190,7 @@ func (p *PcapSocketProbeHandler) Stop() {
 }
 
 // NewPcapSocketProbeHandler creates a new pcap socket probe
-func NewPcapSocketProbeHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*PcapSocketProbeHandler, error) {
+func NewPcapSocketProbeHandler(g *graph.Graph, fta *flow.TableAllocator) (*PcapSocketProbeHandler, error) {
 	listen := config.GetString("agent.flow.pcapsocket.bind_address")
 	minPort := config.GetInt("agent.flow.pcapsocket.min_port")
 	maxPort := config.GetInt("agent.flow.pcapsocket.max_port")
@@ -207,7 +207,7 @@ func NewPcapSocketProbeHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*
 
 	return &PcapSocketProbeHandler{
 		graph:         g,
-		fpta:          fpta,
+		fta:           fta,
 		addr:          addr,
 		probes:        make(map[string]*PcapSocketProbe),
 		portAllocator: portAllocator,

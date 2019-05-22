@@ -78,7 +78,7 @@ type ftProbe struct {
 // GoPacketProbesHandler describes a flow probe handle in the graph
 type GoPacketProbesHandler struct {
 	graph      *graph.Graph
-	fpta       *FlowProbeTableAllocator
+	fta        *flow.TableAllocator
 	wg         sync.WaitGroup
 	probes     map[string]*ftProbe
 	probesLock common.RWMutex
@@ -265,7 +265,7 @@ func (p *GoPacketProbesHandler) registerProbe(n *graph.Node, capture *types.Capt
 	}
 
 	opts := TableOptsFromCapture(capture)
-	flowTable := p.fpta.Alloc(tid, opts)
+	flowTable := p.fta.Alloc(tid, opts)
 
 	headerSize := flow.DefaultCaptureLength
 	if capture.HeaderSize != 0 {
@@ -348,7 +348,7 @@ func (p *GoPacketProbesHandler) unregisterProbe(id string) error {
 	if probe, ok := p.probes[id]; ok {
 		logging.GetLogger().Debugf("Terminating gopacket capture on %s", id)
 		probe.probe.Stop()
-		p.fpta.Release(probe.flowTable)
+		p.fta.Release(probe.flowTable)
 		delete(p.probes, id)
 	}
 
@@ -385,10 +385,10 @@ func (p *GoPacketProbesHandler) Stop() {
 }
 
 // NewGoPacketProbesHandler creates a new gopacket probe in the graph
-func NewGoPacketProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*GoPacketProbesHandler, error) {
+func NewGoPacketProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*GoPacketProbesHandler, error) {
 	return &GoPacketProbesHandler{
 		graph:  g,
-		fpta:   fpta,
+		fta:    fta,
 		probes: make(map[string]*ftProbe),
 	}, nil
 }

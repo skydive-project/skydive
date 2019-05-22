@@ -53,7 +53,7 @@ type OvsSFlowProbesHandler struct {
 	probesLock   common.RWMutex
 	Graph        *graph.Graph
 	Node         *graph.Node
-	fpta         *FlowProbeTableAllocator
+	fta          *flow.TableAllocator
 	ovsClient    *ovsdb.OvsClient
 	allocator    *sflow.AgentAllocator
 	eventHandler FlowProbeEventHandler
@@ -142,11 +142,11 @@ func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(bridgeUUID string
 		o.probesLock.RUnlock()
 		return fmt.Errorf("probe didn't exist on bridgeUUID %s", bridgeUUID)
 	}
+	o.probesLock.RUnlock()
 
 	if probe.flowTable != nil {
-		o.fpta.Release(probe.flowTable)
+		o.fta.Release(probe.flowTable)
 	}
-	o.probesLock.RUnlock()
 
 	probeUUID, err := ovsRetrieveSkydiveProbeRowUUID(o.ovsClient, "sFlow", ovsProbeID(bridgeUUID))
 	if err != nil {
@@ -183,6 +183,12 @@ func (o *OvsSFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid str
 		headerSize = uint32(capture.HeaderSize)
 	}
 
+<<<<<<< HEAD
+=======
+	opts := TableOptsFromCapture(capture)
+	ft := o.fta.Alloc(tid, opts)
+
+>>>>>>> 16469ab1... flow: remove flow table allocator indirection
 	if capture.SamplingRate < 1 {
 		capture.SamplingRate = math.MaxUint32
 	}
@@ -267,7 +273,7 @@ func (o *OvsSFlowProbesHandler) Stop() {
 }
 
 // NewOvsSFlowProbesHandler creates a new OVS SFlow porbes
-func NewOvsSFlowProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator, tb *probe.Bundle) (*OvsSFlowProbesHandler, error) {
+func NewOvsSFlowProbesHandler(g *graph.Graph, fta *flow.TableAllocator, tb *probe.Bundle) (*OvsSFlowProbesHandler, error) {
 	probe := tb.GetProbe("ovsdb")
 	if probe == nil {
 		return nil, errors.New("Agent.ovssflow probe depends on agent.ovsdb topology probe: agent.ovssflow probe can't start properly")
@@ -282,7 +288,7 @@ func NewOvsSFlowProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator, tb 
 	return &OvsSFlowProbesHandler{
 		probes:    make(map[string]OvsSFlowProbe),
 		Graph:     g,
-		fpta:      fpta,
+		fta:       fta,
 		ovsClient: p.OvsMon.OvsClient,
 		allocator: allocator,
 	}, nil
