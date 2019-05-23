@@ -84,7 +84,7 @@ var TopologyImport = &cobra.Command{
 		go client.Run()
 		defer func() {
 			client.Flush()
-			client.Conn.Stop()
+			client.StopAndWait()
 		}()
 
 		content, err := ioutil.ReadFile(filename)

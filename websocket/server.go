@@ -84,7 +84,7 @@ func (s *Server) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReque
 	c := s.GetSpeakerByRemoteHost(host)
 	s.incomerPool.RUnlock()
 	if c != nil {
-		s.opts.Logger.Errorf("host_id(%s) conflict, same host_id used by %s", host, r.RemoteAddr)
+		s.opts.Logger.Errorf("host_id '%s' (%s) conflicts, same host_id used by %+v", host, r.RemoteAddr, c)
 		w.Header().Set("Connection", "close")
 		w.WriteHeader(http.StatusConflict)
 		return

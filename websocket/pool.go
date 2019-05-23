@@ -99,7 +99,7 @@ func (s *incomerPool) OnDisconnected(c Speaker) {
 
 // AddClient adds the given Speaker to the pool.
 func (s *Pool) AddClient(c Speaker) error {
-	s.opts.Logger.Debugf("AddClient for pool %s", s.GetName())
+	s.opts.Logger.Debugf("AddClient %s for pool %s", c.GetHost(), s.GetName())
 	s.Lock()
 	s.speakers = append(s.speakers, c)
 	s.Unlock()
