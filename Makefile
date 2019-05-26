@@ -203,11 +203,15 @@ ifeq ($(WITH_VPP), true)
   AGENT_TEST_EXTRA_PROBES+=vpp
 endif
 
+ifeq ($(WITH_SA), true)
+  BUILD_TAGS+=sa_tests
+endif
+
 ifeq (${DEBUG}, true)
 GOFLAGS=-gcflags='-N -l'
 GO_BINDATA_FLAGS+=-debug
-export DEBUG
 endif
+export DEBUG
 
 comma:= ,
 empty:=

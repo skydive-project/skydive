@@ -1,0 +1,12 @@
+---
+minio_path: /usr/local/bin
+minio_data_path: /var/lib/minio
+minio_systemd_service_path: /etc/systemd/system/minio.service
+minio_service_configuration_path: /etc/default/minio
+minio_user: minio-user
+minio_group: minio-user
+minio_endpoint: "http://127.0.0.1:9000"
+minio_access_key: user
+minio_secret_key: password
+minio_cluster_name: local
+minio_bucket_name: bucket

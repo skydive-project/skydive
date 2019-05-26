@@ -375,6 +375,24 @@
       - chuck-norris
 
 - job:
+    name: skydive-export-sa-tests
+    defaults: skydive
+    triggers:
+      - skydive-pull-request:
+          name: export-sa-tests
+          trigger-prefix: "(all )?"
+          cancel-builds-on-update: true
+          only-trigger-phrase: true
+    builders:
+      - skydive-cleanup
+      - skydive-test:
+          test: scripts/ci/run-export-sa-tests.sh
+    publishers:
+      - junit:
+          results: tests.xml
+      - chuck-norris
+
+- job:
     name: skydive-scale-tests
     defaults: skydive
     triggers:

@@ -1,0 +1,76 @@
+---
+- name: Download minio server
+  get_url:
+    url: https://dl.minio.io/server/minio/release/linux-amd64/minio
+    force: yes
+    dest: "{{ minio_path }}/minio"
+    owner: "root"
+    group: "root"
+    mode: 0775
+  retries: 5
+  delay: 2
+
+- name: Download minio client
+  get_url:
+    url: https://dl.minio.io/client/mc/release/linux-amd64/mc
+    force: yes
+    dest: "{{ minio_path }}/minio-mc"
+    owner: "root"
+    group: "root"
+    mode: 0775
+  retries: 5
+  delay: 2
+
+- name: Download minio systemd service
+  get_url:
+    url: https://raw.githubusercontent.com/minio/minio-service/master/linux-systemd/minio.service
+    force: yes
+    dest: "{{ minio_systemd_service_path }}"
+    owner: "root"
+    group: "root"
+    mode: 0775
+  retries: 5
+  delay: 2
+
+- name: Create minio group
+  group:
+    name: "{{ minio_group }}"
+    state: present
+
+- name: Create minio user
+  user:
+    name: "{{ minio_user }}"
+    group: "{{ minio_group }}"
+    shell: /bin/bash
+
+- name: Create minio data directory
+  file:
+    path: "{{ minio_data_path }}"
+    state: directory
+    owner: "{{ minio_user }}"
+    group: "{{ minio_group }}"
+    mode: 0755
+
+- name: Create minio service configuration file
+  blockinfile:
+    path: "{{ minio_service_configuration_path }}"
+    create: yes
+    owner: "{{ minio_user }}"
+    group: "{{ minio_group }}"
+    mode: 0755
+    block: |
+      MINIO_VOLUMES={{ minio_data_path }}
+      MINIO_ACCESS_KEY={{ minio_access_key }}
+      MINIO_SECRET_KEY={{ minio_secret_key }}
+
+- name: Start minio service
+  systemd:
+    name: minio
+    state: started
+
+- name: Configure minio client
+  shell: "minio-mc config host add {{ minio_cluster_name }} {{ minio_endpoint }} {{ minio_access_key }} {{ minio_secret_key }} {{ minio_data_path }} --api S3v4"
+
+- name: Create bucket
+  shell: "minio-mc mb {{ minio_cluster_name }}/{{ minio_bucket_name }}"
+  ignore_errors: true

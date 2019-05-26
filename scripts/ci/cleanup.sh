@@ -26,6 +26,17 @@ function docker_volume_rm() {
   docker volume rm -f $1
 }
 
+function minio_cleanup() {
+  systemctl restart minio
+  which minio-mc
+  if [ $? == 0 ]; then
+    local bucket="local/bucket"
+    minio-mc rm --recursive --force $bucket
+    minio-mc rb --force $bucket
+    minio-mc mb --ignore-existing $bucket
+  fi
+}
+
 function cleanup() {
   # cleanup minikube
   "${CURDIR}/install-minikube.sh" stop
@@ -56,6 +67,8 @@ function cleanup() {
 DROP DATABASE remote:localhost/Skydive root root plocal
 EOF
   /opt/orientdb/bin/console.sh /tmp/commands.txt
+
+  minio_cleanup
 
   systemctl restart openvswitch
   systemctl restart elasticsearch

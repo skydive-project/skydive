@@ -104,7 +104,7 @@
   roles:
     - role: skydive_dev
 
-- name: Install orientdb and elasticsearch
+- name: Install storage backends
   hosts: slaves
   tags:
     - master
@@ -113,6 +113,7 @@
   roles:
    - role: orientdb
    - role: elasticsearch
+   - role: objectstore
 
 - name: Register Jenkins slaves
   hosts: jenkins_master
