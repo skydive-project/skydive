@@ -18,7 +18,7 @@
       /usr/bin/{{ skydive_container_cli }} run --rm \
         --privileged --net=host --pid=host \
         --user 0:0 \
-        -v /var/run/openvswitch/db.sock:/var/run/openvswitch/db.sock \
+        -v /var/run/openvswitch:/var/run/openvswitch \
         {% if skydive_container_cli == 'docker' %}
         -v /var/run/docker.sock:/var/run/docker.sock \
         {% endif %}
