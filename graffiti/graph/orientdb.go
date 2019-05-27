@@ -90,7 +90,7 @@ func (o *OrientDBBackend) updateTimes(e string, id string, events ...eventTime) 
 	for _, event := range events {
 		attrs = append(attrs, fmt.Sprintf("%s = %d", event.name, event.t.Unix()))
 	}
-	query := fmt.Sprintf("UPDATE %s SET %s WHERE DeletedAt IS NULL AND ArchivedAt IS NULL AND ID = '%s'", e, strings.Join(attrs, ", "), id)
+	query := fmt.Sprintf("UPDATE %s SET %s WHERE ID = '%s' AND DeletedAt IS NULL AND ArchivedAt IS NULL", e, strings.Join(attrs, ", "), id)
 	result, err := o.client.SQL(query)
 	if err != nil {
 		return fmt.Errorf("Error while deleting %s: %s", id, err)
@@ -375,7 +375,9 @@ func newOrientDBBackend(client orientdb.ClientInterface, electionService common.
 				{Name: "Metadata", Type: "EMBEDDEDMAP"},
 			},
 			Indexes: []orientdb.Index{
-				{Name: "Node.TimeSpan", Fields: []string{"CreatedAt", "DeletedAt"}, Type: "NOTUNIQUE"},
+				{Name: "Node.ID", Fields: []string{"ID"}, Type: "NOTUNIQUE"},
+				{Name: "Node.Lifetime", Fields: []string{"CreatedAt", "DeletedAt"}, Type: "NOTUNIQUE"},
+				{Name: "Node.ArchiveTime", Fields: []string{"UpdatedAt", "ArchivedAt"}, Type: "NOTUNIQUE"},
 			},
 		}
 		if err := client.CreateDocumentClass(class); err != nil {
@@ -401,7 +403,9 @@ func newOrientDBBackend(client orientdb.ClientInterface, electionService common.
 				{Name: "Metadata", Type: "EMBEDDEDMAP"},
 			},
 			Indexes: []orientdb.Index{
+				{Name: "Link.ID", Fields: []string{"ID"}, Type: "NOTUNIQUE"},
 				{Name: "Link.TimeSpan", Fields: []string{"CreatedAt", "DeletedAt"}, Type: "NOTUNIQUE"},
+				{Name: "Link.ArchiveTime", Fields: []string{"UpdatedAt", "ArchivedAt"}, Type: "NOTUNIQUE"},
 			},
 		}
 		if err := client.CreateDocumentClass(class); err != nil {
