@@ -49,7 +49,7 @@ type OvsNetFlowProbesHandler struct {
 	probesLock   common.RWMutex
 	Graph        *graph.Graph
 	Node         *graph.Node
-	fpta         *FlowProbeTableAllocator
+	fta          *flow.TableAllocator
 	ovsClient    *ovsdb.OvsClient
 	allocator    *netflow.AgentAllocator
 	eventHandler FlowProbeEventHandler
@@ -141,7 +141,7 @@ func (o *OvsNetFlowProbesHandler) UnregisterNetFlowProbeFromBridge(bridgeUUID st
 	}
 
 	if probe.flowTable != nil {
-		o.fpta.Release(probe.flowTable)
+		o.fta.Release(probe.flowTable)
 	}
 	o.probesLock.RUnlock()
 
@@ -178,7 +178,7 @@ func (o *OvsNetFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid s
 
 	if capture.Target == "" {
 		opts := tableOptsFromCapture(capture)
-		probe.flowTable = o.fpta.Alloc(tid, opts)
+		probe.flowTable = o.fta.Alloc(tid, opts)
 
 		address := config.GetString("agent.flow.netflow.bind_address")
 		if address == "" {
@@ -248,7 +248,7 @@ func (o *OvsNetFlowProbesHandler) Stop() {
 }
 
 // NewOvsNetFlowProbesHandler creates a new OVS NetFlow porbes
-func NewOvsNetFlowProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator, tb *probe.Bundle) (*OvsNetFlowProbesHandler, error) {
+func NewOvsNetFlowProbesHandler(g *graph.Graph, fta *flow.TableAllocator, tb *probe.Bundle) (*OvsNetFlowProbesHandler, error) {
 	probe := tb.GetProbe("ovsdb")
 	if probe == nil {
 		return nil, errors.New("Agent.ovsnetflow probe depends on agent.ovsdb topology probe: agent.ovsnetflow probe can't start properly")
@@ -263,7 +263,7 @@ func NewOvsNetFlowProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator, t
 	return &OvsNetFlowProbesHandler{
 		probes:    make(map[string]OvsNetFlowProbe),
 		Graph:     g,
-		fpta:      fpta,
+		fta:       fta,
 		ovsClient: p.OvsMon.OvsClient,
 		allocator: allocator,
 	}, nil

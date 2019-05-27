@@ -50,8 +50,8 @@ type fakeMessageSender struct {
 	sent int
 }
 
-func (f *fakeMessageSender) SendMessage(msg *Message) {
-	f.sent += len(msg.Flows)
+func (f *fakeMessageSender) SendFlows(flows []*Flow) {
+	f.sent += len(flows)
 }
 
 func TestFlowExpire(t *testing.T) {

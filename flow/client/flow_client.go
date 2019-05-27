@@ -236,8 +236,8 @@ func (p *FlowClientPool) OnDisconnected(c ws.Speaker) {
 	}
 }
 
-// SendMessage implements the flow MessageSender interface
-func (p *FlowClientPool) SendMessage(msg *flow.Message) {
+// SendFlows implements the flow Sender interface
+func (p *FlowClientPool) SendFlows(flows []*flow.Flow) {
 	p.RLock()
 	defer p.RUnlock()
 
@@ -246,7 +246,7 @@ func (p *FlowClientPool) SendMessage(msg *flow.Message) {
 	}
 
 	fc := p.flowClients[rand.Intn(len(p.flowClients))]
-	fc.SendMessage(msg)
+	fc.SendFlows(flows)
 }
 
 // Close all connections

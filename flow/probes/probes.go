@@ -77,7 +77,7 @@ func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocat
 			fp, err = NewSFlowProbesHandler(g, fta)
 			captureTypes = []string{"sflow"}
 		case "ovsnetflow":
-			fp, err = NewOvsNetFlowProbesHandler(g, fpta, tb)
+			fp, err = NewOvsNetFlowProbesHandler(g, fta, tb)
 			captureTypes = []string{"ovsnetflow"}
 		case "dpdk":
 			if fp, err = NewDPDKProbesHandler(g, fta); err == nil {

@@ -100,7 +100,7 @@ func execTraversalQuery(t *testing.T, tc *fakeTableClient, query string) travers
 type fakeMessageSender struct {
 }
 
-func (f *fakeMessageSender) SendMessage(msg *flow.Message) {
+func (f *fakeMessageSender) SendFlows(flows []*flow.Flow) {
 }
 
 func newTable(nodeID string) *flow.Table {

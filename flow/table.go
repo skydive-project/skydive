@@ -63,7 +63,7 @@ type Table struct {
 	quit              chan bool
 	updateEvery       time.Duration
 	expireAfter       time.Duration
-	sender            MessageSender
+	sender            Sender
 	lastUpdate        int64
 	updateVersion     int64
 	lastExpire        int64
@@ -93,6 +93,11 @@ type Operation struct {
 	Type OperationType
 }
 
+// Sender defines a flows sender interface
+type Sender interface {
+	SendFlows(flows []*Flow)
+}
+
 func updateTCPFlagTime(prevFlagTime int64, currFlagTime int64) int64 {
 	if prevFlagTime != 0 {
 		return prevFlagTime
@@ -101,7 +106,7 @@ func updateTCPFlagTime(prevFlagTime int64, currFlagTime int64) int64 {
 }
 
 // NewTable creates a new flow table
-func NewTable(updateEvery, expireAfter time.Duration, sender MessageSender, nodeTID string, opts ...TableOpts) *Table {
+func NewTable(updateEvery, expireAfter time.Duration, sender Sender, nodeTID string, opts ...TableOpts) *Table {
 	appTimeout := make(map[string]int64)
 	for key := range config.GetConfig().GetStringMap("flow.application_timeout") {
 		// convert seconds to milleseconds
@@ -225,7 +230,7 @@ func (ft *Table) expire(expireBefore int64) {
 	}
 
 	/* Advise Clients */
-	ft.sender.SendMessage(&Message{Flows: expiredFlows})
+	ft.sender.SendFlows(expiredFlows)
 
 	flowTableSz := ft.table.Len()
 	logging.GetLogger().Debugf("Expire Flow : removed %v ; new size %v", flowTableSzBefore-flowTableSz, flowTableSz)
@@ -290,7 +295,7 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 
 	if len(updatedFlows) != 0 {
 		/* Advise Clients */
-		ft.sender.SendMessage(&Message{Flows: updatedFlows})
+		ft.sender.SendFlows(updatedFlows)
 		logging.GetLogger().Debugf("Send updated Flows: %d", len(updatedFlows))
 
 		// cleanup raw packets

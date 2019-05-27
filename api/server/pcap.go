@@ -35,11 +35,11 @@ type PcapAPI struct {
 	Storage storage.Storage
 }
 
-// SendMessage implements the flow MessageSender interface
-func (p *PcapAPI) SendMessage(msg *flow.Message) {
-	if p.Storage != nil && len(msg.Flows) > 0 {
-		p.Storage.StoreFlows(msg.Flows)
-		logging.GetLogger().Debugf("%d flows stored", len(msg.Flows))
+// SendFlows implements the flow Sender interface
+func (p *PcapAPI) SendFlows(flows []*flow.Flow) {
+	if p.Storage != nil && len(flows) > 0 {
+		p.Storage.StoreFlows(flows)
+		logging.GetLogger().Debugf("%d flows stored", len(flows))
 	}
 }
 

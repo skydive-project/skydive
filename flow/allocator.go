@@ -29,8 +29,13 @@ type TableAllocator struct {
 	common.RWMutex
 	updateEvery time.Duration
 	expireAfter time.Duration
-	sender      MessageSender
+	sender      Sender
 	tables      map[*Table]bool
+}
+
+// ExpireAfter returns the expiration duration
+func (a *TableAllocator) ExpireAfter() time.Duration {
+	return a.expireAfter
 }
 
 // QueryTable search/query within the flow table
@@ -70,7 +75,7 @@ func (a *TableAllocator) Release(t *Table) {
 }
 
 // NewTableAllocator creates a new flow table
-func NewTableAllocator(updateEvery, expireAfter time.Duration, sender MessageSender) *TableAllocator {
+func NewTableAllocator(updateEvery, expireAfter time.Duration, sender Sender) *TableAllocator {
 	return &TableAllocator{
 		updateEvery: updateEvery,
 		expireAfter: expireAfter,
