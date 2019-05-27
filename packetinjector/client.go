@@ -22,8 +22,8 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	apiServer "github.com/skydive-project/skydive/api/server"
@@ -100,16 +100,6 @@ func (pc *Client) InjectPackets(host string, pp *PacketInjectionParams) (string,
 	return reply.TrackingID, nil
 }
 
-func (pc *Client) normalizeIP(ip, ipFamily string) string {
-	if strings.Contains(ip, "/") {
-		return ip
-	}
-	if ipFamily == "IPV4" {
-		return ip + "/32"
-	}
-	return ip + "/64"
-}
-
 func (pc *Client) getNode(gremlinQuery string) *graph.Node {
 	res, err := ge.TopologyGremlinQuery(pc.graph, gremlinQuery)
 	if err != nil {
@@ -130,6 +120,10 @@ func (pc *Client) getNode(gremlinQuery string) *graph.Node {
 func (pc *Client) requestToParams(pi *types.PacketInjection) (string, *PacketInjectionParams, error) {
 	pc.graph.RLock()
 	defer pc.graph.RUnlock()
+
+	var srcIP, dstIP net.IP
+	var srcMAC, dstMAC net.HardwareAddr
+	var err error
 
 	srcNode := pc.getNode(pi.Src)
 	dstNode := pc.getNode(pi.Dst)
@@ -154,7 +148,7 @@ func (pc *Client) requestToParams(pi *types.PacketInjection) (string, *PacketInj
 			}
 			pi.SrcIP = ips[0]
 		} else {
-			pi.SrcIP = pc.normalizeIP(pi.SrcIP, ipField)
+			pi.SrcIP = common.NormalizeIP(pi.SrcIP, ipField)
 		}
 
 		if pi.DstIP == "" {
@@ -171,7 +165,7 @@ func (pc *Client) requestToParams(pi *types.PacketInjection) (string, *PacketInj
 				return "", nil, errors.New("Not able to find a dest node and dest IP also empty")
 			}
 		} else {
-			pi.DstIP = pc.normalizeIP(pi.DstIP, ipField)
+			pi.DstIP = common.NormalizeIP(pi.DstIP, ipField)
 		}
 
 		if pi.SrcMAC == "" {
@@ -212,16 +206,36 @@ func (pc *Client) requestToParams(pi *types.PacketInjection) (string, *PacketInj
 				pi.DstPort = uint16(rand.Int63n(max-min) + min)
 			}
 		}
+
+		srcIP = GetIP(pi.SrcIP)
+		if srcIP == nil {
+			return "", nil, errors.New("Source Node doesn't have proper IP")
+		}
+
+		dstIP = GetIP(pi.DstIP)
+		if dstIP == nil {
+			return "", nil, errors.New("Destination Node doesn't have proper IP")
+		}
+
+		srcMAC, err = net.ParseMAC(pi.SrcMAC)
+		if err != nil || srcMAC == nil {
+			return "", nil, errors.New("Source Node doesn't have proper MAC")
+		}
+
+		dstMAC, err = net.ParseMAC(pi.DstMAC)
+		if err != nil || dstMAC == nil {
+			return "", nil, errors.New("Destination Node doesn't have proper MAC")
+		}
 	}
 
 	pip := &PacketInjectionParams{
 		UUID:             pi.UUID,
 		SrcNodeID:        srcNode.ID,
-		SrcIP:            pi.SrcIP,
-		SrcMAC:           pi.SrcMAC,
+		SrcIP:            srcIP,
+		SrcMAC:           srcMAC,
 		SrcPort:          pi.SrcPort,
-		DstIP:            pi.DstIP,
-		DstMAC:           pi.DstMAC,
+		DstIP:            dstIP,
+		DstMAC:           dstMAC,
 		DstPort:          pi.DstPort,
 		Type:             pi.Type,
 		Payload:          pi.Payload,
@@ -291,6 +305,9 @@ func (pc *Client) onAPIWatcherEvent(action string, id string, resource types.Res
 			go pc.expirePI(pi.UUID, time.Duration(pi.Count*pi.Interval)*time.Millisecond)
 		}
 	case "expire", "delete":
+		if !pc.IsRunning(pi) {
+			return
+		}
 		pc.graph.RLock()
 		srcNode := pc.getNode(pi.Src)
 		pc.graph.RUnlock()
@@ -313,12 +330,17 @@ func (pc *Client) Stop() {
 	pc.MasterElection.Stop()
 }
 
+// IsRunning is the PI still injrcting
+func (pc *Client) IsRunning(pi *types.PacketInjection) bool {
+	validity := pi.StartTime.Add(time.Duration(pi.Count*pi.Interval) * time.Millisecond)
+	return validity.After(time.Now())
+}
+
 func (pc *Client) setTimeouts() {
 	injections := pc.piHandler.Index()
 	for _, v := range injections {
 		pi := v.(*types.PacketInjection)
-		validity := pi.StartTime.Add(time.Duration(pi.Count*pi.Interval) * time.Millisecond)
-		if validity.After(time.Now()) {
+		if pc.IsRunning(pi) {
 			elapsedTime := time.Now().Sub(pi.StartTime)
 			totalTime := time.Duration(pi.Count*pi.Interval) * time.Millisecond
 			go pc.expirePI(pi.UUID, totalTime-elapsedTime)
