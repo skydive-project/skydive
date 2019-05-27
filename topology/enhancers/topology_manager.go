@@ -254,15 +254,12 @@ func (tm *TopologyManager) onAPIWatcherEvent(action string, id string, resource 
 	switch resource.(type) {
 	case *types.NodeRule:
 		tm.graph.Lock()
-		if err := tm.handleNodeRuleRequest(action, resource); err != nil {
-			tm.nodeHandler.BasicAPIHandler.Delete(id)
-		}
+		tm.handleNodeRuleRequest(action, resource)
 		tm.graph.Unlock()
 	case *types.EdgeRule:
+		logging.GetLogger().Debugf("onAPIWatcherEvent edgerule")
 		tm.graph.Lock()
-		if err := tm.handleEdgeRuleRequest(action, resource); err != nil {
-			tm.edgeHandler.BasicAPIHandler.Delete(id)
-		}
+		tm.handleEdgeRuleRequest(action, resource)
 		tm.graph.Unlock()
 	}
 }
