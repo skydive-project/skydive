@@ -211,15 +211,18 @@ func FilterToExpression(f *filters.Filter, formatter func(string) string) string
 	}
 
 	if f.TermStringFilter != nil {
-		return fmt.Sprintf(`"%s" IN %s`, f.TermStringFilter.Value, formatter(f.TermStringFilter.Key))
+		return fmt.Sprintf(`(%s = "%s") OR ("%s" IN %s)`, formatter(f.TermStringFilter.Key), f.TermStringFilter.Value,
+			f.TermStringFilter.Value, formatter(f.TermStringFilter.Key))
 	}
 
 	if f.TermInt64Filter != nil {
-		return fmt.Sprintf(`%d IN %s`, f.TermInt64Filter.Value, formatter(f.TermInt64Filter.Key))
+		return fmt.Sprintf(`(%s = %d) OR (%d IN %s)`, formatter(f.TermInt64Filter.Key), f.TermInt64Filter.Value,
+			f.TermInt64Filter.Value, formatter(f.TermInt64Filter.Key))
 	}
 
 	if f.TermBoolFilter != nil {
-		return fmt.Sprintf(`%s IN %s`, strconv.FormatBool(f.TermBoolFilter.Value), formatter(f.TermBoolFilter.Key))
+		return fmt.Sprintf(`(%s = %s) OR (%s IN %s)`, formatter(f.TermBoolFilter.Key), strconv.FormatBool(f.TermBoolFilter.Value),
+			strconv.FormatBool(f.TermBoolFilter.Value), formatter(f.TermBoolFilter.Key))
 	}
 
 	if f.GtInt64Filter != nil {

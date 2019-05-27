@@ -108,7 +108,7 @@ type EdgeRule struct {
 	Metadata      graph.Metadata `yaml:"Metadata"`
 }
 
-// Validate verifies the nodedgee rule does not create invalid edges
+// Validate verifies the edge rule does not create invalid edges
 func (e *EdgeRule) Validate() error {
 	n1 := graph.CreateNode(graph.GenID(), nil, graph.TimeUTC(), "", common.UnknownService)
 	n2 := graph.CreateNode(graph.GenID(), nil, graph.TimeUTC(), "", common.UnknownService)

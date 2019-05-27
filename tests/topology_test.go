@@ -728,8 +728,8 @@ func TestEdgeRuleCreate(t *testing.T) {
 		checks: []CheckFunction{
 			func(c *CheckContext) error {
 				query := c.gremlin.V().Has("Name", "br-srcnode", "Type", "ovsbridge")
-				query = query.BothE().Has("RelationType", "layer2")
-				query = query.BothV().Has("Name", "br-dstnode", "Type", "ovsbridge")
+				query = query.OutE().Has("RelationType", "layer2")
+				query = query.OutV().Has("Name", "br-dstnode", "Type", "ovsbridge")
 				if _, err := c.gh.GetNode(query); err != nil {
 					return fmt.Errorf("Failed to find a layer2 link, error: %v", err)
 				}
@@ -739,10 +739,12 @@ func TestEdgeRuleCreate(t *testing.T) {
 
 			func(c *CheckContext) error {
 				query := c.gremlin.V().Has("Name", "br-srcnode", "Type", "ovsbridge")
-				query = query.BothE().Has("RelationType", "layer2")
-				query = query.BothV().Has("Name", "br-dstnode", "Type", "ovsbridge")
+				query = query.OutE().Has("RelationType", "layer2")
+				query = query.OutV().Has("Name", "br-dstnode", "Type", "ovsbridge")
 
-				c.client.Delete("edgerule", edgeRule.ID())
+				if c.successTime.IsZero() {
+					c.client.Delete("edgerule", edgeRule.ID())
+				}
 
 				if _, err := c.gh.GetNode(query); err != common.ErrNotFound {
 					return errors.New("Found a layer2 link")
