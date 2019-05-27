@@ -1,6 +1,6 @@
 ---
 - name: Set facts
-  set_fact: "orientdb_path=/opt/orientdb-community-{{ orientdb_version }}"
+  set_fact: "orientdb_path=/opt/orientdb-{{ orientdb_version }}"
 
 - name: Create OrientDB group
   group:
