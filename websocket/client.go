@@ -294,47 +294,45 @@ func (c *Conn) write(msg []byte) error {
 
 // Run the main loop
 func (c *Conn) Run() {
-	c.wg.Add(1)
+	c.wg.Add(2)
 	c.run()
 }
 
 // Start main loop in a goroutine
 func (c *Conn) Start() {
-	c.wg.Add(1)
+	c.wg.Add(2)
 	go c.run()
 }
 
 // main loop to read and send messages
 func (c *Conn) run() {
-	flushChannel := func(c chan []byte, cb func(msg []byte)) {
+	flushChannel := func(c chan []byte, cb func(msg []byte) error) error {
 		for {
 			select {
 			case m := <-c:
-				cb(m)
+				if err := cb(m); err != nil {
+					return err
+				}
 			default:
-				return
+				return nil
 			}
 		}
 	}
 
 	// notify all the listeners that a message was received
-	handleReceivedMessage := func(m []byte) {
+	handleReceivedMessage := func(m []byte) error {
 		c.RLock()
 		for _, l := range c.eventHandlers {
 			l.OnMessage(c.wsSpeaker, RawMessage(m))
 		}
 		c.RUnlock()
-	}
-
-	// write the message to the wire
-	handleSentMessage := func(m []byte) {
-		if err := c.write(m); err != nil {
-			c.logger.Errorf("Error while writing to the WebSocket: %s", err)
-		}
+		return nil
 	}
 
 	// goroutine to read messages from the socket and put them into a channel
 	go func() {
+		defer c.wg.Done()
+
 		for c.running.Load() == true {
 			_, m, err := c.conn.ReadMessage()
 			if err != nil {
@@ -347,55 +345,46 @@ func (c *Conn) run() {
 		}
 	}()
 
-	done := make(chan bool, 2)
-	go func() {
-		defer func() {
-			c.conn.Close()
-			atomic.StoreInt32((*int32)(c.State), common.StoppedState)
+	defer func() {
+		c.conn.Close()
+		atomic.StoreInt32((*int32)(c.State), common.StoppedState)
 
-			// handle all the pending received messages
-			flushChannel(c.read, func(m []byte) {
-				handleReceivedMessage(m)
-			})
+		// handle all the pending received messages
+		flushChannel(c.read, handleReceivedMessage)
 
-			c.RLock()
-			for _, l := range c.eventHandlers {
-				l.OnDisconnected(c.wsSpeaker)
-			}
-			c.RUnlock()
-
-			c.wg.Done()
-		}()
-
-		for {
-			select {
-			case m := <-c.send:
-				handleSentMessage(m)
-			case <-c.flush:
-				flushChannel(c.send, func(m []byte) {
-					handleSentMessage(m)
-				})
-			case <-c.pingTicker.C:
-				if err := c.sendPing(); err != nil {
-					c.logger.Errorf("Error while sending ping to %+v: %s", c, err)
-
-					// stop the ticker and request a quit
-					c.pingTicker.Stop()
-					c.quit <- true
-				}
-			case <-done:
-				return
-			}
+		c.RLock()
+		for _, l := range c.eventHandlers {
+			l.OnDisconnected(c.wsSpeaker)
 		}
+		c.RUnlock()
+
+		c.wg.Done()
 	}()
 
 	for {
 		select {
 		case <-c.quit:
-			done <- true
 			return
 		case m := <-c.read:
 			handleReceivedMessage(m)
+		case m := <-c.send:
+			if err := c.write(m); err != nil {
+				c.logger.Errorf("Error while sending message to %+v: %s", c, err)
+				return
+			}
+		case <-c.flush:
+			if err := flushChannel(c.send, c.write); err != nil {
+				c.logger.Errorf("Error while flushing send queue for %+v: %s", c, err)
+				return
+			}
+		case <-c.pingTicker.C:
+			if err := c.sendPing(); err != nil {
+				c.logger.Errorf("Error while sending ping to %+v: %s", c, err)
+
+				// stop the ticker and request a quit
+				c.pingTicker.Stop()
+				return
+			}
 		}
 	}
 }
