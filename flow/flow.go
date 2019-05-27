@@ -661,7 +661,7 @@ func (f *Flow) updateRTT(packet *Packet) {
 	if tcpPacket, ok := tcpLayer.(*layers.TCP); ok {
 		if tcpPacket.SYN && f.XXX_state.rtt1stPacket == 0 {
 			f.XXX_state.rtt1stPacket = packet.GoPacket.Metadata().Timestamp.UnixNano()
-		} else if f.XXX_state.rtt1stPacket != 0 && (tcpPacket.SYN && tcpPacket.ACK) || tcpPacket.RST {
+		} else if f.XXX_state.rtt1stPacket != 0 && ((tcpPacket.SYN && tcpPacket.ACK) || tcpPacket.RST) {
 			f.Metric.RTT = packet.GoPacket.Metadata().Timestamp.UnixNano() - f.XXX_state.rtt1stPacket
 			f.XXX_state.rtt1stPacket = 0
 		}
