@@ -83,6 +83,7 @@ func initProbeCapabilities() {
 	ProbeCapabilities["afpacket"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
 	ProbeCapabilities["dpdk"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
 	ProbeCapabilities["ovsmirror"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
+	ProbeCapabilities["ebpf"] = ExtraTCPMetricCapability
 }
 
 // CheckProbeCapabilities checks that a probe supports given capabilities

@@ -11,7 +11,7 @@ GOVENDOR:=$(TOPLEVEL_GOPATH)/bin/govendor
 
 all: clean ebpf-build
 
-ebpf-build: flow.o
+ebpf-build: flow-gre.o flow.o
 
 %.o: %.c
 	$(CLANG) \

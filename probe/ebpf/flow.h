@@ -28,8 +28,7 @@ enum {
 
 enum {
 	START_TIME_NS    = 0,
-	FIRST_LAYER,
-	PAYLOAD_LENGTH   = 24,
+	FIRST_LAYER
 };
 
 enum {
@@ -139,8 +138,6 @@ struct flow {
 
 	__u64                  start;
 	__u64                  last;
-
-	__u8                   payload[PAYLOAD_LENGTH];
 
 	__u64                  _flags;
 };
