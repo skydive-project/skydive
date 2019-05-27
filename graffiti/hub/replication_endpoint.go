@@ -337,9 +337,6 @@ func (t *ReplicationEndpoint) OnConnected(c ws.Speaker) {
 	t.Lock()
 	defer t.Unlock()
 
-	t.Graph.RLock()
-	defer t.Graph.RUnlock()
-
 	host := c.GetRemoteHost()
 
 	state, ok := t.peerStates[host]
@@ -358,6 +355,9 @@ func (t *ReplicationEndpoint) OnConnected(c ws.Speaker) {
 
 	// subscribe to websocket structured messages
 	c.(*ws.StructSpeaker).AddStructMessageHandler(t, []string{gws.Namespace})
+
+	t.Graph.RLock()
+	defer t.Graph.RUnlock()
 
 	msg := &gws.SyncMsg{
 		Elements: t.Graph.Elements(),
