@@ -155,7 +155,7 @@ func TestLocalHistory(t *testing.T) {
 		},
 		{
 			name: "Search",
-			data: "UPDATE Node SET ArchivedAt = 2000 WHERE DeletedAt IS NULL AND ArchivedAt IS NULL AND ID = 'aaa'",
+			data: "UPDATE Node SET ArchivedAt = 2000 WHERE ID = 'aaa' AND DeletedAt IS NULL AND ArchivedAt IS NULL",
 		},
 		{
 			name: "CreateDocument",
@@ -180,7 +180,7 @@ func TestLocalHistory(t *testing.T) {
 	}
 
 	client.result = []orientdb.Result{
-		{Body: []byte(`{"result": [{"value": 1}]}`)},
+		{Body: []byte(`{"result": [{"count": 1}]}`)},
 	}
 
 	g.addMetadata(node, "MTU", 1520, Unix(3, 0))
@@ -204,7 +204,7 @@ func TestLocalHistory(t *testing.T) {
 		},
 		{
 			name: "Search",
-			data: "UPDATE Node SET ArchivedAt = 2000 WHERE DeletedAt IS NULL AND ArchivedAt IS NULL AND ID = 'aaa'",
+			data: "UPDATE Node SET ArchivedAt = 2000 WHERE ID = 'aaa' AND DeletedAt IS NULL AND ArchivedAt IS NULL",
 		},
 		{
 			name: "CreateDocument",
@@ -224,7 +224,7 @@ func TestLocalHistory(t *testing.T) {
 		},
 		{
 			name: "Search",
-			data: "UPDATE Node SET ArchivedAt = 3000 WHERE DeletedAt IS NULL AND ArchivedAt IS NULL AND ID = 'aaa'",
+			data: "UPDATE Node SET ArchivedAt = 3000 WHERE ID = 'aaa' AND DeletedAt IS NULL AND ArchivedAt IS NULL",
 		},
 		{
 			name: "CreateDocument",
@@ -250,8 +250,8 @@ func TestLocalHistory(t *testing.T) {
 
 	client.result = []orientdb.Result{
 		{Body: []byte(`{"result": [{"ID": "bbb", "Parent": "123", "Child": "456"}]}`)},
-		{Body: []byte(`{"result": [{"value": 1}]}`)},
-		{Body: []byte(`{"result": [{"value": 1}]}`)},
+		{Body: []byte(`{"result": [{"count": 1}]}`)},
+		{Body: []byte(`{"result": [{"count": 1}]}`)},
 	}
 
 	g.delNode(node, Unix(4, 0))
@@ -275,7 +275,7 @@ func TestLocalHistory(t *testing.T) {
 		},
 		{
 			name: "Search",
-			data: "UPDATE Node SET ArchivedAt = 2000 WHERE DeletedAt IS NULL AND ArchivedAt IS NULL AND ID = 'aaa'",
+			data: "UPDATE Node SET ArchivedAt = 2000 WHERE ID = 'aaa' AND DeletedAt IS NULL AND ArchivedAt IS NULL",
 		},
 		{
 			name: "CreateDocument",
@@ -295,7 +295,7 @@ func TestLocalHistory(t *testing.T) {
 		},
 		{
 			name: "Search",
-			data: "UPDATE Node SET ArchivedAt = 3000 WHERE DeletedAt IS NULL AND ArchivedAt IS NULL AND ID = 'aaa'",
+			data: "UPDATE Node SET ArchivedAt = 3000 WHERE ID = 'aaa' AND DeletedAt IS NULL AND ArchivedAt IS NULL",
 		},
 		{
 			name: "CreateDocument",
@@ -319,11 +319,11 @@ func TestLocalHistory(t *testing.T) {
 		},
 		{
 			name: "Search",
-			data: "UPDATE Link SET DeletedAt = 4000, ArchivedAt = 4000 WHERE DeletedAt IS NULL AND ArchivedAt IS NULL AND ID = 'bbb'",
+			data: "UPDATE Link SET DeletedAt = 4000, ArchivedAt = 4000 WHERE ID = 'bbb' AND DeletedAt IS NULL AND ArchivedAt IS NULL",
 		},
 		{
 			name: "Search",
-			data: "UPDATE Node SET DeletedAt = 4000, ArchivedAt = 4000 WHERE DeletedAt IS NULL AND ArchivedAt IS NULL AND ID = 'aaa'",
+			data: "UPDATE Node SET DeletedAt = 4000, ArchivedAt = 4000 WHERE ID = 'aaa' AND DeletedAt IS NULL AND ArchivedAt IS NULL",
 		},
 	}
 

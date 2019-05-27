@@ -107,12 +107,14 @@ func (o *OrientDBBackend) updateTimes(e string, id string, events ...eventTime) 
 		return ErrElementNotFound
 	}
 
-	value, ok := values.Result[0]["value"]
+	count, ok := values.Result[0]["count"]
 	if !ok {
-		return ErrElementNotFound
+		if count, ok = values.Result[0]["value"]; !ok {
+			return ErrElementNotFound
+		}
 	}
 
-	f, ok := value.(float64)
+	f, ok := count.(float64)
 	if !ok || f != 1 {
 		return ErrInternal
 	}
