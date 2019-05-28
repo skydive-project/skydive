@@ -108,7 +108,7 @@ func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocat
 	return fb
 }
 
-func TableOptsFromCapture(capture *types.Capture) flow.TableOpts {
+func tableOptsFromCapture(capture *types.Capture) flow.TableOpts {
 	layerKeyMode, _ := flow.LayerKeyModeByName(capture.LayerKeyMode)
 
 	return flow.TableOpts{

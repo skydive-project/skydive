@@ -1,0 +1,56 @@
+/*
+ * Copyright (C) 2019 Red Hat, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specificlanguage governing permissions and
+ * limitations under the License.
+ *
+ */
+
+package targets
+
+import (
+	"github.com/google/gopacket"
+	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/flow"
+)
+
+// LocalTarget send packet to an agent flow table
+type LocalTarget struct {
+	table *flow.Table
+	fta   *flow.TableAllocator
+}
+
+// SendPacket implements the Target interface
+func (l *LocalTarget) SendPacket(packet gopacket.Packet, bpf *flow.BPF) {
+	l.table.FeedWithGoPacket(packet, bpf)
+}
+
+// Start target
+func (l *LocalTarget) Start() {
+	l.table.Start()
+}
+
+// Stop target
+func (l *LocalTarget) Stop() {
+	l.table.Stop()
+	l.fta.Release(l.table)
+}
+
+// NewLocalTarget returns a new local target
+func NewLocalTarget(capture *types.Capture, nodeTID string, fta *flow.TableAllocator) (*LocalTarget, error) {
+	table := fta.Alloc(nodeTID, tableOptsFromCapture(capture))
+
+	return &LocalTarget{
+		table: table,
+		fta:   fta,
+	}, nil
+}

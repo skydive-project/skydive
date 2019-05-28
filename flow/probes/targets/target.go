@@ -1,0 +1,63 @@
+/*
+ * Copyright (C) 2019 Red Hat, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specificlanguage governing permissions and
+ * limitations under the License.
+ *
+ */
+
+package targets
+
+import (
+	"errors"
+
+	"github.com/google/gopacket"
+	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/flow"
+)
+
+var (
+	// ErrTargetTypeUnknown target type unknown
+	ErrTargetTypeUnknown = errors.New("target type unknown")
+)
+
+// Target interface
+type Target interface {
+	SendPacket(packet gopacket.Packet, bpf *flow.BPF)
+	Start()
+	Stop()
+}
+
+func tableOptsFromCapture(capture *types.Capture) flow.TableOpts {
+	layerKeyMode, _ := flow.LayerKeyModeByName(capture.LayerKeyMode)
+
+	return flow.TableOpts{
+		RawPacketLimit: int64(capture.RawPacketLimit),
+		ExtraTCPMetric: capture.ExtraTCPMetric,
+		IPDefrag:       capture.IPDefrag,
+		ReassembleTCP:  capture.ReassembleTCP,
+		LayerKeyMode:   layerKeyMode,
+		ExtraLayers:    capture.ExtraLayers,
+	}
+}
+
+// NewTarget returns target according to the given type
+func NewTarget(typ string, capture *types.Capture, nodeTID string, bpf *flow.BPF, fta *flow.TableAllocator) (Target, error) {
+	switch typ {
+	case "netflowv5":
+		return NewNetFlowV5Target(capture, nodeTID)
+	case "local":
+		return NewLocalTarget(capture, nodeTID, fta)
+	}
+
+	return nil, ErrTargetTypeUnknown
+}

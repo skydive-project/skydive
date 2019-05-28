@@ -183,12 +183,6 @@ func (o *OvsSFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid str
 		headerSize = uint32(capture.HeaderSize)
 	}
 
-<<<<<<< HEAD
-=======
-	opts := TableOptsFromCapture(capture)
-	ft := o.fta.Alloc(tid, opts)
-
->>>>>>> 16469ab1... flow: remove flow table allocator indirection
 	if capture.SamplingRate < 1 {
 		capture.SamplingRate = math.MaxUint32
 	}
@@ -203,7 +197,7 @@ func (o *OvsSFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid str
 
 	if capture.Target == "" {
 		opts := tableOptsFromCapture(capture)
-		probe.flowTable = o.fpta.Alloc(tid, opts)
+		probe.flowTable = o.fta.Alloc(tid, opts)
 
 		address := config.GetString("agent.flow.sflow.bind_address")
 		if address == "" {

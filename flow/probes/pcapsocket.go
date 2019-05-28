@@ -107,8 +107,7 @@ func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, capture *types.Cap
 		logging.GetLogger().Errorf("Failed to listen on TCP socket %s: %s", tcpAddr.String(), err)
 	}
 
-	opts := TableOptsFromCapture(capture)
-	ft := p.fta.Alloc(tid, opts)
+	ft := p.fta.Alloc(tid, tableOptsFromCapture(capture))
 
 	probe := &PcapSocketProbe{
 		graph:     p.graph,
