@@ -453,7 +453,7 @@ func (ft *Table) processFlowOP(op *Operation) {
 	}
 }
 
-func (ft *Table) processEBPFFlow(ebpfFlow *EBPFFlow, nfl *Flow) {
+func (ft *Table) processEBPFFlow(ebpfFlow *EBPFFlow) {
 	key := kernFlowKey(ebpfFlow.kernFlow)
 	f, found := ft.table.Get(key)
 	if !found {
@@ -465,29 +465,7 @@ func (ft *Table) processEBPFFlow(ebpfFlow *EBPFFlow, nfl *Flow) {
 		}
 		return
 	}
-	ft.updateFlowFromEBPF(ebpfFlow, nfl)
-	fl := f.(*Flow)
-	fl.Metric.ABBytes += nfl.Metric.ABBytes
-	fl.Metric.BABytes += nfl.Metric.BABytes
-	fl.Metric.ABPackets += nfl.Metric.ABPackets
-	fl.Metric.BAPackets += nfl.Metric.BAPackets
-
-	fl.Last = nfl.Last
-	if fl.Transport != nil && fl.Transport.Protocol == FlowProtocol_TCP && fl.TCPMetric != nil {
-		fl.TCPMetric = &TCPMetric{
-			ABSynStart: updateTCPFlagTime(fl.TCPMetric.ABSynStart, nfl.TCPMetric.ABSynStart),
-			BASynStart: updateTCPFlagTime(fl.TCPMetric.BASynStart, nfl.TCPMetric.BASynStart),
-			ABFinStart: updateTCPFlagTime(fl.TCPMetric.ABFinStart, nfl.TCPMetric.ABFinStart),
-			BAFinStart: updateTCPFlagTime(fl.TCPMetric.BAFinStart, nfl.TCPMetric.BAFinStart),
-			ABRstStart: updateTCPFlagTime(fl.TCPMetric.ABRstStart, nfl.TCPMetric.ABRstStart),
-			BARstStart: updateTCPFlagTime(fl.TCPMetric.BARstStart, nfl.TCPMetric.BARstStart),
-		}
-	}
-	// TODO(safchain) remove this should be provided by the sender
-	// with a good time resolution
-	if fl.Metric.RTT == 0 && fl.Metric.ABPackets > 0 && fl.Metric.BAPackets > 0 {
-		fl.Metric.RTT = fl.Last - fl.Start
-	}
+	ft.updateFlowFromEBPF(ebpfFlow, f.(*Flow))
 }
 
 // State returns the state of the flow table, stopped, running...
@@ -518,9 +496,6 @@ func (ft *Table) Run() {
 	overFlowTicker := time.NewTicker(time.Second * 10)
 	defer overFlowTicker.Stop()
 
-	ph := Flow{} // placeholder to avoid memory allocation upon update
-	ph.TCPMetric = &TCPMetric{}
-	ph.Metric = &FlowMetric{}
 	ft.query = make(chan *TableQuery, 100)
 	ft.reply = make(chan []byte, 100)
 
@@ -547,7 +522,7 @@ func (ft *Table) Run() {
 		case op := <-ft.flowChanOperation:
 			ft.processFlowOP(op)
 		case ebpfFlow := <-ft.flowEBPFChan:
-			ft.processEBPFFlow(ebpfFlow, &ph)
+			ft.processEBPFFlow(ebpfFlow)
 		case now := <-ctTicker.C:
 			t := now.Add(-ctDuration)
 			ft.tcpAssembler.FlushOlderThan(t)
@@ -616,7 +591,7 @@ func (ft *Table) Stop() {
 
 		for len(ft.flowEBPFChan) != 0 {
 			ebpfFlow := <-ft.flowEBPFChan
-			ft.processEBPFFlow(ebpfFlow, &ph)
+			ft.processEBPFFlow(ebpfFlow)
 		}
 
 		close(ft.packetSeqChan)

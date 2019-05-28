@@ -107,11 +107,11 @@ func newTable(nodeID string) *flow.Table {
 	return flow.NewTable(time.Second, time.Hour, &fakeMessageSender{}, nodeID, flow.TableOpts{})
 }
 
-func newFakeTableClient() *fakeTableClient {
+func newFakeTableClient(nodeID string) *fakeTableClient {
 	b, _ := graph.NewMemoryBackend()
 
 	tc := &fakeTableClient{
-		t: newTable(""),
+		t: newTable(nodeID),
 		g: graph.NewGraph("", b, common.AnalyzerService),
 	}
 
@@ -127,7 +127,7 @@ func newICMPFlow(id uint32) *flow.Flow {
 }
 
 func TestHasStepOp(t *testing.T) {
-	tc := newFakeTableClient()
+	tc := newFakeTableClient("node1")
 
 	_, _, flowChan := tc.t.Start()
 	defer tc.t.Stop()
@@ -184,7 +184,7 @@ func TestHasStepOp(t *testing.T) {
 }
 
 func TestLimitStepOp(t *testing.T) {
-	tc := newFakeTableClient()
+	tc := newFakeTableClient("node1")
 
 	_, _, flowChan := tc.t.Start()
 	defer tc.t.Stop()
@@ -211,7 +211,7 @@ func TestLimitStepOp(t *testing.T) {
 }
 
 func TestDedupStepOp(t *testing.T) {
-	tc := newFakeTableClient()
+	tc := newFakeTableClient("node1")
 
 	_, _, flowChan := tc.t.Start()
 	defer tc.t.Stop()
@@ -244,7 +244,7 @@ func TestDedupStepOp(t *testing.T) {
 }
 
 func TestCaptureNodeStepOp(t *testing.T) {
-	tc := newFakeTableClient()
+	tc := newFakeTableClient("node1")
 
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"TID": "123"})
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"TID": "456"})
@@ -292,7 +292,7 @@ func TestCaptureNodeStepOp(t *testing.T) {
 }
 
 func TestInStepOp(t *testing.T) {
-	tc := newFakeTableClient()
+	tc := newFakeTableClient("node1")
 
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"MAC": "123"})
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"MAC": "456"})
@@ -338,7 +338,7 @@ func TestInStepOp(t *testing.T) {
 }
 
 func TestOutStepOp(t *testing.T) {
-	tc := newFakeTableClient()
+	tc := newFakeTableClient("node1")
 
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"MAC": "123"})
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"PeerIntfMAC": "456"})
@@ -384,7 +384,7 @@ func TestOutStepOp(t *testing.T) {
 }
 
 func TestBothStepOp(t *testing.T) {
-	tc := newFakeTableClient()
+	tc := newFakeTableClient("node1")
 
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"MAC": "123"})
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"PeerIntfMAC": "456"})
@@ -430,7 +430,7 @@ func TestBothStepOp(t *testing.T) {
 }
 
 func TestHasStepEBPF(t *testing.T) {
-	tc := newFakeTableClient()
+	tc := newFakeTableClient("node1")
 
 	_, flowChan, _ := tc.t.Start()
 	defer tc.t.Stop()
@@ -438,8 +438,8 @@ func TestHasStepEBPF(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	flowChan <- newEBPFFlow(222, "node1", "", "")
-	flowChan <- newEBPFFlow(444, "node1", "", "")
+	flowChan <- newEBPFFlow(222, "", "")
+	flowChan <- newEBPFFlow(444, "", "")
 
 	time.Sleep(time.Second)
 
@@ -487,7 +487,7 @@ func TestHasStepEBPF(t *testing.T) {
 }
 
 func TestLimitStepEBPF(t *testing.T) {
-	tc := newFakeTableClient()
+	tc := newFakeTableClient("node1")
 
 	_, flowChan, _ := tc.t.Start()
 	defer tc.t.Stop()
@@ -495,8 +495,8 @@ func TestLimitStepEBPF(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	flowChan <- newEBPFFlow(222, "node1", "", "")
-	flowChan <- newEBPFFlow(444, "node1", "", "")
+	flowChan <- newEBPFFlow(222, "", "")
+	flowChan <- newEBPFFlow(444, "", "")
 
 	time.Sleep(time.Second)
 
@@ -514,7 +514,7 @@ func TestLimitStepEBPF(t *testing.T) {
 }
 
 func TestDedupStepEBPF(t *testing.T) {
-	tc := newFakeTableClient()
+	tc := newFakeTableClient("node1")
 
 	_, flowChan, _ := tc.t.Start()
 	defer tc.t.Stop()
@@ -522,8 +522,8 @@ func TestDedupStepEBPF(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	flowChan <- newEBPFFlow(222, "node1", "", "")
-	flowChan <- newEBPFFlow(222, "node1", "", "")
+	flowChan <- newEBPFFlow(222, "", "")
+	flowChan <- newEBPFFlow(222, "", "")
 
 	time.Sleep(time.Second)
 
@@ -547,7 +547,7 @@ func TestDedupStepEBPF(t *testing.T) {
 }
 
 func TestCaptureNodeStepEBPF(t *testing.T) {
-	tc := newFakeTableClient()
+	tc := newFakeTableClient("123")
 
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"TID": "123"})
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"TID": "456"})
@@ -559,9 +559,8 @@ func TestCaptureNodeStepEBPF(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	flowChan <- newEBPFFlow(222, "123", "", "")
-
-	flowChan <- newEBPFFlow(444, "456", "", "")
+	flowChan <- newEBPFFlow(222, "", "")
+	flowChan <- newEBPFFlow(444, "", "")
 
 	time.Sleep(time.Second)
 
@@ -582,16 +581,10 @@ func TestCaptureNodeStepEBPF(t *testing.T) {
 	if len(res.Values()) != 1 {
 		t.Fatalf("Should return 1 result, returned: %v", res.Values())
 	}
-
-	query = `G.Flows().Has('NodeTID', "456")`
-	res = execTraversalQuery(t, tc, query)
-	if len(res.Values()) != 1 {
-		t.Fatalf("Should return 1 result, returned: %v", res.Values())
-	}
 }
 
 func TestInStepEBPF(t *testing.T) {
-	tc := newFakeTableClient()
+	tc := newFakeTableClient("node1")
 
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"MAC": "01:23:00:00:00:00"})
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"MAC": "04:56:00:00:00:00"})
@@ -603,9 +596,9 @@ func TestInStepEBPF(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	flowChan <- newEBPFFlow(222, "node1", "01:23:00:00:00:00", "")
-	flowChan <- newEBPFFlow(444, "node1", "04:56:00:00:00:00", "")
-	flowChan <- newEBPFFlow(666, "node1", "01:23:00:00:00:00", "")
+	flowChan <- newEBPFFlow(222, "01:23:00:00:00:00", "")
+	flowChan <- newEBPFFlow(444, "04:56:00:00:00:00", "")
+	flowChan <- newEBPFFlow(666, "01:23:00:00:00:00", "")
 
 	time.Sleep(time.Second)
 
@@ -629,7 +622,7 @@ func TestInStepEBPF(t *testing.T) {
 }
 
 func TestOutStepEBPF(t *testing.T) {
-	tc := newFakeTableClient()
+	tc := newFakeTableClient("node1")
 
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"MAC": "01:23:00:00:00:00"})
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"PeerIntfMAC": "04:56:00:00:00:00"})
@@ -641,9 +634,9 @@ func TestOutStepEBPF(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	flowChan <- newEBPFFlow(222, "node1", "", "01:23:00:00:00:00")
-	flowChan <- newEBPFFlow(444, "node1", "", "04:56:00:00:00:00")
-	flowChan <- newEBPFFlow(666, "node1", "", "01:23:00:00:00:00")
+	flowChan <- newEBPFFlow(222, "", "01:23:00:00:00:00")
+	flowChan <- newEBPFFlow(444, "", "04:56:00:00:00:00")
+	flowChan <- newEBPFFlow(666, "", "01:23:00:00:00:00")
 
 	time.Sleep(time.Second)
 
@@ -667,7 +660,7 @@ func TestOutStepEBPF(t *testing.T) {
 }
 
 func TestBothStepEBPF(t *testing.T) {
-	tc := newFakeTableClient()
+	tc := newFakeTableClient("node1")
 
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"MAC": "01:23:00:00:00:00"})
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"PeerIntfMAC": "04:56:00:00:00:00"})
@@ -679,9 +672,9 @@ func TestBothStepEBPF(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	flowChan <- newEBPFFlow(222, "node1", "01:23:00:00:00:00", "")
-	flowChan <- newEBPFFlow(444, "node1", "", "04:56:00:00:00:00")
-	flowChan <- newEBPFFlow(666, "node1", "", "01:23:00:00:00:00")
+	flowChan <- newEBPFFlow(222, "01:23:00:00:00:00", "")
+	flowChan <- newEBPFFlow(444, "", "04:56:00:00:00:00")
+	flowChan <- newEBPFFlow(666, "", "01:23:00:00:00:00")
 
 	time.Sleep(time.Second)
 

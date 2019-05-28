@@ -1,3 +1,5 @@
+// +build test
+
 /*
  * Copyright (C) 2018 Red Hat, Inc.
  *
@@ -23,19 +25,22 @@ import "C"
 import (
 	"math/rand"
 	"net"
-	"time"
-	"unsafe"
 
 	"github.com/skydive-project/skydive/flow"
 )
 
-func newEBPFFlow(id uint32, nodeTID string, linkSrc string, linkDst string) *flow.EBPFFlow {
+func newEBPFFlow(id uint32, linkSrc string, linkDst string) *flow.EBPFFlow {
 	ebpfFlow := new(flow.EBPFFlow)
+	ebpfFlow.start = start
+	ebpfFlow.last = last
+	ebpfFlow.kernFlow = (*C.struct_flow)(kernFlow)
+	ebpfFlow.startKTimeNs = startKTimeNs
+
 	kernFlow := new(C.struct_flow)
-	flow.SetEBPFFlow(ebpfFlow, time.Now(), time.Now(), unsafe.Pointer(kernFlow), 0, nodeTID)
 	kernFlow.layers_info |= (1 << 3)
 	kernFlow.icmp_layer.id = (C.__u32)(id)
 	kernFlow.key = (C.__u64)(rand.Int())
+
 	if linkSrc == "" && linkDst == "" {
 		return ebpfFlow
 	}
@@ -50,5 +55,6 @@ func newEBPFFlow(id uint32, nodeTID string, linkSrc string, linkDst string) *flo
 	}
 	kernFlow.layers_info |= (1 << 0)
 	kernFlow.link_layer = l2
+
 	return ebpfFlow
 }

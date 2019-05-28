@@ -40,16 +40,6 @@ type EBPFFlow struct {
 	last         time.Time
 	kernFlow     *C.struct_flow
 	startKTimeNs int64
-	probeNodeTID string
-}
-
-// SetEBPFFlow initializes pre-allocated ebpfflow
-func SetEBPFFlow(ebpfFlow *EBPFFlow, start time.Time, last time.Time, kernFlow unsafe.Pointer, startKTimeNs int64, probeNodeTID string) {
-	ebpfFlow.start = start
-	ebpfFlow.last = last
-	ebpfFlow.kernFlow = (*C.struct_flow)(kernFlow)
-	ebpfFlow.startKTimeNs = startKTimeNs
-	ebpfFlow.probeNodeTID = probeNodeTID
 }
 
 //key has already been hashed by the module, just convert to string
@@ -114,8 +104,9 @@ func kernLayersPath(kernFlow *C.struct_flow) (layersPath string, hasGRE bool) {
 func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key string) ([]string, []*Flow) {
 	var flows []*Flow
 	var keys []string
-	f := NewFlow(ft.Opts.CaptureID)
-	f.Init(common.UnixMillis(ebpfFlow.start), ebpfFlow.probeNodeTID, UUIDs{})
+
+	f := NewFlow("")
+	f.Init(common.UnixMillis(ebpfFlow.start), ft.nodeTID, UUIDs{})
 	f.Last = common.UnixMillis(ebpfFlow.last)
 
 	layersInfo := uint8(ebpfFlow.kernFlow.layers_info)
@@ -171,7 +162,7 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key string) ([]string, []*F
 		keys = append(keys, pkey)
 		// upper layer
 		f = NewFlow(ft.Opts.CaptureID)
-		f.Init(common.UnixMillis(ebpfFlow.start), ebpfFlow.probeNodeTID, UUIDs{ParentUUID: parent.UUID})
+		f.Init(common.UnixMillis(ebpfFlow.start), ft.nodeTID, UUIDs{ParentUUID: parent.UUID})
 		f.Last = common.UnixMillis(ebpfFlow.last)
 		f.LayersPath = innerLayerPath
 	}
@@ -213,15 +204,6 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key string) ([]string, []*F
 				A:        portA,
 				B:        portB,
 			}
-
-			/* disabled for now as no payload is sent
-			p := gopacket.NewPacket(C.GoBytes(unsafe.Pointer(&ebpfFlow.kernFlow.payload[0]), C.PAYLOAD_LENGTH), layers.LayerTypeUDP, gopacket.DecodeOptions{})
-			if p.Layer(gopacket.LayerTypeDecodeFailure) == nil {
-				path, app := LayersPath(p.Layers())
-				f.LayersPath += "/" + path
-				f.Application = app
-			}
-			*/
 		case syscall.IPPROTO_TCP:
 			f.Transport = &TransportLayer{
 				Protocol: FlowProtocol_TCP,
@@ -236,14 +218,6 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key string) ([]string, []*F
 				ABRstStart: tcpFlagTime(ebpfFlow.kernFlow.transport_layer.ab_rst, ebpfFlow.startKTimeNs, ebpfFlow.start),
 				BARstStart: tcpFlagTime(ebpfFlow.kernFlow.transport_layer.ba_rst, ebpfFlow.startKTimeNs, ebpfFlow.start),
 			}
-			/* disabled for now as no payload is sent
-			p := gopacket.NewPacket(C.GoBytes(unsafe.Pointer(&ebpfFlow.kernFlow.payload[0]), C.PAYLOAD_LENGTH), layers.LayerTypeTCP, gopacket.DecodeOptions{})
-			if p.Layer(gopacket.LayerTypeDecodeFailure) == nil {
-				path, app := LayersPath(p.Layers())
-				f.LayersPath += "/" + path
-				f.Application = app
-			}
-			*/
 		}
 	}
 
@@ -283,7 +257,7 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key string) ([]string, []*F
 	return keys, flows
 }
 
-func (ft *Table) updateFlowFromEBPF(ebpfFlow *EBPFFlow, f *Flow) *Flow {
+func (ft *Table) updateFlowFromEBPF(ebpfFlow *EBPFFlow, f *Flow) {
 	f.Last = common.UnixMillis(ebpfFlow.last)
 	layersInfo := uint8(ebpfFlow.kernFlow.layers_info)
 	if layersInfo&uint8(C.TRANSPORT_LAYER_INFO) > 0 {
@@ -298,12 +272,10 @@ func (ft *Table) updateFlowFromEBPF(ebpfFlow *EBPFFlow, f *Flow) *Flow {
 			f.TCPMetric.BARstStart = tcpFlagTime(ebpfFlow.kernFlow.transport_layer.ba_rst, ebpfFlow.startKTimeNs, ebpfFlow.start)
 		}
 	}
-	f.Metric.ABBytes = int64(ebpfFlow.kernFlow.metrics.ab_bytes)
-	f.Metric.ABPackets = int64(ebpfFlow.kernFlow.metrics.ab_packets)
-	f.Metric.BABytes = int64(ebpfFlow.kernFlow.metrics.ba_bytes)
-	f.Metric.BAPackets = int64(ebpfFlow.kernFlow.metrics.ba_packets)
+	f.Metric.ABBytes += int64(ebpfFlow.kernFlow.metrics.ab_bytes)
+	f.Metric.ABPackets += int64(ebpfFlow.kernFlow.metrics.ab_packets)
+	f.Metric.BABytes += int64(ebpfFlow.kernFlow.metrics.ba_bytes)
+	f.Metric.BAPackets += int64(ebpfFlow.kernFlow.metrics.ba_packets)
 	f.Metric.Start = f.Start
 	f.Metric.Last = f.Last
-
-	return f
 }
