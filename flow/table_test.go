@@ -18,6 +18,7 @@
 package flow
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -135,7 +136,7 @@ func TestUpdate(t *testing.T) {
 
 	table := NewTable(time.Second, time.Hour, sender, "", TableOpts{})
 
-	flow1, _ := table.getOrCreateFlow("flow1")
+	flow1, _ := table.getOrCreateFlow("123")
 
 	flow1.Metric.ABBytes = 1
 	flow1.XXX_state.updateVersion = table.updateVersion + 1
@@ -147,7 +148,7 @@ func TestUpdate(t *testing.T) {
 		t.Errorf("Flow should have been updated by expire : %+v", flow1)
 	}
 
-	flow2, _ := table.getOrCreateFlow("flow2")
+	flow2, _ := table.getOrCreateFlow("456")
 
 	flow2.Metric.ABBytes = 2
 	flow2.XXX_state.updateVersion = table.updateVersion + 1
@@ -213,11 +214,11 @@ func TestAppSpecificTimeout(t *testing.T) {
 
 	flowsTime := time.Now()
 
-	arpFlow, _ := table.getOrCreateFlow("arpFlow")
+	arpFlow, _ := table.getOrCreateFlow("123")
 	arpFlow.Last = common.UnixMillis(flowsTime)
 	arpFlow.Application = "ARP"
 
-	dnsFlow, _ := table.getOrCreateFlow("dnsFlow")
+	dnsFlow, _ := table.getOrCreateFlow("456")
 	dnsFlow.Last = common.UnixMillis(flowsTime)
 	dnsFlow.Application = "DNS"
 
@@ -237,7 +238,7 @@ func TestHold(t *testing.T) {
 
 	flowTime := time.Now()
 
-	flow1, _ := table.getOrCreateFlow("flow1")
+	flow1, _ := table.getOrCreateFlow("123")
 	flow1.Last = common.UnixMillis(flowTime)
 	flow1.FinishType = FlowFinishType_TCP_FIN
 
@@ -250,7 +251,7 @@ func TestHold(t *testing.T) {
 		t.Error("Flow should have been deleted by update")
 	}
 
-	flow2, _ := table.getOrCreateFlow("flow2")
+	flow2, _ := table.getOrCreateFlow("456")
 	flow2.Last = common.UnixMillis(flowTime)
 	flow2.FinishType = FlowFinishType_TCP_FIN
 	table.updateAt(flowTime.Add(time.Duration(5) * time.Second))
@@ -258,5 +259,49 @@ func TestHold(t *testing.T) {
 	table.updateAt(flowTime.Add(time.Duration(15) * time.Second))
 	if table.table.Len() != 1 {
 		t.Error("Updated flow should not have been deleted by update")
+	}
+}
+
+func createBenchTable() *Table {
+	updHandler := NewFlowHandler(func(f *FlowArray) {}, 600*time.Second)
+	expHandler := NewFlowHandler(func(f *FlowArray) {}, 600*time.Second)
+
+	return NewTable(updHandler, expHandler, "", TableOpts{})
+}
+
+func BenchmarkInsert(b *testing.B) {
+	table := createBenchTable()
+	for n := 0; n < b.N; n++ {
+		table.getOrCreateFlow(strconv.Itoa(n))
+	}
+}
+
+func BenchmarkReplace(b *testing.B) {
+	table := createBenchTable()
+	for n := 0; n < b.N; n++ {
+		table.getOrCreateFlow(strconv.Itoa(n))
+		table.replaceFlow(strconv.Itoa(n), nil)
+	}
+}
+
+func BenchmarkExpire(b *testing.B) {
+	table := createBenchTable()
+	for n := 0; n < b.N; n++ {
+		for i := 0; i != 10000; i++ {
+			f, _ := table.getOrCreateFlow(strconv.Itoa(n))
+			f.Start = 0
+			f.Last = 5
+		}
+		table.expire(10)
+	}
+}
+
+func BenchmarkGetFlows(b *testing.B) {
+	table := createBenchTable()
+	for n := 0; n < b.N; n++ {
+		for i := 0; i != 10000; i++ {
+			table.getOrCreateFlow(strconv.Itoa(n))
+		}
+		table.getFlows(nil)
 	}
 }
