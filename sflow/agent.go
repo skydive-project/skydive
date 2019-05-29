@@ -256,7 +256,7 @@ func (sfa *Agent) feedFlowTable() {
 		sf.Metric.Last = now
 
 		if err := sfa.Graph.AddMetadata(sfa.Node, "SFlow", sf); err != nil {
-			logging.GetLogger().Errorf("Unable to add sflow metadata %s", sfa.Port, err)
+			logging.GetLogger().Errorf("Unable to add sflow metadata %d %s", sfa.Port, err)
 		}
 
 		sfa.Graph.Unlock()

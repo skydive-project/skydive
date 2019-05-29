@@ -2271,6 +2271,12 @@
 			"revisionTime": "2016-06-15T11:30:19Z"
 		},
 		{
+			"checksumSHA1": "DJnZn7o0LQAMSLCYkFxCTCTYk7s=",
+			"path": "github.com/pierrec/xxHash/xxHash64",
+			"revision": "d17cb990ad2d219d5901415ceaeb50d17df59527",
+			"revisionTime": "2019-03-18T09:19:27Z"
+		},
+		{
 			"checksumSHA1": "ynJSWoF6v+3zMnh9R0QmmG6iGV8=",
 			"path": "github.com/pkg/errors",
 			"revision": "ff09b135c25aae272398c51a07235b90a75aa4f0",
