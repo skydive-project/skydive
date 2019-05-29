@@ -814,6 +814,14 @@ var TopologyComponent = {
     topologyFilterQuery: function() {
       var self = this;
 
+      if (!this.topologyFilter) {
+        var default_filter = app.getConfigValue('topology.default_filter');
+        if (default_filter) {
+          var favorites = app.getConfigValue('topology.favorites');
+          this.topologyFilter = favorites[default_filter];
+        }
+      }
+
       if (!this.topologyFilter || this.endsWith(this.topologyFilter, ")")) {
         var filter = this.topologyFilter;
         $("#topology-gremlin-favorites").find('option').filter(function() {
@@ -1057,6 +1065,8 @@ var Graph = function(websocket, onErrorCallback) {
 
   this.synced = false;
   this.live = true;
+
+  this.currentFilter = '';
 
   this.websocket.addConnectHandler(this.syncRequest.bind(this));
   this.websocket.addDisconnectHandler(this.invalidate.bind(this));
@@ -1347,8 +1357,18 @@ Graph.prototype = {
     if (filter) {
       obj.GremlinFilter = filter + ".SubGraph()";
     } else {
-      obj.GremlinFilter = "";
+      var default_filter = app.getConfigValue('topology.default_filter');
+      if (default_filter) {
+        var favorites = app.getConfigValue('topology.favorites');
+        obj.GremlinFilter = favorites[default_filter] + ".SubGraph()";
+      }
     }
+
+    if (obj.GremlinFilter === this.currentFilter) {
+      return;
+    }
+    this.currentFilter = obj.GremlinFilter;
+
     var msg = {"Namespace": "Graph", "Type": "SyncRequest", "Obj": obj};
     this.websocket.send(msg);
   },
