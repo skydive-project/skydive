@@ -318,11 +318,11 @@ func testOVSRule(t *testing.T, kind, rule string, checkRule func(node *graph.Nod
 
 	test := &Test{
 		setupCmds: []Cmd{
-			Cmd{"ovs-vsctl add-br br-test", true},
-			Cmd{"ovs-ofctl del-flows br-test", true},
-			Cmd{"ovs-vsctl set bridge br-test protocols=OpenFlow10,OpenFlow14", true},
-			Cmd{"ovs-vsctl set-controller br-test ptcp:16633", true},
-			Cmd{fmt.Sprintf("ovs-ofctl add-%s br-test %s", kind, rule), true},
+			{"ovs-vsctl add-br br-test", true},
+			{"ovs-ofctl del-flows br-test", true},
+			{"ovs-vsctl set bridge br-test protocols=OpenFlow10,OpenFlow14", true},
+			{"ovs-vsctl set-controller br-test ptcp:16633", true},
+			{fmt.Sprintf("ovs-ofctl add-%s br-test %s", kind, rule), true},
 		},
 
 		tearDownCmds: []Cmd{
