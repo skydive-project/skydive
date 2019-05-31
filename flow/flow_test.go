@@ -1756,7 +1756,7 @@ func benchmarkPacketParsing(b *testing.B, filename string, linkType layers.LinkT
 			b.Fatal("Failed to get PacketSeq: ", err)
 		}
 		for _, packet := range ps.Packets {
-			NewFlowFromGoPacket(packet.GoPacket, "", UUIDs{}, Opts{})
+			NewFlowFromGoPacket(packet.GoPacket, "", "", Opts{})
 		}
 	}
 }
@@ -1826,7 +1826,7 @@ func benchmarkPacketsParsing(b *testing.B, filename string, linkType layers.Link
 						b.Fatal("Failed to get PacketSeq")
 					}
 					for _, packet := range ps.Packets {
-						NewFlowFromGoPacket(packet.GoPacket, "", UUIDs{}, Opts{})
+						NewFlowFromGoPacket(packet.GoPacket, "", "", Opts{})
 					}
 				}
 			})
@@ -2360,7 +2360,6 @@ func TestGeneve(t *testing.T) {
 func TestLayerKeyMode(t *testing.T) {
 	expected := []*Flow{
 		{
-			UUID:        "4238ac6e55e4fe84",
 			LayersPath:  "Ethernet/IPv4/ICMPv4",
 			Application: "ICMPv4",
 			Link: &FlowLayer{
@@ -2386,8 +2385,8 @@ func TestLayerKeyMode(t *testing.T) {
 				BAPackets: 2,
 				BABytes:   196,
 			},
-			TrackingID:   "fccc60686022c1d7",
-			L3TrackingID: "8d393414982d64e4",
+			TrackingID:   "75dbbb8b82a44d73",
+			L3TrackingID: "75dbbb8b82a44d73",
 		},
 	}
 
@@ -2395,7 +2394,6 @@ func TestLayerKeyMode(t *testing.T) {
 
 	expected = []*Flow{
 		{
-			UUID:        "4238ac6e55e4fe84",
 			LayersPath:  "Ethernet/IPv4/ICMPv4",
 			Application: "ICMPv4",
 			Link: &FlowLayer{
@@ -2421,11 +2419,10 @@ func TestLayerKeyMode(t *testing.T) {
 				BAPackets: 1,
 				BABytes:   98,
 			},
-			TrackingID:   "dceb357acb653343",
-			L3TrackingID: "8d393414982d64e4",
+			TrackingID:   "d228f5a158d99742",
+			L3TrackingID: "75dbbb8b82a44d73",
 		},
 		{
-			UUID:        "4238ac6e55e4fe84",
 			LayersPath:  "Ethernet/IPv4/ICMPv4",
 			Application: "ICMPv4",
 			Link: &FlowLayer{
@@ -2451,8 +2448,8 @@ func TestLayerKeyMode(t *testing.T) {
 				BAPackets: 1,
 				BABytes:   98,
 			},
-			TrackingID:   "5a98493143d10285",
-			L3TrackingID: "8d393414982d64e4",
+			TrackingID:   "9a193925b3b2d0b5",
+			L3TrackingID: "75dbbb8b82a44d73",
 		},
 	}
 

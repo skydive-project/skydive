@@ -20,7 +20,6 @@
 package flow
 
 import (
-	"encoding/hex"
 	"net"
 	"strings"
 	"syscall"
@@ -40,15 +39,6 @@ type EBPFFlow struct {
 	last         time.Time
 	kernFlow     *C.struct_flow
 	startKTimeNs int64
-}
-
-//key has already been hashed by the module, just convert to string
-func kernFlowKey(kernFlow *C.struct_flow) string {
-	return hex.EncodeToString(C.GoBytes(unsafe.Pointer(&kernFlow.key), C.sizeof___u64))
-}
-
-func kernFlowKeyOuter(kernFlow *C.struct_flow) string {
-	return hex.EncodeToString(C.GoBytes(unsafe.Pointer(&kernFlow.key_outer), C.sizeof___u64))
 }
 
 func tcpFlagTime(currFlagTime C.__u64, startKTimeNs int64, start time.Time) int64 {
@@ -101,12 +91,12 @@ func kernLayersPath(kernFlow *C.struct_flow) (layersPath string, hasGRE bool) {
 	return layersPath, hasGRE
 }
 
-func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key string) ([]string, []*Flow) {
+func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*Flow) {
 	var flows []*Flow
-	var keys []string
+	var keys []uint64
 
 	f := NewFlow("")
-	f.Init(common.UnixMillis(ebpfFlow.start), ft.nodeTID, UUIDs{})
+	f.Init(common.UnixMillis(ebpfFlow.start), ft.nodeTID, "")
 	f.Last = common.UnixMillis(ebpfFlow.last)
 
 	layersInfo := uint8(ebpfFlow.kernFlow.layers_info)
@@ -156,13 +146,17 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key string) ([]string, []*F
 				}
 			}
 		}
-		pkey := kernFlowKeyOuter(ebpfFlow.kernFlow)
-		parent.UpdateUUID(pkey, Opts{LayerKeyMode: L3PreferedKeyMode})
+
+		parentKey := uint64(ebpfFlow.kernFlow.key_outer)
+
+		parent.SetUUIDs(parentKey, Opts{LayerKeyMode: L3PreferedKeyMode})
+
 		flows = append(flows, parent)
-		keys = append(keys, pkey)
+		keys = append(keys, parentKey)
+
 		// upper layer
 		f = NewFlow(ft.Opts.CaptureID)
-		f.Init(common.UnixMillis(ebpfFlow.start), ft.nodeTID, UUIDs{ParentUUID: parent.UUID})
+		f.Init(common.UnixMillis(ebpfFlow.start), ft.nodeTID, parent.UUID)
 		f.Last = common.UnixMillis(ebpfFlow.last)
 		f.LayersPath = innerLayerPath
 	}
@@ -250,10 +244,11 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key string) ([]string, []*F
 		Last:      f.Last,
 	}
 
-	f.UpdateUUID(key, Opts{LayerKeyMode: L3PreferedKeyMode})
+	f.SetUUIDs(key, Opts{LayerKeyMode: L3PreferedKeyMode})
 
 	flows = append(flows, f)
 	keys = append(keys, key)
+
 	return keys, flows
 }
 

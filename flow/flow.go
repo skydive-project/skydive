@@ -19,11 +19,11 @@ package flow
 
 import (
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	fmt "fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -170,13 +170,6 @@ type Opts struct {
 	ExtraLayers  ExtraLayers
 }
 
-// UUIDs describes UUIDs that can be applied to flows
-type UUIDs struct {
-	ParentUUID string
-	L2ID       int64
-	L3ID       int64
-}
-
 func (l LayerKeyMode) String() string {
 	if l == L2KeyMode {
 		return "L2"
@@ -308,16 +301,9 @@ func (p *Packet) TransportFlow() (gopacket.Flow, error) {
 	return layer.TransportFlow(), nil
 }
 
-// Key returns the unique flow key
-// The unique key is calculated based on parentUUID, network, transport and applicable layers
-func (p *Packet) Key(parentUUID string, opts Opts) string {
+// Keys returns keys of the packet
+func (p *Packet) Keys(parentUUID string, opts Opts) (uint64, uint64, uint64) {
 	hasher := xxHash64.New(0)
-	// uses L2 is requested or if there is no network layer
-	if opts.LayerKeyMode == L2KeyMode || p.NetworkLayer() == nil {
-		if layer := p.LinkLayer(); layer != nil {
-			Hash(layer.LinkFlow(), hasher)
-		}
-	}
 	if layer := p.NetworkLayer(); layer != nil {
 		Hash(layer.NetworkFlow(), hasher)
 	}
@@ -327,7 +313,21 @@ func (p *Packet) Key(parentUUID string, opts Opts) string {
 	if af, err := p.ApplicationFlow(); err == nil {
 		Hash(af, hasher)
 	}
-	return parentUUID + hex.EncodeToString(hasher.Sum(nil))
+
+	l3Key := hasher.Sum64()
+	l2Key := l3Key
+
+	// uses L2 is requested or if there is no network layer
+	if opts.LayerKeyMode == L2KeyMode || p.NetworkLayer() == nil {
+		if layer := p.LinkLayer(); layer != nil {
+			Hash(layer.LinkFlow(), hasher)
+			l2Key = hasher.Sum64()
+		}
+	}
+
+	hasher.Write([]byte(parentUUID))
+
+	return hasher.Sum64(), l2Key, l3Key
 }
 
 // Value returns int32 value of a FlowProtocol
@@ -445,7 +445,7 @@ func NewFlow(captureID string) *Flow {
 }
 
 // NewFlowFromGoPacket creates a new flow from the given gopacket
-func NewFlowFromGoPacket(p gopacket.Packet, nodeTID string, uuids UUIDs, opts Opts) *Flow {
+func NewFlowFromGoPacket(p gopacket.Packet, nodeTID string, parentUUID string, opts Opts) *Flow {
 	f := NewFlow("")
 
 	var length int64
@@ -460,41 +460,48 @@ func NewFlowFromGoPacket(p gopacket.Packet, nodeTID string, uuids UUIDs, opts Op
 		Length:   length,
 	}
 
-	f.initFromPacket(packet.Key(uuids.ParentUUID, opts), packet, nodeTID, uuids, opts)
+	key, l2Key, l3Key := packet.Keys(parentUUID, opts)
+
+	f.initFromPacket(key, l2Key, l3Key, packet, nodeTID, parentUUID, opts)
 
 	return f
 }
 
-// UpdateUUID updates the flow UUID based on protocotols layers path and layers IDs
-func (f *Flow) UpdateUUID(key string, opts Opts) {
-	layersPath := strings.Replace(f.LayersPath, "Dot1Q/", "", -1)
+// setUUIDs set the flow UUIDs based on keys generated from gopacket flow
+// l2Key stands for layer2 and beyond
+// l3Key stands for layer3 and beyond
+func (f *Flow) setUUIDs(key, l2Key, l3Key uint64) {
+	f.TrackingID = strconv.FormatUint(l2Key, 16)
+	f.L3TrackingID = strconv.FormatUint(l3Key, 16)
 
+	value64 := make([]byte, 8)
+	binary.BigEndian.PutUint64(value64, uint64(f.Start))
+
+	hasher := xxHash64.New(key)
+	hasher.Write(value64)
+	hasher.Write([]byte(f.NodeTID))
+
+	f.UUID = strconv.FormatUint(hasher.Sum64(), 16)
+}
+
+// SetUUIDs updates the UUIDs using the flow layers and returns l2/l3 keys
+func (f *Flow) SetUUIDs(key uint64, opts Opts) (uint64, uint64) {
 	hasher := xxHash64.New(0)
 	f.Network.Hash(hasher)
 	f.ICMP.Hash(hasher)
 	f.Transport.Hash(hasher)
 
-	// only need network and transport to compute l3trackingID
-	hasher.Write([]byte(strings.TrimPrefix(layersPath, "Ethernet/")))
-	f.L3TrackingID = hex.EncodeToString(hasher.Sum(nil))
+	l3Key := hasher.Sum64()
+	l2Key := l3Key
 
 	if opts.LayerKeyMode == L2KeyMode || f.Network == nil {
 		f.Link.Hash(hasher)
+		l2Key = hasher.Sum64()
 	}
 
-	hasher.Write([]byte(layersPath))
-	f.TrackingID = hex.EncodeToString(hasher.Sum(nil))
+	f.setUUIDs(key, l2Key, l3Key)
 
-	value64 := make([]byte, 8)
-	binary.BigEndian.PutUint64(value64, uint64(f.Start))
-	hasher.Write(value64)
-	hasher.Write([]byte(f.NodeTID))
-
-	// include key so that we are sure that two flows with different keys don't
-	// give the same UUID due to different ways of hash the headers.
-	hasher.Write([]byte(key))
-
-	f.UUID = hex.EncodeToString(hasher.Sum(nil))
+	return l2Key, l3Key
 }
 
 // LinkType returns the Link type of the flow according the its first available layer.
@@ -516,7 +523,7 @@ func (f *Flow) LinkType() (layers.LinkType, error) {
 }
 
 // Init initializes the flow with the given Timestamp, nodeTID and related UUIDs
-func (f *Flow) Init(now int64, nodeTID string, uuids UUIDs) {
+func (f *Flow) Init(now int64, nodeTID string, parentUUID string) {
 	f.Start = now
 	f.Last = now
 
@@ -524,15 +531,15 @@ func (f *Flow) Init(now int64, nodeTID string, uuids UUIDs) {
 	f.Metric.Last = now
 
 	f.NodeTID = nodeTID
-	f.ParentUUID = uuids.ParentUUID
+	f.ParentUUID = parentUUID
 
 	f.FinishType = FlowFinishType_NOT_FINISHED
 }
 
 // initFromPacket initializes the flow based on packet data, flow key and ids
-func (f *Flow) initFromPacket(key string, packet *Packet, nodeTID string, uuids UUIDs, opts Opts) {
+func (f *Flow) initFromPacket(key, l2Key, l3Key uint64, packet *Packet, nodeTID string, parentUUID string, opts Opts) {
 	now := common.UnixMillis(packet.GoPacket.Metadata().CaptureInfo.Timestamp)
-	f.Init(now, nodeTID, uuids)
+	f.Init(now, nodeTID, parentUUID)
 
 	f.newLinkLayer(packet)
 
@@ -547,7 +554,7 @@ func (f *Flow) initFromPacket(key string, packet *Packet, nodeTID string, uuids 
 	f.newApplicationLayer(packet, opts)
 
 	// need to have as most variable filled as possible to get correct UUID
-	f.UpdateUUID(key, opts)
+	f.setUUIDs(key, l2Key, l3Key)
 
 	// update metrics
 	f.Update(packet, opts)

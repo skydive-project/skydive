@@ -89,7 +89,7 @@ const (
 
 // Operation describes a flow operation
 type Operation struct {
-	Key  string
+	Key  uint64
 	Flow *Flow
 	Type OperationType
 }
@@ -183,7 +183,7 @@ func (ft *Table) getFlows(query *filters.SearchQuery) *FlowSet {
 	return flowset
 }
 
-func (ft *Table) getOrCreateFlow(key string) (*Flow, bool) {
+func (ft *Table) getOrCreateFlow(key uint64) (*Flow, bool) {
 	if flow, found := ft.table.Get(key); found {
 		return flow.(*Flow), false
 	}
@@ -195,7 +195,7 @@ func (ft *Table) getOrCreateFlow(key string) (*Flow, bool) {
 	return new, true
 }
 
-func (ft *Table) replaceFlow(key string, f *Flow) *Flow {
+func (ft *Table) replaceFlow(key uint64, f *Flow) *Flow {
 	prev, _ := ft.table.Get(key)
 	if ft.table.Add(key, f) {
 		ft.removedFlows++
@@ -361,20 +361,16 @@ func (ft *Table) Query(query *TableQuery) []byte {
 }
 
 func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
-	key := packet.Key(parentUUID, ft.flowOpts)
+	key, l2Key, l3Key := packet.Keys(parentUUID, ft.flowOpts)
 	flow, new := ft.getOrCreateFlow(key)
 	if new {
-		uuids := UUIDs{
-			ParentUUID: parentUUID,
-		}
-
 		if ft.Opts.ReassembleTCP {
 			if layer := packet.GoPacket.TransportLayer(); layer != nil && layer.LayerType() == layers.LayerTypeTCP {
 				ft.tcpAssembler.RegisterFlow(flow, packet.GoPacket)
 			}
 		}
 
-		flow.initFromPacket(key, packet, ft.nodeTID, uuids, ft.flowOpts)
+		flow.initFromPacket(key, l2Key, l3Key, packet, ft.nodeTID, parentUUID, ft.flowOpts)
 	} else {
 		if ft.Opts.ReassembleTCP {
 			if layer := packet.GoPacket.TransportLayer(); layer != nil && layer.LayerType() == layers.LayerTypeTCP {
@@ -454,7 +450,7 @@ func (ft *Table) processFlowOP(op *Operation) {
 }
 
 func (ft *Table) processEBPFFlow(ebpfFlow *EBPFFlow) {
-	key := kernFlowKey(ebpfFlow.kernFlow)
+	key := uint64(ebpfFlow.kernFlow.key)
 	f, found := ft.table.Get(key)
 	if !found {
 		keys, flows := ft.newFlowFromEBPF(ebpfFlow, key)

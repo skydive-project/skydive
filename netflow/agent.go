@@ -88,8 +88,8 @@ func (nfa *Agent) feedFlowTable(flowOpChan chan *flow.Operation) {
 
 	LOOP:
 		for _, nf := range msg.Flows {
-			f := flow.NewFlow(nfa.FlowTable.Opts.CaptureID)
-			f.Init(int64(nf.StartTime)+bootTime, nfa.ProbeNodeTID, flow.UUIDs{})
+			f := flow.NewFlow("")
+			f.Init(int64(nf.StartTime)+bootTime, nfa.ProbeNodeTID, "")
 			f.Last = int64(nf.EndTime) + bootTime
 
 			// netflow v5 can't be ipv6
@@ -133,12 +133,12 @@ func (nfa *Agent) feedFlowTable(flowOpChan chan *flow.Operation) {
 				Last:      f.Last,
 			}
 
-			f.UpdateUUID("netflow", flow.Opts{LayerKeyMode: flow.L3PreferedKeyMode})
+			l2, l3 := f.SetUUIDs(123, flow.Opts{LayerKeyMode: flow.L3PreferedKeyMode})
 
 			op := &flow.Operation{
 				Type: flow.ReplaceOperation,
 				Flow: f,
-				Key:  f.UUID,
+				Key:  l2 ^ l3,
 			}
 
 			flowOpChan <- op

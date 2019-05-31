@@ -18,7 +18,6 @@
 package flow
 
 import (
-	"strconv"
 	"testing"
 	"time"
 
@@ -136,7 +135,7 @@ func TestUpdate(t *testing.T) {
 
 	table := NewTable(time.Second, time.Hour, sender, "", TableOpts{})
 
-	flow1, _ := table.getOrCreateFlow("123")
+	flow1, _ := table.getOrCreateFlow(123)
 
 	flow1.Metric.ABBytes = 1
 	flow1.XXX_state.updateVersion = table.updateVersion + 1
@@ -148,7 +147,7 @@ func TestUpdate(t *testing.T) {
 		t.Errorf("Flow should have been updated by expire : %+v", flow1)
 	}
 
-	flow2, _ := table.getOrCreateFlow("456")
+	flow2, _ := table.getOrCreateFlow(456)
 
 	flow2.Metric.ABBytes = 2
 	flow2.XXX_state.updateVersion = table.updateVersion + 1
@@ -214,11 +213,11 @@ func TestAppSpecificTimeout(t *testing.T) {
 
 	flowsTime := time.Now()
 
-	arpFlow, _ := table.getOrCreateFlow("123")
+	arpFlow, _ := table.getOrCreateFlow(123)
 	arpFlow.Last = common.UnixMillis(flowsTime)
 	arpFlow.Application = "ARP"
 
-	dnsFlow, _ := table.getOrCreateFlow("456")
+	dnsFlow, _ := table.getOrCreateFlow(456)
 	dnsFlow.Last = common.UnixMillis(flowsTime)
 	dnsFlow.Application = "DNS"
 
@@ -238,7 +237,7 @@ func TestHold(t *testing.T) {
 
 	flowTime := time.Now()
 
-	flow1, _ := table.getOrCreateFlow("123")
+	flow1, _ := table.getOrCreateFlow(123)
 	flow1.Last = common.UnixMillis(flowTime)
 	flow1.FinishType = FlowFinishType_TCP_FIN
 
@@ -251,7 +250,7 @@ func TestHold(t *testing.T) {
 		t.Error("Flow should have been deleted by update")
 	}
 
-	flow2, _ := table.getOrCreateFlow("456")
+	flow2, _ := table.getOrCreateFlow(456)
 	flow2.Last = common.UnixMillis(flowTime)
 	flow2.FinishType = FlowFinishType_TCP_FIN
 	table.updateAt(flowTime.Add(time.Duration(5) * time.Second))
@@ -272,15 +271,15 @@ func createBenchTable() *Table {
 func BenchmarkInsert(b *testing.B) {
 	table := createBenchTable()
 	for n := 0; n < b.N; n++ {
-		table.getOrCreateFlow(strconv.Itoa(n))
+		table.getOrCreateFlow(uint64(n))
 	}
 }
 
 func BenchmarkReplace(b *testing.B) {
 	table := createBenchTable()
 	for n := 0; n < b.N; n++ {
-		table.getOrCreateFlow(strconv.Itoa(n))
-		table.replaceFlow(strconv.Itoa(n), nil)
+		table.getOrCreateFlow(uint64(n))
+		table.replaceFlow(uint64(n), nil)
 	}
 }
 
@@ -288,7 +287,7 @@ func BenchmarkExpire(b *testing.B) {
 	table := createBenchTable()
 	for n := 0; n < b.N; n++ {
 		for i := 0; i != 10000; i++ {
-			f, _ := table.getOrCreateFlow(strconv.Itoa(n))
+			f, _ := table.getOrCreateFlow(uint64(n))
 			f.Start = 0
 			f.Last = 5
 		}
@@ -300,7 +299,7 @@ func BenchmarkGetFlows(b *testing.B) {
 	table := createBenchTable()
 	for n := 0; n < b.N; n++ {
 		for i := 0; i != 10000; i++ {
-			table.getOrCreateFlow(strconv.Itoa(n))
+			table.getOrCreateFlow(uint64(n))
 		}
 		table.getFlows(nil)
 	}
