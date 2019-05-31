@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/spaolacci/murmur3"
+	"github.com/pierrec/xxHash/xxHash64"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
@@ -167,7 +167,7 @@ func SetRollingRate(rate time.Duration) {
 }
 
 func newRollIndexService(client *Client, indices []Index, cfg Config, electionService common.MasterElectionService) *rollIndexService {
-	hasher := murmur3.New64()
+	hasher := xxHash64.New(0)
 	for _, index := range indices {
 		hasher.Write([]byte(index.Name))
 	}

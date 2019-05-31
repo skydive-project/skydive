@@ -35,7 +35,6 @@ import (
 	"github.com/skydive-project/skydive/config"
 	fl "github.com/skydive-project/skydive/flow/layers"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/spaolacci/murmur3"
 )
 
 var (
@@ -470,7 +469,7 @@ func NewFlowFromGoPacket(p gopacket.Packet, nodeTID string, uuids UUIDs, opts Op
 func (f *Flow) UpdateUUID(key string, opts Opts) {
 	layersPath := strings.Replace(f.LayersPath, "Dot1Q/", "", -1)
 
-	hasher := murmur3.New64()
+	hasher := xxHash64.New(0)
 	f.Network.Hash(hasher)
 	f.ICMP.Hash(hasher)
 	f.Transport.Hash(hasher)

@@ -2100,8 +2100,6 @@ func TestNTPCorrupted(t *testing.T) {
 				BAPackets: 0,
 				BABytes:   0,
 			},
-			TrackingID:   "35888c9feebbb826",
-			L3TrackingID: "1a38b07877d9a8bd",
 		},
 	}
 
