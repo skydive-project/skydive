@@ -177,7 +177,7 @@ func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage
 // notifyClients forwards local graph modification to subscribers. If a subscriber
 // specified a Gremlin filter, a 'Diff' is applied between the previous graph state
 // for this subscriber and the current graph state.
-func (t *SubscriberEndpoint) notifyClients(msg *ws.StructMessage) {
+func (t *SubscriberEndpoint) notifyClients(typ string, i interface{}) {
 	for _, c := range t.pool.GetSpeakers() {
 		t.RLock()
 		subscriber, found := t.subscribers[c]
@@ -213,41 +213,53 @@ func (t *SubscriberEndpoint) notifyClients(msg *ws.StructMessage) {
 				c.SendMessage(gws.NewStructMessage(gws.EdgeDeletedMsgType, e))
 			}
 
+			// handle updates
+			switch typ {
+			case gws.NodeUpdatedMsgType:
+				if g.GetNode(i.(*graph.Node).ID) != nil {
+					c.SendMessage(gws.NewStructMessage(gws.NodeUpdatedMsgType, i))
+				}
+			case gws.EdgeUpdatedMsgType:
+				if g.GetEdge(i.(*graph.Edge).ID) != nil {
+					c.SendMessage(gws.NewStructMessage(gws.EdgeUpdatedMsgType, i))
+				}
+			}
+
 			subscriber.graph = g
 		} else {
-			c.SendMessage(msg)
+			c.SendMessage(gws.NewStructMessage(typ, i))
 		}
 	}
 }
 
 // OnNodeUpdated graph node updated event. Implements the GraphEventListener interface.
 func (t *SubscriberEndpoint) OnNodeUpdated(n *graph.Node) {
-	t.notifyClients(gws.NewStructMessage(gws.NodeUpdatedMsgType, n))
+	t.notifyClients(gws.NodeUpdatedMsgType, n)
 }
 
 // OnNodeAdded graph node added event. Implements the GraphEventListener interface.
 func (t *SubscriberEndpoint) OnNodeAdded(n *graph.Node) {
-	t.notifyClients(gws.NewStructMessage(gws.NodeAddedMsgType, n))
+	t.notifyClients(gws.NodeAddedMsgType, n)
 }
 
 // OnNodeDeleted graph node deleted event. Implements the GraphEventListener interface.
 func (t *SubscriberEndpoint) OnNodeDeleted(n *graph.Node) {
-	t.notifyClients(gws.NewStructMessage(gws.NodeDeletedMsgType, n))
+	t.notifyClients(gws.NodeDeletedMsgType, n)
 }
 
 // OnEdgeUpdated graph edge updated event. Implements the GraphEventListener interface.
 func (t *SubscriberEndpoint) OnEdgeUpdated(e *graph.Edge) {
-	t.notifyClients(gws.NewStructMessage(gws.EdgeUpdatedMsgType, e))
+	t.notifyClients(gws.EdgeUpdatedMsgType, e)
 }
 
 // OnEdgeAdded graph edge added event. Implements the GraphEventListener interface.
 func (t *SubscriberEndpoint) OnEdgeAdded(e *graph.Edge) {
-	t.notifyClients(gws.NewStructMessage(gws.EdgeAddedMsgType, e))
+	t.notifyClients(gws.EdgeAddedMsgType, e)
 }
 
 // OnEdgeDeleted graph edge deleted event. Implements the GraphEventListener interface.
 func (t *SubscriberEndpoint) OnEdgeDeleted(e *graph.Edge) {
-	t.notifyClients(gws.NewStructMessage(gws.EdgeDeletedMsgType, e))
+	t.notifyClients(gws.EdgeDeletedMsgType, e)
 }
 
 // NewSubscriberEndpoint returns a new server to be used by external subscribers,
