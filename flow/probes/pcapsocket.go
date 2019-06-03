@@ -89,18 +89,22 @@ func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, capture *types.Cap
 		return fmt.Errorf("Already registered %s", tid)
 	}
 
-	port, err := p.portAllocator.Allocate()
-	if err != nil {
-		return err
+	var listener *net.TCPListener
+	var err error
+	var tcpAddr = *p.addr
+	fnc := func(p int) error {
+		listener, err = net.ListenTCP("tcp", &tcpAddr)
+		if err != nil {
+			return err
+		}
+		tcpAddr.Port = p
+
+		return nil
 	}
 
-	var tcpAddr = *p.addr
-	tcpAddr.Port = port
-
-	listener, err := net.ListenTCP("tcp", &tcpAddr)
+	port, err := p.portAllocator.Allocate(fnc)
 	if err != nil {
-		logging.GetLogger().Errorf("Failed to listen on TDP socket %s: %s", tcpAddr.String(), err)
-		return err
+		logging.GetLogger().Errorf("Failed to listen on TCP socket %s: %s", tcpAddr.String(), err)
 	}
 
 	opts := tableOptsFromCapture(capture)

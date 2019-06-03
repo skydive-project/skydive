@@ -24,6 +24,7 @@ import (
 
 	"github.com/socketplane/libovsdb"
 
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/ovs/ovsdb"
 )
 
@@ -105,4 +106,15 @@ func ovsRetrieveSkydiveProbeRowUUID(ovsClient *ovsdb.OvsClient, table, id string
 	}
 
 	return "", nil
+}
+
+func isOvsBridge(n *graph.Node) bool {
+	if uuid, _ := n.GetFieldString("UUID"); uuid == "" {
+		return false
+	}
+	if tp, _ := n.GetFieldString("Type"); tp == "ovsbridge" {
+		return true
+	}
+
+	return false
 }

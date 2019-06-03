@@ -42,7 +42,7 @@ var (
 
 	//IPNotValid validator
 	IPNotValid = func() error {
-		return valid.TextErr{Err: errors.New("Not a IP addr")}
+		return valid.TextErr{Err: errors.New("Not an IP address")}
 	}
 	// GremlinNotValid validator
 	GremlinNotValid = func(err error) error {
@@ -68,7 +68,36 @@ var (
 	CaptureTypeNotValid = func(t string) error {
 		return valid.TextErr{Err: fmt.Errorf("Not a valid capture type: %s, available types: %v", t, common.ProbeTypes)}
 	}
+	//AddressNotValid validator
+	AddressNotValid = func() error {
+		return valid.TextErr{Err: errors.New("Not a valid address")}
+	}
+	//MACNotValid validator
+	MACNotValid = func() error {
+		return valid.TextErr{Err: errors.New("Not a MAC address")}
+	}
+	//IPOrCIDRNotValid validator
+	IPOrCIDRNotValid = func() error {
+		return valid.TextErr{Err: errors.New("Not a IP or CIDR address")}
+	}
 )
+
+func isValidAddress(v interface{}, param string) error {
+	addr, ok := v.(string)
+	if !ok {
+		return AddressNotValid()
+	}
+
+	if addr == "" {
+		return nil
+	}
+
+	if _, err := common.ServiceAddressFromString(addr); err != nil {
+		return AddressNotValid()
+	}
+
+	return nil
+}
 
 func isIP(v interface{}, param string) error {
 	ip, ok := v.(string)
@@ -79,6 +108,45 @@ func isIP(v interface{}, param string) error {
 	if n := net.ParseIP(ip); n == nil {
 		return IPNotValid()
 	}
+	return nil
+}
+
+func isMAC(v interface{}, param string) error {
+	mac, ok := v.(string)
+	if !ok {
+		return IPNotValid()
+	}
+
+	if mac == "" {
+		return nil
+	}
+
+	if _, err := net.ParseMAC(mac); err != nil {
+		return MACNotValid()
+	}
+	return nil
+}
+
+func isIPOrCIDR(v interface{}, param string) error {
+	value, ok := v.(string)
+	if !ok {
+		return IPOrCIDRNotValid()
+	}
+
+	if value == "" {
+		return nil
+	}
+
+	if strings.Contains(value, "/") {
+		if _, _, err := net.ParseCIDR(value); err != nil {
+			return IPOrCIDRNotValid()
+		}
+	} else {
+		if n := net.ParseIP(value); n == nil {
+			return IPOrCIDRNotValid()
+		}
+	}
+
 	return nil
 }
 
@@ -202,6 +270,8 @@ func Validate(value interface{}) error {
 
 func init() {
 	skydiveValidator.SetValidationFunc("isIP", isIP)
+	skydiveValidator.SetValidationFunc("isMAC", isMAC)
+	skydiveValidator.SetValidationFunc("isIPOrCIDR", isIPOrCIDR)
 	skydiveValidator.SetValidationFunc("isGremlinExpr", isGremlinExpr)
 	skydiveValidator.SetValidationFunc("isGremlinOrEmpty", isGremlinOrEmpty)
 	skydiveValidator.SetValidationFunc("isBPFFilter", isBPFFilter)
@@ -210,5 +280,6 @@ func init() {
 	skydiveValidator.SetValidationFunc("isValidLayerKeyMode", isValidLayerKeyMode)
 	skydiveValidator.SetValidationFunc("isValidWorkflow", isValidWorkflow)
 	skydiveValidator.SetValidationFunc("isValidCaptureType", isValidCaptureType)
+	skydiveValidator.SetValidationFunc("isValidAddress", isValidAddress)
 	skydiveValidator.SetTag("valid")
 }

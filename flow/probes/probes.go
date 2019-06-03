@@ -58,7 +58,7 @@ func (a *FlowProbeTableAllocator) Alloc(nodeTID string, opts flow.TableOpts) *fl
 
 // NewFlowProbeBundle returns a new bundle of flow probes
 func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) *probe.Bundle {
-	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket", "dpdk", "ebpf", "ovsmirror"}
+	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket", "dpdk", "ebpf", "ovsmirror", "ovsnetflow"}
 	logging.GetLogger().Infof("Flow probes: %v", list)
 
 	var captureTypes []string
@@ -93,6 +93,9 @@ func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocat
 		case "sflow":
 			fp, err = NewSFlowProbesHandler(g, fpta)
 			captureTypes = []string{"sflow"}
+		case "ovsnetflow":
+			fp, err = NewOvsNetFlowProbesHandler(g, fpta, tb)
+			captureTypes = []string{"ovsnetflow"}
 		case "dpdk":
 			if fp, err = NewDPDKProbesHandler(g, fpta); err == nil {
 				captureTypes = []string{"dpdk"}

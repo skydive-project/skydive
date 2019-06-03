@@ -41,7 +41,7 @@ const (
 
 var (
 	// ProbeTypes returns a list of all the capture probes
-	ProbeTypes = []string{"ovssflow", "pcapsocket", "ovsmirror", "dpdk", "afpacket", "pcap", "ebpf", "sflow"}
+	ProbeTypes = []string{"ovssflow", "pcapsocket", "ovsmirror", "dpdk", "afpacket", "pcap", "ebpf", "sflow", "ovsnetflow"}
 
 	// CaptureTypes contains all registered capture type and associated probes
 	CaptureTypes = map[string]CaptureType{}
@@ -51,7 +51,7 @@ var (
 )
 
 func initCaptureTypes() {
-	CaptureTypes["ovsbridge"] = CaptureType{Allowed: []string{"ovssflow", "pcapsocket"}, Default: "ovssflow"}
+	CaptureTypes["ovsbridge"] = CaptureType{Allowed: []string{"ovssflow", "pcapsocket", "ovsnetflow"}, Default: "ovssflow"}
 	CaptureTypes["ovsport"] = CaptureType{Allowed: []string{"ovsmirror"}, Default: "ovsmirror"}
 	CaptureTypes["dpdkport"] = CaptureType{Allowed: []string{"dpdk"}, Default: "dpdk"}
 
@@ -84,6 +84,7 @@ func initProbeCapabilities() {
 	ProbeCapabilities["dpdk"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
 	ProbeCapabilities["ovsmirror"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
 	ProbeCapabilities["ebpf"] = ExtraTCPMetricCapability
+	ProbeCapabilities["ovsnetflow"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
 }
 
 // CheckProbeCapabilities checks that a probe supports given capabilities

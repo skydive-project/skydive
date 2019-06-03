@@ -1404,7 +1404,7 @@ func (g *Graph) Diff(newGraph *Graph) (addedNodes []*Node, removedNodes []*Node,
 	return
 }
 
-// AddEventListener subscibe a new graph listener
+// AddEventListener subscribe a new graph listener
 func (g *Graph) AddEventListener(l EventListener) {
 	g.eventHandler.AddEventListener(l)
 }

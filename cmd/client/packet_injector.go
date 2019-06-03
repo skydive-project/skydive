@@ -34,16 +34,16 @@ var (
 	dstNode          string
 	srcIP            string
 	srcMAC           string
-	srcPort          int64
-	dstPort          int64
+	srcPort          uint16
+	dstPort          uint16
 	dstIP            string
 	dstMAC           string
 	packetType       string
 	payload          string
 	pcap             string
-	id               int64
-	count            int64
-	interval         int64
+	id               uint64
+	count            uint64
+	interval         uint64
 	increment        bool
 	incrementPayload int64
 	ttl              uint8
@@ -94,7 +94,7 @@ var PacketInjectionCreate = &cobra.Command{
 			Type:             packetType,
 			Payload:          payload,
 			Pcap:             pcapContent,
-			ICMPID:           id,
+			ICMPID:           uint16(id),
 			Count:            count,
 			Interval:         interval,
 			Increment:        increment,
@@ -190,16 +190,16 @@ func addInjectPacketFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&dstIP, "dstIP", "", "", "destination node IP")
 	cmd.Flags().StringVarP(&srcMAC, "srcMAC", "", "", "source node MAC")
 	cmd.Flags().StringVarP(&dstMAC, "dstMAC", "", "", "destination node MAC")
-	cmd.Flags().Int64VarP(&srcPort, "srcPort", "", 0, "source port for TCP packet")
-	cmd.Flags().Int64VarP(&dstPort, "dstPort", "", 0, "destination port for TCP packet")
+	cmd.Flags().Uint16VarP(&srcPort, "srcPort", "", 0, "source port for TCP packet")
+	cmd.Flags().Uint16VarP(&dstPort, "dstPort", "", 0, "destination port for TCP packet")
 	cmd.Flags().StringVarP(&packetType, "type", "", "icmp4", "packet type: icmp4, icmp6, tcp4, tcp6, udp4 and udp6")
 	cmd.Flags().StringVarP(&payload, "payload", "", "", "payload")
 	cmd.Flags().StringVar(&pcap, "pcap", "", "PCAP file")
-	cmd.Flags().Int64VarP(&id, "id", "", 0, "ICMP identification")
+	cmd.Flags().Uint64VarP(&id, "id", "", 0, "ICMP identification")
 	cmd.Flags().BoolVarP(&increment, "increment", "", false, "increment ICMP id for each packet")
 	cmd.Flags().Int64VarP(&incrementPayload, "incrementPayload", "", 0, "increase payload for each packet")
-	cmd.Flags().Int64VarP(&count, "count", "", 1, "number of packets to be generated")
-	cmd.Flags().Int64VarP(&interval, "interval", "", 1000, "wait interval milliseconds between sending each packet")
+	cmd.Flags().Uint64VarP(&count, "count", "", 1, "number of packets to be generated")
+	cmd.Flags().Uint64VarP(&interval, "interval", "", 1000, "wait interval milliseconds between sending each packet")
 	cmd.Flags().Uint8VarP(&ttl, "ttl", "", 64, "time-to-live")
 }
 

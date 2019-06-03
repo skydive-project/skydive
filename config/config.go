@@ -44,6 +44,9 @@ var (
 		"agent.auth.cluster.password":          {"auth.analyzer_password"},
 		"agent.auth.cluster.username":          {"auth.analyzer_username"},
 		"agent.capture.stats_update":           {"agent.flow.stats_update"},
+		"agent.flow.sflow.bind_address":        {"sflow.bind_address"},
+		"agent.flow.sflow.port_min":            {"sflow.port_min"},
+		"agent.flow.sflow.port_max":            {"sflow.port_max"},
 		"agent.topology.docker.url":            {"docker.url"},
 		"agent.topology.docker.netns.run_path": {"docker.netns.run_path"},
 		"agent.topology.netns.run_path":        {"netns.run_path"},
@@ -74,9 +77,15 @@ func init() {
 	cfg.SetDefault("agent.auth.api.backend", "noauth")
 	cfg.SetDefault("agent.capture.stats_update", 1)
 	cfg.SetDefault("agent.flow.probes", []string{"gopacket", "pcapsocket"})
+	cfg.SetDefault("agent.flow.netflow.bind_address", "127.0.0.1")
+	cfg.SetDefault("agent.flow.netflow.port_min", 6365)
+	cfg.SetDefault("agent.flow.netflow.port_max", 6375)
 	cfg.SetDefault("agent.flow.pcapsocket.bind_address", "127.0.0.1")
 	cfg.SetDefault("agent.flow.pcapsocket.min_port", 8100)
 	cfg.SetDefault("agent.flow.pcapsocket.max_port", 8132)
+	cfg.SetDefault("agent.flow.sflow.bind_address", "127.0.0.1")
+	cfg.SetDefault("agent.flow.sflow.port_min", 6345)
+	cfg.SetDefault("agent.flow.sflow.port_max", 6355)
 	cfg.SetDefault("agent.listen", "127.0.0.1:8081")
 	cfg.SetDefault("agent.topology.probes", []string{"ovsdb"})
 	cfg.SetDefault("agent.topology.docker.url", "unix:///var/run/docker.sock")
@@ -149,9 +158,6 @@ func init() {
 	cfg.SetDefault("ovs.oflow.enable", false)
 	cfg.SetDefault("ovs.oflow.openflow_versions", []string{"OpenFlow10", "OpenFlow11", "OpenFlow12", "OpenFlow13", "OpenFlow14"})
 	cfg.SetDefault("ovs.enable_stats", false)
-
-	cfg.SetDefault("sflow.port_min", 6345)
-	cfg.SetDefault("sflow.port_max", 6355)
 
 	cfg.SetDefault("rbac.model.request_definition", []string{"sub, obj, act"})
 	cfg.SetDefault("rbac.model.policy_definition", []string{"sub, obj, act, eft"})

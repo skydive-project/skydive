@@ -33,7 +33,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kballard/go-shellquote"
+	shellquote "github.com/kballard/go-shellquote"
 	"github.com/skydive-project/skydive/agent"
 	"github.com/skydive-project/skydive/analyzer"
 	gclient "github.com/skydive-project/skydive/api/client"
@@ -175,8 +175,8 @@ type TestInjection struct {
 	toMAC     string
 	toIP      string
 	ipv6      bool
-	count     int64
-	id        int64
+	count     uint64
+	id        uint64
 	increment bool
 	payload   string
 	pcap      string
@@ -661,7 +661,7 @@ func RunTest(t *testing.T, test *Test) {
 			DstIP:     injection.toIP,
 			Type:      fmt.Sprintf("icmp%d", ipVersion),
 			Count:     injection.count,
-			ICMPID:    injection.id,
+			ICMPID:    uint16(injection.id),
 			Increment: injection.increment,
 			Payload:   injection.payload,
 			Interval:  1000,
@@ -743,7 +743,7 @@ func pingRequest(t *testing.T, context *TestContext, packet *types.PacketInjecti
 	return context.client.Create("injectpacket", packet)
 }
 
-func ping(t *testing.T, context *TestContext, ipVersion int, src, dst g.QueryString, count int64, id int64) error {
+func ping(t *testing.T, context *TestContext, ipVersion int, src, dst g.QueryString, count uint64, id uint16) error {
 	packet := &types.PacketInjection{
 		Src:      src.String(),
 		Dst:      dst.String(),

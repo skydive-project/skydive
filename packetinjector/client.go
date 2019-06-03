@@ -206,10 +206,10 @@ func (pc *Client) requestToParams(pi *types.PacketInjection) (string, *PacketInj
 
 		if pi.Type == "tcp4" || pi.Type == "tcp6" {
 			if pi.SrcPort == 0 {
-				pi.SrcPort = rand.Int63n(max-min) + min
+				pi.SrcPort = uint16(rand.Int63n(max-min) + min)
 			}
 			if pi.DstPort == 0 {
-				pi.DstPort = rand.Int63n(max-min) + min
+				pi.DstPort = uint16(rand.Int63n(max-min) + min)
 			}
 		}
 	}
@@ -228,7 +228,7 @@ func (pc *Client) requestToParams(pi *types.PacketInjection) (string, *PacketInj
 		Pcap:             pi.Pcap,
 		Count:            pi.Count,
 		Interval:         pi.Interval,
-		ID:               pi.ICMPID,
+		ID:               uint64(pi.ICMPID),
 		Increment:        pi.Increment,
 		IncrementPayload: pi.IncrementPayload,
 		TTL:              pi.TTL,

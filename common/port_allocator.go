@@ -36,15 +36,18 @@ type PortAllocator struct {
 	PortMap map[int]bool
 }
 
-// Allocate returns a new port between min and max ports.
-func (p *PortAllocator) Allocate() (int, error) {
+// Allocate returns a new port between min and max ports. Call the given function
+// that will validate the allocation
+func (p *PortAllocator) Allocate(fnc func(int) error) (int, error) {
 	p.Lock()
 	defer p.Unlock()
 
 	for i := p.MinPort; i <= p.MaxPort; i++ {
 		if _, ok := p.PortMap[i]; !ok {
-			p.PortMap[i] = true
-			return i, nil
+			if err := fnc(i); err == nil {
+				p.PortMap[i] = true
+				return i, nil
+			}
 		}
 	}
 	return 0, ErrNoPortLeft
