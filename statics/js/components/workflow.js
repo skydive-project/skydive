@@ -52,7 +52,12 @@ Vue.component('item', {
         <item v-for="i in item" v-bind="i" :key="i.Name"></item>
       </template>
     </div>
-  </div>`
+  </div>
+  `,
+
+  created() {
+    if (this.Default) this.formData[this.Name] = this.Default
+  },
 })
 
 Vue.component('workflow-params', {
