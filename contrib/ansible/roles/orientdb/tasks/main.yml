@@ -19,10 +19,13 @@
     state: directory
     mode: 0711
 
-- name: Download OrientDB
-  get_url:
-    url: "http://orientdb.com/download.php?email=unknown@unknown.com&file=orientdb-community-{{ orientdb_version }}.tar.gz&os=linux"
-    dest: /tmp/orientdb.tar.gz
+- name: Extract OrientDB
+  unarchive:
+    remote_src: yes
+    src: "https://s3.us-east-2.amazonaws.com/orientdb3/releases/{{ orientdb_version }}/orientdb-{{ orientdb_version }}.tar.gz"
+    dest: /opt
+    group: orientdb
+    owner: orientdb
 
 - name: Create symlink
   file:
@@ -32,17 +35,8 @@
     group: orientdb
     state: link
 
-- name: Extract OrientDB
-  unarchive:
-    remote_src: True
-    src: /tmp/orientdb.tar.gz
-    dest: /opt
-    group: orientdb
-    owner: orientdb
-
 - name: Copy systemd unit file
   copy:
-    remote_src: True
     src: "{{ orientdb_path }}/bin/orientdb.service"
     dest: /etc/systemd/system
 
