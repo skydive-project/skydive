@@ -1,3 +1,5 @@
+// +build !linux
+
 /*
  * Copyright (C) 2019 Red Hat, Inc.
  *
@@ -20,38 +22,28 @@ package targets
 import (
 	"github.com/google/gopacket"
 	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
-// LocalTarget send packet to an agent flow table
-type LocalTarget struct {
-	table *flow.Table
-	fta   *flow.TableAllocator
+// ERSpanTarget defines a ERSpanTarget target
+type ERSpanTarget struct {
 }
 
 // SendPacket implements the Target interface
-func (l *LocalTarget) SendPacket(packet gopacket.Packet, bpf *flow.BPF) {
-	l.table.FeedWithGoPacket(packet, bpf)
+func (ers *ERSpanTarget) SendPacket(packet gopacket.Packet, bpf *flow.BPF) {
 }
 
-// Start target
-func (l *LocalTarget) Start() {
-	l.table.Start()
+// Start start the target
+func (ers *ERSpanTarget) Start() {
 }
 
-// Stop target
-func (l *LocalTarget) Stop() {
-	l.table.Stop()
-	l.fta.Release(l.table)
+// Stop stops the target
+func (ers *ERSpanTarget) Stop() {
 }
 
-// NewLocalTarget returns a new local target
-func NewLocalTarget(g *graph.Graph, n *graph.Node, capture *types.Capture, nodeTID string, fta *flow.TableAllocator) (*LocalTarget, error) {
-	table := fta.Alloc(nodeTID, tableOptsFromCapture(capture))
-
-	return &LocalTarget{
-		table: table,
-		fta:   fta,
-	}, nil
+// NewERSpanTarget returns a new ERSpan target
+func NewERSpanTarget(g *graph.Graph, n *graph.Node, capture *types.Capture, nodeTID string) (*ERSpanTarget, error) {
+	return nil, common.ErrNotImplemented
 }

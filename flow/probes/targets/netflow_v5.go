@@ -31,6 +31,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -228,7 +229,7 @@ func (nf *NetFlowV5Target) Stop() {
 }
 
 // NewNetFlowV5Target returns a new NetFlow v5 target
-func NewNetFlowV5Target(capture *types.Capture, nodeTID string) (*NetFlowV5Target, error) {
+func NewNetFlowV5Target(g *graph.Graph, n *graph.Node, capture *types.Capture, nodeTID string) (*NetFlowV5Target, error) {
 	now := time.Now()
 
 	updateEvery := time.Duration(config.GetInt("flow.update")) * time.Second

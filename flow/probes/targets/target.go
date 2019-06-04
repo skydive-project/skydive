@@ -23,6 +23,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
 var (
@@ -51,12 +52,14 @@ func tableOptsFromCapture(capture *types.Capture) flow.TableOpts {
 }
 
 // NewTarget returns target according to the given type
-func NewTarget(typ string, capture *types.Capture, nodeTID string, bpf *flow.BPF, fta *flow.TableAllocator) (Target, error) {
+func NewTarget(typ string, g *graph.Graph, n *graph.Node, capture *types.Capture, nodeTID string, bpf *flow.BPF, fta *flow.TableAllocator) (Target, error) {
 	switch typ {
 	case "netflowv5":
-		return NewNetFlowV5Target(capture, nodeTID)
+		return NewNetFlowV5Target(g, n, capture, nodeTID)
+	case "erspan":
+		return NewERSpanTarget(g, n, capture, nodeTID)
 	case "local":
-		return NewLocalTarget(capture, nodeTID, fta)
+		return NewLocalTarget(g, n, capture, nodeTID, fta)
 	}
 
 	return nil, ErrTargetTypeUnknown
