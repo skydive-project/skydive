@@ -2084,3 +2084,139 @@ func TestSFlowCapture(t *testing.T) {
 
 	RunTest(t, test)
 }
+
+func TestERSpanV1Target(t *testing.T) {
+	test := &Test{
+		setupCmds: []Cmd{
+			{"brctl addbr br-erspan", true},
+			{"ip link set br-erspan up", true},
+			{"ip netns add erspan-vm1", true},
+			{"ip link add name erspan-vm1-eth0 type veth peer name eth0 netns erspan-vm1", true},
+			{"ip link set erspan-vm1-eth0 up", true},
+			{"ip netns exec erspan-vm1 ip link set eth0 up", true},
+			{"ip netns exec erspan-vm1 ip address add 169.254.66.68/24 dev eth0", true},
+			{"brctl addif br-erspan erspan-vm1-eth0", true},
+
+			{"ip netns add erspan-vm2", true},
+			{"ip link add name erspan-vm2-eth0 type veth peer name eth0 netns erspan-vm2", true},
+			{"ip link set erspan-vm2-eth0 up", true},
+			{"ip netns exec erspan-vm2 ip link set eth0 up", true},
+			{"ip netns exec erspan-vm2 ip address add 169.254.66.69/24 dev eth0", true},
+			{"brctl addif br-erspan erspan-vm2-eth0", true},
+
+			{"ip netns add erspan-end", true},
+			{"ip link add name erspan-end-eth0 type veth peer name eth0 netns erspan-end", true},
+			{"ip link set erspan-end-eth0 up", true},
+			{"ip address add 169.254.67.1/24 dev erspan-end-eth0", true},
+			{"ip netns exec erspan-end ip link set eth0 up", true},
+			{"ip netns exec erspan-end ip address add 169.254.67.2/24 dev eth0", true},
+		},
+
+		injections: []TestInjection{{
+			from:  g.G.V().Has("Name", "erspan-vm1", "Type", "netns").Out().Has("Name", "eth0"),
+			to:    g.G.V().Has("Name", "erspan-vm2", "Type", "netns").Out().Has("Name", "eth0"),
+			count: 5,
+		}},
+
+		tearDownCmds: []Cmd{
+			{"ip link set br-erspan down", true},
+			{"brctl delbr br-erspan", true},
+			{"ip link del erspan-vm1-eth0", true},
+			{"ip link del erspan-vm2-eth0", true},
+			{"ip link del erspan-end-eth0", true},
+			{"ip netns del erspan-vm1", true},
+			{"ip netns del erspan-vm2", true},
+			{"ip netns del erspan-end", true},
+		},
+
+		captures: []TestCapture{
+			{gremlin: g.G.V().Has("Name", "erspan-vm1-eth0"), target: "169.254.67.2:0", targetType: "erspanv1", bpf: "icmp"},
+			{gremlin: g.G.V().Has("Name", "erspan-end-eth0")},
+		},
+
+		mode: Replay,
+
+		checks: []CheckFunction{func(c *CheckContext) error {
+			flows, err := c.gh.GetFlows(c.gremlin.Flows().Has("Application", "GRE", "Network.B", "169.254.67.2"))
+			if err != nil {
+				return err
+			}
+
+			if len(flows) != 1 || flows[0].Metric.ABPackets != 10 {
+				return fmt.Errorf("Should get 1 gre flow with 10 packets, one per icmp echo/reply, got : %v", flows)
+			}
+
+			return nil
+		}},
+	}
+
+	RunTest(t, test)
+}
+
+func TestNetFlowV5Target(t *testing.T) {
+	test := &Test{
+		setupCmds: []Cmd{
+			{"brctl addbr br-netflow", true},
+			{"ip link set br-netflow up", true},
+			{"ip netns add netflow-vm1", true},
+			{"ip link add name netflo-vm1-eth0 type veth peer name eth0 netns netflow-vm1", true},
+			{"ip link set netflo-vm1-eth0 up", true},
+			{"ip netns exec netflow-vm1 ip link set eth0 up", true},
+			{"ip netns exec netflow-vm1 ip address add 169.254.66.68/24 dev eth0", true},
+			{"brctl addif br-netflow netflo-vm1-eth0", true},
+
+			{"ip netns add netflow-vm2", true},
+			{"ip link add name netflo-vm2-eth0 type veth peer name eth0 netns netflow-vm2", true},
+			{"ip link set netflo-vm2-eth0 up", true},
+			{"ip netns exec netflow-vm2 ip link set eth0 up", true},
+			{"ip netns exec netflow-vm2 ip address add 169.254.66.69/24 dev eth0", true},
+			{"brctl addif br-netflow netflo-vm2-eth0", true},
+
+			{"ip netns add netflow-end", true},
+			{"ip link add name netflo-end-eth0 type veth peer name eth0 netns netflow-end", true},
+			{"ip link set netflo-end-eth0 up", true},
+			{"ip address add 169.254.67.1/24 dev netflo-end-eth0", true},
+			{"ip netns exec netflow-end ip link set eth0 up", true},
+			{"ip netns exec netflow-end ip address add 169.254.67.2/24 dev eth0", true},
+		},
+
+		injections: []TestInjection{{
+			from:  g.G.V().Has("Name", "netflow-vm1", "Type", "netns").Out().Has("Name", "eth0"),
+			to:    g.G.V().Has("Name", "netflow-vm2", "Type", "netns").Out().Has("Name", "eth0"),
+			count: 5,
+		}},
+
+		tearDownCmds: []Cmd{
+			{"ip link set br-netflow down", true},
+			{"brctl delbr br-netflow", true},
+			{"ip link del netflo-vm1-eth0", true},
+			{"ip link del netflo-vm2-eth0", true},
+			{"ip link del netflo-end-eth0", true},
+			{"ip netns del netflow-vm1", true},
+			{"ip netns del netflow-vm2", true},
+			{"ip netns del netflow-end", true},
+		},
+
+		captures: []TestCapture{
+			{gremlin: g.G.V().Has("Name", "netflo-vm1-eth0"), target: "169.254.67.2:8989", targetType: "netflowv5", bpf: "icmp"},
+			{gremlin: g.G.V().Has("Name", "netflo-end-eth0")},
+		},
+
+		mode: Replay,
+
+		checks: []CheckFunction{func(c *CheckContext) error {
+			flows, err := c.gh.GetFlows(c.gremlin.Flows().Has("Application", "UDP", "Transport.B", 8989))
+			if err != nil {
+				return err
+			}
+
+			if len(flows) != 1 {
+				return fmt.Errorf("Should get 1 udp flow, got : %v", flows)
+			}
+
+			return nil
+		}},
+	}
+
+	RunTest(t, test)
+}

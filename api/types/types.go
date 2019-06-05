@@ -88,6 +88,7 @@ type Capture struct {
 	LayerKeyMode    string           `json:"LayerKeyMode,omitempty" valid:"isValidLayerKeyMode" yaml:"LayerKeyMode"`
 	ExtraLayers     flow.ExtraLayers `json:"ExtraLayers,omitempty" yaml:"ExtraLayers"`
 	Target          string           `json:"Target,omitempty" valid:"isValidAddress" yaml:"Target"`
+	TargetType      string           `json:"TargetType,omitempty" yaml:"TargetType"`
 }
 
 // NewCapture creates a new capture

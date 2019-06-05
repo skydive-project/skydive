@@ -56,9 +56,9 @@ func NewTarget(typ string, g *graph.Graph, n *graph.Node, capture *types.Capture
 	switch typ {
 	case "netflowv5":
 		return NewNetFlowV5Target(g, n, capture, nodeTID)
-	case "erspan":
+	case "erspanv1":
 		return NewERSpanTarget(g, n, capture, nodeTID)
-	case "local":
+	case "", "local":
 		return NewLocalTarget(g, n, capture, nodeTID, fta)
 	}
 

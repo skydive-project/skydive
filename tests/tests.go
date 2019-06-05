@@ -163,6 +163,8 @@ type TestCapture struct {
 	port            int
 	samplingRate    uint32 // default-value : 1
 	pollingInterval uint32 // default-value : 10
+	target          string
+	targetType      string
 }
 
 // TestInjection describes a packet injection to be created in tests
@@ -459,6 +461,8 @@ func RunTest(t *testing.T, test *Test) {
 		capture.Port = tc.port
 		capture.SamplingRate = tc.samplingRate
 		capture.PollingInterval = tc.pollingInterval
+		capture.Target = tc.target
+		capture.TargetType = tc.targetType
 		if err = client.Create("capture", capture); err != nil {
 			t.Fatal(err)
 		}

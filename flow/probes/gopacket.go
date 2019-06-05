@@ -284,7 +284,7 @@ func (p *GoPacketProbesHandler) registerProbe(n *graph.Node, capture *types.Capt
 		}
 	}
 
-	target, err := targets.NewTarget("erspan", p.graph, n, capture, tid, bpfFilter, p.fta)
+	target, err := targets.NewTarget(capture.TargetType, p.graph, n, capture, tid, bpfFilter, p.fta)
 	if err != nil {
 		return err
 	}

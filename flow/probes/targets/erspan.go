@@ -53,6 +53,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"net"
+	"strings"
 	"syscall"
 
 	"github.com/google/gopacket"
@@ -69,9 +70,11 @@ type ERSpanTarget struct {
 	SessionID uint16
 	IfIndex   uint32
 	addr      syscall.Sockaddr
-	seqNum    uint32
 	fd        int
 	buffer    gopacket.SerializeBuffer
+	gre       *layers.GRE                  // for cache purpose
+	layers    []gopacket.SerializableLayer // for cache purpose
+	frame     *frame                       // for cache purpose
 }
 
 // https://tools.ietf.org/html/draft-foschiano-erspan
@@ -133,29 +136,31 @@ func (f *frame) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeO
 
 // SendPacket implements the Target interface
 func (ers *ERSpanTarget) SendPacket(packet gopacket.Packet, bpf *flow.BPF) {
-	erspan := []gopacket.SerializableLayer{
-		&layers.GRE{
-			Flags:    0x1,
-			Protocol: 0x88be, //ERSPAN Type II
-			Seq:      ers.seqNum,
-		},
-		&headerII{
-			Version:   0x1,
-			En:        0x3,
-			Truncated: 1,
-			SessionID: ers.SessionID,
-			Index:     ers.IfIndex,
-		},
-		&frame{
-			data: packet.Data(),
-		},
-	}
-
 	if ers.buffer == nil {
 		ers.buffer = gopacket.NewSerializeBuffer()
-	}
 
-	if err := gopacket.SerializeLayers(ers.buffer, options, erspan...); err != nil {
+		ers.gre = &layers.GRE{
+			Flags:    0x1,
+			Protocol: 0x88be, //ERSPAN Type II
+			Seq:      0,
+		}
+		ers.frame = &frame{}
+
+		ers.layers = []gopacket.SerializableLayer{
+			ers.gre,
+			&headerII{
+				Version:   0x1,
+				En:        0x3,
+				Truncated: 1,
+				SessionID: ers.SessionID,
+				Index:     ers.IfIndex,
+			},
+			ers.frame,
+		}
+	}
+	ers.frame.data = packet.Data()
+
+	if err := gopacket.SerializeLayers(ers.buffer, options, ers.layers...); err != nil {
 		logging.GetLogger().Errorf("Error while serializing erspan packet: %s", err)
 		ers.buffer.Clear()
 		return
@@ -168,7 +173,7 @@ func (ers *ERSpanTarget) SendPacket(packet gopacket.Packet, bpf *flow.BPF) {
 	}
 	ers.buffer.Clear()
 
-	ers.seqNum++
+	ers.gre.Seq++
 }
 
 // Start start the target
@@ -182,7 +187,7 @@ func (ers *ERSpanTarget) Stop() {
 	}
 }
 
-// NewERSpanTarget returns a new NetFlow v5 target
+// NewERSpanTarget returns a new ERSpan target
 func NewERSpanTarget(g *graph.Graph, n *graph.Node, capture *types.Capture, nodeTID string) (*ERSpanTarget, error) {
 	fd := C.open_raw_socket(C.uint16_t(syscall.IPPROTO_GRE))
 	if fd == 0 {
@@ -190,7 +195,12 @@ func NewERSpanTarget(g *graph.Graph, n *graph.Node, capture *types.Capture, node
 	}
 
 	addr := syscall.SockaddrInet4{}
-	copy(addr.Addr[:], net.ParseIP("192.168.1.18").To4())
+
+	ip := net.ParseIP(strings.Split(capture.Target, ":")[0]).To4()
+	if ip == nil {
+		return nil, fmt.Errorf("Invalid target address: %s", capture.Target)
+	}
+	copy(addr.Addr[:], ip)
 
 	ifIndex, _ := n.GetFieldInt64("IfIndex")
 
