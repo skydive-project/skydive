@@ -212,7 +212,7 @@ func (p *Probe) interfacesEvents() {
 
 		node := p.getInterface(msg.SwIfIndex)
 		p.graph.RLock()
-		name, _ := node.GetField("Name")
+		name, _ := node.GetFieldString("Name")
 		p.graph.RUnlock()
 		if msg.Deleted > 0 {
 			logging.GetLogger().Debugf("Delete interface %v idx %d", name, msg.SwIfIndex)
@@ -280,7 +280,7 @@ func (p *Probe) interfacesPolling() {
 			if !found && !firsttime {
 				node := p.getInterface(index)
 				p.graph.RLock()
-				name, _ := node.GetField("Name")
+				name, _ := node.GetFieldString("Name")
 				p.graph.RUnlock()
 				logging.GetLogger().Debugf("Delete interface %v idx %d", name, index)
 				p.eventDelInterface(node)

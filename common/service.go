@@ -99,3 +99,12 @@ func ServiceAddressFromString(addressPort string) (ServiceAddress, error) {
 		Port: portNum,
 	}, nil
 }
+
+// NormalizeIPForURL returns a string normalized that can be used in URL. Brackets
+// will be used for IPV6 addresses.
+func NormalizeIPForURL(ip net.IP) string {
+	if ip.To4() == nil {
+		return "[" + ip.String() + "]"
+	}
+	return ip.String()
+}

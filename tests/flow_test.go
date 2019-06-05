@@ -40,6 +40,24 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
+// ipv6Supported returns true if the platform support IPv6
+func ipv6Supported() bool {
+	if _, err := os.Stat("/proc/net/if_inet6"); os.IsNotExist(err) {
+		return false
+	}
+
+	data, err := ioutil.ReadFile("/proc/sys/net/ipv6/conf/all/disable_ipv6")
+	if err != nil {
+		return false
+	}
+
+	if strings.TrimSpace(string(data)) == "1" {
+		return false
+	}
+
+	return true
+}
+
 func TestSFlowProbeNode(t *testing.T) {
 	test := &Test{
 		setupCmds: []Cmd{
@@ -839,10 +857,8 @@ func TestFlowHops(t *testing.T) {
 			}
 
 			found := false
-			m := nodes[0].Metadata
 			for _, n := range tnodes {
-				if n.MatchMetadata(m) == true {
-					found = true
+				if found = n.ID == nodes[0].ID; found {
 					break
 				}
 			}
@@ -858,7 +874,7 @@ func TestFlowHops(t *testing.T) {
 }
 
 func TestIPv6FlowHopsIPv6(t *testing.T) {
-	if !common.IPv6Supported() {
+	if !ipv6Supported() {
 		t.Skipf("Platform doesn't support IPv6")
 	}
 
@@ -949,9 +965,8 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 			}
 
 			found := false
-			m := nodes[0].Metadata
 			for _, n := range tnodes {
-				if n.MatchMetadata(m) == true {
+				if n.ID == nodes[0].ID {
 					found = true
 					break
 				}
@@ -968,7 +983,7 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 }
 
 func TestICMP(t *testing.T) {
-	if !common.IPv6Supported() {
+	if !ipv6Supported() {
 		t.Skipf("Platform doesn't support IPv6")
 	}
 
@@ -1099,7 +1114,7 @@ func TestFlowVxlanTunnel(t *testing.T) {
 func TestIPv6FlowGRETunnelIPv6(t *testing.T) {
 	t.Skip("Fedora seems didn't support ip6gre tunnel for the moment")
 
-	if !common.IPv6Supported() {
+	if !ipv6Supported() {
 		t.Skipf("Platform doesn't support IPv6")
 	}
 

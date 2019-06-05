@@ -54,12 +54,17 @@ EASYJSON_FILES_TAG=\
 	graffiti/graph/elasticsearch.go \
 	sflow/sflow.go \
 	topology/metrics.go \
-	topology/probes/netlink/route.go \
-	topology/probes/netlink/neighbor.go \
+	topology/probes/docker/metadata.go \
+	topology/probes/libvirt/metadata.go \
+	topology/probes/lldp/metadata.go \
+	topology/probes/lxd/metadata.go \
+	topology/probes/netlink/metadata.go \
+	topology/probes/neutron/neutron.go \
 	topology/probes/nsm/nsm.go \
-	topology/probes/ovsdb/ovsdb.go
-EASYJSON_FILES_TAG_LINUX=\
-	topology/probes/netlink/netlink.go \
+	topology/probes/opencontrail/metadata.go \
+	topology/probes/ovn/ovn.go \
+	topology/probes/ovsdb/ovsdb.go \
+	topology/probes/runc/metadata.go \
 	topology/probes/socketinfo/connection.go
 EASYJSON_FILES_TAG_OPENCONTRAIL=\
 	topology/probes/opencontrail/routing_table.go
@@ -259,6 +264,12 @@ flow/flow.pb.go: flow/flow.proto filters/filters.proto
 	sed -e 's/type Flow struct {/type Flow struct { XXX_state flowState `json:"-"`/' -i $@
 	# to fix generated layers import
 	sed -e 's/layers "flow\/layers"/layers "github.com\/skydive-project\/skydive\/flow\/layers"/' -i $@
+	sed -e 's/type FlowMetric struct {/\/\/ gendecoder\ntype FlowMetric struct {/' -i $@
+	sed -e 's/type FlowLayer struct {/\/\/ gendecoder\ntype FlowLayer struct {/' -i $@
+	sed -e 's/type TransportLayer struct {/\/\/ gendecoder\ntype TransportLayer struct {/' -i $@
+	sed -e 's/type ICMPLayer struct {/\/\/ gendecoder\ntype ICMPLayer struct {/' -i $@
+	sed -e 's/type IPMetric struct {/\/\/ gendecoder\ntype IPMetric struct {/' -i $@
+	sed -e 's/type TCPMetric struct {/\/\/ gendecoder\ntype TCPMetric struct {/' -i $@
 	gofmt -s -w $@
 
 flow/layers/generated.proto: flow/layers/layers.go
@@ -284,7 +295,6 @@ websocket/structmessage.pb.go: websocket/structmessage.proto
 
 GEN_EASYJSON_FILES_ALL := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_ALL))
 GEN_EASYJSON_FILES_TAG := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_TAG))
-GEN_EASYJSON_FILES_TAG_LINUX := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_TAG_LINUX))
 GEN_EASYJSON_FILES_TAG_OPENCONTRAIL := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_TAG_OPENCONTRAIL))
 
 %_easyjson.go: %.go
@@ -292,6 +302,9 @@ GEN_EASYJSON_FILES_TAG_OPENCONTRAIL := $(patsubst %.go,%_easyjson.go,$(EASYJSON_
 
 flow/flow.pb_easyjson.go: flow/flow.pb.go
 	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -all $<
+
+topology/probes/lldp/lldp_easyjson.go: topology/probes/lldp/lldp.go
+	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags linux $<
 
 topology/probes/netlink/netlink_easyjson.go: topology/probes/netlink/netlink.go
 	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags linux $<
@@ -306,7 +319,7 @@ topology/probes/ovsdb/ovsdb.pb_easyjson.go: topology/probes/ovsdb/ovsdb.go
 	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson $<
 
 .PHONY: .easyjson
-.easyjson: flow/flow.pb_easyjson.go $(GEN_EASYJSON_FILES_TAG) $(GEN_EASYJSON_FILES_TAG_LINUX) $(GEN_EASYJSON_FILES_TAG_OPENCONTRAIL)
+.easyjson: flow/flow.pb_easyjson.go $(GEN_EASYJSON_FILES_TAG) $(GEN_EASYJSON_FILES_TAG_OPENCONTRAIL)
 
 .PHONY: .easyjson.clean
 .easyjson.clean:
@@ -354,8 +367,15 @@ statics/bindata.go: .typescript ebpf.build $(shell find statics -type f \( ! -in
 
 .PHONY: .vppbinapi
 .vppbinapi: binapigenerator
-	$(GOVENDOR) generate -tags "${BUILD_TAGS}" \
-		github.com/skydive-project/skydive/topology/probes/vpp
+	$(GOVENDOR) generate -tags "${BUILD_TAGS}" ${SKYDIVE_GITHUB}/topology/probes/vpp
+
+.PHONY: .go-generate
+.go-generate:
+	$(GOVENDOR) generate -tags="${BUILD_TAGS}" ${SKYDIVE_GITHUB}/...
+
+.PHONY: .go-generate.clean
+.go-generate.clean:
+	find . \( -name *_gendecoder.go ! -path './vendor/*' \) -exec rm {} \;
 
 .PHONY: compile
 compile:
@@ -586,13 +606,13 @@ gometalinter: $(LINTER_COMMANDS)
 .PHONY: lint
 lint: gometalinter
 	@echo "+ $@"
-	gometalinter --disable=gotype ${GOMETALINTER_FLAGS} --vendor -e '.*\.pb.go' -e '.*\._easyjson.go' -e 'statics/bindata.go' --skip=statics/... --deadline 10m --sort=path ./... --json | tee lint.json || true
+	gometalinter --disable=gotype ${GOMETALINTER_FLAGS} --vendor -e '.*\.pb.go' -e '.*\._easyjson.go' -e '.*\._gendecoder.go' -e 'statics/bindata.go' --skip=statics/... --deadline 10m --sort=path ./... --json | tee lint.json || true
 
 .PHONY: genlocalfiles
-genlocalfiles: .proto .bindata .easyjson .vppbinapi
+genlocalfiles: .proto .go-generate .bindata .easyjson .vppbinapi
 
 .PHONY: clean
-clean: skydive.clean test.functionals.clean dpdk.clean contribs.clean ebpf.clean .easyjson.clean .proto.clean .typescript.clean .vppbinapi.clean
+clean: skydive.clean test.functionals.clean dpdk.clean contribs.clean ebpf.clean .easyjson.clean .proto.clean .go-generate.clean .typescript.clean .vppbinapi.clean
 	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
 
 .PHONY: srpm
@@ -620,7 +640,6 @@ SKYDIVE_TAR_INPUT:= \
 	$(patsubst %.proto,%.pb.go,$(SKYDIVE_PROTO_FILES)) \
 	$(GEN_EASYJSON_FILES_ALL) \
 	$(GEN_EASYJSON_FILES_TAG) \
-	$(GEN_EASYJSON_FILES_TAG_LINUX) \
 	$(GEN_EASYJSON_FILES_TAG_OPENCONTRAIL)
 
 SKYDIVE_TAR:=${DESTDIR}/$(SKYDIVE_PKG).tar
@@ -629,14 +648,19 @@ define TAR_CMD
 tar $1 -f $(SKYDIVE_TAR) --transform="s||$(SKYDIVE_PATH)|" $2
 endef
 
+define TAR_APPEND
+$(call TAR_CMD,--append,$(SKYDIVE_TAR_INPUT))
+find -type f -name *_gendecoder.go -printf '%P\n' -exec tar --append -f $(SKYDIVE_TAR) --transform="s||$(SKYDIVE_PATH)|" {} \;
+endef
+
 .PHONY: localdist
 localdist: govendor genlocalfiles
 	git ls-files | $(call TAR_CMD,--create,--files-from -)
-	$(call TAR_CMD,--append,$(SKYDIVE_TAR_INPUT))
+	$(call TAR_APPEND,)
 	gzip -f $(SKYDIVE_TAR)
 
 .PHONY: dist
 dist: govendor genlocalfiles
 	git archive -o $(SKYDIVE_TAR) --prefix $(SKYDIVE_PATH) HEAD
-	$(call TAR_CMD,--append,$(SKYDIVE_TAR_INPUT))
+	$(call TAR_APPEND,)
 	gzip -f $(SKYDIVE_TAR)

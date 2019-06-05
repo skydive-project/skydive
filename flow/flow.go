@@ -1093,165 +1093,6 @@ func PacketSeqFromSFlowSample(sample *layers.SFlowFlowSample, bpf *BPF, defragge
 	return pss
 }
 
-// GetStringField returns the value of a flow field
-func (f *FlowLayer) GetStringField(field string) (string, error) {
-	if f == nil {
-		return "", common.ErrFieldNotFound
-	}
-
-	switch field {
-	case "A":
-		return f.A, nil
-	case "B":
-		return f.B, nil
-	case "Protocol":
-		return f.Protocol.String(), nil
-	}
-	return "", common.ErrFieldNotFound
-}
-
-// GetFieldInt64 returns the value of a flow field
-func (f *FlowLayer) GetFieldInt64(field string) (int64, error) {
-	if f == nil {
-		return 0, common.ErrFieldNotFound
-	}
-
-	switch field {
-	case "ID":
-		return f.ID, nil
-	}
-	return 0, common.ErrFieldNotFound
-}
-
-//GetStringField returns the value of a transport layer field
-func (tl *TransportLayer) GetStringField(field string) (string, error) {
-	if tl == nil {
-		return "", common.ErrFieldNotFound
-	}
-
-	switch field {
-	case "Protocol":
-		return tl.Protocol.String(), nil
-	}
-	return "", common.ErrFieldNotFound
-}
-
-//GetFieldInt64 returns the value of a transport layer firld
-func (tl *TransportLayer) GetFieldInt64(field string) (int64, error) {
-	if tl == nil {
-		return 0, common.ErrFieldNotFound
-	}
-
-	switch field {
-	case "ID":
-		return tl.ID, nil
-	case "A":
-		return tl.A, nil
-	case "B":
-		return tl.B, nil
-	}
-	return 0, common.ErrFieldNotFound
-}
-
-// GetStringField returns the value of a ICMP field
-func (i *ICMPLayer) GetStringField(field string) (string, error) {
-	if i == nil {
-		return "", common.ErrFieldNotFound
-	}
-
-	switch field {
-	case "Type":
-		return i.Type.String(), nil
-	default:
-		return "", common.ErrFieldNotFound
-	}
-}
-
-// GetFieldInt64 returns the value of a ICMP field
-func (i *ICMPLayer) GetFieldInt64(field string) (int64, error) {
-	if i == nil {
-		return 0, common.ErrFieldNotFound
-	}
-
-	switch field {
-	case "ID":
-		return int64(i.ID), nil
-	default:
-		return 0, common.ErrFieldNotFound
-	}
-}
-
-// GetFieldInt64 returns the value of a IPMetric field
-func (i *IPMetric) GetFieldInt64(field string) (int64, error) {
-	if i == nil {
-		return 0, common.ErrFieldNotFound
-	}
-	switch field {
-	case "Fragments":
-		return i.Fragments, nil
-	case "FragmentErrors":
-		return i.FragmentErrors, nil
-	default:
-		return 0, common.ErrFieldNotFound
-	}
-}
-
-// GetFieldInt64 returns the value of a TCPMetric field
-func (i *TCPMetric) GetFieldInt64(field string) (int64, error) {
-	if i == nil {
-		return 0, common.ErrFieldNotFound
-	}
-
-	switch field {
-	case "ABSynTTL":
-		return int64(i.ABSynTTL), nil
-	case "BASynTTL":
-		return int64(i.BASynTTL), nil
-	case "ABSynStart":
-		return i.ABSynStart, nil
-	case "BASynStart":
-		return i.BASynStart, nil
-	case "ABFinStart":
-		return i.ABFinStart, nil
-	case "BAFinStart":
-		return i.BAFinStart, nil
-	case "ABRstStart":
-		return i.BARstStart, nil
-	case "BARstStart":
-		return i.BARstStart, nil
-	case "ABSegmentOutOfOrder":
-		return i.ABSegmentOutOfOrder, nil
-	case "ABSegmentSkipped":
-		return i.ABSegmentSkipped, nil
-	case "ABSegmentSkippedBytes":
-		return i.ABSegmentSkippedBytes, nil
-	case "ABPackets":
-		return i.ABPackets, nil
-	case "ABBytes":
-		return i.ABBytes, nil
-	case "ABSawStart":
-		return i.ABSawStart, nil
-	case "ABSawEnd":
-		return i.ABSawEnd, nil
-	case "BASegmentOutOfOrder":
-		return i.BASegmentOutOfOrder, nil
-	case "BASegmentSkipped":
-		return i.BASegmentSkipped, nil
-	case "BASegmentSkippedBytes":
-		return i.BASegmentSkippedBytes, nil
-	case "BAPackets":
-		return i.BAPackets, nil
-	case "BABytes":
-		return i.BABytes, nil
-	case "BASawStart":
-		return i.BASawStart, nil
-	case "BASawEnd":
-		return i.BASawEnd, nil
-	default:
-		return 0, common.ErrFieldNotFound
-	}
-}
-
 // GetFieldString returns the value of a Flow field
 func (f *Flow) GetFieldString(field string) (string, error) {
 	fields := strings.Split(field, ".")
@@ -1284,20 +1125,22 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 	}
 
 	switch name {
-	case "Link":
-		return f.Link.GetStringField(fields[1])
-	case "Network":
-		return f.Network.GetStringField(fields[1])
+	case "Link", "ETHERNET":
+		if f.Link != nil {
+			return f.Link.GetFieldString(fields[1])
+		}
+	case "Network", "IPV4", "IPV6":
+		if f.Network != nil {
+			return f.Network.GetFieldString(fields[1])
+		}
 	case "ICMP":
-		return f.ICMP.GetStringField(fields[1])
-	case "Transport":
-		return f.Transport.GetStringField(fields[1])
-	case "UDP", "TCP", "SCTP":
-		return f.Transport.GetStringField(fields[1])
-	case "IPV4", "IPV6":
-		return f.Network.GetStringField(fields[1])
-	case "ETHERNET":
-		return f.Link.GetStringField(fields[1])
+		if f.ICMP != nil {
+			return f.ICMP.GetFieldString(fields[1])
+		}
+	case "Transport", "UDP", "TCP", "SCTP":
+		if f.Transport != nil {
+			return f.Transport.GetFieldString(fields[1])
+		}
 	}
 
 	// check extra layers
@@ -1308,6 +1151,11 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 	}
 
 	return "", common.ErrFieldNotFound
+}
+
+// GetFieldBool returns the value of a boolean flow field
+func (f *Flow) GetFieldBool(field string) (bool, error) {
+	return false, common.ErrFieldNotFound
 }
 
 // GetFieldInt64 returns the value of a Flow field
@@ -1326,21 +1174,37 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 	name := fields[0]
 	switch name {
 	case "Metric":
-		return f.Metric.GetFieldInt64(fields[1])
+		if f.Metric != nil {
+			return f.Metric.GetFieldInt64(fields[1])
+		}
 	case "LastUpdateMetric":
-		return f.LastUpdateMetric.GetFieldInt64(fields[1])
+		if f.LastUpdateMetric != nil {
+			return f.LastUpdateMetric.GetFieldInt64(fields[1])
+		}
 	case "TCPMetric":
-		return f.TCPMetric.GetFieldInt64(fields[1])
+		if f.TCPMetric != nil {
+			return f.TCPMetric.GetFieldInt64(fields[1])
+		}
 	case "IPMetric":
-		return f.IPMetric.GetFieldInt64(fields[1])
+		if f.IPMetric != nil {
+			return f.IPMetric.GetFieldInt64(fields[1])
+		}
 	case "Link":
-		return f.Link.GetFieldInt64(fields[1])
+		if f.Link != nil {
+			return f.Link.GetFieldInt64(fields[1])
+		}
 	case "Network":
-		return f.Network.GetFieldInt64(fields[1])
+		if f.Network != nil {
+			return f.Network.GetFieldInt64(fields[1])
+		}
 	case "ICMP":
-		return f.ICMP.GetFieldInt64(fields[1])
+		if f.ICMP != nil {
+			return f.ICMP.GetFieldInt64(fields[1])
+		}
 	case "Transport":
-		return f.Transport.GetFieldInt64(fields[1])
+		if f.Transport != nil {
+			return f.Transport.GetFieldInt64(fields[1])
+		}
 	case "RawPacketsCaptured":
 		return f.RawPacketsCaptured, nil
 	}
@@ -1402,6 +1266,30 @@ func (f *Flow) GetField(field string) (interface{}, error) {
 // GetFieldKeys returns the list of valid field of a Flow
 func (f *Flow) GetFieldKeys() []string {
 	return flowFieldKeys
+}
+
+// MatchBool implements the Getter interface
+func (f *Flow) MatchBool(key string, predicate common.BoolPredicate) bool {
+	if b, err := f.GetFieldBool(key); err == nil {
+		return predicate(b)
+	}
+	return false
+}
+
+// MatchInt64 implements the Getter interface
+func (f *Flow) MatchInt64(key string, predicate common.Int64Predicate) bool {
+	if i, err := f.GetFieldInt64(key); err == nil {
+		return predicate(i)
+	}
+	return false
+}
+
+// MatchString implements the Getter interface
+func (f *Flow) MatchString(key string, predicate common.StringPredicate) bool {
+	if s, err := f.GetFieldString(key); err == nil {
+		return predicate(s)
+	}
+	return false
 }
 
 var flowFieldKeys []string

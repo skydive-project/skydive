@@ -62,24 +62,7 @@ type rtMonitorRoute struct {
 
 const afInetFamily string = "AF_INET"
 
-const OpenContrailRouteProtocol int64 = 200
-
-// The skydive representation of a Contrail route
-// easyjson:json
-type OpenContrailRoute struct {
-	Family   string
-	Prefix   string
-	NhId     int `json:"NhId"`
-	Protocol int64
-}
-
-// A VRF contains the list of interface that use this VRF in order to
-// be able to garbage collect VRF: if a VRF is no longer associated to
-// an interface, this VRF can be deleted.
-type RoutingTable struct {
-	InterfacesUUID []string
-	Routes         []OpenContrailRoute
-}
+const RouteProtocol int64 = 200
 
 type interfaceUpdate struct {
 	InterfaceUUID string
@@ -109,19 +92,19 @@ func (mapper *Probe) routingTableUpdater() {
 	for a := range mapper.routingTableUpdaterChan {
 		switch a.action {
 		case AddRoute:
-			ocRoute := OpenContrailRoute{
-				Protocol: OpenContrailRouteProtocol,
+			ocRoute := &Route{
+				Protocol: RouteProtocol,
 				Prefix:   fmt.Sprintf("%s/%d", a.route.Address, a.route.Prefix),
 				Family:   a.route.Family,
-				NhId:     a.route.NhId}
+				NhID:     int64(a.route.NhId)}
 			mapper.addRoute(a.route.VrfId, ocRoute)
 			vrfId = a.route.VrfId
 		case DelRoute:
-			ocRoute := OpenContrailRoute{
-				Protocol: OpenContrailRouteProtocol,
+			ocRoute := &Route{
+				Protocol: RouteProtocol,
 				Prefix:   fmt.Sprintf("%s/%d", a.route.Address, a.route.Prefix),
 				Family:   a.route.Family,
-				NhId:     a.route.NhId}
+				NhID:     int64(a.route.NhId)}
 			mapper.delRoute(a.route.VrfId, ocRoute)
 			vrfId = a.route.VrfId
 		case AddInterface:
@@ -211,13 +194,22 @@ func (mapper *Probe) onRouteChanged(vrfId int) {
 		logging.GetLogger().Debugf("No interface with VRF index %d was found (on route add)", vrfId)
 		return
 	}
+
 	for _, n := range intfs {
-		mapper.graph.AddMetadata(n, "Contrail.RoutingTable", vrf.Routes)
-		logging.GetLogger().Debugf("Update routes on node %s", n.ID)
+		contrailField, err := n.GetField("Contrail")
+		if err != nil {
+			continue
+		}
+
+		if metadata, ok := contrailField.(*Metadata); ok {
+			metadata.RoutingTable = vrf.Routes
+			mapper.graph.AddMetadata(n, "Contrail", metadata)
+			logging.GetLogger().Debugf("Update routes on node %s", n.ID)
+		}
 	}
 }
 
-func (mapper *Probe) addRoute(vrfId int, route OpenContrailRoute) {
+func (mapper *Probe) addRoute(vrfId int, route *Route) {
 	if vrf := mapper.getOrCreateRoutingTable(vrfId); vrf != nil {
 		logging.GetLogger().Debugf("Adding route %v to vrf %d", route, vrfId)
 		for _, r := range vrf.Routes {
@@ -229,7 +221,7 @@ func (mapper *Probe) addRoute(vrfId int, route OpenContrailRoute) {
 	}
 }
 
-func (mapper *Probe) delRoute(vrfId int, route OpenContrailRoute) {
+func (mapper *Probe) delRoute(vrfId int, route *Route) {
 	if vrf := mapper.getOrCreateRoutingTable(vrfId); vrf != nil {
 		for i, r := range vrf.Routes {
 			if r.Prefix == route.Prefix {
@@ -274,20 +266,20 @@ func (mapper *Probe) vrfInit(vrfId int) (*RoutingTable, error) {
 			continue
 		}
 
-		nhId, err := strconv.Atoi(s[4])
+		nhID, err := strconv.Atoi(s[4])
 		if err != nil {
 			return nil, err
 		}
 		// These are not interesting routes
-		if nhId == 0 || nhId == 1 {
+		if nhID == 0 || nhID == 1 {
 			continue
 		}
 
 		// TODO add family
-		vrf.Routes = append(vrf.Routes, OpenContrailRoute{
-			Protocol: OpenContrailRouteProtocol,
+		vrf.Routes = append(vrf.Routes, &Route{
+			Protocol: RouteProtocol,
 			Prefix:   s[0],
-			NhId:     nhId,
+			NhID:     int64(nhID),
 			Family:   afInetFamily,
 		})
 	}

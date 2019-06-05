@@ -692,18 +692,12 @@ func (tv *GraphTraversalV) Sum(ctx StepContext, keys ...interface{}) *GraphTrave
 	tv.GraphTraversal.RLock()
 	defer tv.GraphTraversal.RUnlock()
 
-	var s float64
+	var s int64
 	for _, n := range tv.nodes {
 		if value, err := n.GetFieldInt64(key); err == nil {
-			if v, err := common.ToFloat64(value); err == nil {
-				s += v
-			} else {
-				return NewGraphTraversalValueFromError(err)
-			}
-		} else {
-			if err != common.ErrFieldNotFound {
-				return NewGraphTraversalValueFromError(err)
-			}
+			s += value
+		} else if err != common.ErrFieldNotFound {
+			return NewGraphTraversalValueFromError(err)
 		}
 	}
 	return NewGraphTraversalValue(tv.GraphTraversal, s)

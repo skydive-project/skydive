@@ -1,3 +1,5 @@
+//go:generate go run ../../../scripts/gendecoder.go -package github.com/skydive-project/skydive/topology/probes/ovsdb
+
 /*
  * Copyright (C) 2015 Red Hat, Inc.
  *
@@ -22,7 +24,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -58,6 +59,7 @@ type Probe struct {
 
 // OvsMetadata describe Ovs metadata sub section
 // easyjson:json
+// gendecoder
 type OvsMetadata struct {
 	OtherConfig      map[string]string         `json:"OtherConfig,omitempty"`
 	Options          map[string]string         `json:"Options,omitempty"`
@@ -77,99 +79,6 @@ func OvsMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
 	}
 
 	return &ovs, nil
-}
-
-// GetFieldString implements Getter interface
-func (o *OvsMetadata) GetFieldString(key string) (string, error) {
-	fields := strings.Split(key, ".")
-
-	switch fields[0] {
-	case "DBVersion":
-		return o.DBVersion, nil
-	case "Version":
-		return o.Version, nil
-	case "Error":
-		return o.Error, nil
-	}
-
-	// sub field
-	if len(fields) != 3 {
-		return "", common.ErrFieldNotFound
-	}
-
-	switch fields[1] {
-	case "OtherConfig":
-		return o.OtherConfig[fields[2]], nil
-	case "Options":
-		return o.Options[fields[2]], nil
-	}
-
-	return "", common.ErrFieldNotFound
-}
-
-// GetFieldInt64 implements Getter interface
-func (o *OvsMetadata) GetFieldInt64(key string) (int64, error) {
-	fields := strings.Split(key, ".")
-	if len(fields) < 2 {
-		return 0, common.ErrFieldNotFound
-	}
-
-	switch fields[0] {
-	case "Metric":
-		if o.Metric != nil {
-			return o.Metric.GetFieldInt64(fields[1])
-		}
-		return new(topology.InterfaceMetric).GetFieldInt64(fields[1])
-	case "LastUpdateMetric":
-		if o.LastUpdateMetric != nil {
-			return o.LastUpdateMetric.GetFieldInt64(fields[1])
-		}
-		return new(topology.InterfaceMetric).GetFieldInt64(fields[1])
-	}
-
-	return 0, common.ErrFieldNotFound
-}
-
-// GetField implements Getter interface
-func (o *OvsMetadata) GetField(key string) (interface{}, error) {
-	fields := strings.Split(key, ".")
-
-	if len(fields) == 1 {
-		switch fields[0] {
-		case "Metric":
-			if o.Metric != nil {
-				return o.Metric, nil
-			}
-			return nil, common.ErrFieldNotFound
-		case "LastUpdateMetric":
-			if o.LastUpdateMetric != nil {
-				return o.LastUpdateMetric, nil
-			}
-			return nil, common.ErrFieldNotFound
-		case "Options":
-			return o.Options, nil
-		case "OtherConfig":
-			return o.OtherConfig, nil
-		}
-	}
-
-	switch fields[0] {
-	case "Metric", "LastUpdateMetric":
-		return o.GetFieldInt64(key)
-	}
-
-	return o.GetFieldString(key)
-}
-
-// GetFieldKeys returns the list of valid field of a Flow
-func (o *OvsMetadata) GetFieldKeys() []string {
-	return ovsFields
-}
-
-var ovsFields []string
-
-func init() {
-	ovsFields = common.StructFieldKeys(OvsMetadata{})
 }
 
 func isOvsInterfaceType(t string) bool {

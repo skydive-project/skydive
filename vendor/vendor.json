@@ -3075,6 +3075,30 @@
 			"revisionTime": "2017-09-01T15:45:22Z"
 		},
 		{
+			"checksumSHA1": "LHHkpIoYHpQiBc7y0JaTmf3VbVQ=",
+			"path": "golang.org/x/tools/go/ast/astutil",
+			"revision": "9e44c1c403071e0c2831952513e7b948587d94af",
+			"revisionTime": "2019-04-24T19:47:23Z"
+		},
+		{
+			"checksumSHA1": "/UCuUGzk9/QJTUcTkYDRdCas3Tc=",
+			"path": "golang.org/x/tools/go/buildutil",
+			"revision": "9e44c1c403071e0c2831952513e7b948587d94af",
+			"revisionTime": "2019-04-24T19:47:23Z"
+		},
+		{
+			"checksumSHA1": "VQ0sTJYKkzzAvWA6zvaKD5lar0o=",
+			"path": "golang.org/x/tools/go/internal/cgo",
+			"revision": "9e44c1c403071e0c2831952513e7b948587d94af",
+			"revisionTime": "2019-04-24T19:47:23Z"
+		},
+		{
+			"checksumSHA1": "wr2oXQWRoxvsHoc349wVfTzpXfM=",
+			"path": "golang.org/x/tools/go/loader",
+			"revision": "9e44c1c403071e0c2831952513e7b948587d94af",
+			"revisionTime": "2019-04-24T19:47:23Z"
+		},
+		{
 			"checksumSHA1": "GkjRB7ms/necD0ePmzqT6gDsu+4=",
 			"path": "google.golang.org/genproto/googleapis/api/annotations",
 			"revision": "2b5a72b8730b0b16380010cfe5286c42108d88e7",

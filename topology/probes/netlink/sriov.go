@@ -181,17 +181,17 @@ func (u *NetNsProbe) handleSriov(
 		return
 	}
 
-	vfs := make([]interface{}, numVfs)
-	for i, vf := range attrsVfs {
-		vfs[i] = map[string]interface{}{
-			"ID":        int64(vf.ID),
-			"LinkState": int64(vf.LinkState),
-			"MAC":       vf.Mac.String(),
-			"Qos":       int64(vf.Qos),
-			"Spoofchk":  vf.Spoofchk,
-			"TxRate":    int64(vf.TxRate),
-			"Vlan":      int64(vf.Vlan),
-		}
+	var vfs VFS
+	for _, vf := range attrsVfs {
+		vfs = append(vfs, &VF{
+			ID:        int64(vf.ID),
+			LinkState: int64(vf.LinkState),
+			MAC:       vf.Mac.String(),
+			Qos:       int64(vf.Qos),
+			Spoofchk:  vf.Spoofchk,
+			TxRate:    int64(vf.TxRate),
+			Vlan:      int64(vf.Vlan),
+		})
 	}
 
 	graph.Lock()

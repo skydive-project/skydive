@@ -1,3 +1,5 @@
+//go:generate go run ../../../scripts/gendecoder.go -package github.com/skydive-project/skydive/topology/probes/ovn
+
 /*
  * Copyright (C) 2019 Red Hat, Inc.
  *
@@ -18,6 +20,7 @@
 package ovn
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -53,6 +56,60 @@ type Probe struct {
 	rpLinker    *graph.ResourceLinker
 	aclLinker   *graph.ResourceLinker
 	ifaceLinker *graph.MetadataIndexerLinker
+}
+
+// Metadata describes the information of an OVN object
+// easyjson:json
+// gendecoder
+type Metadata struct {
+	LSPMetadata `json:",omitempty"`
+	LRPMetadata `json:",omitempty"`
+	ACLMetadata `json:",omitempty"`
+
+	ExtID   graph.Metadata `json:",omitempty" field:"Metadata"`
+	Options graph.Metadata `json:",omitempty" field:"Metadata"`
+}
+
+// LSPMetadata describes the information of an OVN logical router
+// easyjson:json
+// gendecoder
+type LSPMetadata struct {
+	Addresses     []string `json:",omitempty"`
+	PortSecurity  []string `json:",omitempty"`
+	DHCPv4Options string   `json:",omitempty"`
+	DHCPv6Options string   `json:",omitempty"`
+	Type          string   `json:",omitempty"`
+}
+
+// LRPMetadata describes the information of an OVN logical router port
+// easyjson:json
+// gendecoder
+type LRPMetadata struct {
+	GatewayChassis []string       `json:",omitempty"`
+	IPv6RAConfigs  graph.Metadata `json:",omitempty" field:"Metadata"`
+	Networks       []string       `json:",omitempty"`
+	Peer           string         `json:",omitempty"`
+}
+
+// ACLMetadata describes the information of an OVN ACL
+// easyjson:json
+// gendecoder
+type ACLMetadata struct {
+	Action    string `json:",omitempty"`
+	Direction string `json:",omitempty"`
+	Log       bool   `json:",omitempty"`
+	Match     string `json:",omitempty"`
+	Priority  int64  `json:",omitempty"`
+}
+
+// MetadataDecoder implements a json message raw decoder
+func MetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+	var m Metadata
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil, fmt.Errorf("unable to unmarshal OVN metadata %s: %s", string(raw), err)
+	}
+
+	return &m, nil
 }
 
 func uuidHasher(n *graph.Node) map[string]interface{} {
@@ -228,29 +285,27 @@ func (p *Probe) unregisterNode(indexer *graph.Indexer, uuid string) {
 }
 
 func (p *Probe) logicalSwitchMetadata(ls *goovn.LogicalSwitch) graph.Metadata {
-	m := graph.Metadata{
+	return graph.Metadata{
 		"Type":    "logical_switch",
 		"Name":    ls.Name,
 		"Manager": "ovn",
 		"UUID":    ls.UUID,
+		"OVN": &Metadata{
+			ExtID: common.NormalizeValue(ls.ExternalID).(map[string]interface{}),
+		},
 	}
-	if len(ls.ExternalID) > 0 {
-		m["ExtID"] = common.NormalizeValue(ls.ExternalID)
-	}
-	return m
 }
 
-func (p *Probe) logicalRouterMetadata(ls *goovn.LogicalRouter) graph.Metadata {
-	m := graph.Metadata{
+func (p *Probe) logicalRouterMetadata(lr *goovn.LogicalRouter) graph.Metadata {
+	return graph.Metadata{
 		"Type":    "logical_router",
-		"Name":    ls.Name,
+		"Name":    lr.Name,
 		"Manager": "ovn",
-		"UUID":    ls.UUID,
+		"UUID":    lr.UUID,
+		"OVN": &Metadata{
+			ExtID: common.NormalizeValue(lr.ExternalID).(map[string]interface{}),
+		},
 	}
-	if len(ls.ExternalID) > 0 {
-		m["ExtID"] = common.NormalizeValue(ls.ExternalID)
-	}
-	return m
 }
 
 // OnLogicalSwitchCreate is called when a logical switch is created
@@ -264,68 +319,45 @@ func (p *Probe) OnLogicalSwitchDelete(ls *goovn.LogicalSwitch) {
 }
 
 func (p *Probe) logicalPortMetadata(lp *goovn.LogicalSwitchPort) graph.Metadata {
-	m := graph.Metadata{
+	return graph.Metadata{
 		"Type":    "logical_port",
 		"Name":    lp.Name,
 		"UUID":    lp.UUID,
 		"Manager": "ovn",
+		"OVN": &Metadata{
+			LSPMetadata: LSPMetadata{
+				Addresses:     lp.Addresses,
+				PortSecurity:  lp.PortSecurity,
+				DHCPv4Options: lp.DHCPv4Options,
+				DHCPv6Options: lp.DHCPv6Options,
+				Type:          lp.Type,
+			},
+			ExtID:   common.NormalizeValue(lp.ExternalID).(map[string]interface{}),
+			Options: common.NormalizeValue(lp.Options).(map[string]interface{}),
+		},
 	}
-
-	if len(lp.Addresses) > 0 {
-		m["Addresses"] = lp.Addresses
-	}
-	if len(lp.PortSecurity) > 0 {
-		m["PortSecurity"] = lp.PortSecurity
-	}
-	if len(lp.DHCPv4Options) > 0 {
-		m["DHCPv4Options"] = lp.DHCPv4Options
-	}
-	if len(lp.DHCPv6Options) > 0 {
-		m["DHCPv6Options"] = lp.DHCPv6Options
-	}
-	if len(lp.ExternalID) > 0 {
-		m["ExtID"] = common.NormalizeValue(lp.ExternalID)
-	}
-	if len(lp.Options) > 0 {
-		m["Options"] = common.NormalizeValue(lp.Options)
-	}
-	if lp.Type != "" {
-		m["PortType"] = lp.Type
-	}
-
-	return m
 }
 
 func (p *Probe) logicalRouterPortMetadata(lp *goovn.LogicalRouterPort) graph.Metadata {
-	m := graph.Metadata{
+	return graph.Metadata{
 		"Type":    "logical_port",
 		"Name":    lp.Name,
 		"UUID":    lp.UUID,
 		"Manager": "ovn",
 		"Enabled": lp.Enabled,
 		"MAC":     lp.MAC,
+		"OVN": &Metadata{
+			LRPMetadata: LRPMetadata{
+				GatewayChassis: lp.GatewayChassis,
+				IPv6RAConfigs:  common.NormalizeValue(lp.IPv6RAConfigs).(map[string]interface{}),
+				Networks:       lp.Networks,
+				Peer:           lp.Peer,
+			},
+			ExtID:   common.NormalizeValue(lp.ExternalID).(map[string]interface{}),
+			Options: common.NormalizeValue(lp.Options).(map[string]interface{}),
+		},
 	}
 
-	if len(lp.ExternalID) > 0 {
-		m["ExternalID"] = common.NormalizeValue(lp.ExternalID)
-	}
-	if len(lp.GatewayChassis) > 0 {
-		m["GatewayChassis"] = lp.GatewayChassis
-	}
-	if len(lp.IPv6RAConfigs) > 0 {
-		m["IPv6RAConfigs"] = common.NormalizeValue(lp.IPv6RAConfigs)
-	}
-	if len(lp.Networks) > 0 {
-		m["Networks"] = lp.Networks
-	}
-	if len(lp.Options) > 0 {
-		m["Options"] = common.NormalizeValue(lp.Options)
-	}
-	if lp.Peer != "" {
-		m["Peer"] = lp.Peer
-	}
-
-	return m
 }
 
 // OnLogicalPortCreate is called when a logical port is created on a switch
@@ -384,15 +416,19 @@ func (p *Probe) OnQoSDelete(*goovn.QoS) {
 
 func (p *Probe) aclMetadata(acl *goovn.ACL) graph.Metadata {
 	return graph.Metadata{
-		"Type":       "acl",
-		"Name":       acl.UUID,
-		"Manager":    "ovn",
-		"Action":     acl.Action,
-		"Direction":  acl.Direction,
-		"ExternalID": common.NormalizeValue(acl.ExternalID),
-		"Log":        acl.Log,
-		"Match":      acl.Match,
-		"Priority":   acl.Priority,
+		"Type":    "acl",
+		"Name":    acl.UUID,
+		"Manager": "ovn",
+		"OVN": Metadata{
+			ACLMetadata: ACLMetadata{
+				Action:    acl.Action,
+				Direction: acl.Direction,
+				Log:       acl.Log,
+				Match:     acl.Match,
+				Priority:  int64(acl.Priority),
+			},
+			ExtID: common.NormalizeValue(acl.ExternalID).(map[string]interface{}),
+		},
 	}
 }
 
@@ -542,7 +578,7 @@ func NewProbe(g *graph.Graph, address string) (*Probe, error) {
 
 	// We create a metadata indexer linker to link the logical switch ports that have
 	// an Options.router-port attribute to the logical router port with the specified name
-	lspIndexer := graph.NewMetadataIndexer(g, probe.lspIndexer, nil, "Options.router-port")
+	lspIndexer := graph.NewMetadataIndexer(g, probe.lspIndexer, nil, "OVN.Options.router-port")
 	lspIndexer.Start()
 
 	lrpIndexer := graph.NewMetadataIndexer(g, probe.lrpIndexer, graph.Metadata{"Type": "logical_port"}, "Name")

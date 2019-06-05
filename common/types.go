@@ -22,10 +22,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"net"
-	"os"
 	"reflect"
 	"sort"
 	"strconv"
@@ -61,12 +59,25 @@ const (
 	SortDescending SortOrder = "DESC"
 )
 
+// BoolPredicate is a function that applies a test against a boolean
+type BoolPredicate func(b bool) bool
+
+// Int64Predicate is a function that applies a test against an integer
+type Int64Predicate func(i int64) bool
+
+// StringPredicate is a function that applies a test against a string
+type StringPredicate func(s string) bool
+
 // Getter describes filter getter fields
 type Getter interface {
 	GetField(field string) (interface{}, error)
 	GetFieldKeys() []string
+	GetFieldBool(field string) (bool, error)
 	GetFieldInt64(field string) (int64, error)
 	GetFieldString(field string) (string, error)
+	MatchBool(field string, predicate BoolPredicate) bool
+	MatchInt64(field string, predicate Int64Predicate) bool
+	MatchString(field string, predicate StringPredicate) bool
 }
 
 // ToInt64 Convert all number like type to int64
@@ -109,103 +120,6 @@ func ToInt64(i interface{}) (int64, error) {
 	return 0, fmt.Errorf("failed to convert to an integer: %v", i)
 }
 
-func integerCompare(a interface{}, b interface{}) (int, error) {
-	n1, err := ToInt64(a)
-	if err != nil {
-		return 0, err
-	}
-
-	n2, err := ToInt64(b)
-	if err != nil {
-		return 0, err
-	}
-
-	if n1 == n2 {
-		return 0, nil
-	} else if n1 < n2 {
-		return -1, nil
-	} else {
-		return 1, nil
-	}
-}
-
-// ToFloat64 Convert all number like type to float64
-func ToFloat64(f interface{}) (float64, error) {
-	switch v := f.(type) {
-	case json.Number:
-		if i, err := v.Int64(); err == nil {
-			return float64(i), nil
-		}
-		if f, err := v.Float64(); err == nil {
-			return f, nil
-		}
-	case string:
-		return strconv.ParseFloat(v, 64)
-	case int, uint, int32, uint32, int64, uint64:
-		i, err := ToInt64(f)
-		if err != nil {
-			return 0, err
-		}
-		return float64(i), nil
-	case float32:
-		return float64(v), nil
-	case float64:
-		return f.(float64), nil
-	}
-	return 0, fmt.Errorf("not a float: %v", f)
-}
-
-func floatCompare(a interface{}, b interface{}) (int, error) {
-	f1, err := ToFloat64(a)
-	if err != nil {
-		return 0, err
-	}
-
-	f2, err := ToFloat64(b)
-	if err != nil {
-		return 0, err
-	}
-
-	if f1 == f2 {
-		return 0, nil
-	} else if f1 < f2 {
-		return -1, nil
-	} else {
-		return 1, nil
-	}
-}
-
-// CrossTypeCompare compare 2 differents number types like Float64 vs Float32
-func CrossTypeCompare(a interface{}, b interface{}) (int, error) {
-	switch a.(type) {
-	case float32, float64:
-		return floatCompare(a, b)
-	}
-
-	switch b.(type) {
-	case float32, float64:
-		return floatCompare(a, b)
-	}
-
-	switch a.(type) {
-	case int, uint, int32, uint32, int64, uint64:
-		return integerCompare(a, b)
-	default:
-		return 0, ErrCantCompareInterface
-	}
-}
-
-// CrossTypeEqual compare 2 differents number types
-func CrossTypeEqual(a interface{}, b interface{}) bool {
-	result, err := CrossTypeCompare(a, b)
-	if err == ErrCantCompareInterface {
-		return a == b
-	} else if err != nil {
-		return false
-	}
-	return result == 0
-}
-
 // MinInt64 returns the lowest value
 func MinInt64(a, b int64) int64 {
 	if a < b {
@@ -222,36 +136,10 @@ func MaxInt64(a, b int64) int64 {
 	return b
 }
 
-// IPv6Supported returns true if the platform support IPv6
-func IPv6Supported() bool {
-	if _, err := os.Stat("/proc/net/if_inet6"); os.IsNotExist(err) {
-		return false
-	}
-
-	data, err := ioutil.ReadFile("/proc/sys/net/ipv6/conf/all/disable_ipv6")
-	if err != nil {
-		return false
-	}
-
-	if strings.TrimSpace(string(data)) == "1" {
-		return false
-	}
-
-	return true
-}
-
-// NormalizeIPForURL returns a string normalized that can be used in URL. Brackets
-// will be used for IPV6 addresses.
-func NormalizeIPForURL(ip net.IP) string {
-	if ip.To4() == nil {
-		return "[" + ip.String() + "]"
-	}
-	return ip.String()
-}
-
 // NormalizeValue returns a version of the passed value
 // that can be safely marshalled to JSON
 func NormalizeValue(obj interface{}) interface{} {
+	obj = deepcopy.Copy(obj)
 	if structs.IsStruct(obj) {
 		obj = structs.Map(obj)
 	}
@@ -259,19 +147,19 @@ func NormalizeValue(obj interface{}) interface{} {
 	case map[string]interface{}:
 		m := make(map[string]interface{}, len(v))
 		for key, value := range v {
-			SetField(m, key, NormalizeValue(value))
+			SetMapField(m, key, NormalizeValue(value))
 		}
 		return m
 	case map[interface{}]interface{}:
 		m := make(map[string]interface{}, len(v))
 		for key, value := range v {
-			SetField(m, key.(string), NormalizeValue(value))
+			SetMapField(m, key.(string), NormalizeValue(value))
 		}
 		return m
 	case map[string]string:
 		m := make(map[string]interface{}, len(v))
 		for key, value := range v {
-			SetField(m, key, value)
+			SetMapField(m, key, value)
 		}
 		return m
 	case []interface{}:
@@ -283,7 +171,7 @@ func NormalizeValue(obj interface{}) interface{} {
 	case nil:
 		return ""
 	}
-	return deepcopy.Copy(obj)
+	return obj
 }
 
 // JSONDecode wrapper to UseNumber during JSON decoding
@@ -325,8 +213,8 @@ type Metric interface {
 	IsZero() bool
 }
 
-// SetField set a value in a tree based on dot key ("a.b.c.d" = "ok")
-func SetField(obj map[string]interface{}, k string, v interface{}) bool {
+// SetMapField set a value in a tree based on dot key ("a.b.c.d" = "ok")
+func SetMapField(obj map[string]interface{}, k string, v interface{}) bool {
 	components := strings.Split(k, ".")
 	for n, component := range components {
 		if n == len(components)-1 {
@@ -370,8 +258,8 @@ func DelField(obj map[string]interface{}, k string) bool {
 	return removed
 }
 
-// GetField retrieves a value from a tree from the dot key like "a.b.c.d"
-func GetField(obj map[string]interface{}, k string) (interface{}, error) {
+// GetMapField retrieves a value from a tree from the dot key like "a.b.c.d"
+func GetMapField(obj map[string]interface{}, k string) (interface{}, error) {
 	components := strings.Split(k, ".")
 	for n, component := range components {
 		i, ok := obj[component]
@@ -397,7 +285,7 @@ func GetField(obj map[string]interface{}, k string) (interface{}, error) {
 						results = append(results, obj)
 					}
 				case map[string]interface{}:
-					if obj, err := GetField(v, subkey); err == nil {
+					if obj, err := GetMapField(v, subkey); err == nil {
 						results = append(results, obj)
 					}
 				}
@@ -438,8 +326,8 @@ func getFieldKeys(obj map[string]interface{}, path string) []string {
 	return fields
 }
 
-// GetFieldKeys returns all the keys using dot notation
-func GetFieldKeys(obj map[string]interface{}) []string {
+// GetMapFieldKeys returns all the keys using dot notation
+func GetMapFieldKeys(obj map[string]interface{}) []string {
 	return getFieldKeys(obj, "")
 }
 
@@ -582,16 +470,10 @@ func IPV4CIDRToRegex(cidr string) (string, error) {
 	return "^" + regex + `(\/[0-9]?[0-9])?$`, nil
 }
 
-// IsIPv6 returns whether is a IPV6 addresses or not
-func IsIPv6(str string) bool {
-	ip := net.ParseIP(str)
-	return ip != nil && strings.Contains(str, ":")
-}
-
 // NormalizeAddrForURL format the given address to be used in URL. For IPV6
 // addresses the brackets will be added.
 func NormalizeAddrForURL(addr string) string {
-	if IsIPv6(addr) {
+	if ip := net.ParseIP(addr); ip != nil && len(ip) == net.IPv6len {
 		return "[" + addr + "]"
 	}
 	return addr

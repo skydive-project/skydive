@@ -54,16 +54,7 @@ type Probe struct {
 	cancel                  context.CancelFunc
 }
 
-// OpenContrailMdata metadata
-type OpenContrailMdata struct {
-	UUID    string
-	Mac     string
-	VRF     string
-	VRFID   int
-	LocalIP string
-}
-
-func (mapper *Probe) retrieveMetadata(metadata graph.Metadata, itf collection.Element) (*OpenContrailMdata, error) {
+func (mapper *Probe) retrieveMetadata(metadata graph.Metadata, itf collection.Element) (*Metadata, error) {
 	name := metadata["Name"].(string)
 
 	logging.GetLogger().Debugf("Retrieving metadata from OpenContrail for Name: %s", name)
@@ -94,15 +85,13 @@ func (mapper *Probe) retrieveMetadata(metadata graph.Metadata, itf collection.El
 
 	logging.GetLogger().Debugf("Interface from contrail: port: %s mac: %s", portUUID, mac)
 
-	e := &OpenContrailMdata{
+	return &Metadata{
 		UUID:    portUUID,
-		Mac:     mac,
+		MAC:     mac,
 		VRF:     vrfName,
-		VRFID:   vrfId,
+		VRFID:   int64(vrfId),
 		LocalIP: mdataIP,
-	}
-
-	return e, nil
+	}, nil
 }
 
 // Since the node updates is triggered by a netlink message, it happens
@@ -240,7 +229,7 @@ func (mapper *Probe) nodeUpdater() {
 			}
 			mapper.updateNode(node, extIDs)
 			mapper.linkToVhost(node)
-			mapper.OnInterfaceAdded(extIDs.VRFID, extIDs.UUID)
+			mapper.OnInterfaceAdded(int(extIDs.VRFID), extIDs.UUID)
 		}
 
 	}
@@ -255,15 +244,13 @@ func (mapper *Probe) nodeUpdater() {
 	logging.GetLogger().Debugf("Stopping OpenContrail updater")
 }
 
-func (mapper *Probe) updateNode(node *graph.Node, mdata *OpenContrailMdata) {
+func (mapper *Probe) updateNode(node *graph.Node, mdata *Metadata) {
 	tr := mapper.graph.StartMetadataTransaction(node)
 	defer tr.Commit()
 
 	tr.AddMetadata("ExtID.iface-id", mdata.UUID)
-	tr.AddMetadata("ExtID.attached-mac", mdata.Mac)
-	tr.AddMetadata("Contrail.VRF", mdata.VRF)
-	tr.AddMetadata("Contrail.VRFID", int64(mdata.VRFID))
-	tr.AddMetadata("Contrail.LocalIP", mdata.LocalIP)
+	tr.AddMetadata("ExtID.attached-mac", mdata.MAC)
+	tr.AddMetadata("Contrail", mdata)
 }
 
 func (mapper *Probe) enhanceNode(node *graph.Node) {
