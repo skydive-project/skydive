@@ -205,7 +205,9 @@ func (o *OvsSFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid str
 		}
 
 		addr := common.ServiceAddress{Addr: address}
-		agent, err := o.allocator.Alloc(bridgeUUID, probe.flowTable, capture.BPFFilter, headerSize, &addr, n, o.Graph)
+		bfpFilter := NormalizeBPFFilter(capture)
+
+		agent, err := o.allocator.Alloc(bridgeUUID, probe.flowTable, bfpFilter, headerSize, &addr, n, o.Graph)
 		if err != nil && err != sflow.ErrAgentAlreadyAllocated {
 			return err
 		}
