@@ -82,11 +82,35 @@ func (f *fakeClientSubscriptionHandler) OnMessage(c Speaker, m Message) {
 	f.Unlock()
 }
 
-func TestSubscription(t *testing.T) {
-	httpServer := shttp.NewServer("myhost", common.AnalyzerService, "localhost", 59999, nil)
+const (
+	defaultHostID = "myhost"
+	host          = "localhost"
+	port          = 59999
+	path          = "wstest"
+)
+
+type testServer struct {
+	hostID     string
+	httpServer *shttp.Server
+	wsServer   *Server
+	handler    *fakeServerSubscriptionHandler
+	t          *testing.T
+}
+
+func newTestServer(t *testing.T, hostID ...string) *testServer {
+	s := &testServer{t: t}
+	s.hostID = defaultHostID
+	if len(hostID) > 0 {
+		s.hostID = hostID[0]
+	}
+	return s
+}
+
+func (s *testServer) start() {
+	httpServer := shttp.NewServer(s.hostID, common.AnalyzerService, host, port, nil)
 
 	httpServer.ListenAndServe()
-	defer httpServer.Stop()
+	s.httpServer = httpServer
 
 	serverOpts := ServerOpts{
 		WriteCompression: true,
@@ -95,64 +119,169 @@ func TestSubscription(t *testing.T) {
 		PongTimeout:      5 * time.Second,
 	}
 
-	wsServer := NewServer(httpServer, "/wstest", shttp.NewNoAuthenticationBackend(), serverOpts)
+	wsServer := NewServer(httpServer, "/"+path, shttp.NewNoAuthenticationBackend(), serverOpts)
 
-	serverHandler := &fakeServerSubscriptionHandler{t: t, server: wsServer, connected: 0, received: 0}
-	wsServer.AddEventHandler(serverHandler)
+	handler := &fakeServerSubscriptionHandler{t: s.t, server: wsServer}
+	wsServer.AddEventHandler(handler)
+	s.handler = handler
 
 	wsServer.Start()
-	defer wsServer.Stop()
+	s.wsServer = wsServer
+}
 
-	u, _ := url.Parse("ws://localhost:59999/wstest")
+func (s *testServer) stop() {
+	if s.wsServer != nil {
+		s.wsServer.Stop()
+	}
+	if s.httpServer != nil {
+		s.httpServer.Stop()
+	}
+}
+
+func (s *testServer) test(numClients int) error {
+	// serverHandler should be notified once:
+	// - by server (Server)
+	if s.handler.connected != numClients {
+		return fmt.Errorf("Server should have received %d OnConnected event: %v", numClients, s.handler.connected)
+	}
+
+	// serverHandler should be notified by:
+	// - by server (Server)
+	// 2 times, as there are 2 messages sent by the client
+	if s.handler.received != 2*numClients {
+		return fmt.Errorf("Server should have received %d OnMessage event: %v", 2*numClients, s.handler.received)
+	}
+
+	return nil
+}
+
+type testClient struct {
+	hostID   string
+	wsClient *Client
+	handler  *fakeClientSubscriptionHandler
+	t        *testing.T
+}
+
+func newTestClient(t *testing.T, hostID ...string) *testClient {
+	c := &testClient{t: t}
+	c.hostID = defaultHostID
+	if len(hostID) > 0 {
+		c.hostID = hostID[0]
+	}
+	return c
+}
+
+func (c *testClient) start() {
+	u, _ := url.Parse(fmt.Sprintf("ws://%s:%d/%s", host, port, path))
 
 	opts := ClientOpts{
 		QueueSize:        1000,
 		WriteCompression: true,
 	}
 
-	wsClient := NewClient("myhost", common.AgentService, u, opts)
+	wsClient := NewClient(c.hostID, common.AgentService, u, opts)
 	wsPool := NewClientPool("TestSubscription", PoolOpts{})
 
 	wsPool.AddClient(wsClient)
 
-	clientHandler := &fakeClientSubscriptionHandler{t: t, received: 0}
-	wsClient.AddEventHandler(clientHandler)
-	wsPool.AddEventHandler(clientHandler)
+	handler := &fakeClientSubscriptionHandler{t: c.t}
+	wsClient.AddEventHandler(handler)
+	wsPool.AddEventHandler(handler)
+	c.handler = handler
+
 	wsClient.Start()
-	defer wsClient.Stop()
+	c.wsClient = wsClient
+}
+
+func (c *testClient) stop() {
+	if c.wsClient != nil {
+		c.wsClient.Stop()
+	}
+}
+
+func (c *testClient) test() error {
+	if c.handler.connected != 2 {
+		// clientHandler should be notified twice:
+		// - by client (Client)
+		// - by pool (ClientPool)
+		return fmt.Errorf("Client should have received 2 OnConnected events: %v", c.handler.connected)
+	}
+
+	if c.handler.received != 2 {
+		// clientHandler should be notified twice:
+		// - by client (Client)
+		// - by pool (ClientPool)
+		// only one time, because only one message should be sent by the server
+		return fmt.Errorf("Client should have received 2 OnMessage events: %v", c.handler.received)
+	}
+
+	return nil
+}
+
+func TestSubscription(t *testing.T) {
+	server := newTestServer(t)
+	server.start()
+	defer server.stop()
+
+	client := newTestClient(t)
+	client.start()
+	defer client.stop()
 
 	err := common.Retry(func() error {
-		clientHandler.Lock()
-		defer clientHandler.Unlock()
-		serverHandler.Lock()
-		defer serverHandler.Unlock()
+		client.handler.Lock()
+		defer client.handler.Unlock()
 
-		if clientHandler.connected != 2 {
-			// clientHandler should be notified twice:
-			// - by client (Client)
-			// - by pool (ClientPool)
-			return fmt.Errorf("Client should have received 2 OnConnected events: %v", clientHandler.connected)
+		server.handler.Lock()
+		defer server.handler.Unlock()
+
+		if err := client.test(); err != nil {
+			return err
 		}
 
-		if clientHandler.received != 2 {
-			// clientHandler should be notified twice:
-			// - by client (Client)
-			// - by pool (ClientPool)
-			// only one time, because only one message should be sent by the server
-			return fmt.Errorf("Client should have received 2 OnMessage events: %v", clientHandler.received)
+		if err := server.test(1); err != nil {
+			return err
 		}
 
-		// serverHandler should be notified once:
-		// - by server (Server)
-		if serverHandler.connected != 1 {
-			return fmt.Errorf("Server should have received 1 OnConnected event: %v", serverHandler.connected)
+		return nil
+	}, 5, time.Second)
+
+	if err != nil {
+		t.Error(err.Error())
+	}
+}
+
+func TestSubscriptionMultiClient(t *testing.T) {
+	const numClients = 10
+
+	server := newTestServer(t)
+	server.start()
+	defer server.stop()
+
+	client := [numClients]*testClient{}
+
+	for i := 0; i < numClients; i++ {
+		client[i] = newTestClient(t, "" /* avoid bad handshake due to conflicting host_id */)
+		client[i].start()
+		defer client[i].stop()
+	}
+
+	err := common.Retry(func() error {
+		for i := 0; i < numClients; i++ {
+			client[i].handler.Lock()
+			defer client[i].handler.Unlock()
 		}
 
-		// serverHandler should be notified by:
-		// - by server (Server)
-		// 2 times, as there are 2 messages sent by the client
-		if serverHandler.received != 2 {
-			return fmt.Errorf("Server should have received 2 OnMessage event: %v", serverHandler.received)
+		server.handler.Lock()
+		defer server.handler.Unlock()
+
+		for i := 0; i < numClients; i++ {
+			if err := client[i].test(); err != nil {
+				return err
+			}
+		}
+
+		if err := server.test(numClients); err != nil {
+			return err
 		}
 
 		return nil
