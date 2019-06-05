@@ -9,6 +9,11 @@ Vue.component('panel', {
       required: true,
     },
 
+    description: {
+      type: String,
+      required: false,
+    },
+
     collapsed: {
       type: Boolean,
       default: true,
@@ -24,6 +29,7 @@ Vue.component('panel', {
           <span class="pull-right">\
             <i class="glyphicon glyphicon-chevron-left rotate" :class="{\'down\': props.active}"></i>\
           </span>\
+          <span v-if="description" class="description">{{ description }}</span>\
         </h1>\
         <div slot="collapse-body">\
           <div ref="body">\

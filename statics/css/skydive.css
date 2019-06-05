@@ -157,6 +157,14 @@ label {
   stroke: #fff;
 }
 
+.panel .description {
+  float: right;
+  font-style: italic;
+  font-weight: normal;
+  padding-right: 10px;
+  font-size: 12px;
+}
+
 .panel .btn, .button-holder .btn {
   border-radius: 24px;
   padding: 10px 20px;

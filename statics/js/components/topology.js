@@ -192,7 +192,7 @@ var TopologyComponent = {
         </tabs>\
         <panel id="node-metadata" v-if="currentNodeMetadata"\
                :collapsed="false"\
-               title="Metadata">\
+               title="Metadata" :description="\'ID: \'+currentNode.id">\
           <template slot="actions">\
             <button v-if="currentNode.isGroupOwner()"\
                     title="Expand/Collapse Node"\
@@ -208,7 +208,7 @@ var TopologyComponent = {
           </object-detail>\
         </panel>\
         <panel id="edge-metadata" v-if="currentEdge"\
-               title="Metadata">\
+               title="Metadata" :description="\'ID: \'+currentEdge.id">\
           <object-detail :object="currentEdgeMetadata"></object-detail>\
         </panel>\
         <panel id="docker-metadata" v-if="currentNodeDocker"\
