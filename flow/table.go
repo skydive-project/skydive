@@ -247,25 +247,15 @@ func (ft *Table) updateAt(now time.Time) {
 func (ft *Table) updateMetric(f *Flow, start, last int64) {
 	if f.LastUpdateMetric == nil {
 		f.LastUpdateMetric = &FlowMetric{}
-	}
-	f.LastUpdateMetric.ABPackets = f.Metric.ABPackets
-	f.LastUpdateMetric.ABBytes = f.Metric.ABBytes
-	f.LastUpdateMetric.BAPackets = f.Metric.BAPackets
-	f.LastUpdateMetric.BABytes = f.Metric.BABytes
-	f.LastUpdateMetric.RTT = f.Metric.RTT
-
-	// subtract previous values to get the diff so that we store the
-	// amount of data between two updates
-	if lm := f.XXX_state.lastMetric; lm != nil {
-		f.LastUpdateMetric.ABPackets -= lm.ABPackets
-		f.LastUpdateMetric.ABBytes -= lm.ABBytes
-		f.LastUpdateMetric.BAPackets -= lm.BAPackets
-		f.LastUpdateMetric.BABytes -= lm.BABytes
-		f.LastUpdateMetric.Start = start
-	} else {
-		f.LastUpdateMetric.Start = f.Start
+		start = f.Start
 	}
 
+	*f.LastUpdateMetric = *f.Metric
+	f.LastUpdateMetric.ABPackets -= f.XXX_state.lastMetric.ABPackets
+	f.LastUpdateMetric.ABBytes -= f.XXX_state.lastMetric.ABBytes
+	f.LastUpdateMetric.BAPackets -= f.XXX_state.lastMetric.BAPackets
+	f.LastUpdateMetric.BABytes -= f.XXX_state.lastMetric.BABytes
+	f.LastUpdateMetric.Start = start
 	f.LastUpdateMetric.Last = last
 }
 
@@ -283,11 +273,18 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 			updatedFlows = append(updatedFlows, f)
 			f.FinishType = FlowFinishType_TIMEOUT
 			ft.table.Remove(k)
+		} else if f.LastUpdateMetric != nil {
+			f.LastUpdateMetric.ABBytes = 0
+			f.LastUpdateMetric.ABPackets = 0
+			f.LastUpdateMetric.BABytes = 0
+			f.LastUpdateMetric.BAPackets = 0
+			f.LastUpdateMetric.Start = updateFrom
+			f.LastUpdateMetric.Last = updateTime
 		} else {
 			f.LastUpdateMetric = &FlowMetric{Start: updateFrom, Last: updateTime}
 		}
 
-		f.XXX_state.lastMetric = f.Metric.Copy()
+		f.XXX_state.lastMetric = *f.Metric
 
 		if f.FinishType != FlowFinishType_NOT_FINISHED && updateTime-f.Last >= HoldTimeoutMilliseconds {
 			ft.table.Remove(k)
