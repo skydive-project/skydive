@@ -48,47 +48,52 @@ func tcpFlagTime(currFlagTime C.__u64, startKTimeNs int64, start time.Time) int6
 	return common.UnixMillis(start.Add(time.Duration(int64(currFlagTime) - startKTimeNs)))
 }
 
-func kernLayersPath(kernFlow *C.struct_flow) (layersPath string, hasGRE bool) {
-	notFirst := false
+func kernLayersPath(kernFlow *C.struct_flow) (string, bool) {
+	var layersPath strings.Builder
+	var notFirst, hasGRE bool
+
 	path := uint64(kernFlow.layers_path)
+
 	for i := C.LAYERS_PATH_LEN - 1; i >= 0; i-- {
 		layer := (path & (uint64(C.LAYERS_PATH_MASK) << uint(i*C.LAYERS_PATH_SHIFT))) >> uint(i*C.LAYERS_PATH_SHIFT)
 		if layer == 0 {
 			continue
 		}
 		if notFirst {
-			layersPath += "/"
+			layersPath.WriteString("/")
+		} else {
+			notFirst = true
 		}
-		notFirst = true
+
 		switch layer {
 		case C.ETH_LAYER:
-			layersPath += "Ethernet"
+			layersPath.WriteString("Ethernet")
 		case C.ARP_LAYER:
-			layersPath += "ARP"
+			layersPath.WriteString("ARP")
 		case C.DOT1Q_LAYER:
-			layersPath += "Dot1Q"
+			layersPath.WriteString("Dot1Q")
 		case C.IP4_LAYER:
-			layersPath += "IPv4"
+			layersPath.WriteString("IPv4")
 		case C.IP6_LAYER:
-			layersPath += "IPv6"
+			layersPath.WriteString("IPv6")
 		case C.ICMP4_LAYER:
-			layersPath += "ICMPv4"
+			layersPath.WriteString("ICMPv4")
 		case C.ICMP6_LAYER:
-			layersPath += "ICMPv6"
+			layersPath.WriteString("ICMPv6")
 		case C.UDP_LAYER:
-			layersPath += "UDP"
+			layersPath.WriteString("UDP")
 		case C.TCP_LAYER:
-			layersPath += "TCP"
+			layersPath.WriteString("TCP")
 		case C.SCTP_LAYER:
-			layersPath += "SCTP"
+			layersPath.WriteString("SCTP")
 		case C.GRE_LAYER:
 			hasGRE = true
-			layersPath += "GRE"
+			layersPath.WriteString("GRE")
 		default:
-			layersPath += "Unknown"
+			layersPath.WriteString("Unknown")
 		}
 	}
-	return layersPath, hasGRE
+	return layersPath.String(), hasGRE
 }
 
 func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*Flow) {

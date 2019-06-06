@@ -386,22 +386,23 @@ func GetFirstLayerType(encapType string) (gopacket.LayerType, layers.LinkType) {
 
 // LayersPath returns path and the application of all the layers separated by a slash.
 func LayersPath(ls []gopacket.Layer) (string, string) {
-	var app, path string
+	var app string
+	var path strings.Builder
+
 	for i, layer := range ls {
 		tp := layer.LayerType()
 		if tp == layers.LayerTypeLinuxSLL {
 			continue
-		}
-		if tp == gopacket.LayerTypePayload || tp == gopacket.LayerTypeDecodeFailure {
+		} else if tp == gopacket.LayerTypePayload || tp == gopacket.LayerTypeDecodeFailure {
 			break
 		}
 		if i > 0 {
-			path += "/"
+			path.WriteString("/")
 		}
 		app = layer.LayerType().String()
-		path += app
+		path.WriteString(app)
 	}
-	return path, app
+	return path.String(), app
 }
 
 func linkID(p *Packet) int64 {
