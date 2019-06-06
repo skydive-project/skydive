@@ -17,7 +17,7 @@ Vue.component('item', {
   <div class="form-group">
     <div v-if="Type == 'string'" class="form-group">
       <label :for="Name">{{Description}}</label>
-      <textarea:id="Name" v-model="formData[Name]"></textarea>
+      <textarea :id="Name" type="text" class="form-control input-sm" v-model="formData[Name]"></textarea>
     </div>
     <div v-else-if="Type == 'date'" class="form-group">
     <label :for="Name">{{Description}}</label>
