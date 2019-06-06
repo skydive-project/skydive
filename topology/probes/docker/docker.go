@@ -36,6 +36,8 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
+	"github.com/skydive-project/skydive/topology/probes/docker/subprobes"
+	"github.com/skydive-project/skydive/topology/probes/docker/subprobes/vpp"
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
 	sversion "github.com/skydive-project/skydive/version"
 )
@@ -60,6 +62,7 @@ type Probe struct {
 	wg           sync.WaitGroup
 	hostNs       netns.NsHandle
 	containerMap map[string]containerInfo
+	subprobes    []subprobes.Subprobe
 }
 
 func (probe *Probe) containerNamespace(pid int) string {
@@ -144,6 +147,17 @@ func (probe *Probe) registerContainer(id string) {
 		Pid:  info.State.Pid,
 		Node: containerNode,
 	}
+
+	regData := &subprobes.ContainerRegistrationData{
+		Info:     info,
+		Node:     containerNode,
+		NSRootID: n.ID,
+	}
+	for _, sp := range probe.subprobes {
+		if err := sp.RegisterContainer(regData); err != nil {
+			logging.GetLogger().Errorf("Subprobe %T failed by container registration: %v", sp, err)
+		}
+	}
 }
 
 func (probe *Probe) unregisterContainer(id string) {
@@ -153,6 +167,15 @@ func (probe *Probe) unregisterContainer(id string) {
 	infos, ok := probe.containerMap[id]
 	if !ok {
 		return
+	}
+
+	unregData := &subprobes.ContainerUnregistrationData{
+		Node: infos.Node,
+	}
+	for _, sp := range probe.subprobes {
+		if err := sp.UnregisterContainer(unregData); err != nil {
+			logging.GetLogger().Errorf("Subprobe %T failed by container unregistration: %v", sp, err)
+		}
 	}
 
 	probe.Graph.Lock()
@@ -269,6 +292,10 @@ func (probe *Probe) Start() {
 			probe.wg.Wait()
 		}
 	}()
+
+	for _, sp := range probe.subprobes {
+		sp.Start()
+	}
 }
 
 // Stop the probe
@@ -281,17 +308,29 @@ func (probe *Probe) Stop() {
 		probe.cancel()
 		probe.wg.Wait()
 	}
+	for _, sp := range probe.subprobes {
+		sp.Stop()
+	}
 
 	atomic.StoreInt64(&probe.state, common.StoppedState)
 }
 
 // NewProbe creates a new topology Docker probe
 func NewProbe(nsProbe *ns.Probe, dockerURL, netnsRunPath string) (*Probe, error) {
+	// create subprobes
+	subprobes := make([]subprobes.Subprobe, 0)
+	if vpp, err := vpp.NewSubprobe(nsProbe.Graph); err != nil {
+		logging.GetLogger().Warningf("VPP subprobe in docker probe will be disabled because its creation failed: %v", err) // let's not disable whole Docker probe(by returning error) because of VPP subprobe failure
+	} else {
+		subprobes = append(subprobes, vpp)
+	}
+
 	probe := &Probe{
 		Probe:        nsProbe,
 		url:          dockerURL,
 		containerMap: make(map[string]containerInfo),
 		state:        common.StoppedState,
+		subprobes:    subprobes,
 	}
 
 	if netnsRunPath != "" {
