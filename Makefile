@@ -102,6 +102,7 @@ WITH_OPENCONTRAIL?=true
 WITH_LIBVIRT_GO?=true
 WITH_EBPF_DOCKER_BUILDER?=false
 WITH_VPP?=false
+WITH_DOCKER_VPP?=false
 
 export PATH:=$(BUILD_TOOLS):$(PATH)
 
@@ -201,6 +202,10 @@ endif
 ifeq ($(WITH_VPP), true)
   BUILD_TAGS+=vpp
   AGENT_TEST_EXTRA_PROBES+=vpp
+endif
+
+ifeq ($(WITH_DOCKER_VPP), true)
+  BUILD_TAGS+=docker_vpp
 endif
 
 ifeq (${DEBUG}, true)
