@@ -300,7 +300,7 @@ func (g *EventHandler) RemoveEventListener(l EventListener) {
 	}
 }
 
-// NewEventHandler instanciate a new event handler
+// NewEventHandler instantiate a new event handler
 func NewEventHandler(maxEvents int) *EventHandler {
 	return &EventHandler{
 		eventChan: make(chan graphEvent, maxEvents),

@@ -4,7 +4,7 @@ This OpenShift template allows you to instantiate skydive in OpenShift.
 
 **Important**: For Skydive installation you need cluster-admin privileges. During the installation you have to grant same privileges to skydive.
 
-#### Create a new project with an empty node selector to asume that Skydive runs on all nodes. 
+#### Create a new project with an empty node selector to have Skydive running on all nodes. 
 
 ```
 oc adm new-project --node-selector='' skydive

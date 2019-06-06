@@ -61,7 +61,7 @@ enum {
 #endif
 
 struct link_layer {
-	__u8   protocol;	// currenlty only supporting ethernet
+	__u8   protocol;	// currently only supporting ethernet
 	__u8   mac_src[ETH_ALEN];
 	__u8   mac_dst[ETH_ALEN];
 

@@ -23,7 +23,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 )
 
-// Sort criterias
+// Sort criteria
 const (
 	SortByInt64 int = iota + 1
 	SortByString

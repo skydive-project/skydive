@@ -443,7 +443,7 @@ func makeAction(raw string) *Action {
 			makeFieldAssign(&action, rem)
 		case "enqueue":
 			// This syntax is not consistent, poor choice of ovs
-			// enqueue(port, queue) should be prefered.
+			// enqueue(port, queue) should be preferred.
 			colonPos := strings.Index(rem, ":")
 			if colonPos == -1 {
 				// Probably should never happens
@@ -473,7 +473,7 @@ func makeAction(raw string) *Action {
 
 // Learn is a strange beast because some of the k=v arguments are not named
 // arguments but field assignment. We need to transform them back in real
-// actions and this can only be done if we have a dictionnary of named
+// actions and this can only be done if we have a dictionary of named
 // arguments for learn.
 func fixLearnArguments(action *Action) {
 	for i, arg := range action.Arguments {

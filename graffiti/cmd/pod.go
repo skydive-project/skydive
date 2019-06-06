@@ -85,7 +85,7 @@ var PodCmd = &cobra.Command{
 
 		clusterAuthOptions := &shttp.AuthenticationOpts{}
 
-		// declare all extension available throught API and filtering
+		// declare all extension available through API and filtering
 		tr := traversal.NewGremlinTraversalParser()
 		tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
 

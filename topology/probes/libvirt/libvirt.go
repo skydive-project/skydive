@@ -60,7 +60,7 @@ type domain interface {
 	GetXML() ([]byte, error)
 }
 
-// Address describes the XML coding of the pci addres of an interface in libvirt
+// Address describes the XML coding of the pci address of an interface in libvirt
 type Address struct {
 	Type     string `xml:"type,attr,omitempty"`
 	Domain   string `xml:"domain,attr"`

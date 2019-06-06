@@ -289,7 +289,7 @@ func (r *Runtime) ExecPromise(source string, params ...interface{}) (v otto.Valu
 	return v, err
 }
 
-// CallFunction takes the source of a function and evaluate it with the specifed parameters
+// CallFunction takes the source of a function and evaluate it with the specified parameters
 func (r *Runtime) CallFunction(source string, params ...interface{}) (otto.Value, error) {
 	result, err := r.Run("(" + source + ")")
 	if err != nil {
@@ -299,7 +299,7 @@ func (r *Runtime) CallFunction(source string, params ...interface{}) (otto.Value
 	return result.Call(result, params...)
 }
 
-// CallPromise takes the source of a promise and evaluate it with the specifed parameters
+// CallPromise takes the source of a promise and evaluate it with the specified parameters
 func (r *Runtime) CallPromise(source string, params ...interface{}) (chan otto.Value, error) {
 	result, err := r.CallFunction(source, params...)
 	if err != nil {

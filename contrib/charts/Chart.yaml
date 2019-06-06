@@ -6,7 +6,7 @@ keywords:
 - Skydive
 - Research
 maintainers:
-- name: IBM Reserach (HRL)
+- name: IBM Research (HRL)
   email: eranra@il.ibm.ocm
 sources:
 - https://github.com/skydive-project/skydive/tree/master/contrib

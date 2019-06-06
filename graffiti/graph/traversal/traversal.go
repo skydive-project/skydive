@@ -1762,7 +1762,7 @@ func NewGraphTraversalValueFromError(err ...error) *GraphTraversalValue {
 // Values return the graph values
 func (t *GraphTraversalValue) Values() []interface{} {
 	// Values like all step has to return an array of interface
-	// if v is already an array return it otherwise instanciate an new array
+	// if v is already an array return it otherwise instantiate an new array
 	// with the value as first element.
 	if v, ok := t.value.([]interface{}); ok {
 		return v
