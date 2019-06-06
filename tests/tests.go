@@ -226,6 +226,7 @@ var (
 	ovsOflowNative    bool
 	standalone        bool
 	topologyBackend   string
+	profile           bool
 )
 
 func initConfig(conf string, params ...helperParams) error {
@@ -811,6 +812,10 @@ func delaySec(sec int, err ...error) error {
 var initStandalone = false
 
 func runStandalone() {
+	if profile {
+		go common.Profile()
+	}
+
 	server, err := analyzer.NewServerFromConfig()
 	if err != nil {
 		panic(err)
@@ -839,6 +844,7 @@ func init() {
 	flag.StringVar(&analyzerProbes, "analyzer.topology.probes", "", "Specify the analyzer probes to enable")
 	flag.StringVar(&agentProbes, "agent.topology.probes", "", "Specify the extra agent probes to enable")
 	flag.BoolVar(&ovsOflowNative, "ovs.oflow.native", false, "Use native OpenFlow protocol instead of ovs-ofctl")
+	flag.BoolVar(&profile, "profile", false, "Start profiling")
 	flag.Parse()
 
 	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 100

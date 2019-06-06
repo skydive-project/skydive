@@ -158,6 +158,7 @@
           cd src/github.com/skydive-project/skydive
           . scripts/ci/install-go.sh
           [[ "$ghprbCommentBody" = *"insanelock"* ]] && export TAGS=mutexdebug
+          [[ "$ghprbCommentBody" = *"profile"* ]] && export WITH_PROF=true
           {test}
 
 - parameter:

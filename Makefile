@@ -80,6 +80,9 @@ ifeq ($(COVERAGE), true)
   TEST_COVERPROFILE?=../functionals.cover
   EXTRA_ARGS+=-test.coverprofile=${TEST_COVERPROFILE}
 endif
+ifeq ($(WITH_PROF), true)
+  EXTRA_ARGS+=-profile
+endif
 TIMEOUT?=1m
 TEST_PATTERN?=
 UT_PACKAGES?=$(shell $(GOVENDOR) list -no-status +local | grep -Ev '/tests|/contrib')
