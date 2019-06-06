@@ -312,7 +312,7 @@ func (r *Runtime) CallPromise(source string, params ...interface{}) (chan otto.V
 
 	done := make(chan otto.Value)
 	promise := result.Object()
-	finally, err := r.ToValue(func(call otto.FunctionCall) otto.Value {
+	finally, _ := r.ToValue(func(call otto.FunctionCall) otto.Value {
 		result = call.Argument(0)
 		done <- result
 		return result
