@@ -47,7 +47,7 @@ type CreateConfig struct {
 	Labels  graph.Metadata `json:",omitempty" field:"Metadata"`
 }
 
-// Hosts decribes a runc host
+// Hosts describes a runc host
 // easyjson:json
 // gendecoder
 type Hosts struct {

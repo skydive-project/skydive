@@ -104,7 +104,7 @@ func (s *Server) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReque
 	}
 
 	// call the incomerHandler that will create the Speaker
-	c, err = s.incomerHandler(conn, r, func(c *wsIncomingClient) (Speaker, error) { return c, nil })
+	_, err = s.incomerHandler(conn, r, func(c *wsIncomingClient) (Speaker, error) { return c, nil })
 	if err != nil {
 		s.opts.Logger.Warningf("Unable to accept incomer from %s: %s", r.RemoteAddr, err)
 		w.Header().Set("Connection", "close")

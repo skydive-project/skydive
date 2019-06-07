@@ -56,7 +56,7 @@ type Probe struct {
 	sync.Mutex
 	graph        *graph.Graph                              // the graph
 	shm          string                                    // connect SHM path
-	conn         *core.Connection                          // VPP conection
+	conn         *core.Connection                          // VPP connection
 	interfaceMap map[uint32]*interfaces.SwInterfaceDetails // MAP of VPP interfaces
 	root         *graph.Node                               // root node for ownership
 

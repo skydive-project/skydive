@@ -37,7 +37,7 @@ type objectStoreClient interface {
 	ReadObject(bucket, objectKey string) ([]byte, error)
 	// ReadObjectMetadata returns an object metadata
 	ReadObjectMetadata(bucket, objectKey string) (map[string]*string, error)
-	// ListObjects lists objects withing a bucket
+	// ListObjects lists objects within a bucket
 	ListObjects(bucket, prefix string) ([]*string, error)
 	// DeleteObject deletes a single object
 	DeleteObject(bucket, objectKey string) error
@@ -110,7 +110,7 @@ func (s *s3Client) DeleteObject(bucket, objectKey string) error {
 	return err
 }
 
-// ListObjects lists objects withing a bucket
+// ListObjects lists objects within a bucket
 func (s *s3Client) ListObjects(bucket, prefix string) ([]*string, error) {
 	params := &s3.ListObjectsInput{
 		Bucket: aws.String(bucket),

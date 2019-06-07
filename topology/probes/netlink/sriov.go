@@ -41,7 +41,7 @@ type pendingVf struct {
 	vfid int
 }
 
-// PciFromString transforms the symbolic representation of a pci addres
+// PciFromString transforms the symbolic representation of a pci address
 // in an unsigned integer.
 func PciFromString(businfo string) (uint32, error) {
 	var domain, bus, device, function uint32

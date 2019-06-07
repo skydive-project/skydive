@@ -633,7 +633,7 @@ func (u *NetNsProbe) getRoutingTables(link netlink.Link, table int) *RoutingTabl
 			routingTable = &RoutingTable{ID: int64(r.Table), Src: r.Src}
 		}
 
-		protocol, prefix := int64(r.Protocol), net.IPNet{}
+		var prefix net.IPNet
 		if r.Dst != nil {
 			prefix = *r.Dst
 		} else {
@@ -644,6 +644,7 @@ func (u *NetNsProbe) getRoutingTables(link netlink.Link, table int) *RoutingTabl
 			}
 		}
 
+		protocol := int64(r.Protocol)
 		route := routingTable.GetOrCreateRoute(protocol, prefix)
 		if len(r.MultiPath) > 0 {
 			for _, nh := range r.MultiPath {

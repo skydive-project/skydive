@@ -48,7 +48,7 @@ WSHandler.prototype = {
       self.connected.resolve(true);
     };
     this.conn.onclose = function() {
-      // connection closed after a succesful connection
+      // connection closed after a successful connection
       if (self.connecting === false) {
         self.disconnected.resolve(true);
         // client never succeed to connect in the first place

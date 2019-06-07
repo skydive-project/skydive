@@ -92,12 +92,12 @@ func getNextHops(nodes []*graph.Node, ip net.IP) map[string]*NextHop {
 
 nodeloop:
 	for _, node := range nodes {
-		neighbors, err := node.GetField("Neighbors")
-
+		neighbors, _ := node.GetField("Neighbors")
 		tables, err := node.GetField("RoutingTables")
 		if err != nil {
 			continue
 		}
+
 		rts := tables.(*netlink.RoutingTables)
 		for _, t := range *rts {
 			var defaultRouteIP net.IP

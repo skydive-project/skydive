@@ -123,7 +123,7 @@ type switchPortLinker struct {
 	probe *Probe
 }
 
-// GetABLinks returns all the links from a specifed logical switch to its logical ports
+// GetABLinks returns all the links from a specified logical switch to its logical ports
 func (l *switchPortLinker) GetABLinks(lsNode *graph.Node) (edges []*graph.Edge) {
 	probe := l.probe
 	name, _ := lsNode.GetFieldString("Name")
@@ -168,7 +168,7 @@ type routerPortLinker struct {
 	probe *Probe
 }
 
-// GetABLinks returns all the links from a specifed logical router to its logical ports
+// GetABLinks returns all the links from a specified logical router to its logical ports
 func (l *routerPortLinker) GetABLinks(lrNode *graph.Node) (edges []*graph.Edge) {
 	probe := l.probe
 	name, _ := lrNode.GetFieldString("Name")

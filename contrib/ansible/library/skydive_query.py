@@ -79,7 +79,7 @@ def make_query(params):
     """Performs the query with the rest client
 
        :param params: the parameters of the ansible module implemented.
-       :returns: a list of nodes coded as dictionnary (JSON representation
+       :returns: a list of nodes coded as dictionary (JSON representation
             of skydive node).
     """
     scheme = "https" if params["ssl"] else "http"

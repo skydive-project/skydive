@@ -94,7 +94,7 @@ func (c *fakeClient) DeleteObject(bucket, objectKey string) error {
 	return nil
 }
 
-// ListObjects lists objects withing a bucket
+// ListObjects lists objects within a bucket
 func (c *fakeClient) ListObjects(bucket, prefix string) ([]*string, error) {
 	return nil, nil
 }

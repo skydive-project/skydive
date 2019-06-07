@@ -60,7 +60,7 @@ func (a *TableAllocator) QueryTable(tq *TableQuery) *TableReply {
 	return reply
 }
 
-// Alloc instanciate/allocate a new table
+// Alloc instantiate/allocate a new table
 func (a *TableAllocator) Alloc(flowCallBack ExpireUpdateFunc, nodeTID string, opts TableOpts) *Table {
 	a.Lock()
 	defer a.Unlock()
