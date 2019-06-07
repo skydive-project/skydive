@@ -31,6 +31,9 @@ var LayerTypeRawIP = gopacket.RegisterLayerType(55555, gopacket.LayerTypeMetadat
 // Try to find if the next layer is IPv4, or IPv6. If it fails, it considers it is Ethernet.
 var layerTypeInMplsEthOrIP = gopacket.RegisterLayerType(55556, gopacket.LayerTypeMetadata{Name: "LayerTypeInMplsEthOrIp", Decoder: gopacket.DecodeFunc(decodeInMplsEthOrIPLayer)})
 
+// LayerTypeERSPanII decoder
+var LayerTypeERSPanII = gopacket.RegisterLayerType(55557, gopacket.LayerTypeMetadata{Name: "LayerTypeERSPanII", Decoder: gopacket.DecodeFunc(decodeERSpanIILayer)})
+
 type rawIPLayer struct {
 	StrangeHeader []byte
 	payload       []byte
@@ -123,11 +126,24 @@ func decodeInMplsEthOrIPLayer(data []byte, p gopacket.PacketBuilder) error {
 	return p.NextDecoder(eth.NextLayerType())
 }
 
+func decodeERSpanIILayer(data []byte, p gopacket.PacketBuilder) error {
+	// for now just skip erspan header
+	eth := &layers.Ethernet{}
+	err := eth.DecodeFromBytes(data[8:], p)
+	p.AddLayer(eth)
+	if err != nil {
+		return err
+	}
+	return p.NextDecoder(eth.NextLayerType())
+}
+
 func init() {
 	// By default, gopacket tries to decode IPv4 or IPv6 in the
 	// MPLS next layer and fails otherwise. Instead, we also tries
 	// to decode it as Ethernet.
 	layers.MPLSPayloadDecoder = layerTypeInMplsEthOrIP
+
+	layers.EthernetTypeMetadata[35006] = layers.EnumMetadata{DecodeWith: gopacket.DecodeFunc(decodeERSpanIILayer), Name: "ERSpanII", LayerType: LayerTypeERSPanII}
 
 	// linux uses the port 8472 as default port used for vxlan protocol
 	if runtime.GOOS == "linux" {

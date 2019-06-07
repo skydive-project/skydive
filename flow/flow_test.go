@@ -834,6 +834,19 @@ func TestFlowSimpleIPv6(t *testing.T) {
 	}
 }
 
+func TestFlowERSpanII(t *testing.T) {
+	flows := flowsFromPCAP(t, "pcaptraces/erspanII.pcap", layers.LinkTypeEthernet, nil)
+	if len(flows) != 2 {
+		t.Error("ERSpan packet must generate 2 flows")
+	}
+	if flows[0].LayersPath != "Ethernet/IPv4/GRE" {
+		t.Errorf("Flow LayersPath must be Ethernet/IPv4/GRE got : %s", flows[0].LayersPath)
+	}
+	if flows[1].LayersPath != "Ethernet/IPv4/ICMPv4" {
+		t.Errorf("Flow LayersPath must be Ethernet/IPv4/ICMPv4 got : %s", flows[1].LayersPath)
+	}
+}
+
 func TestFlowIPv4DefragDisabled(t *testing.T) {
 	opt := TableOpts{ExtraTCPMetric: true, ReassembleTCP: true, IPDefrag: false}
 	flows := flowsFromPCAP(t, "pcaptraces/ipv4-fragments.pcap", layers.LinkTypeEthernet, nil, opt)
