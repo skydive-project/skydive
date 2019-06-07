@@ -127,8 +127,6 @@ func NewTable(updateEvery, expireAfter time.Duration, sender Sender, nodeTID str
 		expireAfter:       expireAfter,
 		sender:            sender,
 		nodeTID:           nodeTID,
-		ipDefragger:       NewIPDefragger(),
-		tcpAssembler:      NewTCPAssembler(),
 		appPortMap:        NewApplicationPortMapFromConfig(),
 		appTimeout:        appTimeout,
 	}
@@ -142,6 +140,14 @@ func NewTable(updateEvery, expireAfter time.Duration, sender Sender, nodeTID str
 		LayerKeyMode: t.Opts.LayerKeyMode,
 		AppPortMap:   t.appPortMap,
 		ExtraLayers:  t.Opts.ExtraLayers,
+	}
+
+	if t.Opts.IPDefrag {
+		t.ipDefragger = NewIPDefragger()
+	}
+
+	if t.Opts.ReassembleTCP {
+		t.tcpAssembler = NewTCPAssembler()
 	}
 
 	return t
@@ -502,7 +508,9 @@ func (ft *Table) Run() {
 		case now := <-updateTicker.C:
 			ft.updateAt(now)
 		case <-ft.flush:
-			ft.tcpAssembler.FlushAll()
+			if ft.Opts.ReassembleTCP {
+				ft.tcpAssembler.FlushAll()
+			}
 
 			ft.expireNow()
 			ft.flushDone <- true
@@ -518,8 +526,12 @@ func (ft *Table) Run() {
 			ft.processEBPFFlow(ebpfFlow)
 		case now := <-ctTicker.C:
 			t := now.Add(-ctDuration)
-			ft.tcpAssembler.FlushOlderThan(t)
-			ft.ipDefragger.FlushOlderThan(t)
+			if ft.tcpAssembler != nil {
+				ft.tcpAssembler.FlushOlderThan(t)
+			}
+			if ft.ipDefragger != nil {
+				ft.ipDefragger.FlushOlderThan(t)
+			}
 		case <-overFlowTicker.C:
 			if ft.removedFlows > 0 {
 				logging.GetLogger().Warningf("flow table overflow, %d flows were dropped from userspace table", ft.removedFlows)
