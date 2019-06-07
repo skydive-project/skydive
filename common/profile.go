@@ -1,3 +1,5 @@
+// +build linux
+
 /*
  * Copyright (C) 2018 Red Hat, Inc.
  *
