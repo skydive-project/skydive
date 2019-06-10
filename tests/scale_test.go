@@ -326,7 +326,7 @@ func TestScaleHA(t *testing.T) {
 	// start a capture
 	capture := types.NewCapture(g.G.V().Has("Type", "netns", "Name", "vm1").Out().Has("Name", "eth0").String(), "")
 	capture.Type = "pcap"
-	if err = client.Create("capture", capture); err != nil {
+	if err = client.Create("capture", capture, nil); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
@@ -487,7 +487,7 @@ func TestScaleHA(t *testing.T) {
 	// restart a capture on all eth0
 	capture = types.NewCapture(g.G.V().Has("Type", "netns", "Name", "vm1").Out().Has("Name", "eth0").String(), "")
 	capture.Type = "pcap"
-	if err = client.Create("capture", capture); err != nil {
+	if err = client.Create("capture", capture, nil); err != nil {
 		t.Fatal(err)
 	}
 

@@ -100,7 +100,7 @@ func (c *CaptureAPIHandler) Decorate(resource types.Resource) {
 }
 
 // Create tests that resource GremlinQuery does not exists already
-func (c *CaptureAPIHandler) Create(r types.Resource) error {
+func (c *CaptureAPIHandler) Create(r types.Resource, opts *CreateOptions) error {
 	capture := r.(*types.Capture)
 
 	// check capabilities
@@ -138,7 +138,7 @@ func (c *CaptureAPIHandler) Create(r types.Resource) error {
 		}
 	}
 
-	return c.BasicAPIHandler.Create(r)
+	return c.BasicAPIHandler.Create(r, opts)
 }
 
 // RegisterCaptureAPI registers an new resource, capture

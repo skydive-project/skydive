@@ -104,7 +104,7 @@ var CaptureCreate = &cobra.Command{
 			exitOnError(err)
 		}
 
-		if err := client.Create("capture", &capture); err != nil {
+		if err := client.Create("capture", &capture, nil); err != nil {
 			exitOnError(err)
 		}
 		printJSON(&capture)

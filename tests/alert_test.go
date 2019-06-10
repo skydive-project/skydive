@@ -190,7 +190,7 @@ func TestAlertWebhook(t *testing.T) {
 			al.Expression = "G.V().Has('Name', 'alert-ns-webhook', 'Type', 'netns')"
 			al.Action = fmt.Sprintf("http://%s:8080/", agent1IP)
 
-			if err = c.client.Create("alert", al); err != nil {
+			if err = c.client.Create("alert", al, nil); err != nil {
 				return fmt.Errorf("Failed to create alert: %s", err.Error())
 			}
 
@@ -264,7 +264,7 @@ func TestAlertScript(t *testing.T) {
 			al.Expression = "G.V().Has('Name', 'alert-ns-script', 'Type', 'netns')"
 			al.Action = "file://" + tmpfile.Name()
 
-			if err = c.client.Create("alert", al); err != nil {
+			if err = c.client.Create("alert", al, nil); err != nil {
 				return fmt.Errorf("Failed to create alert: %s", err.Error())
 			}
 
@@ -325,7 +325,7 @@ func TestAlertWithTimer(t *testing.T) {
 			al.Expression = "G.V().Has('Name', 'alert-ns-timer', 'Type', 'netns')"
 			al.Trigger = "duration:+1s"
 
-			if err = c.client.Create("alert", al); err != nil {
+			if err = c.client.Create("alert", al, nil); err != nil {
 				return fmt.Errorf("Failed to create alert: %s", err.Error())
 			}
 
@@ -397,7 +397,7 @@ func TestMultipleTriggering(t *testing.T) {
 			al = types.NewAlert()
 			al.Expression = "G.V().Has('Name', 'alert-lo-down', 'Type', 'netns').Out('Name','lo').Values('State')"
 
-			if err = c.client.Create("alert", al); err != nil {
+			if err = c.client.Create("alert", al, nil); err != nil {
 				return fmt.Errorf("Failed to create alert: %s", err.Error())
 			}
 			t.Logf("alert created with UUID : %s", al.UUID)

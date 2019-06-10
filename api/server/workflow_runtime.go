@@ -115,7 +115,7 @@ func NewWorkflowRuntime(g *graph.Graph, tr *traversal.GremlinTraversalParser, se
 			if err := json.Unmarshal([]byte(data), res); err != nil {
 				return runtime.MakeCustomError("UnmarshalError", err.Error())
 			}
-			if err := handler.Create(res); err != nil {
+			if err := handler.Create(res, nil); err != nil {
 				return runtime.MakeCustomError("CreateError", err.Error())
 			}
 			b, _ := json.Marshal(res)

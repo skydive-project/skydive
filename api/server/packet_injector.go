@@ -46,13 +46,13 @@ func (pirh *packetInjectorResourceHandler) New() types.Resource {
 }
 
 // Create allocates a new packet injection
-func (pi *PacketInjectorAPI) Create(r types.Resource) error {
+func (pi *PacketInjectorAPI) Create(r types.Resource, opts *CreateOptions) error {
 	ppr := r.(*types.PacketInjection)
 
 	if err := pi.validateRequest(ppr); err != nil {
 		return err
 	}
-	e := pi.BasicAPIHandler.Create(ppr)
+	e := pi.BasicAPIHandler.Create(ppr, opts)
 	return e
 }
 

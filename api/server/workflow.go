@@ -50,7 +50,7 @@ func (w *WorkflowResourceHandler) Name() string {
 }
 
 // Create tests whether the resource is a duplicate or is unique
-func (w *WorkflowAPIHandler) Create(r types.Resource) error {
+func (w *WorkflowAPIHandler) Create(r types.Resource, opts *CreateOptions) error {
 	workflow := r.(*types.Workflow)
 
 	for _, resource := range w.Index() {
@@ -60,7 +60,7 @@ func (w *WorkflowAPIHandler) Create(r types.Resource) error {
 		}
 	}
 
-	return w.BasicAPIHandler.Create(workflow)
+	return w.BasicAPIHandler.Create(workflow, opts)
 }
 
 func (w *WorkflowAPIHandler) loadWorkflowAsset(name string) (*types.Workflow, error) {

@@ -122,7 +122,7 @@ func (s *Server) createStartupCapture(ch *api.CaptureAPIHandler) error {
 	logging.GetLogger().Infof("Invoke capturing from the startup with gremlin: %s and BPF: %s", gremlin, bpf)
 	capture := types.NewCapture(gremlin, bpf)
 	capture.Type = "pcap"
-	return ch.Create(capture)
+	return ch.Create(capture, nil)
 }
 
 // Start the analyzer server

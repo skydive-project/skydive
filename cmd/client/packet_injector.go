@@ -50,7 +50,7 @@ var PacketInjectionCreate = &cobra.Command{
 	Long:         "create packet injection",
 	SilenceUsage: false,
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
+		crudClient, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			exitOnError(err)
 		}
@@ -96,7 +96,7 @@ var PacketInjectionCreate = &cobra.Command{
 			exitOnError(err)
 		}
 
-		if err := client.Create("injectpacket", &packet); err != nil {
+		if err := crudClient.Create("injectpacket", &packet, nil); err != nil {
 			exitOnError(err)
 		}
 

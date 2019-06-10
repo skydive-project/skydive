@@ -464,7 +464,7 @@ func RunTest(t *testing.T, test *Test) {
 		capture.PollingInterval = tc.pollingInterval
 		capture.Target = tc.target
 		capture.TargetType = tc.targetType
-		if err = client.Create("capture", capture); err != nil {
+		if err = client.Create("capture", capture, nil); err != nil {
 			t.Fatal(err)
 		}
 		captures = append(captures, capture)
@@ -757,7 +757,7 @@ func RunTest(t *testing.T, test *Test) {
 }
 
 func pingRequest(t *testing.T, context *TestContext, packet *types.PacketInjection) error {
-	return context.client.Create("injectpacket", packet)
+	return context.client.Create("injectpacket", packet, nil)
 }
 
 func ping(t *testing.T, context *TestContext, ipVersion int, src, dst g.QueryString, count uint64, id uint16) error {

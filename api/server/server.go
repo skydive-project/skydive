@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	yaml "gopkg.in/yaml.v2"
 
@@ -152,7 +153,15 @@ func (a *Server) RegisterAPIHandler(handler Handler, authBackend shttp.Authentic
 					return
 				}
 
-				if err := handler.Create(resource); err != nil {
+				var createOpts CreateOptions
+				if ttlHeader := r.Header.Get("X-Resource-TTL"); ttlHeader != "" {
+					if createOpts.TTL, err = time.ParseDuration(ttlHeader); err != nil {
+						writeError(w, http.StatusBadRequest, fmt.Errorf("invalid ttl: %s", err))
+						return
+					}
+				}
+
+				if err := handler.Create(resource, &createOpts); err != nil {
 					writeError(w, http.StatusBadRequest, err)
 					return
 				}
