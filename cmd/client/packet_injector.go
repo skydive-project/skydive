@@ -19,10 +19,12 @@ package client
 
 import (
 	"os"
+	"time"
 
 	"github.com/skydive-project/skydive/api/client"
 	api "github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/cmd/injector"
+	"github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/validator"
 
@@ -96,7 +98,16 @@ var PacketInjectionCreate = &cobra.Command{
 			exitOnError(err)
 		}
 
-		if err := crudClient.Create("injectpacket", &packet, nil); err != nil {
+		var createOpts *http.CreateOptions
+		if packet.Pcap == nil {
+			ttl := 5 * time.Second
+			if packet.Interval != 0 {
+				ttl = time.Duration(packet.Interval*packet.Count)*time.Millisecond + 5*time.Second
+			}
+			createOpts = &http.CreateOptions{TTL: ttl}
+		}
+
+		if err := crudClient.Create("injectpacket", &packet, createOpts); err != nil {
 			exitOnError(err)
 		}
 
