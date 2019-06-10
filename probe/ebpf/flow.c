@@ -48,6 +48,13 @@ MAP(u64_config_values) {
 	.max_entries = 1,
 };
 
+MAP(stats_map) {
+        .type = BPF_MAP_TYPE_HASH,
+        .key_size = sizeof(__u32),
+        .value_size = sizeof(__u64),
+        .max_entries = 1,
+};
+
 MAP(flow_table) {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(__u64),
@@ -429,7 +436,16 @@ int bpf_flow_table(struct __sk_buff *skb)
 		__sync_fetch_and_add(&flow.start, tm);
 		__sync_fetch_and_add(&flow.last, tm);
 
-		bpf_map_update_element(&flow_table, &flow.key, &flow, BPF_ANY);
+		if (bpf_map_update_element(&flow_table, &flow.key, &flow, BPF_ANY) == -1) {
+			__u32 stats_key = 0;
+			__u64 stats_update_val = 1;
+			__u64 *stats_val = bpf_map_lookup_element(&stats_map,&stats_key);
+			if (stats_val == NULL) {
+				bpf_map_update_element(&stats_map, &stats_key, &stats_update_val, BPF_ANY);
+			} else {
+				__sync_fetch_and_add(stats_val, stats_update_val);
+			}
+		}
 	}
 
 	return 0;

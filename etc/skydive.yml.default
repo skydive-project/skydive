@@ -280,6 +280,11 @@ agent:
       # port_min: 6365
       # port_max: 6375
 
+    ebpf:
+      # Period in seconds representing the delay between two successive scans 
+      # of the kernel table in ebpf mode for new flow updates. Default interval is 10 seconds
+      # kernel_scan_interval: 10
+
   capture:
     # Period in second to get capture stats from the probe. Note this
     # stats_update: 1
@@ -480,6 +485,9 @@ flow:
 
   # Protocol to use to send flows to the analyzer: websocket or udp
   # protocol: udp
+
+  # Maximum size of the flow table in userspace
+  # max_entries: 500000
 
   # Define the layer key mode used by default for captures. The key mode defines
   # the layers used to identify a unique flow.

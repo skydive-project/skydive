@@ -83,6 +83,7 @@ func init() {
 	cfg.SetDefault("agent.flow.pcapsocket.bind_address", "127.0.0.1")
 	cfg.SetDefault("agent.flow.pcapsocket.min_port", 8100)
 	cfg.SetDefault("agent.flow.pcapsocket.max_port", 8132)
+	cfg.SetDefault("agent.flow.ebpf.kernel_scan_interval", 10)
 	cfg.SetDefault("agent.flow.sflow.bind_address", "127.0.0.1")
 	cfg.SetDefault("agent.flow.sflow.port_min", 6345)
 	cfg.SetDefault("agent.flow.sflow.port_max", 6355)
@@ -131,6 +132,7 @@ func init() {
 
 	cfg.SetDefault("flow.expire", 600)
 	cfg.SetDefault("flow.update", 60)
+	cfg.SetDefault("flow.max_entries", 500000)
 	cfg.SetDefault("flow.protocol", "udp")
 	cfg.SetDefault("flow.application_timeout.arp", 10)
 	cfg.SetDefault("flow.application_timeout.dns", 10)
