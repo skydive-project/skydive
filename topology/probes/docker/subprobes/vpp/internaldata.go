@@ -22,6 +22,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/topology/probes/docker"
 )
 
 // vppData is container for date extracted from VPP using CLI (or binary API)
@@ -78,14 +79,9 @@ func (p *Subprobe) volumes(info *types.ContainerJSON) map[string]string {
 
 // containerName extracts container name from metadata of container root graph node
 func (p *Subprobe) containerName(node *graph.Node) (string, error) {
-	dockerInfo, ok := node.Metadata["Docker"].(graph.Metadata)
+	dockerInfo, ok := node.Metadata["Docker"].(docker.Metadata)
 	if !ok {
 		return "", fmt.Errorf("no Docker data found")
 	}
-	containerName, ok := dockerInfo["ContainerName"].(string)
-	if !ok || containerName == "" {
-		return "", fmt.Errorf("no ContainerName data found")
-
-	}
-	return containerName, nil
+	return dockerInfo.ContainerName, nil
 }

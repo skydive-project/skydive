@@ -37,7 +37,6 @@ import (
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/probes/docker/subprobes"
-	"github.com/skydive-project/skydive/topology/probes/docker/subprobes/vpp"
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
 	sversion "github.com/skydive-project/skydive/version"
 )
@@ -316,15 +315,7 @@ func (probe *Probe) Stop() {
 }
 
 // NewProbe creates a new topology Docker probe
-func NewProbe(nsProbe *ns.Probe, dockerURL, netnsRunPath string) (*Probe, error) {
-	// create subprobes
-	subprobes := make([]subprobes.Subprobe, 0)
-	if vpp, err := vpp.NewSubprobe(nsProbe.Graph); err != nil {
-		logging.GetLogger().Warningf("VPP subprobe in docker probe will be disabled because its creation failed: %v", err) // let's not disable whole Docker probe(by returning error) because of VPP subprobe failure
-	} else {
-		subprobes = append(subprobes, vpp)
-	}
-
+func NewProbe(nsProbe *ns.Probe, dockerURL, netnsRunPath string, subprobes []subprobes.Subprobe) (*Probe, error) {
 	probe := &Probe{
 		Probe:        nsProbe,
 		url:          dockerURL,
