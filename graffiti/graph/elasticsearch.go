@@ -36,21 +36,9 @@ const graphElementMapping = `
 		{
 			"strings": {
 				"path_match": "*",
-				"path_unmatch": "*.Extra.*",
 				"match_mapping_type": "string",
 				"mapping": {
 					"type": "keyword"
-				}
-			}
-		},
-		{
-			"extra": {
-				"path_match": "*.Extra",
-				"mapping": {
-					"type": "object",
-					"enabled": false,
-					"store": true,
-					"index": false
 				}
 			}
 		},
