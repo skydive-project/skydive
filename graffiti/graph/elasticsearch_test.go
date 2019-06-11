@@ -96,13 +96,12 @@ func newElasticsearchGraph(t *testing.T) (*Graph, *fakeESClient) {
 	client := &fakeESClient{
 		indices: make(map[string]*fakeESIndex),
 	}
-	b, err := NewElasticSearchBackendFromClient(client, nil)
-	client.searchResult.Hits = &elastic.SearchHits{}
-
+	b, err := newElasticSearchBackendFromClient(client, es.Index{Name: "topology_live"}, es.Index{Name: "topology_archive"}, nil)
 	if err != nil {
 		t.Error(err)
 	}
 
+	client.searchResult.Hits = &elastic.SearchHits{}
 	return NewGraph("host1", b, common.UnknownService), client
 }
 
@@ -130,7 +129,7 @@ func TestElasticsearchNode(t *testing.T) {
 		},
 	}
 
-	live := client.indices[topologyLiveIndex.Name].entries
+	live := client.indices["topology_live"].entries
 	if diff := deep.Equal(live, expectedLive); diff != nil {
 		t.Fatalf("Expected elasticsearch live records not found: %s", diff)
 	}
@@ -150,7 +149,7 @@ func TestElasticsearchNode(t *testing.T) {
 			"UpdatedAt": float64(1000),
 		},
 	}
-	archive := client.indices[topologyArchiveIndex.Name].entries
+	archive := client.indices["topology_archive"].entries
 	if diff := deep.Equal(archive, expectedArchive); diff != nil {
 		t.Fatalf("Expected elasticsearch archived records not found: %s", diff)
 	}
@@ -172,7 +171,7 @@ func TestElasticsearchNode(t *testing.T) {
 			"UpdatedAt": float64(3000),
 		},
 	}
-	live = client.indices[topologyLiveIndex.Name].entries
+	live = client.indices["topology_live"].entries
 	if diff := deep.Equal(live, expectedLive); diff != nil {
 		t.Fatalf("Expected elasticsearch live records not found: %s", diff)
 	}
@@ -205,7 +204,7 @@ func TestElasticsearchNode(t *testing.T) {
 			"UpdatedAt": float64(2000),
 		},
 	}
-	archive = client.indices[topologyArchiveIndex.Name].entries
+	archive = client.indices["topology_archive"].entries
 	if diff := deep.Equal(archive, expectedArchive); diff != nil {
 		t.Fatalf("Expected elasticsearch archived records not found: %s", diff)
 	}
@@ -214,7 +213,7 @@ func TestElasticsearchNode(t *testing.T) {
 	// archive
 	g.delNode(node, Unix(4, 0))
 
-	if _, ok := client.indices[topologyLiveIndex.Name].entries["aaa"]; ok {
+	if _, ok := client.indices["topology_live"].entries["aaa"]; ok {
 		t.Fatal("The entry should not be in the index after deletion")
 	}
 
@@ -260,7 +259,7 @@ func TestElasticsearchNode(t *testing.T) {
 			"UpdatedAt": float64(3000),
 		},
 	}
-	archive = client.indices[topologyArchiveIndex.Name].entries
+	archive = client.indices["topology_archive"].entries
 	if diff := deep.Equal(archive, expectedArchive); diff != nil {
 		t.Fatalf("Expected elasticsearch archived records not found: %s", diff)
 	}
@@ -322,7 +321,7 @@ func TestElasticsearchEdge(t *testing.T) {
 		},
 	}
 
-	live := client.indices[topologyLiveIndex.Name].entries
+	live := client.indices["topology_live"].entries
 	if diff := deep.Equal(live, expectedLive); diff != nil {
 		t.Fatalf("Expected elasticsearch live records not found: %s", diff)
 	}
@@ -344,14 +343,14 @@ func TestElasticsearchEdge(t *testing.T) {
 			"UpdatedAt": float64(1000),
 		},
 	}
-	archive := client.indices[topologyArchiveIndex.Name].entries
+	archive := client.indices["topology_archive"].entries
 	if diff := deep.Equal(archive, expectedArchive); diff != nil {
 		t.Fatalf("Expected elasticsearch archived records not found: %s", diff)
 	}
 
 	g.delEdge(edge, Unix(3, 0))
 
-	if _, ok := client.indices[topologyLiveIndex.Name].entries["eee"]; ok {
+	if _, ok := client.indices["topology_live"].entries["eee"]; ok {
 		t.Fatal("The entry should not be in the index after deletion")
 	}
 
@@ -389,7 +388,7 @@ func TestElasticsearchEdge(t *testing.T) {
 			"UpdatedAt": float64(1000),
 		},
 	}
-	archive = client.indices[topologyArchiveIndex.Name].entries
+	archive = client.indices["topology_archive"].entries
 	if diff := deep.Equal(archive, expectedArchive); diff != nil {
 		t.Fatalf("Expected elasticsearch archived records not found: %s", diff)
 	}

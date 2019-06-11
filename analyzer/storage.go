@@ -61,7 +61,7 @@ func newGraphBackendFromConfig(etcdClient *etcd.Client) (graph.Backend, error) {
 	switch driver {
 	case "elasticsearch":
 		cfg := NewESConfig(backend)
-		return graph.NewElasticSearchBackendFromConfig(cfg, etcdClient)
+		return graph.NewElasticSearchBackendFromConfig(cfg, nil, etcdClient)
 	case "memory":
 		// cached memory will be used
 		return nil, nil
