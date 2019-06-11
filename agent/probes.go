@@ -144,7 +144,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 // dockerSubprobes create all docker related subprobes
 func dockerSubprobes(nsProbe *netns.Probe) []subprobes.Subprobe {
 	subprobes := make([]subprobes.Subprobe, 0)
-	if vpp, err := docker_vpp.NewSubprobe(nsProbe.Graph); err != nil {
+	if vpp, err := docker_vpp.NewSubprobe(nsProbe); err != nil {
 		logging.GetLogger().Warningf("VPP subprobe in docker probe will be disabled because its creation failed: %v", err)
 	} else {
 		subprobes = append(subprobes, vpp)

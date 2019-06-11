@@ -17,16 +17,16 @@
 package vpp
 
 import (
-	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/probes/docker/subprobes"
+	"github.com/skydive-project/skydive/topology/probes/netns"
 )
 
 // DummySubprobe is VPP subprobe that does nothing. It is used in cases when build tags prohibit to use real VPP subprobe
 type DummySubprobe struct{}
 
 // NewSubprobe creates a new topology Docker subprobe
-func NewSubprobe(g *graph.Graph) (*DummySubprobe, error) {
+func NewSubprobe(dockerNSProbe *netns.Probe) (*DummySubprobe, error) {
 	logging.GetLogger().Debug("Dummy VPP probe creating...")
 	return &DummySubprobe{}, nil
 }

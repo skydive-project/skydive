@@ -32,6 +32,7 @@ import (
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/probes/docker/subprobes"
+	"github.com/skydive-project/skydive/topology/probes/netns"
 )
 
 // Subprobe describes a VPP topology graph enhancements
@@ -43,11 +44,11 @@ type Subprobe struct {
 }
 
 // NewSubprobe creates a new topology Docker subprobe
-func NewSubprobe(g *graph.Graph) (*Subprobe, error) {
+func NewSubprobe(dockerNSProbe *netns.Probe) (*Subprobe, error) {
 	logging.GetLogger().Debug("VPP probe creating...")
 	dockerProbe := &Subprobe{
 		containerListChan: make(chan containerListChange, 100),
-		graph:             g,
+		graph:             dockerNSProbe.Graph,
 	}
 
 	return dockerProbe, nil
