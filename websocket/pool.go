@@ -233,6 +233,9 @@ func (s *Pool) GetSpeakersByType(serviceType common.ServiceType) (speakers []Spe
 
 // GetSpeakerByRemoteHost returns the Speaker for the given remote host.
 func (s *Pool) GetSpeakerByRemoteHost(host string) Speaker {
+	s.RLock()
+	defer s.RUnlock()
+
 	for _, c := range s.speakers {
 		if c.GetRemoteHost() == host {
 			return c
