@@ -49,8 +49,7 @@ metadata:
 data:
   SKYDIVE_ANALYZER_FLOW_BACKEND: elasticsearch
   SKYDIVE_ANALYZER_TOPOLOGY_BACKEND: elasticsearch
-  SKYDIVE_ANALYZER_TOPOLOGY_PROBES: ""
-  SKYDIVE_ETCD_LISTEN: 0.0.0.0:12379
+  SKYDIVE_ANALYZER_TOPOLOGY_PROBES: k8s
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -60,6 +59,7 @@ metadata:
   name: skydive-agent-config
 data:
   SKYDIVE_AGENT_TOPOLOGY_PROBES: runc docker
+  SKYDIVE_AGENT_LISTEN: 127.0.0.1:8081
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -79,10 +79,6 @@ spec:
         image: skydive/skydive
         args:
         - analyzer
-        - --listen=0.0.0.0:8082
-        env:
-        - name: SKYDIVE_ANALYZER_TOPOLOGY_PROBES
-          value: k8s
         ports:
         - containerPort: 8082
         - containerPort: 8082
@@ -102,6 +98,11 @@ spec:
           initialDelaySeconds: 20
           periodSeconds: 10
           failureThreshold: 10
+        env:
+        - name: SKYDIVE_ANALYZER_LISTEN
+          value: "0.0.0.0:$(SKYDIVE_ANALYZER_SERVICE_PORT_API)"
+        - name: SKYDIVE_ETCD_LISTEN
+          value: "0.0.0.0:$(SKYDIVE_ANALYZER_SERVICE_PORT_ETCD)"
         envFrom:
         - configMapRef:
             name: skydive-analyzer-config
@@ -114,6 +115,9 @@ spec:
           failureThreshold: 3
       - name: skydive-elasticsearch
         image: elasticsearch:5
+        args:
+        - -E
+        - "http.port=9200"
         ports:
         - containerPort: 9200
 ---
