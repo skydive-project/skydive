@@ -89,6 +89,7 @@ type Table struct {
 	flowOpts          Opts
 	appPortMap        *ApplicationPortMap
 	appTimeout        map[string]int64
+	removedFlows      int
 }
 
 // OperationType operation type of a Flow in a flow table
@@ -122,7 +123,7 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, nodeTID string, op
 		// convert seconds to milleseconds
 		appTimeout[strings.ToUpper(key)] = int64(1000 * config.GetConfig().GetInt("flow.application_timeout."+key))
 	}
-	LRU, _ := simplelru.NewLRU(500000, nil)
+	LRU, _ := simplelru.NewLRU(config.GetConfig().GetInt("flow.max_entries"), nil)
 	t := &Table{
 		packetSeqChan:     make(chan *PacketSequence, 1000),
 		flowChanOperation: make(chan *Operation, 1000),
@@ -152,7 +153,6 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, nodeTID string, op
 		ExtraLayers:  t.Opts.ExtraLayers,
 	}
 
-	t.updateVersion = 0
 	return t
 }
 
@@ -198,13 +198,17 @@ func (ft *Table) getOrCreateFlow(key string) (*Flow, bool) {
 	}
 
 	new := NewFlow()
-	ft.table.Add(key, new)
+	if ft.table.Add(key, new) {
+		ft.removedFlows++
+	}
 	return new, true
 }
 
 func (ft *Table) replaceFlow(key string, f *Flow) *Flow {
 	prev, _ := ft.table.Get(key)
-	ft.table.Add(key, f)
+	if ft.table.Add(key, f) {
+		ft.removedFlows++
+	}
 	if prev == nil {
 		return nil
 	}
@@ -464,7 +468,9 @@ func (ft *Table) processEBPFFlow(ebpfFlow *EBPFFlow, nfl *Flow) {
 	if !found {
 		keys, flows := ft.newFlowFromEBPF(ebpfFlow, key)
 		for i := range keys {
-			ft.table.Add(keys[i], flows[i])
+			if ft.table.Add(keys[i], flows[i]) {
+				ft.removedFlows++
+			}
 		}
 		return
 	}
@@ -518,6 +524,9 @@ func (ft *Table) Run() {
 	nowTicker := time.NewTicker(time.Second * 1)
 	defer nowTicker.Stop()
 
+	overFlowTicker := time.NewTicker(time.Second * 10)
+	defer overFlowTicker.Stop()
+
 	ph := Flow{} // placeholder to avoid memory allocation upon update
 	ph.TCPMetric = &TCPMetric{}
 	ph.Metric = &FlowMetric{}
@@ -552,6 +561,11 @@ func (ft *Table) Run() {
 			t := now.Add(-ctDuration)
 			ft.tcpAssembler.FlushOlderThan(t)
 			ft.ipDefragger.FlushOlderThan(t)
+		case <-overFlowTicker.C:
+			if ft.removedFlows > 0 {
+				logging.GetLogger().Warningf("flow table overflow, %d flows were dropped from userspace table", ft.removedFlows)
+				ft.removedFlows = 0
+			}
 		}
 	}
 }

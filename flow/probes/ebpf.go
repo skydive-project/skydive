@@ -33,6 +33,7 @@ import (
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
@@ -45,9 +46,7 @@ import (
 import "C"
 
 const (
-	BPF_ANY       = 0
-	FLOW_TABLE_SZ = 500000
-	ebpfUpdate    = 10 * time.Second
+	BPF_ANY = 0
 )
 
 // EBPFProbe the eBPF probe
@@ -77,6 +76,8 @@ func (p *EBPFProbe) run() {
 	_, flowEBPFChan, _ := p.flowTable.Start()
 	defer p.flowTable.Stop()
 
+	ebpfUpdate := time.Duration(config.GetConfig().GetInt("agent.flow.ebpf.kernel_scan_interval")) * time.Second
+	flowTableSz := config.GetConfig().GetInt("flow.max_entries")
 	var startKTimeNs int64
 	var start time.Time
 
@@ -91,6 +92,17 @@ func (p *EBPFProbe) run() {
 	for {
 		select {
 		case now := <-updateTicker.C:
+			if statsMap := p.module.Map("stats_map"); statsMap != nil {
+				var statsKey uint32
+				var statsVal int64
+
+				if p.module.LookupElement(statsMap, unsafe.Pointer(&statsKey), unsafe.Pointer(&statsVal)) == nil {
+					if statsVal > 0 {
+						logging.GetLogger().Warningf("flow table overflow, %d flows were dropped from kernel table", statsVal)
+					}
+					p.module.DeleteElement(statsMap, unsafe.Pointer(&statsKey))
+				}
+			}
 			// try to get start monotonic time
 			if startKTimeNs == 0 {
 				cmap := p.module.Map("u64_config_values")
@@ -133,7 +145,7 @@ func (p *EBPFProbe) run() {
 				flowEBPFChan <- &ebpfFlows[nextAvailablePtr]
 				nextAvailablePtr = (nextAvailablePtr + 1) % flowPoolSize
 				flowsRead++
-				if flowsRead == FLOW_TABLE_SZ {
+				if flowsRead == flowTableSz {
 					break
 				}
 			}
