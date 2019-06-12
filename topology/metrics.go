@@ -1,4 +1,4 @@
-//go:generate go run ../scripts/gendecoder.go
+//go:generate go run ../scripts/gendecoder.go -output metrics_gendecoder.go
 
 /*
  * Copyright (C) 2016 Red Hat, Inc.
