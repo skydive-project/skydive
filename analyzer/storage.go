@@ -61,7 +61,36 @@ func newGraphBackendFromConfig(etcdClient *etcd.Client) (graph.Backend, error) {
 	switch driver {
 	case "elasticsearch":
 		cfg := NewESConfig(backend)
-		return graph.NewElasticSearchBackendFromConfig(cfg, etcdClient)
+		dynamicTemplates := map[string]interface{}{
+			"extra": map[string]interface{}{
+				"path_match": "*.Extra",
+				"mapping": map[string]interface{}{
+					"type":    "object",
+					"enabled": false,
+					"store":   true,
+					"index":   false,
+				},
+			},
+			"openflow_actions": map[string]interface{}{
+				"path_match": "*.Actions",
+				"mapping": map[string]interface{}{
+					"type":    "object",
+					"enabled": false,
+					"store":   true,
+					"index":   false,
+				},
+			},
+			"openflow_filters": map[string]interface{}{
+				"path_match": "*.Filters",
+				"mapping": map[string]interface{}{
+					"type":    "object",
+					"enabled": false,
+					"store":   true,
+					"index":   false,
+				},
+			},
+		}
+		return graph.NewElasticSearchBackendFromConfig(cfg, dynamicTemplates, etcdClient)
 	case "memory":
 		// cached memory will be used
 		return nil, nil

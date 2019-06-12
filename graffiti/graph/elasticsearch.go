@@ -36,21 +36,9 @@ const graphElementMapping = `
 		{
 			"strings": {
 				"path_match": "*",
-				"path_unmatch": "*.Extra.*",
 				"match_mapping_type": "string",
 				"mapping": {
 					"type": "keyword"
-				}
-			}
-		},
-		{
-			"extra": {
-				"path_match": "*.Extra",
-				"mapping": {
-					"type": "object",
-					"enabled": false,
-					"store": true,
-					"index": false
 				}
 			}
 		},
@@ -99,25 +87,14 @@ const (
 	edgeType = "edge"
 )
 
-var topologyLiveIndex = es.Index{
-	Name:    "topology_live",
-	Type:    "graph_element",
-	Mapping: graphElementMapping,
-}
-
-var topologyArchiveIndex = es.Index{
-	Name:      "topology_archive",
-	Type:      "graph_element",
-	Mapping:   graphElementMapping,
-	RollIndex: true,
-}
-
 // ElasticSearchBackend describes a persistent backend based on ElasticSearch
 type ElasticSearchBackend struct {
 	Backend
 	client       es.ClientInterface
 	prevRevision map[Identifier]*rawData
 	election     common.MasterElection
+	liveIndex    es.Index
+	archiveIndex es.Index
 }
 
 // TimedSearchQuery describes a search query within a time slice and metadata filters
@@ -189,7 +166,7 @@ func (b *ElasticSearchBackend) archive(raw *rawData, at Time) error {
 		return fmt.Errorf("Error while adding graph element %s: %s", raw.ID, err)
 	}
 
-	if err := b.client.BulkIndex(topologyArchiveIndex, "", json.RawMessage(data)); err != nil {
+	if err := b.client.BulkIndex(b.archiveIndex, "", json.RawMessage(data)); err != nil {
 		return fmt.Errorf("Error while archiving %v: %s", raw, err)
 	}
 	return nil
@@ -206,7 +183,7 @@ func (b *ElasticSearchBackend) indexNode(n *Node) error {
 		return fmt.Errorf("Error while adding node %s: %s", n.ID, err)
 	}
 
-	if err := b.client.BulkIndex(topologyLiveIndex, string(n.ID), json.RawMessage(data)); err != nil {
+	if err := b.client.BulkIndex(b.liveIndex, string(n.ID), json.RawMessage(data)); err != nil {
 		return fmt.Errorf("Error while adding node %s: %s", n.ID, err)
 	}
 	b.prevRevision[n.ID] = raw
@@ -228,7 +205,7 @@ func (b *ElasticSearchBackend) NodeDeleted(n *Node) error {
 
 	err = b.archive(raw, n.DeletedAt)
 
-	if errBulk := b.client.BulkDelete(topologyLiveIndex, string(n.ID)); err != nil {
+	if errBulk := b.client.BulkDelete(b.liveIndex, string(n.ID)); err != nil {
 		err = fmt.Errorf("Error while deleting node %s: %s", n.ID, errBulk)
 	}
 
@@ -266,7 +243,7 @@ func (b *ElasticSearchBackend) indexEdge(e *Edge) error {
 		return fmt.Errorf("Error while adding edge %s: %s", e.ID, err)
 	}
 
-	if err := b.client.BulkIndex(topologyLiveIndex, string(e.ID), json.RawMessage(data)); err != nil {
+	if err := b.client.BulkIndex(b.liveIndex, string(e.ID), json.RawMessage(data)); err != nil {
 		return fmt.Errorf("Error while indexing edge %s: %s", e.ID, err)
 	}
 	b.prevRevision[e.ID] = raw
@@ -288,7 +265,7 @@ func (b *ElasticSearchBackend) EdgeDeleted(e *Edge) error {
 
 	err = b.archive(raw, e.DeletedAt)
 
-	if errBulk := b.client.BulkDelete(topologyLiveIndex, string(e.ID)); err != nil {
+	if errBulk := b.client.BulkDelete(b.liveIndex, string(e.ID)); err != nil {
 		err = fmt.Errorf("Error while deleting edge %s: %s", e.ID, errBulk)
 	}
 
@@ -367,7 +344,7 @@ func (b *ElasticSearchBackend) Query(typ string, tsq *TimedSearchQuery) (sr *ela
 
 	mustQuery := elastic.NewBoolQuery().Must(fltrs...)
 
-	return b.client.Search("graph_element", mustQuery, tsq.SearchQuery, topologyLiveIndex.Alias(), topologyArchiveIndex.IndexWildcard())
+	return b.client.Search("graph_element", mustQuery, tsq.SearchQuery, b.liveIndex.Alias(), b.archiveIndex.IndexWildcard())
 }
 
 // searchNodes search nodes matching the query
@@ -535,7 +512,7 @@ func (b *ElasticSearchBackend) flushGraph() error {
 		"now": TimeUTC().Unix(),
 	})
 
-	return b.client.UpdateByScript("graph_element", query, script, topologyLiveIndex.Alias(), topologyArchiveIndex.IndexWildcard())
+	return b.client.UpdateByScript("graph_element", query, script, b.liveIndex.Alias(), b.archiveIndex.IndexWildcard())
 }
 
 // OnStarted implements storage client listener interface
@@ -547,12 +524,14 @@ func (b *ElasticSearchBackend) OnStarted() {
 	}
 }
 
-// NewElasticSearchBackendFromClient creates a new graph backend using the given elasticsearch
+// newElasticSearchBackendFromClient creates a new graph backend using the given elasticsearch
 // client connection
-func NewElasticSearchBackendFromClient(client es.ClientInterface, electionService common.MasterElectionService) (*ElasticSearchBackend, error) {
+func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, archiveIndex es.Index, electionService common.MasterElectionService) (*ElasticSearchBackend, error) {
 	c := &ElasticSearchBackend{
 		client:       client,
 		prevRevision: make(map[Identifier]*rawData),
+		liveIndex:    liveIndex,
+		archiveIndex: archiveIndex,
 	}
 
 	if electionService != nil {
@@ -567,10 +546,41 @@ func NewElasticSearchBackendFromClient(client es.ClientInterface, electionServic
 }
 
 // NewElasticSearchBackendFromConfig creates a new graph backend from an ES configuration structure
-func NewElasticSearchBackendFromConfig(cfg es.Config, electionService common.MasterElectionService) (*ElasticSearchBackend, error) {
+func NewElasticSearchBackendFromConfig(cfg es.Config, extraDynamicTemplates map[string]interface{}, electionService common.MasterElectionService) (*ElasticSearchBackend, error) {
+	mapping := make(map[string]interface{})
+	if err := json.Unmarshal([]byte(graphElementMapping), &mapping); err != nil {
+		return nil, err
+	}
+
+	i := 0
+	templates := make([]interface{}, len(extraDynamicTemplates))
+	for name, definition := range extraDynamicTemplates {
+		templates[i] = map[string]interface{}{name: definition}
+		i++
+	}
+	mapping["dynamic_templates"] = append(templates, mapping["dynamic_templates"].([]interface{})...)
+
+	content, err := json.Marshal(mapping)
+	if err != nil {
+		return nil, err
+	}
+
+	liveIndex := es.Index{
+		Name:    "topology_live",
+		Type:    "graph_element",
+		Mapping: string(content),
+	}
+
+	archiveIndex := es.Index{
+		Name:      "topology_archive",
+		Type:      "graph_element",
+		Mapping:   string(content),
+		RollIndex: true,
+	}
+
 	indices := []es.Index{
-		topologyLiveIndex,
-		topologyArchiveIndex,
+		liveIndex,
+		archiveIndex,
 	}
 
 	client, err := es.NewClient(indices, cfg, electionService)
@@ -578,5 +588,5 @@ func NewElasticSearchBackendFromConfig(cfg es.Config, electionService common.Mas
 		return nil, err
 	}
 
-	return NewElasticSearchBackendFromClient(client, electionService)
+	return newElasticSearchBackendFromClient(client, liveIndex, archiveIndex, electionService)
 }
