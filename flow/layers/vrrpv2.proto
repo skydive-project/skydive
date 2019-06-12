@@ -1,0 +1,22 @@
+syntax = "proto3";
+package layers;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.protosizer_all) = true;
+option (gogoproto.sizer_all) = false;
+option go_package = "github.com/skydive-project/skydive/flow/layers";
+
+// LayerVRRPv2 wrapper to generate extra layer
+message VRRPv2 {
+	option (gogoproto.goproto_getters) = false;
+	
+	bytes contents = 1;
+	bytes payload = 2;
+	uint32 version = 3 [(gogoproto.casttype) = "uint8"];
+	uint32 virtual_rtr_id = 4 [(gogoproto.casttype) = "uint8", (gogoproto.customname) = "VirtualRtrID", (gogoproto.jsontag) = "VirtualRtrID,omitempty"];
+	uint32 priority = 5 [(gogoproto.casttype) = "uint8"];
+	uint32 count_ipaddr = 6 [(gogoproto.casttype) = "uint8", (gogoproto.customname) = "CountIPAddr", (gogoproto.jsontag) = "CountIPAddr,omitempty"];
+	uint32 adver_int = 7 [(gogoproto.casttype) = "uint8"];
+	uint32 checksum = 8 [(gogoproto.casttype) = "uint16"];
+}

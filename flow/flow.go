@@ -582,6 +582,11 @@ func (f *Flow) Update(packet *Packet, opts Opts) {
 	if f.TCPMetric != nil {
 		f.updateTCPMetrics(packet)
 	}
+	if (opts.ExtraLayers & DNSLayer) != 0 {
+		if layer := packet.Layer(layers.LayerTypeDNS); layer != nil {
+			f.updateDNSLayer(layer, packet.GoPacket.Metadata().CaptureInfo.Timestamp)
+		}
+	}
 }
 
 func (f *Flow) newLinkLayer(packet *Packet) error {
@@ -895,6 +900,32 @@ func (f *Flow) newTransportLayer(packet *Packet, opts Opts) error {
 	return nil
 }
 
+func (f *Flow) updateDNSLayer(layer gopacket.Layer, timestamp time.Time) error {
+	d := layer.(*layers.DNS)
+	dnsToAppend := &fl.DNS{
+		AA:           d.AA,
+		ID:           d.ID,
+		QR:           d.QR,
+		RA:           d.RA,
+		RD:           d.RD,
+		TC:           d.TC,
+		ANCount:      d.ANCount,
+		ARCount:      d.ARCount,
+		NSCount:      d.NSCount,
+		QDCount:      d.QDCount,
+		ResponseCode: d.ResponseCode.String(),
+		OpCode:       d.OpCode.String(),
+		Z:            d.Z,
+	}
+	dnsToAppend.Questions = fl.GetDNSQuestions(d.Questions)
+	dnsToAppend.Answers = fl.GetDNSRecords(d.Answers)
+	dnsToAppend.Authorities = fl.GetDNSRecords(d.Authorities)
+	dnsToAppend.Additionals = fl.GetDNSRecords(d.Additionals)
+	dnsToAppend.Timestamp = timestamp
+	f.DNS = dnsToAppend
+	return nil
+}
+
 func (f *Flow) newApplicationLayer(packet *Packet, opts Opts) error {
 	if (opts.ExtraLayers & DHCPv4Layer) != 0 {
 		if layer := packet.Layer(layers.LayerTypeDHCPv4); layer != nil {
@@ -913,33 +944,7 @@ func (f *Flow) newApplicationLayer(packet *Packet, opts Opts) error {
 
 	if (opts.ExtraLayers & DNSLayer) != 0 {
 		if layer := packet.Layer(layers.LayerTypeDNS); layer != nil {
-			d := layer.(*layers.DNS)
-			f.DNS = &fl.DNS{
-				AA:      d.AA,
-				ID:      d.ID,
-				QR:      d.QR,
-				RA:      d.RA,
-				RD:      d.RD,
-				TC:      d.TC,
-				ANCount: d.ANCount,
-				ARCount: d.ARCount,
-				NSCount: d.NSCount,
-				QDCount: d.QDCount,
-			}
-			if len(d.Questions) > 0 {
-				questions := make([]string, len(d.Questions))
-				for i, v := range d.Questions {
-					questions[i] = string(v.Name)
-				}
-				f.DNS.DNSQuestions = questions
-			}
-			if len(d.Answers) > 0 {
-				answers := make([]string, len(d.Answers))
-				for i, v := range d.Answers {
-					answers[i] = string(v.IP)
-				}
-				f.DNS.DNSAnswers = answers
-			}
+			f.updateDNSLayer(layer, packet.GoPacket.Metadata().CaptureInfo.Timestamp)
 			return nil
 		}
 	}

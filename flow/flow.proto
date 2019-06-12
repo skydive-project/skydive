@@ -20,7 +20,9 @@ syntax = "proto3";
 package flow;
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-import "flow/layers/generated.proto";
+import "flow/layers/dns.proto";
+import "flow/layers/dhcpv4.proto";
+import "flow/layers/vrrpv2.proto";
 
 import "filters/filters.proto";
 
