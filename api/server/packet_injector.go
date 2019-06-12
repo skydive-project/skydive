@@ -20,6 +20,9 @@ package server
 import (
 	"errors"
 	"fmt"
+	"net"
+
+	"github.com/skydive-project/skydive/topology"
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -77,30 +80,42 @@ func (pi *PacketInjectorAPI) validateRequest(ppr *types.PacketInjection) error {
 		if len(ips) == 0 && ppr.SrcIP == "" {
 			return errors.New("No source IP in node")
 		}
+
 		if dstNode == nil && ppr.DstIP == "" {
 			return errors.New("No destination node and IP")
 		}
-		if ppr.DstIP == "" {
+
+		dstIP := ppr.DstIP
+		if dstIP == "" {
 			ips, _ := dstNode.GetFieldStringList(ipField)
 			if len(ips) == 0 {
 				return errors.New("No destination IP in node")
 			}
+			dstIP = ips[0]
 		}
 
-		mac, _ := srcNode.GetFieldString("MAC")
-		if mac == "" && ppr.SrcMAC == "" {
+		if mac, _ := srcNode.GetFieldString("MAC"); ppr.SrcMAC == "" && mac == "" {
 			return errors.New("No source MAC in node")
 		}
-		if dstNode == nil && ppr.DstMAC == "" {
-			return errors.New("No destination node and MAC")
-		}
+
 		if ppr.DstMAC == "" {
-			mac, _ := dstNode.GetFieldString("MAC")
-			if mac == "" {
-				return errors.New("No destination MAC in node")
+			var dstMAC string
+			if nextHop, err := topology.GetNextHop(srcNode, net.ParseIP(dstIP)); err != nil || nextHop.MAC == "" {
+				if dstNode != nil {
+					if dstMAC, _ = dstNode.GetFieldString("ExtID.attached-mac"); dstMAC == "" {
+						dstMAC, _ = dstNode.GetFieldString("MAC")
+					}
+				}
+			} else {
+				dstMAC = nextHop.MAC
+			}
+
+			if _, err := net.ParseMAC(dstMAC); err != nil {
+				return errors.New("Failed to resolve destination MAC address")
 			}
 		}
 	}
+
 	return nil
 }
 
