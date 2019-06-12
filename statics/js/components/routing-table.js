@@ -64,8 +64,8 @@ Vue.component('routing-table', {
           prefix: routeObj.Prefix || "",
           protocol: routeObj.Protocol || "",
         };
-        if ('Nexthops' in routeObj) {
-          route.nhs = routeObj.Nexthops.reduce(function(nhs, nhObj) {
+        if ('NextHops' in routeObj) {
+          route.nhs = routeObj.NextHops.reduce(function(nhs, nhObj) {
             if ('IP' in nhObj)
               nhs.push(nhObj.IP);
             else
