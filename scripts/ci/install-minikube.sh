@@ -6,10 +6,10 @@ OS=linux
 ARCH=amd64
 TARGET_DIR=/usr/bin
 
-MINIKUBE_VERSION="v0.28.2"
+MINIKUBE_VERSION="v1.1.1"
 MINIKUBE_URL="https://github.com/kubernetes/minikube/releases/download/$MINIKUBE_VERSION/minikube-$OS-$ARCH"
 
-K8S_VERSION="v1.10.0"
+K8S_VERSION="v1.14.3"
 KUBECTL_URL="https://storage.googleapis.com/kubernetes-release/release/$K8S_VERSION/bin/$OS/$ARCH/kubectl"
 
 [ -z "$WITH_CALICO" ] && WITH_CALICO=false
@@ -101,10 +101,10 @@ start() {
 
         local args="--kubernetes-version $K8S_VERSION --memory 4096"
         if [ "$MINIKUBE_DRIVER" == "none" ]; then
-                args="$args --vm-driver=none --bootstrapper=localkube"
+                args="$args --vm-driver=none"
                 local driver=$(sudo docker info --format '{{print .CgroupDriver}}')
                 if [ -n "$driver" ]; then
-                        args="$args --extra-config=kubelet.CgroupDriver=$driver"
+                        args="$args --extra-config=kubelet.cgroup-driver=$driver"
                 fi
         fi
 
