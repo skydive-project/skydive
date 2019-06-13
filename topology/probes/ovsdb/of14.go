@@ -46,6 +46,7 @@ func (h *of14Handler) OnMessage(msg goloxi.Message) {
 		now := time.Now().UTC()
 		for _, entry := range t.GetEntries() {
 			var actions, writeActions []goloxi.IAction
+			var gotoTable uint8
 			for _, instruction := range entry.GetInstructions() {
 				if instruction, ok := instruction.(of14.IInstructionApplyActions); ok {
 					actions = append(actions, instruction.GetActions()...)
@@ -53,9 +54,12 @@ func (h *of14Handler) OnMessage(msg goloxi.Message) {
 				if instruction, ok := instruction.(*of14.InstructionWriteActions); ok {
 					writeActions = append(writeActions, instruction.GetActions()...)
 				}
+				if instruction, ok := instruction.(*of14.InstructionGotoTable); ok {
+					gotoTable = instruction.GetTableId()
+				}
 			}
 
-			rule, err := newOfRule(entry.Cookie, entry.TableId, entry.Priority, entry.IdleTimeout, entry.HardTimeout, entry.Importance, entry.Flags, &entry.Match, actions, writeActions)
+			rule, err := newOfRule(entry.Cookie, entry.TableId, entry.Priority, entry.IdleTimeout, entry.HardTimeout, entry.Importance, entry.Flags, &entry.Match, actions, writeActions, gotoTable)
 			if err != nil {
 				logging.GetLogger().Error(err)
 				return

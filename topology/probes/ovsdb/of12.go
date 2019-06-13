@@ -49,7 +49,7 @@ func (h *of12Handler) OnMessage(msg goloxi.Message) {
 				}
 			}
 
-			rule, err := newOfRule(entry.Cookie, entry.TableId, entry.Priority, entry.IdleTimeout, entry.HardTimeout, 0, of15.FlowModFlags(0), &entry.Match, actions, writeActions)
+			rule, err := newOfRule(entry.Cookie, entry.TableId, entry.Priority, entry.IdleTimeout, entry.HardTimeout, 0, of15.FlowModFlags(0), &entry.Match, actions, writeActions, 0)
 			if err != nil {
 				logging.GetLogger().Error(err)
 				return
