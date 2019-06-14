@@ -22,12 +22,16 @@ import (
 	"testing"
 )
 
-const dockerImageWithRunningVPP = "ligato/vpp-base:19.04"
+const (
+	dockerImageWithRunningVPP = "ligato/vpp-base:19.04"
+	vppWaitScript             = "sh -c 'retry=%d;until docker exec %s vppctl sh version || [ $retry -eq 0 ]; do retry=$(( retry-1 ));sleep 0.5s;echo \"VPP not ready-retries left \"$retry;done'"
+)
 
 func TestRunningVPPInDocker(t *testing.T) {
 	test := &Test{
 		setupCmds: []Cmd{
 			{fmt.Sprintf("docker run -d -t -i --name test-skydive-docker-running-vpp %s", dockerImageWithRunningVPP), false},
+			{fmt.Sprintf(vppWaitScript, 10, "test-skydive-docker-running-vpp"), true},
 		},
 
 		tearDownCmds: []Cmd{
@@ -37,7 +41,7 @@ func TestRunningVPPInDocker(t *testing.T) {
 		mode: Replay,
 
 		checks: []CheckFunction{func(c *CheckContext) error {
-			return assertOneEndNode(c, c.gremlin.V().Has("Type", "netns", "Manager", "docker", "Name", "test-skydive-docker-running-vpp").
+			return assertOneEndNode(c, c.gremlin.V().Has("Type", "netns", "Manager", "docker").
 				Out("Type", "vpp", "Manager", "docker"))
 		}},
 	}
@@ -49,6 +53,7 @@ func TestDockerVPPConnectingToVeth(t *testing.T) {
 	test := &Test{
 		setupCmds: []Cmd{
 			{fmt.Sprintf("docker run -d -t -i --privileged --name test-skydive-docker-vpp-to-veth %s", dockerImageWithRunningVPP), false},
+			{fmt.Sprintf(vppWaitScript, 10, "test-skydive-docker-vpp-to-veth"), true},
 			{"docker exec test-skydive-docker-vpp-to-veth ip link add name veth-container type veth peer name veth-host", true}, // creating veth tunnel (that can be used to tunnel docker container and docker host)
 			{"docker exec test-skydive-docker-vpp-to-veth ip link set dev veth-container up", true},
 			{"docker exec test-skydive-docker-vpp-to-veth ip link set dev veth-host up", true},                     // no need for this test to actually push veth-host to network namespace of docker host OS
@@ -82,6 +87,10 @@ func TestTwoVPPsConnectedUsingMemifTunnel(t *testing.T) {
 			// starting docker contrainers
 			{fmt.Sprintf("docker run -d -t -i -v /tmp/skydivetests-dockervpp-sockets/:/run/othersockets/ --name %s %s", vpp1Container, dockerImageWithRunningVPP), false},
 			{fmt.Sprintf("docker run -d -t -i -v /tmp/skydivetests-dockervpp-sockets/:/run/othersockets/ --name %s %s", vpp2Container, dockerImageWithRunningVPP), false},
+
+			// waiting for VPPs to start inside containers
+			{fmt.Sprintf(vppWaitScript, 10, vpp1Container), true},
+			{fmt.Sprintf(vppWaitScript, 10, vpp2Container), true},
 
 			// creating memif tunnel
 			{fmt.Sprintf("docker exec %s vppctl create memif socket id 1 filename /run/othersockets/another-memif.sock", vpp1Container), true},
