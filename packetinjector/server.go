@@ -35,7 +35,7 @@ const (
 // Server creates a packet injector server API
 type Server struct {
 	Graph    *graph.Graph
-	Channels *channels
+	Channels *Channels
 }
 
 func (pis *Server) stopPI(msg *ws.StructMessage) error {
@@ -102,7 +102,7 @@ func (pis *Server) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 func NewServer(graph *graph.Graph, pool ws.StructSpeakerPool) *Server {
 	s := &Server{
 		Graph:    graph,
-		Channels: &channels{Pipes: make(map[string](chan bool))},
+		Channels: &Channels{Pipes: make(map[string](chan bool))},
 	}
 	pool.AddStructMessageHandler(s, []string{Namespace})
 	return s

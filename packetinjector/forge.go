@@ -18,7 +18,6 @@
 package packetinjector
 
 import (
-	"errors"
 	"fmt"
 	"math/rand"
 	"net"
@@ -38,9 +37,7 @@ import (
 // inserted into a socket.
 type ForgedPacketGenerator struct {
 	*PacketInjectionParams
-	layerType      gopacket.LayerType
-	srcMAC, dstMAC net.HardwareAddr
-	srcIP, dstIP   net.IP
+	LayerType gopacket.LayerType
 }
 
 func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC net.HardwareAddr, TTL uint8, srcIP, dstIP net.IP, srcPort, dstPort uint16, ID uint64, data string) ([]byte, gopacket.Packet, error) {
@@ -142,7 +139,7 @@ func (f *ForgedPacketGenerator) PacketSource() chan *Packet {
 				payload = payload + common.RandString(int(f.IncrementPayload))
 			}
 
-			packetData, packet, err := forgePacket(f.Type, f.layerType, f.srcMAC, f.dstMAC, f.TTL, f.srcIP, f.dstIP, f.SrcPort, f.DstPort, id, payload)
+			packetData, packet, err := forgePacket(f.Type, f.LayerType, f.SrcMAC, f.DstMAC, f.TTL, f.SrcIP, f.DstIP, f.SrcPort, f.DstPort, id, payload)
 			if err != nil {
 				logging.GetLogger().Error(err)
 				return
@@ -154,6 +151,7 @@ func (f *ForgedPacketGenerator) PacketSource() chan *Packet {
 				time.Sleep(time.Millisecond * time.Duration(f.Interval))
 			}
 		}
+		ch <- nil
 	}()
 
 	return ch
@@ -164,32 +162,8 @@ func NewForgedPacketGenerator(pp *PacketInjectionParams, srcNode *graph.Node) (*
 	encapType, _ := srcNode.GetFieldString("EncapType")
 	layerType, _ := flow.GetFirstLayerType(encapType)
 
-	srcIP := getIP(pp.SrcIP)
-	if srcIP == nil {
-		return nil, errors.New("Source Node doesn't have proper IP")
-	}
-
-	dstIP := getIP(pp.DstIP)
-	if dstIP == nil {
-		return nil, errors.New("Destination Node doesn't have proper IP")
-	}
-
-	srcMAC, err := net.ParseMAC(pp.SrcMAC)
-	if err != nil || srcMAC == nil {
-		return nil, errors.New("Source Node doesn't have proper MAC")
-	}
-
-	dstMAC, err := net.ParseMAC(pp.DstMAC)
-	if err != nil || dstMAC == nil {
-		return nil, errors.New("Destination Node doesn't have proper MAC")
-	}
-
 	return &ForgedPacketGenerator{
 		PacketInjectionParams: pp,
-		srcIP:     srcIP,
-		dstIP:     dstIP,
-		srcMAC:    srcMAC,
-		dstMAC:    dstMAC,
-		layerType: layerType,
+		LayerType:             layerType,
 	}, nil
 }
