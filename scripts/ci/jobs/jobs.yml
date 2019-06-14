@@ -350,7 +350,7 @@
     builders:
       - skydive-cleanup
       - skydive-test:
-          test: BACKEND=elasticsearch WITH_DOCKER_VPP=true ARGS="-ovs.oflow.native" scripts/ci/run-functional-tests.sh
+          test: BACKEND=elasticsearch ARGS="-ovs.oflow.native" scripts/ci/run-functional-tests.sh
     publishers:
       - junit:
           results: tests.xml
@@ -368,7 +368,7 @@
     builders:
       - skydive-cleanup
       - skydive-test:
-          test: BACKEND=orientdb WITH_DOCKER_VPP=true scripts/ci/run-functional-tests.sh
+          test: BACKEND=orientdb scripts/ci/run-functional-tests.sh
     publishers:
       - junit:
           results: tests.xml
