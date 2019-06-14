@@ -53,7 +53,7 @@ func TestDockerVPPConnectingToVeth(t *testing.T) {
 	test := &Test{
 		setupCmds: []Cmd{
 			{fmt.Sprintf("docker run -d -t -i --privileged --name test-skydive-docker-vpp-to-veth %s", dockerImageWithRunningVPP), false},
-			{fmt.Sprintf(vppWaitScript, 10, "test-skydive-docker-vpp-to-veth"), true},
+			{fmt.Sprintf(vppWaitScript, 40, "test-skydive-docker-vpp-to-veth"), true},
 			{"docker exec test-skydive-docker-vpp-to-veth ip link add name veth-container type veth peer name veth-host", true}, // creating veth tunnel (that can be used to tunnel docker container and docker host)
 			{"docker exec test-skydive-docker-vpp-to-veth ip link set dev veth-container up", true},
 			{"docker exec test-skydive-docker-vpp-to-veth ip link set dev veth-host up", true},                     // no need for this test to actually push veth-host to network namespace of docker host OS
