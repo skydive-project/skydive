@@ -80,7 +80,6 @@ func initProbeCapabilities() {
 	ProbeCapabilities["pcapsocket"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
 	ProbeCapabilities["sflow"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
 	ProbeCapabilities["ovssflow"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
-	ProbeCapabilities["afpacket"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
 	ProbeCapabilities["dpdk"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
 	ProbeCapabilities["ovsmirror"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
 	ProbeCapabilities["ebpf"] = ExtraTCPMetricCapability
