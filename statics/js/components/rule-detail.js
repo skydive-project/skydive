@@ -227,6 +227,9 @@ function textAction(a) {
 function summarize(rule) {
   summarizeFilter(rule);
   summarizeActions(rule);
+  if ('GotoTable' in rule) {
+    rule.outAction.push({ action: ActionResubmit, table: rule.GotoTable })
+  }
   rule['textFilters'] = textFilters(rule['Filters']);
   rule['textActions'] = rule['Actions'].map(textAction).join(',');
 }
@@ -844,6 +847,7 @@ Vue.component('rule-detail', {
       }
       this.getRules();
     },
+
     getRules: function() {
       var self = this;
       var keys = Object.keys(this.filters);

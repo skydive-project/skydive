@@ -49,7 +49,7 @@ func (h *of10Handler) OnMessage(msg goloxi.Message) {
 		for _, update := range t.Updates {
 			switch u := update.(type) {
 			case *of10.NiciraFlowUpdateFullAdd:
-				rule, err := newOfRule(u.Cookie, u.TableId, u.Priority, u.IdleTimeout, u.HardTimeout, 0, of14.FlowModFlags(0), nxm2oxm(&u.Match, u.MatchLen), u.Actions, nil)
+				rule, err := newOfRule(u.Cookie, u.TableId, u.Priority, u.IdleTimeout, u.HardTimeout, 0, of14.FlowModFlags(0), nxm2oxm(&u.Match, u.MatchLen), u.Actions, nil, 0)
 				if err != nil {
 					logging.GetLogger().Errorf("Failed to parse update: %s", err)
 					continue
@@ -61,7 +61,7 @@ func (h *of10Handler) OnMessage(msg goloxi.Message) {
 				probe.Unlock()
 				probe.client.SendMessage(msg)
 			case *of10.NiciraFlowUpdateFullDeleted:
-				monitorRule, err := newOfRule(u.Cookie, u.TableId, u.Priority, u.IdleTimeout, u.HardTimeout, 0, of14.FlowModFlags(0), nxm2oxm(&u.Match, u.MatchLen), u.Actions, nil)
+				monitorRule, err := newOfRule(u.Cookie, u.TableId, u.Priority, u.IdleTimeout, u.HardTimeout, 0, of14.FlowModFlags(0), nxm2oxm(&u.Match, u.MatchLen), u.Actions, nil, 0)
 				if err != nil {
 					logging.GetLogger().Errorf("Failed to parse update: %s", err)
 					continue

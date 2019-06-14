@@ -96,6 +96,7 @@ type ofRule struct {
 	Filters      []*ofFilter
 	Actions      []*ofAction
 	WriteActions []*ofAction
+	GotoTable    int64
 }
 
 type ofBucket struct {
@@ -190,6 +191,10 @@ func (r *ofRule) GetMetadata() graph.Metadata {
 	}
 	metadata["WriteActions"] = actions
 
+	if r.GotoTable != 0 {
+		metadata["GotoTable"] = r.GotoTable
+	}
+
 	return metadata
 }
 
@@ -212,7 +217,7 @@ func (r *ofRule) GetID(host, bridge string) graph.Identifier {
 	return graph.Identifier(hash)
 }
 
-func newOfRule(cookie uint64, table uint8, priority, idleTimeout, hardTimeout, importance uint16, flags ofEnum, match of14.IMatchV3, actions []goloxi.IAction, writeActions []goloxi.IAction) (*ofRule, error) {
+func newOfRule(cookie uint64, table uint8, priority, idleTimeout, hardTimeout, importance uint16, flags ofEnum, match of14.IMatchV3, actions []goloxi.IAction, writeActions []goloxi.IAction, gotoTable uint8) (*ofRule, error) {
 	rule := &ofRule{
 		Cookie:       int64(cookie),
 		Table:        int64(table),
@@ -224,6 +229,7 @@ func newOfRule(cookie uint64, table uint8, priority, idleTimeout, hardTimeout, i
 		Filters:      make([]*ofFilter, len(match.GetOxmList())),
 		Actions:      make([]*ofAction, len(actions)),
 		WriteActions: make([]*ofAction, len(writeActions)),
+		GotoTable:    int64(gotoTable),
 	}
 
 	for i, entry := range match.GetOxmList() {

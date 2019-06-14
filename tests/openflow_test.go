@@ -1070,3 +1070,13 @@ func TestOVSGroupAdd(t *testing.T) {
 		return nil
 	})
 }
+
+func TestOVSGotoTable(t *testing.T) {
+	testOVSRule(t, "flow", "-O OpenFlow14 actions=push_vlan:0x8100,pop_vlan,goto_table=2", func(node *graph.Node) error {
+		gotoTable, _ := node.GetFieldInt64("GotoTable")
+		if gotoTable != 2 {
+			return fmt.Errorf("Expected GotoTable with value 2, got %d", gotoTable)
+		}
+		return nil
+	})
+}
