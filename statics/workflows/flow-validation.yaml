@@ -1,0 +1,109 @@
+---
+UUID: "1c79a9d2-6fcb-4e10-7d40-78819b07781c"
+Name: "FlowValidation"
+Description: "Check Flow-Forwarding form Checkpoint-1 to Checkpoint-2"
+Parameters:
+  - Name: Checkpoint-1
+    Description: Select Checkpoint-1
+    Type: node
+  - Name: Checkpoint-2
+    Description: Select Checkpoint-2 (Optional)
+    Type: node
+  - Name: All
+    Description: Create Capture on all nodes between Checkpoint-1 and Checkpoint-2 (Select Only with Checkpoint-2)
+    Type: boolean
+  - Name: Protocol
+    Description: Select Protocol
+    Type: choice
+    Default: icmp
+    Values:
+      - Description: "ICMP"
+        Value: icmp
+      - Description: "TCP"
+        Value: tcp
+      - Description: "UDP"
+        Value: udp
+  - Name: Source-IP
+    Description: Enter Source IP (Optional)
+    Type: string
+  - Name: Destination-IP
+    Description: Enter Destination IP (Optional)
+    Type: string
+  - Name: ID/Port
+    Description: Enter Destination Port/ICMP-ID (Optional)
+    Type: string
+  - Name: Time
+    Description: Time Duration to capture the flows in seconds
+    Default: 5
+    Type: integer
+Source: |
+  function FlowValidation(checkPoint1, checkPoint2, all, protocol, srcIP, dstIP, id, interval) {
+    var result = {}
+
+    try {
+      var capture = new Capture();
+      capture.SamplingRate = 1;
+      capture.PollingInterval = 10;
+
+      if (checkPoint2 == null) {
+        capture.GremlinQuery = "G.V().Has('TID', '" + checkPoint1 + "')";
+      } else if (checkPoint2 != null && !all) {
+        capture.GremlinQuery = "G.V().Has('TID', Within('" + checkPoint1 + "', '" + checkPoint2 + "'))";
+      } else {
+        capture.GremlinQuery = "G.V().Has('TID', '" + checkPoint1 + "').ShortestPathTo(Metadata('TID', '" + checkPoint2 + "'), Metadata('RelationType', 'layer2'))";
+      }
+
+      capture.BPFFilter = protocol;
+
+      if (srcIP) {
+        capture.BPFFilter += " and (src "+ srcIP + " or dst " + srcIP + ")";
+      }
+
+      if (dstIP) {
+        capture.BPFFilter += " and (src "+ dstIP + " or dst " + dstIP + ")";
+      }
+
+      if (protocol == "icmp" && id) {
+        capture.BPFFilter +=  " and icmp[4:2]=" + id;
+      } else if (id) {
+        capture.BPFFilter +=  " and port " + id;
+      }
+
+      capture = client.captures.create(capture)
+      var timediff = interval * 1000;
+      sleep(timediff)
+      var flowExpected = client.gremlin.G().V().Has('Captures.ID', capture.UUID, 'Type', NE('ovsport')).result();
+      var flowCaptured = client.gremlin.G().V().Has('Captures.ID', capture.UUID).Flows().CaptureNode().Dedup().result();
+      var noflows = [];
+
+      for (var i = 0; i != flowExpected.length; i++) {
+        var found = false;
+
+        for (var j = 0; j != flowCaptured.length; j++) {
+          if (flowExpected[i].ID === flowCaptured[j].ID) {
+            found = true;
+            break;
+          }
+        }
+
+        if (!found) {
+          noflows.push(flowExpected[i]);
+        }
+      }
+
+      if (!flowExpected.length) {
+        result["Error"] = "No node with capture"
+      } else if (noflows.length == 0) {
+        result["Connectivity"] = true
+      } else {
+        result["Connectivity"] = false
+        result["NotReachedNodes"] = noflows
+      }
+    } catch (e) {
+      console.log(e)
+      result["Error"] = JSON.stringify(e)
+    }
+    if (capture && capture.UUID) client.captures.delete(capture.UUID)
+
+    return result
+  }
