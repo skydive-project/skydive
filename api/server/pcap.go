@@ -35,26 +35,24 @@ type PcapAPI struct {
 	Storage storage.Storage
 }
 
-func (p *PcapAPI) flowExpireUpdate(flowArray *flow.FlowArray) {
-	if p.Storage != nil && len(flowArray.Flows) > 0 {
-		p.Storage.StoreFlows(flowArray.Flows)
-		logging.GetLogger().Debugf("%d flows stored", len(flowArray.Flows))
+// SendFlows implements the flow Sender interface
+func (p *PcapAPI) SendFlows(flows []*flow.Flow) {
+	if p.Storage != nil && len(flows) > 0 {
+		p.Storage.StoreFlows(flows)
+		logging.GetLogger().Debugf("%d flows stored", len(flows))
 	}
 }
 
 func (p *PcapAPI) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	update := config.GetInt("flow.update")
-	expire := config.GetInt("flow.expire")
+	updateEvery := time.Duration(config.GetInt("flow.update")) * time.Second
+	expireAfter := time.Duration(config.GetInt("flow.expire")) * time.Second
 
 	if !rbac.Enforce(r.Username, "pcap", "write") {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
-	updateHandler := flow.NewFlowHandler(p.flowExpireUpdate, time.Second*time.Duration(update))
-	expireHandler := flow.NewFlowHandler(p.flowExpireUpdate, time.Second*time.Duration(expire))
-
-	flowtable := flow.NewTable(updateHandler, expireHandler, "", flow.TableOpts{})
+	flowtable := flow.NewTable(updateEvery, expireAfter, p, "", flow.TableOpts{})
 	packetSeqChan, _, _ := flowtable.Start()
 
 	feeder, err := flow.NewPcapTableFeeder(r.Body, packetSeqChan, false, "")

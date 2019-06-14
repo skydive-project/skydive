@@ -53,7 +53,7 @@ type OvsSFlowProbesHandler struct {
 	probesLock   common.RWMutex
 	Graph        *graph.Graph
 	Node         *graph.Node
-	fpta         *FlowProbeTableAllocator
+	fta          *flow.TableAllocator
 	ovsClient    *ovsdb.OvsClient
 	allocator    *sflow.AgentAllocator
 	eventHandler FlowProbeEventHandler
@@ -142,11 +142,11 @@ func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(bridgeUUID string
 		o.probesLock.RUnlock()
 		return fmt.Errorf("probe didn't exist on bridgeUUID %s", bridgeUUID)
 	}
+	o.probesLock.RUnlock()
 
 	if probe.flowTable != nil {
-		o.fpta.Release(probe.flowTable)
+		o.fta.Release(probe.flowTable)
 	}
-	o.probesLock.RUnlock()
 
 	probeUUID, err := ovsRetrieveSkydiveProbeRowUUID(o.ovsClient, "sFlow", ovsProbeID(bridgeUUID))
 	if err != nil {
@@ -197,7 +197,7 @@ func (o *OvsSFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid str
 
 	if capture.Target == "" {
 		opts := tableOptsFromCapture(capture)
-		probe.flowTable = o.fpta.Alloc(tid, opts)
+		probe.flowTable = o.fta.Alloc(tid, opts)
 
 		address := config.GetString("agent.flow.sflow.bind_address")
 		if address == "" {
@@ -205,7 +205,9 @@ func (o *OvsSFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid str
 		}
 
 		addr := common.ServiceAddress{Addr: address}
-		agent, err := o.allocator.Alloc(bridgeUUID, probe.flowTable, capture.BPFFilter, headerSize, &addr, n, o.Graph)
+		bfpFilter := NormalizeBPFFilter(capture)
+
+		agent, err := o.allocator.Alloc(bridgeUUID, probe.flowTable, bfpFilter, headerSize, &addr, n, o.Graph)
 		if err != nil && err != sflow.ErrAgentAlreadyAllocated {
 			return err
 		}
@@ -267,7 +269,7 @@ func (o *OvsSFlowProbesHandler) Stop() {
 }
 
 // NewOvsSFlowProbesHandler creates a new OVS SFlow porbes
-func NewOvsSFlowProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator, tb *probe.Bundle) (*OvsSFlowProbesHandler, error) {
+func NewOvsSFlowProbesHandler(g *graph.Graph, fta *flow.TableAllocator, tb *probe.Bundle) (*OvsSFlowProbesHandler, error) {
 	probe := tb.GetProbe("ovsdb")
 	if probe == nil {
 		return nil, errors.New("Agent.ovssflow probe depends on agent.ovsdb topology probe: agent.ovssflow probe can't start properly")
@@ -282,7 +284,7 @@ func NewOvsSFlowProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator, tb 
 	return &OvsSFlowProbesHandler{
 		probes:    make(map[string]OvsSFlowProbe),
 		Graph:     g,
-		fpta:      fpta,
+		fta:       fta,
 		ovsClient: p.OvsMon.OvsClient,
 		allocator: allocator,
 	}, nil

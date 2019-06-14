@@ -34,6 +34,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/probes/targets"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
@@ -61,7 +62,7 @@ type GoPacketProbe struct {
 	packetProbe PacketProbe
 	state       int64
 	ifName      string
-	bpf         string
+	bpfFilter   string
 	nsPath      string
 	captureType string
 	layerType   gopacket.LayerType
@@ -70,14 +71,14 @@ type GoPacketProbe struct {
 }
 
 type ftProbe struct {
-	flowTable *flow.Table
-	probe     *GoPacketProbe
+	target targets.Target
+	probe  *GoPacketProbe
 }
 
 // GoPacketProbesHandler describes a flow probe handle in the graph
 type GoPacketProbesHandler struct {
 	graph      *graph.Graph
-	fpta       *FlowProbeTableAllocator
+	fta        *flow.TableAllocator
 	wg         sync.WaitGroup
 	probes     map[string]*ftProbe
 	probesLock common.RWMutex
@@ -169,8 +170,8 @@ func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e FlowProbeEve
 	statsTicker := time.NewTicker(time.Duration(statsUpdate) * time.Second)
 
 	// manage BPF outside namespace because of syscall
-	if p.bpf != "" {
-		if err := p.packetProbe.SetBPFFilter(p.bpf); err != nil {
+	if p.bpfFilter != "" {
+		if err := p.packetProbe.SetBPFFilter(p.bpfFilter); err != nil {
 			return fmt.Errorf("Failed to set BPF filter: %s", err)
 		}
 	}
@@ -203,7 +204,7 @@ func (p *GoPacketProbe) Stop() {
 }
 
 // NewGoPacketProbe returns a new Gopacket flow probe. It can use either `pcap` or `afpacket`
-func NewGoPacketProbe(g *graph.Graph, n *graph.Node, captureType string, bpf string, headerSize uint32) (*GoPacketProbe, error) {
+func NewGoPacketProbe(g *graph.Graph, n *graph.Node, captureType string, bpfFilter string, headerSize uint32) (*GoPacketProbe, error) {
 	ifName, _ := n.GetFieldString("Name")
 	if ifName == "" {
 		return nil, fmt.Errorf("No name for node %v", n)
@@ -220,7 +221,7 @@ func NewGoPacketProbe(g *graph.Graph, n *graph.Node, captureType string, bpf str
 		graph:       g,
 		n:           n,
 		ifName:      ifName,
-		bpf:         bpf,
+		bpfFilter:   bpfFilter,
 		linkType:    linkType,
 		layerType:   firstLayerType,
 		headerSize:  headerSize,
@@ -263,50 +264,57 @@ func (p *GoPacketProbesHandler) registerProbe(n *graph.Node, capture *types.Capt
 		logging.GetLogger().Infof("MPLSUDP port: %v", port)
 	}
 
-	opts := tableOptsFromCapture(capture)
-	flowTable := p.fpta.Alloc(tid, opts)
-
 	headerSize := flow.DefaultCaptureLength
 	if capture.HeaderSize != 0 {
 		headerSize = uint32(capture.HeaderSize)
 	}
 
-	probe, err := NewGoPacketProbe(p.graph, n, capture.Type, capture.BPFFilter, headerSize)
+	// exclude my own traffic
+	bpfFilter := NormalizeBPFFilter(capture)
+	logging.GetLogger().Debugf("Normalized capture BPF Filter used: %s", bpfFilter)
+
+	probe, err := NewGoPacketProbe(p.graph, n, capture.Type, bpfFilter, headerSize)
 	if err != nil {
 		return err
 	}
 
 	// Apply temporarely the BPF in userspace to prevent non expected packet
 	// between capture creation and the filter apply.
-	var bpfFilter *flow.BPF
-	if capture.BPFFilter != "" {
-		bpfFilter, err = flow.NewBPF(probe.linkType, probe.headerSize, probe.bpf)
+	var bpf *flow.BPF
+	if bpfFilter != "" {
+		bpf, err = flow.NewBPF(probe.linkType, probe.headerSize, bpfFilter)
 		if err != nil {
 			return err
 		}
 	}
 
+	target, err := targets.NewTarget(capture.TargetType, p.graph, n, capture, tid, bpf, p.fta)
+	if err != nil {
+		return err
+	}
+
 	p.probesLock.Lock()
-	p.probes[id] = &ftProbe{probe: probe, flowTable: flowTable}
+	p.probes[id] = &ftProbe{probe: probe, target: target}
 	p.probesLock.Unlock()
 	p.wg.Add(1)
 
 	go func() {
 		defer p.wg.Done()
 
-		flowTable.Start()
-		defer flowTable.Stop()
+		target.Start()
+		defer target.Stop()
 
 		count := 0
 		err := probe.Run(func(packet gopacket.Packet) {
-			flowTable.FeedWithGoPacket(packet, bpfFilter)
-			// NOTE: bpf usperspace filter is applied to the few first packets in order to avoid
+			target.SendPacket(packet, bpf)
+			// NOTE: bpf userspace filter is applied to the few first packets in order to avoid
 			// to get unexpected packets between capture start and bpf applying
 			if count > 50 {
-				bpfFilter = nil
+				bpf = nil
 			}
 			count++
 		}, e)
+
 		if err != nil {
 			logging.GetLogger().Error(err)
 
@@ -332,7 +340,6 @@ func (p *GoPacketProbesHandler) unregisterProbe(id string) error {
 	if probe, ok := p.probes[id]; ok {
 		logging.GetLogger().Debugf("Terminating gopacket capture on %s", id)
 		probe.probe.Stop()
-		p.fpta.Release(probe.flowTable)
 		delete(p.probes, id)
 	}
 
@@ -369,10 +376,10 @@ func (p *GoPacketProbesHandler) Stop() {
 }
 
 // NewGoPacketProbesHandler creates a new gopacket probe in the graph
-func NewGoPacketProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*GoPacketProbesHandler, error) {
+func NewGoPacketProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*GoPacketProbesHandler, error) {
 	return &GoPacketProbesHandler{
 		graph:  g,
-		fpta:   fpta,
+		fta:    fta,
 		probes: make(map[string]*ftProbe),
 	}, nil
 }

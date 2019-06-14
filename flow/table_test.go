@@ -46,14 +46,18 @@ func TestFlowCreateUpdate(t *testing.T) {
 	}
 }
 
-func TestFlowExpire(t *testing.T) {
-	var received int
-	callback := func(f *FlowArray) {
-		received += len(f.Flows)
-	}
-	handler := NewFlowHandler(callback, time.Second)
+type fakeMessageSender struct {
+	sent int
+}
 
-	table := NewTable(nil, handler, "", TableOpts{})
+func (f *fakeMessageSender) SendFlows(flows []*Flow) {
+	f.sent += len(flows)
+}
+
+func TestFlowExpire(t *testing.T) {
+	sender := &fakeMessageSender{}
+
+	table := NewTable(time.Hour, time.Second, sender, "", TableOpts{})
 
 	fillTableFromPCAP(t, table, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet, nil)
 	table.expireNow()
@@ -66,13 +70,13 @@ func TestFlowExpire(t *testing.T) {
 	}
 
 	// check that the handler sent all the flows
-	if received != 100 {
-		t.Errorf("Should receive 100 flows got : %d", received)
+	if sender.sent != 100 {
+		t.Errorf("Should receive 100 flows got : %d", sender.sent)
 	}
 }
 
 func TestGetFlowsWithFilters(t *testing.T) {
-	table := NewTable(nil, nil, "probe-1", TableOpts{})
+	table := NewTable(time.Hour, time.Hour, &fakeMessageSender{}, "probe-1", TableOpts{})
 
 	fillTableFromPCAP(t, table, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet, nil)
 
@@ -127,14 +131,9 @@ func TestGetFlowsWithFilters(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	var received int
-	callback := func(f *FlowArray) {
-		received += len(f.Flows)
-	}
-	updHandler := NewFlowHandler(callback, time.Second)
-	expHandler := NewFlowHandler(func(f *FlowArray) {}, 300*time.Second)
+	sender := &fakeMessageSender{}
 
-	table := NewTable(updHandler, expHandler, "", TableOpts{})
+	table := NewTable(time.Second, time.Hour, sender, "", TableOpts{})
 
 	flow1, _ := table.getOrCreateFlow("flow1")
 
@@ -160,8 +159,8 @@ func TestUpdate(t *testing.T) {
 		t.Errorf("Flow should have been updated : %+v", flow2)
 	}
 
-	if received != 1 {
-		t.Errorf("Should have been notified : %+v", flow2)
+	if sender.sent != 2 {
+		t.Errorf("Should have been notified %d: %+v", sender.sent, flow2)
 	}
 
 	// should update everything between previous updateAt and the new one
@@ -171,8 +170,8 @@ func TestUpdate(t *testing.T) {
 		t.Errorf("Flow should have been updated : %+v", flow2)
 	}
 
-	if received != 1 {
-		t.Errorf("Should not have been notified : %+v", flow2)
+	if sender.sent != 2 {
+		t.Errorf("Should not have been notified %d: %+v", sender.sent, flow2)
 	}
 
 	flow2.Metric.ABBytes = 10
@@ -185,8 +184,8 @@ func TestUpdate(t *testing.T) {
 		t.Errorf("Flow should have been updated : %+v", flow2)
 	}
 
-	if received != 2 {
-		t.Errorf("Should have been notified : %+v", flow2)
+	if sender.sent != 3 {
+		t.Errorf("Should have been notified %d: %+v", sender.sent, flow2)
 	}
 
 	flow2.Metric.ABBytes = 15
@@ -199,23 +198,18 @@ func TestUpdate(t *testing.T) {
 		t.Errorf("Flow should have been updated : %+v", flow2)
 	}
 
-	if received != 3 {
-		t.Errorf("Should have been notified : %+v", flow2)
+	if sender.sent != 4 {
+		t.Errorf("Should have been notified %d: %+v", sender.sent, flow2)
 	}
 }
 
 func TestAppSpecificTimeout(t *testing.T) {
-	var received int
-	callback := func(f *FlowArray) {
-		received += len(f.Flows)
-	}
-	updHandler := NewFlowHandler(callback, time.Second)
-	expHandler := NewFlowHandler(func(f *FlowArray) {}, 300*time.Second)
+	sender := &fakeMessageSender{}
 
 	config.GetConfig().Set("flow.application_timeout.arp", 10)
 	config.GetConfig().Set("flow.application_timeout.dns", 20)
 
-	table := NewTable(updHandler, expHandler, "", TableOpts{})
+	table := NewTable(time.Second, time.Hour, sender, "", TableOpts{})
 
 	flowsTime := time.Now()
 
@@ -229,20 +223,17 @@ func TestAppSpecificTimeout(t *testing.T) {
 
 	table.updateAt(flowsTime.Add(time.Duration(15) * time.Second))
 
-	if received == 0 || arpFlow.FinishType != FlowFinishType_TIMEOUT {
+	if sender.sent == 0 || arpFlow.FinishType != FlowFinishType_TIMEOUT {
 		t.Errorf("Should have been notified : %+v", arpFlow)
 	}
 
-	if received > 1 || dnsFlow.FinishType != FlowFinishType_NOT_FINISHED {
+	if sender.sent > 1 || dnsFlow.FinishType != FlowFinishType_NOT_FINISHED {
 		t.Errorf("Should not have been notified : %+v", dnsFlow)
 	}
 }
 
 func TestHold(t *testing.T) {
-	updHandler := NewFlowHandler(func(f *FlowArray) {}, 60*time.Second)
-	expHandler := NewFlowHandler(func(f *FlowArray) {}, 600*time.Second)
-
-	table := NewTable(updHandler, expHandler, "", TableOpts{})
+	table := NewTable(time.Minute, time.Hour, &fakeMessageSender{}, "", TableOpts{})
 
 	flowTime := time.Now()
 

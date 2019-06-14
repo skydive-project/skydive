@@ -21,6 +21,7 @@ package probes
 
 import (
 	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
@@ -47,6 +48,6 @@ func (p *EBPFProbesHandler) Stop() {
 }
 
 // NewEBPFProbesHandler creates a new gopacket probe in the graph
-func NewEBPFProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*EBPFProbesHandler, error) {
+func NewEBPFProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*EBPFProbesHandler, error) {
 	return nil, ErrProbeNotCompiled
 }

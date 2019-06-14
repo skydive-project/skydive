@@ -44,7 +44,7 @@ var (
 // DPDKProbesHandler describes a flow probe handle in the graph
 type DPDKProbesHandler struct {
 	graph *graph.Graph
-	fpta  *FlowProbeTableAllocator
+	fta   *flow.TableAllocator
 }
 
 // RegisterProbe registers a gopacket probe
@@ -151,7 +151,7 @@ func getDPDKMacAddress(port int) string {
 }
 
 // NewDPDKProbesHandler creates a new gopacket probe in the graph
-func NewDPDKProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*DPDKProbesHandler, error) {
+func NewDPDKProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*DPDKProbesHandler, error) {
 	ports := config.GetStringSlice("dpdk.ports")
 	nbWorkers := config.GetInt("dpdk.workers")
 
@@ -177,7 +177,7 @@ func NewDPDKProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*DPDKP
 
 	dph := &DPDKProbesHandler{
 		graph: g,
-		fpta:  fpta,
+		fta:   fta,
 	}
 
 	hostNode := g.LookupFirstNode(graph.Metadata{
@@ -212,7 +212,7 @@ func NewDPDKProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*DPDKP
 		outputFlows := dpdkflow.SetSplitter(inputFlow, l3Splitter, uint(dpdkNBWorkers), nil)
 
 		for i := 0; i < nbWorkers; i++ {
-			ft := fpta.Alloc(tid, opts)
+			ft := fta.Alloc(tid, opts)
 
 			ft.Start()
 			ctx := ctxQueue{

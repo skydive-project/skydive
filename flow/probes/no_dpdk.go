@@ -21,6 +21,7 @@ package probes
 
 import (
 	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
@@ -47,6 +48,6 @@ func (p *DPDKProbesHandler) Stop() {
 }
 
 // NewDPDKProbesHandler creates a new gopacket probe in the graph
-func NewDPDKProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*DPDKProbesHandler, error) {
+func NewDPDKProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*DPDKProbesHandler, error) {
 	return nil, ErrProbeNotCompiled
 }

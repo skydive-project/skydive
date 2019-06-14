@@ -131,6 +131,10 @@ message TCPMetric {
   int64 BASawEnd = 22;
 }
 
+message Message {
+  repeated Flow Flows = 1;
+}
+
 message Flow {
 /* Flow Universally Unique IDentifier
    flow.UUID is unique in the universe, as it should be used as a key of an
@@ -188,15 +192,12 @@ message Flow {
 
 /* raw packets, will not be exported, see Makefile */
   repeated RawPacket LastRawPackets = 36;
+
 /* number of raw packet captured */
   int64 RawPacketsCaptured = 37;
 
 /* describes the way the flow was ended (e.g. by RST, FIN) */
   FlowFinishType FinishType = 60;
-}
-
-message FlowArray {
-  repeated Flow Flows = 1;
 }
 
 message FlowSet {

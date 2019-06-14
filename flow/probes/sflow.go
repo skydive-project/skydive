@@ -35,7 +35,7 @@ const (
 // SFlowProbesHandler describes a SFlow probe in the graph
 type SFlowProbesHandler struct {
 	Graph       *graph.Graph
-	fpta        *FlowProbeTableAllocator
+	fta         *flow.TableAllocator
 	probes      map[string]*flow.Table
 	probesLock  common.RWMutex
 	allocator   *sflow.AgentAllocator
@@ -56,7 +56,7 @@ func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHand
 	if !ok {
 		return fmt.Errorf("No registered probe for %s", tid)
 	}
-	d.fpta.Release(ft)
+	d.fta.Release(ft)
 
 	d.allocator.Release(tid)
 
@@ -98,8 +98,7 @@ func (d *SFlowProbesHandler) registerProbe(n *graph.Node, capture *types.Capture
 		headerSize = uint32(capture.HeaderSize)
 	}
 
-	opts := tableOptsFromCapture(capture)
-	ft := d.fpta.Alloc(tid, opts)
+	ft := d.fta.Alloc(tid, tableOptsFromCapture(capture))
 
 	addr := common.ServiceAddress{Addr: address, Port: capture.Port}
 	if _, err := d.allocator.Alloc(tid, ft, capture.BPFFilter, headerSize, &addr, n, d.Graph); err != nil {
@@ -134,14 +133,14 @@ func (d *SFlowProbesHandler) Start() {
 func (d *SFlowProbesHandler) Stop() {
 	d.probesLock.Lock()
 	for _, ft := range d.probes {
-		d.fpta.Release(ft)
+		d.fta.Release(ft)
 	}
 	d.probesLock.Unlock()
 	d.allocator.ReleaseAll()
 }
 
 // NewSFlowProbesHandler creates a new SFlow probe in the graph
-func NewSFlowProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*SFlowProbesHandler, error) {
+func NewSFlowProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*SFlowProbesHandler, error) {
 	allocator, err := sflow.NewAgentAllocator()
 	if err != nil {
 		return nil, err
@@ -149,7 +148,7 @@ func NewSFlowProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*SFlo
 
 	return &SFlowProbesHandler{
 		Graph:     g,
-		fpta:      fpta,
+		fta:       fta,
 		allocator: allocator,
 		probes:    make(map[string]*flow.Table),
 	}, nil

@@ -22,7 +22,6 @@ import (
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/flow/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
@@ -45,30 +44,14 @@ type FlowProbeEventHandler interface {
 	OnError(err error)
 }
 
-// FlowProbeTableAllocator allocates table and set the table update callback
-type FlowProbeTableAllocator struct {
-	*flow.TableAllocator
-	fcpool *client.FlowClientPool
-}
-
-// Alloc override the default implementation provide a default update function
-func (a *FlowProbeTableAllocator) Alloc(nodeTID string, opts flow.TableOpts) *flow.Table {
-	return a.TableAllocator.Alloc(a.fcpool.SendFlows, nodeTID, opts)
-}
-
 // NewFlowProbeBundle returns a new bundle of flow probes
-func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *client.FlowClientPool) *probe.Bundle {
+func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocator) *probe.Bundle {
 	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket", "dpdk", "ebpf", "ovsmirror", "ovsnetflow"}
 	logging.GetLogger().Infof("Flow probes: %v", list)
 
 	var captureTypes []string
 	var fp FlowProbe
 	var err error
-
-	fpta := &FlowProbeTableAllocator{
-		TableAllocator: fta,
-		fcpool:         fcpool,
-	}
 
 	fb := probe.NewBundle(make(map[string]probe.Probe))
 
@@ -79,29 +62,29 @@ func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocat
 
 		switch t {
 		case "pcapsocket":
-			fp, err = NewPcapSocketProbeHandler(g, fpta)
+			fp, err = NewPcapSocketProbeHandler(g, fta)
 			captureTypes = []string{"pcapsocket"}
 		case "ovssflow":
-			fp, err = NewOvsSFlowProbesHandler(g, fpta, tb)
+			fp, err = NewOvsSFlowProbesHandler(g, fta, tb)
 			captureTypes = []string{"ovssflow"}
 		case "ovsmirror":
 			fp, err = NewOvsMirrorProbesHandler(g, tb, fb)
 			captureTypes = []string{"ovsmirror"}
 		case "gopacket":
-			fp, err = NewGoPacketProbesHandler(g, fpta)
+			fp, err = NewGoPacketProbesHandler(g, fta)
 			captureTypes = []string{"afpacket", "pcap"}
 		case "sflow":
-			fp, err = NewSFlowProbesHandler(g, fpta)
+			fp, err = NewSFlowProbesHandler(g, fta)
 			captureTypes = []string{"sflow"}
 		case "ovsnetflow":
-			fp, err = NewOvsNetFlowProbesHandler(g, fpta, tb)
+			fp, err = NewOvsNetFlowProbesHandler(g, fta, tb)
 			captureTypes = []string{"ovsnetflow"}
 		case "dpdk":
-			if fp, err = NewDPDKProbesHandler(g, fpta); err == nil {
+			if fp, err = NewDPDKProbesHandler(g, fta); err == nil {
 				captureTypes = []string{"dpdk"}
 			}
 		case "ebpf":
-			if fp, err = NewEBPFProbesHandler(g, fpta); err == nil {
+			if fp, err = NewEBPFProbesHandler(g, fta); err == nil {
 				captureTypes = []string{"ebpf"}
 			}
 		default:

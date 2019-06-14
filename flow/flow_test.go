@@ -834,6 +834,19 @@ func TestFlowSimpleIPv6(t *testing.T) {
 	}
 }
 
+func TestFlowERSpanII(t *testing.T) {
+	flows := flowsFromPCAP(t, "pcaptraces/erspanII.pcap", layers.LinkTypeEthernet, nil)
+	if len(flows) != 2 {
+		t.Error("ERSpan packet must generate 2 flows")
+	}
+	if flows[0].LayersPath != "Ethernet/IPv4/GRE" {
+		t.Errorf("Flow LayersPath must be Ethernet/IPv4/GRE got : %s", flows[0].LayersPath)
+	}
+	if flows[1].LayersPath != "Ethernet/IPv4/ICMPv4" {
+		t.Errorf("Flow LayersPath must be Ethernet/IPv4/ICMPv4 got : %s", flows[1].LayersPath)
+	}
+}
+
 func TestFlowIPv4DefragDisabled(t *testing.T) {
 	opt := TableOpts{ExtraTCPMetric: true, ReassembleTCP: true, IPDefrag: false}
 	flows := flowsFromPCAP(t, "pcaptraces/ipv4-fragments.pcap", layers.LinkTypeEthernet, nil, opt)
@@ -1276,7 +1289,7 @@ func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType, bpf 
 		opt = opts[0]
 	}
 
-	table := NewTable(nil, nil, "", opt)
+	table := NewTable(time.Second, time.Second, &fakeMessageSender{}, "", opt)
 	fillTableFromPCAP(t, table, filename, linkType, bpf)
 	validateAllParentChains(t, table)
 
@@ -1768,7 +1781,7 @@ func benchPacketList(b *testing.B, filename string, linkType layers.LinkType, ca
 	if err != nil {
 		b.Fatal("PCAP OpenOffline error (handle to read packet): ", err)
 	}
-	ft := NewTable(nil, nil, "", TableOpts{})
+	ft := NewTable(time.Hour, time.Hour, nil, "", TableOpts{})
 	packets = 0
 
 	for {
@@ -1879,7 +1892,7 @@ func BenchmarkPacketsFlowTable(b *testing.B) {
 
 // Bench creation of flow and connection tracking, via FlowTable
 func BenchmarkQueryFlowTable(b *testing.B) {
-	t := NewTable(nil, nil, "")
+	t := NewTable(time.Hour, time.Hour, &fakeMessageSender{}, "")
 
 	for i := 0; i != 10; i++ {
 		f := &Flow{

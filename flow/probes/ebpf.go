@@ -65,7 +65,7 @@ type EBPFProbesHandler struct {
 	graph      *graph.Graph
 	probes     map[graph.Identifier]*EBPFProbe
 	probesLock common.RWMutex
-	fpta       *FlowProbeTableAllocator
+	fta        *flow.TableAllocator
 	wg         sync.WaitGroup
 }
 
@@ -214,7 +214,7 @@ func (p *EBPFProbesHandler) registerProbe(n *graph.Node, capture *types.Capture,
 		return fmt.Errorf("Unable to attach socket filter to node: %s", n.ID)
 	}
 
-	ft := p.fpta.Alloc(tid, flow.TableOpts{})
+	ft := p.fta.Alloc(tid, flow.TableOpts{})
 
 	probe := &EBPFProbe{
 		probeNodeTID: tid,
@@ -222,7 +222,7 @@ func (p *EBPFProbesHandler) registerProbe(n *graph.Node, capture *types.Capture,
 		flowTable:    ft,
 		module:       module,
 		fmap:         fmap,
-		expire:       p.fpta.Expire(),
+		expire:       p.fta.ExpireAfter(),
 		quit:         make(chan bool),
 	}
 
@@ -347,10 +347,10 @@ func loadModule() (*elf.Module, error) {
 	return module, nil
 }
 
-func NewEBPFProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*EBPFProbesHandler, error) {
+func NewEBPFProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*EBPFProbesHandler, error) {
 	return &EBPFProbesHandler{
 		graph:  g,
 		probes: make(map[graph.Identifier]*EBPFProbe),
-		fpta:   fpta,
+		fta:    fta,
 	}, nil
 }

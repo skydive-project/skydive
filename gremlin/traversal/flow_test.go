@@ -97,11 +97,14 @@ func execTraversalQuery(t *testing.T, tc *fakeTableClient, query string) travers
 	return res
 }
 
-func newTable(nodeID string) *flow.Table {
-	updHandler := flow.NewFlowHandler(func(f *flow.FlowArray) {}, time.Second)
-	expHandler := flow.NewFlowHandler(func(f *flow.FlowArray) {}, 300*time.Second)
+type fakeMessageSender struct {
+}
 
-	return flow.NewTable(updHandler, expHandler, "", flow.TableOpts{})
+func (f *fakeMessageSender) SendFlows(flows []*flow.Flow) {
+}
+
+func newTable(nodeID string) *flow.Table {
+	return flow.NewTable(time.Second, time.Hour, &fakeMessageSender{}, nodeID, flow.TableOpts{})
 }
 
 func newFakeTableClient() *fakeTableClient {
