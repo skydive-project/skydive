@@ -114,7 +114,7 @@ func (s *StoreS3) StoreFlows(flows []*flow.Flow) error {
 				continue
 			}
 
-			transformedFlow := s.pipeline.Transformer.Transform(fl)
+			transformedFlow := s.pipeline.Transformer.Transform([]*flow.Flow{fl})
 
 			if transformedFlow != nil {
 				s.flows[flowTag] = append(s.flows[flowTag], transformedFlow)

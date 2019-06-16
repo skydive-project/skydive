@@ -222,28 +222,35 @@ func (ft *securityAdvisorFlowTransformer) getTransport(f *flow.Flow) *SecurityAd
 }
 
 // Transform transforms a flow before being stored
-func (ft *securityAdvisorFlowTransformer) Transform(f *flow.Flow) interface{} {
-	updateCount := ft.setUpdateCount(f)
-	status := ft.getStatus(f, updateCount)
+func (ft *securityAdvisorFlowTransformer) Transform(in []*flow.Flow) interface{} {
+	out := []*SecurityAdvisorFlow{}
 
-	// do not report new flows (i.e. the first time you see them)
-	if ft.excludeStartedFlows && status == "STARTED" {
-		return nil
+	for _, f := range in {
+		updateCount := ft.setUpdateCount(f)
+		status := ft.getStatus(f, updateCount)
+
+		// do not report new flows (i.e. the first time you see them)
+		if ft.excludeStartedFlows && status == "STARTED" {
+			continue
+		}
+
+		rec := &SecurityAdvisorFlow{
+			UUID:             f.UUID,
+			LayersPath:       f.LayersPath,
+			Version:          version,
+			Status:           status,
+			FinishType:       ft.getFinishType(f),
+			Network:          ft.getNetwork(f),
+			Transport:        ft.getTransport(f),
+			LastUpdateMetric: f.LastUpdateMetric,
+			Metric:           f.Metric,
+			Start:            f.Start,
+			Last:             f.Last,
+			UpdateCount:      updateCount,
+			NodeType:         ft.getNodeType(f),
+		}
+		out = append(out, rec)
 	}
 
-	return &SecurityAdvisorFlow{
-		UUID:             f.UUID,
-		LayersPath:       f.LayersPath,
-		Version:          version,
-		Status:           status,
-		FinishType:       ft.getFinishType(f),
-		Network:          ft.getNetwork(f),
-		Transport:        ft.getTransport(f),
-		LastUpdateMetric: f.LastUpdateMetric,
-		Metric:           f.Metric,
-		Start:            f.Start,
-		Last:             f.Last,
-		UpdateCount:      updateCount,
-		NodeType:         ft.getNodeType(f),
-	}
+	return out
 }

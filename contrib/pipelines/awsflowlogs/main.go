@@ -29,8 +29,7 @@ import (
 	"github.com/skydive-project/skydive/websocket"
 )
 
-// NewSubscriberFromConfig returns a new flow subscriber writing to object store
-func NewSubscriberFromConfig(cfg *viper.Viper) (*websocket.StructSpeaker, error) {
+func newSubscriberFromConfig(cfg *viper.Viper) (*websocket.StructSpeaker, error) {
 	transform, err := newTransform(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to initialize transform: %s", err)
@@ -51,7 +50,7 @@ func NewSubscriberFromConfig(cfg *viper.Viper) (*websocket.StructSpeaker, error)
 		return nil, fmt.Errorf("Cannot initialize encode: %s", err)
 	}
 
-	compress, err := core.NewCompressGzip()
+	compress, err := core.NewCompressFromConfig(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot initialize compress: %s", err)
 	}
@@ -67,7 +66,7 @@ func NewSubscriberFromConfig(cfg *viper.Viper) (*websocket.StructSpeaker, error)
 }
 
 func main() {
-	defaultCfgFile := "/etc/skydive/secadvisor.yml"
+	defaultCfgFile := "/etc/skydive/awsflowlogs.yml"
 	if len(os.Args) > 1 {
 		defaultCfgFile = os.Args[1]
 	}
@@ -82,7 +81,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	s, err := NewSubscriberFromConfig(config.GetConfig().Viper)
+	s, err := newSubscriberFromConfig(config.GetConfig().Viper)
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to initialize subscriber: %s", err)
 		os.Exit(1)

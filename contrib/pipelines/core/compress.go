@@ -20,26 +20,55 @@ package core
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
+
+	"github.com/spf13/viper"
 )
 
 // Compressor exposes the interface for compressesing encoded flows
 type Compressor interface {
-	Compress(b []byte) (bytes.Buffer, error)
+	Compress(b []byte) (*bytes.Buffer, error)
+}
+
+type compressNone struct {
+}
+
+// Compress inplements Compressor interface
+func (e *compressNone) Compress(in []byte) (*bytes.Buffer, error) {
+	return bytes.NewBuffer(in), nil
+}
+
+// NewCompressNone create an encode object
+func NewCompressNone() (Compressor, error) {
+	return &compressNone{}, nil
 }
 
 type compressGzip struct {
 }
 
 // Compress inplements Compressor interface
-func (e *compressGzip) Compress(in []byte) (bytes.Buffer, error) {
+func (e *compressGzip) Compress(in []byte) (*bytes.Buffer, error) {
 	var out bytes.Buffer
 	w := gzip.NewWriter(&out)
 	w.Write(in)
 	w.Close()
-	return out, nil
+	return &out, nil
 }
 
 // NewCompressGzip create an encode object
 func NewCompressGzip() (Compressor, error) {
 	return &compressGzip{}, nil
+}
+
+// NewCompressFromConfig creates store from config
+func NewCompressFromConfig(cfg *viper.Viper) (Compressor, error) {
+	compressType := cfg.GetString(CfgRoot + "compress.type")
+	switch compressType {
+	case "gzip":
+		return NewCompressGzip()
+	case "none":
+		return NewCompressNone()
+	default:
+		return nil, fmt.Errorf("Compress type %s not supported", compressType)
+	}
 }

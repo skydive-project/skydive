@@ -117,7 +117,8 @@ func getFlow() flow.Flow {
 func Test_Transform_basic_flow(t *testing.T) {
 	transformer := getTestTransformer()
 	f := getFlow()
-	secAdvFlow := transformer.Transform(&f).(*SecurityAdvisorFlow)
+	flows := []*flow.Flow{&f}
+	secAdvFlow := transformer.Transform(flows).([]*SecurityAdvisorFlow)[0]
 	assertEqual(t, version, secAdvFlow.Version)
 	assertEqualInt64(t, 0, secAdvFlow.UpdateCount)
 	assertEqual(t, "STARTED", secAdvFlow.Status)
@@ -135,8 +136,9 @@ func Test_Transform_basic_flow(t *testing.T) {
 func Test_Transform_UpdateCount_increses(t *testing.T) {
 	transformer := getTestTransformer()
 	f := getFlow()
+	flows := []*flow.Flow{&f}
 	for i := int64(0); i < 10; i++ {
-		secAdvFlow := transformer.Transform(&f).(*SecurityAdvisorFlow)
+		secAdvFlow := transformer.Transform(flows).([]*SecurityAdvisorFlow)[0]
 		assertEqualInt64(t, i, secAdvFlow.UpdateCount)
 	}
 }
@@ -144,11 +146,12 @@ func Test_Transform_UpdateCount_increses(t *testing.T) {
 func Test_Transform_Status_updates(t *testing.T) {
 	transformer := getTestTransformer()
 	f := getFlow()
-	secAdvFlow0 := transformer.Transform(&f).(*SecurityAdvisorFlow)
-	assertEqual(t, "STARTED", secAdvFlow0.Status)
-	secAdvFlow1 := transformer.Transform(&f).(*SecurityAdvisorFlow)
-	assertEqual(t, "UPDATED", secAdvFlow1.Status)
+	flows := []*flow.Flow{&f}
+	secAdvFlow := transformer.Transform(flows).([]*SecurityAdvisorFlow)[0]
+	assertEqual(t, "STARTED", secAdvFlow.Status)
+	secAdvFlow = transformer.Transform(flows).([]*SecurityAdvisorFlow)[0]
+	assertEqual(t, "UPDATED", secAdvFlow.Status)
 	f.FinishType = flow.FlowFinishType_TCP_FIN
-	secAdvFlow2 := transformer.Transform(&f).(*SecurityAdvisorFlow)
-	assertEqual(t, "ENDED", secAdvFlow2.Status)
+	secAdvFlow = transformer.Transform(flows).([]*SecurityAdvisorFlow)[0]
+	assertEqual(t, "ENDED", secAdvFlow.Status)
 }

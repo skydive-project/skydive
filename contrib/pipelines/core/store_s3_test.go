@@ -30,6 +30,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/viper"
+
 	"github.com/skydive-project/skydive/flow"
 )
 
@@ -108,8 +110,8 @@ type fakeFlowTransform struct {
 }
 
 // Transform
-func (fc *fakeFlowTransform) Transform(f *flow.Flow) interface{} {
-	return f
+func (fc *fakeFlowTransform) Transform(flows []*flow.Flow) interface{} {
+	return flows
 }
 
 func generateFlowArray(count int, tag string) []*flow.Flow {
@@ -127,7 +129,7 @@ func newTestStorage(excludedTags ...string) (*StoreS3, *fakeClient) {
 	client := &fakeClient{}
 
 	filter, _ := NewFilter(excludedTags...)
-	encode, _ := NewEncodeJSON()
+	encode, _ := NewEncodeJSON(viper.New())
 	compress, _ := NewCompressGzip()
 	classify := &fakeFlowClassifier{}
 	transform := &fakeFlowTransform{}

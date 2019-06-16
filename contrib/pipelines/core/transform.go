@@ -24,5 +24,5 @@ import (
 // Transformer allows generic transformations of a flow
 type Transformer interface {
 	// Transform transforms a flow before being stored
-	Transform(f *flow.Flow) interface{}
+	Transform(f []*flow.Flow) interface{}
 }
