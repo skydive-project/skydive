@@ -1440,6 +1440,24 @@ func (sp *GraphTraversalShortestPath) SubGraph(ctx StepContext, s ...interface{}
 	return NewGraphTraversal(ng, sp.GraphTraversal.lockGraph)
 }
 
+// Dedup removes duplicated nodes from all the paths
+func (sp *GraphTraversalShortestPath) Dedup(ctx StepContext, s ...interface{}) *GraphTraversalV {
+	if sp.error != nil {
+		return &GraphTraversalV{error: sp.error}
+	}
+
+	// first insert all the nodes
+	var nodes []*graph.Node
+	for _, p := range sp.paths {
+		for _, n := range p {
+			nodes = append(nodes, n)
+		}
+	}
+
+	tv := NewGraphTraversalV(sp.GraphTraversal, nodes)
+	return tv.Dedup(ctx, s...)
+}
+
 // Count step
 func (te *GraphTraversalE) Count(ctx StepContext, s ...interface{}) *GraphTraversalValue {
 	if te.error != nil {
