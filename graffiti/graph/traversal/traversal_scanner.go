@@ -67,6 +67,7 @@ const (
 	METADATA
 	SHORTESTPATHTO
 	NE
+	NEE
 	BOTH
 	CONTEXT
 	REGEX
@@ -254,6 +255,8 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return SHORTESTPATHTO, buf.String()
 	case "NE":
 		return NE, buf.String()
+	case "NEE":
+		return NEE, buf.String()
 	case "BOTH":
 		return BOTH, buf.String()
 	case "CONTEXT", "AT":
