@@ -141,7 +141,6 @@ func (m Metadata) MatchBool(key string, predicate common.BoolPredicate) bool {
 		}
 	case bool:
 		return predicate(field)
-
 	}
 
 	return false

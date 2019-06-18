@@ -358,6 +358,8 @@ func (s *GremlinTraversalStepHas) Exec(last GraphTraversalStep) (GraphTraversalS
 		return last.(*GraphTraversalV).Has(s.StepContext, s.Params...), nil
 	case *GraphTraversalE:
 		return last.(*GraphTraversalE).Has(s.StepContext, s.Params...), nil
+	case *GraphTraversalValue:
+		return last.(*GraphTraversalValue).Has(s.StepContext, s.Params...), nil
 	}
 
 	return invokeStepFnc(last, "Has", s)
