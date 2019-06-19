@@ -270,6 +270,14 @@ func paramsToMetadata(s ...interface{}) (graph.Metadata, error) {
 
 // ParamsToFilter converts a slice to a filter
 func ParamsToFilter(filterOp filters.BoolFilterOp, s ...interface{}) (*filters.Filter, error) {
+	if len(s) == 1 {
+		k, ok := s[0].(string)
+		if !ok {
+			return nil, errors.New("Key must be a string")
+		}
+		return filters.NewNotNullFilter(k), nil
+	}
+
 	if (len(s) % 2) != 0 {
 		return nil, errors.New("params should be a list of key,value")
 	}
@@ -1021,22 +1029,13 @@ func (tv *GraphTraversalV) has(filterOp filters.BoolFilterOp, ctx StepContext, s
 		return tv
 	}
 
-	var err error
-	var filter *filters.Filter
-	switch len(s) {
-	case 0:
-		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: errors.New("At least one parameter must be provided")}
-	case 1:
-		k, ok := s[0].(string)
-		if !ok {
-			return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: errors.New("Key must be a string")}
-		}
-		filter = filters.NewNotNullFilter(k)
-	default:
-		filter, err = ParamsToFilter(filterOp, s...)
-		if err != nil {
-			return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: err}
-		}
+	if len(s) == 0 {
+		return &GraphTraversalV{error: errors.New("At least one parameter must be provided")}
+	}
+
+	filter, err := ParamsToFilter(filterOp, s...)
+	if err != nil {
+		return &GraphTraversalV{error: err}
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
@@ -1522,22 +1521,13 @@ func (te *GraphTraversalE) has(filterOp filters.BoolFilterOp, ctx StepContext, s
 		return te
 	}
 
-	var err error
-	var filter *filters.Filter
-	switch len(s) {
-	case 0:
-		return &GraphTraversalE{GraphTraversal: te.GraphTraversal, error: errors.New("At least one parameter must be provided")}
-	case 1:
-		k, ok := s[0].(string)
-		if !ok {
-			return &GraphTraversalE{GraphTraversal: te.GraphTraversal, error: errors.New("Key must be a string")}
-		}
-		filter = filters.NewNotNullFilter(k)
-	default:
-		filter, err = ParamsToFilter(filterOp, s...)
-		if err != nil {
-			return &GraphTraversalE{GraphTraversal: te.GraphTraversal, error: err}
-		}
+	if len(s) == 0 {
+		return &GraphTraversalE{error: errors.New("At least one parameter must be provided")}
+	}
+
+	filter, err := ParamsToFilter(filterOp, s...)
+	if err != nil {
+		return &GraphTraversalE{error: err}
 	}
 
 	nte := &GraphTraversalE{GraphTraversal: te.GraphTraversal, edges: []*graph.Edge{}}
@@ -1796,7 +1786,7 @@ func (t *GraphTraversalValue) Dedup(ctx StepContext, keys ...interface{}) *Graph
 
 	for _, v := range t.Values() {
 		if kvisited, err = hashstructure.Hash(v, nil); err != nil {
-			return &GraphTraversalValue{GraphTraversal: t.GraphTraversal, error: errors.New("Dedup unable to hash the key values")}
+			return &GraphTraversalValue{error: errors.New("Dedup unable to hash the key values")}
 		}
 
 		if _, ok := visited[kvisited]; !ok {
@@ -1805,4 +1795,53 @@ func (t *GraphTraversalValue) Dedup(ctx StepContext, keys ...interface{}) *Graph
 		}
 	}
 	return ntv
+}
+
+// Has step
+func (t *GraphTraversalValue) Has(ctx StepContext, s ...interface{}) *GraphTraversalValue {
+	if t.error != nil {
+		return t
+	}
+
+	if len(s) == 0 {
+		return &GraphTraversalValue{error: errors.New("At least one parameter must be provided")}
+	}
+
+	filter, err := ParamsToFilter(filters.BoolFilterOp_AND, s...)
+	if err != nil {
+		return &GraphTraversalValue{error: err}
+	}
+
+	var values []interface{}
+
+	it := ctx.PaginationRange.Iterator()
+
+	t.GraphTraversal.RLock()
+	defer t.GraphTraversal.RUnlock()
+
+	switch v := t.value.(type) {
+	case []interface{}:
+		for _, item := range v {
+			if it.Done() {
+				break
+			}
+
+			switch item := item.(type) {
+			case common.Getter:
+				if filter.Eval(item) && it.Next() {
+					values = append(values, item)
+				}
+			case graph.Metadata:
+				if filter.Eval(item) && it.Next() {
+					values = append(values, item)
+				}
+			case map[string]interface{}:
+				if filter.Eval(graph.Metadata(item)) && it.Next() {
+					values = append(values, item)
+				}
+			}
+		}
+	}
+
+	return &GraphTraversalValue{GraphTraversal: t.GraphTraversal, value: values}
 }
