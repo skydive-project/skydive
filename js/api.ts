@@ -49,7 +49,7 @@ if (jsEnv) {
               if (jqXHR.status == 401) {
                   reject(Unauthorized)
               } else {
-                  reject(jqXHR.statusText)
+                  reject(jqXHR)
               }
             })
             .done(function (data, statusText, jqXHR) {
@@ -60,7 +60,7 @@ if (jsEnv) {
                     }
                     resolve(data, jqXHR);
                 } else {
-                    reject(jqXHR.statusText);
+                    reject(jqXHR);
                 }
             });
         })
