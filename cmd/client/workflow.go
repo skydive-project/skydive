@@ -18,6 +18,8 @@
 package client
 
 import (
+	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 
@@ -25,6 +27,7 @@ import (
 
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/validator"
 
@@ -85,7 +88,7 @@ var WorkflowCreate = &cobra.Command{
 			exitOnError(err)
 		}
 
-		if err := client.Create("workflow", &workflow); err != nil {
+		if err := client.Create("workflow", &workflow, nil); err != nil {
 			exitOnError(err)
 		}
 		printJSON(workflow)
@@ -151,7 +154,7 @@ var WorkflowCall = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		var workflowcall types.WorkflowCall
+		var workflowCall types.WorkflowCall
 		var result interface{}
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
@@ -163,9 +166,21 @@ var WorkflowCall = &cobra.Command{
 			params[i] = arg
 		}
 
-		workflowcall.Params = params
+		workflowCall.Params = params
 
-		if err := client.Create("workflow/"+args[0]+"/call", &workflowcall, &result); err != nil {
+		s, err := json.Marshal(workflowCall)
+		if err != nil {
+			exitOnError(err)
+		}
+
+		contentReader := bytes.NewReader(s)
+		resp, err := client.Request("POST", "workflow/"+args[0]+"/call", contentReader, nil)
+		if err != nil {
+			exitOnError(err)
+		}
+		defer resp.Body.Close()
+
+		if err := common.JSONDecode(resp.Body, &result); err != nil {
 			exitOnError(err)
 		}
 

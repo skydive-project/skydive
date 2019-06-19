@@ -32,9 +32,11 @@ var schemaValidator *topology.SchemaValidator
 type Resource interface {
 	ID() string
 	SetID(string)
+	GetName() string
 }
 
 // BasicResource is a resource with a unique identifier
+// easyjson:json
 type BasicResource struct {
 	UUID string `yaml:"UUID"`
 }
@@ -49,7 +51,13 @@ func (b *BasicResource) SetID(i string) {
 	b.UUID = i
 }
 
+// GetName returns the resource name
+func (b *BasicResource) GetName() string {
+	return "BasicResource"
+}
+
 // Alert is a set of parameters, the Alert Action will Trigger according to its Expression.
+// easyjson:json
 type Alert struct {
 	BasicResource `yaml:",inline"`
 	Name          string `json:",omitempty" yaml:"Name"`
@@ -60,6 +68,11 @@ type Alert struct {
 	CreateTime    time.Time
 }
 
+// GetName returns the resource name
+func (a *Alert) GetName() string {
+	return "Alert"
+}
+
 // NewAlert creates a New empty Alert, only CreateTime is set.
 func NewAlert() *Alert {
 	return &Alert{
@@ -68,6 +81,7 @@ func NewAlert() *Alert {
 }
 
 // Capture describes a capture API
+// easyjson:json
 type Capture struct {
 	BasicResource   `yaml:",inline"`
 	GremlinQuery    string           `json:"GremlinQuery,omitempty" valid:"isGremlinExpr" yaml:"GremlinQuery"`
@@ -76,7 +90,6 @@ type Capture struct {
 	Description     string           `json:"Description,omitempty" yaml:"Description"`
 	Type            string           `json:"Type,omitempty" valid:"isValidCaptureType" yaml:"Type"`
 	Count           int              `json:"Count" yaml:"Count"`
-	PCAPSocket      string           `json:"PCAPSocket,omitempty" yaml:"PCAPSocket"`
 	Port            int              `json:"Port,omitempty" yaml:"Port"`
 	SamplingRate    uint32           `json:"SamplingRate" yaml:"SamplingRate"`
 	PollingInterval uint32           `json:"PollingInterval" yaml:"PollingInterval"`
@@ -91,6 +104,11 @@ type Capture struct {
 	TargetType      string           `json:"TargetType,omitempty" yaml:"TargetType"`
 }
 
+// GetName returns the resource name
+func (c *Capture) GetName() string {
+	return "Capture"
+}
+
 // NewCapture creates a new capture
 func NewCapture(query string, bpfFilter string) *Capture {
 	return &Capture{
@@ -100,6 +118,7 @@ func NewCapture(query string, bpfFilter string) *Capture {
 }
 
 // EdgeRule describes a edge rule
+// easyjson:json
 type EdgeRule struct {
 	BasicResource `yaml:",inline"`
 	Name          string         `yaml:"Name"`
@@ -107,6 +126,11 @@ type EdgeRule struct {
 	Src           string         `valid:"isGremlinExpr" yaml:"Src"`
 	Dst           string         `valid:"isGremlinExpr" yaml:"Dst"`
 	Metadata      graph.Metadata `yaml:"Metadata"`
+}
+
+// GetName returns the resource name
+func (e *EdgeRule) GetName() string {
+	return "EdgeRule"
 }
 
 // Validate verifies the edge rule does not create invalid edges
@@ -118,6 +142,7 @@ func (e *EdgeRule) Validate() error {
 }
 
 // NodeRule describes a node rule
+// easyjson:json
 type NodeRule struct {
 	BasicResource `yaml:",inline"`
 	Name          string         `yaml:"Name"`
@@ -125,6 +150,11 @@ type NodeRule struct {
 	Metadata      graph.Metadata `yaml:"Metadata"`
 	Action        string         `valid:"regexp=^(create|update)$" yaml:"Action"`
 	Query         string         `valid:"isGremlinOrEmpty" yaml:"Query"`
+}
+
+// GetName returns the resource name
+func (n *NodeRule) GetName() string {
+	return "NodeRule"
 }
 
 // Validate verifies the node rule does not create invalid node or change
@@ -144,6 +174,7 @@ func (n *NodeRule) Validate() error {
 }
 
 // PacketInjection packet injector API parameters
+// easyjson:json
 type PacketInjection struct {
 	BasicResource    `yaml:",inline"`
 	Src              string `yaml:"Src"`
@@ -156,7 +187,6 @@ type PacketInjection struct {
 	DstPort          uint16 `yaml:"DstPort"`
 	Type             string `yaml:"Type"`
 	Payload          string `yaml:"Payload"`
-	TrackingID       string
 	ICMPID           uint16 `yaml:"ICMPID"`
 	Count            uint64 `yaml:"Count"`
 	Interval         uint64 `yaml:"Interval"`
@@ -165,6 +195,11 @@ type PacketInjection struct {
 	StartTime        time.Time
 	Pcap             []byte `yaml:"Pcap"`
 	TTL              uint8  `yaml:"TTL"`
+}
+
+// GetName returns the resource name
+func (pi *PacketInjection) GetName() string {
+	return "PacketInjection"
 }
 
 // Validate verifies the packet injection type is supported
@@ -177,17 +212,20 @@ func (pi *PacketInjection) Validate() error {
 }
 
 // TopologyParam topology API parameter
+// easyjson:json
 type TopologyParam struct {
 	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr" yaml:"GremlinQuery"`
 }
 
 // WorkflowChoice describes one value within a choice
+// easyjson:json
 type WorkflowChoice struct {
 	Value       string `yaml:"Value"`
 	Description string `yaml:"Description"`
 }
 
 // WorkflowParam describes a workflow parameter
+// easyjson:json
 type WorkflowParam struct {
 	Name        string           `yaml:"Name"`
 	Description string           `yaml:"Description"`
@@ -197,6 +235,7 @@ type WorkflowParam struct {
 }
 
 // Workflow describes a workflow
+// easyjson:json
 type Workflow struct {
 	BasicResource `yaml:",inline"`
 	Name          string          `yaml:"Name" valid:"nonzero"`

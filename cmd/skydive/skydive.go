@@ -29,6 +29,7 @@ import (
 	"github.com/skydive-project/skydive/cmd/client"
 	"github.com/skydive-project/skydive/cmd/completion"
 	"github.com/skydive-project/skydive/cmd/config"
+	"github.com/skydive-project/skydive/cmd/injector"
 	"github.com/skydive-project/skydive/cmd/version"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/spf13/cobra"
@@ -64,6 +65,7 @@ func init() {
 		RootCmd.AddCommand(completion.BashCompletion)
 		RootCmd.AddCommand(client.ClientCmd)
 		RootCmd.AddCommand(version.VersionCmd)
+		RootCmd.AddCommand(injector.InjectPacketCmd)
 
 		if allinone.AllInOneCmd != nil {
 			RootCmd.AddCommand(allinone.AllInOneCmd)

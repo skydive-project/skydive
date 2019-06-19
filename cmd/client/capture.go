@@ -21,11 +21,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/skydive-project/skydive/api/client"
 	api "github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/validator"
 	"github.com/spf13/cobra"
@@ -36,6 +38,7 @@ var (
 	captureName        string
 	captureDescription string
 	captureType        string
+	captureTTL         uint64
 	nodeTID            string
 	port               int
 	samplingRate       uint32
@@ -104,7 +107,14 @@ var CaptureCreate = &cobra.Command{
 			exitOnError(err)
 		}
 
-		if err := client.Create("capture", &capture); err != nil {
+		var createOpts *http.CreateOptions
+		if captureTTL != 0 {
+			createOpts = &http.CreateOptions{
+				TTL: time.Duration(captureTTL) * time.Millisecond,
+			}
+		}
+
+		if err := client.Create("capture", &capture, createOpts); err != nil {
 			exitOnError(err)
 		}
 		printJSON(&capture)
@@ -189,17 +199,18 @@ func addCaptureFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&captureDescription, "description", "", "", "capture description")
 	cmd.Flags().StringVarP(&captureType, "type", "", "", helpText)
 	cmd.Flags().IntVarP(&port, "port", "", 0, "capture port")
-	cmd.Flags().Uint32VarP(&samplingRate, "samplingrate", "", 1, "Sampling Rate for SFlow Flow Sampling, 0 - no flow samples, default: 1")
-	cmd.Flags().Uint32VarP(&pollingInterval, "pollinginterval", "", 10, "Polling Interval for SFlow Counter Sampling, 0 - no counter samples, default: 10")
-	cmd.Flags().IntVarP(&headerSize, "header-size", "", 0, fmt.Sprintf("Header size of packet used, default: %d", flow.MaxCaptureLength))
-	cmd.Flags().IntVarP(&rawPacketLimit, "rawpacket-limit", "", 0, "Set the limit of raw packet captured, 0 no packet, -1 infinite, default: 0")
-	cmd.Flags().BoolVarP(&extraTCPMetric, "extra-tcp-metric", "", false, "Add additional TCP metric to flows, default: false")
-	cmd.Flags().BoolVarP(&ipDefrag, "ip-defrag", "", false, "Defragment IPv4 packets, default: false")
-	cmd.Flags().BoolVarP(&reassembleTCP, "reassamble-tcp", "", false, "Reassemble TCP packets, default: false")
-	cmd.Flags().StringVarP(&layerKeyMode, "layer-key-mode", "", "L2", "Defines the first layer used by flow key calculation, L2 or L3")
-	cmd.Flags().StringArrayVarP(&extraLayers, "extra-layer", "", []string{}, fmt.Sprintf("List of extra layers to be added to the flow, available: %s", flow.ExtraLayers(flow.ALLLayer)))
-	cmd.Flags().StringVarP(&target, "target", "", "", "Specify target, if empty the agent will be used")
-	cmd.Flags().StringVarP(&targetType, "target-type", "", "", "Specify target type (netflowv5, erspanv1), ignored in case of sFlow/NetFlow capture")
+	cmd.Flags().Uint32VarP(&samplingRate, "samplingrate", "", 1, "sampling Rate for SFlow Flow Sampling, 0 - no flow samples, default: 1")
+	cmd.Flags().Uint32VarP(&pollingInterval, "pollinginterval", "", 10, "polling Interval for SFlow Counter Sampling, 0 - no counter samples, default: 10")
+	cmd.Flags().IntVarP(&headerSize, "header-size", "", 0, fmt.Sprintf("header size of packet used, default: %d", flow.MaxCaptureLength))
+	cmd.Flags().IntVarP(&rawPacketLimit, "rawpacket-limit", "", 0, "set the limit of raw packet captured, 0 no packet, -1 infinite, default: 0")
+	cmd.Flags().BoolVarP(&extraTCPMetric, "extra-tcp-metric", "", false, "add additional TCP metric to flows, default: false")
+	cmd.Flags().BoolVarP(&ipDefrag, "ip-defrag", "", false, "defragment IPv4 packets, default: false")
+	cmd.Flags().BoolVarP(&reassembleTCP, "reassamble-tcp", "", false, "reassemble TCP packets, default: false")
+	cmd.Flags().StringVarP(&layerKeyMode, "layer-key-mode", "", "L2", "defines the first layer used by flow key calculation, L2 or L3")
+	cmd.Flags().StringArrayVarP(&extraLayers, "extra-layer", "", []string{}, fmt.Sprintf("list of extra layers to be added to the flow, available: %s", flow.ExtraLayers(flow.ALLLayer)))
+	cmd.Flags().StringVarP(&target, "target", "", "", "sFlow/NetFlow target, if empty the agent will be used")
+	cmd.Flags().StringVarP(&targetType, "target-type", "", "", "target type (netflowv5, erspanv1), ignored in case of sFlow/NetFlow capture")
+	cmd.Flags().Uint64VarP(&captureTTL, "ttl", "", 0, "capture duration in milliseconds")
 }
 
 func init() {

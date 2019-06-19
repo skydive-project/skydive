@@ -49,9 +49,14 @@ PROTEUS_GITHUB:=gopkg.in/src-d/proteus.v1/cli/proteus
 EASYJSON_GITHUB:=github.com/mailru/easyjson/easyjson
 EASYJSON_FILES_ALL=flow/flow.pb.go
 EASYJSON_FILES_TAG=\
+	api/types/types.go \
+	flow/ondemand/ondemand.go \
+	flow/probes/probes.go \
 	flow/storage/elasticsearch/elasticsearch.go \
 	flow/storage/orientdb/orientdb.go \
 	graffiti/graph/elasticsearch.go \
+	ondemand/ondemand.go \
+	packetinjector/injector.go \
 	sflow/sflow.go \
 	topology/metrics.go \
 	topology/probes/docker/metadata.go \

@@ -32,35 +32,25 @@ const (
 	defaultPort = 6343
 )
 
+type sflowProbe struct {
+	tid string
+	ft  *flow.Table
+}
+
 // SFlowProbesHandler describes a SFlow probe in the graph
 type SFlowProbesHandler struct {
-	Graph       *graph.Graph
+	graph       *graph.Graph
 	fta         *flow.TableAllocator
-	probes      map[string]*flow.Table
-	probesLock  common.RWMutex
 	allocator   *sflow.AgentAllocator
 	staticPorts map[string]string
 }
 
 // UnregisterProbe unregisters a probe from the graph
-func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
-	d.probesLock.Lock()
-	defer d.probesLock.Unlock()
+func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, p Probe) error {
+	probe := p.(*sflowProbe)
 
-	var tid string
-	if tid, _ = n.GetFieldString("TID"); tid == "" {
-		return fmt.Errorf("No TID for node %v", n)
-	}
-
-	ft, ok := d.probes[tid]
-	if !ok {
-		return fmt.Errorf("No registered probe for %s", tid)
-	}
-	d.fta.Release(ft)
-
-	d.allocator.Release(tid)
-
-	delete(d.probes, tid)
+	d.fta.Release(probe.ft)
+	d.allocator.Release(probe.tid)
 
 	if e != nil {
 		go e.OnStopped()
@@ -69,19 +59,16 @@ func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHand
 	return nil
 }
 
-func (d *SFlowProbesHandler) registerProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
-	var tid string
-	if tid, _ = n.GetFieldString("TID"); tid == "" {
-		return fmt.Errorf("No TID for node %v", n)
-	}
-
-	if _, ok := d.probes[tid]; ok {
-		return fmt.Errorf("Already registered %s", tid)
+// RegisterProbe registers a probe in the graph
+func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error) {
+	tid, _ := n.GetFieldString("TID")
+	if tid == "" {
+		return nil, fmt.Errorf("No TID for node %v", n)
 	}
 
 	addresses, _ := n.GetFieldStringList("IPV4")
 	if len(addresses) == 0 {
-		return fmt.Errorf("No IP for node %v", n)
+		return nil, fmt.Errorf("No IP for node %v", n)
 	}
 
 	address := "0.0.0.0"
@@ -89,8 +76,9 @@ func (d *SFlowProbesHandler) registerProbe(n *graph.Node, capture *types.Capture
 		address = strings.Split(addresses[0], "/")[0]
 	}
 
+	port := capture.Port
 	if capture.Port <= 0 {
-		capture.Port = defaultPort
+		port = defaultPort
 	}
 
 	headerSize := flow.DefaultCaptureLength
@@ -100,29 +88,17 @@ func (d *SFlowProbesHandler) registerProbe(n *graph.Node, capture *types.Capture
 
 	ft := d.fta.Alloc(tid, tableOptsFromCapture(capture))
 
-	addr := common.ServiceAddress{Addr: address, Port: capture.Port}
-	if _, err := d.allocator.Alloc(tid, ft, capture.BPFFilter, headerSize, &addr, n, d.Graph); err != nil {
-		return err
+	addr := common.ServiceAddress{Addr: address, Port: port}
+	if _, err := d.allocator.Alloc(tid, ft, capture.BPFFilter, headerSize, &addr, n, d.graph); err != nil {
+		return nil, err
 	}
 
-	d.probesLock.Lock()
-	d.probes[tid] = ft
-	d.probesLock.Unlock()
+	go e.OnStarted(&CaptureMetadata{SFlowSocket: addr.String()})
 
-	go e.OnStarted()
-
-	d.Graph.AddMetadata(n, "Capture.SflowSocket", addr.String())
-
-	return nil
-}
-
-// RegisterProbe registers a probe in the graph
-func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
-	err := d.registerProbe(n, capture, e)
-	if err != nil {
-		go e.OnError(err)
-	}
-	return err
+	return &sflowProbe{
+		ft:  ft,
+		tid: tid,
+	}, nil
 }
 
 // Start a probe
@@ -131,11 +107,6 @@ func (d *SFlowProbesHandler) Start() {
 
 // Stop a probe
 func (d *SFlowProbesHandler) Stop() {
-	d.probesLock.Lock()
-	for _, ft := range d.probes {
-		d.fta.Release(ft)
-	}
-	d.probesLock.Unlock()
 	d.allocator.ReleaseAll()
 }
 
@@ -147,9 +118,8 @@ func NewSFlowProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*SFlowProb
 	}
 
 	return &SFlowProbesHandler{
-		Graph:     g,
+		graph:     g,
 		fta:       fta,
 		allocator: allocator,
-		probes:    make(map[string]*flow.Table),
 	}, nil
 }

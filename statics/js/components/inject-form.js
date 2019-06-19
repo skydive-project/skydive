@@ -253,6 +253,8 @@ Vue.component('inject-form', {
       if (this.mode == "random") {
         this.payload = "x".repeat(this.payloadlength);
       }
+      var ttl = this.interval*this.count;
+      var headers = {"X-Resource-TTL": ttl + 5000 + "ms"};
       $.ajax({
         dataType: "json",
         url: '/api/injectpacket',
@@ -271,8 +273,9 @@ Vue.component('inject-form', {
           "Increment": this.increment,
           "Interval": this.interval,
           "Payload": this.payload,
-          "incrementPayload": this.incrementPayload,
+          "IncrementPayload": this.incrementPayload,
         }),
+        headers: headers,
         contentType: "application/json; charset=utf-8",
         method: 'POST',
       })

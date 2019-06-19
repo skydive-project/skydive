@@ -610,7 +610,7 @@ func TestNodeRuleCreate(t *testing.T) {
 
 	test := &Test{
 		setupFunction: func(c *TestContext) error {
-			return c.client.Create("noderule", nodeRule)
+			return c.client.Create("noderule", nodeRule, nil)
 		},
 
 		tearDownFunction: func(c *TestContext) error {
@@ -657,7 +657,7 @@ func TestNodeRuleUpdate(t *testing.T) {
 		},
 
 		setupFunction: func(c *TestContext) error {
-			return c.client.Create("noderule", nodeRule)
+			return c.client.Create("noderule", nodeRule, nil)
 		},
 
 		tearDownFunction: func(c *TestContext) error {
@@ -710,7 +710,7 @@ func TestEdgeRuleCreate(t *testing.T) {
 		},
 
 		setupFunction: func(c *TestContext) error {
-			return c.client.Create("edgerule", edgeRule)
+			return c.client.Create("edgerule", edgeRule, nil)
 		},
 
 		tearDownFunction: func(c *TestContext) error {

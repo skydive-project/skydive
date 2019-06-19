@@ -30,6 +30,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/skydive-project/skydive/flow/probes"
+
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcapgo"
 	gclient "github.com/skydive-project/skydive/api/client"
@@ -1038,8 +1040,6 @@ func TestICMP(t *testing.T) {
 		// since the agent update ticker is about 10 sec according to the configuration
 		// we should wait 11 sec to have the first update and the MetricRange filled
 		checks: []CheckFunction{func(c *CheckContext) error {
-			ipv4TrackingID := c.injections[0].TrackingID
-			ipv6TrackingID := c.injections[1].TrackingID
 			prefix := c.gremlin.V().Has("Name", "br-icmp", "Type", "ovsbridge")
 
 			gremlin := prefix.Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4", "ICMP.ID", 123)
@@ -1052,6 +1052,7 @@ func TestICMP(t *testing.T) {
 				return fmt.Errorf("We should receive one ICMPv4 flow with ID 123, got %s", flowsToString(icmpFlows))
 			}
 
+			ipv4TrackingID := icmpFlows[0].TrackingID
 			gremlin = prefix.Flows().Has("TrackingID", ipv4TrackingID)
 			icmpFlows, err = c.gh.GetFlows(gremlin)
 			if err != nil {
@@ -1072,6 +1073,7 @@ func TestICMP(t *testing.T) {
 				return fmt.Errorf("We should receive one ICMPv6 flow with ID 456, got %s", flowsToString(icmpFlows))
 			}
 
+			ipv6TrackingID := icmpFlows[0].TrackingID
 			gremlin = prefix.Flows().Has("TrackingID", ipv6TrackingID)
 			icmpFlows, err = c.gh.GetFlows(gremlin)
 			if err != nil {
@@ -1253,6 +1255,7 @@ func testFlowTunnel(t *testing.T, bridge string, tunnelType string, ipv6 bool, I
 }
 
 func TestReplayCapture(t *testing.T) {
+	var pcapSocket string
 	var capture *types.Capture
 
 	sendPCAPFile := func(filename string, socket string) error {
@@ -1300,17 +1303,25 @@ func TestReplayCapture(t *testing.T) {
 
 		settleFunction: func(c *TestContext) error {
 			capture = c.captures[0]
-			// Wait for the capture to be created and the PCAPSocket attribute to be set
-			c.client.Get("capture", capture.UUID, capture)
-			if capture.PCAPSocket == "" {
-				return fmt.Errorf("Failed to retrieve PCAP socket for capture %s", capture.UUID)
+			n, err := c.gh.GetNode(g.G.V().Has("Captures.ID", capture.UUID))
+			if err != nil {
+				return err
+			}
+
+			field, _ := n.GetField("Captures")
+			captures := field.(*probes.Captures)
+			for _, c := range *captures {
+				if c.PCAPSocket == "" {
+					return fmt.Errorf("Failed to retrieve PCAP socket for capture %s", capture.UUID)
+				}
+				pcapSocket = c.PCAPSocket
 			}
 
 			return nil
 		},
 
 		setupFunction: func(c *TestContext) error {
-			return sendPCAPFile("pcaptraces/eth-ip4-arp-dns-req-http-google.pcap", capture.PCAPSocket)
+			return sendPCAPFile("pcaptraces/eth-ip4-arp-dns-req-http-google.pcap", pcapSocket)
 		},
 
 		tearDownCmds: []Cmd{
@@ -1996,10 +2007,16 @@ func TestOvsMirror(t *testing.T) {
 				return fmt.Errorf("Unable to find the expected Mirror interface: %s", err)
 			}
 
-			mirrorOf, err := node.GetFieldString("Capture.MirrorOf")
+			field, err := node.GetField("Captures")
 			if err != nil {
 				return err
 			}
+
+			captures, ok := field.(*probes.Captures)
+			if !ok || len(*captures) == 0 {
+				return fmt.Errorf("Failed to retrieve captures on %s", node.ID)
+			}
+			mirrorOf := (*captures)[0].MirrorOf
 
 			if mirrorOf != string(orig.ID) {
 				aa, err := c.gh.GetNode(c.gremlin.V(mirrorOf))

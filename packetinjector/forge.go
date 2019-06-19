@@ -28,16 +28,23 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
+)
+
+var (
+	options = gopacket.SerializeOptions{
+		ComputeChecksums: true,
+		FixLengths:       true,
+	}
 )
 
 // ForgedPacketGenerator is used to forge packets. It creates
 // a gopacket.Packet with the proper layers that can be directly
 // inserted into a socket.
 type ForgedPacketGenerator struct {
-	*PacketInjectionParams
+	*PacketInjectionRequest
 	LayerType gopacket.LayerType
+	close     chan bool
 }
 
 func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC net.HardwareAddr, TTL uint8, srcIP, dstIP net.IP, srcPort, dstPort uint16, ID uint64, data string) ([]byte, gopacket.Packet, error) {
@@ -118,11 +125,18 @@ func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC
 	return packetData, gopacket.NewPacket(packetData, layerType, gopacket.Default), nil
 }
 
+// Close the packet generator
+func (f *ForgedPacketGenerator) Close() {
+	f.close <- true
+}
+
 // PacketSource returns a channel when forged packets are pushed
 func (f *ForgedPacketGenerator) PacketSource() chan *Packet {
 	ch := make(chan *Packet)
 
 	go func() {
+		defer close(ch)
+
 		payload := f.Payload
 		// use same size as ping when no payload specified
 		if len(payload) == 0 {
@@ -130,7 +144,7 @@ func (f *ForgedPacketGenerator) PacketSource() chan *Packet {
 		}
 
 		for i := uint64(0); i < f.Count; i++ {
-			id := uint64(f.ID)
+			id := uint64(f.ICMPID)
 			if strings.HasPrefix(f.Type, "icmp") && f.Increment {
 				id += i
 			}
@@ -145,10 +159,18 @@ func (f *ForgedPacketGenerator) PacketSource() chan *Packet {
 				return
 			}
 
-			ch <- &Packet{data: packetData, gopacket: packet}
+			select {
+			case <-f.close:
+				return
+			case ch <- &Packet{data: packetData, gopacket: packet}:
+			}
 
-			if i != f.Count-1 {
-				time.Sleep(time.Millisecond * time.Duration(f.Interval))
+			if i != f.Count-1 && f.Interval != 0 {
+				select {
+				case <-f.close:
+					return
+				case <-time.After(time.Millisecond * time.Duration(f.Interval)):
+				}
 			}
 		}
 		ch <- nil
@@ -158,12 +180,12 @@ func (f *ForgedPacketGenerator) PacketSource() chan *Packet {
 }
 
 // NewForgedPacketGenerator returns a new generator of forged packets
-func NewForgedPacketGenerator(pp *PacketInjectionParams, srcNode *graph.Node) (*ForgedPacketGenerator, error) {
-	encapType, _ := srcNode.GetFieldString("EncapType")
+func NewForgedPacketGenerator(pp *PacketInjectionRequest, encapType string) (*ForgedPacketGenerator, error) {
 	layerType, _ := flow.GetFirstLayerType(encapType)
 
 	return &ForgedPacketGenerator{
-		PacketInjectionParams: pp,
-		LayerType:             layerType,
+		PacketInjectionRequest: pp,
+		LayerType:              layerType,
+		close:                  make(chan bool, 1),
 	}, nil
 }

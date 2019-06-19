@@ -1032,6 +1032,15 @@ func (p *GremlinTraversalParser) parseStepParams() ([]interface{}, error) {
 				return nil, fmt.Errorf("One parameter expected with NE: %v", neParams)
 			}
 			params = append(params, Ne(neParams[0]))
+		case NEE:
+			neeParams, err := p.parseStepParams()
+			if err != nil {
+				return nil, err
+			}
+			if len(neeParams) != 1 {
+				return nil, fmt.Errorf("One parameter expected with NEE: %v", neeParams)
+			}
+			params = append(params, Nee(neeParams[0]))
 		case REGEX:
 			regexParams, err := p.parseStepParams()
 			if err != nil {

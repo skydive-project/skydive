@@ -66,7 +66,7 @@ var AlertCreate = &cobra.Command{
 			exitOnError(err)
 		}
 
-		if err := client.Create("alert", &alert); err != nil {
+		if err := client.Create("alert", &alert, nil); err != nil {
 			exitOnError(err)
 		}
 		printJSON(&alert)

@@ -30,12 +30,12 @@ type OvsMirrorProbesHandler struct {
 }
 
 // RegisterProbe registers a gopacket probe
-func (p *OvsMirrorProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
-	return common.ErrNotImplemented
+func (p *OvsMirrorProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error) {
+	return nil, common.ErrNotImplemented
 }
 
 // UnregisterProbe unregisters gopacket probe
-func (p *OvsMirrorProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
+func (p *OvsMirrorProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, fp Probe) error {
 	return common.ErrNotImplemented
 }
 

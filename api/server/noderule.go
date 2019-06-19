@@ -44,11 +44,6 @@ func (nrh *NodeRuleResourceHandler) New() types.Resource {
 	return &types.NodeRule{}
 }
 
-// Create a new node rule
-func (nra *NodeRuleAPI) Create(r types.Resource) error {
-	return nra.BasicAPIHandler.Create(r)
-}
-
 // RegisterNodeRuleAPI register a new node rule api handler
 func RegisterNodeRuleAPI(apiServer *Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*NodeRuleAPI, error) {
 	nra := &NodeRuleAPI{

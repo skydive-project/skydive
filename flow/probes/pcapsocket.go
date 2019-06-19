@@ -34,7 +34,6 @@ import (
 // PcapSocketProbe describes a TCP packet listener that inject packets in a flowtable
 type PcapSocketProbe struct {
 	graph     *graph.Graph
-	node      *graph.Node
 	state     int64
 	flowTable *flow.Table
 	listener  *net.TCPListener
@@ -48,8 +47,6 @@ type PcapSocketProbeHandler struct {
 	fta           *flow.TableAllocator
 	addr          *net.TCPAddr
 	wg            sync.WaitGroup
-	probes        map[string]*PcapSocketProbe
-	probesLock    common.RWMutex
 	portAllocator *common.PortAllocator
 }
 
@@ -79,14 +76,11 @@ func (p *PcapSocketProbe) run() {
 	}
 }
 
-func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+// RegisterProbe registers a new probe in the graph
+func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error) {
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
-		return fmt.Errorf("No TID for node %v", n)
-	}
-
-	if _, ok := p.probes[tid]; ok {
-		return fmt.Errorf("Already registered %s", tid)
+		return nil, fmt.Errorf("No TID for node %v", n)
 	}
 
 	var listener *net.TCPListener
@@ -111,7 +105,6 @@ func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, capture *types.Cap
 
 	probe := &PcapSocketProbe{
 		graph:     p.graph,
-		node:      n,
 		state:     common.StoppedState,
 		flowTable: ft,
 		listener:  listener,
@@ -119,51 +112,31 @@ func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, capture *types.Cap
 		bpfFilter: capture.BPFFilter,
 	}
 
-	p.probesLock.Lock()
-	p.probes[tid] = probe
-	p.probesLock.Unlock()
 	p.wg.Add(1)
-
-	p.graph.AddMetadata(n, "Capture.PCAPSocket", tcpAddr.String())
 
 	go func() {
 		defer p.wg.Done()
 
-		e.OnStarted()
+		e.OnStarted(&CaptureMetadata{PCAPSocket: tcpAddr.String()})
 
 		probe.run()
 
 		e.OnStopped()
 	}()
 
-	return nil
-}
-
-// RegisterProbe registers a new probe in the graph
-func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
-	err := p.registerProbe(n, capture, e)
-	if err != nil {
-		go e.OnError(err)
-	}
-	return err
+	return probe, nil
 }
 
 // UnregisterProbe a probe
-func (p *PcapSocketProbeHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
-	p.probesLock.Lock()
-	defer p.probesLock.Unlock()
+func (p *PcapSocketProbeHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, fp Probe) error {
+	probe := fp.(*PcapSocketProbe)
 
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
 	}
 
-	probe, ok := p.probes[tid]
-	if !ok {
-		return fmt.Errorf("No registered probe for %s", tid)
-	}
 	p.fta.Release(probe.flowTable)
-	delete(p.probes, tid)
 
 	atomic.StoreInt64(&probe.state, common.StoppingState)
 	probe.listener.Close()
@@ -179,12 +152,6 @@ func (p *PcapSocketProbeHandler) Start() {
 
 // Stop the probe
 func (p *PcapSocketProbeHandler) Stop() {
-	p.probesLock.Lock()
-	defer p.probesLock.Unlock()
-
-	for _, probe := range p.probes {
-		p.UnregisterProbe(probe.node, nil)
-	}
 	p.wg.Wait()
 }
 
@@ -208,7 +175,6 @@ func NewPcapSocketProbeHandler(g *graph.Graph, fta *flow.TableAllocator) (*PcapS
 		graph:         g,
 		fta:           fta,
 		addr:          addr,
-		probes:        make(map[string]*PcapSocketProbe),
 		portAllocator: portAllocator,
 	}, nil
 }

@@ -34,7 +34,7 @@ func TestAlertAPI(t *testing.T) {
 
 	alert := types.NewAlert()
 	alert.Expression = g.G.V().Has("MTU", g.Gt(1500)).String()
-	if err := client.Create("alert", alert); err != nil {
+	if err := client.Create("alert", alert, nil); err != nil {
 		t.Errorf("Failed to create alert: %s", err.Error())
 	}
 
@@ -88,7 +88,7 @@ func TestCaptureAPI(t *testing.T) {
 	nbCaptures := len(captures)
 
 	capture := types.NewCapture(g.G.V().Has("Name", "br-int").String(), "port 80")
-	if err := client.Create("capture", capture); err != nil {
+	if err := client.Create("capture", capture, nil); err != nil {
 		t.Fatalf("Failed to create alert: %s", err.Error())
 	}
 

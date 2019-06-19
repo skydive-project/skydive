@@ -1030,10 +1030,6 @@ Node.prototype = {
     return this.group && this.group.owner === this && (!type || type === this.group.type);
   },
 
-  isCaptureOn: function() {
-    return "Capture/id" in this.metadata;
-  },
-
   isCaptureAllowed: function() {
     var allowedTypes = ["device", "veth", "ovsbridge", "geneve", "vlan", "bond", "ovsport",
                         "internal", "tun", "bridge", "vxlan", "gre", "gretap", "dpdkport"];

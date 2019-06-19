@@ -5,6 +5,7 @@ var getImagePath = function(label) {
 var minusImg = getImagePath('minus-outline-16');
 var plusImg = getImagePath('plus-16');
 var captureIndicatorImg = getImagePath('media-record');
+var injectionIndicatorImg = getImagePath('media-inject');
 var pinIndicatorImg = getImagePath('pin');
 
 var setupFixedImages = function(labelMap) {

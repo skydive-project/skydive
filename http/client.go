@@ -27,6 +27,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/skydive-project/skydive/common"
 )
@@ -41,6 +42,11 @@ type RestClient struct {
 // CrudClient describes a REST API client to issue CRUD commands
 type CrudClient struct {
 	*RestClient
+}
+
+// CreateOptions describes the options available when creating a resource
+type CreateOptions struct {
+	TTL time.Duration
 }
 
 func readBody(resp *http.Response) string {
@@ -144,14 +150,19 @@ func (c *CrudClient) Get(resource string, id string, value interface{}) error {
 }
 
 // Create does a POST request to create a new resource
-func (c *CrudClient) Create(resource string, value interface{}, res ...interface{}) error {
+func (c *CrudClient) Create(resource string, value interface{}, opts *CreateOptions) error {
 	s, err := json.Marshal(value)
 	if err != nil {
 		return err
 	}
 
+	var header http.Header
+	if opts != nil {
+		header = map[string][]string{"X-Resource-TTL": {opts.TTL.String()}}
+	}
+
 	contentReader := bytes.NewReader(s)
-	resp, err := c.Request("POST", resource, contentReader, nil)
+	resp, err := c.Request("POST", resource, contentReader, header)
 	if err != nil {
 		return err
 	}
@@ -161,9 +172,6 @@ func (c *CrudClient) Create(resource string, value interface{}, res ...interface
 		return fmt.Errorf("Failed to create %s, %s: %s", resource, resp.Status, readBody(resp))
 	}
 
-	if len(res) > 0 {
-		return common.JSONDecode(resp.Body, res[0])
-	}
 	return common.JSONDecode(resp.Body, value)
 }
 

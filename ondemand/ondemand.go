@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Red Hat, Inc.
+ * Copyright (C) 2016 Red Hat, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +18,27 @@
 package ondemand
 
 import (
-	"github.com/skydive-project/skydive/api/types"
+	json "encoding/json"
+
+	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
-// CaptureQuery describes a query for the capture API
+// Namespace "OnDemand"
+const Namespace = "OnDemand"
+
+// Query describes an ondemand query
 // easyjson:json
-type CaptureQuery struct {
-	NodeID  string
-	Capture types.Capture
+type Query struct {
+	NodeID   graph.Identifier
+	Resource interface{}
 }
+
+// RawQuery describes a raw ondemand query
+// easyjson:json
+type RawQuery struct {
+	NodeID   graph.Identifier
+	Resource json.RawMessage
+}
+
+// Task describes the processing unit created by an ondemand
+type Task = interface{}

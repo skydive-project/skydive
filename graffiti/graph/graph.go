@@ -793,6 +793,35 @@ func (g *Graph) AddMetadata(i interface{}, k string, v interface{}) error {
 	return g.addMetadata(i, k, v, TimeUTC())
 }
 
+// UpdateMetadata retrieves a value and calls a callback that can modify it then notify listeners of the update
+func (g *Graph) UpdateMetadata(i interface{}, key string, mutator func(obj interface{}) bool) error {
+	var e *graphElement
+
+	switch i.(type) {
+	case *Node:
+		e = &i.(*Node).graphElement
+	case *Edge:
+		e = &i.(*Edge).graphElement
+	}
+
+	field, err := e.GetField(key)
+	if err != nil {
+		return err
+	}
+
+	e.UpdatedAt = TimeUTC()
+	e.Revision++
+
+	if updated := mutator(field); updated {
+		if err := g.backend.MetadataUpdated(i); err != nil {
+			return err
+		}
+		g.eventHandler.NotifyEvent(NodeUpdated, i)
+	}
+
+	return nil
+}
+
 // StartMetadataTransaction start a new transaction
 func (g *Graph) StartMetadataTransaction(i interface{}) *MetadataTransaction {
 	t := MetadataTransaction{

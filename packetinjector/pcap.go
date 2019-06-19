@@ -28,6 +28,12 @@ import (
 // PcapPacketGenerator reads packets from a pcap file and inject it into a channel
 type PcapPacketGenerator struct {
 	pcapReader *pcapgo.Reader
+	close      chan bool
+}
+
+// Close the packet generator
+func (p *PcapPacketGenerator) Close() {
+	p.close <- true
 }
 
 // PacketSource returns a channel when pcap packets are pushed
@@ -35,6 +41,8 @@ func (p *PcapPacketGenerator) PacketSource() chan *Packet {
 	ch := make(chan *Packet)
 
 	go func() {
+		defer close(ch)
+
 		for {
 			data, _, err := p.pcapReader.ReadPacketData()
 			if err != nil && err != io.EOF {
@@ -43,10 +51,13 @@ func (p *PcapPacketGenerator) PacketSource() chan *Packet {
 			}
 			logging.GetLogger().Debugf("Read %d bytes of pcap", len(data))
 			if len(data) == 0 {
-				close(ch)
 				return
 			}
-			ch <- &Packet{data: data}
+			select {
+			case ch <- &Packet{data: data}:
+			case <-p.close:
+				return
+			}
 		}
 	}()
 
@@ -60,5 +71,5 @@ func NewPcapPacketGenerator(pcap []byte) (*PcapPacketGenerator, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &PcapPacketGenerator{pcapReader: pcapReader}, nil
+	return &PcapPacketGenerator{pcapReader: pcapReader, close: make(chan bool, 1)}, nil
 }

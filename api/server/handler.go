@@ -40,9 +40,14 @@ type Handler interface {
 	Index() map[string]types.Resource
 	Get(id string) (types.Resource, bool)
 	Decorate(resource types.Resource)
-	Create(resource types.Resource) error
+	Create(resource types.Resource, createOpts *CreateOptions) error
 	Delete(id string) error
 	AsyncWatch(f WatcherCallback) StoppableWatcher
+}
+
+// CreateOptions describes the available options when creating a resource
+type CreateOptions struct {
+	TTL time.Duration
 }
 
 // ResourceHandler aims to creates new resource of an API
@@ -152,7 +157,7 @@ func (h *BasicAPIHandler) Get(id string) (types.Resource, bool) {
 }
 
 // Create a new resource in Etcd
-func (h *BasicAPIHandler) Create(resource types.Resource) error {
+func (h *BasicAPIHandler) Create(resource types.Resource, createOpts *CreateOptions) error {
 	id, _ := uuid.NewV4()
 	resource.SetID(id.String())
 
@@ -161,8 +166,13 @@ func (h *BasicAPIHandler) Create(resource types.Resource) error {
 		return err
 	}
 
+	var setOptions *etcd.SetOptions
+	if createOpts != nil {
+		setOptions = &etcd.SetOptions{TTL: createOpts.TTL}
+	}
+
 	etcdPath := fmt.Sprintf("/%s/%s", h.ResourceHandler.Name(), id)
-	_, err = h.EtcdKeyAPI.Set(context.Background(), etcdPath, string(data), nil)
+	_, err = h.EtcdKeyAPI.Set(context.Background(), etcdPath, string(data), setOptions)
 	return err
 }
 

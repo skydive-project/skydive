@@ -338,6 +338,43 @@ func TestTraversalNe(t *testing.T) {
 	}
 }
 
+func TestTraversalNee(t *testing.T) {
+	g := newTransversalGraph(t)
+	ctx := StepContext{}
+
+	tr := NewGraphTraversal(g, false)
+
+	// next test
+	tv := tr.V(ctx).Has(ctx, "Value", Nee(1))
+	if len(tv.Values()) != 3 {
+		t.Fatalf("Should return 3 nodes, returned: %v", tv.Values())
+	}
+
+	// next test
+	tv = tr.V(ctx).Has(ctx, "MTU", Nee(1200))
+	if len(tv.Values()) != 4 {
+		t.Fatalf("Should return 4 nodes, returned: %v", tv.Values())
+	}
+
+	// next test
+	tv = tr.V(ctx).Has(ctx, "MTU", Nee(""))
+	if len(tv.Values()) != 4 {
+		t.Fatalf("Should return 4 nodes, returned: %v", tv.Values())
+	}
+
+	// next test
+	tv = tr.V(ctx).Has(ctx, "MTU", Nee(1500))
+	if len(tv.Values()) != 3 {
+		t.Fatalf("Should return 3 nodes, returned: %v", tv.Values())
+	}
+
+	// next test
+	tv = tr.V(ctx).Has(ctx, "aaaaaaaaaaa", Nee(""))
+	if len(tv.Values()) != 4 {
+		t.Fatalf("Shouldn't return all the nodes for an unknown key, returned: %v", tv.Values())
+	}
+}
+
 func TestTraversalHasKey(t *testing.T) {
 	g := newTransversalGraph(t)
 	ctx := StepContext{}

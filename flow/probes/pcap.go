@@ -25,7 +25,6 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
-	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
 // PcapPacketProbe describes a libpcap based packet probe
@@ -40,15 +39,15 @@ func (p *PcapPacketProbe) Close() {
 }
 
 // Stats returns statistics about captured packets
-func (p *PcapPacketProbe) Stats() (graph.Metadata, error) {
+func (p *PcapPacketProbe) Stats() (*CaptureStats, error) {
 	stats, err := p.handle.Stats()
 	if err != nil {
 		return nil, err
 	}
-	return graph.Metadata{
-		"PacketsReceived":  stats.PacketsReceived,
-		"PacketsDropped":   stats.PacketsDropped,
-		"PacketsIfDropped": stats.PacketsIfDropped,
+	return &CaptureStats{
+		PacketsReceived:  int64(stats.PacketsReceived),
+		PacketsDropped:   int64(stats.PacketsDropped),
+		PacketsIfDropped: int64(stats.PacketsIfDropped),
 	}, nil
 }
 

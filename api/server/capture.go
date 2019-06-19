@@ -23,6 +23,7 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
@@ -57,7 +58,6 @@ func (c *CaptureAPIHandler) Decorate(resource types.Resource) {
 	capture := resource.(*types.Capture)
 
 	count := 0
-	pcapSocket := ""
 
 	c.Graph.RLock()
 	defer c.Graph.RUnlock()
@@ -68,24 +68,28 @@ func (c *CaptureAPIHandler) Decorate(resource types.Resource) {
 		return
 	}
 
+	countCaptures := func(n *graph.Node) (count int) {
+		if field, err := n.GetField("Captures"); err == nil {
+			if captures, ok := field.(*probes.Captures); ok {
+				for _, capture := range *captures {
+					if capture.State == "active" {
+						count++
+					}
+				}
+
+			}
+		}
+		return
+	}
+
 	for _, value := range res.Values() {
 		switch value.(type) {
 		case *graph.Node:
 			n := value.(*graph.Node)
-			if state, _ := n.GetFieldString("Capture.State"); state == "active" {
-				count++
-			}
-			if p, _ := n.GetFieldString("Capture.PCAPSocket"); p != "" {
-				pcapSocket = p
-			}
+			count += countCaptures(n)
 		case []*graph.Node:
 			for _, n := range value.([]*graph.Node) {
-				if cuuid, _ := n.GetFieldString("Capture.ID"); cuuid != "" {
-					count++
-				}
-				if p, _ := n.GetFieldString("Capture.PCAPSocket"); p != "" {
-					pcapSocket = p
-				}
+				count += countCaptures(n)
 			}
 		default:
 			count = 0
@@ -93,11 +97,10 @@ func (c *CaptureAPIHandler) Decorate(resource types.Resource) {
 	}
 
 	capture.Count = count
-	capture.PCAPSocket = pcapSocket
 }
 
 // Create tests that resource GremlinQuery does not exists already
-func (c *CaptureAPIHandler) Create(r types.Resource) error {
+func (c *CaptureAPIHandler) Create(r types.Resource, opts *CreateOptions) error {
 	capture := r.(*types.Capture)
 
 	// check capabilities
@@ -122,12 +125,20 @@ func (c *CaptureAPIHandler) Create(r types.Resource) error {
 	resources := c.Index()
 	for _, resource := range resources {
 		resource := resource.(*types.Capture)
-		if resource.GremlinQuery == capture.GremlinQuery {
-			return fmt.Errorf("Duplicate capture, uuid=%s", capture.UUID)
+
+		sameGremlin := resource.GremlinQuery == capture.GremlinQuery
+		sameBPFFilter := resource.BPFFilter == capture.BPFFilter
+		sameCaptureType := resource.Type == capture.Type
+		supportsMulti := capture.Type == "" || common.CheckProbeCapabilities(capture.Type, common.MultipleOnSameNodeCapability)
+
+		if sameCaptureType && sameGremlin {
+			if !supportsMulti || sameBPFFilter {
+				return fmt.Errorf("Duplicated capture, uuid=%s", resource.UUID)
+			}
 		}
 	}
 
-	return c.BasicAPIHandler.Create(r)
+	return c.BasicAPIHandler.Create(r, opts)
 }
 
 // RegisterCaptureAPI registers an new resource, capture

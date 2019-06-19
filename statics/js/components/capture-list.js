@@ -180,7 +180,7 @@ Vue.component('capture-list', {
   },
 
   created: function() {
-    websocket.addMsgHandler('OnDemandNotification', this.onMsg.bind(this));
+    websocket.addMsgHandler('OnDemandCaptureNotification', this.onMsg.bind(this));
     websocket.addConnectHandler(this.init.bind(this));
   },
 
@@ -215,14 +215,14 @@ Vue.component('capture-list', {
     onMsg: function(msg) {
       var self = this;
       switch(msg.Type) {
-        case "CaptureDeleted":
+        case "Deleted":
           Vue.delete(this.captures, msg.Obj.UUID);
           break;
-        case "CaptureAdded":
+        case "Added":
           Vue.set(this.captures, msg.Obj.UUID, msg.Obj);
           break;
-        case "CaptureNodeUpdated":
-          this.captureAPI.get(msg.Obj)
+        case "NodeUpdated":
+          this.captureAPI.get(msg.Obj.UUID)
             .then(function(data) {
               Vue.set(self.captures, data.UUID, data);
             })

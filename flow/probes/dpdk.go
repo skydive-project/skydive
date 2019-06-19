@@ -48,18 +48,18 @@ type DPDKProbesHandler struct {
 }
 
 // RegisterProbe registers a gopacket probe
-func (p *DPDKProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+func (p *DPDKProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error) {
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
-		return fmt.Errorf("No TID for node %v", n)
+		return nil, fmt.Errorf("No TID for node %v", n)
 	}
 	enablePort(tid, true)
-	e.OnStarted()
-	return nil
+	e.OnStarted(&CaptureMetadata{})
+	return nil, nil
 }
 
 // UnregisterProbe unregisters gopacket probe
-func (p *DPDKProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
+func (p *DPDKProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, fp Probe) error {
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
 		return fmt.Errorf("No TID for node %v", n)

@@ -43,7 +43,8 @@ type ovsMirrorProbe struct {
 	node       *graph.Node
 	mirrorNode *graph.Node
 	capture    *types.Capture
-	subProbe   FlowProbe
+	subHandler FlowProbeHandler
+	subProbe   Probe
 }
 
 // OvsMirrorProbesHandler describes a flow probe in running in the graph
@@ -52,7 +53,7 @@ type OvsMirrorProbesHandler struct {
 	probes      map[string]*ovsMirrorProbe
 	probeBundle *probe.Bundle
 	probesLock  common.RWMutex
-	Graph       *graph.Graph
+	graph       *graph.Graph
 	ovsClient   *ovsdb.OvsClient
 	intfIndexer *graph.MetadataIndexer
 	portIndexer *graph.MetadataIndexer
@@ -302,72 +303,56 @@ func (o *OvsMirrorProbesHandler) unregisterProbeFromPort(portUUID string) error 
 }
 
 // RegisterProbeOnPort registers a new probe on the OVS bridge
-func (o *OvsMirrorProbesHandler) RegisterProbeOnPort(n *graph.Node, portUUID string, capture *types.Capture) error {
+func (o *OvsMirrorProbesHandler) RegisterProbeOnPort(n *graph.Node, portUUID string, capture *types.Capture) (Probe, error) {
 	probe := &ovsMirrorProbe{
 		id:      portUUID,
 		capture: capture,
-		graph:   o.Graph,
+		graph:   o.graph,
 		node:    n,
 	}
 
-	if id, _ := n.GetFieldString("ExtID.skydive-probe-id"); id != "" {
-		return fmt.Errorf("Mirror on mirrored interface is not allowed")
-	}
-
 	if err := o.registerProbeOnPort(probe, portUUID); err != nil {
-		return err
+		return nil, err
 	}
 
 	o.probesLock.Lock()
 	o.probes[portUUID] = probe
 	o.probesLock.Unlock()
 
-	return nil
-}
-
-func isOvsPort(n *graph.Node) bool {
-	if uuid, _ := n.GetFieldString("UUID"); uuid == "" {
-		return false
-	}
-	if tp, _ := n.GetFieldString("Type"); tp == "ovsport" {
-		return true
-	}
-
-	return false
-}
-
-func (o *OvsMirrorProbesHandler) registerProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
-	if isOvsPort(n) {
-		if uuid, _ := n.GetFieldString("UUID"); uuid != "" {
-			if err := o.RegisterProbeOnPort(n, uuid, capture); err != nil {
-				return err
-			}
-
-			go e.OnStarted()
-		}
-	}
-	return nil
+	return probe, nil
 }
 
 // RegisterProbe registers a probe on a graph node
-func (o *OvsMirrorProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
-	err := o.registerProbe(n, capture, e)
-	if err != nil {
-		go e.OnError(err)
+func (o *OvsMirrorProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error) {
+	uuid, _ := n.GetFieldString("UUID")
+	if uuid == "" {
+		return nil, fmt.Errorf("Node %s has no attribute 'UUID'", n.ID)
 	}
-	return err
+
+	if id, _ := n.GetFieldString("ExtID.skydive-probe-id"); id != "" {
+		return nil, fmt.Errorf("Mirror on mirrored interface is not allowed")
+	}
+
+	probe, err := o.RegisterProbeOnPort(n, uuid, capture)
+	if err != nil {
+		return nil, err
+	}
+
+	go e.OnStarted(&CaptureMetadata{})
+
+	return probe, nil
 }
 
 // UnregisterProbe at the graph node
-func (o *OvsMirrorProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
-	if isOvsPort(n) {
-		if uuid, _ := n.GetFieldString("UUID"); uuid != "" {
-			if err := o.unregisterProbeFromPort(uuid); err != nil {
-				return err
-			}
-			go e.OnStopped()
-		}
+func (o *OvsMirrorProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, fp Probe) error {
+	probe := fp.(*ovsMirrorProbe)
+
+	if err := o.unregisterProbeFromPort(probe.id); err != nil {
+		return err
 	}
+
+	go e.OnStopped()
+
 	return nil
 }
 
@@ -426,37 +411,46 @@ func (o *OvsMirrorProbesHandler) cleanupOvsMirrors() {
 	logging.GetLogger().Info("OvsMirror cleanup previous mirrors")
 }
 
-// OnStarted FlowProbeEventHandler implementation
-func (o *ovsMirrorProbe) OnStarted() {
+// OnStarted ProbeEventHandler implementation
+func (o *ovsMirrorProbe) OnStarted(metadata *CaptureMetadata) {
 	o.graph.Lock()
-	tr := o.graph.StartMetadataTransaction(o.mirrorNode)
-	tr.AddMetadata("Capture.State", "active")
-	tr.AddMetadata("Capture.MirrorOf", o.node.ID)
-	tr.Commit()
+	metadata.ID = o.capture.UUID
+	metadata.State = "active"
+	metadata.MirrorOf = string(o.node.ID)
+	o.graph.AddMetadata(o.mirrorNode, "Captures", &Captures{metadata})
 	o.graph.Unlock()
 }
 
-// OnStopped FlowProbeEventHandler implementation
+// OnStopped ProbeEventHandler implementation
 func (o *ovsMirrorProbe) OnStopped() {
 	o.graph.Lock()
-	o.graph.DelMetadata(o.mirrorNode, "Capture")
+	o.graph.DelMetadata(o.mirrorNode, "Captures")
 	o.graph.Unlock()
 }
 
-// OnError FlowProbeEventHandler implementation
+// OnError ProbeEventHandler implementation
 func (o *ovsMirrorProbe) OnError(err error) {
 	o.graph.Lock()
-	tr := o.graph.StartMetadataTransaction(o.node)
-	tr.AddMetadata("Capture.State", "error")
-	tr.AddMetadata("Capture.Error", err.Error())
-	tr.Commit()
 
-	if o.mirrorNode != nil {
-		tr := o.graph.StartMetadataTransaction(o.mirrorNode)
-		tr.AddMetadata("Capture.State", "error")
-		tr.AddMetadata("Capture.Error", err.Error())
-		tr.Commit()
+	setCaptureError := func(n *graph.Node, id string) {
+		o.graph.UpdateMetadata(n, "Captures", func(obj interface{}) bool {
+			captures := obj.(*Captures)
+			for _, capture := range *captures {
+				if capture.ID == id {
+					capture.State = "error"
+					capture.Error = err.Error()
+					return true
+				}
+			}
+			return false
+		})
 	}
+
+	setCaptureError(o.node, o.capture.UUID)
+	if o.mirrorNode != nil {
+		setCaptureError(o.mirrorNode, o.capture.UUID)
+	}
+
 	o.graph.Unlock()
 }
 
@@ -497,20 +491,22 @@ func (o *ovsMirrorInterfaceHandler) onNodeEvent(n *graph.Node) {
 		return
 	}
 
-	subProbe := o.oph.probeBundle.GetProbe(subProbeTypes.Default)
-	if subProbe == nil {
+	subProbeType := o.oph.probeBundle.GetProbe(subProbeTypes.Default)
+	if subProbeType == nil {
 		logging.GetLogger().Errorf("Unable to find probe for this capture type: %s", subProbeTypes.Default)
 		return
 	}
 
-	fprobe := subProbe.(FlowProbe)
-	if err := fprobe.RegisterProbe(n, ovsProbe.capture, ovsProbe); err != nil {
+	subHandler := subProbeType.(FlowProbeHandler)
+	subProbe, err := subHandler.RegisterProbe(n, ovsProbe.capture, ovsProbe)
+	if err != nil {
 		logging.GetLogger().Debugf("Failed to register flow probe: %s", err)
 		return
 	}
 
 	ovsProbe.mirrorNode = n
-	ovsProbe.subProbe = fprobe
+	ovsProbe.subHandler = subHandler
+	ovsProbe.subProbe = subProbe
 }
 
 func (o *ovsMirrorInterfaceHandler) OnNodeAdded(n *graph.Node) {
@@ -534,7 +530,7 @@ func (o *ovsMirrorPortHandler) OnNodeAdded(n *graph.Node) {
 		return
 	}
 
-	topology.AddLink(o.oph.Graph, n, ovsProbe.node, "mirroring", nil)
+	topology.AddLink(o.oph.graph, n, ovsProbe.node, "mirroring", nil)
 }
 
 func (o *ovsMirrorInterfaceHandler) OnNodeDeleted(n *graph.Node) {
@@ -550,8 +546,8 @@ func (o *ovsMirrorInterfaceHandler) OnNodeDeleted(n *graph.Node) {
 		return
 	}
 
-	if ovsProbe.subProbe != nil {
-		ovsProbe.subProbe.UnregisterProbe(n, ovsProbe)
+	if ovsProbe.subHandler != nil {
+		ovsProbe.subHandler.UnregisterProbe(n, ovsProbe, ovsProbe.subProbe)
 	}
 }
 
@@ -600,7 +596,7 @@ func NewOvsMirrorProbesHandler(g *graph.Graph, tb, fb *probe.Bundle) (*OvsMirror
 
 	o := &OvsMirrorProbesHandler{
 		probes:      make(map[string]*ovsMirrorProbe),
-		Graph:       g,
+		graph:       g,
 		ovsClient:   p.OvsMon.OvsClient,
 		probeBundle: fb,
 		intfIndexer: graph.NewMetadataIndexer(g, g, graph.Metadata{"Type": "internal"}, "ExtID.skydive-probe-id"),

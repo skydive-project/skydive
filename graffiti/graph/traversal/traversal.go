@@ -133,6 +133,19 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 		}
 
 		return filters.NewAndFilter(filters.NewNotNullFilter(k), neFilter), nil
+	case *NEEElementMatcher:
+		switch t := v.value.(type) {
+		case string:
+			return filters.NewNotFilter(filters.NewTermStringFilter(k, t)), nil
+		case bool:
+			return filters.NewTermBoolFilter(k, !t), nil
+		default:
+			i, err := common.ToInt64(t)
+			if err != nil {
+				return nil, err
+			}
+			return filters.NewNotFilter(filters.NewTermInt64Filter(k, i)), nil
+		}
 	case *LTElementMatcher:
 		i, err := common.ToInt64(v.value)
 		if err != nil {
@@ -328,7 +341,7 @@ func Without(s ...interface{}) *WithoutElementMatcher {
 	return &WithoutElementMatcher{List: s}
 }
 
-// NEElementMatcher describes a list of metadata that match NotEqual
+// NEElementMatcher describes a list of metadata that match NotEqual and NotNull
 type NEElementMatcher struct {
 	value interface{}
 }
@@ -336,6 +349,16 @@ type NEElementMatcher struct {
 // Ne predicate
 func Ne(s interface{}) *NEElementMatcher {
 	return &NEElementMatcher{value: s}
+}
+
+// NEEElementMatcher describes a list of metadata that match NotEqual
+type NEEElementMatcher struct {
+	value interface{}
+}
+
+// Nee predicate
+func Nee(s interface{}) *NEEElementMatcher {
+	return &NEEElementMatcher{value: s}
 }
 
 // LTElementMatcher describes a list of metadata that match LessThan
@@ -1414,6 +1437,24 @@ func (sp *GraphTraversalShortestPath) SubGraph(ctx StepContext, s ...interface{}
 	ng := graph.NewGraph(sp.GraphTraversal.Graph.GetHost(), memory, common.UnknownService)
 
 	return NewGraphTraversal(ng, sp.GraphTraversal.lockGraph)
+}
+
+// Dedup removes duplicated nodes from all the paths
+func (sp *GraphTraversalShortestPath) Dedup(ctx StepContext, s ...interface{}) *GraphTraversalV {
+	if sp.error != nil {
+		return &GraphTraversalV{error: sp.error}
+	}
+
+	// first insert all the nodes
+	var nodes []*graph.Node
+	for _, p := range sp.paths {
+		for _, n := range p {
+			nodes = append(nodes, n)
+		}
+	}
+
+	tv := NewGraphTraversalV(sp.GraphTraversal, nodes)
+	return tv.Dedup(ctx, s...)
 }
 
 // Count step

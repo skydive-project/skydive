@@ -31,12 +31,12 @@ type GoPacketProbesHandler struct {
 }
 
 // RegisterProbe registers a gopacket probe
-func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
-	return common.ErrNotImplemented
+func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error) {
+	return nil, common.ErrNotImplemented
 }
 
 // UnregisterProbe unregisters gopacket probe
-func (p *GoPacketProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
+func (p *GoPacketProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, fp Probe) error {
 	return common.ErrNotImplemented
 }
 

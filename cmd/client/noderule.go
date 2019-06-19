@@ -26,7 +26,7 @@ import (
 	api "github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology/enhancers"
+	usertopology "github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/validator"
 
 	"github.com/spf13/cobra"
@@ -89,7 +89,7 @@ var NodeRuleCreate = &cobra.Command{
 			exitOnError(fmt.Errorf("Error while validating node rule: %s", err))
 		}
 
-		if err = client.Create("noderule", &node); err != nil {
+		if err = client.Create("noderule", &node, nil); err != nil {
 			exitOnError(err)
 		}
 

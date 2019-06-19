@@ -1,3 +1,5 @@
+//go:generate go run ../../scripts/gendecoder.go -package github.com/skydive-project/skydive/flow/probes
+
 /*
  * Copyright (C) 2016 Red Hat, Inc.
  *
@@ -18,28 +20,34 @@
 package probes
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/ondemand"
 	"github.com/skydive-project/skydive/probe"
 )
 
 // ErrProbeNotCompiled is thrown when a flow probe was not compiled within the binary
 var ErrProbeNotCompiled = fmt.Errorf("probe is not compiled within skydive")
 
-// FlowProbe defines flow probe mechanism
-type FlowProbe interface {
+// Probe defines an active flow probe
+type Probe = ondemand.Task
+
+// FlowProbeHandler defines flow probe mechanism
+type FlowProbeHandler interface {
 	probe.Probe // inheritance of the probe.Probe interface Start/Stop functions
-	RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error
-	UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error
+	RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error)
+	UnregisterProbe(n *graph.Node, e ProbeEventHandler, p Probe) error
 }
 
-// FlowProbeEventHandler used by probes to notify capture state
-type FlowProbeEventHandler interface {
-	OnStarted()
+// ProbeEventHandler used by probes to notify state
+type ProbeEventHandler interface {
+	OnStarted(*CaptureMetadata)
 	OnStopped()
 	OnError(err error)
 }
@@ -50,7 +58,7 @@ func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocat
 	logging.GetLogger().Infof("Flow probes: %v", list)
 
 	var captureTypes []string
-	var fp FlowProbe
+	var fp FlowProbeHandler
 	var err error
 
 	fb := probe.NewBundle(make(map[string]probe.Probe))
@@ -119,4 +127,45 @@ func tableOptsFromCapture(capture *types.Capture) flow.TableOpts {
 		LayerKeyMode:   layerKeyMode,
 		ExtraLayers:    capture.ExtraLayers,
 	}
+}
+
+// Captures holds the captures metadata
+// easyjson:json
+// gendecoder
+type Captures []*CaptureMetadata
+
+// CaptureMetadata holds attributes and statistics about a capture
+// easyjson:json
+// gendecoder
+type CaptureMetadata struct {
+	CaptureStats
+	ID          string `json:",omitempty"`
+	State       string `json:",omitempty"`
+	Name        string `json:",omitempty"`
+	Description string `json:",omitempty"`
+	BPFFilter   string `json:",omitempty"`
+	Type        string `json:",omitempty"`
+	PCAPSocket  string `json:",omitempty"`
+	MirrorOf    string `json:",omitempty"`
+	SFlowSocket string `json:",omitempty"`
+	Error       string `json:",omitempty"`
+}
+
+// CaptureStats describes the statistics of a running capture
+// easyjson:json
+// gendecoder
+type CaptureStats struct {
+	PacketsReceived  int64
+	PacketsDropped   int64
+	PacketsIfDropped int64
+}
+
+// CapturesMetadataDecoder implements a json message raw decoder
+func CapturesMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+	var captures Captures
+	if err := json.Unmarshal(raw, &captures); err != nil {
+		return nil, fmt.Errorf("unable to unmarshal captures metadata %s: %s", string(raw), err)
+	}
+
+	return &captures, nil
 }
