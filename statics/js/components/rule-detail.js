@@ -578,7 +578,7 @@ Vue.component('rule-table-detail', {
                 </table>\
             </td>\
             <td v-if="rule.actionsSpan != -1" :rowspan="rule.actionsSpan">\
-              <div v-if="rule.Actions[0][\'Function\']">\
+              <div v-if="rule.Actions.length > 0 && rule.Actions[0][\'Function\']">\
                 {{ splitLine(rule.textActions) }}\
               </div>\
               <div v-else>\
