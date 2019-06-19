@@ -517,6 +517,8 @@ var BridgeLayout = (function () {
     p = (typeof (p) === 'string') ? parseInt(p) : p;
     if (p === ANY_PORT) return 'ANY';
     if (p === LOCAL_PORT) return 'LOCAL';
+    if (p === CONTROLLER_PORT) return 'CONTROLLER';
+    if (p === OTHER_PORTS) return 'OTHER_PORTS';
     if (p === SAME_PORT || p === NORMAL_PORT || p === IN_PORT || p === undefined) return '';
     var nodes = this.interfaces[p];
     if (nodes === undefined) return '???';
