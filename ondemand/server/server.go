@@ -60,16 +60,10 @@ type OnDemandServerHandler interface {
 }
 
 func (o *OnDemandServer) registerTask(n *graph.Node, resource types.Resource) bool {
-	logging.GetLogger().Debugf("Attempting to register task on node %s", n.ID)
+	logging.GetLogger().Debugf("Attempting to register %s %s on node %s", o.resourceName, resource.ID(), n.ID)
 
 	if _, err := n.GetFieldString("Type"); err != nil {
 		logging.GetLogger().Infof("Unable to register task type of node unknown %v", n)
-		return false
-	}
-
-	tid, _ := n.GetFieldString("TID")
-	if tid == "" {
-		logging.GetLogger().Infof("Unable to register task without node TID %v", n)
 		return false
 	}
 
