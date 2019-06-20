@@ -342,7 +342,7 @@ func (o *OnDemandClient) unregisterResource(resource types.Resource) {
 	filter := filters.NewTermStringFilter(fmt.Sprintf("%ss.ID", o.resourceName), resource.ID())
 	nodes := o.graph.GetNodes(graph.NewElementFilter(filter))
 	for _, node := range nodes {
-		o.unregisterTask(node, resource)
+		go o.unregisterTask(node, resource)
 	}
 }
 
