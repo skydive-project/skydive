@@ -11,6 +11,8 @@ Parameters:
     Type: node
 Source: |
     function CheckConnectivity(from, to) {
+      var result = {}
+
       try {
         var capture = new Capture();
         capture.GremlinQuery = "G.V().Has('TID', '" + from + "').ShortestPathTo(Metadata('TID', '" + to + "'))";
@@ -28,13 +30,13 @@ Source: |
         sleep(1000)
 
         var flows = client.G.Flows().Has("ICMP.ID", packetInjection.ICMPID).result()
-        return {
-                "State": flows.length > 0 && flows[0].Metric.ABPackets > 0 && flows[0].Metric.BAPackets > 0,
-                "Flows": flows
-        };
+        result["Connectivity"] = flows.length > 0 && flows[0].Metric.ABPackets > 0 && flows[0].Metric.BAPackets > 0
+        result["Flows"] = flows
       } catch (e) {
         console.log(e)
-      } finally {
-        if (capture && capture.UUID) client.captures.delete(capture.UUID)
+        result["Error"] = JSON.stringify(e)
       }
+      if (capture && capture.UUID) client.captures.delete(capture.UUID)
+
+      return result
     }

@@ -192,6 +192,14 @@ func (r *Runtime) registerStandardLibray() {
 	}`)
 	r.Set("clearTimeout", clearTimeout)
 	r.Set("clearInterval", clearTimeout)
+	r.Set("sleep", func(call otto.FunctionCall) otto.Value {
+		if len(call.ArgumentList) != 1 || !call.Argument(0).IsNumber() {
+			return r.MakeCustomError("MissingArgument", "Sleep requires a number parameter")
+		}
+		t, _ := call.Argument(0).ToInteger()
+		time.Sleep(time.Duration(t) * time.Millisecond)
+		return otto.NullValue()
+	})
 }
 
 func (r *Runtime) runEventLoop() {

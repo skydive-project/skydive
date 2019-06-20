@@ -391,6 +391,10 @@ export class V extends Step {
         return new HasV(this.api, this, ...params);
     }
 
+    HasEither(...params: any[]): V {
+        return new HasEitherV(this.api, this, ...params);
+    }
+
     HasKey(...params: any[]): V {
         return new HasKeyV(this.api, this, ...params);
     }
@@ -487,6 +491,10 @@ export class E extends Step {
         return new HasE(this.api, this, ...params);
     }
 
+    HasEither(...params: any[]): E {
+        return new HasEitherE(this.api, this, ...params);
+    }
+
     HasKey(...params: any[]): E {
         return new HasKeyE(this.api, this, ...params);
     }
@@ -542,6 +550,9 @@ export class E extends Step {
 
 class HasV extends MixinStep(V, "Has") { }
 class HasE extends MixinStep(E, "Has") { }
+
+class HasEitherV extends MixinStep(V, "HasEither") { }
+class HasEitherE extends MixinStep(E, "HasEither") { }
 
 class HasKeyV extends MixinStep(V, "HasKey") { }
 class HasKeyE extends MixinStep(E, "HasKey") { }
@@ -717,6 +728,10 @@ export class Flows extends Step {
         return new HasFlows(this.api, this, ...params);
     }
 
+    HasEither(...params: any[]): Flows {
+        return new HasEitherFlows(this.api, this, ...params);
+    }
+
     Count(...params: any[]): Value {
         return new Count(this.api, this);
     }
@@ -772,9 +787,14 @@ export class Flows extends Step {
     Sockets(...params: any[]): Sockets {
         return new Sockets(this.api, this, ...params);
     }
+
+    Dedup(...params: any[]): Flows {
+        return new DedupFlows(this.api, this, ...params);
+    }
 }
 
 class HasFlows extends MixinStep(Flows, "Has") { }
+class HasEitherFlows extends MixinStep(Flows, "HasEither") { }
 class SortFlows extends MixinStep(Flows, "Sort") { }
 class DedupFlows extends MixinStep(Flows, "Dedup") { }
 
