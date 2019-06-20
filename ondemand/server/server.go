@@ -205,7 +205,12 @@ func (o *OnDemandServer) OnNodeDeleted(n *graph.Node) {
 	tasks, found := o.activeTasks[n.ID]
 	if found {
 		for _, task := range tasks {
-			defer o.unregisterTask(n, task.resource)
+			capture := task.resource
+			defer func() {
+				if err := o.unregisterTask(n, capture); err != nil {
+					logging.GetLogger().Errorf("Failed to unregister %s %s on node %s", o.resourceName, capture.ID(), n.ID)
+				}
+			}()
 		}
 	}
 	o.RUnlock()
