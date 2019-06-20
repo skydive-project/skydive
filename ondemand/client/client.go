@@ -298,6 +298,7 @@ func (o *OnDemandClient) OnNodeDeleted(n *graph.Node) {
 			o.subscriberPool.BroadcastMessage(ws.NewStructMessage(o.wsNotificationNamespace, "NodeUpdated", o.resources[resourceID]))
 		}
 	}
+	delete(o.registeredNodes, n.ID)
 	o.RUnlock()
 }
 
