@@ -131,11 +131,6 @@ func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Cap
 func (p *PcapSocketProbeHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, fp Probe) error {
 	probe := fp.(*PcapSocketProbe)
 
-	tid, _ := n.GetFieldString("TID")
-	if tid == "" {
-		return fmt.Errorf("No TID for node %v", n)
-	}
-
 	p.fta.Release(probe.flowTable)
 
 	atomic.StoreInt64(&probe.state, common.StoppingState)
