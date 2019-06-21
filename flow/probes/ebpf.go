@@ -144,10 +144,10 @@ func (p *EBPFProbe) run() {
 				}
 
 				ebpfFlow := &ebpfFlows[nextAvailablePtr]
-				ebpfFlow.start = start
-				ebpfFlow.last = last
-				ebpfFlow.kernFlow = (*C.struct_flow)(kernFlow)
-				ebpfFlow.startKTimeNs = startKTimeNs
+				ebpfFlow.Start = start
+				ebpfFlow.Last = last
+				ebpfFlow.StartKTimeNs = startKTimeNs
+				flow.SetEBPFKernFlow(ebpfFlow, unsafe.Pointer(kernFlow))
 
 				flowEBPFChan <- ebpfFlow
 

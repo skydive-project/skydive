@@ -458,7 +458,7 @@ func (ft *Table) processFlowOP(op *Operation) {
 }
 
 func (ft *Table) processEBPFFlow(ebpfFlow *EBPFFlow) {
-	key := uint64(ebpfFlow.kernFlow.key)
+	key := kernFlowKey(ebpfFlow.KernFlow)
 	f, found := ft.table.Get(key)
 	if !found {
 		keys, flows := ft.newFlowFromEBPF(ebpfFlow, key)
