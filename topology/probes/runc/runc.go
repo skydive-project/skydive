@@ -191,7 +191,12 @@ func parseHosts(state *containerState) *Hosts {
 
 	hosts, err := readHosts(path)
 	if err != nil {
-		logging.GetLogger().Error(err)
+		if os.IsNotExist(err) {
+			logging.GetLogger().Debug(err)
+		} else {
+			logging.GetLogger().Error(err)
+		}
+
 		return nil
 	}
 
