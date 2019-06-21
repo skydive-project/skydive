@@ -88,7 +88,7 @@ func (nfa *Agent) feedFlowTable(flowOpChan chan *flow.Operation) {
 
 	LOOP:
 		for _, nf := range msg.Flows {
-			f := flow.NewFlow()
+			f := flow.NewFlow(nfa.FlowTable.Opts.CaptureID)
 			f.Init(int64(nf.StartTime)+bootTime, nfa.ProbeNodeTID, flow.UUIDs{})
 			f.Last = int64(nf.EndTime) + bootTime
 

@@ -119,7 +119,7 @@ func newFakeTableClient() *fakeTableClient {
 }
 
 func newICMPFlow(id uint32) *flow.Flow {
-	icmp := flow.NewFlow()
+	icmp := flow.NewFlow("")
 	icmp.UUID = strconv.Itoa(rand.Int())
 	icmp.ICMP = &flow.ICMPLayer{ID: id}
 	icmp.NodeTID = "node1"
