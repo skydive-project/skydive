@@ -56,7 +56,7 @@ var Capture = {
         <dd v-if="capture.Target">{{capture.Target}}</dd>\
         <dt v-if="showFlows">Flows</dt>\
         <dd v-if="showFlows">\
-          <flow-table :value="capture.GremlinQuery + \'.Flows().Dedup()\'"></flow-table>\
+          <flow-table :value="capture.GremlinQuery + \'.Flows().Has(\\\'CaptureID\\\', \\\'\' + capture.UUID + \'\\\').Dedup()\'"></flow-table>\
         </dd>\
       </dl>\
     </div>\

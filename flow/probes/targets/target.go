@@ -48,6 +48,7 @@ func tableOptsFromCapture(capture *types.Capture) flow.TableOpts {
 		ReassembleTCP:  capture.ReassembleTCP,
 		LayerKeyMode:   layerKeyMode,
 		ExtraLayers:    capture.ExtraLayers,
+		CaptureID:      capture.UUID,
 	}
 }
 

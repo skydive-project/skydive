@@ -438,15 +438,16 @@ func networkID(p *Packet) int64 {
 }
 
 // NewFlow creates a new empty flow
-func NewFlow() *Flow {
+func NewFlow(captureID string) *Flow {
 	return &Flow{
-		Metric: &FlowMetric{},
+		Metric:    &FlowMetric{},
+		CaptureID: captureID,
 	}
 }
 
 // NewFlowFromGoPacket creates a new flow from the given gopacket
 func NewFlowFromGoPacket(p gopacket.Packet, nodeTID string, uuids UUIDs, opts Opts) *Flow {
-	f := NewFlow()
+	f := NewFlow("")
 
 	var length int64
 	if p.Metadata() != nil {
@@ -1133,6 +1134,8 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 		return f.NodeTID, nil
 	case "Application":
 		return f.Application, nil
+	case "CaptureID":
+		return f.CaptureID, nil
 	}
 
 	// sub field

@@ -114,7 +114,7 @@ func kernLayersPath(kernFlow *C.struct_flow) (layersPath string, hasGRE bool) {
 func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key string) ([]string, []*Flow) {
 	var flows []*Flow
 	var keys []string
-	f := NewFlow()
+	f := NewFlow(ft.Opts.CaptureID)
 	f.Init(common.UnixMillis(ebpfFlow.start), ebpfFlow.probeNodeTID, UUIDs{})
 	f.Last = common.UnixMillis(ebpfFlow.last)
 
@@ -170,7 +170,7 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key string) ([]string, []*F
 		flows = append(flows, parent)
 		keys = append(keys, pkey)
 		// upper layer
-		f = NewFlow()
+		f = NewFlow(ft.Opts.CaptureID)
 		f.Init(common.UnixMillis(ebpfFlow.start), ebpfFlow.probeNodeTID, UUIDs{ParentUUID: parent.UUID})
 		f.Last = common.UnixMillis(ebpfFlow.last)
 		f.LayersPath = innerLayerPath

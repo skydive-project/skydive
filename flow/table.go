@@ -44,6 +44,7 @@ type TableOpts struct {
 	ReassembleTCP  bool
 	LayerKeyMode   LayerKeyMode
 	ExtraLayers    ExtraLayers
+	CaptureID      string
 }
 
 // Table store the flow table and related metrics mechanism
@@ -187,7 +188,7 @@ func (ft *Table) getOrCreateFlow(key string) (*Flow, bool) {
 		return flow.(*Flow), false
 	}
 
-	new := NewFlow()
+	new := NewFlow(ft.Opts.CaptureID)
 	if ft.table.Add(key, new) {
 		ft.removedFlows++
 	}

@@ -190,6 +190,9 @@ message Flow {
 /* Topology info */
   string NodeTID = 33;
 
+/* Capture info */
+  string CaptureID = 34;
+
 /* raw packets, will not be exported, see Makefile */
   repeated RawPacket LastRawPackets = 36;
 
