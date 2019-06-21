@@ -188,7 +188,7 @@ func (ers *ERSpanTarget) Stop() {
 }
 
 // NewERSpanTarget returns a new ERSpan target
-func NewERSpanTarget(g *graph.Graph, n *graph.Node, capture *types.Capture, nodeTID string) (*ERSpanTarget, error) {
+func NewERSpanTarget(g *graph.Graph, n *graph.Node, capture *types.Capture) (*ERSpanTarget, error) {
 	fd := C.open_raw_socket(C.uint16_t(syscall.IPPROTO_GRE))
 	if fd == 0 {
 		return nil, errors.New("Failed to open raw socket")

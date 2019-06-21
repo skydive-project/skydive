@@ -173,8 +173,9 @@ func (o *OvsNetFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid s
 	}
 
 	if capture.Target == "" {
+		uuids := flow.UUIDs{NodeTID: tid, CaptureID: capture.UUID}
 		opts := tableOptsFromCapture(capture)
-		probe.flowTable = o.fta.Alloc(tid, opts)
+		probe.flowTable = o.fta.Alloc(uuids, opts)
 
 		address := config.GetString("agent.flow.netflow.bind_address")
 		if address == "" {
@@ -182,7 +183,7 @@ func (o *OvsNetFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid s
 		}
 
 		addr := common.ServiceAddress{Addr: address, Port: 0}
-		agent, err := o.allocator.Alloc(bridgeUUID, probe.flowTable, &addr, tid)
+		agent, err := o.allocator.Alloc(bridgeUUID, probe.flowTable, &addr, uuids)
 		if err != nil && err != netflow.ErrAgentAlreadyAllocated {
 			return nil, err
 		}

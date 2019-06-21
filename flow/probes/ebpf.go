@@ -215,7 +215,8 @@ func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture,
 		return nil, fmt.Errorf("Unable to attach socket filter to node: %s", n.ID)
 	}
 
-	ft := p.fta.Alloc(tid, flow.TableOpts{})
+	uuids := flow.UUIDs{NodeTID: tid, CaptureID: capture.UUID}
+	ft := p.fta.Alloc(uuids, flow.TableOpts{})
 
 	probe := &EBPFProbe{
 		probeNodeTID: tid,

@@ -302,7 +302,7 @@ func (p *Packet) TransportFlow() (gopacket.Flow, error) {
 }
 
 // Keys returns keys of the packet
-func (p *Packet) Keys(parentUUID string, opts Opts) (uint64, uint64, uint64) {
+func (p *Packet) Keys(parentUUID string, uuids *UUIDs, opts *Opts) (uint64, uint64, uint64) {
 	hasher := xxHash64.New(0)
 	if layer := p.NetworkLayer(); layer != nil {
 		Hash(layer.NetworkFlow(), hasher)
@@ -438,16 +438,15 @@ func networkID(p *Packet) int64 {
 }
 
 // NewFlow creates a new empty flow
-func NewFlow(captureID string) *Flow {
+func NewFlow() *Flow {
 	return &Flow{
-		Metric:    &FlowMetric{},
-		CaptureID: captureID,
+		Metric: &FlowMetric{},
 	}
 }
 
 // NewFlowFromGoPacket creates a new flow from the given gopacket
-func NewFlowFromGoPacket(p gopacket.Packet, nodeTID string, parentUUID string, opts Opts) *Flow {
-	f := NewFlow("")
+func NewFlowFromGoPacket(p gopacket.Packet, parentUUID string, uuids *UUIDs, opts *Opts) *Flow {
+	f := NewFlow()
 
 	var length int64
 	if p.Metadata() != nil {
@@ -461,9 +460,9 @@ func NewFlowFromGoPacket(p gopacket.Packet, nodeTID string, parentUUID string, o
 		Length:   length,
 	}
 
-	key, l2Key, l3Key := packet.Keys(parentUUID, opts)
+	key, l2Key, l3Key := packet.Keys(parentUUID, uuids, opts)
 
-	f.initFromPacket(key, l2Key, l3Key, packet, nodeTID, parentUUID, opts)
+	f.initFromPacket(key, l2Key, l3Key, packet, parentUUID, uuids, opts)
 
 	return f
 }
@@ -523,24 +522,25 @@ func (f *Flow) LinkType() (layers.LinkType, error) {
 	return 0, errors.New("LinkType unknown")
 }
 
-// Init initializes the flow with the given Timestamp, nodeTID and related UUIDs
-func (f *Flow) Init(now int64, nodeTID string, parentUUID string) {
+// Init initializes the flow with the given Timestamp, parentUUID and table uuids
+func (f *Flow) Init(now int64, parentUUID string, uuids *UUIDs) {
 	f.Start = now
 	f.Last = now
 
 	f.Metric.Start = now
 	f.Metric.Last = now
 
-	f.NodeTID = nodeTID
+	f.NodeTID = uuids.NodeTID
+	f.CaptureID = uuids.CaptureID
 	f.ParentUUID = parentUUID
 
 	f.FinishType = FlowFinishType_NOT_FINISHED
 }
 
 // initFromPacket initializes the flow based on packet data, flow key and ids
-func (f *Flow) initFromPacket(key, l2Key, l3Key uint64, packet *Packet, nodeTID string, parentUUID string, opts Opts) {
+func (f *Flow) initFromPacket(key, l2Key, l3Key uint64, packet *Packet, parentUUID string, uuids *UUIDs, opts *Opts) {
 	now := common.UnixMillis(packet.GoPacket.Metadata().CaptureInfo.Timestamp)
-	f.Init(now, nodeTID, parentUUID)
+	f.Init(now, parentUUID, uuids)
 
 	f.newLinkLayer(packet)
 
@@ -562,7 +562,7 @@ func (f *Flow) initFromPacket(key, l2Key, l3Key uint64, packet *Packet, nodeTID 
 }
 
 // Update a flow metrics and latency
-func (f *Flow) Update(packet *Packet, opts Opts) {
+func (f *Flow) Update(packet *Packet, opts *Opts) {
 	now := common.UnixMillis(packet.GoPacket.Metadata().CaptureInfo.Timestamp)
 	f.Last = now
 	f.Metric.Last = now
@@ -864,7 +864,7 @@ func (f *Flow) updateTCPMetrics(packet *Packet) error {
 	return nil
 }
 
-func (f *Flow) newTransportLayer(packet *Packet, opts Opts) error {
+func (f *Flow) newTransportLayer(packet *Packet, opts *Opts) error {
 	if layer := packet.Layer(layers.LayerTypeTCP); layer != nil {
 		f.Transport = &TransportLayer{Protocol: FlowProtocol_TCP}
 
@@ -934,7 +934,7 @@ func (f *Flow) updateDNSLayer(layer gopacket.Layer, timestamp time.Time) error {
 	return nil
 }
 
-func (f *Flow) newApplicationLayer(packet *Packet, opts Opts) error {
+func (f *Flow) newApplicationLayer(packet *Packet, opts *Opts) error {
 	if (opts.ExtraLayers & DHCPv4Layer) != 0 {
 		if layer := packet.Layer(layers.LayerTypeDHCPv4); layer != nil {
 			d := layer.(*layers.DHCPv4)

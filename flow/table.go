@@ -44,7 +44,12 @@ type TableOpts struct {
 	ReassembleTCP  bool
 	LayerKeyMode   LayerKeyMode
 	ExtraLayers    ExtraLayers
-	CaptureID      string
+}
+
+// UUIDs describes UUIDs that can be applied to flows table wise
+type UUIDs struct {
+	NodeTID   string
+	CaptureID string
 }
 
 // Table store the flow table and related metrics mechanism
@@ -68,13 +73,13 @@ type Table struct {
 	lastUpdate        int64
 	updateVersion     int64
 	lastExpire        int64
-	nodeTID           string
 	ipDefragger       *IPDefragger
 	tcpAssembler      *TCPAssembler
-	flowOpts          Opts
+	opts              Opts
 	appPortMap        *ApplicationPortMap
 	appTimeout        map[string]int64
 	removedFlows      int
+	uuids             UUIDs
 }
 
 // OperationType operation type of a Flow in a flow table
@@ -107,7 +112,7 @@ func updateTCPFlagTime(prevFlagTime int64, currFlagTime int64) int64 {
 }
 
 // NewTable creates a new flow table
-func NewTable(updateEvery, expireAfter time.Duration, sender Sender, nodeTID string, opts ...TableOpts) *Table {
+func NewTable(updateEvery, expireAfter time.Duration, sender Sender, uuids UUIDs, opts ...TableOpts) *Table {
 	appTimeout := make(map[string]int64)
 	for key := range config.GetConfig().GetStringMap("flow.application_timeout") {
 		// convert seconds to milleseconds
@@ -126,7 +131,7 @@ func NewTable(updateEvery, expireAfter time.Duration, sender Sender, nodeTID str
 		updateEvery:       updateEvery,
 		expireAfter:       expireAfter,
 		sender:            sender,
-		nodeTID:           nodeTID,
+		uuids:             uuids,
 		appPortMap:        NewApplicationPortMapFromConfig(),
 		appTimeout:        appTimeout,
 	}
@@ -134,7 +139,7 @@ func NewTable(updateEvery, expireAfter time.Duration, sender Sender, nodeTID str
 		t.Opts = opts[0]
 	}
 
-	t.flowOpts = Opts{
+	t.opts = Opts{
 		TCPMetric:    t.Opts.ExtraTCPMetric,
 		IPDefrag:     t.Opts.IPDefrag,
 		LayerKeyMode: t.Opts.LayerKeyMode,
@@ -194,7 +199,7 @@ func (ft *Table) getOrCreateFlow(key uint64) (*Flow, bool) {
 		return flow.(*Flow), false
 	}
 
-	new := NewFlow(ft.Opts.CaptureID)
+	new := NewFlow()
 	if ft.table.Add(key, new) {
 		ft.removedFlows++
 	}
@@ -364,7 +369,7 @@ func (ft *Table) Query(query *TableQuery) []byte {
 }
 
 func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
-	key, l2Key, l3Key := packet.Keys(parentUUID, ft.flowOpts)
+	key, l2Key, l3Key := packet.Keys(parentUUID, &ft.uuids, &ft.opts)
 	flow, new := ft.getOrCreateFlow(key)
 	if new {
 		if ft.Opts.ReassembleTCP {
@@ -373,7 +378,7 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
 			}
 		}
 
-		flow.initFromPacket(key, l2Key, l3Key, packet, ft.nodeTID, parentUUID, ft.flowOpts)
+		flow.initFromPacket(key, l2Key, l3Key, packet, parentUUID, &ft.uuids, &ft.opts)
 	} else {
 		if ft.Opts.ReassembleTCP {
 			if layer := packet.GoPacket.TransportLayer(); layer != nil && layer.LayerType() == layers.LayerTypeTCP {
@@ -381,7 +386,7 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
 			}
 		}
 
-		flow.Update(packet, ft.flowOpts)
+		flow.Update(packet, &ft.opts)
 	}
 
 	flow.XXX_state.updateVersion = ft.updateVersion + 1
@@ -401,7 +406,7 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
 
 func (ft *Table) processPacketSeq(ps *PacketSequence) {
 	var parentUUID string
-	logging.GetLogger().Debugf("%d Packets received for capture node %s", len(ps.Packets), ft.nodeTID)
+	logging.GetLogger().Debugf("%d Packets received for capture node %s", len(ps.Packets), ft.uuids.NodeTID)
 	for _, packet := range ps.Packets {
 		f := ft.packetToFlow(packet, parentUUID)
 		parentUUID = f.UUID
@@ -577,9 +582,6 @@ func (ft *Table) Stop() {
 	if atomic.CompareAndSwapInt64(&ft.state, common.RunningState, common.StoppingState) {
 		ft.quit <- true
 		ft.wg.Wait()
-		ph := Flow{}
-		ph.TCPMetric = &TCPMetric{}
-		ph.Metric = &FlowMetric{}
 
 		close(ft.query)
 		close(ft.reply)

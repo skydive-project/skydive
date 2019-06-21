@@ -57,11 +57,11 @@ func (a *TableAllocator) QueryTable(tq *TableQuery) *TableReply {
 }
 
 // Alloc instantiate/allocate a new table
-func (a *TableAllocator) Alloc(nodeTID string, opts TableOpts) *Table {
+func (a *TableAllocator) Alloc(uuids UUIDs, opts TableOpts) *Table {
 	a.Lock()
 	defer a.Unlock()
 
-	t := NewTable(a.updateEvery, a.expireAfter, a.sender, nodeTID, opts)
+	t := NewTable(a.updateEvery, a.expireAfter, a.sender, uuids, opts)
 	a.tables[t] = true
 
 	return t

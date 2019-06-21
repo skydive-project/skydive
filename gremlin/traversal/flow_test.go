@@ -104,7 +104,7 @@ func (f *fakeMessageSender) SendFlows(flows []*flow.Flow) {
 }
 
 func newTable(nodeID string) *flow.Table {
-	return flow.NewTable(time.Second, time.Hour, &fakeMessageSender{}, nodeID, flow.TableOpts{})
+	return flow.NewTable(time.Second, time.Hour, &fakeMessageSender{}, flow.UUIDs{NodeTID: nodeID}, flow.TableOpts{})
 }
 
 func newFakeTableClient(nodeID string) *fakeTableClient {
@@ -119,7 +119,7 @@ func newFakeTableClient(nodeID string) *fakeTableClient {
 }
 
 func newICMPFlow(id uint32) *flow.Flow {
-	icmp := flow.NewFlow("")
+	icmp := flow.NewFlow()
 	icmp.UUID = strconv.Itoa(rand.Int())
 	icmp.ICMP = &flow.ICMPLayer{ID: id}
 	icmp.NodeTID = "node1"

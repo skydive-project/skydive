@@ -44,6 +44,6 @@ func (ers *ERSpanTarget) Stop() {
 }
 
 // NewERSpanTarget returns a new ERSpan target
-func NewERSpanTarget(g *graph.Graph, n *graph.Node, capture *types.Capture, nodeTID string) (*ERSpanTarget, error) {
+func NewERSpanTarget(g *graph.Graph, n *graph.Node, capture *types.Capture) (*ERSpanTarget, error) {
 	return nil, common.ErrNotImplemented
 }

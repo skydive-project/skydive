@@ -44,12 +44,12 @@ var (
 // Agent describes NetFlow agent probe
 type Agent struct {
 	common.RWMutex
-	UUID         string
-	Addr         string
-	Port         int
-	FlowTable    *flow.Table
-	Conn         *net.UDPConn
-	ProbeNodeTID string
+	UUID      string
+	Addr      string
+	Port      int
+	FlowTable *flow.Table
+	Conn      *net.UDPConn
+	UUIDs     flow.UUIDs
 }
 
 // AgentAllocator describes an NetFlow agent allocator to manage multiple NetFlow agent probe
@@ -88,8 +88,8 @@ func (nfa *Agent) feedFlowTable(flowOpChan chan *flow.Operation) {
 
 	LOOP:
 		for _, nf := range msg.Flows {
-			f := flow.NewFlow("")
-			f.Init(int64(nf.StartTime)+bootTime, nfa.ProbeNodeTID, "")
+			f := flow.NewFlow()
+			f.Init(int64(nf.StartTime)+bootTime, "", &nfa.UUIDs)
 			f.Last = int64(nf.EndTime) + bootTime
 
 			// netflow v5 can't be ipv6
@@ -171,14 +171,14 @@ func (nfa *Agent) Stop() {
 }
 
 // NewAgent creates a new NetFlow agent which will populate the given flowtable
-func NewAgent(u string, conn *net.UDPConn, addr string, port int, ft *flow.Table, probeNodeTID string) *Agent {
+func NewAgent(u string, conn *net.UDPConn, addr string, port int, ft *flow.Table, uuids flow.UUIDs) *Agent {
 	return &Agent{
-		UUID:         u,
-		Addr:         addr,
-		Port:         port,
-		Conn:         conn,
-		FlowTable:    ft,
-		ProbeNodeTID: probeNodeTID,
+		UUID:      u,
+		Addr:      addr,
+		Port:      port,
+		Conn:      conn,
+		FlowTable: ft,
+		UUIDs:     uuids,
 	}
 }
 
@@ -213,7 +213,7 @@ func (a *AgentAllocator) ReleaseAll() {
 }
 
 // Alloc allocates a new netflow agent
-func (a *AgentAllocator) Alloc(uuid string, ft *flow.Table, addr *common.ServiceAddress, probeNodeTID string) (agent *Agent, _ error) {
+func (a *AgentAllocator) Alloc(uuid string, ft *flow.Table, addr *common.ServiceAddress, uuids flow.UUIDs) (agent *Agent, _ error) {
 	a.Lock()
 	defer a.Unlock()
 
@@ -253,7 +253,7 @@ func (a *AgentAllocator) Alloc(uuid string, ft *flow.Table, addr *common.Service
 		port = addr.Port
 	}
 
-	s := NewAgent(uuid, conn, addr.Addr, port, ft, probeNodeTID)
+	s := NewAgent(uuid, conn, addr.Addr, port, ft, uuids)
 	a.agents = append(a.agents, s)
 
 	s.Start()

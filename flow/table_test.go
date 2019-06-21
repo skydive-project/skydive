@@ -57,7 +57,7 @@ func (f *fakeMessageSender) SendFlows(flows []*Flow) {
 func TestFlowExpire(t *testing.T) {
 	sender := &fakeMessageSender{}
 
-	table := NewTable(time.Hour, time.Second, sender, "", TableOpts{})
+	table := NewTable(time.Hour, time.Second, sender, UUIDs{}, TableOpts{})
 
 	fillTableFromPCAP(t, table, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet, nil)
 	table.expireNow()
@@ -76,7 +76,7 @@ func TestFlowExpire(t *testing.T) {
 }
 
 func TestGetFlowsWithFilters(t *testing.T) {
-	table := NewTable(time.Hour, time.Hour, &fakeMessageSender{}, "probe-1", TableOpts{})
+	table := NewTable(time.Hour, time.Hour, &fakeMessageSender{}, UUIDs{NodeTID: "probe-1"}, TableOpts{})
 
 	fillTableFromPCAP(t, table, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet, nil)
 
@@ -133,7 +133,7 @@ func TestGetFlowsWithFilters(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	sender := &fakeMessageSender{}
 
-	table := NewTable(time.Second, time.Hour, sender, "", TableOpts{})
+	table := NewTable(time.Second, time.Hour, sender, UUIDs{}, TableOpts{})
 
 	flow1, _ := table.getOrCreateFlow(123)
 
@@ -209,7 +209,7 @@ func TestAppSpecificTimeout(t *testing.T) {
 	config.GetConfig().Set("flow.application_timeout.arp", 10)
 	config.GetConfig().Set("flow.application_timeout.dns", 20)
 
-	table := NewTable(time.Second, time.Hour, sender, "", TableOpts{})
+	table := NewTable(time.Second, time.Hour, sender, UUIDs{}, TableOpts{})
 
 	flowsTime := time.Now()
 
@@ -233,7 +233,7 @@ func TestAppSpecificTimeout(t *testing.T) {
 }
 
 func TestHold(t *testing.T) {
-	table := NewTable(time.Minute, time.Hour, &fakeMessageSender{}, "", TableOpts{})
+	table := NewTable(time.Minute, time.Hour, &fakeMessageSender{}, UUIDs{}, TableOpts{})
 
 	flowTime := time.Now()
 
@@ -262,10 +262,7 @@ func TestHold(t *testing.T) {
 }
 
 func createBenchTable() *Table {
-	updHandler := NewFlowHandler(func(f *FlowArray) {}, 600*time.Second)
-	expHandler := NewFlowHandler(func(f *FlowArray) {}, 600*time.Second)
-
-	return NewTable(updHandler, expHandler, "", TableOpts{})
+	return NewTable(600*time.Second, 600*time.Second, &fakeMessageSender{}, UUIDs{}, TableOpts{})
 }
 
 func BenchmarkInsert(b *testing.B) {

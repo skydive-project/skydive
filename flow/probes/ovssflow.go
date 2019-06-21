@@ -180,8 +180,9 @@ func (o *OvsSFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid str
 	}
 
 	if capture.Target == "" {
+		uuids := flow.UUIDs{NodeTID: tid, CaptureID: capture.UUID}
 		opts := tableOptsFromCapture(capture)
-		probe.flowTable = o.fta.Alloc(tid, opts)
+		probe.flowTable = o.fta.Alloc(uuids, opts)
 
 		address := config.GetString("agent.flow.sflow.bind_address")
 		if address == "" {

@@ -1289,7 +1289,7 @@ func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType, bpf 
 		opt = opts[0]
 	}
 
-	table := NewTable(time.Second, time.Second, &fakeMessageSender{}, "", opt)
+	table := NewTable(time.Second, time.Second, &fakeMessageSender{}, UUIDs{}, opt)
 	fillTableFromPCAP(t, table, filename, linkType, bpf)
 	validateAllParentChains(t, table)
 
@@ -1756,7 +1756,7 @@ func benchmarkPacketParsing(b *testing.B, filename string, linkType layers.LinkT
 			b.Fatal("Failed to get PacketSeq: ", err)
 		}
 		for _, packet := range ps.Packets {
-			NewFlowFromGoPacket(packet.GoPacket, "", "", Opts{})
+			NewFlowFromGoPacket(packet.GoPacket, "", &UUIDs{}, &Opts{})
 		}
 	}
 }
@@ -1781,7 +1781,7 @@ func benchPacketList(b *testing.B, filename string, linkType layers.LinkType, ca
 	if err != nil {
 		b.Fatal("PCAP OpenOffline error (handle to read packet): ", err)
 	}
-	ft := NewTable(time.Hour, time.Hour, nil, "", TableOpts{})
+	ft := NewTable(time.Hour, time.Hour, nil, UUIDs{}, TableOpts{})
 	packets = 0
 
 	for {
@@ -1826,7 +1826,7 @@ func benchmarkPacketsParsing(b *testing.B, filename string, linkType layers.Link
 						b.Fatal("Failed to get PacketSeq")
 					}
 					for _, packet := range ps.Packets {
-						NewFlowFromGoPacket(packet.GoPacket, "", "", Opts{})
+						NewFlowFromGoPacket(packet.GoPacket, "", &UUIDs{}, &Opts{})
 					}
 				}
 			})
@@ -1892,7 +1892,7 @@ func BenchmarkPacketsFlowTable(b *testing.B) {
 
 // Bench creation of flow and connection tracking, via FlowTable
 func BenchmarkQueryFlowTable(b *testing.B) {
-	t := NewTable(time.Hour, time.Hour, &fakeMessageSender{}, "")
+	t := NewTable(time.Hour, time.Hour, &fakeMessageSender{}, UUIDs{})
 
 	for i := 0; i != 10; i++ {
 		f := &Flow{

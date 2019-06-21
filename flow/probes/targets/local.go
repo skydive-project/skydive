@@ -47,8 +47,8 @@ func (l *LocalTarget) Stop() {
 }
 
 // NewLocalTarget returns a new local target
-func NewLocalTarget(g *graph.Graph, n *graph.Node, capture *types.Capture, nodeTID string, fta *flow.TableAllocator) (*LocalTarget, error) {
-	table := fta.Alloc(nodeTID, tableOptsFromCapture(capture))
+func NewLocalTarget(g *graph.Graph, n *graph.Node, capture *types.Capture, uuids flow.UUIDs, fta *flow.TableAllocator) (*LocalTarget, error) {
+	table := fta.Alloc(uuids, tableOptsFromCapture(capture))
 
 	return &LocalTarget{
 		table: table,

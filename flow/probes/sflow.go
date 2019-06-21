@@ -86,7 +86,8 @@ func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture
 		headerSize = uint32(capture.HeaderSize)
 	}
 
-	ft := d.fta.Alloc(tid, tableOptsFromCapture(capture))
+	uuids := flow.UUIDs{NodeTID: tid, CaptureID: capture.UUID}
+	ft := d.fta.Alloc(uuids, tableOptsFromCapture(capture))
 
 	addr := common.ServiceAddress{Addr: address, Port: port}
 	if _, err := d.allocator.Alloc(tid, ft, capture.BPFFilter, headerSize, &addr, n, d.graph); err != nil {

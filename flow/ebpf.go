@@ -100,8 +100,8 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 	var flows []*Flow
 	var keys []uint64
 
-	f := NewFlow("")
-	f.Init(common.UnixMillis(ebpfFlow.start), ft.nodeTID, "")
+	f := NewFlow()
+	f.Init(common.UnixMillis(ebpfFlow.start), "", &ft.uuids)
 	f.Last = common.UnixMillis(ebpfFlow.last)
 
 	layersInfo := uint8(ebpfFlow.kernFlow.layers_info)
@@ -160,8 +160,8 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 		keys = append(keys, parentKey)
 
 		// upper layer
-		f = NewFlow(ft.Opts.CaptureID)
-		f.Init(common.UnixMillis(ebpfFlow.start), ft.nodeTID, parent.UUID)
+		f = NewFlow()
+		f.Init(common.UnixMillis(ebpfFlow.start), parent.UUID, &ft.uuids)
 		f.Last = common.UnixMillis(ebpfFlow.last)
 		f.LayersPath = innerLayerPath
 	}
