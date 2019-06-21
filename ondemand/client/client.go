@@ -298,6 +298,7 @@ func (o *OnDemandClient) OnNodeDeleted(n *graph.Node) {
 			o.subscriberPool.BroadcastMessage(ws.NewStructMessage(o.wsNotificationNamespace, "NodeUpdated", o.resources[resourceID]))
 		}
 	}
+	delete(o.registeredNodes, n.ID)
 	o.RUnlock()
 }
 
@@ -341,7 +342,7 @@ func (o *OnDemandClient) unregisterResource(resource types.Resource) {
 	filter := filters.NewTermStringFilter(fmt.Sprintf("%ss.ID", o.resourceName), resource.ID())
 	nodes := o.graph.GetNodes(graph.NewElementFilter(filter))
 	for _, node := range nodes {
-		o.unregisterTask(node, resource)
+		go o.unregisterTask(node, resource)
 	}
 }
 
