@@ -136,6 +136,7 @@ type Conn struct {
 	eventHandlers    []SpeakerEventHandler
 	wsSpeaker        Speaker // speaker owning the connection
 	writeCompression bool
+	messageType      int
 	logger           logging.Logger
 }
 
@@ -276,11 +277,11 @@ func (c *Conn) GetRemoteServiceType() common.ServiceType {
 	return c.RemoteServiceType
 }
 
-// SendMessage sends a message directly over the wire.
+// write sends a message directly over the wire.
 func (c *Conn) write(msg []byte) error {
 	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 	c.conn.EnableWriteCompression(c.writeCompression)
-	w, err := c.conn.NextWriter(websocket.TextMessage)
+	w, err := c.conn.NextWriter(c.messageType)
 	if err != nil {
 		return err
 	}
@@ -453,6 +454,13 @@ func newConn(host string, clientType common.ServiceType, clientProtocol Protocol
 		writeCompression: opts.WriteCompression,
 		logger:           opts.Logger,
 	}
+
+	if clientProtocol == JSONProtocol {
+		c.messageType = websocket.TextMessage
+	} else {
+		c.messageType = websocket.BinaryMessage
+	}
+
 	*c.State = common.StoppedState
 	c.running.Store(true)
 	return c
