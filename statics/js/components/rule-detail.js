@@ -517,6 +517,8 @@ var BridgeLayout = (function () {
     p = (typeof (p) === 'string') ? parseInt(p) : p;
     if (p === ANY_PORT) return 'ANY';
     if (p === LOCAL_PORT) return 'LOCAL';
+    if (p === CONTROLLER_PORT) return 'CONTROLLER';
+    if (p === OTHER_PORTS) return 'OTHER_PORTS';
     if (p === SAME_PORT || p === NORMAL_PORT || p === IN_PORT || p === undefined) return '';
     var nodes = this.interfaces[p];
     if (nodes === undefined) return '???';
@@ -576,7 +578,7 @@ Vue.component('rule-table-detail', {
                 </table>\
             </td>\
             <td v-if="rule.actionsSpan != -1" :rowspan="rule.actionsSpan">\
-              <div v-if="rule.Actions[0][\'Function\']">\
+              <div v-if="rule.Actions.length > 0 && rule.Actions[0][\'Function\']">\
                 {{ splitLine(rule.textActions) }}\
               </div>\
               <div v-else>\

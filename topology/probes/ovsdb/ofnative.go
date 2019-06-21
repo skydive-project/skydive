@@ -250,7 +250,7 @@ func newOfRule(cookie uint64, table uint8, priority, idleTimeout, hardTimeout, i
 		rule.WriteActions[i] = newOfAction(action)
 	}
 
-	if len(actions) == 0 {
+	if len(actions) == 0 && len(writeActions) == 0 && gotoTable == 0 {
 		rule.Actions = append(rule.Actions, &ofAction{Type: "drop"})
 	}
 
