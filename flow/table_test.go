@@ -57,7 +57,7 @@ func (f *fakeMessageSender) SendFlows(flows []*Flow) {
 func TestFlowExpire(t *testing.T) {
 	sender := &fakeMessageSender{}
 
-	table := NewTable(time.Hour, time.Second, sender, "", TableOpts{})
+	table := NewTable(time.Hour, time.Second, sender, UUIDs{}, TableOpts{})
 
 	fillTableFromPCAP(t, table, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet, nil)
 	table.expireNow()
@@ -76,7 +76,7 @@ func TestFlowExpire(t *testing.T) {
 }
 
 func TestGetFlowsWithFilters(t *testing.T) {
-	table := NewTable(time.Hour, time.Hour, &fakeMessageSender{}, "probe-1", TableOpts{})
+	table := NewTable(time.Hour, time.Hour, &fakeMessageSender{}, UUIDs{NodeTID: "probe-1"}, TableOpts{})
 
 	fillTableFromPCAP(t, table, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet, nil)
 
@@ -133,9 +133,9 @@ func TestGetFlowsWithFilters(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	sender := &fakeMessageSender{}
 
-	table := NewTable(time.Second, time.Hour, sender, "", TableOpts{})
+	table := NewTable(time.Second, time.Hour, sender, UUIDs{}, TableOpts{})
 
-	flow1, _ := table.getOrCreateFlow("flow1")
+	flow1, _ := table.getOrCreateFlow(123)
 
 	flow1.Metric.ABBytes = 1
 	flow1.XXX_state.updateVersion = table.updateVersion + 1
@@ -147,7 +147,7 @@ func TestUpdate(t *testing.T) {
 		t.Errorf("Flow should have been updated by expire : %+v", flow1)
 	}
 
-	flow2, _ := table.getOrCreateFlow("flow2")
+	flow2, _ := table.getOrCreateFlow(456)
 
 	flow2.Metric.ABBytes = 2
 	flow2.XXX_state.updateVersion = table.updateVersion + 1
@@ -209,15 +209,15 @@ func TestAppSpecificTimeout(t *testing.T) {
 	config.GetConfig().Set("flow.application_timeout.arp", 10)
 	config.GetConfig().Set("flow.application_timeout.dns", 20)
 
-	table := NewTable(time.Second, time.Hour, sender, "", TableOpts{})
+	table := NewTable(time.Second, time.Hour, sender, UUIDs{}, TableOpts{})
 
 	flowsTime := time.Now()
 
-	arpFlow, _ := table.getOrCreateFlow("arpFlow")
+	arpFlow, _ := table.getOrCreateFlow(123)
 	arpFlow.Last = common.UnixMillis(flowsTime)
 	arpFlow.Application = "ARP"
 
-	dnsFlow, _ := table.getOrCreateFlow("dnsFlow")
+	dnsFlow, _ := table.getOrCreateFlow(456)
 	dnsFlow.Last = common.UnixMillis(flowsTime)
 	dnsFlow.Application = "DNS"
 
@@ -233,11 +233,11 @@ func TestAppSpecificTimeout(t *testing.T) {
 }
 
 func TestHold(t *testing.T) {
-	table := NewTable(time.Minute, time.Hour, &fakeMessageSender{}, "", TableOpts{})
+	table := NewTable(time.Minute, time.Hour, &fakeMessageSender{}, UUIDs{}, TableOpts{})
 
 	flowTime := time.Now()
 
-	flow1, _ := table.getOrCreateFlow("flow1")
+	flow1, _ := table.getOrCreateFlow(123)
 	flow1.Last = common.UnixMillis(flowTime)
 	flow1.FinishType = FlowFinishType_TCP_FIN
 
@@ -250,7 +250,7 @@ func TestHold(t *testing.T) {
 		t.Error("Flow should have been deleted by update")
 	}
 
-	flow2, _ := table.getOrCreateFlow("flow2")
+	flow2, _ := table.getOrCreateFlow(456)
 	flow2.Last = common.UnixMillis(flowTime)
 	flow2.FinishType = FlowFinishType_TCP_FIN
 	table.updateAt(flowTime.Add(time.Duration(5) * time.Second))
@@ -258,5 +258,46 @@ func TestHold(t *testing.T) {
 	table.updateAt(flowTime.Add(time.Duration(15) * time.Second))
 	if table.table.Len() != 1 {
 		t.Error("Updated flow should not have been deleted by update")
+	}
+}
+
+func createBenchTable() *Table {
+	return NewTable(600*time.Second, 600*time.Second, &fakeMessageSender{}, UUIDs{}, TableOpts{})
+}
+
+func BenchmarkInsert(b *testing.B) {
+	table := createBenchTable()
+	for n := 0; n < b.N; n++ {
+		table.getOrCreateFlow(uint64(n))
+	}
+}
+
+func BenchmarkReplace(b *testing.B) {
+	table := createBenchTable()
+	for n := 0; n < b.N; n++ {
+		table.getOrCreateFlow(uint64(n))
+		table.replaceFlow(uint64(n), nil)
+	}
+}
+
+func BenchmarkExpire(b *testing.B) {
+	table := createBenchTable()
+	for n := 0; n < b.N; n++ {
+		for i := 0; i != 10000; i++ {
+			f, _ := table.getOrCreateFlow(uint64(n))
+			f.Start = 0
+			f.Last = 5
+		}
+		table.expire(10)
+	}
+}
+
+func BenchmarkGetFlows(b *testing.B) {
+	table := createBenchTable()
+	for n := 0; n < b.N; n++ {
+		for i := 0; i != 10000; i++ {
+			table.getOrCreateFlow(uint64(n))
+		}
+		table.getFlows(nil)
 	}
 }

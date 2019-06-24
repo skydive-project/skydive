@@ -21,15 +21,14 @@ package flow
 
 // EBPFFlow Wrapper type used for passing flows from probe to main agent routine
 type EBPFFlow struct {
-	kernFlow int
+	KernFlow interface{}
 }
 
-//key has already been hashed by the module, just convert to string
-func kernFlowKey(kernFlow interface{}) string {
-	return ""
+func kernFlowKey(kernFlow interface{}) uint64 {
+	return 0
 }
 
-func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key string) ([]string, []*Flow) {
+func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]string, []*Flow) {
 	return nil, nil
 }
 

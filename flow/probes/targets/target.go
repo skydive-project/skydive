@@ -48,19 +48,18 @@ func tableOptsFromCapture(capture *types.Capture) flow.TableOpts {
 		ReassembleTCP:  capture.ReassembleTCP,
 		LayerKeyMode:   layerKeyMode,
 		ExtraLayers:    capture.ExtraLayers,
-		CaptureID:      capture.UUID,
 	}
 }
 
 // NewTarget returns target according to the given type
-func NewTarget(typ string, g *graph.Graph, n *graph.Node, capture *types.Capture, nodeTID string, bpf *flow.BPF, fta *flow.TableAllocator) (Target, error) {
+func NewTarget(typ string, g *graph.Graph, n *graph.Node, capture *types.Capture, uuids flow.UUIDs, bpf *flow.BPF, fta *flow.TableAllocator) (Target, error) {
 	switch typ {
 	case "netflowv5":
-		return NewNetFlowV5Target(g, n, capture, nodeTID)
+		return NewNetFlowV5Target(g, n, capture)
 	case "erspanv1":
-		return NewERSpanTarget(g, n, capture, nodeTID)
+		return NewERSpanTarget(g, n, capture)
 	case "", "local":
-		return NewLocalTarget(g, n, capture, nodeTID, fta)
+		return NewLocalTarget(g, n, capture, uuids, fta)
 	}
 
 	return nil, ErrTargetTypeUnknown

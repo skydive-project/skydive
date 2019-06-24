@@ -229,7 +229,7 @@ func (nf *NetFlowV5Target) Stop() {
 }
 
 // NewNetFlowV5Target returns a new NetFlow v5 target
-func NewNetFlowV5Target(g *graph.Graph, n *graph.Node, capture *types.Capture, nodeTID string) (*NetFlowV5Target, error) {
+func NewNetFlowV5Target(g *graph.Graph, n *graph.Node, capture *types.Capture) (*NetFlowV5Target, error) {
 	now := time.Now()
 
 	updateEvery := time.Duration(config.GetInt("flow.update")) * time.Second
@@ -241,7 +241,7 @@ func NewNetFlowV5Target(g *graph.Graph, n *graph.Node, capture *types.Capture, n
 		sysBootMs: common.UnixMillis(now),
 	}
 
-	nf.table = flow.NewTable(updateEvery, expireAfter, nf, nodeTID, tableOptsFromCapture(capture))
+	nf.table = flow.NewTable(updateEvery, expireAfter, nf, flow.UUIDs{}, tableOptsFromCapture(capture))
 
 	return nf, nil
 }

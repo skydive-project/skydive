@@ -281,7 +281,8 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capt
 		}
 	}
 
-	target, err := targets.NewTarget(capture.TargetType, p.graph, n, capture, tid, bpf, p.fta)
+	uuids := flow.UUIDs{NodeTID: tid, CaptureID: capture.UUID}
+	target, err := targets.NewTarget(capture.TargetType, p.graph, n, capture, uuids, bpf, p.fta)
 	if err != nil {
 		return nil, err
 	}

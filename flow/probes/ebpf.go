@@ -76,6 +76,7 @@ func (p *EBPFProbe) run() {
 
 	ebpfUpdate := time.Duration(config.GetConfig().GetInt("agent.flow.ebpf.kernel_scan_interval")) * time.Second
 	flowTableSz := config.GetConfig().GetInt("flow.max_entries")
+
 	var startKTimeNs int64
 	var start time.Time
 
@@ -85,8 +86,9 @@ func (p *EBPFProbe) run() {
 	flowPoolSize := 2 * cap(flowEBPFChan)
 	kernFlows := make([]C.struct_flow, flowPoolSize)
 	ebpfFlows := make([]flow.EBPFFlow, flowPoolSize)
-	nextAvailablePtr := 0
+
 	var key, nextKey C.__u64
+	var nextAvailablePtr int
 	for {
 		select {
 		case now := <-updateTicker.C:
@@ -120,9 +122,10 @@ func (p *EBPFProbe) run() {
 				}
 			}
 
-			var flowsRead int
-			for {
-				found, err := p.module.LookupNextElement(p.fmap, unsafe.Pointer(&key), unsafe.Pointer(&nextKey), unsafe.Pointer(&kernFlows[nextAvailablePtr]))
+			for i := 0; i != flowTableSz; i++ {
+				kernFlow := &kernFlows[nextAvailablePtr]
+
+				found, err := p.module.LookupNextElement(p.fmap, unsafe.Pointer(&key), unsafe.Pointer(&nextKey), unsafe.Pointer(kernFlow))
 				if !found || err != nil {
 					p.module.DeleteElement(p.fmap, unsafe.Pointer(&key))
 					key = 0
@@ -139,13 +142,16 @@ func (p *EBPFProbe) run() {
 				if us.After(now) {
 					us = now
 				}
-				flow.SetEBPFFlow(&ebpfFlows[nextAvailablePtr], us, last, unsafe.Pointer(&kernFlows[nextAvailablePtr]), startKTimeNs, p.probeNodeTID)
-				flowEBPFChan <- &ebpfFlows[nextAvailablePtr]
+
+				ebpfFlow := &ebpfFlows[nextAvailablePtr]
+				ebpfFlow.Start = start
+				ebpfFlow.Last = last
+				ebpfFlow.StartKTimeNs = startKTimeNs
+				flow.SetEBPFKernFlow(ebpfFlow, unsafe.Pointer(kernFlow))
+
+				flowEBPFChan <- ebpfFlow
+
 				nextAvailablePtr = (nextAvailablePtr + 1) % flowPoolSize
-				flowsRead++
-				if flowsRead == flowTableSz {
-					break
-				}
 			}
 		case <-p.quit:
 			return
@@ -209,7 +215,8 @@ func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture,
 		return nil, fmt.Errorf("Unable to attach socket filter to node: %s", n.ID)
 	}
 
-	ft := p.fta.Alloc(tid, flow.TableOpts{})
+	uuids := flow.UUIDs{NodeTID: tid, CaptureID: capture.UUID}
+	ft := p.fta.Alloc(uuids, flow.TableOpts{})
 
 	probe := &EBPFProbe{
 		probeNodeTID: tid,

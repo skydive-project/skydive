@@ -205,14 +205,17 @@ func NewDPDKProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*DPDKProbes
 			return nil, err
 		}
 		topology.AddOwnershipLink(g, hostNode, dpdkNode, nil)
+
 		tid, _ := dpdkNode.GetFieldString("TID")
+		uuids := flow.UUIDs{NodeTID: tid}
+
 		port := dpdkPort{}
 
 		inputFlow := dpdkflow.SetReceiver(uint8(inport))
 		outputFlows := dpdkflow.SetSplitter(inputFlow, l3Splitter, uint(dpdkNBWorkers), nil)
 
 		for i := 0; i < nbWorkers; i++ {
-			ft := fta.Alloc(tid, opts)
+			ft := fta.Alloc(uuids, opts)
 
 			ft.Start()
 			ctx := ctxQueue{

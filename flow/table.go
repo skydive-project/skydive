@@ -44,7 +44,12 @@ type TableOpts struct {
 	ReassembleTCP  bool
 	LayerKeyMode   LayerKeyMode
 	ExtraLayers    ExtraLayers
-	CaptureID      string
+}
+
+// UUIDs describes UUIDs that can be applied to flows table wise
+type UUIDs struct {
+	NodeTID   string
+	CaptureID string
 }
 
 // Table store the flow table and related metrics mechanism
@@ -68,13 +73,13 @@ type Table struct {
 	lastUpdate        int64
 	updateVersion     int64
 	lastExpire        int64
-	nodeTID           string
 	ipDefragger       *IPDefragger
 	tcpAssembler      *TCPAssembler
-	flowOpts          Opts
+	opts              Opts
 	appPortMap        *ApplicationPortMap
 	appTimeout        map[string]int64
 	removedFlows      int
+	uuids             UUIDs
 }
 
 // OperationType operation type of a Flow in a flow table
@@ -89,7 +94,7 @@ const (
 
 // Operation describes a flow operation
 type Operation struct {
-	Key  string
+	Key  uint64
 	Flow *Flow
 	Type OperationType
 }
@@ -107,7 +112,7 @@ func updateTCPFlagTime(prevFlagTime int64, currFlagTime int64) int64 {
 }
 
 // NewTable creates a new flow table
-func NewTable(updateEvery, expireAfter time.Duration, sender Sender, nodeTID string, opts ...TableOpts) *Table {
+func NewTable(updateEvery, expireAfter time.Duration, sender Sender, uuids UUIDs, opts ...TableOpts) *Table {
 	appTimeout := make(map[string]int64)
 	for key := range config.GetConfig().GetStringMap("flow.application_timeout") {
 		// convert seconds to milleseconds
@@ -126,9 +131,7 @@ func NewTable(updateEvery, expireAfter time.Duration, sender Sender, nodeTID str
 		updateEvery:       updateEvery,
 		expireAfter:       expireAfter,
 		sender:            sender,
-		nodeTID:           nodeTID,
-		ipDefragger:       NewIPDefragger(),
-		tcpAssembler:      NewTCPAssembler(),
+		uuids:             uuids,
 		appPortMap:        NewApplicationPortMapFromConfig(),
 		appTimeout:        appTimeout,
 	}
@@ -136,12 +139,20 @@ func NewTable(updateEvery, expireAfter time.Duration, sender Sender, nodeTID str
 		t.Opts = opts[0]
 	}
 
-	t.flowOpts = Opts{
+	t.opts = Opts{
 		TCPMetric:    t.Opts.ExtraTCPMetric,
 		IPDefrag:     t.Opts.IPDefrag,
 		LayerKeyMode: t.Opts.LayerKeyMode,
 		AppPortMap:   t.appPortMap,
 		ExtraLayers:  t.Opts.ExtraLayers,
+	}
+
+	if t.Opts.IPDefrag {
+		t.ipDefragger = NewIPDefragger()
+	}
+
+	if t.Opts.ReassembleTCP {
+		t.tcpAssembler = NewTCPAssembler()
 	}
 
 	return t
@@ -183,19 +194,19 @@ func (ft *Table) getFlows(query *filters.SearchQuery) *FlowSet {
 	return flowset
 }
 
-func (ft *Table) getOrCreateFlow(key string) (*Flow, bool) {
+func (ft *Table) getOrCreateFlow(key uint64) (*Flow, bool) {
 	if flow, found := ft.table.Get(key); found {
 		return flow.(*Flow), false
 	}
 
-	new := NewFlow(ft.Opts.CaptureID)
+	new := NewFlow()
 	if ft.table.Add(key, new) {
 		ft.removedFlows++
 	}
 	return new, true
 }
 
-func (ft *Table) replaceFlow(key string, f *Flow) *Flow {
+func (ft *Table) replaceFlow(key uint64, f *Flow) *Flow {
 	prev, _ := ft.table.Get(key)
 	if ft.table.Add(key, f) {
 		ft.removedFlows++
@@ -247,25 +258,15 @@ func (ft *Table) updateAt(now time.Time) {
 func (ft *Table) updateMetric(f *Flow, start, last int64) {
 	if f.LastUpdateMetric == nil {
 		f.LastUpdateMetric = &FlowMetric{}
-	}
-	f.LastUpdateMetric.ABPackets = f.Metric.ABPackets
-	f.LastUpdateMetric.ABBytes = f.Metric.ABBytes
-	f.LastUpdateMetric.BAPackets = f.Metric.BAPackets
-	f.LastUpdateMetric.BABytes = f.Metric.BABytes
-	f.LastUpdateMetric.RTT = f.Metric.RTT
-
-	// subtract previous values to get the diff so that we store the
-	// amount of data between two updates
-	if lm := f.XXX_state.lastMetric; lm != nil {
-		f.LastUpdateMetric.ABPackets -= lm.ABPackets
-		f.LastUpdateMetric.ABBytes -= lm.ABBytes
-		f.LastUpdateMetric.BAPackets -= lm.BAPackets
-		f.LastUpdateMetric.BABytes -= lm.BABytes
-		f.LastUpdateMetric.Start = start
-	} else {
-		f.LastUpdateMetric.Start = f.Start
+		start = f.Start
 	}
 
+	*f.LastUpdateMetric = *f.Metric
+	f.LastUpdateMetric.ABPackets -= f.XXX_state.lastMetric.ABPackets
+	f.LastUpdateMetric.ABBytes -= f.XXX_state.lastMetric.ABBytes
+	f.LastUpdateMetric.BAPackets -= f.XXX_state.lastMetric.BAPackets
+	f.LastUpdateMetric.BABytes -= f.XXX_state.lastMetric.BABytes
+	f.LastUpdateMetric.Start = start
 	f.LastUpdateMetric.Last = last
 }
 
@@ -283,11 +284,18 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 			updatedFlows = append(updatedFlows, f)
 			f.FinishType = FlowFinishType_TIMEOUT
 			ft.table.Remove(k)
+		} else if f.LastUpdateMetric != nil {
+			f.LastUpdateMetric.ABBytes = 0
+			f.LastUpdateMetric.ABPackets = 0
+			f.LastUpdateMetric.BABytes = 0
+			f.LastUpdateMetric.BAPackets = 0
+			f.LastUpdateMetric.Start = updateFrom
+			f.LastUpdateMetric.Last = updateTime
 		} else {
 			f.LastUpdateMetric = &FlowMetric{Start: updateFrom, Last: updateTime}
 		}
 
-		f.XXX_state.lastMetric = f.Metric.Copy()
+		f.XXX_state.lastMetric = *f.Metric
 
 		if f.FinishType != FlowFinishType_NOT_FINISHED && updateTime-f.Last >= HoldTimeoutMilliseconds {
 			ft.table.Remove(k)
@@ -361,20 +369,16 @@ func (ft *Table) Query(query *TableQuery) []byte {
 }
 
 func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
-	key := packet.Key(parentUUID, ft.flowOpts)
+	key, l2Key, l3Key := packet.Keys(parentUUID, &ft.uuids, &ft.opts)
 	flow, new := ft.getOrCreateFlow(key)
 	if new {
-		uuids := UUIDs{
-			ParentUUID: parentUUID,
-		}
-
 		if ft.Opts.ReassembleTCP {
 			if layer := packet.GoPacket.TransportLayer(); layer != nil && layer.LayerType() == layers.LayerTypeTCP {
 				ft.tcpAssembler.RegisterFlow(flow, packet.GoPacket)
 			}
 		}
 
-		flow.initFromPacket(key, packet, ft.nodeTID, uuids, ft.flowOpts)
+		flow.initFromPacket(key, l2Key, l3Key, packet, parentUUID, &ft.uuids, &ft.opts)
 	} else {
 		if ft.Opts.ReassembleTCP {
 			if layer := packet.GoPacket.TransportLayer(); layer != nil && layer.LayerType() == layers.LayerTypeTCP {
@@ -382,7 +386,7 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
 			}
 		}
 
-		flow.Update(packet, ft.flowOpts)
+		flow.Update(packet, &ft.opts)
 	}
 
 	flow.XXX_state.updateVersion = ft.updateVersion + 1
@@ -402,7 +406,7 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
 
 func (ft *Table) processPacketSeq(ps *PacketSequence) {
 	var parentUUID string
-	logging.GetLogger().Debugf("%d Packets received for capture node %s", len(ps.Packets), ft.nodeTID)
+	logging.GetLogger().Debugf("%d Packets received for capture node %s", len(ps.Packets), ft.uuids.NodeTID)
 	for _, packet := range ps.Packets {
 		f := ft.packetToFlow(packet, parentUUID)
 		parentUUID = f.UUID
@@ -453,8 +457,8 @@ func (ft *Table) processFlowOP(op *Operation) {
 	}
 }
 
-func (ft *Table) processEBPFFlow(ebpfFlow *EBPFFlow, nfl *Flow) {
-	key := kernFlowKey(ebpfFlow.kernFlow)
+func (ft *Table) processEBPFFlow(ebpfFlow *EBPFFlow) {
+	key := kernFlowKey(ebpfFlow.KernFlow)
 	f, found := ft.table.Get(key)
 	if !found {
 		keys, flows := ft.newFlowFromEBPF(ebpfFlow, key)
@@ -465,29 +469,7 @@ func (ft *Table) processEBPFFlow(ebpfFlow *EBPFFlow, nfl *Flow) {
 		}
 		return
 	}
-	ft.updateFlowFromEBPF(ebpfFlow, nfl)
-	fl := f.(*Flow)
-	fl.Metric.ABBytes += nfl.Metric.ABBytes
-	fl.Metric.BABytes += nfl.Metric.BABytes
-	fl.Metric.ABPackets += nfl.Metric.ABPackets
-	fl.Metric.BAPackets += nfl.Metric.BAPackets
-
-	fl.Last = nfl.Last
-	if fl.Transport != nil && fl.Transport.Protocol == FlowProtocol_TCP && fl.TCPMetric != nil {
-		fl.TCPMetric = &TCPMetric{
-			ABSynStart: updateTCPFlagTime(fl.TCPMetric.ABSynStart, nfl.TCPMetric.ABSynStart),
-			BASynStart: updateTCPFlagTime(fl.TCPMetric.BASynStart, nfl.TCPMetric.BASynStart),
-			ABFinStart: updateTCPFlagTime(fl.TCPMetric.ABFinStart, nfl.TCPMetric.ABFinStart),
-			BAFinStart: updateTCPFlagTime(fl.TCPMetric.BAFinStart, nfl.TCPMetric.BAFinStart),
-			ABRstStart: updateTCPFlagTime(fl.TCPMetric.ABRstStart, nfl.TCPMetric.ABRstStart),
-			BARstStart: updateTCPFlagTime(fl.TCPMetric.BARstStart, nfl.TCPMetric.BARstStart),
-		}
-	}
-	// TODO(safchain) remove this should be provided by the sender
-	// with a good time resolution
-	if fl.Metric.RTT == 0 && fl.Metric.ABPackets > 0 && fl.Metric.BAPackets > 0 {
-		fl.Metric.RTT = fl.Last - fl.Start
-	}
+	ft.updateFlowFromEBPF(ebpfFlow, f.(*Flow))
 }
 
 // State returns the state of the flow table, stopped, running...
@@ -518,9 +500,6 @@ func (ft *Table) Run() {
 	overFlowTicker := time.NewTicker(time.Second * 10)
 	defer overFlowTicker.Stop()
 
-	ph := Flow{} // placeholder to avoid memory allocation upon update
-	ph.TCPMetric = &TCPMetric{}
-	ph.Metric = &FlowMetric{}
 	ft.query = make(chan *TableQuery, 100)
 	ft.reply = make(chan []byte, 100)
 
@@ -534,7 +513,9 @@ func (ft *Table) Run() {
 		case now := <-updateTicker.C:
 			ft.updateAt(now)
 		case <-ft.flush:
-			ft.tcpAssembler.FlushAll()
+			if ft.Opts.ReassembleTCP {
+				ft.tcpAssembler.FlushAll()
+			}
 
 			ft.expireNow()
 			ft.flushDone <- true
@@ -547,11 +528,15 @@ func (ft *Table) Run() {
 		case op := <-ft.flowChanOperation:
 			ft.processFlowOP(op)
 		case ebpfFlow := <-ft.flowEBPFChan:
-			ft.processEBPFFlow(ebpfFlow, &ph)
+			ft.processEBPFFlow(ebpfFlow)
 		case now := <-ctTicker.C:
 			t := now.Add(-ctDuration)
-			ft.tcpAssembler.FlushOlderThan(t)
-			ft.ipDefragger.FlushOlderThan(t)
+			if ft.tcpAssembler != nil {
+				ft.tcpAssembler.FlushOlderThan(t)
+			}
+			if ft.ipDefragger != nil {
+				ft.ipDefragger.FlushOlderThan(t)
+			}
 		case <-overFlowTicker.C:
 			if ft.removedFlows > 0 {
 				logging.GetLogger().Warningf("flow table overflow, %d flows were dropped from userspace table", ft.removedFlows)
@@ -597,9 +582,6 @@ func (ft *Table) Stop() {
 	if atomic.CompareAndSwapInt64(&ft.state, common.RunningState, common.StoppingState) {
 		ft.quit <- true
 		ft.wg.Wait()
-		ph := Flow{}
-		ph.TCPMetric = &TCPMetric{}
-		ph.Metric = &FlowMetric{}
 
 		close(ft.query)
 		close(ft.reply)
@@ -616,7 +598,7 @@ func (ft *Table) Stop() {
 
 		for len(ft.flowEBPFChan) != 0 {
 			ebpfFlow := <-ft.flowEBPFChan
-			ft.processEBPFFlow(ebpfFlow, &ph)
+			ft.processEBPFFlow(ebpfFlow)
 		}
 
 		close(ft.packetSeqChan)

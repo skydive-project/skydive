@@ -102,12 +102,10 @@ func (f *fakeMasterElection) NewElection(name string) common.MasterElection {
 }
 
 func flowFromSnortMessage(msg *snortMessage) *flow.Flow {
-	uuids := flow.UUIDs{}
-	nodeTID := ""
 	gpkt := gopacket.NewPacket(msg.Data, layers.LayerTypeEthernet, gopacket.NoCopy)
 	gpkt.Metadata().CaptureInfo.Timestamp = msg.Timestamp
 
-	return flow.NewFlowFromGoPacket(gpkt, nodeTID, uuids, flow.Opts{})
+	return flow.NewFlowFromGoPacket(gpkt, "", &flow.UUIDs{}, &flow.Opts{})
 }
 
 func parseSnortTimestamp(timestamp string) time.Time {

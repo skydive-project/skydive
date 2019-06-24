@@ -19,11 +19,11 @@ package flow
 
 import (
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	fmt "fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -35,7 +35,6 @@ import (
 	"github.com/skydive-project/skydive/config"
 	fl "github.com/skydive-project/skydive/flow/layers"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/spaolacci/murmur3"
 )
 
 var (
@@ -59,7 +58,7 @@ const (
 // flowState is used internally to track states within the flow table.
 // it is added to the generated Flow struct by Makefile
 type flowState struct {
-	lastMetric    *FlowMetric
+	lastMetric    FlowMetric
 	rtt1stPacket  int64
 	updateVersion int64
 }
@@ -169,13 +168,6 @@ type Opts struct {
 	LayerKeyMode LayerKeyMode
 	AppPortMap   *ApplicationPortMap
 	ExtraLayers  ExtraLayers
-}
-
-// UUIDs describes UUIDs that can be applied to flows
-type UUIDs struct {
-	ParentUUID string
-	L2ID       int64
-	L3ID       int64
 }
 
 func (l LayerKeyMode) String() string {
@@ -309,16 +301,9 @@ func (p *Packet) TransportFlow() (gopacket.Flow, error) {
 	return layer.TransportFlow(), nil
 }
 
-// Key returns the unique flow key
-// The unique key is calculated based on parentUUID, network, transport and applicable layers
-func (p *Packet) Key(parentUUID string, opts Opts) string {
+// Keys returns keys of the packet
+func (p *Packet) Keys(parentUUID string, uuids *UUIDs, opts *Opts) (uint64, uint64, uint64) {
 	hasher := xxHash64.New(0)
-	// uses L2 is requested or if there is no network layer
-	if opts.LayerKeyMode == L2KeyMode || p.NetworkLayer() == nil {
-		if layer := p.LinkLayer(); layer != nil {
-			Hash(layer.LinkFlow(), hasher)
-		}
-	}
 	if layer := p.NetworkLayer(); layer != nil {
 		Hash(layer.NetworkFlow(), hasher)
 	}
@@ -328,7 +313,21 @@ func (p *Packet) Key(parentUUID string, opts Opts) string {
 	if af, err := p.ApplicationFlow(); err == nil {
 		Hash(af, hasher)
 	}
-	return parentUUID + hex.EncodeToString(hasher.Sum(nil))
+
+	l3Key := hasher.Sum64()
+	l2Key := l3Key
+
+	// uses L2 is requested or if there is no network layer
+	if opts.LayerKeyMode == L2KeyMode || p.NetworkLayer() == nil {
+		if layer := p.LinkLayer(); layer != nil {
+			Hash(layer.LinkFlow(), hasher)
+			l2Key = hasher.Sum64()
+		}
+	}
+
+	hasher.Write([]byte(parentUUID))
+
+	return hasher.Sum64(), l2Key, l3Key
 }
 
 // Value returns int32 value of a FlowProtocol
@@ -387,22 +386,23 @@ func GetFirstLayerType(encapType string) (gopacket.LayerType, layers.LinkType) {
 
 // LayersPath returns path and the application of all the layers separated by a slash.
 func LayersPath(ls []gopacket.Layer) (string, string) {
-	var app, path string
+	var app string
+	var path strings.Builder
+
 	for i, layer := range ls {
 		tp := layer.LayerType()
 		if tp == layers.LayerTypeLinuxSLL {
 			continue
-		}
-		if tp == gopacket.LayerTypePayload || tp == gopacket.LayerTypeDecodeFailure {
+		} else if tp == gopacket.LayerTypePayload || tp == gopacket.LayerTypeDecodeFailure {
 			break
 		}
 		if i > 0 {
-			path += "/"
+			path.WriteString("/")
 		}
 		app = layer.LayerType().String()
-		path += app
+		path.WriteString(app)
 	}
-	return path, app
+	return path.String(), app
 }
 
 func linkID(p *Packet) int64 {
@@ -438,16 +438,15 @@ func networkID(p *Packet) int64 {
 }
 
 // NewFlow creates a new empty flow
-func NewFlow(captureID string) *Flow {
+func NewFlow() *Flow {
 	return &Flow{
-		Metric:    &FlowMetric{},
-		CaptureID: captureID,
+		Metric: &FlowMetric{},
 	}
 }
 
 // NewFlowFromGoPacket creates a new flow from the given gopacket
-func NewFlowFromGoPacket(p gopacket.Packet, nodeTID string, uuids UUIDs, opts Opts) *Flow {
-	f := NewFlow("")
+func NewFlowFromGoPacket(p gopacket.Packet, parentUUID string, uuids *UUIDs, opts *Opts) *Flow {
+	f := NewFlow()
 
 	var length int64
 	if p.Metadata() != nil {
@@ -461,41 +460,48 @@ func NewFlowFromGoPacket(p gopacket.Packet, nodeTID string, uuids UUIDs, opts Op
 		Length:   length,
 	}
 
-	f.initFromPacket(packet.Key(uuids.ParentUUID, opts), packet, nodeTID, uuids, opts)
+	key, l2Key, l3Key := packet.Keys(parentUUID, uuids, opts)
+
+	f.initFromPacket(key, l2Key, l3Key, packet, parentUUID, uuids, opts)
 
 	return f
 }
 
-// UpdateUUID updates the flow UUID based on protocotols layers path and layers IDs
-func (f *Flow) UpdateUUID(key string, opts Opts) {
-	layersPath := strings.Replace(f.LayersPath, "Dot1Q/", "", -1)
+// setUUIDs set the flow UUIDs based on keys generated from gopacket flow
+// l2Key stands for layer2 and beyond
+// l3Key stands for layer3 and beyond
+func (f *Flow) setUUIDs(key, l2Key, l3Key uint64) {
+	f.TrackingID = strconv.FormatUint(l2Key, 16)
+	f.L3TrackingID = strconv.FormatUint(l3Key, 16)
 
-	hasher := murmur3.New64()
+	value64 := make([]byte, 8)
+	binary.BigEndian.PutUint64(value64, uint64(f.Start))
+
+	hasher := xxHash64.New(key)
+	hasher.Write(value64)
+	hasher.Write([]byte(f.NodeTID))
+
+	f.UUID = strconv.FormatUint(hasher.Sum64(), 16)
+}
+
+// SetUUIDs updates the UUIDs using the flow layers and returns l2/l3 keys
+func (f *Flow) SetUUIDs(key uint64, opts Opts) (uint64, uint64) {
+	hasher := xxHash64.New(0)
 	f.Network.Hash(hasher)
 	f.ICMP.Hash(hasher)
 	f.Transport.Hash(hasher)
 
-	// only need network and transport to compute l3trackingID
-	hasher.Write([]byte(strings.TrimPrefix(layersPath, "Ethernet/")))
-	f.L3TrackingID = hex.EncodeToString(hasher.Sum(nil))
+	l3Key := hasher.Sum64()
+	l2Key := l3Key
 
 	if opts.LayerKeyMode == L2KeyMode || f.Network == nil {
 		f.Link.Hash(hasher)
+		l2Key = hasher.Sum64()
 	}
 
-	hasher.Write([]byte(layersPath))
-	f.TrackingID = hex.EncodeToString(hasher.Sum(nil))
+	f.setUUIDs(key, l2Key, l3Key)
 
-	value64 := make([]byte, 8)
-	binary.BigEndian.PutUint64(value64, uint64(f.Start))
-	hasher.Write(value64)
-	hasher.Write([]byte(f.NodeTID))
-
-	// include key so that we are sure that two flows with different keys don't
-	// give the same UUID due to different ways of hash the headers.
-	hasher.Write([]byte(key))
-
-	f.UUID = hex.EncodeToString(hasher.Sum(nil))
+	return l2Key, l3Key
 }
 
 // LinkType returns the Link type of the flow according the its first available layer.
@@ -516,24 +522,25 @@ func (f *Flow) LinkType() (layers.LinkType, error) {
 	return 0, errors.New("LinkType unknown")
 }
 
-// Init initializes the flow with the given Timestamp, nodeTID and related UUIDs
-func (f *Flow) Init(now int64, nodeTID string, uuids UUIDs) {
+// Init initializes the flow with the given Timestamp, parentUUID and table uuids
+func (f *Flow) Init(now int64, parentUUID string, uuids *UUIDs) {
 	f.Start = now
 	f.Last = now
 
 	f.Metric.Start = now
 	f.Metric.Last = now
 
-	f.NodeTID = nodeTID
-	f.ParentUUID = uuids.ParentUUID
+	f.NodeTID = uuids.NodeTID
+	f.CaptureID = uuids.CaptureID
+	f.ParentUUID = parentUUID
 
 	f.FinishType = FlowFinishType_NOT_FINISHED
 }
 
 // initFromPacket initializes the flow based on packet data, flow key and ids
-func (f *Flow) initFromPacket(key string, packet *Packet, nodeTID string, uuids UUIDs, opts Opts) {
+func (f *Flow) initFromPacket(key, l2Key, l3Key uint64, packet *Packet, parentUUID string, uuids *UUIDs, opts *Opts) {
 	now := common.UnixMillis(packet.GoPacket.Metadata().CaptureInfo.Timestamp)
-	f.Init(now, nodeTID, uuids)
+	f.Init(now, parentUUID, uuids)
 
 	f.newLinkLayer(packet)
 
@@ -548,14 +555,14 @@ func (f *Flow) initFromPacket(key string, packet *Packet, nodeTID string, uuids 
 	f.newApplicationLayer(packet, opts)
 
 	// need to have as most variable filled as possible to get correct UUID
-	f.UpdateUUID(key, opts)
+	f.setUUIDs(key, l2Key, l3Key)
 
 	// update metrics
 	f.Update(packet, opts)
 }
 
 // Update a flow metrics and latency
-func (f *Flow) Update(packet *Packet, opts Opts) {
+func (f *Flow) Update(packet *Packet, opts *Opts) {
 	now := common.UnixMillis(packet.GoPacket.Metadata().CaptureInfo.Timestamp)
 	f.Last = now
 	f.Metric.Last = now
@@ -857,7 +864,7 @@ func (f *Flow) updateTCPMetrics(packet *Packet) error {
 	return nil
 }
 
-func (f *Flow) newTransportLayer(packet *Packet, opts Opts) error {
+func (f *Flow) newTransportLayer(packet *Packet, opts *Opts) error {
 	if layer := packet.Layer(layers.LayerTypeTCP); layer != nil {
 		f.Transport = &TransportLayer{Protocol: FlowProtocol_TCP}
 
@@ -927,7 +934,7 @@ func (f *Flow) updateDNSLayer(layer gopacket.Layer, timestamp time.Time) error {
 	return nil
 }
 
-func (f *Flow) newApplicationLayer(packet *Packet, opts Opts) error {
+func (f *Flow) newApplicationLayer(packet *Packet, opts *Opts) error {
 	if (opts.ExtraLayers & DHCPv4Layer) != 0 {
 		if layer := packet.Layer(layers.LayerTypeDHCPv4); layer != nil {
 			d := layer.(*layers.DHCPv4)

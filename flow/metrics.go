@@ -33,46 +33,6 @@ func (fm *FlowMetric) SetLast(last int64) {
 	fm.Last = last
 }
 
-// Copy a flow metric
-func (fm *FlowMetric) Copy() *FlowMetric {
-	return &FlowMetric{
-		ABPackets: fm.ABPackets,
-		ABBytes:   fm.ABBytes,
-		BAPackets: fm.BAPackets,
-		BABytes:   fm.BABytes,
-		Start:     fm.Start,
-		Last:      fm.Last,
-	}
-}
-
-// Copy TCP metric
-func (tm *TCPMetric) Copy() *TCPMetric {
-	return &TCPMetric{
-		ABSynStart:            tm.ABSynStart,
-		BASynStart:            tm.BASynStart,
-		ABSynTTL:              tm.ABSynTTL,
-		BASynTTL:              tm.BASynTTL,
-		ABFinStart:            tm.ABFinStart,
-		BAFinStart:            tm.BAFinStart,
-		ABRstStart:            tm.ABRstStart,
-		BARstStart:            tm.BARstStart,
-		ABSegmentOutOfOrder:   tm.ABSegmentOutOfOrder,
-		ABSegmentSkipped:      tm.ABSegmentSkipped,
-		ABSegmentSkippedBytes: tm.ABSegmentSkippedBytes,
-		ABPackets:             tm.ABPackets,
-		ABBytes:               tm.ABBytes,
-		ABSawStart:            tm.ABSawStart,
-		ABSawEnd:              tm.ABSawEnd,
-		BASegmentOutOfOrder:   tm.BASegmentOutOfOrder,
-		BASegmentSkipped:      tm.BASegmentSkipped,
-		BASegmentSkippedBytes: tm.BASegmentSkippedBytes,
-		BAPackets:             tm.BAPackets,
-		BABytes:               tm.BABytes,
-		BASawStart:            tm.BASawStart,
-		BASawEnd:              tm.BASawEnd,
-	}
-}
-
 // Add sum flow metrics
 func (fm *FlowMetric) Add(m common.Metric) common.Metric {
 	f2 := m.(*FlowMetric)

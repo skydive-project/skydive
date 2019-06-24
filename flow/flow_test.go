@@ -1289,7 +1289,7 @@ func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType, bpf 
 		opt = opts[0]
 	}
 
-	table := NewTable(time.Second, time.Second, &fakeMessageSender{}, "", opt)
+	table := NewTable(time.Second, time.Second, &fakeMessageSender{}, UUIDs{}, opt)
 	fillTableFromPCAP(t, table, filename, linkType, bpf)
 	validateAllParentChains(t, table)
 
@@ -1756,7 +1756,7 @@ func benchmarkPacketParsing(b *testing.B, filename string, linkType layers.LinkT
 			b.Fatal("Failed to get PacketSeq: ", err)
 		}
 		for _, packet := range ps.Packets {
-			NewFlowFromGoPacket(packet.GoPacket, "", UUIDs{}, Opts{})
+			NewFlowFromGoPacket(packet.GoPacket, "", &UUIDs{}, &Opts{})
 		}
 	}
 }
@@ -1781,7 +1781,7 @@ func benchPacketList(b *testing.B, filename string, linkType layers.LinkType, ca
 	if err != nil {
 		b.Fatal("PCAP OpenOffline error (handle to read packet): ", err)
 	}
-	ft := NewTable(time.Hour, time.Hour, nil, "", TableOpts{})
+	ft := NewTable(time.Hour, time.Hour, nil, UUIDs{}, TableOpts{})
 	packets = 0
 
 	for {
@@ -1826,7 +1826,7 @@ func benchmarkPacketsParsing(b *testing.B, filename string, linkType layers.Link
 						b.Fatal("Failed to get PacketSeq")
 					}
 					for _, packet := range ps.Packets {
-						NewFlowFromGoPacket(packet.GoPacket, "", UUIDs{}, Opts{})
+						NewFlowFromGoPacket(packet.GoPacket, "", &UUIDs{}, &Opts{})
 					}
 				}
 			})
@@ -1892,7 +1892,7 @@ func BenchmarkPacketsFlowTable(b *testing.B) {
 
 // Bench creation of flow and connection tracking, via FlowTable
 func BenchmarkQueryFlowTable(b *testing.B) {
-	t := NewTable(time.Hour, time.Hour, &fakeMessageSender{}, "")
+	t := NewTable(time.Hour, time.Hour, &fakeMessageSender{}, UUIDs{})
 
 	for i := 0; i != 10; i++ {
 		f := &Flow{
@@ -2100,8 +2100,6 @@ func TestNTPCorrupted(t *testing.T) {
 				BAPackets: 0,
 				BABytes:   0,
 			},
-			TrackingID:   "35888c9feebbb826",
-			L3TrackingID: "1a38b07877d9a8bd",
 		},
 	}
 
@@ -2362,7 +2360,6 @@ func TestGeneve(t *testing.T) {
 func TestLayerKeyMode(t *testing.T) {
 	expected := []*Flow{
 		{
-			UUID:        "4238ac6e55e4fe84",
 			LayersPath:  "Ethernet/IPv4/ICMPv4",
 			Application: "ICMPv4",
 			Link: &FlowLayer{
@@ -2388,8 +2385,8 @@ func TestLayerKeyMode(t *testing.T) {
 				BAPackets: 2,
 				BABytes:   196,
 			},
-			TrackingID:   "fccc60686022c1d7",
-			L3TrackingID: "8d393414982d64e4",
+			TrackingID:   "75dbbb8b82a44d73",
+			L3TrackingID: "75dbbb8b82a44d73",
 		},
 	}
 
@@ -2397,7 +2394,6 @@ func TestLayerKeyMode(t *testing.T) {
 
 	expected = []*Flow{
 		{
-			UUID:        "4238ac6e55e4fe84",
 			LayersPath:  "Ethernet/IPv4/ICMPv4",
 			Application: "ICMPv4",
 			Link: &FlowLayer{
@@ -2423,11 +2419,10 @@ func TestLayerKeyMode(t *testing.T) {
 				BAPackets: 1,
 				BABytes:   98,
 			},
-			TrackingID:   "dceb357acb653343",
-			L3TrackingID: "8d393414982d64e4",
+			TrackingID:   "d228f5a158d99742",
+			L3TrackingID: "75dbbb8b82a44d73",
 		},
 		{
-			UUID:        "4238ac6e55e4fe84",
 			LayersPath:  "Ethernet/IPv4/ICMPv4",
 			Application: "ICMPv4",
 			Link: &FlowLayer{
@@ -2453,8 +2448,8 @@ func TestLayerKeyMode(t *testing.T) {
 				BAPackets: 1,
 				BABytes:   98,
 			},
-			TrackingID:   "5a98493143d10285",
-			L3TrackingID: "8d393414982d64e4",
+			TrackingID:   "9a193925b3b2d0b5",
+			L3TrackingID: "75dbbb8b82a44d73",
 		},
 	}
 
