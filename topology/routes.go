@@ -1,5 +1,7 @@
+//go:generate go run ../scripts/gendecoder.go -output routes_gendecoder.go
+
 /*
- * Copyright (C) 2018 Red Hat, Inc.
+ * Copyright (C) 2019 Red Hat, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +17,41 @@
  *
  */
 
-package netlink
+package topology
 
 import (
-	"encoding/json"
+	json "encoding/json"
 	"fmt"
 	"net"
 
 	"github.com/skydive-project/skydive/common"
 )
+
+// RoutingTables describes a list of routing table
+// easyjson:json
+// gendecoder
+type RoutingTables []*RoutingTable
+
+// RoutingTable describes a list of Routes
+// easyjson:json
+// gendecoder
+type RoutingTable struct {
+	ID     int64    `json:"ID"`
+	Src    net.IP   `json:"Src"`
+	Routes []*Route `json:"Routes"`
+}
+
+// Prefix describes prefix
+type Prefix net.IPNet
+
+// Route describes a route
+// easyjson:json
+// gendecoder
+type Route struct {
+	Protocol int64      `json:"Protocol"`
+	Prefix   Prefix     `json:"Prefix"`
+	NextHops []*NextHop `json:"NextHops"`
+}
 
 var (
 	// IPv4DefaultRoute default IPv4 route
@@ -46,16 +74,6 @@ func (p *Prefix) String() string {
 	return ipnet.String()
 }
 
-// RoutingTablesMetadataDecoder implements a json message raw decoder
-func RoutingTablesMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
-	var rt RoutingTables
-	if err := json.Unmarshal(raw, &rt); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal routing table %s: %s", string(raw), err)
-	}
-
-	return &rt, nil
-}
-
 // MarshalJSON custom marshal function
 func (p *Prefix) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + p.String() + `"`), nil
@@ -75,6 +93,16 @@ func (p *Prefix) UnmarshalJSON(b []byte) error {
 	*p = Prefix(*cidr)
 
 	return nil
+}
+
+// RoutingTablesMetadataDecoder implements a json message raw decoder
+func RoutingTablesMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+	var rt RoutingTables
+	if err := json.Unmarshal(raw, &rt); err != nil {
+		return nil, fmt.Errorf("unable to unmarshal routing table %s: %s", string(raw), err)
+	}
+
+	return &rt, nil
 }
 
 // GetRoute returns route for the given protocol and prefix

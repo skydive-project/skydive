@@ -59,6 +59,9 @@ EASYJSON_FILES_TAG=\
 	packetinjector/injector.go \
 	sflow/sflow.go \
 	topology/metrics.go \
+	topology/neighbors.go \
+	topology/nexthop.go \
+	topology/routes.go \
 	topology/probes/docker/metadata.go \
 	topology/probes/libvirt/metadata.go \
 	topology/probes/lldp/metadata.go \

@@ -24,7 +24,7 @@ import (
 
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
-	"github.com/skydive-project/skydive/topology/probes/netlink"
+	"github.com/skydive-project/skydive/topology"
 )
 
 func execNextHopQuery(t *testing.T, g *graph.Graph, query string) traversal.GraphTraversalStep {
@@ -48,8 +48,8 @@ func execNextHopQuery(t *testing.T, g *graph.Graph, query string) traversal.Grap
 func TestNextHopStep1(t *testing.T) {
 	t.Skip("this usecase removed.")
 	g := newGraph(t)
-	var neighbors netlink.Neighbors
-	neighbor := &netlink.Neighbor{
+	var neighbors topology.Neighbors
+	neighbor := &topology.Neighbor{
 		IP:      net.ParseIP("192.168.0.2"),
 		IfIndex: 2,
 		MAC:     "fa:16:3e:c1:e8:d1",
@@ -65,12 +65,12 @@ func TestNextHopStep1(t *testing.T) {
 		t.Fatalf("Should return 1 result, returned: %v", res.Values())
 	}
 
-	nexthops := res.Values()[0].(map[string]*NextHop)
+	nexthops := res.Values()[0].(map[string]*topology.NextHop)
 	nexthop, ok := nexthops[string(n.ID)]
 	if !ok {
 		t.Fatalf("Node entry not found")
 	}
-	if nexthop.IP != "192.168.0.2" {
+	if nexthop.IP.String() != "192.168.0.2" {
 		t.Fatalf("IP not matching")
 	}
 }
@@ -79,31 +79,31 @@ func TestNextHopStep1(t *testing.T) {
 find the MAC in neighbors*/
 func TestNextHopStep2(t *testing.T) {
 	g := newGraph(t)
-	var neighbors netlink.Neighbors
-	neighbor := &netlink.Neighbor{
+	var neighbors topology.Neighbors
+	neighbor := &topology.Neighbor{
 		IP:      net.ParseIP("10.16.0.2"),
 		IfIndex: 2,
 		MAC:     "fa:16:3e:c1:e8:d1",
 	}
 	neighbors = append(neighbors, neighbor)
 
-	var nhs []*netlink.NextHop
-	nh := &netlink.NextHop{
+	var nhs []*topology.NextHop
+	nh := &topology.NextHop{
 		IP:      net.ParseIP("10.16.0.2"),
 		IfIndex: 2,
 	}
 	nhs = append(nhs, nh)
 
-	var routes []*netlink.Route
+	var routes []*topology.Route
 	_, cidr, _ := net.ParseCIDR("192.168.0.0/24")
-	route := &netlink.Route{
-		Prefix:   netlink.Prefix(*cidr),
+	route := &topology.Route{
+		Prefix:   topology.Prefix(*cidr),
 		NextHops: nhs,
 	}
 	routes = append(routes, route)
 
-	var routingtables netlink.RoutingTables
-	routingtable := &netlink.RoutingTable{
+	var routingtables topology.RoutingTables
+	routingtable := &topology.RoutingTable{
 		ID:     255,
 		Routes: routes,
 	}
@@ -121,12 +121,12 @@ func TestNextHopStep2(t *testing.T) {
 		t.Fatalf("Should return 1 result, returned: %v", res.Values())
 	}
 
-	nexthops := res.Values()[0].(map[string]*NextHop)
+	nexthops := res.Values()[0].(map[string]*topology.NextHop)
 	nexthop, ok := nexthops[string(n.ID)]
 	if !ok {
 		t.Fatalf("Node entry not found")
 	}
-	if nexthop.IP != "10.16.0.2" {
+	if nexthop.IP.String() != "10.16.0.2" {
 		t.Fatalf("IP not matching, got: %s", nexthop.IP)
 	}
 }
@@ -134,30 +134,30 @@ func TestNextHopStep2(t *testing.T) {
 /* return default nexthop*/
 func TestNextHopStep3(t *testing.T) {
 	g := newGraph(t)
-	var neighbors netlink.Neighbors
-	neighbor := &netlink.Neighbor{
+	var neighbors topology.Neighbors
+	neighbor := &topology.Neighbor{
 		IP:      net.ParseIP("10.16.0.12"),
 		IfIndex: 2,
 		MAC:     "fa:16:3e:ce:e8:d1",
 	}
 	neighbors = append(neighbors, neighbor)
 
-	var nhs []*netlink.NextHop
-	nh := &netlink.NextHop{
+	var nhs []*topology.NextHop
+	nh := &topology.NextHop{
 		IP:      net.ParseIP("10.16.0.12"),
 		IfIndex: 2,
 	}
 	nhs = append(nhs, nh)
 
-	var routes []*netlink.Route
-	route := &netlink.Route{
-		Prefix:   netlink.Prefix(netlink.IPv4DefaultRoute),
+	var routes []*topology.Route
+	route := &topology.Route{
+		Prefix:   topology.Prefix(topology.IPv4DefaultRoute),
 		NextHops: nhs,
 	}
 	routes = append(routes, route)
 
-	var routingtables netlink.RoutingTables
-	routingtable := &netlink.RoutingTable{
+	var routingtables topology.RoutingTables
+	routingtable := &topology.RoutingTable{
 		ID:     255,
 		Routes: routes,
 	}
@@ -175,12 +175,12 @@ func TestNextHopStep3(t *testing.T) {
 		t.Fatalf("Should return 1 result, returned: %v", res.Values())
 	}
 
-	nexthops := res.Values()[0].(map[string]*NextHop)
+	nexthops := res.Values()[0].(map[string]*topology.NextHop)
 	nexthop, ok := nexthops[string(n.ID)]
 	if !ok {
 		t.Fatalf("Node entry not found")
 	}
-	if nexthop.IP != "10.16.0.12" {
+	if nexthop.IP.String() != "10.16.0.12" {
 		t.Fatalf("IP not matching, got: %s", nexthop.IP)
 	}
 }
@@ -188,13 +188,13 @@ func TestNextHopStep3(t *testing.T) {
 /* select correct interface over default one*/
 func TestNextHopStep4(t *testing.T) {
 	g := newGraph(t)
-	var neighbors netlink.Neighbors
-	neighbor1 := &netlink.Neighbor{
+	var neighbors topology.Neighbors
+	neighbor1 := &topology.Neighbor{
 		IP:      net.ParseIP("10.16.0.12"),
 		IfIndex: 2,
 		MAC:     "fa:16:3e:ce:e8:d1",
 	}
-	neighbor2 := &netlink.Neighbor{
+	neighbor2 := &topology.Neighbor{
 		IP:      net.ParseIP("192.64.0.1"),
 		IfIndex: 2,
 		MAC:     "af:16:3e:de:e8:d3",
@@ -202,29 +202,29 @@ func TestNextHopStep4(t *testing.T) {
 
 	neighbors = append(neighbors, neighbor1, neighbor2)
 
-	var nhs1 []*netlink.NextHop
-	nhs1 = append(nhs1, &netlink.NextHop{
+	var nhs1 []*topology.NextHop
+	nhs1 = append(nhs1, &topology.NextHop{
 		IP:      net.ParseIP("10.16.0.12"),
 		IfIndex: 2,
 	})
-	var nhs2 []*netlink.NextHop
-	nhs2 = append(nhs2, &netlink.NextHop{
+	var nhs2 []*topology.NextHop
+	nhs2 = append(nhs2, &topology.NextHop{
 		IP:      net.ParseIP("192.64.0.1"),
 		IfIndex: 2,
 	})
 
-	var routes []*netlink.Route
-	routes = append(routes, &netlink.Route{
+	var routes []*topology.Route
+	routes = append(routes, &topology.Route{
 		NextHops: nhs1,
 	})
 	_, cidr, _ := net.ParseCIDR("10.16.0.0/24")
-	routes = append(routes, &netlink.Route{
+	routes = append(routes, &topology.Route{
 		NextHops: nhs2,
-		Prefix:   netlink.Prefix(*cidr),
+		Prefix:   topology.Prefix(*cidr),
 	})
 
-	var routingtables netlink.RoutingTables
-	routingtables = append(routingtables, &netlink.RoutingTable{
+	var routingtables topology.RoutingTables
+	routingtables = append(routingtables, &topology.RoutingTable{
 		ID:     255,
 		Routes: routes,
 	})
@@ -241,12 +241,12 @@ func TestNextHopStep4(t *testing.T) {
 		t.Fatalf("Should return 1 result, returned: %v", res.Values())
 	}
 
-	nexthops := res.Values()[0].(map[string]*NextHop)
+	nexthops := res.Values()[0].(map[string]*topology.NextHop)
 	nexthop, ok := nexthops[string(n.ID)]
 	if !ok {
 		t.Fatalf("Node entry not found")
 	}
-	if nexthop.IP != "192.64.0.1" {
+	if nexthop.IP.String() != "192.64.0.1" {
 		t.Fatalf("IP not matching, got: %s", nexthop.IP)
 	}
 }
@@ -255,20 +255,20 @@ func TestNextHopStep4(t *testing.T) {
 func TestNextHopStep5(t *testing.T) {
 	g := newGraph(t)
 
-	var nhs []*netlink.NextHop
-	nhs = append(nhs, &netlink.NextHop{
+	var nhs []*topology.NextHop
+	nhs = append(nhs, &topology.NextHop{
 		IfIndex: 5,
 	})
 
-	var routes []*netlink.Route
+	var routes []*topology.Route
 	_, cidr, _ := net.ParseCIDR("10.60.0.0/24")
-	routes = append(routes, &netlink.Route{
+	routes = append(routes, &topology.Route{
 		NextHops: nhs,
-		Prefix:   netlink.Prefix(*cidr),
+		Prefix:   topology.Prefix(*cidr),
 	})
 
-	var routingtables netlink.RoutingTables
-	routingtables = append(routingtables, &netlink.RoutingTable{
+	var routingtables topology.RoutingTables
+	routingtables = append(routingtables, &topology.RoutingTable{
 		ID:     255,
 		Routes: routes,
 	})
@@ -284,12 +284,12 @@ func TestNextHopStep5(t *testing.T) {
 		t.Fatalf("Should return 1 result, returned: %v", res.Values())
 	}
 
-	nexthops := res.Values()[0].(map[string]*NextHop)
+	nexthops := res.Values()[0].(map[string]*topology.NextHop)
 	nexthop, ok := nexthops[string(n.ID)]
 	if !ok {
 		t.Fatalf("Node entry not found")
 	}
-	if nexthop.IP != "" {
+	if nexthop.IP != nil {
 		t.Fatalf("IP not matching, got: %s", nexthop.IP)
 	}
 	if nexthop.IfIndex != 5 {

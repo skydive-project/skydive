@@ -23,17 +23,9 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
-	"github.com/skydive-project/skydive/topology/probes/netlink"
+	"github.com/skydive-project/skydive/topology"
 )
-
-//NextHop a nexthop of IP
-type NextHop struct {
-	IP      string
-	MAC     string
-	IfIndex int64
-}
 
 // NextHopTraversalExtension describes a new extension to enhance the topology
 type NextHopTraversalExtension struct {
@@ -87,72 +79,20 @@ func (e *NextHopTraversalExtension) ParseStep(t traversal.Token, p traversal.Gre
 	return &NextHopGremlinTraversalStep{context: p, ip: ip}, nil
 }
 
-func getNextHops(nodes []*graph.Node, ip net.IP) map[string]*NextHop {
-	nexthops := map[string]*NextHop{}
-
-nodeloop:
-	for _, node := range nodes {
-		neighbors, _ := node.GetField("Neighbors")
-		tables, err := node.GetField("RoutingTables")
-		if err != nil {
-			continue
-		}
-
-		rts := tables.(*netlink.RoutingTables)
-		for _, t := range *rts {
-			var defaultRouteIP net.IP
-			var defaultIfIndex int64
-			for _, r := range t.Routes {
-				ipnet := net.IPNet(r.Prefix)
-				if r.Prefix.IsDefaultRoute() {
-					defaultRouteIP = r.NextHops[0].IP
-					defaultIfIndex = r.NextHops[0].IfIndex
-				} else if ipnet.Contains(ip) {
-					nextIP := r.NextHops[0].IP
-					if nextIP == nil {
-						nexthops[string(node.ID)] = &NextHop{IfIndex: r.NextHops[0].IfIndex}
-						break nodeloop
-					}
-					nh := &NextHop{IP: nextIP.String(), IfIndex: r.NextHops[0].IfIndex}
-					if neighbors != nil {
-						nh.MAC = getMAC(neighbors.(*netlink.Neighbors), nextIP)
-					}
-					nexthops[string(node.ID)] = nh
-
-					break nodeloop
-				}
-			}
-			if defaultRouteIP != nil {
-				nh := &NextHop{IP: defaultRouteIP.String(), IfIndex: defaultIfIndex}
-				if neighbors != nil {
-					nh.MAC = getMAC(neighbors.(*netlink.Neighbors), defaultRouteIP)
-				}
-				nexthops[string(node.ID)] = nh
-			}
-		}
-	}
-	return nexthops
-}
-
-func getMAC(neighbors *netlink.Neighbors, ip net.IP) string {
-	for _, n := range *neighbors {
-		if n.IP.Equal(ip) {
-			return n.MAC
-		}
-	}
-	return ""
-}
-
 // Exec NextHop step
 func (nh *NextHopGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
-
 	switch tv := last.(type) {
 	case *traversal.GraphTraversalV:
+		nextHops := make(map[string]*topology.NextHop)
 		tv.GraphTraversal.RLock()
-		nhs := getNextHops(tv.GetNodes(), nh.ip)
+		for _, node := range tv.GetNodes() {
+			if nextHop, err := topology.GetNextHop(node, nh.ip); err == nil {
+				nextHops[string(node.ID)] = nextHop
+			}
+		}
 		tv.GraphTraversal.RUnlock()
 
-		return NewNextHopTraversalStep(tv.GraphTraversal, nhs), nil
+		return NewNextHopTraversalStep(tv.GraphTraversal, nextHops), nil
 	}
 	return nil, traversal.ErrExecutionError
 }
@@ -170,12 +110,12 @@ func (nh *NextHopGremlinTraversalStep) Context() *traversal.GremlinTraversalCont
 // NextHopTraversalStep traversal step of nexthop
 type NextHopTraversalStep struct {
 	GraphTraversal *traversal.GraphTraversal
-	nexthops       map[string]*NextHop
+	nexthops       map[string]*topology.NextHop
 	error          error
 }
 
 // NewNextHopTraversalStep creates a new traversal nexthop step
-func NewNextHopTraversalStep(gt *traversal.GraphTraversal, value map[string]*NextHop) *NextHopTraversalStep {
+func NewNextHopTraversalStep(gt *traversal.GraphTraversal, value map[string]*topology.NextHop) *NextHopTraversalStep {
 	tv := &NextHopTraversalStep{
 		GraphTraversal: gt,
 		nexthops:       value,

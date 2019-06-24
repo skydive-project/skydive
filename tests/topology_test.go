@@ -30,7 +30,6 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/probes/netlink"
 )
 
 func TestBridgeOVS(t *testing.T) {
@@ -824,7 +823,7 @@ func TestRouteTable(t *testing.T) {
 					return fmt.Errorf("Failed to find a node with IP 124.65.91.42/24")
 				}
 
-				routingTables, ok := node.Metadata["RoutingTables"].(*netlink.RoutingTables)
+				routingTables, ok := node.Metadata["RoutingTables"].(*topology.RoutingTables)
 				if !ok {
 					return fmt.Errorf("Wrong metadata type for RoutingTables: %+v", node.Metadata["RoutingTables"])
 				}
@@ -840,7 +839,7 @@ func TestRouteTable(t *testing.T) {
 					return fmt.Errorf("Failed to find a node with IP 124.65.91.42/24")
 				}
 
-				routingTables, ok = node.Metadata["RoutingTables"].(*netlink.RoutingTables)
+				routingTables, ok = node.Metadata["RoutingTables"].(*topology.RoutingTables)
 				if !ok {
 					return fmt.Errorf("Wrong metadata type for RoutingTables: %+v", node.Metadata["RoutingTables"])
 				}
@@ -899,7 +898,7 @@ func TestRouteTableHistory(t *testing.T) {
 					return fmt.Errorf("Failed to find a node with IP 124.65.75.42/24")
 				}
 
-				routingTables, ok := node.Metadata["RoutingTables"].(*netlink.RoutingTables)
+				routingTables, ok := node.Metadata["RoutingTables"].(*topology.RoutingTables)
 				if !ok {
 					return fmt.Errorf("Wrong metadata type for RoutingTables: %+v", reflect.TypeOf(node.Metadata["RoutingTables"]))
 				}

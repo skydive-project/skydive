@@ -32,6 +32,7 @@ import (
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/ondemand/client"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/validator"
 	ws "github.com/skydive-project/skydive/websocket"
 )
@@ -160,19 +161,19 @@ func (h *onDemandPacketInjectionHandler) createRequest(nodeID graph.Identifier, 
 		}
 
 		if pir.DstMAC == nil {
-			if dstNode != nil {
-				mac, _ := dstNode.GetFieldString("ExtID.attached-mac")
-				if mac == "" {
-					mac, _ = dstNode.GetFieldString("MAC")
-					if mac == "" {
-						return "", nil, errors.New("No dest MAC in node and user input")
+			var dstMAC string
+			if nextHop, err := topology.GetNextHop(srcNode, pir.DstIP); err != nil || nextHop.MAC == "" {
+				if dstNode != nil {
+					if dstMAC, _ = dstNode.GetFieldString("ExtID.attached-mac"); dstMAC == "" {
+						dstMAC, _ = dstNode.GetFieldString("MAC")
 					}
 				}
-				if pir.DstMAC, err = net.ParseMAC(mac); err != nil {
-					return "", nil, err
-				}
 			} else {
-				return "", nil, errors.New("Not able to find a dest node and dest MAC also empty")
+				dstMAC = nextHop.MAC
+			}
+
+			if pir.DstMAC, err = net.ParseMAC(dstMAC); err != nil {
+				return "", nil, errors.New("Failed to resolve destination MAC address")
 			}
 		}
 

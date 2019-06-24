@@ -22,38 +22,9 @@ package netlink
 import (
 	json "encoding/json"
 	"fmt"
-	"net"
 
 	"github.com/skydive-project/skydive/common"
 )
-
-// Neighbors describes a list of neighbors
-// easyjson:json
-// gendecoder
-type Neighbors []*Neighbor
-
-// Neighbor describes a member of the forwarding database
-// easyjson:json
-// gendecoder
-type Neighbor struct {
-	Flags   []string `json:"Flags,omitempty"`
-	MAC     string
-	IP      net.IP   `json:"IP,omitempty"`
-	State   []string `json:"State,omitempty"`
-	Vlan    int64    `json:"Vlan,omitempty"`
-	VNI     int64    `json:"VNI,omitempty"`
-	IfIndex int64
-}
-
-// NeighborMetadataDecoder implements a json message raw decoder
-func NeighborMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
-	var nbs Neighbors
-	if err := json.Unmarshal(raw, &nbs); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal routing table %s: %s", string(raw), err)
-	}
-
-	return &nbs, nil
-}
 
 // VFS describes a list of virtual functions
 // easyjson:json
@@ -81,39 +52,4 @@ func VFSMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
 	}
 
 	return &vfs, nil
-}
-
-// RoutingTables describes a list of routing table
-// easyjson:json
-// gendecoder
-type RoutingTables []*RoutingTable
-
-// RoutingTable describes a list of Routes
-// easyjson:json
-// gendecoder
-type RoutingTable struct {
-	ID     int64    `json:"ID"`
-	Src    net.IP   `json:"Src"`
-	Routes []*Route `json:"Routes"`
-}
-
-// Prefix describes prefix
-type Prefix net.IPNet
-
-// Route describes a route
-// easyjson:json
-// gendecoder
-type Route struct {
-	Protocol int64      `json:"Protocol"`
-	Prefix   Prefix     `json:"Prefix"`
-	NextHops []*NextHop `json:"NextHops"`
-}
-
-// NextHop describes a next hop
-// easyjson:json
-// gendecoder
-type NextHop struct {
-	Priority int64  `json:"Priority"`
-	IP       net.IP `json:"IP,omitempty"`
-	IfIndex  int64  `json:"IfIndex"`
 }

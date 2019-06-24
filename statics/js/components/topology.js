@@ -272,7 +272,7 @@ var TopologyComponent = {
         <panel id="routing-tabel" v-if="currentNodeMetadata && currentNode.metadata.RoutingTables"\
                title="Routing tables">\
           <div v-for="rt in currentNode.metadata.RoutingTables">\
-            <h2>src: {{rt.Src || "none"}}<span class="pull-right">(id: {{rt.Id}})</span></h2>\
+            <h2>src: {{rt.Src || "none"}}<span class="pull-right">(id: {{rt.ID}})</span></h2>\
             <routing-table :rt="rt"></routing-table>\
           </div>\
         </panel>\

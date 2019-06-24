@@ -305,13 +305,13 @@ func getFlagsString(flags []string, state int) (a []string) {
 	return
 }
 
-func (u *NetNsProbe) getNeighbors(index, family int) *Neighbors {
-	var neighbors Neighbors
+func (u *NetNsProbe) getNeighbors(index, family int) *topology.Neighbors {
+	var neighbors topology.Neighbors
 
 	neighList, err := u.handle.NeighList(index, family)
 	if err == nil && len(neighList) > 0 {
 		for i, neigh := range neighList {
-			neighbors = append(neighbors, &Neighbor{
+			neighbors = append(neighbors, &topology.Neighbor{
 				Flags:   getFlagsString(neighFlags, neigh.Flags),
 				MAC:     neigh.HardwareAddr.String(),
 				State:   getFlagsString(neighStates, neigh.State),
@@ -611,7 +611,7 @@ func (u *NetNsProbe) addLinkToTopology(link netlink.Link) {
 	u.handleIntfIsVeth(intf, link)
 }
 
-func (u *NetNsProbe) getRoutingTables(link netlink.Link, table int) *RoutingTables {
+func (u *NetNsProbe) getRoutingTables(link netlink.Link, table int) *topology.RoutingTables {
 	routeFilter := &netlink.Route{
 		LinkIndex: link.Attrs().Index,
 		Table:     table,
@@ -626,11 +626,11 @@ func (u *NetNsProbe) getRoutingTables(link netlink.Link, table int) *RoutingTabl
 		return nil
 	}
 
-	routingTableMap := make(map[int]*RoutingTable)
+	routingTableMap := make(map[int]*topology.RoutingTable)
 	for _, r := range routeList {
 		routingTable, ok := routingTableMap[r.Table]
 		if !ok {
-			routingTable = &RoutingTable{ID: int64(r.Table), Src: r.Src}
+			routingTable = &topology.RoutingTable{ID: int64(r.Table), Src: r.Src}
 		}
 
 		var prefix net.IPNet
@@ -638,9 +638,9 @@ func (u *NetNsProbe) getRoutingTables(link netlink.Link, table int) *RoutingTabl
 			prefix = *r.Dst
 		} else {
 			if len(r.Gw) == net.IPv4len {
-				prefix = IPv4DefaultRoute
+				prefix = topology.IPv4DefaultRoute
 			} else {
-				prefix = IPv6DefaultRoute
+				prefix = topology.IPv6DefaultRoute
 			}
 		}
 
@@ -656,7 +656,7 @@ func (u *NetNsProbe) getRoutingTables(link netlink.Link, table int) *RoutingTabl
 		routingTableMap[r.Table] = routingTable
 	}
 
-	var result RoutingTables
+	var result topology.RoutingTables
 	for _, r := range routingTableMap {
 		result = append(result, r)
 	}
@@ -732,7 +732,7 @@ func getFamilyKey(family int) string {
 	return ""
 }
 
-func (u *NetNsProbe) onRoutingTablesChanged(index int64, rts *RoutingTables) {
+func (u *NetNsProbe) onRoutingTablesChanged(index int64, rts *topology.RoutingTables) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
@@ -847,7 +847,7 @@ func (u *NetNsProbe) initialize() {
 	}
 }
 
-func (u *NetNsProbe) parseRtMsg(m []byte) (*RoutingTables, int, error) {
+func (u *NetNsProbe) parseRtMsg(m []byte) (*topology.RoutingTables, int, error) {
 	msg := nl.DeserializeRtMsg(m)
 	attrs, err := nl.ParseRouteAttr(m[msg.Len():])
 	if err != nil {

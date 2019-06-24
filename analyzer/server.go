@@ -409,9 +409,9 @@ func init() {
 	// Decoder will be used while unmarshal the metadata
 	graph.NodeMetadataDecoders["Captures"] = probes.CapturesMetadataDecoder
 	graph.NodeMetadataDecoders["PacketInjections"] = packetinjector.InjectionsMetadataDecoder
-	graph.NodeMetadataDecoders["RoutingTables"] = netlink.RoutingTablesMetadataDecoder
-	graph.NodeMetadataDecoders["FDB"] = netlink.NeighborMetadataDecoder
-	graph.NodeMetadataDecoders["Neighbors"] = netlink.NeighborMetadataDecoder
+	graph.NodeMetadataDecoders["RoutingTables"] = topology.RoutingTablesMetadataDecoder
+	graph.NodeMetadataDecoders["FDB"] = topology.NeighborMetadataDecoder
+	graph.NodeMetadataDecoders["Neighbors"] = topology.NeighborMetadataDecoder
 	graph.NodeMetadataDecoders["Vfs"] = netlink.VFSMetadataDecoder
 	graph.NodeMetadataDecoders["Metric"] = topology.InterfaceMetricMetadataDecoder
 	graph.NodeMetadataDecoders["LastUpdateMetric"] = topology.InterfaceMetricMetadataDecoder
