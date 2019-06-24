@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.24.0] - 2019-06-24
+### Added
+
+- Add Gremlin console in Web UI
+- Add `ovsnetflow` capture to act as a NetFlow receiver
+- Add target mechanism to export flow using ERSPAN or NetFlow
+- Packet injector:
+  - Allow use as a standalone executable
+  - Allow reaching external IPs
+- Support multiple captures on a single interface
+- Allow creating API resources with a TTL
+- Added support for all DNS fields
+- Add flow validation workflow
+- Gremlin:
+  - Add `Has` step on `Values` result
+  - Add `NEE` (not equal or not exist) predicate
+  - Add `Dedup` step on `ShortestPath` result
+
+### Changed
+
+- Set capture ID in flow metadata
+- Properly handle updates in Gremlin filters
+- Fix rtt calculation for RST packet
+- Set real Kubernetes cluster name
+
 ## [0.23.0] - 2019-05-15
 ### Added
 - OVN probe with support for logical switches, routers, ports and ACLs
