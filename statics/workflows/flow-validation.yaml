@@ -73,21 +73,27 @@ Source: |
       var timediff = interval * 1000;
       sleep(timediff)
       var flowExpected = client.gremlin.G().V().Has('Captures.ID', capture.UUID, 'Type', NE('ovsport')).result();
-      var flowCaptured = client.gremlin.G().V().Has('Captures.ID', capture.UUID).Flows().CaptureNode().Dedup().result();
+      var flowCaptured = client.gremlin.G().Flows().Has('CaptureID', capture.UUID).CaptureNode().Dedup().result();
       var noflows = [];
 
-      for (var i = 0; i != flowExpected.length; i++) {
-        var found = false;
+      if (protocol != "udp" && flowExpected.length && flowExpected.length == flowCaptured.length) {
+        flowCaptured = client.gremlin.G().Flows().Has('CaptureID', capture.UUID, 'Metric.ABPackets', GT(0), 'Metric.BAPackets', GT(0)).CaptureNode().Dedup().result();
+      }
 
-        for (var j = 0; j != flowCaptured.length; j++) {
-          if (flowExpected[i].ID === flowCaptured[j].ID) {
-            found = true;
-            break;
+      if (flowExpected.length != flowCaptured.length) {
+        for (var i = 0; i != flowExpected.length; i++) {
+          var found = false;
+
+          for (var j = 0; j != flowCaptured.length; j++) {
+            if (flowExpected[i].ID === flowCaptured[j].ID) {
+              found = true;
+              break;
+            }
           }
-        }
 
-        if (!found) {
-          noflows.push(flowExpected[i]);
+          if (!found) {
+            noflows.push(flowExpected[i]);
+          }
         }
       }
 
