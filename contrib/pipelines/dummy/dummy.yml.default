@@ -1,0 +1,6 @@
+host_id: ""
+pipeline:
+  analyzer:
+    subscriber_url: ws://127.0.0.1:8082/ws/subscriber/flow
+    subscriber_username:
+    subscriber_password:

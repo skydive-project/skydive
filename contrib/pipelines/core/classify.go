@@ -15,40 +15,41 @@
  *
  */
 
-package subscriber
+package core
 
 import (
 	"errors"
 	"fmt"
 	"net"
 
+	"github.com/spf13/viper"
+
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 )
 
-// flowClassifier classifies flows to different tags (strings)
-type flowClassifier interface {
-	// GetFlowTag returns the tag of the given flow
-	GetFlowTag(fl *flow.Flow) tag
-}
-
-// tag represents the flow classification
-type tag string
+// Tag represents the flow classification
+type Tag string
 
 const (
-	tagOther    tag = "other"
-	tagEgress   tag = "egress"
-	tagIngress  tag = "ingress"
-	tagInternal tag = "internal"
+	tagOther    Tag = "other"
+	tagEgress   Tag = "egress"
+	tagIngress  Tag = "ingress"
+	tagInternal Tag = "internal"
 )
 
-// flowDirectionClassifier classifies flows by their direction (ingress, egress, etc)
-type flowDirectionClassifier struct {
+// Classifier exposes the interface for tag based classification
+type Classifier interface {
+	GetFlowTag(fl *flow.Flow) Tag
+}
+
+// classify classifies flows by their direction (ingress, egress, etc)
+type classify struct {
 	clusterNetMasks []*net.IPNet
 }
 
 // GetFlowTag tag flows based on src and dst IP ranges
-func (fc *flowDirectionClassifier) GetFlowTag(fl *flow.Flow) tag {
+func (fc *classify) GetFlowTag(fl *flow.Flow) Tag {
 	if fl == nil || fl.Network == nil {
 		return tagOther
 	}
@@ -75,7 +76,7 @@ func (fc *flowDirectionClassifier) GetFlowTag(fl *flow.Flow) tag {
 }
 
 // isClusterIP check if IP is in defined subnet
-func (fc *flowDirectionClassifier) isClusterIP(ip string) (bool, error) {
+func (fc *classify) isClusterIP(ip string) (bool, error) {
 	var err error
 	clusterIP := false
 	netIP := net.ParseIP(ip)
@@ -94,15 +95,16 @@ func (fc *flowDirectionClassifier) isClusterIP(ip string) (bool, error) {
 	return false, nil
 }
 
-// newFlowClassifier returns a new FlowDirectionClassifier, based on the given cluster net masks
-func newFlowClassifier(clusterNetMasks []string) (*flowDirectionClassifier, error) {
+// NewClassify returns a new classify, based on the given cluster net masks
+func NewClassify(cfg *viper.Viper) (Classifier, error) {
+	clusterNetMasks := cfg.GetStringSlice(CfgRoot + "classify.cluster_net_masks")
 	parsedNetMasks := make([]*net.IPNet, 0, len(clusterNetMasks))
 	for _, netMask := range clusterNetMasks {
 		_, sa, err := net.ParseCIDR(netMask)
 		if err != nil {
-			return nil, fmt.Errorf("Cannot parse netmask '%s': %s", netMask, err.Error())
+			return nil, fmt.Errorf("Cannot parse netmask '%s': %s", netMask, err)
 		}
 		parsedNetMasks = append(parsedNetMasks, sa)
 	}
-	return &flowDirectionClassifier{clusterNetMasks: parsedNetMasks}, nil
+	return &classify{clusterNetMasks: parsedNetMasks}, nil
 }

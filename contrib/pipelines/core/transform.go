@@ -15,29 +15,14 @@
  *
  */
 
-package subscriber
+package core
 
 import (
-	"fmt"
-
-	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/flow"
 )
 
-// flowTransformer allows generic transformations of a flow
-type flowTransformer interface {
+// Transformer allows generic transformations of a flow
+type Transformer interface {
 	// Transform transforms a flow before being stored
 	Transform(f *flow.Flow) interface{}
-}
-
-// newFlowTransformer creates a new flow transformer based on a name string
-func newFlowTransformer(flowTransformerName string, gremlinClient *client.GremlinQueryHelper) (flowTransformer, error) {
-	switch flowTransformerName {
-	case "security-advisor":
-		return newSecurityAdvisorFlowTransformer(gremlinClient), nil
-	case "":
-		return nil, nil
-	default:
-		return nil, fmt.Errorf("Flow transformer '%s' is not supported", flowTransformerName)
-	}
 }
