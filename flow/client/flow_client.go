@@ -45,6 +45,7 @@ type FlowClientPool struct {
 type FlowClient struct {
 	addr           string
 	port           int
+	protocol       string
 	flowClientConn FlowClientConn
 }
 
@@ -139,9 +140,9 @@ func (c *FlowClient) close() {
 	}
 }
 
-// SendFlow sends a flow to the server
-func (c *FlowClient) SendFlow(f *flow.Flow) error {
-	data, err := f.Marshal()
+// SendMessage sends a flow to the server
+func (c *FlowClient) SendMessage(m *flow.Message) error {
+	data, err := m.Marshal()
 	if err != nil {
 		return err
 	}
@@ -160,10 +161,25 @@ retry:
 
 // SendFlows implements the flow Sender interface
 func (c *FlowClient) SendFlows(flows []*flow.Flow) {
-	// TODO(safchain) in case of websocket there is no size limitation we should send
-	// bulk directly
-	for _, flow := range flows {
-		err := c.SendFlow(flow)
+	// NOTE: set it to 1 for udp to ensure that the flow can be sent
+	// even with rawpackets. Set it a bit bigger for websocket to
+	// improve performances.
+	bulkSize := 1
+	if c.protocol == "websocket" {
+		bulkSize = 10
+	}
+
+	var msg flow.Message
+	for i := 0; i < len(flows); i += bulkSize {
+		e := i + bulkSize
+
+		if e > len(flows) {
+			e = len(flows)
+		}
+
+		msg.Flows = flows[i:e]
+
+		err := c.SendMessage(&msg)
 		if err != nil {
 			logging.GetLogger().Errorf("Unable to send flow: %s", err)
 		}
@@ -191,7 +207,7 @@ func NewFlowClient(addr string, port int, authOpts *shttp.AuthenticationOpts) (*
 		return nil, err
 	}
 
-	fc := &FlowClient{addr: addr, port: port, flowClientConn: connection}
+	fc := &FlowClient{addr: addr, port: port, protocol: protocol, flowClientConn: connection}
 	fc.connect()
 
 	return fc, nil
