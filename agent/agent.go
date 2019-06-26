@@ -128,13 +128,13 @@ func (a *Agent) Start() {
 
 // Stop agent services
 func (a *Agent) Stop() {
+	a.onDemandPIServer.Stop()
+	a.onDemandProbeServer.Stop()
 	a.flowProbeBundle.Stop()
 	a.analyzerClientPool.Stop()
 	a.topologyProbeBundle.Stop()
 	a.httpServer.Stop()
 	a.flowClientPool.Close()
-	a.onDemandPIServer.Stop()
-	a.onDemandProbeServer.Stop()
 
 	if tr, ok := http.DefaultTransport.(interface {
 		CloseIdleConnections()
