@@ -167,9 +167,6 @@ func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource ty
 func (o *onDemandPacketInjectServer) RemoveTask(n *graph.Node, resource types.Resource, task ondemand.Task) error {
 	logging.GetLogger().Debugf("Unregister packet injection %s on %s", n.ID, resource.ID())
 
-	o.Lock()
-	defer o.Unlock()
-
 	cancel := task.(chan bool)
 	cancel <- true
 	return nil
