@@ -53,21 +53,23 @@ Source: |
         capture.GremlinQuery = "G.V().Has('TID', '" + checkPoint1 + "').ShortestPathTo(Metadata('TID', '" + checkPoint2 + "'), Metadata('RelationType', 'layer2'))";
       }
 
-      capture.BPFFilter = protocol;
+      var bpf = protocol;
 
       if (srcIP) {
-        capture.BPFFilter += " and (src "+ srcIP + " or dst " + srcIP + ")";
+        bpf += " and (src "+ srcIP + " or dst " + srcIP + ")";
       }
 
       if (dstIP) {
-        capture.BPFFilter += " and (src "+ dstIP + " or dst " + dstIP + ")";
+        bpf += " and (src "+ dstIP + " or dst " + dstIP + ")";
       }
 
       if (protocol == "icmp" && id) {
-        capture.BPFFilter +=  " and icmp[4:2]=" + id;
+        bpf +=  " and icmp[4:2]=" + id;
       } else if (id) {
-        capture.BPFFilter +=  " and port " + id;
+        bpf +=  " and port " + id;
       }
+
+      capture.BPFFilter = "(" + bpf + ") " + "or (vlan and " + bpf + ")";
 
       capture = client.captures.create(capture)
       var timediff = interval * 1000;
