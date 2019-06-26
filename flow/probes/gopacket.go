@@ -120,6 +120,8 @@ func (p *GoPacketProbe) listen(packetCallback func(gopacket.Packet)) {
 			time.Sleep(20 * time.Millisecond)
 		case afpacket.ErrTimeout:
 			// nothing to do, poll wait for new packet or timeout
+		case afpacket.ErrPoll:
+			return
 		default:
 			time.Sleep(200 * time.Millisecond)
 		}
@@ -184,11 +186,9 @@ func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e ProbeEventHa
 
 	p.listen(packetCallback)
 
-	if statsTicker != nil {
-		close(statsDone)
-		wg.Wait()
-		statsTicker.Stop()
-	}
+	close(statsDone)
+	wg.Wait()
+	statsTicker.Stop()
 
 	p.packetProbe.Close()
 	atomic.StoreInt64(&p.state, common.StoppedState)
