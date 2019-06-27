@@ -2455,3 +2455,30 @@ func TestLayerKeyMode(t *testing.T) {
 
 	validatePCAP(t, "pcaptraces/layer-key-mode.pcap", layers.LinkTypeEthernet, nil, expected, TableOpts{LayerKeyMode: L2KeyMode})
 }
+
+func TestVlanBPF(t *testing.T) {
+	bpf, err := NewBPF(layers.LinkTypeEthernet, 256, "icmp or (vlan and icmp)")
+	if err != nil {
+		t.Error(err)
+	}
+
+	handleRead, err := pcap.OpenOffline("pcaptraces/icmp-vlan.pcap")
+	if err != nil {
+		t.Fatal("PCAP OpenOffline error (handle to read packet): ", err)
+	}
+	defer handleRead.Close()
+
+	for {
+		data, _, err := handleRead.ReadPacketData()
+		if err != nil && err != io.EOF {
+			t.Fatal("PCAP OpenOffline error (handle to read packet): ", err)
+		} else if err == io.EOF {
+			break
+		} else {
+			if !bpf.Matches(data) {
+				p := gopacket.NewPacket(data, layers.LinkTypeEthernet, gopacket.Default)
+				t.Errorf("expected packet not matched, got: %+v", p)
+			}
+		}
+	}
+}
