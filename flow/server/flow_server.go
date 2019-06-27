@@ -99,25 +99,29 @@ func (c *FlowServerWebSocketConn) OnMessage(client ws.Speaker, m ws.Message) {
 	// rawmessage at this point
 	b, _ := m.Bytes(ws.RawProtocol)
 
-	var f flow.Flow
-	if err := f.Unmarshal(b); err != nil {
+	var msg flow.Message
+	if err := msg.Unmarshal(b); err != nil {
 		logging.GetLogger().Errorf("Error while parsing flow: %s", err)
 		return
 	}
 
-	logging.GetLogger().Debugf("New flow from Websocket connection: %+v", f)
-	if len(c.ch) >= c.maxFlowBufferSize {
-		c.numOfLostFlows++
-		if c.timeOfLastLostFlowsLog.IsZero() ||
-			(time.Now().Sub(c.timeOfLastLostFlowsLog) >= time.Second) {
-			logging.GetLogger().Errorf("Buffer overflow - too many flow updates, removing and not storing flows: %d", c.numOfLostFlows)
-			c.timeOfLastLostFlowsLog = time.Now()
-			c.numOfLostFlows = 0
-		}
-		return
-	}
+	logging.GetLogger().Debugf("New flow message from Websocket connection: %+v", msg)
 
-	c.ch <- &f
+	// TODO(safchain) handle mutliple type of message
+	for _, f := range msg.Flows {
+		if len(c.ch) >= c.maxFlowBufferSize {
+			c.numOfLostFlows++
+			if c.timeOfLastLostFlowsLog.IsZero() ||
+				(time.Now().Sub(c.timeOfLastLostFlowsLog) >= time.Second) {
+				logging.GetLogger().Errorf("Buffer overflow - too many flow updates, removing and not storing flows: %d", c.numOfLostFlows)
+				c.timeOfLastLostFlowsLog = time.Now()
+				c.numOfLostFlows = 0
+			}
+			return
+		}
+
+		c.ch <- f
+	}
 }
 
 // Serve starts a WebSocket flow server
@@ -160,24 +164,27 @@ func (c *FlowServerUDPConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sy
 					logging.GetLogger().Errorf("Error while reading: %s", err)
 				}
 
-				var f flow.Flow
-				if err := f.Unmarshal(data[0:n]); err != nil {
+				var msg flow.Message
+				if err := msg.Unmarshal(data[0:n]); err != nil {
 					logging.GetLogger().Errorf("Error while parsing flow: %s", err)
 					continue
 				}
 
-				logging.GetLogger().Debugf("New flow from UDP connection: %+v", f)
-				if len(ch) >= c.maxFlowBufferSize {
-					c.numOfLostFlows++
-					if c.timeOfLastLostFlowsLog.IsZero() ||
-						(time.Now().Sub(c.timeOfLastLostFlowsLog) >= time.Second) {
-						logging.GetLogger().Errorf("Buffer overflow - too many flow updates, removing and not storing flows: %d", c.numOfLostFlows)
-						c.timeOfLastLostFlowsLog = time.Now()
-						c.numOfLostFlows = 0
+				logging.GetLogger().Debugf("New flow message from UDP connection: %+v", msg)
+
+				for _, f := range msg.Flows {
+					if len(ch) >= c.maxFlowBufferSize {
+						c.numOfLostFlows++
+						if c.timeOfLastLostFlowsLog.IsZero() ||
+							(time.Now().Sub(c.timeOfLastLostFlowsLog) >= time.Second) {
+							logging.GetLogger().Errorf("Buffer overflow - too many flow updates, removing and not storing flows: %d", c.numOfLostFlows)
+							c.timeOfLastLostFlowsLog = time.Now()
+							c.numOfLostFlows = 0
+						}
+						return
 					}
-					return
+					ch <- f
 				}
-				ch <- &f
 			}
 		}
 	}()
