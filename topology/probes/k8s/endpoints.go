@@ -41,5 +41,5 @@ func (h *endpointsHandler) Map(obj interface{}) (graph.Identifier, graph.Metadat
 }
 
 func newEndpointsProbe(client interface{}, g *graph.Graph) Subprobe {
-	return NewResourceCache(client.(*kubernetes.Clientset).Core().RESTClient(), &v1.Endpoints{}, "endpoints", g, &endpointsHandler{})
+	return NewResourceCache(client.(*kubernetes.Clientset).CoreV1().RESTClient(), &v1.Endpoints{}, "endpoints", g, &endpointsHandler{})
 }

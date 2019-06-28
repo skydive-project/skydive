@@ -46,7 +46,7 @@ func (h *namespaceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadat
 }
 
 func newNamespaceProbe(client interface{}, g *graph.Graph) Subprobe {
-	return NewResourceCache(client.(*kubernetes.Clientset).Core().RESTClient(), &v1.Namespace{}, "namespaces", g, &namespaceHandler{})
+	return NewResourceCache(client.(*kubernetes.Clientset).CoreV1().RESTClient(), &v1.Namespace{}, "namespaces", g, &namespaceHandler{})
 }
 
 func newNamespaceLinker(g *graph.Graph, manager string, types ...string) probe.Probe {
