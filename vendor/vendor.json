@@ -3771,10 +3771,10 @@
 			"revisionTime": "2019-04-09T06:51:03Z"
 		},
 		{
-			"checksumSHA1": "dwQhZIqhrEXB+BL1etKuprgE0hI=",
+			"checksumSHA1": "XN/ftCI+xvV6aBfa9Snjed/5y7I=",
 			"path": "k8s.io/api/scheduling/v1beta1",
-			"revision": "acea843d18eb6f097b1bfc08db48f1d7a0ba829a",
-			"revisionTime": "2019-06-27T19:47:22Z"
+			"revision": "d687e77c8ae999eab9ebad49439d16e61add0df0",
+			"revisionTime": "2019-04-09T06:51:03Z"
 		},
 		{
 			"checksumSHA1": "jGNL+ODR9/AoDHnf4h0eLIVN/rU=",
