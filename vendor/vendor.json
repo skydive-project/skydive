@@ -1878,10 +1878,10 @@
 			"revision": "ed104f61ea4877bea08af6f759805674861e968d"
 		},
 		{
-			"checksumSHA1": "sDPn8/gsqhEUkY5HEAmLfqP5b+I=",
+			"checksumSHA1": "4DgEcOv2o9NyZAHCbdS76mToqpU=",
 			"path": "github.com/json-iterator/go",
-			"revision": "ff2b70c1dbffdd98567bd8c2f9449d97c0d04c88",
-			"revisionTime": "2017-11-22T16:09:35Z"
+			"revision": "27518f6661eba504be5a7a9a9f6d9460d892ade3",
+			"revisionTime": "2019-06-21T16:12:01Z"
 		},
 		{
 			"checksumSHA1": "KCKXDLsu/NrrzJc540ylOgwsakE=",
