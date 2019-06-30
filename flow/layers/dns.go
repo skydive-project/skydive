@@ -91,8 +91,10 @@ func toFlowDNSResourceRecord(rr *layers.DNSResourceRecord) (DNSResourceRecord, e
 		record := newDNSRecordFromLayersRecord(rr)
 		OPTs := make([]*DNSOPT, len(rr.OPT))
 		for i, v := range rr.OPT {
-			OPTs[i].Code = v.Code.String()
-			OPTs[i].Data = string(v.Data)
+			OPTs[i] = &DNSOPT{
+				Code: v.Code.String(),
+				Data: string(v.Data),
+			}
 		}
 		record.OPT = OPTs
 		return record, nil

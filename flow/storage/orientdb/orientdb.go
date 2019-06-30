@@ -51,7 +51,7 @@ type flowDoc struct {
 	TCPMetric          *flow.TCPMetric      `json:"TCPMetric,omitempty"`
 	IPMetric           *flow.IPMetric       `json:"IPMetric,omitempty"`
 	DHCPv4             *fl.DHCPv4           `json:"DHCPv4,omitempty"`
-	DNS                *fl.DNS              `json:"DNS,omitempty"`
+	DNS                []*fl.DNS            `json:"DNS,omitempty"`
 	VRRPv2             *fl.VRRPv2           `json:"VRRPv2,omitempty"`
 	RawPacketsCaptured int64
 	TrackingID         *string

@@ -25,25 +25,50 @@ import (
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/contrib/pipelines/core"
+	"github.com/skydive-project/skydive/contrib/pipelines/secadvisor/sadns"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/websocket"
 )
 
+// newTransformer returns a new transformer based on config file
+func newTransformer(cfg *viper.Viper) (core.Transformer, error) {
+	if cfg.GetBool(core.CfgRoot + "dns") {
+		return sadns.NewTransformDNS()
+	}
+	return newTransform(cfg)
+}
+
+// newClassifier returns a new classifier based on config file
+func newClassifier(cfg *viper.Viper) (core.Classifier, error) {
+	if cfg.GetBool(core.CfgRoot + "dns") {
+		return sadns.NewClassifyDNS()
+	}
+	return core.NewClassify(cfg)
+}
+
+// newFilter returns a new filter based on config file
+func newFilter(cfg *viper.Viper) (core.Filterer, error) {
+	if cfg.GetBool(core.CfgRoot + "dns") {
+		return core.NewFilter("ingress", "egress", "internal", "other", "NODNS")
+	}
+	return core.NewFilterFromConfig(cfg)
+}
+
 // NewSubscriberFromConfig returns a new flow subscriber writing to object store
 func NewSubscriberFromConfig(cfg *viper.Viper) (*websocket.StructSpeaker, error) {
-	transform, err := newTransform(cfg)
+	transform, err := newTransformer(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to initialize transform: %s", err)
+		return nil, fmt.Errorf("Cannot initialize transform: %s", err)
 	}
 
-	classify, err := core.NewClassify(cfg)
+	classify, err := newClassifier(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot initialize classify: %s", err)
 	}
 
-	filter, err := core.NewFilterFromConfig(cfg)
+	filter, err := newFilter(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("Cannot initialize classify: %s", err)
+		return nil, fmt.Errorf("Cannot initialize filter: %s", err)
 	}
 
 	encode, err := core.NewEncodeJSON()

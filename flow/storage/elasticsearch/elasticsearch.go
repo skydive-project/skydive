@@ -135,7 +135,7 @@ type embeddedFlow struct {
 	Transport    *flow.TransportLayer `json:"Transport,omitempty"`
 	ICMP         *flow.ICMPLayer      `json:"ICMP,omitempty"`
 	DHCPv4       *fl.DHCPv4           `json:"DHCPv4,omitempty"`
-	DNS          *fl.DNS              `json:"DNS,omitempty"`
+	DNS          []*fl.DNS            `json:"DNS,omitempty"`
 	VRRPv2       *fl.VRRPv2           `json:"VRRPv2,omitempty"`
 	TrackingID   *string
 	L3TrackingID *string

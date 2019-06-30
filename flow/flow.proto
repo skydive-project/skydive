@@ -156,7 +156,7 @@ message Flow {
 
 /* extra layers */
   layers.DHCPv4 DHCPv4 = 1000;
-  layers.DNS DNS = 1001;
+  repeated layers.DNS DNS = 1001;
   layers.VRRPv2 VRRPv2 = 1002;
 
 /* Data Flow Metric info from the 1st layer

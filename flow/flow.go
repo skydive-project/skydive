@@ -930,7 +930,7 @@ func (f *Flow) updateDNSLayer(layer gopacket.Layer, timestamp time.Time) error {
 	dnsToAppend.Authorities = fl.GetDNSRecords(d.Authorities)
 	dnsToAppend.Additionals = fl.GetDNSRecords(d.Additionals)
 	dnsToAppend.Timestamp = timestamp
-	f.DNS = dnsToAppend
+	f.DNS = append(f.DNS, dnsToAppend)
 	return nil
 }
 

@@ -39,7 +39,7 @@ import (
 )
 
 const (
-	schemaVersion  = "12"
+	schemaVersion  = "13"
 	indexPrefix    = "skydive"
 	minimalVersion = "5.5"
 )
