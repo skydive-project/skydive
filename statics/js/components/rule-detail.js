@@ -438,7 +438,12 @@ var BridgeLayout = (function () {
    * @param tab the table number (0 is the default Openflow table)
    */
   BridgeLayout.prototype.switchTab = function (tab) {
+    if (!$('.nav-pills a[href="#T' + tab + '"]').length) {
+      tab = 0
+    }
     $('.nav-pills a[href="#T' + tab + '"]').tab('show');
+
+    this.currentTab = tab
   };
 
   /** switchPortTab Changes the selected port in the UI.
@@ -694,7 +699,7 @@ Vue.component('rule-detail', {
           v-for="(table, tname, tidx) in layout.structured">\
           <a data-toggle="tab"\
             role="tab"\
-            :href="\'#T\' + tname">{{tname}}</a>\
+            :href="\'#T\' + tname" v-on:click="currentTab=tname">{{tname}}</a>\
         </li>\
       </ul>\
       <div class="rules">\
@@ -765,20 +770,21 @@ Vue.component('rule-detail', {
     }
   },
 
-  data: function() {
+  data: function () {
     return {
       value: "",
-      memoBridgeLayout:null,
+      memoBridgeLayout: null,
       filters: {},
-      filtered: null
+      filtered: null,
+      currentTab: 0,
     };
   },
 
   computed: {
     layout: function () {
-      if (! this.memoBridgeLayout || this.memoBridgeLayout.bridge !== this.bridge) {
+      if (!this.memoBridgeLayout || this.memoBridgeLayout.bridge !== this.bridge) {
         this.memoBridgeLayout = new BridgeLayout(this.graph, this.filtered, this.bridge, this.$store);
-        this.memoBridgeLayout.switchTab(0);
+        this.memoBridgeLayout.switchTab(this.currentTab);
       }
       return this.memoBridgeLayout;
     }
