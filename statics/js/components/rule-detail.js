@@ -797,22 +797,29 @@ Vue.component('rule-detail', {
 
   mounted: function () {
     var self = this;
+
+    var _refreshBridgeLayout = function() {
+      self.memoBridgeLayout = null;
+    }
+    var refreshBridgeLayout = debounce(_refreshBridgeLayout.bind(self), 1000);
+
     var handle = function (e) {
       if (!self.bridge) return;
       var tgtType = e.target.metadata.Type;
       if (tgtType === 'ofrule' && e.source.id == self.bridge.id) {
         self.getRules();
       } else if (tgtType === 'ofgroup' && e.source.id == self.bridge.id) {
-        self.memoBridgeLayout = null;
+        refreshBridgeLayout();
       }
     };
 
     var handleUpdate = function (n) {
       if ((n.metadata.Type == 'ofgroup' && self.memoBridgeLayout.groupsUUID.has(n.metadata.UUID)) ||
         (n.metadata.Type == 'ofrule' && self.memoBridgeLayout.rulesUUID.has(n.metadata.UUID))) {
-        self.memoBridgeLayout = null;
+        refreshBridgeLayout();
       }
     };
+
     this.handler = {
       onEdgeAdded: handle,
       onEdgeDeleted: handle,
