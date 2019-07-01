@@ -32,7 +32,7 @@ import (
 	cc "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/crossconnect"
 	localconn "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/local/connection"
 	remoteconn "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/remote/connection"
-	v1 "github.com/networkservicemesh/networkservicemesh/k8s/pkg/apis/networkservice/v1"
+	v1 "github.com/networkservicemesh/networkservicemesh/k8s/pkg/apis/networkservice/v1alpha1"
 	"github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/clientset/versioned"
 	"github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/informers/externalversions"
 	"github.com/skydive-project/skydive/common"
@@ -41,6 +41,7 @@ import (
 	"google.golang.org/grpc"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 const nsmResource = "networkservicemanagers"
@@ -70,15 +71,30 @@ func NewNsmProbe(g *graph.Graph) (*Probe, error) {
 	return probe, nil
 }
 
+func getK8SConfig() (*rest.Config, error) {
+	// check if CRD is installed
+	config, err := rest.InClusterConfig()
+	if err == nil {
+		return config, nil
+	}
+
+	logging.GetLogger().Debugf("Unable to get in K8S cluster config, trying with KUBECONFIG env")
+
+	kubeconfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		clientcmd.NewDefaultClientConfigLoadingRules(),
+		&clientcmd.ConfigOverrides{},
+	)
+	return kubeconfig.ClientConfig()
+
+}
+
 // Start ...
 func (p *Probe) Start() {
 	p.g.AddEventListener(p)
 	atomic.StoreInt64(&p.state, common.RunningState)
 
-	// check if CRD is installed
-	config, err := rest.InClusterConfig()
+	config, err := getK8SConfig()
 	if err != nil {
-		logging.GetLogger().Errorf("Unable to get in K8S cluster config, make sure the analyzer is running inside a K8S pod", err)
 		return
 	}
 
@@ -86,14 +102,14 @@ func (p *Probe) Start() {
 	// Initialize clientset
 	nsmClientSet, err := versioned.NewForConfig(config)
 	if err != nil {
-		logging.GetLogger().Errorf("Unable to initialize the NSM probe", err)
+		logging.GetLogger().Errorf("Unable to initialize the NSM probe: %v", err)
 		return
 	}
 
 	factory := externalversions.NewSharedInformerFactory(nsmClientSet, 0)
 	genericInformer, err := factory.ForResource(v1.SchemeGroupVersion.WithResource(nsmResource))
 	if err != nil {
-		logging.GetLogger().Errorf("Unable to create the K8S cache factory", err)
+		logging.GetLogger().Errorf("Unable to create the K8S cache factory: %v", err)
 		return
 	}
 
