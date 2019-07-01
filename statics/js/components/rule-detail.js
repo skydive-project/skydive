@@ -75,7 +75,7 @@ function computeAction(rule, element) {
   var verb = (element['Function'] || element['Type']).toLowerCase();
   var args = element['Arguments'];
   function getNumArg(i) {
-    return safePort(args[i]?(args[i]['Function'] || args[i]['Type']):'');
+    return safePort(args[i] ? (args[i]['Function'] || args[i]['Type']) : '');
   }
   var action = actionTable[verb];
   if (action !== undefined) {
@@ -127,7 +127,7 @@ function summarizeActions(rule) {
  * @param port: port number
  */
 function normalizePort(port) {
-  if (typeof(port) === "number") {
+  if (typeof (port) === "number") {
     return port & 0xffff;
   }
   return port;
@@ -140,7 +140,7 @@ function normalizePort(port) {
 function inport(filters) {
   var matchInport = ANY_PORT;
   if (filters) {
-    for (var i=0; i <  filters.length; i++) {
+    for (var i = 0; i < filters.length; i++) {
       var filter = filters[i];
       if ((filter['Key'] || filter['Type']) == 'in_port') {
         matchInport = safePort(filter['Value']);
@@ -164,7 +164,7 @@ function summarizeFilter(rule) {
  */
 function textFilters(filters) {
   function text(e) {
-    var r = e['Value'] !== '' ? ':' + JSON.stringify(e['Value']) + (e['Mask'] !== undefined ? '/' + JSON.stringify(e['Mask']) : '')  : '';
+    var r = e['Value'] !== '' ? ':' + JSON.stringify(e['Value']) + (e['Mask'] !== undefined ? '/' + JSON.stringify(e['Mask']) : '') : '';
     return (e['Key'] || e['Type']) + r
   }
   return !filters ? '' : filters.map(text).join(',');
@@ -180,7 +180,7 @@ function textAction(a) {
   var args = a['Arguments'];
   var f = a['Function'] || a['Type'];
   var r;
-  switch(f) {
+  switch (f) {
     case '=':
       r = textAction(args[0]) + '=' + textAction(args[1]);
       break;
@@ -189,7 +189,7 @@ function textAction(a) {
         textAction(args[0]) + '[' +
         (args.length > 1
           ? textAction(args[1]) +
-            (args.length == 3 ? '..' +  textAction(args[2]) + ']' : ']')
+          (args.length == 3 ? '..' + textAction(args[2]) + ']' : ']')
           : ']'));
       break;
     default:
@@ -202,14 +202,14 @@ function textAction(a) {
             for (var i in obj) {
               if (i.indexOf("Port") != -1 && normalizePort(obj[i]) in portTable) {
                 obj[i] = portTable[normalizePort(obj[i])];
-              } else if (typeof(obj[i]) != "string") {
+              } else if (typeof (obj[i]) != "string") {
                 normalize(obj[i]);
               }
             }
           }
           var clonedArgs = JSON.parse(JSON.stringify(args));
           normalize(clonedArgs);
-          for(var key in clonedArgs) {
+          for (var key in clonedArgs) {
             _args.push(key + "=" + JSON.stringify(clonedArgs[key]));
           }
           r = f + '(' + _args.join(',') + ')';
@@ -240,18 +240,18 @@ function summarize(rule) {
  * as the selection algorithm (assumed before the first bucket)
  */
 function summarizeGroup(group) {
-  function textMeta(m){
+  function textMeta(m) {
     return (m['Key'] || m['Type']) + (m['Value'] ? '=' + m['Value'] : '');
   }
   function textBucket(bucket) {
     var content;
     var actions = bucket.Actions.map(textAction).join(',');
     if (bucket.Meta) {
-      content = bucket.meta.map(textMeta).join(',') + ',actions='  + actions;
+      content = bucket.meta.map(textMeta).join(',') + ',actions=' + actions;
     } else {
       content = 'actions=' + actions;
     }
-    return {id: bucket.Id, content: content};
+    return { id: bucket.Id, content: content };
   }
   group.metaText = group.Meta ? group.Meta.map(textMeta).join(',') : '';
   group.bucketsText = group.Buckets.map(textBucket);
@@ -276,25 +276,25 @@ function addRowspan(rules) {
   rules.sort(compareRules);
   var prevActions;
   var prevPriority;
-  for(var i=0; i<rules.length; i++) {
+  for (var i = 0; i < rules.length; i++) {
     var rule = rules[i];
-    if(rule.Priority == prevPriority) {
+    if (rule.Priority == prevPriority) {
       rule.prioritySpan = -1;
     } else {
-      prevPriority=rule.Priority;
-      var span=0;
-      for(var j=i; j<rules.length && rules[j].Priority == prevPriority; j++) {
-        span = span+1;
+      prevPriority = rule.Priority;
+      var span = 0;
+      for (var j = i; j < rules.length && rules[j].Priority == prevPriority; j++) {
+        span = span + 1;
       }
       rule.prioritySpan = span;
     }
-    if(rule.Priority == prevPriority && rule.Actions == prevActions) {
+    if (rule.Priority == prevPriority && rule.Actions == prevActions) {
       rule.actionsSpan = -1;
     } else {
-      prevActions=rule.Actions;
-      var span=0;
-      for(var j=i; j<rules.length && rules[j].Actions == prevActions; j++) {
-        span = span+1;
+      prevActions = rule.Actions;
+      var span = 0;
+      for (var j = i; j < rules.length && rules[j].Actions == prevActions; j++) {
+        span = span + 1;
       }
       rule.actionsSpan = span;
     }
@@ -322,7 +322,7 @@ function classify(array, classifier) {
     else
       result[key] = [elem];
   }
-  for(var key in result) {
+  for (var key in result) {
     addRowspan(result[key]);
   }
   return result;
@@ -394,7 +394,7 @@ var BridgeLayout = (function () {
           break;
         case 'ofrule':
           var rule = c.metadata;
-          if (this.filtered != null && ! (this.filtered.includes((rule.UUID || rule.ID)))) continue;
+          if (this.filtered != null && !(this.filtered.includes((rule.UUID || rule.ID)))) continue;
           summarize(rule);
           rules.push(rule);
           rulesUUID.add(rule.UUID);
@@ -449,10 +449,10 @@ var BridgeLayout = (function () {
     $('.nav-pills a[href="#P' + tabR + '-' + tabP + '"]').tab('show');
   };
 
-  /** hightlights the node associated to a port
-   * @param p: Openflow index of the port to hightlight.
+  /** highlights the node associated to a port
+   * @param p: Openflow index of the port to highlight.
    */
-  BridgeLayout.prototype.mark = function(p) {
+  BridgeLayout.prototype.mark = function (p) {
     var nodes = this.interfaces[p];
     if (nodes === undefined) return;
     for (var i = 0; i < nodes.length; i++) {
@@ -460,10 +460,10 @@ var BridgeLayout = (function () {
     }
   };
 
-  /** unhightlights the node associated to a port
-   * @param p: index of the port to unhighlight
+  /** un-highlights the node associated to a port
+   * @param p: index of the port to un-highlight
    */
-  BridgeLayout.prototype.unmark = function(p) {
+  BridgeLayout.prototype.unmark = function (p) {
     var nodes = this.interfaces[p];
     if (nodes === undefined) return;
     for (var i = 0; i < nodes.length; i++) {
@@ -474,7 +474,7 @@ var BridgeLayout = (function () {
   /** Select the node at the output of a rule.
      * @param p: the index of the port to follow to find the new selected node.
      */
-  BridgeLayout.prototype.select = function(p) {
+  BridgeLayout.prototype.select = function (p) {
     var nodes = this.interfaces[p];
     this.unmark(p);
     var len = nodes.length;
@@ -486,7 +486,7 @@ var BridgeLayout = (function () {
     this.switchTab(0);
   };
 
-  BridgeLayout.prototype.clazz = function(act) {
+  BridgeLayout.prototype.clazz = function (act) {
     var clazz;
     switch (act) {
       case ActionOutput:
@@ -513,7 +513,7 @@ var BridgeLayout = (function () {
   /** Readable name of an openflow port
    * @param pr the index of the port or its stringified value.
   */
-  BridgeLayout.prototype.portname = function(p) {
+  BridgeLayout.prototype.portname = function (p) {
     p = (typeof (p) === 'string') ? parseInt(p) : p;
     if (p === ANY_PORT) return 'ANY';
     if (p === LOCAL_PORT) return 'LOCAL';
@@ -528,7 +528,7 @@ var BridgeLayout = (function () {
   };
 
   /** Check if rule is highlighted. */
-  BridgeLayout.prototype.isHighlighted = function(rule) {
+  BridgeLayout.prototype.isHighlighted = function (rule) {
     var current = this.store.state.currentRule;
     var status = current && rule.UUID === current.metadata.UUID;
     return status;
@@ -600,14 +600,14 @@ Vue.component('rule-table-detail', {
     }
   },
   methods: {
-    splitLine: function(elt_list) {
+    splitLine: function (elt_list) {
       function reresplit(elt) {
         return elt.length > 40 ? elt.match(/.{1,40}/g).join('\u200b') : elt;
       }
       function resplit(elt) {
         return (
           elt.length > 40 ?
-          elt.split(';').map(reresplit).join(';\u200b') : elt);
+            elt.split(';').map(reresplit).join(';\u200b') : elt);
       }
       return elt_list.split(',').map(resplit).join(',\u200b');
     }
@@ -791,26 +791,26 @@ Vue.component('rule-detail', {
 
   mounted: function () {
     var self = this;
-    var handle = function(e) {
-      if (! self.bridge) return;
+    var handle = function (e) {
+      if (!self.bridge) return;
       var tgtType = e.target.metadata.Type;
-      if (tgtType === 'ofrule'  && e.source.id == self.bridge.id ) {
+      if (tgtType === 'ofrule' && e.source.id == self.bridge.id) {
         self.getRules();
-      } else if (tgtType === 'ofgroup'  && e.source.id == self.bridge.id ) {
+      } else if (tgtType === 'ofgroup' && e.source.id == self.bridge.id) {
         self.memoBridgeLayout = null;
       }
     };
 
-    var handleUpdate = function(n) {
+    var handleUpdate = function (n) {
       if ((n.metadata.Type == 'ofgroup' && self.memoBridgeLayout.groupsUUID.has(n.metadata.UUID)) ||
-          (n.metadata.Type == 'ofrule' && self.memoBridgeLayout.rulesUUID.has(n.metadata.UUID))) {
-            self.memoBridgeLayout = null;
+        (n.metadata.Type == 'ofrule' && self.memoBridgeLayout.rulesUUID.has(n.metadata.UUID))) {
+        self.memoBridgeLayout = null;
       }
     };
     this.handler = {
       onEdgeAdded: handle,
       onEdgeDeleted: handle,
-      onNodeUpdated:handleUpdate
+      onNodeUpdated: handleUpdate
     };
     this.graph.addHandler(this.handler);
     this.getRules();
@@ -834,7 +834,7 @@ Vue.component('rule-detail', {
   },
 
   methods: {
-    addFilter: function(key, value) {
+    addFilter: function (key, value) {
       if (!this.filters[key]) {
         Vue.set(this.filters, key, []);
       }
@@ -842,7 +842,7 @@ Vue.component('rule-detail', {
       this.getRules();
     },
 
-    removeFilter: function(key, index) {
+    removeFilter: function (key, index) {
       this.filters[key].splice(index, 1);
       if (this.filters[key].length === 0) {
         Vue.delete(this.filters, key);
@@ -850,10 +850,10 @@ Vue.component('rule-detail', {
       this.getRules();
     },
 
-    getRules: function() {
+    getRules: function () {
       var self = this;
       var keys = Object.keys(this.filters);
-      if(keys.length == 0) {
+      if (keys.length == 0) {
         // Short cut no filter.
         this.filtered = null;
         this.memoBridgeLayout = null;
@@ -869,8 +869,8 @@ Vue.component('rule-detail', {
       query += "Select('" + keys.join("', '") + "')";
       console.log(query);
       this.$topologyQuery(query)
-        .then(function(r) {
-          self.filtered = r.map(function(node) {return node.Metadata.UUID});
+        .then(function (r) {
+          self.filtered = r.map(function (node) { return node.Metadata.UUID });
           self.memoBridgeLayout = null;
         });
     }
