@@ -327,6 +327,13 @@ func (c *Client) BulkIndex(index Index, id string, data interface{}) error {
 	return nil
 }
 
+// BulkUpdateIndex returns the bulk index update from the indexer
+func (c *Client) BulkUpdateIndex(index Index, id string, data interface{}) error {
+	req := elastic.NewBulkUpdateRequest().Index(index.Alias()).Type(index.Type).Id(id).Doc(data)
+	c.bulkProcessor.Add(req)
+	return nil
+}
+
 // Get an object
 func (c *Client) Get(index Index, id string) (*elastic.GetResult, error) {
 	return c.esClient.Get().Index(index.Alias()).Type(index.Type).Id(id).Do(context.Background())

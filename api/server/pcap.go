@@ -35,11 +35,19 @@ type PcapAPI struct {
 	Storage storage.Storage
 }
 
-// SendFlows implements the flow Sender interface
-func (p *PcapAPI) SendFlows(flows []*flow.Flow) {
+// SendFullFlows implements the flow Sender interface
+func (p *PcapAPI) SendFullFlows(flows []*flow.Flow) {
 	if p.Storage != nil && len(flows) > 0 {
 		p.Storage.StoreFlows(flows)
 		logging.GetLogger().Debugf("%d flows stored", len(flows))
+	}
+}
+
+// SendPartialFlows implements the flow Sender interface
+func (p *PcapAPI) SendPartialFlows(updates []*flow.FlowUpdate) {
+	if p.Storage != nil && len(updates) > 0 {
+		p.Storage.UpdateFlows(updates)
+		logging.GetLogger().Debugf("%d updates stored", len(updates))
 	}
 }
 
@@ -52,7 +60,7 @@ func (p *PcapAPI) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest
 		return
 	}
 
-	flowtable := flow.NewTable(updateEvery, expireAfter, p, flow.UUIDs{}, flow.TableOpts{})
+	flowtable := flow.NewTable(updateEvery, expireAfter, p, flow.UUIDs{}, flow.TableOpts{FullFlowUpdate: config.GetBool("flow.full_flow_update")})
 	packetSeqChan, _, _ := flowtable.Start()
 
 	feeder, err := flow.NewPcapTableFeeder(r.Body, packetSeqChan, false, "")

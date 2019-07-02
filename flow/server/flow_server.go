@@ -58,7 +58,7 @@ func max(a, b int) int {
 
 // FlowServerConn describes a flow server connection
 type FlowServerConn interface {
-	Serve(ch chan *flow.Flow, quit chan struct{}, wg *sync.WaitGroup)
+	Serve(ch chan *flow.Message, quit chan struct{}, wg *sync.WaitGroup)
 }
 
 // FlowServerUDPConn describes a UDP flow server connection
@@ -73,7 +73,7 @@ type FlowServerUDPConn struct {
 type FlowServerWebSocketConn struct {
 	ws.DefaultSpeakerEventHandler
 	server                 *shttp.Server
-	ch                     chan *flow.Flow
+	ch                     chan *flow.Message
 	timeOfLastLostFlowsLog time.Time
 	numOfLostFlows         int
 	maxFlowBufferSize      int
@@ -88,7 +88,7 @@ type FlowServer struct {
 	wgServer           sync.WaitGroup
 	bulkInsert         int
 	bulkInsertDeadline time.Duration
-	ch                 chan *flow.Flow
+	ch                 chan *flow.Message
 	quit               chan struct{}
 	auth               shttp.AuthenticationBackend
 	subscriberEndpoint *FlowSubscriberEndpoint
@@ -107,25 +107,21 @@ func (c *FlowServerWebSocketConn) OnMessage(client ws.Speaker, m ws.Message) {
 
 	logging.GetLogger().Debugf("New flow message from Websocket connection: %+v", msg)
 
-	// TODO(safchain) handle mutliple type of message
-	for _, f := range msg.Flows {
-		if len(c.ch) >= c.maxFlowBufferSize {
-			c.numOfLostFlows++
-			if c.timeOfLastLostFlowsLog.IsZero() ||
-				(time.Now().Sub(c.timeOfLastLostFlowsLog) >= time.Second) {
-				logging.GetLogger().Errorf("Buffer overflow - too many flow updates, removing and not storing flows: %d", c.numOfLostFlows)
-				c.timeOfLastLostFlowsLog = time.Now()
-				c.numOfLostFlows = 0
-			}
-			return
+	if len(c.ch) >= c.maxFlowBufferSize {
+		c.numOfLostFlows = c.numOfLostFlows + len(msg.Flows) + len(msg.Updates)
+		if c.timeOfLastLostFlowsLog.IsZero() ||
+			(time.Now().Sub(c.timeOfLastLostFlowsLog) >= time.Second) {
+			logging.GetLogger().Errorf("Buffer overflow - too many flow updates, removing and not storing flows: %d", c.numOfLostFlows)
+			c.timeOfLastLostFlowsLog = time.Now()
+			c.numOfLostFlows = 0
 		}
-
-		c.ch <- f
+		return
 	}
+	c.ch <- &msg
 }
 
 // Serve starts a WebSocket flow server
-func (c *FlowServerWebSocketConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sync.WaitGroup) {
+func (c *FlowServerWebSocketConn) Serve(ch chan *flow.Message, quit chan struct{}, wg *sync.WaitGroup) {
 	c.ch = ch
 	server := config.NewWSServer(c.server, "/ws/agent/flow", c.auth)
 	server.AddEventHandler(c)
@@ -143,7 +139,7 @@ func NewFlowServerWebSocketConn(server *shttp.Server, auth shttp.AuthenticationB
 }
 
 // Serve UDP connections
-func (c *FlowServerUDPConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sync.WaitGroup) {
+func (c *FlowServerUDPConn) Serve(ch chan *flow.Message, quit chan struct{}, wg *sync.WaitGroup) {
 	go func() {
 		defer wg.Done()
 		// each flow can be HeaderSize * RawPackets + flow size (~500)
@@ -172,19 +168,17 @@ func (c *FlowServerUDPConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sy
 
 				logging.GetLogger().Debugf("New flow message from UDP connection: %+v", msg)
 
-				for _, f := range msg.Flows {
-					if len(ch) >= c.maxFlowBufferSize {
-						c.numOfLostFlows++
-						if c.timeOfLastLostFlowsLog.IsZero() ||
-							(time.Now().Sub(c.timeOfLastLostFlowsLog) >= time.Second) {
-							logging.GetLogger().Errorf("Buffer overflow - too many flow updates, removing and not storing flows: %d", c.numOfLostFlows)
-							c.timeOfLastLostFlowsLog = time.Now()
-							c.numOfLostFlows = 0
-						}
-						return
+				if len(ch) >= c.maxFlowBufferSize {
+					c.numOfLostFlows = c.numOfLostFlows + len(msg.Updates) + len(msg.Flows)
+					if c.timeOfLastLostFlowsLog.IsZero() ||
+						(time.Now().Sub(c.timeOfLastLostFlowsLog) >= time.Second) {
+						logging.GetLogger().Errorf("Buffer overflow - too many flow updates, removing and not storing flows: %d", c.numOfLostFlows)
+						c.timeOfLastLostFlowsLog = time.Now()
+						c.numOfLostFlows = 0
 					}
-					ch <- f
+					return
 				}
+				ch <- &msg
 			}
 		}
 	}()
@@ -208,17 +202,61 @@ func NewFlowServerUDPConn(addr string, port int) (*FlowServerUDPConn, error) {
 	return &FlowServerUDPConn{conn: conn, maxFlowBufferSize: flowsMax}, err
 }
 
-func (s *FlowServer) storeFlows(flows []*flow.Flow) {
+// UpdateFlow update the flow from FlowUpdate
+func UpdateFlow(f *flow.Flow, u *flow.FlowUpdate) *flow.Flow {
+	if lup := u.GetLastUpdateMetric(); lup != nil {
+		f.LastUpdateMetric = lup
+	}
+	if m := u.GetMetric(); m != nil {
+		f.Metric = m
+	}
+	if tcp := u.GetTCPMetric(); tcp != nil {
+		f.TCPMetric = tcp
+	}
+	if ip := u.GetIPMetric(); ip != nil {
+		f.IPMetric = ip
+	}
+	f.Last = u.GetLast()
+	f.FinishType = u.GetFinishType()
+
+	if packets := u.GetRawPacketsCaptured(); packets > 0 {
+		f.LastRawPackets = u.LastRawPackets[:0]
+	}
+	return f
+}
+
+func (s *FlowServer) storeFlows(msgs []*flow.Message) {
+	if len(msgs) < 1 || s.storage == nil {
+		return
+	}
+
+	var flows []*flow.Flow
+	var updates []*flow.FlowUpdate
+	for _, msg := range msgs {
+		if len(msg.Flows) > 0 {
+			flows = append(flows, msg.Flows...)
+		}
+		if len(msg.Updates) > 0 {
+			updates = append(updates, msg.Updates...)
+		}
+	}
+
 	if len(flows) > 0 {
-		if s.storage != nil {
-			if err := s.storage.StoreFlows(flows); err != nil {
-				logging.GetLogger().Error(err)
-			} else {
-				logging.GetLogger().Debugf("%d flows stored", len(flows))
-			}
+		if err := s.storage.StoreFlows(flows); err != nil {
+			logging.GetLogger().Error(err)
+		} else {
+			logging.GetLogger().Debugf("%d flows stored", len(flows))
 		}
 
 		s.subscriberEndpoint.SendFlows(flows)
+	}
+
+	if len(updates) > 0 {
+		if err := s.storage.UpdateFlows(updates); err != nil {
+			logging.GetLogger().Error(err)
+		} else {
+			logging.GetLogger().Debugf("%d flows updated", len(updates))
+		}
 	}
 }
 
@@ -234,21 +272,21 @@ func (s *FlowServer) Start() {
 		dlTimer := time.NewTicker(s.bulkInsertDeadline)
 		defer dlTimer.Stop()
 
-		var flows []*flow.Flow
-		defer s.storeFlows(flows)
+		var msgs []*flow.Message
+		defer s.storeFlows(msgs)
 
 		for {
 			select {
 			case <-s.quit:
 				return
 			case <-dlTimer.C:
-				s.storeFlows(flows)
-				flows = flows[:0]
-			case f := <-s.ch:
-				flows = append(flows, f)
-				if len(flows) >= s.bulkInsert {
-					s.storeFlows(flows)
-					flows = flows[:0]
+				s.storeFlows(msgs)
+				msgs = msgs[:0]
+			case msg := <-s.ch:
+				msgs = append(msgs, msg)
+				if len(msgs) >= s.bulkInsert {
+					s.storeFlows(msgs)
+					msgs = msgs[:0]
 				}
 			}
 		}
@@ -281,7 +319,7 @@ func (s *FlowServer) setupBulkConfigFromBackend() error {
 	}
 
 	flowsMax := config.GetConfig().GetInt("analyzer.flow.max_buffer_size")
-	s.ch = make(chan *flow.Flow, max(flowsMax, s.bulkInsert*2))
+	s.ch = make(chan *flow.Message, max(flowsMax, s.bulkInsert*2))
 
 	return nil
 }

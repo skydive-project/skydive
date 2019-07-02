@@ -44,6 +44,7 @@ type TableOpts struct {
 	ReassembleTCP  bool
 	LayerKeyMode   LayerKeyMode
 	ExtraLayers    ExtraLayers
+	FullFlowUpdate bool
 }
 
 // UUIDs describes UUIDs that can be applied to flows table wise
@@ -101,7 +102,8 @@ type Operation struct {
 
 // Sender defines a flows sender interface
 type Sender interface {
-	SendFlows(flows []*Flow)
+	SendFullFlows(flows []*Flow)
+	SendPartialFlows(updates []*FlowUpdate)
 }
 
 func updateTCPFlagTime(prevFlagTime int64, currFlagTime int64) int64 {
@@ -242,7 +244,7 @@ func (ft *Table) expire(expireBefore int64) {
 	}
 
 	/* Advise Clients */
-	ft.sender.SendFlows(expiredFlows)
+	ft.sender.SendFullFlows(expiredFlows)
 
 	flowTableSz := ft.table.Len()
 	logging.GetLogger().Debugf("Expire Flow : removed %v ; new size %v", flowTableSzBefore-flowTableSz, flowTableSz)
@@ -270,19 +272,48 @@ func (ft *Table) updateMetric(f *Flow, start, last int64) {
 	f.LastUpdateMetric.Last = last
 }
 
+func (ft *Table) getFlowUpdate(f *Flow) *FlowUpdate {
+	fu := &FlowUpdate{}
+	fu.FlowUUID = f.UUID
+	fu.Metric = f.Metric
+	fu.LastUpdateMetric = f.LastUpdateMetric
+	fu.Last = f.Last
+	fu.TCPMetric = f.TCPMetric
+	fu.IPMetric = f.IPMetric
+	fu.FinishType = f.FinishType
+	if ft.Opts.RawPacketLimit > 0 {
+		fu.RawPacketsCaptured = f.RawPacketsCaptured
+		fu.LastRawPackets = f.LastRawPackets[:0]
+	}
+	return fu
+}
+
 func (ft *Table) update(updateFrom, updateTime int64) {
 	logging.GetLogger().Debugf("flow table update: %d, %d", updateFrom, updateTime)
 
-	var updatedFlows []*Flow
+	var newFlows []*Flow
+	var updatedFlows []*FlowUpdate
 	for _, k := range ft.table.Keys() {
 		fl, _ := ft.table.Peek(k)
 		f := fl.(*Flow)
 		if f.XXX_state.updateVersion > ft.updateVersion {
 			ft.updateMetric(f, updateFrom, updateTime)
-			updatedFlows = append(updatedFlows, f)
+			if f.XXX_state.newFlow || ft.Opts.FullFlowUpdate {
+				newFlows = append(newFlows, f)
+				f.XXX_state.newFlow = false
+			} else {
+				fu := ft.getFlowUpdate(f)
+				updatedFlows = append(updatedFlows, fu)
+			}
 		} else if updateTime-f.Last > ft.appTimeout[f.Application] && ft.appTimeout[f.Application] > 0 {
-			updatedFlows = append(updatedFlows, f)
 			f.FinishType = FlowFinishType_TIMEOUT
+			if f.XXX_state.newFlow || ft.Opts.FullFlowUpdate {
+				newFlows = append(newFlows, f)
+				f.XXX_state.newFlow = false
+			} else {
+				fu := ft.getFlowUpdate(f)
+				updatedFlows = append(updatedFlows, fu)
+			}
 			ft.table.Remove(k)
 		} else if f.LastUpdateMetric != nil {
 			f.LastUpdateMetric.ABBytes = 0
@@ -302,17 +333,22 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 		}
 	}
 
-	if len(updatedFlows) != 0 {
+	if len(newFlows) != 0 {
 		/* Advise Clients */
-		ft.sender.SendFlows(updatedFlows)
-		logging.GetLogger().Debugf("Send updated Flows: %d", len(updatedFlows))
+		ft.sender.SendFullFlows(newFlows)
+		logging.GetLogger().Debugf("Send updated Flows: %d", len(newFlows))
 
 		// cleanup raw packets
 		if ft.Opts.RawPacketLimit > 0 {
-			for _, f := range updatedFlows {
+			for _, f := range newFlows {
 				f.LastRawPackets = f.LastRawPackets[:0]
 			}
 		}
+	}
+
+	if len(updatedFlows) != 0 {
+		ft.sender.SendPartialFlows(updatedFlows)
+		logging.GetLogger().Debugf("Send flow updates: %d", len(updatedFlows))
 	}
 }
 

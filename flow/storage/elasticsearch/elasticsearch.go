@@ -21,6 +21,8 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/skydive-project/skydive/flow/storage"
+
 	"github.com/olivere/elastic"
 
 	"github.com/skydive-project/skydive/common"
@@ -227,6 +229,60 @@ func (c *Storage) StoreFlows(flows []*flow.Flow) error {
 		}
 	}
 
+	return nil
+}
+
+// UpdateFlows update a set of flows in the database
+func (c *Storage) UpdateFlows(updates []*flow.FlowUpdate) error {
+	if !c.client.Started() {
+		return errors.New("Storage is not yet started")
+	}
+
+	for _, u := range updates {
+		f := storage.UpdateToFlow(u)
+		data, err := json.Marshal(f)
+		if err != nil {
+			return err
+		}
+
+		if err := c.client.BulkUpdateIndex(flowIndex, f.UUID, json.RawMessage(data)); err != nil {
+			return err
+		}
+
+		eflow := flowToEmbbedFlow(f)
+
+		if f.LastUpdateMetric != nil {
+			record := &metricRecord{
+				FlowMetric: f.LastUpdateMetric,
+				Flow:       eflow,
+			}
+
+			data, err := json.Marshal(record)
+			if err != nil {
+				return err
+			}
+
+			if err := c.client.BulkIndex(metricIndex, "", json.RawMessage(data)); err != nil {
+				return err
+			}
+		}
+
+		for _, r := range f.LastRawPackets {
+			record := &rawpacketRecord{
+				RawPacket: r,
+				Flow:      eflow,
+			}
+
+			data, err := json.Marshal(record)
+			if err != nil {
+				return err
+			}
+
+			if c.client.BulkIndex(rawpacketIndex, "", json.RawMessage(data)) != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 

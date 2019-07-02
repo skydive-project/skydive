@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/skydive-project/skydive/flow/storage"
+
 	"github.com/google/gopacket/layers"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
@@ -215,6 +217,17 @@ func (c *Storage) StoreFlows(flows []*flow.Flow) error {
 		}
 	}
 
+	return nil
+}
+
+// UpdateFlows updates a flow in database
+func (c *Storage) UpdateFlows(updates []*flow.FlowUpdate) error {
+	var flows []*flow.Flow
+	for _, u := range updates {
+		f := storage.UpdateToFlow(u)
+		flows = append(flows, f)
+	}
+	c.StoreFlows(flows)
 	return nil
 }
 

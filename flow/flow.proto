@@ -134,6 +134,7 @@ message TCPMetric {
 
 message Message {
   repeated Flow Flows = 1;
+  repeated FlowUpdate Updates = 2;
 }
 
 message Flow {
@@ -202,6 +203,18 @@ message Flow {
 
 /* describes the way the flow was ended (e.g. by RST, FIN) */
   FlowFinishType FinishType = 60;
+}
+
+message FlowUpdate {
+  string FlowUUID = 1;
+  FlowMetric LastUpdateMetric = 2;
+  FlowMetric Metric = 3;
+  TCPMetric TCPMetric = 4;
+  IPMetric IPMetric = 5;
+  int64 Last = 6;
+  FlowFinishType FinishType = 7;
+  repeated RawPacket LastRawPackets = 8;
+  int64 RawPacketsCaptured = 9;
 }
 
 message FlowSet {

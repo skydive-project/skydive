@@ -50,8 +50,12 @@ type fakeMessageSender struct {
 	sent int
 }
 
-func (f *fakeMessageSender) SendFlows(flows []*Flow) {
+func (f *fakeMessageSender) SendFullFlows(flows []*Flow) {
 	f.sent += len(flows)
+}
+
+func (f *fakeMessageSender) SendPartialFlows(updates []*FlowUpdate) {
+	f.sent += len(updates)
 }
 
 func TestFlowExpire(t *testing.T) {

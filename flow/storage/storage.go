@@ -34,8 +34,24 @@ var (
 type Storage interface {
 	Start()
 	StoreFlows(flows []*flow.Flow) error
+	UpdateFlows(updates []*flow.FlowUpdate) error
 	SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error)
 	SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]common.Metric, error)
 	SearchRawPackets(fsq filters.SearchQuery, packetFilter *filters.Filter) (map[string][]*flow.RawPacket, error)
 	Stop()
+}
+
+// UpdateToFlow converts flow updates to flows
+func UpdateToFlow(u *flow.FlowUpdate) *flow.Flow {
+	return &flow.Flow{
+		UUID:               u.FlowUUID,
+		LastUpdateMetric:   u.LastUpdateMetric,
+		Metric:             u.Metric,
+		TCPMetric:          u.TCPMetric,
+		IPMetric:           u.IPMetric,
+		Last:               u.Last,
+		FinishType:         u.FinishType,
+		LastRawPackets:     u.LastRawPackets,
+		RawPacketsCaptured: u.RawPacketsCaptured,
+	}
 }

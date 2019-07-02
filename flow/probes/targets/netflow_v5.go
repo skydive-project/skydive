@@ -184,8 +184,8 @@ func (nf *NetFlowV5Target) sendFlowBulk(flows []*flow.Flow, now time.Time) {
 	nf.conn.Write(append(header.Bytes(), records.Bytes()...))
 }
 
-// SendFlows implements the flow Sender interface
-func (nf *NetFlowV5Target) SendFlows(flows []*flow.Flow) {
+// SendFullFlows implements the flow Sender interface
+func (nf *NetFlowV5Target) SendFullFlows(flows []*flow.Flow) {
 	now := time.Now()
 
 	const bulkSize int = 20
@@ -199,6 +199,11 @@ func (nf *NetFlowV5Target) SendFlows(flows []*flow.Flow) {
 
 		nf.sendFlowBulk(flows[i:e], now)
 	}
+}
+
+// SendPartialFlows implements the flow Sender interface
+func (nf *NetFlowV5Target) SendPartialFlows(updates []*flow.FlowUpdate) {
+	logging.GetLogger().Errorf("NetFlowV5Target do not support partial flow update")
 }
 
 // Start start the target
@@ -241,7 +246,10 @@ func NewNetFlowV5Target(g *graph.Graph, n *graph.Node, capture *types.Capture, u
 		sysBootMs: common.UnixMillis(now),
 	}
 
-	nf.table = flow.NewTable(updateEvery, expireAfter, nf, uuids, tableOptsFromCapture(capture))
+	opts := tableOptsFromCapture(capture)
+	// from netflow target force for full update always
+	opts.FullFlowUpdate = true
+	nf.table = flow.NewTable(updateEvery, expireAfter, nf, uuids, opts)
 
 	return nf, nil
 }

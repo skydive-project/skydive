@@ -31,6 +31,7 @@ import (
 	"github.com/intel-go/yanff/packet"
 
 	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
@@ -177,6 +178,7 @@ func (p *DPDKProbesHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHa
 
 	opts := flow.TableOpts{
 		RawPacketLimit: 0,
+		FullFlowUpdate: config.GetBool("flow.full_flow_update"),
 	}
 
 	p.Ctx = ctx

@@ -911,9 +911,12 @@ func TestFlowJSON(t *testing.T) {
 		ICMP: &ICMPLayer{
 			Type: ICMPType_ECHO,
 		},
-		Start:            1111,
-		Last:             222,
-		LastUpdateMetric: &FlowMetric{},
+		Start: 1111,
+		Last:  222,
+		LastUpdateMetric: &FlowMetric{
+			Start: 1111,
+			Last:  222,
+		},
 		Metric: &FlowMetric{
 			ABBytes:   33,
 			ABPackets: 34,
