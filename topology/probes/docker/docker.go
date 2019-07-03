@@ -51,7 +51,7 @@ type containerInfo struct {
 // Probe describes a Docker topology graph that enhance the graph
 type Probe struct {
 	common.RWMutex
-	*ns.Probe
+	*ns.ProbeHandler
 	url          string
 	client       *client.Client
 	cancel       context.CancelFunc
@@ -286,17 +286,17 @@ func (probe *Probe) Stop() {
 }
 
 // NewProbe creates a new topology Docker probe
-func NewProbe(nsProbe *ns.Probe, dockerURL, netnsRunPath string) (*Probe, error) {
+func NewProbe(nsHandler *ns.ProbeHandler, dockerURL, netnsRunPath string) (*Probe, error) {
 	probe := &Probe{
-		Probe:        nsProbe,
+		ProbeHandler: nsHandler,
 		url:          dockerURL,
 		containerMap: make(map[string]containerInfo),
 		state:        common.StoppedState,
 	}
 
 	if netnsRunPath != "" {
-		nsProbe.Exclude(netnsRunPath + "/default")
-		nsProbe.Watch(netnsRunPath)
+		nsHandler.Exclude(netnsRunPath + "/default")
+		nsHandler.Watch(netnsRunPath)
 	}
 
 	return probe, nil

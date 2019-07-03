@@ -43,20 +43,20 @@ import (
 	"github.com/vishvananda/netns"
 )
 
-// Probe describes a netlink probe in a network namespace
-type Probe struct {
+// ProbeHandler describes a netlink probe in a network namespace
+type ProbeHandler struct {
 	common.RWMutex
-	Graph       *graph.Graph
-	Root        *graph.Node
-	nlHandler   *netlink.ProbeHandler
-	pathToNetNS map[string]*NetNs
-	netNsProbes map[string]*netNsProbe
-	rootNs      *NetNs
-	watcher     *fsnotify.Watcher
-	pending     chan string
-	exclude     []string
-	state       int64
-	wg          sync.WaitGroup
+	Graph           *graph.Graph
+	Root            *graph.Node
+	nlHandler       *netlink.ProbeHandler
+	pathToNetNS     map[string]*NetNs
+	nsNetLinkProbes map[string]*nsNetLinkProbe
+	rootNs          *NetNs
+	watcher         *fsnotify.Watcher
+	pending         chan string
+	exclude         []string
+	state           int64
+	wg              sync.WaitGroup
 }
 
 // NetNs describes a network namespace path associated with a device / inode
@@ -67,7 +67,7 @@ type NetNs struct {
 }
 
 // extends the original struct to add use count number
-type netNsProbe struct {
+type nsNetLinkProbe struct {
 	*netlink.Probe
 	useCount int
 }
@@ -86,7 +86,7 @@ func (ns *NetNs) Equal(o *NetNs) bool {
 	return (ns.dev == o.dev && ns.ino == o.ino)
 }
 
-func (u *Probe) checkNamespace(path string) error {
+func (u *ProbeHandler) checkNamespace(path string) error {
 	// When a new network namespace has been seen by inotify, the path to
 	// the namespace may still be a regular file, not a bind mount to the
 	// file in /proc/<pid>/tasks/<tid>/ns/net yet, so we wait a bit for the
@@ -130,7 +130,7 @@ func (u *Probe) checkNamespace(path string) error {
 }
 
 // Register a new network namespace path
-func (u *Probe) Register(path string, name string) (*graph.Node, error) {
+func (u *ProbeHandler) Register(path string, name string) (*graph.Node, error) {
 	logging.GetLogger().Debugf("Register network namespace: %s", path)
 
 	if err := u.checkNamespace(path); err != nil {
@@ -160,7 +160,7 @@ func (u *Probe) Register(path string, name string) (*graph.Node, error) {
 
 	nsString := newns.String()
 
-	if probe, ok := u.netNsProbes[nsString]; ok {
+	if probe, ok := u.nsNetLinkProbes[nsString]; ok {
 		probe.useCount++
 		logging.GetLogger().Debugf("Increasing counter for namespace %s to %d", nsString, probe.useCount)
 		return probe.Root, nil
@@ -199,13 +199,13 @@ func (u *Probe) Register(path string, name string) (*graph.Node, error) {
 		return nil, err
 	}
 
-	u.netNsProbes[nsString] = &netNsProbe{Probe: probe, useCount: 1}
+	u.nsNetLinkProbes[nsString] = &nsNetLinkProbe{Probe: probe, useCount: 1}
 
 	return n, nil
 }
 
 // Unregister a network namespace path
-func (u *Probe) Unregister(path string) {
+func (u *ProbeHandler) Unregister(path string) {
 	logging.GetLogger().Debugf("Unregister network Namespace: %s", path)
 
 	u.Lock()
@@ -218,7 +218,7 @@ func (u *Probe) Unregister(path string) {
 
 	delete(u.pathToNetNS, path)
 	nsString := ns.String()
-	probe, ok := u.netNsProbes[nsString]
+	probe, ok := u.nsNetLinkProbes[nsString]
 	if !ok {
 		logging.GetLogger().Debugf("No existing network namespace found: %s (%s)", nsString)
 		return
@@ -245,10 +245,10 @@ func (u *Probe) Unregister(path string) {
 		logging.GetLogger().Error(err)
 	}
 
-	delete(u.netNsProbes, nsString)
+	delete(u.nsNetLinkProbes, nsString)
 }
 
-func (u *Probe) initializeRunPath(path string) {
+func (u *ProbeHandler) initializeRunPath(path string) {
 	defer u.wg.Done()
 
 	err := common.Retry(func() error {
@@ -284,13 +284,13 @@ func (u *Probe) initializeRunPath(path string) {
 			logging.GetLogger().Errorf("Failed to register namespace %s: %s", fullpath, err)
 		}
 	}
-	logging.GetLogger().Debugf("Probe initialized %s", path)
+	logging.GetLogger().Debugf("ProbeHandler initialized %s", path)
 }
 
-func (u *Probe) start() {
+func (u *ProbeHandler) start() {
 	defer u.wg.Done()
 
-	logging.GetLogger().Debugf("Probe initialized")
+	logging.GetLogger().Debugf("ProbeHandler initialized")
 
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
@@ -326,18 +326,18 @@ func (u *Probe) start() {
 }
 
 // Watch add a path to the inotify watcher
-func (u *Probe) Watch(path string) {
+func (u *ProbeHandler) Watch(path string) {
 	u.pending <- path
 }
 
 // Start the probe
-func (u *Probe) Start() {
+func (u *ProbeHandler) Start() {
 	u.wg.Add(1)
 	go u.start()
 }
 
 // Stop the probe
-func (u *Probe) Stop() {
+func (u *ProbeHandler) Stop() {
 	if !atomic.CompareAndSwapInt64(&u.state, common.RunningState, common.StoppingState) {
 		return
 	}
@@ -348,7 +348,7 @@ func (u *Probe) Stop() {
 	atomic.StoreInt64(&u.state, common.StoppedState)
 }
 
-func (u *Probe) isPathExcluded(path string) bool {
+func (u *ProbeHandler) isPathExcluded(path string) bool {
 	u.RLock()
 	defer u.RUnlock()
 
@@ -361,14 +361,14 @@ func (u *Probe) isPathExcluded(path string) bool {
 }
 
 // Exclude specify path to not process
-func (u *Probe) Exclude(paths ...string) {
+func (u *ProbeHandler) Exclude(paths ...string) {
 	u.Lock()
 	u.exclude = append(u.exclude, paths...)
 	u.Unlock()
 }
 
-// NewProbe creates a new network namespace probe
-func NewProbe(g *graph.Graph, n *graph.Node, nlHandler *netlink.ProbeHandler) (*Probe, error) {
+// NewProbeHandler creates a new network namespace probe
+func NewProbeHandler(g *graph.Graph, n *graph.Node, nlHandler *netlink.ProbeHandler) (*ProbeHandler, error) {
 	ns, err := netns.Get()
 	if err != nil {
 		return nil, errors.New("Failed to get root namespace")
@@ -386,21 +386,21 @@ func NewProbe(g *graph.Graph, n *graph.Node, nlHandler *netlink.ProbeHandler) (*
 		return nil, fmt.Errorf("Unable to create a new Watcher: %s", err)
 	}
 
-	nsProbe := &Probe{
-		Graph:       g,
-		Root:        n,
-		nlHandler:   nlHandler,
-		pathToNetNS: make(map[string]*NetNs),
-		netNsProbes: make(map[string]*netNsProbe),
-		rootNs:      rootNs,
-		watcher:     watcher,
-		pending:     make(chan string, 10),
-		state:       common.StoppedState,
+	nsProbeHandler := &ProbeHandler{
+		Graph:           g,
+		Root:            n,
+		nlHandler:       nlHandler,
+		pathToNetNS:     make(map[string]*NetNs),
+		nsNetLinkProbes: make(map[string]*nsNetLinkProbe),
+		rootNs:          rootNs,
+		watcher:         watcher,
+		pending:         make(chan string, 10),
+		state:           common.StoppedState,
 	}
 
 	if path := config.GetString("agent.topology.netns.run_path"); path != "" {
-		nsProbe.Watch(path)
+		nsProbeHandler.Watch(path)
 	}
 
-	return nsProbe, nil
+	return nsProbeHandler, nil
 }

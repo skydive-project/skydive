@@ -57,7 +57,7 @@ type loggingEvent struct {
 // Probe describes a LXD topology graph that enhance the graph
 type Probe struct {
 	common.RWMutex
-	*ns.Probe
+	*ns.ProbeHandler
 	state        int64
 	wg           sync.WaitGroup
 	connected    atomic.Value
@@ -283,9 +283,9 @@ func (probe *Probe) Stop() {
 }
 
 // NewProbe creates a new topology Lxd probe
-func NewProbe(nsProbe *ns.Probe, lxdURL string) (*Probe, error) {
+func NewProbe(nsHandler *ns.ProbeHandler, lxdURL string) (*Probe, error) {
 	probe := &Probe{
-		Probe:        nsProbe,
+		ProbeHandler: nsHandler,
 		state:        common.StoppedState,
 		containerMap: make(map[string]containerInfo),
 		quit:         make(chan struct{}),

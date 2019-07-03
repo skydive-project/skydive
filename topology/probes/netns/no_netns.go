@@ -25,19 +25,19 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/netlink"
 )
 
-// Probe describes a netlink probe in a network namespace
-type Probe struct {
+// ProbeHandler describes a netlink probe in a network namespace
+type ProbeHandler struct {
 }
 
 // Start the probe
-func (u *Probe) Start() {
+func (u *ProbeHandler) Start() {
 }
 
 // Stop the probe
-func (u *Probe) Stop() {
+func (u *ProbeHandler) Stop() {
 }
 
 // NewProbe creates a new network namespace probe
-func NewProbe(g *graph.Graph, n *graph.Node, nlProbe *netlink.Probe) (*Probe, error) {
+func NewProbeHandler(g *graph.Graph, n *graph.Node, nlHandler *netlink.ProbeHandler) (*ProbeHandler, error) {
 	return nil, common.ErrNotImplemented
 }

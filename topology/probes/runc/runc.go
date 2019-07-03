@@ -45,7 +45,7 @@ import (
 // Probe describes a Docker topology graph that enhance the graph
 type Probe struct {
 	common.RWMutex
-	*ns.Probe
+	*ns.ProbeHandler
 	state          int64
 	hostNs         netns.NsHandle
 	wg             sync.WaitGroup
@@ -477,7 +477,7 @@ func (probe *Probe) Stop() {
 }
 
 // NewProbe creates a new topology runc probe
-func NewProbe(nsProbe *ns.Probe) (*Probe, error) {
+func NewProbe(nsHandler *ns.ProbeHandler) (*Probe, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("Unable to create a new Watcher: %s", err)
@@ -486,11 +486,11 @@ func NewProbe(nsProbe *ns.Probe) (*Probe, error) {
 	paths := config.GetStringSlice("agent.topology.runc.run_path")
 
 	probe := &Probe{
-		Probe:      nsProbe,
-		state:      common.StoppedState,
-		watcher:    watcher,
-		paths:      paths,
-		containers: make(map[string]*container),
+		ProbeHandler: nsHandler,
+		state:        common.StoppedState,
+		watcher:      watcher,
+		paths:        paths,
+		containers:   make(map[string]*container),
 	}
 
 	return probe, nil

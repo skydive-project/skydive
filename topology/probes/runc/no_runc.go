@@ -37,6 +37,6 @@ func (probe *Probe) Stop() {
 }
 
 // NewProbe creates a new runc probe
-func NewProbe(nsProbe *ns.Probe) (*Probe, error) {
+func NewProbe(nsHandler *ns.ProbeHandler) (*Probe, error) {
 	return nil, common.ErrNotImplemented
 }

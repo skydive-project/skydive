@@ -48,7 +48,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 
 	bundle := probe.NewBundle()
 
-	var nsProbe *netns.Probe
+	var nsHandler *netns.ProbeHandler
 	if runtime.GOOS == "linux" {
 		nlHandler, err := netlink.NewProbeHandler(g, hostNode)
 		if err != nil {
@@ -56,7 +56,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 		}
 		bundle.AddHandler("netlink", handler)
 
-		nsHandler, err := netns.NewProbe(g, hostNode, nlHandler)
+		nsHandler, err = netns.NewProbeHandler(g, hostNode, nlHandler)
 		if err != nil {
 			return nil, err
 		}
@@ -75,11 +75,11 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 			handler, err = ovsdb.NewProbeFromConfig(g, hostNode, addr, enableStats)
 		case "lxd":
 			lxdURL := config.GetConfig().GetString("lxd.url")
-			handler, err = lxd.NewProbe(nsProbe, lxdURL)
+			handler, err = lxd.NewProbe(nsHandler, lxdURL)
 		case "docker":
 			dockerURL := config.GetString("agent.topology.docker.url")
 			netnsRunPath := config.GetString("agent.topology.docker.netns.run_path")
-			handler, err = docker.NewProbe(nsProbe, dockerURL, netnsRunPath)
+			handler, err = docker.NewProbe(nsHandler, dockerURL, netnsRunPath)
 		case "lldp":
 			interfaces := config.GetStringSlice("agent.topology.lldp.interfaces")
 			handler, err = lldp.NewProbe(g, hostNode, interfaces)
@@ -92,7 +92,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 		case "libvirt":
 			handler, err = libvirt.NewProbeFromConfig(g, hostNode)
 		case "runc":
-			handler, err = runc.NewProbe(nsProbe)
+			handler, err = runc.NewProbe(nsHandler)
 		case "vpp":
 			handler, err = vpp.NewProbeFromConfig(g, hostNode)
 		default:
