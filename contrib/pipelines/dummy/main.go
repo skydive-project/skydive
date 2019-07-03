@@ -57,7 +57,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	s, err := NewSubscriberFromConfig(config.GetConfig())
+	s, err := NewSubscriberFromConfig(config.GetConfig().Viper)
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to initialize subscriber: %s", err)
 		os.Exit(1)

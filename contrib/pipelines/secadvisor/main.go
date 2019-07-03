@@ -72,9 +72,7 @@ func main() {
 		defaultCfgFile = os.Args[1]
 	}
 
-	cfg := viper.New()
-
-	if err := config.LoadConfig(cfg, "file", []string{defaultCfgFile}); err != nil {
+	if err := config.InitConfig("file", []string{defaultCfgFile}); err != nil {
 		logging.GetLogger().Errorf("Failed to initialize config: %s", err)
 		os.Exit(1)
 	}
@@ -84,7 +82,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	s, err := NewSubscriberFromConfig(cfg)
+	s, err := NewSubscriberFromConfig(config.GetConfig().Viper)
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to initialize subscriber: %s", err)
 		os.Exit(1)
