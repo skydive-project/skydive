@@ -24,19 +24,19 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
-// Probe describes a list NetLink NameSpace probe to enhance the graph
-type Probe struct {
+// ProbeHandler describes a list NetLink NameSpace probe to enhance the graph
+type ProbeHandler struct {
 }
 
 // Start the probe
-func (u *Probe) Start() {
+func (u *ProbeHandler) Start() {
 }
 
 // Stop the probe
-func (u *Probe) Stop() {
+func (u *ProbeHandler) Stop() {
 }
 
-// NewProbe creates a new netlink probe
-func NewProbe(g *graph.Graph, n *graph.Node) (*Probe, error) {
+// NewProbeHandler creates a new netlink probe
+func NewProbeHandler(g *graph.Graph, n *graph.Node) (*ProbeHandler, error) {
 	return nil, common.ErrNotImplemented
 }

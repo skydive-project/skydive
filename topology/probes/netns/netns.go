@@ -48,7 +48,7 @@ type Probe struct {
 	common.RWMutex
 	Graph       *graph.Graph
 	Root        *graph.Node
-	nlProbe     *netlink.Probe
+	nlHandler   *netlink.ProbeHandler
 	pathToNetNS map[string]*NetNs
 	netNsProbes map[string]*netNsProbe
 	rootNs      *NetNs
@@ -68,7 +68,7 @@ type NetNs struct {
 
 // extends the original struct to add use count number
 type netNsProbe struct {
-	*netlink.NetNsProbe
+	*netlink.Probe
 	useCount int
 }
 
@@ -186,10 +186,10 @@ func (u *Probe) Register(path string, name string) (*graph.Node, error) {
 
 	logging.GetLogger().Debugf("Registering namespace: %s", nsString)
 
-	var probe *netlink.NetNsProbe
+	var probe *netlink.Probe
 	err = common.Retry(func() error {
 		var err error
-		probe, err = u.nlProbe.Register(path, n)
+		probe, err = u.nlHandler.Register(path, n)
 		if err != nil {
 			return fmt.Errorf("Could not register netlink probe within namespace: %s", err)
 		}
@@ -199,7 +199,7 @@ func (u *Probe) Register(path string, name string) (*graph.Node, error) {
 		return nil, err
 	}
 
-	u.netNsProbes[nsString] = &netNsProbe{NetNsProbe: probe, useCount: 1}
+	u.netNsProbes[nsString] = &netNsProbe{Probe: probe, useCount: 1}
 
 	return n, nil
 }
@@ -230,7 +230,7 @@ func (u *Probe) Unregister(path string) {
 		return
 	}
 
-	u.nlProbe.Unregister(path)
+	u.nlHandler.Unregister(path)
 	logging.GetLogger().Debugf("Network namespace deleted: %s", nsString)
 
 	u.Graph.Lock()
@@ -343,7 +343,7 @@ func (u *Probe) Stop() {
 	}
 	u.wg.Wait()
 
-	u.nlProbe.Stop()
+	u.nlHandler.Stop()
 
 	atomic.StoreInt64(&u.state, common.StoppedState)
 }
@@ -368,7 +368,7 @@ func (u *Probe) Exclude(paths ...string) {
 }
 
 // NewProbe creates a new network namespace probe
-func NewProbe(g *graph.Graph, n *graph.Node, nlProbe *netlink.Probe) (*Probe, error) {
+func NewProbe(g *graph.Graph, n *graph.Node, nlHandler *netlink.ProbeHandler) (*Probe, error) {
 	ns, err := netns.Get()
 	if err != nil {
 		return nil, errors.New("Failed to get root namespace")
@@ -389,7 +389,7 @@ func NewProbe(g *graph.Graph, n *graph.Node, nlProbe *netlink.Probe) (*Probe, er
 	nsProbe := &Probe{
 		Graph:       g,
 		Root:        n,
-		nlProbe:     nlProbe,
+		nlHandler:   nlHandler,
 		pathToNetNS: make(map[string]*NetNs),
 		netNsProbes: make(map[string]*netNsProbe),
 		rootNs:      rootNs,
