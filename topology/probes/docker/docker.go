@@ -48,8 +48,8 @@ type containerInfo struct {
 	Node *graph.Node
 }
 
-// Probe describes a Docker topology graph that enhance the graph
-type Probe struct {
+// ProbeHandler describes a Docker topology graph that enhance the graph
+type ProbeHandler struct {
 	common.RWMutex
 	*ns.ProbeHandler
 	url          string
@@ -62,18 +62,18 @@ type Probe struct {
 	containerMap map[string]containerInfo
 }
 
-func (probe *Probe) containerNamespace(pid int) string {
+func (p *ProbeHandler) containerNamespace(pid int) string {
 	return fmt.Sprintf("/proc/%d/ns/net", pid)
 }
 
-func (probe *Probe) registerContainer(id string) {
-	probe.Lock()
-	defer probe.Unlock()
+func (p *ProbeHandler) registerContainer(id string) {
+	p.Lock()
+	defer p.Unlock()
 
-	if _, ok := probe.containerMap[id]; ok {
+	if _, ok := p.containerMap[id]; ok {
 		return
 	}
-	info, err := probe.client.ContainerInspect(context.Background(), id)
+	info, err := p.client.ContainerInspect(context.Background(), id)
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to inspect Docker container %s: %s", id, err)
 		return
@@ -85,24 +85,24 @@ func (probe *Probe) registerContainer(id string) {
 	}
 	defer nsHandle.Close()
 
-	namespace := probe.containerNamespace(info.State.Pid)
+	namespace := p.containerNamespace(info.State.Pid)
 	logging.GetLogger().Debugf("Register docker container %s and PID %d", info.ID, info.State.Pid)
 
 	var n *graph.Node
-	if probe.hostNs.Equal(nsHandle) {
+	if p.hostNs.Equal(nsHandle) {
 		// The container is in net=host mode
-		n = probe.Root
+		n = p.Root
 	} else {
-		if n, err = probe.Register(namespace, info.Name[1:]); err != nil {
+		if n, err = p.Register(namespace, info.Name[1:]); err != nil {
 			logging.GetLogger().Debugf("Failed to register probe for namespace %s: %s", namespace, err)
 			return
 		}
 
-		probe.Graph.Lock()
-		if err := probe.Graph.AddMetadata(n, "Manager", "docker"); err != nil {
+		p.Graph.Lock()
+		if err := p.Graph.AddMetadata(n, "Manager", "docker"); err != nil {
 			logging.GetLogger().Error(err)
 		}
-		probe.Graph.Unlock()
+		p.Graph.Unlock()
 	}
 
 	pid := int64(info.State.Pid)
@@ -116,12 +116,12 @@ func (probe *Probe) registerContainer(id string) {
 		dockerMetadata.Labels = graph.Metadata(common.NormalizeValue(info.Config.Labels).(map[string]interface{}))
 	}
 
-	probe.Graph.Lock()
-	defer probe.Graph.Unlock()
+	p.Graph.Lock()
+	defer p.Graph.Unlock()
 
-	containerNode := probe.Graph.LookupFirstNode(graph.Metadata{"InitProcessPID": pid})
+	containerNode := p.Graph.LookupFirstNode(graph.Metadata{"InitProcessPID": pid})
 	if containerNode != nil {
-		if err := probe.Graph.AddMetadata(containerNode, "Docker", dockerMetadata); err != nil {
+		if err := p.Graph.AddMetadata(containerNode, "Docker", dockerMetadata); err != nil {
 			logging.GetLogger().Error(err)
 		}
 	} else {
@@ -133,75 +133,75 @@ func (probe *Probe) registerContainer(id string) {
 			"Docker":         dockerMetadata,
 		}
 
-		if containerNode, err = probe.Graph.NewNode(graph.GenID(), metadata); err != nil {
+		if containerNode, err = p.Graph.NewNode(graph.GenID(), metadata); err != nil {
 			logging.GetLogger().Error(err)
 			return
 		}
 	}
-	topology.AddOwnershipLink(probe.Graph, n, containerNode, nil)
+	topology.AddOwnershipLink(p.Graph, n, containerNode, nil)
 
-	probe.containerMap[info.ID] = containerInfo{
+	p.containerMap[info.ID] = containerInfo{
 		Pid:  info.State.Pid,
 		Node: containerNode,
 	}
 }
 
-func (probe *Probe) unregisterContainer(id string) {
-	probe.Lock()
-	defer probe.Unlock()
+func (p *ProbeHandler) unregisterContainer(id string) {
+	p.Lock()
+	defer p.Unlock()
 
-	infos, ok := probe.containerMap[id]
+	infos, ok := p.containerMap[id]
 	if !ok {
 		return
 	}
 
-	probe.Graph.Lock()
-	if err := probe.Graph.DelNode(infos.Node); err != nil {
-		probe.Graph.Unlock()
+	p.Graph.Lock()
+	if err := p.Graph.DelNode(infos.Node); err != nil {
+		p.Graph.Unlock()
 		logging.GetLogger().Error(err)
 		return
 	}
-	probe.Graph.Unlock()
+	p.Graph.Unlock()
 
-	namespace := probe.containerNamespace(infos.Pid)
+	namespace := p.containerNamespace(infos.Pid)
 	logging.GetLogger().Debugf("Stop listening for namespace %s with PID %d", namespace, infos.Pid)
-	probe.Unregister(namespace)
+	p.Unregister(namespace)
 
-	delete(probe.containerMap, id)
+	delete(p.containerMap, id)
 }
 
-func (probe *Probe) handleDockerEvent(event *events.Message) {
+func (p *ProbeHandler) handleDockerEvent(event *events.Message) {
 	if event.Status == "start" {
-		probe.registerContainer(event.ID)
+		p.registerContainer(event.ID)
 	} else if event.Status == "die" {
-		probe.unregisterContainer(event.ID)
+		p.unregisterContainer(event.ID)
 	}
 }
 
-func (probe *Probe) connect() error {
+func (p *ProbeHandler) connect() error {
 	var err error
 
-	logging.GetLogger().Debugf("Connecting to Docker daemon: %s", probe.url)
+	logging.GetLogger().Debugf("Connecting to Docker daemon: %s", p.url)
 	defaultHeaders := map[string]string{"User-Agent": fmt.Sprintf("skydive-agent-%s", sversion.Version)}
-	probe.client, err = client.NewClient(probe.url, ClientAPIVersion, nil, defaultHeaders)
+	p.client, err = client.NewClient(p.url, ClientAPIVersion, nil, defaultHeaders)
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to create client to Docker daemon: %s", err)
 		return err
 	}
-	defer probe.client.Close()
+	defer p.client.Close()
 
-	if _, err := probe.client.ServerVersion(context.Background()); err != nil {
+	if _, err := p.client.ServerVersion(context.Background()); err != nil {
 		logging.GetLogger().Errorf("Failed to connect to Docker daemon: %s", err)
 		return err
 	}
 
-	if probe.hostNs, err = netns.Get(); err != nil {
+	if p.hostNs, err = netns.Get(); err != nil {
 		return err
 	}
-	defer probe.hostNs.Close()
+	defer p.hostNs.Close()
 
-	for id := range probe.containerMap {
-		probe.unregisterContainer(id)
+	for id := range p.containerMap {
+		p.unregisterContainer(id)
 	}
 
 	eventsFilter := filters.NewArgs()
@@ -209,85 +209,85 @@ func (probe *Probe) connect() error {
 	eventsFilter.Add("event", "die")
 
 	ctx, cancel := context.WithCancel(context.Background())
-	eventChan, errChan := probe.client.Events(ctx, types.EventsOptions{Filters: eventsFilter})
+	eventChan, errChan := p.client.Events(ctx, types.EventsOptions{Filters: eventsFilter})
 
-	probe.cancel = cancel
-	probe.wg.Add(2)
+	p.cancel = cancel
+	p.wg.Add(2)
 
-	probe.connected.Store(true)
-	defer probe.connected.Store(false)
+	p.connected.Store(true)
+	defer p.connected.Store(false)
 
 	go func() {
-		defer probe.wg.Done()
+		defer p.wg.Done()
 
-		containers, err := probe.client.ContainerList(ctx, types.ContainerListOptions{})
+		containers, err := p.client.ContainerList(ctx, types.ContainerListOptions{})
 		if err != nil {
 			logging.GetLogger().Errorf("Failed to list containers: %s", err)
 			return
 		}
 
 		for _, c := range containers {
-			if atomic.LoadInt64(&probe.state) != common.RunningState {
+			if atomic.LoadInt64(&p.state) != common.RunningState {
 				break
 			}
-			probe.registerContainer(c.ID)
+			p.registerContainer(c.ID)
 		}
 	}()
 
-	defer probe.wg.Done()
+	defer p.wg.Done()
 
 	for {
 		select {
 		case err := <-errChan:
-			if atomic.LoadInt64(&probe.state) != common.StoppingState {
+			if atomic.LoadInt64(&p.state) != common.StoppingState {
 				err = fmt.Errorf("Got error while waiting for Docker event: %s", err)
 			}
 			return err
 		case event := <-eventChan:
-			probe.handleDockerEvent(&event)
+			p.handleDockerEvent(&event)
 		}
 	}
 }
 
 // Start the probe
-func (probe *Probe) Start() {
-	if !atomic.CompareAndSwapInt64(&probe.state, common.StoppedState, common.RunningState) {
+func (p *ProbeHandler) Start() {
+	if !atomic.CompareAndSwapInt64(&p.state, common.StoppedState, common.RunningState) {
 		return
 	}
 
 	go func() {
 		for {
-			state := atomic.LoadInt64(&probe.state)
+			state := atomic.LoadInt64(&p.state)
 			if state == common.StoppingState || state == common.StoppedState {
 				break
 			}
 
-			if probe.connect() != nil {
+			if p.connect() != nil {
 				time.Sleep(1 * time.Second)
 			}
 
-			probe.wg.Wait()
+			p.wg.Wait()
 		}
 	}()
 }
 
 // Stop the probe
-func (probe *Probe) Stop() {
-	if !atomic.CompareAndSwapInt64(&probe.state, common.RunningState, common.StoppingState) {
+func (p *ProbeHandler) Stop() {
+	if !atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState) {
 		return
 	}
 
-	if probe.connected.Load() == true {
-		probe.cancel()
-		probe.wg.Wait()
+	if p.connected.Load() == true {
+		p.cancel()
+		p.wg.Wait()
 	}
 
-	atomic.StoreInt64(&probe.state, common.StoppedState)
+	atomic.StoreInt64(&p.state, common.StoppedState)
 }
 
-// NewProbe creates a new topology Docker probe
-func NewProbe(nsHandler *ns.ProbeHandler, dockerURL, netnsRunPath string) (*Probe, error) {
-	probe := &Probe{
+// NewProbeHandler creates a new topology Docker probe
+func NewProbeHandler(nsHandler *ns.ProbeHandler, dockerURL, netnsRunPath string) (*ProbeHandler, error) {
+	handler := &ProbeHandler{
 		ProbeHandler: nsHandler,
 		url:          dockerURL,
 		containerMap: make(map[string]containerInfo),
@@ -299,5 +299,5 @@ func NewProbe(nsHandler *ns.ProbeHandler, dockerURL, netnsRunPath string) (*Prob
 		nsHandler.Watch(netnsRunPath)
 	}
 
-	return probe, nil
+	return handler, nil
 }

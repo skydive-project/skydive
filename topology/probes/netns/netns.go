@@ -386,7 +386,7 @@ func NewProbeHandler(g *graph.Graph, n *graph.Node, nlHandler *netlink.ProbeHand
 		return nil, fmt.Errorf("Unable to create a new Watcher: %s", err)
 	}
 
-	nsProbeHandler := &ProbeHandler{
+	handler := &ProbeHandler{
 		Graph:           g,
 		Root:            n,
 		nlHandler:       nlHandler,
@@ -399,8 +399,8 @@ func NewProbeHandler(g *graph.Graph, n *graph.Node, nlHandler *netlink.ProbeHand
 	}
 
 	if path := config.GetString("agent.topology.netns.run_path"); path != "" {
-		nsProbeHandler.Watch(path)
+		handler.Watch(path)
 	}
 
-	return nsProbeHandler, nil
+	return handler, nil
 }
