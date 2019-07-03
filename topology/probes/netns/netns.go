@@ -39,6 +39,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
+	tp "github.com/skydive-project/skydive/topology/probes"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
 	"github.com/vishvananda/netns"
 )
@@ -163,7 +164,7 @@ func (u *ProbeHandler) Register(path string, name string) (*graph.Node, error) {
 	if probe, ok := u.nsNetLinkProbes[nsString]; ok {
 		probe.useCount++
 		logging.GetLogger().Debugf("Increasing counter for namespace %s to %d", nsString, probe.useCount)
-		return probe.Root, nil
+		return probe.Ctx.RootNode, nil
 	}
 
 	logging.GetLogger().Debugf("Network namespace added: %s", nsString)
@@ -189,7 +190,15 @@ func (u *ProbeHandler) Register(path string, name string) (*graph.Node, error) {
 	var probe *netlink.Probe
 	err = common.Retry(func() error {
 		var err error
-		probe, err = u.nlHandler.Register(path, n)
+
+		ctx := tp.Context{
+			Logger:   logging.GetLogger(),
+			Config:   config.GetConfig(),
+			Graph:    u.Graph,
+			RootNode: n,
+		}
+
+		probe, err = u.nlHandler.Register(path, ctx)
 		if err != nil {
 			return fmt.Errorf("Could not register netlink probe within namespace: %s", err)
 		}
@@ -236,12 +245,12 @@ func (u *ProbeHandler) Unregister(path string) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
-	for _, child := range u.Graph.LookupChildren(probe.Root, nil, nil) {
+	for _, child := range u.Graph.LookupChildren(probe.Ctx.RootNode, nil, nil) {
 		if err := u.Graph.DelNode(child); err != nil {
 			logging.GetLogger().Error(err)
 		}
 	}
-	if err := u.Graph.DelNode(probe.Root); err != nil {
+	if err := u.Graph.DelNode(probe.Ctx.RootNode); err != nil {
 		logging.GetLogger().Error(err)
 	}
 

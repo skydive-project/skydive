@@ -24,6 +24,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
+	tp "github.com/skydive-project/skydive/topology/probes"
 	"github.com/skydive-project/skydive/topology/probes/docker"
 	"github.com/skydive-project/skydive/topology/probes/libvirt"
 	"github.com/skydive-project/skydive/topology/probes/lldp"
@@ -47,14 +48,20 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 	var err error
 
 	bundle := probe.NewBundle()
+	ctx := tp.Context{
+		Logger:   logging.GetLogger(),
+		Config:   config.GetConfig(),
+		Graph:    g,
+		RootNode: hostNode,
+	}
 
 	var nsHandler *netns.ProbeHandler
 	if runtime.GOOS == "linux" {
-		nlHandler, err := netlink.NewProbeHandler(g, hostNode)
+		nlHandler, err := new(netlink.ProbeHandler).Init(ctx)
 		if err != nil {
 			return nil, err
 		}
-		bundle.AddHandler("netlink", handler)
+		bundle.AddHandler("netlink", nlHandler)
 
 		nsHandler, err = netns.NewProbeHandler(g, hostNode, nlHandler)
 		if err != nil {

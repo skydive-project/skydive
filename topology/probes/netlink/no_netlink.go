@@ -21,7 +21,6 @@ package netlink
 
 import (
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
 // ProbeHandler describes a list NetLink NameSpace probe to enhance the graph
@@ -36,7 +35,7 @@ func (u *ProbeHandler) Start() {
 func (u *ProbeHandler) Stop() {
 }
 
-// NewProbeHandler creates a new netlink probe
-func NewProbeHandler(g *graph.Graph, n *graph.Node) (*ProbeHandler, error) {
+// Init initializes a new netlink probe
+func (u *ProbeHandler) Init(ctx tp.Context) (*ProbeHandler, error) {
 	return nil, common.ErrNotImplemented
 }
