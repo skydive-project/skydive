@@ -95,7 +95,7 @@ func (p *portMetadata) String() string {
 	return fmt.Sprintf("Name: `%s`, ID: `%s`, MAC: `%s`", p.name, p.portID, p.mac)
 }
 
-func (mapper *Probe) retrievePortMetadata(name string, node *graph.Node) portMetadata {
+func (p *Probe) retrievePortMetadata(name string, node *graph.Node) portMetadata {
 	// always prefer IDs
 	if ifaceID, _ := node.GetFieldString("ExtID.iface-id"); ifaceID != "" {
 		return portMetadata{name: name, portID: ifaceID}
@@ -107,7 +107,7 @@ func (mapper *Probe) retrievePortMetadata(name string, node *graph.Node) portMet
 	}
 
 	// finally MAC if matching allowed interface name
-	if name != "" && mapper.intfRegexp.MatchString(name) {
+	if name != "" && p.intfRegexp.MatchString(name) {
 		if mac, _ := node.GetFieldString("MAC"); mac != "" {
 			return portMetadata{name: name, mac: mac}
 		}
@@ -116,7 +116,7 @@ func (mapper *Probe) retrievePortMetadata(name string, node *graph.Node) portMet
 	return emptyPortMetadata
 }
 
-func (mapper *Probe) retrievePort(portMd portMetadata) (port ports.Port, err error) {
+func (p *Probe) retrievePort(portMd portMetadata) (port ports.Port, err error) {
 	var opts ports.ListOpts
 
 	/* Determine the best way to search for the Neutron port.
@@ -130,7 +130,7 @@ func (mapper *Probe) retrievePort(portMd portMetadata) (port ports.Port, err err
 
 	logging.GetLogger().Debugf("Retrieving attributes from Neutron port with options: %+v", opts)
 
-	pager := ports.List(mapper.client, opts)
+	pager := ports.List(p.client, opts)
 
 	err = pager.EachPage(func(page pagination.Page) (bool, error) {
 		portList, err := ports.ExtractPorts(page)
@@ -157,8 +157,8 @@ func (mapper *Probe) retrievePort(portMd portMetadata) (port ports.Port, err err
 	return port, nil
 }
 
-func (mapper *Probe) retrieveAttributes(portMd portMetadata) (*Metadata, error) {
-	port, err := mapper.retrievePort(portMd)
+func (p *Probe) retrieveAttributes(portMd portMetadata) (*Metadata, error) {
+	port, err := p.retrievePort(portMd)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func (mapper *Probe) retrieveAttributes(portMd portMetadata) (*Metadata, error) 
 	}
 
 	var network netWithProvider
-	result := networks.Get(mapper.client, port.NetworkID)
+	result := networks.Get(p.client, port.NetworkID)
 	err = result.ExtractInto(&network)
 
 	if err != nil {
@@ -178,7 +178,7 @@ func (mapper *Probe) retrieveAttributes(portMd portMetadata) (*Metadata, error) 
 
 	var IPV4, IPV6 []string
 	for _, element := range port.FixedIPs {
-		subnet, err := subnets.Get(mapper.client, element.SubnetID).Extract()
+		subnet, err := subnets.Get(p.client, element.SubnetID).Extract()
 		if err != nil {
 			return nil, err
 		}
@@ -205,50 +205,50 @@ func (mapper *Probe) retrieveAttributes(portMd portMetadata) (*Metadata, error) 
 	return a, nil
 }
 
-func (mapper *Probe) nodeUpdater() {
+func (p *Probe) nodeUpdater() {
 	logging.GetLogger().Debug("Starting Neutron updater")
 
-	for nodeID := range mapper.nodeUpdaterChan {
-		mapper.graph.RLock()
-		node := mapper.graph.GetNode(nodeID)
+	for nodeID := range p.nodeUpdaterChan {
+		p.graph.RLock()
+		node := p.graph.GetNode(nodeID)
 		if node == nil {
-			mapper.graph.RUnlock()
+			p.graph.RUnlock()
 			continue
 		}
 
 		name, _ := node.GetFieldString("Name")
 		if name == "" {
-			mapper.graph.RUnlock()
+			p.graph.RUnlock()
 			return
 		}
 
-		portMd := mapper.retrievePortMetadata(name, node)
-		mapper.graph.RUnlock()
+		portMd := p.retrievePortMetadata(name, node)
+		p.graph.RUnlock()
 
 		if portMd == emptyPortMetadata {
 			continue
 		}
 
-		attrs, err := mapper.retrieveAttributes(portMd)
+		attrs, err := p.retrieveAttributes(portMd)
 		if err != nil {
 			logging.GetLogger().Errorf("Failed to retrieve attributes for port %s: %v", portMd.String(), err)
 		} else {
-			mapper.updateNode(node, attrs)
+			p.updateNode(node, attrs)
 		}
 	}
 	logging.GetLogger().Debug("Stopping Neutron updater")
 }
 
-func (mapper *Probe) updateNode(node *graph.Node, attrs *Metadata) {
-	mapper.graph.Lock()
-	defer mapper.graph.Unlock()
+func (p *Probe) updateNode(node *graph.Node, attrs *Metadata) {
+	p.graph.Lock()
+	defer p.graph.Unlock()
 
 	name, _ := node.GetFieldString("Name")
 	if name == "" {
 		return
 	}
 
-	tr := mapper.graph.StartMetadataTransaction(node)
+	tr := p.graph.StartMetadataTransaction(node)
 	tr.AddMetadata("Manager", "neutron")
 	tr.AddMetadata("Neutron", attrs)
 	if strings.HasPrefix(name, "tap") {
@@ -268,30 +268,30 @@ func (mapper *Probe) updateNode(node *graph.Node, attrs *Metadata) {
 	if uuid, _ := node.GetFieldString("ExtID.vm-uuid"); uuid != "" {
 		if attachedMac, _ := node.GetFieldString("ExtID.attached-mac"); attachedMac != "" {
 			retryFnc := func() error {
-				mapper.graph.RLock()
-				path := mapper.graph.LookupShortestPath(node, graph.Metadata{"Name": tap}, topology.Layer2Metadata())
-				mapper.graph.RUnlock()
+				p.graph.RLock()
+				path := p.graph.LookupShortestPath(node, graph.Metadata{"Name": tap}, topology.Layer2Metadata())
+				p.graph.RUnlock()
 
 				if len(path) == 0 {
 					qbr := strings.Replace(name, "qvo", "qbr", 1)
-					mapper.graph.RLock()
-					path = mapper.graph.LookupShortestPath(node, graph.Metadata{"Name": qbr}, topology.Layer2Metadata())
-					mapper.graph.RUnlock()
+					p.graph.RLock()
+					path = p.graph.LookupShortestPath(node, graph.Metadata{"Name": qbr}, topology.Layer2Metadata())
+					p.graph.RUnlock()
 
 					if len(path) == 0 {
 						return errors.New("Path not found")
 					}
 				}
 
-				mapper.graph.Lock()
-				defer mapper.graph.Unlock()
+				p.graph.Lock()
+				defer p.graph.Unlock()
 
 				for i, n := range path {
-					if mapper.graph.GetNode(n.ID) == nil {
+					if p.graph.GetNode(n.ID) == nil {
 						continue
 					}
 
-					tr := mapper.graph.StartMetadataTransaction(n)
+					tr := p.graph.StartMetadataTransaction(n)
 					tr.AddMetadata("ExtID.vm-uuid", uuid)
 					tr.AddMetadata("ExtID.attached-mac", attachedMac)
 
@@ -310,25 +310,25 @@ func (mapper *Probe) updateNode(node *graph.Node, attrs *Metadata) {
 }
 
 // enhanceNode enhance the graph node with neutron metadata (Name, MAC, Manager ...)
-func (mapper *Probe) enhanceNode(node *graph.Node) {
+func (p *Probe) enhanceNode(node *graph.Node) {
 	name, _ := node.GetFieldString("Name")
 	if name == "" {
 		return
 	}
 
-	if mapper.nsRegexp.MatchString(name) {
-		if err := mapper.graph.AddMetadata(node, "Manager", "neutron"); err != nil {
+	if p.nsRegexp.MatchString(name) {
+		if err := p.graph.AddMetadata(node, "Manager", "neutron"); err != nil {
 			logging.GetLogger().Error(err)
 		}
 		return
 	}
 
-	currPortMd := mapper.retrievePortMetadata(name, node)
+	currPortMd := p.retrievePortMetadata(name, node)
 	if currPortMd == emptyPortMetadata {
 		return
 	}
 
-	prevPortMd, f := mapper.portMetadata[node.ID]
+	prevPortMd, f := p.portMetadata[node.ID]
 
 	// If port metadata have not changed, we return
 	if f && (prevPortMd == currPortMd) {
@@ -336,25 +336,25 @@ func (mapper *Probe) enhanceNode(node *graph.Node) {
 	}
 	// We only try to get Neutron metadata one time per port
 	// metadata values
-	mapper.portMetadata[node.ID] = currPortMd
+	p.portMetadata[node.ID] = currPortMd
 
-	mapper.nodeUpdaterChan <- node.ID
+	p.nodeUpdaterChan <- node.ID
 }
 
 // OnNodeUpdated event
-func (mapper *Probe) OnNodeUpdated(n *graph.Node) {
-	mapper.enhanceNode(n)
+func (p *Probe) OnNodeUpdated(n *graph.Node) {
+	p.enhanceNode(n)
 }
 
 // OnNodeAdded event
-func (mapper *Probe) OnNodeAdded(n *graph.Node) {
+func (p *Probe) OnNodeAdded(n *graph.Node) {
 	name, _ := n.GetFieldString("Name")
 	attachedMAC, _ := n.GetFieldString("ExtID.attached-mac")
 	if attachedMAC == "" && strings.HasPrefix(name, "tap") {
 		qvo := strings.Replace(name, "tap", "qvo", 1)
-		qvoNode := mapper.graph.LookupFirstNode(graph.Metadata{"Name": qvo, "Type": "veth"})
+		qvoNode := p.graph.LookupFirstNode(graph.Metadata{"Name": qvo, "Type": "veth"})
 		if qvoNode != nil {
-			tr := mapper.graph.StartMetadataTransaction(n)
+			tr := p.graph.StartMetadataTransaction(n)
 			if attachedMAC, _ = qvoNode.GetFieldString("ExtID.attached-mac"); attachedMAC != "" {
 				tr.AddMetadata("ExtID.attached-mac", attachedMAC)
 			}
@@ -366,21 +366,21 @@ func (mapper *Probe) OnNodeAdded(n *graph.Node) {
 		}
 	}
 
-	mapper.enhanceNode(n)
+	p.enhanceNode(n)
 }
 
 // OnNodeDeleted event
-func (mapper *Probe) OnNodeDeleted(n *graph.Node) {
-	delete(mapper.portMetadata, n.ID)
+func (p *Probe) OnNodeDeleted(n *graph.Node) {
+	delete(p.portMetadata, n.ID)
 }
 
 // Start the probe
-func (mapper *Probe) Start() {
-	mapper.graph.AddEventListener(mapper)
+func (p *Probe) Start() {
+	p.graph.AddEventListener(p)
 
 	go func() {
-		for mapper.client == nil {
-			client, err := openstack.NewClient(mapper.opts.IdentityEndpoint)
+		for p.client == nil {
+			client, err := openstack.NewClient(p.opts.IdentityEndpoint)
 			if err != nil {
 				logging.GetLogger().Errorf("failed to create neutron client: %s", err)
 				time.Sleep(time.Second)
@@ -400,7 +400,7 @@ func (mapper *Probe) Start() {
 				},
 			}
 
-			if err = openstack.Authenticate(client, mapper.opts); err != nil {
+			if err = openstack.Authenticate(client, p.opts); err != nil {
 				logging.GetLogger().Errorf("keystone authentication error: %s", err)
 				time.Sleep(time.Second)
 				continue
@@ -408,30 +408,30 @@ func (mapper *Probe) Start() {
 
 			networkClient, err := openstack.NewNetworkV2(client, gophercloud.EndpointOpts{
 				Name:         "neutron",
-				Region:       mapper.regionName,
-				Availability: mapper.availability,
+				Region:       p.regionName,
+				Availability: p.availability,
 			})
 			if err != nil {
 				logging.GetLogger().Errorf("keystone authentication error: %s", err)
 				time.Sleep(time.Second)
 				continue
 			}
-			mapper.client = networkClient
+			p.client = networkClient
 		}
-		mapper.graph.RLock()
-		for _, n := range mapper.graph.GetNodes(nil) {
-			mapper.enhanceNode(n)
+		p.graph.RLock()
+		for _, n := range p.graph.GetNodes(nil) {
+			p.enhanceNode(n)
 		}
-		mapper.graph.RUnlock()
+		p.graph.RUnlock()
 
-		mapper.nodeUpdater()
+		p.nodeUpdater()
 	}()
 }
 
 // Stop the probe
-func (mapper *Probe) Stop() {
-	mapper.graph.RemoveEventListener(mapper)
-	close(mapper.nodeUpdaterChan)
+func (p *Probe) Stop() {
+	p.graph.RemoveEventListener(p)
+	close(p.nodeUpdaterChan)
 }
 
 // NewProbe creates a neutron probe that will enhance the graph
@@ -450,7 +450,7 @@ func NewProbe(g *graph.Graph, authURL, username, password, tenantName, regionNam
 		AllowReauth:      true,
 	}
 
-	mapper := &Probe{
+	p := &Probe{
 		graph:           g,
 		intfRegexp:      intfRegexp,
 		nsRegexp:        nsRegexp,
@@ -461,7 +461,7 @@ func NewProbe(g *graph.Graph, authURL, username, password, tenantName, regionNam
 		portMetadata:    make(map[graph.Identifier]portMetadata),
 	}
 
-	return mapper, nil
+	return p, nil
 }
 
 // NewProbeFromConfig creates a new neutron probe based on configuration
