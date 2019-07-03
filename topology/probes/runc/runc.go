@@ -42,8 +42,8 @@ import (
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
 )
 
-// Probe describes a Docker topology graph that enhance the graph
-type Probe struct {
+// ProbeHandler describes a Docker topology graph that enhance the graph
+type ProbeHandler struct {
 	common.RWMutex
 	*ns.ProbeHandler
 	state          int64
@@ -60,7 +60,7 @@ type container struct {
 	node      *graph.Node
 }
 
-func (probe *Probe) containerNamespace(pid int) string {
+func (p *ProbeHandler) containerNamespace(pid int) string {
 	return fmt.Sprintf("/proc/%d/ns/net", pid)
 }
 
@@ -229,27 +229,27 @@ func getMetadata(state *containerState) Metadata {
 	return m
 }
 
-func (probe *Probe) updateContainer(path string, cnt *container) error {
+func (p *ProbeHandler) updateContainer(path string, cnt *container) error {
 	state, err := parseState(path)
 	if err != nil {
 		return err
 	}
 
-	probe.Graph.Lock()
-	probe.Graph.AddMetadata(cnt.node, "Runc", getMetadata(state))
-	probe.Graph.Unlock()
+	p.Graph.Lock()
+	p.Graph.AddMetadata(cnt.node, "Runc", getMetadata(state))
+	p.Graph.Unlock()
 
 	return nil
 }
 
-func (probe *Probe) registerContainer(path string) error {
+func (p *ProbeHandler) registerContainer(path string) error {
 	state, err := parseState(path)
 	if err != nil {
 		return err
 	}
 
-	probe.Lock()
-	defer probe.Unlock()
+	p.Lock()
+	defer p.Unlock()
 
 	nsHandle, err := netns.GetFromPid(state.InitProcessPid)
 	if err != nil {
@@ -257,20 +257,20 @@ func (probe *Probe) registerContainer(path string) error {
 	}
 	defer nsHandle.Close()
 
-	namespace := probe.containerNamespace(state.InitProcessPid)
+	namespace := p.containerNamespace(state.InitProcessPid)
 	logging.GetLogger().Debugf("Register runc container %s and PID %d", state.ID, state.InitProcessPid)
 
 	var n *graph.Node
-	if probe.hostNs.Equal(nsHandle) {
+	if p.hostNs.Equal(nsHandle) {
 		// The container is in net=host mode
-		n = probe.Root
+		n = p.Root
 	} else {
-		if n, err = probe.Register(namespace, state.ID); err != nil {
+		if n, err = p.Register(namespace, state.ID); err != nil {
 			return err
 		}
 
-		probe.Graph.Lock()
-		tr := probe.Graph.StartMetadataTransaction(n)
+		p.Graph.Lock()
+		tr := p.Graph.StartMetadataTransaction(n)
 		tr.AddMetadata("Runtime", "runc")
 
 		if _, err := n.GetFieldString("Manager"); err != nil {
@@ -279,18 +279,18 @@ func (probe *Probe) registerContainer(path string) error {
 		if err := tr.Commit(); err != nil {
 			logging.GetLogger().Error(err)
 		}
-		probe.Graph.Unlock()
+		p.Graph.Unlock()
 	}
 
 	pid := int64(state.InitProcessPid)
 	runcMetadata := getMetadata(state)
 
-	probe.Graph.Lock()
-	defer probe.Graph.Unlock()
+	p.Graph.Lock()
+	defer p.Graph.Unlock()
 
-	containerNode := probe.Graph.LookupFirstNode(graph.Metadata{"InitProcessPID": pid})
+	containerNode := p.Graph.LookupFirstNode(graph.Metadata{"InitProcessPID": pid})
 	if containerNode != nil {
-		tr := probe.Graph.StartMetadataTransaction(containerNode)
+		tr := p.Graph.StartMetadataTransaction(containerNode)
 		tr.AddMetadata("Runc", runcMetadata)
 		tr.AddMetadata("Runtime", "runc")
 		if err := tr.Commit(); err != nil {
@@ -306,13 +306,13 @@ func (probe *Probe) registerContainer(path string) error {
 			"Runc":           runcMetadata,
 		}
 
-		if containerNode, err = probe.Graph.NewNode(graph.GenID(), metadata); err != nil {
+		if containerNode, err = p.Graph.NewNode(graph.GenID(), metadata); err != nil {
 			return err
 		}
 	}
-	topology.AddOwnershipLink(probe.Graph, n, containerNode, nil)
+	topology.AddOwnershipLink(p.Graph, n, containerNode, nil)
 
-	probe.containers[path] = &container{
+	p.containers[path] = &container{
 		namespace: namespace,
 		node:      containerNode,
 	}
@@ -320,25 +320,25 @@ func (probe *Probe) registerContainer(path string) error {
 	return nil
 }
 
-func (probe *Probe) initializeFolder(path string) {
-	probe.watcher.Add(path)
+func (p *ProbeHandler) initializeFolder(path string) {
+	p.watcher.Add(path)
 
 	files, _ := ioutil.ReadDir(path)
 	for _, f := range files {
 		subpath := path + "/" + f.Name()
 
-		if probe.isFolder(subpath) {
-			probe.initializeFolder(subpath)
-		} else if probe.isStatePath(subpath) {
-			probe.containersLock.RLock()
-			c, ok := probe.containers[subpath]
-			probe.containersLock.RUnlock()
+		if p.isFolder(subpath) {
+			p.initializeFolder(subpath)
+		} else if p.isStatePath(subpath) {
+			p.containersLock.RLock()
+			c, ok := p.containers[subpath]
+			p.containersLock.RUnlock()
 
 			var err error
 			if ok {
-				err = probe.updateContainer(subpath, c)
+				err = p.updateContainer(subpath, c)
 			} else {
-				err = probe.registerContainer(subpath)
+				err = p.registerContainer(subpath)
 			}
 			if err != nil {
 				logging.GetLogger().Error(err)
@@ -347,11 +347,11 @@ func (probe *Probe) initializeFolder(path string) {
 	}
 }
 
-func (probe *Probe) initialize(path string) {
-	defer probe.wg.Done()
+func (p *ProbeHandler) initialize(path string) {
+	defer p.wg.Done()
 
 	common.Retry(func() error {
-		if atomic.LoadInt64(&probe.state) != common.RunningState {
+		if atomic.LoadInt64(&p.state) != common.RunningState {
 			return nil
 		}
 
@@ -359,7 +359,7 @@ func (probe *Probe) initialize(path string) {
 			return err
 		}
 
-		probe.initializeFolder(path)
+		p.initializeFolder(path)
 
 		logging.GetLogger().Debugf("Probe initialized for %s", path)
 
@@ -367,11 +367,11 @@ func (probe *Probe) initialize(path string) {
 	}, math.MaxInt32, time.Second)
 }
 
-func (probe *Probe) isStatePath(path string) bool {
+func (p *ProbeHandler) isStatePath(path string) bool {
 	return strings.HasSuffix(path, "/state.json")
 }
 
-func (probe *Probe) isFolder(path string) bool {
+func (p *ProbeHandler) isFolder(path string) bool {
 	s, err := os.Stat(path)
 	if err != nil {
 		return false
@@ -380,46 +380,46 @@ func (probe *Probe) isFolder(path string) bool {
 }
 
 // Start the probe
-func (probe *Probe) start() {
-	defer probe.wg.Done()
+func (p *ProbeHandler) start() {
+	defer p.wg.Done()
 
 	var err error
-	if probe.hostNs, err = netns.Get(); err != nil {
+	if p.hostNs, err = netns.Get(); err != nil {
 		logging.GetLogger().Errorf("Unable to get host namespace: %s", err)
 		return
 	}
 
-	if !atomic.CompareAndSwapInt64(&probe.state, common.StoppedState, common.RunningState) {
+	if !atomic.CompareAndSwapInt64(&p.state, common.StoppedState, common.RunningState) {
 		return
 	}
 
-	for _, path := range probe.paths {
-		probe.wg.Add(1)
-		go probe.initialize(path)
+	for _, path := range p.paths {
+		p.wg.Add(1)
+		go p.initialize(path)
 	}
 
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
-	for atomic.LoadInt64(&probe.state) == common.RunningState {
+	for atomic.LoadInt64(&p.state) == common.RunningState {
 		select {
-		case ev := <-probe.watcher.Events:
+		case ev := <-p.watcher.Events:
 			if ev.Op&fsnotify.Create == fsnotify.Create {
-				if probe.isFolder(ev.Name) {
-					probe.watcher.Add(ev.Name)
+				if p.isFolder(ev.Name) {
+					p.watcher.Add(ev.Name)
 				}
 			}
 			if ev.Op&fsnotify.Write == fsnotify.Write {
-				if probe.isStatePath(ev.Name) {
-					probe.containersLock.RLock()
-					cnt, ok := probe.containers[ev.Name]
-					probe.containersLock.RUnlock()
+				if p.isStatePath(ev.Name) {
+					p.containersLock.RLock()
+					cnt, ok := p.containers[ev.Name]
+					p.containersLock.RUnlock()
 
 					var err error
 					if ok {
-						err = probe.updateContainer(ev.Name, cnt)
+						err = p.updateContainer(ev.Name, cnt)
 					} else {
-						err = probe.registerContainer(ev.Name)
+						err = p.registerContainer(ev.Name)
 					}
 					if err != nil {
 						logging.GetLogger().Error(err)
@@ -427,31 +427,31 @@ func (probe *Probe) start() {
 				}
 			}
 			if ev.Op&fsnotify.Remove == fsnotify.Remove {
-				if probe.isStatePath(ev.Name) {
-					probe.containersLock.RLock()
-					cnt, ok := probe.containers[ev.Name]
-					probe.containersLock.RUnlock()
+				if p.isStatePath(ev.Name) {
+					p.containersLock.RLock()
+					cnt, ok := p.containers[ev.Name]
+					p.containersLock.RUnlock()
 
 					if ok {
-						probe.Unregister(cnt.namespace)
+						p.Unregister(cnt.namespace)
 
-						probe.containersLock.Lock()
-						delete(probe.containers, ev.Name)
-						probe.containersLock.Unlock()
+						p.containersLock.Lock()
+						delete(p.containers, ev.Name)
+						p.containersLock.Unlock()
 					}
 				} else {
-					probe.containersLock.Lock()
-					for path, cnt := range probe.containers {
+					p.containersLock.Lock()
+					for path, cnt := range p.containers {
 						if strings.HasPrefix(path, ev.Name) {
-							probe.Unregister(cnt.namespace)
+							p.Unregister(cnt.namespace)
 
-							delete(probe.containers, path)
+							delete(p.containers, path)
 						}
 					}
-					probe.containersLock.Unlock()
+					p.containersLock.Unlock()
 				}
 			}
-		case err := <-probe.watcher.Errors:
+		case err := <-p.watcher.Errors:
 			logging.GetLogger().Errorf("Error while watching runc state folder: %s", err)
 		case <-ticker.C:
 		}
@@ -459,25 +459,25 @@ func (probe *Probe) start() {
 }
 
 // Start the probe
-func (probe *Probe) Start() {
-	probe.wg.Add(1)
-	go probe.start()
+func (p *ProbeHandler) Start() {
+	p.wg.Add(1)
+	go p.start()
 }
 
 // Stop the probe
-func (probe *Probe) Stop() {
-	if !atomic.CompareAndSwapInt64(&probe.state, common.RunningState, common.StoppingState) {
+func (p *ProbeHandler) Stop() {
+	if !atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState) {
 		return
 	}
-	probe.wg.Wait()
+	p.wg.Wait()
 
-	probe.hostNs.Close()
+	p.hostNs.Close()
 
-	atomic.StoreInt64(&probe.state, common.StoppedState)
+	atomic.StoreInt64(&p.state, common.StoppedState)
 }
 
-// NewProbe creates a new topology runc probe
-func NewProbe(nsHandler *ns.ProbeHandler) (*Probe, error) {
+// NewProbeHandler creates a new topology runc probe
+func NewProbeHandler(nsHandler *ns.ProbeHandler) (*ProbeHandler, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("Unable to create a new Watcher: %s", err)
@@ -485,7 +485,7 @@ func NewProbe(nsHandler *ns.ProbeHandler) (*Probe, error) {
 
 	paths := config.GetStringSlice("agent.topology.runc.run_path")
 
-	probe := &Probe{
+	handler := &ProbeHandler{
 		ProbeHandler: nsHandler,
 		state:        common.StoppedState,
 		watcher:      watcher,
@@ -493,5 +493,5 @@ func NewProbe(nsHandler *ns.ProbeHandler) (*Probe, error) {
 		containers:   make(map[string]*container),
 	}
 
-	return probe, nil
+	return handler, nil
 }

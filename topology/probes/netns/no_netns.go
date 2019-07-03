@@ -25,15 +25,15 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/netlink"
 )
 
-// ProbeHandler describes a netlink probe in a network namespace
+// ProbeHandler describes a netlink probe handler in a network namespace
 type ProbeHandler struct {
 }
 
-// Start the probe
+// Start the probe handler
 func (u *ProbeHandler) Start() {
 }
 
-// Stop the probe
+// Stop the probe handler
 func (u *ProbeHandler) Stop() {
 }
 

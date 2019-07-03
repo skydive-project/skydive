@@ -24,19 +24,19 @@ import (
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
 )
 
-// Probe describes a list NetLink NameSpace probe to enhance the graph
-type Probe struct {
+// ProbeHandler describes a list NetLink NameSpace probe to enhance the graph
+type ProbeHandler struct {
 }
 
-// Start the probe
-func (probe *Probe) Start() {
+// Start the probe handler
+func (p *ProbeHandler) Start() {
 }
 
-// Stop the probe
-func (probe *Probe) Stop() {
+// Stop the probe handler
+func (p *ProbeHandler) Stop() {
 }
 
-// NewProbe creates a new runc probe
-func NewProbe(nsHandler *ns.ProbeHandler) (*Probe, error) {
+// NewProbeHandler creates a new runc probe
+func NewProbeHandler(nsHandler *ns.ProbeHandler) (*ProbeHandler, error) {
 	return nil, common.ErrNotImplemented
 }
