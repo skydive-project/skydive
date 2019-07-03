@@ -55,7 +55,7 @@ func newNodeProbe(client interface{}, g *graph.Graph) Subprobe {
 	return NewResourceCache(client.(*kubernetes.Clientset).CoreV1().RESTClient(), &v1.Node{}, "nodes", g, &nodeHandler{})
 }
 
-func newHostNodeLinker(g *graph.Graph) probe.Probe {
+func newHostNodeLinker(g *graph.Graph) probe.Handler {
 	nodeProbe := GetSubprobe(Manager, "node")
 	if nodeProbe == nil {
 		return nil
@@ -77,7 +77,7 @@ func newHostNodeLinker(g *graph.Graph) probe.Probe {
 	return linker
 }
 
-func newNodePodLinker(g *graph.Graph) probe.Probe {
+func newNodePodLinker(g *graph.Graph) probe.Handler {
 	nodeIndexer := newResourceIndexer(g, Manager, "node", MetadataFields("Name"))
 	podIndexer := newResourceIndexer(g, Manager, "pod", MetadataFields("Node"))
 	return newResourceLinker(g, nodeIndexer, podIndexer, NewEdgeMetadata(Manager, "node"))

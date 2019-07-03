@@ -23,7 +23,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -61,6 +61,6 @@ func pvPVCAreLinked(a, b interface{}) bool {
 	return pvc.Spec.VolumeName == pv.Name
 }
 
-func newPVPVCLinker(g *graph.Graph) probe.Probe {
+func newPVPVCLinker(g *graph.Graph) probe.Handler {
 	return NewABLinker(g, Manager, "persistentvolumeclaim", Manager, "persistentvolume", pvPVCAreLinked)
 }

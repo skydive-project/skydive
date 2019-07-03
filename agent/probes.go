@@ -18,7 +18,6 @@
 package agent
 
 import (
-	"fmt"
 	"runtime"
 
 	"github.com/skydive-project/skydive/config"
@@ -44,8 +43,10 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 	list := config.GetStringSlice("agent.topology.probes")
 	logging.GetLogger().Infof("Topology probes: %v", list)
 
-	probes := make(map[string]probe.Probe)
-	bundle := probe.NewBundle(probes)
+	var handler probe.Handler
+	var err error
+
+	bundle := probe.NewBundle()
 
 	var nsProbe *netns.Probe
 	if runtime.GOOS == "linux" {
@@ -53,17 +54,17 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 		if err != nil {
 			return nil, err
 		}
-		probes["netlink"] = nlProbe
+		bundle.AddHandler("netlink", nlProbe)
 
 		nsProbe, err = netns.NewProbe(g, hostNode, nlProbe)
 		if err != nil {
 			return nil, err
 		}
-		probes["netns"] = nsProbe
+		bundle.AddHandler("netns", nsProbe)
 	}
 
 	for _, t := range list {
-		if _, ok := probes[t]; ok {
+		if bundle.GetHandler(t) != nil {
 			continue
 		}
 
@@ -71,67 +72,38 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 		case "ovsdb":
 			addr := config.GetString("ovs.ovsdb")
 			enableStats := config.GetBool("ovs.enable_stats")
-			ovsProbe, err := ovsdb.NewProbeFromConfig(g, hostNode, addr, enableStats)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to initialize OVS probe: %s", err)
-			}
-			probes[t] = ovsProbe
+			handler, err = ovsdb.NewProbeFromConfig(g, hostNode, addr, enableStats)
 		case "lxd":
 			lxdURL := config.GetConfig().GetString("lxd.url")
-			lxdProbe, err := lxd.NewProbe(nsProbe, lxdURL)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to initialize LXD probe: %s", err)
-			}
-			probes[t] = lxdProbe
+			handler, err = lxd.NewProbe(nsProbe, lxdURL)
 		case "docker":
 			dockerURL := config.GetString("agent.topology.docker.url")
 			netnsRunPath := config.GetString("agent.topology.docker.netns.run_path")
-			dockerProbe, err := docker.NewProbe(nsProbe, dockerURL, netnsRunPath)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to initialize Docker probe: %s", err)
-			}
-			probes[t] = dockerProbe
+			handler, err = docker.NewProbe(nsProbe, dockerURL, netnsRunPath)
 		case "lldp":
 			interfaces := config.GetStringSlice("agent.topology.lldp.interfaces")
-			lldpProbe, err := lldp.NewProbe(g, hostNode, interfaces)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to initialize LLDP probe: %s", err)
-			}
-			probes[t] = lldpProbe
+			handler, err = lldp.NewProbe(g, hostNode, interfaces)
 		case "neutron":
-			neutron, err := neutron.NewProbeFromConfig(g)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to initialize Neutron probe: %s", err)
-			}
-			probes["neutron"] = neutron
+			handler, err = neutron.NewProbeFromConfig(g)
 		case "opencontrail":
-			opencontrail, err := opencontrail.NewProbeFromConfig(g, hostNode)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to initialize OpenContrail probe: %s", err)
-			}
-			probes[t] = opencontrail
+			handler, err = opencontrail.NewProbeFromConfig(g, hostNode)
 		case "socketinfo":
-			probes[t] = socketinfo.NewSocketInfoProbe(g, hostNode)
+			handler = socketinfo.NewSocketInfoProbe(g, hostNode)
 		case "libvirt":
-			libvirt, err := libvirt.NewProbeFromConfig(g, hostNode)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to initialize Libvirt probe: %s", err)
-			}
-			probes[t] = libvirt
+			handler, err = libvirt.NewProbeFromConfig(g, hostNode)
 		case "runc":
-			runc, err := runc.NewProbe(nsProbe)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to initialize runc probe: %s", err)
-			}
-			probes[t] = runc
+			handler, err = runc.NewProbe(nsProbe)
 		case "vpp":
-			vpp, err := vpp.NewProbeFromConfig(g, hostNode)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to initialize vpp probe: %s", err)
-			}
-			probes[t] = vpp
+			handler, err = vpp.NewProbeFromConfig(g, hostNode)
 		default:
 			logging.GetLogger().Errorf("unknown probe type %s", t)
+		}
+
+		if err != nil {
+			return nil, err
+		}
+		if handler != nil {
+			bundle.AddHandler(t, handler)
 		}
 	}
 

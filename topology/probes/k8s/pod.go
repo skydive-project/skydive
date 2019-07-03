@@ -24,7 +24,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -84,7 +84,7 @@ func podPVCAreLinked(a, b interface{}) bool {
 	return false
 }
 
-func newPodPVCLinker(g *graph.Graph) probe.Probe {
+func newPodPVCLinker(g *graph.Graph) probe.Handler {
 	return NewABLinker(g, Manager, "pod", Manager, "persistentvolumeclaim", podPVCAreLinked)
 }
 
@@ -119,7 +119,7 @@ func podConfigMapAreLinked(a, b interface{}) bool {
 	return false
 }
 
-func newPodConfigMapLinker(g *graph.Graph) probe.Probe {
+func newPodConfigMapLinker(g *graph.Graph) probe.Handler {
 	return NewABLinker(g, Manager, "pod", Manager, "configmap", podConfigMapAreLinked)
 }
 
@@ -154,6 +154,6 @@ func podSecretAreLinked(a, b interface{}) bool {
 	return false
 }
 
-func newPodSecretLinker(g *graph.Graph) probe.Probe {
+func newPodSecretLinker(g *graph.Graph) probe.Handler {
 	return NewABLinker(g, Manager, "pod", Manager, "secret", podSecretAreLinked)
 }

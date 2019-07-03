@@ -40,7 +40,7 @@ type Probe = ondemand.Task
 
 // FlowProbeHandler defines flow probe mechanism
 type FlowProbeHandler interface {
-	probe.Probe // inheritance of the probe.Probe interface Start/Stop functions
+	probe.Handler // inheritance of the probe.Handler interface Start/Stop functions
 	RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error)
 	UnregisterProbe(n *graph.Node, e ProbeEventHandler, p Probe) error
 }
@@ -58,41 +58,42 @@ func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocat
 	logging.GetLogger().Infof("Flow probes: %v", list)
 
 	var captureTypes []string
-	var fp FlowProbeHandler
+
+	var handler FlowProbeHandler
 	var err error
 
-	fb := probe.NewBundle(make(map[string]probe.Probe))
+	bundle := probe.NewBundle()
 
 	for _, t := range list {
-		if fb.GetProbe(t) != nil {
+		if bundle.GetHandler(t) != nil {
 			continue
 		}
 
 		switch t {
 		case "pcapsocket":
-			fp, err = NewPcapSocketProbeHandler(g, fta)
+			handler, err = NewPcapSocketProbeHandler(g, fta)
 			captureTypes = []string{"pcapsocket"}
 		case "ovssflow":
-			fp, err = NewOvsSFlowProbesHandler(g, fta, tb)
+			handler, err = NewOvsSFlowProbesHandler(g, fta, tb)
 			captureTypes = []string{"ovssflow"}
 		case "ovsmirror":
-			fp, err = NewOvsMirrorProbesHandler(g, tb, fb)
+			handler, err = NewOvsMirrorProbesHandler(g, tb, bundle)
 			captureTypes = []string{"ovsmirror"}
 		case "gopacket":
-			fp, err = NewGoPacketProbesHandler(g, fta)
+			handler, err = NewGoPacketProbesHandler(g, fta)
 			captureTypes = []string{"afpacket", "pcap"}
 		case "sflow":
-			fp, err = NewSFlowProbesHandler(g, fta)
+			handler, err = NewSFlowProbesHandler(g, fta)
 			captureTypes = []string{"sflow"}
 		case "ovsnetflow":
-			fp, err = NewOvsNetFlowProbesHandler(g, fta, tb)
+			handler, err = NewOvsNetFlowProbesHandler(g, fta, tb)
 			captureTypes = []string{"ovsnetflow"}
 		case "dpdk":
-			if fp, err = NewDPDKProbesHandler(g, fta); err == nil {
+			if handler, err = NewDPDKProbesHandler(g, fta); err == nil {
 				captureTypes = []string{"dpdk"}
 			}
 		case "ebpf":
-			if fp, err = NewEBPFProbesHandler(g, fta); err == nil {
+			if handler, err = NewEBPFProbesHandler(g, fta); err == nil {
 				captureTypes = []string{"ebpf"}
 			}
 		default:
@@ -109,11 +110,11 @@ func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocat
 		}
 
 		for _, captureType := range captureTypes {
-			fb.AddProbe(captureType, fp)
+			bundle.AddHandler(captureType, handler)
 		}
 	}
 
-	return fb
+	return bundle
 }
 
 func tableOptsFromCapture(capture *types.Capture) flow.TableOpts {

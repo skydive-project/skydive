@@ -34,43 +34,45 @@ import (
 func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.Bundle, error) {
 	list := config.GetStringSlice("analyzer.topology.probes")
 
+	var handler probe.Handler
+	var err error
+
+	bundle := probe.NewBundle()
+
 	fabricProbe, err := fabric.NewProbe(g)
 	if err != nil {
 		return nil, err
 	}
-
-	probes := map[string]probe.Probe{
-		"fabric":  fabricProbe,
-		"peering": peering.NewProbe(g),
-	}
+	bundle.AddHandler("fabric", fabricProbe)
+	bundle.AddHandler("peering", peering.NewProbe(g))
 
 	for _, t := range list {
-		if _, ok := probes[t]; ok {
+		if bundle.GetHandler(t) != nil {
 			continue
 		}
-
-		var err error
 
 		switch t {
 		case "ovn":
 			addr := config.GetString("analyzer.topology.ovn.address")
-			probes[t], err = ovn.NewProbe(g, addr)
+			handler, err = ovn.NewProbe(g, addr)
 		case "k8s":
-			probes[t], err = k8s.NewK8sProbe(g)
+			handler, err = k8s.NewK8sProbe(g)
 		case "istio":
-			probes[t], err = istio.NewIstioProbe(g)
+			handler, err = istio.NewIstioProbe(g)
 		case "nsm":
-			probes[t], err = nsm.NewNsmProbe(g)
+			handler, err = nsm.NewNsmProbe(g)
 		default:
 			logging.GetLogger().Errorf("unknown probe type: %s", t)
 			continue
 		}
 
 		if err != nil {
-			logging.GetLogger().Errorf("failed to initialize probe %s: %s", t, err)
 			return nil, err
+		}
+		if handler != nil {
+			bundle.AddHandler(t, handler)
 		}
 	}
 
-	return probe.NewBundle(probes), nil
+	return bundle, nil
 }

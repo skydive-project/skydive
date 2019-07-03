@@ -24,7 +24,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 type destinationRuleHandler struct {
@@ -74,10 +74,10 @@ func destinationRuleServiceEntryAreLinked(a, b interface{}) bool {
 	return false
 }
 
-func newDestinationRuleServiceLinker(g *graph.Graph) probe.Probe {
+func newDestinationRuleServiceLinker(g *graph.Graph) probe.Handler {
 	return k8s.NewABLinker(g, Manager, "destinationrule", k8s.Manager, "service", destinationRuleServiceAreLinked)
 }
 
-func newDestinationRuleServiceEntryLinker(g *graph.Graph) probe.Probe {
+func newDestinationRuleServiceEntryLinker(g *graph.Graph) probe.Handler {
 	return k8s.NewABLinker(g, Manager, "destinationrule", Manager, "serviceentry", destinationRuleServiceEntryAreLinked)
 }

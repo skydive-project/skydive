@@ -65,6 +65,6 @@ func gatewayVirtualServiceAreLinked(a, b interface{}) bool {
 	return false
 }
 
-func newGatewayVirtualServiceLinker(g *graph.Graph) probe.Probe {
+func newGatewayVirtualServiceLinker(g *graph.Graph) probe.Handler {
 	return k8s.NewABLinker(g, Manager, "gateway", Manager, "virtualservice", gatewayVirtualServiceAreLinked)
 }

@@ -130,7 +130,7 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 
 	linkers := InitLinkers(linkerHandlers, g)
 
-	verifiers := []probe.Probe{}
+	verifiers := []probe.Handler{}
 
 	probe := NewProbe(g, Manager, subprobes[Manager], linkers, verifiers)
 

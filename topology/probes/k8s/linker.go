@@ -80,7 +80,7 @@ func (l *ABLinker) GetBALinks(bNode *graph.Node) (edges []*graph.Edge) {
 }
 
 // NewABLinker create and initialize an ABLinker based linker
-func NewABLinker(g *graph.Graph, aManager, aType, bManager, bType string, areLinked AreLinked, getMetadata ...GetMetadata) probe.Probe {
+func NewABLinker(g *graph.Graph, aManager, aType, bManager, bType string, areLinked AreLinked, getMetadata ...GetMetadata) probe.Handler {
 	aProbe := GetSubprobe(aManager, aType)
 	bProbe := GetSubprobe(bManager, bType)
 

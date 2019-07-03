@@ -24,7 +24,7 @@ import (
 	"github.com/skydive-project/skydive/probe"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/api/storage/v1"
+	v1 "k8s.io/api/storage/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -55,7 +55,7 @@ func storageClassPVCAreLinked(a, b interface{}) bool {
 	return pvc.Spec.StorageClassName != nil && sc.Name == *pvc.Spec.StorageClassName
 }
 
-func newStorageClassPVCLinker(g *graph.Graph) probe.Probe {
+func newStorageClassPVCLinker(g *graph.Graph) probe.Handler {
 	return NewABLinker(g, Manager, "storageclass", Manager, "persistentvolumeclaim", storageClassPVCAreLinked)
 }
 
@@ -65,6 +65,6 @@ func storageClassPVAreLinked(a, b interface{}) bool {
 	return pv.Spec.StorageClassName == sc.Name
 }
 
-func newStorageClassPVLinker(g *graph.Graph) probe.Probe {
+func newStorageClassPVLinker(g *graph.Graph) probe.Handler {
 	return NewABLinker(g, Manager, "storageclass", Manager, "persistentvolume", storageClassPVAreLinked)
 }
