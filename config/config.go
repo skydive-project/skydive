@@ -38,7 +38,7 @@ import (
 var ErrNoAnalyzerSpecified = errors.New("No analyzer specified in the configuration file")
 
 var (
-	cfg           *viper.Viper
+	cfg           *SkydiveConfig
 	relocationMap = map[string][]string{
 		"agent.auth.api.backend":               {"auth.type"},
 		"agent.auth.cluster.password":          {"auth.analyzer_password"},
@@ -66,13 +66,34 @@ const (
 	etcdDefaultPort = 12379
 )
 
+// Config defines a config interface
+type Config interface {
+	SetDefault(key string, value interface{})
+	IsSet(key string) bool
+	Get(key string) interface{}
+	Set(key string, value interface{})
+	GetBool(key string) bool
+	GetInt(key string) int
+	GetString(key string) string
+	GetStringSlice(key string) []string
+	GetStringMapString(key string) map[string]string
+	GetStringMap(key string) map[string]interface{}
+}
+
+// SkydiveConfig implements the Config interface
+type SkydiveConfig struct {
+	*viper.Viper
+}
+
 func init() {
 	host, err := os.Hostname()
 	if err != nil {
 		panic(err)
 	}
 
-	cfg = viper.New()
+	cfg = &SkydiveConfig{
+		Viper: viper.New(),
+	}
 
 	cfg.SetDefault("agent.auth.api.backend", "noauth")
 	cfg.SetDefault("agent.capture.stats_update", 1)
@@ -282,7 +303,7 @@ func InitConfig(backend string, paths []string) error {
 }
 
 // GetConfig get current config
-func GetConfig() *viper.Viper {
+func GetConfig() *SkydiveConfig {
 	return cfg
 }
 
@@ -291,10 +312,20 @@ func SetDefault(key string, value interface{}) {
 	cfg.SetDefault(key, value)
 }
 
+// SetDefault set the default configuration value for a key
+func (c *SkydiveConfig) SetDefault(key string, value interface{}) {
+	c.Viper.SetDefault(key, value)
+}
+
 // GetAnalyzerServiceAddresses returns a list of connectable Analyzers
 func GetAnalyzerServiceAddresses() ([]common.ServiceAddress, error) {
+	return cfg.GetAnalyzerServiceAddresses()
+}
+
+// GetAnalyzerServiceAddresses returns a list of connectable Analyzers
+func (c *SkydiveConfig) GetAnalyzerServiceAddresses() ([]common.ServiceAddress, error) {
 	var addresses []common.ServiceAddress
-	for _, a := range GetStringSlice("analyzers") {
+	for _, a := range c.GetStringSlice("analyzers") {
 		sa, err := common.ServiceAddressFromString(a)
 		if err != nil {
 			return nil, err
@@ -313,7 +344,12 @@ func GetAnalyzerServiceAddresses() ([]common.ServiceAddress, error) {
 
 // GetOneAnalyzerServiceAddress returns a random connectable Analyzer
 func GetOneAnalyzerServiceAddress() (common.ServiceAddress, error) {
-	addresses, err := GetAnalyzerServiceAddresses()
+	return cfg.GetOneAnalyzerServiceAddress()
+}
+
+// GetOneAnalyzerServiceAddress returns a random connectable Analyzer
+func (c *SkydiveConfig) GetOneAnalyzerServiceAddress() (common.ServiceAddress, error) {
+	addresses, err := c.GetAnalyzerServiceAddresses()
 	if err != nil {
 		return common.ServiceAddress{}, err
 	}
@@ -327,20 +363,25 @@ func GetOneAnalyzerServiceAddress() (common.ServiceAddress, error) {
 
 // GetEtcdServerAddrs returns the ETCD server address specified in the configuration file or embedded
 func GetEtcdServerAddrs() []string {
-	etcdServers := GetStringSlice("etcd.servers")
+	return cfg.GetEtcdServerAddrs()
+}
+
+// GetEtcdServerAddrs returns the ETCD server address specified in the configuration file or embedded
+func (c *SkydiveConfig) GetEtcdServerAddrs() []string {
+	etcdServers := c.GetStringSlice("etcd.servers")
 	if len(etcdServers) > 0 {
 		return etcdServers
 	}
 
 	port := etcdDefaultPort
-	if GetBool("etcd.embedded") {
-		sa, err := common.ServiceAddressFromString(GetString("etcd.listen"))
+	if c.GetBool("etcd.embedded") {
+		sa, err := common.ServiceAddressFromString(c.GetString("etcd.listen"))
 		if err == nil {
 			port = sa.Port
 		}
 	}
 
-	if address, err := GetOneAnalyzerServiceAddress(); err == nil {
+	if address, err := c.GetOneAnalyzerServiceAddress(); err == nil {
 		return []string{fmt.Sprintf("http://%s:%d", address.Addr, port)}
 	}
 	return []string{fmt.Sprintf("http://localhost:%d", port)}
@@ -348,11 +389,16 @@ func GetEtcdServerAddrs() []string {
 
 // IsTLSEnabled returns true is the client / server certificates are set
 func IsTLSEnabled() bool {
-	client := GetString("tls.client_cert")
-	clientKey := GetString("tls.client_key")
-	server := GetString("tls.server_cert")
-	serverKey := GetString("tls.server_key")
-	ca := GetString("tls.ca_cert")
+	return cfg.IsTLSEnabled()
+}
+
+// IsTLSEnabled returns true is the client / server certificates are set
+func (c *SkydiveConfig) IsTLSEnabled() bool {
+	client := c.GetString("tls.client_cert")
+	clientKey := c.GetString("tls.client_key")
+	server := c.GetString("tls.server_cert")
+	serverKey := c.GetString("tls.server_key")
+	ca := c.GetString("tls.ca_cert")
 
 	if len(client) > 0 &&
 		len(clientKey) > 0 &&
@@ -390,9 +436,19 @@ func IsSet(key string) bool {
 	return cfg.IsSet(key)
 }
 
+// IsSet returns wether a key is set
+func (c *SkydiveConfig) IsSet(key string) bool {
+	return c.Viper.IsSet(key)
+}
+
 // Get returns a value of the configuration as in interface
 func Get(key string) interface{} {
-	return cfg.Get(realKey(key))
+	return cfg.Get(key)
+}
+
+// Get returns a value of the configuration as in interface
+func (c *SkydiveConfig) Get(key string) interface{} {
+	return c.Viper.Get(realKey(key))
 }
 
 // Set a value of the configuration
@@ -400,29 +456,59 @@ func Set(key string, value interface{}) {
 	cfg.Set(key, value)
 }
 
+// Set a value of the configuration
+func (c *SkydiveConfig) Set(key string, value interface{}) {
+	c.Viper.Set(key, value)
+}
+
 // GetBool returns a boolean from the configuration
 func GetBool(key string) bool {
-	return cfg.GetBool(realKey(key))
+	return cfg.GetBool(key)
+}
+
+// GetBool returns a boolean from the configuration
+func (c *SkydiveConfig) GetBool(key string) bool {
+	return c.Viper.GetBool(realKey(key))
 }
 
 // GetInt returns an interger from the configuration
 func GetInt(key string) int {
-	return cfg.GetInt(realKey(key))
+	return cfg.GetInt(key)
+}
+
+// GetInt returns an interger from the configuration
+func (c *SkydiveConfig) GetInt(key string) int {
+	return c.Viper.GetInt(realKey(key))
 }
 
 // GetString returns a string from the configuration
 func GetString(key string) string {
-	return cfg.GetString(realKey(key))
+	return cfg.GetString(key)
+}
+
+// GetString returns a string from the configuration
+func (c *SkydiveConfig) GetString(key string) string {
+	return c.Viper.GetString(realKey(key))
 }
 
 // GetStringSlice returns a slice of strings from the configuration
 func GetStringSlice(key string) []string {
-	return cfg.GetStringSlice(realKey(key))
+	return cfg.GetStringSlice(key)
+}
+
+// GetStringSlice returns a slice of strings from the configuration
+func (c *SkydiveConfig) GetStringSlice(key string) []string {
+	return c.Viper.GetStringSlice(realKey(key))
 }
 
 // GetStringMapString returns a map of strings from the configuration
 func GetStringMapString(key string) map[string]string {
-	return cfg.GetStringMapString(realKey(key))
+	return cfg.GetStringMapString(key)
+}
+
+// GetStringMapString returns a map of strings from the configuration
+func (c *SkydiveConfig) GetStringMapString(key string) map[string]string {
+	return c.Viper.GetStringMapString(realKey(key))
 }
 
 // BindPFlag binds a command line flag to a configuration value
@@ -433,9 +519,15 @@ func BindPFlag(key string, flag *pflag.Flag) error {
 // GetURL constructs a URL from a tuple of protocol, address, port and path
 // If TLS is enabled, it will return the https (or wss) version of the URL.
 func GetURL(protocol string, addr string, port int, path string) *url.URL {
+	return cfg.GetURL(protocol, addr, port, path)
+}
+
+// GetURL constructs a URL from a tuple of protocol, address, port and path
+// If TLS is enabled, it will return the https (or wss) version of the URL.
+func (c *SkydiveConfig) GetURL(protocol string, addr string, port int, path string) *url.URL {
 	u, _ := url.Parse(fmt.Sprintf("%s://%s:%d%s", protocol, addr, port, path))
 
-	if (protocol == "http" || protocol == "ws") && IsTLSEnabled() == true {
+	if (protocol == "http" || protocol == "ws") && c.IsTLSEnabled() == true {
 		u.Scheme += "s"
 	}
 

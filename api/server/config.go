@@ -12,11 +12,10 @@ import (
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/rbac"
-	"github.com/spf13/viper"
 )
 
 type configAPI struct {
-	cfg *viper.Viper
+	cfg *config.SkydiveConfig
 }
 
 func (c *configAPI) configGet(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
