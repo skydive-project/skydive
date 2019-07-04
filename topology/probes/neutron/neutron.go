@@ -39,16 +39,16 @@ import (
 	"github.com/gophercloud/gophercloud/pagination"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
+	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
 // Probe describes a topology probe that maps neutron attributes in the graph
 type Probe struct {
 	graph.DefaultGraphListener
-	graph           *graph.Graph
+	Ctx             tp.Context
 	client          *gophercloud.ServiceClient
 	portMetadata    map[graph.Identifier]portMetadata
 	nodeUpdaterChan chan graph.Identifier
@@ -128,7 +128,7 @@ func (p *Probe) retrievePort(portMd portMetadata) (port ports.Port, err error) {
 		opts.MACAddress = portMd.mac
 	}
 
-	logging.GetLogger().Debugf("Retrieving attributes from Neutron port with options: %+v", opts)
+	p.Ctx.Logger.Debugf("Retrieving attributes from Neutron port with options: %+v", opts)
 
 	pager := ports.List(p.client, opts)
 
@@ -206,24 +206,24 @@ func (p *Probe) retrieveAttributes(portMd portMetadata) (*Metadata, error) {
 }
 
 func (p *Probe) nodeUpdater() {
-	logging.GetLogger().Debug("Starting Neutron updater")
+	p.Ctx.Logger.Debug("Starting Neutron updater")
 
 	for nodeID := range p.nodeUpdaterChan {
-		p.graph.RLock()
-		node := p.graph.GetNode(nodeID)
+		p.Ctx.Graph.RLock()
+		node := p.Ctx.Graph.GetNode(nodeID)
 		if node == nil {
-			p.graph.RUnlock()
+			p.Ctx.Graph.RUnlock()
 			continue
 		}
 
 		name, _ := node.GetFieldString("Name")
 		if name == "" {
-			p.graph.RUnlock()
+			p.Ctx.Graph.RUnlock()
 			return
 		}
 
 		portMd := p.retrievePortMetadata(name, node)
-		p.graph.RUnlock()
+		p.Ctx.Graph.RUnlock()
 
 		if portMd == emptyPortMetadata {
 			continue
@@ -231,24 +231,24 @@ func (p *Probe) nodeUpdater() {
 
 		attrs, err := p.retrieveAttributes(portMd)
 		if err != nil {
-			logging.GetLogger().Errorf("Failed to retrieve attributes for port %s: %v", portMd.String(), err)
+			p.Ctx.Logger.Errorf("Failed to retrieve attributes for port %s: %v", portMd.String(), err)
 		} else {
 			p.updateNode(node, attrs)
 		}
 	}
-	logging.GetLogger().Debug("Stopping Neutron updater")
+	p.Ctx.Logger.Debug("Stopping Neutron updater")
 }
 
 func (p *Probe) updateNode(node *graph.Node, attrs *Metadata) {
-	p.graph.Lock()
-	defer p.graph.Unlock()
+	p.Ctx.Graph.Lock()
+	defer p.Ctx.Graph.Unlock()
 
 	name, _ := node.GetFieldString("Name")
 	if name == "" {
 		return
 	}
 
-	tr := p.graph.StartMetadataTransaction(node)
+	tr := p.Ctx.Graph.StartMetadataTransaction(node)
 	tr.AddMetadata("Manager", "neutron")
 	tr.AddMetadata("Neutron", attrs)
 	if strings.HasPrefix(name, "tap") {
@@ -268,30 +268,30 @@ func (p *Probe) updateNode(node *graph.Node, attrs *Metadata) {
 	if uuid, _ := node.GetFieldString("ExtID.vm-uuid"); uuid != "" {
 		if attachedMac, _ := node.GetFieldString("ExtID.attached-mac"); attachedMac != "" {
 			retryFnc := func() error {
-				p.graph.RLock()
-				path := p.graph.LookupShortestPath(node, graph.Metadata{"Name": tap}, topology.Layer2Metadata())
-				p.graph.RUnlock()
+				p.Ctx.Graph.RLock()
+				path := p.Ctx.Graph.LookupShortestPath(node, graph.Metadata{"Name": tap}, topology.Layer2Metadata())
+				p.Ctx.Graph.RUnlock()
 
 				if len(path) == 0 {
 					qbr := strings.Replace(name, "qvo", "qbr", 1)
-					p.graph.RLock()
-					path = p.graph.LookupShortestPath(node, graph.Metadata{"Name": qbr}, topology.Layer2Metadata())
-					p.graph.RUnlock()
+					p.Ctx.Graph.RLock()
+					path = p.Ctx.Graph.LookupShortestPath(node, graph.Metadata{"Name": qbr}, topology.Layer2Metadata())
+					p.Ctx.Graph.RUnlock()
 
 					if len(path) == 0 {
 						return errors.New("Path not found")
 					}
 				}
 
-				p.graph.Lock()
-				defer p.graph.Unlock()
+				p.Ctx.Graph.Lock()
+				defer p.Ctx.Graph.Unlock()
 
 				for i, n := range path {
-					if p.graph.GetNode(n.ID) == nil {
+					if p.Ctx.Graph.GetNode(n.ID) == nil {
 						continue
 					}
 
-					tr := p.graph.StartMetadataTransaction(n)
+					tr := p.Ctx.Graph.StartMetadataTransaction(n)
 					tr.AddMetadata("ExtID.vm-uuid", uuid)
 					tr.AddMetadata("ExtID.attached-mac", attachedMac)
 
@@ -317,8 +317,8 @@ func (p *Probe) enhanceNode(node *graph.Node) {
 	}
 
 	if p.nsRegexp.MatchString(name) {
-		if err := p.graph.AddMetadata(node, "Manager", "neutron"); err != nil {
-			logging.GetLogger().Error(err)
+		if err := p.Ctx.Graph.AddMetadata(node, "Manager", "neutron"); err != nil {
+			p.Ctx.Logger.Error(err)
 		}
 		return
 	}
@@ -352,9 +352,9 @@ func (p *Probe) OnNodeAdded(n *graph.Node) {
 	attachedMAC, _ := n.GetFieldString("ExtID.attached-mac")
 	if attachedMAC == "" && strings.HasPrefix(name, "tap") {
 		qvo := strings.Replace(name, "tap", "qvo", 1)
-		qvoNode := p.graph.LookupFirstNode(graph.Metadata{"Name": qvo, "Type": "veth"})
+		qvoNode := p.Ctx.Graph.LookupFirstNode(graph.Metadata{"Name": qvo, "Type": "veth"})
 		if qvoNode != nil {
-			tr := p.graph.StartMetadataTransaction(n)
+			tr := p.Ctx.Graph.StartMetadataTransaction(n)
 			if attachedMAC, _ = qvoNode.GetFieldString("ExtID.attached-mac"); attachedMAC != "" {
 				tr.AddMetadata("ExtID.attached-mac", attachedMAC)
 			}
@@ -376,20 +376,20 @@ func (p *Probe) OnNodeDeleted(n *graph.Node) {
 
 // Start the probe
 func (p *Probe) Start() {
-	p.graph.AddEventListener(p)
+	p.Ctx.Graph.AddEventListener(p)
 
 	go func() {
 		for p.client == nil {
 			client, err := openstack.NewClient(p.opts.IdentityEndpoint)
 			if err != nil {
-				logging.GetLogger().Errorf("failed to create neutron client: %s", err)
+				p.Ctx.Logger.Errorf("failed to create neutron client: %s", err)
 				time.Sleep(time.Second)
 				continue
 			}
 
-			sslInsecure := config.GetBool("agent.topology.neutron.ssl_insecure")
+			sslInsecure := p.Ctx.Config.GetBool("agent.topology.neutron.ssl_insecure")
 			if sslInsecure {
-				logging.GetLogger().Warningf("Skipping SSL certificates verification")
+				p.Ctx.Logger.Warningf("Skipping SSL certificates verification")
 			}
 
 			client.HTTPClient = http.Client{
@@ -401,7 +401,7 @@ func (p *Probe) Start() {
 			}
 
 			if err = openstack.Authenticate(client, p.opts); err != nil {
-				logging.GetLogger().Errorf("keystone authentication error: %s", err)
+				p.Ctx.Logger.Errorf("keystone authentication error: %s", err)
 				time.Sleep(time.Second)
 				continue
 			}
@@ -412,17 +412,17 @@ func (p *Probe) Start() {
 				Availability: p.availability,
 			})
 			if err != nil {
-				logging.GetLogger().Errorf("keystone authentication error: %s", err)
+				p.Ctx.Logger.Errorf("keystone authentication error: %s", err)
 				time.Sleep(time.Second)
 				continue
 			}
 			p.client = networkClient
 		}
-		p.graph.RLock()
-		for _, n := range p.graph.GetNodes(nil) {
+		p.Ctx.Graph.RLock()
+		for _, n := range p.Ctx.Graph.GetNodes(nil) {
 			p.enhanceNode(n)
 		}
-		p.graph.RUnlock()
+		p.Ctx.Graph.RUnlock()
 
 		p.nodeUpdater()
 	}()
@@ -430,18 +430,38 @@ func (p *Probe) Start() {
 
 // Stop the probe
 func (p *Probe) Stop() {
-	p.graph.RemoveEventListener(p)
+	p.Ctx.Graph.RemoveEventListener(p)
 	close(p.nodeUpdaterChan)
 }
 
-// NewProbe creates a neutron probe that will enhance the graph
-func NewProbe(g *graph.Graph, authURL, username, password, tenantName, regionName, domainName string, availability gophercloud.Availability) (*Probe, error) {
+// Init initializes a new neutron probe based on configuration
+func (p *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+	authURL := ctx.Config.GetString("agent.topology.neutron.auth_url")
+	domainName := ctx.Config.GetString("agent.topology.neutron.domain_name")
+	endpointType := ctx.Config.GetString("agent.topology.neutron.endpoint_type")
+	password := ctx.Config.GetString("agent.topology.neutron.password")
+	regionName := ctx.Config.GetString("agent.topology.neutron.region_name")
+	tenantName := ctx.Config.GetString("agent.topology.neutron.tenant_name")
+	username := ctx.Config.GetString("agent.topology.neutron.username")
+
+	endpointTypes := map[string]gophercloud.Availability{
+		"public":   gophercloud.AvailabilityPublic,
+		"admin":    gophercloud.AvailabilityAdmin,
+		"internal": gophercloud.AvailabilityInternal,
+	}
+
+	availability, ok := endpointTypes[endpointType]
+	if !ok {
+		return nil, fmt.Errorf("Endpoint type '%s' is not valid (must be 'public', 'admin' or 'internal')", endpointType)
+	}
+
+	p.Ctx = ctx
+
 	// only looking for interfaces matching the following regex as nova, neutron interfaces match this pattern
+	p.intfRegexp = regexp.MustCompile(`((tap|qr-|qg-|qvo)[a-fA-F0-9\-]+)|(vnet[0-9]+)`)
+	p.nsRegexp = regexp.MustCompile(`(qrouter|qdhcp)-[a-fA-F0-9\-]+`)
 
-	intfRegexp := regexp.MustCompile(`((tap|qr-|qg-|qvo)[a-fA-F0-9\-]+)|(vnet[0-9]+)`)
-	nsRegexp := regexp.MustCompile(`(qrouter|qdhcp)-[a-fA-F0-9\-]+`)
-
-	opts := gophercloud.AuthOptions{
+	p.opts = gophercloud.AuthOptions{
 		IdentityEndpoint: authURL,
 		Username:         username,
 		Password:         password,
@@ -450,39 +470,11 @@ func NewProbe(g *graph.Graph, authURL, username, password, tenantName, regionNam
 		AllowReauth:      true,
 	}
 
-	p := &Probe{
-		graph:           g,
-		intfRegexp:      intfRegexp,
-		nsRegexp:        nsRegexp,
-		regionName:      regionName,
-		availability:    availability,
-		opts:            opts,
-		nodeUpdaterChan: make(chan graph.Identifier, 500),
-		portMetadata:    make(map[graph.Identifier]portMetadata),
-	}
+	p.regionName = regionName
+	p.availability = availability
+
+	p.nodeUpdaterChan = make(chan graph.Identifier, 500)
+	p.portMetadata = make(map[graph.Identifier]portMetadata)
 
 	return p, nil
-}
-
-// NewProbeFromConfig creates a new neutron probe based on configuration
-func NewProbeFromConfig(g *graph.Graph) (*Probe, error) {
-	authURL := config.GetString("agent.topology.neutron.auth_url")
-	domainName := config.GetString("agent.topology.neutron.domain_name")
-	endpointType := config.GetString("agent.topology.neutron.endpoint_type")
-	password := config.GetString("agent.topology.neutron.password")
-	regionName := config.GetString("agent.topology.neutron.region_name")
-	tenantName := config.GetString("agent.topology.neutron.tenant_name")
-	username := config.GetString("agent.topology.neutron.username")
-
-	endpointTypes := map[string]gophercloud.Availability{
-		"public":   gophercloud.AvailabilityPublic,
-		"admin":    gophercloud.AvailabilityAdmin,
-		"internal": gophercloud.AvailabilityInternal,
-	}
-
-	if a, ok := endpointTypes[endpointType]; ok {
-		return NewProbe(g, authURL, username, password, tenantName, regionName, domainName, a)
-	}
-
-	return nil, fmt.Errorf("Endpoint type '%s' is not valid (must be 'public', 'admin' or 'internal')", endpointType)
 }

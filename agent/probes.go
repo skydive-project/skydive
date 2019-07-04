@@ -84,7 +84,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 		case "lldp":
 			handler, err = new(lldp.Probe).Init(ctx, bundle)
 		case "neutron":
-			handler, err = neutron.NewProbeFromConfig(g)
+			handler, err = new(neutron.Probe).Init(ctx, bundle)
 		case "opencontrail":
 			handler, err = opencontrail.NewProbeFromConfig(g, hostNode)
 		case "socketinfo":
