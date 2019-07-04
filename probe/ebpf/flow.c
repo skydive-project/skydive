@@ -62,6 +62,10 @@ MAP(flow_table) {
 	.max_entries = 500000,
 };
 
+static inline __u64 rotl(__u64 value, unsigned int shift) {
+	return (value << shift) | (value >> (64 - shift));
+}
+
 static inline void update_hash_byte(__u64 *key, __u8 byte)
 {
 	*key ^= (__u64)byte;
@@ -88,13 +92,16 @@ static inline void add_layer(struct flow *flow, __u8 layer) {
 }
 
 static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, int offset,
-	struct flow *flow, int len, __u64 tm)
+				struct flow *flow, int len, __u64 tm, __u8 swap, __u8 netequal)
 {
 	struct transport_layer *layer = &flow->transport_layer;
 
 	layer->protocol = protocol;
 	layer->port_src = load_half(skb, offset);
 	layer->port_dst = load_half(skb, offset + sizeof(__be16));
+	if (netequal) {
+		swap = layer->port_src > layer->port_dst;
+	}
 
 	__u64 hash_src = 0;
 	update_hash_half(&hash_src, layer->port_src);
@@ -106,22 +113,25 @@ static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, int offs
 
 	switch (protocol) {
         case IPPROTO_SCTP:
-			add_layer(flow, SCTP_LAYER);
-            break;
-		case IPPROTO_UDP:
-            add_layer(flow, UDP_LAYER);
-			break;
-		case IPPROTO_TCP:
-            add_layer(flow, TCP_LAYER);
-			flags = load_byte(skb, offset + 14);
-			layer->ab_syn = (flags & 0x02) > 0 ? tm : 0;
-			layer->ab_fin = (flags & 0x01) > 0 ? tm : 0;
-			layer->ab_rst = (flags & 0x04) > 0 ? tm : 0;
-			break;
+		add_layer(flow, SCTP_LAYER);
+		break;
+	case IPPROTO_UDP:
+		add_layer(flow, UDP_LAYER);
+		break;
+	case IPPROTO_TCP:
+		add_layer(flow, TCP_LAYER);
+		flags = load_byte(skb, offset + 14);
+		layer->ab_syn = (flags & 0x02) > 0 ? tm : 0;
+		layer->ab_fin = (flags & 0x01) > 0 ? tm : 0;
+		layer->ab_rst = (flags & 0x04) > 0 ? tm : 0;
+		break;
 	}
 
-	layer->_hash = FNV_BASIS ^ hash_src ^ hash_dst;
-
+	if (swap) {
+		layer->_hash = FNV_BASIS ^ rotl(hash_dst, 16) ^ hash_src;
+	} else {
+		layer->_hash = FNV_BASIS ^ rotl(hash_src, 16) ^ hash_dst;
+	}
 	flow->layers_info |= TRANSPORT_LAYER_INFO;
 }
 
@@ -148,7 +158,7 @@ static inline void fill_icmpv4(struct __sk_buff *skb, int offset, struct flow *f
 
 	layer->_hash = FNV_BASIS ^ hash;
 
-    add_layer(flow, ICMP4_LAYER);
+	add_layer(flow, ICMP4_LAYER);
 	flow->layers_info |= ICMP_LAYER_INFO;
 }
 
@@ -226,6 +236,9 @@ static inline void fill_network(struct __sk_buff *skb, __u16 netproto, int offse
 	__u64 hash_src = 0;
 	__u64 hash_dst = 0;
 
+	__u64 ordered_src = 0;
+	__u64 ordered_dst = 0;
+
 	layer->protocol = netproto;
 	switch (netproto) {
 		case ETH_P_IP:
@@ -238,11 +251,30 @@ static inline void fill_network(struct __sk_buff *skb, __u16 netproto, int offse
 			transproto = load_byte(skb, offset + offsetof(struct iphdr, protocol));
 			fill_ipv4(skb, offset + offsetof(struct iphdr, saddr), layer->ip_src, &hash_src);
 			fill_ipv4(skb, offset + offsetof(struct iphdr, daddr), layer->ip_dst, &hash_dst);
+			ordered_src = layer->ip_src[12] << 24 | layer->ip_src[13] << 16 | layer->ip_src[14] << 8 | layer->ip_src[15];
+			ordered_dst = layer->ip_dst[12] << 24 | layer->ip_dst[13] << 16 | layer->ip_dst[14] << 8 | layer->ip_dst[15];
 			break;
 		case ETH_P_IPV6:
 			transproto = load_byte(skb, offset + offsetof(struct ipv6hdr, nexthdr));
 			fill_ipv6(skb, offset + offsetof(struct ipv6hdr, saddr), layer->ip_src, &hash_src);
 			fill_ipv6(skb, offset + offsetof(struct ipv6hdr, daddr), layer->ip_dst, &hash_dst);
+
+#ifdef FIX_STACK_512LIMIT			
+			ordered_src = (
+				(__u64)layer->ip_src[0] << 56 | (__u64)layer->ip_src[1] << 48 | (__u64)layer->ip_src[2] << 40 | (__u64)layer->ip_src[3] << 32 |
+				(__u64)layer->ip_src[4] << 24 | (__u64)layer->ip_src[5] << 16 | (__u64)layer->ip_src[6] << 8 | (__u64)layer->ip_src[7]
+				) ^ (
+					(__u64)layer->ip_src[8] << 56 | (__u64)layer->ip_src[9] << 48 | (__u64)layer->ip_src[10] << 40 | (__u64)layer->ip_src[11] << 32 |
+					(__u64)layer->ip_src[12] << 24 | (__u64)layer->ip_src[13] << 16 | (__u64)layer->ip_src[14] << 8 | (__u64)layer->ip_src[15]
+					);
+			ordered_dst = (
+				(__u64)layer->ip_dst[0] << 56 | (__u64)layer->ip_dst[1] << 48 | (__u64)layer->ip_dst[2] << 40 | (__u64)layer->ip_dst[3] << 32 |
+				(__u64)layer->ip_dst[4] << 24 | (__u64)layer->ip_dst[5] << 16 | (__u64)layer->ip_dst[6] << 8 | (__u64)layer->ip_dst[7]
+				) ^ (
+					(__u64)layer->ip_dst[8] << 56 | (__u64)layer->ip_dst[9] << 48 | (__u64)layer->ip_dst[10] << 40 | (__u64)layer->ip_dst[11] << 32 |
+					(__u64)layer->ip_dst[12] << 24 | (__u64)layer->ip_dst[13] << 16 | (__u64)layer->ip_dst[14] << 8 | (__u64)layer->ip_dst[15]
+					);
+#endif
 			break;
 		default:
 			return;
@@ -250,7 +282,6 @@ static inline void fill_network(struct __sk_buff *skb, __u16 netproto, int offse
 
 	__u8 verlen = load_byte(skb, offset);
 	offset += (verlen & 0xF) << 2;
-
 	len -= (verlen & 0xF) << 2;
 
 	switch (transproto) {
@@ -261,7 +292,7 @@ static inline void fill_network(struct __sk_buff *skb, __u16 netproto, int offse
 			// TODO
 		case IPPROTO_UDP:
 		case IPPROTO_TCP:
-			fill_transport(skb, transproto, offset, flow, len, tm);
+			fill_transport(skb, transproto, offset, flow, len, tm, ordered_src < ordered_dst, ordered_src == ordered_dst);
 			break;
 		case IPPROTO_ICMP:
 			fill_icmpv4(skb, offset, flow);
@@ -271,8 +302,12 @@ static inline void fill_network(struct __sk_buff *skb, __u16 netproto, int offse
 			break;
 	}
 
-	layer->_hash = FNV_BASIS ^ hash_src ^ hash_dst ^ netproto ^ transproto;
-
+	layer->_hash_src = hash_src;
+	if (ordered_src < ordered_dst) {
+		layer->_hash = FNV_BASIS ^ rotl(hash_src, 32) ^ hash_dst ^ netproto ^ transproto;
+	} else {
+		layer->_hash = FNV_BASIS ^ rotl(hash_dst, 32) ^ hash_src ^ netproto ^ transproto;
+	}
 	flow->layers_info |= NETWORK_LAYER_INFO;
 }
 
@@ -290,7 +325,7 @@ static inline __u16 fill_vlan(struct __sk_buff *skb, int offset, struct flow *fl
 	layer->_hash ^= hash_vlan;
 	layer->id = (layer->id << 12) | vlanID;
 
-    add_layer(flow, DOT1Q_LAYER);
+	add_layer(flow, DOT1Q_LAYER);
 
 	return protocol;
 }
@@ -346,7 +381,7 @@ static inline void fill_link(struct __sk_buff *skb, int offset, struct flow *flo
 
 	layer->_hash = FNV_BASIS ^ layer->_hash_src ^ hash_dst;
 
-    add_layer(flow, ETH_LAYER);
+	add_layer(flow, ETH_LAYER);
 	flow->layers_info |= LINK_LAYER_INFO; 
 }
 
@@ -383,8 +418,13 @@ static inline void fill_flow(struct __sk_buff *skb, struct flow *flow, __u64 tm)
 		break;
 	}
 
-	flow->key = flow->link_layer._hash ^ flow->network_layer._hash ^
-		flow->transport_layer._hash ^ flow->icmp_layer._hash;
+	flow->key = flow->link_layer._hash;
+	flow->key = rotl(flow->key, 16);
+	flow->key ^= flow->network_layer._hash;
+	flow->key = rotl(flow->key, 16);
+	flow->key ^= flow->transport_layer._hash;
+	flow->key = rotl(flow->key, 16);
+	flow->key ^= flow->icmp_layer._hash;
 }
 
 SOCKET(flow_table)
@@ -399,12 +439,12 @@ int bpf_flow_table(struct __sk_buff *skb)
 	}
 
 	struct flow flow = {}, *prev;
-	fill_flow(skb, &flow,tm);
+	fill_flow(skb, &flow, tm);
 
 	prev = bpf_map_lookup_element(&flow_table, &flow.key);
 	if (prev) {
 		update_metrics(skb, prev, tm,
-					   flow.link_layer._hash_src == prev->link_layer._hash_src);
+			flow.link_layer._hash_src == prev->link_layer._hash_src);
 		__sync_fetch_and_add(&prev->last, tm - prev->last);
 
 		if (prev->layers_info & flow.layers_info & TRANSPORT_LAYER_INFO > 0) {

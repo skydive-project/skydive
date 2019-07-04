@@ -103,6 +103,10 @@ MAP(flow_table) {
 	.max_entries = 500000,
 };
 
+static inline __u64 rotl(__u64 value, unsigned int shift) {
+	return (value << shift) | (value >> (64 - shift));
+}
+
 #define __update_hash(key, data) do { \
 	*key ^= (__u64)(data);	      \
 	*key *= FNV_PRIME;            \
@@ -193,8 +197,7 @@ static inline __u16 fill_gre(struct __sk_buff *skb, size_t *offset, struct flow 
 	return protocol;
 }
 
-static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, size_t offset, int len,
-	struct flow *flow)
+static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, size_t offset, int len, struct flow *flow, __u8 swap, __u8 netequal)
 {
 	struct transport_layer *layer = &flow->transport_layer;
 
@@ -206,6 +209,9 @@ static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, size_t o
 	update_hash_half(&hash_src, layer->port_src);
 	__u64 hash_dst = 0;
 	update_hash_half(&hash_dst, layer->port_dst);
+	if (netequal) {
+		swap = layer->port_src > layer->port_dst;
+	}
 
 	switch (protocol) {
 		case IPPROTO_SCTP:
@@ -226,7 +232,11 @@ static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, size_t o
 		}
 	}
 
-	layer->_hash = FNV_BASIS ^ hash_src ^ hash_dst;
+	if (swap) {
+		layer->_hash = FNV_BASIS ^ rotl(hash_dst, 16) ^ hash_src;
+	} else {
+		layer->_hash = FNV_BASIS ^ rotl(hash_src, 16) ^ hash_dst;
+	}
 
 	flow->layers_info |= TRANSPORT_LAYER_INFO;
 }
@@ -327,17 +337,33 @@ static inline void fill_network(struct __sk_buff *skb, __u16 netproto, size_t of
 	__u64 hash_src = 0;
 	__u64 hash_dst = 0;
 
+	__u64 ordered_src = 0;
+	__u64 ordered_dst = 0;
+
 	layer->_hash = FNV_BASIS;
+
+
+	flow->key = flow->link_layer._hash;
+	flow->key = rotl(flow->key, 16);
 
 #define TUNNEL
 #include "flow_network.c"
 
 	layer->_hash_src = hash_src;
-	layer->_hash ^= hash_src ^ hash_dst ^ netproto ^ transproto;
+	if (ordered_src < ordered_dst) {
+		layer->_hash = FNV_BASIS ^ rotl(hash_src, 32) ^ hash_dst ^ netproto ^ transproto;
+	} else {
+		layer->_hash = FNV_BASIS ^ rotl(hash_dst, 32) ^ hash_src ^ netproto ^ transproto;
+	}
 
-	flow->key ^= flow->network_layer_outer._hash ^ flow->network_layer._hash ^
-		flow->transport_layer._hash ^ flow->icmp_layer._hash;
-
+	flow->key ^= flow->network_layer_outer._hash;
+	flow->key = rotl(flow->key, 16);
+	flow->key ^= flow->network_layer._hash;
+	flow->key = rotl(flow->key, 16);
+	flow->key ^= flow->transport_layer._hash;
+	flow->key = rotl(flow->key, 16);
+	flow->key ^= flow->icmp_layer._hash;
+	
 	flow->layers_info |= NETWORK_LAYER_INFO;
 }
 

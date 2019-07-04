@@ -18,10 +18,8 @@
 package flow
 
 import (
-	"bytes"
 	"encoding/binary"
 	"hash"
-	"strings"
 
 	"github.com/google/gopacket"
 )
@@ -38,16 +36,16 @@ func (fl *ICMPLayer) Hash(hasher hash.Hash) {
 }
 
 // Hash computes the hash of a transport layer
-func (tl *TransportLayer) Hash(hasher hash.Hash) {
+func (tl *TransportLayer) Hash(hasher hash.Hash, swap bool) {
 	if tl == nil {
 		return
 	}
 
 	value32 := make([]byte, 4)
-	if tl.A > tl.B {
-		binary.BigEndian.PutUint32(value32, uint32(tl.A<<16|tl.B))
-	} else {
+	if swap {
 		binary.BigEndian.PutUint32(value32, uint32(tl.B<<16|tl.A))
+	} else {
+		binary.BigEndian.PutUint32(value32, uint32(tl.A<<16|tl.B))
 	}
 	hasher.Write(value32)
 
@@ -57,17 +55,17 @@ func (tl *TransportLayer) Hash(hasher hash.Hash) {
 }
 
 // Hash calculates a unique symetric flow layer hash
-func (fl *FlowLayer) Hash(hasher hash.Hash) {
+func (fl *FlowLayer) Hash(hasher hash.Hash, swap bool) {
 	if fl == nil {
 		return
 	}
 
-	if strings.Compare(fl.A, fl.B) > 0 {
-		hasher.Write([]byte(fl.A))
+	if swap {
 		hasher.Write([]byte(fl.B))
+		hasher.Write([]byte(fl.A))
 	} else {
-		hasher.Write([]byte(fl.B))
 		hasher.Write([]byte(fl.A))
+		hasher.Write([]byte(fl.B))
 	}
 
 	value64 := make([]byte, 8)
@@ -75,15 +73,15 @@ func (fl *FlowLayer) Hash(hasher hash.Hash) {
 	hasher.Write(value64)
 }
 
-// Hash flow with custom func
-func Hash(f gopacket.Flow, hasher hash.Hash) {
+// hashFlow flow with custom hasher function
+func hashFlow(f gopacket.Flow, hasher hash.Hash, swap bool) {
 	src, dst := f.Endpoints()
-	if bytes.Compare(src.Raw(), dst.Raw()) > 0 {
-		hasher.Write(src.Raw())
+	if swap {
 		hasher.Write(dst.Raw())
+		hasher.Write(src.Raw())
 	} else {
-		hasher.Write(dst.Raw())
 		hasher.Write(src.Raw())
+		hasher.Write(dst.Raw())
 	}
 
 	value64 := make([]byte, 8)

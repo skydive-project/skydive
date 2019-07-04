@@ -293,6 +293,9 @@ func loadModuleFromAsset(path string) (*elf.Module, error) {
 	module := elf.NewModuleFromReader(bytes.NewReader(data))
 	err = module.Load(nil)
 
+	if err == nil {
+		logging.GetLogger().Infof("Loaded eBPF module ", path)
+	}
 	return module, err
 }
 

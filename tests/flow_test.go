@@ -2237,3 +2237,95 @@ func TestNetFlowV5Target(t *testing.T) {
 
 	RunTest(t, test)
 }
+
+func TestFlowsHashCnx(t *testing.T) {
+	test := testFlowsHashCnx(t)
+	RunTest(t, test)
+}
+
+func testFlowsHashCnx(t *testing.T) *Test {
+	test := &Test{
+		setupCmds: []Cmd{
+			{"ovs-vsctl add-br br-ebpf", true},
+
+			{"ip netns add src-vm", true},
+			{"ip link add src-vm-eth0 type veth peer name ebpf-src-eth0 netns src-vm", true},
+			{"ip link set src-vm-eth0 up", true},
+			{"ip netns exec src-vm ip link set ebpf-src-eth0 up", true},
+			{"ip netns exec src-vm ip address add 169.254.107.33/24 dev ebpf-src-eth0", true},
+
+			{"ip netns add dst-vm", true},
+			{"ip link add dst-vm-eth0 type veth peer name ebpf-dst-eth0 netns dst-vm", true},
+			{"ip link set dst-vm-eth0 up", true},
+			{"ip netns exec dst-vm ip link set ebpf-dst-eth0 up", true},
+			{"ip netns exec dst-vm ip address add 169.254.107.34/24 dev ebpf-dst-eth0", true},
+
+			{"ovs-vsctl add-port br-ebpf src-vm-eth0", true},
+			{"ovs-vsctl add-port br-ebpf dst-vm-eth0", true},
+		},
+
+		injections: []TestInjection{
+			{
+				protocol: "tcp",
+
+				from:     g.G.V().Has("Name", "src-vm").Out().Has("Name", "ebpf-src-eth0"),
+				fromPort: 12345,
+				to:       g.G.V().Has("Name", "dst-vm").Out().Has("Name", "ebpf-dst-eth0"),
+				toPort:   54321,
+				count:    1,
+			},
+			{
+				protocol: "tcp",
+
+				from:     g.G.V().Has("Name", "src-vm").Out().Has("Name", "ebpf-src-eth0"),
+				fromPort: 54321,
+				to:       g.G.V().Has("Name", "dst-vm").Out().Has("Name", "ebpf-dst-eth0"),
+				toPort:   12345,
+				count:    1,
+			},
+		},
+
+		tearDownCmds: []Cmd{
+			{"ovs-vsctl del-br br-ebpf", true},
+			{"ip link del dst-vm-eth0", true},
+			{"ip link del src-vm-eth0", true},
+			{"ip netns del src-vm", true},
+			{"ip netns del dst-vm", true},
+		},
+
+		captures: []TestCapture{
+			{gremlin: g.G.V().Has("Name", "ebpf-src-eth0")},
+		},
+
+		mode: Replay,
+
+		checks: []CheckFunction{func(c *CheckContext) error {
+			gremlin := c.gremlin.Flows().Has("Network", "169.254.107.33", "LayersPath", "Ethernet/IPv4/TCP").Dedup()
+			flows, err := c.gh.GetFlows(gremlin)
+			if err != nil {
+				return err
+			}
+			if len(flows) != 2 {
+				return fmt.Errorf("Expected two flows, got %+v", flows)
+			}
+			foundAB := false
+			foundBA := false
+			for _, f := range flows {
+				if f.Metric.ABPackets != 1 || f.Metric.BAPackets != 1 {
+					return fmt.Errorf("Expected one packet each way, got %+v", flows)
+				}
+				if f.Transport.A == 12345 && f.Transport.B == 54321 {
+					foundAB = true
+				}
+				if f.Transport.B == 12345 && f.Transport.A == 54321 {
+					foundBA = true
+				}
+			}
+			if !foundAB || !foundBA {
+				return fmt.Errorf("Expected two flows, with ports swapped, got %+v", flows)
+			}
+			return nil
+		}},
+	}
+	return test
+}
