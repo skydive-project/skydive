@@ -76,9 +76,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 
 		switch t {
 		case "ovsdb":
-			addr := config.GetString("ovs.ovsdb")
-			enableStats := config.GetBool("ovs.enable_stats")
-			handler, err = ovsdb.NewProbeFromConfig(g, hostNode, addr, enableStats)
+			handler, err = new(ovsdb.Probe).Init(ctx, bundle)
 		case "lxd":
 			handler, err = new(lxd.ProbeHandler).Init(ctx, bundle)
 		case "docker":

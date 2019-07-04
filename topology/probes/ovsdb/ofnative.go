@@ -28,13 +28,13 @@ import (
 	"github.com/cnf/structhash"
 	goloxi "github.com/skydive-project/goloxi"
 	"github.com/skydive-project/goloxi/of14"
+
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/openflow"
 	"github.com/skydive-project/skydive/ovs/monitor"
 	"github.com/skydive-project/skydive/topology"
+	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
 type ofHandler interface {
@@ -48,10 +48,9 @@ type ofHandler interface {
 
 type ofProbe struct {
 	sync.Mutex
+	Ctx              tp.Context
 	bridge           string
 	address          string
-	g                *graph.Graph
-	node             *graph.Node
 	handler          ofHandler
 	client           *openflow.Client
 	monitor          *monitor.Monitor
@@ -299,7 +298,7 @@ func (probe *ofProbe) Monitor(ctx context.Context) (err error) {
 		return err
 	}
 
-	versions := config.GetStringSlice("ovs.oflow.openflow_versions")
+	versions := probe.Ctx.Config.GetStringSlice("ovs.oflow.openflow_versions")
 	sort.Strings(versions)
 
 	var protocols []openflow.Protocol
@@ -362,8 +361,8 @@ func (probe *ofProbe) Monitor(ctx context.Context) (err error) {
 }
 
 func (probe *ofProbe) queryStats(ctx context.Context) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	cancelCtx, cancelFunc := context.WithCancel(ctx)
+	defer cancelFunc()
 
 	probe.sendGroupStatsDescRequest()
 
@@ -375,7 +374,7 @@ func (probe *ofProbe) queryStats(ctx context.Context) {
 		case <-timer.C:
 			probe.sendFlowStatsRequest(nil)
 			probe.sendGroupStatsDescRequest()
-		case <-ctx.Done():
+		case <-cancelCtx.Done():
 			return
 		}
 	}
@@ -418,29 +417,29 @@ func (probe *ofProbe) Cancel() {
 }
 
 func (probe *ofProbe) syncNode(id graph.Identifier, m graph.Metadata, delete bool) *graph.Node {
-	n := probe.g.GetNode(id)
+	n := probe.Ctx.Graph.GetNode(id)
 	if delete {
 		if n != nil {
-			if err := probe.g.DelNode(n); err != nil {
-				logging.GetLogger().Error(err)
+			if err := probe.Ctx.Graph.DelNode(n); err != nil {
+				probe.Ctx.Logger.Error(err)
 			}
 		}
 	} else {
 		if n != nil {
-			tr := probe.g.StartMetadataTransaction(n)
+			tr := probe.Ctx.Graph.StartMetadataTransaction(n)
 			for k, v := range m {
 				tr.AddMetadata(k, v)
 			}
 			tr.Commit()
 		} else {
 			m["Metric"] = &topology.InterfaceMetric{}
-			newNode, err := probe.g.NewNode(id, m)
+			newNode, err := probe.Ctx.Graph.NewNode(id, m)
 			if err != nil {
-				logging.GetLogger().Error(err)
+				probe.Ctx.Logger.Error(err)
 				return nil
 			}
 			n = newNode
-			topology.AddOwnershipLink(probe.g, probe.node, n, nil)
+			topology.AddOwnershipLink(probe.Ctx.Graph, probe.Ctx.RootNode, n, nil)
 		}
 	}
 	return n
@@ -452,7 +451,7 @@ func (probe *ofProbe) handleGroup(group *ofGroup, delete bool) *graph.Node {
 }
 
 func (probe *ofProbe) handleFlowRule(rule *ofRule, delete bool) *graph.Node {
-	id := rule.GetID(probe.g.GetHost(), probe.bridge)
+	id := rule.GetID(probe.Ctx.Graph.GetHost(), probe.bridge)
 	return probe.syncNode(id, rule.GetMetadata(), delete)
 }
 
@@ -473,13 +472,13 @@ type Stats struct {
 func (probe *ofProbe) handleFlowStats(xid uint32, rule *ofRule, actions, writeActions []goloxi.IAction, stats Stats, now, last time.Time) {
 	probe.Lock()
 	if requestedRule, ok := probe.requests[xid]; ok && requestedRule.Priority == rule.Priority && len(requestedRule.Filters) == len(rule.Filters) {
-		monitorID := requestedRule.GetID(probe.g.GetHost(), probe.bridge)
-		probe.rules[monitorID] = rule.GetID(probe.g.GetHost(), probe.bridge)
+		monitorID := requestedRule.GetID(probe.Ctx.Graph.GetHost(), probe.bridge)
+		probe.rules[monitorID] = rule.GetID(probe.Ctx.Graph.GetHost(), probe.bridge)
 		delete(probe.requests, xid)
 	}
 	probe.Unlock()
 
-	probe.g.Lock()
+	probe.Ctx.Graph.Lock()
 
 	node := probe.handleFlowRule(rule, false)
 
@@ -488,7 +487,7 @@ func (probe *ofProbe) handleFlowStats(xid uint32, rule *ofRule, actions, writeAc
 		RxBytes:   stats.ByteCount,
 	}
 
-	tr := probe.g.StartMetadataTransaction(node)
+	tr := probe.Ctx.Graph.StartMetadataTransaction(node)
 
 	var lastUpdateMetric *topology.InterfaceMetric
 	prevMetric, err := node.GetField("Metric")
@@ -498,7 +497,7 @@ func (probe *ofProbe) handleFlowStats(xid uint32, rule *ofRule, actions, writeAc
 
 	// nothing changed since last update
 	if lastUpdateMetric != nil && lastUpdateMetric.IsZero() {
-		probe.g.Unlock()
+		probe.Ctx.Graph.Unlock()
 		return
 	}
 
@@ -510,15 +509,14 @@ func (probe *ofProbe) handleFlowStats(xid uint32, rule *ofRule, actions, writeAc
 	}
 	tr.Commit()
 
-	probe.g.Unlock()
+	probe.Ctx.Graph.Unlock()
 }
 
 // NewOfProbe returns a new OpenFlow natively speaking probe
-func NewOfProbe(bridge string, address string, g *graph.Graph, node *graph.Node) BridgeOfProber {
+func NewOfProbe(ctx tp.Context, bridge string, address string) BridgeOfProber {
 	return &ofProbe{
+		Ctx:      ctx,
 		address:  address,
-		g:        g,
-		node:     node,
 		bridge:   bridge,
 		rules:    make(map[graph.Identifier]graph.Identifier),
 		requests: make(map[uint32]*ofRule),

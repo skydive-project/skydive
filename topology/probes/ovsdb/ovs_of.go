@@ -25,17 +25,15 @@ import (
 	"sync"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
-// OvsOfProbe is the type of the probe retrieving Openflow rules on an Open Vswitch
-type OvsOfProbe struct {
+// OvsOfProbeHandler is the type of the probe retrieving Openflow rules on an Open Vswitch
+type OvsOfProbeHandler struct {
 	sync.Mutex
 	Host           string                    // The host
-	Graph          *graph.Graph              // The graph that will receive the rules found
-	Root           *graph.Node               // The root node of the host in the graph
+	Ctx            tp.Context                // Probe context
 	bridgeOfProbes map[string]*bridgeOfProbe // The table of probes associated to each bridge
 	Translation    map[string]string         // A translation table to find the url for a given bridge knowing its name
 	Certificate    string                    // Path to the certificate used for authenticated communication with bridges
@@ -43,7 +41,7 @@ type OvsOfProbe struct {
 	CA             string                    // Path of the certicate of the Certificate authority used for authenticated communication with bridges
 	sslOk          bool                      // cert private key and ca are provisionned.
 	useNative      bool
-	ctx            context.Context
+	cancelCtx      context.Context
 }
 
 // BridgeOfProber is the type of the probe retrieving Openflow rules on a Bridge.
@@ -53,8 +51,8 @@ type BridgeOfProber interface {
 }
 
 type bridgeOfProbe struct {
-	cancel context.CancelFunc
-	prober BridgeOfProber
+	cancelFunc context.CancelFunc
+	prober     BridgeOfProber
 }
 
 var (
@@ -63,44 +61,51 @@ var (
 )
 
 // newbridgeOfProbe creates a probe and launch the active process
-func (o *OvsOfProbe) newbridgeOfProbe(host string, bridge string, uuid string, bridgeNode *graph.Node) (*bridgeOfProbe, error) {
+func (o *OvsOfProbeHandler) newbridgeOfProbe(host string, bridge string, uuid string, bridgeNode *graph.Node) (*bridgeOfProbe, error) {
 	address, ok := o.Translation[bridge]
 	if !ok {
-		protocol, target, err := common.ParseAddr(config.GetString("ovs.ovsdb"))
+		protocol, target, err := common.ParseAddr(o.Ctx.Config.GetString("ovs.ovsdb"))
 		if err != nil || protocol != "unix" {
 			return nil, fmt.Errorf("Could not find translation unix address for %s in %v", bridge, o.Translation)
 		}
 		address = "unix://" + filepath.Join(filepath.Dir(target), fmt.Sprintf("%s.mgmt", bridge))
 	}
 
-	ctx, cancel := context.WithCancel(o.ctx)
+	cancelCtx, cancelFunc := context.WithCancel(o.cancelCtx)
+
+	ctx := tp.Context{
+		Logger:   o.Ctx.Logger,
+		Config:   o.Ctx.Config,
+		Graph:    o.Ctx.Graph,
+		RootNode: bridgeNode,
+	}
 
 	var prober BridgeOfProber
 	if o.useNative {
-		prober = NewOfProbe(bridge, address, o.Graph, bridgeNode)
+		prober = NewOfProbe(ctx, bridge, address)
 	} else {
-		prober = NewOfctlProbe(host, bridge, uuid, address, bridgeNode, o)
+		prober = NewOfctlProbe(ctx, host, bridge, uuid, address, o)
 	}
 
-	if err := prober.Monitor(ctx); err != nil {
-		logging.GetLogger().Error(err)
-		cancel()
+	if err := prober.Monitor(cancelCtx); err != nil {
+		o.Ctx.Logger.Error(err)
+		cancelFunc()
 		return nil, err
 	}
 
 	if err := prober.MonitorGroup(); err != nil {
 		if err == ErrGroupNotSupported {
-			logging.GetLogger().Warningf("Cannot add group probe on %s - %s", bridge, err)
+			o.Ctx.Logger.Warningf("Cannot add group probe on %s - %s", bridge, err)
 		} else {
-			logging.GetLogger().Errorf("Cannot add group probe on %s - %s", bridge, err)
+			o.Ctx.Logger.Errorf("Cannot add group probe on %s - %s", bridge, err)
 		}
 	}
 
-	return &bridgeOfProbe{cancel: cancel, prober: prober}, nil
+	return &bridgeOfProbe{cancelFunc: cancelFunc, prober: prober}, nil
 }
 
 // OnOvsBridgeAdd is called when a bridge is added
-func (o *OvsOfProbe) OnOvsBridgeAdd(bridgeNode *graph.Node) {
+func (o *OvsOfProbeHandler) OnOvsBridgeAdd(bridgeNode *graph.Node) {
 	o.Lock()
 	defer o.Unlock()
 
@@ -110,9 +115,9 @@ func (o *OvsOfProbe) OnOvsBridgeAdd(bridgeNode *graph.Node) {
 	if probe, ok := o.bridgeOfProbes[uuid]; ok {
 		if err := probe.prober.MonitorGroup(); err != nil {
 			if err == ErrGroupNotSupported {
-				logging.GetLogger().Warningf("Cannot add group probe on %s - %s", bridgeName, err)
+				o.Ctx.Logger.Warningf("Cannot add group probe on %s - %s", bridgeName, err)
 			} else {
-				logging.GetLogger().Errorf("Cannot add group probe on %s - %s", bridgeName, err)
+				o.Ctx.Logger.Errorf("Cannot add group probe on %s - %s", bridgeName, err)
 			}
 		}
 		return
@@ -123,63 +128,62 @@ func (o *OvsOfProbe) OnOvsBridgeAdd(bridgeNode *graph.Node) {
 		return
 	}
 
-	logging.GetLogger().Debugf("Probe added for %s on %s (%s)", bridgeName, o.Host, uuid)
+	o.Ctx.Logger.Debugf("Probe added for %s on %s (%s)", bridgeName, o.Host, uuid)
 	o.bridgeOfProbes[uuid] = bridgeOfProbe
 }
 
 // OnOvsBridgeDel is called when a bridge is deleted
-func (o *OvsOfProbe) OnOvsBridgeDel(uuid string) {
+func (o *OvsOfProbeHandler) OnOvsBridgeDel(uuid string) {
 	o.Lock()
 	defer o.Unlock()
 
 	if bridgeOfProbe, ok := o.bridgeOfProbes[uuid]; ok {
-		bridgeOfProbe.cancel()
+		bridgeOfProbe.cancelFunc()
 		delete(o.bridgeOfProbes, uuid)
 	}
 
 	// Clean all the rules attached to the bridge.
-	o.Graph.Lock()
-	defer o.Graph.Unlock()
+	o.Ctx.Graph.Lock()
+	defer o.Ctx.Graph.Unlock()
 
-	bridgeNode := o.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
+	bridgeNode := o.Ctx.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
 	if bridgeNode != nil {
-		rules := o.Graph.LookupChildren(bridgeNode, graph.Metadata{"Type": "ofrule"}, nil)
+		rules := o.Ctx.Graph.LookupChildren(bridgeNode, graph.Metadata{"Type": "ofrule"}, nil)
 		for _, ruleNode := range rules {
-			logging.GetLogger().Infof("Rule %v deleted (Bridge deleted)", ruleNode.Metadata["UUID"])
-			if err := o.Graph.DelNode(ruleNode); err != nil {
-				logging.GetLogger().Error(err)
+			o.Ctx.Logger.Infof("Rule %v deleted (Bridge deleted)", ruleNode.Metadata["UUID"])
+			if err := o.Ctx.Graph.DelNode(ruleNode); err != nil {
+				o.Ctx.Logger.Error(err)
 			}
 		}
 
-		groups := o.Graph.LookupChildren(bridgeNode, graph.Metadata{"Type": "ofgroup"}, nil)
+		groups := o.Ctx.Graph.LookupChildren(bridgeNode, graph.Metadata{"Type": "ofgroup"}, nil)
 		for _, groupNode := range groups {
-			logging.GetLogger().Infof("Group %v deleted (Bridge deleted)", groupNode.Metadata["UUID"])
-			if err := o.Graph.DelNode(groupNode); err != nil {
-				logging.GetLogger().Error(err)
+			o.Ctx.Logger.Infof("Group %v deleted (Bridge deleted)", groupNode.Metadata["UUID"])
+			if err := o.Ctx.Graph.DelNode(groupNode); err != nil {
+				o.Ctx.Logger.Error(err)
 			}
 		}
 	}
 }
 
-// NewOvsOfProbe creates a new probe associated to a given graph, root node and host.
-func NewOvsOfProbe(ctx context.Context, g *graph.Graph, root *graph.Node, host string) *OvsOfProbe {
-	if !config.GetBool("ovs.oflow.enable") {
+// NewOvsOfProbeHandler creates a new probe associated to a given graph, root node and host.
+func NewOvsOfProbeHandler(cancelCtx context.Context, ctx tp.Context, host string) *OvsOfProbeHandler {
+	if !ctx.Config.GetBool("ovs.oflow.enable") {
 		return nil
 	}
 
-	logging.GetLogger().Infof("Adding OVS probe on %s", host)
+	ctx.Logger.Infof("Adding OVS probe on %s", host)
 
-	translate := config.GetStringMapString("ovs.oflow.address")
-	cert := config.GetString("ovs.oflow.cert")
-	pk := config.GetString("ovs.oflow.key")
-	ca := config.GetString("ovs.oflow.ca")
+	translate := ctx.Config.GetStringMapString("ovs.oflow.address")
+	cert := ctx.Config.GetString("ovs.oflow.cert")
+	pk := ctx.Config.GetString("ovs.oflow.key")
+	ca := ctx.Config.GetString("ovs.oflow.ca")
 	sslOk := (pk != "") && (ca != "") && (cert != "")
-	useNative := config.GetBool("ovs.oflow.native")
+	useNative := ctx.Config.GetBool("ovs.oflow.native")
 
-	return &OvsOfProbe{
+	return &OvsOfProbeHandler{
 		Host:           host,
-		Graph:          g,
-		Root:           root,
+		Ctx:            ctx,
 		bridgeOfProbes: make(map[string]*bridgeOfProbe),
 		Translation:    translate,
 		Certificate:    cert,
@@ -187,6 +191,6 @@ func NewOvsOfProbe(ctx context.Context, g *graph.Graph, root *graph.Node, host s
 		CA:             ca,
 		sslOk:          sslOk,
 		useNative:      useNative,
-		ctx:            ctx,
+		cancelCtx:      cancelCtx,
 	}
 }

@@ -25,6 +25,9 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/skydive-project/skydive/logging"
+	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
 func TestProtectCommas(t *testing.T) {
@@ -39,9 +42,19 @@ func TestProtectCommas(t *testing.T) {
 	}
 }
 
+func newOfctlProbeTest() *OfctlProbe {
+	return &OfctlProbe{
+		Ctx:    tp.Context{Logger: logging.GetLogger()},
+		Host:   "host",
+		Bridge: "br",
+	}
+}
+
 func TestParseEvent(t *testing.T) {
+	probe := newOfctlProbeTest()
+
 	var line = " event=ADDED table=21 cookie=32 dl_src=01:00:00:00:00:00/01:00:00:00:00:00\n"
-	event, err := parseEvent(line, "br", "host-br-")
+	event, err := probe.parseEvent(line)
 	if err != nil {
 		t.Error("parseEvent should succeed")
 	}
@@ -60,8 +73,10 @@ func TestParseEvent(t *testing.T) {
 }
 
 func TestParseEventWithAction(t *testing.T) {
+	probe := newOfctlProbeTest()
+
 	var line = " event=ADDED table=21 cookie=32 actions=resubmit(,1)\n"
-	event, err := parseEvent(line, "br", "host-br-")
+	event, err := probe.parseEvent(line)
 	if err != nil {
 		t.Error("parseEvent should succeed")
 	}
@@ -77,8 +92,10 @@ func TestParseEventWithAction(t *testing.T) {
 }
 
 func TestParseEventRemove(t *testing.T) {
+	probe := newOfctlProbeTest()
+
 	var line = " event=DELETED reason=delete table=66 cookie=0 ip,nw_dst=192.168.0.1\n"
-	event, err := parseEvent(line, "br", "host-br-")
+	event, err := probe.parseEvent(line)
 	if err != nil {
 		t.Error("parseEvent should succeed")
 	}
@@ -150,10 +167,8 @@ func (r ExecuteForTest) Wait() error {
 
 func TestMakeCommand(t *testing.T) {
 	probe := &OfctlProbe{
-		OvsOfProbe: &OvsOfProbe{
+		Handler: &OvsOfProbeHandler{
 			Host:           "host",
-			Graph:          nil,
-			Root:           nil,
 			bridgeOfProbes: make(map[string]*bridgeOfProbe),
 			Translation:    make(map[string]string),
 			Certificate:    "",
@@ -175,10 +190,10 @@ func TestMakeCommand(t *testing.T) {
 	if err == nil {
 		t.Error("ssl case: should fail")
 	}
-	probe.OvsOfProbe.Certificate = "/cert"
-	probe.OvsOfProbe.PrivateKey = "/pk"
-	probe.OvsOfProbe.CA = "/ca"
-	probe.OvsOfProbe.sslOk = true
+	probe.Handler.Certificate = "/cert"
+	probe.Handler.PrivateKey = "/pk"
+	probe.Handler.CA = "/ca"
+	probe.Handler.sslOk = true
 	r, err = probe.makeCommand(com, ssl, arg1, arg2)
 	expected = []string{"c1", "c2", "ssl://sw:8000", "--certificate", "/cert", "--ca-cert", "/ca", "--private-key", "/pk", "a1", "a2"}
 	if err != nil || !reflect.DeepEqual(r, expected) {
@@ -188,11 +203,16 @@ func TestMakeCommand(t *testing.T) {
 func TestCompleteRule(t *testing.T) {
 	old := executor
 	defer func() { executor = old }()
+
+	ctx := tp.Context{Logger: logging.GetLogger()}
+
 	probe := &OfctlProbe{
-		OvsOfProbe: &OvsOfProbe{
+		Ctx:    ctx,
+		Host:   "host",
+		Bridge: "br",
+		Handler: &OvsOfProbeHandler{
+			Ctx:            ctx,
 			Host:           "host",
-			Graph:          nil,
-			Root:           nil,
 			bridgeOfProbes: make(map[string]*bridgeOfProbe),
 			Translation:    make(map[string]string),
 			Certificate:    "",
@@ -203,12 +223,12 @@ func TestCompleteRule(t *testing.T) {
 	}
 	executor = ExecuteForTest{Results: []string{"NXST_FLOW reply (xid=0x4):\n cookie=0x20, duration=57227.249s, table=21, n_packets=0, n_bytes=0, idle_age=57227, priority=1,dl_src=01:00:00:00:00:00/01:00:00:00:00:00 actions=drop"}}
 	var line = " event=ADDED table=21 cookie=32 dl_src=01:00:00:00:00:00/01:00:00:00:00:00\n"
-	event, _ := parseEvent(line, "br", "host-br-")
+	event, _ := probe.parseEvent(line)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	cancelCtx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
 
-	err := probe.completeEvent(ctx, probe.OvsOfProbe, &event, "host-br-")
+	err := probe.completeEvent(cancelCtx, &event)
 	if err != nil {
 		t.Error("completeRule: Should not err")
 	}
