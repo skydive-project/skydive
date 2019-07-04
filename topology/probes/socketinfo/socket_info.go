@@ -1,7 +1,7 @@
-// +build !linux
+// +build linux
 
 /*
- * Copyright (C) 2018 Red Hat, Inc.
+ * Copyright (C) 2019 Red Hat, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,24 +20,10 @@
 package socketinfo
 
 import (
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/probe"
-	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
 // ProbeHandler describes a probe that collects active connections
 type ProbeHandler struct {
-}
-
-// Start the socket info probe
-func (s *ProbeHandler) Start() {
-}
-
-// Stop the socket info probe
-func (s *ProbeHandler) Stop() {
-}
-
-// Init initializes a new SocketInfo Probe
-func (s *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
-	return nil, common.ErrNotImplemented
+	probe.Handler
 }

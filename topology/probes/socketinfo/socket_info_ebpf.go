@@ -25,21 +25,19 @@ import (
 
 	"github.com/weaveworks/tcptracer-bpf/pkg/tracer"
 
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
+	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
-// EBPFSocketInfoProbe describes a eBPF based socket mapper
-type EBPFSocketInfoProbe struct {
-	*ProcSocketInfoProbe
+// EBPFProbe describes a eBPF based socket mapper
+type EBPFProbe struct {
+	*ProcProbe
 	tracer *tracer.Tracer
 }
 
 // TCPEventV4 is called when a TCPv4 event occurs
-func (s *EBPFSocketInfoProbe) TCPEventV4(tcpV4 tracer.TcpV4) {
+func (s *EBPFProbe) TCPEventV4(tcpV4 tracer.TcpV4) {
 	srcAddr := &net.TCPAddr{IP: tcpV4.SAddr.To4(), Port: int(tcpV4.SPort)}
 	dstAddr := &net.TCPAddr{IP: tcpV4.DAddr.To4(), Port: int(tcpV4.DPort)}
 
@@ -63,11 +61,11 @@ func (s *EBPFSocketInfoProbe) TCPEventV4(tcpV4 tracer.TcpV4) {
 }
 
 // LostV4 is called when a TCPv4 event was lost
-func (s *EBPFSocketInfoProbe) LostV4(uint64) {
+func (s *EBPFProbe) LostV4(uint64) {
 }
 
 // TCPEventV6 is called when a TCPv6 event occurs
-func (s *EBPFSocketInfoProbe) TCPEventV6(tcpV6 tracer.TcpV6) {
+func (s *EBPFProbe) TCPEventV6(tcpV6 tracer.TcpV6) {
 	srcAddr := &net.TCPAddr{IP: tcpV6.SAddr.To16(), Port: int(tcpV6.SPort)}
 	dstAddr := &net.TCPAddr{IP: tcpV6.DAddr.To16(), Port: int(tcpV6.DPort)}
 
@@ -91,18 +89,18 @@ func (s *EBPFSocketInfoProbe) TCPEventV6(tcpV6 tracer.TcpV6) {
 }
 
 // LostV6 is called when a TCPv6 event was lost
-func (s *EBPFSocketInfoProbe) LostV6(uint64) {
+func (s *EBPFProbe) LostV6(uint64) {
 }
 
 // Start the flow Probe
-func (s *EBPFSocketInfoProbe) Start() {
+func (s *EBPFProbe) Start() {
 	s.tracer.Start()
 
 	s.scanProc()
 	s.updateMetadata()
 
 	go func() {
-		seconds := config.GetInt("agent.topology.socketinfo.host_update")
+		seconds := s.Ctx.Config.GetInt("agent.topology.socketinfo.host_update")
 		ticker := time.NewTicker(time.Duration(seconds) * time.Second)
 		defer ticker.Stop()
 
@@ -118,22 +116,26 @@ func (s *EBPFSocketInfoProbe) Start() {
 }
 
 // Stop the flow Probe
-func (s *EBPFSocketInfoProbe) Stop() {
-	s.ProcSocketInfoProbe.Stop()
+func (s *EBPFProbe) Stop() {
+	s.ProcProbe.Stop()
 	s.tracer.Stop()
 }
 
-// NewSocketInfoProbe create a new SocketInfo Probe
-func NewSocketInfoProbe(g *graph.Graph, host *graph.Node) probe.Probe {
-	s := &EBPFSocketInfoProbe{
-		ProcSocketInfoProbe: NewProcSocketInfoProbe(g, host),
+// Init initializes a new SocketInfo Probe
+func (s *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+	procProbe := NewProcProbe(ctx)
+
+	probe := &EBPFProbe{
+		ProcProbe: procProbe,
 	}
+
+	s.Handler = probe
 
 	var err error
-	if s.tracer, err = tracer.NewTracer(s); err != nil {
-		logging.GetLogger().Infof("Socket info probe is running in compatibility mode: %s", err.Error())
-		return s.ProcSocketInfoProbe
+	if probe.tracer, err = tracer.NewTracer(probe); err != nil {
+		ctx.Logger.Infof("Socket info probe is running in compatibility mode: %s", err)
+		s.Handler = procProbe
 	}
 
-	return s
+	return s, nil
 }

@@ -33,9 +33,8 @@ import (
 	"time"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/graffiti/graph"
+	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
 var tcpStates = []string{
@@ -53,12 +52,11 @@ var tcpStates = []string{
 	"CLOSING",
 }
 
-// ProcSocketInfoProbe describes a probe that collects active connections
-type ProcSocketInfoProbe struct {
+// ProcProbe describes a probe that collects active connections
+type ProcProbe struct {
+	Ctx       tp.Context
 	connCache *ConnectionCache
 	quit      chan bool
-	graph     *graph.Graph
-	host      *graph.Node
 	procGlob  string
 }
 
@@ -75,7 +73,7 @@ func getProcessInfo(pid int) (*ProcessInfo, error) {
 	}, nil
 }
 
-func (s *ProcSocketInfoProbe) scanProc() error {
+func (s *ProcProbe) scanProc() error {
 	s.connCache.Flush()
 
 	inodePids := make(map[int]int)
@@ -230,22 +228,22 @@ func (s *ProcSocketInfoProbe) scanProc() error {
 	return nil
 }
 
-func (s *ProcSocketInfoProbe) updateMetadata() {
+func (s *ProcProbe) updateMetadata() {
 	var sockets []*ConnectionInfo
 	for _, item := range s.connCache.Items() {
 		conn := item.Object.(*ConnectionInfo)
 		sockets = append(sockets, conn)
 	}
 
-	s.graph.Lock()
-	s.graph.AddMetadata(s.host, "Sockets", sockets)
-	s.graph.Unlock()
+	s.Ctx.Graph.Lock()
+	s.Ctx.Graph.AddMetadata(s.Ctx.RootNode, "Sockets", sockets)
+	s.Ctx.Graph.Unlock()
 }
 
 // MapTCP returns the sending and receiving processes for a pair of TCP addresses
 // When using /proc, if the connection was not found at the first try, we scan
 // /proc again
-func (s *ProcSocketInfoProbe) MapTCP(srcAddr, dstAddr *net.TCPAddr) (src *ProcessInfo, dst *ProcessInfo) {
+func (s *ProcProbe) MapTCP(srcAddr, dstAddr *net.TCPAddr) (src *ProcessInfo, dst *ProcessInfo) {
 	if src, dst = s.connCache.MapTCP(srcAddr, dstAddr); src == nil && dst == nil {
 		s.scanProc()
 		src, dst = s.connCache.MapTCP(srcAddr, dstAddr)
@@ -254,12 +252,12 @@ func (s *ProcSocketInfoProbe) MapTCP(srcAddr, dstAddr *net.TCPAddr) (src *Proces
 }
 
 // Start the socket info probe
-func (s *ProcSocketInfoProbe) Start() {
+func (s *ProcProbe) Start() {
 	s.scanProc()
 	s.updateMetadata()
 
 	go func() {
-		seconds := config.GetInt("agent.topology.socketinfo.host_update")
+		seconds := s.Ctx.Config.GetInt("agent.topology.socketinfo.host_update")
 		ticker := time.NewTicker(time.Duration(seconds) * time.Second)
 		defer ticker.Stop()
 
@@ -276,23 +274,22 @@ func (s *ProcSocketInfoProbe) Start() {
 }
 
 // Stop the socket info probe
-func (s *ProcSocketInfoProbe) Stop() {
+func (s *ProcProbe) Stop() {
 	s.quit <- true
 }
 
-// NewProcSocketInfoProbe create a new socket info probe
-func NewProcSocketInfoProbe(g *graph.Graph, host *graph.Node) *ProcSocketInfoProbe {
+// NewProcProbe create a new socket info probe
+func NewProcProbe(ctx tp.Context) *ProcProbe {
 	procGlob := "/proc/[0-9]*/task/[0-9]*/net"
 	pid := os.Getpid()
 	if _, err := os.Stat(fmt.Sprintf("/proc/%d/tasks/%d/net", pid, pid)); os.IsNotExist(err) {
 		procGlob = "/proc/[0-9]*/net"
 	}
 
-	return &ProcSocketInfoProbe{
+	return &ProcProbe{
+		Ctx:       ctx,
 		procGlob:  procGlob,
 		connCache: NewConnectionCache(),
 		quit:      make(chan bool),
-		graph:     g,
-		host:      host,
 	}
 }
