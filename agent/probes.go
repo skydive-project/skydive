@@ -40,7 +40,9 @@ import (
 )
 
 // NewTopologyProbeBundleFromConfig creates a new topology probe.Bundle based on the configuration
-func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*probe.Bundle, error) {
+// 最后一个括号是函数的返回值，可以有多个
+// 第一括号为接收器
+func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*probe.Bundle, error) { 
 	list := config.GetStringSlice("agent.topology.probes")
 	logging.GetLogger().Infof("Topology probes: %v", list)
 
