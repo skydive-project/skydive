@@ -36,6 +36,6 @@ func (p *ProbeHandler) Start() {}
 func (p *ProbeHandler) Stop() {}
 
 // Init initializes a new topology Lxd probe
-func (p *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (*ProbeHandler, error) {
+func (p *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	return nil, common.ErrNotImplemented
 }

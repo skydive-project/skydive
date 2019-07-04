@@ -21,7 +21,8 @@ package lldp
 
 import (
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/probe"
+	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
 // Probe describes a LLDP probe that does nothing
@@ -36,7 +37,7 @@ func (p *Probe) Start() {
 func (p *Probe) Stop() {
 }
 
-// NewProbe returns a LLDP probe that does nothing
-func NewProbe(g *graph.Graph, hostNode *graph.Node, interfaces []string) (*Probe, error) {
+// Init initializes a new LLDP probe
+func (p *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (*Probe, error) {
 	return nil, common.ErrNotImplemented
 }

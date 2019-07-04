@@ -286,7 +286,7 @@ func (p *ProbeHandler) Stop() {
 }
 
 // NewProbeHandler initializes a new topology Lxd probe
-func (p *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (*ProbeHandler, error) {
+func (p *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	nsHandler := bundle.GetHandler("netns")
 	if nsHandler == nil {
 		return nil, errors.New("unable to find the netns handler")

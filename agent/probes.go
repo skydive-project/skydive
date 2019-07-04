@@ -82,8 +82,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 		case "docker":
 			handler, err = new(docker.ProbeHandler).Init(ctx, bundle)
 		case "lldp":
-			interfaces := config.GetStringSlice("agent.topology.lldp.interfaces")
-			handler, err = lldp.NewProbe(g, hostNode, interfaces)
+			handler, err = new(lldp.Probe).Init(ctx, bundle)
 		case "neutron":
 			handler, err = neutron.NewProbeFromConfig(g)
 		case "opencontrail":
