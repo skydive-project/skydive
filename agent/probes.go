@@ -86,7 +86,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 		case "neutron":
 			handler, err = new(neutron.Probe).Init(ctx, bundle)
 		case "opencontrail":
-			handler, err = opencontrail.NewProbeFromConfig(g, hostNode)
+			handler, err = new(opencontrail.Probe).Init(ctx, bundle)
 		case "socketinfo":
 			handler = socketinfo.NewSocketInfoProbe(g, hostNode)
 		case "libvirt":

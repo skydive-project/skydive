@@ -21,7 +21,8 @@ package opencontrail
 
 import (
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/probe"
+	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
 // Probe describes a probe that reads OpenContrail database and updates the graph
@@ -29,14 +30,14 @@ type Probe struct {
 }
 
 // Start the probe
-func (mapper *Probe) Start() {
+func (p *Probe) Start() {
 }
 
 // Stop the probe
-func (mapper *Probe) Stop() {
+func (p *Probe) Stop() {
 }
 
-// NewProbeFromConfig creates a new OpenContrail probe based on configuration
-func NewProbeFromConfig(g *graph.Graph, r *graph.Node) (*Probe, error) {
+// Init initializes a new OpenContrail probe based on configuration
+func (p *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	return nil, common.ErrNotImplemented
 }
