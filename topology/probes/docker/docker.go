@@ -21,6 +21,7 @@ package docker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -34,8 +35,9 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
+	tp "github.com/skydive-project/skydive/topology/probes"
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
 	sversion "github.com/skydive-project/skydive/version"
 )
@@ -75,7 +77,7 @@ func (p *ProbeHandler) registerContainer(id string) {
 	}
 	info, err := p.client.ContainerInspect(context.Background(), id)
 	if err != nil {
-		logging.GetLogger().Errorf("Failed to inspect Docker container %s: %s", id, err)
+		p.Ctx.Logger.Errorf("Failed to inspect Docker container %s: %s", id, err)
 		return
 	}
 
@@ -86,23 +88,23 @@ func (p *ProbeHandler) registerContainer(id string) {
 	defer nsHandle.Close()
 
 	namespace := p.containerNamespace(info.State.Pid)
-	logging.GetLogger().Debugf("Register docker container %s and PID %d", info.ID, info.State.Pid)
+	p.Ctx.Logger.Debugf("Register docker container %s and PID %d", info.ID, info.State.Pid)
 
 	var n *graph.Node
 	if p.hostNs.Equal(nsHandle) {
 		// The container is in net=host mode
-		n = p.Root
+		n = p.Ctx.RootNode
 	} else {
 		if n, err = p.Register(namespace, info.Name[1:]); err != nil {
-			logging.GetLogger().Debugf("Failed to register probe for namespace %s: %s", namespace, err)
+			p.Ctx.Logger.Debugf("Failed to register probe for namespace %s: %s", namespace, err)
 			return
 		}
 
-		p.Graph.Lock()
-		if err := p.Graph.AddMetadata(n, "Manager", "docker"); err != nil {
-			logging.GetLogger().Error(err)
+		p.Ctx.Graph.Lock()
+		if err := p.Ctx.Graph.AddMetadata(n, "Manager", "docker"); err != nil {
+			p.Ctx.Logger.Error(err)
 		}
-		p.Graph.Unlock()
+		p.Ctx.Graph.Unlock()
 	}
 
 	pid := int64(info.State.Pid)
@@ -116,13 +118,13 @@ func (p *ProbeHandler) registerContainer(id string) {
 		dockerMetadata.Labels = graph.Metadata(common.NormalizeValue(info.Config.Labels).(map[string]interface{}))
 	}
 
-	p.Graph.Lock()
-	defer p.Graph.Unlock()
+	p.Ctx.Graph.Lock()
+	defer p.Ctx.Graph.Unlock()
 
-	containerNode := p.Graph.LookupFirstNode(graph.Metadata{"InitProcessPID": pid})
+	containerNode := p.Ctx.Graph.LookupFirstNode(graph.Metadata{"InitProcessPID": pid})
 	if containerNode != nil {
-		if err := p.Graph.AddMetadata(containerNode, "Docker", dockerMetadata); err != nil {
-			logging.GetLogger().Error(err)
+		if err := p.Ctx.Graph.AddMetadata(containerNode, "Docker", dockerMetadata); err != nil {
+			p.Ctx.Logger.Error(err)
 		}
 	} else {
 		metadata := graph.Metadata{
@@ -133,12 +135,12 @@ func (p *ProbeHandler) registerContainer(id string) {
 			"Docker":         dockerMetadata,
 		}
 
-		if containerNode, err = p.Graph.NewNode(graph.GenID(), metadata); err != nil {
-			logging.GetLogger().Error(err)
+		if containerNode, err = p.Ctx.Graph.NewNode(graph.GenID(), metadata); err != nil {
+			p.Ctx.Logger.Error(err)
 			return
 		}
 	}
-	topology.AddOwnershipLink(p.Graph, n, containerNode, nil)
+	topology.AddOwnershipLink(p.Ctx.Graph, n, containerNode, nil)
 
 	p.containerMap[info.ID] = containerInfo{
 		Pid:  info.State.Pid,
@@ -155,16 +157,16 @@ func (p *ProbeHandler) unregisterContainer(id string) {
 		return
 	}
 
-	p.Graph.Lock()
-	if err := p.Graph.DelNode(infos.Node); err != nil {
-		p.Graph.Unlock()
-		logging.GetLogger().Error(err)
+	p.Ctx.Graph.Lock()
+	if err := p.Ctx.Graph.DelNode(infos.Node); err != nil {
+		p.Ctx.Graph.Unlock()
+		p.Ctx.Logger.Error(err)
 		return
 	}
-	p.Graph.Unlock()
+	p.Ctx.Graph.Unlock()
 
 	namespace := p.containerNamespace(infos.Pid)
-	logging.GetLogger().Debugf("Stop listening for namespace %s with PID %d", namespace, infos.Pid)
+	p.Ctx.Logger.Debugf("Stop listening for namespace %s with PID %d", namespace, infos.Pid)
 	p.Unregister(namespace)
 
 	delete(p.containerMap, id)
@@ -181,17 +183,17 @@ func (p *ProbeHandler) handleDockerEvent(event *events.Message) {
 func (p *ProbeHandler) connect() error {
 	var err error
 
-	logging.GetLogger().Debugf("Connecting to Docker daemon: %s", p.url)
+	p.Ctx.Logger.Debugf("Connecting to Docker daemon: %s", p.url)
 	defaultHeaders := map[string]string{"User-Agent": fmt.Sprintf("skydive-agent-%s", sversion.Version)}
 	p.client, err = client.NewClient(p.url, ClientAPIVersion, nil, defaultHeaders)
 	if err != nil {
-		logging.GetLogger().Errorf("Failed to create client to Docker daemon: %s", err)
+		p.Ctx.Logger.Errorf("Failed to create client to Docker daemon: %s", err)
 		return err
 	}
 	defer p.client.Close()
 
 	if _, err := p.client.ServerVersion(context.Background()); err != nil {
-		logging.GetLogger().Errorf("Failed to connect to Docker daemon: %s", err)
+		p.Ctx.Logger.Errorf("Failed to connect to Docker daemon: %s", err)
 		return err
 	}
 
@@ -222,7 +224,7 @@ func (p *ProbeHandler) connect() error {
 
 		containers, err := p.client.ContainerList(ctx, types.ContainerListOptions{})
 		if err != nil {
-			logging.GetLogger().Errorf("Failed to list containers: %s", err)
+			p.Ctx.Logger.Errorf("Failed to list containers: %s", err)
 			return
 		}
 
@@ -285,19 +287,25 @@ func (p *ProbeHandler) Stop() {
 	atomic.StoreInt64(&p.state, common.StoppedState)
 }
 
-// NewProbeHandler creates a new topology Docker probe
-func NewProbeHandler(nsHandler *ns.ProbeHandler, dockerURL, netnsRunPath string) (*ProbeHandler, error) {
-	handler := &ProbeHandler{
-		ProbeHandler: nsHandler,
-		url:          dockerURL,
-		containerMap: make(map[string]containerInfo),
-		state:        common.StoppedState,
+// Init initializes a new topology Docker probe
+func (p *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+	nsHandler := bundle.GetHandler("netns")
+	if nsHandler == nil {
+		return nil, errors.New("unable to find the netns handler")
 	}
+
+	dockerURL := ctx.Config.GetString("agent.topology.docker.url")
+	netnsRunPath := ctx.Config.GetString("agent.topology.docker.netns.run_path")
+
+	p.ProbeHandler = nsHandler.(*ns.ProbeHandler)
+	p.url = dockerURL
+	p.containerMap = make(map[string]containerInfo)
+	p.state = common.StoppedState
 
 	if netnsRunPath != "" {
-		nsHandler.Exclude(netnsRunPath + "/default")
-		nsHandler.Watch(netnsRunPath)
+		p.Exclude(netnsRunPath + "/default")
+		p.Watch(netnsRunPath)
 	}
 
-	return handler, nil
+	return p, nil
 }

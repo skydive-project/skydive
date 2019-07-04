@@ -21,6 +21,8 @@ package netlink
 
 import (
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/probe"
+	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
 // ProbeHandler describes a list NetLink NameSpace probe to enhance the graph
@@ -36,6 +38,6 @@ func (u *ProbeHandler) Stop() {
 }
 
 // Init initializes a new netlink probe
-func (u *ProbeHandler) Init(ctx tp.Context) (*ProbeHandler, error) {
+func (u *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	return nil, common.ErrNotImplemented
 }

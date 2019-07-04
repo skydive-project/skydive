@@ -22,7 +22,8 @@ package lxd
 
 import (
 	"github.com/skydive-project/skydive/common"
-	ns "github.com/skydive-project/skydive/topology/probes/netns"
+	"github.com/skydive-project/skydive/probe"
+	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
 // ProbeHandler describes a Lxd topology graph that enhance the graph
@@ -34,7 +35,7 @@ func (p *ProbeHandler) Start() {}
 // Stop the probe handler
 func (p *ProbeHandler) Stop() {}
 
-// NewProbeHandler creates a new topology Lxd probe
-func NewProbeHandler(nsHandler *ns.ProbeHandler, lxdURL string) (*ProbeHandler, error) {
+// Init initializes a new topology Lxd probe
+func (p *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (*ProbeHandler, error) {
 	return nil, common.ErrNotImplemented
 }

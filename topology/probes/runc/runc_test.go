@@ -23,6 +23,9 @@ import (
 	"testing"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/logging"
+	tp "github.com/skydive-project/skydive/topology/probes"
+	ns "github.com/skydive-project/skydive/topology/probes/netns"
 )
 
 const stateBasename = "state.json"
@@ -64,7 +67,13 @@ func TestLabels(t *testing.T) {
 		"io.kubernetes.pod.namespace=kube-system",
 	}
 
-	labels := getLabels(state.Config.Labels)
+	handler := &ProbeHandler{
+		ProbeHandler: &ns.ProbeHandler{
+			Ctx: tp.Context{Logger: logging.GetLogger()},
+		},
+	}
+
+	labels := handler.getLabels(state.Config.Labels)
 	value, err := common.GetMapField(labels, "io.kubernetes.container.ports.containerPort")
 	if err != nil || value.(float64) != 9090 {
 		t.Error("unable to find expected label value")

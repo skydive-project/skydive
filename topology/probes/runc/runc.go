@@ -21,6 +21,7 @@ package runc
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -35,10 +36,10 @@ import (
 	"github.com/vishvananda/netns"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
+	tp "github.com/skydive-project/skydive/topology/probes"
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
 )
 
@@ -100,14 +101,14 @@ func (ips *initProcessStart) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func getLabels(raw []string) graph.Metadata {
+func (p *ProbeHandler) getLabels(raw []string) graph.Metadata {
 	labels := graph.Metadata{}
 
 	for _, label := range raw {
 		kv := strings.SplitN(label, "=", 2)
 		switch len(kv) {
 		case 1:
-			logging.GetLogger().Warningf("Label format should be key=value: %s", label)
+			p.Ctx.Logger.Warningf("Label format should be key=value: %s", label)
 		case 2:
 			var value interface{}
 			if err := json.Unmarshal([]byte(kv[1]), &value); err != nil {
@@ -183,7 +184,7 @@ func getHostsFromState(state *containerState) (string, error) {
 	return "", fmt.Errorf("Unable to find binding of %s", path)
 }
 
-func parseHosts(state *containerState) *Hosts {
+func (p *ProbeHandler) parseHosts(state *containerState) *Hosts {
 	path, err := getHostsFromState(state)
 	if err != nil {
 		return nil
@@ -192,9 +193,9 @@ func parseHosts(state *containerState) *Hosts {
 	hosts, err := readHosts(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			logging.GetLogger().Debug(err)
+			p.Ctx.Logger.Debug(err)
 		} else {
-			logging.GetLogger().Error(err)
+			p.Ctx.Logger.Error(err)
 		}
 
 		return nil
@@ -203,26 +204,26 @@ func parseHosts(state *containerState) *Hosts {
 	return hosts
 }
 
-func getMetadata(state *containerState) Metadata {
+func (p *ProbeHandler) getMetadata(state *containerState) Metadata {
 	m := Metadata{
 		ContainerID: state.ID,
 		Status:      getStatus(state),
 	}
 
-	if labels := getLabels(state.Config.Labels); len(labels) > 0 {
+	if labels := p.getLabels(state.Config.Labels); len(labels) > 0 {
 		m.Labels = labels
 
 		if b, ok := labels["bundle"]; ok {
 			cc, err := getCreateConfig(b.(string) + "/artifacts/create-config")
 			if err != nil {
-				logging.GetLogger().Error(err)
+				p.Ctx.Logger.Error(err)
 			} else {
 				m.CreateConfig = cc
 			}
 		}
 	}
 
-	if hosts := parseHosts(state); hosts != nil {
+	if hosts := p.parseHosts(state); hosts != nil {
 		m.Hosts = hosts
 	}
 
@@ -235,9 +236,9 @@ func (p *ProbeHandler) updateContainer(path string, cnt *container) error {
 		return err
 	}
 
-	p.Graph.Lock()
-	p.Graph.AddMetadata(cnt.node, "Runc", getMetadata(state))
-	p.Graph.Unlock()
+	p.Ctx.Graph.Lock()
+	p.Ctx.Graph.AddMetadata(cnt.node, "Runc", p.getMetadata(state))
+	p.Ctx.Graph.Unlock()
 
 	return nil
 }
@@ -258,43 +259,43 @@ func (p *ProbeHandler) registerContainer(path string) error {
 	defer nsHandle.Close()
 
 	namespace := p.containerNamespace(state.InitProcessPid)
-	logging.GetLogger().Debugf("Register runc container %s and PID %d", state.ID, state.InitProcessPid)
+	p.Ctx.Logger.Debugf("Register runc container %s and PID %d", state.ID, state.InitProcessPid)
 
 	var n *graph.Node
 	if p.hostNs.Equal(nsHandle) {
 		// The container is in net=host mode
-		n = p.Root
+		n = p.Ctx.RootNode
 	} else {
 		if n, err = p.Register(namespace, state.ID); err != nil {
 			return err
 		}
 
-		p.Graph.Lock()
-		tr := p.Graph.StartMetadataTransaction(n)
+		p.Ctx.Graph.Lock()
+		tr := p.Ctx.Graph.StartMetadataTransaction(n)
 		tr.AddMetadata("Runtime", "runc")
 
 		if _, err := n.GetFieldString("Manager"); err != nil {
 			tr.AddMetadata("Manager", "runc")
 		}
 		if err := tr.Commit(); err != nil {
-			logging.GetLogger().Error(err)
+			p.Ctx.Logger.Error(err)
 		}
-		p.Graph.Unlock()
+		p.Ctx.Graph.Unlock()
 	}
 
 	pid := int64(state.InitProcessPid)
-	runcMetadata := getMetadata(state)
+	runcMetadata := p.getMetadata(state)
 
-	p.Graph.Lock()
-	defer p.Graph.Unlock()
+	p.Ctx.Graph.Lock()
+	defer p.Ctx.Graph.Unlock()
 
-	containerNode := p.Graph.LookupFirstNode(graph.Metadata{"InitProcessPID": pid})
+	containerNode := p.Ctx.Graph.LookupFirstNode(graph.Metadata{"InitProcessPID": pid})
 	if containerNode != nil {
-		tr := p.Graph.StartMetadataTransaction(containerNode)
+		tr := p.Ctx.Graph.StartMetadataTransaction(containerNode)
 		tr.AddMetadata("Runc", runcMetadata)
 		tr.AddMetadata("Runtime", "runc")
 		if err := tr.Commit(); err != nil {
-			logging.GetLogger().Error(err)
+			p.Ctx.Logger.Error(err)
 		}
 	} else {
 		metadata := graph.Metadata{
@@ -306,11 +307,11 @@ func (p *ProbeHandler) registerContainer(path string) error {
 			"Runc":           runcMetadata,
 		}
 
-		if containerNode, err = p.Graph.NewNode(graph.GenID(), metadata); err != nil {
+		if containerNode, err = p.Ctx.Graph.NewNode(graph.GenID(), metadata); err != nil {
 			return err
 		}
 	}
-	topology.AddOwnershipLink(p.Graph, n, containerNode, nil)
+	topology.AddOwnershipLink(p.Ctx.Graph, n, containerNode, nil)
 
 	p.containers[path] = &container{
 		namespace: namespace,
@@ -341,7 +342,7 @@ func (p *ProbeHandler) initializeFolder(path string) {
 				err = p.registerContainer(subpath)
 			}
 			if err != nil {
-				logging.GetLogger().Error(err)
+				p.Ctx.Logger.Error(err)
 			}
 		}
 	}
@@ -361,7 +362,7 @@ func (p *ProbeHandler) initialize(path string) {
 
 		p.initializeFolder(path)
 
-		logging.GetLogger().Debugf("Probe initialized for %s", path)
+		p.Ctx.Logger.Debugf("Probe initialized for %s", path)
 
 		return nil
 	}, math.MaxInt32, time.Second)
@@ -385,7 +386,7 @@ func (p *ProbeHandler) start() {
 
 	var err error
 	if p.hostNs, err = netns.Get(); err != nil {
-		logging.GetLogger().Errorf("Unable to get host namespace: %s", err)
+		p.Ctx.Logger.Errorf("Unable to get host namespace: %s", err)
 		return
 	}
 
@@ -422,7 +423,7 @@ func (p *ProbeHandler) start() {
 						err = p.registerContainer(ev.Name)
 					}
 					if err != nil {
-						logging.GetLogger().Error(err)
+						p.Ctx.Logger.Error(err)
 					}
 				}
 			}
@@ -452,7 +453,7 @@ func (p *ProbeHandler) start() {
 				}
 			}
 		case err := <-p.watcher.Errors:
-			logging.GetLogger().Errorf("Error while watching runc state folder: %s", err)
+			p.Ctx.Logger.Errorf("Error while watching runc state folder: %s", err)
 		case <-ticker.C:
 		}
 	}
@@ -476,22 +477,25 @@ func (p *ProbeHandler) Stop() {
 	atomic.StoreInt64(&p.state, common.StoppedState)
 }
 
-// NewProbeHandler creates a new topology runc probe
-func NewProbeHandler(nsHandler *ns.ProbeHandler) (*ProbeHandler, error) {
+// Init initializes a new topology runc probe
+func (p *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+	nsHandler := bundle.GetHandler("netns")
+	if nsHandler == nil {
+		return nil, errors.New("unable to find the netns handler")
+	}
+
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("Unable to create a new Watcher: %s", err)
 	}
 
-	paths := config.GetStringSlice("agent.topology.runc.run_path")
+	paths := ctx.Config.GetStringSlice("agent.topology.runc.run_path")
 
-	handler := &ProbeHandler{
-		ProbeHandler: nsHandler,
-		state:        common.StoppedState,
-		watcher:      watcher,
-		paths:        paths,
-		containers:   make(map[string]*container),
-	}
+	p.ProbeHandler = nsHandler.(*ns.ProbeHandler)
+	p.state = common.StoppedState
+	p.watcher = watcher
+	p.paths = paths
+	p.containers = make(map[string]*container)
 
-	return handler, nil
+	return p, nil
 }

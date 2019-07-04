@@ -21,8 +21,8 @@ package netns
 
 import (
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/topology/probes/netlink"
+	"github.com/skydive-project/skydive/probe"
+	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
 // ProbeHandler describes a netlink probe handler in a network namespace
@@ -37,7 +37,7 @@ func (u *ProbeHandler) Start() {
 func (u *ProbeHandler) Stop() {
 }
 
-// NewProbe creates a new network namespace probe
-func NewProbeHandler(g *graph.Graph, n *graph.Node, nlHandler *netlink.ProbeHandler) (*ProbeHandler, error) {
+// Init initializes a new network namespace probe
+func (u *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	return nil, common.ErrNotImplemented
 }

@@ -21,7 +21,8 @@ package runc
 
 import (
 	"github.com/skydive-project/skydive/common"
-	ns "github.com/skydive-project/skydive/topology/probes/netns"
+	"github.com/skydive-project/skydive/probe"
+	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
 // ProbeHandler describes a list NetLink NameSpace probe to enhance the graph
@@ -36,7 +37,7 @@ func (p *ProbeHandler) Start() {
 func (p *ProbeHandler) Stop() {
 }
 
-// NewProbeHandler creates a new runc probe
-func NewProbeHandler(nsHandler *ns.ProbeHandler) (*ProbeHandler, error) {
+// Init initializes a new topology runc probe
+func (p *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	return nil, common.ErrNotImplemented
 }
