@@ -1,7 +1,18 @@
 ---
 UUID: "85757b38-6e21-11e8-b42d-28d2442e1329"
 Name: "CheckConnectivity"
-Description: "Test connectivity between two interfaces"
+Title: "Test connectivity between two interfaces"
+Abstract: "This workflow aims to test the connectivity between two interfaces. It returns the status of the connection, true or false."
+Description:
+  - How to use:
+      1: Select the Source and Destination Nodes to check the Connectivity between them
+      2: Hit the 'Execute' button to run the workflow
+      3: Result will be shown as status true or false along with flows between those interfaces
+  - How It Works:
+      1: It will start capture on all Nodes from Source to Destination and injects 5 ICMP-Pkts from Source to Destination
+      2: After 1 sec it will check for flows having the same capture-id created by this workflow
+      3: If flows are there and the BA-Packtes in flow-metric > 0, then return 'Connectivity = ture' else 'Connectivity = false', along with this it also returns the flows
+      4: For more information about Skydive workflows please follow - 'skydive.network/blog/introduction-to-workflows.html'
 Parameters:
   - Name: source
     Description: Source node
@@ -29,7 +40,7 @@ Source: |
         client.packetInjections.create(packetInjection)
         sleep(1000)
 
-        var flows = client.G.Flows().Has("ICMP.ID", packetInjection.ICMPID).result()
+        var flows = client.G.Flows().Has('CaptureID', capture.UUID).Dedup().result()
         result["Connectivity"] = flows.length > 0 && flows[0].Metric.ABPackets > 0 && flows[0].Metric.BAPackets > 0
         result["Flows"] = flows
       } catch (e) {

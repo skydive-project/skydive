@@ -84,7 +84,14 @@ Vue.component('workflow-params', {
 
   template: `
     <form v-if="workflow.Parameters" @submit.prevent="submit">
-      <h1><span class="workflow-title">{{workflow.Name}}</span></h1>
+      <div class="workflow-abstract">
+        {{ workflow.Abstract }}
+      </div>
+      <h1><span class="workflow-title">Help</span></h1>
+      <div class="form-group" v-for="i in workflow.Description">
+        <object-detail id="workflow-description" :object="i"></object-detail>
+      </div>
+      <h1><span class="workflow-title">Inputs</span></h1>
       <item v-for="item in workflow.Parameters" v-bind="item" :key="item.Name"></item>
       <button type="submit" id="execute" class="btn btn-primary">Execute</button>\
     </form>
@@ -163,7 +170,7 @@ Vue.component('workflow-call', {
           <select id="workflow" v-model="currentWorkflow" class="form-control custom-select">
             <option selected :value="{}">Select/Upload a workflow</option>\
             <option value="__upload__">New workflow</option>\
-            <option v-for="(workflow, id) in workflows" :value="workflow">{{ workflow.Name }} ({{ workflow.Description }})</option>
+            <option v-for="(workflow, id) in workflows" :value="workflow">{{ workflow.Name }} - {{ workflow.Title }}</option>
           </select>
         </div>
 

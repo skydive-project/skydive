@@ -238,10 +238,12 @@ type WorkflowParam struct {
 // easyjson:json
 type Workflow struct {
 	BasicResource `yaml:",inline"`
-	Name          string          `yaml:"Name" valid:"nonzero"`
-	Description   string          `yaml:"Description"`
-	Parameters    []WorkflowParam `yaml:"Parameters"`
-	Source        string          `valid:"isValidWorkflow" yaml:"Source"`
+	Name          string                      `yaml:"Name" valid:"nonzero"`
+	Title         string                      `yaml:"Title"`
+	Abstract      string                      `yaml:"Abstract"`
+	Description   []map[string]map[int]string `yaml:"Description"`
+	Parameters    []WorkflowParam             `yaml:"Parameters"`
+	Source        string                      `valid:"isValidWorkflow" yaml:"Source"`
 }
 
 // WorkflowCall describes workflow call
