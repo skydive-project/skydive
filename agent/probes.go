@@ -39,8 +39,8 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/vpp"
 )
 
-// NewTopologyProbeBundleFromConfig creates a new topology probe.Bundle based on the configuration
-func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*probe.Bundle, error) {
+// NewTopologyProbeBundle creates a new topology probe.Bundle based on the configuration
+func NewTopologyProbeBundle(g *graph.Graph, hostNode *graph.Node) (*probe.Bundle, error) {
 	list := config.GetStringSlice("agent.topology.probes")
 	logging.GetLogger().Infof("Topology probes: %v", list)
 
@@ -94,7 +94,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 		case "runc":
 			handler, err = new(runc.ProbeHandler).Init(ctx, bundle)
 		case "vpp":
-			handler, err = vpp.NewProbeFromConfig(g, hostNode)
+			handler, err = new(vpp.Probe).Init(ctx, bundle)
 		default:
 			logging.GetLogger().Errorf("unknown probe type %s", t)
 		}
