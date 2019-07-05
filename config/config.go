@@ -259,8 +259,8 @@ func setStorageDefaults() {
 	}
 }
 
-// InitConfig with a backend
-func InitConfig(backend string, paths []string) error {
+// LoadConfig initializes config with the given backend/path
+func LoadConfig(cfg *viper.Viper, backend string, paths []string) error {
 	if len(paths) == 0 {
 		return fmt.Errorf("Empty configuration path")
 	}
@@ -295,6 +295,15 @@ func InitConfig(backend string, paths []string) error {
 		}
 	default:
 		return fmt.Errorf("Invalid backend: %s", backend)
+	}
+
+	return nil
+}
+
+// InitConfig global config
+func InitConfig(backend string, paths []string) error {
+	if err := LoadConfig(cfg.Viper, backend, paths); err != nil {
+		return err
 	}
 
 	setStorageDefaults()
