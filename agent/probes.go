@@ -90,7 +90,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 		case "socketinfo":
 			handler, err = new(socketinfo.ProbeHandler).Init(ctx, bundle)
 		case "libvirt":
-			handler, err = libvirt.NewProbeFromConfig(g, hostNode)
+			handler, err = new(libvirt.Probe).Init(ctx, bundle)
 		case "runc":
 			handler, err = new(runc.ProbeHandler).Init(ctx, bundle)
 		case "vpp":
