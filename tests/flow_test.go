@@ -1379,7 +1379,35 @@ func TestReplayCapture(t *testing.T) {
 			}
 */
 			return nil
-		}},
+		}
+		func(c *CheckContext) error {
+			gremlin := c.gremlin.V().Has("Name", "br-rc", "Type", "ovsbridge").HasKey("TID")
+			node, err := c.gh.GetNode(gremlin)
+			if err != nil {
+				return err
+			}
+
+			gremlin = c.gremlin.Flows().Has("NodeTID", node.Metadata["TID"])
+			flows, err := c.gh.GetFlows(gremlin.Has("DNS.ID", 61641))
+			if err != nil {
+				return err
+			}
+
+			if len(flows) != 1 {
+				return fmt.Errorf("Wrong number of DNS flows. Expected 1, got %d", len(flows))
+			}
+
+			flows, err = c.gh.GetFlows(gremlin.Has("DNS.answers.IP", "173.194.40.147"))
+			if err != nil {
+				return err
+			}
+
+			if len(flows) != 1 {
+				return fmt.Errorf("Wrong number of DNS flows. Expected 1, got %d", len(flows))
+			}
+			return nil
+		}
+				       },
 	}
 
 	RunTest(t, test)
