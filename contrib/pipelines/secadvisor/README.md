@@ -2,6 +2,8 @@
 
 Implements the IBM Security Advisor pipeline
 
+The security advisor filters the flow data obtained from skydive, performs a data transformation, and saves the information to an object store.
+This data may then be used to perform various kinds of analysis for security, accounting, or other purposes.
 
 ## Setup Skydive
 
@@ -32,7 +34,14 @@ sudo skydive analyzer -c skydive.yml
 ```
 
 
-## Setup Minio
+## Setup Object Store
+
+The security advisor saves data to an S3-type object store.
+The parameters to access the object store must be provided in the secadvisor.yml configuration file.
+In case the user does not already have an object store, we show below how to create an object store for testing purposes.
+We show how to create either a minio object store running locally or an IBM Cloud Object Store.
+
+### Setup Minio
 
 Follow the instructions on https://docs.min.io/docs/minio-quickstart-guide.html to install and run a minio object store (an AWS S3-like object store).
 
@@ -46,6 +55,20 @@ This will run a basic minio object store server on your machine, placing the obj
 Note the printed output in the logs from the ./minio command and take down the values of "Endpoint", "AccessKey", and "SecretKey". Place these items in the secadvisor.yml in the appropriate locations (see below). 
 Create a bucket in the object store to hold the security-advisor data.
 
+### Setup IBM COS
+
+Other s3-compatible object stores may be used, such as IBM COS.
+
+In IBM Cloud, Create an Object Store resource. The Lite plan gives limited resources for free.
+In the Object Store, create a bucket to hold the Skydive flow information. For simple testing, you can choose Single Site resiliency.
+Look under Bucket Configuration to see the Public endpoint (url) where the bucket is accessed. This endpoint information needs to go into the secadvisor.yml "endpoint" field.
+Go to the "Service Credentials" panel and create a new credential. Click on "View Credential" to get the details of the credential. The apikey needs to go into the secadvisor.yml "api_key" field.
+In the secadvisor.yml file, uncomment the iam_endpoint field and set it to https://iam.cloud.ibm.com/identity/token.
+
+### Ceph, AWS
+
+TBD
+
 ## Prepare secadvisor.yml
 
 ```
@@ -53,6 +76,7 @@ cp secadvisor.yml.default secadvisor.yml
 ```
 
 Set the fields "endpoint", "access_key", "secret_key", "bucket", "cluster_net_masks", etc.
+If using IBM COS, then you may provide <"api_key", "iam_endpoint"> instead of <"access_key", "secret_key">.
 The subnets specified in cluster_net_masks are used to determine whether a flow is internal, ingress, or egress. Enter in the list all of the subnets that are recognized as being inside your cluster.
 The types of "excluded_tags" that are recognized are: internal, ingress, egress, other.
 
@@ -61,6 +85,7 @@ The types of "excluded_tags" that are recognized are: internal, ingress, egress,
 Build and run the pipeline in the secadvisor directory:
 
 ```
+cd $SKYDIVE_BASE/contrib/pipelines/secadvisor
 make all
 make install
 make run
@@ -69,8 +94,14 @@ make run
 or
 
 ```
+make
 secadvisor secadvisor.yml
 ```
+
+The "make all" compiles the source code and creates the secadvisor binary file in the same directory.
+The "make run" runs the secadvisor binary using the secadvisor.yml.default that is provided with the source code.
+This will run the secadvisor pipeline, which will ultimately fail to write to the object store,
+unless the user first defines valid object store parameters in the secadvisor.yml file.
 
 ## Generate Flows
 
@@ -83,26 +114,21 @@ Check your bucket in Object Store and see a new object about once per minute.
 Stop the secadvisor or stop captures in the GUI to stop the creation of objects in the object store.
 
 
-## Setup IBM COS
-
-Other s3-compatible object stores may be used, such as IBM COS.
-
-In IBM Cloud, Create an Object Store resource. The Lite plan gives limited resources for free.
-In the Object Store, create a bucket to hold the Skydive flow information. For simple testing, you can choose Single Site resiliency.
-Look under Bucket Configuration to see the Public endpoint (url) where the bucket is accessed. This endpoint information needs to go into the secadvisor.yml "endpoint" field.
-Go to the "Service Credentials" panel and create a new credential. Click on "View Credential" to get the details of the credential. The apikey needs to go into the secadvisor.yml "api_key" field.
-In the secadvisor.yml file, uncomment the iam_endpoint field and set it to https://iam.cloud.ibm.com/identity/token.
-
 
 ## Multiple pipelines
 
-It is possible to run multiple security-advisor pipelines simultaneously. Prepare a separate secadvisor<n>.yml for each set of subnets or whatever configuration you want. Then run a separate instance of the security advisor using each of the secadvisor<n>.yml configuration files. In this way it is possible to perform different filtering for different purposes or tenants.
+It is possible to run multiple pipelines simultaneously. Prepare a separate <n>.yml for each set of subnets or whatever configuration you want. Then run a separate instance of the security advisor (or other pipeline) using each of the <n>.yml configuration files. In this way it is possible to perform different filtering for different purposes or tenants.
 
 ## Trouble-shooting common problems
 
 If the secadvisor log shows a "connection refused" error, verify that the proper address of the skydive analyzer is specified under "analyzers".
 
 If the secadvisor log shows a credentials error, verify that the credential fields (<"access_key", "secret_key"> for minio, and <"api_key", "iam_endpoint"> for IBM COS) are properly set in the secadvisor.yml file.
+
+
+## How to run tests
+
+TBD
 
 
 
