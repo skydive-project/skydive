@@ -1406,7 +1406,7 @@ func TestReplayCapture(t *testing.T) {
 				return fmt.Errorf("Wrong number of DNS flows. Expected 1, got %d", len(flows))
 			}
 			return nil
-		}
+		},
 				       },
 	}
 
