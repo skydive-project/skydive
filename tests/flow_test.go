@@ -1394,7 +1394,7 @@ func TestReplayCapture(t *testing.T) {
 			}
 
 			if len(flows) != 1 {
-				return fmt.Errorf("Wrong number of DNS flows. Expected 1, got %d", len(flows))
+				return fmt.Errorf("Failure 1 Wrong number of DNS flows. Expected 1, got %d", len(flows))
 			}
 
 			flows, err = c.gh.GetFlows(gremlin.Has("DNS.answers.IP", "173.194.40.147"))
@@ -1403,7 +1403,7 @@ func TestReplayCapture(t *testing.T) {
 			}
 
 			if len(flows) != 1 {
-				return fmt.Errorf("Wrong number of DNS flows. Expected 1, got %d", len(flows))
+				return fmt.Errorf("Failure 2 Wrong number of DNS flows. Expected 1, got %d", len(flows))
 			}
 			return nil
 		},
