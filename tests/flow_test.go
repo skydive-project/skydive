@@ -1379,7 +1379,7 @@ func TestReplayCapture(t *testing.T) {
 			}
 */
 			return nil
-		}
+		},
 		func(c *CheckContext) error {
 			gremlin := c.gremlin.V().Has("Name", "br-rc", "Type", "ovsbridge").HasKey("TID")
 			node, err := c.gh.GetNode(gremlin)
