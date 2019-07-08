@@ -28,6 +28,27 @@ body {
 .workflow-abstract {
   font-size: 16px;
   font-style: italic;
+  margin-bottom: 15px;
+}
+
+.workflow-description h1 {
+  font-size: 15px !important;
+}
+
+.workflow-description h2 {
+  font-size: 14px !important;
+}
+
+.workflow-description h3 {
+  font-size: 13px !important;
+}
+
+.workflow-description h4 {
+  font-size: 12px !important;
+}
+
+.workflow-description h5 {
+  font-size: 11px !important;
 }
 
 select:active, select:hover {

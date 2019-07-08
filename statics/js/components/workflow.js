@@ -87,10 +87,7 @@ Vue.component('workflow-params', {
       <div class="workflow-abstract">
         {{ workflow.Abstract }}
       </div>
-      <h1><span class="workflow-title">Help</span></h1>
-      <div class="form-group" v-for="i in workflow.Description">
-        <object-detail id="workflow-description" :object="i"></object-detail>
-      </div>
+      <vue-markdown class="workflow-description" v-bind:source="workflow.Description" v-bind:postrender="beautifyDesc"/>
       <h1><span class="workflow-title">Inputs</span></h1>
       <item v-for="item in workflow.Parameters" v-bind="item" :key="item.Name"></item>
       <button type="submit" id="execute" class="btn btn-primary">Execute</button>\
@@ -98,6 +95,26 @@ Vue.component('workflow-params', {
   `,
 
   methods: {
+
+    beautifyDesc: function(out) {
+      var i = 0
+      var href = function() {
+        i++;
+        return '<h1 onclick="$(\'#wf-arrow-' + i + '\').toggleClass(\'down\')" \
+          class="workflow-desc-title collapse-header" role="button" data-toggle="collapse" href=".desc-' + i + '">\
+          <span class="pull-left" style="padding-right: 15px">\
+            <i id="wf-arrow-' + i + '" class="glyphicon glyphicon-chevron-right rotate"></i>\
+          </span>';
+      }
+      out = out.replace(/<h1>/g, href);
+
+      i = 0
+      var target = function(match, m1) {
+        i++;
+        return '</h1><' + m1 + ' class="collapse desc-' + i + '">';
+      }
+      return out.replace(/<\/h1>\s*<([a-z]*)>/gm, target);
+    },
 
     submit: function() {
       this.toggleResultDisplay(true);

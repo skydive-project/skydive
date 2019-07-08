@@ -3,15 +3,15 @@ UUID: "bcc2e200-7a57-11e8-913c-28d2442e1325"
 Name: "FlowMatrix"
 Title: "Create a Flow Matrix of the running processes"
 Abstract: "This workflow aims to create a Flow Matrix of the running processes. Flow Matrix will report all opened Sockets between client and server processes across hosts."
-Description:
-  - How to use:
-      1: If you also want to use the flows to build matrix, Select 1st Checkbox
-      2: Select the Flow matrix output format -> Graph (Add nodes and edges to the current topology), Dot (Gives 'Graphviz output')
-      3: Select the last Checkbox, 'To see debug logs in the JavaScript console'
-      4: Hit the 'Execute' button to run the workflow
-  - How It Works:
-      1: Please follow the link - 'skydive.network/blog/flow-matrix.html'
-      2: For more information about Skydive workflows please follow - 'skydive.network/blog/introduction-to-workflows.html'
+Description: >
+    # How to use:
+      1. If you also want to use the flows to build matrix, Select 1st Checkbox
+      2. Select the Flow matrix output format -> Graph (Add nodes and edges to the current topology), Dot (Gives 'Graphviz output')
+      3. Select the last Checkbox, 'To see debug logs in the JavaScript console'
+      4. Hit the 'Execute' button to run the workflow
+    # How It Works:
+      1. Please follow the link - 'skydive.network/blog/flow-matrix.html'
+      2. For more information about Skydive workflows please follow - 'skydive.network/blog/introduction-to-workflows.html'
 Parameters:
   - Name: useFlows
     Description: Also use flows to build matrix

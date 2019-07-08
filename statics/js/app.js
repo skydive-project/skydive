@@ -354,6 +354,7 @@ $(document).ready(function() {
 
   Vue.use(VTooltip, {});
   Vue.component('datepicker', Datepicker);
+  Vue.use(VueMarkdown, {});
 
   app.$mount('#app');
 
