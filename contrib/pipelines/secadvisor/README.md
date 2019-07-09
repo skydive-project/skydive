@@ -80,6 +80,19 @@ If using IBM COS, then you may provide <"api_key", "iam_endpoint"> instead of <"
 The subnets specified in cluster_net_masks are used to determine whether a flow is internal, ingress, or egress. Enter in the list all of the subnets that are recognized as being inside your cluster.
 The types of "excluded_tags" that are recognized are: internal, ingress, egress, other.
 
+Be sure to set the parameters max_flow_array_size, etc, to reasonable values.
+
+The max_flow_array_size specifies the maximum number of flows that will be stored in each iteration.
+If max_flow_array_size is set to 0 (or not set at all), then the number of flows that can be stored is 0, and hence no useful information will be saved in the object store.
+This will result in an error.
+
+The max_flows_per_object parameter specifies the number of flows that may stored in a single object. If there are more flows found in a single iteration, then several objects will be created, each with up to max_flows_per_object flows in them. In order to have all the flows stored in a single object, be sure that this parameter is set sufficiently large.
+If max_flows_per_object is set to 0 (or not set at all), then each object will be able to hold 0 flows; i.e. no flows will be able to be stored in any object.
+This will result in an error.
+
+The flow information is collected in groups of objects (called streams) determined by the max_seconds_per_stream parameter. All the objects generated within the number of seconds specified in the max_seconds_per_stream parameter are collected under the same heading (stream)  in the object url path.
+If max_seconds_per_stream is set to a very large number, then all of the flows captured in the current run of the security advisor will be included in the same collection (stream)
+
 ## Setup Pipeline
 
 Build and run the pipeline in the secadvisor directory:
@@ -124,6 +137,8 @@ It is possible to run multiple pipelines simultaneously. Prepare a separate <n>.
 If the secadvisor log shows a "connection refused" error, verify that the proper address of the skydive analyzer is specified under "analyzers".
 
 If the secadvisor log shows a credentials error, verify that the credential fields (<"access_key", "secret_key"> for minio, and <"api_key", "iam_endpoint"> for IBM COS) are properly set in the secadvisor.yml file.
+
+If the secadvisor log shows an overflow and states that flows were discarded, check that max_flow_array_size is defined to some reasonable positive number.
 
 
 ## How to run tests
