@@ -247,6 +247,16 @@ func NewStoreS3FromConfig(cfg *viper.Viper) (*StoreS3, error) {
 	maxFlowsPerObject := cfg.GetInt(CfgRoot + "store.s3.max_flows_per_object")
 	maxSecondsPerObject := cfg.GetInt(CfgRoot + "store.s3.max_seconds_per_object")
 	maxSecondsPerStream := cfg.GetInt(CfgRoot + "store.s3.max_seconds_per_stream")
+	if maxFlowArraySize <= 0 {
+		err := fmt.Errorf("max_flow_array_size must be set to a positive number")
+		logging.GetLogger().Error(err)
+		return nil, err
+	}
+	if maxFlowsPerObject <= 0 {
+		err := fmt.Errorf("max_flows_per_object must be set to a positive number")
+		logging.GetLogger().Error(err)
+		return nil, err
+	}
 
 	client := newClient(cfg)
 	return NewStoreS3(client, bucket, objectPrefix, maxFlowArraySize, maxFlowsPerObject, maxSecondsPerObject, maxSecondsPerStream)
