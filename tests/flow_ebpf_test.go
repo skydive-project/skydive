@@ -156,3 +156,11 @@ func TestFlowsGREEBPF(t *testing.T) {
 	}
 	RunTest(t, test)
 }
+
+func TestFlowsEBPFHashCnx(t *testing.T) {
+	test := testFlowsHashCnx(t)
+	for i := range test.captures {
+		test.captures[i].kind = "ebpf"
+	}
+	RunTest(t, test)
+}

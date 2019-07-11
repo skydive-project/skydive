@@ -18,6 +18,7 @@
 package flow
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -272,7 +273,7 @@ func (p *Packet) ApplicationFlow() (gopacket.Flow, error) {
 }
 
 // TransportFlow returns first transport flow
-func (p *Packet) TransportFlow() (gopacket.Flow, error) {
+func (p *Packet) TransportFlow(swap bool) (gopacket.Flow, error) {
 	layer := p.TransportLayer()
 	if layer == nil {
 		return gopacket.Flow{}, ErrLayerNotFound
@@ -294,6 +295,9 @@ func (p *Packet) TransportFlow() (gopacket.Flow, error) {
 				binary.BigEndian.PutUint32(value32, encap.(*layers.Geneve).VNI)
 			}
 
+			if swap {
+				return gopacket.NewFlow(0, value16, value32), nil
+			}
 			return gopacket.NewFlow(0, value32, value16), nil
 		}
 	}
@@ -304,23 +308,52 @@ func (p *Packet) TransportFlow() (gopacket.Flow, error) {
 // Keys returns keys of the packet
 func (p *Packet) Keys(parentUUID string, uuids *UUIDs, opts *Opts) (uint64, uint64, uint64) {
 	hasher := xxHash64.New(0)
-	if layer := p.NetworkLayer(); layer != nil {
-		Hash(layer.NetworkFlow(), hasher)
+	swap := false
+
+	l2Layer := p.LinkLayer()
+	l3Layer := p.NetworkLayer()
+	swapFromNetwork := true
+
+	if (opts.LayerKeyMode == L2KeyMode && l2Layer != nil) ||
+		l3Layer == nil {
+
+		swapFromNetwork = false
+		src, dst := l2Layer.LinkFlow().Endpoints()
+		cmp := bytes.Compare(src.Raw(), dst.Raw())
+		swap = cmp > 0
+		if cmp == 0 && l3Layer != nil {
+			swapFromNetwork = true
+		}
 	}
-	if tf, err := p.TransportFlow(); err == nil {
-		Hash(tf, hasher)
-	}
-	if af, err := p.ApplicationFlow(); err == nil {
-		Hash(af, hasher)
+	if swapFromNetwork {
+		src, dst := l3Layer.NetworkFlow().Endpoints()
+		cmp := bytes.Compare(src.Raw(), dst.Raw())
+		swap = cmp > 0
+		if cmp == 0 {
+			if tf, err := p.TransportFlow(false); err == nil {
+				src, dst := tf.Endpoints()
+				swap = bytes.Compare(src.Raw(), dst.Raw()) > 0
+			}
+		}
 	}
 
+	if l3Layer != nil {
+		hashFlow(l3Layer.NetworkFlow(), hasher, swap)
+	}
+	if tf, err := p.TransportFlow(swap); err == nil {
+		hashFlow(tf, hasher, swap)
+	}
+	if af, err := p.ApplicationFlow(); err == nil {
+		src, dst := af.Endpoints()
+		hashFlow(af, hasher, bytes.Compare(src.Raw(), dst.Raw()) > 0)
+	}
 	l3Key := hasher.Sum64()
 	l2Key := l3Key
 
 	// uses L2 is requested or if there is no network layer
-	if opts.LayerKeyMode == L2KeyMode || p.NetworkLayer() == nil {
+	if (opts.LayerKeyMode == L2KeyMode && p.LinkLayer() != nil) || p.NetworkLayer() == nil {
 		if layer := p.LinkLayer(); layer != nil {
-			Hash(layer.LinkFlow(), hasher)
+			hashFlow(layer.LinkFlow(), hasher, swap)
 			l2Key = hasher.Sum64()
 		}
 	}
@@ -487,15 +520,28 @@ func (f *Flow) setUUIDs(key, l2Key, l3Key uint64) {
 // SetUUIDs updates the UUIDs using the flow layers and returns l2/l3 keys
 func (f *Flow) SetUUIDs(key uint64, opts Opts) (uint64, uint64) {
 	hasher := xxHash64.New(0)
-	f.Network.Hash(hasher)
+	swap := false
+	if (opts.LayerKeyMode == L2KeyMode && f.Link != nil &&
+		(strings.Compare(f.Link.A, f.Link.B) != 0)) ||
+		f.Network == nil {
+
+		swap = strings.Compare(f.Link.A, f.Link.B) > 0
+	} else {
+		if cmp := strings.Compare(f.Network.A, f.Network.B); cmp == 0 && f.Transport != nil {
+			swap = f.Transport.A > f.Transport.B
+		} else {
+			swap = cmp > 0
+		}
+	}
+	f.Network.Hash(hasher, swap)
+	f.Transport.Hash(hasher, swap)
 	f.ICMP.Hash(hasher)
-	f.Transport.Hash(hasher)
 
 	l3Key := hasher.Sum64()
 	l2Key := l3Key
 
-	if opts.LayerKeyMode == L2KeyMode || f.Network == nil {
-		f.Link.Hash(hasher)
+	if (opts.LayerKeyMode == L2KeyMode && f.Link != nil) || f.Network == nil {
+		f.Link.Hash(hasher, swap)
 		l2Key = hasher.Sum64()
 	}
 

@@ -174,9 +174,12 @@ type TestInjection struct {
 	from      g.QueryString
 	fromMAC   string
 	fromIP    string
+	fromPort  uint16
 	to        g.QueryString
 	toMAC     string
 	toIP      string
+	toPort    uint16
+	protocol  string // icmp if not set
 	ipv6      bool
 	count     uint64
 	id        uint64
@@ -628,6 +631,9 @@ func RunTest(t *testing.T, test *Test) {
 	}()
 
 	for _, injection := range test.injections {
+		if injection.protocol == "" {
+			injection.protocol = "icmp"
+		}
 		ipVersion := 4
 		if injection.ipv6 {
 			ipVersion = 6
@@ -673,10 +679,12 @@ func RunTest(t *testing.T, test *Test) {
 			Src:       src,
 			SrcMAC:    srcMAC,
 			SrcIP:     srcIP,
+			SrcPort:   injection.fromPort,
 			Dst:       injection.to.String(),
 			DstMAC:    injection.toMAC,
 			DstIP:     injection.toIP,
-			Type:      fmt.Sprintf("icmp%d", ipVersion),
+			DstPort:   injection.toPort,
+			Type:      fmt.Sprintf("%s%d", injection.protocol, ipVersion),
 			Count:     injection.count,
 			ICMPID:    uint16(injection.id),
 			Increment: injection.increment,

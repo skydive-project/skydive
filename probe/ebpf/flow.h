@@ -88,7 +88,6 @@ struct icmp_layer {
 };
 
 struct transport_layer {
-	__u8   protocol;
 	__be16 port_src;
 	__be16 port_dst;
 
@@ -100,6 +99,7 @@ struct transport_layer {
 	__u64  ba_rst;
 
 	__u64  _hash;
+	__u8   protocol;
 };
 
 struct flow_metrics {

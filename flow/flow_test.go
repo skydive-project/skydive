@@ -2385,8 +2385,8 @@ func TestLayerKeyMode(t *testing.T) {
 				BAPackets: 2,
 				BABytes:   196,
 			},
-			TrackingID:   "75dbbb8b82a44d73",
-			L3TrackingID: "75dbbb8b82a44d73",
+			TrackingID:   "9e42a86914a043b8",
+			L3TrackingID: "9e42a86914a043b8",
 		},
 	}
 
@@ -2419,8 +2419,8 @@ func TestLayerKeyMode(t *testing.T) {
 				BAPackets: 1,
 				BABytes:   98,
 			},
-			TrackingID:   "d228f5a158d99742",
-			L3TrackingID: "75dbbb8b82a44d73",
+			TrackingID:   "6952cad8cd38c63c",
+			L3TrackingID: "9e42a86914a043b8",
 		},
 		{
 			LayersPath:  "Ethernet/IPv4/ICMPv4",
@@ -2448,8 +2448,8 @@ func TestLayerKeyMode(t *testing.T) {
 				BAPackets: 1,
 				BABytes:   98,
 			},
-			TrackingID:   "9a193925b3b2d0b5",
-			L3TrackingID: "75dbbb8b82a44d73",
+			TrackingID:   "a25d427a9f9dcdb8",
+			L3TrackingID: "9e42a86914a043b8",
 		},
 	}
 
