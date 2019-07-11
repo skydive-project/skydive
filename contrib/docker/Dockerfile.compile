@@ -10,7 +10,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get -y update \
     && apt-get -y install software-properties-common \
-    && add-apt-repository -y ppa:ubuntu-toolchain-r/ppa \
     && apt-get -y update \
     && apt-get -y install git make flex bison wget unzip golang libpcap0.8-dev npm \
          clang llvm zlib1g-dev liblzma-dev libc++-dev libc-dev linux-libc-dev libxml2-dev libvirt-dev \
