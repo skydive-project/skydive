@@ -52,7 +52,7 @@ func (h *nodeHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 }
 
 func newNodeProbe(client interface{}, g *graph.Graph) Subprobe {
-	return NewResourceCache(client.(*kubernetes.Clientset).Core().RESTClient(), &v1.Node{}, "nodes", g, &nodeHandler{})
+	return NewResourceCache(client.(*kubernetes.Clientset).CoreV1().RESTClient(), &v1.Node{}, "nodes", g, &nodeHandler{})
 }
 
 func newHostNodeLinker(g *graph.Graph) probe.Probe {

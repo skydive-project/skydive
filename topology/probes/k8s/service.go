@@ -50,7 +50,7 @@ func (h *serviceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata)
 }
 
 func newServiceProbe(client interface{}, g *graph.Graph) Subprobe {
-	return NewResourceCache(client.(*kubernetes.Clientset).Core().RESTClient(), &v1.Service{}, "services", g, &serviceHandler{})
+	return NewResourceCache(client.(*kubernetes.Clientset).CoreV1().RESTClient(), &v1.Service{}, "services", g, &serviceHandler{})
 }
 
 func servicePodAreLinked(a, b interface{}) bool {
