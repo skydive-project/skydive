@@ -85,7 +85,7 @@ func NamespaceFromNode(g *graph.Graph, n *graph.Node) (string, string, error) {
 }
 
 // NewNetNSContextByNode creates a new network namespace context based on the node
-func NewNetNSContextByNode(g *graph.Graph, n *graph.Node) (*common.NetNSContext, error) {
+func NewNetNSContextByNode(g *graph.Graph, n *graph.Node) (*common.NamespaceContext, error) {
 	name, path, err := NamespaceFromNode(g, n)
 	if err != nil || name == "" || path == "" {
 		return nil, err

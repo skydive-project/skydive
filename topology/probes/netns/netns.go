@@ -39,7 +39,6 @@ import (
 	"github.com/skydive-project/skydive/topology"
 	tp "github.com/skydive-project/skydive/topology/probes"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
-	"github.com/vishvananda/netns"
 )
 
 // ProbeHandler describes a netlink probe in a network namespace
@@ -47,21 +46,14 @@ type ProbeHandler struct {
 	common.RWMutex
 	Ctx             tp.Context
 	nlHandler       *netlink.ProbeHandler
-	pathToNetNS     map[string]*NetNs
+	pathToNetNS     map[string]*common.Namespace
 	nsNetLinkProbes map[string]*nsNetLinkProbe
-	rootNs          *NetNs
+	rootNs          *common.Namespace
 	watcher         *fsnotify.Watcher
 	pending         chan string
 	exclude         []string
 	state           common.ServiceState
 	wg              sync.WaitGroup
-}
-
-// NetNs describes a network namespace path associated with a device / inode
-type NetNs struct {
-	path string
-	dev  uint64
-	ino  uint64
 }
 
 // extends the original struct to add use count number
@@ -73,15 +65,6 @@ type nsNetLinkProbe struct {
 func getNetNSName(path string) string {
 	s := strings.Split(path, "/")
 	return s[len(s)-1]
-}
-
-func (ns *NetNs) String() string {
-	return fmt.Sprintf("%d,%d", ns.dev, ns.ino)
-}
-
-// Equal compares two NetNs objects
-func (ns *NetNs) Equal(o *NetNs) bool {
-	return (ns.dev == o.dev && ns.ino == o.ino)
 }
 
 func (u *ProbeHandler) checkNamespace(path string) error {
@@ -140,7 +123,10 @@ func (u *ProbeHandler) Register(path string, name string) (*graph.Node, error) {
 		return nil, fmt.Errorf("Failed to stat namespace %s: %s", path, err)
 	}
 
-	newns := &NetNs{path: path, dev: stats.Dev, ino: stats.Ino}
+	newns, err := common.GetNamespaceFromPath(common.NetworkNamespace, path)
+	if err != nil {
+		return nil, err
+	}
 
 	// avoid hard link to root ns
 	if u.rootNs.Equal(newns) {
@@ -169,8 +155,8 @@ func (u *ProbeHandler) Register(path string, name string) (*graph.Node, error) {
 		"Name":   name,
 		"Type":   "netns",
 		"Path":   path,
-		"Inode":  int64(newns.ino),
-		"Device": int64(newns.dev),
+		"Inode":  int64(newns.Ino()),
+		"Device": int64(newns.Dev()),
 	}
 
 	u.Ctx.Graph.Lock()
@@ -381,17 +367,11 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 		return nil, errors.New("unable to find the netlink handler")
 	}
 
-	ns, err := netns.Get()
+	rootNs, err := common.GetCurrentNamespace(common.NetworkNamespace)
 	if err != nil {
-		return nil, errors.New("Failed to get root namespace")
+		return nil, err
 	}
-	defer ns.Close()
-
-	var stats syscall.Stat_t
-	if err = syscall.Fstat(int(ns), &stats); err != nil {
-		return nil, errors.New("Failed to stat root namespace")
-	}
-	rootNs := &NetNs{dev: stats.Dev, ino: stats.Ino}
+	defer rootNs.Close()
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -401,7 +381,7 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	u := &ProbeHandler{
 		Ctx:             ctx,
 		nlHandler:       nlHandler.(*netlink.ProbeHandler),
-		pathToNetNS:     make(map[string]*NetNs),
+		pathToNetNS:     make(map[string]*common.Namespace),
 		nsNetLinkProbes: make(map[string]*nsNetLinkProbe),
 		rootNs:          rootNs,
 		watcher:         watcher,
