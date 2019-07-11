@@ -31,7 +31,6 @@ type AgentEndpoint struct {
 	ws.DefaultSpeakerEventHandler
 	pool    ws.StructSpeakerPool
 	Graph   *graph.Graph
-	cached  *graph.CachedBackend
 	authors map[string]bool
 }
 
@@ -51,7 +50,7 @@ func (t *AgentEndpoint) OnDisconnected(c ws.Speaker) {
 	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources of %s", origin)
 
 	t.Graph.Lock()
-	delSubGraphOfOrigin(t.cached, t.Graph, origin)
+	delSubGraphOfOrigin(t.Graph, origin)
 	t.Graph.Unlock()
 
 	t.Lock()
@@ -84,7 +83,7 @@ func (t *AgentEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	case gws.SyncMsgType, gws.SyncReplyMsgType:
 		r := obj.(*gws.SyncMsg)
 
-		delSubGraphOfOrigin(t.cached, t.Graph, origin)
+		delSubGraphOfOrigin(t.Graph, origin)
 
 		for _, n := range r.Nodes {
 			if t.Graph.GetNode(n.ID) == nil {
@@ -122,11 +121,10 @@ func (t *AgentEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 }
 
 // NewPodEndpoint returns a new server that handles messages from the agents
-func NewPodEndpoint(pool ws.StructSpeakerPool, cached *graph.CachedBackend, g *graph.Graph) (*AgentEndpoint, error) {
+func NewPodEndpoint(pool ws.StructSpeakerPool, g *graph.Graph) (*AgentEndpoint, error) {
 	t := &AgentEndpoint{
 		Graph:   g,
 		pool:    pool,
-		cached:  cached,
 		authors: make(map[string]bool),
 	}
 

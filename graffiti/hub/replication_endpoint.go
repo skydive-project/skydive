@@ -127,7 +127,7 @@ func (p *ReplicatorPeer) OnDisconnected(c ws.Speaker) {
 	logging.GetLogger().Debugf("Peer unregistered, delete resources of %s", origin)
 
 	p.Graph.Lock()
-	delSubGraphOfOrigin(p.endpoint.cached, p.Graph, origin)
+	delSubGraphOfOrigin(p.Graph, origin)
 	p.Graph.Unlock()
 
 	p.endpoint.out.RemoveClient(c)
@@ -387,7 +387,7 @@ func (t *ReplicationEndpoint) OnDisconnected(c ws.Speaker) {
 	logging.GetLogger().Debugf("Peer unregistered, delete resources of %s", origin)
 
 	t.Graph.Lock()
-	delSubGraphOfOrigin(t.cached, t.Graph, origin)
+	delSubGraphOfOrigin(t.Graph, origin)
 	t.Graph.Unlock()
 
 	delete(t.peerStates, host)

@@ -48,7 +48,6 @@ type PublisherEndpoint struct {
 	Graph         *graph.Graph
 	validator     validator.Validator
 	gremlinParser *traversal.GremlinTraversalParser
-	cached        *graph.CachedBackend
 }
 
 // OnDisconnected called when a publisher got disconnected.
@@ -63,7 +62,7 @@ func (t *PublisherEndpoint) OnDisconnected(c ws.Speaker) {
 	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources of %s", origin)
 
 	t.Graph.Lock()
-	delSubGraphOfOrigin(t.cached, t.Graph, origin)
+	delSubGraphOfOrigin(t.Graph, origin)
 	t.Graph.Unlock()
 }
 
@@ -103,7 +102,7 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 	case gws.SyncMsgType, gws.SyncReplyMsgType:
 		r := obj.(*gws.SyncMsg)
 
-		delSubGraphOfOrigin(t.cached, t.Graph, clientOrigin(c))
+		delSubGraphOfOrigin(t.Graph, clientOrigin(c))
 
 		for _, n := range r.Nodes {
 			if t.Graph.GetNode(n.ID) == nil {
@@ -141,13 +140,12 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 }
 
 // NewPublisherEndpoint returns a new server for external publishers.
-func NewPublisherEndpoint(pool ws.StructSpeakerPool, cached *graph.CachedBackend, g *graph.Graph, validator validator.Validator) (*PublisherEndpoint, error) {
+func NewPublisherEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, validator validator.Validator) (*PublisherEndpoint, error) {
 	t := &PublisherEndpoint{
 		Graph:         g,
 		pool:          pool,
 		validator:     validator,
 		gremlinParser: traversal.NewGremlinTraversalParser(),
-		cached:        cached,
 	}
 
 	pool.AddEventHandler(t)

@@ -38,7 +38,7 @@ type Opts struct {
 type Pod struct {
 	subscriberWSServer *websocket.StructServer
 	publisherWSServer  *websocket.StructServer
-	forwarder          *Forwarder
+	forwarder          *common.Forwarder
 	clientPool         *websocket.StructClientPool
 }
 
@@ -94,7 +94,7 @@ func (p *Pod) SubscriberServer() *websocket.StructServer {
 }
 
 // Forwarder returns the pod topology forwarder
-func (p *Pod) Forwarder() *Forwarder {
+func (p *Pod) Forwarder() *common.Forwarder {
 	return p.forwarder
 }
 
@@ -107,7 +107,7 @@ func NewPod(server *api.Server, clientPool *websocket.StructClientPool, g *graph
 	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", apiAuthBackend))
 	common.NewSubscriberEndpoint(subscriberWSServer, g, tr)
 
-	forwarder := NewForwarder(server.HTTPServer.Host, g, clientPool)
+	forwarder := common.NewForwarder(g, clientPool)
 
 	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", apiAuthBackend))
 	if _, err := NewPublisherEndpoint(publisherWSServer, g, opts.Validator); err != nil {
