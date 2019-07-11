@@ -764,7 +764,7 @@
     triggers:
       - skydive-pull-request:
           name: ppc64le-tests
-          trigger-prefix: "(all )?"
+          # trigger-prefix: "(all )?"
           only-trigger-phrase: true
           cancel-builds-on-update: true
     builders:
