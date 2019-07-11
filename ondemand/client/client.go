@@ -185,7 +185,7 @@ func (o *OnDemandClient) nodeTasks(nodes []interface{}, resource types.Resource)
 		// check not already registered
 		tasks, ok := o.registeredNodes[node.ID]
 		if ok {
-			_, ok = tasks[resource.ID()]
+			ok = tasks[resource.ID()]
 		}
 
 		if ok {
