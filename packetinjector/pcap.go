@@ -20,6 +20,7 @@ package packetinjector
 import (
 	"bytes"
 	"io"
+	"time"
 
 	"github.com/google/gopacket/pcapgo"
 	"github.com/skydive-project/skydive/logging"
@@ -27,13 +28,32 @@ import (
 
 // PcapPacketGenerator reads packets from a pcap file and inject it into a channel
 type PcapPacketGenerator struct {
-	pcapReader *pcapgo.Reader
-	close      chan bool
+	*PacketInjectionRequest
+	close chan bool
 }
 
 // Close the packet generator
 func (p *PcapPacketGenerator) Close() {
 	p.close <- true
+}
+
+func packetNumberFromPcap(b []byte) (uint64, error) {
+	buffer := bytes.NewReader(b)
+	pcapReader, err := pcapgo.NewReader(buffer)
+	if err != nil {
+		return 0, err
+	}
+
+	var count uint64
+
+	for {
+		data, _, _ := pcapReader.ReadPacketData()
+		if len(data) == 0 {
+			break
+		}
+		count++
+	}
+	return count, nil
 }
 
 // PacketSource returns a channel when pcap packets are pushed
@@ -43,20 +63,47 @@ func (p *PcapPacketGenerator) PacketSource() chan *Packet {
 	go func() {
 		defer close(ch)
 
-		for {
-			data, _, err := p.pcapReader.ReadPacketData()
+		var pcapReader *pcapgo.Reader
+		var err error
+
+		if p.Count == 0 {
+			if p.Count, err = packetNumberFromPcap(p.Pcap); err != nil {
+				logging.GetLogger().Errorf("Error while reading pcap file: %s", err)
+				return
+			}
+		}
+
+		for i := uint64(0); i < p.Count; i++ {
+			if pcapReader == nil {
+				buffer := bytes.NewReader(p.Pcap)
+				if pcapReader, err = pcapgo.NewReader(buffer); err != nil {
+					logging.GetLogger().Errorf("Error while reading pcap file: %s", err)
+					return
+				}
+			}
+
+			data, _, err := pcapReader.ReadPacketData()
 			if err != nil && err != io.EOF {
-				logging.GetLogger().Warningf("Failed to read packet: %s\n", err)
+				logging.GetLogger().Warningf("Failed to read packet: %s", err)
 				return
 			}
 			logging.GetLogger().Debugf("Read %d bytes of pcap", len(data))
 			if len(data) == 0 {
-				return
+				pcapReader = nil
+				continue
 			}
 			select {
 			case ch <- &Packet{data: data}:
 			case <-p.close:
 				return
+			}
+
+			if i != p.Count-1 && p.Interval != 0 {
+				select {
+				case <-p.close:
+					return
+				case <-time.After(time.Millisecond * time.Duration(p.Interval)):
+				}
 			}
 		}
 	}()
@@ -65,11 +112,9 @@ func (p *PcapPacketGenerator) PacketSource() chan *Packet {
 }
 
 // NewPcapPacketGenerator returns a new pcap packet generator
-func NewPcapPacketGenerator(pcap []byte) (*PcapPacketGenerator, error) {
-	buffer := bytes.NewReader(pcap)
-	pcapReader, err := pcapgo.NewReader(buffer)
-	if err != nil {
-		return nil, err
-	}
-	return &PcapPacketGenerator{pcapReader: pcapReader, close: make(chan bool, 1)}, nil
+func NewPcapPacketGenerator(pp *PacketInjectionRequest) (*PcapPacketGenerator, error) {
+	return &PcapPacketGenerator{
+		PacketInjectionRequest: pp,
+		close: make(chan bool, 1),
+	}, nil
 }

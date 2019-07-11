@@ -154,7 +154,7 @@ var InjectPacketCmd = &cobra.Command{
 
 		var packetForger pi.PacketForger
 		if len(pir.Pcap) > 0 {
-			packetForger, err = pi.NewPcapPacketGenerator(pir.Pcap)
+			packetForger, err = pi.NewPcapPacketGenerator(pir)
 		} else {
 			packetForger, err = pi.NewForgedPacketGenerator(pir, encapType)
 		}

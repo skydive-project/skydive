@@ -143,6 +143,10 @@ func (f *ForgedPacketGenerator) PacketSource() chan *Packet {
 			payload = common.RandString(56)
 		}
 
+		if f.Count == 0 {
+			f.Count = 1
+		}
+
 		for i := uint64(0); i < f.Count; i++ {
 			id := uint64(f.ICMPID)
 			if strings.HasPrefix(f.Type, "icmp") && f.Increment {

@@ -84,7 +84,7 @@ func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource ty
 
 	var packetForger PacketForger
 	if len(pp.Pcap) > 0 {
-		packetForger, err = NewPcapPacketGenerator(pp.Pcap)
+		packetForger, err = NewPcapPacketGenerator(pp)
 	} else {
 		encapType, _ := srcNode.GetFieldString("EncapType")
 		packetForger, err = NewForgedPacketGenerator(pp, encapType)
