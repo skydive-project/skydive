@@ -128,6 +128,7 @@ func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource ty
 						logging.GetLogger().Errorf("Write error on interface %s: %s", ifName, err)
 					}
 				}
+				packetCount++
 			case <-cancel:
 				break InjectLoop
 			case <-ticker.C:
