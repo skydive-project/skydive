@@ -3,16 +3,16 @@ UUID: "85757b38-6e21-11e8-b42d-28d2442e1325"
 Name: "CheckMTU"
 Title: "Check MTU on a path between two interfaces"
 Abstract: "This workflow aims to check the MTU on a path between two interfaces. It returns the status of MTU, true or false."
-Description:
-  - How to use:
-      1: Select the Source and Destination Nodes to check the MTU between them
-      2: Hit the 'Execute' button to run the workflow
-      3: Result will be shown as status true or false
-  - How It Works:
-      1: It will take all Node's MTU between Source and Destination Nodes if available
-      2: Check for all Node's MTU following the path from Source to Destination
-      3: Returns 'True' if MTU order on the path is valid else return 'False'
-      4: For more information about Skydive workflows please follow - 'skydive.network/blog/introduction-to-workflows.html'
+Description: >
+    # How to use:
+      1. Select the Source and Destination Nodes to check the MTU between them
+      2. Hit the 'Execute' button to run the workflow
+      3. Result will be shown as status true or false
+    # How It Works:
+      1. It will take all Node's MTU between Source and Destination Nodes if available
+      2. Check for all Node's MTU following the path from Source to Destination
+      3. Returns 'True' if MTU order on the path is valid else return 'False'
+      4. For more information about Skydive workflows please follow - 'skydive.network/blog/introduction-to-workflows.html'
 Parameters:
   - Name: source
     Description: Source node
