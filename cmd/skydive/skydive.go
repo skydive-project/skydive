@@ -30,6 +30,7 @@ import (
 	"github.com/skydive-project/skydive/cmd/completion"
 	"github.com/skydive-project/skydive/cmd/config"
 	"github.com/skydive-project/skydive/cmd/injector"
+	"github.com/skydive-project/skydive/cmd/seed"
 	"github.com/skydive-project/skydive/cmd/version"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/spf13/cobra"
@@ -41,6 +42,10 @@ var RootCmd = &cobra.Command{
 	Short:        "Skydive",
 	SilenceUsage: true,
 	PersistentPreRun: func(c *cobra.Command, args []string) {
+		if verbose, _ := c.Flags().GetBool("verbose"); verbose {
+			os.Setenv("SKYDIVE_LOGGING_LEVEL", "debug")
+		}
+
 		if err := config.LoadConfiguration(cmd.CfgBackend, cmd.CfgFiles); err != nil {
 			logging.GetLogger().Error(err)
 			os.Exit(1)
@@ -51,6 +56,7 @@ var RootCmd = &cobra.Command{
 func init() {
 	RootCmd.PersistentFlags().StringArrayVarP(&cmd.CfgFiles, "conf", "c", []string{}, "location of Skydive configuration files, default try loading /etc/skydive/skydive.yml if exist")
 	RootCmd.PersistentFlags().StringVarP(&cmd.CfgBackend, "config-backend", "b", "file", "configuration backend (defaults to file)")
+	RootCmd.PersistentFlags().BoolP("verbose", "", false, "verbose mode")
 
 	executable := path.Base(os.Args[0])
 	if strings.TrimSuffix(executable, path.Ext(executable)) == "skydive-cli" {
@@ -64,6 +70,7 @@ func init() {
 		RootCmd.AddCommand(analyzer.AnalyzerCmd)
 		RootCmd.AddCommand(completion.BashCompletion)
 		RootCmd.AddCommand(client.ClientCmd)
+		RootCmd.AddCommand(seed.SeedCmd)
 		RootCmd.AddCommand(version.VersionCmd)
 		RootCmd.AddCommand(injector.InjectPacketCmd)
 
