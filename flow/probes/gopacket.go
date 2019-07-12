@@ -106,13 +106,16 @@ func (p *GoPacketProbe) updateStats(g *graph.Graph, n *graph.Node, captureStats 
 	}
 }
 
-func (p *GoPacketProbe) listen(packetCallback func(gopacket.Packet)) {
+func (p *GoPacketProbe) listen(packetCallback func(gopacket.Packet)) error {
 	packetSource := p.packetProbe.PacketSource()
 
+	var errs int
 	for atomic.LoadInt64(&p.state) == common.RunningState {
 		packet, err := packetSource.NextPacket()
 		switch err {
 		case nil:
+			errs = 0
+
 			if packetCallback != nil {
 				packetCallback(packet)
 			}
@@ -121,11 +124,18 @@ func (p *GoPacketProbe) listen(packetCallback func(gopacket.Packet)) {
 		case afpacket.ErrTimeout:
 			// nothing to do, poll wait for new packet or timeout
 		case afpacket.ErrPoll:
-			return
+			errs++
+
+			if errs > 20 {
+				return afpacket.ErrPoll
+			}
+			time.Sleep(20 * time.Millisecond)
 		default:
 			time.Sleep(200 * time.Millisecond)
 		}
 	}
+
+	return nil
 }
 
 // Run starts capturing packet, calling the passed callback for every packet
@@ -184,7 +194,7 @@ func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e ProbeEventHa
 	wg.Add(1)
 	go p.updateStats(p.graph, p.n, &metadata.CaptureStats, statsTicker, statsDone, &wg)
 
-	p.listen(packetCallback)
+	err = p.listen(packetCallback)
 
 	close(statsDone)
 	wg.Wait()
@@ -193,7 +203,7 @@ func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e ProbeEventHa
 	p.packetProbe.Close()
 	atomic.StoreInt64(&p.state, common.StoppedState)
 
-	return nil
+	return err
 }
 
 // Stop capturing packets
