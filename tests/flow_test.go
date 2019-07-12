@@ -1422,11 +1422,11 @@ func TestFlowVLANSegmentation(t *testing.T) {
 			{"sudo ip netns exec vlan-vm2 ip link add link eth0 name vlan type vlan id 8", true},
 			{"sudo ip netns exec vlan-vm2 ip address add 172.16.0.2/24 dev vlan", true},
 
-			{"sudo ovs-vsctl add-port br-vlan vlan-vm1-eth0", true},
-			{"sudo ovs-vsctl add-port br-vlan vlan-vm2-eth0", true},
-
 			{"sudo ip netns exec vlan-vm1 ip l set vlan up", true},
 			{"sudo ip netns exec vlan-vm2 ip l set vlan up", true},
+
+			{"sudo ovs-vsctl add-port br-vlan vlan-vm1-eth0", true},
+			{"sudo ovs-vsctl add-port br-vlan vlan-vm2-eth0", true},
 		},
 
 		injections: []TestInjection{{
@@ -2222,7 +2222,7 @@ func TestNetFlowV5Target(t *testing.T) {
 		mode: Replay,
 
 		checks: []CheckFunction{func(c *CheckContext) error {
-			flows, err := c.gh.GetFlows(c.gremlin.Flows().Has("Application", "UDP", "Transport.B", 8989))
+			flows, err := c.gh.GetFlows(c.gremlin.Flows().Has("Application", "UDP", "Transport", 8989))
 			if err != nil {
 				return err
 			}

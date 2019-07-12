@@ -120,7 +120,12 @@ func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource ty
 					break InjectLoop
 				}
 
-				logging.GetLogger().Debugf("Injecting packet (%d bytes) on interface %s", len(packet.data), ifName)
+				if packet.gopacket != nil {
+					logging.GetLogger().Debugf("Injecting packet %+v (%d bytes) on interface %s", packet.gopacket, len(packet.data), ifName)
+				} else {
+					logging.GetLogger().Debugf("Injecting packet (%d bytes) on interface %s", len(packet.data), ifName)
+				}
+
 				if _, err := rawSocket.Write(packet.data); err != nil {
 					if err == syscall.ENXIO {
 						logging.GetLogger().Warningf("Write error on interface %s: %s", ifName, err)

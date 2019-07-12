@@ -246,8 +246,8 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capt
 		return nil, fmt.Errorf("No name for node %v", n)
 	}
 
-	if capture.Type == "pcap" && !topology.IsInterfaceUp(n) {
-		return nil, fmt.Errorf("Can't start pcap capture on node down %s", name)
+	if !topology.IsInterfaceUp(n) {
+		return nil, fmt.Errorf("Can't start capture on node down %s", name)
 	}
 
 	encapType, _ := n.GetFieldString("EncapType")
