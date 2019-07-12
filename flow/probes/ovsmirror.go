@@ -480,7 +480,7 @@ func (o *ovsMirrorInterfaceHandler) onNodeEvent(n *graph.Node) {
 		name, _ := n.GetFieldString("Name")
 		intf, err := netlink.LinkByName(name)
 		if err != nil {
-			logging.GetLogger().Errorf("Error reading interface name %s: %s", name, err)
+			logging.GetLogger().Warningf("Error reading interface name %s: %s", name, err)
 			return
 		}
 		netlink.LinkSetUp(intf)
