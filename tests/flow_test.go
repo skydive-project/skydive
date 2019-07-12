@@ -748,7 +748,7 @@ func TestFlowMetricsStep(t *testing.T) {
 				var start int64
 				for _, metricsOfID := range metrics {
 					if len(metricsOfID) <= 1 {
-						return fmt.Errorf("metric array should have more that 1 element (%+v)", metricsOfID)
+						return fmt.Errorf("Metric array should have more than 1 element (%+v)", metricsOfID)
 					}
 
 					for _, m := range metricsOfID {
