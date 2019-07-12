@@ -228,8 +228,8 @@ func (o *OvsMirrorProbesHandler) registerProbeOnPort(probe *ovsMirrorProbe, port
 	operations = append(operations, *mirrorInsertOp)
 
 	mutateMirrorsUUID := []libovsdb.UUID{{GoUUID: mirrorInsertOp.UUIDName}}
-	mutateMirrosSet, _ := libovsdb.NewOvsSet(mutateMirrorsUUID)
-	mutationMirrors := libovsdb.NewMutation("mirrors", "insert", mutateMirrosSet)
+	mutateMirrorsSet, _ := libovsdb.NewOvsSet(mutateMirrorsUUID)
+	mutationMirrors := libovsdb.NewMutation("mirrors", "insert", mutateMirrorsSet)
 
 	condition = libovsdb.NewCondition("_uuid", "==", libovsdb.UUID{GoUUID: bridgeUUID})
 	updateOp := libovsdb.Operation{
@@ -257,6 +257,10 @@ func (o *OvsMirrorProbesHandler) unregisterProbeFromPort(portUUID string) error 
 	delete(o.probes, portUUID)
 	o.probesLock.Unlock()
 
+	if probe.subHandler != nil {
+		probe.subHandler.UnregisterProbe(probe.mirrorNode, probe, probe.subProbe)
+	}
+
 	bridgeUUID, err := o.retrieveBridgeUUID(portUUID)
 	if err != nil {
 		return err
@@ -283,8 +287,8 @@ func (o *OvsMirrorProbesHandler) unregisterProbeFromPort(portUUID string) error 
 	mutationPorts := libovsdb.NewMutation("ports", "delete", mutatePortsSet)
 
 	mutateMirrorsUUID := []libovsdb.UUID{{GoUUID: mirrorUUID}}
-	mutateMirrosSet, _ := libovsdb.NewOvsSet(mutateMirrorsUUID)
-	mutationMirrors := libovsdb.NewMutation("mirrors", "delete", mutateMirrosSet)
+	mutateMirrorsSet, _ := libovsdb.NewOvsSet(mutateMirrorsUUID)
+	mutationMirrors := libovsdb.NewMutation("mirrors", "delete", mutateMirrorsSet)
 
 	condition := libovsdb.NewCondition("_uuid", "==", libovsdb.UUID{GoUUID: bridgeUUID})
 	mutateOp := libovsdb.Operation{
