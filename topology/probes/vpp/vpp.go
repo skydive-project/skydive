@@ -23,8 +23,8 @@
 package vpp
 
 import (
-	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"strings"
 	"sync"
@@ -38,6 +38,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	tp "github.com/skydive-project/skydive/topology/probes"
@@ -50,28 +51,27 @@ const (
 	VPPPollingTime = 200
 )
 
-// Probe is VPP probe
+// Probe is an instance of a VPP probe in a namespace
 type Probe struct {
 	sync.Mutex
+	*graph.EventHandler
 	Ctx          tp.Context
 	shm          string                                    // connect SHM path
 	conn         *core.Connection                          // VPP connection
 	interfaceMap map[uint32]*interfaces.SwInterfaceDetails // MAP of VPP interfaces
+	intfIndexer  *graph.MetadataIndexer                    // index of created nodes by the probe
 	vppRootNode  *graph.Node                               // root node for ownership
 	notifChan    chan api.Message                          // notification channel on interfaces events
 	state        common.ServiceState                       // state of the probe (running or stopped)
 	wg           sync.WaitGroup                            // goroutines wait group
 }
 
+func interfaceName(name []byte) string {
+	return strings.Trim(string(name), "\000")
+}
+
 func interfaceMAC(mac []byte) string {
-	s := ""
-	for i, m := range mac {
-		if i != 0 {
-			s += ":"
-		}
-		s += fmt.Sprintf("%02x", m)
-	}
-	return s
+	return net.HardwareAddr(mac).String()
 }
 
 func interfaceDuplex(duplex uint8) string {
@@ -103,25 +103,26 @@ func (p *Probe) getInterfaceVrfID(ch api.Channel, index uint32) int64 {
 }
 
 func (p *Probe) getInterface(index uint32) *graph.Node {
-	p.Ctx.Graph.RLock()
-	defer p.Ctx.Graph.RUnlock()
-	return p.Ctx.Graph.LookupFirstNode(graph.Metadata{"IfIndex": int64(index), "Type": "vpp"})
+	node, _ := p.intfIndexer.GetNode(int64(index))
+	return node
 }
 
 func (p *Probe) createOrUpdateInterface(ch api.Channel, intf *interfaces.SwInterfaceDetails) *graph.Node {
-	metadata := graph.Metadata{"IfIndex": int64(intf.SwIfIndex), "Type": "vpp"}
+	vrfID := p.getInterfaceVrfID(ch, intf.SwIfIndex)
 
 	p.Ctx.Graph.Lock()
 	defer p.Ctx.Graph.Unlock()
 
 	var err error
-	node := p.Ctx.Graph.LookupFirstNode(metadata)
+	node := p.getInterface(intf.SwIfIndex)
 	if node == nil {
-		node, err = p.Ctx.Graph.NewNode(graph.GenID(), metadata)
+		node, err = p.Ctx.Graph.NewNode(graph.GenID(), graph.Metadata{"IfIndex": int64(intf.SwIfIndex), "Type": "vpp"})
 		if err != nil {
 			p.Ctx.Logger.Error(err)
 			return nil
 		}
+		p.NotifyEvent(graph.NodeAdded, node)
+
 		if _, err = p.Ctx.Graph.Link(p.vppRootNode, node, topology.OwnershipMetadata()); err != nil {
 			p.Ctx.Logger.Error(err)
 			return nil
@@ -129,9 +130,8 @@ func (p *Probe) createOrUpdateInterface(ch api.Channel, intf *interfaces.SwInter
 	}
 
 	tr := p.Ctx.Graph.StartMetadataTransaction(node)
-	defer tr.Commit()
 	tr.AddMetadata("Driver", "vpp")
-	tr.AddMetadata("Name", strings.Trim(string(intf.InterfaceName), "\000"))
+	tr.AddMetadata("Name", interfaceName(intf.InterfaceName))
 	tr.AddMetadata("IfIndex", int64(intf.SwIfIndex))
 	tr.AddMetadata("MAC", interfaceMAC(intf.L2Address[:intf.L2AddressLength]))
 	tr.AddMetadata("MTU", int64(intf.LinkMtu))
@@ -141,18 +141,17 @@ func (p *Probe) createOrUpdateInterface(ch api.Channel, intf *interfaces.SwInter
 	if state != "DOWN" {
 		tr.AddMetadata("Duplex", interfaceDuplex(intf.LinkDuplex))
 	}
-	tr.AddMetadata("VrfID", p.getInterfaceVrfID(ch, intf.SwIfIndex))
+	tr.AddMetadata("VrfID", vrfID)
+	tr.Commit()
 
+	p.NotifyEvent(graph.NodeUpdated, node)
 	return node
 }
 
 func interfaceNeedUpdate(i1, i2 *interfaces.SwInterfaceDetails) bool {
-	if (i1.LinkMtu != i2.LinkMtu) ||
-		(i1.LinkSpeed != i2.LinkSpeed) ||
-		(i1.LinkDuplex != i2.LinkDuplex) {
-		return true
-	}
-	return false
+	return i1.LinkMtu != i2.LinkMtu ||
+		i1.LinkSpeed != i2.LinkSpeed ||
+		i1.LinkDuplex != i2.LinkDuplex
 }
 
 func (p *Probe) eventAddInterface(ch api.Channel, intf *interfaces.SwInterfaceDetails) {
@@ -160,25 +159,18 @@ func (p *Probe) eventAddInterface(ch api.Channel, intf *interfaces.SwInterfaceDe
 }
 
 func (p *Probe) eventDelInterface(node *graph.Node) {
-	p.Ctx.Graph.Lock()
-	defer p.Ctx.Graph.Unlock()
 	if err := p.Ctx.Graph.DelNode(node); err != nil {
 		p.Ctx.Logger.Error(err)
 	}
 }
 
 func (p *Probe) interfaceEventsEnableDisable(ch api.Channel, enable bool) {
-	ed := uint32(0)
+	req := &interfaces.WantInterfaceEvents{PID: uint32(os.Getpid())}
 	if enable {
-		ed = uint32(1)
-	}
-	req := &interfaces.WantInterfaceEvents{
-		EnableDisable: ed,
-		PID:           uint32(os.Getpid()),
+		req.EnableDisable = 1
 	}
 	msg := &interfaces.WantInterfaceEventsReply{}
-	err := ch.SendRequest(req).ReceiveReply(msg)
-	if err != nil {
+	if err := ch.SendRequest(req).ReceiveReply(msg); err != nil {
 		p.Ctx.Logger.Error(err)
 	}
 }
@@ -198,6 +190,7 @@ func (p *Probe) interfacesEvents() {
 		return
 	}
 
+	logging.GetLogger().Debugf("Registering for VPP events")
 	p.interfaceEventsEnableDisable(ch, true)
 
 	for p.state.Load() == common.RunningState {
@@ -206,22 +199,24 @@ func (p *Probe) interfacesEvents() {
 			break
 		}
 		msg := notif.(*interfaces.SwInterfaceEvent)
+		logging.GetLogger().Debugf("Received sw interface event %+v", msg)
 
-		node := p.getInterface(msg.SwIfIndex)
-		p.Ctx.Graph.RLock()
-		name, _ := node.GetFieldString("Name")
-		p.Ctx.Graph.RUnlock()
-		if msg.Deleted > 0 {
-			p.Ctx.Logger.Debugf("Delete interface %v idx %d", name, msg.SwIfIndex)
-			p.eventDelInterface(node)
-			continue
-		}
-		p.Ctx.Logger.Debugf("ChangeState interface %v idx %d updown %d", name, msg.SwIfIndex, msg.AdminUpDown)
 		p.Ctx.Graph.Lock()
-		node.Metadata.SetField("State", interfaceUpDown(msg.AdminUpDown))
+		if node := p.getInterface(msg.SwIfIndex); node != nil {
+			name, _ := node.GetFieldString("Name")
+			if msg.Deleted > 0 {
+				logging.GetLogger().Debugf("Delete interface %v idx %d", name, msg.SwIfIndex)
+				p.eventDelInterface(node)
+			} else {
+				state := interfaceUpDown(msg.AdminUpDown)
+				logging.GetLogger().Debugf("ChangeState interface %s idx %d updown %d", name, msg.SwIfIndex, state)
+				p.Ctx.Graph.AddMetadata(node, "State", state)
+			}
+		}
 		p.Ctx.Graph.Unlock()
 	}
 
+	logging.GetLogger().Debugf("Unregistering for VPP events")
 	p.interfaceEventsEnableDisable(ch, false)
 
 	sub.Unsubscribe()
@@ -267,7 +262,7 @@ func (p *Probe) interfacesPolling() {
 		/* Update interface metadata */
 		for index := range needUpdate {
 			msg := p.interfaceMap[index]
-			p.Ctx.Logger.Debugf("Add/Update interface %v idx %d up/down %d", strings.Trim(string(msg.InterfaceName), "\000"), int64(msg.SwIfIndex), int64(msg.AdminUpDown))
+			logging.GetLogger().Debugf("Add/Update interface %s idx %d up/down %d", interfaceName(msg.InterfaceName), int64(msg.SwIfIndex), interfaceUpDown(msg.AdminUpDown))
 			p.eventAddInterface(ch, msg)
 		}
 		/* Remove interface that didn't exist anymore */
@@ -275,12 +270,13 @@ func (p *Probe) interfacesPolling() {
 			_, found := foundInterfaces[index]
 			_, firsttime := needUpdate[index]
 			if !found && !firsttime {
-				node := p.getInterface(index)
-				p.Ctx.Graph.RLock()
-				name, _ := node.GetFieldString("Name")
-				p.Ctx.Graph.RUnlock()
-				p.Ctx.Logger.Debugf("Delete interface %v idx %d", name, index)
-				p.eventDelInterface(node)
+				p.Ctx.Graph.Lock()
+				if node := p.getInterface(index); node != nil {
+					name, _ := node.GetFieldString("Name")
+					logging.GetLogger().Debugf("Delete interface %v idx %d", name, index)
+					p.eventDelInterface(node)
+				}
+				p.Ctx.Graph.Unlock()
 				delete(p.interfaceMap, index)
 			}
 		}
@@ -313,6 +309,8 @@ func (p *Probe) Start() error {
 	}
 	ch.Close()
 
+	p.intfIndexer.Start()
+
 	metadata := graph.Metadata{
 		"Name":      "vpp",
 		"Type":      "vpp",
@@ -340,6 +338,7 @@ func (p *Probe) Start() error {
 
 // Stop the probe
 func (p *Probe) Stop() {
+	p.intfIndexer.Stop()
 	p.state.Store(common.StoppingState)
 	close(p.notifChan)
 	p.wg.Wait()
@@ -351,10 +350,12 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	shm := ctx.Config.GetString("agent.topology.vpp.connect")
 
 	p := &Probe{
+		EventHandler: graph.NewEventHandler(100),
 		Ctx:          ctx,
 		shm:          shm,
 		interfaceMap: make(map[uint32]*interfaces.SwInterfaceDetails),
 		notifChan:    make(chan api.Message, 100),
+		intfIndexer: graph.NewMetadataIndexer(p.Ctx.Graph, p, nil, "IfIndex"),
 	}
 	p.state.Store(common.StoppedState)
 
