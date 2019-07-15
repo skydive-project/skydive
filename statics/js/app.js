@@ -19,6 +19,7 @@ var store = new Vuex.Store({
     topologyFilter: "",
     topologyHighlight: "",
     topologyTimeContext: 0,
+    isCtrlPressed: false,
   },
 
   mutations: {
@@ -129,6 +130,9 @@ var store = new Vuex.Store({
       });
     },
 
+    ctrlPressed: function(state, isPressed) {
+      state.isCtrlPressed = isPressed;
+    }
   },
 
 });
@@ -199,6 +203,14 @@ var app = new Vue({
       }
 
       return e;
+    });
+
+    $(document).keydown(function(event) {
+      if(event.which == "17") self.$store.commit('ctrlPressed', true);
+    });
+
+    $(document).keyup(function() {
+      if(event.which == "17") self.$store.commit('ctrlPressed', false);
     });
   },
 

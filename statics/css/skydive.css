@@ -459,8 +459,8 @@ circle.manager {
   left: 0;
 }
 
-.form-control:focus + .fa-crosshairs {
-  color: #66afe9;
+.node-select-active + .fa-crosshairs {
+  color: #66afe9 !important;
 }
 
 .has-left-icon{
