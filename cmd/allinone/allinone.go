@@ -149,8 +149,8 @@ var AllInOneCmd = &cobra.Command{
 		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 		<-ch
 
-		analyzerProcess.Kill()
-		agentProcess.Kill()
+		analyzerProcess.Signal(os.Interrupt)
+		agentProcess.Signal(os.Interrupt)
 
 		analyzerProcess.Wait()
 		agentProcess.Wait()
