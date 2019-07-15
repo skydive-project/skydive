@@ -110,7 +110,7 @@ func NewPod(server *api.Server, clientPool *websocket.StructClientPool, g *graph
 	forwarder := common.NewForwarder(g, clientPool)
 
 	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", apiAuthBackend))
-	if _, err := NewPublisherEndpoint(publisherWSServer, g, opts.Validator); err != nil {
+	if _, err := common.NewPublisherEndpoint(publisherWSServer, g, opts.Validator); err != nil {
 		return nil, err
 	}
 

@@ -118,13 +118,13 @@ func NewHub(server *shttp.Server, g *graph.Graph, cached *graph.CachedBackend, a
 	}
 
 	podWSServer := websocket.NewStructServer(newWSServer(podEndpoint, clusterAuthBackend))
-	_, err := NewPodEndpoint(podWSServer, g)
+	_, err := gc.NewPublisherEndpoint(podWSServer, g, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", apiAuthBackend))
-	_, err = NewPublisherEndpoint(publisherWSServer, g, opts.Validator)
+	_, err = gc.NewPublisherEndpoint(publisherWSServer, g, opts.Validator)
 	if err != nil {
 		return nil, err
 	}
@@ -152,17 +152,4 @@ func NewHub(server *shttp.Server, g *graph.Graph, cached *graph.CachedBackend, a
 		publisherWSServer:   publisherWSServer,
 		subscriberWSServer:  subscriberWSServer,
 	}, nil
-}
-
-func clientOrigin(c websocket.Speaker) string {
-	origin := string(c.GetServiceType())
-	if len(c.GetRemoteHost()) > 0 {
-		origin += "." + c.GetRemoteHost()
-	}
-
-	return origin
-}
-
-func delSubGraphOfOrigin(g *graph.Graph, origin string) {
-	g.DelNodes(graph.Metadata{"Origin": origin})
 }
