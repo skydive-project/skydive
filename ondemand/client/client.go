@@ -123,51 +123,9 @@ func (o *OnDemandClient) OnStructMessage(c ws.Speaker, m *ws.StructMessage) {
 	}
 }
 
-func (o *OnDemandClient) registerTasks(nodes []interface{}, resource types.Resource) {
-	toRegister := func(node *graph.Node) (nodeID graph.Identifier, host string, register bool) {
-		o.graph.RLock()
-		defer o.graph.RUnlock()
-
-		// check not already registered
-		o.RLock()
-		tasks, ok := o.registeredNodes[node.ID]
-		if ok {
-			_, ok = tasks[resource.ID()]
-		}
-		o.RUnlock()
-
-		if ok {
-			logging.GetLogger().Debugf("%s already registered on %s", resource.ID(), node.ID)
-			return
-		}
-
-		return node.ID, node.Host, true
-	}
-
-	nps := map[graph.Identifier]nodeTask{}
-	for _, i := range nodes {
-		switch i.(type) {
-		case *graph.Node:
-			node := i.(*graph.Node)
-			if nodeID, host, ok := toRegister(node); ok {
-				nps[nodeID] = nodeTask{nodeID, host, resource}
-			}
-		case []*graph.Node:
-			// case of shortestpath that returns a list of nodes
-			for _, node := range i.([]*graph.Node) {
-				if nodeID, host, ok := toRegister(node); ok {
-					nps[nodeID] = nodeTask{nodeID, host, resource}
-				}
-			}
-		}
-	}
-
-	if len(nps) > 0 {
-		go func() {
-			for _, np := range nps {
-				o.registerTask(np)
-			}
-		}()
+func (o *OnDemandClient) registerTasks(nps map[graph.Identifier]nodeTask) {
+	for _, np := range nps {
+		o.registerTask(np)
 	}
 }
 
@@ -222,6 +180,43 @@ func (o *OnDemandClient) unregisterTask(node *graph.Node, resource types.Resourc
 	return true
 }
 
+func (o *OnDemandClient) nodeTasks(nodes []interface{}, resource types.Resource) map[graph.Identifier]nodeTask {
+	toRegister := func(node *graph.Node) (nodeID graph.Identifier, host string, register bool) {
+		// check not already registered
+		tasks, ok := o.registeredNodes[node.ID]
+		if ok {
+			ok = tasks[resource.ID()]
+		}
+
+		if ok {
+			logging.GetLogger().Debugf("%s already registered on %s", resource.ID(), node.ID)
+			return
+		}
+
+		return node.ID, node.Host, true
+	}
+
+	nps := map[graph.Identifier]nodeTask{}
+	for _, i := range nodes {
+		switch i.(type) {
+		case *graph.Node:
+			node := i.(*graph.Node)
+			if nodeID, host, ok := toRegister(node); ok {
+				nps[nodeID] = nodeTask{nodeID, host, resource}
+			}
+		case []*graph.Node:
+			// case of shortestpath that returns a list of nodes
+			for _, node := range i.([]*graph.Node) {
+				if nodeID, host, ok := toRegister(node); ok {
+					nps[nodeID] = nodeTask{nodeID, host, resource}
+				}
+			}
+		}
+	}
+
+	return nps
+}
+
 // checkForRegistration check the resource gremlin expression in order to
 // register new task.
 func (o *OnDemandClient) checkForRegistrationCallback() {
@@ -236,9 +231,10 @@ func (o *OnDemandClient) checkForRegistrationCallback() {
 	defer o.RUnlock()
 
 	for _, resource := range o.resources {
-		nodes := o.handler.GetNodes(resource)
-		if len(nodes) > 0 {
-			go o.registerTasks(nodes, resource)
+		if nodes := o.handler.GetNodes(resource); len(nodes) > 0 {
+			if nps := o.nodeTasks(nodes, resource); len(nps) > 0 {
+				go o.registerTasks(nps)
+			}
 		}
 	}
 }
@@ -312,12 +308,14 @@ func (o *OnDemandClient) registerResource(resource types.Resource) {
 	defer o.graph.RUnlock()
 
 	o.Lock()
-	o.resources[resource.ID()] = resource
-	o.Unlock()
+	defer o.Unlock()
 
-	nodes := o.handler.GetNodes(resource)
-	if len(nodes) > 0 {
-		go o.registerTasks(nodes, resource)
+	o.resources[resource.ID()] = resource
+
+	if nodes := o.handler.GetNodes(resource); len(nodes) > 0 {
+		if nps := o.nodeTasks(nodes, resource); len(nps) > 0 {
+			go o.registerTasks(nps)
+		}
 	}
 }
 

@@ -19,6 +19,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -58,6 +59,9 @@ type OnDemandServerHandler interface {
 	CreateTask(*graph.Node, types.Resource) (interface{}, error)
 	RemoveTask(*graph.Node, types.Resource, interface{}) error
 }
+
+// ErrTaskNotFound used when a task is not found for a specific node
+var ErrTaskNotFound = errors.New("task not found")
 
 func (o *OnDemandServer) registerTask(n *graph.Node, resource types.Resource) bool {
 	logging.GetLogger().Debugf("Attempting to register %s %s on node %s", o.resourceName, resource.ID(), n.ID)
@@ -111,7 +115,7 @@ func (o *OnDemandServer) unregisterTask(n *graph.Node, resource types.Resource) 
 	o.RUnlock()
 
 	if !isActive {
-		return fmt.Errorf("no running task found on node %s", n.ID)
+		return ErrTaskNotFound
 	}
 
 	name, _ := n.GetFieldString("Name")
@@ -181,8 +185,13 @@ func (o *OnDemandServer) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 
 		status = http.StatusOK
 		if err := o.unregisterTask(n, resource); err != nil {
-			logging.GetLogger().Errorf("Failed to unregister %s on node %s", o.resourceName, n.ID)
-			status = http.StatusInternalServerError
+			if err == ErrTaskNotFound {
+				logging.GetLogger().Warningf("Failed to unregister %s on node %s, %s", o.resourceName, n.ID, err)
+				status = http.StatusNotFound
+			} else {
+				logging.GetLogger().Errorf("Failed to unregister %s on node %s, %s", o.resourceName, n.ID, err)
+				status = http.StatusInternalServerError
+			}
 		}
 	}
 

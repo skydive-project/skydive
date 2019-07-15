@@ -80,7 +80,7 @@ func (r *rollIndexService) cleanup(index Index) {
 }
 
 func (r *rollIndexService) roll(force bool) {
-	logging.GetLogger().Debug("Start rolling indices...")
+	logging.GetLogger().Debugf("Start rolling indices (forced: %v)...", force)
 
 	for _, index := range r.indices {
 		ri := r.client.esClient.RolloverIndex(index.Alias())
@@ -103,6 +103,8 @@ func (r *rollIndexService) roll(force bool) {
 
 		if needToRoll {
 			logging.GetLogger().Infof("Index %s rolling over", index.Alias())
+
+			logging.GetLogger().Debugf("Rolling over with: %+v", ri)
 
 			resp, err := ri.Do(context.Background())
 			if err != nil {

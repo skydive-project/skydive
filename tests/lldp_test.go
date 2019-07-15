@@ -31,7 +31,6 @@ func TestLLDP(t *testing.T) {
 			{"ip link set lldp0 up", false},
 			{"ip link set multicast on dev lldp0", false},
 			{"ip addr add 10.10.20.1/24 dev lldp0", false},
-			{"sleep 3", false}, // give some time to the LLDP probe to start capturing packets
 		},
 
 		tearDownCmds: []Cmd{
@@ -39,8 +38,9 @@ func TestLLDP(t *testing.T) {
 		},
 
 		injections: []TestInjection{{
-			from: g.G.V().Has("Name", "lldp0"),
-			pcap: "pcaptraces/lldp-detailed.pcap",
+			from:  g.G.V().Has("Name", "lldp0"),
+			pcap:  "pcaptraces/lldp-detailed.pcap",
+			count: 20,
 		}},
 
 		mode: Replay,

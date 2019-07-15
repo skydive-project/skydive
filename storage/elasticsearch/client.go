@@ -82,8 +82,6 @@ type Client struct {
 	esClient      *elastic.Client
 	bulkProcessor *elastic.BulkProcessor
 	started       atomic.Value
-	quit          chan bool
-	wg            sync.WaitGroup
 	cfg           Config
 	indices       map[string]Index
 	rollService   *rollIndexService
@@ -405,17 +403,12 @@ func (c *Client) Start() {
 // Stop Elasticsearch background client
 func (c *Client) Stop() {
 	if c.started.Load() == true {
-		c.quit <- true
-		c.wg.Wait()
+		if c.rollService != nil {
+			c.rollService.stop()
+		}
 
 		c.esClient.Stop()
 	}
-
-	c.RLock()
-	for _, l := range c.listeners {
-		l.OnStarted()
-	}
-	c.RUnlock()
 }
 
 // Started is the client already started ?
@@ -467,7 +460,6 @@ func NewClient(indices []Index, cfg Config, electionService common.MasterElectio
 
 	client := &Client{
 		url:     url,
-		quit:    make(chan bool, 1),
 		cfg:     cfg,
 		indices: indicesMap,
 	}

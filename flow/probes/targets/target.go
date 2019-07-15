@@ -55,7 +55,7 @@ func tableOptsFromCapture(capture *types.Capture) flow.TableOpts {
 func NewTarget(typ string, g *graph.Graph, n *graph.Node, capture *types.Capture, uuids flow.UUIDs, bpf *flow.BPF, fta *flow.TableAllocator) (Target, error) {
 	switch typ {
 	case "netflowv5":
-		return NewNetFlowV5Target(g, n, capture)
+		return NewNetFlowV5Target(g, n, capture, uuids)
 	case "erspanv1":
 		return NewERSpanTarget(g, n, capture)
 	case "", "local":

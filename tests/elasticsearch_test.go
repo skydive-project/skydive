@@ -101,6 +101,7 @@ func TestRollingSimple(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer client.Stop()
 
 	for i := 0; i != 9; i++ {
 		id := fmt.Sprintf("before-entry_%d", i)

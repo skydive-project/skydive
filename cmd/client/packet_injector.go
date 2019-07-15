@@ -98,14 +98,11 @@ var PacketInjectionCreate = &cobra.Command{
 			exitOnError(err)
 		}
 
-		var createOpts *http.CreateOptions
-		if packet.Pcap == nil {
-			ttl := 5 * time.Second
-			if packet.Interval != 0 {
-				ttl = time.Duration(packet.Interval*packet.Count)*time.Millisecond + 5*time.Second
-			}
-			createOpts = &http.CreateOptions{TTL: ttl}
+		ttl := 5 * time.Second
+		if packet.Interval != 0 {
+			ttl = time.Duration(packet.Interval*packet.Count)*time.Millisecond + 5*time.Second
 		}
+		createOpts := &http.CreateOptions{TTL: ttl}
 
 		if err := crudClient.Create("injectpacket", &packet, createOpts); err != nil {
 			exitOnError(err)
