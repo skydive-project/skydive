@@ -421,8 +421,10 @@ func (p *Probe) Stop() {
 	p.g.RemoveEventListener(p)
 	atomic.StoreInt64(&p.state, common.StoppingState)
 	for intf, activeProbe := range p.interfaceMap {
-		logging.GetLogger().Debugf("Stopping probe on %s", intf)
-		activeProbe.Stop()
+		if activeProbe != nil {
+			logging.GetLogger().Debugf("Stopping probe on %s", intf)
+			activeProbe.Stop()
+		}
 	}
 	p.wg.Wait()
 }
