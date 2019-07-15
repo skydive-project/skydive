@@ -342,8 +342,8 @@ func (p *Probe) Start() error {
 func (p *Probe) Stop() {
 	p.state.Store(common.StoppingState)
 	close(p.notifChan)
-	p.conn.Disconnect()
 	p.wg.Wait()
+	p.conn.Disconnect()
 }
 
 // NewProbe returns a new VPP probe
