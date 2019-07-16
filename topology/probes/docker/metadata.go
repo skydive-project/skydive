@@ -28,6 +28,14 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
+// Mount describes the metadata of a docker bind mount
+// easyjson:json
+// gendecoder
+type Mount struct {
+	Source      string
+	Destination string
+}
+
 // Metadata describe the metadata of a docker container
 // easyjson:json
 // gendecoder
@@ -35,6 +43,7 @@ type Metadata struct {
 	ContainerID   string
 	ContainerName string
 	Labels        graph.Metadata `field:"Metadata"`
+	Mounts        []*Mount
 }
 
 // MetadataDecoder implements a json message raw decoder
