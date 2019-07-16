@@ -26,6 +26,8 @@ import (
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/probes/docker"
+	"github.com/skydive-project/skydive/topology/probes/docker/subprobes"
+	docker_vpp "github.com/skydive-project/skydive/topology/probes/docker/subprobes/vpp"
 	"github.com/skydive-project/skydive/topology/probes/libvirt"
 	"github.com/skydive-project/skydive/topology/probes/lldp"
 	"github.com/skydive-project/skydive/topology/probes/lxd"
@@ -86,7 +88,8 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 		case "docker":
 			dockerURL := config.GetString("agent.topology.docker.url")
 			netnsRunPath := config.GetString("agent.topology.docker.netns.run_path")
-			dockerProbe, err := docker.NewProbe(nsProbe, dockerURL, netnsRunPath)
+			subprobes := dockerSubprobes(nsProbe)
+			dockerProbe, err := docker.NewProbe(nsProbe, dockerURL, netnsRunPath, subprobes)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to initialize Docker probe: %s", err)
 			}
@@ -136,4 +139,15 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 	}
 
 	return bundle, nil
+}
+
+// dockerSubprobes create all docker related subprobes
+func dockerSubprobes(nsProbe *netns.Probe) []subprobes.Subprobe {
+	subprobes := make([]subprobes.Subprobe, 0)
+	if vpp, err := docker_vpp.NewSubprobe(nsProbe); err != nil {
+		logging.GetLogger().Warningf("VPP subprobe in docker probe will be disabled because its creation failed: %v", err)
+	} else {
+		subprobes = append(subprobes, vpp)
+	}
+	return subprobes
 }

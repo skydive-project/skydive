@@ -21,6 +21,7 @@ package docker
 
 import (
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/topology/probes/docker/subprobes"
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
 )
 
@@ -37,6 +38,6 @@ func (probe *Probe) Stop() {
 }
 
 // NewProbe creates a new topology Docker probe
-func NewProbe(nsProbe *ns.Probe, dockerURL, netnsRunPath string) (*Probe, error) {
+func NewProbe(nsProbe *ns.Probe, dockerURL, netnsRunPath string, subprobes []subprobes.Subprobe) (*Probe, error) {
 	return nil, common.ErrNotImplemented
 }

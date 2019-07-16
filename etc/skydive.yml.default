@@ -211,6 +211,20 @@ agent:
       netns:
         # allow to specify where the docker probe is watching network namespaces
         # run_path: /var/run/docker/netns
+      vpp:
+        # configuration for vpp subprobe
+        cliconnect:
+          # Path to VPP CLI socket file or VPP CLI connection IP address with port.
+          # Default "" is using default VPP CLI socket file (/run/vpp/cli.sock). This
+          # setting is used for retrieving information from VPP in docker, i.e. to get
+          # VPP version, docker client executes in given container command
+          # "vppctl -s <cliconnect> show version"
+        probeinterval:
+          # Interval (in seconds) between regular probing in all docker containers for
+          # VPP topology changes. Default value is 5. Minimal values is 1 (lower values
+          # will be changed to 1). The probing can get easily CPU-intensive when
+          # count of docker containers increases. You can mitigate CPU problems by setting
+          # longer probe intervals.
 
     netlink:
       # delay in seconds between two metric updates
