@@ -15,7 +15,7 @@
  *
  */
 
-package main
+package mod
 
 import (
 	"fmt"
@@ -80,10 +80,10 @@ func assertEqualInt64(t *testing.T, expected, actual int64) {
 	}
 }
 
-func getFlow() flow.Flow {
+func getFlow() *flow.Flow {
 	t, _ := time.Parse(time.RFC3339, "2019-01-01T10:20:30Z")
 	start := common.UnixMillis(t)
-	return flow.Flow{
+	return &flow.Flow{
 		UUID:        "66724f5d-718f-47a2-93a7-c807cd54241e",
 		LayersPath:  "Ethernet/IPv4/TCP",
 		Application: "TCP",
@@ -117,8 +117,7 @@ func getFlow() flow.Flow {
 func Test_Transform_basic_flow(t *testing.T) {
 	transformer := getTestTransformer()
 	f := getFlow()
-	flows := []*flow.Flow{&f}
-	secAdvFlow := transformer.Transform(flows).([]*SecurityAdvisorFlow)[0]
+	secAdvFlow := transformer.Transform(f).(*SecurityAdvisorFlow)
 	assertEqual(t, version, secAdvFlow.Version)
 	assertEqualInt64(t, 0, secAdvFlow.UpdateCount)
 	assertEqual(t, "STARTED", secAdvFlow.Status)
@@ -136,9 +135,8 @@ func Test_Transform_basic_flow(t *testing.T) {
 func Test_Transform_UpdateCount_increses(t *testing.T) {
 	transformer := getTestTransformer()
 	f := getFlow()
-	flows := []*flow.Flow{&f}
 	for i := int64(0); i < 10; i++ {
-		secAdvFlow := transformer.Transform(flows).([]*SecurityAdvisorFlow)[0]
+		secAdvFlow := transformer.Transform(f).(*SecurityAdvisorFlow)
 		assertEqualInt64(t, i, secAdvFlow.UpdateCount)
 	}
 }
@@ -146,12 +144,11 @@ func Test_Transform_UpdateCount_increses(t *testing.T) {
 func Test_Transform_Status_updates(t *testing.T) {
 	transformer := getTestTransformer()
 	f := getFlow()
-	flows := []*flow.Flow{&f}
-	secAdvFlow := transformer.Transform(flows).([]*SecurityAdvisorFlow)[0]
+	secAdvFlow := transformer.Transform(f).(*SecurityAdvisorFlow)
 	assertEqual(t, "STARTED", secAdvFlow.Status)
-	secAdvFlow = transformer.Transform(flows).([]*SecurityAdvisorFlow)[0]
+	secAdvFlow = transformer.Transform(f).(*SecurityAdvisorFlow)
 	assertEqual(t, "UPDATED", secAdvFlow.Status)
 	f.FinishType = flow.FlowFinishType_TCP_FIN
-	secAdvFlow = transformer.Transform(flows).([]*SecurityAdvisorFlow)[0]
+	secAdvFlow = transformer.Transform(f).(*SecurityAdvisorFlow)
 	assertEqual(t, "ENDED", secAdvFlow.Status)
 }

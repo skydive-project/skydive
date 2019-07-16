@@ -20,16 +20,10 @@ package core
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 
 	"github.com/gocarina/gocsv"
 	"github.com/spf13/viper"
 )
-
-// Encoder exposes the interface for encoding flows
-type Encoder interface {
-	Encode(in interface{}) ([]byte, error)
-}
 
 type encodeJSON struct {
 	pretty bool
@@ -52,7 +46,7 @@ func (e *encodeJSON) Encode(in interface{}) ([]byte, error) {
 }
 
 // NewEncodeJSON create an encode object
-func NewEncodeJSON(cfg *viper.Viper) (Encoder, error) {
+func NewEncodeJSON(cfg *viper.Viper) (interface{}, error) {
 	return &encodeJSON{
 		pretty: cfg.GetBool(CfgRoot + "encode.json.pretty"),
 	}, nil
@@ -67,19 +61,6 @@ func (e *encodeCSV) Encode(in interface{}) ([]byte, error) {
 }
 
 // NewEncodeCSV create an encode object
-func NewEncodeCSV() (Encoder, error) {
+func NewEncodeCSV(cfg *viper.Viper) (interface{}, error) {
 	return &encodeCSV{}, nil
-}
-
-// NewEncodeFromConfig creates store from config
-func NewEncodeFromConfig(cfg *viper.Viper) (Encoder, error) {
-	ty := cfg.GetString(CfgRoot + "encode.type")
-	switch ty {
-	case "csv":
-		return NewEncodeCSV()
-	case "json":
-		return NewEncodeJSON(cfg)
-	default:
-		return nil, fmt.Errorf("Encode type %s not supported", ty)
-	}
 }

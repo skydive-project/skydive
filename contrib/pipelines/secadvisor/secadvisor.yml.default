@@ -23,8 +23,15 @@ pipeline:
       - other
   # transform to sa record structure
   transform:
+    type: sa
     sa:
-      # exclude_started_flows: true
+      exclude_started_flows: true
+  encode:
+    type: json
+    json:
+      pretty: true
+  compress:
+    type: gzip
   store:
     type: s3
     s3:

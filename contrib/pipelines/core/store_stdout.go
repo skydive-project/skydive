@@ -20,7 +20,8 @@ package core
 import (
 	"fmt"
 
-	"github.com/skydive-project/skydive/flow"
+	"github.com/spf13/viper"
+
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -34,27 +35,28 @@ func (s *storeStdout) SetPipeline(pipeline *Pipeline) {
 }
 
 // StoreFlows store flows in memory, before being written to the object store
-func (s *storeStdout) StoreFlows(flows []*flow.Flow) error {
-	transformed := s.pipeline.Transformer.Transform(flows)
+func (s *storeStdout) StoreFlows(flows map[Tag][]interface{}) error {
+	for key, val := range flows {
+		encoded, err := s.pipeline.Encoder.Encode(val)
+		if err != nil {
+			logging.GetLogger().Error("Failed to encode object: ", err)
+			return err
+		}
 
-	encoded, err := s.pipeline.Encoder.Encode(transformed)
-	if err != nil {
-		logging.GetLogger().Error("Failed to encode object: ", err)
-		return err
+		compressed, err := s.pipeline.Compressor.Compress(encoded)
+		if err != nil {
+			logging.GetLogger().Error("Failed to compress object: ", err)
+			return err
+		}
+
+		fmt.Printf("--- %s ---\n", key)
+		fmt.Printf("%s\n", compressed)
 	}
-
-	compressed, err := s.pipeline.Compressor.Compress(encoded)
-	if err != nil {
-		logging.GetLogger().Error("Failed to compress object: ", err)
-		return err
-	}
-
-	fmt.Printf("%s\n", compressed)
 
 	return nil
 }
 
 // NewStoreStdout returns a new storage interface for storing flows to object store
-func NewStoreStdout() (Storer, error) {
+func NewStoreStdout(cfg *viper.Viper) (interface{}, error) {
 	return &storeStdout{}, nil
 }

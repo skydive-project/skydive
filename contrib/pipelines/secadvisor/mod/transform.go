@@ -15,7 +15,7 @@
  *
  */
 
-package main
+package mod
 
 import (
 	"strconv"
@@ -33,8 +33,8 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-// newTransform creates a new flow transformer based on a name string
-func newTransform(cfg *viper.Viper) (core.Transformer, error) {
+// NewTransform creates a new flow transformer based on a name string
+func NewTransform(cfg *viper.Viper) (interface{}, error) {
 	gremlinClient := client.NewGremlinQueryHelper(core.CfgAuthOpts(cfg))
 
 	excludeStartedFlows := cfg.GetBool(core.CfgRoot + "transform.sa.exclude_started_flows")
@@ -222,35 +222,29 @@ func (ft *securityAdvisorFlowTransformer) getTransport(f *flow.Flow) *SecurityAd
 }
 
 // Transform transforms a flow before being stored
-func (ft *securityAdvisorFlowTransformer) Transform(in []*flow.Flow) interface{} {
-	out := []*SecurityAdvisorFlow{}
+func (ft *securityAdvisorFlowTransformer) Transform(f *flow.Flow) interface{} {
 
-	for _, f := range in {
-		updateCount := ft.setUpdateCount(f)
-		status := ft.getStatus(f, updateCount)
+	updateCount := ft.setUpdateCount(f)
+	status := ft.getStatus(f, updateCount)
 
-		// do not report new flows (i.e. the first time you see them)
-		if ft.excludeStartedFlows && status == "STARTED" {
-			continue
-		}
-
-		rec := &SecurityAdvisorFlow{
-			UUID:             f.UUID,
-			LayersPath:       f.LayersPath,
-			Version:          version,
-			Status:           status,
-			FinishType:       ft.getFinishType(f),
-			Network:          ft.getNetwork(f),
-			Transport:        ft.getTransport(f),
-			LastUpdateMetric: f.LastUpdateMetric,
-			Metric:           f.Metric,
-			Start:            f.Start,
-			Last:             f.Last,
-			UpdateCount:      updateCount,
-			NodeType:         ft.getNodeType(f),
-		}
-		out = append(out, rec)
+	// do not report new flows (i.e. the first time you see them)
+	if ft.excludeStartedFlows && status == "STARTED" {
+		return nil
 	}
 
-	return out
+	return &SecurityAdvisorFlow{
+		UUID:             f.UUID,
+		LayersPath:       f.LayersPath,
+		Version:          version,
+		Status:           status,
+		FinishType:       ft.getFinishType(f),
+		Network:          ft.getNetwork(f),
+		Transport:        ft.getTransport(f),
+		LastUpdateMetric: f.LastUpdateMetric,
+		Metric:           f.Metric,
+		Start:            f.Start,
+		Last:             f.Last,
+		UpdateCount:      updateCount,
+		NodeType:         ft.getNodeType(f),
+	}
 }

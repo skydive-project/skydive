@@ -18,50 +18,9 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/spf13/viper"
-
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/contrib/pipelines/core"
-	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/websocket"
 )
 
-// NewSubscriberFromConfig returns a new flow subscriber writing to object store
-func NewSubscriberFromConfig(cfg *viper.Viper) (*websocket.StructSpeaker, error) {
-	store, err := core.NewStoreStdout()
-	if err != nil {
-		return nil, fmt.Errorf("Cannot initialize store: %s", err)
-	}
-
-	pipeline := core.NewPipeline(nil, nil, nil, nil, nil, store)
-
-	return core.NewSubscriber(pipeline, cfg)
-}
-
 func main() {
-	defaultCfgFile := "/etc/skydive/dummy.yml"
-	if len(os.Args) > 1 {
-		defaultCfgFile = os.Args[1]
-	}
-
-	if err := config.InitConfig("file", []string{defaultCfgFile}); err != nil {
-		logging.GetLogger().Errorf("Failed to initialize config: %s", err)
-		os.Exit(1)
-	}
-
-	if err := config.InitLogging(); err != nil {
-		logging.GetLogger().Errorf("Failed to initialize logging system: %s", err)
-		os.Exit(1)
-	}
-
-	s, err := NewSubscriberFromConfig(config.GetConfig().Viper)
-	if err != nil {
-		logging.GetLogger().Errorf("Failed to initialize subscriber: %s", err)
-		os.Exit(1)
-	}
-
-	core.SubscriberRun(s)
+	core.Main("/etc/skydive/dummy.yml")
 }

@@ -18,11 +18,20 @@
 package core
 
 import (
+	"github.com/spf13/viper"
+
 	"github.com/skydive-project/skydive/flow"
 )
 
-// Transformer allows generic transformations of a flow
-type Transformer interface {
-	// Transform transforms a flow before being stored
-	Transform(f []*flow.Flow) interface{}
+type transformNone struct {
+}
+
+// Transform transforms a flow before being stored
+func (t *transformNone) Transform(f *flow.Flow) interface{} {
+	return f
+}
+
+// NewTransformNone create a new transform
+func NewTransformNone(cfg *viper.Viper) (interface{}, error) {
+	return &transformNone{}, nil
 }

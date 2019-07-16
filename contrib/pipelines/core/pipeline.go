@@ -18,7 +18,12 @@
 package core
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"sync"
+
+	"github.com/spf13/viper"
 
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
@@ -28,8 +33,100 @@ import (
 // CfgRoot configuration root path
 const CfgRoot = "pipeline."
 
+// Transformer allows generic transformations of a flow
+type Transformer interface {
+	// Transform transforms a flow before being stored
+	Transform(f *flow.Flow) interface{}
+}
+
+// Classifier exposes the interface for tag based classification
+type Classifier interface {
+	GetFlowTag(fl *flow.Flow) Tag
+}
+
+// Filterer exposes the interface for tag based filtering
+type Filterer interface {
+	IsExcluded(tag Tag) bool
+}
+
+// Encoder exposes the interface for encoding flows
+type Encoder interface {
+	Encode(in interface{}) ([]byte, error)
+}
+
+// Compressor exposes the interface for compressesing encoded flows
+type Compressor interface {
+	Compress(b []byte) (*bytes.Buffer, error)
+}
+
+// Storer interface of a store object
+type Storer interface {
+	StoreFlows(flows map[Tag][]interface{}) error
+	SetPipeline(p *Pipeline)
+}
+
+// Handler used for creating a phase handler from configuration
+type Handler = func(cfg *viper.Viper) (interface{}, error)
+
+// HandlersMap a map of handlers
+type HandlersMap map[string]Handler
+
+// Global set of handlers
+var (
+	TransformerHandlers HandlersMap
+	ClassifierHandlers  HandlersMap
+	FiltererHandlers    HandlersMap
+	EncoderHandlers     HandlersMap
+	CompressorHandlers  HandlersMap
+	StorerHandlers      HandlersMap
+)
+
+// Register associates a handler with its' label
+func (m HandlersMap) Register(name string, handler Handler, isDefault bool) {
+	m[name] = handler
+	if isDefault {
+		m[""] = handler
+	}
+}
+
+// Init creates resource from config
+func (m HandlersMap) Init(cfg *viper.Viper, phase string) (interface{}, error) {
+	ty := cfg.GetString(CfgRoot + fmt.Sprintf("%s.type", phase))
+	for t, fn := range m {
+		if ty == t {
+			return fn(cfg)
+		}
+	}
+	return nil, fmt.Errorf("%s type %s not supported", phase, ty)
+}
+
+func init() {
+	TransformerHandlers = make(HandlersMap)
+	TransformerHandlers.Register("none", NewTransformNone, true)
+
+	ClassifierHandlers = make(HandlersMap)
+	ClassifierHandlers.Register("subnet", NewClassifySubnet, true)
+
+	FiltererHandlers = make(HandlersMap)
+	FiltererHandlers.Register("subnet", NewFilterSubnet, true)
+
+	EncoderHandlers = make(HandlersMap)
+	EncoderHandlers.Register("json", NewEncodeJSON, true)
+	EncoderHandlers.Register("csv", NewEncodeCSV, false)
+
+	CompressorHandlers = make(HandlersMap)
+	CompressorHandlers.Register("none", NewCompressNone, true)
+	CompressorHandlers.Register("gzip", NewCompressGzip, false)
+
+	StorerHandlers = make(HandlersMap)
+	StorerHandlers.Register("stdout", NewStoreStdout, true)
+	StorerHandlers.Register("s3", NewStoreS3, false)
+}
+
 // Pipeline manager
 type Pipeline struct {
+	sync.Mutex
+
 	Transformer Transformer
 	Classifier  Classifier
 	Filterer    Filterer
@@ -39,17 +136,97 @@ type Pipeline struct {
 }
 
 // NewPipeline defines the pipeline elements
-func NewPipeline(transformer Transformer, classifier Classifier, filterer Filterer, encoder Encoder, compressor Compressor, storer Storer) *Pipeline {
-	p := &Pipeline{
-		Transformer: transformer,
-		Classifier:  classifier,
-		Filterer:    filterer,
-		Encoder:     encoder,
-		Compressor:  compressor,
-		Storer:      storer,
+func NewPipeline(cfg *viper.Viper) (*Pipeline, error) {
+	transformer, err := TransformerHandlers.Init(cfg, "transform")
+	if err != nil {
+		return nil, err
 	}
-	storer.SetPipeline(p)
-	return p
+
+	classifier, err := ClassifierHandlers.Init(cfg, "classify")
+	if err != nil {
+		return nil, err
+	}
+
+	filterer, err := FiltererHandlers.Init(cfg, "filter")
+	if err != nil {
+		return nil, err
+	}
+
+	encoder, err := EncoderHandlers.Init(cfg, "encode")
+	if err != nil {
+		return nil, err
+	}
+
+	compressor, err := CompressorHandlers.Init(cfg, "compress")
+	if err != nil {
+		return nil, err
+	}
+
+	storer, err := StorerHandlers.Init(cfg, "store")
+	if err != nil {
+		return nil, err
+	}
+
+	p := &Pipeline{
+		Transformer: transformer.(Transformer),
+		Classifier:  classifier.(Classifier),
+		Filterer:    filterer.(Filterer),
+		Encoder:     encoder.(Encoder),
+		Compressor:  compressor.(Compressor),
+		Storer:      storer.(Storer),
+	}
+	storer.(Storer).SetPipeline(p)
+
+	return p, nil
+}
+
+func (p *Pipeline) filter(in []*flow.Flow) (out []*flow.Flow) {
+	for _, fl := range in {
+		flowTag := p.Classifier.GetFlowTag(fl)
+
+		if p.Filterer.IsExcluded(flowTag) {
+			continue
+		}
+
+		out = append(out, fl)
+	}
+	return
+}
+
+func (p *Pipeline) split(in []*flow.Flow) map[Tag][]*flow.Flow {
+	out := make(map[Tag][]*flow.Flow)
+	for _, fl := range in {
+		flowTag := p.Classifier.GetFlowTag(fl)
+		out[flowTag] = append(out[flowTag], fl)
+	}
+	return out
+}
+
+func (p *Pipeline) transform(in map[Tag][]*flow.Flow) map[Tag][]interface{} {
+	out := make(map[Tag][]interface{})
+	for tag := range in {
+		for _, f := range in[tag] {
+			i := p.Transformer.Transform(f)
+			if i != nil {
+				out[tag] = append(out[tag], i)
+			}
+		}
+	}
+	return out
+}
+
+func (p *Pipeline) store(in map[Tag][]interface{}) {
+	p.Storer.StoreFlows(in)
+}
+
+func (p *Pipeline) process(flows []*flow.Flow) {
+	p.Lock()
+	defer p.Unlock()
+
+	filtered := p.filter(flows)
+	split := p.split(filtered)
+	transformed := p.transform(split)
+	p.store(transformed)
 }
 
 // OnStructMessage is triggered when WS server sends us a message.
@@ -62,7 +239,7 @@ func (p *Pipeline) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 			return
 		}
 
-		p.Storer.StoreFlows(flows)
+		p.process(flows)
 	default:
 		logging.GetLogger().Error("Unknown message type: ", msg.Type)
 	}

@@ -21,11 +21,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Filterer exposes the interface for tag based filtering
-type Filterer interface {
-	IsExcluded(tag Tag) bool
-}
-
 type filter struct {
 	excludedTags map[Tag]bool
 }
@@ -35,13 +30,10 @@ func (f *filter) IsExcluded(tag Tag) bool {
 	return ok
 }
 
-// NewFilterFromConfig returns a new filter based on config
-func NewFilterFromConfig(cfg *viper.Viper) (Filterer, error) {
-	return NewFilter(cfg.GetStringSlice(CfgRoot + "filter.excluded_tags")...)
-}
+// NewFilterSubnet returns a new filter based on config
+func NewFilterSubnet(cfg *viper.Viper) (interface{}, error) {
+	tags := cfg.GetStringSlice(CfgRoot + "filter.excluded_tags")
 
-// NewFilter returns a new filter based on a list of excluded tags
-func NewFilter(tags ...string) (Filterer, error) {
 	excludedTags := make(map[Tag]bool)
 	for _, t := range tags {
 		excludedTags[Tag(t)] = true

@@ -4,18 +4,19 @@ pipeline:
     subscriber_url: ws://127.0.0.1:8082/ws/subscriber/flow
     subscriber_username:
     subscriber_password:
+  classify:
+    # cluster_net_masks:
+      # - 10.0.0.0/8
+      # - 172.16.0.0/12
+      # - 192.168.0.0/16
+  filter:
+    # excluded_tags:
+      # - internal
+      # - other
   transform:
-    type: awsflowlogs
-  encode:
-    # type: {csv,json}
-    type: csv
-    json:
-      pretty: false
-  compress:
-    # type: {gzip,none}
-    type: gzip
+    sa:
+      # exclude_started_flows: true
   store:
-    # type: {s3,stdout}
     type: s3
     s3:
       # -- client parames --

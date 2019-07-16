@@ -15,14 +15,13 @@
  *
  */
 
-package main
+package mod
 
 import (
 	"strconv"
 
 	"github.com/spf13/viper"
 
-	"github.com/skydive-project/skydive/contrib/pipelines/core"
 	"github.com/skydive-project/skydive/flow"
 )
 
@@ -87,7 +86,8 @@ type record struct {
 type transform struct {
 }
 
-func newTransform(cfg *viper.Viper) (core.Transformer, error) {
+// NewTransform creates a new transformer
+func NewTransform(cfg *viper.Viper) (interface{}, error) {
 	return &transform{}, nil
 }
 
@@ -128,25 +128,21 @@ func getTransportB(f *flow.Flow) int {
 }
 
 // Transform transforms a flow before being stored
-func (t *transform) Transform(flows []*flow.Flow) interface{} {
-	recs := make([]*record, len(flows))
-	for i, f := range flows {
-		recs[i] = &record{
-			Version:     version,
-			AccountID:   accountID,
-			InterfaceID: strconv.FormatInt(f.Link.ID, 10),
-			SrcAddr:     getNetworkA(f),
-			DstAddr:     getNetworkB(f),
-			SrcPort:     getTransportA(f),
-			DstPort:     getTransportB(f),
-			Protocol:    getProtocol(f),
-			Packets:     int(f.Metric.ABPackets + f.Metric.BAPackets),
-			Bytes:       f.Metric.ABBytes + f.Metric.BABytes,
-			Start:       int(f.Start / 1000),
-			End:         int(f.Last / 1000),
-			Action:      actionAccept,
-			LogStatus:   logStatusOk,
-		}
+func (t *transform) Transform(f *flow.Flow) interface{} {
+	return &record{
+		Version:     version,
+		AccountID:   accountID,
+		InterfaceID: strconv.FormatInt(f.Link.ID, 10),
+		SrcAddr:     getNetworkA(f),
+		DstAddr:     getNetworkB(f),
+		SrcPort:     getTransportA(f),
+		DstPort:     getTransportB(f),
+		Protocol:    getProtocol(f),
+		Packets:     int(f.Metric.ABPackets + f.Metric.BAPackets),
+		Bytes:       f.Metric.ABBytes + f.Metric.BABytes,
+		Start:       int(f.Start / 1000),
+		End:         int(f.Last / 1000),
+		Action:      actionAccept,
+		LogStatus:   logStatusOk,
 	}
-	return &recs
 }

@@ -38,11 +38,6 @@ const (
 	tagInternal Tag = "internal"
 )
 
-// Classifier exposes the interface for tag based classification
-type Classifier interface {
-	GetFlowTag(fl *flow.Flow) Tag
-}
-
 // classify classifies flows by their direction (ingress, egress, etc)
 type classify struct {
 	clusterNetMasks []*net.IPNet
@@ -95,8 +90,9 @@ func (fc *classify) isClusterIP(ip string) (bool, error) {
 	return false, nil
 }
 
-// NewClassify returns a new classify, based on the given cluster net masks
-func NewClassify(cfg *viper.Viper) (Classifier, error) {
+// NewClassifySubnet returns a new classify, based on the given cluster
+// net masks
+func NewClassifySubnet(cfg *viper.Viper) (interface{}, error) {
 	clusterNetMasks := cfg.GetStringSlice(CfgRoot + "classify.cluster_net_masks")
 	parsedNetMasks := make([]*net.IPNet, 0, len(clusterNetMasks))
 	for _, netMask := range clusterNetMasks {

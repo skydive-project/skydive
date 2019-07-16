@@ -1,4 +1,4 @@
-PROG := dummy
+PROG := uber
 
 SRCS := \
 	main.go \

@@ -252,7 +252,7 @@ func parseFile(filename string, pkgName string) (*module, error) {
 	}
 
 	packages = make(map[string]*types.Package, len(program.AllPackages))
-	for typePackage, _ := range program.AllPackages {
+	for typePackage := range program.AllPackages {
 		packages[typePackage.Name()] = typePackage
 	}
 

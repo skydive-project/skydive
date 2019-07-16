@@ -22,14 +22,12 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/spf13/viper"
 
 	"github.com/IBM/ibm-cos-sdk-go/aws"
 
-	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -53,7 +51,6 @@ type StoreS3 struct {
 	client            objectStoreClient
 	pipeline          *Pipeline
 	flows             map[Tag][]interface{}
-	flowsMutex        sync.Mutex
 	lastFlushTime     map[Tag]time.Time
 	flushTimers       map[Tag]*time.Timer
 }
@@ -100,27 +97,10 @@ func (s *StoreS3) DeleteObject(objectKey *string) error {
 }
 
 // StoreFlows store flows in memory, before being written to the object store
-func (s *StoreS3) StoreFlows(flows []*flow.Flow) error {
+func (s *StoreS3) StoreFlows(in map[Tag][]interface{}) error {
 	endTime := time.Now()
 
-	s.flowsMutex.Lock()
-	defer s.flowsMutex.Unlock()
-
-	// transform flows and save to in-memory arrays, based on tag
-	if flows != nil {
-		for _, fl := range flows {
-			flowTag := s.pipeline.Classifier.GetFlowTag(fl)
-			if s.pipeline.Filterer.IsExcluded(flowTag) {
-				continue
-			}
-
-			transformedFlow := s.pipeline.Transformer.Transform([]*flow.Flow{fl})
-
-			if transformedFlow != nil {
-				s.flows[flowTag] = append(s.flows[flowTag], transformedFlow)
-			}
-		}
-	}
+	s.flows = in
 
 	// check which flows needs to be flushed to the object store
 	flushedTags := make(map[Tag]bool)
@@ -239,8 +219,8 @@ func (s *StoreS3) flushFlowsToObject(t Tag, endTime time.Time) error {
 	return nil
 }
 
-// NewStoreS3FromConfig returns a new storage interface for storing flows to object store
-func NewStoreS3FromConfig(cfg *viper.Viper) (*StoreS3, error) {
+// NewStoreS3 returns a new storage interface for storing flows to object store
+func NewStoreS3(cfg *viper.Viper) (interface{}, error) {
 	bucket := cfg.GetString(CfgRoot + "store.s3.bucket")
 	objectPrefix := cfg.GetString(CfgRoot + "store.s3.object_prefix")
 	maxFlowArraySize := cfg.GetInt(CfgRoot + "store.s3.max_flow_array_size")
@@ -249,12 +229,8 @@ func NewStoreS3FromConfig(cfg *viper.Viper) (*StoreS3, error) {
 	maxSecondsPerStream := cfg.GetInt(CfgRoot + "store.s3.max_seconds_per_stream")
 
 	client := newClient(cfg)
-	return NewStoreS3(client, bucket, objectPrefix, maxFlowArraySize, maxFlowsPerObject, maxSecondsPerObject, maxSecondsPerStream)
-}
 
-// NewStoreS3 creates a store
-func NewStoreS3(client objectStoreClient, bucket, objectPrefix string, maxFlowArraySize, maxFlowsPerObject, maxSecondsPerObject, maxSecondsPerStream int) (*StoreS3, error) {
-	s := &StoreS3{
+	store := &StoreS3{
 		bucket:            bucket,
 		objectPrefix:      objectPrefix,
 		maxFlowsPerObject: maxFlowsPerObject,
@@ -268,5 +244,5 @@ func NewStoreS3(client objectStoreClient, bucket, objectPrefix string, maxFlowAr
 		flushTimers:       make(map[Tag]*time.Timer),
 	}
 
-	return s, nil
+	return store, nil
 }

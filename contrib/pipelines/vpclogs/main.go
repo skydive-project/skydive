@@ -19,13 +19,13 @@ package main
 
 import (
 	"github.com/skydive-project/skydive/contrib/pipelines/core"
-	"github.com/skydive-project/skydive/contrib/pipelines/secadvisor/mod"
+	sa "github.com/skydive-project/skydive/contrib/pipelines/secadvisor/mod"
 )
 
 func main() {
-	core.Main("/etc/skydive/secadvisor.yml")
+	core.Main("/etc/skydive/vpclogs.yml")
 }
 
 func init() {
-	core.TransformerHandlers.Register("sa", mod.NewTransform, false)
+	core.TransformerHandlers.Register("vpclogs", sa.NewTransform, false)
 }

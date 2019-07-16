@@ -15,31 +15,19 @@
  *
  */
 
-package core
+package main
 
 import (
-	"fmt"
-
-	"github.com/spf13/viper"
-
-	"github.com/skydive-project/skydive/flow"
+	aws "github.com/skydive-project/skydive/contrib/pipelines/awsflowlogs/mod"
+	"github.com/skydive-project/skydive/contrib/pipelines/core"
+	sa "github.com/skydive-project/skydive/contrib/pipelines/secadvisor/mod"
 )
 
-// Storer interface of a store object
-type Storer interface {
-	StoreFlows(flows []*flow.Flow) error
-	SetPipeline(p *Pipeline)
+func main() {
+	core.Main("/etc/skydive/uber.yml")
 }
 
-// NewStoreFromConfig creates store from config
-func NewStoreFromConfig(cfg *viper.Viper) (Storer, error) {
-	storeType := cfg.GetString(CfgRoot + "store.type")
-	switch storeType {
-	case "stdout":
-		return NewStoreStdout()
-	case "s3":
-		return NewStoreS3FromConfig(cfg)
-	default:
-		return nil, fmt.Errorf("Store type %s not supported", storeType)
-	}
+func init() {
+	core.TransformerHandlers.Register("awsflowlogs", aws.NewTransform, false)
+	core.TransformerHandlers.Register("vpclogs", sa.NewTransform, false)
 }

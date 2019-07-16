@@ -1,4 +1,4 @@
-PROG := dummy
+PROG := vpclogs
 
 SRCS := \
 	main.go \
