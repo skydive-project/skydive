@@ -62,6 +62,8 @@ type flowState struct {
 	lastMetric    FlowMetric
 	rtt1stPacket  int64
 	updateVersion int64
+	ipv4          *layers.IPv4
+	ipv6          *layers.IPv6
 }
 
 // Packet describes one packet
@@ -725,6 +727,82 @@ func (f *Flow) updateRTT(packet *Packet) {
 	}
 }
 
+func (f *Flow) getNetworkLayer(packet *Packet) (*layers.IPv4, *layers.IPv6) {
+	if f.XXX_state.ipv4 != nil {
+		return f.XXX_state.ipv4, nil
+	}
+	if f.XXX_state.ipv6 != nil {
+		return nil, f.XXX_state.ipv6
+	}
+
+	ipv4Layer := packet.Layer(layers.LayerTypeIPv4)
+	if ipv4Packet, ok := ipv4Layer.(*layers.IPv4); ok {
+		f.XXX_state.ipv4 = ipv4Packet
+		return f.XXX_state.ipv4, nil
+	}
+
+	ipv6Layer := packet.Layer(layers.LayerTypeIPv6)
+	if ipv6Packet, ok := ipv6Layer.(*layers.IPv6); ok {
+		f.XXX_state.ipv6 = ipv6Packet
+		return nil, f.XXX_state.ipv6
+	}
+
+	return nil, nil
+}
+
+func (f *Flow) isABPacket(packet *Packet) bool {
+	if f.Network == nil {
+		return false
+	}
+	cmp := false
+
+	ipv4Packet, ipv6Packet := f.getNetworkLayer(packet)
+	if ipv4Packet != nil {
+		cmp = f.Network.A == ipv4Packet.SrcIP.String()
+		if bytes.Compare(ipv4Packet.SrcIP, ipv4Packet.DstIP) == 0 && f.Transport != nil {
+			tcpLayer := packet.Layer(layers.LayerTypeTCP)
+			if tcpPacket, ok := tcpLayer.(*layers.TCP); ok {
+				return f.Transport.A > int64(tcpPacket.SrcPort)
+			}
+			udpLayer := packet.Layer(layers.LayerTypeUDP)
+			if udpPacket, ok := udpLayer.(*layers.UDP); ok {
+				return f.Transport.A > int64(udpPacket.SrcPort)
+			}
+			sctpLayer := packet.Layer(layers.LayerTypeSCTP)
+			if sctpPacket, ok := sctpLayer.(*layers.SCTP); ok {
+				return f.Transport.A > int64(sctpPacket.SrcPort)
+			}
+			icmpLayer := packet.Layer(layers.LayerTypeICMPv4)
+			if icmpPacket, ok := icmpLayer.(*layers.ICMPv4); ok {
+				return f.ICMP.Type > ICMPv4TypeToFlowICMPType(icmpPacket.TypeCode.Type())
+			}
+		}
+	}
+	if ipv6Packet != nil {
+		cmp = f.Network.A == ipv6Packet.SrcIP.String()
+		if bytes.Compare(ipv6Packet.SrcIP, ipv6Packet.DstIP) == 0 && f.Transport != nil {
+			tcpLayer := packet.Layer(layers.LayerTypeTCP)
+			if tcpPacket, ok := tcpLayer.(*layers.TCP); ok {
+				return f.Transport.A > int64(tcpPacket.SrcPort)
+			}
+			udpLayer := packet.Layer(layers.LayerTypeUDP)
+			if udpPacket, ok := udpLayer.(*layers.UDP); ok {
+				return f.Transport.A > int64(udpPacket.SrcPort)
+			}
+			sctpLayer := packet.Layer(layers.LayerTypeSCTP)
+			if sctpPacket, ok := sctpLayer.(*layers.SCTP); ok {
+				return f.Transport.A > int64(sctpPacket.SrcPort)
+			}
+			icmpLayer := packet.Layer(layers.LayerTypeICMPv6)
+			if icmpPacket, ok := icmpLayer.(*layers.ICMPv6); ok {
+				return f.ICMP.Type > ICMPv6TypeToFlowICMPType(icmpPacket.TypeCode.Type())
+			}
+		}
+	}
+
+	return cmp
+}
+
 func (f *Flow) updateMetricsWithLinkLayer(packet *Packet) bool {
 	ethernetPacket := getLinkLayer(packet)
 	if ethernetPacket == nil || f.Link == nil {
@@ -736,7 +814,12 @@ func (f *Flow) updateMetricsWithLinkLayer(packet *Packet) bool {
 		length = getLinkLayerLength(ethernetPacket)
 	}
 
-	if f.Link.A == ethernetPacket.SrcMAC.String() {
+	/* found a layer that can identify the connection way */
+	cmp := f.Link.A == ethernetPacket.SrcMAC.String()
+	if bytes.Compare(ethernetPacket.SrcMAC, ethernetPacket.DstMAC) == 0 {
+		cmp = f.isABPacket(packet)
+	}
+	if cmp {
 		f.Metric.ABPackets++
 		f.Metric.ABBytes += length
 	} else {
@@ -748,8 +831,8 @@ func (f *Flow) updateMetricsWithLinkLayer(packet *Packet) bool {
 }
 
 func (f *Flow) newNetworkLayer(packet *Packet) error {
-	ipv4Layer := packet.Layer(layers.LayerTypeIPv4)
-	if ipv4Packet, ok := ipv4Layer.(*layers.IPv4); ok {
+	ipv4Packet, ipv6Packet := f.getNetworkLayer(packet)
+	if ipv4Packet != nil {
 		f.Network = &FlowLayer{
 			Protocol: FlowProtocol_IPV4,
 			A:        ipv4Packet.SrcIP.String(),
@@ -769,8 +852,7 @@ func (f *Flow) newNetworkLayer(packet *Packet) error {
 		return nil
 	}
 
-	ipv6Layer := packet.Layer(layers.LayerTypeIPv6)
-	if ipv6Packet, ok := ipv6Layer.(*layers.IPv6); ok {
+	if ipv6Packet != nil {
 		f.Network = &FlowLayer{
 			Protocol: FlowProtocol_IPV6,
 			A:        ipv6Packet.SrcIP.String(),
@@ -800,12 +882,12 @@ func (f *Flow) newNetworkLayer(packet *Packet) error {
 }
 
 func (f *Flow) updateMetricsWithNetworkLayer(packet *Packet, length int64) error {
-	ipv4Layer := packet.Layer(layers.LayerTypeIPv4)
-	if ipv4Packet, ok := ipv4Layer.(*layers.IPv4); ok {
+	ipv4Packet, ipv6Packet := f.getNetworkLayer(packet)
+	if ipv4Packet != nil {
 		if length == 0 {
 			length = int64(ipv4Packet.Length)
 		}
-		if f.Network.A == ipv4Packet.SrcIP.String() {
+		if f.isABPacket(packet) {
 			f.Metric.ABPackets++
 			f.Metric.ABBytes += length
 		} else {
@@ -815,12 +897,11 @@ func (f *Flow) updateMetricsWithNetworkLayer(packet *Packet, length int64) error
 
 		return nil
 	}
-	ipv6Layer := packet.Layer(layers.LayerTypeIPv6)
-	if ipv6Packet, ok := ipv6Layer.(*layers.IPv6); ok {
+	if ipv6Packet != nil {
 		if length == 0 {
 			length = int64(ipv6Packet.Length)
 		}
-		if f.Network.A == ipv6Packet.SrcIP.String() {
+		if f.isABPacket(packet) {
 			f.Metric.ABPackets++
 			f.Metric.ABBytes += length
 		} else {
@@ -860,19 +941,16 @@ func (f *Flow) updateTCPMetrics(packet *Packet) error {
 
 	var srcIP string
 	var timeToLive uint32
+	ipv4Packet, ipv6Packet := f.getNetworkLayer(packet)
 	switch f.Network.Protocol {
 	case FlowProtocol_IPV4:
-		ipv4Layer := packet.Layer(layers.LayerTypeIPv4)
-		ipv4Packet, ok := ipv4Layer.(*layers.IPv4)
-		if !ok {
+		if ipv4Packet == nil {
 			return ErrLayerNotFound
 		}
 		srcIP = ipv4Packet.SrcIP.String()
 		timeToLive = uint32(ipv4Packet.TTL)
 	case FlowProtocol_IPV6:
-		ipv6Layer := packet.Layer(layers.LayerTypeIPv6)
-		ipv6Packet, ok := ipv6Layer.(*layers.IPv6)
-		if !ok {
+		if ipv6Packet == nil {
 			return ErrLayerNotFound
 		}
 		srcIP = ipv6Packet.SrcIP.String()

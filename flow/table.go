@@ -389,6 +389,9 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
 		flow.Update(packet, &ft.opts)
 	}
 
+	/* we need to reset state here to avoid re-using underlayer in tunnel */
+	flow.XXX_state.ipv4 = nil
+	flow.XXX_state.ipv6 = nil
 	flow.XXX_state.updateVersion = ft.updateVersion + 1
 
 	if ft.Opts.RawPacketLimit != 0 && flow.RawPacketsCaptured < ft.Opts.RawPacketLimit {

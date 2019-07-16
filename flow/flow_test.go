@@ -1736,6 +1736,35 @@ func TestGREEthernet(t *testing.T) {
 	validatePCAP(t, "pcaptraces/gre-gre-icmpv4.pcap", layers.LinkTypeEthernet, nil, expected)
 }
 
+func TestL2L3EqualSrcDst(t *testing.T) {
+	expected := []*Flow{
+		{
+			LayersPath:  "Ethernet/IPv4/TCP",
+			Application: "TCP",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "00:00:00:00:00:00",
+				B:        "00:00:00:00:00:00",
+				ID:       0,
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "127.0.0.1",
+				B:        "127.0.0.1",
+				ID:       0,
+			},
+			Metric: &FlowMetric{
+				ABPackets: 10,
+				ABBytes:   668,
+				BAPackets: 13,
+				BABytes:   263010,
+			},
+		},
+	}
+
+	validatePCAP(t, "pcaptraces/iperf-same-L2L3.pcap", layers.LinkTypeEthernet, nil, expected)
+}
+
 func benchmarkPacketParsing(b *testing.B, filename string, linkType layers.LinkType) {
 	handleRead, err := pcap.OpenOffline(filename)
 	if err != nil {
