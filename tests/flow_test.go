@@ -2246,47 +2246,47 @@ func TestFlowsHashCnx(t *testing.T) {
 func testFlowsHashCnx(t *testing.T) *Test {
 	test := &Test{
 		setupCmds: []Cmd{
-			{"ovs-vsctl add-br br-ebpf", true},
+			{"ovs-vsctl add-br br-hash", true},
 
 			{"ip netns add src-vm", true},
-			{"ip link add src-vm-eth0 type veth peer name ebpf-src-eth0 netns src-vm", true},
+			{"ip link add src-vm-eth0 type veth peer name hash-src-eth0 netns src-vm", true},
 			{"ip link set src-vm-eth0 up", true},
-			{"ip netns exec src-vm ip link set ebpf-src-eth0 up", true},
-			{"ip netns exec src-vm ip address add 169.254.107.33/24 dev ebpf-src-eth0", true},
+			{"ip netns exec src-vm ip link set hash-src-eth0 up", true},
+			{"ip netns exec src-vm ip address add 169.254.107.33/24 dev hash-src-eth0", true},
 
 			{"ip netns add dst-vm", true},
-			{"ip link add dst-vm-eth0 type veth peer name ebpf-dst-eth0 netns dst-vm", true},
+			{"ip link add dst-vm-eth0 type veth peer name hash-dst-eth0 netns dst-vm", true},
 			{"ip link set dst-vm-eth0 up", true},
-			{"ip netns exec dst-vm ip link set ebpf-dst-eth0 up", true},
-			{"ip netns exec dst-vm ip address add 169.254.107.34/24 dev ebpf-dst-eth0", true},
+			{"ip netns exec dst-vm ip link set hash-dst-eth0 up", true},
+			{"ip netns exec dst-vm ip address add 169.254.107.34/24 dev hash-dst-eth0", true},
 
-			{"ovs-vsctl add-port br-ebpf src-vm-eth0", true},
-			{"ovs-vsctl add-port br-ebpf dst-vm-eth0", true},
+			{"ovs-vsctl add-port br-hash src-vm-eth0", true},
+			{"ovs-vsctl add-port br-hash dst-vm-eth0", true},
 		},
 
 		injections: []TestInjection{
 			{
 				protocol: "tcp",
 
-				from:     g.G.V().Has("Name", "src-vm").Out().Has("Name", "ebpf-src-eth0"),
+				from:     g.G.V().Has("Name", "src-vm").Out().Has("Name", "hash-src-eth0"),
 				fromPort: 12345,
-				to:       g.G.V().Has("Name", "dst-vm").Out().Has("Name", "ebpf-dst-eth0"),
+				to:       g.G.V().Has("Name", "dst-vm").Out().Has("Name", "hash-dst-eth0"),
 				toPort:   54321,
 				count:    1,
 			},
 			{
 				protocol: "tcp",
 
-				from:     g.G.V().Has("Name", "src-vm").Out().Has("Name", "ebpf-src-eth0"),
+				from:     g.G.V().Has("Name", "src-vm").Out().Has("Name", "hash-src-eth0"),
 				fromPort: 54321,
-				to:       g.G.V().Has("Name", "dst-vm").Out().Has("Name", "ebpf-dst-eth0"),
+				to:       g.G.V().Has("Name", "dst-vm").Out().Has("Name", "hash-dst-eth0"),
 				toPort:   12345,
 				count:    1,
 			},
 		},
 
 		tearDownCmds: []Cmd{
-			{"ovs-vsctl del-br br-ebpf", true},
+			{"ovs-vsctl del-br br-hash", true},
 			{"ip link del dst-vm-eth0", true},
 			{"ip link del src-vm-eth0", true},
 			{"ip netns del src-vm", true},
@@ -2294,7 +2294,7 @@ func testFlowsHashCnx(t *testing.T) *Test {
 		},
 
 		captures: []TestCapture{
-			{gremlin: g.G.V().Has("Name", "ebpf-src-eth0")},
+			{gremlin: g.G.V().Has("Name", "hash-src-eth0")},
 		},
 
 		mode: Replay,
