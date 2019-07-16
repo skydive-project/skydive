@@ -67,7 +67,7 @@ Vue.component('node-selector', {
           self.$emit('input', value);
           self.$emit('nodeSelected', node);
         } else {
-          self.$error({message: "Capture not allowed, required metadata missing `" + self.attr + "`"});
+          self.$error({message: "Can not select, metadata `" + self.attr + "` is missing"});
         }
 
         e.preventDefault();
