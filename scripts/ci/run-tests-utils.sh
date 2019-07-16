@@ -27,7 +27,7 @@ tests_run() {
         TESTFILE=$WORKSPACE/tests.xml
 
         BACKEND=${BACKEND:-memory}
-        ARGS="$ARGS -graph.output ascii -standalone -analyzer.topology.backend $BACKEND -analyzer.flow.backend $BACKEND"
+        ARGS="$ARGS -standalone -analyzer.topology.backend $BACKEND -analyzer.flow.backend $BACKEND"
         export ORIENTDB_ROOT_PASSWORD=root
 
         if [ "$COVERAGE" != "true" -a "$(uname -m)" != "ppc64le" ]; then

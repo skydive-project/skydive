@@ -19,6 +19,7 @@ package client
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -92,19 +93,23 @@ var TopologyImport = &cobra.Command{
 			exitOnError(err)
 		}
 
-		els := new(graph.Elements)
-		if err := json.Unmarshal(content, els); err != nil {
+		els := []*graph.Elements{}
+		if err := json.Unmarshal(content, &els); err != nil {
 			exitOnError(err)
 		}
 
-		for _, node := range els.Nodes {
+		if len(els) != 1 {
+			exitOnError(errors.New("Invalid graph format"))
+		}
+
+		for _, node := range els[0].Nodes {
 			msg := gws.NewStructMessage(gws.NodeAddedMsgType, node)
 			if err := client.SendMessage(msg); err != nil {
 				exitOnError(fmt.Errorf("Failed to send message: %s", err))
 			}
 		}
 
-		for _, edge := range els.Edges {
+		for _, edge := range els[0].Edges {
 			msg := gws.NewStructMessage(gws.EdgeAddedMsgType, edge)
 			if err := client.SendMessage(msg); err != nil {
 				exitOnError(fmt.Errorf("Failed to send message: %s", err))

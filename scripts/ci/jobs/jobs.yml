@@ -415,6 +415,9 @@
       - archive:
           artifacts: 'src/github.com/skydive-project/skydive/tests/overview.gif'
           allow-empty: 'true'
+      - archive:
+          artifacts: 'src/github.com/skydive-project/skydive/tests/graph.json'
+          allow-empty: 'true'
 
 - job:
     name: skydive-release

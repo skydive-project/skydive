@@ -390,7 +390,12 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 			return ""
 		}
 
-		return string(data)
+		var out bytes.Buffer
+		json.Indent(&out, data, "", "\t")
+
+		ioutil.WriteFile("graph.json", out.Bytes(), 0644)
+
+		return out.String()
 	}
 }
 
