@@ -38,7 +38,7 @@ services:
     privileged: true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /var/run/netns:/host/run:shared
+      - /var/run/netns:/host/run
       - /var/run/openvswitch/db.sock:/var/run/openvswitch/db.sock
     environment:
       - SKYDIVE_AGENT_TOPOLOGY_NETNS_RUN_PATH=/host/run
