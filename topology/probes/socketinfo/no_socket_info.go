@@ -20,22 +20,24 @@
 package socketinfo
 
 import (
-	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/probe"
+	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
-// SocketInfoProbe describes a probe that collects active connections
-type SocketInfoProbe struct {
+// ProbeHandler describes a probe that collects active connections
+type ProbeHandler struct {
 }
 
 // Start the socket info probe
-func (s *SocketInfoProbe) Start() {
+func (s *ProbeHandler) Start() {
 }
 
 // Stop the socket info probe
-func (s *SocketInfoProbe) Stop() {
+func (s *ProbeHandler) Stop() {
 }
 
-// NewSocketInfoProbe create a new socket info probe
-func NewSocketInfoProbe(g *graph.Graph, host *graph.Node) *SocketInfoProbe {
-	return &SocketInfoProbe{}
+// Init initializes a new SocketInfo Probe
+func (s *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+	return nil, common.ErrNotImplemented
 }

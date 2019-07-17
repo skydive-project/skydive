@@ -21,6 +21,7 @@
 package lxd
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"sync"
@@ -29,12 +30,14 @@ import (
 
 	lxd "github.com/lxc/lxd/client"
 	"github.com/mitchellh/mapstructure"
+	"github.com/vishvananda/netns"
+
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
+	tp "github.com/skydive-project/skydive/topology/probes"
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
-	"github.com/vishvananda/netns"
 )
 
 type containerInfo struct {
@@ -54,10 +57,10 @@ type loggingEvent struct {
 	} `mapstructure:"metadata"`
 }
 
-// Probe describes a LXD topology graph that enhance the graph
-type Probe struct {
+// ProbeHandler describes a LXD topology graph that enhance the graph
+type ProbeHandler struct {
 	common.RWMutex
-	*ns.Probe
+	*ns.ProbeHandler
 	state        int64
 	wg           sync.WaitGroup
 	connected    atomic.Value
@@ -67,32 +70,32 @@ type Probe struct {
 	client       lxd.ContainerServer
 }
 
-func (probe *Probe) containerNamespace(pid int) string {
+func (p *ProbeHandler) containerNamespace(pid int) string {
 	return fmt.Sprintf("/proc/%d/ns/net", pid)
 }
 
-func (probe *Probe) registerContainer(id string) {
-	logging.GetLogger().Debugf("Registering container %s", id)
+func (p *ProbeHandler) registerContainer(id string) {
+	p.Ctx.Logger.Debugf("Registering container %s", id)
 
-	probe.Lock()
-	defer probe.Unlock()
+	p.Lock()
+	defer p.Unlock()
 
-	if _, ok := probe.containerMap[id]; ok {
+	if _, ok := p.containerMap[id]; ok {
 		return
 	}
 
-	container, _, err := probe.client.GetContainer(id)
+	container, _, err := p.client.GetContainer(id)
 	if err != nil {
-		logging.GetLogger().Errorf("Failed to retrieve container %s", id)
+		p.Ctx.Logger.Errorf("Failed to retrieve container %s", id)
 		return
 	}
 
 	// state.Network[].HostName == host side interface
 	// state.Pid for lookup of network namespace
-	state, _, _ := probe.client.GetContainerState(id)
+	state, _, _ := p.client.GetContainerState(id)
 
 	if state.Status != "Running" {
-		logging.GetLogger().Errorf("Container %s is not running", id)
+		p.Ctx.Logger.Errorf("Container %s is not running", id)
 		return
 	}
 
@@ -102,18 +105,18 @@ func (probe *Probe) registerContainer(id string) {
 	}
 	defer nsHandle.Close()
 
-	namespace := probe.containerNamespace(int(state.Pid))
+	namespace := p.containerNamespace(int(state.Pid))
 
 	var n *graph.Node
-	if probe.hostNs.Equal(nsHandle) {
-		n = probe.Root
+	if p.hostNs.Equal(nsHandle) {
+		n = p.Ctx.RootNode
 	} else {
-		if n, err = probe.Register(namespace, id); err == nil {
-			probe.Graph.Lock()
-			probe.Graph.AddMetadata(n, "Manager", "lxd")
-			probe.Graph.Unlock()
+		if n, err = p.Register(namespace, id); err == nil {
+			p.Ctx.Graph.Lock()
+			p.Ctx.Graph.AddMetadata(n, "Manager", "lxd")
+			p.Ctx.Graph.Unlock()
 		} else {
-			logging.GetLogger().Errorf("Error registering probe: %s", err)
+			p.Ctx.Logger.Errorf("Error registering probe: %s", err)
 		}
 	}
 
@@ -138,63 +141,63 @@ func (probe *Probe) registerContainer(id string) {
 		metadata.Config = graph.Metadata(common.NormalizeValue(container.Config).(map[string]interface{}))
 	}
 
-	probe.Graph.Lock()
+	p.Ctx.Graph.Lock()
 
-	containerNode, err := probe.Graph.NewNode(graph.GenID(), graph.Metadata{
+	containerNode, err := p.Ctx.Graph.NewNode(graph.GenID(), graph.Metadata{
 		"Type": "container",
 		"Name": id,
 		"LXD":  metadata,
 	})
 	if err != nil {
-		logging.GetLogger().Error(err)
+		p.Ctx.Logger.Error(err)
 		return
 	}
 
-	topology.AddOwnershipLink(probe.Graph, n, containerNode, nil)
-	probe.Graph.Unlock()
+	topology.AddOwnershipLink(p.Ctx.Graph, n, containerNode, nil)
+	p.Ctx.Graph.Unlock()
 
-	probe.containerMap[id] = containerInfo{
+	p.containerMap[id] = containerInfo{
 		Pid:  int(state.Pid),
 		Node: containerNode,
 	}
 }
 
-func (probe *Probe) unregisterContainer(id string) {
-	probe.Lock()
-	defer probe.Unlock()
+func (p *ProbeHandler) unregisterContainer(id string) {
+	p.Lock()
+	defer p.Unlock()
 
-	infos, ok := probe.containerMap[id]
+	infos, ok := p.containerMap[id]
 	if !ok {
 		return
 	}
 
-	probe.Graph.Lock()
-	if err := probe.Graph.DelNode(infos.Node); err != nil {
-		logging.GetLogger().Error(err)
+	p.Ctx.Graph.Lock()
+	if err := p.Ctx.Graph.DelNode(infos.Node); err != nil {
+		p.Ctx.Logger.Error(err)
 	}
-	probe.Graph.Unlock()
+	p.Ctx.Graph.Unlock()
 
-	namespace := probe.containerNamespace(infos.Pid)
-	probe.Unregister(namespace)
+	namespace := p.containerNamespace(infos.Pid)
+	p.Unregister(namespace)
 
-	delete(probe.containerMap, id)
+	delete(p.containerMap, id)
 }
 
-func (probe *Probe) connect() (err error) {
-	if probe.hostNs, err = netns.Get(); err != nil {
+func (p *ProbeHandler) connect() (err error) {
+	if p.hostNs, err = netns.Get(); err != nil {
 		return err
 	}
-	defer probe.hostNs.Close()
+	defer p.hostNs.Close()
 
-	probe.wg.Add(1)
-	defer probe.wg.Done()
+	p.wg.Add(1)
+	defer p.wg.Done()
 
-	logging.GetLogger().Debugf("Connecting to LXD")
+	p.Ctx.Logger.Debugf("Connecting to LXD")
 	client, err := lxd.ConnectLXDUnix("", nil)
 	if err != nil {
 		return err
 	}
-	probe.client = client
+	p.client = client
 
 	events, err := client.GetEvents()
 	if err != nil {
@@ -209,9 +212,9 @@ func (probe *Probe) connect() (err error) {
 
 		if event.Type == "logging" {
 			if event.Metadata.Context.Action == "start" && event.Metadata.Message == "Started container" {
-				probe.registerContainer(event.Metadata.Context.Name)
+				p.registerContainer(event.Metadata.Context.Name)
 			} else if event.Metadata.Message == "Deleted container" {
-				probe.unregisterContainer(event.Metadata.Context.Name)
+				p.unregisterContainer(event.Metadata.Context.Name)
 			}
 		}
 	})
@@ -221,75 +224,78 @@ func (probe *Probe) connect() (err error) {
 	}
 	defer events.RemoveHandler(target)
 
-	probe.connected.Store(true)
-	defer probe.connected.Store(false)
+	p.connected.Store(true)
+	defer p.connected.Store(false)
 
 	go func() {
-		probe.wg.Add(1)
-		defer probe.wg.Done()
+		p.wg.Add(1)
+		defer p.wg.Done()
 
-		logging.GetLogger().Debugf("Listing LXD containers")
-		containers, err := probe.client.GetContainers()
+		p.Ctx.Logger.Debugf("Listing LXD containers")
+		containers, err := p.client.GetContainers()
 		if err != nil {
 			return
 		}
 
 		for _, n := range containers {
-			if atomic.LoadInt64(&probe.state) == common.RunningState {
-				probe.registerContainer(n.Name)
+			if atomic.LoadInt64(&p.state) == common.RunningState {
+				p.registerContainer(n.Name)
 			}
 		}
 	}()
 
-	<-probe.quit
+	<-p.quit
 
 	return nil
 }
 
 // Start the probe
-func (probe *Probe) Start() {
-	if !atomic.CompareAndSwapInt64(&probe.state, common.StoppedState, common.RunningState) {
+func (p *ProbeHandler) Start() {
+	if !atomic.CompareAndSwapInt64(&p.state, common.StoppedState, common.RunningState) {
 		return
 	}
 
 	go func() {
 		for {
-			state := atomic.LoadInt64(&probe.state)
+			state := atomic.LoadInt64(&p.state)
 			if state == common.StoppingState || state == common.StoppedState {
 				break
 			}
 
-			if probe.connect() != nil {
+			if p.connect() != nil {
 				time.Sleep(1 * time.Second)
 			}
 
-			probe.wg.Wait()
+			p.wg.Wait()
 		}
 	}()
 }
 
 // Stop the probe
-func (probe *Probe) Stop() {
-	if !atomic.CompareAndSwapInt64(&probe.state, common.RunningState, common.StoppingState) {
+func (p *ProbeHandler) Stop() {
+	if !atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState) {
 		return
 	}
 
-	if probe.connected.Load() == true {
-		probe.quit <- struct{}{}
-		probe.wg.Wait()
+	if p.connected.Load() == true {
+		p.quit <- struct{}{}
+		p.wg.Wait()
 	}
 
-	atomic.StoreInt64(&probe.state, common.StoppedState)
+	atomic.StoreInt64(&p.state, common.StoppedState)
 }
 
-// NewProbe creates a new topology Lxd probe
-func NewProbe(nsProbe *ns.Probe, lxdURL string) (*Probe, error) {
-	probe := &Probe{
-		Probe:        nsProbe,
-		state:        common.StoppedState,
-		containerMap: make(map[string]containerInfo),
-		quit:         make(chan struct{}),
+// NewProbeHandler initializes a new topology Lxd probe
+func (p *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+	nsHandler := bundle.GetHandler("netns")
+	if nsHandler == nil {
+		return nil, errors.New("unable to find the netns handler")
 	}
 
-	return probe, nil
+	p.ProbeHandler = nsHandler.(*ns.ProbeHandler)
+	p.state = common.StoppedState
+	p.containerMap = make(map[string]containerInfo)
+	p.quit = make(chan struct{})
+
+	return p, nil
 }

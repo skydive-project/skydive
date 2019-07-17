@@ -21,22 +21,23 @@ package netlink
 
 import (
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/probe"
+	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
-// Probe describes a list NetLink NameSpace probe to enhance the graph
-type Probe struct {
+// ProbeHandler describes a list NetLink NameSpace probe to enhance the graph
+type ProbeHandler struct {
 }
 
 // Start the probe
-func (u *Probe) Start() {
+func (u *ProbeHandler) Start() {
 }
 
 // Stop the probe
-func (u *Probe) Stop() {
+func (u *ProbeHandler) Stop() {
 }
 
-// NewProbe creates a new netlink probe
-func NewProbe(g *graph.Graph, n *graph.Node) (*Probe, error) {
+// Init initializes a new netlink probe
+func (u *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	return nil, common.ErrNotImplemented
 }

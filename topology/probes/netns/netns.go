@@ -35,28 +35,27 @@ import (
 	fsnotify "gopkg.in/fsnotify/fsnotify.v1"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
+	tp "github.com/skydive-project/skydive/topology/probes"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
 	"github.com/vishvananda/netns"
 )
 
-// Probe describes a netlink probe in a network namespace
-type Probe struct {
+// ProbeHandler describes a netlink probe in a network namespace
+type ProbeHandler struct {
 	common.RWMutex
-	Graph       *graph.Graph
-	Root        *graph.Node
-	nlProbe     *netlink.Probe
-	pathToNetNS map[string]*NetNs
-	netNsProbes map[string]*netNsProbe
-	rootNs      *NetNs
-	watcher     *fsnotify.Watcher
-	pending     chan string
-	exclude     []string
-	state       int64
-	wg          sync.WaitGroup
+	Ctx             tp.Context
+	nlHandler       *netlink.ProbeHandler
+	pathToNetNS     map[string]*NetNs
+	nsNetLinkProbes map[string]*nsNetLinkProbe
+	rootNs          *NetNs
+	watcher         *fsnotify.Watcher
+	pending         chan string
+	exclude         []string
+	state           int64
+	wg              sync.WaitGroup
 }
 
 // NetNs describes a network namespace path associated with a device / inode
@@ -67,8 +66,8 @@ type NetNs struct {
 }
 
 // extends the original struct to add use count number
-type netNsProbe struct {
-	*netlink.NetNsProbe
+type nsNetLinkProbe struct {
+	*netlink.Probe
 	useCount int
 }
 
@@ -86,7 +85,7 @@ func (ns *NetNs) Equal(o *NetNs) bool {
 	return (ns.dev == o.dev && ns.ino == o.ino)
 }
 
-func (u *Probe) checkNamespace(path string) error {
+func (u *ProbeHandler) checkNamespace(path string) error {
 	// When a new network namespace has been seen by inotify, the path to
 	// the namespace may still be a regular file, not a bind mount to the
 	// file in /proc/<pid>/tasks/<tid>/ns/net yet, so we wait a bit for the
@@ -130,8 +129,8 @@ func (u *Probe) checkNamespace(path string) error {
 }
 
 // Register a new network namespace path
-func (u *Probe) Register(path string, name string) (*graph.Node, error) {
-	logging.GetLogger().Debugf("Register network namespace: %s", path)
+func (u *ProbeHandler) Register(path string, name string) (*graph.Node, error) {
+	u.Ctx.Logger.Debugf("Register network namespace: %s", path)
 
 	if err := u.checkNamespace(path); err != nil {
 		return nil, err
@@ -146,8 +145,8 @@ func (u *Probe) Register(path string, name string) (*graph.Node, error) {
 
 	// avoid hard link to root ns
 	if u.rootNs.Equal(newns) {
-		logging.GetLogger().Debugf("%s is a privileged namespace", path)
-		return u.Root, nil
+		u.Ctx.Logger.Debugf("%s is a privileged namespace", path)
+		return u.Ctx.RootNode, nil
 	}
 
 	u.Lock()
@@ -160,13 +159,13 @@ func (u *Probe) Register(path string, name string) (*graph.Node, error) {
 
 	nsString := newns.String()
 
-	if probe, ok := u.netNsProbes[nsString]; ok {
+	if probe, ok := u.nsNetLinkProbes[nsString]; ok {
 		probe.useCount++
-		logging.GetLogger().Debugf("Increasing counter for namespace %s to %d", nsString, probe.useCount)
-		return probe.Root, nil
+		u.Ctx.Logger.Debugf("Increasing counter for namespace %s to %d", nsString, probe.useCount)
+		return probe.Ctx.RootNode, nil
 	}
 
-	logging.GetLogger().Debugf("Network namespace added: %s", nsString)
+	u.Ctx.Logger.Debugf("Network namespace added: %s", nsString)
 	metadata := graph.Metadata{
 		"Name":   name,
 		"Type":   "netns",
@@ -175,21 +174,29 @@ func (u *Probe) Register(path string, name string) (*graph.Node, error) {
 		"Device": int64(newns.dev),
 	}
 
-	u.Graph.Lock()
-	n, err := u.Graph.NewNode(graph.GenID(), metadata)
+	u.Ctx.Graph.Lock()
+	n, err := u.Ctx.Graph.NewNode(graph.GenID(), metadata)
 	if err != nil {
-		u.Graph.Unlock()
+		u.Ctx.Graph.Unlock()
 		return nil, err
 	}
-	topology.AddOwnershipLink(u.Graph, u.Root, n, nil)
-	u.Graph.Unlock()
+	topology.AddOwnershipLink(u.Ctx.Graph, u.Ctx.RootNode, n, nil)
+	u.Ctx.Graph.Unlock()
 
-	logging.GetLogger().Debugf("Registering namespace: %s", nsString)
+	u.Ctx.Logger.Debugf("Registering namespace: %s", nsString)
 
-	var probe *netlink.NetNsProbe
+	var probe *netlink.Probe
 	err = common.Retry(func() error {
 		var err error
-		probe, err = u.nlProbe.Register(path, n)
+
+		ctx := tp.Context{
+			Logger:   u.Ctx.Logger,
+			Config:   u.Ctx.Config,
+			Graph:    u.Ctx.Graph,
+			RootNode: n,
+		}
+
+		probe, err = u.nlHandler.Register(path, ctx)
 		if err != nil {
 			return fmt.Errorf("Could not register netlink probe within namespace: %s", err)
 		}
@@ -199,14 +206,14 @@ func (u *Probe) Register(path string, name string) (*graph.Node, error) {
 		return nil, err
 	}
 
-	u.netNsProbes[nsString] = &netNsProbe{NetNsProbe: probe, useCount: 1}
+	u.nsNetLinkProbes[nsString] = &nsNetLinkProbe{Probe: probe, useCount: 1}
 
 	return n, nil
 }
 
 // Unregister a network namespace path
-func (u *Probe) Unregister(path string) {
-	logging.GetLogger().Debugf("Unregister network Namespace: %s", path)
+func (u *ProbeHandler) Unregister(path string) {
+	u.Ctx.Logger.Debugf("Unregister network Namespace: %s", path)
 
 	u.Lock()
 	defer u.Unlock()
@@ -218,37 +225,37 @@ func (u *Probe) Unregister(path string) {
 
 	delete(u.pathToNetNS, path)
 	nsString := ns.String()
-	probe, ok := u.netNsProbes[nsString]
+	probe, ok := u.nsNetLinkProbes[nsString]
 	if !ok {
-		logging.GetLogger().Debugf("No existing network namespace found: %s (%s)", nsString)
+		u.Ctx.Logger.Debugf("No existing network namespace found: %s (%s)", nsString)
 		return
 	}
 
 	if probe.useCount > 1 {
 		probe.useCount--
-		logging.GetLogger().Debugf("Decremented counter for namespace %s to %d", nsString, probe.useCount)
+		u.Ctx.Logger.Debugf("Decremented counter for namespace %s to %d", nsString, probe.useCount)
 		return
 	}
 
-	u.nlProbe.Unregister(path)
-	logging.GetLogger().Debugf("Network namespace deleted: %s", nsString)
+	u.nlHandler.Unregister(path)
+	u.Ctx.Logger.Debugf("Network namespace deleted: %s", nsString)
 
-	u.Graph.Lock()
-	defer u.Graph.Unlock()
+	u.Ctx.Graph.Lock()
+	defer u.Ctx.Graph.Unlock()
 
-	for _, child := range u.Graph.LookupChildren(probe.Root, nil, nil) {
-		if err := u.Graph.DelNode(child); err != nil {
-			logging.GetLogger().Error(err)
+	for _, child := range u.Ctx.Graph.LookupChildren(probe.Ctx.RootNode, nil, nil) {
+		if err := u.Ctx.Graph.DelNode(child); err != nil {
+			u.Ctx.Logger.Error(err)
 		}
 	}
-	if err := u.Graph.DelNode(probe.Root); err != nil {
-		logging.GetLogger().Error(err)
+	if err := u.Ctx.Graph.DelNode(probe.Ctx.RootNode); err != nil {
+		u.Ctx.Logger.Error(err)
 	}
 
-	delete(u.netNsProbes, nsString)
+	delete(u.nsNetLinkProbes, nsString)
 }
 
-func (u *Probe) initializeRunPath(path string) {
+func (u *ProbeHandler) initializeRunPath(path string) {
 	defer u.wg.Done()
 
 	err := common.Retry(func() error {
@@ -268,7 +275,7 @@ func (u *Probe) initializeRunPath(path string) {
 	}, math.MaxInt32, time.Second)
 
 	if err != nil {
-		logging.GetLogger().Error(err)
+		u.Ctx.Logger.Error(err)
 		return
 	}
 
@@ -281,16 +288,16 @@ func (u *Probe) initializeRunPath(path string) {
 		}
 
 		if _, err := u.Register(fullpath, name); err != nil {
-			logging.GetLogger().Errorf("Failed to register namespace %s: %s", fullpath, err)
+			u.Ctx.Logger.Errorf("Failed to register namespace %s: %s", fullpath, err)
 		}
 	}
-	logging.GetLogger().Debugf("Probe initialized %s", path)
+	u.Ctx.Logger.Debugf("ProbeHandler initialized %s", path)
 }
 
-func (u *Probe) start() {
+func (u *ProbeHandler) start() {
 	defer u.wg.Done()
 
-	logging.GetLogger().Debugf("Probe initialized")
+	u.Ctx.Logger.Debugf("ProbeHandler initialized")
 
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
@@ -310,7 +317,7 @@ func (u *Probe) start() {
 			}
 			if ev.Op&fsnotify.Create == fsnotify.Create {
 				if _, err := u.Register(ev.Name, getNetNSName(ev.Name)); err != nil {
-					logging.GetLogger().Errorf("Failed to register namespace %s: %s", ev.Name, err)
+					u.Ctx.Logger.Errorf("Failed to register namespace %s: %s", ev.Name, err)
 					continue
 				}
 			}
@@ -319,36 +326,36 @@ func (u *Probe) start() {
 			}
 
 		case err := <-u.watcher.Errors:
-			logging.GetLogger().Errorf("Error while watching network namespace: %s", err)
+			u.Ctx.Logger.Errorf("Error while watching network namespace: %s", err)
 		case <-ticker.C:
 		}
 	}
 }
 
 // Watch add a path to the inotify watcher
-func (u *Probe) Watch(path string) {
+func (u *ProbeHandler) Watch(path string) {
 	u.pending <- path
 }
 
 // Start the probe
-func (u *Probe) Start() {
+func (u *ProbeHandler) Start() {
 	u.wg.Add(1)
 	go u.start()
 }
 
 // Stop the probe
-func (u *Probe) Stop() {
+func (u *ProbeHandler) Stop() {
 	if !atomic.CompareAndSwapInt64(&u.state, common.RunningState, common.StoppingState) {
 		return
 	}
 	u.wg.Wait()
 
-	u.nlProbe.Stop()
+	u.nlHandler.Stop()
 
 	atomic.StoreInt64(&u.state, common.StoppedState)
 }
 
-func (u *Probe) isPathExcluded(path string) bool {
+func (u *ProbeHandler) isPathExcluded(path string) bool {
 	u.RLock()
 	defer u.RUnlock()
 
@@ -361,14 +368,19 @@ func (u *Probe) isPathExcluded(path string) bool {
 }
 
 // Exclude specify path to not process
-func (u *Probe) Exclude(paths ...string) {
+func (u *ProbeHandler) Exclude(paths ...string) {
 	u.Lock()
 	u.exclude = append(u.exclude, paths...)
 	u.Unlock()
 }
 
-// NewProbe creates a new network namespace probe
-func NewProbe(g *graph.Graph, n *graph.Node, nlProbe *netlink.Probe) (*Probe, error) {
+// Init initializes a new network namespace probe
+func (u *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+	nlHandler := bundle.GetHandler("netlink")
+	if nlHandler == nil {
+		return nil, errors.New("unable to find the netlink handler")
+	}
+
 	ns, err := netns.Get()
 	if err != nil {
 		return nil, errors.New("Failed to get root namespace")
@@ -386,21 +398,18 @@ func NewProbe(g *graph.Graph, n *graph.Node, nlProbe *netlink.Probe) (*Probe, er
 		return nil, fmt.Errorf("Unable to create a new Watcher: %s", err)
 	}
 
-	nsProbe := &Probe{
-		Graph:       g,
-		Root:        n,
-		nlProbe:     nlProbe,
-		pathToNetNS: make(map[string]*NetNs),
-		netNsProbes: make(map[string]*netNsProbe),
-		rootNs:      rootNs,
-		watcher:     watcher,
-		pending:     make(chan string, 10),
-		state:       common.StoppedState,
+	u.Ctx = ctx
+	u.nlHandler = nlHandler.(*netlink.ProbeHandler)
+	u.pathToNetNS = make(map[string]*NetNs)
+	u.nsNetLinkProbes = make(map[string]*nsNetLinkProbe)
+	u.rootNs = rootNs
+	u.watcher = watcher
+	u.pending = make(chan string, 10)
+	u.state = common.StoppedState
+
+	if path := ctx.Config.GetString("agent.topology.netns.run_path"); path != "" {
+		u.Watch(path)
 	}
 
-	if path := config.GetString("agent.topology.netns.run_path"); path != "" {
-		nsProbe.Watch(path)
-	}
-
-	return nsProbe, nil
+	return u, nil
 }

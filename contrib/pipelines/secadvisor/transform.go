@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pmylund/go-cache"
+	cache "github.com/pmylund/go-cache"
 
 	"github.com/spf13/viper"
 

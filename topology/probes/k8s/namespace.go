@@ -49,7 +49,7 @@ func newNamespaceProbe(client interface{}, g *graph.Graph) Subprobe {
 	return NewResourceCache(client.(*kubernetes.Clientset).CoreV1().RESTClient(), &v1.Namespace{}, "namespaces", g, &namespaceHandler{})
 }
 
-func newNamespaceLinker(g *graph.Graph, manager string, types ...string) probe.Probe {
+func newNamespaceLinker(g *graph.Graph, manager string, types ...string) probe.Handler {
 	namespaceFilter := newTypesFilter(Manager, "namespace")
 	namespaceIndexer := newObjectIndexerFromFilter(g, GetSubprobe(Manager, "namespace"), namespaceFilter, MetadataFields("Name")...)
 	namespaceIndexer.Start()

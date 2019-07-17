@@ -31,17 +31,17 @@ import (
 	"sync/atomic"
 	"time"
 
-	"git.fd.io/govpp.git"
+	govpp "git.fd.io/govpp.git"
 	"git.fd.io/govpp.git/api"
 	"git.fd.io/govpp.git/core"
 
 	"github.com/sirupsen/logrus"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
+	tp "github.com/skydive-project/skydive/topology/probes"
 	"github.com/skydive-project/skydive/topology/probes/vpp/bin_api/interfaces"
 	"github.com/skydive-project/skydive/topology/probes/vpp/bin_api/vpe"
 )
@@ -54,15 +54,14 @@ const (
 // Probe is VPP probe
 type Probe struct {
 	sync.Mutex
-	graph        *graph.Graph                              // the graph
+	Ctx          tp.Context
 	shm          string                                    // connect SHM path
 	conn         *core.Connection                          // VPP connection
 	interfaceMap map[uint32]*interfaces.SwInterfaceDetails // MAP of VPP interfaces
-	root         *graph.Node                               // root node for ownership
-
-	notifChan chan api.Message // notification channel on interfaces events
-	state     int64            // state of the probe (running or stopped)
-	wg        sync.WaitGroup   // goroutines wait group
+	vppRootNode  *graph.Node                               // root node for ownership
+	notifChan    chan api.Message                          // notification channel on interfaces events
+	state        int64                                     // state of the probe (running or stopped)
+	wg           sync.WaitGroup                            // goroutines wait group
 }
 
 func interfaceMAC(mac []byte) string {
@@ -98,40 +97,39 @@ func (p *Probe) getInterfaceVrfID(ch api.Channel, index uint32) int64 {
 	msg := &interfaces.SwInterfaceGetTableReply{}
 	err := ch.SendRequest(req).ReceiveReply(msg)
 	if err != nil {
-		logging.GetLogger().Error(err)
+		p.Ctx.Logger.Error(err)
 		return -1
 	}
 	return int64(msg.VrfID)
 }
 
 func (p *Probe) getInterface(index uint32) *graph.Node {
-	p.graph.RLock()
-	defer p.graph.RUnlock()
-	return p.graph.LookupFirstNode(graph.Metadata{"IfIndex": int64(index), "Type": "vpp"})
+	p.Ctx.Graph.RLock()
+	defer p.Ctx.Graph.RUnlock()
+	return p.Ctx.Graph.LookupFirstNode(graph.Metadata{"IfIndex": int64(index), "Type": "vpp"})
 }
 
 func (p *Probe) createOrUpdateInterface(ch api.Channel, intf *interfaces.SwInterfaceDetails) *graph.Node {
 	metadata := graph.Metadata{"IfIndex": int64(intf.SwIfIndex), "Type": "vpp"}
 
-	g := p.graph
-	g.Lock()
-	defer g.Unlock()
+	p.Ctx.Graph.Lock()
+	defer p.Ctx.Graph.Unlock()
 
 	var err error
-	node := p.graph.LookupFirstNode(metadata)
+	node := p.Ctx.Graph.LookupFirstNode(metadata)
 	if node == nil {
-		node, err = g.NewNode(graph.GenID(), metadata)
+		node, err = p.Ctx.Graph.NewNode(graph.GenID(), metadata)
 		if err != nil {
-			logging.GetLogger().Error(err)
+			p.Ctx.Logger.Error(err)
 			return nil
 		}
-		if _, err = g.Link(p.root, node, topology.OwnershipMetadata()); err != nil {
-			logging.GetLogger().Error(err)
+		if _, err = p.Ctx.Graph.Link(p.vppRootNode, node, topology.OwnershipMetadata()); err != nil {
+			p.Ctx.Logger.Error(err)
 			return nil
 		}
 	}
 
-	tr := g.StartMetadataTransaction(node)
+	tr := p.Ctx.Graph.StartMetadataTransaction(node)
 	defer tr.Commit()
 	tr.AddMetadata("Driver", "vpp")
 	tr.AddMetadata("Name", strings.Trim(string(intf.InterfaceName), "\000"))
@@ -163,10 +161,10 @@ func (p *Probe) eventAddInterface(ch api.Channel, intf *interfaces.SwInterfaceDe
 }
 
 func (p *Probe) eventDelInterface(node *graph.Node) {
-	p.graph.Lock()
-	defer p.graph.Unlock()
-	if err := p.graph.DelNode(node); err != nil {
-		logging.GetLogger().Error(err)
+	p.Ctx.Graph.Lock()
+	defer p.Ctx.Graph.Unlock()
+	if err := p.Ctx.Graph.DelNode(node); err != nil {
+		p.Ctx.Logger.Error(err)
 	}
 }
 
@@ -182,7 +180,7 @@ func (p *Probe) interfaceEventsEnableDisable(ch api.Channel, enable bool) {
 	msg := &interfaces.WantInterfaceEventsReply{}
 	err := ch.SendRequest(req).ReceiveReply(msg)
 	if err != nil {
-		logging.GetLogger().Error(err)
+		p.Ctx.Logger.Error(err)
 	}
 }
 
@@ -191,13 +189,13 @@ func (p *Probe) interfacesEvents() {
 
 	ch, err := p.conn.NewAPIChannel()
 	if err != nil {
-		logging.GetLogger().Error("API channel error: ", err)
+		p.Ctx.Logger.Error("API channel error: ", err)
 		return
 	}
 
 	sub, err := ch.SubscribeNotification(p.notifChan, &interfaces.SwInterfaceEvent{})
 	if err != nil {
-		logging.GetLogger().Error(err)
+		p.Ctx.Logger.Error(err)
 		return
 	}
 
@@ -211,18 +209,18 @@ func (p *Probe) interfacesEvents() {
 		msg := notif.(*interfaces.SwInterfaceEvent)
 
 		node := p.getInterface(msg.SwIfIndex)
-		p.graph.RLock()
+		p.Ctx.Graph.RLock()
 		name, _ := node.GetFieldString("Name")
-		p.graph.RUnlock()
+		p.Ctx.Graph.RUnlock()
 		if msg.Deleted > 0 {
-			logging.GetLogger().Debugf("Delete interface %v idx %d", name, msg.SwIfIndex)
+			p.Ctx.Logger.Debugf("Delete interface %v idx %d", name, msg.SwIfIndex)
 			p.eventDelInterface(node)
 			continue
 		}
-		logging.GetLogger().Debugf("ChangeState interface %v idx %d updown %d", name, msg.SwIfIndex, msg.AdminUpDown)
-		p.graph.Lock()
+		p.Ctx.Logger.Debugf("ChangeState interface %v idx %d updown %d", name, msg.SwIfIndex, msg.AdminUpDown)
+		p.Ctx.Graph.Lock()
 		node.Metadata.SetField("State", interfaceUpDown(msg.AdminUpDown))
-		p.graph.Unlock()
+		p.Ctx.Graph.Unlock()
 	}
 
 	p.interfaceEventsEnableDisable(ch, false)
@@ -236,7 +234,7 @@ func (p *Probe) interfacesPolling() {
 
 	ch, err := p.conn.NewAPIChannel()
 	if err != nil {
-		logging.GetLogger().Error("API channel error: ", err)
+		p.Ctx.Logger.Error("API channel error: ", err)
 		return
 	}
 
@@ -253,7 +251,7 @@ func (p *Probe) interfacesPolling() {
 				break
 			}
 			if err != nil {
-				logging.GetLogger().Error(err)
+				p.Ctx.Logger.Error(err)
 				goto nextEvents
 			}
 
@@ -270,7 +268,7 @@ func (p *Probe) interfacesPolling() {
 		/* Update interface metadata */
 		for index := range needUpdate {
 			msg := p.interfaceMap[index]
-			logging.GetLogger().Debugf("Add/Update interface %v idx %d up/down %d", strings.Trim(string(msg.InterfaceName), "\000"), int64(msg.SwIfIndex), int64(msg.AdminUpDown))
+			p.Ctx.Logger.Debugf("Add/Update interface %v idx %d up/down %d", strings.Trim(string(msg.InterfaceName), "\000"), int64(msg.SwIfIndex), int64(msg.AdminUpDown))
 			p.eventAddInterface(ch, msg)
 		}
 		/* Remove interface that didn't exist anymore */
@@ -279,10 +277,10 @@ func (p *Probe) interfacesPolling() {
 			_, firsttime := needUpdate[index]
 			if !found && !firsttime {
 				node := p.getInterface(index)
-				p.graph.RLock()
+				p.Ctx.Graph.RLock()
 				name, _ := node.GetFieldString("Name")
-				p.graph.RUnlock()
-				logging.GetLogger().Debugf("Delete interface %v idx %d", name, index)
+				p.Ctx.Graph.RUnlock()
+				p.Ctx.Logger.Debugf("Delete interface %v idx %d", name, index)
 				p.eventDelInterface(node)
 				delete(p.interfaceMap, index)
 			}
@@ -299,14 +297,14 @@ func (p *Probe) interfacesPolling() {
 func (p *Probe) Start() {
 	conn, err := govpp.Connect(p.shm)
 	if err != nil {
-		logging.GetLogger().Error("VPP connection error: ", err)
+		p.Ctx.Logger.Error("VPP connection error: ", err)
 		return
 	}
 	p.conn = conn
 
 	ch, err := conn.NewAPIChannel()
 	if err != nil {
-		logging.GetLogger().Error("API channel error: ", err)
+		p.Ctx.Logger.Error("API channel error: ", err)
 		return
 	}
 
@@ -314,7 +312,7 @@ func (p *Probe) Start() {
 	msg := &vpe.ShowVersionReply{}
 	err = ch.SendRequest(req).ReceiveReply(msg)
 	if err != nil {
-		logging.GetLogger().Error(err)
+		p.Ctx.Logger.Error(err)
 		return
 	}
 	ch.Close()
@@ -327,15 +325,14 @@ func (p *Probe) Start() {
 		"BuildDate": string(msg.BuildDate),
 	}
 
-	p.graph.Lock()
-	defer p.graph.Unlock()
-	n, err := p.graph.NewNode(graph.GenID(), metadata)
-	if err != nil {
-		logging.GetLogger().Error(err)
+	p.Ctx.Graph.Lock()
+	defer p.Ctx.Graph.Unlock()
+
+	if p.vppRootNode, err = p.Ctx.Graph.NewNode(graph.GenID(), metadata); err != nil {
+		p.Ctx.Logger.Error(err)
 		return
 	}
-	topology.AddOwnershipLink(p.graph, p.root, n, nil)
-	p.root = n
+	topology.AddOwnershipLink(p.Ctx.Graph, p.Ctx.RootNode, p.vppRootNode, nil)
 
 	atomic.StoreInt64(&p.state, common.RunningState)
 
@@ -352,30 +349,23 @@ func (p *Probe) Stop() {
 	p.wg.Wait()
 }
 
-// NewProbe creates a VPP topology probe
-func NewProbe(g *graph.Graph, shm string, root *graph.Node) *Probe {
-	probe := &Probe{
-		graph:        g,
-		interfaceMap: make(map[uint32]*interfaces.SwInterfaceDetails),
-		shm:          shm,
-		root:         root,
-		state:        common.StoppedState,
-	}
-	probe.notifChan = make(chan api.Message, 100)
+// Init initializes a VPP topology probe
+func (p *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+	shm := ctx.Config.GetString("agent.topology.vpp.connect")
 
-	/* Forward all govpp logging to Skdyive logging */
+	p.Ctx = ctx
+	p.shm = shm
+	p.interfaceMap = make(map[uint32]*interfaces.SwInterfaceDetails)
+	p.state = common.StoppedState
+	p.notifChan = make(chan api.Message, 100)
+
+	/* Forward all govpp logging to Skydive logging */
 	l := logrus.New()
 	l.Out = ioutil.Discard
-	l.Hooks.Add(probe)
+	l.Hooks.Add(p)
 	core.SetLogger(l)
 
-	return probe
-}
-
-// NewProbeFromConfig initializes the probe
-func NewProbeFromConfig(g *graph.Graph, root *graph.Node) (*Probe, error) {
-	shm := config.GetString("agent.topology.vpp.connect")
-	return NewProbe(g, shm, root), nil
+	return p, nil
 }
 
 // Levels Logrus to Skydive logger helper
@@ -387,19 +377,19 @@ func (p *Probe) Levels() []logrus.Level {
 func (p *Probe) Fire(entry *logrus.Entry) error {
 	switch entry.Level {
 	case logrus.TraceLevel:
-		logging.GetLogger().Debug(entry.String())
+		p.Ctx.Logger.Debug(entry.String())
 	case logrus.DebugLevel:
-		logging.GetLogger().Debug(entry.String())
+		p.Ctx.Logger.Debug(entry.String())
 	case logrus.InfoLevel:
-		logging.GetLogger().Info(entry.String())
+		p.Ctx.Logger.Info(entry.String())
 	case logrus.WarnLevel:
-		logging.GetLogger().Warning(entry.String())
+		p.Ctx.Logger.Warning(entry.String())
 	case logrus.ErrorLevel:
-		logging.GetLogger().Error(entry.String())
+		p.Ctx.Logger.Error(entry.String())
 	case logrus.FatalLevel:
-		logging.GetLogger().Fatal(entry.String())
+		p.Ctx.Logger.Fatal(entry.String())
 	case logrus.PanicLevel:
-		logging.GetLogger().Panic(entry.String())
+		p.Ctx.Logger.Panic(entry.String())
 	}
 	return nil
 }

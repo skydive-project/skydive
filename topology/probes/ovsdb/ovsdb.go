@@ -32,9 +32,10 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/ovs/ovsdb"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
+	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
 var (
@@ -44,16 +45,15 @@ var (
 // Probe describes a probe that reads OVS database and updates the graph
 type Probe struct {
 	sync.Mutex
-	Graph        *graph.Graph
-	Root         *graph.Node
+	Ctx          tp.Context
 	OvsMon       *ovsdb.OvsMonitor
-	OvsOfProbe   *OvsOfProbe
+	Handler      *OvsOfProbeHandler
 	uuidToIntf   map[string]*graph.Node
 	uuidToPort   map[string]*graph.Node
 	intfToPort   map[string]*graph.Node
 	portToIntf   map[string]*graph.Node
 	portToBridge map[string]*graph.Node
-	cancel       context.CancelFunc
+	cancelFunc   context.CancelFunc
 	enableStats  bool
 }
 
@@ -119,19 +119,19 @@ func (o *Probe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libo
 
 	name := row.New.Fields["name"].(string)
 
-	o.Graph.Lock()
-	defer o.Graph.Unlock()
+	o.Ctx.Graph.Lock()
+	defer o.Ctx.Graph.Unlock()
 
-	bridge := o.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
+	bridge := o.Ctx.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
 	if bridge == nil {
 		var err error
 
-		bridge, err = o.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "UUID": uuid, "Type": "ovsbridge"})
+		bridge, err = o.Ctx.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "UUID": uuid, "Type": "ovsbridge"})
 		if err != nil {
-			logging.GetLogger().Error(err)
+			o.Ctx.Logger.Error(err)
 			return
 		}
-		topology.AddOwnershipLink(o.Graph, o.Root, bridge, nil)
+		topology.AddOwnershipLink(o.Ctx.Graph, o.Ctx.RootNode, bridge, nil)
 	}
 
 	ovsMetadata := &OvsMetadata{
@@ -151,7 +151,7 @@ func (o *Probe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libo
 
 	}
 
-	tr := o.Graph.StartMetadataTransaction(bridge)
+	tr := o.Ctx.Graph.StartMetadataTransaction(bridge)
 	tr.AddMetadata("Ovs", ovsMetadata)
 
 	extIds := row.New.Fields["external_ids"].(libovsdb.OvsMap)
@@ -169,9 +169,9 @@ func (o *Probe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libo
 			o.portToBridge[u] = bridge
 
 			if port, ok := o.uuidToPort[u]; ok {
-				if !topology.HaveOwnershipLink(o.Graph, bridge, port) {
-					topology.AddOwnershipLink(o.Graph, bridge, port, nil)
-					topology.AddLayer2Link(o.Graph, bridge, port, nil)
+				if !topology.HaveOwnershipLink(o.Ctx.Graph, bridge, port) {
+					topology.AddOwnershipLink(o.Ctx.Graph, bridge, port, nil)
+					topology.AddLayer2Link(o.Ctx.Graph, bridge, port, nil)
 				}
 
 				if intf, ok := o.portToIntf[uuid]; ok {
@@ -185,28 +185,28 @@ func (o *Probe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libo
 		o.portToBridge[u] = bridge
 
 		if port, ok := o.uuidToPort[u]; ok {
-			if !topology.HaveOwnershipLink(o.Graph, bridge, port) {
-				topology.AddOwnershipLink(o.Graph, bridge, port, nil)
-				topology.AddLayer2Link(o.Graph, bridge, port, nil)
+			if !topology.HaveOwnershipLink(o.Ctx.Graph, bridge, port) {
+				topology.AddOwnershipLink(o.Ctx.Graph, bridge, port, nil)
+				topology.AddLayer2Link(o.Ctx.Graph, bridge, port, nil)
 			}
 		}
 	}
-	if o.OvsOfProbe != nil {
-		o.OvsOfProbe.OnOvsBridgeAdd(bridge)
+	if o.Handler != nil {
+		o.Handler.OnOvsBridgeAdd(bridge)
 	}
 }
 
 // OnOvsBridgeDel event
 func (o *Probe) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-	if o.OvsOfProbe != nil {
-		o.OvsOfProbe.OnOvsBridgeDel(uuid)
+	if o.Handler != nil {
+		o.Handler.OnOvsBridgeDel(uuid)
 	}
-	o.Graph.Lock()
-	defer o.Graph.Unlock()
-	bridge := o.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
+	o.Ctx.Graph.Lock()
+	defer o.Ctx.Graph.Unlock()
+	bridge := o.Ctx.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
 	if bridge != nil {
-		if err := o.Graph.DelNode(bridge); err != nil {
-			logging.GetLogger().Error(err)
+		if err := o.Ctx.Graph.DelNode(bridge); err != nil {
+			o.Ctx.Logger.Error(err)
 		}
 	}
 }
@@ -214,8 +214,8 @@ func (o *Probe) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row *libo
 // linkIntfTOBridge having ifindex set to 0 (not handled by netlink) or being in
 // error
 func (o *Probe) linkIntfTOBridge(bridge, intf *graph.Node) {
-	if isOvsDrivenInterface(intf) && !topology.IsOwnershipLinked(o.Graph, intf) {
-		topology.AddOwnershipLink(o.Graph, bridge, intf, nil)
+	if isOvsDrivenInterface(intf) && !topology.IsOwnershipLinked(o.Ctx.Graph, intf) {
+		topology.AddOwnershipLink(o.Ctx.Graph, bridge, intf, nil)
 	}
 }
 
@@ -318,10 +318,10 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 	itype := columnStringValue(&row.New, "type")
 	attachedMAC := goMapStringValue(&row.New, "external_ids", "attached-mac")
 
-	o.Graph.Lock()
-	defer o.Graph.Unlock()
+	o.Ctx.Graph.Lock()
+	defer o.Ctx.Graph.Unlock()
 
-	intf := o.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
+	intf := o.Ctx.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
 	if mac != "" || attachedMAC != "" {
 		var macFilter *filters.Filter
 		if mac != "" {
@@ -342,15 +342,15 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 
 		if intf == nil {
 			// no already inserted ovs interface but maybe already detected by netlink
-			intf = o.Graph.LookupFirstNode(graph.NewElementFilter(andFilter))
+			intf = o.Ctx.Graph.LookupFirstNode(graph.NewElementFilter(andFilter))
 		} else {
 			// if there is a interface with the same MAC, name and optionally
 			// the same ifindex but having another ID, it means that ovs and
 			// netlink have seen the same interface. In order to keep only
 			// one interface we delete the ovs one and use the netlink one.
-			if nintf := o.Graph.LookupFirstNode(graph.NewElementFilter(andFilter)); nintf != nil && intf.ID != nintf.ID {
-				if err := o.Graph.DelNode(intf); err != nil {
-					logging.GetLogger().Error(err)
+			if nintf := o.Ctx.Graph.LookupFirstNode(graph.NewElementFilter(andFilter)); nintf != nil && intf.ID != nintf.ID {
+				if err := o.Ctx.Graph.DelNode(intf); err != nil {
+					o.Ctx.Logger.Error(err)
 				}
 				intf = nintf
 			}
@@ -360,9 +360,9 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 	if intf == nil {
 		var err error
 
-		intf, err = o.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "UUID": uuid})
+		intf, err = o.Ctx.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "UUID": uuid})
 		if err != nil {
-			logging.GetLogger().Error(err)
+			o.Ctx.Logger.Error(err)
 			return
 		}
 	}
@@ -379,7 +379,7 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 
 	ovsMetadata.Error = oerror
 
-	tr := o.Graph.StartMetadataTransaction(intf)
+	tr := o.Ctx.Graph.StartMetadataTransaction(intf)
 	defer tr.Commit()
 
 	tr.AddMetadata("UUID", uuid)
@@ -443,16 +443,16 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 
 	case "patch":
 		if peerName := goMapStringValue(&row.New, "options", "peer"); peerName != "" {
-			peer := o.Graph.LookupFirstNode(graph.Metadata{"Name": peerName, "Type": "patch"})
+			peer := o.Ctx.Graph.LookupFirstNode(graph.Metadata{"Name": peerName, "Type": "patch"})
 			if peer != nil {
-				if !topology.HaveLayer2Link(o.Graph, intf, peer) {
-					topology.AddLayer2Link(o.Graph, intf, peer, patchMetadata)
+				if !topology.HaveLayer2Link(o.Ctx.Graph, intf, peer) {
+					topology.AddLayer2Link(o.Ctx.Graph, intf, peer, patchMetadata)
 				}
 			} else {
 				// lookup in the intf queue
 				for _, peer := range o.uuidToIntf {
-					if name, _ := peer.GetFieldString("Name"); name == peerName && !topology.HaveLayer2Link(o.Graph, intf, peer) {
-						topology.AddLayer2Link(o.Graph, intf, peer, patchMetadata)
+					if name, _ := peer.GetFieldString("Name"); name == peerName && !topology.HaveLayer2Link(o.Ctx.Graph, intf, peer) {
+						topology.AddLayer2Link(o.Ctx.Graph, intf, peer, patchMetadata)
 					}
 				}
 			}
@@ -485,8 +485,8 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 	}
 
 	if port, ok := o.intfToPort[uuid]; ok {
-		if !topology.HaveLayer2Link(o.Graph, port, intf) {
-			topology.AddLayer2Link(o.Graph, port, intf, nil)
+		if !topology.HaveLayer2Link(o.Ctx.Graph, port, intf) {
+			topology.AddLayer2Link(o.Ctx.Graph, port, intf, nil)
 		}
 
 		puuid, _ := port.GetFieldString("UUID")
@@ -513,13 +513,13 @@ func (o *Probe) OnOvsInterfaceDel(monitor *ovsdb.OvsMonitor, uuid string, row *l
 		return
 	}
 
-	o.Graph.Lock()
-	defer o.Graph.Unlock()
+	o.Ctx.Graph.Lock()
+	defer o.Ctx.Graph.Unlock()
 
 	// do not delete if not an openvswitch interface
 	if driver, _ := intf.GetFieldString("Driver"); driver == "openvswitch" {
-		if err := o.Graph.DelNode(intf); err != nil && err != graph.ErrNodeNotFound {
-			logging.GetLogger().Error(err)
+		if err := o.Ctx.Graph.DelNode(intf); err != nil && err != graph.ErrNodeNotFound {
+			o.Ctx.Logger.Error(err)
 		}
 	}
 
@@ -532,28 +532,28 @@ func (o *Probe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovs
 	o.Lock()
 	defer o.Unlock()
 
-	o.Graph.Lock()
-	defer o.Graph.Unlock()
+	o.Ctx.Graph.Lock()
+	defer o.Ctx.Graph.Unlock()
 
 	port, ok := o.uuidToPort[uuid]
 	if !ok {
 		var err error
 
-		port, err = o.Graph.NewNode(graph.GenID(), graph.Metadata{
+		port, err = o.Ctx.Graph.NewNode(graph.GenID(), graph.Metadata{
 			"UUID": uuid,
 			"Name": row.New.Fields["name"].(string),
 			"Type": "ovsport",
 		})
 
 		if err != nil {
-			logging.GetLogger().Error(err)
+			o.Ctx.Logger.Error(err)
 			return
 		}
 
 		o.uuidToPort[uuid] = port
 	}
 
-	tr := o.Graph.StartMetadataTransaction(port)
+	tr := o.Ctx.Graph.StartMetadataTransaction(port)
 	defer tr.Commit()
 
 	// bond mode
@@ -618,8 +618,8 @@ func (o *Probe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovs
 			if intf, ok := o.uuidToIntf[u]; ok {
 				o.portToIntf[uuid] = intf
 
-				if !topology.HaveLayer2Link(o.Graph, port, intf) {
-					topology.AddLayer2Link(o.Graph, port, intf, nil)
+				if !topology.HaveLayer2Link(o.Ctx.Graph, port, intf) {
+					topology.AddLayer2Link(o.Ctx.Graph, port, intf, nil)
 				}
 			}
 		}
@@ -630,16 +630,16 @@ func (o *Probe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovs
 		if intf, ok := o.uuidToIntf[u]; ok {
 			o.portToIntf[uuid] = intf
 
-			if !topology.HaveLayer2Link(o.Graph, port, intf) {
-				topology.AddLayer2Link(o.Graph, port, intf, nil)
+			if !topology.HaveLayer2Link(o.Ctx.Graph, port, intf) {
+				topology.AddLayer2Link(o.Ctx.Graph, port, intf, nil)
 			}
 		}
 	}
 
 	if bridge, ok := o.portToBridge[uuid]; ok {
-		if !topology.HaveOwnershipLink(o.Graph, bridge, port) {
-			topology.AddOwnershipLink(o.Graph, bridge, port, nil)
-			topology.AddLayer2Link(o.Graph, bridge, port, nil)
+		if !topology.HaveOwnershipLink(o.Ctx.Graph, bridge, port) {
+			topology.AddOwnershipLink(o.Ctx.Graph, bridge, port, nil)
+			topology.AddLayer2Link(o.Ctx.Graph, bridge, port, nil)
 		}
 
 		if intf, ok := o.portToIntf[uuid]; ok {
@@ -665,11 +665,11 @@ func (o *Probe) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovs
 		return
 	}
 
-	o.Graph.Lock()
-	defer o.Graph.Unlock()
+	o.Ctx.Graph.Lock()
+	defer o.Ctx.Graph.Unlock()
 
-	if err := o.Graph.DelNode(port); err != nil {
-		logging.GetLogger().Error(err)
+	if err := o.Ctx.Graph.DelNode(port); err != nil {
+		o.Ctx.Logger.Error(err)
 	}
 
 	delete(o.uuidToPort, uuid)
@@ -682,15 +682,15 @@ func (o *Probe) OnOvsUpdate(monitor *ovsdb.OvsMonitor, row *libovsdb.RowUpdate) 
 	// retry as for the first bridge created the interface can be seen by netlink before the
 	// db update
 	retry := func() error {
-		o.Graph.Lock()
-		defer o.Graph.Unlock()
+		o.Ctx.Graph.Lock()
+		defer o.Ctx.Graph.Unlock()
 
-		ovsSys := o.Graph.LookupFirstChild(o.Root, graph.Metadata{"Name": "ovs-system", "Type": "openvswitch"})
+		ovsSys := o.Ctx.Graph.LookupFirstChild(o.Ctx.RootNode, graph.Metadata{"Name": "ovs-system", "Type": "openvswitch"})
 		if ovsSys == nil {
 			return errors.New("ovs-system not found")
 		}
 
-		tr := o.Graph.StartMetadataTransaction(ovsSys)
+		tr := o.Ctx.Graph.StartMetadataTransaction(ovsSys)
 		defer tr.Commit()
 
 		dbVersion := columnStringValue(&row.New, "db_version")
@@ -727,42 +727,38 @@ func (o *Probe) Start() {
 // Stop the probe
 func (o *Probe) Stop() {
 	o.OvsMon.StopMonitoring()
-	o.cancel()
+	o.cancelFunc()
 }
 
-// NewProbe creates a new graph OVS database probe
-func NewProbe(g *graph.Graph, n *graph.Node, p string, t string, enableStats bool) *Probe {
-	mon := ovsdb.NewOvsMonitor(p, t)
+// Init initializes a new graph OVS database probe
+func (o *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+	address := ctx.Config.GetString("ovs.ovsdb")
+	enableStats := ctx.Config.GetBool("ovs.enable_stats")
+
+	protocol, target, err := common.ParseAddr(address)
+	if err != nil {
+		return nil, err
+	}
+
+	mon := ovsdb.NewOvsMonitor(protocol, target)
 	mon.ExcludeColumn("*", "statistics")
 	mon.ExcludeColumn("Port", "rstp_statistics")
 	if enableStats {
 		mon.IncludeColumn("Interface", "statistics")
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	o := &Probe{
-		Graph:        g,
-		Root:         n,
-		uuidToIntf:   make(map[string]*graph.Node),
-		uuidToPort:   make(map[string]*graph.Node),
-		intfToPort:   make(map[string]*graph.Node),
-		portToIntf:   make(map[string]*graph.Node),
-		portToBridge: make(map[string]*graph.Node),
-		OvsMon:       mon,
-		OvsOfProbe:   NewOvsOfProbe(ctx, g, n, mon.Target),
-		cancel:       cancel,
-		enableStats:  enableStats,
-	}
+	cancelCtx, cancelFunc := context.WithCancel(context.Background())
 
-	return o
-}
+	o.Ctx = ctx
+	o.uuidToIntf = make(map[string]*graph.Node)
+	o.uuidToPort = make(map[string]*graph.Node)
+	o.intfToPort = make(map[string]*graph.Node)
+	o.portToIntf = make(map[string]*graph.Node)
+	o.portToBridge = make(map[string]*graph.Node)
+	o.OvsMon = mon
+	o.Handler = NewOvsOfProbeHandler(cancelCtx, ctx, mon.Target)
+	o.cancelFunc = cancelFunc
+	o.enableStats = enableStats
 
-// NewProbeFromConfig creates a new probe based on configuration
-func NewProbeFromConfig(g *graph.Graph, n *graph.Node, address string, enableStats bool) (*Probe, error) {
-	protocol, target, err := common.ParseAddr(address)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewProbe(g, n, protocol, target, enableStats), nil
+	return o, nil
 }

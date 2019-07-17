@@ -46,7 +46,6 @@ import (
 
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // This represents the data we get from rt --monitor stdout
@@ -86,10 +85,10 @@ type RoutingTableUpdate struct {
 
 // routingTableUpdater serializes route update on both routing tables
 // and interfaces.
-func (mapper *Probe) routingTableUpdater() {
+func (p *Probe) routingTableUpdater() {
 	var vrfId int
-	logging.GetLogger().Debug("Starting routingTableUpdater...")
-	for a := range mapper.routingTableUpdaterChan {
+	p.Ctx.Logger.Debug("Starting routingTableUpdater...")
+	for a := range p.routingTableUpdaterChan {
 		switch a.action {
 		case AddRoute:
 			ocRoute := &Route{
@@ -97,7 +96,7 @@ func (mapper *Probe) routingTableUpdater() {
 				Prefix:   fmt.Sprintf("%s/%d", a.route.Address, a.route.Prefix),
 				Family:   a.route.Family,
 				NhID:     int64(a.route.NhId)}
-			mapper.addRoute(a.route.VrfId, ocRoute)
+			p.addRoute(a.route.VrfId, ocRoute)
 			vrfId = a.route.VrfId
 		case DelRoute:
 			ocRoute := &Route{
@@ -105,44 +104,44 @@ func (mapper *Probe) routingTableUpdater() {
 				Prefix:   fmt.Sprintf("%s/%d", a.route.Address, a.route.Prefix),
 				Family:   a.route.Family,
 				NhID:     int64(a.route.NhId)}
-			mapper.delRoute(a.route.VrfId, ocRoute)
+			p.delRoute(a.route.VrfId, ocRoute)
 			vrfId = a.route.VrfId
 		case AddInterface:
-			mapper.addInterface(a.intf.VrfId, a.intf.InterfaceUUID)
+			p.addInterface(a.intf.VrfId, a.intf.InterfaceUUID)
 			vrfId = a.intf.VrfId
 		case DelInterface:
 			var err error
-			if vrfId, err = mapper.deleteInterface(a.intf.InterfaceUUID); err != nil {
+			if vrfId, err = p.deleteInterface(a.intf.InterfaceUUID); err != nil {
 				continue
 			}
 		}
-		mapper.onRouteChanged(vrfId)
+		p.onRouteChanged(vrfId)
 	}
 }
 
-func (mapper *Probe) getOrCreateRoutingTable(vrfId int) *RoutingTable {
-	vrf, exists := mapper.routingTables[vrfId]
+func (p *Probe) getOrCreateRoutingTable(vrfId int) *RoutingTable {
+	vrf, exists := p.routingTables[vrfId]
 	if !exists {
-		logging.GetLogger().Debugf("Creating a new VRF with ID %d", vrfId)
+		p.Ctx.Logger.Debugf("Creating a new VRF with ID %d", vrfId)
 
 		var err error
-		if vrf, err = mapper.vrfInit(vrfId); err != nil {
-			logging.GetLogger().Error(err)
+		if vrf, err = p.vrfInit(vrfId); err != nil {
+			p.Ctx.Logger.Error(err)
 			return nil
 		}
 	}
 	return vrf
 }
 
-func (mapper *Probe) addInterface(vrfId int, interfaceUUID string) {
-	if vrf := mapper.getOrCreateRoutingTable(vrfId); vrf != nil {
-		logging.GetLogger().Debugf("Appending interface %s to VRF %d...", interfaceUUID, vrfId)
+func (p *Probe) addInterface(vrfId int, interfaceUUID string) {
+	if vrf := p.getOrCreateRoutingTable(vrfId); vrf != nil {
+		p.Ctx.Logger.Debugf("Appending interface %s to VRF %d...", interfaceUUID, vrfId)
 		vrf.InterfacesUUID = append(vrf.InterfacesUUID, interfaceUUID)
 	}
 }
 
-func (mapper *Probe) OnInterfaceAdded(vrfId int, interfaceUUID string) {
-	mapper.routingTableUpdaterChan <- RoutingTableUpdate{
+func (p *Probe) OnInterfaceAdded(vrfId int, interfaceUUID string) {
+	p.routingTableUpdaterChan <- RoutingTableUpdate{
 		action: AddInterface,
 		intf:   interfaceUpdate{InterfaceUUID: interfaceUUID, VrfId: vrfId},
 	}
@@ -150,12 +149,12 @@ func (mapper *Probe) OnInterfaceAdded(vrfId int, interfaceUUID string) {
 
 // deleteInterface removes interfaces from Vrf. If a Vrf no longer has
 // any interfaces, this Vrf is removed.
-func (mapper *Probe) deleteInterface(interfaceUUID string) (vrfId int, err error) {
+func (p *Probe) deleteInterface(interfaceUUID string) (vrfId int, err error) {
 	var found bool
-	for k, vrf := range mapper.routingTables {
+	for k, vrf := range p.routingTables {
 		for idx, intf := range vrf.InterfacesUUID {
 			if intf == interfaceUUID {
-				logging.GetLogger().Debugf("Delete interface %s from VRF %d", interfaceUUID, k)
+				p.Ctx.Logger.Debugf("Delete interface %s from VRF %d", interfaceUUID, k)
 				vrf.InterfacesUUID[idx] = vrf.InterfacesUUID[len(vrf.InterfacesUUID)-1]
 				vrf.InterfacesUUID = vrf.InterfacesUUID[:len(vrf.InterfacesUUID)-1]
 				found = true
@@ -164,16 +163,16 @@ func (mapper *Probe) deleteInterface(interfaceUUID string) (vrfId int, err error
 		}
 		if found {
 			if len(vrf.InterfacesUUID) == 0 {
-				logging.GetLogger().Debugf("Delete VRF %d", k)
-				delete(mapper.routingTables, k)
+				p.Ctx.Logger.Debugf("Delete VRF %d", k)
+				delete(p.routingTables, k)
 			}
 		}
 	}
 	return 0, errors.New("No VrfId was found")
 }
 
-func (mapper *Probe) OnInterfaceDeleted(interfaceUUID string) {
-	mapper.routingTableUpdaterChan <- RoutingTableUpdate{
+func (p *Probe) OnInterfaceDeleted(interfaceUUID string) {
+	p.routingTableUpdaterChan <- RoutingTableUpdate{
 		action: DelInterface,
 		intf:   interfaceUpdate{InterfaceUUID: interfaceUUID},
 	}
@@ -181,17 +180,17 @@ func (mapper *Probe) OnInterfaceDeleted(interfaceUUID string) {
 
 // onRouteChanged writes the Contrail routing table into the
 // Contrail.RoutingTable metadata attribute.
-func (mapper *Probe) onRouteChanged(vrfId int) {
-	vrf := mapper.getOrCreateRoutingTable(vrfId)
+func (p *Probe) onRouteChanged(vrfId int) {
+	vrf := p.getOrCreateRoutingTable(vrfId)
 
-	mapper.graph.Lock()
-	defer mapper.graph.Unlock()
+	p.Ctx.Graph.Lock()
+	defer p.Ctx.Graph.Unlock()
 
 	filter := graph.NewElementFilter(filters.NewTermInt64Filter("Contrail.VRFID", int64(vrfId)))
-	intfs := mapper.graph.GetNodes(filter)
+	intfs := p.Ctx.Graph.GetNodes(filter)
 
 	if len(intfs) == 0 {
-		logging.GetLogger().Debugf("No interface with VRF index %d was found (on route add)", vrfId)
+		p.Ctx.Logger.Debugf("No interface with VRF index %d was found (on route add)", vrfId)
 		return
 	}
 
@@ -203,15 +202,15 @@ func (mapper *Probe) onRouteChanged(vrfId int) {
 
 		if metadata, ok := contrailField.(*Metadata); ok {
 			metadata.RoutingTable = vrf.Routes
-			mapper.graph.AddMetadata(n, "Contrail", metadata)
-			logging.GetLogger().Debugf("Update routes on node %s", n.ID)
+			p.Ctx.Graph.AddMetadata(n, "Contrail", metadata)
+			p.Ctx.Logger.Debugf("Update routes on node %s", n.ID)
 		}
 	}
 }
 
-func (mapper *Probe) addRoute(vrfId int, route *Route) {
-	if vrf := mapper.getOrCreateRoutingTable(vrfId); vrf != nil {
-		logging.GetLogger().Debugf("Adding route %v to vrf %d", route, vrfId)
+func (p *Probe) addRoute(vrfId int, route *Route) {
+	if vrf := p.getOrCreateRoutingTable(vrfId); vrf != nil {
+		p.Ctx.Logger.Debugf("Adding route %v to vrf %d", route, vrfId)
 		for _, r := range vrf.Routes {
 			if r == route {
 				return
@@ -221,23 +220,23 @@ func (mapper *Probe) addRoute(vrfId int, route *Route) {
 	}
 }
 
-func (mapper *Probe) delRoute(vrfId int, route *Route) {
-	if vrf := mapper.getOrCreateRoutingTable(vrfId); vrf != nil {
+func (p *Probe) delRoute(vrfId int, route *Route) {
+	if vrf := p.getOrCreateRoutingTable(vrfId); vrf != nil {
 		for i, r := range vrf.Routes {
 			if r.Prefix == route.Prefix {
-				logging.GetLogger().Debugf("Removing route %s from vrf %d ", r.Prefix, vrfId)
+				p.Ctx.Logger.Debugf("Removing route %s from vrf %d ", r.Prefix, vrfId)
 				vrf.Routes[i] = vrf.Routes[len(vrf.Routes)-1]
 				vrf.Routes = vrf.Routes[:len(vrf.Routes)-1]
 				return
 			}
 		}
-		logging.GetLogger().Errorf("Can not remove route %v from vrf %d because route has not been found", route, vrfId)
+		p.Ctx.Logger.Errorf("Can not remove route %v from vrf %d because route has not been found", route, vrfId)
 	}
 }
 
 // vrfInit uses the Contrail binary rt --dump to get all routes of a VRF.
-func (mapper *Probe) vrfInit(vrfId int) (*RoutingTable, error) {
-	logging.GetLogger().Debugf("Initialization of VRF %d...", vrfId)
+func (p *Probe) vrfInit(vrfId int) (*RoutingTable, error) {
+	p.Ctx.Logger.Debugf("Initialization of VRF %d...", vrfId)
 
 	cmd := exec.Command("rt", "--dump", fmt.Sprint(vrfId))
 	stdout, err := cmd.StdoutPipe()
@@ -284,7 +283,7 @@ func (mapper *Probe) vrfInit(vrfId int) (*RoutingTable, error) {
 		})
 	}
 
-	mapper.routingTables[vrfId] = vrf
+	p.routingTables[vrfId] = vrf
 	return vrf, nil
 }
 
@@ -294,35 +293,35 @@ func (mapper *Probe) vrfInit(vrfId int) (*RoutingTable, error) {
 // Contrail module. We cannot just listen the Netlink bus because
 // messages are encoded with Sandesh which is bound to the Contrail
 // version. This is why we read the stdout of the "rt" tools.
-func (mapper *Probe) rtMonitor() {
-	cmd := exec.CommandContext(mapper.ctx, "rt", "--monitor")
+func (p *Probe) rtMonitor() {
+	cmd := exec.CommandContext(p.cancelCtx, "rt", "--monitor")
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		logging.GetLogger().Error(err)
+		p.Ctx.Logger.Error(err)
 		return
 	}
 	stdoutBuf := bufio.NewReader(stdout)
 
-	logging.GetLogger().Debugf("Starting OpenContrail route monitor")
+	p.Ctx.Logger.Debugf("Starting OpenContrail route monitor")
 	if err := cmd.Start(); err != nil {
-		logging.GetLogger().Error(err)
+		p.Ctx.Logger.Error(err)
 		return
 	}
-	defer logging.GetLogger().Debugf("Stopping OpenContrail route monitor")
+	defer p.Ctx.Logger.Debugf("Stopping OpenContrail route monitor")
 
-	go mapper.routingTableUpdater()
+	go p.routingTableUpdater()
 
 	var route rtMonitorRoute
 	for {
 		line, err := stdoutBuf.ReadString('\n')
 		if err != nil {
 			if err != io.EOF {
-				logging.GetLogger().Errorf("Failed to read 'rt --monitor' output: %s", err)
+				p.Ctx.Logger.Errorf("Failed to read 'rt --monitor' output: %s", err)
 			}
 			return
 		}
 		if err := json.Unmarshal([]byte(line), &route); err != nil {
-			logging.GetLogger().Error(err)
+			p.Ctx.Logger.Error(err)
 			continue
 		}
 		// We currently only support IPV4 routes
@@ -331,11 +330,11 @@ func (mapper *Probe) rtMonitor() {
 		}
 		switch route.Operation {
 		case "add":
-			logging.GetLogger().Debugf("Route add %v", route)
-			mapper.routingTableUpdaterChan <- RoutingTableUpdate{action: AddRoute, route: route}
+			p.Ctx.Logger.Debugf("Route add %v", route)
+			p.routingTableUpdaterChan <- RoutingTableUpdate{action: AddRoute, route: route}
 		case "delete":
-			logging.GetLogger().Debugf("Route delete %v", route)
-			mapper.routingTableUpdaterChan <- RoutingTableUpdate{action: DelRoute, route: route}
+			p.Ctx.Logger.Debugf("Route delete %v", route)
+			p.routingTableUpdaterChan <- RoutingTableUpdate{action: DelRoute, route: route}
 		}
 	}
 }

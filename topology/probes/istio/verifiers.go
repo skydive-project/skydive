@@ -63,8 +63,8 @@ func newResourceVerifier(g *graph.Graph, lh []graph.ListenerHandler, verifier fu
 	}
 }
 
-func initResourceVerifiers(handlers []verifierHandler, g *graph.Graph) []probe.Probe {
-	verifiers := []probe.Probe{}
+func initResourceVerifiers(handlers []verifierHandler, g *graph.Graph) []probe.Handler {
+	verifiers := []probe.Handler{}
 	for _, h := range handlers {
 		verifiers = append(verifiers, h(g))
 	}

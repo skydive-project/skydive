@@ -43,12 +43,12 @@ var AnalyzerCmd = &cobra.Command{
 
 		server, err := analyzer.NewServerFromConfig()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to create analyzer: %s", err.Error())
+			fmt.Fprintf(os.Stderr, "Failed to create analyzer: %s", err)
 			os.Exit(1)
 		}
 
 		if err := server.Start(); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to start analyzer: %s", err.Error())
+			fmt.Fprintf(os.Stderr, "Failed to start analyzer: %s", err)
 			os.Exit(1)
 		}
 

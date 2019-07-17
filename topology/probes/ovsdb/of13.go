@@ -24,7 +24,6 @@ import (
 	"github.com/skydive-project/goloxi/of13"
 	"github.com/skydive-project/goloxi/of15"
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/openflow"
 )
 
@@ -54,7 +53,7 @@ func (h *of13Handler) OnMessage(msg goloxi.Message) {
 
 			rule, err := newOfRule(entry.Cookie, entry.TableId, entry.Priority, entry.IdleTimeout, entry.HardTimeout, 0, of15.FlowModFlags(0), &entry.Match, actions, writeActions, gotoTable)
 			if err != nil {
-				logging.GetLogger().Error(err)
+				h.probe.Ctx.Logger.Error(err)
 				return
 			}
 

@@ -25,7 +25,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 type virtualServiceHandler struct {
@@ -230,7 +230,7 @@ func isGatewayMissing(name string) bool {
 	return true
 }
 
-func newVirtualServicePodLinker(g *graph.Graph) probe.Probe {
+func newVirtualServicePodLinker(g *graph.Graph) probe.Handler {
 	return k8s.NewABLinker(g, Manager, "virtualservice", k8s.Manager, "pod", virtualServicePodAreLinked, virtualServicePodMetadata)
 }
 

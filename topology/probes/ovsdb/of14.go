@@ -23,7 +23,6 @@ import (
 	goloxi "github.com/skydive-project/goloxi"
 	"github.com/skydive-project/goloxi/of14"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/openflow"
 )
 
@@ -61,7 +60,7 @@ func (h *of14Handler) OnMessage(msg goloxi.Message) {
 
 			rule, err := newOfRule(entry.Cookie, entry.TableId, entry.Priority, entry.IdleTimeout, entry.HardTimeout, entry.Importance, entry.Flags, &entry.Match, actions, writeActions, gotoTable)
 			if err != nil {
-				logging.GetLogger().Error(err)
+				h.probe.Ctx.Logger.Error(err)
 				return
 			}
 
@@ -71,8 +70,8 @@ func (h *of14Handler) OnMessage(msg goloxi.Message) {
 		h.probe.lastUpdateMetric = now
 
 	case *of14.Requestforward: // Received on group events
-		h.probe.g.Lock()
-		defer h.probe.g.Unlock()
+		h.probe.Ctx.Graph.Lock()
+		defer h.probe.Ctx.Graph.Unlock()
 
 		switch group := t.Request.(type) {
 		case *of14.GroupAdd:
@@ -83,8 +82,8 @@ func (h *of14Handler) OnMessage(msg goloxi.Message) {
 			h.probe.handleGroup(ofGroup, false)
 		case *of14.GroupDelete:
 			if group.GroupId == of14.OFPGAll {
-				for _, children := range h.probe.g.LookupChildren(h.probe.node, graph.Metadata{"Type": "ofgroup"}, nil) {
-					h.probe.g.DelNode(children)
+				for _, children := range h.probe.Ctx.Graph.LookupChildren(h.probe.Ctx.RootNode, graph.Metadata{"Type": "ofgroup"}, nil) {
+					h.probe.Ctx.Graph.DelNode(children)
 				}
 			} else {
 				ofGroup := &ofGroup{GroupType: group.GroupType, ID: int64(group.GroupId), Buckets: h.mapBuckets(group.Buckets)}
@@ -93,8 +92,8 @@ func (h *of14Handler) OnMessage(msg goloxi.Message) {
 		}
 
 	case *of14.GroupDescStatsReply: // Received on initial sync
-		h.probe.g.Lock()
-		defer h.probe.g.Unlock()
+		h.probe.Ctx.Graph.Lock()
+		defer h.probe.Ctx.Graph.Unlock()
 
 		for _, group := range t.Entries {
 			h.probe.handleGroup(&ofGroup{

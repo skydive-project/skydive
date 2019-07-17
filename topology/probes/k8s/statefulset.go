@@ -24,7 +24,7 @@ import (
 	"github.com/skydive-project/skydive/probe"
 
 	"k8s.io/api/apps/v1beta1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -62,6 +62,6 @@ func statefulSetPodAreLinked(a, b interface{}) bool {
 	return MatchNamespace(pod, statefulset) && matchLabelSelector(pod, statefulset.Spec.Selector)
 }
 
-func newStatefulSetPodLinker(g *graph.Graph) probe.Probe {
+func newStatefulSetPodLinker(g *graph.Graph) probe.Handler {
 	return NewABLinker(g, Manager, "statefulset", Manager, "pod", statefulSetPodAreLinked)
 }

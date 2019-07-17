@@ -29,10 +29,10 @@ import (
 )
 
 // LinkHandler creates a linker
-type LinkHandler func(g *graph.Graph) probe.Probe
+type LinkHandler func(g *graph.Graph) probe.Handler
 
 // InitLinkers initializes the listed linkers
-func InitLinkers(linkerHandlers []LinkHandler, g *graph.Graph) (linkers []probe.Probe) {
+func InitLinkers(linkerHandlers []LinkHandler, g *graph.Graph) (linkers []probe.Handler) {
 	for _, handler := range linkerHandlers {
 		if linker := handler(g); linker != nil {
 			linkers = append(linkers, linker)
@@ -80,15 +80,15 @@ type Probe struct {
 	graph     *graph.Graph
 	manager   string
 	subprobes map[string]Subprobe
-	linkers   []probe.Probe
-	verifiers []probe.Probe
+	linkers   []probe.Handler
+	verifiers []probe.Handler
 }
 
 // Subprobe describes a probe for a specific Kubernetes resource
 // It must implement the ListenerHandler interface so that you
 // listen for creation/update/removal of a resource
 type Subprobe interface {
-	probe.Probe
+	probe.Handler
 	graph.ListenerHandler
 }
 
@@ -147,7 +147,7 @@ func (p *Probe) AppendNamespaceLinkers(types ...string) {
 }
 
 // NewProbe creates the probe for tracking k8s events
-func NewProbe(g *graph.Graph, manager string, subprobes map[string]Subprobe, linkers []probe.Probe, verifiers []probe.Probe) *Probe {
+func NewProbe(g *graph.Graph, manager string, subprobes map[string]Subprobe, linkers []probe.Handler, verifiers []probe.Handler) *Probe {
 	names := []string{}
 	for k := range subprobes {
 		names = append(names, k)

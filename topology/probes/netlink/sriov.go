@@ -101,7 +101,7 @@ var errZeroVfs = errors.New("zero VFS")
 
 /* handleSriov adds a node for each virtual function declared. It takes
    care of finding the PCI address of each VF */
-func (u *NetNsProbe) handleSriov(
+func (u *Probe) handleSriov(
 	graph *graph.Graph,
 	intf *graph.Node,
 	id int,

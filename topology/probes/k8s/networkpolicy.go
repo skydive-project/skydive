@@ -290,7 +290,7 @@ func (npl *networkPolicyLinker) GetBALinks(podNode *graph.Node) (edges []*graph.
 	return
 }
 
-func newNetworkPolicyLinker(g *graph.Graph) probe.Probe {
+func newNetworkPolicyLinker(g *graph.Graph) probe.Handler {
 	npProbe := GetSubprobe(Manager, "networkpolicy")
 	podProbe := GetSubprobe(Manager, "pod")
 	namespaceProbe := GetSubprobe(Manager, "namespace")

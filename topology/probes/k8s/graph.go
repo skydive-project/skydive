@@ -120,7 +120,7 @@ func newResourceIndexer(g *graph.Graph, manager, ty string, attrs []string) *gra
 	return indexer
 }
 
-func newResourceLinker(g *graph.Graph, srcIndexer, dstIndexer *graph.MetadataIndexer, edgeMetadata graph.Metadata) probe.Probe {
+func newResourceLinker(g *graph.Graph, srcIndexer, dstIndexer *graph.MetadataIndexer, edgeMetadata graph.Metadata) probe.Handler {
 	if srcIndexer == nil || dstIndexer == nil {
 		return nil
 	}

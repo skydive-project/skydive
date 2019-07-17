@@ -21,23 +21,23 @@ package netns
 
 import (
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/topology/probes/netlink"
+	"github.com/skydive-project/skydive/probe"
+	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
-// Probe describes a netlink probe in a network namespace
-type Probe struct {
+// ProbeHandler describes a netlink probe handler in a network namespace
+type ProbeHandler struct {
 }
 
-// Start the probe
-func (u *Probe) Start() {
+// Start the probe handler
+func (u *ProbeHandler) Start() {
 }
 
-// Stop the probe
-func (u *Probe) Stop() {
+// Stop the probe handler
+func (u *ProbeHandler) Stop() {
 }
 
-// NewProbe creates a new network namespace probe
-func NewProbe(g *graph.Graph, n *graph.Node, nlProbe *netlink.Probe) (*Probe, error) {
+// Init initializes a new network namespace probe
+func (u *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	return nil, common.ErrNotImplemented
 }

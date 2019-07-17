@@ -21,22 +21,23 @@ package docker
 
 import (
 	"github.com/skydive-project/skydive/common"
-	ns "github.com/skydive-project/skydive/topology/probes/netns"
+	"github.com/skydive-project/skydive/probe"
+	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
-// Probe describes a Docker topology graph that enhance the graph
-type Probe struct {
+// ProbeHandler describes a Docker topology graph that enhance the graph
+type ProbeHandler struct {
 }
 
-// Start the probe
-func (probe *Probe) Start() {
+// Start the probe handler
+func (p *ProbeHandler) Start() {
 }
 
-// Stop the probe
-func (probe *Probe) Stop() {
+// Stop the probe handler
+func (p *ProbeHandler) Stop() {
 }
 
-// NewProbe creates a new topology Docker probe
-func NewProbe(nsProbe *ns.Probe, dockerURL, netnsRunPath string) (*Probe, error) {
+// Init initializes a new topology Docker probe
+func (p *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	return nil, common.ErrNotImplemented
 }

@@ -495,13 +495,13 @@ func (o *ovsMirrorInterfaceHandler) onNodeEvent(n *graph.Node) {
 		return
 	}
 
-	subProbeType := o.oph.probeBundle.GetProbe(subProbeTypes.Default)
-	if subProbeType == nil {
+	handler := o.oph.probeBundle.GetHandler(subProbeTypes.Default)
+	if handler == nil {
 		logging.GetLogger().Errorf("Unable to find probe for this capture type: %s", subProbeTypes.Default)
 		return
 	}
 
-	subHandler := subProbeType.(FlowProbeHandler)
+	subHandler := handler.(FlowProbeHandler)
 	subProbe, err := subHandler.RegisterProbe(n, ovsProbe.capture, ovsProbe)
 	if err != nil {
 		logging.GetLogger().Debugf("Failed to register flow probe: %s", err)
@@ -592,11 +592,11 @@ func (o *OvsMirrorProbesHandler) Stop() {
 
 // NewOvsMirrorProbesHandler creates a new OVS Mirror probes
 func NewOvsMirrorProbesHandler(g *graph.Graph, tb, fb *probe.Bundle) (*OvsMirrorProbesHandler, error) {
-	probe := tb.GetProbe("ovsdb")
-	if probe == nil {
+	handler := tb.GetHandler("ovsdb")
+	if handler == nil {
 		return nil, errors.New("Agent.ovssflow probe depends on agent.ovsdb topology probe: agent.ovssflow probe can't start properly")
 	}
-	p := probe.(*op.Probe)
+	p := handler.(*op.Probe)
 
 	o := &OvsMirrorProbesHandler{
 		probes:      make(map[string]*ovsMirrorProbe),

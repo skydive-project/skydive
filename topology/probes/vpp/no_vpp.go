@@ -21,10 +21,11 @@ package vpp
 
 import (
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/probe"
+	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
-// Probe describes a Libvirt probe that does nothing
+// Probe describes a vpp probe that does nothing
 type Probe struct {
 }
 
@@ -36,7 +37,7 @@ func (p *Probe) Start() {
 func (p *Probe) Stop() {
 }
 
-// NewProbeFromConfig Refuses to create a probe.
-func NewProbeFromConfig(g *graph.Graph, root *graph.Node) (*Probe, error) {
+// Init initializes a VPP topology probe
+func (p *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	return nil, common.ErrNotImplemented
 }

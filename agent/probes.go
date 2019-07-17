@@ -18,13 +18,13 @@
 package agent
 
 import (
-	"fmt"
 	"runtime"
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
+	tp "github.com/skydive-project/skydive/topology/probes"
 	"github.com/skydive-project/skydive/topology/probes/docker"
 	"github.com/skydive-project/skydive/topology/probes/libvirt"
 	"github.com/skydive-project/skydive/topology/probes/lldp"
@@ -39,99 +39,71 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/vpp"
 )
 
-// NewTopologyProbeBundleFromConfig creates a new topology probe.Bundle based on the configuration
-func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*probe.Bundle, error) {
+// NewTopologyProbeBundle creates a new topology probe.Bundle based on the configuration
+func NewTopologyProbeBundle(g *graph.Graph, hostNode *graph.Node) (*probe.Bundle, error) {
 	list := config.GetStringSlice("agent.topology.probes")
 	logging.GetLogger().Infof("Topology probes: %v", list)
 
-	probes := make(map[string]probe.Probe)
-	bundle := probe.NewBundle(probes)
+	var handler probe.Handler
+	var err error
 
-	var nsProbe *netns.Probe
+	bundle := probe.NewBundle()
+	ctx := tp.Context{
+		Logger:   logging.GetLogger(),
+		Config:   config.GetConfig(),
+		Graph:    g,
+		RootNode: hostNode,
+	}
+
 	if runtime.GOOS == "linux" {
-		nlProbe, err := netlink.NewProbe(g, hostNode)
+		nlHandler, err := new(netlink.ProbeHandler).Init(ctx, bundle)
 		if err != nil {
 			return nil, err
 		}
-		probes["netlink"] = nlProbe
+		bundle.AddHandler("netlink", nlHandler)
 
-		nsProbe, err = netns.NewProbe(g, hostNode, nlProbe)
+		nsHandler, err := new(netns.ProbeHandler).Init(ctx, bundle)
 		if err != nil {
 			return nil, err
 		}
-		probes["netns"] = nsProbe
+		bundle.AddHandler("netns", nsHandler)
 	}
 
 	for _, t := range list {
-		if _, ok := probes[t]; ok {
+		if bundle.GetHandler(t) != nil {
 			continue
 		}
 
 		switch t {
 		case "ovsdb":
-			addr := config.GetString("ovs.ovsdb")
-			enableStats := config.GetBool("ovs.enable_stats")
-			ovsProbe, err := ovsdb.NewProbeFromConfig(g, hostNode, addr, enableStats)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to initialize OVS probe: %s", err)
-			}
-			probes[t] = ovsProbe
+			handler, err = new(ovsdb.Probe).Init(ctx, bundle)
 		case "lxd":
-			lxdURL := config.GetConfig().GetString("lxd.url")
-			lxdProbe, err := lxd.NewProbe(nsProbe, lxdURL)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to initialize LXD probe: %s", err)
-			}
-			probes[t] = lxdProbe
+			handler, err = new(lxd.ProbeHandler).Init(ctx, bundle)
 		case "docker":
-			dockerURL := config.GetString("agent.topology.docker.url")
-			netnsRunPath := config.GetString("agent.topology.docker.netns.run_path")
-			dockerProbe, err := docker.NewProbe(nsProbe, dockerURL, netnsRunPath)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to initialize Docker probe: %s", err)
-			}
-			probes[t] = dockerProbe
+			handler, err = new(docker.ProbeHandler).Init(ctx, bundle)
 		case "lldp":
-			interfaces := config.GetStringSlice("agent.topology.lldp.interfaces")
-			lldpProbe, err := lldp.NewProbe(g, hostNode, interfaces)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to initialize LLDP probe: %s", err)
-			}
-			probes[t] = lldpProbe
+			handler, err = new(lldp.Probe).Init(ctx, bundle)
 		case "neutron":
-			neutron, err := neutron.NewProbeFromConfig(g)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to initialize Neutron probe: %s", err)
-			}
-			probes["neutron"] = neutron
+			handler, err = new(neutron.Probe).Init(ctx, bundle)
 		case "opencontrail":
-			opencontrail, err := opencontrail.NewProbeFromConfig(g, hostNode)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to initialize OpenContrail probe: %s", err)
-			}
-			probes[t] = opencontrail
+			handler, err = new(opencontrail.Probe).Init(ctx, bundle)
 		case "socketinfo":
-			probes[t] = socketinfo.NewSocketInfoProbe(g, hostNode)
+			handler, err = new(socketinfo.ProbeHandler).Init(ctx, bundle)
 		case "libvirt":
-			libvirt, err := libvirt.NewProbeFromConfig(g, hostNode)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to initialize Libvirt probe: %s", err)
-			}
-			probes[t] = libvirt
+			handler, err = new(libvirt.Probe).Init(ctx, bundle)
 		case "runc":
-			runc, err := runc.NewProbe(nsProbe)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to initialize runc probe: %s", err)
-			}
-			probes[t] = runc
+			handler, err = new(runc.ProbeHandler).Init(ctx, bundle)
 		case "vpp":
-			vpp, err := vpp.NewProbeFromConfig(g, hostNode)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to initialize vpp probe: %s", err)
-			}
-			probes[t] = vpp
+			handler, err = new(vpp.Probe).Init(ctx, bundle)
 		default:
 			logging.GetLogger().Errorf("unknown probe type %s", t)
+		}
+
+		if err != nil {
+			return nil, err
+		}
+		if handler != nil {
+			bundle.AddHandler(t, handler)
 		}
 	}
 

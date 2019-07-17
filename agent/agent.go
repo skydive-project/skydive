@@ -228,7 +228,7 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	topologyProbeBundle, err := NewTopologyProbeBundleFromConfig(g, rootNode)
+	topologyProbeBundle, err := NewTopologyProbeBundle(g, rootNode)
 	if err != nil {
 		return nil, err
 	}

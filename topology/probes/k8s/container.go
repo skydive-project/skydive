@@ -143,7 +143,7 @@ func newContainerProbe(client interface{}, g *graph.Graph) Subprobe {
 	return c
 }
 
-func newPodContainerLinker(g *graph.Graph) probe.Probe {
+func newPodContainerLinker(g *graph.Graph) probe.Handler {
 	podIndexer := newResourceIndexer(g, Manager, "pod", MetadataFields("Namespace", "Name"))
 	containerIndexer := newResourceIndexer(g, Manager, "container", MetadataFields("Namespace", "Pod"))
 	return newResourceLinker(g, podIndexer, containerIndexer, topology.OwnershipMetadata())
@@ -161,7 +161,7 @@ func newDockerIndexer(g *graph.Graph) *graph.MetadataIndexer {
 	return graph.NewMetadataIndexer(g, g, m, dockerPodNamespaceField, dockerPodNameField, dockerContainerNameField)
 }
 
-func newContainerDockerLinker(g *graph.Graph) probe.Probe {
+func newContainerDockerLinker(g *graph.Graph) probe.Handler {
 	containerProbe := GetSubprobe(Manager, "container")
 	if containerProbe == nil {
 		return nil

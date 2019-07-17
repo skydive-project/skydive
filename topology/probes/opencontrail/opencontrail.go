@@ -27,21 +27,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology"
-
 	"github.com/nlewo/contrail-introspect-cli/collection"
 	"github.com/nlewo/contrail-introspect-cli/descriptions"
+
+	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/probe"
+	"github.com/skydive-project/skydive/topology"
+	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
 // Probe describes a probe that reads OpenContrail database and updates the graph
 type Probe struct {
 	graph.DefaultGraphListener
-	graph                   *graph.Graph
-	root                    *graph.Node
+	Ctx                     tp.Context
 	nodeUpdaterChan         chan graph.Identifier
 	vHost                   *graph.Node
 	pendingLinks            []*graph.Node
@@ -50,14 +49,14 @@ type Probe struct {
 	mplsUDPPort             int
 	routingTables           map[int]*RoutingTable
 	routingTableUpdaterChan chan RoutingTableUpdate
-	ctx                     context.Context
-	cancel                  context.CancelFunc
+	cancelCtx               context.Context
+	cancelFunc              context.CancelFunc
 }
 
-func (mapper *Probe) retrieveMetadata(metadata graph.Metadata, itf collection.Element) (*Metadata, error) {
+func (p *Probe) retrieveMetadata(metadata graph.Metadata, itf collection.Element) (*Metadata, error) {
 	name := metadata["Name"].(string)
 
-	logging.GetLogger().Debugf("Retrieving metadata from OpenContrail for Name: %s", name)
+	p.Ctx.Logger.Debugf("Retrieving metadata from OpenContrail for Name: %s", name)
 
 	portUUID, _ := itf.GetField("uuid")
 	if portUUID == "" {
@@ -73,7 +72,7 @@ func (mapper *Probe) retrieveMetadata(metadata graph.Metadata, itf collection.El
 	if vrfName == "" {
 		return nil, errors.New("No vrf_name field")
 	}
-	vrfId, err := getVrfIdFromIntrospect(mapper.agentHost, mapper.agentPort, vrfName)
+	vrfId, err := getVrfIdFromIntrospect(p.agentHost, p.agentPort, vrfName)
 	if err != nil {
 		return nil, errors.New("No vrf_id found")
 	}
@@ -83,7 +82,7 @@ func (mapper *Probe) retrieveMetadata(metadata graph.Metadata, itf collection.El
 		return nil, errors.New("No mdata_ip_addr field")
 	}
 
-	logging.GetLogger().Debugf("Interface from contrail: port: %s mac: %s", portUUID, mac)
+	p.Ctx.Logger.Debugf("Interface from contrail: port: %s mac: %s", portUUID, mac)
 
 	return &Metadata{
 		UUID:    portUUID,
@@ -139,113 +138,113 @@ func getVrfIdFromIntrospect(host string, port int, vrfName string) (vrfId int, e
 	return
 }
 
-func (mapper *Probe) onVhostAdded(node *graph.Node, itf collection.Element) {
+func (p *Probe) onVhostAdded(node *graph.Node, itf collection.Element) {
 	phyItf, _ := itf.GetField("physical_interface")
 	if phyItf == "" {
-		logging.GetLogger().Errorf("Physical interface not found")
+		p.Ctx.Logger.Errorf("Physical interface not found")
 		return
 	}
 
-	mapper.vHost = node
+	p.vHost = node
 
 	m := graph.Metadata{"Name": phyItf}
-	nodes := mapper.graph.LookupChildren(mapper.root, m, graph.Metadata{"RelationType": "ownership"})
+	nodes := p.Ctx.Graph.LookupChildren(p.Ctx.RootNode, m, graph.Metadata{"RelationType": "ownership"})
 	switch {
 	case len(nodes) == 0:
-		logging.GetLogger().Errorf("Physical interface %s not found", phyItf)
+		p.Ctx.Logger.Errorf("Physical interface %s not found", phyItf)
 		return
 	case len(nodes) > 1:
-		logging.GetLogger().Errorf("Multiple physical interfaces found : %v", nodes)
+		p.Ctx.Logger.Errorf("Multiple physical interfaces found : %v", nodes)
 		return
 	}
 
-	mapper.linkToVhost(nodes[0])
+	p.linkToVhost(nodes[0])
 
-	for _, n := range mapper.pendingLinks {
-		mapper.linkToVhost(n)
+	for _, n := range p.pendingLinks {
+		p.linkToVhost(n)
 	}
-	mapper.pendingLinks = mapper.pendingLinks[:0]
+	p.pendingLinks = p.pendingLinks[:0]
 
-	mapper.graph.AddMetadata(nodes[0], "MPLSUDPPort", mapper.mplsUDPPort)
+	p.Ctx.Graph.AddMetadata(nodes[0], "MPLSUDPPort", p.mplsUDPPort)
 }
 
-func (mapper *Probe) linkToVhost(node *graph.Node) {
-	if mapper.vHost != nil {
-		if !topology.HaveLayer2Link(mapper.graph, node, mapper.vHost) {
-			logging.GetLogger().Debugf("Link %s to %s", node.String(), mapper.vHost.String())
-			topology.AddLayer2Link(mapper.graph, node, mapper.vHost, nil)
+func (p *Probe) linkToVhost(node *graph.Node) {
+	if p.vHost != nil {
+		if !topology.HaveLayer2Link(p.Ctx.Graph, node, p.vHost) {
+			p.Ctx.Logger.Debugf("Link %s to %s", node.String(), p.vHost.String())
+			topology.AddLayer2Link(p.Ctx.Graph, node, p.vHost, nil)
 		}
 	} else {
-		logging.GetLogger().Debugf("Add node %s to pending link list", node.String())
-		mapper.pendingLinks = append(mapper.pendingLinks, node)
+		p.Ctx.Logger.Debugf("Add node %s to pending link list", node.String())
+		p.pendingLinks = append(p.pendingLinks, node)
 	}
 }
 
-func (mapper *Probe) nodeUpdater() {
+func (p *Probe) nodeUpdater() {
 	body := func(nodeID graph.Identifier) {
-		mapper.graph.RLock()
-		node := mapper.graph.GetNode(nodeID)
+		p.Ctx.Graph.RLock()
+		node := p.Ctx.Graph.GetNode(nodeID)
 		if node == nil {
-			mapper.graph.RUnlock()
+			p.Ctx.Graph.RUnlock()
 			return
 		}
 		name, _ := node.GetFieldString("Name")
-		mapper.graph.RUnlock()
+		p.Ctx.Graph.RUnlock()
 
 		if name == "" {
 			return
 		}
 
-		col, itf, err := getInterfaceFromIntrospect(mapper.agentHost, mapper.agentPort, name)
+		col, itf, err := getInterfaceFromIntrospect(p.agentHost, p.agentPort, name)
 		if err != nil {
-			logging.GetLogger().Debugf("%s\n", err)
+			p.Ctx.Logger.Debugf("%s\n", err)
 			return
 		}
 		defer col.Close()
 
-		mapper.graph.Lock()
-		defer mapper.graph.Unlock()
+		p.Ctx.Graph.Lock()
+		defer p.Ctx.Graph.Unlock()
 
 		// We get the node again to be sure to have the latest
 		// version.
 		// NOTE(safchain) does this really useful, I mean why getter one more time the same node ?
-		node = mapper.graph.GetNode(nodeID)
+		node = p.Ctx.Graph.GetNode(nodeID)
 		if node == nil {
 			return
 		}
 
 		if n, _ := node.GetFieldString("Name"); n != name {
-			logging.GetLogger().Warningf("Node with name %s has changed", name)
+			p.Ctx.Logger.Warningf("Node with name %s has changed", name)
 			return
 		}
 
 		if tp, _ := node.GetFieldString("Type"); tp == "vhost" && strings.Contains(name, "vhost") {
-			mapper.onVhostAdded(node, itf)
+			p.onVhostAdded(node, itf)
 		} else {
-			logging.GetLogger().Debugf("Retrieve extIDs for %s", name)
-			extIDs, err := mapper.retrieveMetadata(node.Metadata, itf)
+			p.Ctx.Logger.Debugf("Retrieve extIDs for %s", name)
+			extIDs, err := p.retrieveMetadata(node.Metadata, itf)
 			if err != nil {
 				return
 			}
-			mapper.updateNode(node, extIDs)
-			mapper.linkToVhost(node)
-			mapper.OnInterfaceAdded(int(extIDs.VRFID), extIDs.UUID)
+			p.updateNode(node, extIDs)
+			p.linkToVhost(node)
+			p.OnInterfaceAdded(int(extIDs.VRFID), extIDs.UUID)
 		}
 
 	}
 
-	logging.GetLogger().Debugf("Starting OpenContrail updater (using the vrouter agent on %s:%d)", mapper.agentHost, mapper.agentPort)
-	for nodeID := range mapper.nodeUpdaterChan {
+	p.Ctx.Logger.Debugf("Starting OpenContrail updater (using the vrouter agent on %s:%d)", p.agentHost, p.agentPort)
+	for nodeID := range p.nodeUpdaterChan {
 		// We launch the node update in a routine because
 		// several retries can be realized to get the
 		// interface from the contrail introspect
 		go body(nodeID)
 	}
-	logging.GetLogger().Debugf("Stopping OpenContrail updater")
+	p.Ctx.Logger.Debugf("Stopping OpenContrail updater")
 }
 
-func (mapper *Probe) updateNode(node *graph.Node, mdata *Metadata) {
-	tr := mapper.graph.StartMetadataTransaction(node)
+func (p *Probe) updateNode(node *graph.Node, mdata *Metadata) {
+	tr := p.Ctx.Graph.StartMetadataTransaction(node)
 	defer tr.Commit()
 
 	tr.AddMetadata("ExtID.iface-id", mdata.UUID)
@@ -253,7 +252,7 @@ func (mapper *Probe) updateNode(node *graph.Node, mdata *Metadata) {
 	tr.AddMetadata("Contrail", mdata)
 }
 
-func (mapper *Probe) enhanceNode(node *graph.Node) {
+func (p *Probe) enhanceNode(node *graph.Node) {
 	// To break update loops
 	if attachedMAC, _ := node.GetFieldString("ExtID.attached-mac"); attachedMAC != "" {
 		return
@@ -265,64 +264,63 @@ func (mapper *Probe) enhanceNode(node *graph.Node) {
 	}
 
 	if ifType != "host" && ifType != "netns" {
-		mapper.nodeUpdaterChan <- node.ID
+		p.nodeUpdaterChan <- node.ID
 	}
 }
 
 // OnNodeUpdated event
-func (mapper *Probe) OnNodeUpdated(n *graph.Node) {
+func (p *Probe) OnNodeUpdated(n *graph.Node) {
 	return
 }
 
 // OnNodeAdded event
-func (mapper *Probe) OnNodeAdded(n *graph.Node) {
-	mapper.enhanceNode(n)
+func (p *Probe) OnNodeAdded(n *graph.Node) {
+	p.enhanceNode(n)
 }
 
 // OnNodeDeleted event
-func (mapper *Probe) OnNodeDeleted(n *graph.Node) {
+func (p *Probe) OnNodeDeleted(n *graph.Node) {
 	name, _ := n.GetFieldString("Name")
 	if name == "" {
 		return
 	}
-	if mapper.vHost != nil && n.ID == mapper.vHost.ID {
-		logging.GetLogger().Debugf("Removed %s", name)
-		mapper.vHost = nil
+	if p.vHost != nil && n.ID == p.vHost.ID {
+		p.Ctx.Logger.Debugf("Removed %s", name)
+		p.vHost = nil
 	}
 	interfaceUUID, _ := n.GetFieldString("ExtID.iface-id")
 	if interfaceUUID != "" {
-		mapper.OnInterfaceDeleted(interfaceUUID)
+		p.OnInterfaceDeleted(interfaceUUID)
 	}
 }
 
 // Start the probe
-func (mapper *Probe) Start() {
-	mapper.graph.AddEventListener(mapper)
-	go mapper.nodeUpdater()
-	go mapper.rtMonitor()
+func (p *Probe) Start() {
+	p.Ctx.Graph.AddEventListener(p)
+	go p.nodeUpdater()
+	go p.rtMonitor()
 }
 
 // Stop the probe
-func (mapper *Probe) Stop() {
-	mapper.cancel()
-	mapper.graph.RemoveEventListener(mapper)
-	close(mapper.nodeUpdaterChan)
+func (p *Probe) Stop() {
+	p.cancelFunc()
+	p.Ctx.Graph.RemoveEventListener(p)
+	close(p.nodeUpdaterChan)
 }
 
-// NewProbeFromConfig creates a new OpenContrail probe based on configuration
-func NewProbeFromConfig(g *graph.Graph, r *graph.Node) (*Probe, error) {
-	ctx, cancel := context.WithCancel(context.Background())
+// Init initializes a new OpenContrail probe based on configuration
+func (p *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+	cancelCtx, cancelFunc := context.WithCancel(context.Background())
 
-	return &Probe{
-		ctx:                     ctx,
-		cancel:                  cancel,
-		graph:                   g,
-		root:                    r,
-		agentHost:               config.GetString("opencontrail.host"),
-		agentPort:               config.GetInt("opencontrail.port"),
-		mplsUDPPort:             config.GetInt("opencontrail.mpls_udp_port"),
-		nodeUpdaterChan:         make(chan graph.Identifier, 500),
-		routingTables:           make(map[int]*RoutingTable),
-		routingTableUpdaterChan: make(chan RoutingTableUpdate, 500),
-	}, nil
+	p.Ctx = ctx
+	p.cancelCtx = cancelCtx
+	p.cancelFunc = cancelFunc
+	p.agentHost = ctx.Config.GetString("opencontrail.host")
+	p.agentPort = ctx.Config.GetInt("opencontrail.port")
+	p.mplsUDPPort = ctx.Config.GetInt("opencontrail.mpls_udp_port")
+	p.nodeUpdaterChan = make(chan graph.Identifier, 500)
+	p.routingTables = make(map[int]*RoutingTable)
+	p.routingTableUpdaterChan = make(chan RoutingTableUpdate, 500)
+
+	return p, nil
 }

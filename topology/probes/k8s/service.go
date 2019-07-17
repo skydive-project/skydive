@@ -23,7 +23,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -59,7 +59,7 @@ func servicePodAreLinked(a, b interface{}) bool {
 	return MatchNamespace(pod, service) && matchMapSelector(pod, service.Spec.Selector, false)
 }
 
-func newServicePodLinker(g *graph.Graph) probe.Probe {
+func newServicePodLinker(g *graph.Graph) probe.Handler {
 	return NewABLinker(g, Manager, "service", Manager, "pod", servicePodAreLinked)
 }
 
@@ -69,6 +69,6 @@ func serviceEndpointsAreLinked(a, b interface{}) bool {
 	return MatchNamespace(endpoints, service) && (endpoints.Name == service.Name || matchMapSelector(endpoints, service.Spec.Selector, false))
 }
 
-func newServiceEndpointsLinker(g *graph.Graph) probe.Probe {
+func newServiceEndpointsLinker(g *graph.Graph) probe.Handler {
 	return NewABLinker(g, Manager, "service", Manager, "endpoints", serviceEndpointsAreLinked)
 }

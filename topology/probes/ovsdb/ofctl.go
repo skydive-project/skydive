@@ -34,13 +34,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/skydive-project/skydive/topology"
-
 	uuid "github.com/nu7hatch/gouuid"
+
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology"
+	tp "github.com/skydive-project/skydive/topology/probes"
 	"github.com/skydive-project/skydive/topology/probes/ovsdb/jsonof"
 )
 
@@ -50,12 +50,12 @@ import (
 // highest priority hides the other rules. It is important to handle rules with the same rawUUID as a group
 // because ovs-ofctl monitor does not report priorities.
 type OfctlProbe struct {
+	Ctx            tp.Context                    // Probe context
 	Host           string                        // The global host
 	Bridge         string                        // The bridge monitored
 	UUID           string                        // The UUID of the bridge node
 	Address        string                        // The address of the bridge if different from name
-	BridgeNode     *graph.Node                   // the bridge node on which the rule nodes are attached.
-	OvsOfProbe     *OvsOfProbe                   // Back pointer to the probe
+	Handler        *OvsOfProbeHandler            // Back pointer to the probe
 	Rules          map[string][]*jsonof.JSONRule // The set of rules found so far grouped by rawUUID
 	Groups         map[uint]*graph.Node          // The set of groups found so far
 	groupMonitored bool
@@ -116,7 +116,7 @@ func protectCommas(line string) string {
 
 // fillIn is a utility function that takes a splitted rule line
 // and fills a Rule/Event structure with it
-func fillIn(components []string, rule *RawRule, event *Event) {
+func (probe *OfctlProbe) fillIn(components []string, rule *RawRule, event *Event) {
 	for _, component := range components {
 		keyvalue := strings.SplitN(component, "=", 2)
 		if len(keyvalue) == 2 {
@@ -132,20 +132,20 @@ func fillIn(components []string, rule *RawRule, event *Event) {
 				if err == nil {
 					rule.Table = int(table)
 				} else {
-					logging.GetLogger().Errorf("Error while parsing table of rule: %s", err)
+					probe.Ctx.Logger.Errorf("Error while parsing table of rule: %s", err)
 				}
 			case "cookie":
 				v, err := strconv.ParseUint(value, 0, 64)
 				if err == nil {
 					rule.Cookie = v
 				} else {
-					logging.GetLogger().Errorf("Error while parsing cookie of rule: %s", err)
+					probe.Ctx.Logger.Errorf("Error while parsing cookie of rule: %s", err)
 				}
 			}
 		}
 	}
 	if len(components) < 2 {
-		logging.GetLogger().Errorf("Rule syntax for filters")
+		probe.Ctx.Logger.Errorf("Rule syntax for filters")
 	}
 	tentativeFilterPos := len(components) - 1
 	if strings.HasPrefix(components[tentativeFilterPos], "actions=") {
@@ -165,7 +165,7 @@ func (e *noEventError) Error() string {
 // parseEvent transforms a single line of ofctl monitor :watch
 // in an event. The string must be terminated by a "\n"
 // Protected commas will be replaced.
-func parseEvent(line string, bridge string, prefix string) (Event, error) {
+func (probe *OfctlProbe) parseEvent(line string) (Event, error) {
 	var result Event
 	var rule RawRule
 
@@ -176,15 +176,17 @@ func parseEvent(line string, bridge string, prefix string) (Event, error) {
 		line = protectCommas(line)
 	}
 	components := strings.Split(line[1:len(line)-1], " ")
-	fillIn(components, &rule, &result)
+	probe.fillIn(components, &rule, &result)
 	if len(components) < 2 {
 		return result, errors.New("Rule syntax")
 	}
 
+	prefix := probe.Host + "-" + probe.Bridge + "-"
+
 	result.RawRule = &rule
 	fillRawUUID(&rule, prefix)
 	result.Date = time.Now().Unix()
-	result.Bridge = bridge
+	result.Bridge = probe.Bridge
 	return result, nil
 }
 
@@ -265,27 +267,27 @@ func (r RealExecute) ExecCommandPipe(ctx context.Context, com string, args ...st
 }
 
 // launchOnSwitch launches a command on a given switch
-func launchOnSwitch(cmd []string) (string, error) {
+func (probe *OfctlProbe) launchOnSwitch(cmd []string) (string, error) {
 	bytes, err := executor.ExecCommand(cmd[0], cmd[1:]...)
 	if err == nil {
 		return string(bytes), nil
 	}
-	logging.GetLogger().Debugf("Command %v failed: %s", cmd, string(bytes))
+	probe.Ctx.Logger.Debugf("Command %v failed: %s", cmd, string(bytes))
 	return "", err
 }
 
 // launchContinuousOnSwitch launches  a stream producing command on a given switch. The command is resilient
 // and is relaunched until the context explicitly cancels it.
-func launchContinuousOnSwitch(ctx context.Context, cmd []string) (<-chan string, error) {
+func (probe *OfctlProbe) launchContinuousOnSwitch(ctx context.Context, cmd []string) (<-chan string, error) {
 	var cout = make(chan string, 10)
 
 	go func() {
-		logging.GetLogger().Debugf("Launching continusously %v", cmd)
+		probe.Ctx.Logger.Debugf("Launching continusously %v", cmd)
 		for ctx.Err() == nil {
 			retry := func() error {
 				out, com, err := executor.ExecCommandPipe(ctx, cmd[0], cmd[1:]...)
 				if err != nil {
-					logging.GetLogger().Errorf("Can't execute command %v: %s", cmd, err)
+					probe.Ctx.Logger.Errorf("Can't execute command %v: %s", cmd, err)
 					return nil
 				}
 
@@ -296,7 +298,7 @@ func launchContinuousOnSwitch(ctx context.Context, cmd []string) (<-chan string,
 						com.Wait()
 						break
 					} else if err != nil {
-						logging.GetLogger().Errorf("IO Error on command %v: %s", cmd, err)
+						probe.Ctx.Logger.Errorf("IO Error on command %v: %s", cmd, err)
 						// Should return but there may be weird cases.
 						go com.Wait()
 						break
@@ -313,7 +315,7 @@ func launchContinuousOnSwitch(ctx context.Context, cmd []string) (<-chan string,
 				return nil
 			}
 			if err := common.Retry(retry, 100, 50*time.Millisecond); err != nil {
-				logging.GetLogger().Error(err)
+				probe.Ctx.Logger.Error(err)
 				break
 			}
 		}
@@ -339,7 +341,7 @@ func countElements(filter string) int {
 }
 
 func (probe *OfctlProbe) prefix() string {
-	return probe.OvsOfProbe.Host + "-" + probe.Bridge + "-"
+	return probe.Handler.Host + "-" + probe.Bridge + "-"
 }
 
 func (probe *OfctlProbe) dumpGroups() error {
@@ -350,7 +352,7 @@ func (probe *OfctlProbe) dumpGroups() error {
 	if err != nil {
 		return err
 	}
-	lines, err := launchOnSwitch(command)
+	lines, err := probe.launchOnSwitch(command)
 	if err != nil {
 		return err
 	}
@@ -372,7 +374,7 @@ func (probe *OfctlProbe) getGroup(groupID uint) *jsonof.JSONGroup {
 	if err != nil {
 		return nil
 	}
-	lines, err := launchOnSwitch(command)
+	lines, err := probe.launchOnSwitch(command)
 	if err != nil {
 		return nil
 	}
@@ -387,7 +389,7 @@ func (probe *OfctlProbe) getGroup(groupID uint) *jsonof.JSONGroup {
 }
 
 // completeEvent completes the event by looking at it again but with dump-flows and a filter including table. This gives back more elements such as priority.
-func (probe *OfctlProbe) completeEvent(ctx context.Context, o *OvsOfProbe, event *Event, prefix string) error {
+func (probe *OfctlProbe) completeEvent(ctx context.Context, event *Event) error {
 	oldrule := event.RawRule
 	bridge := event.Bridge
 	// We want exactly n+1 items where n was the number of items in old filters. The reason is that now
@@ -401,10 +403,13 @@ func (probe *OfctlProbe) completeEvent(ctx context.Context, o *OvsOfProbe, event
 	if err1 != nil {
 		return err1
 	}
-	lines, err := launchOnSwitch(command)
+	lines, err := probe.launchOnSwitch(command)
 	if err != nil && ctx.Err() == nil {
-		return fmt.Errorf("Cannot launch ovs-ofctl dump-flows on %s@%s with filter %s: %s", bridge, o.Host, filter, err)
+		return fmt.Errorf("Cannot launch ovs-ofctl dump-flows on %s@%s with filter %s: %s", bridge, probe.Handler.Host, filter, err)
 	}
+
+	prefix := probe.Host + "-" + probe.Bridge + "-"
+
 	for _, line := range strings.Split(lines, "\n") {
 		rule, err2 := jsonof.ToAST(line)
 		if err2 == nil && countElements(rule.RawFilter) == expected && oldrule.Cookie == rule.Cookie {
@@ -417,11 +422,11 @@ func (probe *OfctlProbe) completeEvent(ctx context.Context, o *OvsOfProbe, event
 
 // addRule adds a rule to the graph and links it to the bridge.
 func (probe *OfctlProbe) addRule(rule *jsonof.JSONRule) {
-	logging.GetLogger().Infof("New rule %v added", rule.UUID)
-	g := probe.OvsOfProbe.Graph
+	probe.Ctx.Logger.Infof("New rule %v added", rule.UUID)
+	g := probe.Ctx.Graph
 	g.Lock()
 	defer g.Unlock()
-	bridgeNode := probe.BridgeNode
+	bridgeNode := probe.Ctx.RootNode
 	metadata := graph.Metadata{
 		"Type":     "ofrule",
 		"Cookie":   fmt.Sprintf("0x%x", rule.Cookie),
@@ -433,18 +438,18 @@ func (probe *OfctlProbe) addRule(rule *jsonof.JSONRule) {
 	}
 	ruleNode, err := g.NewNode(graph.GenID(), metadata)
 	if err != nil {
-		logging.GetLogger().Error(err)
+		probe.Ctx.Logger.Error(err)
 		return
 	}
 	if _, err := topology.AddOwnershipLink(g, bridgeNode, ruleNode, nil); err != nil {
-		logging.GetLogger().Error(err)
+		probe.Ctx.Logger.Error(err)
 	}
 }
 
 // modRule modifies the node of an existing rule.
 func (probe *OfctlProbe) modRule(rule *jsonof.JSONRule) {
-	logging.GetLogger().Infof("Rule %v modified", rule.UUID)
-	g := probe.OvsOfProbe.Graph
+	probe.Ctx.Logger.Infof("Rule %v modified", rule.UUID)
+	g := probe.Ctx.Graph
 	g.Lock()
 	defer g.Unlock()
 
@@ -459,11 +464,11 @@ func (probe *OfctlProbe) modRule(rule *jsonof.JSONRule) {
 
 // addGroup adds a group to the graph and links it to the bridge
 func (probe *OfctlProbe) addGroup(group *jsonof.JSONGroup) {
-	logging.GetLogger().Infof("New group %v added", group.UUID)
-	g := probe.OvsOfProbe.Graph
+	probe.Ctx.Logger.Infof("New group %v added", group.UUID)
+	g := probe.Ctx.Graph
 	g.Lock()
 	defer g.Unlock()
-	bridgeNode := probe.BridgeNode
+	bridgeNode := probe.Ctx.RootNode
 	metadata := graph.Metadata{
 		"Type":      "ofgroup",
 		"GroupId":   group.GroupID,
@@ -474,51 +479,51 @@ func (probe *OfctlProbe) addGroup(group *jsonof.JSONGroup) {
 	}
 	groupNode, err := g.NewNode(graph.GenID(), metadata)
 	if err != nil {
-		logging.GetLogger().Error(err)
+		probe.Ctx.Logger.Error(err)
 		return
 	}
 	probe.Groups[group.GroupID] = groupNode
 	if _, err := topology.AddOwnershipLink(g, bridgeNode, groupNode, nil); err != nil {
-		logging.GetLogger().Error(err)
+		probe.Ctx.Logger.Error(err)
 	}
 }
 
 // delRule deletes a rule from the the graph.
 func (probe *OfctlProbe) delRule(rule *jsonof.JSONRule) {
-	logging.GetLogger().Infof("Rule %v deleted", rule.UUID)
-	g := probe.OvsOfProbe.Graph
+	probe.Ctx.Logger.Infof("Rule %v deleted", rule.UUID)
+	g := probe.Ctx.Graph
 	g.Lock()
 	defer g.Unlock()
 
 	ruleNode := g.LookupFirstNode(graph.Metadata{"UUID": rule.UUID})
 	if ruleNode != nil {
 		if err := g.DelNode(ruleNode); err != nil {
-			logging.GetLogger().Error(err)
+			probe.Ctx.Logger.Error(err)
 		}
 	}
 }
 
 // delGroup deletes a rule from the the graph.
 func (probe *OfctlProbe) delGroup(groupID uint) {
-	g := probe.OvsOfProbe.Graph
+	g := probe.Ctx.Graph
 	g.Lock()
 	defer g.Unlock()
 
 	if groupID == 0xfffffffc {
-		logging.GetLogger().Infof("All groups deleted on %s", probe.Bridge)
+		probe.Ctx.Logger.Infof("All groups deleted on %s", probe.Bridge)
 		for _, groupNode := range probe.Groups {
 			if err := g.DelNode(groupNode); err != nil {
-				logging.GetLogger().Error(err)
+				probe.Ctx.Logger.Error(err)
 			}
 		}
 		probe.Groups = make(map[uint]*graph.Node)
 	} else {
-		logging.GetLogger().Infof("Group %d deleted on %s", groupID, probe.Bridge)
+		probe.Ctx.Logger.Infof("Group %d deleted on %s", groupID, probe.Bridge)
 		groupNode := probe.Groups[groupID]
 		delete(probe.Groups, groupID)
 		if groupNode != nil {
 			if err := g.DelNode(groupNode); err != nil {
-				logging.GetLogger().Error(err)
+				probe.Ctx.Logger.Error(err)
 			}
 		}
 	}
@@ -526,14 +531,14 @@ func (probe *OfctlProbe) delGroup(groupID uint) {
 
 // modGroup modifies a group from the graph
 func (probe *OfctlProbe) modGroup(groupID uint) {
-	logging.GetLogger().Infof("Group %d modified", groupID)
-	g := probe.OvsOfProbe.Graph
+	probe.Ctx.Logger.Infof("Group %d modified", groupID)
+	g := probe.Ctx.Graph
 	g.Lock()
 	defer g.Unlock()
 	group := probe.getGroup(groupID)
 	node := probe.Groups[groupID]
 	if group == nil || node == nil {
-		logging.GetLogger().Errorf("Cannot modify node of OF group %d", groupID)
+		probe.Ctx.Logger.Errorf("Cannot modify node of OF group %d", groupID)
 		return
 	}
 	tr := g.StartMetadataTransaction(node)
@@ -558,20 +563,20 @@ func containsRule(rules []*jsonof.JSONRule, searched *jsonof.JSONRule) *jsonof.J
 
 // sendOpenflow sends an Openflow command in hexadecimal through the control
 // channel of an existing ovs-ofctl monitor command.
-func sendOpenflow(control string, hex string) error {
+func (probe *OfctlProbe) sendOpenflow(control string, hex string) error {
 	command := []string{"ovs-appctl", "-t", control, "ofctl/send", hex}
-	_, err := launchOnSwitch(command)
+	_, err := probe.launchOnSwitch(command)
 	return err
 }
 
 func (probe *OfctlProbe) makeCommand(commands []string, bridge string, args ...string) ([]string, error) {
 	if strings.HasPrefix(bridge, "ssl:") {
-		if probe.OvsOfProbe.sslOk {
+		if probe.Handler.sslOk {
 			commands = append(commands,
 				bridge,
-				"--certificate", probe.OvsOfProbe.Certificate,
-				"--ca-cert", probe.OvsOfProbe.CA,
-				"--private-key", probe.OvsOfProbe.PrivateKey)
+				"--certificate", probe.Handler.Certificate,
+				"--ca-cert", probe.Handler.CA,
+				"--private-key", probe.Handler.PrivateKey)
 		} else {
 			return commands, errors.New("Certificate, CA and private keys are necessary for communication with switch over SSL")
 		}
@@ -584,27 +589,25 @@ func (probe *OfctlProbe) makeCommand(commands []string, bridge string, args ...s
 // Monitor monitors the openflow rules of a bridge by launching a goroutine. The context is used to control the execution of the routine.
 func (probe *OfctlProbe) Monitor(ctx context.Context) error {
 	probe.ctx = ctx
-	ofp := probe.OvsOfProbe
 	command, err1 := probe.makeCommand([]string{"ovs-ofctl", "monitor"}, probe.Bridge, "watch:")
 	if err1 != nil {
 		return err1
 	}
-	lines, err := launchContinuousOnSwitch(ctx, command)
+	lines, err := probe.launchContinuousOnSwitch(ctx, command)
 	if err != nil {
 		return err
 	}
 	go func() {
-		logging.GetLogger().Debugf("Launching goroutine for monitor %s", probe.Bridge)
-		prefix := probe.Host + "-" + probe.Bridge + "-"
+		probe.Ctx.Logger.Debugf("Launching goroutine for monitor %s", probe.Bridge)
 		for line := range lines {
 			if ctx.Err() != nil {
 				break
 			}
-			event, err := parseEvent(line, probe.Bridge, prefix)
+			event, err := probe.parseEvent(line)
 			if err == nil {
-				err = probe.completeEvent(ctx, ofp, &event, prefix)
+				err = probe.completeEvent(ctx, &event)
 				if err != nil {
-					logging.GetLogger().Errorf("Error while monitoring %s@%s: %s", probe.Bridge, probe.Host, err)
+					probe.Ctx.Logger.Errorf("Error while monitoring %s@%s: %s", probe.Bridge, probe.Host, err)
 					continue
 				}
 				rawUUID := event.RawRule.UUID
@@ -639,10 +642,9 @@ func (probe *OfctlProbe) Monitor(ctx context.Context) error {
 				}
 			} else {
 				if _, ok := err.(*noEventError); !ok {
-					logging.GetLogger().Errorf("Error while monitoring %s@%s: %s", probe.Bridge, probe.Host, err)
+					probe.Ctx.Logger.Errorf("Error while monitoring %s@%s: %s", probe.Bridge, probe.Host, err)
 				}
 			}
-
 		}
 	}()
 	return nil
@@ -674,7 +676,7 @@ func (probe *OfctlProbe) MonitorGroup() error {
 	if err != nil {
 		return err
 	}
-	if _, err = launchOnSwitch(command); err != nil {
+	if _, err = probe.launchOnSwitch(command); err != nil {
 		return ErrGroupNotSupported
 	}
 	randBytes := make([]byte, 16)
@@ -687,27 +689,27 @@ func (probe *OfctlProbe) MonitorGroup() error {
 		return err
 	}
 	probe.groupMonitored = true
-	lines, err := launchContinuousOnSwitch(probe.ctx, command)
+	lines, err := probe.launchContinuousOnSwitch(probe.ctx, command)
 	if err != nil {
 		return fmt.Errorf("Group monitor failed %s: %s", probe.Bridge, err)
 	}
 	if err = waitForFile(controlChannel); err != nil {
 		return fmt.Errorf("No control channel for group monitor failed %s: %s", probe.Bridge, err)
 	}
-	if err = sendOpenflow(controlChannel, openflowSetSlave); err != nil {
+	if err = probe.sendOpenflow(controlChannel, openflowSetSlave); err != nil {
 		return fmt.Errorf("Openflow command 'set slave' for group monitor failed %s: %s", probe.Bridge, err)
 	}
-	if err = sendOpenflow(controlChannel, openflowActivateForwardRequest); err != nil {
+	if err = probe.sendOpenflow(controlChannel, openflowActivateForwardRequest); err != nil {
 		return fmt.Errorf("Openflow command 'activate forward request' for group monitor failed %s: %s", probe.Bridge, err)
 	}
 	go func() {
-		logging.GetLogger().Debugf("Launching goroutine for monitor groups %s", probe.Bridge)
+		probe.Ctx.Logger.Debugf("Launching goroutine for monitor groups %s", probe.Bridge)
 		err := probe.dumpGroups()
 		if err != nil {
-			logging.GetLogger().Warningf("Cannot dump groups for %s: %s", probe.Bridge, err)
+			probe.Ctx.Logger.Warningf("Cannot dump groups for %s: %s", probe.Bridge, err)
 			return
 		}
-		logging.GetLogger().Debugf("Treating events for groups on %s", probe.Bridge)
+		probe.Ctx.Logger.Debugf("Treating events for groups on %s", probe.Bridge)
 		for line := range lines {
 			if probe.ctx.Err() != nil {
 				break
@@ -718,7 +720,7 @@ func (probe *OfctlProbe) MonitorGroup() error {
 			}
 			gid, err := strconv.ParseUint(submatch[2], 10, 32)
 			if err != nil {
-				logging.GetLogger().Errorf("Cannot parse group id %s on %s: %s", submatch[2], probe.Bridge, err)
+				probe.Ctx.Logger.Errorf("Cannot parse group id %s on %s: %s", submatch[2], probe.Bridge, err)
 				continue
 			}
 			groupID := uint(gid)
@@ -733,7 +735,7 @@ func (probe *OfctlProbe) MonitorGroup() error {
 			case "MOD", "INSERT_BUCKET", "REMOVE_BUCKET":
 				probe.modGroup(groupID)
 			default:
-				logging.GetLogger().Errorf("unknown group action %s", submatch[1])
+				probe.Ctx.Logger.Errorf("unknown group action %s", submatch[1])
 			}
 		}
 	}()
@@ -741,14 +743,14 @@ func (probe *OfctlProbe) MonitorGroup() error {
 }
 
 // NewOfctlProbe returns a new ovs-ofctl based OpenFlow probe
-func NewOfctlProbe(host, bridge, uuid, address string, bridgeNode *graph.Node, o *OvsOfProbe) *OfctlProbe {
+func NewOfctlProbe(ctx tp.Context, host, bridge, uuid, address string, handler *OvsOfProbeHandler) *OfctlProbe {
 	return &OfctlProbe{
+		Ctx:            ctx,
 		Host:           host,
 		Bridge:         bridge,
 		UUID:           uuid,
 		Address:        address,
-		BridgeNode:     bridgeNode,
-		OvsOfProbe:     o,
+		Handler:        handler,
 		Rules:          make(map[string][]*jsonof.JSONRule),
 		Groups:         make(map[uint]*graph.Node),
 		groupMonitored: false,

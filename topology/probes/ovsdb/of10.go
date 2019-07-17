@@ -22,7 +22,6 @@ import (
 	goloxi "github.com/skydive-project/goloxi"
 	"github.com/skydive-project/goloxi/of10"
 	"github.com/skydive-project/goloxi/of14"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/openflow"
 )
 
@@ -35,7 +34,7 @@ func (h *of10Handler) OnMessage(msg goloxi.Message) {
 	probe := h.probe
 	switch t := msg.(type) {
 	case *of10.NiciraFlowMonitorReply: // Received on connection and on events
-		logging.GetLogger().Debugf("Handling flow monitor %s", spew.Sdump(t))
+		probe.Ctx.Logger.Debugf("Handling flow monitor %s", spew.Sdump(t))
 		nxm2oxm := func(nxm of14.INiciraMatch, matchLen uint16) *of14.MatchV3 {
 			oxm := of14.NewMatchV3()
 			for _, e := range nxm.GetNxmEntries() {
@@ -51,7 +50,7 @@ func (h *of10Handler) OnMessage(msg goloxi.Message) {
 			case *of10.NiciraFlowUpdateFullAdd:
 				rule, err := newOfRule(u.Cookie, u.TableId, u.Priority, u.IdleTimeout, u.HardTimeout, 0, of14.FlowModFlags(0), nxm2oxm(&u.Match, u.MatchLen), u.Actions, nil, 0)
 				if err != nil {
-					logging.GetLogger().Errorf("Failed to parse update: %s", err)
+					probe.Ctx.Logger.Errorf("Failed to parse update: %s", err)
 					continue
 				}
 				msg, _ := probe.handler.NewFlowStatsRequest(nxm2oxm(&u.Match, u.MatchLen))
@@ -63,20 +62,20 @@ func (h *of10Handler) OnMessage(msg goloxi.Message) {
 			case *of10.NiciraFlowUpdateFullDeleted:
 				monitorRule, err := newOfRule(u.Cookie, u.TableId, u.Priority, u.IdleTimeout, u.HardTimeout, 0, of14.FlowModFlags(0), nxm2oxm(&u.Match, u.MatchLen), u.Actions, nil, 0)
 				if err != nil {
-					logging.GetLogger().Errorf("Failed to parse update: %s", err)
+					probe.Ctx.Logger.Errorf("Failed to parse update: %s", err)
 					continue
 				}
-				monitorID := monitorRule.GetID(probe.g.GetHost(), probe.bridge)
+				monitorID := monitorRule.GetID(probe.Ctx.Graph.GetHost(), probe.bridge)
 				probe.Lock()
 				ruleID := probe.rules[monitorID]
 				delete(probe.rules, monitorID)
 				probe.Unlock()
 
-				probe.g.Lock()
-				if n := probe.g.GetNode(ruleID); n != nil {
-					probe.g.DelNode(n)
+				probe.Ctx.Graph.Lock()
+				if n := probe.Ctx.Graph.GetNode(ruleID); n != nil {
+					probe.Ctx.Graph.DelNode(n)
 				}
-				probe.g.Unlock()
+				probe.Ctx.Graph.Unlock()
 			}
 		}
 	}

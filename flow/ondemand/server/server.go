@@ -105,13 +105,12 @@ func (o *onDemandFlowProbeServer) getProbeHandler(n *graph.Node, resource types.
 		return nil, err
 	}
 
-	probe := o.probeHandlers.GetProbe(probeType)
-	if probe == nil {
+	handler := o.probeHandlers.GetHandler(probeType)
+	if handler == nil {
 		return nil, fmt.Errorf("Unable to find probe for this capture type: %s", capture.Type)
 	}
 
-	probeHandler := probe.(probes.FlowProbeHandler)
-	return probeHandler, nil
+	return handler.(probes.FlowProbeHandler), nil
 }
 
 func (o *onDemandFlowProbeServer) CreateTask(n *graph.Node, resource types.Resource) (ondemand.Task, error) {

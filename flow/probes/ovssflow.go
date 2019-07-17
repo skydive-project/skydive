@@ -253,11 +253,11 @@ func (o *OvsSFlowProbesHandler) Stop() {
 
 // NewOvsSFlowProbesHandler creates a new OVS SFlow porbes
 func NewOvsSFlowProbesHandler(g *graph.Graph, fta *flow.TableAllocator, tb *probe.Bundle) (*OvsSFlowProbesHandler, error) {
-	probe := tb.GetProbe("ovsdb")
-	if probe == nil {
+	handler := tb.GetHandler("ovsdb")
+	if handler == nil {
 		return nil, errors.New("Agent.ovssflow probe depends on agent.ovsdb topology probe: agent.ovssflow probe can't start properly")
 	}
-	p := probe.(*ovsprobe.Probe)
+	p := handler.(*ovsprobe.Probe)
 
 	allocator, err := sflow.NewAgentAllocator()
 	if err != nil {

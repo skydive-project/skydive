@@ -96,7 +96,7 @@ func (linker *clusterLinker) GetBALinks(objectNode *graph.Node) (edges []*graph.
 	return
 }
 
-func newClusterLinker(g *graph.Graph, manager string, types ...string) probe.Probe {
+func newClusterLinker(g *graph.Graph, manager string, types ...string) probe.Handler {
 	rl := graph.NewResourceLinker(
 		g,
 		nil,
