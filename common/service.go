@@ -38,6 +38,8 @@ const (
 const (
 	// StoppedState service stopped
 	StoppedState = iota + 1
+	// StartingState service starting
+	StartingState
 	// RunningState service running
 	RunningState
 	// StoppingState service stopping
