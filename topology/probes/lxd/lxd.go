@@ -21,12 +21,11 @@
 package lxd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
 	"sync"
-	"sync/atomic"
-	"time"
 
 	lxd "github.com/lxc/lxd/client"
 	"github.com/mitchellh/mapstructure"
@@ -36,6 +35,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
+	"github.com/skydive-project/skydive/topology/probes"
 	tp "github.com/skydive-project/skydive/topology/probes"
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
 )
@@ -60,13 +60,10 @@ type loggingEvent struct {
 // ProbeHandler describes a LXD topology graph that enhance the graph
 type ProbeHandler struct {
 	common.RWMutex
-	*ns.ProbeHandler
-	state        int64
-	wg           sync.WaitGroup
-	connected    atomic.Value
-	quit         chan struct{}
-	containerMap map[string]containerInfo
+	Ctx          tp.Context
+	nsProbe      *ns.ProbeHandler
 	hostNs       netns.NsHandle
+	containerMap map[string]containerInfo
 	client       lxd.ContainerServer
 }
 
@@ -111,7 +108,7 @@ func (p *ProbeHandler) registerContainer(id string) {
 	if p.hostNs.Equal(nsHandle) {
 		n = p.Ctx.RootNode
 	} else {
-		if n, err = p.Register(namespace, id); err == nil {
+		if n, err = p.nsProbe.Register(namespace, id); err == nil {
 			p.Ctx.Graph.Lock()
 			p.Ctx.Graph.AddMetadata(n, "Manager", "lxd")
 			p.Ctx.Graph.Unlock()
@@ -178,19 +175,15 @@ func (p *ProbeHandler) unregisterContainer(id string) {
 	p.Ctx.Graph.Unlock()
 
 	namespace := p.containerNamespace(infos.Pid)
-	p.Unregister(namespace)
+	p.nsProbe.Unregister(namespace)
 
 	delete(p.containerMap, id)
 }
 
-func (p *ProbeHandler) connect() (err error) {
+func (p *ProbeHandler) Do(ctx context.Context, wg *sync.WaitGroup) (err error) {
 	if p.hostNs, err = netns.Get(); err != nil {
 		return err
 	}
-	defer p.hostNs.Close()
-
-	p.wg.Add(1)
-	defer p.wg.Done()
 
 	p.Ctx.Logger.Debugf("Connecting to LXD")
 	client, err := lxd.ConnectLXDUnix("", nil)
@@ -222,14 +215,10 @@ func (p *ProbeHandler) connect() (err error) {
 	if err != nil {
 		return err
 	}
-	defer events.RemoveHandler(target)
 
-	p.connected.Store(true)
-	defer p.connected.Store(false)
-
+	wg.Add(3)
 	go func() {
-		p.wg.Add(1)
-		defer p.wg.Done()
+		defer wg.Done()
 
 		p.Ctx.Logger.Debugf("Listing LXD containers")
 		containers, err := p.client.GetContainers()
@@ -238,64 +227,42 @@ func (p *ProbeHandler) connect() (err error) {
 		}
 
 		for _, n := range containers {
-			if atomic.LoadInt64(&p.state) == common.RunningState {
-				p.registerContainer(n.Name)
-			}
+			p.registerContainer(n.Name)
 		}
 	}()
 
-	<-p.quit
+	disconnected := make(chan error, 1)
+	go func() {
+		defer wg.Done()
+		defer events.RemoveHandler(target)
+		defer p.hostNs.Close()
 
-	return nil
-}
-
-// Start the probe
-func (p *ProbeHandler) Start() {
-	if !atomic.CompareAndSwapInt64(&p.state, common.StoppedState, common.RunningState) {
-		return
-	}
+		disconnected <- events.Wait()
+	}()
 
 	go func() {
-		for {
-			state := atomic.LoadInt64(&p.state)
-			if state == common.StoppingState || state == common.StoppedState {
-				break
-			}
+		defer wg.Done()
 
-			if p.connect() != nil {
-				time.Sleep(1 * time.Second)
-			}
-
-			p.wg.Wait()
+		select {
+		case <-ctx.Done():
+			events.Disconnect()
+		case err = <-disconnected:
 		}
 	}()
+
+	return err
 }
 
-// Stop the probe
-func (p *ProbeHandler) Stop() {
-	if !atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState) {
-		return
-	}
-
-	if p.connected.Load() == true {
-		p.quit <- struct{}{}
-		p.wg.Wait()
-	}
-
-	atomic.StoreInt64(&p.state, common.StoppedState)
-}
-
-// NewProbeHandler initializes a new topology Lxd probe
+// Init initializes a new topology Lxd probe
 func (p *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	nsHandler := bundle.GetHandler("netns")
 	if nsHandler == nil {
 		return nil, errors.New("unable to find the netns handler")
 	}
+	p.nsProbe = nsHandler.(*ns.ProbeHandler)
 
-	p.ProbeHandler = nsHandler.(*ns.ProbeHandler)
-	p.state = common.StoppedState
 	p.containerMap = make(map[string]containerInfo)
-	p.quit = make(chan struct{})
+	p.Ctx = ctx
 
-	return p, nil
+	return probes.NewProbeWrapper(p), nil
 }
