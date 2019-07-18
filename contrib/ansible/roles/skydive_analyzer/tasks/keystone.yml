@@ -46,6 +46,7 @@
         domain_id: "{{ skydive_auth_os_domain_id }}"
         enabled: True
         state: present
+        validate_certs: "{{ validate_certs }}"
 
     - name: Create a Skydive keystone API user
       environment:
@@ -63,6 +64,7 @@
         domain: "{{ skydive_auth_os_domain_name }}"
         default_project: "{{ skydive_auth_os_tenant_name }}"
         state: present
+        validate_certs: "{{ validate_certs }}"
 
     - name: Set skydive Keystone API user role
       environment:
@@ -79,6 +81,7 @@
         role: "{{ skydive_auth_os_user_role }}"
         project: "{{ skydive_auth_os_tenant_name }}"
         state: present
+        validate_certs: "{{ validate_certs }}"
 
     - name: Create a Skydive keystone service user
       environment:
@@ -96,6 +99,7 @@
         domain: "{{ skydive_os_service_domain_name }}"
         default_project: "{{ skydive_os_service_tenant_name }}"
         state: present
+        validate_certs: "{{ validate_certs }}"
 
     - name: Set skydive Keystone service user role
       environment:
@@ -112,3 +116,4 @@
         role: "{{ skydive_os_service_user_role }}"
         project: "{{ skydive_os_service_tenant_name }}"
         state: present
+        validate_certs: "{{ validate_certs }}"

@@ -36,3 +36,5 @@ skydive_auth_os_user_role: admin
 skydive_deployment_test: yes
 
 skydive_iptables_rules: false
+
+validate_certs: true
