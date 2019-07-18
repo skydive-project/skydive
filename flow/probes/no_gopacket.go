@@ -48,6 +48,11 @@ func (p *GoPacketProbesHandler) Start() {
 func (p *GoPacketProbesHandler) Stop() {
 }
 
+// CaptureTypes supported
+func (p *GoPacketProbesHandler) CaptureTypes() []string {
+	return []string{}
+}
+
 // NewGoPacketProbesHandler creates a new gopacket probe in the graph
 func NewGoPacketProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*GoPacketProbesHandler, error) {
 	return nil, common.ErrNotImplemented

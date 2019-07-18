@@ -354,6 +354,11 @@ func (p *GoPacketProbesHandler) Stop() {
 	p.wg.Wait()
 }
 
+// CaptureTypes supported
+func (p *GoPacketProbesHandler) CaptureTypes() []string {
+	return []string{"afpacket", "pcap"}
+}
+
 // NewGoPacketProbesHandler creates a new gopacket probe in the graph
 func NewGoPacketProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*GoPacketProbesHandler, error) {
 	return &GoPacketProbesHandler{

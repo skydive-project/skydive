@@ -318,6 +318,11 @@ func loadModule() (*elf.Module, error) {
 	return module, nil
 }
 
+// CaptureTypes supported
+func (p *EBPFProbesHandler) CaptureTypes() []string {
+	return []string{"ebpf"}
+}
+
 func NewEBPFProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*EBPFProbesHandler, error) {
 	return &EBPFProbesHandler{
 		graph: g,

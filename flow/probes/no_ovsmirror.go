@@ -47,6 +47,11 @@ func (p *OvsMirrorProbesHandler) Start() {
 func (p *OvsMirrorProbesHandler) Stop() {
 }
 
+// CaptureTypes supported
+func (p *OvsMirrorProbesHandler) CaptureTypes() []string {
+	return []string{}
+}
+
 // NewOvsMirrorProbesHandler creates a new OVS Mirror probes
 func NewOvsMirrorProbesHandler(g *graph.Graph, tb, fb *probe.Bundle) (*OvsMirrorProbesHandler, error) {
 	return nil, common.ErrNotImplemented

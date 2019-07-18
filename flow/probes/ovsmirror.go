@@ -590,6 +590,11 @@ func (o *OvsMirrorProbesHandler) Stop() {
 	o.cleanupOvsMirrors()
 }
 
+// CaptureTypes supported
+func (o *OvsMirrorProbesHandler) CaptureTypes() []string {
+	return []string{"ovsmirror"}
+}
+
 // NewOvsMirrorProbesHandler creates a new OVS Mirror probes
 func NewOvsMirrorProbesHandler(g *graph.Graph, tb, fb *probe.Bundle) (*OvsMirrorProbesHandler, error) {
 	handler := tb.GetHandler("ovsdb")

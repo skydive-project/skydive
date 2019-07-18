@@ -251,6 +251,11 @@ func (o *OvsSFlowProbesHandler) Stop() {
 	o.allocator.ReleaseAll()
 }
 
+// CaptureTypes supported
+func (o *OvsSFlowProbesHandler) CaptureTypes() []string {
+	return []string{"ovssflow"}
+}
+
 // NewOvsSFlowProbesHandler creates a new OVS SFlow porbes
 func NewOvsSFlowProbesHandler(g *graph.Graph, fta *flow.TableAllocator, tb *probe.Bundle) (*OvsSFlowProbesHandler, error) {
 	handler := tb.GetHandler("ovsdb")

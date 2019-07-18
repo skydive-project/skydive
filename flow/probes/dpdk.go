@@ -150,6 +150,11 @@ func getDPDKMacAddress(port int) string {
 	return macAddr
 }
 
+// CaptureTypes supported
+func (p *DPDKProbesHandler) CaptureTypes() []string {
+	return []string{"dpdk"}
+}
+
 // NewDPDKProbesHandler creates a new gopacket probe in the graph
 func NewDPDKProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*DPDKProbesHandler, error) {
 	ports := config.GetStringSlice("dpdk.ports")

@@ -47,6 +47,11 @@ func (p *DPDKProbesHandler) Start() {
 func (p *DPDKProbesHandler) Stop() {
 }
 
+// CaptureTypes supported
+func (p *DPDKProbesHandler) CaptureTypes() []string {
+	return []string{}
+}
+
 // NewDPDKProbesHandler creates a new gopacket probe in the graph
 func NewDPDKProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*DPDKProbesHandler, error) {
 	return nil, ErrProbeNotCompiled

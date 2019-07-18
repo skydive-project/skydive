@@ -151,6 +151,11 @@ func (p *PcapSocketProbeHandler) Stop() {
 	p.wg.Wait()
 }
 
+// CaptureTypes supported
+func (p *PcapSocketProbeHandler) CaptureTypes() []string {
+	return []string{"pcapsocket"}
+}
+
 // NewPcapSocketProbeHandler creates a new pcap socket probe
 func NewPcapSocketProbeHandler(g *graph.Graph, fta *flow.TableAllocator) (*PcapSocketProbeHandler, error) {
 	listen := config.GetString("agent.flow.pcapsocket.bind_address")

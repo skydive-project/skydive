@@ -43,6 +43,7 @@ type FlowProbeHandler interface {
 	probe.Handler // inheritance of the probe.Handler interface Start/Stop functions
 	RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error)
 	UnregisterProbe(n *graph.Node, e ProbeEventHandler, p Probe) error
+	CaptureTypes() []string
 }
 
 // ProbeEventHandler used by probes to notify state
@@ -57,8 +58,6 @@ func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocat
 	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket", "dpdk", "ebpf", "ovsmirror", "ovsnetflow"}
 	logging.GetLogger().Infof("Flow probes: %v", list)
 
-	var captureTypes []string
-
 	var handler FlowProbeHandler
 	var err error
 
@@ -72,30 +71,20 @@ func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocat
 		switch t {
 		case "pcapsocket":
 			handler, err = NewPcapSocketProbeHandler(g, fta)
-			captureTypes = []string{"pcapsocket"}
 		case "ovssflow":
 			handler, err = NewOvsSFlowProbesHandler(g, fta, tb)
-			captureTypes = []string{"ovssflow"}
 		case "ovsmirror":
 			handler, err = NewOvsMirrorProbesHandler(g, tb, bundle)
-			captureTypes = []string{"ovsmirror"}
 		case "gopacket":
 			handler, err = NewGoPacketProbesHandler(g, fta)
-			captureTypes = []string{"afpacket", "pcap"}
 		case "sflow":
 			handler, err = NewSFlowProbesHandler(g, fta)
-			captureTypes = []string{"sflow"}
 		case "ovsnetflow":
 			handler, err = NewOvsNetFlowProbesHandler(g, fta, tb)
-			captureTypes = []string{"ovsnetflow"}
 		case "dpdk":
-			if handler, err = NewDPDKProbesHandler(g, fta); err == nil {
-				captureTypes = []string{"dpdk"}
-			}
+			handler, err = NewDPDKProbesHandler(g, fta)
 		case "ebpf":
-			if handler, err = NewEBPFProbesHandler(g, fta); err == nil {
-				captureTypes = []string{"ebpf"}
-			}
+			handler, err = NewEBPFProbesHandler(g, fta)
 		default:
 			err = fmt.Errorf("unknown probe type %s", t)
 		}
@@ -109,7 +98,7 @@ func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocat
 			continue
 		}
 
-		for _, captureType := range captureTypes {
+		for _, captureType := range handler.CaptureTypes() {
 			bundle.AddHandler(captureType, handler)
 		}
 	}

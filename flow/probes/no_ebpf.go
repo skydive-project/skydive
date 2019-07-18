@@ -47,6 +47,11 @@ func (p *EBPFProbesHandler) Start() {
 func (p *EBPFProbesHandler) Stop() {
 }
 
+// CaptureTypes supported
+func (p *EBPFProbesHandler) CaptureTypes() []string {
+	return []string{}
+}
+
 // NewEBPFProbesHandler creates a new gopacket probe in the graph
 func NewEBPFProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*EBPFProbesHandler, error) {
 	return nil, ErrProbeNotCompiled

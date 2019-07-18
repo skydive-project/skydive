@@ -111,6 +111,11 @@ func (d *SFlowProbesHandler) Stop() {
 	d.allocator.ReleaseAll()
 }
 
+// CaptureTypes supported
+func (d *SFlowProbesHandler) CaptureTypes() []string {
+	return []string{"sflow"}
+}
+
 // NewSFlowProbesHandler creates a new SFlow probe in the graph
 func NewSFlowProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*SFlowProbesHandler, error) {
 	allocator, err := sflow.NewAgentAllocator()
