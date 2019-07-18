@@ -25,6 +25,7 @@ import (
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
@@ -44,6 +45,16 @@ type FlowProbeHandler interface {
 	RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error)
 	UnregisterProbe(n *graph.Node, e ProbeEventHandler, p Probe) error
 	CaptureTypes() []string
+	Init(ctx Context, bundle *probe.Bundle) (FlowProbeHandler, error)
+}
+
+// Context defines a context to be used by constructor of probes
+type Context struct {
+	Logger logging.Logger
+	Config config.Config
+	Graph  *graph.Graph
+	FTA    *flow.TableAllocator
+	TB     *probe.Bundle
 }
 
 // ProbeEventHandler used by probes to notify state
@@ -62,6 +73,13 @@ func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocat
 	var err error
 
 	bundle := probe.NewBundle()
+	ctx := Context{
+		Logger: logging.GetLogger(),
+		Config: config.GetConfig(),
+		Graph:  g,
+		FTA:    fta,
+		TB:     tb,
+	}
 
 	for _, t := range list {
 		if bundle.GetHandler(t) != nil {
@@ -70,7 +88,7 @@ func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocat
 
 		switch t {
 		case "pcapsocket":
-			handler, err = NewPcapSocketProbeHandler(g, fta)
+			handler, err = new(PcapSocketProbeHandler).Init(ctx, bundle)
 		case "ovssflow":
 			handler, err = NewOvsSFlowProbesHandler(g, fta, tb)
 		case "ovsmirror":
