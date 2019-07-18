@@ -24,13 +24,13 @@
 - name: Set elasticsearch minimum heap size
   lineinfile:
     dest: /etc/elasticsearch/jvm.options
-    regexp: '^-Xms2G$'
+    regexp: '^-Xms.$'
     line: '-Xms512m'
 
 - name: Set elasticsearch maximum heap size
   lineinfile:
     dest: /etc/elasticsearch/jvm.options
-    regexp: '^-Xmx2G$'
+    regexp: '^-Xmx.$'
     line: '-Xmx512m'
 
 - name: Starts and enable elasticsearch
