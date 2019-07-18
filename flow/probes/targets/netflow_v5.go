@@ -20,6 +20,7 @@ package targets
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"math"
 	"net"
 	"sync"
@@ -187,6 +188,8 @@ func (nf *NetFlowV5Target) sendFlowBulk(flows []*flow.Flow, now time.Time) {
 // SendFlows implements the flow Sender interface
 func (nf *NetFlowV5Target) SendFlows(flows []*flow.Flow) {
 	now := time.Now()
+
+	fmt.Printf("#############: %+v\n", flows)
 
 	const bulkSize int = 20
 
