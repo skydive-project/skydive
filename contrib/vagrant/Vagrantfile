@@ -21,7 +21,7 @@ $skydive_extra_config = eval(ANSIBLE_EXTRA_CONFIG)
 $skydive_extra_config["http.ws.pong_timeout"] = 10
 $skydive_extra_config["agent.topology.probes"] = ["ovsdb", "docker"]
 $skydive_extra_config["agent.topology.netlink.metrics_update"] = 5
-$skydive_extra_config["analyzer.topology.ovn.address"] = "tcp://127.0.0.1:6641"
+$skydive_extra_config["analyzer.topology.ovn.address"] = "tcp:127.0.0.1:6641"
 
 if DEVMODE then
   # default config from tests/tests.go:testConfig
