@@ -38,8 +38,8 @@ type deferred struct {
 type Processor struct {
 	common.RWMutex
 	DefaultGraphListener
-	MetadataIndexer *MetadataIndexer
-	actions         map[string][]deferred
+	*MetadataIndexer
+	actions map[string][]deferred
 }
 
 // NewProcessor creates a Processor on the graph g, a stream of
@@ -51,16 +51,16 @@ func NewProcessor(g *Graph, listenerHandler ListenerHandler, m ElementMatcher, i
 		MetadataIndexer: NewMetadataIndexer(g, listenerHandler, m, indexes...),
 		actions:         make(map[string][]deferred),
 	}
-	processor.MetadataIndexer.AddEventListener(processor)
+	processor.AddEventListener(processor)
 	return
 }
 
 // DoAction will perform the action for nodes matching values.
 func (processor *Processor) DoAction(action NodeAction, values ...interface{}) {
-	nodes, _ := processor.MetadataIndexer.Get(values...)
+	nodes, _ := processor.Get(values...)
 	kont := true
 	for _, node := range nodes {
-		kont = action.ProcessNode(processor.MetadataIndexer.graph, node)
+		kont = action.ProcessNode(processor.graph, node)
 		if !kont {
 			break
 		}
@@ -79,16 +79,6 @@ func (processor *Processor) DoAction(action NodeAction, values ...interface{}) {
 	}
 }
 
-// Start starts the processor
-func (processor *Processor) Start() {
-	processor.MetadataIndexer.Start()
-}
-
-// Stop stops the processor
-func (processor *Processor) Stop() {
-	processor.MetadataIndexer.Stop()
-}
-
 // Cancel the actions attached to a given set of values.
 func (processor *Processor) Cancel(values ...interface{}) {
 	processor.Lock()
@@ -96,14 +86,9 @@ func (processor *Processor) Cancel(values ...interface{}) {
 	processor.Unlock()
 }
 
-// OnNodeUpdated event
-func (processor *Processor) OnNodeUpdated(n *Node) {
-	processor.OnNodeAdded(n)
-}
-
 // OnNodeAdded event
 func (processor *Processor) OnNodeAdded(n *Node) {
-	if vValues, err := getFieldsAsArray(n, processor.MetadataIndexer.indexes); err == nil {
+	if vValues, err := getFieldsAsArray(n, processor.indexes); err == nil {
 		for _, values := range vValues {
 			hash := Hash(values...)
 			processor.RLock()
@@ -112,7 +97,7 @@ func (processor *Processor) OnNodeAdded(n *Node) {
 			if ok {
 				var keep []deferred
 				for _, action := range actions {
-					if action.action.ProcessNode(processor.MetadataIndexer.graph, n) {
+					if action.action.ProcessNode(processor.graph, n) {
 						keep = append(keep, action)
 					}
 				}

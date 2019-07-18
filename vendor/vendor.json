@@ -1005,21 +1005,24 @@
 			"versionExact": "v3.0.0"
 		},
 		{
-			"checksumSHA1": "8uYFJoK50QjSxjRSRDN/wZx4lg0=",
+			"checksumSHA1": "bBmztNHakXZuZUKtbkq4oaR/NkY=",
+			"origin": "github.com/lebauce/go-libvirt",
 			"path": "github.com/digitalocean/go-libvirt",
-			"revision": "5ea6f2a136d87dc4763b937eca7d21b3dc66452b",
-			"revisionTime": "2019-04-04T07:41:16Z"
+			"revision": "7799d804f7e42b8055dfb5dc2671396c2264cf0e",
+			"revisionTime": "2019-07-17T11:37:54Z"
 		},
 		{
 			"checksumSHA1": "i+X7LQSRtB2+wlf7VicgQ4UPbtM=",
+			"origin": "github.com/lebauce/go-libvirt/internal/constants",
 			"path": "github.com/digitalocean/go-libvirt/internal/constants",
-			"revision": "5ea6f2a136d87dc4763b937eca7d21b3dc66452b",
+			"revision": "7799d804f7e42b8055dfb5dc2671396c2264cf0e",
 			"revisionTime": "2019-04-04T07:41:16Z"
 		},
 		{
 			"checksumSHA1": "ec0UPQkMPVIjrR+9uwzBsE5JNLk=",
+			"origin": "github.com/lebauce/go-libvirt/internal/go-xdr/xdr2",
 			"path": "github.com/digitalocean/go-libvirt/internal/go-xdr/xdr2",
-			"revision": "5ea6f2a136d87dc4763b937eca7d21b3dc66452b",
+			"revision": "7799d804f7e42b8055dfb5dc2671396c2264cf0e",
 			"revisionTime": "2019-04-04T07:41:16Z"
 		},
 		{

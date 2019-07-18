@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
 	golibvirt "github.com/digitalocean/go-libvirt"
@@ -68,7 +69,7 @@ func (m *golibvirtMonitor) Stop() {
 	m.libvirt.Disconnect()
 }
 
-func newMonitor(ctx context.Context, probe *Probe) (*golibvirtMonitor, error) {
+func newMonitor(ctx context.Context, probe *Probe, wg *sync.WaitGroup) (*golibvirtMonitor, error) {
 	if probe.uri == "" {
 		probe.uri = "unix:///var/run/libvirt/libvirt-sock"
 	}
@@ -95,21 +96,34 @@ func newMonitor(ctx context.Context, probe *Probe) (*golibvirtMonitor, error) {
 		return nil, fmt.Errorf("failed to watch lifecycle events: %s", err)
 	}
 
+	wg.Add(1)
 	go func() {
-		for event := range events {
-			d := golibvirtDomain{Libvirt: libvirt, Domain: event.Dom}
-			switch golibvirt.DomainEventType(event.Event) {
-			case golibvirt.DomainEventUndefined:
-				probe.deleteDomain(d)
-			case golibvirt.DomainEventStarted, golibvirt.DomainEventDefined:
-				domainNode := probe.createOrUpdateDomain(d)
-				interfaces, hostdevs := probe.getDomainInterfaces(d, domainNode, "")
-				probe.registerInterfaces(interfaces, hostdevs)
-			case golibvirt.DomainEventSuspended,
-				golibvirt.DomainEventResumed, golibvirt.DomainEventStopped,
-				golibvirt.DomainEventShutdown, golibvirt.DomainEventPmsuspended,
-				golibvirt.DomainEventCrashed:
-				probe.createOrUpdateDomain(d)
+		defer wg.Done()
+		defer probe.tunProcessor.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				libvirt.Disconnect()
+				return
+			case event, ok := <-events:
+				if !ok {
+					return
+				}
+				d := golibvirtDomain{Libvirt: libvirt, Domain: event.Dom}
+				switch golibvirt.DomainEventType(event.Event) {
+				case golibvirt.DomainEventUndefined:
+					probe.deleteDomain(d)
+				case golibvirt.DomainEventStarted, golibvirt.DomainEventDefined:
+					domainNode := probe.createOrUpdateDomain(d)
+					interfaces, hostdevs := probe.getDomainInterfaces(d, domainNode, "")
+					probe.registerInterfaces(interfaces, hostdevs)
+				case golibvirt.DomainEventSuspended,
+					golibvirt.DomainEventResumed, golibvirt.DomainEventStopped,
+					golibvirt.DomainEventShutdown, golibvirt.DomainEventPmsuspended,
+					golibvirt.DomainEventCrashed:
+					probe.createOrUpdateDomain(d)
+				}
 			}
 		}
 	}()

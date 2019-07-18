@@ -29,6 +29,7 @@ import (
 
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
+	"github.com/skydive-project/skydive/topology/probes"
 
 	libvirt "github.com/digitalocean/go-libvirt"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -42,7 +43,6 @@ type Probe struct {
 	conn         monitor               // libvirt connection
 	interfaceMap map[string]*Interface // Found interfaces not yet connected.
 	uri          string                // uri of the libvirt connection
-	cancelFunc   context.CancelFunc    // cancel function
 	tunProcessor *graph.Processor      // metadata indexer for regular interfaces
 }
 
@@ -383,22 +383,19 @@ func (probe *Probe) deleteDomain(d domain) {
 	}
 }
 
-// Start get all domains attached to a libvirt connection
-func (probe *Probe) Start() {
-	cancelCtx, cancelFunc := context.WithCancel(context.Background())
-	probe.cancelFunc = cancelFunc
+// Do get all domains attached to a libvirt connection
+func (probe *Probe) Do(ctx context.Context, wg *sync.WaitGroup) error {
+	probe.tunProcessor.Start()
 
-	conn, err := newMonitor(cancelCtx, probe)
+	conn, err := newMonitor(ctx, probe, wg)
 	if err != nil {
-		probe.Ctx.Logger.Error(err)
-		return
+		return err
 	}
 	probe.conn = conn
 
 	domains, err := probe.conn.AllDomains()
 	if err != nil {
-		probe.Ctx.Logger.Error(err)
-		return
+		return err
 	}
 
 	for _, domain := range domains {
@@ -406,15 +403,8 @@ func (probe *Probe) Start() {
 		interfaces, hostdevs := probe.getDomainInterfaces(domain, domainNode, "")
 		probe.registerInterfaces(interfaces, hostdevs)
 	}
-}
 
-// Stop stops the probe
-func (probe *Probe) Stop() {
-	if probe.conn != nil {
-		probe.conn.Stop()
-	}
-	probe.cancelFunc()
-	probe.tunProcessor.Stop()
+	return nil
 }
 
 // Init initializes a libvirt topology probe
@@ -426,7 +416,5 @@ func (probe *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, e
 	probe.interfaceMap = make(map[string]*Interface)
 	probe.uri = uri
 
-	probe.tunProcessor.Start()
-
-	return probe, nil
+	return probes.NewProbeWrapper(probe), nil
 }
