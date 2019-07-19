@@ -23,6 +23,8 @@
 package vpp
 
 import (
+	"context"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
@@ -36,11 +38,10 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
+	"github.com/skydive-project/skydive/topology/probes"
 	tp "github.com/skydive-project/skydive/topology/probes"
 	"github.com/skydive-project/skydive/topology/probes/vpp/bin_api/interfaces"
 	"github.com/skydive-project/skydive/topology/probes/vpp/bin_api/vpe"
@@ -48,7 +49,9 @@ import (
 
 const (
 	// VPPPollingTime in milliseconds
-	VPPPollingTime = 200
+	VPPPollingTime          = 10 * time.Second
+	HealthCheckReplyTimeout = 3 * time.Second
+	HealthCheckInterval     = 3 * time.Second
 )
 
 // Probe is an instance of a VPP probe in a namespace
@@ -56,14 +59,11 @@ type Probe struct {
 	sync.Mutex
 	*graph.EventHandler
 	Ctx          tp.Context
-	shm          string                                    // connect SHM path
+	addr         string                                    // VPP address (unix or SHM)
 	conn         *core.Connection                          // VPP connection
-	interfaceMap map[uint32]*interfaces.SwInterfaceDetails // MAP of VPP interfaces
+	interfaceMap map[uint32]*interfaces.SwInterfaceDetails // map of VPP interfaces
 	intfIndexer  *graph.MetadataIndexer                    // index of created nodes by the probe
 	vppRootNode  *graph.Node                               // root node for ownership
-	notifChan    chan api.Message                          // notification channel on interfaces events
-	state        common.ServiceState                       // state of the probe (running or stopped)
-	wg           sync.WaitGroup                            // goroutines wait group
 }
 
 func interfaceName(name []byte) string {
@@ -160,6 +160,7 @@ func (p *Probe) eventAddInterface(ch api.Channel, intf *interfaces.SwInterfaceDe
 
 func (p *Probe) eventDelInterface(node *graph.Node) {
 	if err := p.Ctx.Graph.DelNode(node); err != nil {
+		p.NotifyEvent(graph.NodeDeleted, node)
 		p.Ctx.Logger.Error(err)
 	}
 }
@@ -175,189 +176,208 @@ func (p *Probe) interfaceEventsEnableDisable(ch api.Channel, enable bool) {
 	}
 }
 
-func (p *Probe) interfacesEvents() {
-	defer p.wg.Done()
+func (p *Probe) synchronize(ch api.Channel) error {
+	foundInterfaces := make(map[uint32]struct{})
+	needUpdate := make(map[uint32]struct{})
 
+	req := &interfaces.SwInterfaceDump{}
+	reqCtx := ch.SendMultiRequest(req)
+	for {
+		msg := &interfaces.SwInterfaceDetails{}
+		stop, err := reqCtx.ReceiveReply(msg)
+		if stop {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		intf, found := p.interfaceMap[msg.SwIfIndex]
+		if !found || interfaceNeedUpdate(msg, intf) {
+			needUpdate[msg.SwIfIndex] = struct{}{}
+		}
+		if found {
+			foundInterfaces[msg.SwIfIndex] = struct{}{}
+		}
+		p.interfaceMap[msg.SwIfIndex] = msg
+	}
+
+	/* Update interface metadata */
+	for index := range needUpdate {
+		msg := p.interfaceMap[index]
+		p.Ctx.Logger.Debugf("Add/Update interface %s idx %d up/down %s", interfaceName(msg.InterfaceName), int64(msg.SwIfIndex), interfaceUpDown(msg.AdminUpDown))
+		p.eventAddInterface(ch, msg)
+	}
+
+	/* Remove interface that didn't exist anymore */
+	for index := range p.interfaceMap {
+		_, found := foundInterfaces[index]
+		_, firsttime := needUpdate[index]
+		if !found && !firsttime {
+			p.Ctx.Graph.Lock()
+			if node := p.getInterface(index); node != nil {
+				name, _ := node.GetFieldString("Name")
+				p.Ctx.Logger.Debugf("Delete interface %v idx %d", name, index)
+				p.eventDelInterface(node)
+			}
+			p.Ctx.Graph.Unlock()
+			delete(p.interfaceMap, index)
+		}
+	}
+
+	return nil
+}
+
+func (p *Probe) handleInterfaceEvent(msg *interfaces.SwInterfaceEvent) {
+	p.Ctx.Graph.Lock()
+	if node := p.getInterface(msg.SwIfIndex); node != nil {
+		name, _ := node.GetFieldString("Name")
+		if msg.Deleted > 0 {
+			p.Ctx.Logger.Debugf("Delete interface %v idx %d", name, msg.SwIfIndex)
+			p.eventDelInterface(node)
+		} else {
+			state := interfaceUpDown(msg.AdminUpDown)
+			p.Ctx.Logger.Debugf("ChangeState interface %s idx %d updown %d", name, msg.SwIfIndex, state)
+			p.Ctx.Graph.AddMetadata(node, "State", state)
+		}
+	}
+	p.Ctx.Graph.Unlock()
+}
+
+func (p *Probe) run(ctx context.Context) {
 	ch, err := p.conn.NewAPIChannel()
 	if err != nil {
 		p.Ctx.Logger.Error("API channel error: ", err)
 		return
 	}
+	ch.SetReplyTimeout(HealthCheckReplyTimeout)
 
-	sub, err := ch.SubscribeNotification(p.notifChan, &interfaces.SwInterfaceEvent{})
+	notifChan := make(chan api.Message, 100)
+	sub, err := ch.SubscribeNotification(notifChan, &interfaces.SwInterfaceEvent{})
 	if err != nil {
 		p.Ctx.Logger.Error(err)
 		return
 	}
 
-	logging.GetLogger().Debugf("Registering for VPP events")
+	p.Ctx.Logger.Debugf("Registering for VPP events")
 	p.interfaceEventsEnableDisable(ch, true)
 
-	for p.state.Load() == common.RunningState {
-		notif := <-p.notifChan
-		if notif == nil {
-			break
-		}
-		msg := notif.(*interfaces.SwInterfaceEvent)
-		logging.GetLogger().Debugf("Received sw interface event %+v", msg)
+	pollingTicker := time.NewTicker(VPPPollingTime)
+	defer pollingTicker.Stop()
 
-		p.Ctx.Graph.Lock()
-		if node := p.getInterface(msg.SwIfIndex); node != nil {
-			name, _ := node.GetFieldString("Name")
-			if msg.Deleted > 0 {
-				logging.GetLogger().Debugf("Delete interface %v idx %d", name, msg.SwIfIndex)
-				p.eventDelInterface(node)
-			} else {
-				state := interfaceUpDown(msg.AdminUpDown)
-				logging.GetLogger().Debugf("ChangeState interface %s idx %d updown %d", name, msg.SwIfIndex, state)
-				p.Ctx.Graph.AddMetadata(node, "State", state)
-			}
-		}
-		p.Ctx.Graph.Unlock()
+	if err := p.synchronize(ch); err != nil {
+		p.Ctx.Logger.Error(err)
+		return
 	}
 
-	logging.GetLogger().Debugf("Unregistering for VPP events")
+	pingTimer := time.NewTimer(HealthCheckInterval)
+	defer pingTimer.Stop()
+
+LOOP:
+	for {
+		select {
+		case notif := <-notifChan:
+			msg := notif.(*interfaces.SwInterfaceEvent)
+			p.Ctx.Logger.Debugf("Received sw interface event %+v", msg)
+			p.handleInterfaceEvent(msg)
+		case <-pollingTicker.C:
+			err = p.synchronize(ch)
+		case <-pingTimer.C:
+			req := &vpe.ControlPing{}
+			msg := &vpe.ControlPingReply{}
+			if err = ch.SendRequest(req).ReceiveReply(msg); err != nil {
+				err = fmt.Errorf("Health check failed: %s", err)
+			}
+		case <-ctx.Done():
+			defer p.conn.Disconnect()
+			break LOOP
+		}
+
+		if err != nil {
+			break
+		}
+
+		pingTimer.Reset(HealthCheckInterval)
+	}
+
+	p.Ctx.Logger.Debugf("Unregistering for VPP events")
 	p.interfaceEventsEnableDisable(ch, false)
 
 	sub.Unsubscribe()
 	ch.Close()
 }
 
-func (p *Probe) interfacesPolling() {
-	defer p.wg.Done()
-
-	ch, err := p.conn.NewAPIChannel()
-	if err != nil {
-		p.Ctx.Logger.Error("API channel error: ", err)
-		return
-	}
-
-	for p.state.Load() == common.RunningState {
-		foundInterfaces := make(map[uint32]struct{})
-		needUpdate := make(map[uint32]struct{})
-
-		req := &interfaces.SwInterfaceDump{}
-		reqCtx := ch.SendMultiRequest(req)
-		for {
-			msg := &interfaces.SwInterfaceDetails{}
-			stop, err := reqCtx.ReceiveReply(msg)
-			if stop {
-				break
-			}
-			if err != nil {
-				p.Ctx.Logger.Error(err)
-				goto nextEvents
-			}
-
-			intf, found := p.interfaceMap[msg.SwIfIndex]
-			if !found || interfaceNeedUpdate(msg, intf) {
-				needUpdate[msg.SwIfIndex] = struct{}{}
-			}
-			if found {
-				foundInterfaces[msg.SwIfIndex] = struct{}{}
-			}
-			p.interfaceMap[msg.SwIfIndex] = msg
-		}
-
-		/* Update interface metadata */
-		for index := range needUpdate {
-			msg := p.interfaceMap[index]
-			logging.GetLogger().Debugf("Add/Update interface %s idx %d up/down %d", interfaceName(msg.InterfaceName), int64(msg.SwIfIndex), interfaceUpDown(msg.AdminUpDown))
-			p.eventAddInterface(ch, msg)
-		}
-		/* Remove interface that didn't exist anymore */
-		for index := range p.interfaceMap {
-			_, found := foundInterfaces[index]
-			_, firsttime := needUpdate[index]
-			if !found && !firsttime {
-				p.Ctx.Graph.Lock()
-				if node := p.getInterface(index); node != nil {
-					name, _ := node.GetFieldString("Name")
-					logging.GetLogger().Debugf("Delete interface %v idx %d", name, index)
-					p.eventDelInterface(node)
-				}
-				p.Ctx.Graph.Unlock()
-				delete(p.interfaceMap, index)
-			}
-		}
-
-	nextEvents:
-		time.Sleep(VPPPollingTime * time.Millisecond)
-	}
-
-	ch.Close()
-}
-
-// Start VPP probe and get all interfaces
-func (p *Probe) Start() error {
-	conn, err := govpp.Connect(p.shm)
+// Do starts the VPP probe and get all interfaces
+func (p *Probe) Do(ctx context.Context, wg *sync.WaitGroup) error {
+	conn, err := govpp.Connect(p.addr)
 	if err != nil {
 		return fmt.Errorf("VPP connection error: %s", err)
 	}
 	p.conn = conn
 
-	ch, err := conn.NewAPIChannel()
-	if err != nil {
-		return fmt.Errorf("API channel error: %s", err)
+	if p.vppRootNode == nil {
+		ch, err := conn.NewAPIChannel()
+		if err != nil {
+			return fmt.Errorf("API channel error: %s", err)
+		}
+
+		req := &vpe.ShowVersion{}
+		msg := &vpe.ShowVersionReply{}
+		err = ch.SendRequest(req).ReceiveReply(msg)
+		if err != nil {
+			return err
+		}
+		ch.Close()
+
+		metadata := graph.Metadata{
+			"Name":      "vpp",
+			"Type":      "vpp",
+			"Program":   string(msg.Program),
+			"Version":   string(msg.Version),
+			"BuildDate": string(msg.BuildDate),
+		}
+
+		p.Ctx.Graph.Lock()
+		defer p.Ctx.Graph.Unlock()
+
+		if p.vppRootNode, err = p.Ctx.Graph.NewNode(graph.GenID(), metadata); err != nil {
+			return err
+		}
+
+		if _, err := topology.AddOwnershipLink(p.Ctx.Graph, p.Ctx.RootNode, p.vppRootNode, nil); err != nil {
+			return err
+		}
 	}
 
-	req := &vpe.ShowVersion{}
-	msg := &vpe.ShowVersionReply{}
-	err = ch.SendRequest(req).ReceiveReply(msg)
-	if err != nil {
-		return err
-	}
-	ch.Close()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 
-	p.intfIndexer.Start()
+		p.intfIndexer.Start()
+		defer p.intfIndexer.Stop()
 
-	metadata := graph.Metadata{
-		"Name":      "vpp",
-		"Type":      "vpp",
-		"Program":   string(msg.Program),
-		"Version":   string(msg.Version),
-		"BuildDate": string(msg.BuildDate),
-	}
+		p.Ctx.Graph.RLock()
+		p.intfIndexer.Sync()
+		p.Ctx.Graph.RUnlock()
 
-	p.Ctx.Graph.Lock()
-	defer p.Ctx.Graph.Unlock()
-
-	if p.vppRootNode, err = p.Ctx.Graph.NewNode(graph.GenID(), metadata); err != nil {
-		return err
-	}
-	topology.AddOwnershipLink(p.Ctx.Graph, p.Ctx.RootNode, p.vppRootNode, nil)
-
-	p.state.Store(common.RunningState)
-
-	p.wg.Add(2)
-	go p.interfacesPolling()
-	go p.interfacesEvents()
+		p.run(ctx)
+	}()
 
 	return nil
 }
 
-// Stop the probe
-func (p *Probe) Stop() {
-	p.intfIndexer.Stop()
-	p.state.Store(common.StoppingState)
-	close(p.notifChan)
-	p.wg.Wait()
-	p.conn.Disconnect()
-}
-
 // NewProbe returns a new VPP probe
 func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
-	shm := ctx.Config.GetString("agent.topology.vpp.connect")
+	addr := ctx.Config.GetString("agent.topology.vpp.connect")
 
 	p := &Probe{
 		EventHandler: graph.NewEventHandler(100),
 		Ctx:          ctx,
-		shm:          shm,
+		addr:         addr,
 		interfaceMap: make(map[uint32]*interfaces.SwInterfaceDetails),
-		notifChan:    make(chan api.Message, 100),
-		intfIndexer: graph.NewMetadataIndexer(p.Ctx.Graph, p, nil, "IfIndex"),
 	}
-	p.state.Store(common.StoppedState)
+
+	p.intfIndexer = graph.NewMetadataIndexer(p.Ctx.Graph, p, nil, "IfIndex")
 
 	/* Forward all govpp logging to Skydive logging */
 	l := logrus.New()
@@ -365,7 +385,7 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	l.Hooks.Add(p)
 	core.SetLogger(l)
 
-	return p, nil
+	return probes.NewProbeWrapper(p), nil
 }
 
 // Levels Logrus to Skydive logger helper
