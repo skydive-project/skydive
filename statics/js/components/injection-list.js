@@ -43,9 +43,6 @@ var Injector = {
           self.$error({message: 'Packet injector delete error: ' + e.responseText});
           return e;
         })
-        .finally(function() {
-          app.$emit("refresh-injector-list");
-        });
     },
 
     highlightNode: function(uuid, query) {
@@ -102,7 +99,6 @@ Vue.component('injection-list', {
   data: function() {
     return {
       injectors: {},
-      intervalID: "",
     };
   },
 
@@ -119,10 +115,6 @@ Vue.component('injection-list', {
 
   beforeDestroy: function() {
     websocket.delConnectHandler(this.init.bind(this));
-  },
-
-  destroyed: function() {
-    clearInterval(this.intervalID);
   },
 
   methods: {
