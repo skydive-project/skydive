@@ -90,19 +90,19 @@ func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocat
 		case "pcapsocket":
 			handler, err = new(PcapSocketProbeHandler).Init(ctx, bundle)
 		case "ovssflow":
-			handler, err = NewOvsSFlowProbesHandler(g, fta, tb)
+			handler, err = new(OvsSFlowProbesHandler).Init(ctx, bundle)
 		case "ovsmirror":
-			handler, err = NewOvsMirrorProbesHandler(g, tb, bundle)
+			handler, err = new(OvsMirrorProbesHandler).Init(ctx, bundle)
 		case "gopacket":
-			handler, err = NewGoPacketProbesHandler(g, fta)
+			handler, err = new(GoPacketProbesHandler).Init(ctx, bundle)
 		case "sflow":
-			handler, err = NewSFlowProbesHandler(g, fta)
+			handler, err = new(SFlowProbesHandler).Init(ctx, bundle)
 		case "ovsnetflow":
-			handler, err = NewOvsNetFlowProbesHandler(g, fta, tb)
+			handler, err = new(OvsNetFlowProbesHandler).Init(ctx, bundle)
 		case "dpdk":
-			handler, err = NewDPDKProbesHandler(g, fta)
+			handler, err = new(DPDKProbesHandler).Init(ctx, bundle)
 		case "ebpf":
-			handler, err = NewEBPFProbesHandler(g, fta)
+			handler, err = new(EBPFProbesHandler).Init(ctx, bundle)
 		default:
 			err = fmt.Errorf("unknown probe type %s", t)
 		}

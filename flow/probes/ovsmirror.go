@@ -29,7 +29,6 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/ovs/ovsdb"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
@@ -50,10 +49,10 @@ type ovsMirrorProbe struct {
 // OvsMirrorProbesHandler describes a flow probe in running in the graph
 type OvsMirrorProbesHandler struct {
 	ovsdb.DefaultOvsMonitorHandler
+	Ctx         Context
 	probes      map[string]*ovsMirrorProbe
 	probeBundle *probe.Bundle
 	probesLock  common.RWMutex
-	graph       *graph.Graph
 	ovsClient   *ovsdb.OvsClient
 	intfIndexer *graph.MetadataIndexer
 	portIndexer *graph.MetadataIndexer
@@ -311,7 +310,7 @@ func (o *OvsMirrorProbesHandler) RegisterProbeOnPort(n *graph.Node, portUUID str
 	probe := &ovsMirrorProbe{
 		id:      portUUID,
 		capture: capture,
-		graph:   o.graph,
+		graph:   o.Ctx.Graph,
 		node:    n,
 	}
 
@@ -365,7 +364,7 @@ func (o *OvsMirrorProbesHandler) cleanupOvsMirrors() {
 
 	uuids, err := ovsRetrieveSkydiveProbeRowUUIDs(o.ovsClient, "Mirror")
 	if err != nil {
-		logging.GetLogger().Errorf("OvsMirror cleanup error: %s", err)
+		o.Ctx.Logger.Errorf("OvsMirror cleanup error: %s", err)
 		return
 	}
 	for _, uuid := range uuids {
@@ -383,7 +382,7 @@ func (o *OvsMirrorProbesHandler) cleanupOvsMirrors() {
 
 	uuids, err = ovsRetrieveSkydiveProbeRowUUIDs(o.ovsClient, "Mirror")
 	if err != nil {
-		logging.GetLogger().Errorf("OvsMirror cleanup error: %s", err)
+		o.Ctx.Logger.Errorf("OvsMirror cleanup error: %s", err)
 		return
 	}
 	for _, uuid := range uuids {
@@ -393,7 +392,7 @@ func (o *OvsMirrorProbesHandler) cleanupOvsMirrors() {
 
 	uuids, err = ovsRetrieveSkydiveProbeRowUUIDs(o.ovsClient, "Port")
 	if err != nil {
-		logging.GetLogger().Errorf("OvsMirror cleanup error: %s", err)
+		o.Ctx.Logger.Errorf("OvsMirror cleanup error: %s", err)
 		return
 	}
 	for _, uuid := range uuids {
@@ -410,9 +409,9 @@ func (o *OvsMirrorProbesHandler) cleanupOvsMirrors() {
 	}
 
 	if _, err = o.ovsClient.Exec(operations...); err != nil {
-		logging.GetLogger().Errorf("OvsMirror cleanup error: %s", err)
+		o.Ctx.Logger.Errorf("OvsMirror cleanup error: %s", err)
 	}
-	logging.GetLogger().Info("OvsMirror cleanup previous mirrors")
+	o.Ctx.Logger.Info("OvsMirror cleanup previous mirrors")
 }
 
 // OnStarted ProbeEventHandler implementation
@@ -480,7 +479,7 @@ func (o *ovsMirrorInterfaceHandler) onNodeEvent(n *graph.Node) {
 		name, _ := n.GetFieldString("Name")
 		intf, err := netlink.LinkByName(name)
 		if err != nil {
-			logging.GetLogger().Warningf("Error reading interface name %s: %s", name, err)
+			o.oph.Ctx.Logger.Warningf("Error reading interface name %s: %s", name, err)
 			return
 		}
 		netlink.LinkSetUp(intf)
@@ -491,20 +490,20 @@ func (o *ovsMirrorInterfaceHandler) onNodeEvent(n *graph.Node) {
 
 	subProbeTypes, ok := common.CaptureTypes["internal"]
 	if !ok {
-		logging.GetLogger().Errorf("Unable to find probe for this node type: internal")
+		o.oph.Ctx.Logger.Errorf("Unable to find probe for this node type: internal")
 		return
 	}
 
 	handler := o.oph.probeBundle.GetHandler(subProbeTypes.Default)
 	if handler == nil {
-		logging.GetLogger().Errorf("Unable to find probe for this capture type: %s", subProbeTypes.Default)
+		o.oph.Ctx.Logger.Errorf("Unable to find probe for this capture type: %s", subProbeTypes.Default)
 		return
 	}
 
 	subHandler := handler.(FlowProbeHandler)
 	subProbe, err := subHandler.RegisterProbe(n, ovsProbe.capture, ovsProbe)
 	if err != nil {
-		logging.GetLogger().Debugf("Failed to register flow probe: %s", err)
+		o.oph.Ctx.Logger.Debugf("Failed to register flow probe: %s", err)
 		return
 	}
 
@@ -534,7 +533,7 @@ func (o *ovsMirrorPortHandler) OnNodeAdded(n *graph.Node) {
 		return
 	}
 
-	topology.AddLink(o.oph.graph, n, ovsProbe.node, "mirroring", nil)
+	topology.AddLink(o.oph.Ctx.Graph, n, ovsProbe.node, "mirroring", nil)
 }
 
 func (o *ovsMirrorInterfaceHandler) OnNodeDeleted(n *graph.Node) {
@@ -595,24 +594,21 @@ func (o *OvsMirrorProbesHandler) CaptureTypes() []string {
 	return []string{"ovsmirror"}
 }
 
-// NewOvsMirrorProbesHandler creates a new OVS Mirror probes
-func NewOvsMirrorProbesHandler(g *graph.Graph, tb, fb *probe.Bundle) (*OvsMirrorProbesHandler, error) {
-	handler := tb.GetHandler("ovsdb")
+// Init initializes a new OVS Mirror probe
+func (o *OvsMirrorProbesHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHandler, error) {
+	handler := ctx.TB.GetHandler("ovsdb")
 	if handler == nil {
-		return nil, errors.New("Agent.ovssflow probe depends on agent.ovsdb topology probe: agent.ovssflow probe can't start properly")
+		return nil, errors.New("ovsmirror probe depends on ovsdb topology probe, probe can't start properly")
 	}
 	p := handler.(*op.Probe)
 
-	o := &OvsMirrorProbesHandler{
-		probes:      make(map[string]*ovsMirrorProbe),
-		graph:       g,
-		ovsClient:   p.OvsMon.OvsClient,
-		probeBundle: fb,
-		intfIndexer: graph.NewMetadataIndexer(g, g, graph.Metadata{"Type": "internal"}, "ExtID.skydive-probe-id"),
-		portIndexer: graph.NewMetadataIndexer(g, g, graph.Metadata{"Type": "ovsport"}, "ExtID.skydive-probe-id"),
-	}
+	o.Ctx = ctx
+	o.probes = make(map[string]*ovsMirrorProbe)
+	o.ovsClient = p.OvsMon.OvsClient
+	o.probeBundle = bundle
+	o.intfIndexer = graph.NewMetadataIndexer(ctx.Graph, ctx.Graph, graph.Metadata{"Type": "internal"}, "ExtID.skydive-probe-id")
+	o.portIndexer = graph.NewMetadataIndexer(ctx.Graph, ctx.Graph, graph.Metadata{"Type": "ovsport"}, "ExtID.skydive-probe-id")
 
-	// monitor connection/disconnection
 	p.OvsMon.AddMonitorHandler(o)
 
 	o.intfHandler = &ovsMirrorInterfaceHandler{oph: o}

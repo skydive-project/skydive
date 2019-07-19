@@ -27,7 +27,6 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 )
 
@@ -59,14 +58,14 @@ func (p *PcapSocketProbe) run() {
 		conn, err := p.listener.Accept()
 		if err != nil {
 			if atomic.LoadInt64(&p.state) == common.RunningState {
-				logging.GetLogger().Errorf("Error while accepting connection: %s", err)
+				p.Ctx.Logger.Errorf("Error while accepting connection: %s", err)
 			}
 			break
 		}
 
 		feeder, err := flow.NewPcapTableFeeder(conn, packetSeqChan, true, p.bpfFilter)
 		if err != nil {
-			logging.GetLogger().Errorf("Failed to create pcap table feeder: %s", err)
+			p.Ctx.Logger.Errorf("Failed to create pcap table feeder: %s", err)
 			return
 		}
 
@@ -97,7 +96,7 @@ func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Cap
 
 	port, err := p.portAllocator.Allocate(fnc)
 	if err != nil {
-		logging.GetLogger().Errorf("Failed to listen on TCP socket %s: %s", tcpAddr.String(), err)
+		p.Ctx.Logger.Errorf("Failed to listen on TCP socket %s: %s", tcpAddr.String(), err)
 	}
 
 	uuids := flow.UUIDs{NodeTID: tid, CaptureID: capture.UUID}

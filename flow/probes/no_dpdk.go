@@ -21,8 +21,8 @@ package probes
 
 import (
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/probe"
 )
 
 // DPDKProbesHandler describes a flow probe handle in the graph
@@ -52,7 +52,7 @@ func (p *DPDKProbesHandler) CaptureTypes() []string {
 	return []string{}
 }
 
-// NewDPDKProbesHandler creates a new gopacket probe in the graph
-func NewDPDKProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*DPDKProbesHandler, error) {
+// Init initializes a new dpdk probe
+func (p *DPDKProbesHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHandler, error) {
 	return nil, ErrProbeNotCompiled
 }

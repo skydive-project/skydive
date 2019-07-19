@@ -303,7 +303,13 @@ func (p *Probe) startCapture(ifName, mac string, n *graph.Node) error {
 	// Set BPF filter to only capture LLDP packets
 	bpfFilter := fmt.Sprintf(lldpBPFFilter, mac)
 
-	packetProbe, err := probes.NewGoPacketProbe(p.Ctx.Graph, n, probes.AFPacket, bpfFilter, lldpSnapLen)
+	ctx := probes.Context{
+		Config: p.Ctx.Config,
+		Logger: p.Ctx.Logger,
+		Graph:  p.Ctx.Graph,
+	}
+
+	packetProbe, err := probes.NewGoPacketProbe(ctx, n, probes.AFPacket, bpfFilter, lldpSnapLen)
 	if err != nil {
 		return err
 	}

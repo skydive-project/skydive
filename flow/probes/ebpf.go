@@ -33,10 +33,9 @@ import (
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/statics"
 	"github.com/skydive-project/skydive/topology"
 )
@@ -51,6 +50,7 @@ const (
 
 // EBPFProbe the eBPF probe
 type EBPFProbe struct {
+	Ctx          Context
 	probeNodeTID string
 	fd           int
 	flowTable    *flow.Table
@@ -62,9 +62,8 @@ type EBPFProbe struct {
 
 // EBPFProbesHandler creates new eBPF probes
 type EBPFProbesHandler struct {
-	graph *graph.Graph
-	fta   *flow.TableAllocator
-	wg    sync.WaitGroup
+	Ctx Context
+	wg  sync.WaitGroup
 }
 
 func (p *EBPFProbe) run() {
@@ -74,8 +73,8 @@ func (p *EBPFProbe) run() {
 	_, flowEBPFChan, _ := p.flowTable.Start()
 	defer p.flowTable.Stop()
 
-	ebpfUpdate := time.Duration(config.GetConfig().GetInt("agent.flow.ebpf.kernel_scan_interval")) * time.Second
-	flowTableSz := config.GetConfig().GetInt("flow.max_entries")
+	ebpfUpdate := time.Duration(p.Ctx.Config.GetInt("agent.flow.ebpf.kernel_scan_interval")) * time.Second
+	flowTableSz := p.Ctx.Config.GetInt("flow.max_entries")
 
 	var startKTimeNs int64
 	var start time.Time
@@ -98,7 +97,7 @@ func (p *EBPFProbe) run() {
 
 				if p.module.LookupElement(statsMap, unsafe.Pointer(&statsKey), unsafe.Pointer(&statsVal)) == nil {
 					if statsVal > 0 {
-						logging.GetLogger().Warningf("flow table overflow, %d flows were dropped from kernel table", statsVal)
+						p.Ctx.Logger.Warningf("flow table overflow, %d flows were dropped from kernel table", statsVal)
 					}
 					p.module.DeleteElement(statsMap, unsafe.Pointer(&statsKey))
 				}
@@ -175,12 +174,12 @@ func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture,
 		return nil, fmt.Errorf("No tid for node %s", n.ID)
 	}
 
-	_, nsPath, err := topology.NamespaceFromNode(p.graph, n)
+	_, nsPath, err := topology.NamespaceFromNode(p.Ctx.Graph, n)
 	if err != nil {
 		return nil, err
 	}
 
-	module, err := loadModule()
+	module, err := p.loadModule()
 	if err != nil {
 		return nil, err
 	}
@@ -216,15 +215,16 @@ func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture,
 	}
 
 	uuids := flow.UUIDs{NodeTID: tid, CaptureID: capture.UUID}
-	ft := p.fta.Alloc(uuids, flow.TableOpts{})
+	ft := p.Ctx.FTA.Alloc(uuids, flow.TableOpts{})
 
 	probe := &EBPFProbe{
+		Ctx:          p.Ctx,
 		probeNodeTID: tid,
 		fd:           rs.GetFd(),
 		flowTable:    ft,
 		module:       module,
 		fmap:         fmap,
-		expire:       p.fta.ExpireAfter(),
+		expire:       p.Ctx.FTA.ExpireAfter(),
 		quit:         make(chan bool),
 	}
 
@@ -237,7 +237,7 @@ func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture,
 		probe.run()
 
 		if err := elf.DetachSocketFilter(socketFilter, fd); err != nil {
-			logging.GetLogger().Errorf("Unable to detach eBPF probe: %s", err)
+			p.Ctx.Logger.Errorf("Unable to detach eBPF probe: %s", err)
 		}
 		rs.Close()
 		module.Close()
@@ -284,7 +284,7 @@ func LoadJumpMap(module *elf.Module) error {
 	return nil
 }
 
-func loadModuleFromAsset(path string) (*elf.Module, error) {
+func (p *EBPFProbesHandler) loadModuleFromAsset(path string) (*elf.Module, error) {
 	data, err := statics.Asset(path)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to find eBPF elf binary in bindata")
@@ -294,21 +294,21 @@ func loadModuleFromAsset(path string) (*elf.Module, error) {
 	err = module.Load(nil)
 
 	if err == nil {
-		logging.GetLogger().Infof("Loaded eBPF module ", path)
+		p.Ctx.Logger.Infof("Loaded eBPF module ", path)
 	}
 	return module, err
 }
 
-func loadModule() (*elf.Module, error) {
-	module, err := loadModuleFromAsset("probe/ebpf/flow-gre.o")
+func (p *EBPFProbesHandler) loadModule() (*elf.Module, error) {
+	module, err := p.loadModuleFromAsset("probe/ebpf/flow-gre.o")
 	if err != nil {
-		logging.GetLogger().Errorf("Unable to load eBPF elf binary (host %s) from bindata: %s, trying to fallback", runtime.GOARCH, err)
+		p.Ctx.Logger.Errorf("Unable to load eBPF elf binary (host %s) from bindata: %s, trying to fallback", runtime.GOARCH, err)
 
-		module, err = loadModuleFromAsset("probe/ebpf/flow.o")
+		module, err = p.loadModuleFromAsset("probe/ebpf/flow.o")
 		if err != nil {
 			return nil, fmt.Errorf("Unable to load fallback eBPF elf binary (host %s) from bindata: %s", runtime.GOARCH, err)
 		}
-		logging.GetLogger().Info("Using fallback eBPF program")
+		p.Ctx.Logger.Info("Using fallback eBPF program")
 
 		return module, nil
 	}
@@ -323,9 +323,8 @@ func (p *EBPFProbesHandler) CaptureTypes() []string {
 	return []string{"ebpf"}
 }
 
-func NewEBPFProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*EBPFProbesHandler, error) {
-	return &EBPFProbesHandler{
-		graph: g,
-		fta:   fta,
-	}, nil
+// Init initializes a new eBPF probe
+func (p *EBPFProbesHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHandler, error) {
+	p.Ctx = ctx
+	return p, nil
 }

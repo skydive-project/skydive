@@ -31,9 +31,9 @@ import (
 	"github.com/intel-go/yanff/packet"
 
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 )
 
@@ -43,8 +43,7 @@ var (
 
 // DPDKProbesHandler describes a flow probe handle in the graph
 type DPDKProbesHandler struct {
-	graph *graph.Graph
-	fta   *flow.TableAllocator
+	Ctx Context
 }
 
 // RegisterProbe registers a gopacket probe
@@ -79,8 +78,8 @@ func (p *DPDKProbesHandler) Stop() {
 }
 
 func packetHandler(packets []*packet.Packet, next []bool, nbPackets uint, context dpdkflow.UserContext) {
-	ctx, _ := context.(ctxQueue)
-	if ctx.enabled.Load() == false {
+	ctxQ, _ := context.(ctxQueue)
+	if ctxQ.enabled.Load() == false {
 		for i := uint(0); i < nbPackets; i++ {
 			next[i] = false
 		}
@@ -89,7 +88,7 @@ func packetHandler(packets []*packet.Packet, next []bool, nbPackets uint, contex
 
 	for i := uint(0); i < nbPackets; i++ {
 		packet := gopacket.NewPacket(packets[i].GetRawPacketBytes(), layers.LayerTypeEthernet, gopacket.Default)
-		ctx.ft.FeedWithGoPacket(packet, nil)
+		ctxQ.ft.FeedWithGoPacket(packet, nil)
 		next[i] = false
 	}
 }
@@ -118,8 +117,8 @@ func enablePort(tid string, enable bool) {
 	if !ok {
 		return
 	}
-	for _, q := range port.queues {
-		q.enabled.Store(enable)
+	for _, ctxQ := range port.queues {
+		ctxQ.enabled.Store(enable)
 	}
 }
 
@@ -155,10 +154,10 @@ func (p *DPDKProbesHandler) CaptureTypes() []string {
 	return []string{"dpdk"}
 }
 
-// NewDPDKProbesHandler creates a new gopacket probe in the graph
-func NewDPDKProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*DPDKProbesHandler, error) {
-	ports := config.GetStringSlice("dpdk.ports")
-	nbWorkers := config.GetInt("dpdk.workers")
+// Init initializes a new dpdk probe
+func (p *DPDKProbesHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHandler, error) {
+	ports := ctx.Config.GetStringSlice("dpdk.ports")
+	nbWorkers := ctx.Config.GetInt("dpdk.workers")
 
 	nbPorts := len(ports)
 	if nbWorkers == 0 || nbPorts == 0 {
@@ -169,7 +168,7 @@ func NewDPDKProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*DPDKProbes
 	cfg := &dpdkflow.Config{
 		LogType: dpdkcommon.Initialization,
 	}
-	debug := config.GetInt("dpdk.debug")
+	debug := ctx.Config.GetInt("dpdk.debug")
 	if debug > 0 {
 		cfg.LogType = dpdkcommon.Debug
 		cfg.DebugTime = uint(debug * 1000)
@@ -180,13 +179,10 @@ func NewDPDKProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*DPDKProbes
 		RawPacketLimit: 0,
 	}
 
-	dph := &DPDKProbesHandler{
-		graph: g,
-		fta:   fta,
-	}
+	p.Ctx = ctx
 
-	hostNode := g.LookupFirstNode(graph.Metadata{
-		"Name": g.GetHost(),
+	hostNode := ctx.Graph.LookupFirstNode(graph.Metadata{
+		"Name": ctx.Graph.GetHost(),
 		"Type": "host",
 	})
 
@@ -205,11 +201,11 @@ func NewDPDKProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*DPDKProbes
 			"State":     "UP",
 			"Type":      "dpdkport",
 		}
-		dpdkNode, err := g.NewNode(graph.GenID(), m)
+		dpdkNode, err := ctx.Graph.NewNode(graph.GenID(), m)
 		if err != nil {
 			return nil, err
 		}
-		topology.AddOwnershipLink(g, hostNode, dpdkNode, nil)
+		topology.AddOwnershipLink(ctx.Graph, hostNode, dpdkNode, nil)
 
 		tid, _ := dpdkNode.GetFieldString("TID")
 		uuids := flow.UUIDs{NodeTID: tid}
@@ -220,17 +216,17 @@ func NewDPDKProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*DPDKProbes
 		outputFlows := dpdkflow.SetSplitter(inputFlow, l3Splitter, uint(dpdkNBWorkers), nil)
 
 		for i := 0; i < nbWorkers; i++ {
-			ft := fta.Alloc(uuids, opts)
+			ft := ctx.FTA.Alloc(uuids, opts)
 
 			ft.Start()
-			ctx := ctxQueue{
+			ctxQ := ctxQueue{
 				ft:      ft,
 				enabled: &atomic.Value{},
 			}
-			ctx.enabled.Store(false)
-			port.queues = append(port.queues, &ctx)
+			ctxQ.enabled.Store(false)
+			port.queues = append(port.queues, &ctxQ)
 
-			dpdkflow.SetHandler(outputFlows[i], packetHandler, ctx)
+			dpdkflow.SetHandler(outputFlows[i], packetHandler, ctxQ)
 		}
 		dpdkPorts[tid] = port
 
@@ -239,5 +235,5 @@ func NewDPDKProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*DPDKProbes
 		}
 
 	}
-	return dph, nil
+	return p, nil
 }
