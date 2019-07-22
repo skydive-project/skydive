@@ -223,7 +223,6 @@ func (u *ProbeHandler) Unregister(path string) {
 		return
 	}
 
-	delete(u.pathToNetNS, path)
 	nsString := ns.String()
 	probe, ok := u.nsNetLinkProbes[nsString]
 	if !ok {
@@ -253,6 +252,7 @@ func (u *ProbeHandler) Unregister(path string) {
 	}
 
 	delete(u.nsNetLinkProbes, nsString)
+	delete(u.pathToNetNS, path)
 }
 
 func (u *ProbeHandler) initializeRunPath(path string) {
