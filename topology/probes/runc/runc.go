@@ -29,7 +29,6 @@ import (
 	"path"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -47,7 +46,7 @@ import (
 type ProbeHandler struct {
 	common.RWMutex
 	*ns.ProbeHandler
-	state          int64
+	state          common.ServiceState
 	hostNs         netns.NsHandle
 	wg             sync.WaitGroup
 	watcher        *fsnotify.Watcher
@@ -352,7 +351,7 @@ func (p *ProbeHandler) initialize(path string) {
 	defer p.wg.Done()
 
 	common.Retry(func() error {
-		if atomic.LoadInt64(&p.state) != common.RunningState {
+		if p.state.Load() != common.RunningState {
 			return nil
 		}
 
@@ -390,7 +389,7 @@ func (p *ProbeHandler) start() {
 		return
 	}
 
-	if !atomic.CompareAndSwapInt64(&p.state, common.StoppedState, common.RunningState) {
+	if !p.state.CompareAndSwap(common.StoppedState, common.RunningState) {
 		return
 	}
 
@@ -402,7 +401,7 @@ func (p *ProbeHandler) start() {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
-	for atomic.LoadInt64(&p.state) == common.RunningState {
+	for p.state.Load() == common.RunningState {
 		select {
 		case ev := <-p.watcher.Events:
 			if ev.Op&fsnotify.Create == fsnotify.Create {
@@ -467,14 +466,14 @@ func (p *ProbeHandler) Start() {
 
 // Stop the probe
 func (p *ProbeHandler) Stop() {
-	if !atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState) {
+	if !p.state.CompareAndSwap(common.RunningState, common.StoppingState) {
 		return
 	}
 	p.wg.Wait()
 
 	p.hostNs.Close()
 
-	atomic.StoreInt64(&p.state, common.StoppedState)
+	p.state.Store(common.StoppedState)
 }
 
 // Init initializes a new topology runc probe

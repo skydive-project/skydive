@@ -28,7 +28,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -54,7 +53,7 @@ type ProbeHandler struct {
 	watcher         *fsnotify.Watcher
 	pending         chan string
 	exclude         []string
-	state           int64
+	state           common.ServiceState
 	wg              sync.WaitGroup
 }
 
@@ -259,7 +258,7 @@ func (u *ProbeHandler) initializeRunPath(path string) {
 	defer u.wg.Done()
 
 	err := common.Retry(func() error {
-		if atomic.LoadInt64(&u.state) != common.RunningState {
+		if u.state.Load() != common.RunningState {
 			return nil
 		}
 
@@ -302,11 +301,11 @@ func (u *ProbeHandler) start() {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
-	if !atomic.CompareAndSwapInt64(&u.state, common.StoppedState, common.RunningState) {
+	if !u.state.CompareAndSwap(common.StoppedState, common.RunningState) {
 		return
 	}
 
-	for atomic.LoadInt64(&u.state) == common.RunningState {
+	for u.state.Load() == common.RunningState {
 		select {
 		case path := <-u.pending:
 			u.wg.Add(1)
@@ -345,14 +344,14 @@ func (u *ProbeHandler) Start() {
 
 // Stop the probe
 func (u *ProbeHandler) Stop() {
-	if !atomic.CompareAndSwapInt64(&u.state, common.RunningState, common.StoppingState) {
+	if !u.state.CompareAndSwap(common.RunningState, common.StoppingState) {
 		return
 	}
 	u.wg.Wait()
 
 	u.nlHandler.Stop()
 
-	atomic.StoreInt64(&u.state, common.StoppedState)
+	u.state.Store(common.StoppedState)
 }
 
 func (u *ProbeHandler) isPathExcluded(path string) bool {

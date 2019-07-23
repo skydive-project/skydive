@@ -24,7 +24,6 @@ import (
 	"errors"
 	"net"
 	"strconv"
-	"sync/atomic"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -53,7 +52,7 @@ type Probe struct {
 	common.RWMutex
 	graph.DefaultGraphListener
 	g     *graph.Graph
-	state int64
+	state common.ServiceState
 	nsmds map[string]*grpc.ClientConn
 
 	// slice of connections to track existing links between inodes
@@ -67,7 +66,7 @@ func NewNsmProbe(g *graph.Graph) (*Probe, error) {
 		g:     g,
 		nsmds: make(map[string]*grpc.ClientConn),
 	}
-	atomic.StoreInt64(&probe.state, common.StoppedState)
+	probe.state.Store(common.StoppedState)
 	return probe, nil
 }
 
@@ -91,7 +90,7 @@ func getK8SConfig() (*rest.Config, error) {
 // Start ...
 func (p *Probe) Start() {
 	p.g.AddEventListener(p)
-	atomic.StoreInt64(&p.state, common.RunningState)
+	p.state.Store(common.RunningState)
 
 	config, err := getK8SConfig()
 	if err != nil {
@@ -129,7 +128,7 @@ func (p *Probe) Start() {
 func (p *Probe) Stop() {
 	p.Lock()
 	defer p.Unlock()
-	if !atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState) {
+	if !p.state.CompareAndSwap(common.RunningState, common.StoppingState) {
 		return
 	}
 	p.g.RemoveEventListener(p)

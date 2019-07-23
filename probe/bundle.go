@@ -32,6 +32,16 @@ type Handler interface {
 	Stop()
 }
 
+// ServiceStatus describes the status returned by GetStatus
+type ServiceStatus struct {
+	Status common.ServiceState
+}
+
+// StatusReporter can be implemented by probes to report their status
+type StatusReporter interface {
+	GetStatus() interface{}
+}
+
 // Bundle describes a bundle of probes (topology of flow)
 type Bundle struct {
 	common.RWMutex

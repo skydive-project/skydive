@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net"
 	"sync"
-	"sync/atomic"
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
@@ -33,7 +32,7 @@ import (
 // PcapSocketProbe describes a TCP packet listener that inject packets in a flowtable
 type PcapSocketProbe struct {
 	Ctx       Context
-	state     int64
+	state     common.ServiceState
 	flowTable *flow.Table
 	listener  *net.TCPListener
 	port      int
@@ -49,15 +48,15 @@ type PcapSocketProbeHandler struct {
 }
 
 func (p *PcapSocketProbe) run() {
-	atomic.StoreInt64(&p.state, common.RunningState)
+	p.state.Store(common.RunningState)
 
 	packetSeqChan, _, _ := p.flowTable.Start()
 	defer p.flowTable.Stop()
 
-	for atomic.LoadInt64(&p.state) == common.RunningState {
+	for p.state.Load() == common.RunningState {
 		conn, err := p.listener.Accept()
 		if err != nil {
-			if atomic.LoadInt64(&p.state) == common.RunningState {
+			if p.state.Load() == common.RunningState {
 				p.Ctx.Logger.Errorf("Error while accepting connection: %s", err)
 			}
 			break
@@ -132,7 +131,7 @@ func (p *PcapSocketProbeHandler) UnregisterProbe(n *graph.Node, e ProbeEventHand
 
 	p.Ctx.FTA.Release(probe.flowTable)
 
-	atomic.StoreInt64(&probe.state, common.StoppingState)
+	probe.state.Store(common.StoppingState)
 	probe.listener.Close()
 
 	p.portAllocator.Release(probe.port)
