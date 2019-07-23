@@ -120,9 +120,12 @@ func IsOwnershipLinked(g *graph.Graph, node *graph.Node) bool {
 	return len(edges) != 0
 }
 
-// GetOwnershipLink get ownership Link between the parent and the child node or nil
-func GetOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node) *graph.Edge {
-	return g.GetFirstLink(parent, child, OwnershipMetadata())
+// GetOwner returns the parent linked with an ownership link
+func GetOwner(g *graph.Graph, child *graph.Node) *graph.Node {
+	if parents := g.LookupParents(child, nil, OwnershipMetadata()); len(parents) > 0 {
+		return parents[0]
+	}
+	return nil
 }
 
 // AddOwnershipLink Link between the parent and the child node, the child can have only one parent, previous will be overwritten
@@ -146,26 +149,19 @@ func HaveLink(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, relationType
 }
 
 // NewLink creates a link between a parent and a child node with the specified relation type and metadata
-func NewLink(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, relationType string, metadata graph.Metadata) (*graph.Edge, error) {
+func NewLink(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, relationType string, metadata graph.Metadata) *graph.Edge {
 	m := graph.Metadata{"RelationType": relationType}
 	for k, v := range metadata {
 		m[k] = v
 	}
 
 	id, _ := uuid.NewV5(uuid.NamespaceOID, []byte(node1.ID+node2.ID+graph.Identifier(relationType)))
-	edge := g.CreateEdge(graph.Identifier(id.String()), node1, node2, m, graph.Time(time.Now()))
-	if edge == nil {
-		return nil, fmt.Errorf("Failed to create edge with id %s", id.String())
-	}
-	return edge, nil
+	return g.CreateEdge(graph.Identifier(id.String()), node1, node2, m, graph.Time(time.Now()))
 }
 
 // AddLink links the parent and the child node with the specified relation type and metadata
 func AddLink(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, relationType string, metadata graph.Metadata) (*graph.Edge, error) {
-	edge, err := NewLink(g, node1, node2, relationType, metadata)
-	if err != nil {
-		return nil, err
-	}
+	edge := NewLink(g, node1, node2, relationType, metadata)
 	return edge, g.AddEdge(edge)
 }
 
