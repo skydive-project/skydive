@@ -10,12 +10,12 @@ Skydive is an open source real-time network topology and protocols analyzer.
 It aims to provide a comprehensive way of understanding what is happening in
 the network infrastructure.
 
-Skydive agents collect topology informations and flows and forward them to a
-central agent for further analysis. All the informations are stored in an
+Skydive agents collect topology information and flows and forward them to a
+central agent for further analysis. All the information is stored in an
 Elasticsearch database.
 
 Skydive is SDN-agnostic but provides SDN drivers in order to enhance the
-topology and flows informations.
+topology and flows information.
 
 ![](https://github.com/skydive-project/skydive.network/raw/images/overview.gif)
 
@@ -34,9 +34,33 @@ topology and flows informations.
 
 ## Quick start
 
+### All-in-one
+
+The easiest way to get started is to download the latest binary and to run it using the `all-in-one` mode :
+
+```console
+curl -Lo skydive https://github.com/skydive-project/skydive-binaries/raw/jenkins-builds/skydive-latest && \
+chmod +x skydive && sudo mv skydive /usr/local/bin/
+
+SKYDIVE_ETCD_DATA_DIR=/tmp SKYDIVE_ANALYZER_LISTEN=0.0.0.0:8082 sudo -E /usr/local/bin/skydive allinone
+```
+
+Open a browser to http://localhost:8082 to access the analyzer Web UI.
+
+### Docker
+
+```console
+docker run -d --privileged --pid=host --net=host -p 8082:8082 -p 8081:8081 \
+    -e SKYDIVE_ANALYZER_LISTEN=0.0.0.0:8082 \
+    -v /var/run/docker.sock:/var/run/docker.sock -v /run/netns:/var/run/netns \
+    skydive/skydive allinone
+```
+
+Open a browser to http://localhost:8082 to access the analyzer Web UI.
+
 ### Docker Compose
 
-To quick set up a working environment, [Docker Compose](https://docs.docker.com/compose/)
+To quick set up a more complete working environment (with history support), [Docker Compose](https://docs.docker.com/compose/)
 can be used to automatically start an Elasticsearch container, a Skydive analyzer
 container and a Skydive agent container.
 
@@ -45,27 +69,24 @@ curl -o docker-compose.yml https://raw.githubusercontent.com/skydive-project/sky
 docker-compose up
 ```
 
-Open a browser to http://localhost:8082 to access the analyzer Web UI.
-
 You can also use the Skydive [command line client](https://skydive-project.github.io/skydive/getting-started/client/) with:
 ```console
 docker run --net=host -ti skydive/skydive client query "g.V()"
 ```
 
-### All-in-one
-
-You can also download the latest release and use the `all-in-one` mode which
-will start an Agent and an Analyzer at once.
-
-```console
-sudo skydive allinone [-c skydive.yml]
-```
+Open a browser to http://localhost:8082 to access the analyzer Web UI.
 
 ## Documentation
 
 Skydive documentation can be found here:
 
 * http://skydive.network/documentation
+
+## Tutorials
+
+Skydive tutorials can be found here:
+
+* http://skydive.network/tutorials/first-steps-1.html
 
 ## Contributing
 
