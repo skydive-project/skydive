@@ -72,7 +72,7 @@ func main() {
 		defaultCfgFile = os.Args[1]
 	}
 
-	cfg := viper.New()
+	cfg := core.NewConfig()
 
 	if err := config.LoadConfig(cfg, "file", []string{defaultCfgFile}); err != nil {
 		logging.GetLogger().Errorf("Failed to initialize config: %s", err)

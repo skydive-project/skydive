@@ -47,7 +47,9 @@ func main() {
 		defaultCfgFile = os.Args[1]
 	}
 
-	if err := config.InitConfig("file", []string{defaultCfgFile}); err != nil {
+	cfg := core.NewConfig()
+
+	if err := config.LoadConfig(cfg, "file", []string{defaultCfgFile}); err != nil {
 		logging.GetLogger().Errorf("Failed to initialize config: %s", err)
 		os.Exit(1)
 	}
@@ -57,7 +59,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	s, err := NewSubscriberFromConfig(config.GetConfig())
+	s, err := NewSubscriberFromConfig(cfg)
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to initialize subscriber: %s", err)
 		os.Exit(1)
