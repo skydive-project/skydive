@@ -102,6 +102,13 @@ type ProbeWrapper struct {
 	sm *serviceManager
 }
 
+// GetStatus returns the status of the probe
+func (p *ProbeWrapper) GetStatus() interface{} {
+	return &probe.ServiceStatus{
+		Status: common.ServiceState(p.sm.state),
+	}
+}
+
 // Start the probe
 func (p *ProbeWrapper) Start() {
 	if err := p.sm.Start(context.Background()); err != nil {

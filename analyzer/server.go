@@ -76,7 +76,7 @@ type Status struct {
 	Subscribers map[string]ws.ConnStatus
 	Alerts      ElectionStatus
 	Captures    ElectionStatus
-	Probes      []string
+	Probes      map[string]interface{}
 }
 
 // Server describes an Analyzer servers mechanism like http, websocket, topology, ondemand probes, ...
@@ -107,7 +107,7 @@ func (s *Server) GetStatus() interface{} {
 		Subscribers: hubStatus.Subscribers,
 		Alerts:      ElectionStatus{IsMaster: s.alertServer.IsMaster()},
 		Captures:    ElectionStatus{IsMaster: s.onDemandClient.IsMaster()},
-		Probes:      s.probeBundle.ActiveProbes(),
+		Probes:      s.probeBundle.GetStatus(),
 	}
 }
 

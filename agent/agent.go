@@ -93,7 +93,7 @@ func NewAnalyzerStructClientPool(authOpts *shttp.AuthenticationOpts) (*ws.Struct
 type Status struct {
 	Clients        map[string]ws.ConnStatus
 	Analyzers      map[string]pod.ConnStatus
-	TopologyProbes []string
+	TopologyProbes map[string]interface{}
 	FlowProbes     []string
 }
 
@@ -104,8 +104,8 @@ func (a *Agent) GetStatus() interface{} {
 	return &Status{
 		Clients:        podStatus.Subscribers,
 		Analyzers:      podStatus.Hubs,
-		TopologyProbes: a.topologyProbeBundle.ActiveProbes(),
-		FlowProbes:     a.flowProbeBundle.ActiveProbes(),
+		TopologyProbes: a.topologyProbeBundle.GetStatus(),
+		FlowProbes:     a.flowProbeBundle.EnabledProbes(),
 	}
 }
 
