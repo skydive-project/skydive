@@ -36,7 +36,7 @@ func createLoopback(t *testing.T) string {
 	if err != nil {
 		t.Error("Can't create vpp loopback interface ", err)
 	}
-	time.Sleep(2 * vpp.VPPPollingTime * time.Millisecond)
+	time.Sleep(vpp.VPPPollingTime)
 	return strings.Trim(string(out), "\r\n")
 }
 
@@ -46,7 +46,7 @@ func deleteLoopback(t *testing.T, intf string) string {
 	if err != nil {
 		t.Error("Can't delete vpp loopback interface ", intf, " : ", err)
 	}
-	time.Sleep(2 * vpp.VPPPollingTime * time.Millisecond)
+	time.Sleep(vpp.VPPPollingTime)
 	return strings.Trim(string(out), "\r\n")
 }
 

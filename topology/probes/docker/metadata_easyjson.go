@@ -17,7 +17,80 @@ var (
 	_ easyjson.Marshaler
 )
 
-func easyjsonBa0ee0e3DecodeGithubComSkydiveProjectSkydiveTopologyProbesDocker(in *jlexer.Lexer, out *Metadata) {
+func easyjsonBa0ee0e3DecodeGithubComSkydiveProjectSkydiveTopologyProbesDocker(in *jlexer.Lexer, out *Mount) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeString()
+		in.WantColon()
+		if in.IsNull() {
+			in.Skip()
+			in.WantComma()
+			continue
+		}
+		switch key {
+		case "Source":
+			out.Source = string(in.String())
+		case "Destination":
+			out.Destination = string(in.String())
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesDocker(out *jwriter.Writer, in Mount) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	{
+		const prefix string = ",\"Source\":"
+		out.RawString(prefix[1:])
+		out.String(string(in.Source))
+	}
+	{
+		const prefix string = ",\"Destination\":"
+		out.RawString(prefix)
+		out.String(string(in.Destination))
+	}
+	out.RawByte('}')
+}
+
+// MarshalJSON supports json.Marshaler interface
+func (v Mount) MarshalJSON() ([]byte, error) {
+	w := jwriter.Writer{}
+	easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesDocker(&w, v)
+	return w.Buffer.BuildBytes(), w.Error
+}
+
+// MarshalEasyJSON supports easyjson.Marshaler interface
+func (v Mount) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesDocker(w, v)
+}
+
+// UnmarshalJSON supports json.Unmarshaler interface
+func (v *Mount) UnmarshalJSON(data []byte) error {
+	r := jlexer.Lexer{Data: data}
+	easyjsonBa0ee0e3DecodeGithubComSkydiveProjectSkydiveTopologyProbesDocker(&r, v)
+	return r.Error()
+}
+
+// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
+func (v *Mount) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjsonBa0ee0e3DecodeGithubComSkydiveProjectSkydiveTopologyProbesDocker(l, v)
+}
+func easyjsonBa0ee0e3DecodeGithubComSkydiveProjectSkydiveTopologyProbesDocker1(in *jlexer.Lexer, out *Metadata) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -42,6 +115,37 @@ func easyjsonBa0ee0e3DecodeGithubComSkydiveProjectSkydiveTopologyProbesDocker(in
 			out.ContainerName = string(in.String())
 		case "Labels":
 			(out.Labels).UnmarshalEasyJSON(in)
+		case "Mounts":
+			if in.IsNull() {
+				in.Skip()
+				out.Mounts = nil
+			} else {
+				in.Delim('[')
+				if out.Mounts == nil {
+					if !in.IsDelim(']') {
+						out.Mounts = make([]*Mount, 0, 8)
+					} else {
+						out.Mounts = []*Mount{}
+					}
+				} else {
+					out.Mounts = (out.Mounts)[:0]
+				}
+				for !in.IsDelim(']') {
+					var v1 *Mount
+					if in.IsNull() {
+						in.Skip()
+						v1 = nil
+					} else {
+						if v1 == nil {
+							v1 = new(Mount)
+						}
+						(*v1).UnmarshalEasyJSON(in)
+					}
+					out.Mounts = append(out.Mounts, v1)
+					in.WantComma()
+				}
+				in.Delim(']')
+			}
 		default:
 			in.SkipRecursive()
 		}
@@ -52,7 +156,7 @@ func easyjsonBa0ee0e3DecodeGithubComSkydiveProjectSkydiveTopologyProbesDocker(in
 		in.Consumed()
 	}
 }
-func easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesDocker(out *jwriter.Writer, in Metadata) {
+func easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesDocker1(out *jwriter.Writer, in Metadata) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -71,29 +175,49 @@ func easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesDocker(ou
 		out.RawString(prefix)
 		(in.Labels).MarshalEasyJSON(out)
 	}
+	{
+		const prefix string = ",\"Mounts\":"
+		out.RawString(prefix)
+		if in.Mounts == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
+			out.RawString("null")
+		} else {
+			out.RawByte('[')
+			for v2, v3 := range in.Mounts {
+				if v2 > 0 {
+					out.RawByte(',')
+				}
+				if v3 == nil {
+					out.RawString("null")
+				} else {
+					(*v3).MarshalEasyJSON(out)
+				}
+			}
+			out.RawByte(']')
+		}
+	}
 	out.RawByte('}')
 }
 
 // MarshalJSON supports json.Marshaler interface
 func (v Metadata) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesDocker(&w, v)
+	easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesDocker1(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Metadata) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesDocker(w, v)
+	easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesDocker1(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *Metadata) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonBa0ee0e3DecodeGithubComSkydiveProjectSkydiveTopologyProbesDocker(&r, v)
+	easyjsonBa0ee0e3DecodeGithubComSkydiveProjectSkydiveTopologyProbesDocker1(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *Metadata) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonBa0ee0e3DecodeGithubComSkydiveProjectSkydiveTopologyProbesDocker(l, v)
+	easyjsonBa0ee0e3DecodeGithubComSkydiveProjectSkydiveTopologyProbesDocker1(l, v)
 }

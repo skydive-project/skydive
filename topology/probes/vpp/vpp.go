@@ -2,6 +2,7 @@
 
 //go:generate go run git.fd.io/govpp.git/cmd/binapi-generator --input-file=/usr/share/vpp/api/interface.api.json --output-dir=./bin_api
 //go:generate go run git.fd.io/govpp.git/cmd/binapi-generator --input-file=/usr/share/vpp/api/vpe.api.json --output-dir=./bin_api
+//go:generate go run git.fd.io/govpp.git/cmd/binapi-generator --input-file=/usr/share/vpp/api/memif.api.json --output-dir=./bin_api
 
 /*
  * Copyright (C) 2018 Red Hat, Inc.
@@ -24,13 +25,19 @@ package vpp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
+	"os/exec"
+	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/skydive-project/skydive/common"
 
 	govpp "git.fd.io/govpp.git"
 	"git.fd.io/govpp.git/api"
@@ -38,12 +45,15 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/probes"
 	tp "github.com/skydive-project/skydive/topology/probes"
+	"github.com/skydive-project/skydive/topology/probes/docker"
 	"github.com/skydive-project/skydive/topology/probes/vpp/bin_api/interfaces"
+	"github.com/skydive-project/skydive/topology/probes/vpp/bin_api/memif"
 	"github.com/skydive-project/skydive/topology/probes/vpp/bin_api/vpe"
 )
 
@@ -54,16 +64,27 @@ const (
 	HealthCheckInterval     = 3 * time.Second
 )
 
+var memifModes = map[uint8]string{
+	0: "ethernet",
+	1: "ip",
+	2: "punt/inject",
+}
+
 // Probe is an instance of a VPP probe in a namespace
 type Probe struct {
 	sync.Mutex
 	*graph.EventHandler
+	graph.DefaultGraphListener
 	Ctx          tp.Context
 	addr         string                                    // VPP address (unix or SHM)
 	conn         *core.Connection                          // VPP connection
 	interfaceMap map[uint32]*interfaces.SwInterfaceDetails // map of VPP interfaces
 	intfIndexer  *graph.MetadataIndexer                    // index of created nodes by the probe
 	vppRootNode  *graph.Node                               // root node for ownership
+	socketsDirs  []string
+	masterMemifs *graph.NodeIndex
+	slaveMemifs  *graph.NodeIndex
+	seeds        map[int64]*exec.Cmd
 }
 
 func interfaceName(name []byte) string {
@@ -107,16 +128,32 @@ func (p *Probe) getInterface(index uint32) *graph.Node {
 	return node
 }
 
-func (p *Probe) createOrUpdateInterface(ch api.Channel, intf *interfaces.SwInterfaceDetails) *graph.Node {
+func (p *Probe) createOrUpdateInterface(ch api.Channel, intf *interfaces.SwInterfaceDetails, metadata graph.Metadata) *graph.Node {
 	vrfID := p.getInterfaceVrfID(ch, intf.SwIfIndex)
+	name := interfaceName(intf.InterfaceName)
 
 	p.Ctx.Graph.Lock()
 	defer p.Ctx.Graph.Unlock()
 
+	metadata["Driver"] = "vpp"
+	metadata["Type"] = "interface"
+	metadata["Name"] = name
+	metadata["IfIndex"] = int64(intf.SwIfIndex)
+	metadata["MAC"] = interfaceMAC(intf.L2Address[:intf.L2AddressLength])
+	metadata["MTU"] = int64(intf.LinkMtu)
+	metadata["Speed"] = int64(intf.LinkSpeed)
+	metadata["State"] = interfaceUpDown(intf.AdminUpDown)
+	metadata["Duplex"] = interfaceDuplex(intf.LinkDuplex)
+	metadata["VrfID"] = vrfID
+
+	if strings.HasPrefix(name, "host-") {
+		metadata["InterfaceName"] = name[5:]
+	}
+
 	var err error
 	node := p.getInterface(intf.SwIfIndex)
 	if node == nil {
-		node, err = p.Ctx.Graph.NewNode(graph.GenID(), graph.Metadata{"IfIndex": int64(intf.SwIfIndex), "Type": "vpp"})
+		node, err = p.Ctx.Graph.NewNode(graph.GenID(), metadata)
 		if err != nil {
 			p.Ctx.Logger.Error(err)
 			return nil
@@ -127,24 +164,10 @@ func (p *Probe) createOrUpdateInterface(ch api.Channel, intf *interfaces.SwInter
 			p.Ctx.Logger.Error(err)
 			return nil
 		}
+	} else {
+		p.Ctx.Graph.SetMetadata(node, metadata)
+		p.NotifyEvent(graph.NodeUpdated, node)
 	}
-
-	tr := p.Ctx.Graph.StartMetadataTransaction(node)
-	tr.AddMetadata("Driver", "vpp")
-	tr.AddMetadata("Name", interfaceName(intf.InterfaceName))
-	tr.AddMetadata("IfIndex", int64(intf.SwIfIndex))
-	tr.AddMetadata("MAC", interfaceMAC(intf.L2Address[:intf.L2AddressLength]))
-	tr.AddMetadata("MTU", int64(intf.LinkMtu))
-	tr.AddMetadata("Speed", int64(intf.LinkSpeed))
-	state := interfaceUpDown(intf.AdminUpDown)
-	tr.AddMetadata("State", state)
-	if state != "DOWN" {
-		tr.AddMetadata("Duplex", interfaceDuplex(intf.LinkDuplex))
-	}
-	tr.AddMetadata("VrfID", vrfID)
-	tr.Commit()
-
-	p.NotifyEvent(graph.NodeUpdated, node)
 	return node
 }
 
@@ -154,8 +177,8 @@ func interfaceNeedUpdate(i1, i2 *interfaces.SwInterfaceDetails) bool {
 		i1.LinkDuplex != i2.LinkDuplex
 }
 
-func (p *Probe) eventAddInterface(ch api.Channel, intf *interfaces.SwInterfaceDetails) {
-	p.createOrUpdateInterface(ch, intf)
+func (p *Probe) eventAddInterface(ch api.Channel, intf *interfaces.SwInterfaceDetails, metadata graph.Metadata) *graph.Node {
+	return p.createOrUpdateInterface(ch, intf, metadata)
 }
 
 func (p *Probe) eventDelInterface(node *graph.Node) {
@@ -176,6 +199,43 @@ func (p *Probe) interfaceEventsEnableDisable(ch api.Channel, enable bool) {
 	}
 }
 
+type memifSocket struct {
+	*memif.MemifDetails
+	filename string
+}
+
+func (p *Probe) fetchMemif(ch api.Channel) (map[uint32]*memifSocket, error) {
+	sharedMemifSockets := make(map[uint32]*memifSocket)
+
+	req := &memif.MemifSocketFilenameDump{}
+	msg := &memif.MemifSocketFilenameDetails{}
+	reqCtx := ch.SendMultiRequest(req)
+	for {
+		if lastReply, err := reqCtx.ReceiveReply(msg); lastReply {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+
+		sharedMemifSockets[msg.SocketID] = &memifSocket{filename: interfaceName(msg.SocketFilename)}
+	}
+
+	req2 := &memif.MemifDump{}
+	msg2 := &memif.MemifDetails{}
+	reqCtx = ch.SendMultiRequest(req2)
+	for {
+		if lastReply, err := reqCtx.ReceiveReply(msg2); lastReply {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+
+		sharedMemifSockets[msg2.SocketID].MemifDetails = msg2
+	}
+
+	return sharedMemifSockets, nil
+}
+
 func (p *Probe) synchronize(ch api.Channel) error {
 	foundInterfaces := make(map[uint32]struct{})
 	needUpdate := make(map[uint32]struct{})
@@ -187,8 +247,7 @@ func (p *Probe) synchronize(ch api.Channel) error {
 		stop, err := reqCtx.ReceiveReply(msg)
 		if stop {
 			break
-		}
-		if err != nil {
+		} else if err != nil {
 			return err
 		}
 
@@ -203,10 +262,38 @@ func (p *Probe) synchronize(ch api.Channel) error {
 	}
 
 	/* Update interface metadata */
+	var sharedMemifSockets map[uint32]*memifSocket
 	for index := range needUpdate {
+		metadata := make(graph.Metadata)
 		msg := p.interfaceMap[index]
-		p.Ctx.Logger.Debugf("Add/Update interface %s idx %d up/down %s", interfaceName(msg.InterfaceName), int64(msg.SwIfIndex), interfaceUpDown(msg.AdminUpDown))
-		p.eventAddInterface(ch, msg)
+		ifName := interfaceName(msg.InterfaceName)
+		p.Ctx.Logger.Debugf("Add/Update interface %s idx %d up/down %s", ifName, int64(msg.SwIfIndex), interfaceUpDown(msg.AdminUpDown))
+
+		var socket, id int
+		if _, err := fmt.Sscanf(string(ifName), "memif%d/%d", &socket, &id); err == nil {
+			metadata["Type"] = "memif"
+
+			if sharedMemifSockets == nil {
+				if sharedMemifSockets, err = p.fetchMemif(ch); err != nil {
+					return err
+				}
+			}
+
+			if memifSock, ok := sharedMemifSockets[uint32(socket)]; ok {
+				metadata["VPP"] = &Metadata{
+					SocketFilename: memifSock.filename,
+					ID:             int64(memifSock.ID),
+					SocketID:       int64(socket),
+					Master:         memifSock.Role == 0,
+					Mode:           memifModes[memifSock.Mode],
+					RingSize:       int64(memifSock.RingSize),
+					BufferSize:     int64(memifSock.BufferSize),
+					LinkUpDown:     memifSock.LinkUpDown == 1,
+				}
+			}
+		}
+
+		p.eventAddInterface(ch, msg, metadata)
 	}
 
 	/* Remove interface that didn't exist anymore */
@@ -226,6 +313,134 @@ func (p *Probe) synchronize(ch api.Channel) error {
 	}
 
 	return nil
+}
+
+func (p *Probe) getHostSocketFilename(socketFilename string, n *graph.Node) (string, error) {
+	vppNode := topology.GetOwner(p.Ctx.Graph, n)
+	if vppNode == nil {
+		return "", fmt.Errorf("No owner found for node %s", n.ID)
+	}
+
+	rootNode := topology.GetOwner(p.Ctx.Graph, vppNode)
+	if rootNode == nil {
+		return "", fmt.Errorf("No root owner found for node %s", vppNode.ID)
+	}
+
+	containerNode := p.Ctx.Graph.LookupFirstChild(rootNode, graph.Metadata{"Type": "container"})
+	if containerNode == nil {
+		return "", fmt.Errorf("No container found in node %s", rootNode.ID)
+	}
+
+	if dockerMetadata, err := containerNode.GetField("Docker"); err == nil {
+		dockerMetadata := dockerMetadata.(*docker.Metadata)
+		for _, mount := range dockerMetadata.Mounts {
+			if filepath.HasPrefix(socketFilename, mount.Destination) {
+				if hostPath, err := filepath.Rel(mount.Destination, socketFilename); err == nil {
+					return filepath.Join(mount.Source, hostPath), nil
+				}
+			}
+		}
+	}
+
+	return "", nil
+}
+
+func (p *Probe) indexSocketFilename(socketFilename string, intfNode *graph.Node) {
+	socketFilename, err := p.getHostSocketFilename(socketFilename, intfNode)
+
+	if err != nil {
+		p.Ctx.Logger.Error(err)
+		return
+	}
+
+	if socketFilename == "" {
+		return
+	}
+
+	if isMaster, _ := intfNode.GetFieldBool("VPP.Master"); isMaster {
+		p.masterMemifs.Index(intfNode.ID, intfNode, map[string]interface{}{socketFilename: nil})
+	} else {
+		p.slaveMemifs.Index(intfNode.ID, intfNode, map[string]interface{}{socketFilename: nil})
+	}
+
+	p.Ctx.Logger.Debugf("Indexed %s", socketFilename)
+}
+
+// Register a seed with the specified mount namespace
+func (p *Probe) startSeed(pid int64, root *graph.Node) (*exec.Cmd, error) {
+	if config.GetString("agent.auth.api.backend") != "noauth" {
+		return nil, errors.New("Starting seeds is only supported with the 'noauth' authentication backend")
+	}
+
+	seed := os.Getenv("SKYDIVE_SEED_EXECUTABLE")
+	if seed == "" {
+		seed = os.Args[0]
+	}
+	nsPath := fmt.Sprintf("/proc/%d/ns", pid)
+	sa, _ := common.ServiceAddressFromString(config.GetString("agent.listen"))
+	command := exec.Command(seed, "seed",
+		"--root="+string(root.ID),
+		"--pid="+path.Join(nsPath, "pid"),
+		"--mount="+path.Join(nsPath, "mnt"),
+		"--agent="+fmt.Sprintf("%s:%d", sa.Addr, sa.Port),
+		fmt.Sprintf("--filter=G.V('%s').Descendants().Subgraph()", root.ID),
+		"vpp")
+	command.Env = append(command.Env, fmt.Sprintf("SKYDIVE_LOGGING_LEVEL=%s", p.Ctx.Config.GetString("logging.level")))
+	command.Env = append(command.Env, fmt.Sprintf("SKYDIVE_HOST_ID=vpp-%s", root.ID))
+	command.Stdout = os.Stdout
+	command.Stderr = os.Stderr
+	p.Ctx.Logger.Debugf("Starting seed in pid and mount namespaces of process %d (%s)", pid, strings.Join(command.Args, " "))
+
+	if err := command.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start command %s", err)
+	}
+
+	go command.Wait()
+
+	return command, nil
+}
+
+func (p *Probe) OnEdgeAdded(e *graph.Edge) {
+	if edgeType, _ := e.GetFieldString("RelationType"); edgeType != topology.OwnershipLink {
+		return
+	}
+
+	intfNode := p.Ctx.Graph.GetNode(e.Child)
+	if s, _ := intfNode.GetFieldString("VPP.SocketFilename"); s != "" {
+		p.indexSocketFilename(s, intfNode)
+	} else if pid, err := intfNode.GetFieldInt64("InitProcessPID"); err == nil {
+		parent := p.Ctx.Graph.GetNode(e.Parent)
+		if t, _ := parent.GetFieldString("Type"); t == "netns" {
+			if _, found := p.seeds[pid]; !found {
+				seed, err := p.startSeed(pid, parent)
+				if err != nil {
+					p.Ctx.Logger.Errorf("Failed to start seed for %d: %s", pid, err)
+					return
+				}
+				p.seeds[pid] = seed
+			}
+		}
+	}
+}
+
+func (p *Probe) GetABLinks(node *graph.Node) (edges []*graph.Edge) {
+	socketFilename, _ := node.GetFieldString("VPP.SocketFilename")
+	socketFilename, _ = p.getHostSocketFilename(socketFilename, node)
+	nodes, _ := p.slaveMemifs.Get(socketFilename)
+	for _, slave := range nodes {
+		edges = append(edges, topology.NewLink(p.Ctx.Graph, node, slave, "memif", nil))
+	}
+	return
+}
+
+func (p *Probe) GetBALinks(node *graph.Node) (edges []*graph.Edge) {
+	socketFilename, _ := node.GetFieldString("VPP.SocketFilename")
+	socketFilename, _ = p.getHostSocketFilename(socketFilename, node)
+	nodes, _ := p.masterMemifs.Get(socketFilename)
+	for _, master := range nodes {
+		edges = append(edges, topology.NewLink(p.Ctx.Graph, master, node, "memif", nil))
+	}
+	return
 }
 
 func (p *Probe) handleInterfaceEvent(msg *interfaces.SwInterfaceEvent) {
@@ -252,7 +467,7 @@ func (p *Probe) run(ctx context.Context) {
 	}
 	ch.SetReplyTimeout(HealthCheckReplyTimeout)
 
-	notifChan := make(chan api.Message, 100)
+	notifChan := make(chan api.Message, 10)
 	sub, err := ch.SubscribeNotification(notifChan, &interfaces.SwInterfaceEvent{})
 	if err != nil {
 		p.Ctx.Logger.Error(err)
@@ -262,13 +477,13 @@ func (p *Probe) run(ctx context.Context) {
 	p.Ctx.Logger.Debugf("Registering for VPP events")
 	p.interfaceEventsEnableDisable(ch, true)
 
-	pollingTicker := time.NewTicker(VPPPollingTime)
-	defer pollingTicker.Stop()
-
 	if err := p.synchronize(ch); err != nil {
 		p.Ctx.Logger.Error(err)
 		return
 	}
+
+	pollingTicker := time.NewTicker(VPPPollingTime)
+	defer pollingTicker.Stop()
 
 	pingTimer := time.NewTimer(HealthCheckInterval)
 	defer pingTimer.Stop()
@@ -294,6 +509,7 @@ LOOP:
 		}
 
 		if err != nil {
+			p.Ctx.Logger.Error(err)
 			break
 		}
 
@@ -353,11 +569,26 @@ func (p *Probe) Do(ctx context.Context, wg *sync.WaitGroup) error {
 	go func() {
 		defer wg.Done()
 
+		hostNameIndexer := graph.NewMetadataIndexer(p.Ctx.Graph, p.Ctx.Graph, graph.Metadata{"Type": "veth"}, "Name")
+		vppNameIndexer := graph.NewMetadataIndexer(p.Ctx.Graph, p, nil, "InterfaceName")
+		nameLinker := graph.NewMetadataIndexerLinker(p.Ctx.Graph, hostNameIndexer, vppNameIndexer, topology.Layer2Metadata())
+
 		p.intfIndexer.Start()
 		defer p.intfIndexer.Stop()
 
+		hostNameIndexer.Start()
+		defer hostNameIndexer.Stop()
+
+		vppNameIndexer.Start()
+		defer vppNameIndexer.Stop()
+
+		nameLinker.Start()
+		defer nameLinker.Stop()
+
 		p.Ctx.Graph.RLock()
 		p.intfIndexer.Sync()
+		hostNameIndexer.Sync()
+		vppNameIndexer.Sync()
 		p.Ctx.Graph.RUnlock()
 
 		p.run(ctx)
@@ -375,15 +606,27 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 		Ctx:          ctx,
 		addr:         addr,
 		interfaceMap: make(map[uint32]*interfaces.SwInterfaceDetails),
+		masterMemifs: graph.NewNodeIndex(ctx.Graph, false),
+		slaveMemifs:  graph.NewNodeIndex(ctx.Graph, false),
+		seeds:        make(map[int64]*exec.Cmd),
 	}
 
-	p.intfIndexer = graph.NewMetadataIndexer(p.Ctx.Graph, p, nil, "IfIndex")
+	p.intfIndexer = graph.NewMetadataIndexer(p.Ctx.Graph, p, graph.Metadata{"Host": ctx.Graph.GetHost()}, "IfIndex")
+
+	// This linkers creates edges between memif interfaces.
+	// It is started in the Init method so that links are created by
+	// the agent (not the seeds), even if VPP is not running on the host
+	// (only in the containers)
+	memifLinker := graph.NewResourceLinker(p.Ctx.Graph, []graph.ListenerHandler{p.masterMemifs}, []graph.ListenerHandler{p.slaveMemifs}, p, nil)
+	memifLinker.Start()
 
 	/* Forward all govpp logging to Skydive logging */
 	l := logrus.New()
 	l.Out = ioutil.Discard
 	l.Hooks.Add(p)
 	core.SetLogger(l)
+
+	ctx.Graph.AddEventListener(p)
 
 	return probes.NewProbeWrapper(p), nil
 }
