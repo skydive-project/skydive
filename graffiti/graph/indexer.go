@@ -203,6 +203,7 @@ func NewIndexer(g *Graph, listenerHandler ListenerHandler, hashNode NodeHasher, 
 type MetadataIndexer struct {
 	*Indexer
 	indexes []string
+	matcher ElementMatcher
 }
 
 // NewMetadataIndexer returns a new metadata graph indexer for the nodes
@@ -212,6 +213,7 @@ func NewMetadataIndexer(g *Graph, listenerHandler ListenerHandler, m ElementMatc
 		panic("MetadataIndexer object can't be created with no indexes")
 	}
 	indexer = &MetadataIndexer{
+		matcher: m,
 		indexes: indexes,
 		Indexer: NewIndexer(g, listenerHandler, func(n *Node) (kv map[string]interface{}) {
 			if match := n.MatchMetadata(m); match {
@@ -229,4 +231,15 @@ func NewMetadataIndexer(g *Graph, listenerHandler ListenerHandler, m ElementMatc
 		}, false),
 	}
 	return
+}
+
+// Sync synchronizes the index with the graph
+func (i *MetadataIndexer) Sync() {
+	i.hashToValues = make(map[string]map[Identifier]interface{})
+	i.nodeToHashes = make(map[Identifier]map[string]bool)
+	for _, n := range i.graph.GetNodes(i.matcher) {
+		if kv := i.hashNode(n); len(kv) != 0 {
+			i.Index(n.ID, n, kv)
+		}
+	}
 }
