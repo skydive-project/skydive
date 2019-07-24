@@ -26,10 +26,8 @@ import (
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/ovs/ovsdb"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/sflow"
@@ -49,8 +47,7 @@ type OvsSFlowProbe struct {
 
 // OvsSFlowProbesHandler describes a flow probe in running in the graph
 type OvsSFlowProbesHandler struct {
-	graph        *graph.Graph
-	fta          *flow.TableAllocator
+	Ctx          Context
 	ovsClient    *ovsdb.OvsClient
 	allocator    *sflow.AgentAllocator
 	eventHandler ProbeEventHandler
@@ -94,14 +91,14 @@ func (o *OvsSFlowProbesHandler) registerSFlowProbeOnBridge(probe *OvsSFlowProbe,
 	if probeUUID != "" {
 		uuid = libovsdb.UUID{GoUUID: probeUUID}
 
-		logging.GetLogger().Infof("Using already registered OVS SFlow probe \"%s\"", probe.ID)
+		o.Ctx.Logger.Infof("Using already registered OVS SFlow probe \"%s\"", probe.ID)
 	} else {
 		insertOp, err := newInsertSFlowProbeOP(probe)
 		if err != nil {
 			return err
 		}
 		uuid = libovsdb.UUID{GoUUID: insertOp.UUIDName}
-		logging.GetLogger().Infof("Registering new OVS SFlow probe \"%s\"", probe.ID)
+		o.Ctx.Logger.Infof("Registering new OVS SFlow probe \"%s\"", probe.ID)
 
 		operations = append(operations, *insertOp)
 	}
@@ -131,7 +128,7 @@ func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(probe *OvsSFlowPr
 	o.allocator.Release(bridgeUUID)
 
 	if probe.flowTable != nil {
-		o.fta.Release(probe.flowTable)
+		o.Ctx.FTA.Release(probe.flowTable)
 	}
 
 	probeUUID, err := ovsRetrieveSkydiveProbeRowUUID(o.ovsClient, "sFlow", ovsProbeID(bridgeUUID))
@@ -182,9 +179,9 @@ func (o *OvsSFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid str
 	if capture.Target == "" {
 		uuids := flow.UUIDs{NodeTID: tid, CaptureID: capture.UUID}
 		opts := tableOptsFromCapture(capture)
-		probe.flowTable = o.fta.Alloc(uuids, opts)
+		probe.flowTable = o.Ctx.FTA.Alloc(uuids, opts)
 
-		address := config.GetString("agent.flow.sflow.bind_address")
+		address := o.Ctx.Config.GetString("agent.flow.sflow.bind_address")
 		if address == "" {
 			address = "127.0.0.1"
 		}
@@ -192,7 +189,7 @@ func (o *OvsSFlowProbesHandler) registerProbeOnBridge(bridgeUUID string, tid str
 		addr := common.ServiceAddress{Addr: address}
 		bfpFilter := NormalizeBPFFilter(capture)
 
-		agent, err := o.allocator.Alloc(bridgeUUID, probe.flowTable, bfpFilter, headerSize, &addr, n, o.graph)
+		agent, err := o.allocator.Alloc(bridgeUUID, probe.flowTable, bfpFilter, headerSize, &addr, n, o.Ctx.Graph)
 		if err != nil && err != sflow.ErrAgentAlreadyAllocated {
 			return nil, err
 		}
@@ -251,11 +248,16 @@ func (o *OvsSFlowProbesHandler) Stop() {
 	o.allocator.ReleaseAll()
 }
 
-// NewOvsSFlowProbesHandler creates a new OVS SFlow porbes
-func NewOvsSFlowProbesHandler(g *graph.Graph, fta *flow.TableAllocator, tb *probe.Bundle) (*OvsSFlowProbesHandler, error) {
-	handler := tb.GetHandler("ovsdb")
+// CaptureTypes supported
+func (o *OvsSFlowProbesHandler) CaptureTypes() []string {
+	return []string{"ovssflow"}
+}
+
+// Init initializes a new OVS sFlow probe
+func (o *OvsSFlowProbesHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHandler, error) {
+	handler := ctx.TB.GetHandler("ovsdb")
 	if handler == nil {
-		return nil, errors.New("Agent.ovssflow probe depends on agent.ovsdb topology probe: agent.ovssflow probe can't start properly")
+		return nil, errors.New("ovssflow probe depends on ovsdb topology probe, probe can't start properly")
 	}
 	p := handler.(*ovsprobe.Probe)
 
@@ -264,10 +266,9 @@ func NewOvsSFlowProbesHandler(g *graph.Graph, fta *flow.TableAllocator, tb *prob
 		return nil, err
 	}
 
-	return &OvsSFlowProbesHandler{
-		graph:     g,
-		fta:       fta,
-		ovsClient: p.OvsMon.OvsClient,
-		allocator: allocator,
-	}, nil
+	o.Ctx = ctx
+	o.ovsClient = p.OvsMon.OvsClient
+	o.allocator = allocator
+
+	return o, nil
 }

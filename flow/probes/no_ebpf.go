@@ -21,8 +21,8 @@ package probes
 
 import (
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/probe"
 )
 
 // EBPFProbesHandler describes a flow probe handle in the graph
@@ -47,7 +47,12 @@ func (p *EBPFProbesHandler) Start() {
 func (p *EBPFProbesHandler) Stop() {
 }
 
-// NewEBPFProbesHandler creates a new gopacket probe in the graph
-func NewEBPFProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*EBPFProbesHandler, error) {
+// CaptureTypes supported
+func (p *EBPFProbesHandler) CaptureTypes() []string {
+	return []string{}
+}
+
+// Init initializes a new eBPF probe
+func (p *EBPFProbesHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHandler, error) {
 	return nil, ErrProbeNotCompiled
 }

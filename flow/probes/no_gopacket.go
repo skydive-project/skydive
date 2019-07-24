@@ -22,8 +22,8 @@ package probes
 import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/probe"
 )
 
 // GoPacketProbesHandler describes a flow probe handle in the graph
@@ -48,7 +48,12 @@ func (p *GoPacketProbesHandler) Start() {
 func (p *GoPacketProbesHandler) Stop() {
 }
 
-// NewGoPacketProbesHandler creates a new gopacket probe in the graph
-func NewGoPacketProbesHandler(g *graph.Graph, fta *flow.TableAllocator) (*GoPacketProbesHandler, error) {
+// CaptureTypes supported
+func (p *GoPacketProbesHandler) CaptureTypes() []string {
+	return []string{}
+}
+
+// Init initializes a new GoPacket probe
+func (p *GoPacketProbesHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHandler, error) {
 	return nil, common.ErrNotImplemented
 }

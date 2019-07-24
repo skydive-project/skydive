@@ -47,7 +47,12 @@ func (p *OvsMirrorProbesHandler) Start() {
 func (p *OvsMirrorProbesHandler) Stop() {
 }
 
-// NewOvsMirrorProbesHandler creates a new OVS Mirror probes
-func NewOvsMirrorProbesHandler(g *graph.Graph, tb, fb *probe.Bundle) (*OvsMirrorProbesHandler, error) {
+// CaptureTypes supported
+func (p *OvsMirrorProbesHandler) CaptureTypes() []string {
+	return []string{}
+}
+
+// Init initializes a new OVS Mirror probe
+func (o *OvsMirrorProbesHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHandler, error) {
 	return nil, common.ErrNotImplemented
 }

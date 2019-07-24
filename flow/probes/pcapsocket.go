@@ -25,15 +25,14 @@ import (
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/probe"
 )
 
 // PcapSocketProbe describes a TCP packet listener that inject packets in a flowtable
 type PcapSocketProbe struct {
-	graph     *graph.Graph
+	Ctx       Context
 	state     int64
 	flowTable *flow.Table
 	listener  *net.TCPListener
@@ -43,8 +42,7 @@ type PcapSocketProbe struct {
 
 // PcapSocketProbeHandler describes a Pcap socket probe in the graph
 type PcapSocketProbeHandler struct {
-	graph         *graph.Graph
-	fta           *flow.TableAllocator
+	Ctx           Context
 	addr          *net.TCPAddr
 	wg            sync.WaitGroup
 	portAllocator *common.PortAllocator
@@ -60,14 +58,14 @@ func (p *PcapSocketProbe) run() {
 		conn, err := p.listener.Accept()
 		if err != nil {
 			if atomic.LoadInt64(&p.state) == common.RunningState {
-				logging.GetLogger().Errorf("Error while accepting connection: %s", err)
+				p.Ctx.Logger.Errorf("Error while accepting connection: %s", err)
 			}
 			break
 		}
 
 		feeder, err := flow.NewPcapTableFeeder(conn, packetSeqChan, true, p.bpfFilter)
 		if err != nil {
-			logging.GetLogger().Errorf("Failed to create pcap table feeder: %s", err)
+			p.Ctx.Logger.Errorf("Failed to create pcap table feeder: %s", err)
 			return
 		}
 
@@ -98,14 +96,14 @@ func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Cap
 
 	port, err := p.portAllocator.Allocate(fnc)
 	if err != nil {
-		logging.GetLogger().Errorf("Failed to listen on TCP socket %s: %s", tcpAddr.String(), err)
+		p.Ctx.Logger.Errorf("Failed to listen on TCP socket %s: %s", tcpAddr.String(), err)
 	}
 
 	uuids := flow.UUIDs{NodeTID: tid, CaptureID: capture.UUID}
-	ft := p.fta.Alloc(uuids, tableOptsFromCapture(capture))
+	ft := p.Ctx.FTA.Alloc(uuids, tableOptsFromCapture(capture))
 
 	probe := &PcapSocketProbe{
-		graph:     p.graph,
+		Ctx:       p.Ctx,
 		state:     common.StoppedState,
 		flowTable: ft,
 		listener:  listener,
@@ -132,7 +130,7 @@ func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Cap
 func (p *PcapSocketProbeHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, fp Probe) error {
 	probe := fp.(*PcapSocketProbe)
 
-	p.fta.Release(probe.flowTable)
+	p.Ctx.FTA.Release(probe.flowTable)
 
 	atomic.StoreInt64(&probe.state, common.StoppingState)
 	probe.listener.Close()
@@ -151,11 +149,16 @@ func (p *PcapSocketProbeHandler) Stop() {
 	p.wg.Wait()
 }
 
-// NewPcapSocketProbeHandler creates a new pcap socket probe
-func NewPcapSocketProbeHandler(g *graph.Graph, fta *flow.TableAllocator) (*PcapSocketProbeHandler, error) {
-	listen := config.GetString("agent.flow.pcapsocket.bind_address")
-	minPort := config.GetInt("agent.flow.pcapsocket.min_port")
-	maxPort := config.GetInt("agent.flow.pcapsocket.max_port")
+// CaptureTypes supported
+func (p *PcapSocketProbeHandler) CaptureTypes() []string {
+	return []string{"pcapsocket"}
+}
+
+// Init initializes a new pcap socket probe
+func (p *PcapSocketProbeHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHandler, error) {
+	listen := ctx.Config.GetString("agent.flow.pcapsocket.bind_address")
+	minPort := ctx.Config.GetInt("agent.flow.pcapsocket.min_port")
+	maxPort := ctx.Config.GetInt("agent.flow.pcapsocket.max_port")
 
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", listen, minPort))
 	if err != nil {
@@ -167,10 +170,9 @@ func NewPcapSocketProbeHandler(g *graph.Graph, fta *flow.TableAllocator) (*PcapS
 		return nil, err
 	}
 
-	return &PcapSocketProbeHandler{
-		graph:         g,
-		fta:           fta,
-		addr:          addr,
-		portAllocator: portAllocator,
-	}, nil
+	p.Ctx = ctx
+	p.addr = addr
+	p.portAllocator = portAllocator
+
+	return p, nil
 }

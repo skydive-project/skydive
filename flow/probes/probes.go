@@ -25,6 +25,7 @@ import (
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
@@ -43,6 +44,17 @@ type FlowProbeHandler interface {
 	probe.Handler // inheritance of the probe.Handler interface Start/Stop functions
 	RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error)
 	UnregisterProbe(n *graph.Node, e ProbeEventHandler, p Probe) error
+	CaptureTypes() []string
+	Init(ctx Context, bundle *probe.Bundle) (FlowProbeHandler, error)
+}
+
+// Context defines a context to be used by constructor of probes
+type Context struct {
+	Logger logging.Logger
+	Config config.Config
+	Graph  *graph.Graph
+	FTA    *flow.TableAllocator
+	TB     *probe.Bundle
 }
 
 // ProbeEventHandler used by probes to notify state
@@ -57,12 +69,17 @@ func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocat
 	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket", "dpdk", "ebpf", "ovsmirror", "ovsnetflow"}
 	logging.GetLogger().Infof("Flow probes: %v", list)
 
-	var captureTypes []string
-
 	var handler FlowProbeHandler
 	var err error
 
 	bundle := probe.NewBundle()
+	ctx := Context{
+		Logger: logging.GetLogger(),
+		Config: config.GetConfig(),
+		Graph:  g,
+		FTA:    fta,
+		TB:     tb,
+	}
 
 	for _, t := range list {
 		if bundle.GetHandler(t) != nil {
@@ -71,31 +88,21 @@ func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocat
 
 		switch t {
 		case "pcapsocket":
-			handler, err = NewPcapSocketProbeHandler(g, fta)
-			captureTypes = []string{"pcapsocket"}
+			handler, err = new(PcapSocketProbeHandler).Init(ctx, bundle)
 		case "ovssflow":
-			handler, err = NewOvsSFlowProbesHandler(g, fta, tb)
-			captureTypes = []string{"ovssflow"}
+			handler, err = new(OvsSFlowProbesHandler).Init(ctx, bundle)
 		case "ovsmirror":
-			handler, err = NewOvsMirrorProbesHandler(g, tb, bundle)
-			captureTypes = []string{"ovsmirror"}
+			handler, err = new(OvsMirrorProbesHandler).Init(ctx, bundle)
 		case "gopacket":
-			handler, err = NewGoPacketProbesHandler(g, fta)
-			captureTypes = []string{"afpacket", "pcap"}
+			handler, err = new(GoPacketProbesHandler).Init(ctx, bundle)
 		case "sflow":
-			handler, err = NewSFlowProbesHandler(g, fta)
-			captureTypes = []string{"sflow"}
+			handler, err = new(SFlowProbesHandler).Init(ctx, bundle)
 		case "ovsnetflow":
-			handler, err = NewOvsNetFlowProbesHandler(g, fta, tb)
-			captureTypes = []string{"ovsnetflow"}
+			handler, err = new(OvsNetFlowProbesHandler).Init(ctx, bundle)
 		case "dpdk":
-			if handler, err = NewDPDKProbesHandler(g, fta); err == nil {
-				captureTypes = []string{"dpdk"}
-			}
+			handler, err = new(DPDKProbesHandler).Init(ctx, bundle)
 		case "ebpf":
-			if handler, err = NewEBPFProbesHandler(g, fta); err == nil {
-				captureTypes = []string{"ebpf"}
-			}
+			handler, err = new(EBPFProbesHandler).Init(ctx, bundle)
 		default:
 			err = fmt.Errorf("unknown probe type %s", t)
 		}
@@ -109,7 +116,7 @@ func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocat
 			continue
 		}
 
-		for _, captureType := range captureTypes {
+		for _, captureType := range handler.CaptureTypes() {
 			bundle.AddHandler(captureType, handler)
 		}
 	}
