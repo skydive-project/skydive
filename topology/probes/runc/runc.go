@@ -312,10 +312,12 @@ func (p *ProbeHandler) registerContainer(path string) error {
 	}
 	topology.AddOwnershipLink(p.Ctx.Graph, n, containerNode, nil)
 
+	p.containersLock.Lock()
 	p.containers[path] = &container{
 		namespace: namespace,
 		node:      containerNode,
 	}
+	p.containersLock.Unlock()
 
 	return nil
 }
