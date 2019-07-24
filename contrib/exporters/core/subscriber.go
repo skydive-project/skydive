@@ -34,20 +34,25 @@ import (
 
 // CfgAuthOpts creates the auth options form configuration
 func CfgAuthOpts(cfg *viper.Viper) *shttp.AuthenticationOpts {
-	subscriberUsername := cfg.GetString(CfgRoot + "analyzer.subscriber_username")
-	subscriberPassword := cfg.GetString(CfgRoot + "analyzer.subscriber_password")
+	username := cfg.GetString("analyzer.auth.cluster.username")
+	password := cfg.GetString("analyzer.auth.cluster.password")
 	return &shttp.AuthenticationOpts{
-		Username: subscriberUsername,
-		Password: subscriberPassword,
+		Username: username,
+		Password: password,
 	}
 }
 
 // NewSubscriber returns a new flow subscriber writing to object store
 func NewSubscriber(pipeline *Pipeline, cfg *viper.Viper) (*websocket.StructSpeaker, error) {
-	subscriberURLString := cfg.GetString(CfgRoot + "analyzer.subscriber_url")
+	subscriberURLString := cfg.GetString(CfgRoot + "subscriber.url")
 	subscriberURL, err := url.Parse(subscriberURLString)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to parse subscriber URL: %s", err)
+	}
+
+	namespace := "flow"
+	if captureID := cfg.GetString(CfgRoot + "subscriber.capture_id"); captureID != "" {
+		namespace = namespace + "/" + captureID
 	}
 
 	wsClient, err := config.NewWSClient(common.AnalyzerService, subscriberURL, websocket.ClientOpts{AuthOpts: CfgAuthOpts(cfg)})
@@ -55,7 +60,7 @@ func NewSubscriber(pipeline *Pipeline, cfg *viper.Viper) (*websocket.StructSpeak
 		return nil, fmt.Errorf("Failed to create websocket client: %s", err)
 	}
 	structSpeaker := wsClient.UpgradeToStructSpeaker()
-	structSpeaker.AddStructMessageHandler(pipeline, []string{"flow"})
+	structSpeaker.AddStructMessageHandler(pipeline, []string{namespace})
 
 	return structSpeaker, nil
 }
