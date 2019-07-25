@@ -396,10 +396,12 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
 
 	if ft.Opts.RawPacketLimit != 0 && flow.RawPacketsCaptured < ft.Opts.RawPacketLimit {
 		flow.RawPacketsCaptured++
+		linkType, _ := flow.LinkType()
 		data := &RawPacket{
 			Timestamp: common.UnixMillis(packet.GoPacket.Metadata().CaptureInfo.Timestamp),
 			Index:     flow.RawPacketsCaptured,
 			Data:      packet.Data,
+			LinkType:  linkType,
 		}
 		flow.LastRawPackets = append(flow.LastRawPackets, data)
 	}

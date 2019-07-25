@@ -40,7 +40,7 @@ type RawPacketsGremlinTraversalStep struct {
 // RawPacketsTraversalStep rawpackets step
 type RawPacketsTraversalStep struct {
 	GraphTraversal *traversal.GraphTraversal
-	rawPackets     map[string]*flow.RawPackets
+	rawPackets     map[string][]*flow.RawPacket
 	error          error
 }
 
@@ -129,28 +129,26 @@ func (r *RawPacketsTraversalStep) BPF(ctx traversal.StepContext, s ...interface{
 	// While very improbable, we may have different link types so we keep
 	// a map of BPF filters for the link types
 	bpfFilters := make(map[layers.LinkType]*flow.BPF)
-	rawPackets := make(map[string]*flow.RawPackets)
+	rawPackets := make(map[string][]*flow.RawPacket)
 	for key, value := range r.rawPackets {
 		var err error
-		bpf, ok := bpfFilters[value.LinkType]
-		if !ok {
-			bpf, err = flow.NewBPF(value.LinkType, flow.DefaultCaptureLength, filter)
-			if err != nil {
-				return &RawPacketsTraversalStep{error: err}
-			}
-			bpfFilters[value.LinkType] = bpf
-		}
 
 		var filteredPackets []*flow.RawPacket
-		for _, packet := range value.RawPackets {
+		for _, packet := range value {
+			bpf, ok := bpfFilters[packet.LinkType]
+			if !ok {
+				bpf, err = flow.NewBPF(packet.LinkType, flow.DefaultCaptureLength, filter)
+				if err != nil {
+					return &RawPacketsTraversalStep{error: err}
+				}
+				bpfFilters[packet.LinkType] = bpf
+			}
+
 			if bpf.Matches(packet.Data) {
 				filteredPackets = append(filteredPackets, packet)
 			}
 		}
-		rawPackets[key] = &flow.RawPackets{
-			LinkType:   value.LinkType,
-			RawPackets: filteredPackets,
-		}
+		rawPackets[key] = filteredPackets
 	}
 
 	return &RawPacketsTraversalStep{GraphTraversal: r.GraphTraversal, rawPackets: rawPackets}

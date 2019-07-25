@@ -140,12 +140,12 @@ func (m *metricDoc) metric() *flow.FlowMetric {
 	}
 }
 
-func rawpacketToDoc(rid string, linkType layers.LinkType, r *flow.RawPacket) *rawpacketDoc {
+func rawpacketToDoc(rid string, r *flow.RawPacket) *rawpacketDoc {
 	return &rawpacketDoc{
 		Class:     "FlowRawPacket",
 		Type:      "d",
 		Flow:      rid,
-		LinkType:  linkType,
+		LinkType:  r.LinkType,
 		Index:     r.Index,
 		Timestamp: r.Timestamp,
 		Data:      r.Data,
@@ -157,6 +157,7 @@ func (r *rawpacketDoc) rawpacket() *flow.RawPacket {
 		Index:     r.Index,
 		Timestamp: r.Timestamp,
 		Data:      r.Data,
+		LinkType:  r.LinkType,
 	}
 }
 
@@ -201,12 +202,8 @@ func (c *Storage) StoreFlows(flows []*flow.Flow) error {
 			}
 		}
 
-		linkType, err := flow.LinkType()
-		if err != nil {
-			return fmt.Errorf("Error while indexing: %s", err)
-		}
 		for _, r := range flow.LastRawPackets {
-			rd := rawpacketToDoc(data.Result[0].RID, linkType, r)
+			rd := rawpacketToDoc(data.Result[0].RID, r)
 			raw, err := json.Marshal(rd)
 			if err != nil {
 				return fmt.Errorf("Error while pushing raw packet %s: %s", flow.UUID, err)
@@ -249,7 +246,7 @@ func (c *Storage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error) {
 }
 
 // SearchRawPackets searches flow raw packets matching filters in the database
-func (c *Storage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filters.Filter) (map[string]*flow.RawPackets, error) {
+func (c *Storage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filters.Filter) (map[string][]*flow.RawPacket, error) {
 	filter := fsq.Filter
 	sql := "SELECT LinkType, Timestamp, Index, Data, Flow.UUID FROM FlowRawPacket"
 
@@ -287,17 +284,12 @@ func (c *Storage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filter
 		return nil, err
 	}
 
-	rawpackets := make(map[string]*flow.RawPackets)
+	rawpackets := make(map[string][]*flow.RawPacket)
 	for _, doc := range data.Result {
 		r := doc.rawpacket()
-		if fr, ok := rawpackets[doc.Flow]; ok {
-			fr.RawPackets = append(fr.RawPackets, r)
-		} else {
-			rawpackets[doc.Flow] = &flow.RawPackets{
-				LinkType:   doc.LinkType,
-				RawPackets: []*flow.RawPacket{r},
-			}
-		}
+		fr := rawpackets[doc.Flow]
+		fr = append(fr, r)
+		rawpackets[doc.Flow] = fr
 	}
 
 	return rawpackets, nil

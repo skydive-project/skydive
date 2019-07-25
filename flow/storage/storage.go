@@ -36,6 +36,6 @@ type Storage interface {
 	StoreFlows(flows []*flow.Flow) error
 	SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error)
 	SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]common.Metric, error)
-	SearchRawPackets(fsq filters.SearchQuery, packetFilter *filters.Filter) (map[string]*flow.RawPackets, error)
+	SearchRawPackets(fsq filters.SearchQuery, packetFilter *filters.Filter) (map[string][]*flow.RawPacket, error)
 	Stop()
 }

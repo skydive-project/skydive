@@ -20,9 +20,7 @@ package elasticsearch
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 
-	"github.com/google/gopacket/layers"
 	"github.com/olivere/elastic"
 
 	"github.com/skydive-project/skydive/common"
@@ -174,7 +172,6 @@ type metricRecord struct {
 
 // easyjson:json
 type rawpacketRecord struct {
-	LinkType layers.LinkType
 	*flow.RawPacket
 	Flow *embeddedFlow `json:"Flow"`
 }
@@ -213,13 +210,8 @@ func (c *Storage) StoreFlows(flows []*flow.Flow) error {
 			}
 		}
 
-		linkType, err := f.LinkType()
-		if err != nil {
-			return fmt.Errorf("Error while indexing: %s", err)
-		}
 		for _, r := range f.LastRawPackets {
 			record := &rawpacketRecord{
-				LinkType:  linkType,
 				RawPacket: r,
 				Flow:      eflow,
 			}
@@ -243,7 +235,7 @@ func (c *Storage) sendRequest(typ string, query elastic.Query, pagination filter
 }
 
 // SearchRawPackets searches flow raw packets matching filters in the database
-func (c *Storage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filters.Filter) (map[string]*flow.RawPackets, error) {
+func (c *Storage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filters.Filter) (map[string][]*flow.RawPacket, error) {
 	if !c.client.Started() {
 		return nil, errors.New("Storage is not yet started")
 	}
@@ -260,7 +252,7 @@ func (c *Storage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filter
 		return nil, err
 	}
 
-	rawpackets := make(map[string]*flow.RawPackets)
+	rawpackets := make(map[string][]*flow.RawPacket)
 	if len(out.Hits.Hits) > 0 {
 		for _, d := range out.Hits.Hits {
 			var record rawpacketRecord
@@ -268,14 +260,9 @@ func (c *Storage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filter
 				return nil, err
 			}
 
-			if fr, ok := rawpackets[*record.Flow.UUID]; ok {
-				fr.RawPackets = append(fr.RawPackets, record.RawPacket)
-			} else {
-				rawpackets[*record.Flow.UUID] = &flow.RawPackets{
-					LinkType:   record.LinkType,
-					RawPackets: []*flow.RawPacket{record.RawPacket},
-				}
-			}
+			fr := rawpackets[*record.Flow.UUID]
+			fr = append(fr, record.RawPacket)
+			rawpackets[*record.Flow.UUID] = fr
 		}
 	}
 

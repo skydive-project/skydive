@@ -98,6 +98,7 @@ message RawPacket {
   int64 Timestamp = 1;
   int64 Index = 2;
   bytes Data = 3;
+  uint32 LinkType = 4 [(gogoproto.casttype) = "github.com/google/gopacket/layers.LinkType"];
 }
 
 message IPMetric {
