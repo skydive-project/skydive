@@ -600,7 +600,7 @@ func (f *FlowTraversalStep) RawPackets(ctx traversal.StepContext) *RawPacketsTra
 		return &RawPacketsTraversalStep{error: f.error}
 	}
 
-	rawPackets := make(map[string]*flow.RawPackets)
+	rawPackets := make(map[string][]*flow.RawPacket)
 
 	context := f.GraphTraversal.Graph.GetContext()
 	if context.TimeSlice != nil {
@@ -634,16 +634,8 @@ func (f *FlowTraversalStep) RawPackets(ctx traversal.StepContext) *RawPacketsTra
 		}
 	} else {
 		for _, fl := range f.flowset.Flows {
-			linkType, err := fl.LinkType()
-			if err != nil {
-				return &RawPacketsTraversalStep{error: err}
-			}
-
 			if len(fl.LastRawPackets) > 0 {
-				rawPackets[fl.UUID] = &flow.RawPackets{
-					LinkType:   linkType,
-					RawPackets: fl.LastRawPackets,
-				}
+				rawPackets[fl.UUID] = fl.LastRawPackets
 			}
 		}
 	}

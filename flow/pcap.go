@@ -18,7 +18,6 @@
 package flow
 
 import (
-	"errors"
 	"io"
 	"sync"
 	"sync/atomic"
@@ -155,12 +154,13 @@ func (p *PcapWriter) WriteRawPacket(r *RawPacket) error {
 
 // WriteRawPackets writes a RawPackets iterating over the RawPackets and using
 // WriteRawPacket for each.
-func (p *PcapWriter) WriteRawPackets(fr *RawPackets) error {
-	if fr.LinkType != layers.LinkTypeEthernet {
-		return errors.New("Support only Ethernet link type for the moment")
-	}
+func (p *PcapWriter) WriteRawPackets(fr []*RawPacket) error {
 
-	for _, r := range fr.RawPackets {
+	for _, r := range fr {
+		if r.LinkType != layers.LinkTypeEthernet {
+			logging.GetLogger().Errorf("Support only Ethernet link type for the moment")
+			continue
+		}
 		if err := p.WriteRawPacket(r); err != nil {
 			return err
 		}

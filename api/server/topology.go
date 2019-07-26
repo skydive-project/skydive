@@ -191,7 +191,7 @@ func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 
 			pw := flow.NewPcapWriter(&b)
 			for _, pf := range values {
-				m := pf.(map[string]*flow.RawPackets)
+				m := pf.(map[string][]*flow.RawPacket)
 				for _, fr := range m {
 					if err = pw.WriteRawPackets(fr); err != nil {
 						writeError(w, http.StatusNotAcceptable, err)

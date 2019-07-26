@@ -85,12 +85,6 @@ type PacketSequence struct {
 	Packets []*Packet
 }
 
-// RawPackets embeds flow RawPacket array with the associated link type
-type RawPackets struct {
-	LinkType   layers.LinkType
-	RawPackets []*RawPacket
-}
-
 // LayerKeyMode defines what are the layers used for the flow key calculation
 type LayerKeyMode int
 
