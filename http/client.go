@@ -91,8 +91,12 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 	if header != nil {
 		req.Header = header
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Add("Accept-Encoding", "gzip")
+	if req.Header.Get("Content-Type") == "" {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	if req.Header.Get("Accept-Encoding") == "" {
+		req.Header.Add("Accept-Encoding", "gzip")
+	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -168,7 +172,7 @@ func (c *CrudClient) Create(resource string, value interface{}, opts *CreateOpti
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode >= http.StatusBadRequest {
 		return fmt.Errorf("Failed to create %s, %s: %s", resource, resp.Status, readBody(resp))
 	}
 

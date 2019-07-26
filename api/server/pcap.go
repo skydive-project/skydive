@@ -68,7 +68,7 @@ func (p *PcapAPI) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest
 	flowtable.Stop()
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (p *PcapAPI) registerEndpoints(r *shttp.Server, authBackend shttp.AuthenticationBackend) {

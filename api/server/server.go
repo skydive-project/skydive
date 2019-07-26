@@ -20,6 +20,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -38,6 +39,9 @@ import (
 	"github.com/skydive-project/skydive/validator"
 	"github.com/skydive-project/skydive/version"
 )
+
+// ErrDuplicatedResource is returned when a resource is duplicated
+var ErrDuplicatedResource = errors.New("Duplicated resource")
 
 // Server object are created once for each ServiceType (agent or analyzer)
 type Server struct {
@@ -161,7 +165,10 @@ func (a *Server) RegisterAPIHandler(handler Handler, authBackend shttp.Authentic
 					}
 				}
 
-				if err := handler.Create(resource, &createOpts); err != nil {
+				if err := handler.Create(resource, &createOpts); err == ErrDuplicatedResource {
+					writeError(w, http.StatusConflict, err)
+					return
+				} else if err != nil {
 					writeError(w, http.StatusBadRequest, err)
 					return
 				}
@@ -173,7 +180,7 @@ func (a *Server) RegisterAPIHandler(handler Handler, authBackend shttp.Authentic
 				}
 
 				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-				w.WriteHeader(http.StatusOK)
+				w.WriteHeader(http.StatusCreated)
 				if _, err := w.Write(data); err != nil {
 					logging.GetLogger().Criticalf("Failed to create %s: %s", name, err)
 				}
@@ -196,7 +203,11 @@ func (a *Server) RegisterAPIHandler(handler Handler, authBackend shttp.Authentic
 				}
 
 				if err := handler.Delete(id); err != nil {
-					writeError(w, http.StatusBadRequest, err)
+					if err, ok := err.(etcd.Error); ok && err.Code == etcd.ErrorCodeKeyNotFound {
+						writeError(w, http.StatusNotFound, err)
+					} else {
+						writeError(w, http.StatusBadRequest, err)
+					}
 					return
 				}
 

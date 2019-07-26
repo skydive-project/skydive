@@ -1381,8 +1381,8 @@ func TestPcapInject(t *testing.T) {
 				return err
 			}
 
-			if resp.StatusCode != 200 {
-				return fmt.Errorf("Should get 200 status code, got %d", resp.StatusCode)
+			if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+				return fmt.Errorf("Should get 2xx status code, got %d", resp.StatusCode)
 			}
 
 			return nil

@@ -62,7 +62,7 @@ var PcapCmd = &cobra.Command{
 			exitOnError(err)
 		}
 
-		if resp.StatusCode == http.StatusOK {
+		if resp.StatusCode == http.StatusAccepted {
 			fmt.Printf("%s was successfully imported\n", pcapTrace)
 		} else {
 			content, _ := ioutil.ReadAll(resp.Body)

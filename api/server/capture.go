@@ -133,7 +133,7 @@ func (c *CaptureAPIHandler) Create(r types.Resource, opts *CreateOptions) error 
 
 		if sameCaptureType && sameGremlin {
 			if !supportsMulti || sameBPFFilter {
-				return fmt.Errorf("Duplicated capture, uuid=%s", resource.UUID)
+				return ErrDuplicatedResource
 			}
 		}
 	}

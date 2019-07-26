@@ -136,7 +136,7 @@ func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 		return
 	}
 
-	resource := types.TopologyParam{}
+	resource := types.TopologyParams{}
 	data, _ := ioutil.ReadAll(r.Body)
 	if len(data) != 0 {
 		if err := json.Unmarshal(data, &resource); err != nil {

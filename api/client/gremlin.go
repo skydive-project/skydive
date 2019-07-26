@@ -47,7 +47,7 @@ func (g *GremlinQueryHelper) Request(query interface{}, header http.Header) (*ht
 		return nil, err
 	}
 
-	gq := types.TopologyParam{GremlinQuery: gremlin.NewQueryStringFromArgument(query).String()}
+	gq := types.TopologyParams{GremlinQuery: gremlin.NewQueryStringFromArgument(query).String()}
 	s, err := json.Marshal(gq)
 	if err != nil {
 		return nil, err
