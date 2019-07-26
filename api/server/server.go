@@ -15,6 +15,25 @@
  *
  */
 
+// Package server Skydive API
+//
+// The Skydive REST API allows to communicate with a Skydive analyzer.
+//
+//     Schemes: http, https
+//     Host: localhost:8082
+//     BasePath: /api
+//     Version: 0.24.0
+//     License: Apache http://opensource.org/licenses/Apache-2.0
+//     Contact: Skydive mailing list <skydive-dev@redhat.com>
+//
+//     Consumes:
+//     - application/json
+//
+//     Produces:
+//     - application/json
+//     - text/plain
+//
+// swagger:meta
 package server
 
 import (
@@ -51,9 +70,13 @@ type Server struct {
 }
 
 // Info for each host describes his API version and service (agent or analyzer)
+// swagger:model
 type Info struct {
-	Host    string
+	// Server host ID
+	Host string
+	// API version
 	Version string
+	// Service type
 	Service string
 }
 
@@ -230,6 +253,32 @@ func (a *Server) RegisterAPIHandler(handler Handler, authBackend shttp.Authentic
 }
 
 func (a *Server) addAPIRootRoute(service common.Service, authBackend shttp.AuthenticationBackend) {
+	// swagger:operation GET / getApi
+	//
+	// Get API version
+	//
+	// ---
+	// summary: Get API info
+	//
+	// tags:
+	// - API Info
+	//
+	// consumes:
+	// - application/json
+	//
+	// produces:
+	// - application/json
+	//
+	// schemes:
+	// - http
+	// - https
+	//
+	// responses:
+	//   200:
+	//     description: API info
+	//     schema:
+	//       $ref: '#/definitions/Info'
+
 	info := Info{
 		Version: version.Version,
 		Service: string(service.Type),

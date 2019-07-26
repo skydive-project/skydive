@@ -1,3 +1,6 @@
+//go:generate sh -c "renderizer --name=workflow --resource=workflow --type=Workflow --title=Workflow --article=a swagger_operations.tmpl > workflow_swagger.go"
+//go:generate sh -c "renderizer --name=workflow --resource=workflow --type=Workflow --title=Workflow --article=a swagger_definitions.tmpl > workflow_swagger.json"
+
 /*
  * Copyright (C) 2018 Red Hat, Inc.
  *

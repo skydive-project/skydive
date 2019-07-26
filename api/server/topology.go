@@ -219,6 +219,70 @@ func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 }
 
 func (t *TopologyAPI) registerEndpoints(r *shttp.Server, authBackend shttp.AuthenticationBackend) {
+	// swagger:operation GET /topology getTopology
+	//
+	// Get topology
+	//
+	// ---
+	// summary: Get topology
+	//
+	// tags:
+	// - topology
+	//
+	// consumes:
+	// - application/json
+	//
+	// produces:
+	// - application/json
+	// - text/vnd.graphviz
+	//
+	// schemes:
+	// - http
+	// - https
+	//
+	// responses:
+	//   200:
+	//     description: topology
+	//     schema:
+	//       type: object
+
+	// swagger:operation POST /topology searchTopology
+	//
+	// Search topology
+	//
+	// ---
+	// summary: Search topology
+	//
+	// tags:
+	// - topology
+	//
+	// consumes:
+	// - application/json
+	//
+	// produces:
+	// - application/json
+	// - text/vnd.graphviz
+	// - application/vnd.tcpdump.pcap
+	//
+	// schemes:
+	// - http
+	// - https
+	//
+	// parameters:
+	//   - in: body
+	//     name: params
+	//     required: true
+	//     schema:
+	//       $ref: '#/definitions/TopologyParams'
+	//
+	// responses:
+	//   200:
+	//     description: query result
+	//     schema:
+	//       $ref: '#/definitions/AnyValue'
+	//   204:
+	//     description: empty query
+
 	routes := []shttp.Route{
 		{
 			Name:        "TopologiesIndex",

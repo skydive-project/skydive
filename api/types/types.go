@@ -15,6 +15,9 @@
  *
  */
 
+// Package types defines the API resource types
+//
+// swagger:meta
 package types
 
 import (
@@ -37,6 +40,7 @@ type Resource interface {
 
 // BasicResource is a resource with a unique identifier
 // easyjson:json
+// swagger:ignore
 type BasicResource struct {
 	UUID string `yaml:"UUID"`
 }
@@ -56,16 +60,28 @@ func (b *BasicResource) GetName() string {
 	return "BasicResource"
 }
 
-// Alert is a set of parameters, the Alert Action will Trigger according to its Expression.
+// Alert object
+//
+// Alerts provide a way to be notified when a Gremlin expression
+// is evaluated to true.
+//
 // easyjson:json
+// swagger:model Alert
 type Alert struct {
+	// swagger:allOf
 	BasicResource `yaml:",inline"`
-	Name          string `json:",omitempty" yaml:"Name"`
-	Description   string `json:",omitempty" yaml:"Description"`
-	Expression    string `json:",omitempty" valid:"nonzero" yaml:"Expression"`
-	Action        string `json:",omitempty" valid:"regexp=^(|http://|https://|file://).*$" yaml:"Action"`
-	Trigger       string `json:",omitempty" valid:"regexp=^(graph|duration:.+|)$" yaml:"Trigger"`
-	CreateTime    time.Time
+	// Alert name
+	Name string `json:",omitempty" yaml:"Name"`
+	// Alert description
+	Description string `json:",omitempty" yaml:"Description"`
+	// Gremlin or JavaScript expression evaluated to trigger the alarm
+	Expression string `json:",omitempty" valid:"nonzero" yaml:"Expression"`
+	// Action to execute when the alert is triggered.
+	// Can be either an empty string, or a URL (use 'file://' for local scripts)
+	Action string `json:",omitempty" valid:"regexp=^(|http://|https://|file://).*$" yaml:"Action"`
+	// Event that triggers the alert evaluation
+	Trigger    string `json:",omitempty" valid:"regexp=^(graph|duration:.+|)$" yaml:"Trigger"`
+	CreateTime time.Time
 }
 
 // GetName returns the resource name
@@ -80,28 +96,54 @@ func NewAlert() *Alert {
 	}
 }
 
-// Capture describes a capture API
+// Capture object
+//
+// Captures provide a way to capture network traffic on the nodes
+// matching a Gremlin expression.
+//
 // easyjson:json
+// swagger:model Capture
 type Capture struct {
-	BasicResource   `yaml:",inline"`
-	GremlinQuery    string           `json:"GremlinQuery,omitempty" valid:"isGremlinExpr" yaml:"GremlinQuery"`
-	BPFFilter       string           `json:"BPFFilter,omitempty" valid:"isBPFFilter" yaml:"BPFFilter"`
-	Name            string           `json:"Name,omitempty" yaml:"Name"`
-	Description     string           `json:"Description,omitempty" yaml:"Description"`
-	Type            string           `json:"Type,omitempty" valid:"isValidCaptureType" yaml:"Type"`
-	Count           int              `json:"Count" yaml:"Count"`
-	Port            int              `json:"Port,omitempty" yaml:"Port"`
-	SamplingRate    uint32           `json:"SamplingRate" yaml:"SamplingRate"`
-	PollingInterval uint32           `json:"PollingInterval" yaml:"PollingInterval"`
-	RawPacketLimit  int              `json:"RawPacketLimit,omitempty" valid:"isValidRawPacketLimit" yaml:"RawPacketLimit"`
-	HeaderSize      int              `json:"HeaderSize,omitempty" valid:"isValidCaptureHeaderSize" yaml:"HeaderSize"`
-	ExtraTCPMetric  bool             `json:"ExtraTCPMetric" yaml:"ExtraTCPMetric"`
-	IPDefrag        bool             `json:"IPDefrag" yaml:"IPDefrag"`
-	ReassembleTCP   bool             `json:"ReassembleTCP" yaml:"ReassembleTCP"`
-	LayerKeyMode    string           `json:"LayerKeyMode,omitempty" valid:"isValidLayerKeyMode" yaml:"LayerKeyMode"`
-	ExtraLayers     flow.ExtraLayers `json:"ExtraLayers,omitempty" yaml:"ExtraLayers"`
-	Target          string           `json:"Target,omitempty" valid:"isValidAddress" yaml:"Target"`
-	TargetType      string           `json:"TargetType,omitempty" yaml:"TargetType"`
+	// swagger:allOf
+	BasicResource `yaml:",inline"`
+	// Gremlin Query
+	// required: true
+	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr" yaml:"GremlinQuery"`
+	// BPF filter
+	BPFFilter string `json:"BPFFilter,omitempty" valid:"isBPFFilter" yaml:"BPFFilter"`
+	// Capture name
+	Name string `json:"Name,omitempty" yaml:"Name"`
+	// Capture description
+	Description string `json:"Description,omitempty" yaml:"Description"`
+	// Capture type. Can be afpacket, pcap, ebpf, sflow, pcapsocket, ovsmirror, dpdk, ovssflow or ovsnetflow
+	Type string `json:"Type,omitempty" valid:"isValidCaptureType" yaml:"Type"`
+	// Number of active captures
+	// swagger:ignore
+	Count int `json:"Count" yaml:"Count"`
+	// SFlow port
+	Port int `json:"Port,omitempty" yaml:"Port"`
+	// Sampling rate for SFlow flows. 0: no flow samples
+	SamplingRate uint32 `json:"SamplingRate" yaml:"SamplingRate"`
+	// Polling interval for SFlow counters, 0: no counter samples
+	PollingInterval uint32 `json:"PollingInterval" yaml:"PollingInterval"`
+	// Maximum number of raw packets captured, 0: no packet, -1: unlimited
+	RawPacketLimit int `json:"RawPacketLimit,omitempty" valid:"isValidRawPacketLimit" yaml:"RawPacketLimit"`
+	// Packet header size to consider
+	HeaderSize int `json:"HeaderSize,omitempty" valid:"isValidCaptureHeaderSize" yaml:"HeaderSize"`
+	// Add additional TCP metrics to flows
+	ExtraTCPMetric bool `json:"ExtraTCPMetric" yaml:"ExtraTCPMetric"`
+	// Defragment IPv4 packets
+	IPDefrag bool `json:"IPDefrag" yaml:"IPDefrag"`
+	// Reassemble TCP packets
+	ReassembleTCP bool `json:"ReassembleTCP" yaml:"ReassembleTCP"`
+	// First layer used by flow key calculation, L2 or L3
+	LayerKeyMode string `json:"LayerKeyMode,omitempty" valid:"isValidLayerKeyMode" yaml:"LayerKeyMode"`
+	// List of extra layers to be added to the flow, available: DNS|DHCPv4|VRRP
+	ExtraLayers flow.ExtraLayers `json:"ExtraLayers,omitempty" yaml:"ExtraLayers"`
+	// sFlow/NetFlow target, if empty the agent will be used
+	Target string `json:"Target,omitempty" valid:"isValidAddress" yaml:"Target"`
+	// target type (netflowv5, erspanv1), ignored in case of sFlow/NetFlow capture
+	TargetType string `json:"TargetType,omitempty" yaml:"TargetType"`
 }
 
 // GetName returns the resource name
@@ -117,15 +159,25 @@ func NewCapture(query string, bpfFilter string) *Capture {
 	}
 }
 
-// EdgeRule describes a edge rule
+// EdgeRule object
+//
+// Edge rules allow the dynamic creation of links between nodes of the graph.
+//
 // easyjson:json
+// swagger:model
 type EdgeRule struct {
+	// swagger:allOf
 	BasicResource `yaml:",inline"`
-	Name          string         `yaml:"Name"`
-	Description   string         `yaml:"Description"`
-	Src           string         `valid:"isGremlinExpr" yaml:"Src"`
-	Dst           string         `valid:"isGremlinExpr" yaml:"Dst"`
-	Metadata      graph.Metadata `yaml:"Metadata"`
+	// Edge rule name
+	Name string `yaml:"Name"`
+	// Edge rule description
+	Description string `yaml:"Description"`
+	// Gremlin expression of the edges source nodes
+	Src string `valid:"isGremlinExpr" yaml:"Src"`
+	// Gremlin expression of the edges destination nodes
+	Dst string `valid:"isGremlinExpr" yaml:"Dst"`
+	// Metadata of the edges to create
+	Metadata graph.Metadata `yaml:"Metadata"`
 }
 
 // GetName returns the resource name
@@ -141,15 +193,25 @@ func (e *EdgeRule) Validate() error {
 	return schemaValidator.ValidateEdge(edge)
 }
 
-// NodeRule describes a node rule
+// NodeRule object
+//
+// Node rules allow the dynamic creation of nodes in the graph.
+//
 // easyjson:json
+// swagger:model
 type NodeRule struct {
+	// swagger:allOf
 	BasicResource `yaml:",inline"`
-	Name          string         `yaml:"Name"`
-	Description   string         `yaml:"Description"`
-	Metadata      graph.Metadata `yaml:"Metadata"`
-	Action        string         `valid:"regexp=^(create|update)$" yaml:"Action"`
-	Query         string         `valid:"isGremlinOrEmpty" yaml:"Query"`
+	// Node rule name
+	Name string `yaml:"Name"`
+	// Node rule description
+	Description string `yaml:"Description"`
+	// Metadata of the nodes to create
+	Metadata graph.Metadata `yaml:"Metadata"`
+	// 'create' to create nodes, 'update' to updates nodes
+	Action string `valid:"regexp=^(create|update)$" yaml:"Action"`
+	// Gremlin expression of the nodes to update
+	Query string `valid:"isGremlinOrEmpty" yaml:"Query"`
 }
 
 // GetName returns the resource name
@@ -175,7 +237,9 @@ func (n *NodeRule) Validate() error {
 
 // PacketInjection packet injector API parameters
 // easyjson:json
+// swagger:model
 type PacketInjection struct {
+	// swagger:allOf
 	BasicResource    `yaml:",inline"`
 	Src              string `yaml:"Src"`
 	Dst              string `yaml:"Dst"`
@@ -211,14 +275,16 @@ func (pi *PacketInjection) Validate() error {
 	return nil
 }
 
-// TopologyParam topology API parameter
+// TopologyParams topology query parameters
 // easyjson:json
-type TopologyParam struct {
+// swagger:model
+type TopologyParams struct {
 	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr" yaml:"GremlinQuery"`
 }
 
 // WorkflowChoice describes one value within a choice
 // easyjson:json
+// swagger:model
 type WorkflowChoice struct {
 	Value       string `yaml:"Value"`
 	Description string `yaml:"Description"`
@@ -226,6 +292,7 @@ type WorkflowChoice struct {
 
 // WorkflowParam describes a workflow parameter
 // easyjson:json
+// swagger:model
 type WorkflowParam struct {
 	Name        string           `yaml:"Name"`
 	Description string           `yaml:"Description"`
@@ -234,19 +301,30 @@ type WorkflowParam struct {
 	Values      []WorkflowChoice `yaml:"Values"`
 }
 
-// Workflow describes a workflow
+// Workflow object
+//
+// Workflow allows to automate actions using JavaScript.
+//
 // easyjson:json
+// swagger:model
 type Workflow struct {
+	// swagger:allOf
 	BasicResource `yaml:",inline"`
-	Name          string          `yaml:"Name" valid:"nonzero"`
-	Title         string          `yaml:"Title"`
-	Abstract      string          `yaml:"Abstract"`
-	Description   string          `yaml:"Description"`
-	Parameters    []WorkflowParam `yaml:"Parameters"`
-	Source        string          `valid:"isValidWorkflow" yaml:"Source"`
+	// Workflow name
+	Name string `yaml:"Name" valid:"nonzero"`
+	// Workflow title
+	Title string `yaml:"Title"`
+	// Workflow abstract
+	Abstract string `yaml:"Abstract"`
+	// Workflow description
+	Description string `yaml:"Description"`
+	// Workflow parameters
+	Parameters []WorkflowParam `yaml:"Parameters"`
+	Source     string          `valid:"isValidWorkflow" yaml:"Source"`
 }
 
 // WorkflowCall describes workflow call
+// swagger:model
 type WorkflowCall struct {
 	Params []interface{}
 }

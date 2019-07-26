@@ -184,7 +184,7 @@ func addCreateNodeRuleFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&nodeName, "node-name", "", "", "node name")
 	cmd.Flags().StringVarP(&nodeType, "node-type", "", "", "node type")
 	cmd.Flags().StringVarP(&metadata, "metadata", "", "", "node metadata, key value pairs. 'k1=v1, k2=v2'")
-	cmd.Flags().StringVarP(&query, "query", "", "", "gremlin query")
+	cmd.Flags().StringVarP(&query, "query", "", "", "gremlin query of the nodes to update")
 	cmd.Flags().StringVarP(&action, "action", "", "", "action: create or update")
 }
 

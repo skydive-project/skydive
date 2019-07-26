@@ -35,6 +35,35 @@ func (c *configAPI) configGet(w http.ResponseWriter, r *auth.AuthenticatedReques
 }
 
 func (c *configAPI) registerEndpoints(r *shttp.Server, authBackend shttp.AuthenticationBackend) {
+	// swagger:operation GET /config/{key} getConfig
+	//
+	// Get configuration value
+	//
+	// ---
+	// summary: Get configuration
+	//
+	// tags:
+	// - Config
+	//
+	// produces:
+	// - application/json
+	//
+	// schemes:
+	// - http
+	// - https
+	//
+	// parameters:
+	// - name: key
+	//   in: path
+	//   required: true
+	//   type: string
+	//
+	// responses:
+	//   200:
+	//     description: configuration value
+	//     schema:
+	//       $ref: '#/definitions/AnyValue'
+
 	routes := []shttp.Route{
 		{
 			Name:        "ConfigGet",

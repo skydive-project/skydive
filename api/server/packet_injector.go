@@ -1,3 +1,6 @@
+//go:generate sh -c "renderizer --name=injection --resource=injectpacket --type=PacketInjection --title='Injection' --article=an swagger_operations.tmpl > packet_injector_swagger.go"
+//go:generate sh -c "renderizer --name=injection --resource=injectpacket --type=PacketInjection --title='Injection' swagger_definitions.tmpl > packet_injector_swagger.json"
+
 /*
  * Copyright (C) 2016 Red Hat, Inc.
  *

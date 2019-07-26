@@ -210,6 +210,39 @@ func (s *Server) serveLoginHandlerFunc(authBackend shttp.AuthenticationBackend) 
 
 // RegisterLoginRoute registers the login route with the provided auth backend
 func (s *Server) RegisterLoginRoute(authBackend shttp.AuthenticationBackend) {
+	// swagger:operation POST /login login
+	//
+	// Login
+	//
+	// ---
+	// summary: Login
+	//
+	// tags:
+	// - Login
+	//
+	// consumes:
+	// - application/x-www-form-urlencoded
+	//
+	// schemes:
+	// - http
+	// - https
+	//
+	// parameters:
+	// - name: username
+	//   in: formData
+	//   required: true
+	//   type: string
+	// - name: password
+	//   in: formData
+	//   required: true
+	//   type: string
+	//
+	// responses:
+	//   200:
+	//     description: Authentication successful
+	//   401:
+	//     description: Unauthorized
+
 	s.httpServer.Router.HandleFunc("/login", s.serveLoginHandlerFunc(authBackend))
 }
 

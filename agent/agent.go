@@ -89,7 +89,11 @@ func NewAnalyzerStructClientPool(authOpts *shttp.AuthenticationOpts) (*ws.Struct
 	return pool, nil
 }
 
-// Status represents the status of an agent
+// Status agent object
+//
+// Status describes the status of an agent
+//
+// swagger:model AgentStatus
 type Status struct {
 	Clients        map[string]ws.ConnStatus
 	Analyzers      map[string]pod.ConnStatus
