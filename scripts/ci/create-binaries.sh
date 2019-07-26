@@ -13,7 +13,6 @@ fi
 set -v
 set -e
 
-BINARIES_REPO=https://github.com/skydive-project/skydive-binaries.git
 BUILD_TAG=$(date +%Y-%m-%d).${BUILD_NUMBER}
 
 dir="$(dirname "$0")"
@@ -23,9 +22,14 @@ cd ${GOPATH}/src/github.com/skydive-project/skydive
 echo "--- BINARIES ---"
 make static WITH_EBPF=true
 git reset --hard
-git remote add binaries ${BINARIES_REPO}
-git fetch binaries
-git checkout -b jenkins-builds binaries/jenkins-builds
+
+cd /tmp
+rm -rf skydive-binaries
+git clone https://github.com/skydive-project/skydive-binaries.git
+cd /tmp/skydive-binaries
+
+git lfs install
+
 git config --global user.email "builds@skydive.network"
 git config --global user.name "Skydive CI"
 cp ${GOPATH}/bin/skydive skydive-latest

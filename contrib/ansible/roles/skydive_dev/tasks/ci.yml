@@ -10,5 +10,6 @@
      - ansible
      - dnf-utils
      - manifest-tool
+     - git-lfs
 
 - include_tasks: virtualbox.yml
