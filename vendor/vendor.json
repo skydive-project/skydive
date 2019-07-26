@@ -2243,6 +2243,18 @@
 			"revisionTime": "2019-06-21T10:48:43Z"
 		},
 		{
+			"checksumSHA1": "U4MyFka/mGovbZZKdA7HplSsjuw=",
+			"path": "github.com/newtools/ebpf",
+			"revision": "6469cf35d94268595c26d9ec4476df86e841f101",
+			"revisionTime": "2019-08-08T13:38:57Z"
+		},
+		{
+			"checksumSHA1": "XmEWPSgle1NdyOc2tkEB/C12hko=",
+			"path": "github.com/newtools/ebpf/asm",
+			"revision": "6469cf35d94268595c26d9ec4476df86e841f101",
+			"revisionTime": "2019-08-08T13:38:57Z"
+		},
+		{
 			"checksumSHA1": "NY/yQ26e4WcmK6+IxMR6TWK0X2U=",
 			"path": "github.com/nlewo/contrail-introspect-cli/collection",
 			"revision": "0407b60f2edd766ca0406b923f076f9e0b9db2ab",
