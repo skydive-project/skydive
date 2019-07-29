@@ -19,16 +19,52 @@ package analyzer
 
 import (
 	"github.com/skydive-project/skydive/config"
+	fp "github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/probe"
+	"github.com/skydive-project/skydive/sflow"
+	"github.com/skydive-project/skydive/topology/probes/docker"
 	"github.com/skydive-project/skydive/topology/probes/fabric"
 	"github.com/skydive-project/skydive/topology/probes/istio"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
+	"github.com/skydive-project/skydive/topology/probes/libvirt"
+	"github.com/skydive-project/skydive/topology/probes/lldp"
+	"github.com/skydive-project/skydive/topology/probes/lxd"
+	"github.com/skydive-project/skydive/topology/probes/netlink"
+	"github.com/skydive-project/skydive/topology/probes/neutron"
 	"github.com/skydive-project/skydive/topology/probes/nsm"
+	"github.com/skydive-project/skydive/topology/probes/opencontrail"
 	"github.com/skydive-project/skydive/topology/probes/ovn"
+	"github.com/skydive-project/skydive/topology/probes/ovsdb"
 	"github.com/skydive-project/skydive/topology/probes/peering"
+	"github.com/skydive-project/skydive/topology/probes/runc"
 )
+
+func registerStaticDecoders() {
+	netlink.RegisterDecoders()
+	docker.RegisterDecoders()
+	lldp.RegisterDecoders()
+	lxd.RegisterDecoders()
+	neutron.RegisterDecoders()
+	opencontrail.RegisterDecoders()
+	ovsdb.RegisterDecoders()
+	runc.RegisterDecoders()
+	libvirt.RegisterDecoders()
+	ovn.RegisterDecoders()
+}
+
+// RegisterDecoders register graph metadata decoders
+func RegisterDecoders() {
+	registerStaticDecoders()
+
+	graph.NodeMetadataDecoders["Captures"] = fp.CapturesMetadataDecoder
+	graph.NodeMetadataDecoders["PacketInjections"] = packetinjector.InjectionsMetadataDecoder
+
+	// TODO move it when flow probe plugin will be introduced
+	graph.NodeMetadataDecoders["SFlow"] = sflow.SFMetadataDecoder
+}
 
 // NewTopologyProbeBundleFromConfig creates a new topology server probes from configuration
 func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.Bundle, error) {

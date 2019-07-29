@@ -38,11 +38,30 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/netns"
 	"github.com/skydive-project/skydive/topology/probes/neutron"
 	"github.com/skydive-project/skydive/topology/probes/opencontrail"
+	"github.com/skydive-project/skydive/topology/probes/ovn"
 	"github.com/skydive-project/skydive/topology/probes/ovsdb"
 	"github.com/skydive-project/skydive/topology/probes/runc"
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
 	"github.com/skydive-project/skydive/topology/probes/vpp"
 )
+
+func registerStaticDecoders() {
+	netlink.RegisterDecoders()
+	docker.RegisterDecoders()
+	lldp.RegisterDecoders()
+	lxd.RegisterDecoders()
+	neutron.RegisterDecoders()
+	opencontrail.RegisterDecoders()
+	ovsdb.RegisterDecoders()
+	runc.RegisterDecoders()
+	libvirt.RegisterDecoders()
+	ovn.RegisterDecoders()
+}
+
+// RegisterDecoders register graph metadata decoders
+func RegisterDecoders() {
+	registerStaticDecoders()
+}
 
 // NewTopologyProbe creates a new topology probe
 func NewTopologyProbe(name string, ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {

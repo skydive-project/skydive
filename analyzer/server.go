@@ -32,7 +32,6 @@ import (
 	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/client"
-	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/flow/server"
 	"github.com/skydive-project/skydive/flow/storage"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -47,17 +46,6 @@ import (
 	"github.com/skydive-project/skydive/sflow"
 	"github.com/skydive-project/skydive/topology"
 	usertopology "github.com/skydive-project/skydive/topology/enhancers"
-	"github.com/skydive-project/skydive/topology/probes/docker"
-	"github.com/skydive-project/skydive/topology/probes/libvirt"
-	"github.com/skydive-project/skydive/topology/probes/lldp"
-	"github.com/skydive-project/skydive/topology/probes/lxd"
-	"github.com/skydive-project/skydive/topology/probes/netlink"
-	"github.com/skydive-project/skydive/topology/probes/neutron"
-	"github.com/skydive-project/skydive/topology/probes/nsm"
-	"github.com/skydive-project/skydive/topology/probes/opencontrail"
-	"github.com/skydive-project/skydive/topology/probes/ovn"
-	"github.com/skydive-project/skydive/topology/probes/ovsdb"
-	"github.com/skydive-project/skydive/topology/probes/runc"
 	"github.com/skydive-project/skydive/ui"
 	"github.com/skydive-project/skydive/websocket"
 	ws "github.com/skydive-project/skydive/websocket"
@@ -312,6 +300,9 @@ func NewServerFromConfig() (*Server, error) {
 	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
 	tr.AddTraversalExtension(ge.NewGroupTraversalExtension())
 
+	// register metadata decoders
+	RegisterDecoders()
+
 	probeBundle, err := NewTopologyProbeBundleFromConfig(g)
 	if err != nil {
 		return nil, err
@@ -407,30 +398,4 @@ func ClusterAuthenticationOpts() *shttp.AuthenticationOpts {
 		Password: config.GetString("analyzer.auth.cluster.password"),
 		Cookie:   config.GetStringMapString("http.cookie"),
 	}
-}
-
-func init() {
-	// add decoders for specific metadata keys, this aims to keep the same
-	// object type between the agent and the analyzer
-	// Decoder will be used while unmarshal the metadata
-	graph.NodeMetadataDecoders["Captures"] = probes.CapturesMetadataDecoder
-	graph.NodeMetadataDecoders["PacketInjections"] = packetinjector.InjectionsMetadataDecoder
-	graph.NodeMetadataDecoders["RoutingTables"] = topology.RoutingTablesMetadataDecoder
-	graph.NodeMetadataDecoders["FDB"] = topology.NeighborMetadataDecoder
-	graph.NodeMetadataDecoders["Neighbors"] = topology.NeighborMetadataDecoder
-	graph.NodeMetadataDecoders["Vfs"] = netlink.VFSMetadataDecoder
-	graph.NodeMetadataDecoders["Metric"] = topology.InterfaceMetricMetadataDecoder
-	graph.NodeMetadataDecoders["LastUpdateMetric"] = topology.InterfaceMetricMetadataDecoder
-	graph.NodeMetadataDecoders["SFlow"] = sflow.SFMetadataDecoder
-	graph.NodeMetadataDecoders["Ovs"] = ovsdb.OvsMetadataDecoder
-	graph.NodeMetadataDecoders["LLDP"] = lldp.MetadataDecoder
-	graph.NodeMetadataDecoders["Docker"] = docker.MetadataDecoder
-	graph.NodeMetadataDecoders["Lxd"] = lxd.MetadataDecoder
-	graph.NodeMetadataDecoders["Runc"] = runc.MetadataDecoder
-	graph.NodeMetadataDecoders["Libvirt"] = libvirt.MetadataDecoder
-	graph.NodeMetadataDecoders["OVN"] = ovn.MetadataDecoder
-	graph.NodeMetadataDecoders["Neutron"] = neutron.MetadataDecoder
-	graph.NodeMetadataDecoders["Contrail"] = opencontrail.MetadataDecoder
-
-	graph.EdgeMetadataDecoders["NSM"] = nsm.MetadataDecoder
 }

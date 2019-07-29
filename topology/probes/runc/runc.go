@@ -499,3 +499,8 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 		containers:   make(map[string]*container),
 	}, nil
 }
+
+// RegisterDecoders registers graph metadata decoders
+func RegisterDecoders() {
+	graph.NodeMetadataDecoders["Runc"] = MetadataDecoder
+}

@@ -764,3 +764,8 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 		enableStats:  enableStats,
 	}, nil
 }
+
+// RegisterDecoders registers graph metadata decoders
+func RegisterDecoders() {
+	graph.NodeMetadataDecoders["Ovs"] = OvsMetadataDecoder
+}

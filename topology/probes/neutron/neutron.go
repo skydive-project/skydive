@@ -488,3 +488,8 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 		portMetadata:    make(map[graph.Identifier]portMetadata),
 	}, nil
 }
+
+// RegisterDecoders registers graph metadata decoders
+func RegisterDecoders() {
+	graph.NodeMetadataDecoders["Neutron"] = MetadataDecoder
+}
