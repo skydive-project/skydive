@@ -28,6 +28,28 @@
 # define memmove(dest, src, n)  __builtin_memmove((dest), (src), (n))
 #endif
 
+/*
+The memcmp() built-in had some corner cases where inlining did not take place due to an LLVM issue in the back end, and is therefore not recommended to be used until the issue is fixed.
+*/
+//#define LLVM_MEMCMP_WORKING 1
+#ifdef LLVM_MEMCMP_WORKING
+#ifndef memcmp
+# define memcmp(src1, src2, n)   __builtin_memcmp((src1), (src2), (n))
+#endif
+#else
+#define memcmp discret_memcmp
+static __inline int discret_memcmp(char *s1, char *s2, int n) {
+	int i;
+        #pragma unroll
+	for(i = 0;i < n;s1++, s2++, i++) {
+		if (*s1 != *s2) {
+			return *s1 < *s2 ? -1 : 1;
+		}
+	}
+	return 0;
+}
+#endif
+
 /* helper marcro to define a map, socket, kprobe section in the
  * eBPF elf file.
  */

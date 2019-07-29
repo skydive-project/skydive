@@ -9,18 +9,18 @@ GOVENDOR:=$(TOPLEVEL_GOPATH)/bin/govendor
 
 .PHONY: all ebpf-build clean build-ebpf-docker-image docker-ebpf-build
 
-all: clean ebpf-build
+all: clean docker-ebpf-build
 
 ebpf-build: flow-gre.o flow.o
 
 %.o: %.c
 	$(CLANG) \
 		-I ../../vendor/github.com/iovisor/gobpf/elf \
-		-D__KERNEL__ -D__ASM_SYSREG_H -Wno-unused-value -Wno-pointer-sign \
+		-D__KERNEL__ -D__ASM_SYSREG_H -D__TARGET_ARCH_BPF -Wno-unused-value -Wno-pointer-sign \
 		-Wno-compare-distinct-pointer-types \
 		-Wno-gnu-variable-sized-type-not-at-end \
 		-Wno-address-of-packed-member -Wno-tautological-compare \
-		-Wno-compare-distinct-pointer-types \
+		-Wno-compare-distinct-pointer-types -Wno-unknown-warning-option \
 		-fno-stack-protector \
 		-fno-jump-tables \
 		-fno-common \
@@ -34,7 +34,10 @@ clean:
 build-ebpf-docker-image:
 	docker build -t $(DOCKER_IMAGE) -f $(DOCKER_FILE) .
 
-docker-ebpf-build: build-ebpf-docker-image
+pull-ebpf-docker-image:
+	docker pull $(DOCKER_IMAGE):latest
+
+docker-ebpf-build: pull-ebpf-docker-image
 	docker run --rm \
 		--env=UID=$(UID) \
 		--env=GID=$(GID) \

@@ -478,6 +478,17 @@ static inline __u16 fill_l2(struct __sk_buff *skb, struct l2 *l2)
 	return protocol;
 }
 
+static __inline int is_ab_packet(struct flow *flow, struct flow *prev) {
+	int cmp = flow->link_layer._hash_src == prev->link_layer._hash_src;
+	if (memcmp(flow->link_layer.mac_src, flow->link_layer.mac_dst, ETH_ALEN) == 0) {
+		cmp = flow->network_layer._hash_src == prev->network_layer._hash_src;
+		if (memcmp(flow->network_layer.ip_src, flow->network_layer.ip_dst, 16) == 0) {
+			cmp = flow->transport_layer.port_src > flow->transport_layer.port_dst;
+		}
+	}
+	return cmp;
+}
+
 SOCKET(flow_table)
 int bpf_flow_table(struct __sk_buff *skb)
 {
@@ -539,7 +550,8 @@ int network_layer(struct __sk_buff *skb)
 	if (flow == NULL) {
 		/* New flow */
 		new->start = new->last;
-		update_metrics(skb, new, 1);
+		int ab = is_ab_packet(new, new);
+		update_metrics(skb, new, ab);
 		if (bpf_map_update_element(&flow_table, &new->key, new, BPF_ANY) == -1) {
 			__u32 stats_key = 0;
 			__u64 stats_update_val = 1;
@@ -554,13 +566,7 @@ int network_layer(struct __sk_buff *skb)
 	}
 
 	/* Update flow */
-	int ab;
-	int first_layer_ip = (l2->next_layer_offset == 0);
-	if (first_layer_ip == 0) {
-		ab = new->link_layer._hash_src == flow->link_layer._hash_src;
-	} else {
-		ab = new->network_layer._hash_src == flow->network_layer._hash_src;
-	}
+	int ab = is_ab_packet(new, flow);
 	update_metrics(skb, flow, ab);
 	if (flow->layers_info & TRANSPORT_LAYER_INFO) {
 #define update_transport_flags(ab, ba)					\

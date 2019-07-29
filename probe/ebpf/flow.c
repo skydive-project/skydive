@@ -427,6 +427,17 @@ static inline void fill_flow(struct __sk_buff *skb, struct flow *flow, __u64 tm)
 	flow->key ^= flow->icmp_layer._hash;
 }
 
+static __inline int is_ab_packet(struct flow *flow, struct flow *prev) {
+	int cmp = flow->link_layer._hash_src == prev->link_layer._hash_src;
+	if (memcmp(flow->link_layer.mac_src, flow->link_layer.mac_dst, ETH_ALEN) == 0) {
+		cmp = flow->network_layer._hash_src == prev->network_layer._hash_src;
+		if (memcmp(flow->network_layer.ip_src, flow->network_layer.ip_dst, 16) == 0) {
+			cmp = flow->transport_layer.port_src > flow->transport_layer.port_dst;
+		}
+	}
+	return cmp;
+}
+
 SOCKET(flow_table)
 int bpf_flow_table(struct __sk_buff *skb)
 {
@@ -443,8 +454,7 @@ int bpf_flow_table(struct __sk_buff *skb)
 
 	prev = bpf_map_lookup_element(&flow_table, &flow.key);
 	if (prev) {
-		update_metrics(skb, prev, tm,
-			flow.link_layer._hash_src == prev->link_layer._hash_src);
+		update_metrics(skb, prev, tm, is_ab_packet(&flow, prev));
 		__sync_fetch_and_add(&prev->last, tm - prev->last);
 
 		if (prev->layers_info & flow.layers_info & TRANSPORT_LAYER_INFO > 0) {
@@ -472,7 +482,7 @@ int bpf_flow_table(struct __sk_buff *skb)
 			}
 		}
 	} else {
-		update_metrics(skb, &flow, tm, 1);
+		update_metrics(skb, &flow, tm, is_ab_packet(&flow, &flow));
 		__sync_fetch_and_add(&flow.start, tm);
 		__sync_fetch_and_add(&flow.last, tm);
 
