@@ -7,7 +7,7 @@
     "@formschema/native": "^1.1.0",
     "browser-or-node": "1.0.2",
     "browserify": "^16.2.3",
-    "lodash.defaultsdeep": "^4.6.0",
+    "lodash.defaultsdeep": "^4.6.1",
     "najax": "1.0.3",
     "qs": "^6.2.0",
     "typescript": "^2.7.1",
