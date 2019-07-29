@@ -443,6 +443,7 @@ contrib.objectstore: govendor genlocalfiles
 .PHONY: contrib.objectstore.test
 contrib.objectstore.test: govendor genlocalfiles
 	$(MAKE) -C contrib/pipelines/core test
+	$(MAKE) -C contrib/pipelines/secadvisor test
 
 .PHONY: contribs.snort.clean
 contrib.snort.clean:
