@@ -235,7 +235,7 @@ func (p *ProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e p
 		return nil, err
 	}
 
-	module, err := p.loadModule()
+	module, err := p.LoadModule()
 	if err != nil {
 		return nil, err
 	}
@@ -376,7 +376,7 @@ func (p *ProbesHandler) loadModuleFromAsset(path string) (*ebpf.Collection, erro
 	return module, err
 }
 
-func (p *ProbesHandler) loadModule() (*ebpf.Collection, error) {
+func (p *ProbesHandler) LoadModule() (*ebpf.Collection, error) {
 	err := syscall.Setrlimit(C.RLIMIT_MEMLOCK, &syscall.Rlimit{
 		Cur: math.MaxUint64,
 		Max: math.MaxUint64,
