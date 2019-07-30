@@ -89,7 +89,7 @@ spec:
           httpGet:
             port: 8082
             path: /api/status
-          initialDelaySeconds: 10
+          initialDelaySeconds: 20
           periodSeconds: 10
         livenessProbe:
           httpGet:
@@ -106,13 +106,6 @@ spec:
         envFrom:
         - configMapRef:
             name: skydive-analyzer-config
-        livenessProbe:
-          httpGet:
-            port: 8082
-            path: /api/status
-          initialDelaySeconds: 60
-          periodSeconds: 10
-          failureThreshold: 3
       - name: skydive-elasticsearch
         image: elasticsearch:5
         args:
@@ -145,7 +138,7 @@ spec:
           httpGet:
             port: 8081
             path: /api/status
-          initialDelaySeconds: 10
+          initialDelaySeconds: 20
           periodSeconds: 10
         livenessProbe:
           httpGet:
