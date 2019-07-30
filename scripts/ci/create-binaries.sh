@@ -50,4 +50,4 @@ if [ -n "$DRY_RUN" ]; then
     exit 0
 fi
 
-git push -f -q binaries jenkins-builds
+git push -f -q origin jenkins-builds
