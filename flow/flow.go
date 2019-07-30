@@ -517,9 +517,9 @@ func (f *Flow) setUUIDs(key, l2Key, l3Key uint64) {
 func (f *Flow) SetUUIDs(key uint64, opts Opts) (uint64, uint64) {
 	hasher := xxHash64.New(0)
 	swap := false
-	if (opts.LayerKeyMode == L2KeyMode && f.Link != nil &&
-		(strings.Compare(f.Link.A, f.Link.B) != 0)) ||
-		f.Network == nil {
+	if f.Link != nil && ((opts.LayerKeyMode == L2KeyMode &&
+		strings.Compare(f.Link.A, f.Link.B) != 0) ||
+		f.Network == nil) {
 
 		swap = strings.Compare(f.Link.A, f.Link.B) > 0
 	} else {
