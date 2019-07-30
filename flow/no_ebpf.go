@@ -28,8 +28,8 @@ func kernFlowKey(kernFlow interface{}) uint64 {
 	return 0
 }
 
-func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]string, []*Flow) {
-	return nil, nil
+func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]string, []*Flow, error) {
+	return nil, nil, nil
 }
 
 func (ft *Table) updateFlowFromEBPF(ebpfFlow *EBPFFlow, f *Flow) *Flow {

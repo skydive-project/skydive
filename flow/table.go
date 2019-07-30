@@ -465,7 +465,12 @@ func (ft *Table) processEBPFFlow(ebpfFlow *EBPFFlow) {
 	key := kernFlowKey(ebpfFlow.KernFlow)
 	f, found := ft.table.Get(key)
 	if !found {
-		keys, flows := ft.newFlowFromEBPF(ebpfFlow, key)
+		keys, flows, err := ft.newFlowFromEBPF(ebpfFlow, key)
+		if err != nil {
+			logging.GetLogger().Debugf("eBPF flow parsing error: %s", err)
+			return
+		}
+
 		for i := range keys {
 			if ft.table.Add(keys[i], flows[i]) {
 				ft.removedFlows++
