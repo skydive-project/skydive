@@ -19,12 +19,16 @@ package agent
 
 import (
 	"fmt"
+	"path"
+	"plugin"
+	"reflect"
 	"runtime"
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
+	"github.com/skydive-project/skydive/topology/probes"
 	tp "github.com/skydive-project/skydive/topology/probes"
 	"github.com/skydive-project/skydive/topology/probes/docker"
 	"github.com/skydive-project/skydive/topology/probes/libvirt"
@@ -44,29 +48,29 @@ import (
 func NewTopologyProbe(name string, ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	switch name {
 	case "netlink":
-		return new(netlink.ProbeHandler).Init(ctx, bundle)
+		return netlink.NewProbe(ctx, bundle)
 	case "netns":
-		return new(netns.ProbeHandler).Init(ctx, bundle)
+		return netns.NewProbe(ctx, bundle)
 	case "ovsdb":
-		return new(ovsdb.Probe).Init(ctx, bundle)
+		return ovsdb.NewProbe(ctx, bundle)
 	case "lxd":
-		return new(lxd.ProbeHandler).Init(ctx, bundle)
+		return lxd.NewProbe(ctx, bundle)
 	case "docker":
-		return new(docker.ProbeHandler).Init(ctx, bundle)
+		return docker.NewProbe(ctx, bundle)
 	case "lldp":
-		return new(lldp.Probe).Init(ctx, bundle)
+		return lldp.NewProbe(ctx, bundle)
 	case "neutron":
-		return new(neutron.Probe).Init(ctx, bundle)
+		return neutron.NewProbe(ctx, bundle)
 	case "opencontrail":
-		return new(opencontrail.Probe).Init(ctx, bundle)
+		return opencontrail.NewProbe(ctx, bundle)
 	case "socketinfo":
-		return new(socketinfo.ProbeHandler).Init(ctx, bundle)
+		return socketinfo.NewProbe(ctx, bundle)
 	case "libvirt":
-		return new(libvirt.Probe).Init(ctx, bundle)
+		return libvirt.NewProbe(ctx, bundle)
 	case "runc":
-		return new(runc.ProbeHandler).Init(ctx, bundle)
+		return runc.NewProbe(ctx, bundle)
 	case "vpp":
-		return new(vpp.Probe).Init(ctx, bundle)
+		return vpp.NewProbe(ctx, bundle)
 	default:
 		return nil, fmt.Errorf("unsupported probe %s", name)
 	}
@@ -74,8 +78,13 @@ func NewTopologyProbe(name string, ctx tp.Context, bundle *probe.Bundle) (probe.
 
 // NewTopologyProbeBundle creates a new topology probe.Bundle based on the configuration
 func NewTopologyProbeBundle(g *graph.Graph, hostNode *graph.Node) (*probe.Bundle, error) {
-	list := config.GetStringSlice("agent.topology.probes")
-	logging.GetLogger().Infof("Topology probes: %v", list)
+	var probeList []string
+	if runtime.GOOS == "linux" {
+		probeList = append(probeList, "netlink", "netns")
+	}
+
+	probeList = append(probeList, config.GetStringSlice("agent.topology.probes")...)
+	logging.GetLogger().Infof("Topology probes: %v", probeList)
 
 	bundle := probe.NewBundle()
 	ctx := tp.Context{
@@ -99,7 +108,7 @@ func NewTopologyProbeBundle(g *graph.Graph, hostNode *graph.Node) (*probe.Bundle
 		bundle.AddHandler("netns", nsHandler)
 	}
 
-	for _, t := range list {
+	for _, t := range probeList {
 		if bundle.GetHandler(t) != nil {
 			continue
 		}
@@ -107,10 +116,40 @@ func NewTopologyProbeBundle(g *graph.Graph, hostNode *graph.Node) (*probe.Bundle
 		handler, err := NewTopologyProbe(t, ctx, bundle)
 		if err != nil {
 			return nil, err
-		}
-		if handler != nil {
+		} else if handler != nil {
 			bundle.AddHandler(t, handler)
 		}
+	}
+
+	pluginsDir := config.GetString("agent.topology.plugins_dir")
+	probeList = config.GetStringSlice("agent.topology.plugins")
+	logging.GetLogger().Infof("Topology plugins: %v", probeList)
+
+	for _, so := range probeList {
+		filename := path.Join(pluginsDir, so+".so")
+		logging.GetLogger().Infof("Loading plugin %s", filename)
+
+		plugin, err := plugin.Open(filename)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to load plugin %s: %s", so, err)
+		}
+
+		symbol, err := plugin.Lookup("NewProbe")
+		if err != nil {
+			return nil, fmt.Errorf("Non compliant plugin '%s': %s", so, err)
+		}
+
+		handlerCtor, ok := symbol.(func(ctx probes.Context, bundle *probe.Bundle) (probes.Handler, error))
+		if !ok {
+			return nil, fmt.Errorf("Invalid plugin %s, %s", so, reflect.TypeOf(symbol))
+		}
+
+		handler, err := handlerCtor(ctx, bundle)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to instantiate plugin %s: %s", so, err)
+		}
+
+		bundle.AddHandler(so, handler)
 	}
 
 	return bundle, nil

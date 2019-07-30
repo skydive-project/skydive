@@ -46,7 +46,6 @@ type FlowProbeHandler interface {
 	RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error)
 	UnregisterProbe(n *graph.Node, e ProbeEventHandler, p Probe) error
 	CaptureTypes() []string
-	Init(ctx Context, bundle *probe.Bundle) (FlowProbeHandler, error)
 }
 
 // Context defines a context to be used by constructor of probes
@@ -65,67 +64,8 @@ type ProbeEventHandler interface {
 	OnError(err error)
 }
 
-// NewFlowProbeBundle returns a new bundle of flow probes
-func NewFlowProbeBundle(tb *probe.Bundle, g *graph.Graph, fta *flow.TableAllocator) *probe.Bundle {
-	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket", "dpdk", "ebpf", "ovsmirror", "ovsnetflow"}
-	logging.GetLogger().Infof("Flow probes: %v", list)
-
-	var handler FlowProbeHandler
-	var err error
-
-	bundle := probe.NewBundle()
-	ctx := Context{
-		Logger: logging.GetLogger(),
-		Config: config.GetConfig(),
-		Graph:  g,
-		FTA:    fta,
-		TB:     tb,
-	}
-
-	for _, t := range list {
-		if bundle.GetHandler(t) != nil {
-			continue
-		}
-
-		switch t {
-		case "pcapsocket":
-			handler, err = new(PcapSocketProbeHandler).Init(ctx, bundle)
-		case "ovssflow":
-			handler, err = new(OvsSFlowProbesHandler).Init(ctx, bundle)
-		case "ovsmirror":
-			handler, err = new(OvsMirrorProbesHandler).Init(ctx, bundle)
-		case "gopacket":
-			handler, err = new(GoPacketProbesHandler).Init(ctx, bundle)
-		case "sflow":
-			handler, err = new(SFlowProbesHandler).Init(ctx, bundle)
-		case "ovsnetflow":
-			handler, err = new(OvsNetFlowProbesHandler).Init(ctx, bundle)
-		case "dpdk":
-			handler, err = new(DPDKProbesHandler).Init(ctx, bundle)
-		case "ebpf":
-			handler, err = new(EBPFProbesHandler).Init(ctx, bundle)
-		default:
-			err = fmt.Errorf("unknown probe type %s", t)
-		}
-
-		if err != nil {
-			if err != ErrProbeNotCompiled {
-				logging.GetLogger().Errorf("Failed to create %s probe: %s", t, err)
-			} else {
-				logging.GetLogger().Infof("Not compiled with %s support, skipping it", t)
-			}
-			continue
-		}
-
-		for _, captureType := range handler.CaptureTypes() {
-			bundle.AddHandler(captureType, handler)
-		}
-	}
-
-	return bundle
-}
-
-func tableOptsFromCapture(capture *types.Capture) flow.TableOpts {
+// TableOptsFromCapture is a helper that returns the flow options for a capture
+func TableOptsFromCapture(capture *types.Capture) flow.TableOpts {
 	layerKeyMode, _ := flow.LayerKeyModeByName(capture.LayerKeyMode)
 
 	return flow.TableOpts{

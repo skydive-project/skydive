@@ -162,10 +162,11 @@ func (i *Indexer) FromHash(hash string) (nodes []*Node, values []interface{}) {
 }
 
 // Start registers the graph indexer as a graph listener
-func (i *Indexer) Start() {
+func (i *Indexer) Start() error {
 	if i.listenerHandler != nil {
 		i.listenerHandler.AddEventListener(i)
 	}
+	return nil
 }
 
 // Stop removes the graph indexer from the graph listeners

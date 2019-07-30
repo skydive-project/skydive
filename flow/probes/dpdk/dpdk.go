@@ -17,7 +17,7 @@
  *
  */
 
-package probes
+package dpdk
 
 import (
 	"fmt"
@@ -32,6 +32,7 @@ import (
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
@@ -41,24 +42,24 @@ var (
 	dpdkNBWorkers uint
 )
 
-// DPDKProbesHandler describes a flow probe handle in the graph
-type DPDKProbesHandler struct {
-	Ctx Context
+// ProbesHandler describes a flow probe handle in the graph
+type ProbesHandler struct {
+	Ctx probes.Context
 }
 
 // RegisterProbe registers a gopacket probe
-func (p *DPDKProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error) {
+func (p *ProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e probes.ProbeEventHandler) (probes.Probe, error) {
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
 		return nil, fmt.Errorf("No TID for node %v", n)
 	}
 	enablePort(tid, true)
-	e.OnStarted(&CaptureMetadata{})
+	e.OnStarted(&probes.CaptureMetadata{})
 	return nil, nil
 }
 
 // UnregisterProbe unregisters gopacket probe
-func (p *DPDKProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, fp Probe) error {
+func (p *ProbesHandler) UnregisterProbe(n *graph.Node, e probes.ProbeEventHandler, fp probes.Probe) error {
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
@@ -69,12 +70,13 @@ func (p *DPDKProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, 
 }
 
 // Start probe
-func (p *DPDKProbesHandler) Start() {
+func (p *ProbesHandler) Start() error {
 	go dpdkflow.SystemStart()
+	return nil
 }
 
 // Stop probe
-func (p *DPDKProbesHandler) Stop() {
+func (p *ProbesHandler) Stop() {
 }
 
 func packetHandler(packet *packet.Packet, context dpdkflow.UserContext) {
@@ -143,12 +145,12 @@ func getDPDKMacAddress(port int) string {
 }
 
 // CaptureTypes supported
-func (p *DPDKProbesHandler) CaptureTypes() []string {
+func (p *ProbesHandler) CaptureTypes() []string {
 	return []string{"dpdk"}
 }
 
-// Init initializes a new dpdk probe
-func (p *DPDKProbesHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHandler, error) {
+// NewProbe returns a new DPDK probe
+func NewProbe(ctx probes.Context, bundle *probe.Bundle) (probes.FlowProbeHandler, error) {
 	ports := ctx.Config.GetStringSlice("dpdk.ports")
 	nbWorkers := ctx.Config.GetInt("dpdk.workers")
 
@@ -172,7 +174,7 @@ func (p *DPDKProbesHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHa
 		RawPacketLimit: 0,
 	}
 
-	p.Ctx = ctx
+	p := &ProbesHandler{Ctx: ctx}
 
 	hostNode := ctx.Graph.LookupFirstNode(graph.Metadata{
 		"Name": ctx.Graph.GetHost(),
@@ -228,5 +230,6 @@ func (p *DPDKProbesHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHa
 		}
 
 	}
+
 	return p, nil
 }

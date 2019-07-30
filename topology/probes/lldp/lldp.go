@@ -34,6 +34,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow/probes"
+	gp "github.com/skydive-project/skydive/flow/probes/gopacket"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
@@ -62,10 +63,10 @@ type Probe struct {
 	sync.RWMutex
 	graph.DefaultGraphListener
 	Ctx           tp.Context
-	interfaceMap  map[string]*probes.GoPacketProbe // map interface names to the packet probes
-	state         common.ServiceState              // state of the probe (running or stopped)
-	wg            sync.WaitGroup                   // capture goroutines wait group
-	autoDiscovery bool                             // capture LLDP traffic on all capable interfaces
+	interfaceMap  map[string]*gp.Probe // map interface names to the packet probes
+	state         common.ServiceState  // state of the probe (running or stopped)
+	wg            sync.WaitGroup       // capture goroutines wait group
+	autoDiscovery bool                 // capture LLDP traffic on all capable interfaces
 }
 
 type ifreq struct {
@@ -308,7 +309,7 @@ func (p *Probe) startCapture(ifName, mac string, n *graph.Node) error {
 		Graph:  p.Ctx.Graph,
 	}
 
-	packetProbe, err := probes.NewGoPacketProbe(ctx, n, probes.AFPacket, bpfFilter, lldpSnapLen)
+	packetProbe, err := gp.NewCapture(ctx, n, gp.AFPacket, bpfFilter, lldpSnapLen)
 	if err != nil {
 		return err
 	}
@@ -367,7 +368,7 @@ func (p *Probe) handleNode(n *graph.Node) {
 		return
 	}
 
-	firstLayerType, _ := probes.GoPacketFirstLayerType(n)
+	firstLayerType, _ := gp.FirstLayerType(n)
 	mac, _ := n.GetFieldString("BondSlave.PermMAC")
 	if mac == "" {
 		mac, _ = n.GetFieldString("MAC")
@@ -409,8 +410,11 @@ func (p *Probe) OnNodeUpdated(n *graph.Node) {
 }
 
 // Start capturing LLDP packets
-func (p *Probe) Start() {
-	p.state.Store(common.RunningState)
+func (p *Probe) Start() error {
+	if !p.state.CompareAndSwap(common.StoppedState, common.RunningState) {
+		return probe.ErrNotStopped
+	}
+
 	p.Ctx.Graph.AddEventListener(p)
 
 	p.Ctx.Graph.RLock()
@@ -423,6 +427,8 @@ func (p *Probe) Start() {
 	for _, intfNode := range children {
 		p.handleNode(intfNode)
 	}
+
+	return nil
 }
 
 // Stop capturing LLDP packets
@@ -438,19 +444,19 @@ func (p *Probe) Stop() {
 	p.wg.Wait()
 }
 
-// Init initializes a new LLDP probe
-func (p *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+// NewProbe creates a new LLDP probe
+func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	interfaces := ctx.Config.GetStringSlice("agent.topology.lldp.interfaces")
 
-	interfaceMap := make(map[string]*probes.GoPacketProbe)
+	interfaceMap := make(map[string]*gp.Probe)
 	for _, intf := range interfaces {
 		interfaceMap[intf] = nil
 	}
 
-	p.Ctx = ctx
-	p.interfaceMap = interfaceMap
-	p.state = common.StoppedState
-	p.autoDiscovery = len(interfaces) == 0
-
-	return p, nil
+	return &Probe{
+		Ctx:           ctx,
+		interfaceMap:  interfaceMap,
+		state:         common.StoppedState,
+		autoDiscovery: len(interfaces) == 0,
+	}, nil
 }

@@ -15,7 +15,7 @@
  *
  */
 
-package probes
+package sflow
 
 import (
 	"fmt"
@@ -24,6 +24,7 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/sflow"
@@ -38,15 +39,15 @@ type sFlowProbe struct {
 	ft  *flow.Table
 }
 
-// SFlowProbesHandler describes a sFlow probe in the graph
-type SFlowProbesHandler struct {
-	Ctx         Context
+// ProbesHandler describes a sFlow probe in the graph
+type ProbesHandler struct {
+	Ctx         probes.Context
 	allocator   *sflow.AgentAllocator
 	staticPorts map[string]string
 }
 
 // UnregisterProbe unregisters a probe from the graph
-func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, p Probe) error {
+func (d *ProbesHandler) UnregisterProbe(n *graph.Node, e probes.ProbeEventHandler, p probes.Probe) error {
 	probe := p.(*sFlowProbe)
 
 	d.Ctx.FTA.Release(probe.ft)
@@ -60,7 +61,7 @@ func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler,
 }
 
 // RegisterProbe registers a probe in the graph
-func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error) {
+func (d *ProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e probes.ProbeEventHandler) (probes.Probe, error) {
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
 		return nil, fmt.Errorf("No TID for node %v", n)
@@ -87,14 +88,14 @@ func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture
 	}
 
 	uuids := flow.UUIDs{NodeTID: tid, CaptureID: capture.UUID}
-	ft := d.Ctx.FTA.Alloc(uuids, tableOptsFromCapture(capture))
+	ft := d.Ctx.FTA.Alloc(uuids, probes.TableOptsFromCapture(capture))
 
 	addr := common.ServiceAddress{Addr: address, Port: port}
 	if _, err := d.allocator.Alloc(tid, ft, capture.BPFFilter, headerSize, &addr, n, d.Ctx.Graph); err != nil {
 		return nil, err
 	}
 
-	go e.OnStarted(&CaptureMetadata{SFlowSocket: addr.String()})
+	go e.OnStarted(&probes.CaptureMetadata{SFlowSocket: addr.String()})
 
 	return &sFlowProbe{
 		ft:  ft,
@@ -103,28 +104,29 @@ func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture
 }
 
 // Start a probe
-func (d *SFlowProbesHandler) Start() {
+func (d *ProbesHandler) Start() error {
+	return nil
 }
 
 // Stop a probe
-func (d *SFlowProbesHandler) Stop() {
+func (d *ProbesHandler) Stop() {
 	d.allocator.ReleaseAll()
 }
 
 // CaptureTypes supported
-func (d *SFlowProbesHandler) CaptureTypes() []string {
+func (d *ProbesHandler) CaptureTypes() []string {
 	return []string{"sflow"}
 }
 
-// Init initializes a new sFlow probe
-func (d *SFlowProbesHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHandler, error) {
+// NewProbe returns a new sFlow probe
+func NewProbe(ctx probes.Context, bundle *probe.Bundle) (probes.FlowProbeHandler, error) {
 	allocator, err := sflow.NewAgentAllocator()
 	if err != nil {
 		return nil, err
 	}
 
-	d.Ctx = ctx
-	d.allocator = allocator
-
-	return d, nil
+	return &ProbesHandler{
+		Ctx:       ctx,
+		allocator: allocator,
+	}, nil
 }

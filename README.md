@@ -82,6 +82,8 @@ Skydive documentation can be found here:
 
 * http://skydive.network/documentation
 
+The Skydive REST API is described using swagger [here](http://skydive.network/swagger).
+
 ## Tutorials
 
 Skydive tutorials can be found here:

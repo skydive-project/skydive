@@ -90,9 +90,10 @@ func (c *KubeCache) getBySelector(g *graph.Graph, namespace string, selector *me
 }
 
 // Start begin waiting on Kubernetes events
-func (c *KubeCache) Start() {
+func (c *KubeCache) Start() error {
 	c.cache.Resync()
 	go c.controller.Run(c.stopController)
+	return nil
 }
 
 // Stop end waiting on Kubernetes events

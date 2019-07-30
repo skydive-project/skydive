@@ -25,19 +25,7 @@ import (
 	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
-// ProbeHandler describes a list NetLink NameSpace probe to enhance the graph
-type ProbeHandler struct {
-}
-
-// Start the probe
-func (u *ProbeHandler) Start() {
-}
-
-// Stop the probe
-func (u *ProbeHandler) Stop() {
-}
-
-// Init initializes a new netlink probe
-func (u *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+// NewProbe returns a new topology netlink probe
+func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	return nil, common.ErrNotImplemented
 }

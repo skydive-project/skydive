@@ -17,7 +17,7 @@
  *
  */
 
-package probes
+package ovsmirror
 
 import (
 	"errors"
@@ -28,6 +28,7 @@ import (
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/ovs/ovsdb"
 	"github.com/skydive-project/skydive/probe"
@@ -37,20 +38,20 @@ import (
 
 // ovsMirrorProbe describes a mirror probe from OVS switch
 type ovsMirrorProbe struct {
-	Ctx        Context
+	Ctx        probes.Context
 	id         string
 	graph      *graph.Graph
 	node       *graph.Node
 	mirrorNode *graph.Node
 	capture    *types.Capture
-	subHandler FlowProbeHandler
-	subProbe   Probe
+	subHandler probes.FlowProbeHandler
+	subProbe   probes.Probe
 }
 
-// OvsMirrorProbesHandler describes a flow probe in running in the graph
-type OvsMirrorProbesHandler struct {
+// ProbesHandler describes a flow probe in running in the graph
+type ProbesHandler struct {
 	ovsdb.DefaultOvsMonitorHandler
-	Ctx         Context
+	Ctx         probes.Context
 	probes      map[string]*ovsMirrorProbe
 	probeBundle *probe.Bundle
 	probesLock  common.RWMutex
@@ -63,12 +64,12 @@ type OvsMirrorProbesHandler struct {
 
 type ovsMirrorInterfaceHandler struct {
 	graph.DefaultGraphListener
-	oph *OvsMirrorProbesHandler
+	oph *ProbesHandler
 }
 
 type ovsMirrorPortHandler struct {
 	graph.DefaultGraphListener
-	oph *OvsMirrorProbesHandler
+	oph *ProbesHandler
 }
 
 func newInsertInternalOP(probe *ovsMirrorProbe) (*libovsdb.Operation, error) {
@@ -84,7 +85,7 @@ func newInsertInternalOP(probe *ovsMirrorProbe) (*libovsdb.Operation, error) {
 	}
 	intfRow["external_ids"] = ovsMap
 
-	insertOp := libovsdb.Operation{Op: "insert", Table: "Interface", Row: intfRow, UUIDName: ovsNamedUUID("intf_" + probe.id)}
+	insertOp := libovsdb.Operation{Op: "insert", Table: "Interface", Row: intfRow, UUIDName: ovsdb.NamedUUID("intf_" + probe.id)}
 
 	return &insertOp, nil
 }
@@ -111,7 +112,7 @@ func newInsertPortOP(probe *ovsMirrorProbe, intfInsertOp *libovsdb.Operation) (*
 	}
 	portRow["external_ids"] = ovsMap
 
-	insertOp := libovsdb.Operation{Op: "insert", Table: "Port", Row: portRow, UUIDName: ovsNamedUUID("port_" + probe.id)}
+	insertOp := libovsdb.Operation{Op: "insert", Table: "Port", Row: portRow, UUIDName: ovsdb.NamedUUID("port_" + probe.id)}
 
 	return &insertOp, nil
 }
@@ -142,7 +143,7 @@ func newInsertMirrorOP(probe *ovsMirrorProbe, srcUUID string, dstInsertOp *libov
 	}
 	mirrorRow["external_ids"] = ovsMap
 
-	insertOp := libovsdb.Operation{Op: "insert", Table: "Mirror", Row: mirrorRow, UUIDName: ovsNamedUUID("mirror_" + probe.id)}
+	insertOp := libovsdb.Operation{Op: "insert", Table: "Mirror", Row: mirrorRow, UUIDName: ovsdb.NamedUUID("mirror_" + probe.id)}
 
 	return &insertOp, nil
 }
@@ -160,7 +161,7 @@ func (o *ovsMirrorProbe) mirrorName() string {
 	return fmt.Sprintf("mir%s", o.id)[0:8]
 }
 
-func (o *OvsMirrorProbesHandler) retrieveBridgeUUID(portUUID string) (string, error) {
+func (o *ProbesHandler) retrieveBridgeUUID(portUUID string) (string, error) {
 	condition := libovsdb.NewCondition("ports", "includes", libovsdb.UUID{GoUUID: portUUID})
 	selectOp := libovsdb.Operation{
 		Op:    "select",
@@ -184,7 +185,7 @@ func (o *OvsMirrorProbesHandler) retrieveBridgeUUID(portUUID string) (string, er
 	return "", nil
 }
 
-func (o *OvsMirrorProbesHandler) registerProbeOnPort(probe *ovsMirrorProbe, portUUID string) error {
+func (o *ProbesHandler) registerProbeOnPort(probe *ovsMirrorProbe, portUUID string) error {
 	o.probesLock.Lock()
 	o.probes[portUUID] = probe
 	o.probesLock.Unlock()
@@ -247,7 +248,7 @@ func (o *OvsMirrorProbesHandler) registerProbeOnPort(probe *ovsMirrorProbe, port
 	return nil
 }
 
-func (o *OvsMirrorProbesHandler) unregisterProbeFromPort(portUUID string) error {
+func (o *ProbesHandler) unregisterProbeFromPort(portUUID string) error {
 	o.probesLock.Lock()
 	probe, ok := o.probes[portUUID]
 	if !ok {
@@ -266,12 +267,12 @@ func (o *OvsMirrorProbesHandler) unregisterProbeFromPort(portUUID string) error 
 		return err
 	}
 
-	mirrorPortUUID, err := ovsRetrieveSkydiveProbeRowUUID(o.ovsClient, "Port", probe.id)
+	mirrorPortUUID, err := o.ovsClient.RetrieveSkydiveProbeRowUUID("Port", probe.id)
 	if err != nil {
 		return err
 	}
 
-	mirrorUUID, err := ovsRetrieveSkydiveProbeRowUUID(o.ovsClient, "Mirror", probe.id)
+	mirrorUUID, err := o.ovsClient.RetrieveSkydiveProbeRowUUID("Mirror", probe.id)
 	if err != nil {
 		return err
 	}
@@ -307,7 +308,7 @@ func (o *OvsMirrorProbesHandler) unregisterProbeFromPort(portUUID string) error 
 }
 
 // RegisterProbeOnPort registers a new probe on the OVS bridge
-func (o *OvsMirrorProbesHandler) RegisterProbeOnPort(n *graph.Node, portUUID string, capture *types.Capture) (Probe, error) {
+func (o *ProbesHandler) RegisterProbeOnPort(n *graph.Node, portUUID string, capture *types.Capture) (probes.Probe, error) {
 	probe := &ovsMirrorProbe{
 		Ctx:     o.Ctx,
 		id:      portUUID,
@@ -328,7 +329,7 @@ func (o *OvsMirrorProbesHandler) RegisterProbeOnPort(n *graph.Node, portUUID str
 }
 
 // RegisterProbe registers a probe on a graph node
-func (o *OvsMirrorProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error) {
+func (o *ProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e probes.ProbeEventHandler) (probes.Probe, error) {
 	uuid, _ := n.GetFieldString("UUID")
 	if uuid == "" {
 		return nil, fmt.Errorf("Node %s has no attribute 'UUID'", n.ID)
@@ -343,13 +344,13 @@ func (o *OvsMirrorProbesHandler) RegisterProbe(n *graph.Node, capture *types.Cap
 		return nil, err
 	}
 
-	go e.OnStarted(&CaptureMetadata{})
+	go e.OnStarted(&probes.CaptureMetadata{})
 
 	return probe, nil
 }
 
 // UnregisterProbe at the graph node
-func (o *OvsMirrorProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, fp Probe) error {
+func (o *ProbesHandler) UnregisterProbe(n *graph.Node, e probes.ProbeEventHandler, fp probes.Probe) error {
 	probe := fp.(*ovsMirrorProbe)
 
 	if err := o.unregisterProbeFromPort(probe.id); err != nil {
@@ -361,14 +362,15 @@ func (o *OvsMirrorProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHand
 	return nil
 }
 
-func (o *OvsMirrorProbesHandler) cleanupOvsMirrors() {
+func (o *ProbesHandler) cleanupOvsMirrors() {
 	var operations []libovsdb.Operation
 
-	uuids, err := ovsRetrieveSkydiveProbeRowUUIDs(o.ovsClient, "Mirror")
+	uuids, err := o.ovsClient.RetrieveSkydiveProbeRowUUIDs("Mirror")
 	if err != nil {
 		o.Ctx.Logger.Errorf("OvsMirror cleanup error: %s", err)
 		return
 	}
+
 	for _, uuid := range uuids {
 		condition := libovsdb.NewCondition("_uuid", "==", libovsdb.UUID{GoUUID: uuid})
 		operations = append(operations, libovsdb.Operation{Op: "delete", Table: "Mirror", Where: []interface{}{condition}})
@@ -382,7 +384,7 @@ func (o *OvsMirrorProbesHandler) cleanupOvsMirrors() {
 		operations = append(operations, mutateOp)
 	}
 
-	uuids, err = ovsRetrieveSkydiveProbeRowUUIDs(o.ovsClient, "Mirror")
+	uuids, err = o.ovsClient.RetrieveSkydiveProbeRowUUIDs("Mirror")
 	if err != nil {
 		o.Ctx.Logger.Errorf("OvsMirror cleanup error: %s", err)
 		return
@@ -392,7 +394,7 @@ func (o *OvsMirrorProbesHandler) cleanupOvsMirrors() {
 		operations = append(operations, libovsdb.Operation{Op: "delete", Table: "Mirror", Where: []interface{}{condition}})
 	}
 
-	uuids, err = ovsRetrieveSkydiveProbeRowUUIDs(o.ovsClient, "Port")
+	uuids, err = o.ovsClient.RetrieveSkydiveProbeRowUUIDs("Port")
 	if err != nil {
 		o.Ctx.Logger.Errorf("OvsMirror cleanup error: %s", err)
 		return
@@ -417,12 +419,12 @@ func (o *OvsMirrorProbesHandler) cleanupOvsMirrors() {
 }
 
 // OnStarted ProbeEventHandler implementation
-func (o *ovsMirrorProbe) OnStarted(metadata *CaptureMetadata) {
+func (o *ovsMirrorProbe) OnStarted(metadata *probes.CaptureMetadata) {
 	o.graph.Lock()
 	metadata.ID = o.capture.UUID
 	metadata.State = "active"
 	metadata.MirrorOf = string(o.node.ID)
-	o.graph.AddMetadata(o.mirrorNode, "Captures", &Captures{metadata})
+	o.graph.AddMetadata(o.mirrorNode, "Captures", &probes.Captures{metadata})
 	o.graph.Unlock()
 }
 
@@ -439,7 +441,7 @@ func (o *ovsMirrorProbe) OnError(err error) {
 
 	setCaptureError := func(n *graph.Node, id string) {
 		errUpdate := o.graph.UpdateMetadata(n, "Captures", func(obj interface{}) bool {
-			captures := obj.(*Captures)
+			captures := obj.(*probes.Captures)
 			for _, capture := range *captures {
 				if capture.ID == id {
 					capture.State = "error"
@@ -505,7 +507,7 @@ func (o *ovsMirrorInterfaceHandler) onNodeEvent(n *graph.Node) {
 		return
 	}
 
-	subHandler := handler.(FlowProbeHandler)
+	subHandler := handler.(probes.FlowProbeHandler)
 	subProbe, err := subHandler.RegisterProbe(n, ovsProbe.capture, ovsProbe)
 	if err != nil {
 		o.oph.Ctx.Logger.Debugf("Failed to register flow probe: %s", err)
@@ -560,20 +562,21 @@ func (o *ovsMirrorInterfaceHandler) OnNodeDeleted(n *graph.Node) {
 }
 
 // OnConnected ovsdb event
-func (o *OvsMirrorProbesHandler) OnConnected(monitor *ovsdb.OvsMonitor) {
+func (o *ProbesHandler) OnConnected(monitor *ovsdb.OvsMonitor) {
 	o.cleanupOvsMirrors()
 }
 
 // Start the probe
-func (o *OvsMirrorProbesHandler) Start() {
+func (o *ProbesHandler) Start() error {
 	o.intfIndexer.AddEventListener(o.intfHandler)
 	o.portIndexer.AddEventListener(o.portHandler)
 	o.intfIndexer.Start()
 	o.portIndexer.Start()
+	return nil
 }
 
 // Stop the probe
-func (o *OvsMirrorProbesHandler) Stop() {
+func (o *ProbesHandler) Stop() {
 	var uuids []string
 
 	o.probesLock.RLock()
@@ -595,24 +598,26 @@ func (o *OvsMirrorProbesHandler) Stop() {
 }
 
 // CaptureTypes supported
-func (o *OvsMirrorProbesHandler) CaptureTypes() []string {
+func (o *ProbesHandler) CaptureTypes() []string {
 	return []string{"ovsmirror"}
 }
 
-// Init initializes a new OVS Mirror probe
-func (o *OvsMirrorProbesHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHandler, error) {
+// NewProbe returns a new OVS Mirror probe
+func NewProbe(ctx probes.Context, bundle *probe.Bundle) (probes.FlowProbeHandler, error) {
 	handler := ctx.TB.GetHandler("ovsdb")
 	if handler == nil {
 		return nil, errors.New("ovsmirror probe depends on ovsdb topology probe, probe can't start properly")
 	}
 	p := handler.(*op.Probe)
 
-	o.Ctx = ctx
-	o.probes = make(map[string]*ovsMirrorProbe)
-	o.ovsClient = p.OvsMon.OvsClient
-	o.probeBundle = bundle
-	o.intfIndexer = graph.NewMetadataIndexer(ctx.Graph, ctx.Graph, graph.Metadata{"Type": "internal"}, "ExtID.skydive-probe-id")
-	o.portIndexer = graph.NewMetadataIndexer(ctx.Graph, ctx.Graph, graph.Metadata{"Type": "ovsport"}, "ExtID.skydive-probe-id")
+	o := &ProbesHandler{
+		Ctx:         ctx,
+		probes:      make(map[string]*ovsMirrorProbe),
+		ovsClient:   p.OvsMon.OvsClient,
+		probeBundle: bundle,
+		intfIndexer: graph.NewMetadataIndexer(ctx.Graph, ctx.Graph, graph.Metadata{"Type": "internal"}, "ExtID.skydive-probe-id"),
+		portIndexer: graph.NewMetadataIndexer(ctx.Graph, ctx.Graph, graph.Metadata{"Type": "ovsport"}, "ExtID.skydive-probe-id"),
+	}
 
 	p.OvsMon.AddMonitorHandler(o)
 

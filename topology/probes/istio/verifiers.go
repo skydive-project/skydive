@@ -43,10 +43,11 @@ func (rv *resourceVerifier) OnNodeDeleted(node *graph.Node) {
 	rv.verifier(rv.g)
 }
 
-func (rv *resourceVerifier) Start() {
+func (rv *resourceVerifier) Start() error {
 	for _, lh := range rv.listenerHandlers {
 		lh.AddEventListener(rv)
 	}
+	return nil
 }
 
 func (rv *resourceVerifier) Stop() {

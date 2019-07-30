@@ -29,7 +29,6 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/client"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/server"
-	fprobes "github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/pod"
@@ -246,7 +245,7 @@ func NewAgent() (*Agent, error) {
 	// exposes a flow server through the client connections
 	flow.NewWSTableServer(flowTableAllocator, analyzerClientPool)
 
-	flowProbeBundle := fprobes.NewFlowProbeBundle(topologyProbeBundle, g, flowTableAllocator)
+	flowProbeBundle := NewFlowProbeBundle(topologyProbeBundle, g, flowTableAllocator)
 
 	onDemandPIServer, err := packetinjector.NewOnDemandInjectionServer(g, analyzerClientPool)
 	if err != nil {

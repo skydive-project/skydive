@@ -93,7 +93,7 @@ func (s *EBPFProbe) LostV6(uint64) {
 }
 
 // Start the flow Probe
-func (s *EBPFProbe) Start() {
+func (s *EBPFProbe) Start() error {
 	s.tracer.Start()
 
 	s.scanProc()
@@ -113,6 +113,8 @@ func (s *EBPFProbe) Start() {
 			}
 		}
 	}()
+
+	return nil
 }
 
 // Stop the flow Probe
@@ -121,21 +123,24 @@ func (s *EBPFProbe) Stop() {
 	s.tracer.Stop()
 }
 
-// Init initializes a new SocketInfo Probe
-func (s *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+// NewProbe returns a new socket info topology probe
+func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+	// /proc is used for initialization
 	procProbe := NewProcProbe(ctx)
 
-	probe := &EBPFProbe{
+	p := &EBPFProbe{
 		ProcProbe: procProbe,
 	}
 
-	s.Handler = probe
-
-	var err error
-	if probe.tracer, err = tracer.NewTracer(probe); err != nil {
-		ctx.Logger.Infof("Socket info probe is running in compatibility mode: %s", err)
-		s.Handler = procProbe
+	probeHandler := &ProbeHandler{
+		Handler: p,
 	}
 
-	return s, nil
+	var err error
+	if p.tracer, err = tracer.NewTracer(p); err != nil {
+		ctx.Logger.Infof("Socket info probe is running in compatibility mode: %s", err)
+		probeHandler.Handler = procProbe
+	}
+
+	return probeHandler, nil
 }

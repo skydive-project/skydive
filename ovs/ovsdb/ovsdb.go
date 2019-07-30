@@ -18,8 +18,10 @@
 package ovsdb
 
 import (
+	"encoding/json"
 	"errors"
 	"reflect"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -156,6 +158,73 @@ func (n Notifier) Disconnected(c *libovsdb.OvsdbClient) {
 		handler.OnDisconnected(n.monitor)
 	}
 	n.monitor.Unlock()
+}
+
+func ovsRowProbeID(row *map[string]interface{}) (string, error) {
+	extIds := (*row)["external_ids"]
+	switch extIds.(type) {
+	case []interface{}:
+		sl := extIds.([]interface{})
+		bSliced, err := json.Marshal(sl)
+		if err != nil {
+			return "", err
+		}
+
+		switch sl[0] {
+		case "map":
+			var oMap libovsdb.OvsMap
+			err = json.Unmarshal(bSliced, &oMap)
+			if err != nil {
+				return "", err
+			}
+
+			if value, ok := oMap.GoMap["skydive-probe-id"]; ok {
+				return value.(string), nil
+			}
+		}
+	}
+
+	return "", errors.New("Not found")
+}
+
+// RetrieveSkydiveProbeRowUUIDs retrieves the probe UUIDs
+func (o *OvsClient) RetrieveSkydiveProbeRowUUIDs(table string) ([]string, error) {
+	condition := libovsdb.NewCondition("_uuid", "!=", libovsdb.UUID{GoUUID: "abc"})
+	operations := []libovsdb.Operation{{Op: "select", Table: table, Where: []interface{}{condition}}}
+	result, err := o.Exec(operations...)
+	if err != nil {
+		return nil, err
+	}
+
+	var uuids []string
+	for _, o := range result {
+		for _, row := range o.Rows {
+			u := row["_uuid"].([]interface{})[1]
+			uuid := u.(string)
+
+			if _, err := ovsRowProbeID(&row); err == nil {
+				uuids = append(uuids, uuid)
+			}
+		}
+	}
+
+	return uuids, nil
+}
+
+// RetrieveSkydiveProbeRowUUID return the row probe UUID
+func (o *OvsClient) RetrieveSkydiveProbeRowUUID(table, id string) (string, error) {
+	uuids, err := o.RetrieveSkydiveProbeRowUUIDs(table)
+	if err != nil {
+		return "", err
+	}
+
+	for _, probeID := range uuids {
+		if probeID == id {
+			return id, nil
+		}
+	}
+
+	return "", nil
 }
 
 // Exec execute a transaction on the OVS database
@@ -594,4 +663,14 @@ func NewOvsMonitor(protocol string, target string) *OvsMonitor {
 		ticker:          nil,
 		done:            make(chan struct{}),
 	}
+}
+
+// NamedUUID returns the UUID name
+func NamedUUID(i string) string {
+	return "row_" + strings.Replace(i, "-", "_", -1)
+}
+
+// ProbeID returns a well formatted probe id
+func ProbeID(i string) string {
+	return strings.Replace(i, "-", "_", -1)
 }

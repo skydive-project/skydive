@@ -1330,9 +1330,12 @@ func (u *ProbeHandler) start() {
 }
 
 // Start the probe
-func (u *ProbeHandler) Start() {
-	u.Register("", u.Ctx)
+func (u *ProbeHandler) Start() error {
+	if _, err := u.Register("", u.Ctx); err != nil {
+		return err
+	}
 	go u.start()
+	return nil
 }
 
 // Stop the probe
@@ -1354,19 +1357,20 @@ func (u *ProbeHandler) Stop() {
 	}
 }
 
-// Init initializes a new netlink probe
-func (u *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+// NewProbe returns a new topology netlink probe
+func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	epfd, err := syscall.EpollCreate1(0)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create epoll: %s", err)
 	}
+
 	sriovProcessor := graph.NewProcessor(ctx.Graph, ctx.Graph, graph.Metadata{"Type": "device"}, "BusInfo")
 	sriovProcessor.Start()
 
-	u.Ctx = ctx
-	u.epollFd = epfd
-	u.probes = make(map[int32]*Probe)
-	u.sriovProcessor = sriovProcessor
-
-	return u, nil
+	return &ProbeHandler{
+		Ctx:            ctx,
+		epollFd:        epfd,
+		probes:         make(map[int32]*Probe),
+		sriovProcessor: sriovProcessor,
+	}, nil
 }

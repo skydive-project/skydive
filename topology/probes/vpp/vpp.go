@@ -293,26 +293,23 @@ func (p *Probe) interfacesPolling() {
 }
 
 // Start VPP probe and get all interfaces
-func (p *Probe) Start() {
+func (p *Probe) Start() error {
 	conn, err := govpp.Connect(p.shm)
 	if err != nil {
-		p.Ctx.Logger.Error("VPP connection error: ", err)
-		return
+		return fmt.Errorf("VPP connection error: %s", err)
 	}
 	p.conn = conn
 
 	ch, err := conn.NewAPIChannel()
 	if err != nil {
-		p.Ctx.Logger.Error("API channel error: ", err)
-		return
+		return fmt.Errorf("API channel error: %s", err)
 	}
 
 	req := &vpe.ShowVersion{}
 	msg := &vpe.ShowVersionReply{}
 	err = ch.SendRequest(req).ReceiveReply(msg)
 	if err != nil {
-		p.Ctx.Logger.Error(err)
-		return
+		return err
 	}
 	ch.Close()
 
@@ -328,8 +325,7 @@ func (p *Probe) Start() {
 	defer p.Ctx.Graph.Unlock()
 
 	if p.vppRootNode, err = p.Ctx.Graph.NewNode(graph.GenID(), metadata); err != nil {
-		p.Ctx.Logger.Error(err)
-		return
+		return err
 	}
 	topology.AddOwnershipLink(p.Ctx.Graph, p.Ctx.RootNode, p.vppRootNode, nil)
 
@@ -338,6 +334,8 @@ func (p *Probe) Start() {
 	p.wg.Add(2)
 	go p.interfacesPolling()
 	go p.interfacesEvents()
+
+	return nil
 }
 
 // Stop the probe
@@ -348,15 +346,17 @@ func (p *Probe) Stop() {
 	p.wg.Wait()
 }
 
-// Init initializes a VPP topology probe
-func (p *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+// NewProbe returns a new VPP probe
+func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	shm := ctx.Config.GetString("agent.topology.vpp.connect")
 
-	p.Ctx = ctx
-	p.shm = shm
-	p.interfaceMap = make(map[uint32]*interfaces.SwInterfaceDetails)
+	p := &Probe{
+		Ctx:          ctx,
+		shm:          shm,
+		interfaceMap: make(map[uint32]*interfaces.SwInterfaceDetails),
+		notifChan:    make(chan api.Message, 100),
+	}
 	p.state.Store(common.StoppedState)
-	p.notifChan = make(chan api.Message, 100)
 
 	/* Forward all govpp logging to Skydive logging */
 	l := logrus.New()

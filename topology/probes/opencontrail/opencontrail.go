@@ -295,10 +295,14 @@ func (p *Probe) OnNodeDeleted(n *graph.Node) {
 }
 
 // Start the probe
-func (p *Probe) Start() {
+func (p *Probe) Start() error {
+	p.cancelCtx, p.cancelFunc = context.WithCancel(context.Background())
+
 	p.Ctx.Graph.AddEventListener(p)
 	go p.nodeUpdater()
 	go p.rtMonitor()
+
+	return nil
 }
 
 // Stop the probe
@@ -308,19 +312,15 @@ func (p *Probe) Stop() {
 	close(p.nodeUpdaterChan)
 }
 
-// Init initializes a new OpenContrail probe based on configuration
-func (p *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
-	cancelCtx, cancelFunc := context.WithCancel(context.Background())
-
-	p.Ctx = ctx
-	p.cancelCtx = cancelCtx
-	p.cancelFunc = cancelFunc
-	p.agentHost = ctx.Config.GetString("opencontrail.host")
-	p.agentPort = ctx.Config.GetInt("opencontrail.port")
-	p.mplsUDPPort = ctx.Config.GetInt("opencontrail.mpls_udp_port")
-	p.nodeUpdaterChan = make(chan graph.Identifier, 500)
-	p.routingTables = make(map[int]*RoutingTable)
-	p.routingTableUpdaterChan = make(chan RoutingTableUpdate, 500)
-
-	return p, nil
+// NewProbe returns a new OpenContrail topology probe
+func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+	return &Probe{
+		Ctx:                     ctx,
+		agentHost:               ctx.Config.GetString("opencontrail.host"),
+		agentPort:               ctx.Config.GetInt("opencontrail.port"),
+		mplsUDPPort:             ctx.Config.GetInt("opencontrail.mpls_udp_port"),
+		nodeUpdaterChan:         make(chan graph.Identifier, 500),
+		routingTables:           make(map[int]*RoutingTable),
+		routingTableUpdaterChan: make(chan RoutingTableUpdate, 500),
+	}, nil
 }

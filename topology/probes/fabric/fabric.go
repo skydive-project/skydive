@@ -18,6 +18,7 @@
 package fabric
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -25,7 +26,6 @@ import (
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
 )
 
@@ -136,7 +136,7 @@ func (fb *Probe) getOrCreateFabricNodeFromDef(nodeDef string) (*graph.Node, erro
 }
 
 // Start the probe
-func (fb *Probe) Start() {
+func (fb *Probe) Start() error {
 	fb.Graph.Lock()
 	defer fb.Graph.Unlock()
 
@@ -152,8 +152,7 @@ func (fb *Probe) Start() {
 		}
 
 		if len(pc) != 2 || pc[0] == "" || pc[1] == "" {
-			logging.GetLogger().Errorf("Fabric link definition should have two endpoints: %s", link)
-			continue
+			return fmt.Errorf("Fabric link definition should have two endpoints: %s", link)
 		}
 
 		parentDef := strings.TrimSpace(pc[0])
@@ -171,33 +170,28 @@ func (fb *Probe) Start() {
 		}
 
 		if strings.HasPrefix(parentDef, "*") {
-			logging.GetLogger().Error("Fabric probe doesn't support wildcard node as parent node")
-			continue
+			return errors.New("Fabric probe doesn't support wildcard node as parent node")
 		}
 
 		if strings.HasPrefix(childDef, "*") {
 			nodes := strings.SplitN(childDef, "/", 2)
 			if len(nodes) < 2 {
-				logging.GetLogger().Error("Invalid wildcard pattern: " + childDef)
-				continue
+				return fmt.Errorf("Invalid wildcard pattern: %s" + childDef)
 			}
 
 			parentNode, err := fb.getOrCreateFabricNodeFromDef(parentDef)
 			if err != nil {
-				logging.GetLogger().Error(err)
-				continue
+				return err
 			}
 
 			_, parentMetadata, err := nodeDefToMetadata(nodes[0])
 			if err != nil {
-				logging.GetLogger().Error(err)
-				continue
+				return err
 			}
 
 			_, childMetadata, err := nodeDefToMetadata(nodes[1])
 			if err != nil {
-				logging.GetLogger().Error(err)
-				continue
+				return err
 			}
 
 			// queue it as the node doesn't exist at start
@@ -206,14 +200,12 @@ func (fb *Probe) Start() {
 			// Fabric Node to Fabric Node
 			node1, err := fb.getOrCreateFabricNodeFromDef(parentDef)
 			if err != nil {
-				logging.GetLogger().Error(err)
-				continue
+				return err
 			}
 
 			node2, err := fb.getOrCreateFabricNodeFromDef(childDef)
 			if err != nil {
-				logging.GetLogger().Error(err)
-				continue
+				return err
 			}
 
 			if !topology.HaveOwnershipLink(fb.Graph, node1, node2) {
@@ -224,6 +216,8 @@ func (fb *Probe) Start() {
 			}
 		}
 	}
+
+	return nil
 }
 
 // Stop the probe

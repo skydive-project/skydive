@@ -21,17 +21,10 @@ package nsm
 
 import (
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
-type Probe struct{}
-
-// Start the probe
-func (p *Probe) Start() {}
-
-// Stop the probe
-func (p *Probe) Stop() {}
-
-func NewNsmProbe(g *graph.Graph) (*Probe, error) {
+func NewNsmProbe(g *graph.Graph) (probes.FlowProbeHandler, error) {
 	return nil, common.ErrNotImplemented
 }

@@ -252,8 +252,11 @@ func (s *ProcProbe) MapTCP(srcAddr, dstAddr *net.TCPAddr) (src *ProcessInfo, dst
 }
 
 // Start the socket info probe
-func (s *ProcProbe) Start() {
-	s.scanProc()
+func (s *ProcProbe) Start() error {
+	if err := s.scanProc(); err != nil {
+		return err
+	}
+
 	s.updateMetadata()
 
 	go func() {
@@ -271,6 +274,8 @@ func (s *ProcProbe) Start() {
 			}
 		}
 	}()
+
+	return nil
 }
 
 // Stop the socket info probe

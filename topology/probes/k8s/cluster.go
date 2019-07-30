@@ -33,7 +33,7 @@ type clusterCache struct {
 	graph *graph.Graph
 }
 
-func (c *clusterCache) addClusterNode(clusterName string) {
+func (c *clusterCache) addClusterNode(clusterName string) error {
 	c.graph.Lock()
 	defer c.graph.Unlock()
 
@@ -42,14 +42,16 @@ func (c *clusterCache) addClusterNode(clusterName string) {
 	var err error
 	clusterNode, err = c.graph.NewNode(graph.GenID(), NewMetadata(Manager, "cluster", m, nil, clusterName), "")
 	if err != nil {
-		logging.GetLogger().Error(err)
-		return
+		return err
 	}
+
 	c.NotifyEvent(graph.NodeAdded, clusterNode)
 	logging.GetLogger().Debugf("Added cluster{Name: %s}", clusterName)
+	return nil
 }
 
-func (c *clusterCache) Start() {
+func (c *clusterCache) Start() error {
+	return nil
 }
 
 func (c *clusterCache) Stop() {

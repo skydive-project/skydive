@@ -88,7 +88,8 @@ type Probe struct {
 // It must implement the ListenerHandler interface so that you
 // listen for creation/update/removal of a resource
 type Subprobe interface {
-	probe.Handler
+	Start() error
+	Stop()
 	graph.ListenerHandler
 }
 
@@ -103,18 +104,26 @@ func (l *Linker) OnError(err error) {
 }
 
 // Start k8s probe
-func (p *Probe) Start() {
+func (p *Probe) Start() error {
 	for _, linker := range p.linkers {
-		linker.Start()
+		if err := linker.Start(); err != nil {
+			return err
+		}
 	}
 
 	for _, subprobe := range p.subprobes {
-		subprobe.Start()
+		if err := subprobe.Start(); err != nil {
+			return err
+		}
 	}
 
 	for _, verifier := range p.verifiers {
-		verifier.Start()
+		if err := verifier.Start(); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 // Stop k8s probe

@@ -25,19 +25,7 @@ import (
 	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
-// Probe describes a LLDP probe that does nothing
-type Probe struct {
-}
-
-// Start the probe
-func (p *Probe) Start() {
-}
-
-// Stop the probe
-func (p *Probe) Stop() {
-}
-
-// Init initializes a new LLDP probe
-func (p *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (*Probe, error) {
+// NewProbe returns a new LLDP probe
+func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	return nil, common.ErrNotImplemented
 }

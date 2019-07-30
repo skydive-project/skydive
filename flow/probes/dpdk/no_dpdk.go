@@ -1,7 +1,7 @@
-// +build !linux !vpp
+// +build !dpdk
 
 /*
- * Copyright (C) 2018 Red Hat, Inc.
+ * Copyright (C) 2017 Red Hat, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,15 +17,14 @@
  *
  */
 
-package vpp
+package dpdk
 
 import (
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/probe"
-	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
-// NewProbe returns a new VPP probe
-func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
-	return nil, common.ErrNotImplemented
+// NewProbe returns a new DPDK probe
+func NewProbe(ctx probes.Context, bundle *probe.Bundle) (probes.FlowProbeHandler, error) {
+	return nil, probe.ErrNotCompiled
 }

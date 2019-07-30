@@ -17,7 +17,7 @@
  *
  */
 
-package probes
+package gopacket
 
 import (
 	"fmt"
@@ -32,6 +32,7 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/flow/probes/targets"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
@@ -47,15 +48,15 @@ const (
 
 // PacketProbe describes a probe responsible for capturing packets
 type PacketProbe interface {
-	Stats() (*CaptureStats, error)
+	Stats() (*probes.CaptureStats, error)
 	SetBPFFilter(bpf string) error
 	PacketSource() *gopacket.PacketSource
 	Close()
 }
 
-// GoPacketProbe describes a new probe that store packets from gopacket pcap library in a flowtable
-type GoPacketProbe struct {
-	Ctx         Context
+// Probe describes a new probe that store packets from gopacket pcap library in a flowtable
+type Probe struct {
+	Ctx         probes.Context
 	n           *graph.Node
 	packetProbe PacketProbe
 	state       common.ServiceState
@@ -70,16 +71,16 @@ type GoPacketProbe struct {
 
 type ftProbe struct {
 	target targets.Target
-	probe  *GoPacketProbe
+	probe  *Probe
 }
 
-// GoPacketProbesHandler describes a flow probe handle in the graph
-type GoPacketProbesHandler struct {
-	Ctx Context
+// ProbesHandler describes a flow probe handle in the graph
+type ProbesHandler struct {
+	Ctx probes.Context
 	wg  sync.WaitGroup
 }
 
-func (p *GoPacketProbe) updateStats(g *graph.Graph, n *graph.Node, captureStats *CaptureStats, ticker *time.Ticker, done chan bool, wg *sync.WaitGroup) {
+func (p *Probe) updateStats(g *graph.Graph, n *graph.Node, captureStats *probes.CaptureStats, ticker *time.Ticker, done chan bool, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for {
@@ -103,7 +104,7 @@ func (p *GoPacketProbe) updateStats(g *graph.Graph, n *graph.Node, captureStats 
 	}
 }
 
-func (p *GoPacketProbe) listen(packetCallback func(gopacket.Packet)) error {
+func (p *Probe) listen(packetCallback func(gopacket.Packet)) error {
 	packetSource := p.packetProbe.PacketSource()
 
 	var errs int
@@ -137,7 +138,7 @@ func (p *GoPacketProbe) listen(packetCallback func(gopacket.Packet)) error {
 
 // Run starts capturing packet, calling the passed callback for every packet
 // and notifying the flow probe handler when the capture has started
-func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e ProbeEventHandler) error {
+func (p *Probe) Run(packetCallback func(gopacket.Packet), e probes.ProbeEventHandler) error {
 	p.state.Store(common.RunningState)
 
 	var nsContext *common.NetNSContext
@@ -184,7 +185,7 @@ func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e ProbeEventHa
 		}
 	}
 
-	metadata := &CaptureMetadata{}
+	metadata := &probes.CaptureMetadata{}
 	e.OnStarted(metadata)
 
 	// notify active
@@ -204,25 +205,25 @@ func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e ProbeEventHa
 }
 
 // Stop capturing packets
-func (p *GoPacketProbe) Stop() {
+func (p *Probe) Stop() {
 	p.state.Store(common.StoppingState)
 }
 
-// NewGoPacketProbe returns a new Gopacket flow probe. It can use either `pcap` or `afpacket`
-func NewGoPacketProbe(ctx Context, n *graph.Node, captureType, bpfFilter string, headerSize uint32) (*GoPacketProbe, error) {
+// NewCapture returns a new Gopacket flow probe. It can use either `pcap` or `afpacket`
+func NewCapture(ctx probes.Context, n *graph.Node, captureType, bpfFilter string, headerSize uint32) (*Probe, error) {
 	ifName, _ := n.GetFieldString("Name")
 	if ifName == "" {
 		return nil, fmt.Errorf("No name for node %v", n)
 	}
 
-	firstLayerType, linkType := GoPacketFirstLayerType(n)
+	firstLayerType, linkType := FirstLayerType(n)
 
 	_, nsPath, err := topology.NamespaceFromNode(ctx.Graph, n)
 	if err != nil {
 		return nil, err
 	}
 
-	return &GoPacketProbe{
+	return &Probe{
 		Ctx:         ctx,
 		n:           n,
 		ifName:      ifName,
@@ -237,7 +238,7 @@ func NewGoPacketProbe(ctx Context, n *graph.Node, captureType, bpfFilter string,
 }
 
 // RegisterProbe registers a gopacket probe
-func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error) {
+func (p *ProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e probes.ProbeEventHandler) (probes.Probe, error) {
 	name, _ := n.GetFieldString("Name")
 	if name == "" {
 		return nil, fmt.Errorf("No name for node %v", n)
@@ -270,10 +271,10 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capt
 	}
 
 	// exclude my own traffic
-	bpfFilter := NormalizeBPFFilter(capture)
+	bpfFilter := probes.NormalizeBPFFilter(capture)
 	p.Ctx.Logger.Debugf("Normalized capture BPF Filter used: %s", bpfFilter)
 
-	probe, err := NewGoPacketProbe(p.Ctx, n, capture.Type, bpfFilter, headerSize)
+	probe, err := NewCapture(p.Ctx, n, capture.Type, bpfFilter, headerSize)
 	if err != nil {
 		return nil, err
 	}
@@ -325,14 +326,14 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capt
 	return &ftProbe{probe: probe, target: target}, nil
 }
 
-func (p *GoPacketProbesHandler) unregisterProbe(probe *ftProbe) error {
+func (p *ProbesHandler) unregisterProbe(probe *ftProbe) error {
 	p.Ctx.Logger.Debugf("Terminating gopacket capture on %s", probe.probe.n.ID)
 	probe.probe.Stop()
 	return nil
 }
 
 // UnregisterProbe unregisters gopacket probe
-func (p *GoPacketProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, probe Probe) error {
+func (p *ProbesHandler) UnregisterProbe(n *graph.Node, e probes.ProbeEventHandler, probe probes.Probe) error {
 	err := p.unregisterProbe(probe.(*ftProbe))
 	if err != nil {
 		return err
@@ -343,27 +344,29 @@ func (p *GoPacketProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandl
 }
 
 // Start probe
-func (p *GoPacketProbesHandler) Start() {
+func (p *ProbesHandler) Start() error {
+	return nil
 }
 
 // Stop probe
-func (p *GoPacketProbesHandler) Stop() {
+func (p *ProbesHandler) Stop() {
 	p.wg.Wait()
 }
 
 // CaptureTypes supported
-func (p *GoPacketProbesHandler) CaptureTypes() []string {
+func (p *ProbesHandler) CaptureTypes() []string {
 	return []string{"afpacket", "pcap"}
 }
 
-// Init initializes a new GoPacket probe
-func (p *GoPacketProbesHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHandler, error) {
-	p.Ctx = ctx
-	return p, nil
+// NewProbe returns a new GoPacket probe
+func NewProbe(ctx probes.Context, bundle *probe.Bundle) (probes.FlowProbeHandler, error) {
+	return &ProbesHandler{
+		Ctx: ctx,
+	}, nil
 }
 
-// GoPacketFirstLayerType returns the first layer of an interface
-func GoPacketFirstLayerType(n *graph.Node) (gopacket.LayerType, layers.LinkType) {
+// FirstLayerType returns the first layer of an interface
+func FirstLayerType(n *graph.Node) (gopacket.LayerType, layers.LinkType) {
 	if encapType, err := n.GetFieldString("EncapType"); err == nil {
 		return flow.GetFirstLayerType(encapType)
 	}

@@ -17,7 +17,7 @@
  *
  */
 
-package probes
+package ebpf
 
 import (
 	"bytes"
@@ -35,6 +35,7 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/statics"
@@ -42,7 +43,7 @@ import (
 )
 
 /*
-#cgo CFLAGS: -I../../probe/ebpf
+#cgo CFLAGS: -I../../../probe/ebpf
 #include "flow.h"
 #include <string.h>
 #include <sys/resource.h>
@@ -60,9 +61,9 @@ int probe_bpf_detach_socket(int sock, int fd)
 */
 import "C"
 
-// EBPFProbe the eBPF probe
-type EBPFProbe struct {
-	Ctx          Context
+// Probe the eBPF probe
+type Probe struct {
+	Ctx          probes.Context
 	probeNodeTID string
 	fd           int
 	flowTable    *flow.Table
@@ -74,13 +75,13 @@ type EBPFProbe struct {
 	flowPage     int
 }
 
-// EBPFProbesHandler creates new eBPF probes
-type EBPFProbesHandler struct {
-	Ctx Context
+// ProbesHandler creates new eBPF probes
+type ProbesHandler struct {
+	Ctx probes.Context
 	wg  sync.WaitGroup
 }
 
-func (p *EBPFProbe) swapPage() {
+func (p *Probe) swapPage() {
 	key := uint32(C.FLOW_PAGE)
 	writeInPage := int64(p.flowPage)
 
@@ -93,7 +94,7 @@ func (p *EBPFProbe) swapPage() {
 	}
 }
 
-func (p *EBPFProbe) run() {
+func (p *Probe) run() {
 	var info syscall.Sysinfo_t
 	syscall.Sysinfo(&info)
 
@@ -213,12 +214,12 @@ func (p *EBPFProbe) run() {
 	}
 }
 
-func (p *EBPFProbe) stop() {
+func (p *Probe) stop() {
 	p.quit <- true
 }
 
 // RegisterProbe registers an eBPF probe on an interface
-func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error) {
+func (p *ProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e probes.ProbeEventHandler) (probes.Probe, error) {
 	ifName, _ := n.GetFieldString("Name")
 	if ifName == "" {
 		return nil, fmt.Errorf("No name for node %s", n.ID)
@@ -284,7 +285,7 @@ func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture,
 	uuids := flow.UUIDs{NodeTID: tid, CaptureID: capture.UUID}
 	ft := p.Ctx.FTA.Alloc(uuids, flow.TableOpts{})
 
-	probe := &EBPFProbe{
+	probe := &Probe{
 		Ctx:          p.Ctx,
 		probeNodeTID: tid,
 		fd:           rs.GetFd(),
@@ -301,7 +302,7 @@ func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture,
 	go func() {
 		defer p.wg.Done()
 
-		e.OnStarted(&CaptureMetadata{})
+		e.OnStarted(&probes.CaptureMetadata{})
 
 		probe.run()
 
@@ -318,15 +319,16 @@ func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture,
 }
 
 // UnregisterProbe stops an eBPF probe on an interface
-func (p *EBPFProbesHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, fp Probe) error {
-	fp.(*EBPFProbe).stop()
+func (p *ProbesHandler) UnregisterProbe(n *graph.Node, e probes.ProbeEventHandler, fp probes.Probe) error {
+	fp.(*Probe).stop()
 	return nil
 }
 
-func (p *EBPFProbesHandler) Start() {
+func (p *ProbesHandler) Start() error {
+	return nil
 }
 
-func (p *EBPFProbesHandler) Stop() {
+func (p *ProbesHandler) Stop() {
 	p.wg.Wait()
 }
 
@@ -352,7 +354,7 @@ func LoadJumpMap(module *ebpf.Collection) error {
 	return nil
 }
 
-func (p *EBPFProbesHandler) loadModuleFromAsset(path string) (*ebpf.Collection, error) {
+func (p *ProbesHandler) loadModuleFromAsset(path string) (*ebpf.Collection, error) {
 	data, err := statics.Asset(path)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to find eBPF elf binary in bindata")
@@ -374,7 +376,7 @@ func (p *EBPFProbesHandler) loadModuleFromAsset(path string) (*ebpf.Collection, 
 	return module, err
 }
 
-func (p *EBPFProbesHandler) loadModule() (*ebpf.Collection, error) {
+func (p *ProbesHandler) loadModule() (*ebpf.Collection, error) {
 	err := syscall.Setrlimit(C.RLIMIT_MEMLOCK, &syscall.Rlimit{
 		Cur: math.MaxUint64,
 		Max: math.MaxUint64,
@@ -402,12 +404,11 @@ func (p *EBPFProbesHandler) loadModule() (*ebpf.Collection, error) {
 }
 
 // CaptureTypes supported
-func (p *EBPFProbesHandler) CaptureTypes() []string {
+func (p *ProbesHandler) CaptureTypes() []string {
 	return []string{"ebpf"}
 }
 
-// Init initializes a new eBPF probe
-func (p *EBPFProbesHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHandler, error) {
-	p.Ctx = ctx
-	return p, nil
+// NewProbe returns a new eBPF probe
+func NewProbe(ctx probes.Context, bundle *probe.Bundle) (probes.FlowProbeHandler, error) {
+	return &ProbesHandler{Ctx: ctx}, nil
 }
