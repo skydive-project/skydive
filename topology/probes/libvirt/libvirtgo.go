@@ -21,10 +21,12 @@ package libvirt
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sync"
 
 	libvirtgo "github.com/libvirt/libvirt-go"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology/probes"
 )
 
 type libvirtgoDomain struct {
@@ -47,6 +49,7 @@ func (d libvirtgoDomain) GetState() (DomainState, int, error) {
 
 type LibvirtgoMonitor struct {
 	*libvirtgo.Connect
+	ctx          probes.Context
 	cidLifecycle int // libvirt callback id of monitor to unregister
 	cidDevAdded  int // second monitor on devices added to domains
 }
@@ -66,19 +69,19 @@ func (m *LibvirtgoMonitor) AllDomains() ([]domain, error) {
 func (m *LibvirtgoMonitor) Stop() {
 	if m.cidLifecycle != -1 {
 		if err := m.DomainEventDeregister(m.cidLifecycle); err != nil {
-			logging.GetLogger().Errorf("Problem during deregistration: %s", err)
+			m.ctx.Logger.Errorf("Problem during deregistration: %s", err)
 		}
 		if err := m.DomainEventDeregister(m.cidDevAdded); err != nil {
-			logging.GetLogger().Errorf("Problem during deregistration: %s", err)
+			m.ctx.Logger.Errorf("Problem during deregistration: %s", err)
 		}
 	}
 
 	if _, err := m.Close(); err != nil {
-		logging.GetLogger().Errorf("Problem during close: %s", err)
+		m.ctx.Logger.Errorf("Problem during close: %s", err)
 	}
 }
 
-func newMonitor(ctx context.Context, probe *Probe) (*LibvirtgoMonitor, error) {
+func newMonitor(ctx context.Context, probe *Probe, wg *sync.WaitGroup) (*LibvirtgoMonitor, error) {
 	if probe.uri == "" {
 		probe.uri = "qemu:///system"
 	}
@@ -92,7 +95,7 @@ func newMonitor(ctx context.Context, probe *Probe) (*LibvirtgoMonitor, error) {
 	go func() {
 		for ctx.Err() == nil {
 			if err := libvirtgo.EventRunDefaultImpl(); err != nil {
-				logging.GetLogger().Errorf("libvirt poll loop problem: %s", err)
+				probe.Ctx.Logger.Errorf("libvirt poll loop problem: %s", err)
 			}
 		}
 	}()
@@ -137,6 +140,28 @@ func newMonitor(ctx context.Context, probe *Probe) (*LibvirtgoMonitor, error) {
 	if monitor.cidDevAdded, err = conn.DomainEventDeviceAddedRegister(nil, callbackDeviceAdded); err != nil {
 		return nil, fmt.Errorf("Could not register the device added event handler %s", err)
 	}
+
+	wg.Add(2)
+
+	disconnected := make(chan error, 1)
+	conn.RegisterCloseCallback(func(conn *libvirtgo.Connect, reason libvirtgo.ConnectCloseReason) {
+		defer wg.Done()
+
+		monitor.Stop()
+		disconnected <- errors.New("disconnected from libvirt")
+	})
+
+	go func() {
+		defer wg.Done()
+		defer probe.tunProcessor.Stop()
+
+		select {
+		case <-ctx.Done():
+			monitor.Stop()
+			break
+		case <-disconnected:
+		}
+	}()
 
 	return monitor, nil
 }

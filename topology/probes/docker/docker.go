@@ -24,8 +24,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"sync/atomic"
-	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/events"
@@ -37,6 +35,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
+	"github.com/skydive-project/skydive/topology/probes"
 	tp "github.com/skydive-project/skydive/topology/probes"
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
 	sversion "github.com/skydive-project/skydive/version"
@@ -53,13 +52,10 @@ type containerInfo struct {
 // ProbeHandler describes a Docker topology graph that enhance the graph
 type ProbeHandler struct {
 	common.RWMutex
-	*ns.ProbeHandler
+	Ctx          tp.Context
+	nsProbe      *ns.ProbeHandler
 	url          string
 	client       *client.Client
-	cancel       context.CancelFunc
-	state        int64
-	connected    atomic.Value
-	wg           sync.WaitGroup
 	hostNs       netns.NsHandle
 	containerMap map[string]containerInfo
 }
@@ -95,7 +91,7 @@ func (p *ProbeHandler) registerContainer(id string) {
 		// The container is in net=host mode
 		n = p.Ctx.RootNode
 	} else {
-		if n, err = p.Register(namespace, info.Name[1:]); err != nil {
+		if n, err = p.nsProbe.Register(namespace, info.Name[1:]); err != nil {
 			p.Ctx.Logger.Debugf("Failed to register probe for namespace %s: %s", namespace, err)
 			return
 		}
@@ -167,7 +163,7 @@ func (p *ProbeHandler) unregisterContainer(id string) {
 
 	namespace := p.containerNamespace(infos.Pid)
 	p.Ctx.Logger.Debugf("Stop listening for namespace %s with PID %d", namespace, infos.Pid)
-	p.Unregister(namespace)
+	p.nsProbe.Unregister(namespace)
 
 	delete(p.containerMap, id)
 }
@@ -180,7 +176,9 @@ func (p *ProbeHandler) handleDockerEvent(event *events.Message) {
 	}
 }
 
-func (p *ProbeHandler) connect() error {
+// Do connects to the Docker daemon, registers the existing containers and
+// start listening for Docker events
+func (p *ProbeHandler) Do(ctx context.Context, wg *sync.WaitGroup) error {
 	var err error
 
 	p.Ctx.Logger.Debugf("Connecting to Docker daemon: %s", p.url)
@@ -192,10 +190,13 @@ func (p *ProbeHandler) connect() error {
 	}
 	defer p.client.Close()
 
-	if _, err := p.client.ServerVersion(context.Background()); err != nil {
+	version, err := p.client.ServerVersion(ctx)
+	if err != nil {
 		p.Ctx.Logger.Errorf("Failed to connect to Docker daemon: %s", err)
 		return err
 	}
+
+	p.Ctx.Logger.Infof("Connected to Docker %s", version.Version)
 
 	if p.hostNs, err = netns.Get(); err != nil {
 		return err
@@ -210,17 +211,12 @@ func (p *ProbeHandler) connect() error {
 	eventsFilter.Add("event", "start")
 	eventsFilter.Add("event", "die")
 
-	ctx, cancel := context.WithCancel(context.Background())
 	eventChan, errChan := p.client.Events(ctx, types.EventsOptions{Filters: eventsFilter})
 
-	p.cancel = cancel
-	p.wg.Add(2)
-
-	p.connected.Store(true)
-	defer p.connected.Store(false)
+	wg.Add(2)
 
 	go func() {
-		defer p.wg.Done()
+		defer wg.Done()
 
 		containers, err := p.client.ContainerList(ctx, types.ContainerListOptions{})
 		if err != nil {
@@ -229,62 +225,35 @@ func (p *ProbeHandler) connect() error {
 		}
 
 		for _, c := range containers {
-			if atomic.LoadInt64(&p.state) != common.RunningState {
-				break
+			select {
+			case <-ctx.Done():
+			default:
+				p.registerContainer(c.ID)
 			}
-			p.registerContainer(c.ID)
 		}
 	}()
-
-	defer p.wg.Done()
-
-	for {
-		select {
-		case err := <-errChan:
-			if atomic.LoadInt64(&p.state) != common.StoppingState {
-				err = fmt.Errorf("Got error while waiting for Docker event: %s", err)
-			}
-			return err
-		case event := <-eventChan:
-			p.handleDockerEvent(&event)
-		}
-	}
-}
-
-// Start the probe
-func (p *ProbeHandler) Start() {
-	if !atomic.CompareAndSwapInt64(&p.state, common.StoppedState, common.RunningState) {
-		return
-	}
 
 	go func() {
+		defer wg.Done()
+
 		for {
-			state := atomic.LoadInt64(&p.state)
-			if state == common.StoppingState || state == common.StoppedState {
-				break
+			select {
+			case err := <-errChan:
+				switch {
+				case err == nil || err == context.Canceled:
+					return
+				case err.Error() == "unexpected EOF":
+					p.Ctx.Logger.Error("lost connection to Docker")
+				default:
+					p.Ctx.Logger.Errorf("got error while waiting for Docker event: %s", err)
+				}
+			case event := <-eventChan:
+				p.handleDockerEvent(&event)
 			}
-
-			if p.connect() != nil {
-				time.Sleep(1 * time.Second)
-			}
-
-			p.wg.Wait()
 		}
 	}()
-}
 
-// Stop the probe
-func (p *ProbeHandler) Stop() {
-	if !atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState) {
-		return
-	}
-
-	if p.connected.Load() == true {
-		p.cancel()
-		p.wg.Wait()
-	}
-
-	atomic.StoreInt64(&p.state, common.StoppedState)
+	return nil
 }
 
 // Init initializes a new topology Docker probe
@@ -297,15 +266,15 @@ func (p *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler
 	dockerURL := ctx.Config.GetString("agent.topology.docker.url")
 	netnsRunPath := ctx.Config.GetString("agent.topology.docker.netns.run_path")
 
-	p.ProbeHandler = nsHandler.(*ns.ProbeHandler)
+	p.nsProbe = nsHandler.(*ns.ProbeHandler)
 	p.url = dockerURL
 	p.containerMap = make(map[string]containerInfo)
-	p.state = common.StoppedState
+	p.Ctx = ctx
 
 	if netnsRunPath != "" {
-		p.Exclude(netnsRunPath + "/default")
-		p.Watch(netnsRunPath)
+		p.nsProbe.Exclude(netnsRunPath + "/default")
+		p.nsProbe.Watch(netnsRunPath)
 	}
 
-	return p, nil
+	return probes.NewProbeWrapper(p), nil
 }

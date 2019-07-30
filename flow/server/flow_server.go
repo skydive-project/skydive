@@ -24,7 +24,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/skydive-project/skydive/common"
@@ -84,7 +83,7 @@ type FlowServerWebSocketConn struct {
 type FlowServer struct {
 	storage            storage.Storage
 	conn               FlowServerConn
-	state              int64
+	state              common.ServiceState
 	wgServer           sync.WaitGroup
 	bulkInsert         int
 	bulkInsertDeadline time.Duration
@@ -224,7 +223,7 @@ func (s *FlowServer) storeFlows(flows []*flow.Flow) {
 
 // Start the flow server
 func (s *FlowServer) Start() {
-	atomic.StoreInt64(&s.state, common.RunningState)
+	s.state.Store(common.RunningState)
 	s.wgServer.Add(1)
 
 	s.conn.Serve(s.ch, s.quit, &s.wgServer)
@@ -257,7 +256,7 @@ func (s *FlowServer) Start() {
 
 // Stop the server
 func (s *FlowServer) Stop() {
-	if atomic.CompareAndSwapInt64(&s.state, common.RunningState, common.StoppingState) {
+	if s.state.CompareAndSwap(common.RunningState, common.StoppingState) {
 		s.quit <- struct{}{}
 		s.quit <- struct{}{}
 		s.wgServer.Wait()

@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"net"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"unsafe"
 
@@ -64,7 +63,7 @@ type Probe struct {
 	graph.DefaultGraphListener
 	Ctx           tp.Context
 	interfaceMap  map[string]*probes.GoPacketProbe // map interface names to the packet probes
-	state         int64                            // state of the probe (running or stopped)
+	state         common.ServiceState              // state of the probe (running or stopped)
 	wg            sync.WaitGroup                   // capture goroutines wait group
 	autoDiscovery bool                             // capture LLDP traffic on all capable interfaces
 }
@@ -411,7 +410,7 @@ func (p *Probe) OnNodeUpdated(n *graph.Node) {
 
 // Start capturing LLDP packets
 func (p *Probe) Start() {
-	atomic.StoreInt64(&p.state, common.RunningState)
+	p.state.Store(common.RunningState)
 	p.Ctx.Graph.AddEventListener(p)
 
 	p.Ctx.Graph.RLock()
@@ -429,7 +428,7 @@ func (p *Probe) Start() {
 // Stop capturing LLDP packets
 func (p *Probe) Stop() {
 	p.Ctx.Graph.RemoveEventListener(p)
-	atomic.StoreInt64(&p.state, common.StoppingState)
+	p.state.Store(common.StoppingState)
 	for intf, activeProbe := range p.interfaceMap {
 		if activeProbe != nil {
 			p.Ctx.Logger.Debugf("Stopping probe on %s", intf)

@@ -26,7 +26,6 @@ import (
 	"net"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -71,7 +70,7 @@ type Probe struct {
 	socket               *nl.NetlinkSocket
 	indexToChildrenQueue map[int64][]pendingLink
 	links                map[int]*graph.Node
-	state                int64
+	state                common.ServiceState
 	wg                   sync.WaitGroup
 	quit                 chan bool
 	netNsNameTry         map[graph.Identifier]int
@@ -84,7 +83,7 @@ type ProbeHandler struct {
 	Ctx            tp.Context
 	epollFd        int
 	probes         map[int32]*Probe
-	state          int64
+	state          common.ServiceState
 	wg             sync.WaitGroup
 	sriovProcessor *graph.Processor
 }
@@ -914,7 +913,7 @@ func parseAddr(m []byte) (addr netlink.Addr, family, index int, err error) {
 }
 
 func (u *Probe) isRunning() bool {
-	return atomic.LoadInt64(&u.state) == common.RunningState
+	return u.state.Load() == common.RunningState
 }
 
 func (u *Probe) cloneLinkNodes() map[int]*graph.Node {
@@ -1016,7 +1015,7 @@ func (u *Probe) start(handler *ProbeHandler) {
 	// wait for Probe ready
 Ready:
 	for {
-		switch atomic.LoadInt64(&handler.state) {
+		switch handler.state.Load() {
 		case common.StoppingState, common.StoppedState:
 			return
 		case common.RunningState:
@@ -1025,7 +1024,7 @@ Ready:
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
-	atomic.StoreInt64(&u.state, common.RunningState)
+	u.state.Store(common.RunningState)
 
 	fd := u.socket.GetFd()
 
@@ -1128,7 +1127,7 @@ func (u *Probe) closeFds() {
 }
 
 func (u *Probe) stop() {
-	if atomic.CompareAndSwapInt64(&u.state, common.RunningState, common.StoppingState) {
+	if u.state.CompareAndSwap(common.RunningState, common.StoppingState) {
 		u.quit <- true
 		u.wg.Wait()
 	}
@@ -1234,8 +1233,8 @@ func (u *ProbeHandler) start() {
 
 	events := make([]syscall.EpollEvent, maxEpollEvents)
 
-	atomic.StoreInt64(&u.state, common.RunningState)
-	for atomic.LoadInt64(&u.state) == common.RunningState {
+	u.state.Store(common.RunningState)
+	for u.state.Load() == common.RunningState {
 		nevents, err := syscall.EpollWait(u.epollFd, events[:], 200)
 		if err != nil {
 			if errno, ok := err.(syscall.Errno); ok && errno != syscall.EINTR {
@@ -1266,7 +1265,7 @@ func (u *ProbeHandler) Start() {
 
 // Stop the probe
 func (u *ProbeHandler) Stop() {
-	if atomic.CompareAndSwapInt64(&u.state, common.RunningState, common.StoppingState) {
+	if u.state.CompareAndSwap(common.RunningState, common.StoppingState) {
 		u.wg.Wait()
 
 		u.RLock()

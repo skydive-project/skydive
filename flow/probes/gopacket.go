@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"io"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/google/gopacket"
@@ -59,7 +58,7 @@ type GoPacketProbe struct {
 	Ctx         Context
 	n           *graph.Node
 	packetProbe PacketProbe
-	state       int64
+	state       common.ServiceState
 	ifName      string
 	bpfFilter   string
 	nsPath      string
@@ -88,7 +87,7 @@ func (p *GoPacketProbe) updateStats(g *graph.Graph, n *graph.Node, captureStats 
 		case <-ticker.C:
 			if stats, err := p.packetProbe.Stats(); err != nil {
 				p.Ctx.Logger.Error(err)
-			} else if atomic.LoadInt64(&p.state) == common.RunningState {
+			} else if p.state.Load() == common.RunningState {
 				g.Lock()
 				g.UpdateMetadata(n, "Captures", func(obj interface{}) bool {
 					captureStats.PacketsDropped = stats.PacketsDropped
@@ -108,7 +107,7 @@ func (p *GoPacketProbe) listen(packetCallback func(gopacket.Packet)) error {
 	packetSource := p.packetProbe.PacketSource()
 
 	var errs int
-	for atomic.LoadInt64(&p.state) == common.RunningState {
+	for p.state.Load() == common.RunningState {
 		packet, err := packetSource.NextPacket()
 		switch err {
 		case nil:
@@ -139,7 +138,7 @@ func (p *GoPacketProbe) listen(packetCallback func(gopacket.Packet)) error {
 // Run starts capturing packet, calling the passed callback for every packet
 // and notifying the flow probe handler when the capture has started
 func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e ProbeEventHandler) error {
-	atomic.StoreInt64(&p.state, common.RunningState)
+	p.state.Store(common.RunningState)
 
 	var nsContext *common.NetNSContext
 	var err error
@@ -199,14 +198,14 @@ func (p *GoPacketProbe) Run(packetCallback func(gopacket.Packet), e ProbeEventHa
 	statsTicker.Stop()
 
 	p.packetProbe.Close()
-	atomic.StoreInt64(&p.state, common.StoppedState)
+	p.state.Store(common.StoppedState)
 
 	return err
 }
 
 // Stop capturing packets
 func (p *GoPacketProbe) Stop() {
-	atomic.StoreInt64(&p.state, common.StoppingState)
+	p.state.Store(common.StoppingState)
 }
 
 // NewGoPacketProbe returns a new Gopacket flow probe. It can use either `pcap` or `afpacket`

@@ -19,7 +19,6 @@ package etcd
 
 import (
 	"sync"
-	"sync/atomic"
 	"time"
 
 	etcd "github.com/coreos/etcd/client"
@@ -42,7 +41,7 @@ type MasterElector struct {
 	listeners  []common.MasterElectionListener
 	cancel     context.CancelFunc
 	master     bool
-	state      int64
+	state      common.ServiceState
 	wg         sync.WaitGroup
 }
 
@@ -131,8 +130,8 @@ func (le *MasterElector) start(first chan struct{}) {
 	le.wg.Add(1)
 	defer le.wg.Done()
 
-	atomic.StoreInt64(&le.state, common.RunningState)
-	for atomic.LoadInt64(&le.state) == common.RunningState {
+	le.state.Store(common.RunningState)
+	for le.state.Load() == common.RunningState {
 		resp, err := watcher.Next(ctx)
 		if err != nil {
 			logging.GetLogger().Errorf("Error while watching etcd: %s", err.Error())
@@ -191,7 +190,7 @@ func (le *MasterElector) StartAndWait() {
 
 // Stop the election mechanism
 func (le *MasterElector) Stop() {
-	if atomic.CompareAndSwapInt64(&le.state, common.RunningState, common.StoppingState) {
+	if le.state.CompareAndSwap(common.RunningState, common.StoppingState) {
 		le.cancel()
 		le.wg.Wait()
 	}

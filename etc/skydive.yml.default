@@ -163,9 +163,9 @@ analyzer:
 
     ovn:
       # OVN northbound address. Format can be either:
-      # * tcp://addr:port
-      # * unix:///var/run/openvswitch/ovnnb_db.sock
-      # address: unix:///var/run/openvswitch/ovnnb_db.sock
+      # * tcp:addr:port
+      # * unix:/var/run/openvswitch/ovnnb_db.sock
+      # address: unix:/var/run/openvswitch/ovnnb_db.sock
 
   replication:
     # debug: false

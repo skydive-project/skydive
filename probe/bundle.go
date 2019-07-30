@@ -32,6 +32,16 @@ type Handler interface {
 	Stop()
 }
 
+// ServiceStatus describes the status returned by GetStatus
+type ServiceStatus struct {
+	Status common.ServiceState
+}
+
+// StatusReporter can be implemented by probes to report their status
+type StatusReporter interface {
+	GetStatus() interface{}
+}
+
 // Bundle describes a bundle of probes (topology of flow)
 type Bundle struct {
 	common.RWMutex
@@ -69,8 +79,8 @@ func (p *Bundle) GetHandler(typ string) Handler {
 	return nil
 }
 
-// ActiveProbes returns all active probes name
-func (p *Bundle) ActiveProbes() []string {
+// EnabledProbes returns all enabled probes name
+func (p *Bundle) EnabledProbes() []string {
 	p.RLock()
 	defer p.RUnlock()
 
@@ -79,6 +89,22 @@ func (p *Bundle) ActiveProbes() []string {
 		activeProbes = append(activeProbes, k)
 	}
 	return activeProbes
+}
+
+// GetStatus returns the status of all the probes
+func (p *Bundle) GetStatus() map[string]interface{} {
+	p.RLock()
+	defer p.RUnlock()
+
+	status := make(map[string]interface{})
+	for k, v := range p.Handlers {
+		if v, ok := v.(StatusReporter); ok {
+			status[k] = v.GetStatus()
+		} else {
+			status[k] = &ServiceStatus{Status: common.RunningState}
+		}
+	}
+	return status
 }
 
 // AddHandler adds a probe to the bundle

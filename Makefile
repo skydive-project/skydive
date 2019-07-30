@@ -613,7 +613,7 @@ lint: gometalinter
 	gometalinter --disable=gotype ${GOMETALINTER_FLAGS} --vendor -e '.*\.pb.go' -e '.*\._easyjson.go' -e '.*\._gendecoder.go' -e 'statics/bindata.go' --skip=statics/... --deadline 10m --sort=path ./... --json | tee lint.json || true
 
 .PHONY: genlocalfiles
-genlocalfiles: .proto .go-generate .bindata .easyjson .vppbinapi
+genlocalfiles: .proto .vppbinapi .go-generate .bindata .easyjson
 
 .PHONY: clean
 clean: skydive.clean test.functionals.clean dpdk.clean contribs.clean ebpf.clean .easyjson.clean .proto.clean .go-generate.clean .typescript.clean .vppbinapi.clean

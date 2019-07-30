@@ -42,7 +42,7 @@ const (
 )
 
 // ConnState describes the connection state
-type ConnState int32
+type ConnState common.ServiceState
 
 // ConnStatus describes the status of a WebSocket connection
 type ConnStatus struct {
@@ -59,9 +59,24 @@ type ConnStatus struct {
 	RemoteServiceType common.ServiceType `json:",omitempty"`
 }
 
+// Store atomatically stores the state
+func (s *ConnState) Store(state common.ServiceState) {
+	(*common.ServiceState)(s).Store(state)
+}
+
+// Load atomatically loads and returns the state
+func (s *ConnState) Load() common.ServiceState {
+	return (*common.ServiceState)(s).Load()
+}
+
+// CompareAndSwap executes the compare-and-swap operation for a state
+func (s *ConnState) CompareAndSwap(old, new common.ServiceState) bool {
+	return atomic.CompareAndSwapInt64((*int64)(s), int64(old), int64(new))
+}
+
 // MarshalJSON marshal the connection state to JSON
 func (s *ConnState) MarshalJSON() ([]byte, error) {
-	switch *s {
+	switch common.ServiceState(*s) {
 	case common.RunningState:
 		return []byte("true"), nil
 	case common.StoppedState:
@@ -78,9 +93,9 @@ func (s *ConnState) UnmarshalJSON(b []byte) error {
 	}
 
 	if state {
-		*s = common.RunningState
+		*s = ConnState(common.RunningState)
 	} else {
-		*s = common.StoppedState
+		*s = ConnState(common.StoppedState)
 	}
 
 	return nil
@@ -206,7 +221,7 @@ func (c *Conn) GetURL() *url.URL {
 
 // IsConnected returns the connection status.
 func (c *Conn) IsConnected() bool {
-	return atomic.LoadInt32((*int32)(c.State)) == common.RunningState
+	return c.State.Load() == common.RunningState
 }
 
 // GetStatus returns the status of a WebSocket connection
@@ -216,7 +231,7 @@ func (c *Conn) GetStatus() ConnStatus {
 
 	status := c.ConnStatus
 	status.State = new(ConnState)
-	*status.State = ConnState(atomic.LoadInt32((*int32)(c.State)))
+	*status.State = ConnState(c.State.Load())
 	return c.ConnStatus
 }
 
@@ -348,7 +363,7 @@ func (c *Conn) run() {
 
 	defer func() {
 		c.conn.Close()
-		atomic.StoreInt32((*int32)(c.State), common.StoppedState)
+		c.State.Store(common.StoppedState)
 
 		// handle all the pending received messages
 		flushChannel(c.read, handleReceivedMessage)
@@ -417,7 +432,7 @@ func (c *Conn) Flush() {
 // Stop disconnect the speaker
 func (c *Conn) Stop() {
 	c.running.Store(false)
-	if atomic.CompareAndSwapInt32((*int32)(c.State), common.RunningState, common.StoppingState) {
+	if c.State.CompareAndSwap(common.RunningState, common.StoppingState) {
 		c.quit <- true
 	}
 }
@@ -461,7 +476,7 @@ func newConn(host string, clientType common.ServiceType, clientProtocol Protocol
 		c.messageType = websocket.BinaryMessage
 	}
 
-	*c.State = common.StoppedState
+	c.State.Store(common.StoppedState)
 	c.running.Store(true)
 	return c
 }
@@ -511,7 +526,7 @@ func (c *Client) Connect() error {
 	c.conn.SetPingHandler(nil)
 	c.conn.EnableWriteCompression(c.writeCompression)
 
-	atomic.StoreInt32((*int32)(c.State), common.RunningState)
+	c.State.Store(common.RunningState)
 
 	c.Opts.Logger.Infof("Connected to %s", endpoint)
 

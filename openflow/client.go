@@ -53,7 +53,6 @@ type Client struct {
 	conn               net.Conn
 	addr               string
 	reader             *bufio.Reader
-	ctx                context.Context
 	msgChan            chan (goloxi.Message)
 	listeners          []Listener
 	xid                uint32
@@ -147,8 +146,8 @@ func (c *Client) handshake() (Protocol, error) {
 	return nil, fmt.Errorf("Unsupported protocol version %d", protocol.GetVersion())
 }
 
-func (c *Client) handleLoop() error {
-	ctx, cancel := context.WithCancel(c.ctx)
+func (c *Client) handleLoop(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	echoTicker := time.NewTicker(time.Second * echoDuration)
@@ -209,7 +208,9 @@ func (c *Client) readLoop() {
 	for {
 		_, data, err := c.readMessage()
 		if err != nil {
-			logging.GetLogger().Error(err)
+			if err != io.EOF {
+				logging.GetLogger().Error(err)
+			}
 			return
 		}
 
@@ -288,7 +289,6 @@ func (c *Client) Start(ctx context.Context) (err error) {
 	}
 
 	c.reader = bufio.NewReader(c.conn)
-	c.ctx = ctx
 
 	c.protocol, err = c.handshake()
 	if err != nil {
@@ -296,7 +296,7 @@ func (c *Client) Start(ctx context.Context) (err error) {
 	}
 
 	go c.readLoop()
-	go c.handleLoop()
+	go c.handleLoop(ctx)
 
 	logging.GetLogger().Infof("Successfully connected to OpenFlow switch %s using version %d", c.addr, c.protocol.GetVersion())
 

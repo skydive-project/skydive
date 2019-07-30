@@ -1005,21 +1005,24 @@
 			"versionExact": "v3.0.0"
 		},
 		{
-			"checksumSHA1": "8uYFJoK50QjSxjRSRDN/wZx4lg0=",
+			"checksumSHA1": "bBmztNHakXZuZUKtbkq4oaR/NkY=",
+			"origin": "github.com/lebauce/go-libvirt",
 			"path": "github.com/digitalocean/go-libvirt",
-			"revision": "5ea6f2a136d87dc4763b937eca7d21b3dc66452b",
-			"revisionTime": "2019-04-04T07:41:16Z"
+			"revision": "7799d804f7e42b8055dfb5dc2671396c2264cf0e",
+			"revisionTime": "2019-07-17T11:37:54Z"
 		},
 		{
 			"checksumSHA1": "i+X7LQSRtB2+wlf7VicgQ4UPbtM=",
+			"origin": "github.com/lebauce/go-libvirt/internal/constants",
 			"path": "github.com/digitalocean/go-libvirt/internal/constants",
-			"revision": "5ea6f2a136d87dc4763b937eca7d21b3dc66452b",
+			"revision": "7799d804f7e42b8055dfb5dc2671396c2264cf0e",
 			"revisionTime": "2019-04-04T07:41:16Z"
 		},
 		{
 			"checksumSHA1": "ec0UPQkMPVIjrR+9uwzBsE5JNLk=",
+			"origin": "github.com/lebauce/go-libvirt/internal/go-xdr/xdr2",
 			"path": "github.com/digitalocean/go-libvirt/internal/go-xdr/xdr2",
-			"revision": "5ea6f2a136d87dc4763b937eca7d21b3dc66452b",
+			"revision": "7799d804f7e42b8055dfb5dc2671396c2264cf0e",
 			"revisionTime": "2019-04-04T07:41:16Z"
 		},
 		{
@@ -1191,16 +1194,16 @@
 			"revision": "5d2041e26a699eaca682e2ea41c8f891e1060444"
 		},
 		{
-			"checksumSHA1": "FjBFoAy86qwN8CFX0Qq7cWO9gHg=",
+			"checksumSHA1": "eC5F+BGlDVBC13L/9+dKLg7/b+4=",
 			"path": "github.com/ebay/go-ovn",
-			"revision": "c0bd774dc3ed8223283d215c6d0a0a0cca5a8d53",
-			"revisionTime": "2019-03-28T21:07:50Z"
+			"revision": "ca0da4d10c5264e6bb8083566be39f5bc7bd7181",
+			"revisionTime": "2019-07-26T16:37:19Z"
 		},
 		{
-			"checksumSHA1": "KSt5jSuJQ8wDsaWmpBrgEt3Pf+g=",
+			"checksumSHA1": "yA+dLJ/9VR6nlzyKr7P3rhbRFk4=",
 			"path": "github.com/ebay/libovsdb",
-			"revision": "c6f109972ce3e4175600eaa5a80537bff108d6df",
-			"revisionTime": "2019-03-23T08:03:07Z"
+			"revision": "49cd93e6d1101ebb7e8412abee92771ea00d5b4d",
+			"revisionTime": "2019-07-18T19:49:03Z"
 		},
 		{
 			"checksumSHA1": "HbOJxa+FsQ1TTsF+BkHAvzqqZv4=",

@@ -28,7 +28,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	govpp "git.fd.io/govpp.git"
@@ -60,7 +59,7 @@ type Probe struct {
 	interfaceMap map[uint32]*interfaces.SwInterfaceDetails // MAP of VPP interfaces
 	vppRootNode  *graph.Node                               // root node for ownership
 	notifChan    chan api.Message                          // notification channel on interfaces events
-	state        int64                                     // state of the probe (running or stopped)
+	state        common.ServiceState                       // state of the probe (running or stopped)
 	wg           sync.WaitGroup                            // goroutines wait group
 }
 
@@ -201,7 +200,7 @@ func (p *Probe) interfacesEvents() {
 
 	p.interfaceEventsEnableDisable(ch, true)
 
-	for atomic.LoadInt64(&p.state) == common.RunningState {
+	for p.state.Load() == common.RunningState {
 		notif := <-p.notifChan
 		if notif == nil {
 			break
@@ -238,7 +237,7 @@ func (p *Probe) interfacesPolling() {
 		return
 	}
 
-	for atomic.LoadInt64(&p.state) == common.RunningState {
+	for p.state.Load() == common.RunningState {
 		foundInterfaces := make(map[uint32]struct{})
 		needUpdate := make(map[uint32]struct{})
 
@@ -334,7 +333,7 @@ func (p *Probe) Start() {
 	}
 	topology.AddOwnershipLink(p.Ctx.Graph, p.Ctx.RootNode, p.vppRootNode, nil)
 
-	atomic.StoreInt64(&p.state, common.RunningState)
+	p.state.Store(common.RunningState)
 
 	p.wg.Add(2)
 	go p.interfacesPolling()
@@ -343,7 +342,7 @@ func (p *Probe) Start() {
 
 // Stop the probe
 func (p *Probe) Stop() {
-	atomic.StoreInt64(&p.state, common.StoppingState)
+	p.state.Store(common.StoppingState)
 	close(p.notifChan)
 	p.conn.Disconnect()
 	p.wg.Wait()
@@ -356,7 +355,7 @@ func (p *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error
 	p.Ctx = ctx
 	p.shm = shm
 	p.interfaceMap = make(map[uint32]*interfaces.SwInterfaceDetails)
-	p.state = common.StoppedState
+	p.state.Store(common.StoppedState)
 	p.notifChan = make(chan api.Message, 100)
 
 	/* Forward all govpp logging to Skydive logging */

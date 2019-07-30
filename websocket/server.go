@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	auth "github.com/abbot/go-http-auth"
@@ -163,7 +162,7 @@ func (s *Server) newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRe
 		return nil, err
 	}
 
-	atomic.StoreInt32((*int32)(c.State), common.RunningState)
+	c.State.Store(common.RunningState)
 
 	// add the new Speaker to the server pool
 	s.AddClient(pc)

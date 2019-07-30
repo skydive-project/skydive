@@ -20,7 +20,6 @@ package flow
 import (
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/google/gopacket"
@@ -63,7 +62,7 @@ type Table struct {
 	flushDone         chan bool
 	query             chan *TableQuery
 	reply             chan []byte
-	state             int64
+	state             common.ServiceState
 	lockState         common.RWMutex
 	wg                sync.WaitGroup
 	quit              chan bool
@@ -348,7 +347,7 @@ func (ft *Table) Query(query *TableQuery) []byte {
 	ft.lockState.Lock()
 	defer ft.lockState.Unlock()
 
-	if atomic.LoadInt64(&ft.state) == common.RunningState {
+	if ft.state.Load() == common.RunningState {
 		ft.query <- query
 
 		timer := time.NewTicker(1 * time.Second)
@@ -359,7 +358,7 @@ func (ft *Table) Query(query *TableQuery) []byte {
 			case r := <-ft.reply:
 				return r
 			case <-timer.C:
-				if atomic.LoadInt64(&ft.state) != common.RunningState {
+				if ft.state.Load() != common.RunningState {
 					return nil
 				}
 			}
@@ -478,8 +477,8 @@ func (ft *Table) processEBPFFlow(ebpfFlow *EBPFFlow) {
 }
 
 // State returns the state of the flow table, stopped, running...
-func (ft *Table) State() int64 {
-	return atomic.LoadInt64(&ft.state)
+func (ft *Table) State() common.ServiceState {
+	return ft.state.Load()
 }
 
 // Run background jobs, like update/expire entries event
@@ -508,7 +507,7 @@ func (ft *Table) Run() {
 	ft.query = make(chan *TableQuery, 100)
 	ft.reply = make(chan []byte, 100)
 
-	atomic.StoreInt64(&ft.state, common.RunningState)
+	ft.state.Store(common.RunningState)
 	for {
 		select {
 		case <-ft.quit:
@@ -584,7 +583,7 @@ func (ft *Table) Stop() {
 	ft.lockState.Lock()
 	defer ft.lockState.Unlock()
 
-	if atomic.CompareAndSwapInt64(&ft.state, common.RunningState, common.StoppingState) {
+	if ft.state.CompareAndSwap(common.RunningState, common.StoppingState) {
 		ft.quit <- true
 		ft.wg.Wait()
 
