@@ -21,6 +21,11 @@ cd ${GOPATH}/src/github.com/skydive-project/skydive
 
 echo "--- BINARIES ---"
 make static WITH_EBPF=true
+
+# We need at least Go 1.11.0 to generate swagger spec
+eval "$(gimme 1.12.7)"
+make swagger
+
 git reset --hard
 
 cd /tmp
@@ -33,7 +38,9 @@ git lfs install
 git config --global user.email "builds@skydive.network"
 git config --global user.name "Skydive CI"
 cp ${GOPATH}/bin/skydive skydive-latest
+cp ${GOPATH}/src/github.com/skydive-project/skydive/swagger.json .
 git add skydive-latest
+git add swagger.json
 git commit -m "${BUILD_TAG} Jenkins build" --amend --reset-author
 git config credential.helper "store --file=.git/credentials"
 echo "https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com" > .git/credentials
