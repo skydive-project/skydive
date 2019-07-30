@@ -1,3 +1,6 @@
+//go:generate sh -c "renderizer --name=capture --resource=capture --type=Capture --title=Capture --article=a swagger_operations.tmpl > capture_swagger.go"
+//go:generate sh -c "renderizer --name=capture --resource=capture --type=Capture --title=Capture --article=a swagger_definitions.tmpl > capture_swagger.json"
+
 /*
  * Copyright (C) 2016 Red Hat, Inc.
  *
@@ -133,7 +136,7 @@ func (c *CaptureAPIHandler) Create(r types.Resource, opts *CreateOptions) error 
 
 		if sameCaptureType && sameGremlin {
 			if !supportsMulti || sameBPFFilter {
-				return fmt.Errorf("Duplicated capture, uuid=%s", resource.UUID)
+				return ErrDuplicatedResource
 			}
 		}
 	}

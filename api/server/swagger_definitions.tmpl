@@ -1,0 +1,18 @@
+{
+  "tags": [ {
+    "name": "{{ .Title }}s",
+    "description": "{{ .Title }}"
+  } ],
+  "definitions": {
+    "AnyValue": {},
+    "{{ .Type }}s": {
+      "description": "{{ .Title }}s",
+      "type": "object",
+      "title": "Map of {{ .Name }}s",
+      "x-additionalPropertiesName": "UUID",
+      "additionalProperties": {
+        "$ref": "#/definitions/{{ .Type }}"
+      }
+    }
+  }
+}

@@ -1,3 +1,6 @@
+//go:generate sh -c "renderizer --name='node rule' --resource=noderule --type=NodeRule --title='Node rule' --article=a swagger_operations.tmpl > noderule_swagger.go"
+//go:generate sh -c "renderizer --name='node rule' --resource=noderule --type=NodeRule --title='Node rule' swagger_definitions.tmpl > noderule_swagger.json"
+
 /*
  * Copyright (C) 2018 Red Hat, Inc.
  *

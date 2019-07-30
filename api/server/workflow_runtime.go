@@ -85,7 +85,7 @@ func NewWorkflowRuntime(g *graph.Graph, tr *traversal.GremlinTraversalParser, se
 
 		// For topology query, we directly call the Gremlin engine
 		if resource == "topology" {
-			query := types.TopologyParam{}
+			query := types.TopologyParams{}
 			if err := json.Unmarshal(data, &query); err != nil {
 				return runtime.MakeCustomError("WrongArgument", fmt.Sprintf("Invalid query %s", string(data)))
 			}

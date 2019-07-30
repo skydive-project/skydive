@@ -68,7 +68,7 @@ func (p *PcapAPI) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest
 	flowtable.Stop()
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (p *PcapAPI) registerEndpoints(r *shttp.Server, authBackend shttp.AuthenticationBackend) {
@@ -86,6 +86,37 @@ func (p *PcapAPI) registerEndpoints(r *shttp.Server, authBackend shttp.Authentic
 
 // RegisterPcapAPI registers a new pcap injector API
 func RegisterPcapAPI(r *shttp.Server, store storage.Storage, authBackend shttp.AuthenticationBackend) {
+	// swagger:operation POST /pcap injectPCAP
+	//
+	// Inject PCAP
+	//
+	// ---
+	// summary: Inject PCAP
+	//
+	// tags:
+	// - PCAP
+	//
+	// consumes:
+	// - application/octet-stream
+	//
+	// schemes:
+	// - http
+	// - https
+	//
+	// parameters:
+	//   - in: body
+	//     name: status
+	//     required: true
+	//     schema:
+	//       type: string
+	//       format: binary
+	//
+	// responses:
+	//   202:
+	//     description: request accepted
+	//   400:
+	//     description: invalid PCAP
+
 	p := &PcapAPI{
 		Storage: store,
 	}

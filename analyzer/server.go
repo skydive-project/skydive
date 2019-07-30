@@ -68,7 +68,11 @@ type ElectionStatus struct {
 	IsMaster bool
 }
 
+// Status analyzer object
+//
 // Status describes the status of an analyzer
+//
+// swagger:model AnalyzerStatus
 type Status struct {
 	Agents      map[string]ws.ConnStatus
 	Peers       hub.PeersStatus

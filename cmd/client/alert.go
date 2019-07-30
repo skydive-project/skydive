@@ -145,7 +145,7 @@ func addAlertFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&alertName, "name", "", "", "alert name")
 	cmd.Flags().StringVarP(&alertDescription, "description", "", "", "description of the alert")
 	cmd.Flags().StringVarP(&alertTrigger, "trigger", "", "graph", "event that triggers the alert evaluation")
-	cmd.Flags().StringVarP(&alertExpression, "expression", "", "", "Gremlin of JavaScript expression evaluated to trigger the alarm")
+	cmd.Flags().StringVarP(&alertExpression, "expression", "", "", "Gremlin or JavaScript expression evaluated to trigger the alarm")
 	cmd.Flags().StringVarP(&alertAction, "action", "", "", "can be either an empty string, or a URL (use 'file://' for local scripts)")
 }
 

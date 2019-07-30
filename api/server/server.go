@@ -15,11 +15,31 @@
  *
  */
 
+// Package server Skydive API
+//
+// The Skydive REST API allows to communicate with a Skydive analyzer.
+//
+//     Schemes: http, https
+//     Host: localhost:8082
+//     BasePath: /api
+//     Version: 0.24.0
+//     License: Apache http://opensource.org/licenses/Apache-2.0
+//     Contact: Skydive mailing list <skydive-dev@redhat.com>
+//
+//     Consumes:
+//     - application/json
+//
+//     Produces:
+//     - application/json
+//     - text/plain
+//
+// swagger:meta
 package server
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -39,6 +59,9 @@ import (
 	"github.com/skydive-project/skydive/version"
 )
 
+// ErrDuplicatedResource is returned when a resource is duplicated
+var ErrDuplicatedResource = errors.New("Duplicated resource")
+
 // Server object are created once for each ServiceType (agent or analyzer)
 type Server struct {
 	HTTPServer *shttp.Server
@@ -47,9 +70,13 @@ type Server struct {
 }
 
 // Info for each host describes his API version and service (agent or analyzer)
+// swagger:model
 type Info struct {
-	Host    string
+	// Server host ID
+	Host string
+	// API version
 	Version string
+	// Service type
 	Service string
 }
 
@@ -161,7 +188,10 @@ func (a *Server) RegisterAPIHandler(handler Handler, authBackend shttp.Authentic
 					}
 				}
 
-				if err := handler.Create(resource, &createOpts); err != nil {
+				if err := handler.Create(resource, &createOpts); err == ErrDuplicatedResource {
+					writeError(w, http.StatusConflict, err)
+					return
+				} else if err != nil {
 					writeError(w, http.StatusBadRequest, err)
 					return
 				}
@@ -173,7 +203,7 @@ func (a *Server) RegisterAPIHandler(handler Handler, authBackend shttp.Authentic
 				}
 
 				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-				w.WriteHeader(http.StatusOK)
+				w.WriteHeader(http.StatusCreated)
 				if _, err := w.Write(data); err != nil {
 					logging.GetLogger().Criticalf("Failed to create %s: %s", name, err)
 				}
@@ -196,7 +226,11 @@ func (a *Server) RegisterAPIHandler(handler Handler, authBackend shttp.Authentic
 				}
 
 				if err := handler.Delete(id); err != nil {
-					writeError(w, http.StatusBadRequest, err)
+					if err, ok := err.(etcd.Error); ok && err.Code == etcd.ErrorCodeKeyNotFound {
+						writeError(w, http.StatusNotFound, err)
+					} else {
+						writeError(w, http.StatusBadRequest, err)
+					}
 					return
 				}
 
@@ -219,6 +253,32 @@ func (a *Server) RegisterAPIHandler(handler Handler, authBackend shttp.Authentic
 }
 
 func (a *Server) addAPIRootRoute(service common.Service, authBackend shttp.AuthenticationBackend) {
+	// swagger:operation GET / getApi
+	//
+	// Get API version
+	//
+	// ---
+	// summary: Get API info
+	//
+	// tags:
+	// - API Info
+	//
+	// consumes:
+	// - application/json
+	//
+	// produces:
+	// - application/json
+	//
+	// schemes:
+	// - http
+	// - https
+	//
+	// responses:
+	//   200:
+	//     description: API info
+	//     schema:
+	//       $ref: '#/definitions/Info'
+
 	info := Info{
 		Version: version.Version,
 		Service: string(service.Type),

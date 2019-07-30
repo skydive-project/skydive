@@ -34,6 +34,36 @@ func (s *statusAPI) statusGet(w http.ResponseWriter, r *auth.AuthenticatedReques
 }
 
 func (s *statusAPI) registerEndpoints(r *shttp.Server, authBackend shttp.AuthenticationBackend) {
+	// swagger:operation GET /status getStatus
+	//
+	// Get status
+	//
+	// ---
+	// summary: Get status
+	//
+	// tags:
+	// - Status
+	//
+	// consumes:
+	// - application/json
+	//
+	// produces:
+	// - application/json
+	//
+	// schemes:
+	// - http
+	// - https
+	//
+	// responses:
+	//   200:
+	//     description: Status
+	//     content:
+	//       application/json:
+	//         schema:
+	//           anyOf:
+	//           - $ref: '#/definitions/AgentStatus'
+	//           - $ref: '#/definitions/AnalyzerStatus'
+
 	routes := []shttp.Route{
 		{
 			Name:        "StatusGet",

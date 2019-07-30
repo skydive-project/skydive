@@ -1,3 +1,5 @@
+// +build collectd
+
 /*
  * Copyright (C) 2019 Red Hat, Inc.
  *

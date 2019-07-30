@@ -1,3 +1,6 @@
+//go:generate sh -c "renderizer --name='edge rule' --resource=edgerule --type=EdgeRule --title='Edge rule' --article=an swagger_operations.tmpl > edgerule_swagger.go"
+//go:generate sh -c "renderizer --name='edge rule' --resource=edgerule --type=EdgeRule --title='Edge rule' swagger_definitions.tmpl > edgerule_swagger.json"
+
 /*
  * Copyright (C) 2018 Red Hat, Inc.
  *

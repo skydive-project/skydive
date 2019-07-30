@@ -90,6 +90,47 @@ func (wc *WorkflowCallAPIHandler) getWorkflow(id string) (*types.Workflow, error
 }
 
 func (wc *WorkflowCallAPIHandler) registerEndPoints(s *shttp.Server, authBackend shttp.AuthenticationBackend) {
+	// swagger:operation POST /workflow/{id}/call callWorkflow
+	//
+	// Call workflow
+	//
+	// ---
+	// summary: Call workflow
+	//
+	// tags:
+	// - Workflows
+	//
+	// consumes:
+	// - application/json
+	//
+	// produces:
+	// - application/json
+	//
+	// schemes:
+	// - http
+	// - https
+	//
+	// parameters:
+	//   - name: id
+	//     in: path
+	//     required: true
+	//     type: string
+	//
+	//   - name: params
+	//     in: body
+	//     required: true
+	//     schema:
+	//       $ref: '#/definitions/WorkflowCall'
+	//
+	// responses:
+	//   202:
+	//     description: Request accepted
+	//     schema:
+	//       $ref: '#/definitions/AnyValue'
+	//
+	//   400:
+	//     description: Invalid PCAP
+
 	routes := []shttp.Route{
 		{
 			Name:        "WorkflowCall",

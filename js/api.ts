@@ -53,7 +53,7 @@ if (jsEnv) {
               }
             })
             .done(function (data, statusText, jqXHR) {
-                if (jqXHR.status == 200) {
+                if (jqXHR.status >= 200 && jqXHR.status < 400) {
                     var cookie = jqXHR.getResponseHeader("Set-Cookie");
                     if (cookie) {
                         client.cookie = cookie;
