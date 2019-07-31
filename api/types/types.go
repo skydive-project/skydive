@@ -237,6 +237,26 @@ func (n *NodeRule) Validate() error {
 	return nil
 }
 
+const (
+	// PIModeUniqPerNode use a unique packet identifier per source node
+	PIModeUniqPerNode = iota
+	// PIModeRandom use random packet identifier for each packet
+	PIModeRandom
+
+	// PiTypeICMP4 icmpv4 packet
+	PiTypeICMP4 = "icmp4"
+	// PiTypeICMP6 icmpv6 packet
+	PiTypeICMP6 = "icmp6"
+	// PiTypeTCP4 ipv4 + tcp packet
+	PiTypeTCP4 = "tcp4"
+	// PiTypeTCP6 ipv6 + tcp packet
+	PiTypeTCP6 = "tcp6"
+	// PiTypeUDP4 ipv4 + udp packet
+	PiTypeUDP4 = "udp4"
+	// PiTypeUDP6 ipv6 + udp packet
+	PiTypeUDP6 = "udp6"
+)
+
 // PacketInjection packet injector API parameters
 // easyjson:json
 // swagger:model
@@ -256,7 +276,7 @@ type PacketInjection struct {
 	ICMPID           uint16 `yaml:"ICMPID"`
 	Count            uint64 `yaml:"Count"`
 	Interval         uint64 `yaml:"Interval"`
-	Increment        bool   `yaml:"Increment"`
+	Mode             int    `yaml:"Mode"`
 	IncrementPayload int64  `yaml:"IncrementPayload"`
 	StartTime        time.Time
 	Pcap             []byte `yaml:"Pcap"`
@@ -270,7 +290,14 @@ func (pi *PacketInjection) GetName() string {
 
 // Validate verifies the packet injection type is supported
 func (pi *PacketInjection) Validate() error {
-	allowedTypes := map[string]bool{"icmp4": true, "icmp6": true, "tcp4": true, "tcp6": true, "udp4": true, "udp6": true}
+	allowedTypes := map[string]bool{
+		PiTypeICMP4: true,
+		PiTypeICMP6: true,
+		PiTypeTCP4:  true,
+		PiTypeTCP6:  true,
+		PiTypeUDP4:  true,
+		PiTypeUDP6:  true,
+	}
 	if _, ok := allowedTypes[pi.Type]; !ok {
 		return errors.New("given type is not supported")
 	}

@@ -73,7 +73,7 @@ var PacketInjectionCreate = &cobra.Command{
 			ICMPID:           request.ICMPID,
 			Count:            request.Count,
 			Interval:         request.Interval,
-			Increment:        request.Increment,
+			Mode:             request.Mode,
 			IncrementPayload: request.IncrementPayload,
 			TTL:              request.TTL,
 		}
