@@ -70,7 +70,10 @@
 		case IPPROTO_SCTP:
 		case IPPROTO_UDP:
 		case IPPROTO_TCP:
-			fill_transport(skb, transproto, offset, len, flow, ordered_src < ordered_dst, ordered_src == ordered_dst);
+		{
+			struct net_keys net_keys = { .swap = ordered_src < ordered_dst, .equal = ordered_src < ordered_dst };
+			fill_transport(skb, transproto, offset, len, flow, net_keys);
+		}
 			break;
 		case IPPROTO_ICMP:
 			fill_icmpv4(skb, offset, flow);

@@ -59,6 +59,11 @@ struct sctp {
         __be32 checksum;
 };
 
+struct net_keys {
+	__u8 swap;
+	__u8 equal;
+};
+
 #define MAX_GRE_ROUTING_INFO 4
 
 MAP(flow_nostack) {
@@ -103,7 +108,7 @@ MAP(flow_table) {
 	.max_entries = 500000,
 };
 
-static inline __u64 rotl(__u64 value, unsigned int shift) {
+static __inline __u64 rotl(__u64 value, unsigned int shift) {
 	return (value << shift) | (value >> (64 - shift));
 }
 
@@ -112,53 +117,40 @@ static inline __u64 rotl(__u64 value, unsigned int shift) {
 	*key *= FNV_PRIME;            \
 } while (0)
 
-static inline void update_hash_byte(__u64 *key, __u8 byte)
+static __inline void update_hash_byte(__u64 *key, __u8 byte)
 {
 	__update_hash(key, byte);
 }
 
-//FIXME(nplanel) bad code generated (llvm) (stack overflow)
-#if 0
-static inline void update_hash_half(__u64 *key, __u16 half)
+static __inline void update_hash_half(__u64 *key, __u16 half)
 {
 	__update_hash(key, half >> 8);
 	__update_hash(key, half & 0xff);
 }
 
-static inline void update_hash_word(__u64 *key, __u32 word)
+static __inline void update_hash_word(__u64 *key, __u32 word)
 {
 	__update_hash(key, word >> 24);
 	__update_hash(key, (word >> 16) & 0xff);
 	__update_hash(key, (word >> 8) & 0xff);
 	__update_hash(key, word & 0xff);
 }
-#else
-static inline void update_hash_half(__u64 *key, __u16 half)
-{
-	__update_hash(key, half);
-}
 
-static inline void update_hash_word(__u64 *key, __u32 word)
-{
-	__update_hash(key, word);
-}
-#endif
-
-static inline void add_layer_l2(struct l2 *l2, __u8 layer) {
+static __inline void add_layer_l2(struct l2 *l2, __u8 layer) {
 	if (l2->layers_path & (LAYERS_PATH_MASK << ((LAYERS_PATH_LEN-1)*LAYERS_PATH_SHIFT))) {
 		return;
 	}
 	l2->layers_path = (l2->layers_path << LAYERS_PATH_SHIFT) | layer;
 }
 
-static inline void add_layer(struct flow *flow, __u8 layer) {
+static __inline void add_layer(struct flow *flow, __u8 layer) {
 	if (flow->layers_path & (LAYERS_PATH_MASK << ((LAYERS_PATH_LEN-1)*LAYERS_PATH_SHIFT))) {
 		return;
 	}
 	flow->layers_path = (flow->layers_path << LAYERS_PATH_SHIFT) | layer;
 }
 
-static inline __u16 fill_gre(struct __sk_buff *skb, size_t *offset, struct flow *flow)
+static __inline __u16 fill_gre(struct __sk_buff *skb, size_t *offset, struct flow *flow)
 {
 	__u8 config = load_byte(skb, *offset);
 	__u8 cfg_checksum = config & 0x80;
@@ -197,7 +189,7 @@ static inline __u16 fill_gre(struct __sk_buff *skb, size_t *offset, struct flow 
 	return protocol;
 }
 
-static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, size_t offset, int len, struct flow *flow, __u8 swap, __u8 netequal)
+static __inline void fill_transport(struct __sk_buff *skb, __u8 protocol, size_t offset, int len, struct flow *flow, struct net_keys net_keys)
 {
 	struct transport_layer *layer = &flow->transport_layer;
 
@@ -209,8 +201,8 @@ static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, size_t o
 	update_hash_half(&hash_src, layer->port_src);
 	__u64 hash_dst = 0;
 	update_hash_half(&hash_dst, layer->port_dst);
-	if (netequal) {
-		swap = layer->port_src > layer->port_dst;
+	if (net_keys.equal) {
+		net_keys.swap = layer->port_src > layer->port_dst;
 	}
 
 	switch (protocol) {
@@ -232,7 +224,7 @@ static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, size_t o
 		}
 	}
 
-	if (swap) {
+	if (net_keys.swap) {
 		layer->_hash = FNV_BASIS ^ rotl(hash_dst, 16) ^ hash_src;
 	} else {
 		layer->_hash = FNV_BASIS ^ rotl(hash_src, 16) ^ hash_dst;
@@ -241,7 +233,7 @@ static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, size_t o
 	flow->layers_info |= TRANSPORT_LAYER_INFO;
 }
 
-static inline void fill_icmpv4(struct __sk_buff *skb, size_t offset, struct flow *flow)
+static __inline void fill_icmpv4(struct __sk_buff *skb, size_t offset, struct flow *flow)
 {
 	struct icmp_layer *layer = &flow->icmp_layer;
 
@@ -268,7 +260,7 @@ static inline void fill_icmpv4(struct __sk_buff *skb, size_t offset, struct flow
 	flow->layers_info |= ICMP_LAYER_INFO;
 }
 
-static inline void fill_icmpv6(struct __sk_buff *skb, size_t offset, struct flow *flow)
+static __inline void fill_icmpv6(struct __sk_buff *skb, size_t offset, struct flow *flow)
 {
 	struct icmp_layer *layer = &flow->icmp_layer;
 
@@ -295,7 +287,7 @@ static inline void fill_icmpv6(struct __sk_buff *skb, size_t offset, struct flow
 	flow->layers_info |= ICMP_LAYER_INFO;
 }
 
-static inline void fill_word(__u32 src, __u8 *dst, size_t offset)
+static __inline void fill_word(__u32 src, __u8 *dst, size_t offset)
 {
 	dst[offset] = (src >> 24) & 0xff;
 	dst[offset + 1] = (src >> 16) & 0xff;
@@ -303,14 +295,14 @@ static inline void fill_word(__u32 src, __u8 *dst, size_t offset)
 	dst[offset + 3] = src & 0xff;
 }
 
-static inline void fill_ipv4(struct __sk_buff *skb, size_t offset, __u8 *dst, __u64 *hash)
+static __inline void fill_ipv4(struct __sk_buff *skb, size_t offset, __u8 *dst, __u64 *hash)
 {
 	__u32 w = load_word(skb, offset);
 	fill_word(w, dst, 12);
 	update_hash_word(hash, w);
 }
 
-static inline void fill_ipv6(struct __sk_buff *skb, size_t offset, __u8 *dst, __u64 *hash)
+static __inline void fill_ipv6(struct __sk_buff *skb, size_t offset, __u8 *dst, __u64 *hash)
 {
 	__u32 w = load_word(skb, offset);
 	fill_word(w, dst, 0);
@@ -329,7 +321,7 @@ static inline void fill_ipv6(struct __sk_buff *skb, size_t offset, __u8 *dst, __
 	update_hash_word(hash, w);
 }
 
-static inline void fill_network(struct __sk_buff *skb, __u16 netproto, size_t offset, int len, struct flow *flow)
+static __inline void fill_network(struct __sk_buff *skb, __u16 netproto, size_t offset, int len, struct flow *flow)
 {
 	struct network_layer *layer = &flow->network_layer;
 	__u8 transproto = 0;
@@ -367,7 +359,7 @@ static inline void fill_network(struct __sk_buff *skb, __u16 netproto, size_t of
 	flow->layers_info |= NETWORK_LAYER_INFO;
 }
 
-static inline __u16 fill_vlan(struct __sk_buff *skb, struct l2 *l2)
+static __inline __u16 fill_vlan(struct __sk_buff *skb, struct l2 *l2)
 {
 	struct link_layer *layer = &l2->link_layer;
 
@@ -385,7 +377,7 @@ static inline __u16 fill_vlan(struct __sk_buff *skb, struct l2 *l2)
 	return protocol;
 }
 
-static inline void fill_vlans(struct __sk_buff *skb, __u16 *protocol, struct l2 *l2) {
+static __inline void fill_vlans(struct __sk_buff *skb, __u16 *protocol, struct l2 *l2) {
 	if (*protocol == ETH_P_8021Q) {
 		#pragma unroll
 		for(int i=0;i<MAX_VLAN_LAYERS;i++) {
@@ -406,7 +398,7 @@ static inline void fill_vlans(struct __sk_buff *skb, __u16 *protocol, struct l2 
 	}
 }
 
-static inline void fill_haddr(struct __sk_buff *skb, size_t offset,
+static __inline void fill_haddr(struct __sk_buff *skb, size_t offset,
 	unsigned char *mac)
 {
 	mac[0] = load_byte(skb, offset);
@@ -417,7 +409,7 @@ static inline void fill_haddr(struct __sk_buff *skb, size_t offset,
 	mac[5] = load_byte(skb, offset + 5);
 }
 
-static inline __u16 fill_link(struct __sk_buff *skb, size_t offset, struct l2 *l2)
+static __inline __u16 fill_link(struct __sk_buff *skb, size_t offset, struct l2 *l2)
 {
 	struct link_layer *layer = &l2->link_layer;
 
@@ -440,7 +432,7 @@ static inline __u16 fill_link(struct __sk_buff *skb, size_t offset, struct l2 *l
 	return ethertype;
 }
 
-static inline void update_metrics(struct __sk_buff *skb, struct flow *flow, int ab)
+static __inline void update_metrics(struct __sk_buff *skb, struct flow *flow, int ab)
 {
 	if (ab) {
 		__sync_fetch_and_add(&flow->metrics.ab_packets, 1);
@@ -451,7 +443,7 @@ static inline void update_metrics(struct __sk_buff *skb, struct flow *flow, int 
 	}
 }
 
-static inline __u16 fill_l2(struct __sk_buff *skb, struct l2 *l2)
+static __inline __u16 fill_l2(struct __sk_buff *skb, struct l2 *l2)
 {
 	__u16 protocol = bpf_ntohs((__u16)skb->protocol);
 
