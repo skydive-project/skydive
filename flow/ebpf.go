@@ -20,6 +20,7 @@
 package flow
 
 import (
+	"errors"
 	"math/rand"
 	"net"
 	"strings"
@@ -107,7 +108,7 @@ func kernLayersPath(kernFlow *C.struct_flow) (string, bool) {
 	return layersPath.String(), hasGRE
 }
 
-func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*Flow) {
+func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*Flow, error) {
 	var flows []*Flow
 	var keys []uint64
 
@@ -163,6 +164,10 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 			}
 		}
 
+		if parent.Link == nil && parent.Network == nil {
+			return nil, nil, errors.New("packet unknown, no link, no network layer")
+		}
+
 		parentKey := uint64(ebpfFlow.KernFlow.key_outer)
 
 		parent.SetUUIDs(parentKey, Opts{LayerKeyMode: L3PreferedKeyMode})
@@ -170,7 +175,7 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 		flows = append(flows, parent)
 		keys = append(keys, parentKey)
 
-		// upper layer
+		// inner layer
 		f = NewFlow()
 		f.Init(common.UnixMillis(ebpfFlow.Start), parent.UUID, &ft.uuids)
 		f.Last = common.UnixMillis(ebpfFlow.Last)
@@ -199,6 +204,10 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 				B:        net.IP(netB).String(),
 			}
 		}
+	}
+
+	if f.Link == nil && f.Network == nil {
+		return nil, nil, errors.New("packet unknown, no link, no network layer")
 	}
 
 	// TRANSPORT
@@ -265,7 +274,7 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 	flows = append(flows, f)
 	keys = append(keys, key)
 
-	return keys, flows
+	return keys, flows, nil
 }
 
 func (ft *Table) updateFlowFromEBPF(ebpfFlow *EBPFFlow, f *Flow) {
