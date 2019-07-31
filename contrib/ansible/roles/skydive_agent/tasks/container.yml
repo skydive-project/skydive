@@ -20,6 +20,7 @@
         --user 0:0 \
         -v /var/run/libvirt:/var/run/libvirt \
         -v /var/run/openvswitch:/var/run/openvswitch \
+        -v /var/run/runc-ctrs:/var/run/runc-ctrs:ro,shared \
         {% if skydive_container_cli == 'docker' %}
         -v /var/run/docker.sock:/var/run/docker.sock \
         {% endif %}
