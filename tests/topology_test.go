@@ -920,6 +920,59 @@ func TestRouteTableHistory(t *testing.T) {
 	RunTest(t, test)
 }
 
+//TestRouteTable tests route table update
+func TestNeighbors(t *testing.T) {
+	test := &Test{
+		setupCmds: []Cmd{
+			{"ip netns add nb-vm1", true},
+			{"ip link add nb-vm1-eth0 type veth peer name eth0 netns nb-vm1", true},
+			{"ip link set nb-vm1-eth0 up", true},
+			{"ip netns exec nb-vm1 ip link set eth0 up", true},
+			{"ip netns exec nb-vm1 ip addr add 192.168.33.33/24 dev eth0", true},
+			{"sleep 10", true},
+			{"sudo ip netns exec nb-vm1 ip neighbour add 192.168.33.252 dev eth0 lladdr a6:d1:a0:51:03:49", true},
+		},
+
+		tearDownCmds: []Cmd{
+			{"ip link del nb-vm1-eth0", true},
+			{"ip netns del nb-vm1", true},
+		},
+
+		mode: OneShot,
+
+		checks: []CheckFunction{
+			func(c *CheckContext) error {
+				prefix := c.gremlin
+
+				node, err := c.gh.GetNode(prefix.V().Has("IPV4", "192.168.33.33/24"))
+				if err != nil {
+					return fmt.Errorf("Failed to find a node with IP 192.168.33.33/24")
+				}
+
+				neighbors, ok := node.Metadata["Neighbors"].(*topology.Neighbors)
+				if !ok {
+					return fmt.Errorf("Wrong metadata type for Neighbors: %+v", node.Metadata["Neighbors"])
+				}
+
+				var found bool
+				for _, nb := range *neighbors {
+					if nb.MAC == "a6:d1:a0:51:03:49" {
+						found = true
+						break
+					}
+				}
+
+				if !found {
+					return errors.New("unable to find neighbor entry with MAC: a6:d1:a0:51:03:49")
+				}
+
+				return nil
+			},
+		},
+	}
+	RunTest(t, test)
+}
+
 func TestInterfaceFeatures(t *testing.T) {
 	test := &Test{
 		setupCmds: []Cmd{
