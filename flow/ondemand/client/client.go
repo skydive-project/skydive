@@ -76,6 +76,7 @@ func (h *onDemandFlowHandler) GetNodes(resource types.Resource) []interface{} {
 	if capture.Type != "" && !common.CheckProbeCapabilities(capture.Type, common.MultipleOnSameNodeCapability) {
 		query += fmt.Sprintf(".Has('Captures.Type', NEE('%s'))", capture.Type)
 	}
+	query += h.nodeTypeQuery
 	return h.applyGremlinExpr(query)
 }
 
@@ -96,6 +97,6 @@ func NewOnDemandFlowProbeClient(g *graph.Graph, ch api.Handler, agentPool ws.Str
 		nodeTypes[i] = nodeType
 		i++
 	}
-	nodeTypeQuery := new(gremlin.QueryString).Has("Type", gremlin.Within(nodeTypes...)).String()
+	nodeTypeQuery := new(gremlin.QueryString).Has("Host", gremlin.Ne(""), "Type", gremlin.Within(nodeTypes...)).String()
 	return client.NewOnDemandClient(g, ch, agentPool, subscriberPool, etcdClient, &onDemandFlowHandler{graph: g, nodeTypeQuery: nodeTypeQuery})
 }
