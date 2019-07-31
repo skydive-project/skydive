@@ -74,7 +74,7 @@ func (pi *PacketInjectorAPI) validateRequest(ppr *types.PacketInjection) error {
 	}
 
 	ipField := "IPV4"
-	if ppr.Type == "icmp6" || ppr.Type == "tcp6" || ppr.Type == "udp6" {
+	if ppr.Type == types.PITypeICMP6 || ppr.Type == types.PITypeTCP6 || ppr.Type == types.PITypeUDP6 {
 		ipField = "IPV6"
 	}
 

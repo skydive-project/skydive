@@ -171,20 +171,20 @@ type TestCapture struct {
 
 // TestInjection describes a packet injection to be created in tests
 type TestInjection struct {
-	intf      g.QueryString
-	from      g.QueryString
-	fromPort  uint16
-	to        g.QueryString
-	toMAC     string
-	toIP      string
-	toPort    uint16
-	protocol  string // icmp if not set
-	ipv6      bool
-	count     uint64
-	id        uint64
-	increment bool
-	payload   string
-	pcap      string
+	intf     g.QueryString
+	from     g.QueryString
+	fromPort uint16
+	to       g.QueryString
+	toMAC    string
+	toIP     string
+	toPort   uint16
+	protocol string // icmp if not set
+	ipv6     bool
+	count    uint64
+	id       uint64
+	mode     string
+	payload  string
+	pcap     string
 }
 
 // CheckFunction describes a function that actually does a check and returns an error if needed
@@ -682,21 +682,21 @@ func RunTest(t *testing.T, test *Test) {
 			}
 		}
 		packet := &types.PacketInjection{
-			Src:       src,
-			SrcMAC:    srcMAC,
-			SrcIP:     srcIP,
-			SrcPort:   injection.fromPort,
-			Dst:       injection.to.String(),
-			DstMAC:    injection.toMAC,
-			DstIP:     injection.toIP,
-			DstPort:   injection.toPort,
-			Type:      fmt.Sprintf("%s%d", injection.protocol, ipVersion),
-			Count:     injection.count,
-			ICMPID:    uint16(injection.id),
-			Increment: injection.increment,
-			Payload:   injection.payload,
-			Interval:  1000,
-			Pcap:      pcap,
+			Src:      src,
+			SrcMAC:   srcMAC,
+			SrcIP:    srcIP,
+			SrcPort:  injection.fromPort,
+			Dst:      injection.to.String(),
+			DstMAC:   injection.toMAC,
+			DstIP:    injection.toIP,
+			DstPort:  injection.toPort,
+			Type:     fmt.Sprintf("%s%d", injection.protocol, ipVersion),
+			Count:    injection.count,
+			ICMPID:   uint16(injection.id),
+			Mode:     injection.mode,
+			Payload:  injection.payload,
+			Interval: 1000,
+			Pcap:     pcap,
 		}
 
 		if err := pingRequest(t, context, packet); err != nil {

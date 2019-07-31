@@ -19,13 +19,14 @@ package packetinjector
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"net"
-	"strings"
 	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
@@ -47,7 +48,7 @@ type ForgedPacketGenerator struct {
 	close     chan bool
 }
 
-func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC net.HardwareAddr, TTL uint8, srcIP, dstIP net.IP, srcPort, dstPort uint16, ID uint64, data string) ([]byte, gopacket.Packet, error) {
+func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC net.HardwareAddr, TTL uint8, srcIP, dstIP net.IP, srcPort, dstPort uint16, ID uint16, data string) ([]byte, gopacket.Packet, error) {
 	var l []gopacket.SerializableLayer
 
 	payload := gopacket.Payload([]byte(data))
@@ -68,19 +69,19 @@ func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC
 		ipLayer := &layers.IPv4{Version: 4, SrcIP: srcIP, DstIP: dstIP, Protocol: layers.IPProtocolICMPv4, TTL: TTL}
 		icmpLayer := &layers.ICMPv4{
 			TypeCode: layers.CreateICMPv4TypeCode(layers.ICMPv4TypeEchoRequest, 0),
-			Id:       uint16(ID),
+			Id:       ID,
 		}
 		l = append(l, ipLayer, icmpLayer)
 	case "icmp6":
 		ipLayer := &layers.IPv6{Version: 6, SrcIP: srcIP, DstIP: dstIP, NextHeader: layers.IPProtocolICMPv6}
 		icmpLayer := &layers.ICMPv6{
 			TypeCode:  layers.CreateICMPv6TypeCode(layers.ICMPv6TypeEchoRequest, 0),
-			TypeBytes: []byte{byte(ID & uint64(0xFF00) >> 8), byte(ID & uint64(0xFF)), 0, 0},
+			TypeBytes: []byte{byte(ID & uint16(0xFF00) >> 8), byte(ID & uint16(0xFF)), 0, 0},
 		}
 		icmpLayer.SetNetworkLayerForChecksum(ipLayer)
 
 		echoLayer := &layers.ICMPv6Echo{
-			Identifier: uint16(ID),
+			Identifier: ID,
 		}
 		l = append(l, ipLayer, icmpLayer, echoLayer)
 	case "tcp4":
@@ -147,20 +148,18 @@ func (f *ForgedPacketGenerator) PacketSource() chan *Packet {
 			f.Count = 1
 		}
 
+		id := f.ICMPID
+		srcPort := f.SrcPort
+
 		for i := uint64(0); i < f.Count; i++ {
-			id := uint64(f.ICMPID)
-			if strings.HasPrefix(f.Type, "icmp") && f.Increment {
-				id += i
+			packetData, packet, err := forgePacket(f.Type, f.LayerType, f.SrcMAC, f.DstMAC, f.TTL, f.SrcIP, f.DstIP, srcPort, f.DstPort, id, payload)
+			if err != nil {
+				logging.GetLogger().Error(err)
+				return
 			}
 
 			if f.IncrementPayload > 0 {
 				payload = payload + common.RandString(int(f.IncrementPayload))
-			}
-
-			packetData, packet, err := forgePacket(f.Type, f.LayerType, f.SrcMAC, f.DstMAC, f.TTL, f.SrcIP, f.DstIP, f.SrcPort, f.DstPort, id, payload)
-			if err != nil {
-				logging.GetLogger().Error(err)
-				return
 			}
 
 			select {
@@ -174,6 +173,15 @@ func (f *ForgedPacketGenerator) PacketSource() chan *Packet {
 				case <-f.close:
 					return
 				case <-time.After(time.Millisecond * time.Duration(f.Interval)):
+				}
+			}
+
+			if f.Mode == types.PIModeRandom {
+				switch f.Type {
+				case types.PITypeICMP4, types.PITypeICMP6:
+					id = uint16(rand.Intn(math.MaxUint16-1) + 1)
+				default:
+					srcPort = uint16(rand.Intn(math.MaxUint16-1) + 1)
 				}
 			}
 		}
