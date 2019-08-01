@@ -46,4 +46,4 @@ CMD chown -R $UID /root/go/.cache/govendor \
     PATH=/root/go/bin:$PATH \
     CGO_ENABLED=1 \
     GOOS=linux \
-    make install WITH_OPENCONTRAIL=true WITH_EBPF=true
+    make install WITH_OPENCONTRAIL=true WITH_EBPF=true WITH_EBPF_DOCKER_BUILDER=false

@@ -27,7 +27,8 @@ make
 make test.functionals.compile TAGS=${TAGS}
 
 # Compile with all build options supported enabled
-make WITH_DPDK=true WITH_EBPF=true WITH_VPP=true WITH_EBPF_DOCKER_BUILDER=true WITH_K8S=true WITH_ISTIO=true WITH_HELM=true VERBOSE=true
+make WITH_DPDK=true WITH_EBPF=true WITH_VPP=true WITH_EBPF_DOCKER_BUILDER=true WITH_K8S=true WITH_ISTIO=true \
+    WITH_HELM=true VERBOSE=true
 
 # Compile Skydive for Windows
 GOOS=windows GOARCH=amd64 govendor build github.com/skydive-project/skydive
@@ -38,8 +39,14 @@ GOOS=darwin GOARCH=amd64 govendor build github.com/skydive-project/skydive
 # Compile profiling
 make WITH_PROF=true VERBOSE=true
 
+make clean
+
 # Compile all tests
-make test.functionals.compile TAGS=${TAGS} WITH_NEUTRON=true WITH_SELENIUM=true WITH_CDD=true WITH_SCALE=true WITH_EBPF=true WITH_VPP=true WITH_K8S=true WITH_ISTIO=true WITH_HELM=true WITH_EBPF_DOCKER_BUILDER=true
+make test.functionals.compile TAGS=${TAGS} WITH_NEUTRON=true WITH_SELENIUM=true WITH_CDD=true \
+    WITH_SCALE=true WITH_EBPF=true WITH_EBPF_DOCKER_BUILDER=true WITH_VPP=true WITH_K8S=true \
+    WITH_ISTIO=true WITH_HELM=true
+
+make clean
 
 # Compile static
 make static

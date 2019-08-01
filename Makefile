@@ -484,12 +484,12 @@ dpdk.clean:
 	$(MAKE) -C dpdk clean
 
 .PHONY: ebpf.build
-ebpf.build:
+ebpf.build: govendor
 ifeq ($(WITH_EBPF), true)
 ifeq ($(WITH_EBPF_DOCKER_BUILDER), true)
-	$(MAKE) -C probe/ebpf clean docker-ebpf-build
+	$(MAKE) -C probe/ebpf docker-ebpf-build
 else
-	$(MAKE) -C probe/ebpf clean ebpf-build
+	$(MAKE) -C probe/ebpf ebpf-build
 endif
 endif
 
