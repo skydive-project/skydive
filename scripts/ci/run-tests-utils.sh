@@ -42,7 +42,8 @@ tests_run() {
 
         make test.functionals.batch \
                 GOFLAGS="$GOFLAGS" VERBOSE=true TAGS="$TAGS" GORACE="history_size=7" TIMEOUT=20m \
-                WITH_HELM="$WITH_HELM" WITH_EBPF="$WITH_EBPF" WITH_K8S="$WITH_K8S" WITH_ISTIO="$WITH_ISTIO" \
+                WITH_HELM="$WITH_HELM" WITH_EBPF="$WITH_EBPF" WITH_EBPF_DOCKER_BUILDER=true \
+                WITH_K8S="$WITH_K8S" WITH_ISTIO="$WITH_ISTIO" \
                 WITH_PROF="$WITH_PROF" ARGS="$ARGS" TEST_PATTERN="$TEST_PATTERN" 2>&1 | tee $LOGFILE
         RETCODE=$?
 

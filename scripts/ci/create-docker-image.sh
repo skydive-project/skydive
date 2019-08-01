@@ -205,7 +205,11 @@ docker_manifest() {
     fi
 }
 
-[ -n "$SKIP_BUILD" ] && echo "Skipping build." || docker_build
+docker_build_ebpf() {
+    make ebpf.build WITH_EBPF=true WITH_EBPF_DOCKER_BUILDER=true
+}
+
+[ -n "$SKIP_BUILD" ] && echo "Skipping build." || (docker_build_ebpf && docker_build)
 
 if [ -n "$DRY_RUN" ]; then
     echo "Running in dry run mode. Exiting."
