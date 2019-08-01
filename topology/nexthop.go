@@ -54,6 +54,14 @@ func GetNextHop(node *graph.Node, ip net.IP) (*NextHop, error) {
 	for _, t := range *rts {
 		var defaultRouteIP net.IP
 		var defaultIfIndex int64
+		var nh *NextHop
+
+		getNeighbor := func(ip net.IP) string {
+			if neighbors != nil {
+				return neighbors.getMAC(ip)
+			}
+			return ""
+		}
 
 		for _, r := range t.Routes {
 			ipnet := net.IPNet(r.Prefix)
@@ -61,23 +69,34 @@ func GetNextHop(node *graph.Node, ip net.IP) (*NextHop, error) {
 				defaultRouteIP = r.NextHops[0].IP
 				defaultIfIndex = r.NextHops[0].IfIndex
 			} else if ipnet.Contains(ip) {
-				nextIP := r.NextHops[0].IP
-				nh := &NextHop{IfIndex: r.NextHops[0].IfIndex}
-				if nextIP != nil {
-					nh.IP = nextIP
-					if neighbors != nil {
-						nh.MAC = neighbors.getMAC(nextIP)
+				for _, currNH := range r.NextHops {
+					nh = &NextHop{IfIndex: currNH.IfIndex}
+
+					if currNH.IP != nil {
+						nh.IP = currNH.IP
+						nh.MAC = getNeighbor(nh.IP)
+
+						// dedicated NH so return here
+						return nh, nil
 					}
+
+					// same network but maybe a dedicated route/nexthop, keep checking
+					nh.IP = ip
+					nh.MAC = getNeighbor(nh.IP)
 				}
-				return nh, nil
 			}
 		}
 
+		// one route found
+		if nh != nil {
+			return nh, nil
+		}
+
+		// no route found try with the default
 		if defaultRouteIP != nil {
 			nh := &NextHop{IP: defaultRouteIP, IfIndex: defaultIfIndex}
-			if neighbors != nil {
-				nh.MAC = neighbors.getMAC(defaultRouteIP)
-			}
+			nh.MAC = getNeighbor(nh.IP)
+
 			return nh, nil
 		}
 	}

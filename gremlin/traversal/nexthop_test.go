@@ -258,8 +258,8 @@ func TestNextHopStep5(t *testing.T) {
 	if !ok {
 		t.Fatalf("Node entry not found")
 	}
-	if nexthop.IP != nil {
-		t.Fatalf("IP not matching, got: %s", nexthop.IP)
+	if nexthop.IP == nil {
+		t.Fatal("IP should not be nil")
 	}
 	if nexthop.IfIndex != 5 {
 		t.Fatalf("Interface index not matching, got: %d", nexthop.IfIndex)
