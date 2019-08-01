@@ -100,6 +100,10 @@ Vue.component('inject-form', {
         <label for="inject-interval">Interval in milliseconds</label>\
         <input id="inject-interval" type="number" class="form-control input-sm" v-model.number="interval" min="0" />\
       </div>\
+      <div class="form-group">\
+        <label for="ttl">Time To Live (TTL)</label>\
+        <input id="ttl" type="number" class="form-control input-sm" v-model.number="ttl" min="0" max="255" />\
+      </div>\
       <button type="submit" id="inject" class="btn btn-primary">Inject</button>\
       <button type="button" class="btn btn-danger" @click="reset">Reset</button>\
     </form>\
@@ -127,6 +131,7 @@ Vue.component('inject-form', {
       mode: "random",
       payload: "",
       incrementPayload: 0,
+      ttl: 64,
     };
   },
 
@@ -242,6 +247,7 @@ Vue.component('inject-form', {
       this.srcMAC = this.dstMAC = "";
       this.mode = "random";
       this.payload = "";
+      this.ttl = 64;
     },
 
     inject: function() {
@@ -253,8 +259,8 @@ Vue.component('inject-form', {
       if (this.mode == "random") {
         this.payload = "x".repeat(this.payloadlength);
       }
-      var ttl = this.interval*this.count;
-      var headers = {"X-Resource-TTL": ttl + 5000 + "ms"};
+      var requestTTL = this.interval*this.count;
+      var headers = {"X-Resource-TTL": requestTTL + 5000 + "ms"};
       $.ajax({
         dataType: "json",
         url: '/api/injectpacket',
@@ -274,6 +280,7 @@ Vue.component('inject-form', {
           "Interval": this.interval,
           "Payload": this.payload,
           "IncrementPayload": this.incrementPayload,
+          "TTL": this.ttl,
         }),
         headers: headers,
         contentType: "application/json; charset=utf-8",
