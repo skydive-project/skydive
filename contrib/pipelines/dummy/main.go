@@ -31,7 +31,7 @@ import (
 
 // NewSubscriberFromConfig returns a new flow subscriber writing to object store
 func NewSubscriberFromConfig(cfg *viper.Viper) (*websocket.StructSpeaker, error) {
-	store, err := core.NewStoreLog()
+	store, err := core.NewStoreStdout()
 	if err != nil {
 		return nil, fmt.Errorf("Cannot initialize store: %s", err)
 	}

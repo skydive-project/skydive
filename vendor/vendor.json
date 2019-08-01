@@ -1300,6 +1300,12 @@
 			"revisionTime": "2017-11-12T09:28:02Z"
 		},
 		{
+			"checksumSHA1": "p82M0fDsdYZHW7JGJJp0Ld8S3c8=",
+			"path": "github.com/gocarina/gocsv",
+			"revision": "71ad6676df5719098a3bbbeef6a1ea3b93e98185",
+			"revisionTime": "2019-06-24T09:07:26Z"
+		},
+		{
 			"checksumSHA1": "0oPF148jScx8zEtVNDA6iqMfERA=",
 			"path": "github.com/gogo/protobuf",
 			"revision": "61dbc136cf5d2f08d68a011382652244990a53a9",

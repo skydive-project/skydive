@@ -35,8 +35,8 @@ type Storer interface {
 func NewStoreFromConfig(cfg *viper.Viper) (Storer, error) {
 	storeType := cfg.GetString(CfgRoot + "store.type")
 	switch storeType {
-	case "log":
-		return NewStoreLog()
+	case "stdout":
+		return NewStoreStdout()
 	case "s3":
 		return NewStoreS3FromConfig(cfg)
 	default:

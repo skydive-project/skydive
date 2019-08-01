@@ -6,7 +6,7 @@ SRCS := \
 	pipeline.go \
 	s3_client.go \
 	store.go \
-	store_log.go \
+	store_stdout.go \
 	store_s3.go \
 	subscriber.go \
 	transform.go \

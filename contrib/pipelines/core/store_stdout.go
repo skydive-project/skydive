@@ -18,26 +18,43 @@
 package core
 
 import (
+	"fmt"
+
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 )
 
-type storeLog struct {
+type storeStdout struct {
+	pipeline *Pipeline
 }
 
 // SetPipeline setup
-func (s *storeLog) SetPipeline(pipeline *Pipeline) {
+func (s *storeStdout) SetPipeline(pipeline *Pipeline) {
+	s.pipeline = pipeline
 }
 
 // StoreFlows store flows in memory, before being written to the object store
-func (s *storeLog) StoreFlows(flows []*flow.Flow) error {
-	for _, fl := range flows {
-		logging.GetLogger().Infof("store flow: %v", fl)
+func (s *storeStdout) StoreFlows(flows []*flow.Flow) error {
+	transformed := s.pipeline.Transformer.Transform(flows)
+
+	encoded, err := s.pipeline.Encoder.Encode(transformed)
+	if err != nil {
+		logging.GetLogger().Error("Failed to encode object: ", err)
+		return err
 	}
+
+	compressed, err := s.pipeline.Compressor.Compress(encoded)
+	if err != nil {
+		logging.GetLogger().Error("Failed to compress object: ", err)
+		return err
+	}
+
+	fmt.Printf("%s\n", compressed)
+
 	return nil
 }
 
-// NewStoreLog returns a new storage interface for storing flows to object store
-func NewStoreLog() (Storer, error) {
-	return &storeLog{}, nil
+// NewStoreStdout returns a new storage interface for storing flows to object store
+func NewStoreStdout() (Storer, error) {
+	return &storeStdout{}, nil
 }
