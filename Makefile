@@ -17,6 +17,10 @@ eval ' \
 '
 endef
 
+define VENDOR_EXEC
+${BUILD_TOOLS}/$1
+endef
+
 define VENDOR_RUN
 mv ${BUILD_TOOLS} bin || true; \
 ln -s vendor src || mv vendor src; \
@@ -301,28 +305,37 @@ GEN_EASYJSON_FILES_TAG := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_TAG))
 GEN_EASYJSON_FILES_TAG_OPENCONTRAIL := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_TAG_OPENCONTRAIL))
 
 %_easyjson.go: %.go
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson $<
+	$(call VENDOR_EXEC,easyjson) $<
 
 flow/flow.pb_easyjson.go: flow/flow.pb.go
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -all $<
+	$(call VENDOR_EXEC,easyjson) -all $<
 
 topology/probes/lldp/lldp_easyjson.go: topology/probes/lldp/lldp.go
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags linux $<
+	$(call VENDOR_EXEC,easyjson) -build_tags linux $<
 
 topology/probes/netlink/netlink_easyjson.go: topology/probes/netlink/netlink.go
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags linux $<
+	$(call VENDOR_EXEC,easyjson) -build_tags linux $<
 
 topology/probes/socketinfo/connection_easyjson.go: topology/probes/socketinfo/connection.go
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags linux $<
+	$(call VENDOR_EXEC,easyjson) -build_tags linux $<
 
 topology/probes/opencontrail/routing_table_easyjson.go: $(EASYJSON_FILES_TAG_OPENCONTRAIL)
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags opencontrail $<
+	$(call VENDOR_EXEC,easyjson) -build_tags opencontrail $<
 
 topology/probes/ovsdb/ovsdb.pb_easyjson.go: topology/probes/ovsdb/ovsdb.go
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson $<
+	$(call VENDOR_EXEC,easyjson) $<
+
+.PHONY: .easyjson.build
+.easyjson.build: govendor
+	$(call VENDOR_RUN,${EASYJSON_GITHUB})
+	go get "github.com/mailru/easyjson"
+
+.PHONY: .easyjson_targets
+.easyjson_targets: flow/flow.pb_easyjson.go $(GEN_EASYJSON_FILES_TAG) $(GEN_EASYJSON_FILES_TAG_OPENCONTRAIL)
 
 .PHONY: .easyjson
-.easyjson: flow/flow.pb_easyjson.go $(GEN_EASYJSON_FILES_TAG) $(GEN_EASYJSON_FILES_TAG_OPENCONTRAIL)
+.easyjson: .easyjson.build
+	$(MAKE) -j $(shell getconf _NPROCESSORS_CONF) .easyjson_targets
 
 .PHONY: .easyjson.clean
 .easyjson.clean:
