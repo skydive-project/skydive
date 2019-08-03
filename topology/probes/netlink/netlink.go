@@ -43,6 +43,11 @@ import (
 
 const (
 	maxEpollEvents = 32
+
+	// RtmNewNeigh Neighbor netlink message
+	RtmNewNeigh = 28
+	// RtmDelNeigh Neighbor netlink message
+	RtmDelNeigh = 29
 )
 
 var flagNames = []string{
@@ -302,7 +307,7 @@ func getFlagsString(flags []string, state int) (a []string) {
 	return
 }
 
-func (u *Probe) getNeighbors(index, family int) *topology.Neighbors {
+func (u *Probe) getFamilyNeighbors(index, family int) *topology.Neighbors {
 	var neighbors topology.Neighbors
 
 	neighList, err := u.handle.NeighList(index, family)
@@ -504,12 +509,10 @@ func (u *Probe) addLinkToTopology(link netlink.Link) {
 		}
 	}
 
-	if neighbors := u.getNeighbors(attrs.Index, syscall.AF_BRIDGE); len(*neighbors) > 0 {
-		metadata["FDB"] = neighbors
+	fdb, neighbors := u.getNeighbors(attrs.Index)
+	if len(*fdb) > 0 {
+		metadata["FDB"] = fdb
 	}
-
-	neighbors := u.getNeighbors(attrs.Index, syscall.AF_INET)
-	*neighbors = append(*neighbors, *u.getNeighbors(attrs.Index, syscall.AF_INET6)...)
 	if len(*neighbors) > 0 {
 		metadata["Neighbors"] = neighbors
 	}
@@ -844,6 +847,56 @@ func (u *Probe) initialize() {
 	}
 }
 
+func (u *Probe) onNeighborsChanged(index int64, fdb *topology.Neighbors, neighbors *topology.Neighbors) {
+	u.Ctx.Graph.Lock()
+	defer u.Ctx.Graph.Unlock()
+
+	intf := u.Ctx.Graph.LookupFirstChild(u.Ctx.RootNode, graph.Metadata{"IfIndex": index})
+	if intf == nil {
+		if _, err := u.handle.LinkByIndex(int(index)); err == nil {
+			u.Ctx.Logger.Errorf("Unable to find interface with index %d to add a new neighbors", index)
+		}
+		return
+	}
+
+	update := func(key string, nb *topology.Neighbors) {
+		_, err := intf.GetField(key)
+		if nb == nil && err == nil {
+			err = u.Ctx.Graph.DelMetadata(intf, key)
+		} else if nb != nil {
+			err = u.Ctx.Graph.AddMetadata(intf, key, nb)
+		} else {
+			err = nil
+		}
+
+		if err != nil {
+			u.Ctx.Logger.Error(err)
+		}
+	}
+
+	update("FDB", fdb)
+	update("Neighbors", neighbors)
+}
+
+func (u *Probe) getNeighbors(index int) (*topology.Neighbors, *topology.Neighbors) {
+	fdb := u.getFamilyNeighbors(index, syscall.AF_BRIDGE)
+	neighbors := u.getFamilyNeighbors(index, syscall.AF_INET)
+	*neighbors = append(*neighbors, *u.getFamilyNeighbors(index, syscall.AF_INET6)...)
+
+	return fdb, neighbors
+}
+
+func (u *Probe) parseNeighborMsg(m []byte) (*topology.Neighbors, *topology.Neighbors, int, error) {
+	neigh, err := netlink.NeighDeserialize(m)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+
+	fdb, neighbors := u.getNeighbors(neigh.LinkIndex)
+
+	return fdb, neighbors, neigh.LinkIndex, nil
+}
+
 func (u *Probe) parseRtMsg(m []byte) (*topology.RoutingTables, int, error) {
 	msg := nl.DeserializeRtMsg(m)
 	attrs, err := nl.ParseRouteAttr(m[msg.Len():])
@@ -1107,6 +1160,14 @@ func (u *Probe) onMessageAvailable() {
 				continue
 			}
 			u.onRoutingTablesChanged(int64(index), rts)
+
+		case RtmNewNeigh, RtmDelNeigh:
+			fdb, neighbors, index, err := u.parseNeighborMsg(msg.Data)
+			if err != nil {
+				u.Ctx.Logger.Warningf("Failed to get Neighbors: %s", err)
+				continue
+			}
+			u.onNeighborsChanged(int64(index), fdb, neighbors)
 		}
 	}
 }
@@ -1167,7 +1228,18 @@ func newProbe(ctx tp.Context, nsPath string, sriovProcessor *graph.Processor) (*
 		return errFnc(fmt.Errorf("Failed to create netlink handle: %s", err))
 	}
 
-	if probe.socket, err = nl.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_LINK, syscall.RTNLGRP_IPV4_IFADDR, syscall.RTNLGRP_IPV6_IFADDR, syscall.RTNLGRP_IPV4_MROUTE, syscall.RTNLGRP_IPV4_ROUTE, syscall.RTNLGRP_IPV6_MROUTE, syscall.RTNLGRP_IPV6_ROUTE); err != nil {
+	groups := []uint{
+		syscall.RTNLGRP_LINK,
+		syscall.RTNLGRP_IPV4_IFADDR,
+		syscall.RTNLGRP_IPV6_IFADDR,
+		syscall.RTNLGRP_IPV4_MROUTE,
+		syscall.RTNLGRP_IPV4_ROUTE,
+		syscall.RTNLGRP_IPV6_MROUTE,
+		syscall.RTNLGRP_IPV6_ROUTE,
+		syscall.RTNLGRP_NEIGH,
+	}
+
+	if probe.socket, err = nl.Subscribe(syscall.NETLINK_ROUTE, groups...); err != nil {
 		return errFnc(fmt.Errorf("Failed to subscribe to netlink messages: %s", err))
 	}
 
