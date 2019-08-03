@@ -391,6 +391,8 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
 	/* we need to reset state here to avoid re-using underlayer in tunnel */
 	flow.XXX_state.ipv4 = nil
 	flow.XXX_state.ipv6 = nil
+
+	// notify that the flow has been updated between two table updates
 	flow.XXX_state.updateVersion = ft.updateVersion + 1
 
 	if ft.Opts.RawPacketLimit != 0 && flow.RawPacketsCaptured < ft.Opts.RawPacketLimit {
@@ -479,6 +481,9 @@ func (ft *Table) processEBPFFlow(ebpfFlow *EBPFFlow) {
 		return
 	}
 	ft.updateFlowFromEBPF(ebpfFlow, f.(*Flow))
+
+	// notify that the flow has been updated between two table updates
+	f.(*Flow).XXX_state.updateVersion = ft.updateVersion + 1
 }
 
 // State returns the state of the flow table, stopped, running...
