@@ -483,6 +483,10 @@ flow:
   # Seconds between flow updates (metrics, enhancements,...)
   # update: 60
 
+  # If true, will sent the full flow to analyzer otherwise only
+  # updates. like, metrics, status, end time
+  # full_flow_update: false
+
   # Protocol to use to send flows to the analyzer: websocket or udp
   # protocol: udp
 

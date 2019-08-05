@@ -269,6 +269,8 @@ flow/flow.pb.go: flow/flow.proto filters/filters.proto
 		-i $@
 	# add omitempty to RTT as it is not always filled
 	sed -e 's/json:"RTT"/json:"RTT,omitempty"/' -i $@
+	# add omitempty to Start as it is not filled for updates
+	sed -e 's/json:"Start"/json:"Start,omitempty"/' -i $@
 	# do not export LastRawPackets used internally
 	sed -e 's/json:"LastRawPackets,omitempty"/json:"-"/g' -i $@
 	# add flowState to flow generated struct

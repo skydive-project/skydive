@@ -33,6 +33,7 @@ import (
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
@@ -215,7 +216,7 @@ func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture,
 	}
 
 	uuids := flow.UUIDs{NodeTID: tid, CaptureID: capture.UUID}
-	ft := p.Ctx.FTA.Alloc(uuids, flow.TableOpts{})
+	ft := p.Ctx.FTA.Alloc(uuids, flow.TableOpts{FullFlowUpdate: config.GetBool("flow.full_flow_update")})
 
 	probe := &EBPFProbe{
 		Ctx:          p.Ctx,

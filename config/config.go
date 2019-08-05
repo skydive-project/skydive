@@ -153,6 +153,7 @@ func init() {
 
 	cfg.SetDefault("flow.expire", 600)
 	cfg.SetDefault("flow.update", 60)
+	cfg.SetDefault("flow.full_flow_update", false)
 	cfg.SetDefault("flow.max_entries", 500000)
 	cfg.SetDefault("flow.protocol", "udp")
 	cfg.SetDefault("flow.application_timeout.arp", 10)

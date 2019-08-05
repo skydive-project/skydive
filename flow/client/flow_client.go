@@ -159,8 +159,8 @@ retry:
 	return nil
 }
 
-// SendFlows implements the flow Sender interface
-func (c *FlowClient) SendFlows(flows []*flow.Flow) {
+// SendFullFlows implements the flow Sender interface
+func (c *FlowClient) SendFullFlows(flows []*flow.Flow) {
 	// NOTE: set it to 1 for udp to ensure that the flow can be sent
 	// even with rawpackets. Set it a bit bigger for websocket to
 	// improve performances.
@@ -170,6 +170,7 @@ func (c *FlowClient) SendFlows(flows []*flow.Flow) {
 	}
 
 	var msg flow.Message
+
 	for i := 0; i < len(flows); i += bulkSize {
 		e := i + bulkSize
 
@@ -182,6 +183,32 @@ func (c *FlowClient) SendFlows(flows []*flow.Flow) {
 		err := c.SendMessage(&msg)
 		if err != nil {
 			logging.GetLogger().Errorf("Unable to send flow: %s", err)
+		}
+	}
+}
+
+// SendPartialFlows implements the flow Sender interface
+func (c *FlowClient) SendPartialFlows(updates []*flow.FlowUpdate) {
+
+	bulkSize := 1
+	if c.protocol == "websocket" {
+		bulkSize = 10
+	}
+
+	var msg flow.Message
+
+	for i := 0; i < len(updates); i += bulkSize {
+		e := i + bulkSize
+
+		if e > len(updates) {
+			e = len(updates)
+		}
+
+		msg.Updates = updates[i:e]
+
+		err := c.SendMessage(&msg)
+		if err != nil {
+			logging.GetLogger().Errorf("Unable to send flow updates: %s", err)
 		}
 	}
 }
@@ -252,8 +279,8 @@ func (p *FlowClientPool) OnDisconnected(c ws.Speaker) {
 	}
 }
 
-// SendFlows implements the flow Sender interface
-func (p *FlowClientPool) SendFlows(flows []*flow.Flow) {
+// SendFullFlows implements the flow Sender interface
+func (p *FlowClientPool) SendFullFlows(flows []*flow.Flow) {
 	p.RLock()
 	defer p.RUnlock()
 
@@ -262,7 +289,20 @@ func (p *FlowClientPool) SendFlows(flows []*flow.Flow) {
 	}
 
 	fc := p.flowClients[rand.Intn(len(p.flowClients))]
-	fc.SendFlows(flows)
+	fc.SendFullFlows(flows)
+}
+
+// SendPartialFlows implements the flow Sender interface
+func (p *FlowClientPool) SendPartialFlows(updates []*flow.FlowUpdate) {
+	p.RLock()
+	defer p.RUnlock()
+
+	if len(p.flowClients) == 0 {
+		return
+	}
+
+	fc := p.flowClients[rand.Intn(len(p.flowClients))]
+	fc.SendPartialFlows(updates)
 }
 
 // Close all connections

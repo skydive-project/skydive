@@ -20,6 +20,8 @@ package targets
 import (
 	"errors"
 
+	"github.com/skydive-project/skydive/config"
+
 	"github.com/google/gopacket"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/flow"
@@ -48,6 +50,7 @@ func tableOptsFromCapture(capture *types.Capture) flow.TableOpts {
 		ReassembleTCP:  capture.ReassembleTCP,
 		LayerKeyMode:   layerKeyMode,
 		ExtraLayers:    capture.ExtraLayers,
+		FullFlowUpdate: config.GetBool("flow.full_flow_update"),
 	}
 }
 

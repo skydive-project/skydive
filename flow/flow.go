@@ -64,6 +64,7 @@ type flowState struct {
 	updateVersion int64
 	ipv4          *layers.IPv4
 	ipv6          *layers.IPv6
+	newFlow       bool
 }
 
 // Packet describes one packet
@@ -469,7 +470,8 @@ func networkID(p *Packet) int64 {
 // NewFlow creates a new empty flow
 func NewFlow() *Flow {
 	return &Flow{
-		Metric: &FlowMetric{},
+		Metric:    &FlowMetric{},
+		XXX_state: flowState{newFlow: true},
 	}
 }
 
