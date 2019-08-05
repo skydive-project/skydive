@@ -1,7 +1,7 @@
 LLC ?= llc
 CLANG ?= clang
 DOCKER_FILE ?= Dockerfile
-DOCKER_IMAGE ?= skydive/ebpf-builder
+DOCKER_EBPF_BUILDER_IMAGE ?= skydive/ebpf-builder
 TOPLEVEL_GOPATH ?= $(GOPATH)
 UID ?= $(shell id -u)
 GID ?= $(shell id -g)
@@ -32,10 +32,10 @@ clean:
 	rm -f *.o
 
 build-ebpf-docker-image:
-	docker build -t $(DOCKER_IMAGE) -f $(DOCKER_FILE) .
+	docker build -t $(DOCKER_EBPF_BUILDER_IMAGE) -f $(DOCKER_FILE) .
 
 pull-ebpf-docker-image:
-	docker pull $(DOCKER_IMAGE):latest
+	docker pull $(DOCKER_EBPF_BUILDER_IMAGE):latest
 
 docker-ebpf-build: pull-ebpf-docker-image
 	docker run --rm \
@@ -43,5 +43,5 @@ docker-ebpf-build: pull-ebpf-docker-image
 		--env=GID=$(GID) \
 		-v $(TOPLEVEL_GOPATH):/go \
 		--workdir=/go/src/github.com/skydive-project/skydive/probe/ebpf \
-		$(DOCKER_IMAGE) \
+		$(DOCKER_EBPF_BUILDER_IMAGE) \
 		sh -c "make ebpf-build && chown -R $(UID):$(GID) ."
