@@ -260,13 +260,8 @@ func (s *Pool) BroadcastMessage(m Message) {
 	defer s.RUnlock()
 
 	for _, c := range s.speakers {
-		r, err := m.Bytes(c.GetClientProtocol())
-		if err != nil {
-			s.opts.Logger.Errorf("Unable to serialize raw message from pool %s to %s: %s", s.name, c.GetRemoteHost(), err)
-		}
-
-		if err := c.SendRaw(r); err != nil {
-			s.opts.Logger.Errorf("Unable to send raw message from pool %s to %s: %s", s.name, c.GetRemoteHost, err)
+		if err := c.SendMessage(m); err != nil {
+			s.opts.Logger.Errorf("Unable to send message from pool %s to %s: %s", s.name, c.GetRemoteHost, err)
 		}
 	}
 }

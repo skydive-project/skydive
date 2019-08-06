@@ -323,17 +323,17 @@ type StructSpeaker struct {
 	logger         logging.Logger
 }
 
-// Send sends a message according to the namespace.
-func (s *StructSpeaker) Send(m Message) {
+// SendMessage sends a message according to the namespace.
+func (s *StructSpeaker) SendMessage(m Message) error {
 	if msg, ok := m.(*StructMessage); ok {
 		if _, ok := s.nsSubscribed[msg.Namespace]; !ok {
 			if _, ok := s.nsSubscribed[WildcardNamespace]; !ok {
-				return
+				return nil
 			}
 		}
 	}
 
-	s.Speaker.SendMessage(m)
+	return s.Speaker.SendMessage(m)
 }
 
 func (s *StructSpeaker) onReply(m *StructMessage) bool {
@@ -362,7 +362,7 @@ func (s *StructSpeaker) Request(m *StructMessage, timeout time.Duration) (*Struc
 		s.replyChanMutex.Unlock()
 	}()
 
-	s.Send(m)
+	s.SendMessage(m)
 
 	select {
 	case resp := <-ch:

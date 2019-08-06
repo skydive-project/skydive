@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"testing"
 	"time"
@@ -42,10 +43,15 @@ type fakeMessageServerSubscriptionHandler struct {
 type fakeMessageClientSubscriptionHandler struct {
 	common.RWMutex
 	DefaultSpeakerEventHandler
-	t             *testing.T
-	received      map[string]bool
-	receivedCount int
-	connected     int
+	t        *testing.T
+	received map[string]bool
+}
+
+type fakeMessageClientSubscriptionHandler2 struct {
+	common.RWMutex
+	DefaultSpeakerEventHandler
+	t        *testing.T
+	received map[string]bool
 }
 
 func (f *fakeMessageServerSubscriptionHandler) OnConnected(c Speaker) {
@@ -56,7 +62,7 @@ func (f *fakeMessageServerSubscriptionHandler) OnConnected(c Speaker) {
 		if f.receivedCount == 0 {
 			return errors.New("Client not ready")
 		}
-		c.SendMessage(NewStructMessage("SrvValidNS", "SrvValidNSUnicast666", "AAA", "001"))
+		c.SendMessage(NewStructMessage("SrvValidNS", "SrvValidNSUnicast1", "AAA", "001"))
 		c.SendMessage(NewStructMessage("SrvNotValidNS", "SrvNotValidNSUnicast2", "AAA", "001"))
 		c.SendMessage(NewStructMessage("SrvValidNS", "SrvValidNSUnicast3", "AAA", "001"))
 
@@ -77,10 +83,6 @@ func (f *fakeMessageServerSubscriptionHandler) OnStructMessage(c Speaker, m *Str
 }
 
 func (f *fakeMessageClientSubscriptionHandler) OnConnected(c Speaker) {
-	f.Lock()
-	f.connected++
-	f.Unlock()
-
 	c.SendMessage(NewStructMessage("ClientValidNS", "ClientValidNS1", "AAA", "001"))
 	c.SendMessage(NewStructMessage("ClientNotValidNS", "ClientNotValidNS2", "AAA", "001"))
 	c.SendMessage(NewStructMessage("ClientValidNS", "ClientValidNS3", "AAA", "001"))
@@ -89,7 +91,24 @@ func (f *fakeMessageClientSubscriptionHandler) OnConnected(c Speaker) {
 func (f *fakeMessageClientSubscriptionHandler) OnStructMessage(c Speaker, m *StructMessage) {
 	f.Lock()
 	f.received[m.Type] = true
-	f.receivedCount++
+	f.Unlock()
+}
+
+func (f *fakeMessageClientSubscriptionHandler2) OnConnected(c Speaker) {
+	c.SendMessage(NewStructMessage("ClientValidNS", "ClientValidNS1", "AAA", "001"))
+}
+
+func (f *fakeMessageClientSubscriptionHandler2) OnMessage(c Speaker, m Message) {
+	// m is a rawmessage at this point
+	bytes, _ := m.Bytes(RawProtocol)
+
+	var structMsg StructMessage
+	if err := structMsg.unmarshalByProtocol(bytes, c.GetClientProtocol()); err != nil {
+		return
+	}
+
+	f.Lock()
+	f.received[structMsg.Namespace] = true
 	f.Unlock()
 }
 
@@ -142,11 +161,11 @@ func TestMessageSubscription(t *testing.T) {
 		defer serverHandler.Unlock()
 
 		if len(serverHandler.received) != 2 {
-			return fmt.Errorf("Server should have received 2 messages: %v", serverHandler.received)
+			return fmt.Errorf("Server should have received 2 message types: %v", serverHandler.received)
 		}
 
 		if len(clientHandler.received) != 4 {
-			return fmt.Errorf("Client should have received 4 messages: %v", clientHandler.received)
+			return fmt.Errorf("Client should have received 4 message types: %v", clientHandler.received)
 		}
 
 		if _, ok := serverHandler.received["ClientNotValidNS2"]; ok {
@@ -158,6 +177,69 @@ func TestMessageSubscription(t *testing.T) {
 		}
 
 		if _, ok := clientHandler.received["SrvNotValidNSBroacast2"]; ok {
+			return fmt.Errorf("Received message from wrong namespace: %v", serverHandler.received)
+		}
+
+		return nil
+	}, 5, time.Second)
+
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestMessageSubscription2(t *testing.T) {
+	httpserver := shttp.NewServer("myhost", common.AnalyzerService, "localhost", 59998, nil)
+
+	httpserver.ListenAndServe()
+	defer httpserver.Stop()
+
+	serverOpts := ServerOpts{
+		WriteCompression: true,
+		QueueSize:        100,
+		PingDelay:        2 * time.Second,
+		PongTimeout:      5 * time.Second,
+	}
+
+	wsserver := NewStructServer(NewServer(httpserver, "/wstest", shttp.NewNoAuthenticationBackend(), serverOpts))
+
+	serverHandler := &fakeMessageServerSubscriptionHandler{t: t, server: wsserver, received: make(map[string]bool)}
+	wsserver.AddEventHandler(serverHandler)
+	wsserver.AddStructMessageHandler(serverHandler, []string{"ClientValidNS"})
+
+	wsserver.Start()
+	defer wsserver.Stop()
+
+	u, _ := url.Parse("ws://localhost:59998/wstest")
+
+	clientOpts := ClientOpts{
+		QueueSize:        1000,
+		WriteCompression: true,
+		Headers: http.Header{
+			"X-Websocket-Namespace": {"SrvValidNS"},
+		},
+	}
+
+	wsclient := NewClient("myhost", common.AgentService, u, clientOpts)
+
+	wspool := NewStructClientPool("TestMessageSubscription", PoolOpts{})
+	wspool.AddClient(wsclient)
+
+	clientHandler := &fakeMessageClientSubscriptionHandler2{t: t, received: make(map[string]bool)}
+	wspool.AddEventHandler(clientHandler)
+
+	wsclient.Start()
+	defer wsclient.Stop()
+
+	err := common.Retry(func() error {
+		clientHandler.Lock()
+		defer clientHandler.Unlock()
+
+		if len(clientHandler.received) != 1 {
+			return fmt.Errorf("Client should have received 1 message namespace: %v", clientHandler.received)
+		}
+
+		if _, ok := clientHandler.received["SrvNotValidNS"]; ok {
 			return fmt.Errorf("Received message from wrong namespace: %v", serverHandler.received)
 		}
 

@@ -201,7 +201,7 @@ func SkydiveSend(ds *C.data_set_t, vl *C.value_list_t, ud *C.user_data_t) C.int 
 	}
 
 	Logger.Debugf("send: %+v", msg)
-	publisher.Send(gws.NewStructMessage(gws.NodePartiallyUpdatedMsgType, msg))
+	publisher.SendMessage(gws.NewStructMessage(gws.NodePartiallyUpdatedMsgType, msg))
 
 	return 0
 }
@@ -209,7 +209,7 @@ func SkydiveSend(ds *C.data_set_t, vl *C.value_list_t, ud *C.user_data_t) C.int 
 // OnConnected websocket listener
 func (s *listener) OnConnected(c ws.Speaker) {
 	Logger.Infof("connected to %s", c.GetHost())
-	subscriber.Send(gws.NewStructMessage(gws.SyncRequestMsgType, gws.SyncRequestMsg{}))
+	subscriber.SendMessage(gws.NewStructMessage(gws.SyncRequestMsgType, gws.SyncRequestMsg{}))
 }
 
 // OnStructMessage websocket listenet
