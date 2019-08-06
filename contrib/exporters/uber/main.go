@@ -18,14 +18,16 @@
 package main
 
 import (
-	"github.com/skydive-project/skydive/contrib/pipelines/awsflowlogs/mod"
-	"github.com/skydive-project/skydive/contrib/pipelines/core"
+	aws "github.com/skydive-project/skydive/contrib/exporters/awsflowlogs/mod"
+	"github.com/skydive-project/skydive/contrib/exporters/core"
+	sa "github.com/skydive-project/skydive/contrib/exporters/secadvisor/mod"
 )
 
 func main() {
-	core.Main("/etc/skydive/awsflowlogs.yml")
+	core.Main("/etc/skydive/uber.yml")
 }
 
 func init() {
-	core.TransformerHandlers.Register("awsflowlogs", mod.NewTransform, false)
+	core.TransformerHandlers.Register("awsflowlogs", aws.NewTransform, false)
+	core.TransformerHandlers.Register("vpclogs", sa.NewTransform, false)
 }

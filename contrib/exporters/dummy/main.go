@@ -18,7 +18,7 @@
 package main
 
 import (
-	"github.com/skydive-project/skydive/contrib/pipelines/core"
+	"github.com/skydive-project/skydive/contrib/exporters/core"
 )
 
 func main() {

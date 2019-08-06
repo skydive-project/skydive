@@ -26,7 +26,7 @@ import (
 	cache "github.com/pmylund/go-cache"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/contrib/pipelines/core"
+	"github.com/skydive-project/skydive/contrib/exporters/core"
 	"github.com/skydive-project/skydive/flow"
 )
 

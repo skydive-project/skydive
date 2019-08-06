@@ -24,7 +24,7 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-// Main entry point for pipelines
+// Main entry point for exporters
 func Main(defaultCfgFile string) {
 	if len(os.Args) > 1 {
 		defaultCfgFile = os.Args[1]

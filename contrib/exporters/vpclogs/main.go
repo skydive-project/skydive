@@ -18,8 +18,8 @@
 package main
 
 import (
-	"github.com/skydive-project/skydive/contrib/pipelines/core"
-	sa "github.com/skydive-project/skydive/contrib/pipelines/secadvisor/mod"
+	"github.com/skydive-project/skydive/contrib/exporters/core"
+	sa "github.com/skydive-project/skydive/contrib/exporters/secadvisor/mod"
 )
 
 func main() {

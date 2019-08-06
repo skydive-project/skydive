@@ -27,7 +27,7 @@ import (
 
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/contrib/pipelines/core"
+	"github.com/skydive-project/skydive/contrib/exporters/core"
 	"github.com/skydive-project/skydive/flow"
 	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/logging"
