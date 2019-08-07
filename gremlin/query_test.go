@@ -26,7 +26,31 @@ func TestQueryBuilder(t *testing.T) {
 	const key, val = "Type", "host"
 	expected := fmt.Sprintf(`G.V().Has("%s", Regex("%s"), "%s", Regex("%s.*"), "%s", Regex(".*%s")).Flows().Sort()`,
 		key, val, key, val, key, val)
-	actual := G.V().Has(Quote(key), Regex(val), Quote(key), Regex("%s.*", val), Quote(key), Regex(".*%s", val)).Flows().Sort()
+	actual := G.V().Has(Quote(key), Regex(val), Quote(key), Regex(val+".*"), Quote(key), Regex(".*"+val)).Flows().Sort()
+	if actual.String() != expected {
+		t.Errorf("Wrong query,\nexpected: \"%s\",\nactual: \"%s\"", expected, actual)
+	}
+}
+
+func TestQueryWithPercentSign(t *testing.T) {
+	actual := G.V().Has("foo", "%p")
+	expected := `G.V().Has("foo", "%p")`
+	if actual.String() != expected {
+		t.Errorf("Wrong query,\nexpected: \"%s\",\nactual: \"%s\"", expected, actual)
+	}
+}
+
+func TestQueryWithDoubleQuotes(t *testing.T) {
+	actual := G.V().Has("foo", `"`)
+	expected := `G.V().Has("foo", "\"")`
+	if actual.String() != expected {
+		t.Errorf("Wrong query,\nexpected: \"%s\",\nactual: \"%s\"", expected, actual)
+	}
+}
+
+func TestRegexWithPercentSignAndDoubleQuotes(t *testing.T) {
+	actual := G.V().Has("foo", Regex(`my-%s-"-regex`))
+	expected := `G.V().Has("foo", Regex("my-%s-\"-regex"))`
 	if actual.String() != expected {
 		t.Errorf("Wrong query,\nexpected: \"%s\",\nactual: \"%s\"", expected, actual)
 	}

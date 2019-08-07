@@ -18,6 +18,7 @@
 package gremlin
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 )
@@ -52,14 +53,18 @@ func (v ValueString) String() string {
 const DESC = ValueString("DESC")
 
 // Quote used to quote string values as needed by query
-func Quote(format string, a ...interface{}) ValueString {
-	s := fmt.Sprintf(format, a...)
-	return ValueString(fmt.Sprintf(`"%s"`, s))
+func Quote(s string) ValueString {
+	escaped, err := json.Marshal(s)
+	if err != nil {
+		// According to the encoding/json source code, json.Marshal will never return
+		// error if the input type is a string; so this case is currently unlikely.
+		return ValueString(fmt.Sprintf("Unexpected error when quoting string: %v", err))
+	}
+	return ValueString(string(escaped))
 }
 
 // Regex used for constructing a regexp expression string
-func Regex(format string, a ...interface{}) ValueString {
-	s := fmt.Sprintf(format, a...)
+func Regex(s string) ValueString {
 	return ValueString(fmt.Sprintf("Regex(%s)", Quote(s)))
 }
 
