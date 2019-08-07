@@ -30,10 +30,10 @@ import (
 	"github.com/skydive-project/skydive/flow"
 )
 
-type fakeSecurityAdvisorGraphClient struct {
+type fakeResolver struct {
 }
 
-func (c *fakeSecurityAdvisorGraphClient) getContainerName(ipString, nodeTID string) (string, error) {
+func (c *fakeResolver) IPToName(ipString, nodeTID string) (string, error) {
 	switch ipString {
 	case "192.168.0.5":
 		return "fake_container_one", nil
@@ -44,16 +44,14 @@ func (c *fakeSecurityAdvisorGraphClient) getContainerName(ipString, nodeTID stri
 	}
 }
 
-func (c *fakeSecurityAdvisorGraphClient) getNodeType(nodeTID string) (string, error) {
+func (c *fakeResolver) TIDToType(nodeTID string) (string, error) {
 	return "fake_node_type", nil
 }
 
 func getTestTransformer() core.Transformer {
 	return &securityAdvisorFlowTransformer{
 		flowUpdateCountCache: cache.New(10*time.Minute, 10*time.Minute),
-		graphClient:          &fakeSecurityAdvisorGraphClient{},
-		containerNameCache:   cache.New(5*time.Minute, 10*time.Minute),
-		nodeType:             cache.New(5*time.Minute, 10*time.Minute),
+		resolver:             &fakeResolver{},
 		excludeStartedFlows:  false,
 	}
 }
@@ -125,8 +123,8 @@ func Test_Transform_basic_flow(t *testing.T) {
 	assertEqualInt64(t, 1546338030000, secAdvFlow.Last)
 	// Test container and node enrichment
 	assertEqual(t, "fake_node_type", secAdvFlow.NodeType)
-	assertEqual(t, "0_0_fake_container_one_0", secAdvFlow.Network.AName)
-	assertEqual(t, "0_0_fake_container_two_0", secAdvFlow.Network.BName)
+	assertEqual(t, "fake_container_one", secAdvFlow.Network.AName)
+	assertEqual(t, "fake_container_two", secAdvFlow.Network.BName)
 	// Test that transport layer ports are encoded as strings
 	assertEqual(t, "47838", secAdvFlow.Transport.A)
 	assertEqual(t, "80", secAdvFlow.Transport.B)
