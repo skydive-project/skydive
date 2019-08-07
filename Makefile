@@ -436,26 +436,25 @@ static: skydive.clean govendor genlocalfiles
 	$(MAKE) compile.static WITH_LIBVIRT_GO=false
 
 .PHONY: contribs.clean
-contribs.clean: contrib.objectstore.clean contrib.snort.clean contrib.collectd.clean
+contribs.clean: contrib.exporters.clean contrib.snort.clean contrib.collectd.clean
 
 .PHONY: contribs.test
-contribs.test: contrib.objectstore.test
+contribs.test: contrib.exporters.test
 
 .PHONY: contribs
-contribs: contrib.objectstore contrib.snort contrib.collectd
+contribs: contrib.exporters contrib.snort contrib.collectd
 
-.PHONY: contrib.objectstore.clean
-contrib.objectstore.clean:
-	$(MAKE) -C contrib/pipelines/secadvisor clean
+.PHONY: contrib.exporters.clean
+contrib.exporters.clean:
+	$(MAKE) -C contrib/exporters clean
 
-.PHONY: contrib.objectstore
-contrib.objectstore: govendor genlocalfiles
-	$(MAKE) -C contrib/pipelines/secadvisor
+.PHONY: contrib.exporters
+contrib.exporters: govendor genlocalfiles
+	$(MAKE) -C contrib/exporters
 
-.PHONY: contrib.objectstore.test
-contrib.objectstore.test: govendor genlocalfiles
-	$(MAKE) -C contrib/pipelines/core test
-	$(MAKE) -C contrib/pipelines/secadvisor test
+.PHONY: contrib.exporters.test
+contrib.exporters.test: govendor genlocalfiles
+	$(MAKE) -C contrib/exporters test
 
 .PHONY: contribs.snort.clean
 contrib.snort.clean:

@@ -1,0 +1,36 @@
+host_id: ""
+pipeline:
+  analyzer:
+    subscriber_url: ws://127.0.0.1:8082/ws/subscriber/flow
+    subscriber_username:
+    subscriber_password:
+  classify:
+    # cluster_net_masks:
+      # - 10.0.0.0/8
+      # - 172.16.0.0/12
+      # - 192.168.0.0/16
+  filter:
+    # excluded_tags:
+      # - internal
+      # - other
+  transform:
+    type: sa
+    sa:
+      # exclude_started_flows: true
+  store:
+    type: s3
+    s3:
+      # -- client parames --
+      endpoint: http://127.0.0.1:9000
+      region: local
+      bucket: bucket
+      access_key: user
+      secret_key: password
+      # api_key: key
+      # iam_endpoint: https://iam.cloud.ibm.com/identity/token
+      object_prefix: logs
+      # -- bulk store params --
+      # max_flows_per_object: 6000
+      # max_seconds_per_object: 60
+      # max_seconds_per_stream: 86400
+      # max_flow_array_size: 100000
