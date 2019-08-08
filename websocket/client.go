@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	fmt "fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -352,6 +353,7 @@ func (c *Conn) run() {
 		for c.running.Load() == true {
 			_, m, err := c.conn.ReadMessage()
 			if err != nil {
+				logging.GetLogger().Debugf("Error while reading websocket: %s", err)
 				if c.running.Load() != false {
 					c.quit <- true
 				}
@@ -362,6 +364,8 @@ func (c *Conn) run() {
 	}()
 
 	defer func() {
+		c.logger.Debugf("Closing connection: %+v", c)
+
 		c.conn.Close()
 		c.State.Store(common.StoppedState)
 
@@ -380,6 +384,7 @@ func (c *Conn) run() {
 	for {
 		select {
 		case <-c.quit:
+			c.logger.Debug("Quit message received on quit chan")
 			return
 		case m := <-c.read:
 			handleReceivedMessage(m)
@@ -393,7 +398,8 @@ func (c *Conn) run() {
 				c.logger.Errorf("Error while flushing send queue for %+v: %s", c, err)
 				return
 			}
-		case <-c.pingTicker.C:
+		case now := <-c.pingTicker.C:
+			c.logger.Debugf("Sending ping: %s", now.String())
 			if err := c.sendPing(); err != nil {
 				c.logger.Errorf("Error while sending ping to %+v: %s", c, err)
 
@@ -523,7 +529,20 @@ func (c *Client) Connect() error {
 		return fmt.Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err)
 	}
 
-	c.conn.SetPingHandler(nil)
+	c.conn.SetPingHandler(
+		func(message string) error {
+			now := time.Now()
+
+			logging.GetLogger().Debugf("Sending pong: %s", now.String())
+
+			err := c.conn.WriteControl(websocket.PongMessage, []byte(message), now.Add(writeWait))
+			if err == websocket.ErrCloseSent {
+				return nil
+			} else if e, ok := err.(net.Error); ok && e.Temporary() {
+				return nil
+			}
+			return err
+		})
 	c.conn.EnableWriteCompression(c.writeCompression)
 
 	c.State.Store(common.RunningState)
