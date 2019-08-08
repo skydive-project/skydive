@@ -104,7 +104,7 @@ func init() {
 	cfg.SetDefault("agent.flow.pcapsocket.bind_address", "127.0.0.1")
 	cfg.SetDefault("agent.flow.pcapsocket.min_port", 8100)
 	cfg.SetDefault("agent.flow.pcapsocket.max_port", 8132)
-	cfg.SetDefault("agent.flow.ebpf.kernel_scan_interval", 10)
+	cfg.SetDefault("agent.flow.ebpf.polling_rate", 16000)
 	cfg.SetDefault("agent.flow.sflow.bind_address", "127.0.0.1")
 	cfg.SetDefault("agent.flow.sflow.port_min", 6345)
 	cfg.SetDefault("agent.flow.sflow.port_max", 6355)

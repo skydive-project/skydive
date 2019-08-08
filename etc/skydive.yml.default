@@ -281,9 +281,8 @@ agent:
       # port_max: 6375
 
     ebpf:
-      # Period in seconds representing the delay between two successive scans 
-      # of the kernel table in ebpf mode for new flow updates. Default interval is 10 seconds
-      # kernel_scan_interval: 10
+      # Rate of flows to poll per second from the kernel
+      # polling_rate: 16000
 
   capture:
     # Period in second to get capture stats from the probe. Note this
