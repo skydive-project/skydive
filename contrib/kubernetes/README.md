@@ -45,3 +45,9 @@ Change etcd port from 12379/12380 to 22379/22380:
 ```
 cat skydive.yaml | sed -e s/12379/22379/ -e s/12380/22380/ | kubectl apply -f -
 ```
+
+Deploy to namespace `mynamespace` instead of `default`:
+
+```
+cat skydive.yaml | sed -e "s/namespace: default/namespace: mynamespace/" | kubectl apply -n mynamespace -f -
+```
