@@ -1,4 +1,5 @@
 //go:generate go run ../scripts/gendecoder.go -output routes_gendecoder.go
+//go:generate easyjson $GOFILE
 
 /*
  * Copyright (C) 2019 Red Hat, Inc.

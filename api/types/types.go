@@ -1,3 +1,5 @@
+//go:generate easyjson $GOFILE
+
 /*
  * Copyright (C) 2018 Red Hat, Inc.
  *

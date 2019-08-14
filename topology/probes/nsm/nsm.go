@@ -1,4 +1,5 @@
 // +build !windows
+//go:generate easyjson $GOFILE
 
 /*
  * Copyright (C) 2019 Orange

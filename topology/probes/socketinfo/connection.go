@@ -1,4 +1,5 @@
 //go:generate go run ../../../scripts/gendecoder.go -package github.com/skydive-project/skydive/topology/probes/socketinfo
+//go:generate easyjson -build_tags linux $GOFILE
 
 /*
  * Copyright (C) 2018 Red Hat, Inc.

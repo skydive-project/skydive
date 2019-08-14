@@ -1,4 +1,5 @@
 // +build linux
+//go:generate easyjson -build_tags linux $GOFILE
 
 /*
  * Copyright (C) 2015 Red Hat, Inc.

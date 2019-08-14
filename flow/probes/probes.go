@@ -1,4 +1,5 @@
 //go:generate go run ../../scripts/gendecoder.go -package github.com/skydive-project/skydive/flow/probes
+//go:generate easyjson $GOFILE
 
 /*
  * Copyright (C) 2016 Red Hat, Inc.

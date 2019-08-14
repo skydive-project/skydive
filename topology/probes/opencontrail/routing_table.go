@@ -1,4 +1,5 @@
 // +build linux,opencontrail
+//go:generate easyjson -build_tags opencontrail $GOFILE
 
 /*
  * Copyright (C) 2018 Orange, Inc.

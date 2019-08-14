@@ -1,4 +1,5 @@
 //go:generate go run ../../../scripts/gendecoder.go -package github.com/skydive-project/skydive/topology/probes/libvirt
+//go:generate easyjson $GOFILE
 
 /*
  * Copyright (C) 2019 Red Hat, Inc.

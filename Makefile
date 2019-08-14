@@ -47,7 +47,8 @@ PROTOC_GEN_GO_GITHUB:=github.com/golang/protobuf/protoc-gen-go
 PROTOC_GEN_GOFAST_GITHUB:=github.com/gogo/protobuf/protoc-gen-gogofaster
 PROTEUS_GITHUB:=gopkg.in/src-d/proteus.v1/cli/proteus
 EASYJSON_GITHUB:=github.com/mailru/easyjson/easyjson
-EASYJSON_FILES_ALL=flow/flow.pb.go
+EASYJSON_FILES_ALL=\
+        flow/flow.pb.go
 EASYJSON_FILES_TAG=\
 	api/types/types.go \
 	flow/ondemand/ondemand.go \
@@ -301,25 +302,7 @@ GEN_EASYJSON_FILES_TAG := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_TAG))
 GEN_EASYJSON_FILES_TAG_OPENCONTRAIL := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_TAG_OPENCONTRAIL))
 
 %_easyjson.go: %.go
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson $<
-
-flow/flow.pb_easyjson.go: flow/flow.pb.go
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -all $<
-
-topology/probes/lldp/lldp_easyjson.go: topology/probes/lldp/lldp.go
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags linux $<
-
-topology/probes/netlink/netlink_easyjson.go: topology/probes/netlink/netlink.go
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags linux $<
-
-topology/probes/socketinfo/connection_easyjson.go: topology/probes/socketinfo/connection.go
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags linux $<
-
-topology/probes/opencontrail/routing_table_easyjson.go: $(EASYJSON_FILES_TAG_OPENCONTRAIL)
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags opencontrail $<
-
-topology/probes/ovsdb/ovsdb.pb_easyjson.go: topology/probes/ovsdb/ovsdb.go
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson $<
+	go generate $<
 
 .PHONY: .easyjson
 .easyjson: flow/flow.pb_easyjson.go $(GEN_EASYJSON_FILES_TAG) $(GEN_EASYJSON_FILES_TAG_OPENCONTRAIL)

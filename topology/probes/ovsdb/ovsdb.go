@@ -1,4 +1,5 @@
 //go:generate go run ../../../scripts/gendecoder.go -package github.com/skydive-project/skydive/topology/probes/ovsdb
+//go:generate easyjson $GOFILE
 
 /*
  * Copyright (C) 2015 Red Hat, Inc.

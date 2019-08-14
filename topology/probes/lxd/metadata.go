@@ -1,4 +1,5 @@
 //go:generate go run ../../../scripts/gendecoder.go -package github.com/skydive-project/skydive/topology/probes/lxd
+//go:generate easyjson $GOFILE
 
 /*
  * Copyright (C) 209 Red Hat, Inc.
