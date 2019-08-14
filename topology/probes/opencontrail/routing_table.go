@@ -1,4 +1,5 @@
 // +build linux,opencontrail
+//go:generate go run github.com/safchain/easyjson/easyjson -build_tags opencontrail $GOFILE
 
 /*
  * Copyright (C) 2018 Orange, Inc.

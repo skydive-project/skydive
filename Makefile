@@ -37,7 +37,8 @@ PROTOC_GEN_GO_GITHUB:=github.com/golang/protobuf/protoc-gen-go
 PROTOC_GEN_GOFAST_GITHUB:=github.com/gogo/protobuf/protoc-gen-gogofaster
 PROTEUS_GITHUB:=gopkg.in/src-d/proteus.v1/cli/proteus
 EASYJSON_GITHUB:=github.com/mailru/easyjson/easyjson
-EASYJSON_FILES_ALL=flow/flow.pb.go
+EASYJSON_FILES_ALL=\
+        flow/flow.pb.go
 EASYJSON_FILES_TAG=\
 	api/types/types.go \
 	flow/ondemand/ondemand.go \
@@ -288,13 +289,7 @@ GEN_EASYJSON_FILES_TAG := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_TAG))
 GEN_EASYJSON_FILES_TAG_OPENCONTRAIL := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_TAG_OPENCONTRAIL))
 
 %_easyjson.go: %.go
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson $<
-
-flow/flow.pb_easyjson.go: flow/flow.pb.go
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -all $<
-
-topology/probes/opencontrail/routing_table_easyjson.go: $(EASYJSON_FILES_TAG_OPENCONTRAIL)
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags opencontrail $<
+	go generate $<
 
 .PHONY: .easyjson
 .easyjson: flow/flow.pb_easyjson.go $(GEN_EASYJSON_FILES_TAG) $(GEN_EASYJSON_FILES_TAG_OPENCONTRAIL)
@@ -340,7 +335,7 @@ statics/bindata.go: .typescript ebpf.build $(shell find statics -type f \( ! -in
 	gofmt -w -s statics/bindata.go
 
 .PHONY: .go-generate
-.go-generate:
+.go-generate: .bindata
 	$(GO) generate -run "gendecoder" -tags="${BUILD_TAGS}" ${VERBOSE_FLAGS} ${SKYDIVE_GITHUB}/...
 	$(GO) generate -tags="${BUILD_TAGS}" ${VERBOSE_FLAGS} ${SKYDIVE_GITHUB}/...
 
@@ -566,7 +561,7 @@ lint:
 	make golangci-lint GOMETALINTER_FLAGS="--disable-all --enable=golint"
 
 .PHONY: genlocalfiles
-genlocalfiles: .proto .go-generate .bindata .easyjson
+genlocalfiles: .proto .bindata .go-generate .easyjson
 
 .PHONY: clean
 clean: skydive.clean test.functionals.clean contribs.clean ebpf.clean .easyjson.clean .proto.clean .go-generate.clean .typescript.clean .vppbinapi.clean

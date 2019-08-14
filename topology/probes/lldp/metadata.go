@@ -1,4 +1,5 @@
 //go:generate go run github.com/skydive-project/skydive/scripts/gendecoder -package github.com/skydive-project/skydive/topology/probes/lldp
+//go:generate go run github.com/safchain/easyjson/easyjson $GOFILE
 
 /*
  * Copyright (C) 2018 Red Hat, Inc.

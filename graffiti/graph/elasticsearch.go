@@ -1,3 +1,5 @@
+//go:generate go run github.com/safchain/easyjson/easyjson $GOFILE
+
 /*
  * Copyright (C) 2016 Red Hat, Inc.
  *
