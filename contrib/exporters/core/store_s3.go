@@ -105,7 +105,9 @@ func (s *StoreS3) StoreFlows(in map[Tag][]interface{}) error {
 
 	endTime := time.Now()
 
-	s.flows = in
+	for t, incomingTagFlows := range in {
+		s.flows[t] = append(s.flows[t], incomingTagFlows...)
+	}
 
 	// check which flows needs to be flushed to the object store
 	flushedTags := make(map[Tag]bool)
