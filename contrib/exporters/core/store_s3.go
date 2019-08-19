@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/spf13/viper"
@@ -53,6 +54,7 @@ type StoreS3 struct {
 	flows             map[Tag][]interface{}
 	lastFlushTime     map[Tag]time.Time
 	flushTimers       map[Tag]*time.Timer
+	flowsMutex        sync.Mutex
 }
 
 // SetPipeline setup
@@ -98,9 +100,14 @@ func (s *StoreS3) DeleteObject(objectKey *string) error {
 
 // StoreFlows store flows in memory, before being written to the object store
 func (s *StoreS3) StoreFlows(in map[Tag][]interface{}) error {
+	s.flowsMutex.Lock()
+	defer s.flowsMutex.Unlock()
+
 	endTime := time.Now()
 
-	s.flows = in
+	for t, incomingTagFlows := range in {
+		s.flows[t] = append(s.flows[t], incomingTagFlows...)
+	}
 
 	// check which flows needs to be flushed to the object store
 	flushedTags := make(map[Tag]bool)
