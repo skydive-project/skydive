@@ -569,7 +569,7 @@ rbac:
     # - some(where (p_eft == allow)) && !some(where (p_eft == deny))
     # matchers:
     # - g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
-  policy:
+  #policy:
     # additional RBAC policy:
     # - p, myuser, capture, write, deny
     # - g, myuser, myrole
