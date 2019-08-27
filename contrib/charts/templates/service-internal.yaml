@@ -10,11 +10,9 @@ metadata:
 
 spec:
   ports:
-  - port: 12379
+  - port: {{ .Values.etcd.port }}
     name: etcd
-  - port: 12380
-    name: etcd-cluster
-  - port: 9200
+  - port: {{ .Values.storage.elasticsearch.port }}
     name: elasticsearch
   selector:
     app: {{ template "fullname" . }}

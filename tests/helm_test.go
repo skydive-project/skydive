@@ -30,13 +30,13 @@ const (
 
 func TestHelmInstall(t *testing.T) {
 	test := &Test{
-		retries: 3,
+		retries:    3,
+		preCleanup: true,
 		setupCmds: []Cmd{
-			{"helm delete --purge " + relName, false},
 			{"helm install --name " + relName + " " + chartPath, true},
 		},
 		tearDownCmds: []Cmd{
-			{"helm delete --purge " + relName, true},
+			{"helm delete --purge " + relName, false},
 		},
 		checks: []CheckFunction{
 			func(c *CheckContext) error {
