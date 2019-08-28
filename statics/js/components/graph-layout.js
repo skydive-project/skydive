@@ -97,63 +97,11 @@ var LinkLabelLatency = Vue.extend({
       link.latency = Math.abs(a.Metric.RTT - b.Metric.RTT) / 1000000;
     },
 
-    flowQuery: function(nodeTID, trackingID, limit) {
-      let has = `"NodeTID", ${nodeTID}`;
-      if (typeof trackingID !== 'undefined') {
-        has += `"TrackingID", ${trackingID}`;
-      }
-      has += `"Metric.RTT", NE(0)`;
-      let query = `G.Flows().Has(${has}).Sort().Limit(${limit})`;
+    flowQuery: function(nodeTIDa, nodeTIDb, limit) {
+      let has = `"NodeTID", Within("${nodeTIDa}", "${nodeTIDb}")`;
+      has += `, "Metric.RTT", NE(0)`;
+      let query = `G.Flows().Has(${has}).Sort().Limit(${limit}).Group("TrackingID").MoreThan(1)`;
       return this.$topologyQuery(query)
-    },
-
-    flowQueryByNodeTID: function(nodeTID, limit) {
-      return this.flowQuery(`"${nodeTID}"`, undefined, limit);
-    },
-
-    flowQueryByNodeTIDandTrackingID: function(nodeTID, flows) {
-      let anyTrackingID = 'Within(';
-      for (let i in flows) {
-        const flow = flows[i];
-        if (i != 0) {
-          anyTrackingID += ', ';
-        }
-        anyTrackingID += `"${flow.TrackingID}"`;
-      }
-      anyTrackingID += ')';
-      return this.flowQuery(`"${nodeTID}"`, anyTrackingID, 1);
-    },
-
-    flowCategoryKey: function(flow) {
-      return `a=${flow.Link.A} b=${flow.Link.B} app=${flow.Application}`;
-    },
-
-    uniqueFlows: function(inFlows, count) {
-      let outFlows = [];
-      let hasCategory = {};
-      for (let i in inFlows) {
-        if (count <= 0) {
-          break;
-        }
-        const flow = inFlows[i];
-        const key = this.flowCategoryKey(flow);
-        if (key in hasCategory) {
-          continue;
-        }
-        hasCategory[key] = true;
-        outFlows.push(flow);
-        count--;
-      }
-      return outFlows;
-    },
-
-    mapFlowByTrackingID: function(flows) {
-      let map = {};
-      for (let i in flows) {
-        const flow = flows[i];
-        map[flow.TrackingID] = flow;
-      }
-      return map;
     },
 
     updateData: function(link) {
@@ -170,26 +118,13 @@ var LinkLabelLatency = Vue.extend({
       }
 
       const maxFlows = 1000;
-      this.flowQueryByNodeTID(a.TID, maxFlows)
-        .then(function(aFlows) {
-          if (aFlows.length === 0) {
+      this.flowQuery(a.TID, b.TID, maxFlows)
+        .then(function(grpFlows) {
+          if (grpFlows.length === 0 || Object.keys(grpFlows[0]).length === 0) {
             return;
           }
-          const maxUniqueFlows = 100;
-          aFlows = self.uniqueFlows(aFlows, maxUniqueFlows);
-          const aFlowMap = self.mapFlowByTrackingID(aFlows);
-          self.flowQueryByNodeTIDandTrackingID(b.TID, aFlows)
-            .then(function(bFlows) {
-              if (bFlows.length === 0) {
-                return;
-              }
-              const bFlow = bFlows[0];
-              const aFlow = aFlowMap[bFlow.TrackingID];
-              self.updateLatency(link, aFlow, bFlow);
-            })
-            .catch(function(error) {
-              console.log(error);
-            });
+          const flows = grpFlows[0][Object.keys(grpFlows[0])[0]]
+          self.updateLatency(link, flows[0], flows[1]);
         })
         .catch(function(error) {
           console.log(error);

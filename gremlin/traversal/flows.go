@@ -47,6 +47,7 @@ type FlowTraversalExtension struct {
 	NodesToken       traversal.Token
 	CaptureNodeToken traversal.Token
 	AggregatesToken  traversal.Token
+	GroupToken       traversal.Token
 	BpfToken         traversal.Token
 	TableClient      flow.TableClient
 	Storage          storage.Storage
@@ -685,6 +686,40 @@ func (f *FlowTraversalStep) Sockets(ctx traversal.StepContext, s ...interface{})
 	return &SocketsTraversalStep{GraphTraversal: f.GraphTraversal, sockets: flowSockets}
 }
 
+// Group returns flows gourped by TrackingID (by default)
+func (f *FlowTraversalStep) Group(ctx traversal.StepContext, s ...interface{}) *GroupTraversalStep {
+	if f.error != nil {
+		return &GroupTraversalStep{error: f.error}
+	}
+
+	if len(s) > 1 {
+		return &GroupTraversalStep{error: fmt.Errorf("Group requires 0 or 1 parameter")}
+	}
+
+	by := ""
+	if len(s) > 0 {
+		by = s[0].(string)
+	}
+	if by == "" {
+		by = "TrackingID"
+	}
+
+	flowGroupMap := make(map[string][]*flow.Flow, 0)
+	for _, fl := range f.flowset.Flows {
+		var (
+			keyField string
+			err      error
+		)
+		if keyField, err = fl.GetFieldString(by); err != nil {
+			return &GroupTraversalStep{error: err}
+		}
+
+		flowGroupMap[keyField] = append(flowGroupMap[keyField], fl)
+	}
+
+	return &GroupTraversalStep{GraphTraversal: f.GraphTraversal, flowGroupSet: flowGroupMap}
+}
+
 // Values returns list of flows
 func (f *FlowTraversalStep) Values() []interface{} {
 	a := make([]interface{}, len(f.flowset.Flows))
@@ -733,6 +768,8 @@ func (e *FlowTraversalExtension) ScanIdent(s string) (traversal.Token, bool) {
 		return e.AggregatesToken, true
 	case "BPF":
 		return e.BpfToken, true
+	case "GROUP":
+		return e.GroupToken, true
 	}
 	return traversal.IDENT, false
 }
@@ -761,6 +798,8 @@ func (e *FlowTraversalExtension) ParseStep(t traversal.Token, p traversal.Gremli
 		return &AggregatesGremlinTraversalStep{GremlinTraversalContext: p}, nil
 	case e.BpfToken:
 		return &BpfGremlinTraversalStep{GremlinTraversalContext: p}, nil
+	case e.GroupToken:
+		return &GroupGremlinTraversalStep{GremlinTraversalContext: p}, nil
 	}
 
 	return nil, nil

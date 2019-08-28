@@ -109,3 +109,40 @@ func TestMergeDedup(t *testing.T) {
 		t.Errorf("Flowset mismatch, expected: \n\n%s\n\ngot: \n\n%s", string(e), string(f))
 	}
 }
+
+func TestMergeSortDedup(t *testing.T) {
+	flowset1 := FlowSet{
+		Flows: []*Flow{
+			{TrackingID: "aaa", NodeTID: "111", Start: 0, Last: 1, Metric: &FlowMetric{}},
+			{TrackingID: "bbb", NodeTID: "111", Start: 2, Last: 3, Metric: &FlowMetric{}},
+			{TrackingID: "aaa", NodeTID: "222", Start: 4, Last: 5, Metric: &FlowMetric{}},
+		},
+	}
+	flowset2 := FlowSet{
+		Flows: []*Flow{
+			{TrackingID: "aaa", NodeTID: "111", Start: 6, Last: 7, Metric: &FlowMetric{}},
+			{TrackingID: "bbb", NodeTID: "111", Start: 8, Last: 9, Metric: &FlowMetric{}},
+			{TrackingID: "aaa", NodeTID: "222", Start: 10, Last: 11, Metric: &FlowMetric{}},
+			{TrackingID: "ccc", NodeTID: "333", Start: 12, Last: 13, Metric: &FlowMetric{}},
+		},
+	}
+
+	expected := FlowSet{
+		Flows: []*Flow{
+			{TrackingID: "aaa", NodeTID: "111", Start: 6, Last: 7, Metric: &FlowMetric{}},
+			{TrackingID: "aaa", NodeTID: "222", Start: 10, Last: 11, Metric: &FlowMetric{}},
+			{TrackingID: "ccc", NodeTID: "333", Start: 12, Last: 13, Metric: &FlowMetric{}},
+		},
+	}
+
+	flowset1.Merge(&flowset2, MergeContext{
+		Sort: true, SortBy: "Start",
+		Dedup: true, DedupBy: "NodeTID",
+	})
+
+	if !reflect.DeepEqual(expected, flowset1) {
+		e, _ := json.Marshal(expected)
+		f, _ := json.Marshal(flowset1)
+		t.Errorf("Flowset mismatch, expected: \n\n%s\n\ngot: \n\n%s", string(e), string(f))
+	}
+}

@@ -83,6 +83,7 @@ func (tc *fakeTableClient) LookupFlowsByNodes(hnmap topology.HostNodeTIDMap, flo
 func execTraversalQuery(t *testing.T, tc *fakeTableClient, query string) traversal.GraphTraversalStep {
 	tr := traversal.NewGremlinTraversalParser()
 	tr.AddTraversalExtension(NewFlowTraversalExtension(tc, nil))
+	tr.AddTraversalExtension(NewGroupTraversalExtension())
 
 	ts, err := tr.Parse(strings.NewReader(query))
 	if err != nil {

@@ -791,6 +791,22 @@ export class Flows extends Step {
     Dedup(...params: any[]): Flows {
         return new DedupFlows(this.api, this, ...params);
     }
+
+    Group(...params: any[]): GroupFlows {
+        return new GroupFlows(this.api, this, ...params);
+    }
+}
+
+export class GroupFlows extends Step {
+    name() { return "Group" }
+
+    serialize(data) {
+        return SerializationHelper.unmarshalMapArray(data[0], Flow);
+    }
+
+    MoreThan(...params: any[]): GroupFlows {
+        return new GroupFlows(this.api, this, ...params);
+    }
 }
 
 class HasFlows extends MixinStep(Flows, "Has") { }
