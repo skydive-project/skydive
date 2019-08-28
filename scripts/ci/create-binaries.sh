@@ -37,10 +37,21 @@ git lfs install
 
 git config --global user.email "builds@skydive.network"
 git config --global user.name "Skydive CI"
-cp ${GOPATH}/bin/skydive skydive-latest
-cp ${GOPATH}/src/github.com/skydive-project/skydive/swagger.json .
-git add skydive-latest
-git add swagger.json
+
+add() {
+    local dst=$1
+    local src=$2
+    cp $src $dst
+    git add $dst
+}
+
+allinone=$GOPATH/src/github.com/skydive-project/skydive/contrib/exporters/allinone
+
+add skydive-latest ${GOPATH}/bin/skydive
+add swagger.json ${GOPATH}/src/github.com/skydive-project/skydive/swagger.json
+add skydive-flow-exporter $allinone/allinone
+add skydive-flow-exporter.yml $allinone/allinone.yml.default
+
 git commit -m "${BUILD_TAG} Jenkins build" --amend --reset-author
 git config credential.helper "store --file=.git/credentials"
 echo "https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com" > .git/credentials

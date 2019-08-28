@@ -1,4 +1,4 @@
-PROG := uber
+PROG := allinone
 
 SRCS := \
 	main.go \

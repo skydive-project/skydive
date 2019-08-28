@@ -434,6 +434,7 @@ bench.flow: bench.flow.traces
 .PHONY: static
 static: skydive.clean govendor genlocalfiles
 	$(MAKE) compile.static WITH_LIBVIRT_GO=false
+	$(MAKE) contribs.static
 
 .PHONY: contribs.clean
 contribs.clean: contrib.exporters.clean contrib.snort.clean contrib.collectd.clean
@@ -443,6 +444,10 @@ contribs.test: contrib.exporters.test
 
 .PHONY: contribs
 contribs: contrib.exporters contrib.snort contrib.collectd
+
+.PHONY: contribs.static
+contribs.static:
+	$(MAKE) -C contrib/exporters static
 
 .PHONY: contrib.exporters.clean
 contrib.exporters.clean:

@@ -12,6 +12,35 @@ then
     exit 1
 fi
 
+user=skydive-project
+repo=skydive
+
+cleanup() {
+    git push --delete origin $TAG || true
+    github-release delete --user $user --repo $repo --tag ${TAG} || true
+}
+
+cleanup_on_error() {
+    local retcode=$?
+    if [ $retcode != 0 ]; then
+        cleanup
+        exit $retcode
+    fi
+}
+
+release() {
+    local description="$1"
+    github-release release ${FLAGS} --user $user --repo $repo --tag ${TAG} --description "$description"
+    cleanup_on_error
+}
+
+upload() {
+    local name=$1
+    local file=$2
+    github-release upload --user $user --repo $repo --tag ${TAG} --name $name --file $file
+    cleanup_on_error
+}
+
 go get github.com/aktau/github-release
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 
@@ -37,30 +66,14 @@ changelog=$(scripts/ci/extract-changelog.py CHANGELOG.md $CHANGELOG_VERSION)
 make static WITH_EBPF=true
 ${dir}/../../contrib/packaging/rpm/generate-skydive-bootstrap.sh -s -r ${TAG}
 
-github-release release ${FLAGS} --user skydive-project --repo skydive --tag ${TAG} --description "$changelog"
-retcode=$?
-if [ $retcode != 0 ]; then
-    git push --delete origin $TAG || true
-    exit $retcode
-fi
+release "$changelog"
 
-github-release upload --user skydive-project --repo skydive --tag ${TAG} --name skydive --file $GOPATH/bin/skydive
-retcode=$?
-if [ $retcode != 0 ]; then
-    git push --delete origin $TAG || true
-    github-release delete --user skydive-project --repo skydive --tag ${TAG} || true
-    exit $retcode
-fi
+allinone=$GOPATH/src/github.com/skydive-project/skydive/contrib/exporters/allinone
 
-github-release upload --user skydive-project --repo skydive --tag ${TAG} --name skydive-${VERSION}.tar.gz --file rpmbuild/SOURCES/skydive-${VERSION}.tar.gz
-retcode=$?
-if [ $retcode != 0 ]; then
-    git push --delete origin $TAG || true
-    github-release delete --user skydive-project --repo skydive --tag ${TAG} || true
-    exit $retcode
-fi
+upload skydive $GOPATH/bin/skydive
+upload skydive-${VERSION}.tar.gz rpmbuild/SOURCES/skydive-${VERSION}.tar.gz
+upload skydive-flow-exporter $allinone/allinone
 
 if [ -n "$DRY_RUN" ]; then
-    git push --delete origin $TAG || true
-    github-release delete --user skydive-project --repo skydive --tag ${TAG} || true
+    cleanup
 fi

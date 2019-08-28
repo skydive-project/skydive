@@ -1,10 +1,13 @@
 BUILD := \
-	core \
-	secadvisor \
+	allinone \
 	awsflowlogs \
-	vpclogs \
+	core \
 	dummy \
-	uber \
+	secadvisor \
+	vpclogs \
+
+STATIC := \
+	allinone \
 
 TEST := \
 	secadvisor \
@@ -20,3 +23,7 @@ clean:
 .PHONY: test
 test:
 	for i in $(TEST); do $(MAKE) -C $$i test; done
+
+.PHONY: static
+static:
+	for i in $(STATIC); do $(MAKE) -C $$i static; done
