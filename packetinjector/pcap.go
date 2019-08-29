@@ -115,6 +115,6 @@ func (p *PcapPacketGenerator) PacketSource() chan *Packet {
 func NewPcapPacketGenerator(pp *PacketInjectionRequest) (*PcapPacketGenerator, error) {
 	return &PcapPacketGenerator{
 		PacketInjectionRequest: pp,
-		close: make(chan bool, 1),
+		close:                  make(chan bool, 1),
 	}, nil
 }

@@ -34,7 +34,8 @@ endef
 
 VERSION?=$(shell $(VERSION_CMD))
 GO_GET:=CC= GOARCH= go get
-GOVENDOR:=${GOPATH}/bin/govendor
+GOFMT:=gofmt -s -w
+GOVENDOR:=GOFLAGS= ${GOPATH}/bin/govendor
 BUILD_CMD?=${GOVENDOR}
 BUILD_ID:=$(shell echo 0x$$(head -c20 /dev/urandom|od -An -tx1|tr -d ' \n'))
 SKYDIVE_GITHUB:=github.com/skydive-project/skydive
@@ -281,13 +282,13 @@ flow/flow.pb.go: flow/flow.proto filters/filters.proto
 	sed -e 's/type ICMPLayer struct {/\/\/ gendecoder\ntype ICMPLayer struct {/' -i $@
 	sed -e 's/type IPMetric struct {/\/\/ gendecoder\ntype IPMetric struct {/' -i $@
 	sed -e 's/type TCPMetric struct {/\/\/ gendecoder\ntype TCPMetric struct {/' -i $@
-	gofmt -s -w $@
+	$(GOFMT) $@
 
 websocket/structmessage.pb.go: websocket/structmessage.proto
 	$(call PROTOC_GEN,$<)
 
 	sed -e 's/type StructMessage struct {/type StructMessage struct { XXX_state structMessageState `json:"-"`/' -i websocket/structmessage.pb.go
-	gofmt -s -w $@
+	$(GOFMT) $@
 
 .proto: govendor flow/layers/dns.pb.go flow/layers/vrrpv2.pb.go flow/layers/dhcpv4.pb.go flow/flow.pb.go filters/filters.pb.go websocket/structmessage.pb.go
 
@@ -354,7 +355,7 @@ npm.install:
 
 statics/bindata.go: .typescript ebpf.build $(shell find statics -type f \( ! -iname "bindata.go" \))
 	$(call VENDOR_RUN,${GO_BINDATA_GITHUB}) go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go $(BINDATA_DIRS)
-	gofmt -w -s statics/bindata.go
+	$(GOFMT) statics/bindata.go
 
 .PHONY: .vppbinapi
 .vppbinapi: binapigenerator
@@ -558,18 +559,18 @@ govendor:
 .PHONY: fmt
 fmt: govendor genlocalfiles
 	@echo "+ $@"
-	@test -z "$$($(GOVENDOR) fmt +local)" || \
-		(echo "+ please format Go code with 'gofmt -s'" && /bin/false)
+	$(GOVENDOR) fmt +local || \
+		(echo "+ please format Go code with '$(GOFMT)'" && /bin/false)
 
 .PHONY: vet
 vet: govendor
 	@echo "+ $@"
-	test -z "$$($(GOVENDOR) tool vet $$( \
+	test -z "$$($(GOVENDOR) vet $$( \
 			$(GOVENDOR) list -no-status +local \
-			| perl -pe 's|$(SKYDIVE_GITHUB)/?||g' \
-			| grep -v '^tests') 2>&1 \
+			| grep -v '^$(SKYDIVE_GITHUB)/tests' \
+			| grep -v '^$(SKYDIVE_GITHUB)/contrib/collectd' \
+			) 2>&1 \
 		| tee /dev/stderr \
-		| grep -v '^flow/probes/afpacket/' \
 		| grep -v 'exit status 1' \
 		)"
 

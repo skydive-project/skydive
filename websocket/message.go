@@ -391,7 +391,7 @@ func (s *StructSpeaker) OnMessage(c Speaker, m Message) {
 
 func newStructSpeaker(c Speaker, logger logging.Logger) *StructSpeaker {
 	s := &StructSpeaker{
-		Speaker: c,
+		Speaker:                      c,
 		structSpeakerEventDispatcher: newStructSpeakerEventDispatcher(),
 		nsSubscribed:                 make(map[string]bool),
 		replyChan:                    make(map[string]chan *StructMessage),
@@ -497,7 +497,7 @@ func (s *StructServer) OnDisconnected(c Speaker) {
 // NewStructServer returns a new StructServer
 func NewStructServer(server *Server) *StructServer {
 	s := &StructServer{
-		Server: server,
+		Server:                           server,
 		structSpeakerPoolEventDispatcher: newStructSpeakerPoolEventDispatcher(server),
 	}
 

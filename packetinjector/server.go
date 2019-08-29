@@ -92,8 +92,8 @@ func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource ty
 
 	metadata := &InjectionMetadata{
 		PacketInjectionRequest: *pp,
-		ID:    pp.UUID,
-		State: "active",
+		ID:                     pp.UUID,
+		State:                  "active",
 	}
 
 	if o.graph.UpdateMetadata(srcNode, "PacketInjections", func(obj interface{}) bool {

@@ -23,7 +23,7 @@ echo "--- BINARIES ---"
 make static WITH_EBPF=true
 
 # We need at least Go 1.11.0 to generate swagger spec
-eval "$(gimme 1.12.7)"
+eval "$(gimme 1.13.0)"
 make swagger
 
 git reset --hard

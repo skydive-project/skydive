@@ -9,7 +9,7 @@
 - name: run gimme in bash profile
   lineinfile:
     path: /home/vagrant/.bash_profile
-    line: 'eval "$(gimme 1.10.8)"'
+    line: 'eval "$(gimme 1.13.0)"'
 
 - name: set GOPATH
   lineinfile:
