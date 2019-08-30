@@ -73,12 +73,18 @@ Vue.component('capture-form', {
               <input id="samplingRate" type="number" class="form-control input-sm" v-model.number="samplingRate"/>\
               <label for="pollingInterval">Counter Polling Interval (0 = No Counters)</label>\
               <input id="pollingInterval" type="number" class="form-control input-sm" v-model.number="pollingInterval"/>\
-              <label for="sflowTarget">sFlow target, if empty the agent will be used</label>\
-              <input id="sflowTarget" type="text" class="form-control input-sm" v-model="target"/>\
             </div>\
-            <div class="form-group" v-if="captureType == \'ovsnetflow\'">\
-              <label for="netflowTarget">NetFlow collector address, if empty the agent will be used</label>\
-              <input id="netflowTarget" type="text" class="form-control input-sm" v-model="target"/>\
+            <div class="form-group">\
+              <label for="target">Target</label>\
+              <input id="target" type="text" class="form-control input-sm" v-model="target"/>\
+            </div>\
+            <div class="form-group" v-if="captureType != \'ovssflow\' && captureType != \'ovsnetflow\'">\
+              <label for="targetType">Target type</label>\
+              <select id="targetType" v-model="targetType" class="form-control custom-select">\
+                <option disabled value="">Select target type</option >\
+                <option value="netflowv5">NetFlow</option>\
+                <option value="erspanv1">Erspan</option>\
+              </select>\
             </div>\
             <div class="form-group" v-else>\
               <div class="form-group">\
@@ -156,6 +162,7 @@ Vue.component('capture-form', {
       pollingInterval: 10,
       isPacketCaptureEnabled: true,
       target: "",
+      targetType: "",
     };
   },
 
@@ -300,6 +307,7 @@ Vue.component('capture-form', {
       this.captureType = "";
       this.layerKeyMode = "";
       this.target = "";
+      this.targetType = "";
     },
 
     checkQuery: function(query) {
@@ -343,6 +351,7 @@ Vue.component('capture-form', {
       capture.SamplingRate = this.samplingRate;
       capture.PollingInterval = this.pollingInterval;
       capture.Target = this.target;
+      capture.TargetType = this.targetType;
       return self.captureAPI.create(capture)
       .then(function(data) {
         self.$success({message: 'Capture created'});
