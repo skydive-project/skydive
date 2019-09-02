@@ -25,12 +25,13 @@ import (
 	"github.com/spf13/viper"
 )
 
-type encodeJSON struct {
+// EncodeJSON encoder encodes flows as a JSON array
+type EncodeJSON struct {
 	pretty bool
 }
 
-// Encode explements Encounter interface
-func (e *encodeJSON) Encode(in interface{}) ([]byte, error) {
+// Encode implements Encoder interface
+func (e *EncodeJSON) Encode(in interface{}) ([]byte, error) {
 	buf := new(bytes.Buffer)
 	encoder := json.NewEncoder(buf)
 
@@ -45,22 +46,23 @@ func (e *encodeJSON) Encode(in interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// NewEncodeJSON create an encode object
+// NewEncodeJSON creates an encode object
 func NewEncodeJSON(cfg *viper.Viper) (interface{}, error) {
-	return &encodeJSON{
+	return &EncodeJSON{
 		pretty: cfg.GetBool(CfgRoot + "encode.json.pretty"),
 	}, nil
 }
 
-type encodeCSV struct {
+// EncodeCSV encoder encodes flows as CSV rows
+type EncodeCSV struct {
 }
 
-// Encode explements Encounter interface
-func (e *encodeCSV) Encode(in interface{}) ([]byte, error) {
+// Encode implements Encoder interface
+func (e *EncodeCSV) Encode(in interface{}) ([]byte, error) {
 	return gocsv.MarshalBytes(in)
 }
 
-// NewEncodeCSV create an encode object
+// NewEncodeCSV creates an encode object
 func NewEncodeCSV(cfg *viper.Viper) (interface{}, error) {
-	return &encodeCSV{}, nil
+	return &EncodeCSV{}, nil
 }

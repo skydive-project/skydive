@@ -27,5 +27,6 @@ func main() {
 }
 
 func init() {
-	core.TransformerHandlers.Register("sa", mod.NewTransform, false)
+	core.EncoderHandlers.Register("sa", mod.NewEncode, true)
+	core.TransformerHandlers.Register("sa", mod.NewTransform, true)
 }

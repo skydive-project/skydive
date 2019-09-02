@@ -31,7 +31,7 @@ pipeline:
     sa:
       exclude_started_flows: true
   encode:
-    type: json
+    type: sa
     json:
       pretty: true
   compress:
