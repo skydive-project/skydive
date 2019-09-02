@@ -132,6 +132,7 @@ spec:
         image: skydive/skydive
         args:
         - agent
+        - --listen=0.0.0.0:8081
         ports:
         - containerPort: 8081
         readinessProbe:
