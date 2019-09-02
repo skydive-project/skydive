@@ -121,6 +121,7 @@ func init() {
 	StorerHandlers = make(HandlersMap)
 	StorerHandlers.Register("stdout", NewStoreStdout, true)
 	StorerHandlers.Register("s3", NewStoreS3, false)
+	StorerHandlers.Register("localfiles", NewStoreLocalFiles, false)
 }
 
 // Pipeline manager
