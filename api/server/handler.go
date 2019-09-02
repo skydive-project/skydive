@@ -223,6 +223,10 @@ func (h *BasicAPIHandler) AsyncWatch(f WatcherCallback) StoppableWatcher {
 		for sw.running.Load() == true {
 			resp, err := watcher.Next(sw.ctx)
 			if err != nil {
+				if err == context.Canceled {
+					break
+				}
+
 				logging.GetLogger().Errorf("Error while watching etcd: %s", err.Error())
 
 				time.Sleep(1 * time.Second)

@@ -134,6 +134,10 @@ func (le *MasterElector) start(first chan struct{}) {
 	for le.state.Load() == common.RunningState {
 		resp, err := watcher.Next(ctx)
 		if err != nil {
+			if err == context.Canceled {
+				break
+			}
+
 			logging.GetLogger().Errorf("Error while watching etcd: %s", err.Error())
 
 			time.Sleep(1 * time.Second)
