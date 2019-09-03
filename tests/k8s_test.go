@@ -342,7 +342,7 @@ func TestHelloNodeScenario(t *testing.T) {
 					return err
 				}
 
-				replicaset, err := checkNodeCreation(t, c, k8s.Manager, "replicaset", g.Regex("%s-.*", "hello-node"))
+				replicaset, err := checkNodeCreation(t, c, k8s.Manager, "replicaset", g.Regex("hello-node-.*"))
 				if err != nil {
 					return err
 				}
@@ -352,7 +352,7 @@ func TestHelloNodeScenario(t *testing.T) {
 					return err
 				}
 
-				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", g.Regex("%s-.*", "hello-node"))
+				pod, err := checkNodeCreation(t, c, k8s.Manager, "pod", g.Regex("hello-node-.*"))
 				if err != nil {
 					return err
 				}

@@ -218,7 +218,7 @@ func TestBookInfoScenario(t *testing.T) {
 					return err
 				}
 
-				podProductpage, err := checkNodeCreation(t, c, k8s.Manager, "pod", g.Regex("%s-.*", "productpage"))
+				podProductpage, err := checkNodeCreation(t, c, k8s.Manager, "pod", g.Regex("productpage-.*"))
 				if err != nil {
 					return err
 				}
