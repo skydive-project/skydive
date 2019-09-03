@@ -4,7 +4,7 @@ metadata:
   name: {{ template "fullname" . }}-agent
   labels:
     app: {{ template "fullname" . }}
-    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    chart: "{{ .Chart.Name }}"
     release: "{{ .Release.Name }}"
     heritage: "{{ .Release.Service }}"
 spec:
@@ -16,21 +16,30 @@ spec:
         productVersion: {{ .Chart.Version }} 
       labels:
         app: {{ template "fullname" . }}
+        chart: "{{ .Chart.Name }}"
+        release: "{{ .Release.Name }}"
+        heritage: "{{ .Release.Service }}"
         tier: agent
     spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      securityContext:
+        runAsNonRoot: false        
       affinity:
         {{- include "nodeaffinity" . | indent 6 }}
-      dnsPolicy: ClusterFirstWithHostNet
-      hostNetwork: true
-      hostPID: true
-{{ if .Values.image.imagePullSecrets }}
+      tolerations:
+      - operator: "Exists"
+      {{- if .Values.image.secretName }}
+      {{- if ne .Values.image.secretName ""}}
       imagePullSecrets:
-      - name: {{ .Values.image.imagePullSecrets }}
-{{ end }}
+      - name: {{ .Values.image.secretName }}
+      {{- end }}
+      {{- end }}      
       containers:
       - name: skydive-agent
         image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ .Values.image.imagePullPolicy | default "" | quote }}
+        terminationMessagePolicy: FallbackToLogsOnError
         args:
         - agent
         - --listen=0.0.0.0:8081
@@ -56,13 +65,24 @@ spec:
           value: {{ template "fullname" . }}-service:{{ .Values.service.port }}
         - name: SKYDIVE_FLOW_PROTOCOL
           value: websocket
+        - name: SKYDIVE_FLOW_DEFAULT_LAYER_KEY_MODE
+          value: L3
         - name: SKYDIVE_AGENT_TOPOLOGY_PROBES
-          value: "ovsdb docker runc"
+          value: {{ .Values.agent.topology.probes }}
+        - name: SKYDIVE_AGENT_TOPOLOGY_RUNC_RUN_PATH
+          value: /var/run/runc /var/run/runc-ctrs /var/run/containerd/runc
       {{- if .Values.env }}
 {{ toYaml .Values.env | indent 8 }}
       {{- end }}
         securityContext:
           privileged: true
+          readOnlyRootFilesystem: false
+          allowPrivilegeEscalation: true
+          runAsNonRoot: false
+          runAsUser: 0
+          capabilities:
+            add:
+            - all
         volumeMounts:
         - name: docker
           mountPath: /var/run/docker.sock
@@ -70,10 +90,16 @@ spec:
           mountPath: /host/run
         - name: ovsdb
           mountPath: /var/run/openvswitch/db.sock
-        - mountPath: /var/run/runc
-          name: runc
-        - mountPath: /var/run/runc-ctrs
-          name: runc-ctrs
+        - name: runc
+          mountPath: /var/run/runc
+        - name: runc-ctrs
+          mountPath: /var/run/runc-ctrs
+        - name: containerd-runc
+          mountPath: /var/run/containerd/runc
+        - name: data-kubelet
+          mountPath: /var/data/kubelet
+        - name: lib-kubelet
+          mountPath: /var/lib/kubelet
       volumes:
       - name: docker
         hostPath:
@@ -84,9 +110,18 @@ spec:
       - name: ovsdb
         hostPath:
           path: /var/run/openvswitch/db.sock
-      - hostPath:
-          path: /run/runc
-        name: runc
-      - hostPath:
-          path: /run/runc-ctrs
-        name: runc-ctrs
+      - name: runc
+        hostPath:
+          path: /var/run/runc
+      - name: runc-ctrs
+        hostPath:
+          path: /var/run/runc-ctrs
+      - name: containerd-runc
+        hostPath:
+          path: /var/run/containerd/runc
+      - name: data-kubelet
+        hostPath:
+          path: /var/data/kubelet
+      - name: lib-kubelet
+        hostPath:
+          path: /var/lib/kubelet

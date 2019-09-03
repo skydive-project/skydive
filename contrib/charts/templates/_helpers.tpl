@@ -28,6 +28,9 @@ uncomment this section for PPA charts, can be removed in github.com charts
   {{- if (eq "linux/ppc64le" .Capabilities.KubeVersion.Platform) }}
     {{- printf "-%s" "ppc64le" }}
   {{- end -}}
+  {{- if (eq "linux/s390x" .Capabilities.KubeVersion.Platform) }}
+    {{- printf "-%s" "s390x" }}
+  {{- end -}}
 {{- else -}}
   {{- if eq .Values.arch "amd64" }}
     {{- printf "-%s" "x86_64" }}
@@ -44,7 +47,9 @@ uncomment this section for PPA charts, can be removed in github.com charts
   {{- if (eq "linux/ppc64le" .Capabilities.KubeVersion.Platform) }}
     {{- printf "%s" "ppc64le" }}
   {{- end -}}
+  {{- if (eq "linux/s390x" .Capabilities.KubeVersion.Platform) }}
+    {{- printf "%s" "s390x" }}
+  {{- end -}}
 {{- end -}}
 		
 */}}
-	
