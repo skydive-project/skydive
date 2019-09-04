@@ -3,12 +3,16 @@ host_id: ""
 # list of analyzers for running REST requests
 analyzers:
   - 127.0.0.1:8082
+# analyzer credentials for websocket connection
+analyzer:
+  auth:
+    cluster:
+      username:
+      password:
 pipeline:
-  # analyzer credentials for websocket connection
-  analyzer:
-    subscriber_url: ws://127.0.0.1:8082/ws/subscriber/flow
-    subscriber_username:
-    subscriber_password:
+  subscriber:
+    url: ws://127.0.0.1:8082/ws/subscriber/flow
+    capture_id:
   # classify flows into: internal, ingress, egress and other
   classify:
     # list of internal cluster address ranges

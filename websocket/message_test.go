@@ -31,7 +31,62 @@ import (
 	shttp "github.com/skydive-project/skydive/http"
 )
 
+func newServerOpts() ServerOpts {
+	return ServerOpts{
+		WriteCompression: true,
+		QueueSize:        100,
+		PingDelay:        2 * time.Second,
+		PongTimeout:      5 * time.Second,
+	}
+}
+
+func newClientOpts(ns ...string) ClientOpts {
+	clientOpts := ClientOpts{
+		QueueSize:        1000,
+		WriteCompression: true,
+		Headers:          http.Header{},
+	}
+
+	if len(ns) > 0 {
+		clientOpts.Headers["X-Websocket-Namespace"] = ns
+	}
+
+	return clientOpts
+}
+
+func newStructMessage(ns, tp string) *StructMessage {
+	return NewStructMessage(ns, tp, "AAA", "001")
+}
+
+func newHTTPServer() *shttp.Server {
+	httpserver := shttp.NewServer(defaultHostID, common.AnalyzerService, host, port, nil)
+	httpserver.ListenAndServe()
+	return httpserver
+}
+
+func newWsClient(hostID string, ns ...string) *Client {
+	u, _ := url.Parse(fmt.Sprintf("ws://%s:%d/%s", host, port, path))
+	wsclient := NewClient(hostID, common.AgentService, u, newClientOpts(ns...))
+	wsclient.Start()
+	return wsclient
+}
+
+func newWsServer(httpserver *shttp.Server) *StructServer {
+	wsserver := NewStructServer(NewServer(httpserver, "/"+path, shttp.NewNoAuthenticationBackend(), newServerOpts()))
+	wsserver.Start()
+	return wsserver
+}
+
 type fakeMessageServerSubscriptionHandler struct {
+	common.RWMutex
+	DefaultSpeakerEventHandler
+	t             *testing.T
+	server        *StructServer
+	received      map[string]bool
+	receivedCount int
+}
+
+type fakeMessageServerSubscriptionHandler2 struct {
 	common.RWMutex
 	DefaultSpeakerEventHandler
 	t             *testing.T
@@ -62,13 +117,13 @@ func (f *fakeMessageServerSubscriptionHandler) OnConnected(c Speaker) {
 		if f.receivedCount == 0 {
 			return errors.New("Client not ready")
 		}
-		c.SendMessage(NewStructMessage("SrvValidNS", "SrvValidNSUnicast1", "AAA", "001"))
-		c.SendMessage(NewStructMessage("SrvNotValidNS", "SrvNotValidNSUnicast2", "AAA", "001"))
-		c.SendMessage(NewStructMessage("SrvValidNS", "SrvValidNSUnicast3", "AAA", "001"))
+		c.SendMessage(newStructMessage("SrvValidNS", "SrvValidNSUnicast1"))
+		c.SendMessage(newStructMessage("SrvNotValidNS", "SrvNotValidNSUnicast2"))
+		c.SendMessage(newStructMessage("SrvValidNS", "SrvValidNSUnicast3"))
 
-		f.server.BroadcastMessage(NewStructMessage("SrvValidNS", "SrvValidNSBroadcast1", "AAA", "001"))
-		f.server.BroadcastMessage(NewStructMessage("SrvNotValidNS", "SrvNotValidNSBroacast2", "AAA", "001"))
-		f.server.BroadcastMessage(NewStructMessage("SrvValidNS", "SrvValidNSBroadcast3", "AAA", "001"))
+		f.server.BroadcastMessage(newStructMessage("SrvValidNS", "SrvValidNSBroadcast1"))
+		f.server.BroadcastMessage(newStructMessage("SrvNotValidNS", "SrvNotValidNSBroacast2"))
+		f.server.BroadcastMessage(newStructMessage("SrvValidNS", "SrvValidNSBroadcast3"))
 
 		return nil
 	}
@@ -82,10 +137,39 @@ func (f *fakeMessageServerSubscriptionHandler) OnStructMessage(c Speaker, m *Str
 	f.Unlock()
 }
 
+func (f *fakeMessageServerSubscriptionHandler2) OnConnected(c Speaker) {
+	// wait first message received to be sure that the client can consume messages
+	fnc := func() error {
+		f.RLock()
+		defer f.RUnlock()
+
+		if f.receivedCount == 0 {
+			return errors.New("Client not ready")
+		}
+
+		c.SendMessage(newStructMessage("flows/1", "SrvFlowUnicast1"))
+		c.SendMessage(newStructMessage("flows/2", "SrvFlowUnicast2"))
+
+		f.server.BroadcastMessage(newStructMessage("flows/1", "SrvFlowBroadcast1"))
+		f.server.BroadcastMessage(newStructMessage("flows/2", "SrvFlowBroadcast2"))
+
+		return nil
+	}
+	go common.Retry(fnc, 5, time.Second)
+}
+
+func (f *fakeMessageServerSubscriptionHandler2) OnStructMessage(c Speaker, m *StructMessage) {
+	f.Lock()
+	defer f.Unlock()
+
+	f.received[m.Type] = true
+	f.receivedCount++
+}
+
 func (f *fakeMessageClientSubscriptionHandler) OnConnected(c Speaker) {
-	c.SendMessage(NewStructMessage("ClientValidNS", "ClientValidNS1", "AAA", "001"))
-	c.SendMessage(NewStructMessage("ClientNotValidNS", "ClientNotValidNS2", "AAA", "001"))
-	c.SendMessage(NewStructMessage("ClientValidNS", "ClientValidNS3", "AAA", "001"))
+	c.SendMessage(newStructMessage("ClientValidNS", "ClientValidNS1"))
+	c.SendMessage(newStructMessage("ClientNotValidNS", "ClientNotValidNS2"))
+	c.SendMessage(newStructMessage("ClientValidNS", "ClientValidNS3"))
 }
 
 func (f *fakeMessageClientSubscriptionHandler) OnStructMessage(c Speaker, m *StructMessage) {
@@ -95,7 +179,7 @@ func (f *fakeMessageClientSubscriptionHandler) OnStructMessage(c Speaker, m *Str
 }
 
 func (f *fakeMessageClientSubscriptionHandler2) OnConnected(c Speaker) {
-	c.SendMessage(NewStructMessage("ClientValidNS", "ClientValidNS1", "AAA", "001"))
+	c.SendMessage(newStructMessage("ClientValidNS", "ClientValidNS1"))
 }
 
 func (f *fakeMessageClientSubscriptionHandler2) OnMessage(c Speaker, m Message) {
@@ -112,36 +196,19 @@ func (f *fakeMessageClientSubscriptionHandler2) OnMessage(c Speaker, m Message) 
 	f.Unlock()
 }
 
-func TestMessageSubscription(t *testing.T) {
-	httpserver := shttp.NewServer("myhost", common.AnalyzerService, "localhost", 59999, nil)
-
-	httpserver.ListenAndServe()
+func TestMessageSubscription1(t *testing.T) {
+	httpserver := newHTTPServer()
 	defer httpserver.Stop()
 
-	serverOpts := ServerOpts{
-		WriteCompression: true,
-		QueueSize:        100,
-		PingDelay:        2 * time.Second,
-		PongTimeout:      5 * time.Second,
-	}
-
-	wsserver := NewStructServer(NewServer(httpserver, "/wstest", shttp.NewNoAuthenticationBackend(), serverOpts))
+	wsserver := newWsServer(httpserver)
+	defer wsserver.Stop()
 
 	serverHandler := &fakeMessageServerSubscriptionHandler{t: t, server: wsserver, received: make(map[string]bool)}
 	wsserver.AddEventHandler(serverHandler)
 	wsserver.AddStructMessageHandler(serverHandler, []string{"ClientValidNS"})
 
-	wsserver.Start()
-	defer wsserver.Stop()
-
-	u, _ := url.Parse("ws://localhost:59999/wstest")
-
-	clientOpts := ClientOpts{
-		QueueSize:        1000,
-		WriteCompression: true,
-	}
-
-	wsclient := NewClient("myhost", common.AgentService, u, clientOpts)
+	wsclient := newWsClient(defaultHostID)
+	defer wsclient.Stop()
 
 	wspool := NewStructClientPool("TestMessageSubscription", PoolOpts{})
 	wspool.AddClient(wsclient)
@@ -150,9 +217,6 @@ func TestMessageSubscription(t *testing.T) {
 	wspool.AddEventHandler(clientHandler)
 
 	wspool.AddStructMessageHandler(clientHandler, []string{"SrvValidNS"})
-
-	wsclient.Start()
-	defer wsclient.Stop()
 
 	err := common.Retry(func() error {
 		clientHandler.Lock()
@@ -189,47 +253,24 @@ func TestMessageSubscription(t *testing.T) {
 }
 
 func TestMessageSubscription2(t *testing.T) {
-	httpserver := shttp.NewServer("myhost", common.AnalyzerService, "localhost", 59998, nil)
-
-	httpserver.ListenAndServe()
+	httpserver := newHTTPServer()
 	defer httpserver.Stop()
 
-	serverOpts := ServerOpts{
-		WriteCompression: true,
-		QueueSize:        100,
-		PingDelay:        2 * time.Second,
-		PongTimeout:      5 * time.Second,
-	}
-
-	wsserver := NewStructServer(NewServer(httpserver, "/wstest", shttp.NewNoAuthenticationBackend(), serverOpts))
+	wsserver := newWsServer(httpserver)
+	defer wsserver.Stop()
 
 	serverHandler := &fakeMessageServerSubscriptionHandler{t: t, server: wsserver, received: make(map[string]bool)}
 	wsserver.AddEventHandler(serverHandler)
 	wsserver.AddStructMessageHandler(serverHandler, []string{"ClientValidNS"})
 
-	wsserver.Start()
-	defer wsserver.Stop()
-
-	u, _ := url.Parse("ws://localhost:59998/wstest")
-
-	clientOpts := ClientOpts{
-		QueueSize:        1000,
-		WriteCompression: true,
-		Headers: http.Header{
-			"X-Websocket-Namespace": {"SrvValidNS"},
-		},
-	}
-
-	wsclient := NewClient("myhost", common.AgentService, u, clientOpts)
+	wsclient := newWsClient(defaultHostID, "SrvValidNS")
+	defer wsclient.Stop()
 
 	wspool := NewStructClientPool("TestMessageSubscription", PoolOpts{})
 	wspool.AddClient(wsclient)
 
 	clientHandler := &fakeMessageClientSubscriptionHandler2{t: t, received: make(map[string]bool)}
 	wspool.AddEventHandler(clientHandler)
-
-	wsclient.Start()
-	defer wsclient.Stop()
 
 	err := common.Retry(func() error {
 		clientHandler.Lock()
@@ -240,6 +281,70 @@ func TestMessageSubscription2(t *testing.T) {
 		}
 
 		if _, ok := clientHandler.received["SrvNotValidNS"]; ok {
+			return fmt.Errorf("Received message from wrong namespace: %v", serverHandler.received)
+		}
+
+		return nil
+	}, 5, time.Second)
+
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestMessageSubscription3(t *testing.T) {
+	httpserver := newHTTPServer()
+	defer httpserver.Stop()
+
+	wsserver := newWsServer(httpserver)
+	defer wsserver.Stop()
+
+	serverHandler := &fakeMessageServerSubscriptionHandler2{t: t, server: wsserver, received: make(map[string]bool)}
+	wsserver.AddEventHandler(serverHandler)
+	wsserver.AddStructMessageHandler(serverHandler, []string{"ClientValidNS"})
+
+	wspool1 := NewStructClientPool("TestMessageSubscription", PoolOpts{})
+	clientHandler1 := &fakeMessageClientSubscriptionHandler2{t: t, received: make(map[string]bool)}
+	wspool1.AddEventHandler(clientHandler1)
+	wsclient1 := newWsClient(defaultHostID+"1", "flows/1")
+	defer wsclient1.Stop()
+	wspool1.AddClient(wsclient1)
+
+	wspool2 := NewStructClientPool("TestMessageSubscription", PoolOpts{})
+	clientHandler2 := &fakeMessageClientSubscriptionHandler2{t: t, received: make(map[string]bool)}
+	wspool2.AddEventHandler(clientHandler2)
+	wsclient2 := newWsClient(defaultHostID+"2", "flows/2")
+	defer wsclient2.Stop()
+	wspool2.AddClient(wsclient2)
+
+	err := common.Retry(func() error {
+		clientHandler1.Lock()
+		defer clientHandler1.Unlock()
+
+		if len(clientHandler1.received) != 1 {
+			return fmt.Errorf("Client should have received 1 message namespace: %v", clientHandler1.received)
+		}
+
+		if _, ok := clientHandler1.received["flows/2"]; ok {
+			return fmt.Errorf("Received message from wrong namespace: %v", serverHandler.received)
+		}
+
+		return nil
+	}, 5, time.Second)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = common.Retry(func() error {
+		clientHandler2.Lock()
+		defer clientHandler2.Unlock()
+
+		if len(clientHandler2.received) != 1 {
+			return fmt.Errorf("Client should have received 1 message namespace: %v", clientHandler2.received)
+		}
+
+		if _, ok := clientHandler2.received["flows/1"]; ok {
 			return fmt.Errorf("Received message from wrong namespace: %v", serverHandler.received)
 		}
 

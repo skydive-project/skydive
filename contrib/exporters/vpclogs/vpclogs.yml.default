@@ -1,9 +1,12 @@
 host_id: ""
+analyzer:
+  auth:
+    cluster:
+      username:
+      password:
 pipeline:
-  analyzer:
-    subscriber_url: ws://127.0.0.1:8082/ws/subscriber/flow
-    subscriber_username:
-    subscriber_password:
+  subscriber:
+    url: ws://127.0.0.1:8082/ws/subscriber/flow
   classify:
     # cluster_net_masks:
       # - 10.0.0.0/8

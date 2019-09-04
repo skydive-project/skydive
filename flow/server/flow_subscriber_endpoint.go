@@ -33,16 +33,31 @@ type FlowSubscriberEndpoint struct {
 
 const flowNS = "flow"
 
-// SendFlows sends flow to the subscribers
-func (fs *FlowSubscriberEndpoint) SendFlows(flows []*flow.Flow) {
+func (fs *FlowSubscriberEndpoint) sendFlows(ns string, flows []*flow.Flow) {
 	fs.RLock()
-	_, ok := fs.nsSubscriber[flowNS]
+	_, ok := fs.nsSubscriber[ns]
 	fs.RUnlock()
 
 	// at least one speaker for the flow namespace
 	if ok {
-		msg := ws.NewStructMessage(flowNS, "store", flows)
+		msg := ws.NewStructMessage(ns, "store", flows)
 		fs.pool.BroadcastMessage(msg)
+	}
+}
+
+// SendFlows sends flow to the subscribers
+func (fs *FlowSubscriberEndpoint) SendFlows(flows []*flow.Flow) {
+	fs.sendFlows(flowNS, flows)
+	flowsByCaptureMap := make(map[string][]*flow.Flow)
+	for _, f := range flows {
+		if _, ok := flowsByCaptureMap[f.CaptureID]; !ok {
+			flowsByCaptureMap[f.CaptureID] = []*flow.Flow{}
+		}
+		flowsByCaptureMap[f.CaptureID] = append(flowsByCaptureMap[f.CaptureID], f)
+
+	}
+	for captureID, flowsByCapture := range flowsByCaptureMap {
+		fs.sendFlows(flowNS+"/"+captureID, flowsByCapture)
 	}
 }
 
