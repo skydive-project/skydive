@@ -306,20 +306,8 @@ GEN_EASYJSON_FILES_TAG_OPENCONTRAIL := $(patsubst %.go,%_easyjson.go,$(EASYJSON_
 flow/flow.pb_easyjson.go: flow/flow.pb.go
 	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -all $<
 
-topology/probes/lldp/lldp_easyjson.go: topology/probes/lldp/lldp.go
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags linux $<
-
-topology/probes/netlink/netlink_easyjson.go: topology/probes/netlink/netlink.go
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags linux $<
-
-topology/probes/socketinfo/connection_easyjson.go: topology/probes/socketinfo/connection.go
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags linux $<
-
 topology/probes/opencontrail/routing_table_easyjson.go: $(EASYJSON_FILES_TAG_OPENCONTRAIL)
 	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson -build_tags opencontrail $<
-
-topology/probes/ovsdb/ovsdb.pb_easyjson.go: topology/probes/ovsdb/ovsdb.go
-	$(call VENDOR_RUN,${EASYJSON_GITHUB}) easyjson $<
 
 .PHONY: .easyjson
 .easyjson: flow/flow.pb_easyjson.go $(GEN_EASYJSON_FILES_TAG) $(GEN_EASYJSON_FILES_TAG_OPENCONTRAIL)
