@@ -18,7 +18,6 @@
 package core
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -40,16 +39,15 @@ type stream struct {
 	SeqNumber int
 }
 
-// StoreS3 allows writing flows to an object storage service
-type StoreS3 struct {
-	bucket            string
-	objectPrefix      string
+// storeBuffered allows writing flows to an object storage service
+type storeBuffered struct {
+	dirname           string
+	filenamePrefix    string
 	currentStream     map[Tag]stream
 	maxFlowsPerObject int
 	maxFlowArraySize  int
 	maxStreamDuration time.Duration
 	maxObjectDuration time.Duration
-	client            objectStoreClient
 	pipeline          *Pipeline
 	flows             map[Tag][]interface{}
 	lastFlushTime     map[Tag]time.Time
@@ -58,48 +56,12 @@ type StoreS3 struct {
 }
 
 // SetPipeline setup
-func (s *StoreS3) SetPipeline(pipeline *Pipeline) {
+func (s *storeBuffered) SetPipeline(pipeline *Pipeline) {
 	s.pipeline = pipeline
 }
 
-// ListObjects lists all stored objects
-func (s *StoreS3) ListObjects() ([]*string, error) {
-	objectKeys, err := s.client.ListObjects(s.bucket, s.objectPrefix)
-	if err != nil {
-		logging.GetLogger().Error("Failed to list objects: ", err)
-		return nil, err
-	}
-
-	return objectKeys, nil
-}
-
-// ReadObjectFlows reads flows from object
-func (s *StoreS3) ReadObjectFlows(objectKey *string, objectFlows interface{}) error {
-	objectBytes, err := s.client.ReadObject(s.bucket, *objectKey)
-	if err != nil {
-		logging.GetLogger().Error("Failed to read object: ", err)
-		return err
-	}
-
-	if err = json.Unmarshal(objectBytes, objectFlows); err != nil {
-		logging.GetLogger().Error("Failed to JSON-decode object: ", err)
-		return err
-	}
-
-	return nil
-}
-
-// DeleteObject deletes an object
-func (s *StoreS3) DeleteObject(objectKey *string) error {
-	if err := s.client.DeleteObject(s.bucket, *objectKey); err != nil {
-		logging.GetLogger().Error("Failed to delete object: ", err)
-		return err
-	}
-	return nil
-}
-
 // StoreFlows store flows in memory, before being written to the object store
-func (s *StoreS3) StoreFlows(in map[Tag][]interface{}) error {
+func (s *storeBuffered) StoreFlows(in map[Tag][]interface{}) error {
 	s.flowsMutex.Lock()
 	defer s.flowsMutex.Unlock()
 
@@ -172,7 +134,7 @@ func (s *StoreS3) StoreFlows(in map[Tag][]interface{}) error {
 	return nil
 }
 
-func (s *StoreS3) flushFlowsToObject(t Tag, endTime time.Time) error {
+func (s *storeBuffered) flushFlowsToObject(t Tag, endTime time.Time) error {
 	flows := s.flows[t]
 	if len(flows) == 0 {
 		return nil
@@ -209,8 +171,8 @@ func (s *StoreS3) flushFlowsToObject(t Tag, endTime time.Time) error {
 		return err
 	}
 
-	objectKey := strings.Join([]string{s.objectPrefix, string(t), currentStream.ID.UTC().Format("20060102T150405Z"), fmt.Sprintf("%08d.gz", currentStream.SeqNumber)}, "/")
-	err = s.client.WriteObject(s.bucket, objectKey, string(b.Bytes()), "application/json", "gzip", metadata)
+	objectKey := strings.Join([]string{s.filenamePrefix, string(t), currentStream.ID.UTC().Format("20060102T150405Z"), fmt.Sprintf("%08d.gz", currentStream.SeqNumber)}, "/")
+	err = s.pipeline.Writer.Write(s.dirname, objectKey, string(b.Bytes()), "application/json", "gzip", metadata)
 
 	if err != nil {
 		logging.GetLogger().Error("Failed to write object: ", err)
@@ -226,25 +188,22 @@ func (s *StoreS3) flushFlowsToObject(t Tag, endTime time.Time) error {
 	return nil
 }
 
-// NewStoreS3 returns a new storage interface for storing flows to object store
-func NewStoreS3(cfg *viper.Viper) (interface{}, error) {
-	bucket := cfg.GetString(CfgRoot + "store.s3.bucket")
-	objectPrefix := cfg.GetString(CfgRoot + "store.s3.object_prefix")
-	maxFlowArraySize := cfg.GetInt(CfgRoot + "store.s3.max_flow_array_size")
-	maxFlowsPerObject := cfg.GetInt(CfgRoot + "store.s3.max_flows_per_object")
-	maxSecondsPerObject := cfg.GetInt(CfgRoot + "store.s3.max_seconds_per_object")
-	maxSecondsPerStream := cfg.GetInt(CfgRoot + "store.s3.max_seconds_per_stream")
+// NewStoreBuffered returns a new storage interface for storing flows to object store
+func NewStoreBuffered(cfg *viper.Viper) (interface{}, error) {
+	dirname := cfg.GetString(CfgRoot + "store.buffered.dirname")
+	filenamePrefix := cfg.GetString(CfgRoot + "store.buffered.filename_prefix")
+	maxFlowArraySize := cfg.GetInt(CfgRoot + "store.buffered.max_flow_array_size")
+	maxFlowsPerObject := cfg.GetInt(CfgRoot + "store.buffered.max_flows_per_object")
+	maxSecondsPerObject := cfg.GetInt(CfgRoot + "store.buffered.max_seconds_per_object")
+	maxSecondsPerStream := cfg.GetInt(CfgRoot + "store.buffered.max_seconds_per_stream")
 
-	client := newClient(cfg)
-
-	store := &StoreS3{
-		bucket:            bucket,
-		objectPrefix:      objectPrefix,
+	store := &storeBuffered{
+		dirname:           dirname,
+		filenamePrefix:    filenamePrefix,
 		maxFlowsPerObject: maxFlowsPerObject,
 		maxFlowArraySize:  maxFlowArraySize,
 		maxObjectDuration: time.Second * time.Duration(maxSecondsPerObject),
 		maxStreamDuration: time.Second * time.Duration(maxSecondsPerStream),
-		client:            client,
 		currentStream:     make(map[Tag]stream),
 		flows:             make(map[Tag][]interface{}),
 		lastFlushTime:     make(map[Tag]time.Time),
