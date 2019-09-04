@@ -65,6 +65,11 @@ type Storer interface {
 	SetPipeline(p *Pipeline)
 }
 
+// Writer allows uploading objects to an object storage service
+type Writer interface {
+	Write(bucket, objectKey, data, contentType, contentEncoding string, metadata map[string]*string) error
+}
+
 // Handler used for creating a phase handler from configuration
 type Handler = func(cfg *viper.Viper) (interface{}, error)
 
@@ -79,6 +84,7 @@ var (
 	EncoderHandlers     HandlersMap
 	CompressorHandlers  HandlersMap
 	StorerHandlers      HandlersMap
+	WriterHandlers      HandlersMap
 )
 
 // Register associates a handler with its' label
@@ -119,8 +125,12 @@ func init() {
 	CompressorHandlers.Register("gzip", NewCompressGzip, false)
 
 	StorerHandlers = make(HandlersMap)
-	StorerHandlers.Register("stdout", NewStoreStdout, true)
-	StorerHandlers.Register("s3", NewStoreS3, false)
+	StorerHandlers.Register("buffered", NewStoreBuffered, true)
+	StorerHandlers.Register("direct", NewStoreDirect, false)
+
+	WriterHandlers = make(HandlersMap)
+	WriterHandlers.Register("s3", NewWriteS3, true)
+	WriterHandlers.Register("stdout", NewWriteStdout, false)
 }
 
 // Pipeline manager
@@ -133,6 +143,7 @@ type Pipeline struct {
 	Encoder     Encoder
 	Compressor  Compressor
 	Storer      Storer
+	Writer      Writer
 }
 
 // NewPipeline defines the pipeline elements
@@ -167,6 +178,11 @@ func NewPipeline(cfg *viper.Viper) (*Pipeline, error) {
 		return nil, err
 	}
 
+	writer, err := WriterHandlers.Init(cfg, "write")
+	if err != nil {
+		return nil, err
+	}
+
 	p := &Pipeline{
 		Transformer: transformer.(Transformer),
 		Classifier:  classifier.(Classifier),
@@ -174,6 +190,7 @@ func NewPipeline(cfg *viper.Viper) (*Pipeline, error) {
 		Encoder:     encoder.(Encoder),
 		Compressor:  compressor.(Compressor),
 		Storer:      storer.(Storer),
+		Writer:      writer.(Writer),
 	}
 	storer.(Storer).SetPipeline(p)
 

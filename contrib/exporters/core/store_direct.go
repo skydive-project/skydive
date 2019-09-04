@@ -18,25 +18,23 @@
 package core
 
 import (
-	"fmt"
-
 	"github.com/spf13/viper"
 
 	"github.com/skydive-project/skydive/logging"
 )
 
-type storeStdout struct {
+type storeDirect struct {
 	pipeline *Pipeline
 }
 
 // SetPipeline setup
-func (s *storeStdout) SetPipeline(pipeline *Pipeline) {
+func (s *storeDirect) SetPipeline(pipeline *Pipeline) {
 	s.pipeline = pipeline
 }
 
 // StoreFlows store flows in memory, before being written to the object store
-func (s *storeStdout) StoreFlows(flows map[Tag][]interface{}) error {
-	for key, val := range flows {
+func (s *storeDirect) StoreFlows(flows map[Tag][]interface{}) error {
+	for _, val := range flows {
 		encoded, err := s.pipeline.Encoder.Encode(val)
 		if err != nil {
 			logging.GetLogger().Error("Failed to encode object: ", err)
@@ -49,14 +47,17 @@ func (s *storeStdout) StoreFlows(flows map[Tag][]interface{}) error {
 			return err
 		}
 
-		fmt.Printf("--- %s ---\n", key)
-		fmt.Printf("%s\n", compressed)
+		err = s.pipeline.Writer.Write("my_direname", "my_filename", string(compressed.Bytes()), "application/json", "gzip", map[string]*string{})
+		if err != nil {
+			logging.GetLogger().Error("Failed to store object: ", err)
+			return err
+		}
 	}
 
 	return nil
 }
 
-// NewStoreStdout returns a new storage interface for storing flows to object store
-func NewStoreStdout(cfg *viper.Viper) (interface{}, error) {
-	return &storeStdout{}, nil
+// NewStoreDirect returns a new storage interface for storing flows to object store
+func NewStoreDirect(cfg *viper.Viper) (interface{}, error) {
+	return &storeDirect{}, nil
 }
