@@ -2523,43 +2523,36 @@
 		},
 		{
 			"checksumSHA1": "L3UuGixBnKOOhdNYJ/D58EpkHjM=",
-			"origin": "github.com/lebauce/goloxi",
 			"path": "github.com/skydive-project/goloxi",
 			"revision": "db2324197a3e1b3aff408c7a4a56197a0994d7af"
 		},
 		{
 			"checksumSHA1": "4K5wjdQ89racQur3Bi1Fn+qXkMU=",
-			"origin": "github.com/lebauce/goloxi/of10",
 			"path": "github.com/skydive-project/goloxi/of10",
 			"revision": "db2324197a3e1b3aff408c7a4a56197a0994d7af"
 		},
 		{
 			"checksumSHA1": "1lddWPmbRnVr30EaEP5tyDRLuAs=",
-			"origin": "github.com/lebauce/goloxi/of11",
 			"path": "github.com/skydive-project/goloxi/of11",
 			"revision": "db2324197a3e1b3aff408c7a4a56197a0994d7af"
 		},
 		{
 			"checksumSHA1": "ZAYEl4snpob3j68AZMpmPkg8b7U=",
-			"origin": "github.com/lebauce/goloxi/of12",
 			"path": "github.com/skydive-project/goloxi/of12",
 			"revision": "db2324197a3e1b3aff408c7a4a56197a0994d7af"
 		},
 		{
 			"checksumSHA1": "XCnHMXqaEIYEdQFeRQ6XLWHVoFE=",
-			"origin": "github.com/lebauce/goloxi/of13",
 			"path": "github.com/skydive-project/goloxi/of13",
 			"revision": "db2324197a3e1b3aff408c7a4a56197a0994d7af"
 		},
 		{
 			"checksumSHA1": "hWawkLGRh9aFjbHIJuecrpsaSEY=",
-			"origin": "github.com/lebauce/goloxi/of14",
 			"path": "github.com/skydive-project/goloxi/of14",
 			"revision": "db2324197a3e1b3aff408c7a4a56197a0994d7af"
 		},
 		{
 			"checksumSHA1": "eFxIu2vOPESEMAg2DJWbueuEmBc=",
-			"origin": "github.com/lebauce/goloxi/of15",
 			"path": "github.com/skydive-project/goloxi/of15",
 			"revision": "db2324197a3e1b3aff408c7a4a56197a0994d7af"
 		},
