@@ -1,0 +1,17 @@
+---
+- package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - rdma-core-devel
+    - lua-devel
+    - libmnl-devel
+    - libibverbs-devel
+- git:
+    repo: 'http://dpdk.org/git/dpdk'
+    dest: /usr/local/src/dpdk
+    version: v19.05
+- shell: |
+    export RTE_TARGET=x86_64-native-linuxapp-gcc
+    make -C /usr/local/src/dpdk config T=$RTE_TARGET
+    make -C /usr/local/src/dpdk install T=$RTE_TARGET DESTDIR=/usr/local EXTRA_CFLAGS=-fPIC
