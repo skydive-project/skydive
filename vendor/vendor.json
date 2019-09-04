@@ -1743,40 +1743,60 @@
 			"revision": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
 		},
 		{
-			"checksumSHA1": "6Qd6S6TUUbcfiusfWXAOVbFek3w=",
-			"path": "github.com/intel-go/yanff/asm",
-			"revision": "35804adce65005f76409327527e4e256569cacc6",
-			"revisionTime": "2017-10-04T13:30:35Z"
+			"checksumSHA1": "89ShdcZXAx5oS1T0shR4pc2M1Cg=",
+			"path": "github.com/intel-go/nff-go",
+			"revision": "8ab691c21da9951b53208c4a2977c1447e9392fe",
+			"revisionTime": "2019-06-20T12:26:48Z",
+			"version": "v0.8.1",
+			"versionExact": "v0.8.1"
 		},
 		{
-			"checksumSHA1": "T49hsS7BTPkFBYOF4uYDAKSNaQY=",
-			"path": "github.com/intel-go/yanff/common",
-			"revision": "35804adce65005f76409327527e4e256569cacc6",
-			"revisionTime": "2017-10-04T13:30:35Z"
+			"checksumSHA1": "uc6ZKoToSiFtMG5U+WVgQDXXAHs=",
+			"path": "github.com/intel-go/nff-go/asm",
+			"revision": "8ab691c21da9951b53208c4a2977c1447e9392fe",
+			"revisionTime": "2019-06-20T12:26:48Z",
+			"version": "v0.8.1",
+			"versionExact": "v0.8.1"
 		},
 		{
-			"checksumSHA1": "oJSvu+jduVzxLEpg+p7RTFNwgYw=",
-			"path": "github.com/intel-go/yanff/flow",
-			"revision": "35804adce65005f76409327527e4e256569cacc6",
-			"revisionTime": "2017-10-04T13:30:35Z"
+			"checksumSHA1": "CVklP8SBI0T7AEayDeF7s6LGyKA=",
+			"path": "github.com/intel-go/nff-go/common",
+			"revision": "8ab691c21da9951b53208c4a2977c1447e9392fe",
+			"revisionTime": "2019-06-20T12:26:48Z",
+			"version": "v0.8.1",
+			"versionExact": "v0.8.1"
 		},
 		{
-			"checksumSHA1": "hJGVebdXaT5fyw5bYdYeV21lPQ8=",
-			"path": "github.com/intel-go/yanff/low",
-			"revision": "35804adce65005f76409327527e4e256569cacc6",
-			"revisionTime": "2017-10-04T13:30:35Z"
+			"checksumSHA1": "ln7thh8TtmKXoxbooNMmVbBa840=",
+			"path": "github.com/intel-go/nff-go/flow",
+			"revision": "8ab691c21da9951b53208c4a2977c1447e9392fe",
+			"revisionTime": "2019-06-20T12:26:48Z",
+			"version": "v0.8.1",
+			"versionExact": "v0.8.1"
 		},
 		{
-			"checksumSHA1": "eWaI75K1UJvLaIGBFCcC8sOBhhM=",
-			"path": "github.com/intel-go/yanff/packet",
-			"revision": "35804adce65005f76409327527e4e256569cacc6",
-			"revisionTime": "2017-10-04T13:30:35Z"
+			"checksumSHA1": "/5Zpf1UIB+pJ0lXncm7hsSge2j0=",
+			"path": "github.com/intel-go/nff-go/internal/low",
+			"revision": "8ab691c21da9951b53208c4a2977c1447e9392fe",
+			"revisionTime": "2019-06-20T12:26:48Z",
+			"version": "v0.8.1",
+			"versionExact": "v0.8.1"
 		},
 		{
-			"checksumSHA1": "ei5kZp1lR7hRZ+eWc2JJX0mZ1gs=",
-			"path": "github.com/intel-go/yanff/scheduler",
-			"revision": "35804adce65005f76409327527e4e256569cacc6",
-			"revisionTime": "2017-10-04T13:30:35Z"
+			"checksumSHA1": "KhHNBD2G4dbtgfGbfxnr15UcKv4=",
+			"path": "github.com/intel-go/nff-go/packet",
+			"revision": "8ab691c21da9951b53208c4a2977c1447e9392fe",
+			"revisionTime": "2019-06-20T12:26:48Z",
+			"version": "v0.8.1",
+			"versionExact": "v0.8.1"
+		},
+		{
+			"checksumSHA1": "l4c//DvmIiqQQuyUbmn5ea1AdRw=",
+			"path": "github.com/intel-go/nff-go/types",
+			"revision": "8ab691c21da9951b53208c4a2977c1447e9392fe",
+			"revisionTime": "2019-06-20T12:26:48Z",
+			"version": "v0.8.1",
+			"versionExact": "v0.8.1"
 		},
 		{
 			"checksumSHA1": "zo8bhzQSj7BMjJF6kPqxoGR9G8A=",
