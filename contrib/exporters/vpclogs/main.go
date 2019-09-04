@@ -19,7 +19,7 @@ package main
 
 import (
 	"github.com/skydive-project/skydive/contrib/exporters/core"
-	sa "github.com/skydive-project/skydive/contrib/exporters/secadvisor/mod"
+	secadvisor "github.com/skydive-project/skydive/contrib/exporters/secadvisor/mod"
 )
 
 func main() {
@@ -27,5 +27,5 @@ func main() {
 }
 
 func init() {
-	core.TransformerHandlers.Register("vpclogs", sa.NewTransform, false)
+	core.TransformerHandlers.Register("vpclogs", secadvisor.NewTransform, false)
 }

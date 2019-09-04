@@ -14,8 +14,8 @@ pipeline:
       # - internal
       # - other
   transform:
-    type: sa
-    sa:
+    type: secadvisor
+    secadvisor:
       # exclude_started_flows: true
   store:
     type: s3

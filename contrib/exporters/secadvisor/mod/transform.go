@@ -31,7 +31,7 @@ import (
 
 // NewTransform creates a new flow transformer based on a name string
 func NewTransform(cfg *viper.Viper) (interface{}, error) {
-	excludeStartedFlows := cfg.GetBool(core.CfgRoot + "transform.sa.exclude_started_flows")
+	excludeStartedFlows := cfg.GetBool(core.CfgRoot + "transform.secadvisor.exclude_started_flows")
 
 	resolver := NewResolveRunc(cfg)
 	resolver = NewResolveMulti(resolver)
