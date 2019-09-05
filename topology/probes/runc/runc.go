@@ -253,7 +253,7 @@ func (p *ProbeHandler) registerContainer(path string) error {
 
 	nsHandle, err := netns.GetFromPid(state.InitProcessPid)
 	if err != nil {
-		return err
+		return fmt.Errorf("Unable to open netns, pid %d, state file %s : %s", state.InitProcessPid, path, err)
 	}
 	defer nsHandle.Close()
 
