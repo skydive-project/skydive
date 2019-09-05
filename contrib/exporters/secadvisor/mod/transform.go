@@ -25,24 +25,22 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/skydive-project/skydive/api/client"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/contrib/exporters/core"
 	"github.com/skydive-project/skydive/flow"
-	g "github.com/skydive-project/skydive/gremlin"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // NewTransform creates a new flow transformer based on a name string
 func NewTransform(cfg *viper.Viper) (interface{}, error) {
-	gremlinClient := client.NewGremlinQueryHelper(core.CfgAuthOpts(cfg))
-
 	excludeStartedFlows := cfg.GetBool(core.CfgRoot + "transform.sa.exclude_started_flows")
+
+	resolver := NewResolveRunc(cfg)
+	resolver = NewResolveMulti(resolver)
+	resolver = NewResolveFallback(resolver)
+	resolver = NewResolveCache(resolver)
+
 	return &securityAdvisorFlowTransformer{
+		resolver:             resolver,
 		flowUpdateCountCache: cache.New(10*time.Minute, 10*time.Minute),
-		graphClient:          &securityAdvisorGremlinClient{gremlinClient},
-		containerNameCache:   cache.New(5*time.Minute, 10*time.Minute),
-		nodeType:             cache.New(5*time.Minute, 10*time.Minute),
 		excludeStartedFlows:  excludeStartedFlows,
 	}, nil
 }
@@ -75,80 +73,11 @@ type SecurityAdvisorFlow struct {
 	NodeType         string                    `json:"NodeType,omitempty"`
 }
 
-type securityAdvisorGraphClient interface {
-	getContainerName(ipString, nodeTID string) (string, error)
-	getNodeType(nodeTID string) (string, error)
-}
-
 // SecurityAdvisorFlowTransformer is a custom transformer for flows
 type securityAdvisorFlowTransformer struct {
+	resolver             Resolver
 	flowUpdateCountCache *cache.Cache
-	graphClient          securityAdvisorGraphClient
-	containerNameCache   *cache.Cache
-	nodeType             *cache.Cache
 	excludeStartedFlows  bool
-}
-
-type securityAdvisorGremlinClient struct {
-	gremlinClient *client.GremlinQueryHelper
-}
-
-func (c *securityAdvisorGremlinClient) getContainerName(ipString, nodeTID string) (string, error) {
-	node, err := c.gremlinClient.GetNode(g.G.V().Has("Runc.Hosts.IP", ipString).ShortestPathTo(g.Metadata("TID", nodeTID)))
-	if err != nil {
-		return "", err
-	}
-
-	return node.Metadata["Runc"].(map[string]interface{})["Hosts"].(map[string]interface{})["Hostname"].(string), nil
-}
-
-func (c *securityAdvisorGremlinClient) getNodeType(nodeTID string) (string, error) {
-	node, err := c.gremlinClient.GetNode(g.G.V().Has("TID", nodeTID))
-	if err != nil {
-		return "", err
-	}
-
-	return node.Metadata["Type"].(string), nil
-}
-
-func (ft *securityAdvisorFlowTransformer) getContainerName(ipString, nodeTID string) string {
-	if ipString == "" {
-		return ""
-	}
-	name, ok := ft.containerNameCache.Get(ipString)
-	if !ok {
-		var err error
-		if name, err = ft.graphClient.getContainerName(ipString, nodeTID); err != nil {
-			name = ""
-		} else {
-			name = "0_0_" + name.(string) + "_0"
-		}
-		if err != nil && err != common.ErrNotFound {
-			logging.GetLogger().Warningf("Failed to query container name for IP '%s': %s", ipString, err.Error())
-		} else {
-			ft.containerNameCache.Set(ipString, name, cache.DefaultExpiration)
-		}
-	}
-
-	return name.(string)
-}
-
-func (ft *securityAdvisorFlowTransformer) getNodeType(f *flow.Flow) string {
-	tid := f.NodeTID
-	nodeType, ok := ft.nodeType.Get(tid)
-	if !ok {
-		var err error
-		if nodeType, err = ft.graphClient.getNodeType(tid); err != nil {
-			nodeType = ""
-		}
-		if err != nil && err != common.ErrNotFound {
-			logging.GetLogger().Warningf("Failed to query node type for TID '%s': %s", tid, err.Error())
-		} else {
-			ft.nodeType.Set(tid, nodeType, cache.DefaultExpiration)
-		}
-	}
-
-	return nodeType.(string)
 }
 
 func (ft *securityAdvisorFlowTransformer) setUpdateCount(f *flow.Flow) int64 {
@@ -200,12 +129,15 @@ func (ft *securityAdvisorFlowTransformer) getNetwork(f *flow.Flow) *SecurityAdvi
 		return nil
 	}
 
+	aName, _ := ft.resolver.IPToName(f.Network.A, f.NodeTID)
+	bName, _ := ft.resolver.IPToName(f.Network.B, f.NodeTID)
+
 	return &SecurityAdvisorFlowLayer{
 		Protocol: f.Network.Protocol.String(),
 		A:        f.Network.A,
 		B:        f.Network.B,
-		AName:    ft.getContainerName(f.Network.A, f.NodeTID),
-		BName:    ft.getContainerName(f.Network.B, f.NodeTID),
+		AName:    aName,
+		BName:    bName,
 	}
 }
 
@@ -232,6 +164,8 @@ func (ft *securityAdvisorFlowTransformer) Transform(f *flow.Flow) interface{} {
 		return nil
 	}
 
+	nodeType, _ := ft.resolver.TIDToType(f.NodeTID)
+
 	return &SecurityAdvisorFlow{
 		UUID:             f.UUID,
 		LayersPath:       f.LayersPath,
@@ -245,6 +179,6 @@ func (ft *securityAdvisorFlowTransformer) Transform(f *flow.Flow) interface{} {
 		Start:            f.Start,
 		Last:             f.Last,
 		UpdateCount:      updateCount,
-		NodeType:         ft.getNodeType(f),
+		NodeType:         nodeType,
 	}
 }
