@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ $1 = "compile" ] ; then
-    make govendor genlocalfiles
+    make genlocalfiles
     go test -v -c -o /tmp/skydive_coverage $COVERFLAGS github.com/skydive-project/skydive/tests/coverage
     exit $?
 fi

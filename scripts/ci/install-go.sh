@@ -19,11 +19,6 @@ eval "$(gimme 1.10.3)"
 export GOPATH=$WORKSPACE
 export PATH=$PATH:$GOPATH/bin
 
-# speedup govendor sync command
-mkdir -p $HOME/.govendor $GOPATH/.cache
-rm -rf $GOPATH/.cache/govendor
-ln -s $HOME/.govendor $GOPATH/.cache/govendor
-
 # share compile cache
 mkdir -p $HOME/pkg
 rm -rf $GOPATH/pkg

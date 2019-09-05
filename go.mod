@@ -9,6 +9,7 @@ require (
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/VerizonDigital/vflow v0.0.0-20190111005900-eb30d936249e
 	github.com/abbot/go-http-auth v0.0.0-20160118225252-ca62df34b58d
+	github.com/alecthomas/gometalinter v3.0.0+incompatible // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/casbin/casbin v0.0.0-20181031010332-5ff5a6f5e38a
 	github.com/cenk/hub v0.0.0-20160527103212-11382a9960d3 // indirect
@@ -35,6 +36,7 @@ require (
 	github.com/gomatic/funcmap v0.0.0-20190110133044-62047470c142 // indirect
 	github.com/gomatic/renderizer v1.0.1 // indirect
 	github.com/google/gopacket v1.1.17
+	github.com/google/shlex v0.0.0-20181106134648-c34317bd91bf // indirect
 	github.com/googleapis/gnostic v0.0.0-20171106233303-41d03372f44f // indirect
 	github.com/gophercloud/gophercloud v0.0.0-20190126172459-c818fa66e4c8
 	github.com/gorilla/context v0.0.0-20160817184632-08b5f424b927
@@ -50,6 +52,7 @@ require (
 	github.com/iovisor/gobpf v0.0.0-20190329163444-e0d8d785d368 // indirect
 	github.com/jbowtie/gokogiri v0.0.0-20190301021639-37f655d3078f // indirect
 	github.com/json-iterator/go v0.0.0-20190621161201-27518f6661eb // indirect
+	github.com/jteeuwen/go-bindata v0.0.0-20180305030458-6025e8de665b // indirect
 	github.com/juju/clock v0.0.0-20190205081909-9c5c9712527c // indirect
 	github.com/juju/errors v0.0.0-20190806202954-0232dcc7464d // indirect
 	github.com/juju/loggo v0.0.0-20170605014607-8232ab8918d9 // indirect
@@ -103,13 +106,14 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20150808065054-e02fc20de94c // indirect
 	github.com/xeipuuv/gojsonschema v0.0.0-20180618132009-1d523034197f
 	go.uber.org/zap v1.10.0
-	golang.org/x/crypto v0.0.0-20190605123033-f99c8df09eb5 // indirect
-	golang.org/x/net v0.0.0-20190613194153-d28f0bde5980
+	golang.org/x/crypto v0.0.0-20190909091759-094676da4a83 // indirect
+	golang.org/x/net v0.0.0-20190909003024-a7b16738d86b
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45 // indirect
-	golang.org/x/sys v0.0.0-20190616124812-15dcb6c0061f
+	golang.org/x/sys v0.0.0-20190909082730-f460065e899a
 	golang.org/x/text v0.3.2 // indirect
-	golang.org/x/tools v0.0.0-20190606124116-d0a3d012864b
+	golang.org/x/tools v0.0.0-20190909030654-5b82db07426d
 	google.golang.org/grpc v1.22.1
+	gopkg.in/alecthomas/kingpin.v3-unstable v3.0.0-20180810215634-df19058c872c // indirect
 	gopkg.in/errgo.v1 v1.0.0-20161222125816-442357a80af5 // indirect
 	gopkg.in/fsnotify/fsnotify.v1 v1.0.0-20180110053347-c2828203cd70
 	gopkg.in/httprequest.v1 v1.0.0-20180209163514-93f8fee4081f // indirect

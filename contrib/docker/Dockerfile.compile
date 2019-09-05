@@ -3,7 +3,7 @@ FROM ubuntu:18.04
 ARG UID=1000
 
 VOLUME /root/go/src/github.com/skydive-project/skydive
-VOLUME /root/go/.cache/govendor
+VOLUME /root/go/pkg/mod
 VOLUME /root/.cache/go-build
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -38,7 +38,7 @@ ENV UID=$UID
 RUN chown -R $UID /root/
 WORKDIR /root/go/src/github.com/skydive-project/skydive
 
-CMD chown -R $UID /root/go/.cache/govendor \
+CMD chown -R $UID /root/go/pkg/mod \
     && chown -R $UID /root/.cache/go-build \
     && /gosu $UID env \
     HOME=/root \

@@ -23,8 +23,8 @@ if [ "${DOCKER_IMAGE%/*/*}" != "${DOCKER_IMAGE}" ]; then
 fi
 
 DOCKER_DIR=contrib/docker
-GOVENDOR_VOL=govendor-cache
-GOVENDOR_DIR=/root/go/.cache/govendor
+GOMOD_VOL=mod
+GOMOD_DIR=/root/go/pkg/mod
 GOBUILD_VOL=gobuild-cache
 GOBUILD_DIR=/root/.cache/go-build
 TOPLEVEL_VOL=$PWD
@@ -63,14 +63,14 @@ docker_skydive_builder() {
         ${BASE:+--build-arg BASE=${BASE}} \
         --build-arg UID=$uid \
         -f $DOCKER_DIR/$dockerfile $DOCKER_DIR
-    docker volume create $GOVENDOR_VOL
+    docker volume create $GOMOD_VOL
     docker volume create $GOBUILD_VOL
     docker rm $image || true
     docker run --name $image \
         --env UID=$uid \
         --env TOPLEVEL_GOPATH=$GOPATH \
         --volume $TOPLEVEL_VOL:$TOPLEVEL_DIR \
-        --volume $GOVENDOR_VOL:$GOVENDOR_DIR \
+        --volume $GOMOD_VOL:$GOMOD_DIR \
         --volume $GOBUILD_VOL:$GOBUILD_DIR \
         $tag
 

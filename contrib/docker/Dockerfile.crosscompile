@@ -6,7 +6,7 @@ ARG DEBARCH=$TARGET_GOARCH
 ARG UID=1000
 
 VOLUME /root/go/src/github.com/skydive-project/skydive
-VOLUME /root/go/.cache/govendor
+VOLUME /root/go/pkg/mod
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -50,7 +50,7 @@ WORKDIR /root/go/src/github.com/skydive-project/skydive
 ENV TARGET_ARCH=$TARGET_ARCH
 ENV TARGET_GOARCH=$TARGET_GOARCH
 
-CMD chown -R $UID /root/go/.cache/govendor \
+CMD chown -R $UID /root/go/pkg/mod \
     && /gosu $UID env \
     HOME=/root \
     GOPATH=/root/go \
@@ -59,4 +59,4 @@ CMD chown -R $UID /root/go/.cache/govendor \
     CC=${TARGET_ARCH}-linux-gnu-gcc \
     GOOS=linux \
     GOARCH=$TARGET_GOARCH \
-    make govendor compile.static WITH_OPENCONTRAIL=false WITH_LIBVIRT=false WITH_EBPF=true WITH_EBPF_DOCKER_BUILDER=false
+    make compile.static WITH_OPENCONTRAIL=false WITH_LIBVIRT=false WITH_EBPF=true WITH_EBPF_DOCKER_BUILDER=false

@@ -100,7 +100,7 @@ function snapshot() {
   snapshot_items intf $ext "ip -o link show | awk -F': ' '{print \$2}' | cut -d '@' -f 1"
   snapshot_items ovsdb $ext "ovs-vsctl list-br"
   snapshot_items docker $ext "docker ps -a -q"
-  snapshot_items docker-volumes $ext "docker volume ls | grep -v govendor-cache | awk '{print \$2}'"
+  snapshot_items docker-volumes $ext "docker volume ls | grep -v mod | grep -v go-build | awk '{print \$2}'"
   snapshot_items lxd $ext "lxc list --format csv -c n"
 }
 
