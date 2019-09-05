@@ -396,7 +396,7 @@ compile.static:
 		-installsuffix netgo || true
 
 .PHONY: skydive
-skydive: govendor genlocalfiles dpdk.build compile
+skydive: govendor genlocalfiles compile
 
 .PHONY: skydive.clean
 skydive.clean:
@@ -459,16 +459,6 @@ contrib.collectd.clean:
 .PHONY: contrib.collectd
 contrib.collectd: govendor genlocalfiles
 	$(MAKE) -C contrib/collectd
-
-.PHONY: dpdk.build
-dpdk.build:
-ifeq ($(WITH_DPDK), true)
-	$(MAKE) -C dpdk
-endif
-
-.PHONY: dpdk.clean
-dpdk.clean:
-	$(MAKE) -C dpdk clean
 
 .PHONY: ebpf.build
 ebpf.build: govendor
@@ -557,7 +547,6 @@ endif
 govendor:
 	$(GO_GET) github.com/kardianos/govendor
 	$(GOVENDOR) sync
-	patch -p0 < dpdk/dpdk.govendor.patch
 	rm -rf vendor/github.com/weaveworks/tcptracer-bpf/vendor/github.com/
 	find vendor/github.com/docker/go-connections -name "*.go" | xargs -n 1 perl -i -pe 's|github.com/Sirupsen|github.com/sirupsen|g'
 
@@ -615,7 +604,7 @@ lint: gometalinter
 genlocalfiles: .proto .vppbinapi .go-generate .bindata .easyjson
 
 .PHONY: clean
-clean: skydive.clean test.functionals.clean dpdk.clean contribs.clean ebpf.clean .easyjson.clean .proto.clean .go-generate.clean .typescript.clean .vppbinapi.clean
+clean: skydive.clean test.functionals.clean contribs.clean ebpf.clean .easyjson.clean .proto.clean .go-generate.clean .typescript.clean .vppbinapi.clean
 	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
 
 .PHONY: srpm
