@@ -1,4 +1,4 @@
-//go:generate go run ../../../scripts/gendecoder.go -package github.com/skydive-project/skydive/topology/probes/neutron
+//go:generate go run github.com/skydive-project/skydive/scripts/gendecoder -package github.com/skydive-project/skydive/topology/probes/neutron
 
 /*
  * Copyright (C) 2015 Red Hat, Inc.

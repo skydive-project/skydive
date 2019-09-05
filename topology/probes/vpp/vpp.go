@@ -1,7 +1,7 @@
 // +build vpp,linux
 
-//go:generate ${GOPATH}/.skydive-build-tool/binapi-generator --input-file=/usr/share/vpp/api/interface.api.json --output-dir=./bin_api
-//go:generate ${GOPATH}/.skydive-build-tool/binapi-generator --input-file=/usr/share/vpp/api/vpe.api.json --output-dir=./bin_api
+//go:generate go run git.fd.io/govpp.git/cmd/binapi-generator --input-file=/usr/share/vpp/api/interface.api.json --output-dir=./bin_api
+//go:generate go run git.fd.io/govpp.git/cmd/binapi-generator --input-file=/usr/share/vpp/api/vpe.api.json --output-dir=./bin_api
 
 /*
  * Copyright (C) 2018 Red Hat, Inc.

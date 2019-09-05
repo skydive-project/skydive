@@ -64,8 +64,7 @@ generate_cover_data() {
 
 show_cover_report() {
     if [ "$1" == "xml" ]; then
-        go get github.com/t-yuki/gocover-cobertura
-        gocover-cobertura < $profile > $profile.xml
+        go run github.com/t-yuki/gocover-cobertura < $profile > $profile.xml
     else
         go tool cover -${1}="$profile"
     fi
@@ -73,7 +72,7 @@ show_cover_report() {
 
 push_to_coveralls() {
     echo "Pushing coverage statistics to coveralls.io"
-    goveralls -coverprofile="$profile"
+    go run github.com/mattn/goveralls -coverprofile="$profile"
 }
 
 push_to_codecov() {

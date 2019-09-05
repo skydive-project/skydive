@@ -1,4 +1,4 @@
-//go:generate go run ../scripts/gendecoder.go -output routes_gendecoder.go
+//go:generate go run github.com/skydive-project/skydive/scripts/gendecoder -output routes_gendecoder.go
 
 /*
  * Copyright (C) 2019 Red Hat, Inc.

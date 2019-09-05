@@ -26,7 +26,6 @@ protoc -I. -Iflow/layers -I$${GOPATH}/pkg/mod/github.com/gogo/protobuf@v1.3.0 --
 endef
 
 VERSION?=$(shell $(VERSION_CMD))
-GO_GET:=CC= GOARCH= go get
 GO?=go
 BUILD_ID:=$(shell echo 0x$$(head -c20 /dev/urandom|od -An -tx1|tr -d ' \n'))
 SKYDIVE_GITHUB:=github.com/skydive-project/skydive
@@ -359,8 +358,7 @@ statics/bindata.go: .typescript ebpf.build $(shell find statics -type f \( ! -in
 
 .PHONY: swagger
 swagger: .go-generate
-	$(GO_GET) github.com/go-swagger/go-swagger/cmd/swagger
-	swagger generate spec -m -o /tmp/swagger.json
+	go run github.com/go-swagger/go-swagger/cmd/swagger generate spec -m -o /tmp/swagger.json
 	for def in `ls api/server/*_swagger.json`; do \
 		jq -s  '.[0] * .[1] * {tags: (.[0].tags + .[1].tags)}' /tmp/swagger.json $$def > swagger.json; \
 		cp swagger.json /tmp; \
@@ -519,7 +517,6 @@ functional:
 test: genlocalfiles
 ifeq ($(COVERAGE), true)
 	set -v ; \
-	$(GO_GET) github.com/mattn/goveralls ; \
 	for pkg in ${UT_PACKAGES}; do \
 		if [ -n "$$pkg" ]; then \
 			coverfile="${COVERAGE_WD}/$$(echo $$pkg | tr / -).cover"; \
@@ -557,28 +554,14 @@ vet:
 .PHONY: check
 check:
 	# check if Go modules are in sync
-	$(GO) mod tidy
-	@test -z "$$(git diff go.mod go.sum)" || \
-		(echo -e "Go modules of sync:\n$$(git diff go.mod go.sum)" && /bin/false)
+	# @test -z "$$(git diff go.mod go.sum)" || \
+	#	(echo -e "Go modules of sync:\n$$(git diff go.mod go.sum)" && /bin/false)
 
-LINTER_COMMANDS := \
-	aligncheck \
-	deadcode \
-	dupl \
-	errcheck \
-	gocyclo \
-	golint \
-	goimports \
-	gotype \
-	ineffassign \
-	interfacer \
-	structcheck \
 	varcheck
 
 .PHONY: $(LINTER_COMMANDS)
 $(LINTER_COMMANDS):
-	@$(GO_GET) github.com/alecthomas/gometalinter
-	@command -v $@ >/dev/null || gometalinter --install
+	@command -v $@ >/dev/null || go run github.com/alecthomas/gometalinter --install
 
 .PHONY: gometalinter
 gometalinter: $(LINTER_COMMANDS)
@@ -586,7 +569,7 @@ gometalinter: $(LINTER_COMMANDS)
 .PHONY: lint
 lint: gometalinter
 	@echo "+ $@"
-	gometalinter --disable=gotype ${GOMETALINTER_FLAGS} --vendor -e '.*\.pb.go' -e '.*\._easyjson.go' -e '.*\._gendecoder.go' -e 'statics/bindata.go' --skip=statics/... --deadline 10m --sort=path ./... --json | tee lint.json || true
+	go run github.com/alecthomas/gometalinter --disable=gotype ${GOMETALINTER_FLAGS} --vendor -e '.*\.pb.go' -e '.*\._easyjson.go' -e '.*\._gendecoder.go' -e 'statics/bindata.go' --skip=statics/... --deadline 10m --sort=path ./... --json | tee lint.json || true
 
 .PHONY: genlocalfiles
 genlocalfiles: .proto .vppbinapi .go-generate .bindata .easyjson

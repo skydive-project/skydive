@@ -1,4 +1,4 @@
-//go:generate go run ../scripts/gendecoder.go -filename flow.pb.go
+//go:generate go run github.com/skydive-project/skydive/scripts/gendecoder -filename flow.pb.go
 
 /*
  * Copyright (C) 2016 Red Hat, Inc.

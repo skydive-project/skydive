@@ -1,4 +1,4 @@
-//go:generate go run ../scripts/gendecoder.go
+//go:generate go run github.com/skydive-project/skydive/scripts/gendecoder
 
 /*
  * Copyright (C) 2016 Red Hat, Inc.

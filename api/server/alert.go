@@ -1,5 +1,5 @@
-//go:generate sh -c "renderizer --name=alert --resource=alert --type=Alert --title=Alert --article=an swagger_operations.tmpl > alert_swagger.go"
-//go:generate sh -c "renderizer --name=alert --resource=alert --type=Alert --title=Alert swagger_definitions.tmpl > alert_swagger.json"
+//go:generate sh -c "go run github.com/gomatic/renderizer --name=alert --resource=alert --type=Alert --title=Alert --article=an swagger_operations.tmpl > alert_swagger.go"
+//go:generate sh -c "go run github.com/gomatic/renderizer --name=alert --resource=alert --type=Alert --title=Alert swagger_definitions.tmpl > alert_swagger.json"
 
 /*
  * Copyright (C) 2016 Red Hat, Inc.
