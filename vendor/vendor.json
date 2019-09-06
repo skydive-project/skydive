@@ -2623,16 +2623,22 @@
 			"revision": "c7e63cf4530bcd3ba943729cee0efeff2ebea63f"
 		},
 		{
-			"checksumSHA1": "a7Mfywx84Uljm/ZSNU30YdUa1Yk=",
+			"checksumSHA1": "bXSh9WLLl15DgtylJyNCChmeoZk=",
 			"origin": "github.com/lebauce/viper",
 			"path": "github.com/spf13/viper",
-			"revision": "54676d0dbb12f9b6febb2f8210e9590d81d4b5e3"
+			"revision": "3b7a98e30843a670e66c5b941d2f1b0f06c4d10a"
 		},
 		{
 			"checksumSHA1": "BR/kPm9HQod+IBsWoYB8BCRBg3s=",
 			"origin": "github.com/lebauce/viper/remote",
 			"path": "github.com/spf13/viper/remote",
-			"revision": "54676d0dbb12f9b6febb2f8210e9590d81d4b5e3"
+			"revision": "3b7a98e30843a670e66c5b941d2f1b0f06c4d10a"
+		},
+		{
+			"checksumSHA1": "XaFlfXk4sA7VsnTu8GYxGXX8FjU=",
+			"path": "github.com/subosito/gotenv",
+			"revision": "422ef8095f112cfaf9f40c368e0b9ae8c0714cfb",
+			"revisionTime": "2019-08-13T02:47:33Z"
 		},
 		{
 			"checksumSHA1": "ANGOe9JH8sHzYNOQgEFCXuAhiuM=",
