@@ -564,31 +564,14 @@ check: lint
 		exit 1; \
 	fi
 
-LINTER_COMMANDS := \
-	aligncheck \
-	deadcode \
-	dupl \
-	errcheck \
-	gocyclo \
-	golint \
-	goimports \
-	gotype \
-	ineffassign \
-	interfacer \
-	structcheck \
-	varcheck
-
-.PHONY: $(LINTER_COMMANDS)
-$(LINTER_COMMANDS):
-	@command -v $@ >/dev/null || go run github.com/alecthomas/gometalinter --install
-
-.PHONY: gometalinter
-gometalinter: $(LINTER_COMMANDS)
+.PHONY: golangci-lint
+golangci-lint:
+	@echo "+ $@"
+	go run github.com/golangci/golangci-lint/cmd/golangci-lint run ${GOMETALINTER_FLAGS} -e '.*\.pb.go' -e '.*\._easyjson.go' -e '.*\._gendecoder.go' -e 'statics/bindata.go' --skip-dirs=statics --deadline 10m --out-format=json ./... | tee lint.json || true
 
 .PHONY: lint
-lint: gometalinter
-	@echo "+ $@"
-	go run github.com/alecthomas/gometalinter --disable=gotype ${GOMETALINTER_FLAGS} --vendor -e '.*\.pb.go' -e '.*\._easyjson.go' -e '.*\._gendecoder.go' -e 'statics/bindata.go' --skip=statics/... --deadline 10m --sort=path ./... --json | tee lint.json || true
+lint:
+	make golangci-lint GOMETALINTER_FLAGS="--disable-all --enable=golint"
 
 .PHONY: genlocalfiles
 genlocalfiles: .proto .vppbinapi .go-generate .bindata .easyjson
