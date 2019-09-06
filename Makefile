@@ -303,10 +303,6 @@ topology/probes/opencontrail/routing_table_easyjson.go: $(EASYJSON_FILES_TAG_OPE
 .easyjson.clean:
 	find . \( -name *_easyjson.go ! -path './vendor/*' \) -exec rm {} \;
 
-.PHONY: .binapigenerator
-binapigenerator: vendor/${VPPBINAPI_GITHUB}
-	$(call VENDOR_RUN,${VPPBINAPI_GITHUB})
-
 .PHONY: .vppbinapi.clean
 .vppbinapi.clean:
 	rm -rf topology/probes/vpp/bin_api
@@ -342,10 +338,6 @@ npm.install:
 statics/bindata.go: .typescript ebpf.build $(shell find statics -type f \( ! -iname "bindata.go" \))
 	go run ${GO_BINDATA_GITHUB} ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go $(BINDATA_DIRS)
 	gofmt -w -s statics/bindata.go
-
-.PHONY: .vppbinapi
-.vppbinapi: binapigenerator
-	$(GO) generate -tags "${BUILD_TAGS}" ${SKYDIVE_GITHUB}/topology/probes/vpp
 
 .PHONY: .go-generate
 .go-generate:
@@ -574,7 +566,7 @@ lint:
 	make golangci-lint GOMETALINTER_FLAGS="--disable-all --enable=golint"
 
 .PHONY: genlocalfiles
-genlocalfiles: .proto .vppbinapi .go-generate .bindata .easyjson
+genlocalfiles: .proto .go-generate .bindata .easyjson
 
 .PHONY: clean
 clean: skydive.clean test.functionals.clean contribs.clean ebpf.clean .easyjson.clean .proto.clean .go-generate.clean .typescript.clean .vppbinapi.clean
