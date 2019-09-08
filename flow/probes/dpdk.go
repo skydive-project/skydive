@@ -26,9 +26,9 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	dpdkcommon "github.com/intel-go/yanff/common"
-	dpdkflow "github.com/intel-go/yanff/flow"
-	"github.com/intel-go/yanff/packet"
+	dpdkcommon "github.com/intel-go/nff-go/common"
+	dpdkflow "github.com/intel-go/nff-go/flow"
+	"github.com/intel-go/nff-go/packet"
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/flow"
@@ -77,24 +77,14 @@ func (p *DPDKProbesHandler) Start() {
 func (p *DPDKProbesHandler) Stop() {
 }
 
-func packetHandler(packets []*packet.Packet, next []bool, nbPackets uint, context dpdkflow.UserContext) {
+func packetHandler(packet *packet.Packet, context dpdkflow.UserContext) {
+	gopacket := gopacket.NewPacket(packet.GetRawPacketBytes(), layers.LayerTypeEthernet, gopacket.Default)
 	ctxQ, _ := context.(ctxQueue)
-	if ctxQ.enabled.Load() == false {
-		for i := uint(0); i < nbPackets; i++ {
-			next[i] = false
-		}
-		return
-	}
-
-	for i := uint(0); i < nbPackets; i++ {
-		packet := gopacket.NewPacket(packets[i].GetRawPacketBytes(), layers.LayerTypeEthernet, gopacket.Default)
-		ctxQ.ft.FeedWithGoPacket(packet, nil)
-		next[i] = false
-	}
+	ctxQ.ft.FeedWithGoPacket(gopacket, nil)
 }
 
 func l3Splitter(currentPacket *packet.Packet, context dpdkflow.UserContext) uint {
-	ipv4, ipv6 := currentPacket.ParseAllKnownL3()
+	ipv4, ipv6, _ := currentPacket.ParseAllKnownL3()
 	if ipv4 != nil {
 		h := (ipv4.SrcAddr>>24)&0xff ^ (ipv4.DstAddr>>24)&0xff ^
 			(ipv4.SrcAddr>>16)&0xff ^ (ipv4.DstAddr>>16)&0xff ^
@@ -137,8 +127,11 @@ func (c ctxQueue) Copy() interface{} {
 	return c
 }
 
+func (c ctxQueue) Delete() {
+}
+
 func getDPDKMacAddress(port int) string {
-	mac := dpdkflow.GetPortMACAddress(uint8(port))
+	mac := dpdkflow.GetPortMACAddress(uint16(port))
 	macAddr := ""
 	for i, m := range mac {
 		macAddr += fmt.Sprintf("%02x", m)
@@ -212,8 +205,8 @@ func (p *DPDKProbesHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHa
 
 		port := dpdkPort{}
 
-		inputFlow := dpdkflow.SetReceiver(uint8(inport))
-		outputFlows := dpdkflow.SetSplitter(inputFlow, l3Splitter, uint(dpdkNBWorkers), nil)
+		inputFlow, _ := dpdkflow.SetReceiver(uint16(inport))
+		outputFlows, _ := dpdkflow.SetSplitter(inputFlow, l3Splitter, uint(dpdkNBWorkers), nil)
 
 		for i := 0; i < nbWorkers; i++ {
 			ft := ctx.FTA.Alloc(uuids, opts)

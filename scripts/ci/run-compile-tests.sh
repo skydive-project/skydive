@@ -26,6 +26,9 @@ COLLECTD_SRC=/tmp/collectd make contribs
 make
 make test.functionals.compile TAGS=${TAGS}
 
+export CGO_CFLAGS="-I/usr/local/include/dpdk -O3 -g -std=gnu11 -m64 -pthread -march=native -DRTE_MACHINE_CPUFLAG_SSE -DRTE_MACHINE_CPUFLAG_SSE2 -DRTE_MACHINE_CPUFLAG_SSE3 -DRTE_MACHINE_CPUFLAG_SSSE3 -DRTE_MACHINE_CPUFLAG_SSE4_1 -DRTE_MACHINE_CPUFLAG_SSE4_2 -DRTE_MACHINE_CPUFLAG_PCLMULQDQ -DRTE_MACHINE_CPUFLAG_RDRAND -DRTE_MACHINE_CPUFLAG_FSGSBASE -DRTE_MACHINE_CPUFLAG_F16C -include rte_config.h -Wno-deprecated-declarations"
+export CGO_LDFLAGS="-L/usr/local/lib"
+
 # Compile with all build options supported enabled
 make WITH_DPDK=true WITH_EBPF=true WITH_VPP=true WITH_EBPF_DOCKER_BUILDER=true WITH_K8S=true WITH_ISTIO=true \
     WITH_HELM=true VERBOSE=true

@@ -1743,40 +1743,60 @@
 			"revision": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
 		},
 		{
-			"checksumSHA1": "6Qd6S6TUUbcfiusfWXAOVbFek3w=",
-			"path": "github.com/intel-go/yanff/asm",
-			"revision": "35804adce65005f76409327527e4e256569cacc6",
-			"revisionTime": "2017-10-04T13:30:35Z"
+			"checksumSHA1": "89ShdcZXAx5oS1T0shR4pc2M1Cg=",
+			"path": "github.com/intel-go/nff-go",
+			"revision": "8ab691c21da9951b53208c4a2977c1447e9392fe",
+			"revisionTime": "2019-06-20T12:26:48Z",
+			"version": "v0.8.1",
+			"versionExact": "v0.8.1"
 		},
 		{
-			"checksumSHA1": "T49hsS7BTPkFBYOF4uYDAKSNaQY=",
-			"path": "github.com/intel-go/yanff/common",
-			"revision": "35804adce65005f76409327527e4e256569cacc6",
-			"revisionTime": "2017-10-04T13:30:35Z"
+			"checksumSHA1": "uc6ZKoToSiFtMG5U+WVgQDXXAHs=",
+			"path": "github.com/intel-go/nff-go/asm",
+			"revision": "8ab691c21da9951b53208c4a2977c1447e9392fe",
+			"revisionTime": "2019-06-20T12:26:48Z",
+			"version": "v0.8.1",
+			"versionExact": "v0.8.1"
 		},
 		{
-			"checksumSHA1": "oJSvu+jduVzxLEpg+p7RTFNwgYw=",
-			"path": "github.com/intel-go/yanff/flow",
-			"revision": "35804adce65005f76409327527e4e256569cacc6",
-			"revisionTime": "2017-10-04T13:30:35Z"
+			"checksumSHA1": "CVklP8SBI0T7AEayDeF7s6LGyKA=",
+			"path": "github.com/intel-go/nff-go/common",
+			"revision": "8ab691c21da9951b53208c4a2977c1447e9392fe",
+			"revisionTime": "2019-06-20T12:26:48Z",
+			"version": "v0.8.1",
+			"versionExact": "v0.8.1"
 		},
 		{
-			"checksumSHA1": "hJGVebdXaT5fyw5bYdYeV21lPQ8=",
-			"path": "github.com/intel-go/yanff/low",
-			"revision": "35804adce65005f76409327527e4e256569cacc6",
-			"revisionTime": "2017-10-04T13:30:35Z"
+			"checksumSHA1": "ln7thh8TtmKXoxbooNMmVbBa840=",
+			"path": "github.com/intel-go/nff-go/flow",
+			"revision": "8ab691c21da9951b53208c4a2977c1447e9392fe",
+			"revisionTime": "2019-06-20T12:26:48Z",
+			"version": "v0.8.1",
+			"versionExact": "v0.8.1"
 		},
 		{
-			"checksumSHA1": "eWaI75K1UJvLaIGBFCcC8sOBhhM=",
-			"path": "github.com/intel-go/yanff/packet",
-			"revision": "35804adce65005f76409327527e4e256569cacc6",
-			"revisionTime": "2017-10-04T13:30:35Z"
+			"checksumSHA1": "/5Zpf1UIB+pJ0lXncm7hsSge2j0=",
+			"path": "github.com/intel-go/nff-go/internal/low",
+			"revision": "8ab691c21da9951b53208c4a2977c1447e9392fe",
+			"revisionTime": "2019-06-20T12:26:48Z",
+			"version": "v0.8.1",
+			"versionExact": "v0.8.1"
 		},
 		{
-			"checksumSHA1": "ei5kZp1lR7hRZ+eWc2JJX0mZ1gs=",
-			"path": "github.com/intel-go/yanff/scheduler",
-			"revision": "35804adce65005f76409327527e4e256569cacc6",
-			"revisionTime": "2017-10-04T13:30:35Z"
+			"checksumSHA1": "KhHNBD2G4dbtgfGbfxnr15UcKv4=",
+			"path": "github.com/intel-go/nff-go/packet",
+			"revision": "8ab691c21da9951b53208c4a2977c1447e9392fe",
+			"revisionTime": "2019-06-20T12:26:48Z",
+			"version": "v0.8.1",
+			"versionExact": "v0.8.1"
+		},
+		{
+			"checksumSHA1": "l4c//DvmIiqQQuyUbmn5ea1AdRw=",
+			"path": "github.com/intel-go/nff-go/types",
+			"revision": "8ab691c21da9951b53208c4a2977c1447e9392fe",
+			"revisionTime": "2019-06-20T12:26:48Z",
+			"version": "v0.8.1",
+			"versionExact": "v0.8.1"
 		},
 		{
 			"checksumSHA1": "zo8bhzQSj7BMjJF6kPqxoGR9G8A=",
@@ -2523,43 +2543,36 @@
 		},
 		{
 			"checksumSHA1": "L3UuGixBnKOOhdNYJ/D58EpkHjM=",
-			"origin": "github.com/lebauce/goloxi",
 			"path": "github.com/skydive-project/goloxi",
 			"revision": "db2324197a3e1b3aff408c7a4a56197a0994d7af"
 		},
 		{
 			"checksumSHA1": "4K5wjdQ89racQur3Bi1Fn+qXkMU=",
-			"origin": "github.com/lebauce/goloxi/of10",
 			"path": "github.com/skydive-project/goloxi/of10",
 			"revision": "db2324197a3e1b3aff408c7a4a56197a0994d7af"
 		},
 		{
 			"checksumSHA1": "1lddWPmbRnVr30EaEP5tyDRLuAs=",
-			"origin": "github.com/lebauce/goloxi/of11",
 			"path": "github.com/skydive-project/goloxi/of11",
 			"revision": "db2324197a3e1b3aff408c7a4a56197a0994d7af"
 		},
 		{
 			"checksumSHA1": "ZAYEl4snpob3j68AZMpmPkg8b7U=",
-			"origin": "github.com/lebauce/goloxi/of12",
 			"path": "github.com/skydive-project/goloxi/of12",
 			"revision": "db2324197a3e1b3aff408c7a4a56197a0994d7af"
 		},
 		{
 			"checksumSHA1": "XCnHMXqaEIYEdQFeRQ6XLWHVoFE=",
-			"origin": "github.com/lebauce/goloxi/of13",
 			"path": "github.com/skydive-project/goloxi/of13",
 			"revision": "db2324197a3e1b3aff408c7a4a56197a0994d7af"
 		},
 		{
 			"checksumSHA1": "hWawkLGRh9aFjbHIJuecrpsaSEY=",
-			"origin": "github.com/lebauce/goloxi/of14",
 			"path": "github.com/skydive-project/goloxi/of14",
 			"revision": "db2324197a3e1b3aff408c7a4a56197a0994d7af"
 		},
 		{
 			"checksumSHA1": "eFxIu2vOPESEMAg2DJWbueuEmBc=",
-			"origin": "github.com/lebauce/goloxi/of15",
 			"path": "github.com/skydive-project/goloxi/of15",
 			"revision": "db2324197a3e1b3aff408c7a4a56197a0994d7af"
 		},
@@ -2610,16 +2623,22 @@
 			"revision": "c7e63cf4530bcd3ba943729cee0efeff2ebea63f"
 		},
 		{
-			"checksumSHA1": "a7Mfywx84Uljm/ZSNU30YdUa1Yk=",
+			"checksumSHA1": "bXSh9WLLl15DgtylJyNCChmeoZk=",
 			"origin": "github.com/lebauce/viper",
 			"path": "github.com/spf13/viper",
-			"revision": "54676d0dbb12f9b6febb2f8210e9590d81d4b5e3"
+			"revision": "3b7a98e30843a670e66c5b941d2f1b0f06c4d10a"
 		},
 		{
 			"checksumSHA1": "BR/kPm9HQod+IBsWoYB8BCRBg3s=",
 			"origin": "github.com/lebauce/viper/remote",
 			"path": "github.com/spf13/viper/remote",
-			"revision": "54676d0dbb12f9b6febb2f8210e9590d81d4b5e3"
+			"revision": "3b7a98e30843a670e66c5b941d2f1b0f06c4d10a"
+		},
+		{
+			"checksumSHA1": "XaFlfXk4sA7VsnTu8GYxGXX8FjU=",
+			"path": "github.com/subosito/gotenv",
+			"revision": "422ef8095f112cfaf9f40c368e0b9ae8c0714cfb",
+			"revisionTime": "2019-08-13T02:47:33Z"
 		},
 		{
 			"checksumSHA1": "ANGOe9JH8sHzYNOQgEFCXuAhiuM=",

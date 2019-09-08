@@ -12,3 +12,5 @@
 - include_tasks: tests.yml
 
 - include_tasks: ci.yml
+
+- include_tasks: dpdk.yml
