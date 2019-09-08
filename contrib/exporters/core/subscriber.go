@@ -19,6 +19,7 @@ package core
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -29,6 +30,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/websocket"
 )
 
@@ -55,7 +57,12 @@ func NewSubscriber(pipeline *Pipeline, cfg *viper.Viper) (*websocket.StructSpeak
 		namespace = namespace + "/" + captureID
 	}
 
-	wsClient, err := config.NewWSClient(common.AnalyzerService, subscriberURL, websocket.ClientOpts{AuthOpts: CfgAuthOpts(cfg)})
+	logging.GetLogger().Infof("Subscribing to %s with namespace '%s'", subscriberURL, namespace)
+	clientOpts := websocket.ClientOpts{
+		AuthOpts: CfgAuthOpts(cfg),
+		Headers:  http.Header{"X-Websocket-Namespace": []string{namespace}},
+	}
+	wsClient, err := config.NewWSClient(common.AnalyzerService, subscriberURL, clientOpts)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create websocket client: %s", err)
 	}
