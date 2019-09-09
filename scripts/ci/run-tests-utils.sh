@@ -31,7 +31,6 @@ tests_run() {
         export ORIENTDB_ROOT_PASSWORD=root
 
         if [ "$COVERAGE" != "true" -a "$(uname -m)" != "ppc64le" ]; then
-                GOFLAGS="-race"
                 export TEST_COVERPROFILE=../functionals-$BACKEND.cover
         fi
 

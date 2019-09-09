@@ -458,14 +458,14 @@ test.functionals.clean:
 
 .PHONY: test.functionals.compile
 test.functionals.compile: genlocalfiles
-	$(GO) test -tags "${BUILD_TAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
+	$(GO) test -tags "${BUILD_TAGS} test" -race ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
 
 .PHONY: test.functionals.static
 test.functionals.static: genlocalfiles
 	$(GO) test -tags "netgo ${STATIC_BUILD_TAGS} test" \
 		-ldflags "${LDFLAGS} -X $(SKYDIVE_GITHUB_VERSION) -extldflags \"-static $(STATIC_LIBS_ABS)\"" \
 		-installsuffix netgo \
-		${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} \
+		-race ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} \
 		-c -o tests/functionals ./tests/
 
 ifeq (${DEBUG}, true)
@@ -513,10 +513,10 @@ ifeq ($(COVERAGE), true)
 else
 ifneq ($(TEST_PATTERN),)
 	set -v ; \
-	$(GO) test -tags "${BUILD_TAGS} test" -ldflags="${LDFLAGS}" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -test.run ${TEST_PATTERN} ${UT_PACKAGES}
+	$(GO) test -tags "${BUILD_TAGS} test" -ldflags="${LDFLAGS}" -race ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -test.run ${TEST_PATTERN} ${UT_PACKAGES}
 else
 	set -v ; \
-	$(GO) test -tags "${BUILD_TAGS} test" -ldflags="${LDFLAGS}" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
+	$(GO) test -tags "${BUILD_TAGS} test" -ldflags="${LDFLAGS}" -race ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
 endif
 endif
 
