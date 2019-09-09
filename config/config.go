@@ -123,6 +123,8 @@ func init() {
 	cfg.SetDefault("agent.topology.runc.run_path", []string{"/run/containerd/runc", "/run/runc", "/run/runc-ctrs"})
 	cfg.SetDefault("agent.topology.socketinfo.host_update", 10)
 	cfg.SetDefault("agent.topology.vpp.connect", "")
+	cfg.SetDefault("agent.topology.bess.host", "127.0.0.1")
+	cfg.SetDefault("agent.topology.bess.port", 10514)
 
 	cfg.SetDefault("analyzer.auth.cluster.backend", "noauth")
 	cfg.SetDefault("analyzer.auth.api.backend", "noauth")

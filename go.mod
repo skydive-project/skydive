@@ -1,6 +1,7 @@
 module github.com/skydive-project/skydive
 
 require (
+        github.com/nimbess/nimbess-agent v0.0.0-20190919205041-4e6f317ac4fd
 	git.fd.io/govpp.git v0.0.0-20190321220742-345201eedce4
 	github.com/GehirnInc/crypt v0.0.0-20170404120257-5a3fafaa7c86
 	github.com/IBM/ibm-cos-sdk-go v0.0.0-20190328184230-08c1143e8d36
