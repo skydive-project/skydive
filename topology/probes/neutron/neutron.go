@@ -257,8 +257,11 @@ func (p *Probe) updateNode(node *graph.Node, attrs *Metadata) {
 			tr.AddMetadata("PeerIntfMAC", attachedMac)
 		}
 	}
-	tr.Commit()
-
+	err := tr.Commit()
+	if err != nil {
+		p.Ctx.Logger.Error("Commit failed %+v : %v", tr, err)
+		return
+	}
 	if !strings.HasPrefix(name, "qvo") {
 		return
 	}
@@ -300,7 +303,11 @@ func (p *Probe) updateNode(node *graph.Node, attrs *Metadata) {
 					if i == len(path)-1 {
 						tr.AddMetadata("PeerIntfMAC", attachedMac)
 					}
-					tr.Commit()
+					err := tr.Commit()
+					if err != nil {
+						p.Ctx.Logger.Error("Commit failed %+v : %v", tr, err)
+						continue
+					}
 				}
 
 				return nil
@@ -363,7 +370,11 @@ func (p *Probe) OnNodeAdded(n *graph.Node) {
 			if uuid, _ := qvoNode.GetFieldString("ExtID.vm-uuid"); uuid != "" {
 				tr.AddMetadata("ExtID.vm-uuid", uuid)
 			}
-			tr.Commit()
+			err := tr.Commit()
+			if err != nil {
+				p.Ctx.Logger.Error("Commit failed %+v : %v", tr, err)
+				return
+			}
 		}
 	}
 
