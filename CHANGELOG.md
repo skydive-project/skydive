@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.25.0] - 2019-09-10
+### Added
+
+- API Swagger definitions (http://skydive.network/swagger/)
+- AWS flow logs exporter
+- Namespace support to flow subscribing mechanism
+- Support for subscribing flows by capture ID
+
+### Changed
+- eBPF probe performance improvements
+- Restore nightly builds
+- Support for neighbors update detection
+
 ## [0.24.0] - 2019-06-24
 ### Added
 
