@@ -132,11 +132,16 @@ func (p *PcapSocketProbeHandler) UnregisterProbe(n *graph.Node, e ProbeEventHand
 	p.Ctx.FTA.Release(probe.flowTable)
 
 	probe.state.Store(common.StoppingState)
-	probe.listener.Close()
+	err := probe.listener.Close()
+	if err != nil {
+		return err
+	}
+	err = p.portAllocator.Release(probe.port)
+	if err != nil {
+		return err
+	}
 
-	p.portAllocator.Release(probe.port)
-
-	return nil
+	return err
 }
 
 // Start the probe
