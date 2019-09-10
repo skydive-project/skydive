@@ -439,7 +439,7 @@ contrib.collectd: genlocalfiles
 	$(MAKE) -C contrib/collectd
 
 .PHONY: ebpf.build
-ebpf.build:
+ebpf.build: vendor # vendor is required because the eBPF Makefile uses the 'vendor' directory
 ifeq ($(WITH_EBPF), true)
 ifeq ($(WITH_EBPF_DOCKER_BUILDER), true)
 	$(MAKE) -C probe/ebpf docker-ebpf-build
@@ -607,16 +607,18 @@ $(call TAR_CMD,--append,$(SKYDIVE_TAR_INPUT))
 find -type f -name *_gendecoder.go -printf '%P\n' -exec tar --append -f $(SKYDIVE_TAR) --transform="s||$(SKYDIVE_PATH)|" {} \;
 endef
 
-.PHONY: localdist
-localdist: genlocalfiles
+.PHONY: vendor
+vendor:
 	go mod vendor
+
+.PHONY: localdist
+localdist: genlocalfiles vendor
 	git ls-files | $(call TAR_CMD,--create,--files-from -)
 	$(call TAR_APPEND,)
 	gzip -f $(SKYDIVE_TAR)
 
 .PHONY: dist
-dist: genlocalfiles
-	go mod vendor
+dist: genlocalfiles vendor
 	git archive -o $(SKYDIVE_TAR) --prefix $(SKYDIVE_PATH) HEAD
 	$(call TAR_APPEND,)
 	gzip -f $(SKYDIVE_TAR)

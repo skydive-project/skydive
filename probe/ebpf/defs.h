@@ -4,8 +4,8 @@
 #define _GNU_SOURCE
 
 // from iovisor/gobpf
-#include "include/bpf.h"
-#include "include/bpf_map.h"
+#include "bpf.h"
+#include "bpf_map.h"
 
 #ifndef __inline
 #define __inline inline __attribute__((always_inline))
