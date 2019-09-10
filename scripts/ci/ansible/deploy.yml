@@ -119,6 +119,7 @@
   tags:
     - master
     - slave
+    - jenkins
   tasks:
   - name: Workaround, Pause 2 minutes waiting for jenkins_master to settle
     pause:
@@ -167,6 +168,7 @@
   tags:
     - master
     - slave
+    - jenkins
   tasks:
   - uri:
       url: http://localhost:8080/scriptText
@@ -196,6 +198,7 @@
   tags:
     - master
     - slave
+    - jenkins
   become: yes
   tasks:
   - group:
@@ -227,6 +230,7 @@
   tags:
     - master
     - slave
+    - jenkins
   become: yes
   tasks:
   - get_url:
