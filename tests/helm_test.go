@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	chartPath = "../contrib/charts"
+	chartPath = "../contrib/helm"
 	relName   = "skydive"
 )
 
