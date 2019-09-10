@@ -24,7 +24,7 @@ import (
 )
 
 func main() {
-	core.Main("/etc/skydive/uber.yml")
+	core.Main("/etc/skydive/allinone.yml")
 }
 
 func init() {
