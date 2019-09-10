@@ -113,6 +113,7 @@ docker_cross_build() {
 }
 
 docker_build() {
+    GO111MODULE=on go mod download
     for arch in $ARCHES
     do
         case $arch in
