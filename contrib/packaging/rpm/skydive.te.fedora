@@ -1,4 +1,4 @@
-policy_module(skydive, 0.24.0)
+policy_module(skydive, 0.25.0)
 
 ########################################
 #
