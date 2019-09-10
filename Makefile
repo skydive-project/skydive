@@ -22,7 +22,7 @@ endef
 define PROTOC_GEN
 go get -u ${PROTOC_GEN_GOFAST_GITHUB}
 go get -u ${PROTOC_GEN_GO_GITHUB}
-protoc -I. -Iflow/layers -I$${GOPATH}/pkg/mod/github.com/gogo/protobuf@v1.3.0 --plugin=$${GOPATH}/bin/protoc-gen-gogofaster --gogofaster_out $$GOPATH/src $1
+protoc -I. -Iflow/layers -Ivendor/github.com/gogo/protobuf --plugin=$${GOPATH}/bin/protoc-gen-gogofaster --gogofaster_out $$GOPATH/src $1
 endef
 
 VERSION?=$(shell $(VERSION_CMD))
@@ -35,38 +35,6 @@ SKYDIVE_GITHUB_VERSION:=$(SKYDIVE_GITHUB)/version.Version=${VERSION}
 GO_BINDATA_GITHUB:=github.com/jteeuwen/go-bindata/go-bindata
 PROTOC_GEN_GO_GITHUB:=github.com/golang/protobuf/protoc-gen-go
 PROTOC_GEN_GOFAST_GITHUB:=github.com/gogo/protobuf/protoc-gen-gogofaster
-PROTEUS_GITHUB:=gopkg.in/src-d/proteus.v1/cli/proteus
-EASYJSON_GITHUB:=github.com/mailru/easyjson/easyjson
-EASYJSON_FILES_ALL=\
-        flow/flow.pb.go
-EASYJSON_FILES_TAG=\
-	api/types/types.go \
-	flow/ondemand/ondemand.go \
-	flow/probes/probes.go \
-	flow/storage/elasticsearch/elasticsearch.go \
-	flow/storage/orientdb/orientdb.go \
-	graffiti/graph/elasticsearch.go \
-	ondemand/ondemand.go \
-	packetinjector/injector.go \
-	sflow/sflow.go \
-	topology/metrics.go \
-	topology/neighbors.go \
-	topology/nexthop.go \
-	topology/routes.go \
-	topology/probes/docker/metadata.go \
-	topology/probes/libvirt/metadata.go \
-	topology/probes/lldp/metadata.go \
-	topology/probes/lxd/metadata.go \
-	topology/probes/netlink/metadata.go \
-	topology/probes/neutron/neutron.go \
-	topology/probes/nsm/nsm.go \
-	topology/probes/opencontrail/metadata.go \
-	topology/probes/ovn/ovn.go \
-	topology/probes/ovsdb/ovsdb.go \
-	topology/probes/runc/metadata.go \
-	topology/probes/socketinfo/connection.go
-EASYJSON_FILES_TAG_OPENCONTRAIL=\
-	topology/probes/opencontrail/routing_table.go
 VPPBINAPI_GITHUB:=git.fd.io/govpp.git/cmd/binapi-generator
 VERBOSE_FLAGS?=-v
 VERBOSE_TESTS_FLAGS?=-test.v
@@ -200,9 +168,9 @@ ifeq ($(WITH_VPP), true)
 endif
 
 ifeq (${DEBUG}, true)
-GOFLAGS=-gcflags='-N -l'
-GO_BINDATA_FLAGS+=-debug
-export DEBUG
+  GOFLAGS=-gcflags='-N -l'
+  GO_BINDATA_FLAGS+=-debug
+  export DEBUG
 endif
 
 comma:= ,
@@ -242,6 +210,13 @@ run.agent:
 run.analyzer:
 	$(call skydive_run,analyzer)
 
+GEN_PROTO_FILES = $(patsubst %.proto,%.pb.go,$(shell find . -name *.proto | grep -v ^./vendor))
+GEN_EASYJSON_FILES = $(patsubst %.go,%_easyjson.go,$(shell git grep //go:generate | grep "easyjson" | grep -v Makefile | cut -d ":" -f 1))
+GEN_DECODER_FILES = $(patsubst %.go,%_gendecoder.go,$(shell git grep //go:generate | grep "gendecoder" | grep -v Makefile | cut -d ":" -f 1))
+# to remove when generated files will be added to git
+GEN_DECODER_FILES += flow/flow.pb_gendecoder.go
+GEN_EASYJSON_FILES += flow/flow.pb_easyjson.go
+
 %.pb.go: %.proto
 	$(call PROTOC_GEN,$<)
 
@@ -269,7 +244,13 @@ flow/flow.pb.go: flow/flow.proto filters/filters.proto
 	sed -e 's/type ICMPLayer struct {/\/\/ gendecoder\ntype ICMPLayer struct {/' -i $@
 	sed -e 's/type IPMetric struct {/\/\/ gendecoder\ntype IPMetric struct {/' -i $@
 	sed -e 's/type TCPMetric struct {/\/\/ gendecoder\ntype TCPMetric struct {/' -i $@
+	# This is to allow calling go generate on flow/flow.pb.go
+	sed -e 's/DO NOT EDIT./DO NOT MODIFY/' -i $@
+	sed '1 i //go:generate go run github.com/skydive-project/skydive/scripts/gendecoder' -i $@
 	gofmt -s -w $@
+
+flow/flow.pb_easyjson.go: flow/flow.pb.go
+	go run github.com/safchain/easyjson/easyjson -all $<
 
 websocket/structmessage.pb.go: websocket/structmessage.proto
 	$(call PROTOC_GEN,$<)
@@ -277,26 +258,32 @@ websocket/structmessage.pb.go: websocket/structmessage.proto
 	sed -e 's/type StructMessage struct {/type StructMessage struct { XXX_state structMessageState `json:"-"`/' -i websocket/structmessage.pb.go
 	gofmt -s -w $@
 
-.proto: flow/layers/dns.pb.go flow/layers/vrrpv2.pb.go flow/layers/dhcpv4.pb.go flow/flow.pb.go filters/filters.pb.go websocket/structmessage.pb.go
+.proto: vendor $(GEN_PROTO_FILES)
 
 .PHONY: .proto.clean
 .proto.clean:
 	find . \( -name *.pb.go ! -path './vendor/*' \) -exec rm {} \;
 	rm -rf flow/layers/generated.proto
 
-GEN_EASYJSON_FILES_ALL := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_ALL))
-GEN_EASYJSON_FILES_TAG := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_TAG))
-GEN_EASYJSON_FILES_TAG_OPENCONTRAIL := $(patsubst %.go,%_easyjson.go,$(EASYJSON_FILES_TAG_OPENCONTRAIL))
-
 %_easyjson.go: %.go
-	go generate $<
+	go generate -run easyjson $<
 
 .PHONY: .easyjson
-.easyjson: flow/flow.pb_easyjson.go $(GEN_EASYJSON_FILES_TAG) $(GEN_EASYJSON_FILES_TAG_OPENCONTRAIL)
+.easyjson: flow/flow.pb_easyjson.go $(GEN_EASYJSON_FILES)
 
 .PHONY: .easyjson.clean
 .easyjson.clean:
 	find . \( -name *_easyjson.go ! -path './vendor/*' \) -exec rm {} \;
+
+%_gendecoder.go: %.go
+	go generate -run gendecoder $<
+
+.PHONY: .gendecoder
+.gendecoder: $(GEN_DECODER_FILES)
+
+.PHONY: .vppbinapi
+.vppbinapi:
+	go generate -tags "${BUILD_TAGS}" ${SKYDIVE_GITHUB}/topology/probes/vpp
 
 .PHONY: .vppbinapi.clean
 .vppbinapi.clean:
@@ -333,11 +320,6 @@ npm.install:
 statics/bindata.go: .typescript ebpf.build $(shell find statics -type f \( ! -iname "bindata.go" \))
 	go run ${GO_BINDATA_GITHUB} ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go $(BINDATA_DIRS)
 	gofmt -w -s statics/bindata.go
-
-.PHONY: .go-generate
-.go-generate: .bindata
-	$(GO) generate -run "gendecoder" -tags="${BUILD_TAGS}" ${VERBOSE_FLAGS} ${SKYDIVE_GITHUB}/...
-	$(GO) generate -tags="${BUILD_TAGS}" ${VERBOSE_FLAGS} ${SKYDIVE_GITHUB}/...
 
 .PHONY: .go-generate.clean
 .go-generate.clean:
@@ -561,11 +543,11 @@ lint:
 	make golangci-lint GOMETALINTER_FLAGS="--disable-all --enable=golint"
 
 .PHONY: genlocalfiles
-genlocalfiles: .proto .bindata .go-generate .easyjson
+genlocalfiles: .proto .bindata .gendecoder .easyjson .vppbinapi
 
 .PHONY: clean
 clean: skydive.clean test.functionals.clean contribs.clean ebpf.clean .easyjson.clean .proto.clean .go-generate.clean .typescript.clean .vppbinapi.clean
-	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
+	go clean -i >/dev/null 2>&1 || true
 
 .PHONY: srpm
 srpm:
@@ -580,21 +562,12 @@ docker-image: static
 	cp $$GOPATH/bin/skydive contrib/docker/skydive.$$(uname -m)
 	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} --build-arg ARCH=$$(uname -m) -f contrib/docker/Dockerfile contrib/docker/
 
-SKYDIVE_PROTO_FILES:= \
-	flow/flow.proto \
-	filters/filters.proto \
-	websocket/structmessage.proto \
-	flow/layers/dns.proto\
-	flow/layers/vrrpv2.proto\
-	flow/layers/dhcpv4.proto
-
 SKYDIVE_TAR_INPUT:= \
 	vendor \
 	statics/bindata.go \
-	$(patsubst %.proto,%.pb.go,$(SKYDIVE_PROTO_FILES)) \
-	$(GEN_EASYJSON_FILES_ALL) \
-	$(GEN_EASYJSON_FILES_TAG) \
-	$(GEN_EASYJSON_FILES_TAG_OPENCONTRAIL)
+	$(GEN_PROTO_FILES) \
+	$(GEN_DECODER_FILES) \
+	$(GEN_EASYJSON_FILES)
 
 SKYDIVE_TAR:=${DESTDIR}/$(SKYDIVE_PKG).tar
 
@@ -604,12 +577,13 @@ endef
 
 define TAR_APPEND
 $(call TAR_CMD,--append,$(SKYDIVE_TAR_INPUT))
-find -type f -name *_gendecoder.go -printf '%P\n' -exec tar --append -f $(SKYDIVE_TAR) --transform="s||$(SKYDIVE_PATH)|" {} \;
 endef
 
 .PHONY: vendor
 vendor:
+ifeq (${GO111MODULE}, on)
 	go mod vendor
+endif
 
 .PHONY: localdist
 localdist: genlocalfiles vendor

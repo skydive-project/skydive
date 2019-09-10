@@ -305,6 +305,10 @@ func main() {
 		panic(err)
 	}
 
+	if output == "" {
+		output = strings.TrimSuffix(filename, ".go") + "_gendecoder.go"
+	}
+
 	outputInfo, err := os.Stat(output)
 	if err == nil {
 		if inputInfo.ModTime().Before(outputInfo.ModTime()) {
@@ -660,6 +664,6 @@ func init() {
 	flag.BoolVar(&verbose, "verbose", false, "Be verbose")
 	flag.StringVar(&filename, "filename", os.Getenv("GOFILE"), "Go file to generate decoders from")
 	flag.StringVar(&pkgname, "package", skydivePkg+"/"+os.Getenv("GOPACKAGE"), "Go package name")
-	flag.StringVar(&output, "output", "metadata_gendecoder.go", "Go generated file")
+	flag.StringVar(&output, "output", "", "Go generated file")
 	flag.Parse()
 }
