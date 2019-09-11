@@ -109,7 +109,7 @@ docker_cross_build() {
     local arch=$1
 
     docker_skydive_builder $arch Dockerfile.crosscompile
-    docker_skydive_target $arch Dockerfile.static
+    docker_skydive_target $arch Dockerfile
 }
 
 docker_build() {
@@ -209,6 +209,8 @@ docker_manifest() {
 docker_build_ebpf() {
     make ebpf.build WITH_EBPF=true WITH_EBPF_DOCKER_BUILDER=true
 }
+
+make genlocalfiles vendor
 
 [ -n "$SKIP_BUILD" ] && echo "Skipping build." || (docker_build_ebpf && docker_build)
 

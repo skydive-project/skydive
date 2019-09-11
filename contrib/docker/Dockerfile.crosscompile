@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:19.04
 
 ARG TARGET_ARCH=s390x
 ARG TARGET_GOARCH=$TARGET_ARCH
@@ -16,25 +16,16 @@ RUN apt-get -y update \
     && echo "deb [arch=$DEBARCH] http://ports.ubuntu.com/ubuntu-ports bionic main universe" >> /etc/apt/sources.list \
     && echo "deb [arch=$DEBARCH] http://ports.ubuntu.com/ubuntu-ports bionic-updates main universe" >> /etc/apt/sources.list \
     && apt-get -y update; \
-    apt-get -y install git make flex bison wget unzip golang npm \
+    apt-get -y install git make flex bison wget unzip golang-1.11 npm \
                    zlib1g-dev:$DEBARCH \
                    liblzma-dev:$DEBARCH \
                    libc++-dev:$DEBARCH \
                    libc-dev:$DEBARCH \
                    libpcap0.8-dev:$DEBARCH \
                    linux-libc-dev:$DEBARCH \
+                   protobuf-compiler:$DEBARCH \
                    gcc-${TARGET_ARCH}-linux-gnu \
     && rm -rf /var/lib/apt/lists/*
-
-RUN PROTOC_VER=3.7.1; \
-    ARCH=$(uname -m); \
-    if [ $ARCH != x86_64 ]; then ARCH=${ARCH%%64*}${ARCH##*64}_64 ; fi ; \
-    FILE=protoc-${PROTOC_VER}-linux-${ARCH}.zip; \
-    wget --no-verbose https://github.com/google/protobuf/releases/download/v${PROTOC_VER}/${FILE} \
-    && unzip ${FILE} \
-    && mv bin/protoc /usr/bin/ \
-    && mv include/google /usr/include \
-    && rm "${FILE}"
 
 RUN mkdir -p /root/go/bin && chmod a+wrx /root/go/bin
 
@@ -53,10 +44,11 @@ ENV TARGET_GOARCH=$TARGET_GOARCH
 CMD chown -R $UID /root/go/pkg/mod \
     && /gosu $UID env \
     HOME=/root \
+    GOROOT=/usr/lib/go-1.11 \
     GOPATH=/root/go \
-    PATH=/root/go/bin:$PATH \
+    PATH=/usr/lib/go-1.11/bin:/root/go/bin:$PATH \
     CGO_ENABLED=1 \
     CC=${TARGET_ARCH}-linux-gnu-gcc \
     GOOS=linux \
     GOARCH=$TARGET_GOARCH \
-    make compile.static WITH_OPENCONTRAIL=false WITH_LIBVIRT=false WITH_EBPF=true WITH_EBPF_DOCKER_BUILDER=false
+    make compile WITH_OPENCONTRAIL=false WITH_LIBVIRT_GO=false WITH_EBPF=true WITH_EBPF_DOCKER_BUILDER=false
