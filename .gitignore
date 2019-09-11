@@ -5,11 +5,7 @@ vendor/gopkg.in/
 vendor/go.uber.org/
 vendor/k8s.io/
 contrib/packaging/rpm/*.tar.gz
-flow/*.pb.go
 statics/bindata.go
-filters/filters.pb.go
-http/wsstructmessage.pb.go
-*_easyjson.go
 contrib/vagrant/.vagrant/
 contrib/dev/.vagrant/
 contrib/snort/snortSkydive
