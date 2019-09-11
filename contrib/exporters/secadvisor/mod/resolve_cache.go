@@ -49,7 +49,8 @@ func NewResolveCache(resolver Resolver) Resolver {
 
 // IPToName resolve ip address to name
 func (rc *resolveCache) IPToName(ipString, nodeTID string) (string, error) {
-	name, ok := rc.nameCache.Get(ipString)
+	cacheKey := ipString + "," + nodeTID
+	name, ok := rc.nameCache.Get(cacheKey)
 
 	if !ok {
 		var err error
@@ -61,7 +62,7 @@ func (rc *resolveCache) IPToName(ipString, nodeTID string) (string, error) {
 			return "", err
 		}
 
-		rc.nameCache.Set(ipString, name, cache.DefaultExpiration)
+		rc.nameCache.Set(cacheKey, name, cache.DefaultExpiration)
 	}
 
 	return name.(string), nil
