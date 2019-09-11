@@ -6,3 +6,6 @@ statics/js/dev/*.js linguist-vendored=true
 statics/bindata.go binary
 topology/probes/vpp/bin_api/interfaces/* binary
 topology/probes/vpp/bin_api/vpe/* binary
+statics/js/bundle.js binary
+js/browser.js binary
+js/api.js binary

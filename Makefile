@@ -302,17 +302,13 @@ BINDATA_DIRS := \
 	statics/workflows/*.yaml \
 	${EXTRABINDATA}
 
-.PHONY: npm.install
-npm.install:
-	cd js && npm install
-
 .PHONY: .typescript
-.typescript: npm.install
-	cd js && PATH=`npm bin`:$$PATH make all
+.typescript:
+	make -C js
 
 .PHONY: .typescript.clean
-.typescript.clean: npm.install
-	cd js && PATH=`npm bin`:$$PATH make clean
+.typescript.clean:
+	make -C js clean
 
 .PHONY: .bindata
 .bindata: statics/bindata.go

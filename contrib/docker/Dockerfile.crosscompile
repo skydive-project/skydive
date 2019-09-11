@@ -13,8 +13,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get -y update \
     && apt-get -y install software-properties-common \
     && dpkg --add-architecture $DEBARCH \
-    && echo "deb [arch=$DEBARCH] http://ports.ubuntu.com/ubuntu-ports bionic main universe" >> /etc/apt/sources.list \
-    && echo "deb [arch=$DEBARCH] http://ports.ubuntu.com/ubuntu-ports bionic-updates main universe" >> /etc/apt/sources.list \
+    && echo "deb [arch=$DEBARCH] http://ports.ubuntu.com/ubuntu-ports disco main universe" >> /etc/apt/sources.list \
+    && echo "deb [arch=$DEBARCH] http://ports.ubuntu.com/ubuntu-ports disco-updates main universe" >> /etc/apt/sources.list \
     && apt-get -y update; \
     apt-get -y install git make flex bison wget unzip golang-1.11 npm \
                    zlib1g-dev:$DEBARCH \

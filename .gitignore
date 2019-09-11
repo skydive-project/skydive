@@ -12,8 +12,5 @@ contrib/snort/snortSkydive
 contrib/docker/skydive.*
 skydive.yml
 probe/ebpf/flow.o
-js/api.js
-js/browser.js
 js/node_modules/
-statics/js/bundle.js
 .idea
