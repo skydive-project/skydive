@@ -40,6 +40,10 @@ cd #{SKYDIVE_GUEST}
 git clone https://#{SKYDIVE_GITHUB} .
 SCRIPT
 
+$package_update_script = <<SCRIPT
+sudo dnf -y update
+SCRIPT
+
 $guest_additions_script = <<SCRIPT
 sudo dnf -y install https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
 sudo dnf -y install kernel kernel-devel VirtualBox-guest-additions akmods
@@ -184,6 +188,7 @@ Vagrant.configure(2) do |config|
 
       if PREPARE_BOX then
         fedora_box(override, "virtualbox")
+        override.vm.provision "package-update", type: "shell", inline: $package_update_script
         override.vm.provision "guest-additions", type: "shell", inline: $guest_additions_script
 
         require 'vagrant-reload'
@@ -200,6 +205,10 @@ Vagrant.configure(2) do |config|
       if PREPARE_BOX then
         fedora_box(override, "libvirt")
         override.vm.provision "vagrant-insecure-key", type: "shell", privileged: false, inline: $vagrant_insecure_key_script
+        override.vm.provision "package-update", type: "shell", inline: $package_update_script
+
+        require 'vagrant-reload'
+        override.vm.provision :reload
       end
     end
   end
