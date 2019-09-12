@@ -15,17 +15,33 @@
  *
  */
 
-package main
+package mod
 
 import (
+	"github.com/spf13/viper"
+
 	"github.com/skydive-project/skydive/contrib/exporters/core"
-	secadvisor "github.com/skydive-project/skydive/contrib/exporters/secadvisor/mod"
 )
 
-func main() {
-	core.Main("/etc/skydive/vpclogs.yml")
+type encode struct {
+	*core.EncodeJSON
 }
 
-func init() {
-	core.TransformerHandlers.Register("vpclogs", secadvisor.NewTransform, false)
+type topLevelObject struct {
+	Data []interface{} `json:"data"`
+}
+
+// Encode the incoming flows array as a JSON object with key "data" whose value
+// holds the array
+func (e *encode) Encode(in interface{}) ([]byte, error) {
+	return e.EncodeJSON.Encode(topLevelObject{Data: in.([]interface{})})
+}
+
+// NewEncode creates an encode object for Secadvisor format
+func NewEncode(cfg *viper.Viper) (interface{}, error) {
+	jsonEncoder, err := core.NewEncodeJSON(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return &encode{jsonEncoder.(*core.EncodeJSON)}, nil
 }

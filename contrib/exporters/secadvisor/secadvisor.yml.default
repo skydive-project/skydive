@@ -25,13 +25,13 @@ pipeline:
     # exclude the following classified tags 
     excluded_tags:
       - other
-  # transform to sa record structure
+  # transform to secadvisor record structure
   transform:
-    type: sa
-    sa:
+    type: secadvisor
+    secadvisor:
       exclude_started_flows: true
   encode:
-    type: json
+    type: secadvisor
     json:
       pretty: true
   compress:
