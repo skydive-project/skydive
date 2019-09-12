@@ -22,8 +22,16 @@ import (
 
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/contrib/exporters/core"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	g "github.com/skydive-project/skydive/gremlin"
 )
+
+// GremlinNodeGetter interface allows access to get topology nodes according to
+// a gremlin query.
+type GremlinNodeGetter interface {
+	GetNodes(query interface{}) ([]*graph.Node, error)
+	GetNode(query interface{}) (*graph.Node, error)
+}
 
 // NewResolveRunc creates a new name resolver
 func NewResolveRunc(cfg *viper.Viper) Resolver {
@@ -34,7 +42,7 @@ func NewResolveRunc(cfg *viper.Viper) Resolver {
 }
 
 type resolveRunc struct {
-	gremlinClient *client.GremlinQueryHelper
+	gremlinClient GremlinNodeGetter
 }
 
 // IPToName resolve ip to name
