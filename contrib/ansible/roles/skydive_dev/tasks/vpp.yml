@@ -22,7 +22,6 @@
     state: present
   with_items:
      - vpp
-     - vpp-plugins
      - vpp-devel
      - vpp-api-python
 
