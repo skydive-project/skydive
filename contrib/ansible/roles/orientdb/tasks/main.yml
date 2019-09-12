@@ -37,6 +37,7 @@
 
 - name: Copy systemd unit file
   copy:
+    remote_src: yes
     src: "{{ orientdb_path }}/bin/orientdb.service"
     dest: /etc/systemd/system
 
