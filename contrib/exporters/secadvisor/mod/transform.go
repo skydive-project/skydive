@@ -39,10 +39,13 @@ func NewTransform(cfg *viper.Viper) (interface{}, error) {
 	resolver = NewResolveFallback(resolver)
 	resolver = NewResolveCache(resolver)
 
+	newExtend := NewExtendGremlin(cfg)
+
 	return &securityAdvisorFlowTransformer{
 		resolver:             resolver,
 		flowUpdateCountCache: cache.New(10*time.Minute, 10*time.Minute),
 		excludeStartedFlows:  excludeStartedFlows,
+		extendGremlin:        newExtend,
 	}, nil
 }
 
@@ -75,6 +78,7 @@ type SecurityAdvisorFlow struct {
 	UpdateCount      int64                     `json:"UpdateCount"`
 	NodeType         string                    `json:"NodeType,omitempty"`
 	LogStatus        string                    `json:"LogStatus,omitempty"`
+	Extend           map[string]interface{}    `json:"Extend,omitempty"`
 }
 
 // SecurityAdvisorFlowTransformer is a custom transformer for flows
@@ -82,6 +86,7 @@ type securityAdvisorFlowTransformer struct {
 	resolver             Resolver
 	flowUpdateCountCache *cache.Cache
 	excludeStartedFlows  bool
+	extendGremlin        *extendGremlin
 }
 
 func (ft *securityAdvisorFlowTransformer) setUpdateCount(f *flow.Flow) int64 {
@@ -177,7 +182,9 @@ func (ft *securityAdvisorFlowTransformer) Transform(f *flow.Flow) interface{} {
 
 	nodeType, _ := ft.resolver.TIDToType(f.NodeTID)
 
-	return &SecurityAdvisorFlow{
+	extendMap := make(map[string]interface{})
+
+	t := &SecurityAdvisorFlow{
 		UUID:             f.UUID,
 		LinkID:           ft.getLinkID(f),
 		L3TrackingID:     f.L3TrackingID,
@@ -193,5 +200,8 @@ func (ft *securityAdvisorFlowTransformer) Transform(f *flow.Flow) interface{} {
 		Last:             f.Last,
 		UpdateCount:      updateCount,
 		NodeType:         nodeType,
+		Extend:           extendMap,
 	}
+	ft.extendGremlin.Extend(t)
+	return t
 }

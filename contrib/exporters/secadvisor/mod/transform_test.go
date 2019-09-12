@@ -19,6 +19,7 @@ package mod
 
 import (
 	"fmt"
+	"io/ioutil"
 	"runtime"
 	"testing"
 	"time"
@@ -26,9 +27,37 @@ import (
 	cache "github.com/pmylund/go-cache"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/contrib/exporters/core"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 )
+
+const testConfig = `---
+pipeline:
+  transform:
+    type: sa
+    extend:
+      - CA_Name=G.V().Has('RoutingTables.Src','{{.Network.A}}').Values('Host')
+      - CB_Name=G.V().Has('RoutingTables.Src','{{.Network.B}}').Values('Host')
+`
+
+func initConfig(conf string) error {
+	f, _ := ioutil.TempFile("", "extend_gremlin_test")
+	b := []byte(conf)
+	f.Write(b)
+	f.Close()
+	err := config.InitConfig("file", []string{f.Name()})
+	return err
+}
+
+func (e *extendGremlin) populateExtendGremlin(f *flow.Flow, transformer *securityAdvisorFlowTransformer) {
+	substExprA := "G.V().Has('RoutingTables.Src','" + f.Network.A + "').Values('Host')"
+	substExprB := "G.V().Has('RoutingTables.Src','" + f.Network.B + "').Values('Host')"
+	AName, _ := transformer.resolver.IPToName(f.Network.A, "")
+	BName, _ := transformer.resolver.IPToName(f.Network.B, "")
+	// place substitue expressions into the cache
+	e.gremlinExprCache.Set(substExprA, AName, cache.DefaultExpiration)
+	e.gremlinExprCache.Set(substExprB, BName, cache.DefaultExpiration)
+}
 
 type fakeResolver struct {
 }
@@ -48,11 +77,15 @@ func (c *fakeResolver) TIDToType(nodeTID string) (string, error) {
 	return "fake_node_type", nil
 }
 
-func getTestTransformer() core.Transformer {
+func getTestTransformer() *securityAdvisorFlowTransformer {
+	initConfig(testConfig)
+	cfg := config.GetConfig().Viper
+	newExtend := NewExtendGremlin(cfg)
 	return &securityAdvisorFlowTransformer{
 		flowUpdateCountCache: cache.New(10*time.Minute, 10*time.Minute),
 		resolver:             &fakeResolver{},
 		excludeStartedFlows:  false,
+		extendGremlin:        newExtend,
 	}
 }
 
@@ -64,6 +97,18 @@ func assertEqual(t *testing.T, expected, actual interface{}) {
 			msg += fmt.Sprintf(" on %s:%d", file, no)
 		}
 		t.Fatalf("%s: (expected: %v, actual: %v)", msg, expected, actual)
+	}
+}
+
+func assertEqualExtend(t *testing.T, expected, actual interface{}, suffix string) {
+	actual2 := actual.(map[string]interface{})
+	if expected != actual2[suffix] {
+		msg := "Equal assertion failed"
+		_, file, no, ok := runtime.Caller(1)
+		if ok {
+			msg += fmt.Sprintf(" on %s:%d", file, no)
+		}
+		t.Fatalf("%s: (expected: %v, actual: %v)", msg, expected, actual2[suffix])
 	}
 }
 
@@ -112,9 +157,10 @@ func getFlow() *flow.Flow {
 	}
 }
 
-func Test_Transform_basic_flow(t *testing.T) {
+func TestTransformBasicFlow(t *testing.T) {
 	transformer := getTestTransformer()
 	f := getFlow()
+	transformer.extendGremlin.populateExtendGremlin(f, transformer)
 	secAdvFlow := transformer.Transform(f).(*SecurityAdvisorFlow)
 	assertEqual(t, version, secAdvFlow.Version)
 	assertEqualInt64(t, 0, secAdvFlow.UpdateCount)
@@ -130,18 +176,20 @@ func Test_Transform_basic_flow(t *testing.T) {
 	assertEqual(t, "80", secAdvFlow.Transport.B)
 }
 
-func Test_Transform_UpdateCount_increses(t *testing.T) {
+func TestTransformUpdateCountIncreases(t *testing.T) {
 	transformer := getTestTransformer()
 	f := getFlow()
+	transformer.extendGremlin.populateExtendGremlin(f, transformer)
 	for i := int64(0); i < 10; i++ {
 		secAdvFlow := transformer.Transform(f).(*SecurityAdvisorFlow)
 		assertEqualInt64(t, i, secAdvFlow.UpdateCount)
 	}
 }
 
-func Test_Transform_Status_updates(t *testing.T) {
+func TestTransformStatusUpdates(t *testing.T) {
 	transformer := getTestTransformer()
 	f := getFlow()
+	transformer.extendGremlin.populateExtendGremlin(f, transformer)
 	secAdvFlow := transformer.Transform(f).(*SecurityAdvisorFlow)
 	assertEqual(t, "STARTED", secAdvFlow.Status)
 	secAdvFlow = transformer.Transform(f).(*SecurityAdvisorFlow)
@@ -149,4 +197,15 @@ func Test_Transform_Status_updates(t *testing.T) {
 	f.FinishType = flow.FlowFinishType_TCP_FIN
 	secAdvFlow = transformer.Transform(f).(*SecurityAdvisorFlow)
 	assertEqual(t, "ENDED", secAdvFlow.Status)
+}
+
+func TestExtendGremlin(t *testing.T) {
+	transformer := getTestTransformer()
+	f := getFlow()
+	transformer.extendGremlin.populateExtendGremlin(f, transformer)
+	secAdvFlow := transformer.Transform(f).(*SecurityAdvisorFlow)
+
+	// verify that extension fields were properly created
+	assertEqualExtend(t, "fake_container_one", secAdvFlow.Extend, "CA_Name")
+	assertEqualExtend(t, "fake_container_two", secAdvFlow.Extend, "CB_Name")
 }
