@@ -5,11 +5,12 @@ SRCS := \
 	filter.go \
 	pipeline.go \
 	main.go \
-	s3_client.go \
-	store_stdout.go \
-	store_s3.go \
+	store_buffered.go \
+	store_direct.go \
 	subscriber.go \
 	transform.go \
+	write_s3.go \
+	write_stdout.go \
 
 .PHONY: all
 all:
