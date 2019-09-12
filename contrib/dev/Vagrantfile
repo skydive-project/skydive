@@ -155,6 +155,10 @@ Vagrant.configure(2) do |config|
       end
       dev.vm.provision "shared-folders", type: "shell", inline: "sudo chown vagrant:vagrant #{GOPATH}/src #{GOPATH}/src/github.com #{GOPATH}/src/github.com/skydive-project"
       dev.vm.provision "write-motd", type: "shell", inline: $write_motd_script
+      dev.vm.provision "package-update", type: "shell", inline: $package_update_script
+
+      require 'vagrant-reload'
+      dev.vm.provision :reload
     end
 
     if PROVISION_BOX then
@@ -188,11 +192,7 @@ Vagrant.configure(2) do |config|
 
       if PREPARE_BOX then
         fedora_box(override, "virtualbox")
-        override.vm.provision "package-update", type: "shell", inline: $package_update_script
         override.vm.provision "guest-additions", type: "shell", inline: $guest_additions_script
-
-        require 'vagrant-reload'
-        override.vm.provision :reload
       end
     end
 
@@ -205,10 +205,6 @@ Vagrant.configure(2) do |config|
       if PREPARE_BOX then
         fedora_box(override, "libvirt")
         override.vm.provision "vagrant-insecure-key", type: "shell", privileged: false, inline: $vagrant_insecure_key_script
-        override.vm.provision "package-update", type: "shell", inline: $package_update_script
-
-        require 'vagrant-reload'
-        override.vm.provision :reload
       end
     end
   end
