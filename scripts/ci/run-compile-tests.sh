@@ -8,13 +8,6 @@ dir="$(dirname "$0")"
 set -e
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 
-make govendor
-d=$(git diff)
-if [ $(echo -n $d | wc -l) -ne 0 ] ; then
-    echo -e "ERROR FAIL: govendor is not synched correctly\n\n$d"
-    exit 1
-fi
-
 # prepare collectd build
 rm -rf /tmp/collectd
 git clone https://github.com/collectd/collectd.git /tmp/collectd
@@ -34,10 +27,10 @@ make WITH_DPDK=true WITH_EBPF=true WITH_VPP=true WITH_EBPF_DOCKER_BUILDER=true W
     WITH_HELM=true VERBOSE=true
 
 # Compile Skydive for Windows
-GOOS=windows GOARCH=amd64 govendor build github.com/skydive-project/skydive
+GOOS=windows GOARCH=amd64 go build github.com/skydive-project/skydive
 
 # Compile Skydive for MacOS
-GOOS=darwin GOARCH=amd64 govendor build github.com/skydive-project/skydive
+GOOS=darwin GOARCH=amd64 go build github.com/skydive-project/skydive
 
 # Compile profiling
 make WITH_PROF=true VERBOSE=true

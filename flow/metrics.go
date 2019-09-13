@@ -1,5 +1,3 @@
-//go:generate go run ../scripts/gendecoder.go -filename flow.pb.go
-
 /*
  * Copyright (C) 2016 Red Hat, Inc.
  *

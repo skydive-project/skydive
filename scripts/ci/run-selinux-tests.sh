@@ -61,7 +61,7 @@ if [ "$DEVMODE" = "true" ]; then
     mv skydive*-${VERSION}-*${TAG}*.x86_64.rpm rpmbuild/RPMS/x86_64/
     mv skydive*-${VERSION}-*${TAG}*.noarch.rpm rpmbuild/RPMS/noarch/
 
-    make test.functionals.compile GOFLAGS="-race"
+    make test.functionals.compile 
 fi
 
 cd contrib/vagrant

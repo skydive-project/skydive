@@ -1,4 +1,5 @@
-//go:generate go run ../scripts/gendecoder.go -output neighbors_gendecoder.go
+//go:generate go run github.com/skydive-project/skydive/scripts/gendecoder -output neighbors_gendecoder.go
+//go:generate go run github.com/safchain/easyjson/easyjson $GOFILE
 
 /*
  * Copyright (C) 2019 Red Hat, Inc.

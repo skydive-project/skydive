@@ -5,7 +5,6 @@ DOCKER_EBPF_BUILDER_IMAGE ?= skydive/ebpf-builder
 TOPLEVEL_GOPATH ?= $(GOPATH)
 UID ?= $(shell id -u)
 GID ?= $(shell id -g)
-GOVENDOR:=$(TOPLEVEL_GOPATH)/bin/govendor
 
 .PHONY: all ebpf-build clean build-ebpf-docker-image docker-ebpf-build
 

@@ -19,7 +19,7 @@ syntax = "proto3";
 
 package websocket;
 
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "gogoproto/gogo.proto";
 
 option go_package = "github.com/skydive-project/skydive/websocket";
 option (gogoproto.protosizer_all) = true;

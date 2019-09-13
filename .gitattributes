@@ -1,2 +1,11 @@
 statics/js/vendor/*.js linguist-vendored=true
 statics/js/dev/*.js linguist-vendored=true
+*.pb.go binary
+*_easyjson.go binary
+*_gendecoder.go binary
+statics/bindata.go binary
+topology/probes/vpp/bin_api/interfaces/* binary
+topology/probes/vpp/bin_api/vpe/* binary
+statics/js/bundle.js binary
+js/browser.js binary
+js/api.js binary

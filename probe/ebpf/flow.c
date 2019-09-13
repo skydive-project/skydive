@@ -25,7 +25,7 @@
 #include <linux/tcp.h>
 #include <linux/in.h>
 
-#include "bpf.h"
+#include "defs.h"
 #include "flow.h"
 
 // Fowler/Noll/Vo hash

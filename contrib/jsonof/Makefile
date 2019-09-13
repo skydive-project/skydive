@@ -3,7 +3,7 @@
 all: jsonof
 
 jsonof: jsonof.go
-	govendor build jsonof.go
+	go build jsonof.go
 
 clean:
 	rm -f jsonof

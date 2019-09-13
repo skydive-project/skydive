@@ -23,8 +23,8 @@ if [ "${DOCKER_IMAGE%/*/*}" != "${DOCKER_IMAGE}" ]; then
 fi
 
 DOCKER_DIR=contrib/docker
-GOVENDOR_VOL=govendor-cache
-GOVENDOR_DIR=/root/go/.cache/govendor
+GOMOD_VOL=mod
+GOMOD_DIR=/root/go/pkg/mod
 GOBUILD_VOL=gobuild-cache
 GOBUILD_DIR=/root/.cache/go-build
 TOPLEVEL_VOL=$PWD
@@ -63,14 +63,14 @@ docker_skydive_builder() {
         ${BASE:+--build-arg BASE=${BASE}} \
         --build-arg UID=$uid \
         -f $DOCKER_DIR/$dockerfile $DOCKER_DIR
-    docker volume create $GOVENDOR_VOL
+    docker volume create $GOMOD_VOL
     docker volume create $GOBUILD_VOL
     docker rm $image || true
     docker run --name $image \
         --env UID=$uid \
         --env TOPLEVEL_GOPATH=$GOPATH \
         --volume $TOPLEVEL_VOL:$TOPLEVEL_DIR \
-        --volume $GOVENDOR_VOL:$GOVENDOR_DIR \
+        --volume $GOMOD_VOL:$GOMOD_DIR \
         --volume $GOBUILD_VOL:$GOBUILD_DIR \
         $tag
 
@@ -109,10 +109,11 @@ docker_cross_build() {
     local arch=$1
 
     docker_skydive_builder $arch Dockerfile.crosscompile
-    docker_skydive_target $arch Dockerfile.static
+    docker_skydive_target $arch Dockerfile
 }
 
 docker_build() {
+    GO111MODULE=on go mod download
     for arch in $ARCHES
     do
         case $arch in
@@ -208,6 +209,8 @@ docker_manifest() {
 docker_build_ebpf() {
     make ebpf.build WITH_EBPF=true WITH_EBPF_DOCKER_BUILDER=true
 }
+
+make genlocalfiles vendor
 
 [ -n "$SKIP_BUILD" ] && echo "Skipping build." || (docker_build_ebpf && docker_build)
 

@@ -46,7 +46,7 @@ set -e
 mkdir -p $rpmbuilddir/SOURCES
 mkdir -p $rpmbuilddir/SPECS
 make -C $gitdir $target DESTDIR=$rpmbuilddir/SOURCES
-$(dirname "$0")/specfile-update-bundles $gitdir/vendor/vendor.json $gitdir/contrib/packaging/rpm/skydive.spec > $rpmbuilddir/SPECS/skydive.spec
+$(dirname "$0")/specfile-update-bundles $gitdir/go.mod $gitdir/contrib/packaging/rpm/skydive.spec > $rpmbuilddir/SPECS/skydive.spec
 set -x
 rpmbuild --nodeps $build_opts --undefine dist --define "$define" --define "_topdir $rpmbuilddir" $rpmbuilddir/SPECS/skydive.spec
 set +x
