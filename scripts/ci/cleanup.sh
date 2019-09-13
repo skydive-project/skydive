@@ -42,7 +42,7 @@ function cleanup() {
   podman rm -fa
   podman rmi -fa
 
-  "${CURDIR}/../scale.sh" stop 10 10 10
+  SKYDIVE=skydive "${CURDIR}/../scale.sh" stop 2 4 2
 
   # clean elasticsearch
   curl -X DELETE 'http://localhost:9200/skydive*'

@@ -254,10 +254,10 @@ function delete_host() {
 
 	echo Delete Host $NAME
 
-	sudo ovs-vsctl del-port br-central $NAME-eth0
+	sudo ovs-vsctl get Port $NAME-eth0 &> /dev/null && sudo ovs-vsctl del-port br-central $NAME-eth0
 
-	sudo ip link del $NAME-eth0
-	sudo ip netns del $NAME
+	sudo ip link show $NAME-eth0 &> /dev/null && sudo ip link del $NAME-eth0
+	sudo ip netns pids $NAME &> /dev/null && sudo ip netns del $NAME
 }
 
 function delete_agent() {
@@ -268,14 +268,14 @@ function delete_agent() {
 
 	echo Delete agent $NAME
 
-	sudo kill -9 `cat $TEMP_DIR/$NAME-vswitchd.pid`
-	sudo kill -9 `cat $TEMP_DIR/$NAME-dbserver.pid`
+	[ -f $TEMP_DIR/$NAME-vswitchd.pid ] && sudo kill -9 `cat $TEMP_DIR/$NAME-vswitchd.pid`
+	[ -f $TEMP_DIR/$NAME-dbserver.pid ] && sudo kill -9 `cat $TEMP_DIR/$NAME-dbserver.pid`
 
 	for VM_I in $( seq $VM_NUM ); do
-		sudo ip netns del $NAME-vm$VM_I
+		sudo ip netns pids $NAME-vm$VM_I &> /dev/null && sudo ip netns del $NAME-vm$VM_I
 	done
 
-	rm $TEMP_DIR/$NAME.lock
+	rm -f $TEMP_DIR/$NAME.lock
 }
 
 # create analyzer and connect it to the others. This function also create fabric
@@ -519,7 +519,7 @@ inotifywait -m -r -e create -e delete /var/run/netns | while read PATH EVENT FOL
       link /var/run/netns/\$FOLDER $TEMP_DIR/\$AGENT-netns/\$NS &
       ;;
     DELETE)
-      /usr/bin/rm $TEMP_DIR/\$AGENT-netns/\$NS
+      /usr/bin/rm -f $TEMP_DIR/\$AGENT-netns/\$NS
       ;;
     esac
   fi
@@ -549,7 +549,7 @@ function stop_analyzer() {
 			sudo pkill -9 -f $NAME.yml
 		fi
 	done
-	sudo rm $TEMP_DIR/$NAME.lock $TEMP_DIR/$NAME.pid
+	sudo rm -f $TEMP_DIR/$NAME.lock $TEMP_DIR/$NAME.pid
 }
 
 function stop_agent() {
@@ -571,7 +571,7 @@ function stop_agent() {
                 sudo pkill -9 -f $NAME.yml
             fi
         done
-	sudo rm $TEMP_DIR/$NAME.lock $TEMP_DIR/$NAME.pid
+	sudo rm -f $TEMP_DIR/$NAME.lock $TEMP_DIR/$NAME.pid
 }
 
 function stop() {
@@ -590,7 +590,7 @@ function stop() {
         sleep 5
 
 	sudo -E screen -S skydive-stress -X quit
-	rm $TEMP_DIR/screen.lock
+	rm -f $TEMP_DIR/screen.lock
 
 	for AGENT_I in $( seq $AGENT_NUM ); do
 		delete_agent $AGENT_I $VM_NUM
