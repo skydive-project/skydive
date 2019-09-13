@@ -264,13 +264,14 @@ func (a *structSpeakerEventDispatcher) dispatchMessage(c *StructSpeaker, m *Stru
 	}
 
 	a.eventHandlersLock.RLock()
-	for _, l := range a.nsEventHandlers[m.Namespace] {
-		l.OnStructMessage(c, m)
-	}
-	for _, l := range a.nsEventHandlers[WildcardNamespace] {
-		l.OnStructMessage(c, m)
-	}
+	var handlers []SpeakerStructMessageHandler
+	handlers = append(handlers, a.nsEventHandlers[m.Namespace]...)
+	handlers = append(handlers, a.nsEventHandlers[WildcardNamespace]...)
 	a.eventHandlersLock.RUnlock()
+
+	for _, h := range handlers {
+		h.OnStructMessage(c, m)
+	}
 }
 
 // OnDisconnected is implemented here to avoid infinite loop since the default

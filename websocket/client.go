@@ -320,6 +320,14 @@ func (c *Conn) Start() {
 	go c.run()
 }
 
+func (c *Conn) cloneEventHandlers() (handlers []SpeakerEventHandler) {
+	c.RLock()
+	handlers = append(handlers, c.eventHandlers...)
+	c.RUnlock()
+
+	return
+}
+
 // main loop to read and send messages
 func (c *Conn) run() {
 	flushChannel := func(c chan []byte, cb func(msg []byte) error) error {
@@ -337,11 +345,9 @@ func (c *Conn) run() {
 
 	// notify all the listeners that a message was received
 	handleReceivedMessage := func(m []byte) error {
-		c.RLock()
-		for _, l := range c.eventHandlers {
+		for _, l := range c.cloneEventHandlers() {
 			l.OnMessage(c.wsSpeaker, RawMessage(m))
 		}
-		c.RUnlock()
 		return nil
 	}
 
@@ -368,11 +374,9 @@ func (c *Conn) run() {
 		// handle all the pending received messages
 		flushChannel(c.read, handleReceivedMessage)
 
-		c.RLock()
-		for _, l := range c.eventHandlers {
+		for _, l := range c.cloneEventHandlers() {
 			l.OnDisconnected(c.wsSpeaker)
 		}
-		c.RUnlock()
 
 		c.wg.Done()
 	}()
@@ -544,12 +548,7 @@ func (c *Client) Connect() error {
 	}
 
 	// notify connected
-	c.RLock()
-	var eventHandlers []SpeakerEventHandler
-	eventHandlers = append(eventHandlers, c.eventHandlers...)
-	c.RUnlock()
-
-	for _, l := range eventHandlers {
+	for _, l := range c.cloneEventHandlers() {
 		l.OnConnected(c)
 	}
 
