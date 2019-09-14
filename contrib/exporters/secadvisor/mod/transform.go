@@ -33,8 +33,9 @@ import (
 func NewTransform(cfg *viper.Viper) (interface{}, error) {
 	excludeStartedFlows := cfg.GetBool(core.CfgRoot + "transform.secadvisor.exclude_started_flows")
 
-	resolver := NewResolveRunc(cfg)
-	resolver = NewResolveMulti(resolver)
+	runcResolver := NewResolveRunc(cfg)
+	dockerResolver := NewResolveDocker(cfg)
+	resolver := NewResolveMulti(runcResolver, dockerResolver)
 	resolver = NewResolveFallback(resolver)
 	resolver = NewResolveCache(resolver)
 
