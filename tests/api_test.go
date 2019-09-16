@@ -19,15 +19,24 @@ package tests
 
 import (
 	"testing"
+	"time"
 
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/common"
 	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
 )
 
+func getCrudClient() (c *shttp.CrudClient, err error) {
+	common.Retry(func() error {
+		c, err = client.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
+		return err
+	}, 10, time.Second)
+	return
+}
 func TestAlertAPI(t *testing.T) {
-	client, err := client.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
+	client, err := getCrudClient()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +85,7 @@ func TestAlertAPI(t *testing.T) {
 }
 
 func TestCaptureAPI(t *testing.T) {
-	client, err := client.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
+	client, err := getCrudClient()
 	if err != nil {
 		t.Fatal(err)
 	}
