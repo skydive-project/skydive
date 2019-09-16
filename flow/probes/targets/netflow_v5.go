@@ -213,7 +213,7 @@ func (nf *NetFlowV5Target) Start() {
 	defer nf.Unlock()
 
 	nf.conn = conn
-	nf.table.Start()
+	nf.table.Start(nil)
 }
 
 // Stop stops the target

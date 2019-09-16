@@ -37,7 +37,7 @@ func (l *LocalTarget) SendPacket(packet gopacket.Packet, bpf *flow.BPF) {
 
 // Start target
 func (l *LocalTarget) Start() {
-	l.table.Start()
+	l.table.Start(nil)
 }
 
 // Stop target

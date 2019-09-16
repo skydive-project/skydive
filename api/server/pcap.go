@@ -53,7 +53,7 @@ func (p *PcapAPI) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest
 	}
 
 	flowtable := flow.NewTable(updateEvery, expireAfter, p, flow.UUIDs{}, flow.TableOpts{})
-	packetSeqChan, _, _ := flowtable.Start()
+	packetSeqChan, _ := flowtable.Start(nil)
 
 	feeder, err := flow.NewPcapTableFeeder(r.Body, packetSeqChan, false, "")
 	if err != nil {

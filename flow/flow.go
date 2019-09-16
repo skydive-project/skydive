@@ -59,6 +59,7 @@ const (
 // flowState is used internally to track states within the flow table.
 // it is added to the generated Flow struct by Makefile
 type flowState struct {
+	extKey        interface{} // used to make a link between internal flow to external flow, ex: eBPF
 	lastMetric    FlowMetric
 	rtt1stPacket  int64
 	updateVersion int64

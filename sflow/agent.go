@@ -261,7 +261,7 @@ func (sfa *Agent) feedFlowTable() {
 }
 
 func (sfa *Agent) start() error {
-	sfa.FlowTable.Start()
+	sfa.FlowTable.Start(nil)
 	defer sfa.FlowTable.Stop()
 
 	sfa.feedFlowTable()

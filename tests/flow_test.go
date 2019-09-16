@@ -1245,7 +1245,8 @@ func testFlowTunnel(t *testing.T, bridge string, tunnelType string, ipv6 bool, I
 			}
 
 			if len(flowsBridge) == 0 {
-				return fmt.Errorf("TrackingID not found in %s tunnel: leaving the interface(%v) == seen in the tunnel(%v)", tunnelType, flowsToString(flowsInnerTunnel), flowsToString(flowsBridge))
+				fb, _ := c.gh.GetFlows(c.gremlin.V().Has("Name", "tunnel-vm2-eth0").Flows())
+				return fmt.Errorf("TrackingID not found in %s tunnel: leaving the interface(%v) == seen in the tunnel(%v)", tunnelType, flowsToString(flowsInnerTunnel), flowsToString(fb))
 			}
 
 			return nil

@@ -82,7 +82,10 @@ func (p *EBPFProbe) run() {
 	var info syscall.Sysinfo_t
 	syscall.Sysinfo(&info)
 
-	_, flowEBPFChan, _ := p.flowTable.Start()
+	expiredChan := make(chan interface{}, 1000)
+	defer close(expiredChan)
+
+	_, extFlowChan := p.flowTable.Start(expiredChan)
 	defer p.flowTable.Stop()
 
 	ebpfPollingRate := time.Second / time.Duration(p.Ctx.Config.GetInt("agent.flow.ebpf.polling_rate"))
@@ -94,9 +97,16 @@ func (p *EBPFProbe) run() {
 	updateNow := time.NewTicker(ebpfMaxPollDelay)
 	defer updateNow.Stop()
 
-	flowPoolSize := 2 * cap(flowEBPFChan)
+	flowPoolSize := 2 * cap(extFlowChan)
 	kernFlows := make([]C.struct_flow, flowPoolSize)
-	ebpfFlows := make([]flow.EBPFFlow, flowPoolSize)
+
+	extFlows := make([]flow.ExtFlow, flowPoolSize)
+	for i := range extFlows {
+		extFlows[i] = flow.ExtFlow{
+			Type: flow.EBPFExtFlowType,
+			Obj:  &flow.EBPFFlow{},
+		}
+	}
 
 	var prevKey, key C.__u64
 	var nextAvailablePtr int
@@ -106,6 +116,8 @@ func (p *EBPFProbe) run() {
 		select {
 		case <-p.quit:
 			return
+		case key := <-expiredChan:
+			p.fmap.Delete(key)
 		case now = <-updateNow.C:
 		default:
 			if statsMap := p.module.Maps["stats_map"]; statsMap != nil {
@@ -142,8 +154,8 @@ func (p *EBPFProbe) run() {
 				var err error
 				var found bool
 				if getFirstKey {
-					found, err = p.fmap.NextKey(nil, &key)
-					if !found { /* map empty */
+					if found, err = p.fmap.NextKey(nil, &key); !found {
+						/* map empty */
 						time.Sleep(ebpfPollingRate)
 						break
 					}
@@ -157,14 +169,10 @@ func (p *EBPFProbe) run() {
 				}
 
 				kernFlow := unsafe.Pointer(&kernFlows[nextAvailablePtr])
-				_, err = p.fmap.Get(key, kernFlow)
-				if err != nil {
+				if _, err = p.fmap.Get(key, kernFlow); err != nil {
 					getFirstKey = true
 					break
 				}
-
-				// delete every entry after we read the entry value
-				p.fmap.Delete(key)
 				prevKey = key
 
 				lastK := int64(kernFlows[nextAvailablePtr].last)
@@ -175,13 +183,15 @@ func (p *EBPFProbe) run() {
 					startFlow = now
 				}
 
-				ebpfFlow := &ebpfFlows[nextAvailablePtr]
+				extFlow := extFlows[nextAvailablePtr]
+
+				ebpfFlow := extFlow.Obj.(*flow.EBPFFlow)
 				ebpfFlow.Start = startFlow
 				ebpfFlow.Last = last
 				ebpfFlow.StartKTimeNs = startKTimeNs
 				flow.SetEBPFKernFlow(ebpfFlow, kernFlow)
 
-				flowEBPFChan <- ebpfFlow
+				extFlowChan <- &extFlow
 
 				nextAvailablePtr = (nextAvailablePtr + 1) % flowPoolSize
 
@@ -192,7 +202,6 @@ func (p *EBPFProbe) run() {
 				now = now.Add(ebpfPollingRate)
 			}
 		}
-
 	}
 }
 
