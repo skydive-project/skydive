@@ -170,7 +170,7 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 
 		parentKey := uint64(ebpfFlow.KernFlow.key_outer)
 
-		parent.SetUUIDs(parentKey, Opts{LayerKeyMode: L3PreferedKeyMode})
+		parent.SetUUIDs(parentKey, Opts{LayerKeyMode: L3PreferredKeyMode})
 
 		flows = append(flows, parent)
 		keys = append(keys, parentKey)
@@ -269,7 +269,7 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 		Last:      f.Last,
 	}
 
-	f.SetUUIDs(key, Opts{LayerKeyMode: L3PreferedKeyMode})
+	f.SetUUIDs(key, Opts{LayerKeyMode: L3PrefeRredKeyMode})
 
 	flows = append(flows, f)
 	keys = append(keys, key)

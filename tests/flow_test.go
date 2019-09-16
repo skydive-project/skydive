@@ -2272,7 +2272,7 @@ func testFlowsHashCnx(t *testing.T) *Test {
 				fromPort: 12345,
 				to:       g.G.V().Has("Name", "dst-vm").Out().Has("Name", "hash-dst-eth0"),
 				toPort:   54321,
-				count:    1,
+				count:    10,
 			},
 			{
 				protocol: "tcp",
@@ -2281,7 +2281,7 @@ func testFlowsHashCnx(t *testing.T) *Test {
 				fromPort: 54321,
 				to:       g.G.V().Has("Name", "dst-vm").Out().Has("Name", "hash-dst-eth0"),
 				toPort:   12345,
-				count:    1,
+				count:    10,
 			},
 		},
 
@@ -2311,7 +2311,7 @@ func testFlowsHashCnx(t *testing.T) *Test {
 			foundAB := false
 			foundBA := false
 			for _, f := range flows {
-				if f.Metric.ABPackets != 1 || f.Metric.BAPackets != 1 {
+				if f.Metric.ABPackets != 10 || f.Metric.BAPackets != 10 {
 					return fmt.Errorf("Expected one packet each way, got %+v", flows)
 				}
 				if f.Transport.A == 12345 && f.Transport.B == 54321 {

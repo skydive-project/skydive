@@ -133,7 +133,7 @@ func (nfa *Agent) feedFlowTable(flowOpChan chan *flow.Operation) {
 				Last:      f.Last,
 			}
 
-			l2, l3 := f.SetUUIDs(123, flow.Opts{LayerKeyMode: flow.L3PreferedKeyMode})
+			l2, l3 := f.SetUUIDs(123, flow.Opts{LayerKeyMode: flow.L3PreferredKeyMode})
 
 			op := &flow.Operation{
 				Type: flow.ReplaceOperation,

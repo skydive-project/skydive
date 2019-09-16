@@ -2419,7 +2419,7 @@ func TestLayerKeyMode(t *testing.T) {
 		},
 	}
 
-	validatePCAP(t, "pcaptraces/layer-key-mode.pcap", layers.LinkTypeEthernet, nil, expected, TableOpts{LayerKeyMode: L3PreferedKeyMode})
+	validatePCAP(t, "pcaptraces/layer-key-mode.pcap", layers.LinkTypeEthernet, nil, expected, TableOpts{LayerKeyMode: L3PreferredKeyMode})
 
 	expected = []*Flow{
 		{

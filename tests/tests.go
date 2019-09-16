@@ -172,8 +172,6 @@ type TestCapture struct {
 type TestInjection struct {
 	intf      g.QueryString
 	from      g.QueryString
-	fromMAC   string
-	fromIP    string
 	fromPort  uint16
 	to        g.QueryString
 	toMAC     string
