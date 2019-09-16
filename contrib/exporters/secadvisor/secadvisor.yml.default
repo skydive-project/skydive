@@ -13,6 +13,8 @@ pipeline:
   subscriber:
     url: ws://127.0.0.1:8082/ws/subscriber/flow
     capture_id:
+  mangle:
+    type: logstatus
   # classify flows into: internal, ingress, egress and other
   classify:
     # list of internal cluster address ranges

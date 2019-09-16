@@ -5,6 +5,7 @@ SRCS := \
 	filter.go \
 	pipeline.go \
 	main.go \
+	mangle.go \
 	store_buffered.go \
 	store_direct.go \
 	subscriber.go \

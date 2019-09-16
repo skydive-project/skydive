@@ -19,7 +19,7 @@ package main
 
 import (
 	"github.com/skydive-project/skydive/contrib/exporters/core"
-	"github.com/skydive-project/skydive/contrib/exporters/secadvisor/mod"
+	secadvisor "github.com/skydive-project/skydive/contrib/exporters/secadvisor/mod"
 )
 
 func main() {
@@ -27,6 +27,7 @@ func main() {
 }
 
 func init() {
-	core.EncoderHandlers.Register("secadvisor", mod.NewEncode, true)
-	core.TransformerHandlers.Register("secadvisor", mod.NewTransform, true)
+	core.ManglerHandlers.Register("logstatus", secadvisor.NewMangleLogStatus, false)
+	core.EncoderHandlers.Register("secadvisor", secadvisor.NewEncode, true)
+	core.TransformerHandlers.Register("secadvisor", secadvisor.NewTransform, false)
 }

@@ -30,19 +30,19 @@ const (
 	accountID = "12345678"
 )
 
-type action string
+type Action string
 
 const (
-	actionReject action = "REJECT"
-	actionAccept action = "ACCEPT"
+	ActionReject Action = "REJECT"
+	ActionAccept Action = "ACCEPT"
 )
 
-type logStatus string
+type LogStatus string
 
 const (
-	logStatusOk       logStatus = "OK"
-	logStatusNoData   logStatus = "NODATA"
-	logStatusSkipData logStatus = "SKIPDATA"
+	LogStatusOk       LogStatus = "OK"
+	LogStatusNoData   LogStatus = "NODATA"
+	LogStatusSkipData LogStatus = "SKIPDATA"
 )
 
 // record struct is based on
@@ -77,10 +77,10 @@ type record struct {
 	End int `csv:"end"`
 	// The recorded traffic: ACCEPT if permitted: REJECT if not permitted
 	// (by security groups of network ACLS).
-	Action action `csv:"action"`
-	// The logging status: OK if logged normally; NODATA if no data duirng
-	// cature window; SKIPDATA due to possible cap of traffic
-	LogStatus logStatus `csv:"log_status"`
+	Action Action `csv:"action"`
+	// The logging status: OK if logged normally; NODATA if no data during
+	// cature window; SKIPDATA due to possible cap of traffic.
+	LogStatus LogStatus `csv:"log_status"`
 }
 
 type transform struct {
@@ -142,7 +142,7 @@ func (t *transform) Transform(f *flow.Flow) interface{} {
 		Bytes:       f.Metric.ABBytes + f.Metric.BABytes,
 		Start:       int(f.Start / 1000),
 		End:         int(f.Last / 1000),
-		Action:      actionAccept,
-		LogStatus:   logStatusOk,
+		Action:      ActionAccept,
+		LogStatus:   LogStatusOk,
 	}
 }
