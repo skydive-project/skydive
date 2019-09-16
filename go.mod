@@ -134,8 +134,8 @@ replace github.com/spf13/viper v1.4.0 => github.com/lebauce/viper v0.0.0-2019090
 
 replace github.com/vishvananda/netlink v1.0.0 => github.com/lebauce/netlink v0.0.0-20190122103356-fa328be7c8d2
 
-replace github.com/digitalocean/go-libvirt => github.com/lebauce/go-libvirt v0.0.0-20190314183758-7799d804f7e4
+replace github.com/digitalocean/go-libvirt => github.com/lebauce/go-libvirt v0.0.0-20190717144624-7799d804f7e4
 
-replace github.com/mailru/easyjson/gen => github.com/safchain/easyjson/gen v0.0.0-20190314183758-d32b6194ad1f
+replace github.com/mailru/easyjson/gen => github.com/safchain/easyjson/gen v0.0.0-20190909090614-d32b6194ad1f
 
-replace github.com/iovisor/gobpf => github.com/lebauce/gobpf v0.0.0-20190314183758-f9e9df81702a
+replace github.com/iovisor/gobpf => github.com/lebauce/gobpf v0.0.0-20190909090614-f9e9df81702a
