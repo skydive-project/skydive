@@ -303,6 +303,7 @@ func (ft *Table) updateFlowFromEBPF(ebpfFlow *EBPFFlow, f *Flow) bool {
 			f.TCPMetric.BARstStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ba_rst, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
 		}
 	}
+
 	f.Metric.ABBytes = int64(ebpfFlow.KernFlow.metrics.ab_bytes)
 	f.Metric.ABPackets = int64(ebpfFlow.KernFlow.metrics.ab_packets)
 	f.Metric.BABytes = int64(ebpfFlow.KernFlow.metrics.ba_bytes)

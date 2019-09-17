@@ -564,8 +564,8 @@ int network_layer(struct __sk_buff *skb)
 	}
 
 	/* Update flow */
-	int ab = is_ab_packet(new, flow);
-	update_metrics(skb, flow, ab);
+	flow->last =  l2->last;
+	update_metrics(skb, flow, is_ab_packet(new, flow));
 	if (flow->layers_info & TRANSPORT_LAYER_INFO) {
 #define update_transport_flags(ab, ba)					\
 		do {							\
