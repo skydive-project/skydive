@@ -4,22 +4,23 @@ Name: "FlowValidation"
 Title: "Check Flow-Forwarding form Checkpoint-1 to Checkpoint-2"
 Abstract: "This workflow aims to validate the Flow-Forwarding on particular checkpoints. It returns the status of flow validation, true or false."
 Description: >
-    # How to use
-      1. To validate on just one checkpoint select it as Checckpoint-1
-      2. To validate on two checkpoints select it as Checkpoint-1 and Checkpoint-2
-      3. To validate on all nodes between Checkpoint-1 and Checkpoint-2, Select the checkbox given below Checkpoint-2
-      4. To validate some specific type of traffic/flows, Select the type of protocol - icmp/tcp/udp
-      5. You can also provide more details like Source IP Address, Destination IP Address, ICMP-ID/Destination Port No. to validate more specific type of traffic/flows
-      6. At the end provide the time-interval(in seconds), Till how long you want to validate the flows, Starts when you hit the 'Execute' button
-      7. As a result you will get Flow-validation status as 'Connectivity = true' OR 'Connectivity = false and NotReachedNodes = Nodes (With no flow captured/inappropriate flow-metric)'
-      8. Hit 'Execute' button to run the workflow
-    # How It Works
-      1. Starts Capture on selected Checkpoint/Checkpoints using the BPF-Filter
-      2. For BPF-Filter it will use all other provided information like - protocol, Source IP Address, Destination IP Address, ICMP-ID/Destination Port No (Just to capture specific type of flows)
-      3. Now it will check that all nodes having capture has flows with the capture-id of the capture created by this workflow
-      4. If all nodes have appropriate flows, then it will check for flow-metric (Like-'AB-Pkts and BA-Pkts > 0')
-      5. If it is Ok then gives result = true, else result = false and return the nodes with no flows/inappropriate flows/flow-metric
-      6. For more information about Skydive workflows please follow - 'skydive.network/blog/introduction-to-workflows.html'
+  # How to use
+    1. To validate on just one checkpoint select it as Checckpoint-1
+    2. To validate on two checkpoints select it as Checkpoint-1 and Checkpoint-2
+    3. To validate on all nodes between Checkpoint-1 and Checkpoint-2, Select the checkbox given below Checkpoint-2
+    4. To validate some specific type of traffic/flows, Select the type of protocol - icmp/tcp/udp
+    5. You can also provide more details like Source IP Address, Destination IP Address, ICMP-ID/Destination Port No. to validate more specific type of traffic/flows
+    6. At the end provide the time-interval(in seconds), Till how long you want to validate the flows, Starts when you hit the 'Execute' button
+    7. As a result you will get Flow-validation status as 'Connectivity = true' OR 'Connectivity = false and NotReachedNodes = Nodes (With no flow captured/inappropriate flow-metric)'
+    8. Hit 'Execute' button to run the workflow
+  # How It Works
+    1. Starts Capture on selected Checkpoint/Checkpoints using the BPF-Filter
+    2. For BPF-Filter it will use all other provided information like - protocol, Source IP Address, Destination IP Address, ICMP-ID/Destination Port No (Just to capture specific type of flows)
+    3. It will check that all captures have created properly, if any node/interface is DOWN then it will gives result = false and return the nodes without capture.
+    4. Now it will check that all nodes having capture has flows with the capture-id of the capture created by this workflow
+    5. If all nodes have appropriate flows, then it will check for flow-metric (Like-'AB-Pkts and BA-Pkts > 0')
+    6. If it is Ok then gives result = true, else result = false and return the nodes with no flows/inappropriate flows/flow-metric
+    7. For more information about Skydive workflows please follow - 'skydive.network/blog/introduction-to-workflows.html'
 Parameters:
   - Name: Checkpoint-1
     Description: Select Checkpoint-1
@@ -65,10 +66,14 @@ Source: |
 
       if (checkPoint2 == null) {
         capture.GremlinQuery = "G.V().Has('TID', '" + checkPoint1 + "')";
+        var captureExpected = client.gremlin.G().V().Has('TID', checkPoint1).result();
       } else if (checkPoint2 != null && !all) {
         capture.GremlinQuery = "G.V().Has('TID', Within('" + checkPoint1 + "', '" + checkPoint2 + "'))";
+        var captureExpected = client.gremlin.G().V().Has('TID', WITHIN(checkPoint1, checkPoint2)).result();
       } else {
         capture.GremlinQuery = "G.V().Has('TID', '" + checkPoint1 + "').ShortestPathTo(Metadata('TID', '" + checkPoint2 + "'), Metadata('RelationType', 'layer2'))";
+        var captureExpected = client.gremlin.G().V().Has('TID', checkPoint1).ShortestPathTo(Metadata('TID', checkPoint2), Metadata('RelationType', 'layer2')).result();
+        captureExpected = captureExpected[0];
       }
 
       var bpf = protocol;
@@ -92,38 +97,69 @@ Source: |
       capture = client.captures.create(capture)
       var timediff = interval * 1000;
       sleep(timediff)
-      var flowExpected = client.gremlin.G().V().Has('Captures.ID', capture.UUID, 'Type', NE('ovsport')).result();
-      var flowCaptured = client.gremlin.G().Flows().Has('CaptureID', capture.UUID).CaptureNode().Dedup().result();
-      var noflows = [];
 
-      if (protocol != "udp" && flowExpected.length && flowExpected.length == flowCaptured.length) {
-        flowCaptured = client.gremlin.G().Flows().Has('CaptureID', capture.UUID, 'Metric.ABPackets', GT(0), 'Metric.BAPackets', GT(0)).CaptureNode().Dedup().result();
+      var captureValidation = function(expected) {
+        var noCapture = [];
+        for (var i = 0; i != expected.length; i++) {
+          if (expected[i].Metadata.State == "DOWN") {
+            noCapture.push(expected[i]);
+          }
+        }
+        return noCapture
       }
 
-      if (flowExpected.length != flowCaptured.length) {
-        for (var i = 0; i != flowExpected.length; i++) {
+      var flowValidation = function(expected, captured) {
+        var noFlows = [];
+        for (var i = 0; i != expected.length; i++) {
           var found = false;
 
-          for (var j = 0; j != flowCaptured.length; j++) {
-            if (flowExpected[i].ID === flowCaptured[j].ID) {
+          for (var j = 0; j != captured.length; j++) {
+            if (expected[i].ID === captured[j].ID) {
               found = true;
               break;
             }
           }
 
           if (!found) {
-            noflows.push(flowExpected[i]);
+            noFlows.push(expected[i]);
           }
         }
+        return noFlows
       }
+
+      var noCapture = []
+      var flowExpected = client.gremlin.G().V().Has('Captures.ID', capture.UUID, 'Type', NE('ovsport')).result();
 
       if (!flowExpected.length) {
         result["Error"] = "No node with capture"
-      } else if (noflows.length == 0) {
-        result["Connectivity"] = true
       } else {
-        result["Connectivity"] = false
-        result["NotReachedNodes"] = noflows
+        if (flowExpected.length != captureExpected.length) {
+          noCapture = captureValidation(captureExpected)
+        }
+
+        var noFlows = [];
+        var flowCaptured = client.gremlin.G().Flows().Has('CaptureID', capture.UUID).CaptureNode().Dedup().result();
+
+        if (protocol != "udp" && flowExpected.length && flowExpected.length == flowCaptured.length) {
+          flowCaptured = client.gremlin.G().Flows().Has('CaptureID', capture.UUID, 'Metric.ABPackets', GT(0), 'Metric.BAPackets', GT(0)).CaptureNode().Dedup().result();
+        }
+
+        if (flowExpected.length != flowCaptured.length) {
+          noFlows = flowValidation(flowExpected, flowCaptured)
+        }
+
+        if (noFlows.length == 0) {
+          result["Connectivity"] = true
+        } else {
+          result["Connectivity"] = false
+
+          if (noCapture.length != 0) {
+            result["NotCapturedNodes"] = noCapture
+            result["NotReachedNodes"] = [].concat(noFlows, noCapture);
+          } else {
+            result["NotReachedNodes"] = noFlows
+          }
+        }
       }
     } catch (e) {
       console.log(e)
