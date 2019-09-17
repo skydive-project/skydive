@@ -26,6 +26,7 @@ import (
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/client"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/server"
@@ -73,6 +74,7 @@ func NewAnalyzerStructClientPool(authOpts *shttp.AuthenticationOpts) (*ws.Struct
 	}
 
 	if len(addresses) == 0 {
+		config.Set("agent.standalone", true)
 		logging.GetLogger().Info("Agent is running in standalone mode")
 		return pool, nil
 	}
@@ -164,6 +166,17 @@ func NewAgent() (*Agent, error) {
 	tm := topology.NewTIDMapper(g)
 	tm.Start()
 
+	clusterAuthOptions := &shttp.AuthenticationOpts{
+		Username: config.GetString("agent.auth.cluster.username"),
+		Password: config.GetString("agent.auth.cluster.password"),
+		Cookie:   config.GetStringMapString("http.cookie"),
+	}
+
+	analyzerClientPool, err := NewAnalyzerStructClientPool(clusterAuthOptions)
+	if err != nil {
+		return nil, err
+	}
+
 	apiAuthBackendName := config.GetString("agent.auth.api.backend")
 	apiAuthBackend, err := config.NewAuthenticationBackendByName(apiAuthBackendName)
 	if err != nil {
@@ -182,9 +195,50 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	apiServer, err := api.NewAPI(hserver, nil, service, apiAuthBackend)
-	if err != nil {
-		return nil, err
+	isStandaloneAgent := config.GetBool("agent.standalone")
+	var apiServer *api.Server
+	if isStandaloneAgent {
+		embedEtcd := config.GetBool("etcd.embedded")
+		if embedEtcd {
+			name := config.GetString("etcd.name")
+			dataDir := config.GetString("etcd.data_dir")
+			listen := config.GetString("etcd.listen")
+			maxWalFiles := uint(config.GetInt("etcd.max_wal_files"))
+			maxSnapFiles := uint(config.GetInt("etcd.max_snap_files"))
+			debug := config.GetBool("etcd.debug")
+			peers := config.GetStringMapString("etcd.peers")
+
+			if _, err = etcd.NewEmbeddedEtcd(name, listen, peers, dataDir, maxWalFiles, maxSnapFiles, debug); err != nil {
+				fmt.Println("create errrororr of etcd...")
+			}
+		}
+
+		etcdServers := config.GetEtcdServerAddrs()
+		etcdTimeout := config.GetInt("etcd.client_timeout")
+		etcdClient, err := etcd.NewClient(service, etcdServers, time.Duration(etcdTimeout)*time.Second)
+		if err != nil {
+			return nil, err
+		}
+
+		// wait for etcd to be ready
+		for {
+			if err = etcdClient.SetInt64(fmt.Sprintf("/analyzer:%s/start-time", hostID), time.Now().Unix()); err != nil {
+				logging.GetLogger().Errorf("Etcd server not ready: %s", err)
+				time.Sleep(time.Second)
+			} else {
+				break
+			}
+		}
+
+		apiServer, err = api.NewAPI(hserver, etcdClient.KeysAPI, service, apiAuthBackend)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		apiServer, err = api.NewAPI(hserver, nil, service, apiAuthBackend)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// declare all extension available through API and filtering
@@ -200,17 +254,6 @@ func NewAgent() (*Agent, error) {
 	}
 
 	api.RegisterTopologyAPI(hserver, g, tr, apiAuthBackend)
-
-	clusterAuthOptions := &shttp.AuthenticationOpts{
-		Username: config.GetString("agent.auth.cluster.username"),
-		Password: config.GetString("agent.auth.cluster.password"),
-		Cookie:   config.GetStringMapString("http.cookie"),
-	}
-
-	analyzerClientPool, err := NewAnalyzerStructClientPool(clusterAuthOptions)
-	if err != nil {
-		return nil, err
-	}
 
 	validator, err := topology.NewSchemaValidator()
 	if err != nil {
@@ -274,6 +317,9 @@ func NewAgent() (*Agent, error) {
 	}
 
 	api.RegisterStatusAPI(hserver, agent, apiAuthBackend)
+	if isStandaloneAgent {
+		api.RegisterCaptureAPI(apiServer, g, apiAuthBackend, onDemandProbeServer)
+	}
 
 	return agent, nil
 }

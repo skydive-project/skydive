@@ -63,6 +63,11 @@ type OnDemandServerHandler interface {
 // ErrTaskNotFound used when a task is not found for a specific node
 var ErrTaskNotFound = errors.New("task not found")
 
+// RegTask registers task, used only for statndalone agent
+func (o *OnDemandServer) RegTask(n *graph.Node, resource types.Resource) bool {
+	return o.registerTask(n, resource)
+}
+
 func (o *OnDemandServer) registerTask(n *graph.Node, resource types.Resource) bool {
 	logging.GetLogger().Debugf("Attempting to register %s %s on node %s", o.resourceName, resource.ID(), n.ID)
 
@@ -102,6 +107,11 @@ func (o *OnDemandServer) registerTask(n *graph.Node, resource types.Resource) bo
 
 	logging.GetLogger().Debugf("New active task on: %v (%v)", n, resource)
 	return true
+}
+
+// UnRegTask unregister task, used only for stanadalone agent
+func (o *OnDemandServer) UnRegTask(n *graph.Node, r types.Resource) error {
+	return o.unregisterTask(n, r)
 }
 
 // unregisterTask should be executed under graph lock

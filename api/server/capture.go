@@ -25,12 +25,14 @@ import (
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/ondemand/server"
 )
 
 // CaptureResourceHandler describes a capture ressouce handler
@@ -41,7 +43,8 @@ type CaptureResourceHandler struct {
 // CaptureAPIHandler based on BasicAPIHandler
 type CaptureAPIHandler struct {
 	BasicAPIHandler
-	Graph *graph.Graph
+	Graph    *graph.Graph
+	ODServer *server.OnDemandServer
 }
 
 // Name returns "capture"
@@ -102,6 +105,28 @@ func (c *CaptureAPIHandler) Decorate(resource types.Resource) {
 	capture.Count = count
 }
 
+// Delete delete a resourece
+func (c *CaptureAPIHandler) Delete(id string) error {
+	isStandaloneAgent := config.GetBool("agent.standalone")
+	if isStandaloneAgent {
+		resource, _ := c.Get(id)
+		capture := resource.(*types.Capture)
+		query := capture.GremlinQuery
+		res, err := ge.TopologyGremlinQuery(c.Graph, query)
+		if err != nil {
+			logging.GetLogger().Errorf("Gremlin %s error: %s", query, err)
+			return c.BasicAPIHandler.Delete(id)
+		}
+		values := res.Values()
+		node := values[0].(*graph.Node)
+		err = c.ODServer.UnRegTask(node, resource)
+		if err != nil {
+			logging.GetLogger().Errorf("Delete error: %s", err)
+		}
+	}
+	return c.BasicAPIHandler.Delete(id)
+}
+
 // Create tests that resource GremlinQuery does not exists already
 func (c *CaptureAPIHandler) Create(r types.Resource, opts *CreateOptions) error {
 	capture := r.(*types.Capture)
@@ -141,17 +166,35 @@ func (c *CaptureAPIHandler) Create(r types.Resource, opts *CreateOptions) error 
 		}
 	}
 
-	return c.BasicAPIHandler.Create(r, opts)
+	err := c.BasicAPIHandler.Create(r, opts)
+
+	isStandaloneAgent := config.GetBool("agent.standalone")
+	if isStandaloneAgent {
+		capture := r.(*types.Capture)
+		query := capture.GremlinQuery
+		result, err := ge.TopologyGremlinQuery(c.Graph, query)
+		if err != nil {
+			logging.GetLogger().Errorf("Gremlin %s error: %s", query, err)
+			return err
+		}
+		values := result.Values()
+		node := values[0].(*graph.Node)
+		c.ODServer.RegTask(node, r)
+	}
+	return err
 }
 
 // RegisterCaptureAPI registers an new resource, capture
-func RegisterCaptureAPI(apiServer *Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*CaptureAPIHandler, error) {
+func RegisterCaptureAPI(apiServer *Server, g *graph.Graph, authBackend shttp.AuthenticationBackend, ods ...*server.OnDemandServer) (*CaptureAPIHandler, error) {
 	captureAPIHandler := &CaptureAPIHandler{
 		BasicAPIHandler: BasicAPIHandler{
 			ResourceHandler: &CaptureResourceHandler{},
 			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
 		},
 		Graph: g,
+	}
+	if len(ods) > 0 {
+		captureAPIHandler.ODServer = ods[0]
 	}
 	if err := apiServer.RegisterAPIHandler(captureAPIHandler, authBackend); err != nil {
 		return nil, err
