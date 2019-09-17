@@ -119,6 +119,9 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 	// Set the external key
 	f.XXX_state.extKey = ebpfFlow.KernFlow.key
 
+	// notify that the flow has been updated between two table updates
+	f.XXX_state.updateVersion = ft.updateVersion + 1
+
 	layersInfo := uint8(ebpfFlow.KernFlow.layers_info)
 
 	// LINK
@@ -285,6 +288,7 @@ func (ft *Table) updateFlowFromEBPF(ebpfFlow *EBPFFlow, f *Flow) bool {
 	if last == f.Last {
 		return false
 	}
+	f.Last = last
 
 	layersInfo := uint8(ebpfFlow.KernFlow.layers_info)
 	if layersInfo&uint8(C.TRANSPORT_LAYER_INFO) > 0 {

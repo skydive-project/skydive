@@ -32,6 +32,6 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]string, []*F
 	return nil, nil, nil
 }
 
-func (ft *Table) updateFlowFromEBPF(ebpfFlow *EBPFFlow, f *Flow) *Flow {
-	return nil
+func (ft *Table) updateFlowFromEBPF(ebpfFlow *EBPFFlow, f *Flow) bool {
+	return false
 }
