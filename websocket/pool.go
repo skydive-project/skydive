@@ -68,26 +68,30 @@ type incomerPool struct {
 	*Pool
 }
 
+func (s *Pool) cloneEventHandlers() (handlers []SpeakerEventHandler) {
+	s.eventHandlersLock.RLock()
+	handlers = append(handlers, s.eventHandlers...)
+	s.eventHandlersLock.RUnlock()
+
+	return
+}
+
 // OnConnected forwards the OnConnected event to event listeners of the pool.
 func (s *Pool) OnConnected(c Speaker) {
-	s.eventHandlersLock.RLock()
-	for _, h := range s.eventHandlers {
+	for _, h := range s.cloneEventHandlers() {
 		h.OnConnected(c)
 		if !c.IsConnected() {
 			break
 		}
 	}
-	s.eventHandlersLock.RUnlock()
 }
 
 // OnDisconnected forwards the OnConnected event to event listeners of the pool.
 func (s *Pool) OnDisconnected(c Speaker) {
 	s.opts.Logger.Debugf("OnDisconnected %s for pool %s ", c.GetRemoteHost(), s.GetName())
-	s.eventHandlersLock.RLock()
-	for _, h := range s.eventHandlers {
+	for _, h := range s.cloneEventHandlers() {
 		h.OnDisconnected(c)
 	}
-	s.eventHandlersLock.RUnlock()
 }
 
 // OnDisconnected forwards the OnConnected event to event listeners of the pool.
@@ -125,11 +129,9 @@ func (s *incomerPool) AddClient(c Speaker) error {
 
 // OnMessage forwards the OnMessage event to event listeners of the pool.
 func (s *Pool) OnMessage(c Speaker, m Message) {
-	s.eventHandlersLock.RLock()
-	for _, h := range s.eventHandlers {
+	for _, h := range s.cloneEventHandlers() {
 		h.OnMessage(c, m)
 	}
-	s.eventHandlersLock.RUnlock()
 }
 
 // RemoveClient removes client from the pool
