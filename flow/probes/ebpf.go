@@ -23,14 +23,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"math"
 	"runtime"
 	"sync"
 	"syscall"
 	"time"
 	"unsafe"
 
-	"github.com/newtools/ebpf"
+	"github.com/iovisor/gobpf/elf"
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
@@ -41,24 +40,13 @@ import (
 	"github.com/skydive-project/skydive/topology"
 )
 
-/*
-#cgo CFLAGS: -I../../probe/ebpf
-#include "flow.h"
-#include <string.h>
-#include <sys/resource.h>
-#include <sys/socket.h>
-
-int probe_bpf_attach_socket(int sock, int fd)
-{
-	return setsockopt(sock, SOL_SOCKET, SO_ATTACH_BPF, &fd, sizeof(fd));
-}
-
-int probe_bpf_detach_socket(int sock, int fd)
-{
-	return setsockopt(sock, SOL_SOCKET, SO_DETACH_BPF, &fd, sizeof(fd));
-}
-*/
+// #cgo CFLAGS: -I../../probe/ebpf
+// #include "flow.h"
 import "C"
+
+const (
+	BPF_ANY = 0
+)
 
 // EBPFProbe the eBPF probe
 type EBPFProbe struct {
@@ -66,8 +54,8 @@ type EBPFProbe struct {
 	probeNodeTID string
 	fd           int
 	flowTable    *flow.Table
-	module       *ebpf.Collection
-	fmap         *ebpf.Map
+	module       *elf.Module
+	fmap         *elf.Map
 	expire       time.Duration
 	quit         chan bool
 }
@@ -108,32 +96,31 @@ func (p *EBPFProbe) run() {
 		}
 	}
 
-	var prevKey, key C.__u64
+	var key, nextKey C.__u64
 	var nextAvailablePtr int
 	now := time.Now()
-	getFirstKey := true
 	for {
 		select {
 		case <-p.quit:
 			return
 		case key := <-expiredChan:
-			p.fmap.Delete(key)
+			p.module.DeleteElement(p.fmap, unsafe.Pointer(&key))
 		case now = <-updateNow.C:
 		default:
-			if statsMap := p.module.Maps["stats_map"]; statsMap != nil {
+			if statsMap := p.module.Map("stats_map"); statsMap != nil {
 				var statsKey uint32
 				var statsVal int64
 
-				if found, err := statsMap.Get(statsKey, &statsVal); err == nil && found {
+				if p.module.LookupElement(statsMap, unsafe.Pointer(&statsKey), unsafe.Pointer(&statsVal)) == nil {
 					if statsVal > 0 {
 						p.Ctx.Logger.Warningf("flow table overflow, %d flows were dropped from kernel table", statsVal)
 					}
-					statsMap.Delete(statsKey)
+					p.module.DeleteElement(statsMap, unsafe.Pointer(&statsKey))
 				}
 			}
 			// try to get start monotonic time
 			if startKTimeNs == 0 {
-				cmap := p.module.Maps["u64_config_values"]
+				cmap := p.module.Map("u64_config_values")
 				if cmap == nil {
 					continue
 				}
@@ -141,39 +128,26 @@ func (p *EBPFProbe) run() {
 				key := uint32(C.START_TIME_NS)
 				var sns int64
 
-				if found, err := cmap.Get(key, &sns); err == nil && found && sns != 0 {
+				p.module.LookupElement(cmap, unsafe.Pointer(&key), unsafe.Pointer(&sns))
+				if sns != 0 {
 					startKTimeNs = sns
 					start = now
+				} else {
+					continue
 				}
-				continue
 			}
 
 			tCancel := now.Add(ebpfMaxPollDelay)
-
 			for {
-				var err error
-				var found bool
-				if getFirstKey {
-					if found, err = p.fmap.NextKey(nil, &key); !found {
-						/* map empty */
-						time.Sleep(ebpfPollingRate)
-						break
-					}
-					getFirstKey = false
-				} else {
-					found, err = p.fmap.NextKey(prevKey, &key)
-				}
-				if !found || err != nil {
-					getFirstKey = true
-					break
-				}
+				kernFlow := &kernFlows[nextAvailablePtr]
 
-				kernFlow := unsafe.Pointer(&kernFlows[nextAvailablePtr])
-				if _, err = p.fmap.Get(key, kernFlow); err != nil {
-					getFirstKey = true
+				found, err := p.module.LookupNextElement(p.fmap, unsafe.Pointer(&key), unsafe.Pointer(&nextKey), unsafe.Pointer(kernFlow))
+				if !found || err != nil {
+					key = 0
+					time.Sleep(ebpfPollingRate)
 					break
 				}
-				prevKey = key
+				key = nextKey
 
 				lastK := int64(kernFlows[nextAvailablePtr].last)
 				last := start.Add(time.Duration(lastK - startKTimeNs))
@@ -189,7 +163,7 @@ func (p *EBPFProbe) run() {
 				ebpfFlow.Start = startFlow
 				ebpfFlow.Last = last
 				ebpfFlow.StartKTimeNs = startKTimeNs
-				flow.SetEBPFKernFlow(ebpfFlow, kernFlow)
+				flow.SetEBPFKernFlow(ebpfFlow, unsafe.Pointer(kernFlow))
 
 				extFlowChan <- &extFlow
 
@@ -231,13 +205,13 @@ func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture,
 		return nil, err
 	}
 
-	fmap := module.Maps["flow_table"]
+	fmap := module.Map("flow_table")
 	if fmap == nil {
 		module.Close()
 		return nil, fmt.Errorf("Unable to find flow_table map")
 	}
 
-	socketFilter := module.Programs["bpf_flow_table"]
+	socketFilter := module.SocketFilter("socket_flow_table")
 	if socketFilter == nil {
 		module.Close()
 		return nil, errors.New("No flow_table socket filter")
@@ -255,7 +229,7 @@ func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture,
 	}
 	fd := rs.GetFd()
 
-	if ret := C.probe_bpf_attach_socket(C.int(fd), C.int(socketFilter.FD())); ret != 0 {
+	if err := elf.AttachSocketFilter(socketFilter, fd); err != nil {
 		rs.Close()
 		module.Close()
 		return nil, fmt.Errorf("Unable to attach socket filter to node: %s", n.ID)
@@ -283,7 +257,7 @@ func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture,
 
 		probe.run()
 
-		if ret := C.probe_bpf_detach_socket(C.int(fd), C.int(socketFilter.FD())); ret != 0 {
+		if err := elf.DetachSocketFilter(socketFilter, fd); err != nil {
 			p.Ctx.Logger.Errorf("Unable to detach eBPF probe: %s", err)
 		}
 		rs.Close()
@@ -308,21 +282,22 @@ func (p *EBPFProbesHandler) Stop() {
 	p.wg.Wait()
 }
 
-func LoadJumpMap(module *ebpf.Collection) error {
-	var jmpTable []string = []string{"network_layer"}
+func LoadJumpMap(module *elf.Module) error {
+	var jmpTable []string = []string{"socket_network_layer"}
 
-	jmpTableMap := module.Maps["jmp_map"]
+	jmpTableMap := module.Map("jmp_map")
 	if jmpTableMap == nil {
 		return fmt.Errorf("Map: jmp_map not found")
 	}
 	for i, sym := range jmpTable {
-		entry := module.Programs[sym]
+		entry := module.SocketFilter(sym)
 		if entry == nil {
 			return fmt.Errorf("Symbol %s not found", sym)
 		}
 
-		fd := uint32(entry.FD())
-		err := jmpTableMap.Put(uint32(i), &fd)
+		index := uint32(i)
+		fd := uint32(entry.Fd())
+		err := module.UpdateElement(jmpTableMap, unsafe.Pointer(&index), unsafe.Pointer(&fd), BPF_ANY)
 		if err != nil {
 			return err
 		}
@@ -330,21 +305,14 @@ func LoadJumpMap(module *ebpf.Collection) error {
 	return nil
 }
 
-func (p *EBPFProbesHandler) loadModuleFromAsset(path string) (*ebpf.Collection, error) {
+func (p *EBPFProbesHandler) loadModuleFromAsset(path string) (*elf.Module, error) {
 	data, err := statics.Asset(path)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to find eBPF elf binary in bindata")
 	}
 
-	collspec, err := ebpf.LoadCollectionSpecFromReader(bytes.NewReader(data))
-	if err != nil {
-		return nil, fmt.Errorf("Can't load %s: %v\n", path, err)
-	}
-
-	module, err := ebpf.NewCollection(collspec)
-	if err != nil {
-		return nil, fmt.Errorf("Can't create collection %s: %v\n", path, err)
-	}
+	module := elf.NewModuleFromReader(bytes.NewReader(data))
+	err = module.Load(nil)
 
 	if err == nil {
 		p.Ctx.Logger.Infof("Loaded eBPF module %s", path)
@@ -352,15 +320,7 @@ func (p *EBPFProbesHandler) loadModuleFromAsset(path string) (*ebpf.Collection, 
 	return module, err
 }
 
-func (p *EBPFProbesHandler) loadModule() (*ebpf.Collection, error) {
-	err := syscall.Setrlimit(C.RLIMIT_MEMLOCK, &syscall.Rlimit{
-		Cur: math.MaxUint64,
-		Max: math.MaxUint64,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("Failed to adjust rlimit map lock")
-	}
-
+func (p *EBPFProbesHandler) loadModule() (*elf.Module, error) {
 	module, err := p.loadModuleFromAsset("probe/ebpf/flow-gre.o")
 	if err != nil {
 		p.Ctx.Logger.Errorf("Unable to load eBPF elf binary (host %s) from bindata: %s, trying to fallback", runtime.GOARCH, err)

@@ -75,7 +75,6 @@ require (
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/networkservicemesh/networkservicemesh v0.1.0
-	github.com/newtools/ebpf v0.0.0-20190820102627-8b7eaed02eb9
 	github.com/nlewo/contrail-introspect-cli v0.0.0-20181003135217-0407b60f2edd
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/olivere/elastic v0.0.0-20190204160516-f82cf7c66881
