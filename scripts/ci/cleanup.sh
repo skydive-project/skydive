@@ -30,17 +30,17 @@ function cleanup() {
   # cleanup minikube
   "${CURDIR}/install-minikube.sh" stop
 
+  # cleanup podman/runc
+  podman stop -a
+  podman rm -fa
+  podman rmi -fa
+
   cleanup_items netns "ip netns del"
   cleanup_items intf "ip link del"
   cleanup_items ovsdb "ovs-vsctl del-br"
   cleanup_items docker "docker_rm"
   cleanup_items docker-volumes "docker_volume_rm"
   cleanup_items lxd "lxc delete --force"
-
-  # cleanup podman/runc
-  podman stop -a
-  podman rm -fa
-  podman rmi -fa
 
   SKYDIVE=skydive "${CURDIR}/../scale.sh" stop 2 4 2
 
