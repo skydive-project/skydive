@@ -30,6 +30,11 @@ function cleanup() {
   # cleanup minikube
   "${CURDIR}/install-minikube.sh" stop
 
+  # cleanup podman/runc
+  podman stop -a
+  podman rm -fa
+  podman rmi -fa
+
   cleanup_items netns "ip netns del"
   cleanup_items intf "ip link del"
   cleanup_items ovsdb "ovs-vsctl del-br"
@@ -37,12 +42,7 @@ function cleanup() {
   cleanup_items docker-volumes "docker_volume_rm"
   cleanup_items lxd "lxc delete --force"
 
-  # cleanup podman/runc
-  podman stop -a
-  podman rm -fa
-  podman rmi -fa
-
-  "${CURDIR}/../scale.sh" stop 10 10 10
+  SKYDIVE=skydive "${CURDIR}/../scale.sh" stop 2 4 2
 
   # clean elasticsearch
   curl -X DELETE 'http://localhost:9200/skydive*'

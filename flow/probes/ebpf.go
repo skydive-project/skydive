@@ -338,7 +338,7 @@ func (p *EBPFProbesHandler) loadModuleFromAsset(path string) (*ebpf.Collection, 
 	}
 
 	if err == nil {
-		p.Ctx.Logger.Infof("Loaded eBPF module ", path)
+		p.Ctx.Logger.Infof("Loaded eBPF module %s", path)
 	}
 	return module, err
 }

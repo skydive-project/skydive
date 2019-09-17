@@ -12,4 +12,9 @@
      - manifest-tool
      - git-lfs
 
+- service:
+    name: libvirtd
+    state: started
+    enabled: yes
+
 - include_tasks: virtualbox.yml
