@@ -2,8 +2,10 @@ STATIC_FILES=$(shell find statics -type f \( ! -iname "bindata.go" ! -iname "bun
 GO_BINDATA_GITHUB:=github.com/jteeuwen/go-bindata/go-bindata
 EXTRABINDATA:=
 
+EBPF_PROBES:=
 ifeq ($(WITH_EBPF), true)
   EXTRABINDATA+=probe/ebpf/*.o
+  EBPF_PROBES+=probe/ebpf/flow.o probe/ebpf/flow-gre.o
 endif
 
 BINDATA_DIRS := \

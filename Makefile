@@ -41,12 +41,15 @@ WITH_LIBVIRT_GO?=true
 WITH_EBPF_DOCKER_BUILDER?=true
 WITH_VPP?=false
 
+EXTRA_BUILD_TARGET=
+
 ifeq ($(WITH_DPDK), true)
   BUILD_TAGS+=dpdk
 endif
 
 ifeq ($(WITH_EBPF), true)
   BUILD_TAGS+=ebpf
+  EXTRA_BUILD_TARGET+=.ebpf
 endif
 
 ifeq ($(WITH_PROF), true)
@@ -97,8 +100,7 @@ ifeq ($(WITH_OPENCONTRAIL), true)
   BUILD_TAGS+=opencontrail
 endif
 
-include probe/ebpf/Makefile
-
+include .mk/ebpf.mk
 include .mk/api.mk
 include .mk/bench.mk
 include .mk/bindata.mk
@@ -137,8 +139,8 @@ skydive.clean:
 	go clean -i $(SKYDIVE_GITHUB)
 
 .PHONY: genlocalfiles
-genlocalfiles: .proto .bindata .gendecoder .easyjson .vppbinapi
+genlocalfiles: $(EXTRA_BUILD_TARGET) .proto .bindata .gendecoder .easyjson .vppbinapi
 
 .PHONY: clean
-clean: skydive.clean test.functionals.clean contribs.clean ebpf.clean .easyjson.clean .proto.clean .gendecoder.clean .typescript.clean .vppbinapi.clean
+clean: skydive.clean test.functionals.clean contribs.clean .ebpf.clean .easyjson.clean .proto.clean .gendecoder.clean .typescript.clean .vppbinapi.clean
 	go clean -i >/dev/null 2>&1 || true

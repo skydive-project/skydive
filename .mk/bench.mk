@@ -1,5 +1,5 @@
 .PHONY: bench
-bench:	skydive bench.flow
+bench: skydive bench.flow
 
 flow/pcaptraces/201801011400.pcap.gz:
 	aria2c -s 16 -x 16 -o $@ "http://mawi.nezu.wide.ad.jp/mawi/samplepoint-F/2018/201801011400.pcap.gz"
