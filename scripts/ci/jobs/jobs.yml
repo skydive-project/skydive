@@ -159,6 +159,8 @@
           . scripts/ci/install-go.sh
           [[ "$ghprbCommentBody" = *"insanelock"* ]] && export TAGS=mutexdebug
           [[ "$ghprbCommentBody" = *"profile"* ]] && export WITH_PROF=true
+          [[ "$ghprbPullLongDescription" = *"pattern="* ]] && export TEST_PATTERN=`expr match "$ghprbPullLongDescription" '^.*pattern=\(.*\)$'`
+          [[ "$ghprbCommentBody" = *"pattern="* ]] && export TEST_PATTERN=`expr match "$ghprbCommentBody" '^.*pattern=\(.*\)$'`
           {test}
 
 - parameter:
