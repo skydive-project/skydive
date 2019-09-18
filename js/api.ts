@@ -671,8 +671,8 @@ export function REGEX(param: any): Predicate {
     return new Predicate("REGEX", param)
 }
 
-export function WITHIN(...params: any[]): Predicate {
-    return new Predicate("WITHIN", ...params)
+export function Within(...params: any[]): Predicate {
+    return new Predicate("Within", ...params)
 }
 
 export function WITHOUT(...params: any[]): Predicate {
