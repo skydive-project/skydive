@@ -112,6 +112,7 @@ include .mk/proto.mk
 include .mk/static.mk
 include .mk/tests.mk
 include .mk/vppapi.mk
+include .mk/swagger.mk
 
 .DEFAULT_GOAL := all
 
