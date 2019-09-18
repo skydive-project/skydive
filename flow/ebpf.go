@@ -116,6 +116,12 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 	f.Init(common.UnixMillis(ebpfFlow.Start), "", &ft.uuids)
 	f.Last = common.UnixMillis(ebpfFlow.Last)
 
+	// Set the external key
+	f.XXX_state.extKey = ebpfFlow.KernFlow.key
+
+	// notify that the flow has been updated between two table updates
+	f.XXX_state.updateVersion = ft.updateVersion + 1
+
 	layersInfo := uint8(ebpfFlow.KernFlow.layers_info)
 
 	// LINK
@@ -170,7 +176,7 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 
 		parentKey := uint64(ebpfFlow.KernFlow.key_outer)
 
-		parent.SetUUIDs(parentKey, Opts{LayerKeyMode: L3PreferedKeyMode})
+		parent.SetUUIDs(parentKey, Opts{LayerKeyMode: L3PreferredKeyMode})
 
 		flows = append(flows, parent)
 		keys = append(keys, parentKey)
@@ -269,7 +275,7 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 		Last:      f.Last,
 	}
 
-	f.SetUUIDs(key, Opts{LayerKeyMode: L3PreferedKeyMode})
+	f.SetUUIDs(key, Opts{LayerKeyMode: L3PreferredKeyMode})
 
 	flows = append(flows, f)
 	keys = append(keys, key)
@@ -277,8 +283,13 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 	return keys, flows, nil
 }
 
-func (ft *Table) updateFlowFromEBPF(ebpfFlow *EBPFFlow, f *Flow) {
-	f.Last = common.UnixMillis(ebpfFlow.Last)
+func (ft *Table) updateFlowFromEBPF(ebpfFlow *EBPFFlow, f *Flow) bool {
+	last := common.UnixMillis(ebpfFlow.Last)
+	if last == f.Last {
+		return false
+	}
+	f.Last = last
+
 	layersInfo := uint8(ebpfFlow.KernFlow.layers_info)
 	if layersInfo&uint8(C.TRANSPORT_LAYER_INFO) > 0 {
 		protocol := uint8(ebpfFlow.KernFlow.transport_layer.protocol)
@@ -292,12 +303,15 @@ func (ft *Table) updateFlowFromEBPF(ebpfFlow *EBPFFlow, f *Flow) {
 			f.TCPMetric.BARstStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ba_rst, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
 		}
 	}
-	f.Metric.ABBytes += int64(ebpfFlow.KernFlow.metrics.ab_bytes)
-	f.Metric.ABPackets += int64(ebpfFlow.KernFlow.metrics.ab_packets)
-	f.Metric.BABytes += int64(ebpfFlow.KernFlow.metrics.ba_bytes)
-	f.Metric.BAPackets += int64(ebpfFlow.KernFlow.metrics.ba_packets)
+
+	f.Metric.ABBytes = int64(ebpfFlow.KernFlow.metrics.ab_bytes)
+	f.Metric.ABPackets = int64(ebpfFlow.KernFlow.metrics.ab_packets)
+	f.Metric.BABytes = int64(ebpfFlow.KernFlow.metrics.ba_bytes)
+	f.Metric.BAPackets = int64(ebpfFlow.KernFlow.metrics.ba_packets)
 	f.Metric.Start = f.Start
-	f.Metric.Last = f.Last
+	f.Metric.Last = last
+
+	return true
 }
 
 // because golang doesn't allow to use cgo in test we define this here but will be used in test

@@ -342,7 +342,6 @@ static inline void fill_network(struct __sk_buff *skb, __u16 netproto, size_t of
 
 	layer->_hash = FNV_BASIS;
 
-
 	flow->key = flow->link_layer._hash;
 	flow->key = rotl(flow->key, 16);
 
@@ -550,12 +549,11 @@ int network_layer(struct __sk_buff *skb)
 	if (flow == NULL) {
 		/* New flow */
 		new->start = new->last;
-		int ab = is_ab_packet(new, new);
-		update_metrics(skb, new, ab);
+		update_metrics(skb, new, 1);
 		if (bpf_map_update_element(&flow_table, &new->key, new, BPF_ANY) == -1) {
 			__u32 stats_key = 0;
 			__u64 stats_update_val = 1;
-			__u64 *stats_val = bpf_map_lookup_element(&stats_map,&stats_key);
+			__u64 *stats_val = bpf_map_lookup_element(&stats_map, &stats_key);
 			if (stats_val == NULL) {
 				bpf_map_update_element(&stats_map, &stats_key, &stats_update_val, BPF_ANY);
 			} else {
@@ -566,8 +564,8 @@ int network_layer(struct __sk_buff *skb)
 	}
 
 	/* Update flow */
-	int ab = is_ab_packet(new, flow);
-	update_metrics(skb, flow, ab);
+	flow->last =  l2->last;
+	update_metrics(skb, flow, is_ab_packet(new, flow));
 	if (flow->layers_info & TRANSPORT_LAYER_INFO) {
 #define update_transport_flags(ab, ba)					\
 		do {							\

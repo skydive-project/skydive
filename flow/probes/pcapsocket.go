@@ -50,7 +50,7 @@ type PcapSocketProbeHandler struct {
 func (p *PcapSocketProbe) run() {
 	p.state.Store(common.RunningState)
 
-	packetSeqChan, _, _ := p.flowTable.Start()
+	packetSeqChan, _ := p.flowTable.Start(nil)
 	defer p.flowTable.Stop()
 
 	for p.state.Load() == common.RunningState {

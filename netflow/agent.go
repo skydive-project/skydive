@@ -69,7 +69,7 @@ func intToIP(nn uint32) net.IP {
 	return ip
 }
 
-func (nfa *Agent) feedFlowTable(flowOpChan chan *flow.Operation) {
+func (nfa *Agent) feedFlowTable(extFlowChan chan *flow.ExtFlow) {
 	var buf [maxDgramSize]byte
 	for {
 		n, addr, err := nfa.Conn.ReadFromUDP(buf[:])
@@ -133,7 +133,7 @@ func (nfa *Agent) feedFlowTable(flowOpChan chan *flow.Operation) {
 				Last:      f.Last,
 			}
 
-			l2, l3 := f.SetUUIDs(123, flow.Opts{LayerKeyMode: flow.L3PreferedKeyMode})
+			l2, l3 := f.SetUUIDs(123, flow.Opts{LayerKeyMode: flow.L3PreferredKeyMode})
 
 			op := &flow.Operation{
 				Type: flow.ReplaceOperation,
@@ -141,16 +141,19 @@ func (nfa *Agent) feedFlowTable(flowOpChan chan *flow.Operation) {
 				Key:  l2 ^ l3,
 			}
 
-			flowOpChan <- op
+			extFlowChan <- &flow.ExtFlow{
+				Type: flow.OperationExtFlowType,
+				Obj:  op,
+			}
 		}
 	}
 }
 
 func (nfa *Agent) start() error {
-	_, _, flowOpChan := nfa.FlowTable.Start()
+	_, extFlowChan := nfa.FlowTable.Start(nil)
 	defer nfa.FlowTable.Stop()
 
-	nfa.feedFlowTable(flowOpChan)
+	nfa.feedFlowTable(extFlowChan)
 
 	return nil
 }

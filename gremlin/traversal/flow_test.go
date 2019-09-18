@@ -129,14 +129,20 @@ func newICMPFlow(id uint32) *flow.Flow {
 func TestHasStepOp(t *testing.T) {
 	tc := newFakeTableClient("node1")
 
-	_, _, flowChan := tc.t.Start()
+	_, extFlowChan := tc.t.Start(nil)
 	defer tc.t.Stop()
 	for tc.t.State() != common.RunningState {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(222), Key: rand.Uint64()}
-	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(444), Key: rand.Uint64()}
+	extFlowChan <- &flow.ExtFlow{
+		Type: flow.OperationExtFlowType,
+		Obj:  &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(222), Key: rand.Uint64()},
+	}
+	extFlowChan <- &flow.ExtFlow{
+		Type: flow.OperationExtFlowType,
+		Obj:  &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(444), Key: rand.Uint64()},
+	}
 
 	time.Sleep(time.Second)
 
@@ -186,14 +192,20 @@ func TestHasStepOp(t *testing.T) {
 func TestLimitStepOp(t *testing.T) {
 	tc := newFakeTableClient("node1")
 
-	_, _, flowChan := tc.t.Start()
+	_, extFlowChan := tc.t.Start(nil)
 	defer tc.t.Stop()
 	for tc.t.State() != common.RunningState {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(222), Key: rand.Uint64()}
-	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(444), Key: rand.Uint64()}
+	extFlowChan <- &flow.ExtFlow{
+		Type: flow.OperationExtFlowType,
+		Obj:  &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(222), Key: rand.Uint64()},
+	}
+	extFlowChan <- &flow.ExtFlow{
+		Type: flow.OperationExtFlowType,
+		Obj:  &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(444), Key: rand.Uint64()},
+	}
 
 	time.Sleep(time.Second)
 
@@ -213,14 +225,20 @@ func TestLimitStepOp(t *testing.T) {
 func TestDedupStepOp(t *testing.T) {
 	tc := newFakeTableClient("node1")
 
-	_, _, flowChan := tc.t.Start()
+	_, extFlowChan := tc.t.Start(nil)
 	defer tc.t.Stop()
 	for tc.t.State() != common.RunningState {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(222), Key: rand.Uint64()}
-	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(222), Key: rand.Uint64()}
+	extFlowChan <- &flow.ExtFlow{
+		Type: flow.OperationExtFlowType,
+		Obj:  &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(222), Key: rand.Uint64()},
+	}
+	extFlowChan <- &flow.ExtFlow{
+		Type: flow.OperationExtFlowType,
+		Obj:  &flow.Operation{Type: flow.ReplaceOperation, Flow: newICMPFlow(222), Key: rand.Uint64()},
+	}
 
 	time.Sleep(time.Second)
 
@@ -250,7 +268,7 @@ func TestCaptureNodeStepOp(t *testing.T) {
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"TID": "456"})
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"TID": "789"})
 
-	_, _, flowChan := tc.t.Start()
+	_, extFlowChan := tc.t.Start(nil)
 	defer tc.t.Stop()
 	for tc.t.State() != common.RunningState {
 		time.Sleep(100 * time.Millisecond)
@@ -258,11 +276,17 @@ func TestCaptureNodeStepOp(t *testing.T) {
 
 	icmp := newICMPFlow(222)
 	icmp.NodeTID = "123"
-	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()}
+	extFlowChan <- &flow.ExtFlow{
+		Type: flow.OperationExtFlowType,
+		Obj:  &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()},
+	}
 
 	icmp = newICMPFlow(444)
 	icmp.NodeTID = "456"
-	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()}
+	extFlowChan <- &flow.ExtFlow{
+		Type: flow.OperationExtFlowType,
+		Obj:  &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()},
+	}
 
 	time.Sleep(time.Second)
 
@@ -298,7 +322,7 @@ func TestInStepOp(t *testing.T) {
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"MAC": "456"})
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"MAC": "789"})
 
-	_, _, flowChan := tc.t.Start()
+	_, extFlowChan := tc.t.Start(nil)
 	defer tc.t.Stop()
 	for tc.t.State() != common.RunningState {
 		time.Sleep(100 * time.Millisecond)
@@ -306,15 +330,24 @@ func TestInStepOp(t *testing.T) {
 
 	icmp := newICMPFlow(222)
 	icmp.Link = &flow.FlowLayer{A: "123"}
-	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()}
+	extFlowChan <- &flow.ExtFlow{
+		Type: flow.OperationExtFlowType,
+		Obj:  &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()},
+	}
 
 	icmp = newICMPFlow(444)
 	icmp.Link = &flow.FlowLayer{A: "456"}
-	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()}
+	extFlowChan <- &flow.ExtFlow{
+		Type: flow.OperationExtFlowType,
+		Obj:  &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()},
+	}
 
 	icmp = newICMPFlow(666)
 	icmp.Link = &flow.FlowLayer{A: "123"}
-	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()}
+	extFlowChan <- &flow.ExtFlow{
+		Type: flow.OperationExtFlowType,
+		Obj:  &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()},
+	}
 
 	time.Sleep(time.Second)
 
@@ -344,7 +377,7 @@ func TestOutStepOp(t *testing.T) {
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"PeerIntfMAC": "456"})
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"MAC": "789"})
 
-	_, _, flowChan := tc.t.Start()
+	_, extFlowChan := tc.t.Start(nil)
 	defer tc.t.Stop()
 	for tc.t.State() != common.RunningState {
 		time.Sleep(100 * time.Millisecond)
@@ -352,15 +385,24 @@ func TestOutStepOp(t *testing.T) {
 
 	icmp := newICMPFlow(222)
 	icmp.Link = &flow.FlowLayer{B: "123"}
-	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()}
+	extFlowChan <- &flow.ExtFlow{
+		Type: flow.OperationExtFlowType,
+		Obj:  &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()},
+	}
 
 	icmp = newICMPFlow(444)
 	icmp.Link = &flow.FlowLayer{B: "456"}
-	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()}
+	extFlowChan <- &flow.ExtFlow{
+		Type: flow.OperationExtFlowType,
+		Obj:  &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()},
+	}
 
 	icmp = newICMPFlow(666)
 	icmp.Link = &flow.FlowLayer{B: "123"}
-	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()}
+	extFlowChan <- &flow.ExtFlow{
+		Type: flow.OperationExtFlowType,
+		Obj:  &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()},
+	}
 
 	time.Sleep(time.Second)
 
@@ -390,7 +432,7 @@ func TestBothStepOp(t *testing.T) {
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"PeerIntfMAC": "456"})
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"MAC": "789"})
 
-	_, _, flowChan := tc.t.Start()
+	_, extFlowChan := tc.t.Start(nil)
 	defer tc.t.Stop()
 	for tc.t.State() != common.RunningState {
 		time.Sleep(100 * time.Millisecond)
@@ -398,15 +440,24 @@ func TestBothStepOp(t *testing.T) {
 
 	icmp := newICMPFlow(222)
 	icmp.Link = &flow.FlowLayer{A: "123"}
-	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()}
+	extFlowChan <- &flow.ExtFlow{
+		Type: flow.OperationExtFlowType,
+		Obj:  &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()},
+	}
 
 	icmp = newICMPFlow(444)
 	icmp.Link = &flow.FlowLayer{B: "456"}
-	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()}
+	extFlowChan <- &flow.ExtFlow{
+		Type: flow.OperationExtFlowType,
+		Obj:  &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()},
+	}
 
 	icmp = newICMPFlow(666)
 	icmp.Link = &flow.FlowLayer{B: "123"}
-	flowChan <- &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()}
+	extFlowChan <- &flow.ExtFlow{
+		Type: flow.OperationExtFlowType,
+		Obj:  &flow.Operation{Type: flow.ReplaceOperation, Flow: icmp, Key: rand.Uint64()},
+	}
 
 	time.Sleep(time.Second)
 

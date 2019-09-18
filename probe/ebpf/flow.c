@@ -482,7 +482,8 @@ int bpf_flow_table(struct __sk_buff *skb)
 			}
 		}
 	} else {
-		update_metrics(skb, &flow, tm, is_ab_packet(&flow, &flow));
+		update_metrics(skb, &flow, tm, 1);
+
 		__sync_fetch_and_add(&flow.start, tm);
 		__sync_fetch_and_add(&flow.last, tm);
 

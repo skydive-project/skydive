@@ -59,6 +59,7 @@ const (
 // flowState is used internally to track states within the flow table.
 // it is added to the generated Flow struct by Makefile
 type flowState struct {
+	extKey        interface{} // used to make a link between internal flow to external flow, ex: eBPF
 	lastMetric    FlowMetric
 	rtt1stPacket  int64
 	updateVersion int64
@@ -92,7 +93,7 @@ type LayerKeyMode int
 const (
 	DefaultLayerKeyMode              = L2KeyMode // default mode
 	L2KeyMode           LayerKeyMode = 0         // uses Layer2 and Layer3 for hash computation, default mode
-	L3PreferedKeyMode   LayerKeyMode = 1         // uses Layer3 only and layer2 if no Layer3
+	L3PreferredKeyMode  LayerKeyMode = 1         // uses Layer3 only and layer2 if no Layer3
 )
 
 // ExtraLayers defines extra layer to be pushed in flow
@@ -180,7 +181,7 @@ func LayerKeyModeByName(name string) (LayerKeyMode, error) {
 	case "L2":
 		return L2KeyMode, nil
 	case "L3":
-		return L3PreferedKeyMode, nil
+		return L3PreferredKeyMode, nil
 	}
 	return L2KeyMode, errors.New("LayerKeyMode unknown")
 }
@@ -312,7 +313,6 @@ func (p *Packet) Keys(parentUUID string, uuids *UUIDs, opts *Opts) (uint64, uint
 
 	if (opts.LayerKeyMode == L2KeyMode && l2Layer != nil) ||
 		l3Layer == nil {
-
 		swapFromNetwork = false
 		src, dst := l2Layer.LinkFlow().Endpoints()
 		cmp := bytes.Compare(src.Raw(), dst.Raw())
@@ -609,7 +609,7 @@ func (f *Flow) Update(packet *Packet, opts *Opts) {
 	f.Last = now
 	f.Metric.Last = now
 
-	if opts.LayerKeyMode == L3PreferedKeyMode {
+	if opts.LayerKeyMode == L3PreferredKeyMode {
 		// use the ethernet length as we want to get the full size and we want to
 		// rely on the l3 address order.
 		length := packet.Length

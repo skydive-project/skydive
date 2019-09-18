@@ -51,12 +51,29 @@ type UUIDs struct {
 	CaptureID string
 }
 
+// ExtFlowType type of an external flow
+type ExtFlowType int
+
+const (
+	// OperationExtFlowType classic flow passed as Operation
+	OperationExtFlowType = iota
+
+	// EBPFExtFlowType type of eBPF flow
+	EBPFExtFlowType
+)
+
+// ExtFlow structure use to send external flow to the flow table
+type ExtFlow struct {
+	Type ExtFlowType
+	Obj  interface{}
+}
+
 // Table store the flow table and related metrics mechanism
 type Table struct {
 	Opts              TableOpts
 	packetSeqChan     chan *PacketSequence
-	flowChanOperation chan *Operation
-	flowEBPFChan      chan *EBPFFlow
+	extFlowChan       chan *ExtFlow
+	expiredExtKeyChan chan interface{} // used when flow expired, the extKey will be sent over this chan
 	table             *simplelru.LRU
 	flush             chan bool
 	flushDone         chan bool
@@ -119,20 +136,19 @@ func NewTable(updateEvery, expireAfter time.Duration, sender Sender, uuids UUIDs
 	}
 	LRU, _ := simplelru.NewLRU(config.GetConfig().GetInt("flow.max_entries"), nil)
 	t := &Table{
-		packetSeqChan:     make(chan *PacketSequence, 1000),
-		flowChanOperation: make(chan *Operation, 1000),
-		flowEBPFChan:      make(chan *EBPFFlow, 1000),
-		table:             LRU,
-		flush:             make(chan bool),
-		flushDone:         make(chan bool),
-		state:             common.StoppedState,
-		quit:              make(chan bool),
-		updateEvery:       updateEvery,
-		expireAfter:       expireAfter,
-		sender:            sender,
-		uuids:             uuids,
-		appPortMap:        NewApplicationPortMapFromConfig(),
-		appTimeout:        appTimeout,
+		packetSeqChan: make(chan *PacketSequence, 1000),
+		extFlowChan:   make(chan *ExtFlow, 1000),
+		table:         LRU,
+		flush:         make(chan bool),
+		flushDone:     make(chan bool),
+		state:         common.StoppedState,
+		quit:          make(chan bool),
+		updateEvery:   updateEvery,
+		expireAfter:   expireAfter,
+		sender:        sender,
+		uuids:         uuids,
+		appPortMap:    NewApplicationPortMapFromConfig(),
+		appTimeout:    appTimeout,
 	}
 	if len(opts) > 0 {
 		t.Opts = opts[0]
@@ -240,8 +256,15 @@ func (ft *Table) expire(expireBefore int64) {
 		}
 	}
 
-	/* Advise Clients */
 	ft.sender.SendFlows(expiredFlows)
+
+	if ft.expiredExtKeyChan != nil {
+		for _, f := range expiredFlows {
+			if f.XXX_state.extKey != nil {
+				ft.expiredExtKeyChan <- f.XXX_state.extKey
+			}
+		}
+	}
 
 	flowTableSz := ft.table.Len()
 	logging.GetLogger().Debugf("Expire Flow : removed %v ; new size %v", flowTableSzBefore-flowTableSz, flowTableSz)
@@ -480,10 +503,19 @@ func (ft *Table) processEBPFFlow(ebpfFlow *EBPFFlow) {
 		}
 		return
 	}
-	ft.updateFlowFromEBPF(ebpfFlow, f.(*Flow))
+	if ft.updateFlowFromEBPF(ebpfFlow, f.(*Flow)) {
+		// notify that the flow has been updated between two table updates
+		f.(*Flow).XXX_state.updateVersion = ft.updateVersion + 1
+	}
+}
 
-	// notify that the flow has been updated between two table updates
-	f.(*Flow).XXX_state.updateVersion = ft.updateVersion + 1
+func (ft *Table) processExtFlow(extFlow *ExtFlow) {
+	switch extFlow.Type {
+	case OperationExtFlowType:
+		ft.processFlowOP(extFlow.Obj.(*Operation))
+	case EBPFExtFlowType:
+		ft.processEBPFFlow(extFlow.Obj.(*EBPFFlow))
+	}
 }
 
 // State returns the state of the flow table, stopped, running...
@@ -539,10 +571,8 @@ func (ft *Table) Run() {
 			}
 		case ps := <-ft.packetSeqChan:
 			ft.processPacketSeq(ps)
-		case op := <-ft.flowChanOperation:
-			ft.processFlowOP(op)
-		case ebpfFlow := <-ft.flowEBPFChan:
-			ft.processEBPFFlow(ebpfFlow)
+		case extFlow := <-ft.extFlowChan:
+			ft.processExtFlow(extFlow)
 		case now := <-ctTicker.C:
 			t := now.Add(-ctDuration)
 			if ft.tcpAssembler != nil {
@@ -583,9 +613,10 @@ func (ft *Table) FeedWithSFlowSample(sample *layers.SFlowFlowSample, bpf *BPF) {
 }
 
 // Start the flow table
-func (ft *Table) Start() (chan *PacketSequence, chan *EBPFFlow, chan *Operation) {
+func (ft *Table) Start(extFlowExp chan interface{}) (chan *PacketSequence, chan *ExtFlow) {
+	ft.expiredExtKeyChan = extFlowExp
 	go ft.Run()
-	return ft.packetSeqChan, ft.flowEBPFChan, ft.flowChanOperation
+	return ft.packetSeqChan, ft.extFlowChan
 }
 
 // Stop the flow table
@@ -605,19 +636,13 @@ func (ft *Table) Stop() {
 			ft.processPacketSeq(ps)
 		}
 
-		for len(ft.flowChanOperation) != 0 {
-			op := <-ft.flowChanOperation
-			ft.processFlowOP(op)
-		}
-
-		for len(ft.flowEBPFChan) != 0 {
-			ebpfFlow := <-ft.flowEBPFChan
-			ft.processEBPFFlow(ebpfFlow)
+		for len(ft.extFlowChan) != 0 {
+			extFlow := <-ft.extFlowChan
+			ft.processExtFlow(extFlow)
 		}
 
 		close(ft.packetSeqChan)
-		close(ft.flowChanOperation)
-		close(ft.flowEBPFChan)
+		close(ft.extFlowChan)
 	}
 
 	ft.expireNow()

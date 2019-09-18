@@ -211,7 +211,7 @@ func (p *DPDKProbesHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHa
 		for i := 0; i < nbWorkers; i++ {
 			ft := ctx.FTA.Alloc(uuids, opts)
 
-			ft.Start()
+			ft.Start(nil)
 			ctxQ := ctxQueue{
 				ft:      ft,
 				enabled: &atomic.Value{},
