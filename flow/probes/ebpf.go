@@ -169,7 +169,7 @@ func (p *EBPFProbe) run() {
 				}
 
 				kernFlow := unsafe.Pointer(&kernFlows[nextAvailablePtr])
-				if _, err = p.fmap.Get(key, kernFlow); err != nil {
+				if _, err = p.fmap.GetBytes(key, kernFlow); err != nil {
 					getFirstKey = true
 					break
 				}
