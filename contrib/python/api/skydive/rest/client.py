@@ -121,10 +121,14 @@ class RESTClient:
                        extra_tcp_metric=False, ip_defrag=False,
                        reassemble_tcp=False, layer_key_mode="L2",
                        bpf_filter="", capture_type="", port=0,
-                       raw_pkt_limit=0, header_size=0):
+                       raw_pkt_limit=0, header_size=0, target="",
+                       target_type="", polling_interval=10,
+                       sampling_rate=1):
         data = {
             "GremlinQuery": query,
             "LayerKeyMode": layer_key_mode,
+            "PollingInterval": polling_interval,
+            "SamplingRate": sampling_rate,
         }
 
         if name:
@@ -147,6 +151,10 @@ class RESTClient:
             data["HeaderSize"] = header_size
         if port:
             data["Port"] = port
+        if target:
+            data["Target"] = target
+        if target_type:
+            data["TargetType"] = target_type
 
         c = self.request("/api/capture", method="POST", data=json.dumps(data))
         return Capture.from_object(c)

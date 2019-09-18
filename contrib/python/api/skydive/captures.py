@@ -25,7 +25,8 @@ class Capture(object):
                  extra_tcp_metric=False, ip_defrag=False,
                  reassemble_tcp=False, layer_key_mode="L2",
                  bpf_filter="", capture_type="", raw_pkt_limit=0,
-                 port=0, header_size=0):
+                 port=0, header_size=0, target="", target_type="",
+                 polling_interval=10, sampling_rate=1):
         self.uuid = uuid
         self.name = name
         self.description = description
@@ -40,6 +41,10 @@ class Capture(object):
         self.raw_pkt_limit = raw_pkt_limit
         self.port = port
         self.header_size = header_size
+        self.target = target
+        self.target_type = target_type
+        self.polling_interval = polling_interval
+        self.sampling_rate = sampling_rate
 
     def repr_json(self):
         obj = {
@@ -68,6 +73,14 @@ class Capture(object):
             obj["HeaderSize"] = self.header_size
         if self.port:
             obj["Port"] = self.port
+        if self.target:
+            obj["Target"] = self.target
+        if self.target_type:
+            obj["TargetType"] = self.target_type
+        if self.polling_interval:
+            obj["PollingInterval"] = self.polling_interval
+        if self.sampling_rate:
+            obj["SamplingRate"] = self.sampling_rate
         return obj
 
     @classmethod
@@ -84,5 +97,9 @@ class Capture(object):
                     capture_type=obj.get("Type"),
                     raw_pkt_limit=obj.get("RawPacketLimit"),
                     header_size=obj.get("HeaderSize"),
-                    port=obj.get("Port")
+                    port=obj.get("Port"),
+                    target=obj.get("Target"),
+                    target_type=obj.get("TargetType"),
+                    polling_interval=obj.get("PollingInterval"),
+                    sampling_rate=obj.get("SamplingRate")
                     )
