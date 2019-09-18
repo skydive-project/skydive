@@ -20,10 +20,10 @@ dir="$(dirname "$0")"
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 
 echo "--- BINARIES ---"
-make static WITH_EBPF=true
+make LDFLAGS="-s -w" static WITH_EBPF=true
 
 # We need at least Go 1.11.0 to generate swagger spec
-eval "$(gimme 1.12.7)"
+eval "$(gimme 1.11.13)"
 make swagger
 
 git reset --hard
