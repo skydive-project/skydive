@@ -1,22 +1,20 @@
 LLC ?= llc
 CLANG ?= clang
-DOCKER_FILE ?= probe/ebpf/Dockerfile
+DOCKER_FILE ?= Dockerfile
 DOCKER_EBPF_BUILDER_IMAGE ?= skydive/ebpf-builder
 TOPLEVEL_GOPATH ?= $(GOPATH)
 UID ?= $(shell id -u)
 GID ?= $(shell id -g)
 
-EBPF_PROBES:=
-ifeq ($(WITH_EBPF), true)
-  EBPF_PROBES += probe/ebpf/flow.o probe/ebpf/flow-gre.o
-endif
+.PHONY: clean build-ebpf-docker-image docker-ebpf-build
 
-.PHONY: ebpf.clean build-ebpf-docker-image docker-ebpf-build
+ebpf-build: flow-gre.o flow.o
 
-probe/ebpf/%.o: probe/ebpf/%.c
-	make vendor
+all: clean docker-ebpf-build
+
+%.o: %.c
 	$(CLANG) \
-		-I vendor/github.com/iovisor/gobpf/elf \
+		-I ../../vendor/github.com/iovisor/gobpf/elf \
 		-D__KERNEL__ -D__ASM_SYSREG_H -D__TARGET_ARCH_BPF -Wno-unused-value -Wno-pointer-sign \
 		-Wno-compare-distinct-pointer-types \
 		-Wno-gnu-variable-sized-type-not-at-end \
@@ -25,11 +23,11 @@ probe/ebpf/%.o: probe/ebpf/%.c
 		-fno-stack-protector \
 		-fno-jump-tables \
 		-fno-common \
-		-O2 -g -emit-llvm -c $< -o probe/ebpf/ebpf.bc
-	$(LLC) -march=bpf -filetype=obj -mattr=dwarfris -o $@ probe/ebpf/ebpf.bc
-	rm -f probe/ebpf/ebpf.bc
+		-O2 -g -emit-llvm -c $< -o ebpf.bc
+	$(LLC) -march=bpf -filetype=obj -mattr=dwarfris -o $@ ebpf.bc
+	rm -f ebpf.bc
 
-ebpf.clean:
+clean:
 	rm -f probe/ebpf/*.o
 
 build-ebpf-docker-image:

@@ -49,7 +49,7 @@ require (
 	github.com/hydrogen18/stoppableListener v0.0.0-20151210151943-dadc9ccc400c
 	github.com/inconshreveable/mousetrap v0.0.0-20141017200713-76626ae9c91c // indirect
 	github.com/intel-go/nff-go v0.0.0-20190620122648-8ab691c21da9
-	github.com/iovisor/gobpf v0.0.0-20190329163444-e0d8d785d368 // indirect
+	github.com/iovisor/gobpf v0.0.0-20190329163444-e0d8d785d368
 	github.com/jbowtie/gokogiri v0.0.0-20190301021639-37f655d3078f // indirect
 	github.com/json-iterator/go v0.0.0-20190621161201-27518f6661eb // indirect
 	github.com/jteeuwen/go-bindata v0.0.0-20180305030458-6025e8de665b // indirect
