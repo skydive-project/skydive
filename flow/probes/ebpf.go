@@ -108,7 +108,8 @@ func (p *EBPFProbe) run() {
 		}
 	}
 
-	var prevKey, key C.__u64
+	prevKey := make([]byte, 8)
+	key := make([]byte, 8)
 	var nextAvailablePtr int
 	now := time.Now()
 	getFirstKey := true
