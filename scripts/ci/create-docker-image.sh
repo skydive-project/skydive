@@ -207,7 +207,7 @@ docker_manifest() {
 }
 
 docker_build_ebpf() {
-    make ebpf.build WITH_EBPF=true WITH_EBPF_DOCKER_BUILDER=true
+    make .ebpf WITH_EBPF=true WITH_EBPF_DOCKER_BUILDER=true
 }
 
 make genlocalfiles vendor
