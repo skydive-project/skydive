@@ -33,8 +33,6 @@ rm -rf skydive-binaries
 git clone https://github.com/skydive-project/skydive-binaries.git
 cd /tmp/skydive-binaries
 
-git lfs install
-
 git config --global user.email "builds@skydive.network"
 git config --global user.name "Skydive CI"
 
@@ -45,11 +43,18 @@ add() {
     git add $dst
 }
 
+add_gz() {
+    local dst=$1
+    local src=$2
+    gzip -c $src > $dst.gz
+    git add $dst.gz
+}
+
 allinone=$GOPATH/src/github.com/skydive-project/skydive/contrib/exporters/allinone
 
-add skydive-latest ${GOPATH}/bin/skydive
+add_gz skydive-latest ${GOPATH}/bin/skydive
 add swagger.json ${GOPATH}/src/github.com/skydive-project/skydive/swagger.json
-add skydive-flow-exporter $allinone/allinone
+add_gz skydive-flow-exporter $allinone/allinone
 add skydive-flow-exporter.yml $allinone/allinone.yml.default
 
 git commit -m "${BUILD_TAG} Jenkins build" --amend --reset-author
