@@ -20,10 +20,10 @@ dir="$(dirname "$0")"
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 
 echo "--- BINARIES ---"
-make static WITH_EBPF=true
+make LDFLAGS="-s -w" static WITH_EBPF=true
 
 # We need at least Go 1.11.0 to generate swagger spec
-eval "$(gimme 1.12.7)"
+eval "$(gimme 1.11.13)"
 make swagger
 
 git reset --hard
@@ -32,8 +32,6 @@ cd /tmp
 rm -rf skydive-binaries
 git clone https://github.com/skydive-project/skydive-binaries.git
 cd /tmp/skydive-binaries
-
-git lfs install
 
 git config --global user.email "builds@skydive.network"
 git config --global user.name "Skydive CI"
@@ -45,11 +43,18 @@ add() {
     git add $dst
 }
 
+add_gz() {
+    local dst=$1
+    local src=$2
+    gzip -c $src > $dst.gz
+    git add $dst.gz
+}
+
 allinone=$GOPATH/src/github.com/skydive-project/skydive/contrib/exporters/allinone
 
-add skydive-latest ${GOPATH}/bin/skydive
+add_gz skydive-latest ${GOPATH}/bin/skydive
 add swagger.json ${GOPATH}/src/github.com/skydive-project/skydive/swagger.json
-add skydive-flow-exporter $allinone/allinone
+add_gz skydive-flow-exporter $allinone/allinone
 add skydive-flow-exporter.yml $allinone/allinone.yml.default
 
 git commit -m "${BUILD_TAG} Jenkins build" --amend --reset-author
