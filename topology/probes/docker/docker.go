@@ -106,7 +106,7 @@ func (p *ProbeHandler) registerContainer(id string) {
 
 	pid := int64(info.State.Pid)
 
-	dockerMetadata := Metadata{
+	dockerMetadata := &Metadata{
 		ContainerID:   info.ID,
 		ContainerName: info.Name[1:],
 	}
