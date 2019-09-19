@@ -567,13 +567,24 @@ func newSeleniumHelper(t *testing.T, analyzerAddr string, analyzerPort int, auth
 	}
 	execCmds(t, setupCmds...)
 
-	caps := selenium.Capabilities{"browserName": "chrome"}
-	webdriver, err := selenium.NewRemote(caps, "http://localhost:4444/wd/hub")
+	var webdriver selenium.WebDriver
+	err := common.Retry(func() error {
+		var err error
+
+		caps := selenium.Capabilities{"browserName": "chrome"}
+		webdriver, err = selenium.NewRemote(caps, "http://localhost:4444/wd/hub")
+		if err != nil {
+			return err
+		}
+		webdriver.MaximizeWindow("")
+		webdriver.SetAsyncScriptTimeout(5 * time.Second)
+
+		return nil
+	}, 60, time.Second)
+
 	if err != nil {
 		return nil, err
 	}
-	webdriver.MaximizeWindow("")
-	webdriver.SetAsyncScriptTimeout(5 * time.Second)
 
 	os.Setenv("SKYDIVE_ANALYZERS", fmt.Sprintf("%s:%d", analyzerAddr, analyzerPort))
 
