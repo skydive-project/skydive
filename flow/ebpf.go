@@ -145,6 +145,7 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 
 		parent := f
 		parent.LayersPath = f.LayersPath[:pathSplitAt] + "/GRE"
+		parent.Application = "GRE"
 
 		// NETWORK
 		if layersInfo&uint8(C.NETWORK_LAYER_INFO) > 0 {
