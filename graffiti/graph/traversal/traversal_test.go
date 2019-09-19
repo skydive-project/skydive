@@ -195,13 +195,13 @@ func TestBasicTraversal(t *testing.T) {
 	}
 
 	sum := tr.V(ctx).Sum(ctx, "Bytes")
-	bytes, ok := sum.Values()[0].(float64)
+	bytes, ok := sum.Values()[0].(int64)
 	if ok {
 		if bytes != 7072 {
-			t.Fatalf("Should return 7072, instead got %f", bytes)
+			t.Fatalf("Should return 7072, instead got %v", bytes)
 		}
 	} else {
-		t.Logf("Error in Sum() step: %s", sum.Error())
+		t.Fatalf("Error in Sum() step: %s", sum.Error())
 	}
 }
 
