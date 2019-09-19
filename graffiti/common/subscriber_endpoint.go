@@ -87,14 +87,16 @@ func (t *SubscriberEndpoint) OnConnected(c ws.Speaker) {
 	if gremlinFilter != "" {
 		host := c.GetRemoteHost()
 
-		subscriber, err := t.newSubscriber(host, gremlinFilter, false)
+		subscriber, err := t.newSubscriber(host, gremlinFilter, true)
 		if err != nil {
 			logging.GetLogger().Error(err)
 			return
 		}
 
 		logging.GetLogger().Infof("Client %s subscribed with filter %s during the connection", host, gremlinFilter)
+		t.Lock()
 		t.subscribers[c] = subscriber
+		t.Unlock()
 	}
 }
 
