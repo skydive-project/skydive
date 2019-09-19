@@ -201,6 +201,63 @@ func TestDelField(t *testing.T) {
 	}
 }
 
+func TestGetMapField(t *testing.T) {
+	data := map[string]interface{}{
+		"a": map[string]interface{}{
+			"b": map[string]interface{}{
+				"c": "c_value",
+			},
+		},
+		"d": map[string]interface{}{
+			"e": "e_value",
+			"f": []interface{}{
+				map[string]interface{}{
+					"name": "f_0_name",
+					"type": "f_0_type",
+				},
+				map[string]interface{}{
+					"name": "f_1_name",
+					"type": "f_1_type",
+				},
+				map[string]interface{}{
+					"name": "f_2_name",
+					"type": "f_2_type",
+					"extra": map[string]interface{}{
+						"g": "g_value",
+					},
+				},
+			},
+		},
+	}
+
+	type testInstance struct {
+		key      string
+		expected interface{}
+	}
+	tests := []testInstance{
+		testInstance{"a.b", map[string]interface{}{"c": "c_value"}},
+		testInstance{"a.b.c", "c_value"},
+		testInstance{"d.e", "e_value"},
+		testInstance{"d.f.name", []interface{}{"f_0_name", "f_1_name", "f_2_name"}},
+		testInstance{"d.f.type", []interface{}{"f_0_type", "f_1_type", "f_2_type"}},
+		testInstance{"d.f.extra.g", []interface{}{"g_value"}},
+	}
+	for _, ti := range tests {
+		actual, err := GetMapField(data, ti.key)
+		if err != nil {
+			t.Errorf("Expected GetMapField to find the key: %s", ti.key)
+		}
+		if !reflect.DeepEqual(ti.expected, actual) {
+			t.Errorf("Key: %s, Expected: %+v, actual: %+v", ti.key, ti.expected, actual)
+		}
+	}
+
+	_, err := GetMapField(data, "a.non_existing")
+	if err == nil {
+		t.Errorf("Expected GetMapField to fail for non-existing key")
+	}
+}
+
 type structB struct {
 	I int16
 	S string
