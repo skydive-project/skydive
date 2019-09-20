@@ -69,15 +69,33 @@ func (h *onDemandFlowHandler) ResourceName() string {
 	return "Capture"
 }
 
-func (h *onDemandFlowHandler) GetNodes(resource types.Resource) []interface{} {
+func (h *onDemandFlowHandler) GetNodeResources(resource types.Resource) []client.OnDemandNodeResource {
+	var nrs []client.OnDemandNodeResource
+
 	capture := resource.(*types.Capture)
+
 	query := capture.GremlinQuery
 	query += fmt.Sprintf(".Dedup().Has('Captures.ID', NEE('%s'))", resource.ID())
 	if capture.Type != "" && !common.CheckProbeCapabilities(capture.Type, common.MultipleOnSameNodeCapability) {
 		query += fmt.Sprintf(".Has('Captures.Type', NEE('%s'))", capture.Type)
 	}
 	query += h.nodeTypeQuery
-	return h.applyGremlinExpr(query)
+
+	if nodes := h.applyGremlinExpr(query); len(nodes) > 0 {
+		for _, i := range nodes {
+			switch i.(type) {
+			case *graph.Node:
+				nrs = append(nrs, client.OnDemandNodeResource{Node: i.(*graph.Node), Resource: capture})
+			case []*graph.Node:
+				// case of shortestpath that returns a list of nodes
+				for _, node := range i.([]*graph.Node) {
+					nrs = append(nrs, client.OnDemandNodeResource{Node: node, Resource: capture})
+				}
+			}
+		}
+	}
+
+	return nrs
 }
 
 func (h *onDemandFlowHandler) applyGremlinExpr(query string) []interface{} {

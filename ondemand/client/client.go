@@ -36,10 +36,15 @@ import (
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
+type OnDemandNodeResource struct {
+	Node     *graph.Node
+	Resource types.Resource
+}
+
 // OnDemandClientHandler is the interface to be implemented by ondemand clients
 type OnDemandClientHandler interface {
 	ResourceName() string
-	GetNodes(resource types.Resource) []interface{}
+	GetNodeResources(resource types.Resource) []OnDemandNodeResource
 	CheckState(n *graph.Node, resource types.Resource) bool
 	DecodeMessage(msg json.RawMessage) (types.Resource, error)
 	EncodeMessage(nodeID graph.Identifier, resource types.Resource) (json.RawMessage, error)
@@ -180,25 +185,28 @@ func (o *OnDemandClient) unregisterTask(node *graph.Node, resource types.Resourc
 	return true
 }
 
-func (o *OnDemandClient) nodeTasks(nodes []interface{}, resource types.Resource) map[graph.Identifier]nodeTask {
-	toRegister := func(node *graph.Node) (nodeID graph.Identifier, host string, register bool) {
+func (o *OnDemandClient) nodeTasks(nrs []OnDemandNodeResource) map[graph.Identifier]nodeTask {
+	toRegister := func(nr OnDemandNodeResource) (nodeID graph.Identifier, host string, register bool) {
 		// check not already registered
-		tasks, ok := o.registeredNodes[node.ID]
+		tasks, ok := o.registeredNodes[nr.Node.ID]
 		if ok {
-			ok = tasks[resource.ID()]
+			ok = tasks[nr.Resource.ID()]
 		}
 
 		if ok {
-			logging.GetLogger().Debugf("%s already registered on %s", resource.ID(), node.ID)
+			logging.GetLogger().Debugf("%s already registered on %s", nr.Resource.ID(), nr.Node.ID)
 			return
 		}
 
-		return node.ID, node.Host, true
+		return nr.Node.ID, nr.Node.Host, true
 	}
 
 	nps := map[graph.Identifier]nodeTask{}
-	for _, i := range nodes {
-		switch i.(type) {
+	for _, nr := range nrs {
+		if nodeID, host, ok := toRegister(nr); ok {
+			nps[nodeID] = nodeTask{nodeID, host, nr.Resource}
+		}
+		/*switch i.(type) {
 		case *graph.Node:
 			node := i.(*graph.Node)
 			if nodeID, host, ok := toRegister(node); ok {
@@ -211,7 +219,7 @@ func (o *OnDemandClient) nodeTasks(nodes []interface{}, resource types.Resource)
 					nps[nodeID] = nodeTask{nodeID, host, resource}
 				}
 			}
-		}
+		}*/
 	}
 
 	return nps
@@ -231,8 +239,8 @@ func (o *OnDemandClient) checkForRegistrationCallback() {
 	defer o.RUnlock()
 
 	for _, resource := range o.resources {
-		if nodes := o.handler.GetNodes(resource); len(nodes) > 0 {
-			if nps := o.nodeTasks(nodes, resource); len(nps) > 0 {
+		if nrs := o.handler.GetNodeResources(resource); len(nrs) > 0 {
+			if nps := o.nodeTasks(nrs); len(nps) > 0 {
 				go o.registerTasks(nps)
 			}
 		}
@@ -312,8 +320,8 @@ func (o *OnDemandClient) registerResource(resource types.Resource) {
 
 	o.resources[resource.ID()] = resource
 
-	if nodes := o.handler.GetNodes(resource); len(nodes) > 0 {
-		if nps := o.nodeTasks(nodes, resource); len(nps) > 0 {
+	if nrs := o.handler.GetNodeResources(resource); len(nrs) > 0 {
+		if nps := o.nodeTasks(nrs); len(nps) > 0 {
 			go o.registerTasks(nps)
 		}
 	}

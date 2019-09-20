@@ -44,7 +44,7 @@ type PacketInjectionRequest struct {
 	Count            uint64 `valid:"min=1"`
 	ICMPID           uint16
 	Interval         uint64
-	Increment        bool
+	Mode             int
 	IncrementPayload int64
 	Payload          string
 	Pcap             []byte

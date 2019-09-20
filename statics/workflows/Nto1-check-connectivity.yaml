@@ -1,0 +1,138 @@
+---
+UUID: "18349e06-37d4-43c0-5882-d1aa4bf66133"
+Name: "Nto1CheckConnectivity"
+Title: "Test connectivity between N source to 1 Destination"
+Abstract: "This workflow aims to test the connectivity between N source to 1 Destination. It returns the status of the connection, true (with Flows) or false."
+Description: >
+  # How to use:
+    1. Enter the Gremlin Query for Source Nodes and Select the Destination Nodes to check the Connectivity between them
+    2. Hit the 'Execute' button to run the workflow
+    3. Result will be shown as status true or false along with flows between those interfaces.
+  # How It Works:
+    1. It will start capture on all Nodes from Source to Destination and injects 5 ICMP-Pkts from Source to Destination
+    2. After 1 sec it will check for flows having the same capture-id created by this workflow
+    3. If flows are there and the BA-Packtes in flow-metric > 0, then return 'Connectivity = ture' else 'Connectivity = false', along with this it also returns the flows
+    4. For more information about Skydive workflows please follow - 'skydive.network/blog/introduction-to-workflows.html'
+Parameters:
+  - Name: srcQuery
+    Description: Gremlin Expression for Source-Nodes
+    Type: string
+  - Name: dstNode
+    Description: Select Destination node
+    Type: node
+  - Name: Analysis
+    Description: Analysis for Disconnectivity
+    Type: boolean
+Source: |
+  function Nto1CheckConnectivity(srcQuery, to, analyze) {
+    var result = {}
+    try {
+      sources = client.gremlin.query(srcQuery);
+      dstNode = client.gremlin.G().V().Has('TID', to).result();
+      dstNodeIP = (dstNode[0].Metadata.IPV4[0]).split("/");
+      datNodeIP = dstNodeIP[0]
+      var id = Math.floor(25000 + (Math.random() * 10000));
+      var maxID = id + sources.length;
+
+      var getInfo = function(sources) {
+        var srcIP = [];
+        var srcTID = "";
+
+        for (var i = 0; i != sources.length; i++) {
+          srcTID += "'" + sources[i].Metadata.TID + "', ";
+          if (sources[i].Metadata.IPV4) {
+            ip = (sources[i].Metadata.IPV4[0]).split("/");
+            srcIP[i] = ip[0]
+          }
+        }
+        srcTID = srcTID.slice(0, -2);
+        var info = {"srcTID" : srcTID, "srcIP" : srcIP};
+        return info
+      }
+
+      var capture = new Capture();
+      if (analyze) {
+        capture.GremlinQuery = srcQuery + ".ShortestPathTo(Metadata('TID', '" + to + "'), Metadata('RelationType', 'layer2'))";
+      } else {
+        capture.GremlinQuery = srcQuery;
+      }
+      var bpf = "icmp and (src " + datNodeIP + " or dst " + datNodeIP + ") and (icmp[4:2]>=" + id + " and icmp[4:2]<" + maxID + ")";
+      capture.BPFFilter = "(" + bpf + ") " + "or (vlan and " + bpf + ")";
+
+      var packetInjection = new PacketInjection();
+      packetInjection.Src = srcQuery
+      packetInjection.Dst = "G.V().Has('TID', '" + to + "')";
+      packetInjection.Type = "icmp4"
+      packetInjection.ICMPID = id;
+      packetInjection.Count = 5
+      packetInjection.Mode = 0
+
+      capture = client.captures.create(capture)
+      sleep(1000)
+      client.packetInjections.create(packetInjection)
+      sleep(1000)
+
+      var srcInfo = getInfo(sources)
+      var srcIP = srcInfo["srcIP"];
+      var srcTID = srcInfo["srcTID"];
+      var srcFlow = client.gremlin.query("G.Flows().Has('CaptureID', '" + capture.UUID + "', 'NodeTID', Within(" + srcTID + "), 'Metric.ABPackets', GT(0), 'Metric.BAPackets', GT(0))");
+
+      var analysis = function(captureID, ip, src, dst) {
+        var flowCaptured = client.gremlin.G().Flows().Has('CaptureID', captureID, 'Network.A', ip).result();
+        var pathNodes = client.gremlin.G().V().Has('TID', src).ShortestPathTo(Metadata('TID', dst), Metadata('RelationType', 'layer2')).result();
+        pathNodes = pathNodes[0];
+        var flows = [];
+        var noFlows = [];
+        for (var i = 0; i != pathNodes.length; i++) {
+          var found = false;
+          for (var j = 0; j != flowCaptured.length; j++) {
+            if (flowCaptured[j].NodeTID == pathNodes[i].Metadata.TID) {
+              found = true;
+              flows.push(flowCaptured[j]);
+              break;
+            }
+          }
+          if (!found && pathNodes[i].Metadata.Type != "ovsport") {
+            noFlows.push(pathNodes[i]);
+          }
+        }
+
+        if (flows.length == 0) {
+          flows[0] = "No Flows Found";
+        }
+        if (noFlows.length == 0) {
+          noFlows[0] = "No Flows Found";
+        }
+
+        var analysis = {"Flows" : flows, "NotReachedNodes" : noFlows}
+        return analysis
+      }
+
+      var flows = {};
+      for (var i = 0; i != srcIP.length; i++) {
+        var found = false;
+        for (var j = 0; j != srcFlow.length; j++) {
+          if (srcIP[i] == srcFlow[j].Network.A) {
+            found = true;
+            flows[sources[i].Metadata.TID] = {"Connectivity" : true, "Flow" : srcFlow[j]}
+            break;
+          }
+        }
+        if (!found) {
+          if (analyze) {
+            var flowCaptured = analysis(capture.UUID, srcIP[i], sources[i].Metadata.TID, to)
+            flows[sources[i].Metadata.TID] = {"Connectivity" : false, "Analysis" : flowCaptured}
+          } else {
+            flows[sources[i].Metadata.TID] = {"Connectivity" : false}
+          }
+        }
+      }
+
+      result["Connectivity"] = flows
+    } catch (e) {
+      console.log(e)
+      result["Error"] = JSON.stringify(e)
+    }
+    if (capture && capture.UUID) client.captures.delete(capture.UUID)
+    return result
+  }
