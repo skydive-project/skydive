@@ -62,8 +62,10 @@ type Indexer struct {
 func (i *NodeIndex) FromHash(hash string) (nodes []*Node, values []interface{}) {
 	if ids, found := i.hashToValues[hash]; found {
 		for id, obj := range ids {
-			nodes = append(nodes, i.graph.GetNode(id))
-			values = append(values, obj)
+			if node := i.graph.GetNode(id); node != nil {
+				nodes = append(nodes, node)
+				values = append(values, obj)
+			}
 		}
 	}
 	return
