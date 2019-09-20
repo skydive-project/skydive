@@ -11,10 +11,19 @@
      - dnf-utils
      - manifest-tool
      - git-lfs
+     - qemu-system-s390x
+     - qemu-system-ppc
+     - qemu-system-aarch64
+     - qemu-user-static
 
 - service:
     name: libvirtd
     state: started
     enabled: yes
+
+- service:
+    name: systemd-binfmt
+    state: started
+    enabled: yes   
 
 - include_tasks: virtualbox.yml
