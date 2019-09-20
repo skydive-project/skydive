@@ -20,6 +20,7 @@
 package flow
 
 import (
+	"bytes"
 	"errors"
 	"math/rand"
 	"net"
@@ -284,6 +285,34 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 	return keys, flows, nil
 }
 
+func isABPacket(ebpfFlow *EBPFFlow, f *Flow) bool {
+	cmp := true
+	layersInfo := uint8(ebpfFlow.KernFlow.layers_info)
+	if layersInfo&uint8(C.LINK_LAYER_INFO) > 0 {
+		linkA := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.link_layer.mac_src[0]), C.ETH_ALEN)
+		linkB := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.link_layer.mac_dst[0]), C.ETH_ALEN)
+		cmp = strings.Compare(f.Link.A, net.HardwareAddr(linkA).String()) == 0 &&
+			strings.Compare(f.Link.B, net.HardwareAddr(linkB).String()) == 0
+
+		if bytes.Equal(linkA, linkB) {
+			if layersInfo&uint8(C.NETWORK_LAYER_INFO) > 0 {
+				netA := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer_outer.ip_src[0]), net.IPv6len)
+				netB := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer_outer.ip_dst[0]), net.IPv6len)
+				cmp = strings.Compare(f.Network.A, net.IP(netA).String()) == 0 &&
+					strings.Compare(f.Network.B, net.IP(netB).String()) == 0
+				if bytes.Equal(netA, netB) {
+					if layersInfo&uint8(C.TRANSPORT_LAYER_INFO) > 0 {
+						portA := int64(ebpfFlow.KernFlow.transport_layer.port_src)
+						portB := int64(ebpfFlow.KernFlow.transport_layer.port_dst)
+						cmp = portA > portB
+					}
+				}
+			}
+		}
+	}
+	return cmp
+}
+
 func (ft *Table) updateFlowFromEBPF(ebpfFlow *EBPFFlow, f *Flow) bool {
 	last := common.UnixMillis(ebpfFlow.Last)
 	if last == f.Last {
@@ -291,24 +320,42 @@ func (ft *Table) updateFlowFromEBPF(ebpfFlow *EBPFFlow, f *Flow) bool {
 	}
 	f.Last = last
 
+	isAB := isABPacket(ebpfFlow, f)
+
 	layersInfo := uint8(ebpfFlow.KernFlow.layers_info)
 	if layersInfo&uint8(C.TRANSPORT_LAYER_INFO) > 0 {
 		protocol := uint8(ebpfFlow.KernFlow.transport_layer.protocol)
 		switch protocol {
 		case syscall.IPPROTO_TCP:
-			f.TCPMetric.ABSynStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ab_syn, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
-			f.TCPMetric.BASynStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ba_syn, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
-			f.TCPMetric.ABFinStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ab_fin, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
-			f.TCPMetric.BAFinStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ba_fin, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
-			f.TCPMetric.ABRstStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ab_rst, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
-			f.TCPMetric.BARstStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ba_rst, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
+			if isAB {
+				f.TCPMetric.ABSynStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ab_syn, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
+				f.TCPMetric.BASynStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ba_syn, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
+				f.TCPMetric.ABFinStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ab_fin, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
+				f.TCPMetric.BAFinStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ba_fin, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
+				f.TCPMetric.ABRstStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ab_rst, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
+				f.TCPMetric.BARstStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ba_rst, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
+			} else {
+				f.TCPMetric.ABSynStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ba_syn, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
+				f.TCPMetric.BASynStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ab_syn, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
+				f.TCPMetric.ABFinStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ba_fin, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
+				f.TCPMetric.BAFinStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ab_fin, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
+				f.TCPMetric.ABRstStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ba_rst, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
+				f.TCPMetric.BARstStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ab_rst, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
+			}
 		}
 	}
 
-	f.Metric.ABBytes += int64(ebpfFlow.KernFlow.metrics.ab_bytes)
-	f.Metric.ABPackets += int64(ebpfFlow.KernFlow.metrics.ab_packets)
-	f.Metric.BABytes += int64(ebpfFlow.KernFlow.metrics.ba_bytes)
-	f.Metric.BAPackets += int64(ebpfFlow.KernFlow.metrics.ba_packets)
+	if isAB {
+		f.Metric.ABBytes += int64(ebpfFlow.KernFlow.metrics.ab_bytes)
+		f.Metric.ABPackets += int64(ebpfFlow.KernFlow.metrics.ab_packets)
+		f.Metric.BABytes += int64(ebpfFlow.KernFlow.metrics.ba_bytes)
+		f.Metric.BAPackets += int64(ebpfFlow.KernFlow.metrics.ba_packets)
+	} else {
+		f.Metric.ABBytes += int64(ebpfFlow.KernFlow.metrics.ba_bytes)
+		f.Metric.ABPackets += int64(ebpfFlow.KernFlow.metrics.ba_packets)
+		f.Metric.BABytes += int64(ebpfFlow.KernFlow.metrics.ab_bytes)
+		f.Metric.BAPackets += int64(ebpfFlow.KernFlow.metrics.ab_packets)
+	}
 	f.Metric.Start = f.Start
 	f.Metric.Last = last
 
