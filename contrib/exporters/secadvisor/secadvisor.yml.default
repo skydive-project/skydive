@@ -39,8 +39,8 @@ pipeline:
   store:
     type: buffered
     buffered:
-      dirname: bucket
       filename_prefix: logs
+      dirname: bucket
       max_flows_per_object: 6000
       max_seconds_per_object: 60
       max_seconds_per_stream: 86400
