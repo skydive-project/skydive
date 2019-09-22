@@ -15,18 +15,21 @@
  *
  */
 
-package main
+package core
 
 import (
-	"github.com/skydive-project/skydive/contrib/exporters/core"
-	vpc "github.com/skydive-project/skydive/contrib/exporters/vpclogs/mod"
+	"github.com/spf13/viper"
 )
 
-func main() {
-	core.Main("/etc/skydive/vpclogs.yml")
+type actionerNone struct {
 }
 
-func init() {
-	core.TransformerHandlers.Register("vpclogs", vpc.NewTransform, false)
-	core.ActionHandlers.Register("aws", vpc.NewAction, false)
+// NewAccRejNone create a new Accept/Reject process that will do nothing
+func NewActionerNone(cfg *viper.Viper) (interface{}, error) {
+	return &actionerNone{}, nil
+}
+
+// Action for type accRejNone does nothing
+func (t actionerNone) Action(f interface{}) interface{} {
+	return f
 }

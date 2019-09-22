@@ -7,6 +7,7 @@ analyzer:
 pipeline:
   subscriber:
     url: ws://127.0.0.1:8082/ws/subscriber/flow
+    capture_id:
   classify:
     # cluster_net_masks:
       # - 10.0.0.0/8
@@ -16,8 +17,13 @@ pipeline:
     # excluded_tags:
       # - internal
       # - other
+  action:
+    type: aws
+    tid1:
+    tid2:
   transform:
-    sa:
+    type: vpclogs
+    secadvisor:
       # exclude_started_flows: true
   store:
     type: buffered

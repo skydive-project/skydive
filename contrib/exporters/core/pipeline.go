@@ -43,6 +43,12 @@ type Transformer interface {
 	Transform(f *flow.Flow) interface{}
 }
 
+// Actioner adds the Accept/Reject action info; it may also combine multiple common flow entries into a single entry
+type Actioner interface {
+	// Action determines the Accept/Reject action and combines common flows
+	Action(f interface{}) interface{}
+}
+
 // Classifier exposes the interface for tag based classification
 type Classifier interface {
 	GetFlowTag(fl *flow.Flow) Tag
@@ -90,6 +96,7 @@ var (
 	CompressorHandlers  HandlersMap
 	StorerHandlers      HandlersMap
 	WriterHandlers      HandlersMap
+	ActionHandlers      HandlersMap
 )
 
 // Register associates a handler with its' label
@@ -139,6 +146,9 @@ func init() {
 	WriterHandlers = make(HandlersMap)
 	WriterHandlers.Register("s3", NewWriteS3, true)
 	WriterHandlers.Register("stdout", NewWriteStdout, false)
+
+	ActionHandlers = make(HandlersMap)
+	ActionHandlers.Register("none", NewActionerNone, true)
 }
 
 // Pipeline manager
@@ -153,6 +163,7 @@ type Pipeline struct {
 	Compressor  Compressor
 	Storer      Storer
 	Writer      Writer
+	Actioner    Actioner
 }
 
 // NewPipeline defines the pipeline elements
@@ -197,6 +208,11 @@ func NewPipeline(cfg *viper.Viper) (*Pipeline, error) {
 		return nil, err
 	}
 
+	actioner, err := ActionHandlers.Init(cfg, "action")
+	if err != nil {
+		return nil, err
+	}
+
 	p := &Pipeline{
 		Mangler:     mangler.(Mangler),
 		Transformer: transformer.(Transformer),
@@ -206,6 +222,7 @@ func NewPipeline(cfg *viper.Viper) (*Pipeline, error) {
 		Compressor:  compressor.(Compressor),
 		Storer:      storer.(Storer),
 		Writer:      writer.(Writer),
+		Actioner:    actioner.(Actioner),
 	}
 	storer.(Storer).SetPipeline(p)
 
@@ -255,6 +272,15 @@ func (p *Pipeline) mangle(in map[Tag][]interface{}) map[Tag][]interface{} {
 	return out
 }
 
+func (p *Pipeline) action(in map[Tag][]interface{}) map[Tag][]interface{} {
+	out := make(map[Tag][]interface{})
+	for tag, fl := range in {
+		t := p.Actioner.Action(fl)
+		out[tag] = t.([]interface{})
+	}
+	return out
+}
+
 func (p *Pipeline) store(in map[Tag][]interface{}) {
 	if err := p.Storer.StoreFlows(in); err != nil {
 		logging.GetLogger().Error("failed to store flows: ", err)
@@ -269,7 +295,8 @@ func (p *Pipeline) process(flows []*flow.Flow) {
 	split := p.split(filtered)
 	transformed := p.transform(split)
 	mangled := p.mangle(transformed)
-	p.store(mangled)
+	actioned := p.action(mangled)
+	p.store(actioned)
 }
 
 // OnStructMessage is triggered when WS server sends us a message.
