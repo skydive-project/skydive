@@ -256,23 +256,42 @@
       owner: root
       group: root
   - shell: systemctl daemon-reload
-  - shell: |
-      vagrant plugin install vagrant-openstack-provider
-      mkdir -p /var/lib/jenkins/.config/lxc
-      cat > /var/lib/jenkins/.config/lxc/config.yml <<EOF
-      default-remote: local
-      remotes:
-        images:
-          addr: https://images.linuxcontainers.org
-          protocol: simplestreams
-          public: true
-      local:
-        addr: unix://
-        public: false
-      aliases: {}
-      EOF
+  - shell: vagrant plugin install vagrant-openstack-provider
     become: yes
     become_user: jenkins
+  - file:
+      path: /var/lib/jenkins/.config/lxc
+      owner: jenkins
+      group: jenkins
+      state: directory
+  - copy:
+      content: |
+        default-remote: local
+        remotes:
+          images:
+            addr: https://images.linuxcontainers.org
+            protocol: simplestreams
+            public: true
+        local:
+          addr: unix://
+          public: false
+        aliases: {}
+      mode: 0644
+      dest: /var/lib/jenkins/.config/lxc/config.yml
+      owner: jenkins
+      group: jenkins
+  - file:
+      path: /var/lib/jenkins/.docker
+      owner: jenkins
+      group: jenkins
+      state: directory
+  - copy:
+      content: |
+        {"experimental": "enabled"}
+      mode: 0644
+      dest: /var/lib/jenkins/.docker/config.json
+      owner: jenkins
+      group: jenkins
   - service:
       name: jenkins-slave
       state: started
