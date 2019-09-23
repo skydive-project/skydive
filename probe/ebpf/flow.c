@@ -45,7 +45,7 @@ MAP(u64_config_values) {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(__u32),
 	.value_size = sizeof(__u64),
-	.max_entries = 1,
+	.max_entries = 2,
 };
 
 MAP(stats_map) {
@@ -55,7 +55,14 @@ MAP(stats_map) {
         .max_entries = 1,
 };
 
-MAP(flow_table) {
+MAP(flow_table_p1) {
+	.type = BPF_MAP_TYPE_HASH,
+	.key_size = sizeof(__u64),
+	.value_size = sizeof(struct flow),
+	.max_entries = 500000,
+};
+
+MAP(flow_table_p2) {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(__u64),
 	.value_size = sizeof(struct flow),
@@ -452,7 +459,18 @@ int bpf_flow_table(struct __sk_buff *skb)
 	struct flow flow = {}, *prev;
 	fill_flow(skb, &flow, tm);
 
-	prev = bpf_map_lookup_element(&flow_table, &flow.key);
+	key = FLOW_PAGE;
+	__u64 *page = bpf_map_lookup_element(&u64_config_values, &key);
+	__u64 flow_page = 0;
+	if (page != NULL) {
+		flow_page = *page;
+	}
+
+	struct bpf_map_def *flowtable = &flow_table_p1;
+	if (flow_page == 1) {
+		flowtable = &flow_table_p2;
+	}
+	prev = bpf_map_lookup_element(flowtable, &flow.key);
 	if (prev) {
 		update_metrics(skb, prev, tm, is_ab_packet(&flow, prev));
 		__sync_fetch_and_add(&prev->last, tm - prev->last);
@@ -487,7 +505,7 @@ int bpf_flow_table(struct __sk_buff *skb)
 		__sync_fetch_and_add(&flow.start, tm);
 		__sync_fetch_and_add(&flow.last, tm);
 
-		if (bpf_map_update_element(&flow_table, &flow.key, &flow, BPF_ANY) == -1) {
+		if (bpf_map_update_element(flowtable, &flow.key, &flow, BPF_ANY) == -1) {
 			__u32 stats_key = 0;
 			__u64 stats_update_val = 1;
 			__u64 *stats_val = bpf_map_lookup_element(&stats_map,&stats_key);

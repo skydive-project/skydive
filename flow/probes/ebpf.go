@@ -67,15 +67,30 @@ type EBPFProbe struct {
 	fd           int
 	flowTable    *flow.Table
 	module       *ebpf.Collection
-	fmap         *ebpf.Map
+	fmap         []*ebpf.Map
+	cmap         *ebpf.Map
 	expire       time.Duration
 	quit         chan bool
+	flowPage     int
 }
 
 // EBPFProbesHandler creates new eBPF probes
 type EBPFProbesHandler struct {
 	Ctx Context
 	wg  sync.WaitGroup
+}
+
+func (p *EBPFProbe) swapPage() {
+	key := uint32(C.FLOW_PAGE)
+	writeInPage := int64(p.flowPage)
+
+	p.cmap.Put(key, writeInPage)
+
+	if p.flowPage == 1 {
+		p.flowPage = 0
+	} else {
+		p.flowPage = 1
+	}
 }
 
 func (p *EBPFProbe) run() {
@@ -129,15 +144,10 @@ func (p *EBPFProbe) run() {
 			}
 			// try to get start monotonic time
 			if startKTimeNs == 0 {
-				cmap := p.module.Maps["u64_config_values"]
-				if cmap == nil {
-					continue
-				}
-
 				key := uint32(C.START_TIME_NS)
 				var sns int64
 
-				if found, err := cmap.Get(key, &sns); err == nil && found && sns != 0 {
+				if found, err := p.cmap.Get(key, &sns); err == nil && found && sns != 0 {
 					startKTimeNs = sns
 					start = now
 				}
@@ -150,14 +160,15 @@ func (p *EBPFProbe) run() {
 				var err error
 				var found bool
 				if getFirstKey {
-					if found, err = p.fmap.NextKey(nil, &key); !found {
+					if found, err = p.fmap[p.flowPage].NextKey(nil, &key); !found {
 						/* map empty */
-						time.Sleep(ebpfPollingRate)
+						p.swapPage()
+						time.Sleep(time.Second)
 						break
 					}
 					getFirstKey = false
 				} else {
-					found, err = p.fmap.NextKey(prevKey, &key)
+					found, err = p.fmap[p.flowPage].NextKey(prevKey, &key)
 				}
 				if !found || err != nil {
 					getFirstKey = true
@@ -165,11 +176,11 @@ func (p *EBPFProbe) run() {
 				}
 
 				kernFlow := unsafe.Pointer(&kernFlows[nextAvailablePtr])
-				if _, err = p.fmap.GetBytes(key, kernFlow); err != nil {
+				if _, err = p.fmap[p.flowPage].GetBytes(key, kernFlow); err != nil {
 					getFirstKey = true
 					break
 				}
-				p.fmap.Delete(key)
+				p.fmap[p.flowPage].Delete(key)
 				prevKey = key
 
 				lastK := int64(kernFlows[nextAvailablePtr].last)
@@ -228,10 +239,22 @@ func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture,
 		return nil, err
 	}
 
-	fmap := module.Maps["flow_table"]
-	if fmap == nil {
+	fmap1 := module.Maps["flow_table_p1"]
+	if fmap1 == nil {
 		module.Close()
-		return nil, fmt.Errorf("Unable to find flow_table map")
+		return nil, fmt.Errorf("Unable to find flow_table_p1 map")
+	}
+
+	fmap2 := module.Maps["flow_table_p2"]
+	if fmap2 == nil {
+		module.Close()
+		return nil, fmt.Errorf("Unable to find flow_table_p2 map")
+	}
+
+	cmap := module.Maps["u64_config_values"]
+	if cmap == nil {
+		module.Close()
+		return nil, fmt.Errorf("Unable to find u64_config_values map")
 	}
 
 	socketFilter := module.Programs["bpf_flow_table"]
@@ -267,7 +290,9 @@ func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture,
 		fd:           rs.GetFd(),
 		flowTable:    ft,
 		module:       module,
-		fmap:         fmap,
+		fmap:         []*ebpf.Map{fmap1, fmap2},
+		cmap:         cmap,
+		flowPage:     1,
 		expire:       p.Ctx.FTA.ExpireAfter(),
 		quit:         make(chan bool),
 	}
