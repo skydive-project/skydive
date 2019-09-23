@@ -55,15 +55,30 @@ type EBPFProbe struct {
 	fd           int
 	flowTable    *flow.Table
 	module       *elf.Module
-	fmap         *elf.Map
+	fmap         []*elf.Map
+	cmap         *elf.Map
 	expire       time.Duration
 	quit         chan bool
+	flowPage     int
 }
 
 // EBPFProbesHandler creates new eBPF probes
 type EBPFProbesHandler struct {
 	Ctx Context
 	wg  sync.WaitGroup
+}
+
+func (p *EBPFProbe) swapPage() {
+	key := uint32(C.FLOW_PAGE)
+	writeInPage := int64(p.flowPage)
+
+	p.module.UpdateElement(p.cmap, unsafe.Pointer(&key), unsafe.Pointer(&writeInPage), 0)
+
+	if p.flowPage == 1 {
+		p.flowPage = 0
+	} else {
+		p.flowPage = 1
+	}
 }
 
 func (p *EBPFProbe) run() {
@@ -115,15 +130,10 @@ func (p *EBPFProbe) run() {
 			}
 			// try to get start monotonic time
 			if startKTimeNs == 0 {
-				cmap := p.module.Map("u64_config_values")
-				if cmap == nil {
-					continue
-				}
-
 				key := uint32(C.START_TIME_NS)
 				var sns int64
 
-				p.module.LookupElement(cmap, unsafe.Pointer(&key), unsafe.Pointer(&sns))
+				p.module.LookupElement(p.cmap, unsafe.Pointer(&key), unsafe.Pointer(&sns))
 				if sns != 0 {
 					startKTimeNs = sns
 					start = now
@@ -136,14 +146,15 @@ func (p *EBPFProbe) run() {
 			for {
 				kernFlow := &kernFlows[nextAvailablePtr]
 
-				found, err := p.module.LookupNextElement(p.fmap, unsafe.Pointer(&key), unsafe.Pointer(&nextKey), unsafe.Pointer(kernFlow))
+				found, err := p.module.LookupNextElement(p.fmap[p.flowPage], unsafe.Pointer(&key), unsafe.Pointer(&nextKey), unsafe.Pointer(kernFlow))
 				if !found || err != nil {
 					key = 0
-					time.Sleep(ebpfPollingRate)
+					p.swapPage()
+					time.Sleep(time.Second)
 					break
 				}
 				key = nextKey
-				p.module.DeleteElement(p.fmap, unsafe.Pointer(&key))
+				p.module.DeleteElement(p.fmap[p.flowPage], unsafe.Pointer(&key))
 
 				lastK := int64(kernFlows[nextAvailablePtr].last)
 				last := start.Add(time.Duration(lastK - startKTimeNs))
@@ -201,10 +212,22 @@ func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture,
 		return nil, err
 	}
 
-	fmap := module.Map("flow_table")
-	if fmap == nil {
+	fmap1 := module.Map("flow_table_p1")
+	if fmap1 == nil {
 		module.Close()
-		return nil, fmt.Errorf("Unable to find flow_table map")
+		return nil, fmt.Errorf("Unable to find flow_table_p1 map")
+	}
+
+	fmap2 := module.Map("flow_table_p2")
+	if fmap2 == nil {
+		module.Close()
+		return nil, fmt.Errorf("Unable to find flow_table_p2 map")
+	}
+
+	cmap := module.Map("u64_config_values")
+	if cmap == nil {
+		module.Close()
+		return nil, fmt.Errorf("Unable to find u64_config_values map")
 	}
 
 	socketFilter := module.SocketFilter("socket_flow_table")
@@ -240,7 +263,9 @@ func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture,
 		fd:           rs.GetFd(),
 		flowTable:    ft,
 		module:       module,
-		fmap:         fmap,
+		fmap:         []*elf.Map{fmap1, fmap2},
+		cmap:         cmap,
+		flowPage:     1,
 		expire:       p.Ctx.FTA.ExpireAfter(),
 		quit:         make(chan bool),
 	}
