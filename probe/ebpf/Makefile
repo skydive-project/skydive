@@ -2,7 +2,6 @@ LLC ?= llc
 CLANG ?= clang
 DOCKER_FILE ?= Dockerfile
 DOCKER_EBPF_BUILDER_IMAGE ?= skydive/ebpf-builder
-TOPLEVEL_GOPATH ?= $(GOPATH)
 UID ?= $(shell id -u)
 GID ?= $(shell id -g)
 
@@ -14,7 +13,7 @@ all: clean docker-ebpf-build
 
 %.o: %.c
 	$(CLANG) \
-		-I ../../vendor/github.com/iovisor/gobpf/elf \
+		-I$${GOPATH}/pkg/mod/github.com/lebauce/gobpf@v0.0.0-20190909090614-f9e9df81702a/elf \
 		-D__KERNEL__ -D__ASM_SYSREG_H -D__TARGET_ARCH_BPF -Wno-unused-value -Wno-pointer-sign \
 		-Wno-compare-distinct-pointer-types \
 		-Wno-gnu-variable-sized-type-not-at-end \
@@ -40,7 +39,9 @@ docker-ebpf-build: pull-ebpf-docker-image
 	docker run --rm \
 		--env=UID=$(UID) \
 		--env=GID=$(GID) \
-		-v $(TOPLEVEL_GOPATH):/go \
+		--env=GOPATH=/go \
+		-v $(GOPATH):/go \
+		-v $(GOPATH)/pkg:/go/pkg \
 		--workdir=/go/src/github.com/skydive-project/skydive/probe/ebpf \
 		$(DOCKER_EBPF_BUILDER_IMAGE) \
 		sh -c "make ebpf-build && chown -R $(UID):$(GID) ."

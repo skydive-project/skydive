@@ -1,5 +1,5 @@
 .PHONY: .ebpf
-.ebpf: vendor
+.ebpf: moddownload
 ifeq ($(WITH_EBPF_DOCKER_BUILDER), true)
 	$(MAKE) -C probe/ebpf docker-ebpf-build
 else

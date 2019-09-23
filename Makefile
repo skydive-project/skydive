@@ -133,11 +133,15 @@ compile:
 		${SKYDIVE_GITHUB}
 
 .PHONY: skydive
-skydive: genlocalfiles compile
+skydive: moddownload genlocalfiles compile
 
 .PHONY: skydive.clean
 skydive.clean:
 	go clean -i $(SKYDIVE_GITHUB)
+
+.PHONY: moddownload
+moddownload:
+	go mod download
 
 .PHONY: genlocalfiles
 genlocalfiles: $(EXTRA_BUILD_TARGET) .proto .bindata .gendecoder .easyjson .vppbinapi

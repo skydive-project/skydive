@@ -1,7 +1,7 @@
 define PROTOC_GEN
 go get -u ${PROTOC_GEN_GOFAST_GITHUB}
 go get -u ${PROTOC_GEN_GO_GITHUB}
-protoc -I. -Iflow/layers -Ivendor/github.com/gogo/protobuf --plugin=$${GOPATH}/bin/protoc-gen-gogofaster --gogofaster_out $$GOPATH/src $1
+protoc -I. -Iflow/layers -I$${GOPATH}/pkg/mod/github.com/gogo/protobuf@v1.3.0 --plugin=$${GOPATH}/bin/protoc-gen-gogofaster --gogofaster_out $$GOPATH/src $1
 endef
 
 GEN_PROTO_FILES = $(patsubst %.proto,%.pb.go,$(shell find . -name *.proto | grep -v ^./vendor))
@@ -47,7 +47,7 @@ websocket/structmessage.pb.go: websocket/structmessage.proto
 	sed -e 's/type StructMessage struct {/type StructMessage struct { XXX_state structMessageState `json:"-"`/' -i websocket/structmessage.pb.go
 	gofmt -s -w $@
 
-.proto: vendor $(GEN_PROTO_FILES)
+.proto: $(GEN_PROTO_FILES)
 
 .PHONY: .proto.clean
 .proto.clean:
