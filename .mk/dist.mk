@@ -49,4 +49,8 @@ rpm:
 .PHONY: docker-image
 docker-image: static
 	cp $$GOPATH/bin/skydive contrib/docker/skydive.$$(uname -m)
+	if [ -f /usr/bin/qemu-$$(uname -m)-static ]; then \
+		rm -rf contrib/docker/qemu-$$(uname -m)-static; \
+		cp -ar /usr/bin/qemu-$$(uname -m)-static contrib/docker/qemu-$$(uname -m)-static; \
+	fi
 	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} --build-arg ARCH=$$(uname -m) -f contrib/docker/Dockerfile contrib/docker/
