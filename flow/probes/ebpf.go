@@ -70,10 +70,7 @@ func (p *EBPFProbe) run() {
 	var info syscall.Sysinfo_t
 	syscall.Sysinfo(&info)
 
-	expiredChan := make(chan interface{}, 1000)
-	defer close(expiredChan)
-
-	_, extFlowChan := p.flowTable.Start(expiredChan)
+	_, extFlowChan := p.flowTable.Start(nil)
 	defer p.flowTable.Stop()
 
 	ebpfPollingRate := time.Second / time.Duration(p.Ctx.Config.GetInt("agent.flow.ebpf.polling_rate"))
@@ -103,8 +100,6 @@ func (p *EBPFProbe) run() {
 		select {
 		case <-p.quit:
 			return
-		case key := <-expiredChan:
-			p.module.DeleteElement(p.fmap, unsafe.Pointer(&key))
 		case now = <-updateNow.C:
 		default:
 			if statsMap := p.module.Map("stats_map"); statsMap != nil {
@@ -148,6 +143,7 @@ func (p *EBPFProbe) run() {
 					break
 				}
 				key = nextKey
+				p.module.DeleteElement(p.fmap, unsafe.Pointer(&key))
 
 				lastK := int64(kernFlows[nextAvailablePtr].last)
 				last := start.Add(time.Duration(lastK - startKTimeNs))
