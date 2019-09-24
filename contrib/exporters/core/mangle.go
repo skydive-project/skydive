@@ -15,17 +15,21 @@
  *
  */
 
-package main
+package core
 
 import (
-	awsflowlogs "github.com/skydive-project/skydive/contrib/exporters/awsflowlogs/mod"
-	"github.com/skydive-project/skydive/contrib/exporters/core"
+	"github.com/spf13/viper"
 )
 
-func main() {
-	core.Main("/etc/skydive/awsflowlogs.yml")
+type mangleNone struct {
 }
 
-func init() {
-	core.TransformerHandlers.Register("awsflowlogs", awsflowlogs.NewTransform, false)
+// Mangle changes an array of flows
+func (m *mangleNone) Mangle(in []interface{}) []interface{} {
+	return in
+}
+
+// NewMangleNone create a new mangle
+func NewMangleNone(cfg *viper.Viper) (interface{}, error) {
+	return &mangleNone{}, nil
 }

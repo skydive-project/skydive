@@ -33,9 +33,13 @@ import (
 // CfgRoot configuration root path
 const CfgRoot = "pipeline."
 
+// Mangler allows to change/enrich an entire batch of flows
+type Mangler interface {
+	Mangle(in []interface{}) []interface{}
+}
+
 // Transformer allows generic transformations of a flow
 type Transformer interface {
-	// Transform transforms a flow before being stored
 	Transform(f *flow.Flow) interface{}
 }
 
@@ -78,6 +82,7 @@ type HandlersMap map[string]Handler
 
 // Global set of handlers
 var (
+	ManglerHandlers     HandlersMap
 	TransformerHandlers HandlersMap
 	ClassifierHandlers  HandlersMap
 	FiltererHandlers    HandlersMap
@@ -107,6 +112,9 @@ func (m HandlersMap) Init(cfg *viper.Viper, phase string) (interface{}, error) {
 }
 
 func init() {
+	ManglerHandlers = make(HandlersMap)
+	ManglerHandlers.Register("none", NewMangleNone, true)
+
 	TransformerHandlers = make(HandlersMap)
 	TransformerHandlers.Register("none", NewTransformNone, true)
 
@@ -137,6 +145,7 @@ func init() {
 type Pipeline struct {
 	sync.Mutex
 
+	Mangler     Mangler
 	Transformer Transformer
 	Classifier  Classifier
 	Filterer    Filterer
@@ -148,6 +157,11 @@ type Pipeline struct {
 
 // NewPipeline defines the pipeline elements
 func NewPipeline(cfg *viper.Viper) (*Pipeline, error) {
+	mangler, err := ManglerHandlers.Init(cfg, "mangle")
+	if err != nil {
+		return nil, err
+	}
+
 	transformer, err := TransformerHandlers.Init(cfg, "transform")
 	if err != nil {
 		return nil, err
@@ -184,6 +198,7 @@ func NewPipeline(cfg *viper.Viper) (*Pipeline, error) {
 	}
 
 	p := &Pipeline{
+		Mangler:     mangler.(Mangler),
 		Transformer: transformer.(Transformer),
 		Classifier:  classifier.(Classifier),
 		Filterer:    filterer.(Filterer),
@@ -232,6 +247,14 @@ func (p *Pipeline) transform(in map[Tag][]*flow.Flow) map[Tag][]interface{} {
 	return out
 }
 
+func (p *Pipeline) mangle(in map[Tag][]interface{}) map[Tag][]interface{} {
+	out := make(map[Tag][]interface{})
+	for tag := range in {
+		out[tag] = p.Mangler.Mangle(out[tag])
+	}
+	return out
+}
+
 func (p *Pipeline) store(in map[Tag][]interface{}) {
 	p.Storer.StoreFlows(in)
 }
@@ -243,7 +266,8 @@ func (p *Pipeline) process(flows []*flow.Flow) {
 	filtered := p.filter(flows)
 	split := p.split(filtered)
 	transformed := p.transform(split)
-	p.store(transformed)
+	mangled := p.mangle(transformed)
+	p.store(mangled)
 }
 
 // OnStructMessage is triggered when WS server sends us a message.
