@@ -23,7 +23,7 @@ class PacketInjection(object):
     def __init__(self, uuid="", src="", dst="", srcip="", dstip="", srcmac="",
                  dstmac="", srcport=0, dstport=0, type="icmp4", payload="",
                  trackingid="", icmpid=0, count=1, interval=0,
-                 increment=False, starttime="", ttl=64):
+                 mode="unique", starttime="", ttl=64):
         self.uuid = uuid
         self.src = src
         self.dst = dst
@@ -39,7 +39,7 @@ class PacketInjection(object):
         self.icmpid = icmpid
         self.count = count
         self.interval = interval
-        self.increment = increment
+        self.mode = mode
         self.starttime = starttime
         self.ttl = ttl
 
@@ -76,8 +76,8 @@ class PacketInjection(object):
             obj["Count"] = self.count
         if self.interval:
             obj["Interval"] = self.interval
-        if self.increment:
-            obj["Increment"] = self.increment
+        if self.mode:
+            obj["Mode"] = self.mode
         if self.ttl:
             obj["TTL"] = self.ttl
         return obj
@@ -99,5 +99,5 @@ class PacketInjection(object):
                     icmpid=obj.get("ICMPID"),
                     count=obj.get("Count"),
                     interval=obj.get("Interval"),
-                    increment=obj.get("Increment"),
+                    mode=obj.get("Mode"),
                     ttl=obj.get("TTL"))
