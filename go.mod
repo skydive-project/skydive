@@ -26,6 +26,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/gima/govalid v0.0.0-20150214172340-7b486932bea2
 	github.com/go-ole/go-ole v0.0.0-20171110160706-a41e3c4b706f // indirect
+	github.com/go-swagger/go-swagger v0.20.1 // indirect
 	github.com/go-test/deep v0.0.0-20180509200213-57af0be209c5
 	github.com/gobwas/httphead v0.0.0-20171016043908-01c9b01b368a // indirect
 	github.com/gobwas/pool v0.0.0-20170829094749-32dbaa12caca // indirect
