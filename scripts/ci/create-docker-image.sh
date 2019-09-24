@@ -68,7 +68,7 @@ docker_skydive_builder() {
     docker rm $image || true
     docker run --name $image \
         --env UID=$uid \
-        --env TOPLEVEL_GOPATH=$GOPATH \
+        --env GOPATH=$GOPATH \
         --volume $TOPLEVEL_VOL:$TOPLEVEL_DIR \
         --volume $GOMOD_VOL:$GOMOD_DIR \
         --volume $GOBUILD_VOL:$GOBUILD_DIR \
@@ -92,7 +92,7 @@ docker_skydive_target() {
         --build-arg ARCH=$arch \
         ${BASE:+--build-arg BASE=${BASE}} \
         -f $DOCKER_DIR/$dockerfile $DOCKER_DIR
-    if [ "$VERSION" == latest ]; then
+    if [ "$VERSION" = latest ]; then
         local image_snapshot=$( docker_image_snapshot ${arch} )
         docker tag $image $image_snapshot
     fi
@@ -166,7 +166,7 @@ docker_push() {
     for arch in $ARCHES
     do
         docker push $( docker_image ${arch} )
-        if [ "$VERSION" == latest ]; then
+        if [ "$VERSION" = latest ]; then
             docker push $( docker_image_snapshot ${arch} )
         fi
     done
@@ -201,7 +201,7 @@ docker_manifest_create_and_push() {
 
 docker_manifest() {
     docker_manifest_create_and_push ${DOCKER_IMAGE}:${DOCKER_TAG}
-    if [ "$VERSION" == latest ]; then
+    if [ "$VERSION" = latest ]; then
         docker_manifest_create_and_push ${DOCKER_IMAGE_SNAPSHOT}:${DOCKER_TAG_SNAPSHOT}
     fi
 }

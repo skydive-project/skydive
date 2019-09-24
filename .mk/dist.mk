@@ -21,19 +21,19 @@ $(call TAR_CMD,--append,$(SKYDIVE_TAR_INPUT))
 endef
 
 .PHONY: vendor
-vendor:
+vendor: genlocalfiles
 ifeq (${GO111MODULE}, on)
 	go mod vendor
 endif
 
 .PHONY: localdist
-localdist: genlocalfiles vendor
+localdist: vendor
 	git ls-files | $(call TAR_CMD,--create,--files-from -)
 	$(call TAR_APPEND,)
 	gzip -f $(SKYDIVE_TAR)
 
 .PHONY: dist
-dist: genlocalfiles vendor
+dist: vendor
 	git archive -o $(SKYDIVE_TAR) --prefix $(SKYDIVE_PATH) HEAD
 	$(call TAR_APPEND,)
 	gzip -f $(SKYDIVE_TAR)
