@@ -1,3 +1,6 @@
+PROTOC_GEN_GO_GITHUB:=github.com/golang/protobuf/protoc-gen-go
+PROTOC_GEN_GOFAST_GITHUB:=github.com/gogo/protobuf/protoc-gen-gogofaster
+
 define PROTOC_GEN
 go get -u ${PROTOC_GEN_GOFAST_GITHUB}
 go get -u ${PROTOC_GEN_GO_GITHUB}
