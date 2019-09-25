@@ -20,9 +20,10 @@ package istio
 import (
 	"fmt"
 
-	kiali "github.com/kiali/kiali/kubernetes"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
+	models "istio.io/client-go/pkg/apis/config/v1alpha2"
+	client "istio.io/client-go/pkg/clientset/versioned"
 )
 
 type quotaSpecBindingHandler struct {
@@ -30,17 +31,17 @@ type quotaSpecBindingHandler struct {
 
 // Map graph node to k8s resource
 func (h *quotaSpecBindingHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
-	qsb := obj.(*kiali.QuotaSpecBinding)
+	qsb := obj.(*models.QuotaSpecBinding)
 	m := k8s.NewMetadataFields(&qsb.ObjectMeta)
 	return graph.Identifier(qsb.GetUID()), k8s.NewMetadata(Manager, "quotaspecbinding", m, qsb, qsb.Name)
 }
 
 // Dump k8s resource
 func (h *quotaSpecBindingHandler) Dump(obj interface{}) string {
-	qsb := obj.(*kiali.QuotaSpecBinding)
+	qsb := obj.(*models.QuotaSpecBinding)
 	return fmt.Sprintf("quotaspecbinding{Namespace: %s, Name: %s}", qsb.Namespace, qsb.Name)
 }
 
-func newQuotaSpecBindingProbe(client interface{}, g *graph.Graph) k8s.Subprobe {
-	return k8s.NewResourceCache(client.(*kiali.IstioClient).GetIstioConfigApi(), &kiali.QuotaSpecBinding{}, "quotaspecbindings", g, &quotaSpecBindingHandler{})
+func newQuotaSpecBindingProbe(c interface{}, g *graph.Graph) k8s.Subprobe {
+	return k8s.NewResourceCache(c.(*client.Clientset).ConfigV1alpha2().RESTClient(), &models.QuotaSpecBinding{}, "quotaspecbindings", g, &quotaSpecBindingHandler{})
 }

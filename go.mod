@@ -37,7 +37,6 @@ require (
 	github.com/gomatic/funcmap v0.0.0-20190110133044-62047470c142 // indirect
 	github.com/gomatic/renderizer v1.0.1
 	github.com/google/gopacket v1.1.17
-	github.com/googleapis/gnostic v0.0.0-20171106233303-41d03372f44f // indirect
 	github.com/gophercloud/gophercloud v0.0.0-20190126172459-c818fa66e4c8
 	github.com/gorilla/context v0.0.0-20160817184632-08b5f424b927
 	github.com/gorilla/handlers v1.4.2
@@ -47,6 +46,7 @@ require (
 	github.com/hashicorp/go-version v0.0.0-20180322230233-23480c066577
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/hydrogen18/stoppableListener v0.0.0-20151210151943-dadc9ccc400c
+	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/inconshreveable/mousetrap v0.0.0-20141017200713-76626ae9c91c // indirect
 	github.com/intel-go/nff-go v0.0.0-20190620122648-8ab691c21da9
 	github.com/iovisor/gobpf v0.0.0-20190329163444-e0d8d785d368 // indirect
@@ -63,7 +63,6 @@ require (
 	github.com/kami-zh/go-capturer v0.0.0-20171211120116-e492ea43421d
 	github.com/kardianos/osext v0.0.0-20160811001526-c2c54e542fb7
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
-	github.com/kiali/kiali v0.0.0-20181002102028-f86edc2d20df
 	github.com/libvirt/libvirt-go v0.0.0-20181005092746-9c5bdce3c18f
 	github.com/lunixbochs/struc v0.0.0-20180408203800-02e4c2afbb2a
 	github.com/lxc/lxd v0.0.0-20171219222704-9907f3a64b6b
@@ -80,7 +79,6 @@ require (
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/olivere/elastic v0.0.0-20190204160516-f82cf7c66881
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7 // indirect
-	github.com/openshift/api v0.0.0-20180926074713-cc577cdc22a2 // indirect
 	github.com/peterh/liner v0.0.0-20160615113019-8975875355a8
 	github.com/pierrec/xxHash v0.0.0-20190318091927-d17cb990ad2d
 	github.com/pmylund/go-cache v0.0.0-20170722040110-a3647f8e31d7
@@ -107,11 +105,11 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20150808065054-e02fc20de94c // indirect
 	github.com/xeipuuv/gojsonschema v0.0.0-20180618132009-1d523034197f
 	go.uber.org/zap v1.10.0
-	golang.org/x/crypto v0.0.0-20190923035154-9ee001bba392 // indirect
 	golang.org/x/net v0.0.0-20190926025831-c00fd9afed17
 	golang.org/x/sys v0.0.0-20190924154521-2837fb4f24fe
 	golang.org/x/tools v0.0.0-20190925230517-ea99b82c7b93
-	google.golang.org/grpc v1.23.0
+	google.golang.org/genproto v0.0.0-20190926190326-7ee9db18f195 // indirect
+	google.golang.org/grpc v1.23.1
 	gopkg.in/errgo.v1 v1.0.0-20161222125816-442357a80af5 // indirect
 	gopkg.in/fsnotify/fsnotify.v1 v1.0.0-20180110053347-c2828203cd70
 	gopkg.in/httprequest.v1 v1.0.0-20180209163514-93f8fee4081f // indirect
@@ -122,9 +120,11 @@ require (
 	gopkg.in/urfave/cli.v2 v2.0.0-20170928224240-b2bf3c5abeb9 // indirect
 	gopkg.in/validator.v2 v2.0.0-20160201165114-3e4f037f12a1
 	gopkg.in/yaml.v2 v2.2.2
-	k8s.io/api v0.0.0-20190620084959-7cf5895f2711
-	k8s.io/apimachinery v0.0.0-20190612205821-1799e75a0719
-	k8s.io/client-go v0.0.0-20190620085101-78d2af792bab
+	istio.io/api v0.0.0-20190925180116-1b594bcab992
+	istio.io/client-go v0.0.0-20190926163343-7a2173c3ba57
+	k8s.io/api v0.0.0-20190918195907-bd6ac527cfd2
+	k8s.io/apimachinery v0.0.0-20190817221809-bf4de9df677c
+	k8s.io/client-go v10.0.0+incompatible
 	k8s.io/utils v0.0.0-20190607212802-c55fbcfc754a // indirect
 )
 
@@ -136,4 +136,7 @@ replace (
 	github.com/skydive-project/skydive/scripts/gendecoder => ./scripts/gendecoder
 	github.com/spf13/viper v1.4.0 => github.com/lebauce/viper v0.0.0-20190903114911-3b7a98e30843
 	github.com/vishvananda/netlink v1.0.0 => github.com/lebauce/netlink v0.0.0-20190122103356-fa328be7c8d2
+	k8s.io/api => k8s.io/api v0.0.0-20190918195907-bd6ac527cfd2
+	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20190817020851-f2f3a405f61d
+	k8s.io/client-go => k8s.io/client-go v0.0.0-20190620085101-78d2af792bab
 )

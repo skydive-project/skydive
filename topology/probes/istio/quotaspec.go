@@ -20,9 +20,10 @@ package istio
 import (
 	"fmt"
 
-	kiali "github.com/kiali/kiali/kubernetes"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
+	models "istio.io/client-go/pkg/apis/config/v1alpha2"
+	client "istio.io/client-go/pkg/clientset/versioned"
 )
 
 type quotaSpecHandler struct {
@@ -30,17 +31,17 @@ type quotaSpecHandler struct {
 
 // Map graph node to k8s resource
 func (h *quotaSpecHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
-	qs := obj.(*kiali.QuotaSpec)
+	qs := obj.(*models.QuotaSpec)
 	m := k8s.NewMetadataFields(&qs.ObjectMeta)
 	return graph.Identifier(qs.GetUID()), k8s.NewMetadata(Manager, "quotaspec", m, qs, qs.Name)
 }
 
 // Dump k8s resource
 func (h *quotaSpecHandler) Dump(obj interface{}) string {
-	qs := obj.(*kiali.QuotaSpec)
+	qs := obj.(*models.QuotaSpec)
 	return fmt.Sprintf("quotaspec{Namespace: %s, Name: %s}", qs.Namespace, qs.Name)
 }
 
-func newQuotaSpecProbe(client interface{}, g *graph.Graph) k8s.Subprobe {
-	return k8s.NewResourceCache(client.(*kiali.IstioClient).GetIstioConfigApi(), &kiali.QuotaSpec{}, "quotaspecs", g, &quotaSpecHandler{})
+func newQuotaSpecProbe(c interface{}, g *graph.Graph) k8s.Subprobe {
+	return k8s.NewResourceCache(c.(*client.Clientset).ConfigV1alpha2().RESTClient(), &models.QuotaSpec{}, "quotaspecs", g, &quotaSpecHandler{})
 }
