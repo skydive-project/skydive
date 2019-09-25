@@ -93,7 +93,7 @@ func resolveSymbol(pkg, symbol string) (types.Object, error) {
 
 func handleBasic(getter *getter, name, kind string) {
 	switch kind {
-	case "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64":
+	case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64":
 		getter.Fields = append(getter.Fields, field{Name: name, Type: "int64"})
 	default:
 		public := false
@@ -115,12 +115,15 @@ func handleBasic(getter *getter, name, kind string) {
 
 func handleField(astFile *ast.File, getter *getter, fieldName, pkgName, fieldType string) error {
 	switch fieldType {
-	case "string", "bool", "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64":
+	case "string", "bool", "int", "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64":
 		handleBasic(getter, fieldName, fieldType)
 	default:
 		symbol, err := resolveSymbol(pkgName, fieldType)
-		if err != nil || symbol == nil {
+		if err != nil {
 			return fmt.Errorf("Failed to resolve symbol for %+v: %s", fieldType, err)
+		}
+		if symbol == nil {
+			return fmt.Errorf("Failed to resolve symbol for %+v", fieldType)
 		}
 
 		if named, ok := symbol.Type().(*types.Named); ok {
