@@ -123,9 +123,10 @@ func (s *Server) createStartupCapture(ch *api.CaptureAPIHandler) error {
 	}
 
 	bpf := config.GetString("analyzer.startup.capture_bpf")
-	logging.GetLogger().Infof("Invoke capturing from the startup with gremlin: %s and BPF: %s", gremlin, bpf)
+	captureType := config.GetString("analyzer.startup.capture_type")
+	logging.GetLogger().Infof("Invoke capturing of type '%s' from startup with gremlin: %s and BPF: %s", captureType, gremlin, bpf)
 	capture := types.NewCapture(gremlin, bpf)
-	capture.Type = "pcap"
+	capture.Type = captureType
 	return ch.Create(capture, nil)
 }
 

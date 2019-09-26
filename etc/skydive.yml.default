@@ -69,6 +69,11 @@ analyzer:
     # capture_gremlin: "G.V().has('Name', NE('lo'))"
     # capture_bpf: "port 80"
 
+    # By default (capture_type: "") the capture type is chosen automatically;
+    # or set here to one of pcap, afpacket, ebpf, sflow, pcapsocket, ovsmirror,
+    # dpdk, ovssflow, or ovsnetflow.
+    # capture_type: ""
+
   # Flow storage engine
   flow:
     # Storage backend name: myelasticsearch, myorientdb
