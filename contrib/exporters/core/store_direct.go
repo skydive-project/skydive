@@ -34,7 +34,7 @@ func (s *storeDirect) SetPipeline(pipeline *Pipeline) {
 
 // StoreFlows store flows in memory, before being written to the object store
 func (s *storeDirect) StoreFlows(flows map[Tag][]interface{}) error {
-	for _, val := range flows {
+	for t, val := range flows {
 		encoded, err := s.pipeline.Encoder.Encode(val)
 		if err != nil {
 			logging.GetLogger().Error("Failed to encode object: ", err)
@@ -47,7 +47,7 @@ func (s *storeDirect) StoreFlows(flows map[Tag][]interface{}) error {
 			return err
 		}
 
-		err = s.pipeline.Writer.Write("my_dirname", "my_filename", compressed.String(),
+		err = s.pipeline.Writer.Write("my_dirname", string(t), compressed.String(),
 			"application/json", "gzip", map[string]*string{})
 		if err != nil {
 			logging.GetLogger().Error("Failed to store object: ", err)
