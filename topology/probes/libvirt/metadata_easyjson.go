@@ -62,12 +62,8 @@ func easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesLibvirt(o
 	_ = first
 	if in.MAC != "" {
 		const prefix string = ",\"MAC\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.String(string(in.MAC))
 	}
 	if in.Domain != "" {

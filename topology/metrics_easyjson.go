@@ -102,12 +102,8 @@ func easyjson2220f231EncodeGithubComSkydiveProjectSkydiveTopology(out *jwriter.W
 	_ = first
 	if in.Collisions != 0 {
 		const prefix string = ",\"Collisions\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.Int64(int64(in.Collisions))
 	}
 	if in.Multicast != 0 {

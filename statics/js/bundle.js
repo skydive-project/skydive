@@ -1179,9 +1179,35 @@ var Flows = /** @class */ (function (_super) {
         }
         return new (DedupFlows.bind.apply(DedupFlows, [void 0, this.api, this].concat(params)))();
     };
+    Flows.prototype.Group = function () {
+        var params = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            params[_i] = arguments[_i];
+        }
+        return new (GroupFlows.bind.apply(GroupFlows, [void 0, this.api, this].concat(params)))();
+    };
     return Flows;
 }(Step));
 exports.Flows = Flows;
+var GroupFlows = /** @class */ (function (_super) {
+    __extends(GroupFlows, _super);
+    function GroupFlows() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    GroupFlows.prototype.name = function () { return "Group"; };
+    GroupFlows.prototype.serialize = function (data) {
+        return SerializationHelper.unmarshalMapArray(data[0], Flow);
+    };
+    GroupFlows.prototype.MoreThan = function () {
+        var params = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            params[_i] = arguments[_i];
+        }
+        return new (GroupFlows.bind.apply(GroupFlows, [void 0, this.api, this].concat(params)))();
+    };
+    return GroupFlows;
+}(Step));
+exports.GroupFlows = GroupFlows;
 var HasFlows = /** @class */ (function (_super) {
     __extends(HasFlows, _super);
     function HasFlows() {

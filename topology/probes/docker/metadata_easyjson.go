@@ -58,32 +58,17 @@ func easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesDocker(ou
 	_ = first
 	{
 		const prefix string = ",\"ContainerID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.String(string(in.ContainerID))
 	}
 	{
 		const prefix string = ",\"ContainerName\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.ContainerName))
 	}
 	{
 		const prefix string = ",\"Labels\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		(in.Labels).MarshalEasyJSON(out)
 	}
 	out.RawByte('}')

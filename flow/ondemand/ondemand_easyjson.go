@@ -56,22 +56,12 @@ func easyjsonBbc2492aEncodeGithubComSkydiveProjectSkydiveFlowOndemand(out *jwrit
 	_ = first
 	{
 		const prefix string = ",\"NodeID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.String(string(in.NodeID))
 	}
 	{
 		const prefix string = ",\"Capture\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		(in.Capture).MarshalEasyJSON(out)
 	}
 	out.RawByte('}')

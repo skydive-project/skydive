@@ -79,12 +79,7 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowStorageElasticsearch
 	_ = first
 	{
 		const prefix string = ",\"Flow\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		if in.Flow == nil {
 			out.RawString("null")
 		} else {
@@ -93,42 +88,22 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowStorageElasticsearch
 	}
 	{
 		const prefix string = ",\"Timestamp\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.Timestamp))
 	}
 	{
 		const prefix string = ",\"Index\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.Index))
 	}
 	if len(in.Data) != 0 {
 		const prefix string = ",\"Data\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Base64Bytes(in.Data)
 	}
 	if in.LinkType != 0 {
 		const prefix string = ",\"LinkType\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint8(uint8(in.LinkType))
 	}
 	out.RawByte('}')
@@ -217,12 +192,7 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowStorageElasticsearch
 	_ = first
 	{
 		const prefix string = ",\"Flow\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		if in.Flow == nil {
 			out.RawString("null")
 		} else {
@@ -231,72 +201,37 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowStorageElasticsearch
 	}
 	{
 		const prefix string = ",\"ABPackets\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.ABPackets))
 	}
 	{
 		const prefix string = ",\"ABBytes\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.ABBytes))
 	}
 	{
 		const prefix string = ",\"BAPackets\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.BAPackets))
 	}
 	{
 		const prefix string = ",\"BABytes\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.BABytes))
 	}
 	{
 		const prefix string = ",\"Start\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.Start))
 	}
 	{
 		const prefix string = ",\"Last\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.Last))
 	}
 	if in.RTT != 0 {
 		const prefix string = ",\"RTT\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.RTT))
 	}
 	out.RawByte('}')
@@ -422,7 +357,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowStorageElasticsearch
 				if out.DHCPv4 == nil {
 					out.DHCPv4 = new(layers1.DHCPv4)
 				}
-				easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers(in, &*out.DHCPv4)
+				easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers(in, out.DHCPv4)
 			}
 		case "DNS":
 			if in.IsNull() {
@@ -432,7 +367,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowStorageElasticsearch
 				if out.DNS == nil {
 					out.DNS = new(layers1.DNS)
 				}
-				easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers1(in, &*out.DNS)
+				easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers1(in, out.DNS)
 			}
 		case "VRRPv2":
 			if in.IsNull() {
@@ -442,7 +377,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowStorageElasticsearch
 				if out.VRRPv2 == nil {
 					out.VRRPv2 = new(layers1.VRRPv2)
 				}
-				easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers2(in, &*out.VRRPv2)
+				easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers2(in, out.VRRPv2)
 			}
 		case "TrackingID":
 			if in.IsNull() {
@@ -504,12 +439,7 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowStorageElasticsearch
 	_ = first
 	{
 		const prefix string = ",\"UUID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		if in.UUID == nil {
 			out.RawString("null")
 		} else {
@@ -518,12 +448,7 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowStorageElasticsearch
 	}
 	{
 		const prefix string = ",\"LayersPath\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		if in.LayersPath == nil {
 			out.RawString("null")
 		} else {
@@ -532,12 +457,7 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowStorageElasticsearch
 	}
 	{
 		const prefix string = ",\"Application\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		if in.Application == nil {
 			out.RawString("null")
 		} else {
@@ -546,82 +466,42 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowStorageElasticsearch
 	}
 	if in.Link != nil {
 		const prefix string = ",\"Link\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		(*in.Link).MarshalEasyJSON(out)
 	}
 	if in.Network != nil {
 		const prefix string = ",\"Network\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		(*in.Network).MarshalEasyJSON(out)
 	}
 	if in.Transport != nil {
 		const prefix string = ",\"Transport\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		(*in.Transport).MarshalEasyJSON(out)
 	}
 	if in.ICMP != nil {
 		const prefix string = ",\"ICMP\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		(*in.ICMP).MarshalEasyJSON(out)
 	}
 	if in.DHCPv4 != nil {
 		const prefix string = ",\"DHCPv4\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowLayers(out, *in.DHCPv4)
 	}
 	if in.DNS != nil {
 		const prefix string = ",\"DNS\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowLayers1(out, *in.DNS)
 	}
 	if in.VRRPv2 != nil {
 		const prefix string = ",\"VRRPv2\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowLayers2(out, *in.VRRPv2)
 	}
 	{
 		const prefix string = ",\"TrackingID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		if in.TrackingID == nil {
 			out.RawString("null")
 		} else {
@@ -630,12 +510,7 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowStorageElasticsearch
 	}
 	{
 		const prefix string = ",\"L3TrackingID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		if in.L3TrackingID == nil {
 			out.RawString("null")
 		} else {
@@ -644,12 +519,7 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowStorageElasticsearch
 	}
 	{
 		const prefix string = ",\"ParentUUID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		if in.ParentUUID == nil {
 			out.RawString("null")
 		} else {
@@ -658,12 +528,7 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowStorageElasticsearch
 	}
 	{
 		const prefix string = ",\"NodeTID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		if in.NodeTID == nil {
 			out.RawString("null")
 		} else {
@@ -672,22 +537,12 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowStorageElasticsearch
 	}
 	{
 		const prefix string = ",\"Start\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.Start))
 	}
 	{
 		const prefix string = ",\"Last\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.Last))
 	}
 	out.RawByte('}')
@@ -777,12 +632,8 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowLayers2(out *jwriter
 	_ = first
 	if len(in.Contents) != 0 {
 		const prefix string = ",\"contents\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.Base64Bytes(in.Contents)
 	}
 	if len(in.Payload) != 0 {
@@ -1014,12 +865,8 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowLayers1(out *jwriter
 	_ = first
 	if in.ID != 0 {
 		const prefix string = ",\"ID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.Uint16(uint16(in.ID))
 	}
 	if in.QR {
@@ -1298,7 +1145,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers4(in *jlexer.L
 				if out.SOA == nil {
 					out.SOA = new(layers1.DNSSOA)
 				}
-				easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers5(in, &*out.SOA)
+				easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers5(in, out.SOA)
 			}
 		case "SRV":
 			if in.IsNull() {
@@ -1308,7 +1155,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers4(in *jlexer.L
 				if out.SRV == nil {
 					out.SRV = new(layers1.DNSSRV)
 				}
-				easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers6(in, &*out.SRV)
+				easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers6(in, out.SRV)
 			}
 		case "MX":
 			if in.IsNull() {
@@ -1318,7 +1165,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers4(in *jlexer.L
 				if out.MX == nil {
 					out.MX = new(layers1.DNSMX)
 				}
-				easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers7(in, &*out.MX)
+				easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers7(in, out.MX)
 			}
 		case "OPT":
 			if in.IsNull() {
@@ -1344,7 +1191,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers4(in *jlexer.L
 						if v23 == nil {
 							v23 = new(layers1.DNSOPT)
 						}
-						easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers8(in, &*v23)
+						easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers8(in, v23)
 					}
 					out.OPT = append(out.OPT, v23)
 					in.WantComma()
@@ -1367,12 +1214,8 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowLayers4(out *jwriter
 	_ = first
 	if in.Name != "" {
 		const prefix string = ",\"name\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.String(string(in.Name))
 	}
 	if in.Type != "" {
@@ -1568,12 +1411,8 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowLayers8(out *jwriter
 	_ = first
 	if in.Code != "" {
 		const prefix string = ",\"Code\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.String(string(in.Code))
 	}
 	if in.Data != "" {
@@ -1627,12 +1466,8 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowLayers7(out *jwriter
 	_ = first
 	if in.Preference != 0 {
 		const prefix string = ",\"preference\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.Uint16(uint16(in.Preference))
 	}
 	if in.Name != "" {
@@ -1690,12 +1525,8 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowLayers6(out *jwriter
 	_ = first
 	if in.Priority != 0 {
 		const prefix string = ",\"priority\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.Uint16(uint16(in.Priority))
 	}
 	if in.Weight != 0 {
@@ -1779,12 +1610,8 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowLayers5(out *jwriter
 	_ = first
 	if in.MName != "" {
 		const prefix string = ",\"MName\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.String(string(in.MName))
 	}
 	if in.RName != "" {
@@ -1890,12 +1717,8 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowLayers3(out *jwriter
 	_ = first
 	if in.Name != "" {
 		const prefix string = ",\"name\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.String(string(in.Name))
 	}
 	if in.Type != "" {
@@ -1993,12 +1816,8 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveFlowLayers(out *jwriter.
 	_ = first
 	if len(in.Contents) != 0 {
 		const prefix string = ",\"contents\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.Base64Bytes(in.Contents)
 	}
 	if len(in.Payload) != 0 {

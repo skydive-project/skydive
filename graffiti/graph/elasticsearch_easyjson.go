@@ -78,12 +78,8 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveGraffitiGraph(out *jwrit
 	_ = first
 	if in.Type != "" {
 		const prefix string = ",\"_Type\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.String(string(in.Type))
 	}
 	{
@@ -98,102 +94,52 @@ func easyjson71f4917EncodeGithubComSkydiveProjectSkydiveGraffitiGraph(out *jwrit
 	}
 	{
 		const prefix string = ",\"Host\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Host))
 	}
 	{
 		const prefix string = ",\"Origin\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Origin))
 	}
 	{
 		const prefix string = ",\"CreatedAt\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.CreatedAt))
 	}
 	{
 		const prefix string = ",\"UpdatedAt\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.UpdatedAt))
 	}
 	{
 		const prefix string = ",\"Metadata\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Raw((in.Metadata).MarshalJSON())
 	}
 	{
 		const prefix string = ",\"Revision\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.Revision))
 	}
 	if in.DeletedAt != 0 {
 		const prefix string = ",\"DeletedAt\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.DeletedAt))
 	}
 	if in.ArchivedAt != 0 {
 		const prefix string = ",\"ArchivedAt\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.ArchivedAt))
 	}
 	if in.Parent != "" {
 		const prefix string = ",\"Parent\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Parent))
 	}
 	if in.Child != "" {
 		const prefix string = ",\"Child\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Child))
 	}
 	out.RawByte('}')

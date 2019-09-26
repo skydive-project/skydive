@@ -108,12 +108,8 @@ func easyjson582d14dfEncodeGithubComSkydiveProjectSkydiveTopologyProbesNeutron(o
 	_ = first
 	if in.PortID != "" {
 		const prefix string = ",\"PortID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.String(string(in.PortID))
 	}
 	if in.TenantID != "" {

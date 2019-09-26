@@ -142,12 +142,8 @@ func easyjsonA006d1d6EncodeGithubComSkydiveProjectSkydiveTopologyProbesOvsdb(out
 	_ = first
 	if len(in.OtherConfig) != 0 {
 		const prefix string = ",\"OtherConfig\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		{
 			out.RawByte('{')
 			v4First := true

@@ -136,32 +136,17 @@ func easyjsonB583f6f9EncodeGithubComSkydiveProjectSkydiveFlowProbes1(out *jwrite
 	_ = first
 	{
 		const prefix string = ",\"PacketsReceived\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.Int64(int64(in.PacketsReceived))
 	}
 	{
 		const prefix string = ",\"PacketsDropped\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.PacketsDropped))
 	}
 	{
 		const prefix string = ",\"PacketsIfDropped\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.PacketsIfDropped))
 	}
 	out.RawByte('}')
@@ -251,12 +236,8 @@ func easyjsonB583f6f9EncodeGithubComSkydiveProjectSkydiveFlowProbes2(out *jwrite
 	_ = first
 	if in.ID != "" {
 		const prefix string = ",\"ID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.String(string(in.ID))
 	}
 	if in.State != "" {
@@ -361,22 +342,12 @@ func easyjsonB583f6f9EncodeGithubComSkydiveProjectSkydiveFlowProbes2(out *jwrite
 	}
 	{
 		const prefix string = ",\"PacketsDropped\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.PacketsDropped))
 	}
 	{
 		const prefix string = ",\"PacketsIfDropped\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.PacketsIfDropped))
 	}
 	out.RawByte('}')

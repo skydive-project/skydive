@@ -188,12 +188,8 @@ func easyjsonB8b61a3fEncodeGithubComSkydiveProjectSkydiveTopology1(out *jwriter.
 	_ = first
 	if len(in.Flags) != 0 {
 		const prefix string = ",\"Flags\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		{
 			out.RawByte('[')
 			for v6, v7 := range in.Flags {

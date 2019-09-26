@@ -59,22 +59,12 @@ func easyjsonBbc2492aEncodeGithubComSkydiveProjectSkydiveOndemand(out *jwriter.W
 	_ = first
 	{
 		const prefix string = ",\"NodeID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.String(string(in.NodeID))
 	}
 	{
 		const prefix string = ",\"Resource\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Raw((in.Resource).MarshalJSON())
 	}
 	out.RawByte('}')
@@ -148,22 +138,12 @@ func easyjsonBbc2492aEncodeGithubComSkydiveProjectSkydiveOndemand1(out *jwriter.
 	_ = first
 	{
 		const prefix string = ",\"NodeID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.String(string(in.NodeID))
 	}
 	{
 		const prefix string = ",\"Resource\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		if m, ok := in.Resource.(easyjson.Marshaler); ok {
 			m.MarshalEasyJSON(out)
 		} else if m, ok := in.Resource.(json.Marshaler); ok {

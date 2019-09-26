@@ -168,12 +168,8 @@ func easyjson36bd8e45EncodeGithubComSkydiveProjectSkydiveTopologyProbesOvn(out *
 	_ = first
 	if len(in.ExtID) != 0 {
 		const prefix string = ",\"ExtID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		(in.ExtID).MarshalEasyJSON(out)
 	}
 	if len(in.Options) != 0 {
@@ -475,12 +471,8 @@ func easyjson36bd8e45EncodeGithubComSkydiveProjectSkydiveTopologyProbesOvn1(out 
 	_ = first
 	if len(in.Addresses) != 0 {
 		const prefix string = ",\"Addresses\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		{
 			out.RawByte('[')
 			for v15, v16 := range in.Addresses {
@@ -652,12 +644,8 @@ func easyjson36bd8e45EncodeGithubComSkydiveProjectSkydiveTopologyProbesOvn2(out 
 	_ = first
 	if len(in.GatewayChassis) != 0 {
 		const prefix string = ",\"GatewayChassis\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		{
 			out.RawByte('[')
 			for v21, v22 := range in.GatewayChassis {
@@ -779,12 +767,8 @@ func easyjson36bd8e45EncodeGithubComSkydiveProjectSkydiveTopologyProbesOvn3(out 
 	_ = first
 	if in.Action != "" {
 		const prefix string = ",\"Action\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.String(string(in.Action))
 	}
 	if in.Direction != "" {
