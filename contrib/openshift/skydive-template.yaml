@@ -186,6 +186,10 @@ objects:
             name: runc-ctrs
           - mountPath: /run/containerd/runc
             name: containerd-runc
+          - mountPath: /var/data/openshiftvolumes
+            name: data-openshiftvolumes
+          - mountPath: /var/lib/origin
+            name: lib-origin
         dnsPolicy: ClusterFirst
         hostNetwork: true
         hostPID: true
@@ -210,6 +214,12 @@ objects:
         - hostPath:
             path: /run/openvswitch/db.sock
           name: ovsdb
+        - hostPath:
+            path: /var/data/openshiftvolumes
+          name: data-openshiftvolumes
+        - hostPath:
+            path: /var/lib/origin
+          name: lib-origin
 - apiVersion: v1
   kind: Route
   metadata:
@@ -232,7 +242,7 @@ parameters:
   name: SKYDIVE_LOGGING_LEVEL
   required: true
   value: INFO
-- description: Topology probes for anaylyser, default is empty. Add 'k8s' to add k8s/openshift objects to skydive
+- description: Topology probes for analyzer, default is empty. Add 'k8s' to add k8s/openshift objects to skydive
   displayName: Analyzer topology probes
   name: SKYDIVE_ANALYZER_TOPOLOGY_PROBES
   required: false
