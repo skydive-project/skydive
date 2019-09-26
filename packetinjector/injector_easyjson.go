@@ -103,162 +103,82 @@ func easyjsonFac7b200EncodeGithubComSkydiveProjectSkydivePacketinjector(out *jwr
 	_ = first
 	{
 		const prefix string = ",\"UUID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.String(string(in.UUID))
 	}
 	{
 		const prefix string = ",\"SrcIP\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.RawText((in.SrcIP).MarshalText())
 	}
 	{
 		const prefix string = ",\"SrcMAC\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Base64Bytes(in.SrcMAC)
 	}
 	{
 		const prefix string = ",\"SrcPort\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint16(uint16(in.SrcPort))
 	}
 	{
 		const prefix string = ",\"DstIP\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.RawText((in.DstIP).MarshalText())
 	}
 	{
 		const prefix string = ",\"DstMAC\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Base64Bytes(in.DstMAC)
 	}
 	{
 		const prefix string = ",\"DstPort\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint16(uint16(in.DstPort))
 	}
 	{
 		const prefix string = ",\"Type\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Type))
 	}
 	{
 		const prefix string = ",\"Count\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint64(uint64(in.Count))
 	}
 	{
 		const prefix string = ",\"ICMPID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint16(uint16(in.ICMPID))
 	}
 	{
 		const prefix string = ",\"Interval\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint64(uint64(in.Interval))
 	}
 	{
 		const prefix string = ",\"Increment\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Bool(bool(in.Increment))
 	}
 	{
 		const prefix string = ",\"IncrementPayload\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.IncrementPayload))
 	}
 	{
 		const prefix string = ",\"Payload\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Payload))
 	}
 	{
 		const prefix string = ",\"Pcap\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Base64Bytes(in.Pcap)
 	}
 	{
 		const prefix string = ",\"TTL\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint8(uint8(in.TTL))
 	}
 	out.RawByte('}')
@@ -457,192 +377,97 @@ func easyjsonFac7b200EncodeGithubComSkydiveProjectSkydivePacketinjector2(out *jw
 	_ = first
 	{
 		const prefix string = ",\"ID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.String(string(in.ID))
 	}
 	{
 		const prefix string = ",\"State\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.State))
 	}
 	{
 		const prefix string = ",\"PacketCount\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.PacketCount))
 	}
 	{
 		const prefix string = ",\"UUID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.UUID))
 	}
 	{
 		const prefix string = ",\"SrcIP\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.RawText((in.SrcIP).MarshalText())
 	}
 	{
 		const prefix string = ",\"SrcMAC\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Base64Bytes(in.SrcMAC)
 	}
 	{
 		const prefix string = ",\"SrcPort\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint16(uint16(in.SrcPort))
 	}
 	{
 		const prefix string = ",\"DstIP\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.RawText((in.DstIP).MarshalText())
 	}
 	{
 		const prefix string = ",\"DstMAC\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Base64Bytes(in.DstMAC)
 	}
 	{
 		const prefix string = ",\"DstPort\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint16(uint16(in.DstPort))
 	}
 	{
 		const prefix string = ",\"Type\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Type))
 	}
 	{
 		const prefix string = ",\"Count\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint64(uint64(in.Count))
 	}
 	{
 		const prefix string = ",\"ICMPID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint16(uint16(in.ICMPID))
 	}
 	{
 		const prefix string = ",\"Interval\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint64(uint64(in.Interval))
 	}
 	{
 		const prefix string = ",\"Increment\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Bool(bool(in.Increment))
 	}
 	{
 		const prefix string = ",\"IncrementPayload\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.IncrementPayload))
 	}
 	{
 		const prefix string = ",\"Payload\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Payload))
 	}
 	{
 		const prefix string = ",\"Pcap\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Base64Bytes(in.Pcap)
 	}
 	{
 		const prefix string = ",\"TTL\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint8(uint8(in.TTL))
 	}
 	out.RawByte('}')

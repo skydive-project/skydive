@@ -90,42 +90,22 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes(out *jwriter.W
 	_ = first
 	{
 		const prefix string = ",\"Name\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.String(string(in.Name))
 	}
 	{
 		const prefix string = ",\"Description\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Description))
 	}
 	{
 		const prefix string = ",\"Type\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Type))
 	}
 	{
 		const prefix string = ",\"Default\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		if m, ok := in.Default.(easyjson.Marshaler); ok {
 			m.MarshalEasyJSON(out)
 		} else if m, ok := in.Default.(json.Marshaler); ok {
@@ -136,12 +116,7 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes(out *jwriter.W
 	}
 	{
 		const prefix string = ",\"Values\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		if in.Values == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
 			out.RawString("null")
 		} else {
@@ -220,22 +195,12 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes1(out *jwriter.
 	_ = first
 	{
 		const prefix string = ",\"Value\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.String(string(in.Value))
 	}
 	{
 		const prefix string = ",\"Description\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Description))
 	}
 	out.RawByte('}')
@@ -334,52 +299,27 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes2(out *jwriter.
 	_ = first
 	{
 		const prefix string = ",\"Name\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.String(string(in.Name))
 	}
 	{
 		const prefix string = ",\"Title\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Title))
 	}
 	{
 		const prefix string = ",\"Abstract\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Abstract))
 	}
 	{
 		const prefix string = ",\"Description\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Description))
 	}
 	{
 		const prefix string = ",\"Parameters\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		if in.Parameters == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
 			out.RawString("null")
 		} else {
@@ -395,22 +335,12 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes2(out *jwriter.
 	}
 	{
 		const prefix string = ",\"Source\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Source))
 	}
 	{
 		const prefix string = ",\"UUID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.UUID))
 	}
 	out.RawByte('}')
@@ -476,12 +406,8 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes3(out *jwriter.
 	_ = first
 	if in.GremlinQuery != "" {
 		const prefix string = ",\"GremlinQuery\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.String(string(in.GremlinQuery))
 	}
 	out.RawByte('}')
@@ -590,192 +516,97 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes4(out *jwriter.
 	_ = first
 	{
 		const prefix string = ",\"Src\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.String(string(in.Src))
 	}
 	{
 		const prefix string = ",\"Dst\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Dst))
 	}
 	{
 		const prefix string = ",\"SrcIP\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.SrcIP))
 	}
 	{
 		const prefix string = ",\"DstIP\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.DstIP))
 	}
 	{
 		const prefix string = ",\"SrcMAC\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.SrcMAC))
 	}
 	{
 		const prefix string = ",\"DstMAC\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.DstMAC))
 	}
 	{
 		const prefix string = ",\"SrcPort\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint16(uint16(in.SrcPort))
 	}
 	{
 		const prefix string = ",\"DstPort\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint16(uint16(in.DstPort))
 	}
 	{
 		const prefix string = ",\"Type\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Type))
 	}
 	{
 		const prefix string = ",\"Payload\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Payload))
 	}
 	{
 		const prefix string = ",\"ICMPID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint16(uint16(in.ICMPID))
 	}
 	{
 		const prefix string = ",\"Count\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint64(uint64(in.Count))
 	}
 	{
 		const prefix string = ",\"Interval\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint64(uint64(in.Interval))
 	}
 	{
 		const prefix string = ",\"Increment\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Bool(bool(in.Increment))
 	}
 	{
 		const prefix string = ",\"IncrementPayload\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.IncrementPayload))
 	}
 	{
 		const prefix string = ",\"StartTime\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Raw((in.StartTime).MarshalJSON())
 	}
 	{
 		const prefix string = ",\"Pcap\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Base64Bytes(in.Pcap)
 	}
 	{
 		const prefix string = ",\"TTL\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint8(uint8(in.TTL))
 	}
 	{
 		const prefix string = ",\"UUID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.UUID))
 	}
 	out.RawByte('}')
@@ -875,32 +706,17 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes5(out *jwriter.
 	_ = first
 	{
 		const prefix string = ",\"Name\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.String(string(in.Name))
 	}
 	{
 		const prefix string = ",\"Description\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Description))
 	}
 	{
 		const prefix string = ",\"Metadata\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		if in.Metadata == nil && (out.Flags&jwriter.NilMapAsEmpty) == 0 {
 			out.RawString(`null`)
 		} else {
@@ -927,32 +743,17 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes5(out *jwriter.
 	}
 	{
 		const prefix string = ",\"Action\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Action))
 	}
 	{
 		const prefix string = ",\"Query\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Query))
 	}
 	{
 		const prefix string = ",\"UUID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.UUID))
 	}
 	out.RawByte('}')
@@ -1052,52 +853,27 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes6(out *jwriter.
 	_ = first
 	{
 		const prefix string = ",\"Name\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.String(string(in.Name))
 	}
 	{
 		const prefix string = ",\"Description\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Description))
 	}
 	{
 		const prefix string = ",\"Src\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Src))
 	}
 	{
 		const prefix string = ",\"Dst\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Dst))
 	}
 	{
 		const prefix string = ",\"Metadata\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		if in.Metadata == nil && (out.Flags&jwriter.NilMapAsEmpty) == 0 {
 			out.RawString(`null`)
 		} else {
@@ -1124,12 +900,7 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes6(out *jwriter.
 	}
 	{
 		const prefix string = ",\"UUID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.UUID))
 	}
 	out.RawByte('}')
@@ -1233,12 +1004,8 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes7(out *jwriter.
 	_ = first
 	if in.GremlinQuery != "" {
 		const prefix string = ",\"GremlinQuery\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.String(string(in.GremlinQuery))
 	}
 	if in.BPFFilter != "" {
@@ -1293,132 +1060,67 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes7(out *jwriter.
 	}
 	if in.Port != 0 {
 		const prefix string = ",\"Port\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int(int(in.Port))
 	}
 	{
 		const prefix string = ",\"SamplingRate\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint32(uint32(in.SamplingRate))
 	}
 	{
 		const prefix string = ",\"PollingInterval\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Uint32(uint32(in.PollingInterval))
 	}
 	if in.RawPacketLimit != 0 {
 		const prefix string = ",\"RawPacketLimit\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int(int(in.RawPacketLimit))
 	}
 	if in.HeaderSize != 0 {
 		const prefix string = ",\"HeaderSize\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int(int(in.HeaderSize))
 	}
 	{
 		const prefix string = ",\"ExtraTCPMetric\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Bool(bool(in.ExtraTCPMetric))
 	}
 	{
 		const prefix string = ",\"IPDefrag\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Bool(bool(in.IPDefrag))
 	}
 	{
 		const prefix string = ",\"ReassembleTCP\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Bool(bool(in.ReassembleTCP))
 	}
 	if in.LayerKeyMode != "" {
 		const prefix string = ",\"LayerKeyMode\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.LayerKeyMode))
 	}
 	if in.ExtraLayers != 0 {
 		const prefix string = ",\"ExtraLayers\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Raw((in.ExtraLayers).MarshalJSON())
 	}
 	if in.Target != "" {
 		const prefix string = ",\"Target\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Target))
 	}
 	if in.TargetType != "" {
 		const prefix string = ",\"TargetType\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.TargetType))
 	}
 	{
 		const prefix string = ",\"UUID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.UUID))
 	}
 	out.RawByte('}')
@@ -1484,12 +1186,7 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes8(out *jwriter.
 	_ = first
 	{
 		const prefix string = ",\"UUID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.String(string(in.UUID))
 	}
 	out.RawByte('}')
@@ -1569,12 +1266,8 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes9(out *jwriter.
 	_ = first
 	if in.Name != "" {
 		const prefix string = ",\"Name\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.String(string(in.Name))
 	}
 	if in.Description != "" {
@@ -1629,12 +1322,7 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes9(out *jwriter.
 	}
 	{
 		const prefix string = ",\"UUID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.UUID))
 	}
 	out.RawByte('}')

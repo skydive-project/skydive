@@ -144,12 +144,8 @@ func easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesNetlink1(
 	_ = first
 	if in.ID != 0 {
 		const prefix string = ",\"ID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.Int64(int64(in.ID))
 	}
 	if in.LinkState != 0 {

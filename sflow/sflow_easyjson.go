@@ -62,12 +62,8 @@ func easyjson51bca34dEncodeGithubComSkydiveProjectSkydiveSflow(out *jwriter.Writ
 	_ = first
 	if in.VlanOctets != 0 {
 		const prefix string = ",\"VlanOctets\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.Int64(int64(in.VlanOctets))
 	}
 	if in.VlanUcastPkts != 0 {
@@ -219,12 +215,8 @@ func easyjson51bca34dEncodeGithubComSkydiveProjectSkydiveSflow1(out *jwriter.Wri
 	_ = first
 	if len(in.IfMetrics) != 0 {
 		const prefix string = ",\"IfMetrics\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		{
 			out.RawByte('{')
 			v2First := true
@@ -416,12 +408,8 @@ func easyjson51bca34dEncodeGithubComSkydiveProjectSkydiveSflow2(out *jwriter.Wri
 	_ = first
 	if in.Start != 0 {
 		const prefix string = ",\"Start\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.Int64(int64(in.Start))
 	}
 	if in.Last != 0 {
@@ -949,12 +937,8 @@ func easyjson51bca34dEncodeGithubComSkydiveProjectSkydiveSflow3(out *jwriter.Wri
 	_ = first
 	if in.OvsDpNHit != 0 {
 		const prefix string = ",\"OvsDpNHit\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.Int64(int64(in.OvsDpNHit))
 	}
 	if in.OvsDpNMissed != 0 {
@@ -1154,12 +1138,8 @@ func easyjson51bca34dEncodeGithubComSkydiveProjectSkydiveSflow4(out *jwriter.Wri
 	_ = first
 	if in.IfInOctets != 0 {
 		const prefix string = ",\"IfInOctets\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.Int64(int64(in.IfInOctets))
 	}
 	if in.IfInUcastPkts != 0 {
@@ -1369,12 +1349,8 @@ func easyjson51bca34dEncodeGithubComSkydiveProjectSkydiveSflow5(out *jwriter.Wri
 	_ = first
 	if in.EthAlignmentErrors != 0 {
 		const prefix string = ",\"EthAlignmentErrors\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.Int64(int64(in.EthAlignmentErrors))
 	}
 	if in.EthFCSErrors != 0 {

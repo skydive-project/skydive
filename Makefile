@@ -26,8 +26,6 @@ SKYDIVE_GITHUB:=github.com/skydive-project/skydive
 SKYDIVE_PKG:=skydive-${VERSION}
 SKYDIVE_PATH:=$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/
 SKYDIVE_GITHUB_VERSION:=$(SKYDIVE_GITHUB)/version.Version=${VERSION}
-PROTOC_GEN_GO_GITHUB:=github.com/golang/protobuf/protoc-gen-go
-PROTOC_GEN_GOFAST_GITHUB:=github.com/gogo/protobuf/protoc-gen-gogofaster
 VERBOSE_FLAGS?=
 VERBOSE?=true
 ifeq ($(VERBOSE), true)

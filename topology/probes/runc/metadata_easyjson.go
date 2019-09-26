@@ -78,12 +78,8 @@ func easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesRunc(out 
 	_ = first
 	if in.ContainerID != "" {
 		const prefix string = ",\"ContainerID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.String(string(in.ContainerID))
 	}
 	if in.Status != "" {
@@ -193,12 +189,8 @@ func easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesRunc1(out
 	_ = first
 	if in.IP != "" {
 		const prefix string = ",\"IP\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.String(string(in.IP))
 	}
 	if in.Hostname != "" {
@@ -288,12 +280,8 @@ func easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesRunc2(out
 	_ = first
 	if in.Image != "" {
 		const prefix string = ",\"Image\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.String(string(in.Image))
 	}
 	if in.ImageID != "" {

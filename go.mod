@@ -9,7 +9,7 @@ require (
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/VerizonDigital/vflow v0.0.0-20190111005900-eb30d936249e
 	github.com/abbot/go-http-auth v0.0.0-20160118225252-ca62df34b58d
-	github.com/alecthomas/gometalinter v3.0.0+incompatible // indirect
+	github.com/bennyscetbun/jsongo v0.0.0-20190110163710-9624bef8c57b // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/casbin/casbin v0.0.0-20181031010332-5ff5a6f5e38a
 	github.com/cenk/hub v0.0.0-20160527103212-11382a9960d3 // indirect
@@ -26,7 +26,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/gima/govalid v0.0.0-20150214172340-7b486932bea2
 	github.com/go-ole/go-ole v0.0.0-20171110160706-a41e3c4b706f // indirect
-	github.com/go-swagger/go-swagger v0.20.1 // indirect
+	github.com/go-swagger/go-swagger v0.20.1
 	github.com/go-test/deep v0.0.0-20180509200213-57af0be209c5
 	github.com/gobwas/httphead v0.0.0-20171016043908-01c9b01b368a // indirect
 	github.com/gobwas/pool v0.0.0-20170829094749-32dbaa12caca // indirect
@@ -35,25 +35,23 @@ require (
 	github.com/gogo/protobuf v1.3.0
 	github.com/golang/protobuf v1.3.2
 	github.com/gomatic/funcmap v0.0.0-20190110133044-62047470c142 // indirect
-	github.com/gomatic/renderizer v1.0.1 // indirect
+	github.com/gomatic/renderizer v1.0.1
 	github.com/google/gopacket v1.1.17
-	github.com/google/shlex v0.0.0-20181106134648-c34317bd91bf // indirect
 	github.com/googleapis/gnostic v0.0.0-20171106233303-41d03372f44f // indirect
 	github.com/gophercloud/gophercloud v0.0.0-20190126172459-c818fa66e4c8
 	github.com/gorilla/context v0.0.0-20160817184632-08b5f424b927
-	github.com/gorilla/handlers v0.0.0-20171101174335-90663712d74c
+	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v0.0.0-20171208160815-5ab525f4fb16
 	github.com/gorilla/websocket v1.4.0
 	github.com/gosuri/uitable v0.0.0-20160404203958-36ee7e946282 // indirect
 	github.com/hashicorp/go-version v0.0.0-20180322230233-23480c066577
-	github.com/hashicorp/golang-lru v0.5.0
+	github.com/hashicorp/golang-lru v0.5.3
 	github.com/hydrogen18/stoppableListener v0.0.0-20151210151943-dadc9ccc400c
 	github.com/inconshreveable/mousetrap v0.0.0-20141017200713-76626ae9c91c // indirect
 	github.com/intel-go/nff-go v0.0.0-20190620122648-8ab691c21da9
 	github.com/iovisor/gobpf v0.0.0-20190329163444-e0d8d785d368
 	github.com/jbowtie/gokogiri v0.0.0-20190301021639-37f655d3078f // indirect
-	github.com/json-iterator/go v0.0.0-20190621161201-27518f6661eb // indirect
-	github.com/jteeuwen/go-bindata v0.0.0-20180305030458-6025e8de665b // indirect
+	github.com/jteeuwen/go-bindata v0.0.0-20180305030458-6025e8de665b
 	github.com/juju/clock v0.0.0-20190205081909-9c5c9712527c // indirect
 	github.com/juju/errors v0.0.0-20190806202954-0232dcc7464d // indirect
 	github.com/juju/loggo v0.0.0-20170605014607-8232ab8918d9 // indirect
@@ -69,8 +67,9 @@ require (
 	github.com/libvirt/libvirt-go v0.0.0-20181005092746-9c5bdce3c18f
 	github.com/lunixbochs/struc v0.0.0-20180408203800-02e4c2afbb2a
 	github.com/lxc/lxd v0.0.0-20171219222704-9907f3a64b6b
-	github.com/mailru/easyjson v0.0.0-20180606163543-3fdea8d05856
+	github.com/mailru/easyjson v0.7.0
 	github.com/mattn/go-runewidth v0.0.0-20160315040712-d6bea18f7897 // indirect
+	github.com/mattn/goveralls v0.0.2
 	github.com/mitchellh/go-homedir v0.0.0-20160621174243-756f7b183b7a
 	github.com/mitchellh/hashstructure v0.0.0-20170116052023-ab25296c0f51
 	github.com/mitchellh/mapstructure v1.1.2
@@ -85,7 +84,7 @@ require (
 	github.com/pierrec/xxHash v0.0.0-20190318091927-d17cb990ad2d
 	github.com/pmylund/go-cache v0.0.0-20170722040110-a3647f8e31d7
 	github.com/robertkrimen/otto v0.0.0-20161004124959-bf1c3795ba07
-	github.com/safchain/easyjson v0.0.0-20180823135443-60711f1a8329 // indirect
+	github.com/safchain/easyjson v0.0.0-20180823135443-60711f1a8329
 	github.com/safchain/ethtool v0.0.0-20190326074333-42ed695e3de8
 	github.com/safchain/insanelock v0.0.0-20180509135444-33bca4586648
 	github.com/shirou/gopsutil v0.0.0-20180111024713-6a368fb7cd12
@@ -97,6 +96,7 @@ require (
 	github.com/spf13/cobra v0.0.0-20160830174925-9c28e4bbd74e
 	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.4.0
+	github.com/t-yuki/gocover-cobertura v0.0.0-20180217150009-aaee18c8195c
 	github.com/tchap/zapext v0.0.0-20180117141735-e61c0c882339
 	github.com/tebeka/selenium v0.0.0-20170314201507-657e45ec600f
 	github.com/vishvananda/netlink v1.0.0
@@ -106,14 +106,11 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20150808065054-e02fc20de94c // indirect
 	github.com/xeipuuv/gojsonschema v0.0.0-20180618132009-1d523034197f
 	go.uber.org/zap v1.10.0
-	golang.org/x/crypto v0.0.0-20190909091759-094676da4a83 // indirect
-	golang.org/x/net v0.0.0-20190909003024-a7b16738d86b
-	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45 // indirect
-	golang.org/x/sys v0.0.0-20190909082730-f460065e899a
-	golang.org/x/text v0.3.2 // indirect
-	golang.org/x/tools v0.0.0-20190909030654-5b82db07426d
-	google.golang.org/grpc v1.22.1
-	gopkg.in/alecthomas/kingpin.v3-unstable v3.0.0-20180810215634-df19058c872c // indirect
+	golang.org/x/crypto v0.0.0-20190923035154-9ee001bba392 // indirect
+	golang.org/x/net v0.0.0-20190926025831-c00fd9afed17
+	golang.org/x/sys v0.0.0-20190924154521-2837fb4f24fe
+	golang.org/x/tools v0.0.0-20190925230517-ea99b82c7b93
+	google.golang.org/grpc v1.23.0
 	gopkg.in/errgo.v1 v1.0.0-20161222125816-442357a80af5 // indirect
 	gopkg.in/fsnotify/fsnotify.v1 v1.0.0-20180110053347-c2828203cd70
 	gopkg.in/httprequest.v1 v1.0.0-20180209163514-93f8fee4081f // indirect
@@ -130,12 +127,11 @@ require (
 	k8s.io/utils v0.0.0-20190607212802-c55fbcfc754a // indirect
 )
 
-replace github.com/spf13/viper v1.4.0 => github.com/lebauce/viper v0.0.0-20190903114911-3b7a98e30843
-
-replace github.com/vishvananda/netlink v1.0.0 => github.com/lebauce/netlink v0.0.0-20190122103356-fa328be7c8d2
-
-replace github.com/digitalocean/go-libvirt => github.com/lebauce/go-libvirt v0.0.0-20190717144624-7799d804f7e4
-
-replace github.com/mailru/easyjson/gen => github.com/safchain/easyjson/gen v0.0.0-20190909090614-d32b6194ad1f
-
-replace github.com/iovisor/gobpf => github.com/lebauce/gobpf v0.0.0-20190909090614-f9e9df81702a
+replace (
+	github.com/digitalocean/go-libvirt => github.com/lebauce/go-libvirt v0.0.0-20190717144624-7799d804f7e4
+	github.com/iovisor/gobpf => github.com/lebauce/gobpf v0.0.0-20190909090614-f9e9df81702a
+	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.3
+	github.com/skydive-project/skydive/scripts/gendecoder => ./scripts/gendecoder
+	github.com/spf13/viper v1.4.0 => github.com/lebauce/viper v0.0.0-20190903114911-3b7a98e30843
+	github.com/vishvananda/netlink v1.0.0 => github.com/lebauce/netlink v0.0.0-20190122103356-fa328be7c8d2
+)

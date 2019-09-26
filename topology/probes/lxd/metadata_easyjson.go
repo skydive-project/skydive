@@ -93,12 +93,8 @@ func easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesLxd(out *
 	_ = first
 	if in.Architecture != "" {
 		const prefix string = ",\"Architecture\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.String(string(in.Architecture))
 	}
 	if len(in.Config) != 0 {

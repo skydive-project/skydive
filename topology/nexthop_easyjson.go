@@ -62,42 +62,22 @@ func easyjson105c6686EncodeGithubComSkydiveProjectSkydiveTopology(out *jwriter.W
 	_ = first
 	{
 		const prefix string = ",\"Priority\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.Int64(int64(in.Priority))
 	}
 	if len(in.IP) != 0 {
 		const prefix string = ",\"IP\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.RawText((in.IP).MarshalText())
 	}
 	if in.MAC != "" {
 		const prefix string = ",\"MAC\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.MAC))
 	}
 	{
 		const prefix string = ",\"IfIndex\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.IfIndex))
 	}
 	out.RawByte('}')

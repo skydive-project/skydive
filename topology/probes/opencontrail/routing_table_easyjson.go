@@ -66,62 +66,32 @@ func easyjson23c2e8cdEncodeGithubComSkydiveProjectSkydiveTopologyProbesOpencontr
 	_ = first
 	{
 		const prefix string = ",\"Operation\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.String(string(in.Operation))
 	}
 	{
 		const prefix string = ",\"Family\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Family))
 	}
 	{
 		const prefix string = ",\"vrf_id\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int(int(in.VrfId))
 	}
 	{
 		const prefix string = ",\"Prefix\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int(int(in.Prefix))
 	}
 	{
 		const prefix string = ",\"Address\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Address))
 	}
 	{
 		const prefix string = ",\"nh_id\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int(int(in.NhId))
 	}
 	out.RawByte('}')

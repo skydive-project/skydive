@@ -56,22 +56,12 @@ func easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesLldp(out 
 	_ = first
 	{
 		const prefix string = ",\"ID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.Int64(int64(in.ID))
 	}
 	{
 		const prefix string = ",\"Name\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Name))
 	}
 	out.RawByte('}')
@@ -141,32 +131,17 @@ func easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesLldp1(out
 	_ = first
 	{
 		const prefix string = ",\"Enabled\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.Bool(bool(in.Enabled))
 	}
 	{
 		const prefix string = ",\"ID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.ID))
 	}
 	{
 		const prefix string = ",\"Supported\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Bool(bool(in.Supported))
 	}
 	out.RawByte('}')
@@ -306,12 +281,8 @@ func easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesLldp2(out
 	_ = first
 	if in.Description != "" {
 		const prefix string = ",\"Description\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		first = false
+		out.RawString(prefix[1:])
 		out.String(string(in.Description))
 	}
 	if in.ChassisID != "" {
@@ -519,32 +490,17 @@ func easyjsonBa0ee0e3EncodeGithubComSkydiveProjectSkydiveTopologyProbesLldp3(out
 	_ = first
 	{
 		const prefix string = ",\"Enabled\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.Bool(bool(in.Enabled))
 	}
 	if in.PortID != 0 {
 		const prefix string = ",\"PortID\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.PortID))
 	}
 	{
 		const prefix string = ",\"Supported\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Bool(bool(in.Supported))
 	}
 	out.RawByte('}')

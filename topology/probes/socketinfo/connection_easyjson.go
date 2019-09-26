@@ -72,92 +72,47 @@ func easyjson28548e40EncodeGithubComSkydiveProjectSkydiveTopologyProbesSocketinf
 	_ = first
 	{
 		const prefix string = ",\"LocalAddress\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix[1:])
 		out.String(string(in.LocalAddress))
 	}
 	{
 		const prefix string = ",\"LocalPort\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.LocalPort))
 	}
 	{
 		const prefix string = ",\"RemoteAddress\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.RemoteAddress))
 	}
 	{
 		const prefix string = ",\"RemotePort\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.RemotePort))
 	}
 	{
 		const prefix string = ",\"Protocol\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Raw((in.Protocol).MarshalJSON())
 	}
 	{
 		const prefix string = ",\"State\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.State))
 	}
 	{
 		const prefix string = ",\"Process\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Process))
 	}
 	{
 		const prefix string = ",\"Pid\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.Int64(int64(in.Pid))
 	}
 	{
 		const prefix string = ",\"Name\":"
-		if first {
-			first = false
-			out.RawString(prefix[1:])
-		} else {
-			out.RawString(prefix)
-		}
+		out.RawString(prefix)
 		out.String(string(in.Name))
 	}
 	out.RawByte('}')
