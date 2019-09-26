@@ -132,7 +132,7 @@
       - ansicolor:
           colormap: gnome-terminal
       - timeout:
-          timeout: 240
+          timeout: 300
           fail: true
           type: absolute
       - timestamps
