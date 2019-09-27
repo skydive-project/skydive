@@ -49,7 +49,7 @@ require (
 	github.com/hydrogen18/stoppableListener v0.0.0-20151210151943-dadc9ccc400c
 	github.com/inconshreveable/mousetrap v0.0.0-20141017200713-76626ae9c91c // indirect
 	github.com/intel-go/nff-go v0.0.0-20190620122648-8ab691c21da9
-	github.com/iovisor/gobpf v0.0.0-20190329163444-e0d8d785d368
+	github.com/iovisor/gobpf v0.0.0-20190329163444-e0d8d785d368 // indirect
 	github.com/jbowtie/gokogiri v0.0.0-20190301021639-37f655d3078f // indirect
 	github.com/jteeuwen/go-bindata v0.0.0-20180305030458-6025e8de665b
 	github.com/juju/clock v0.0.0-20190205081909-9c5c9712527c // indirect
@@ -75,6 +75,7 @@ require (
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/networkservicemesh/networkservicemesh v0.1.0
+	github.com/newtools/ebpf v0.0.0-20190820102627-8b7eaed02eb9
 	github.com/nlewo/contrail-introspect-cli v0.0.0-20181003135217-0407b60f2edd
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/olivere/elastic v0.0.0-20190204160516-f82cf7c66881
@@ -130,6 +131,7 @@ require (
 replace (
 	github.com/digitalocean/go-libvirt => github.com/lebauce/go-libvirt v0.0.0-20190717144624-7799d804f7e4
 	github.com/iovisor/gobpf => github.com/lebauce/gobpf v0.0.0-20190909090614-f9e9df81702a
+	github.com/newtools/ebpf => github.com/nplanel/ebpf v0.0.0-20190918123742-99947faabce5
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.3
 	github.com/skydive-project/skydive/scripts/gendecoder => ./scripts/gendecoder
 	github.com/spf13/viper v1.4.0 => github.com/lebauce/viper v0.0.0-20190903114911-3b7a98e30843

@@ -42,6 +42,6 @@ func TestEBPFFlow(t *testing.T) {
 	table.Stop()
 
 	if len(expired) != 3 {
-		t.Errorf("Table should have 3 flows, got : %d", table.table)
+		t.Errorf("Table should have expired 3 flows, got : %d", len(expired))
 	}
 }

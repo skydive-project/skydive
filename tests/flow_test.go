@@ -2313,7 +2313,7 @@ func testFlowsHashCnx(t *testing.T) *Test {
 			foundBA := false
 			for _, f := range flows {
 				if f.Metric.ABPackets != 10 || f.Metric.BAPackets != 10 {
-					return fmt.Errorf("Expected one packet each way, got %+v", flows)
+					return fmt.Errorf("Expected 10 packets each way, got %+v", flows)
 				}
 				if f.Transport.A == 12345 && f.Transport.B == 54321 {
 					foundAB = true
