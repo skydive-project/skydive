@@ -563,7 +563,7 @@ func newSeleniumHelper(t *testing.T, analyzerAddr string, analyzerPort int, auth
 	setupCmds := []Cmd{
 		{"docker pull skydive/cdd-docker-selenium", true},
 		{"docker run -d --name=grid -p 4444:24444 -p 5900:25900 -e --shm-size=1g -p 6080:26080 -e SCREEN_WIDTH=1600 -e SCREEN_HEIGHT=1000 -e NOVNC=true -e VIDEO_FILE_NAME=cdd skydive/cdd-docker-selenium", true},
-		{"docker exec grid wait_all_done 30s", true},
+		{"docker exec grid wait_all_done 60s", true},
 	}
 	execCmds(t, setupCmds...)
 
