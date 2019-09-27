@@ -333,7 +333,7 @@ func (s *seleniumHelper) startShortestPathCapture(g1, g2 g.QueryString, bpf stri
 		return err
 	}
 
-	return s.closeNotification()
+	return s.waitNotificationClose()
 }
 
 func (s *seleniumHelper) startGremlinCapture(gremlin g.QueryString) error {
@@ -359,7 +359,7 @@ func (s *seleniumHelper) startGremlinCapture(gremlin g.QueryString) error {
 
 	time.Sleep(1 * time.Second)
 
-	if err := s.closeNotification(); err != nil {
+	if err := s.waitNotificationClose(); err != nil {
 		return err
 	}
 
@@ -382,15 +382,29 @@ func (s *seleniumHelper) startGremlinCapture(gremlin g.QueryString) error {
 	return nil
 }
 
-func (s *seleniumHelper) closeNotification() error {
-	notification, err := s.findElement(selenium.ByXPATH, ".//*[@id='notification']")
+func (s *seleniumHelper) waitNotificationClose() error {
+	var notification selenium.WebElement
+	err := common.Retry(func() error {
+		var err error
+		notification, err = s.findElement(selenium.ByXPATH, ".//*[@id='notification']")
+		return err
+	}, 50, time.Millisecond*100)
+
+	// notification not found thus no need to wait
+	if err != nil {
+		return nil
+	}
+
+	err = common.Retry(func() error {
+		el, _ := notification.FindElement(selenium.ByClassName, "close")
+		if el != nil {
+			return errors.New("notification still there")
+		}
+		return nil
+	}, 10, time.Second)
 	if err != nil {
 		return err
 	}
-
-	el, _ := notification.FindElement(selenium.ByClassName, "close")
-	s.clickOn(el)
-	time.Sleep(1 * time.Second)
 
 	return nil
 }
@@ -563,7 +577,7 @@ func newSeleniumHelper(t *testing.T, analyzerAddr string, analyzerPort int, auth
 	setupCmds := []Cmd{
 		{"docker pull skydive/cdd-docker-selenium", true},
 		{"docker run -d --name=grid -p 4444:24444 -p 5900:25900 -e --shm-size=1g -p 6080:26080 -e SCREEN_WIDTH=1600 -e SCREEN_HEIGHT=1000 -e NOVNC=true -e VIDEO_FILE_NAME=cdd skydive/cdd-docker-selenium", true},
-		{"docker exec grid wait_all_done 30s", true},
+		{"docker exec grid wait_all_done 60s", true},
 	}
 	execCmds(t, setupCmds...)
 
