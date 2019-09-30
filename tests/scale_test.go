@@ -271,7 +271,7 @@ func genICMPv4(t *testing.T, scale, src string, dst string, count int) error {
 		setupCmds := []Cmd{
 			{fmt.Sprintf("%s ping %s %s -c 1", scale, src, dst), false},
 		}
-		if err := execCmds(t, setupCmds...); err == nil {
+		if _, err := execCmds(t, setupCmds...); err == nil {
 			seen++
 			if seen == count {
 				return nil
