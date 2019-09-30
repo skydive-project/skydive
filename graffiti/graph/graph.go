@@ -667,15 +667,17 @@ func dedupEdges(edges []*Edge) []*Edge {
 // NodeUpdated updates a node
 func (g *Graph) NodeUpdated(n *Node) error {
 	if node := g.GetNode(n.ID); node != nil {
-		node.Metadata = n.Metadata
-		node.UpdatedAt = n.UpdatedAt
-		node.Revision = n.Revision
+		if node.Revision < n.Revision {
+			node.Metadata = n.Metadata
+			node.UpdatedAt = n.UpdatedAt
+			node.Revision = n.Revision
 
-		if err := g.backend.MetadataUpdated(node); err != nil {
-			return err
+			if err := g.backend.MetadataUpdated(node); err != nil {
+				return err
+			}
+
+			g.eventHandler.NotifyEvent(NodeUpdated, node)
 		}
-
-		g.eventHandler.NotifyEvent(NodeUpdated, node)
 		return nil
 	}
 	return ErrNodeNotFound
@@ -684,15 +686,17 @@ func (g *Graph) NodeUpdated(n *Node) error {
 // EdgeUpdated updates an edge
 func (g *Graph) EdgeUpdated(e *Edge) error {
 	if edge := g.GetEdge(e.ID); edge != nil {
-		edge.Metadata = e.Metadata
-		edge.UpdatedAt = e.UpdatedAt
+		if edge.Revision < e.Revision {
+			edge.Metadata = e.Metadata
+			edge.UpdatedAt = e.UpdatedAt
 
-		if err := g.backend.MetadataUpdated(edge); err != nil {
-			return err
+			if err := g.backend.MetadataUpdated(edge); err != nil {
+				return err
+			}
+
+			g.eventHandler.NotifyEvent(EdgeUpdated, edge)
+			return nil
 		}
-
-		g.eventHandler.NotifyEvent(EdgeUpdated, edge)
-		return nil
 	}
 	return ErrEdgeNotFound
 }

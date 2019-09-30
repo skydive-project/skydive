@@ -28,6 +28,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	gws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/websocket"
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
@@ -280,4 +281,19 @@ func NewSubscriberEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, tr *traver
 	// subscribe to the local graph event
 	g.AddEventListener(t)
 	return t
+}
+
+// ClientOrigin return a string identifying a client using its service type and host id
+func ClientOrigin(c websocket.Speaker) string {
+	origin := string(c.GetServiceType())
+	if len(c.GetRemoteHost()) > 0 {
+		origin += "." + c.GetRemoteHost()
+	}
+
+	return origin
+}
+
+// DelSubGraphOfOrigin deletes all the nodes with a specified origin
+func DelSubGraphOfOrigin(g *graph.Graph, origin string) {
+	g.DelNodes(graph.Metadata{"Origin": origin})
 }

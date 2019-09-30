@@ -24,6 +24,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	gcommon "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	gws "github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
@@ -119,7 +120,7 @@ func (p *ReplicatorPeer) OnDisconnected(c ws.Speaker) {
 		return
 	}
 
-	origin := clientOrigin(c)
+	origin := gcommon.ClientOrigin(c)
 	if p.Graph.Origin() == origin {
 		return
 	}
@@ -127,7 +128,7 @@ func (p *ReplicatorPeer) OnDisconnected(c ws.Speaker) {
 	logging.GetLogger().Debugf("Peer unregistered, delete resources of %s", origin)
 
 	p.Graph.Lock()
-	delSubGraphOfOrigin(p.endpoint.cached, p.Graph, origin)
+	gcommon.DelSubGraphOfOrigin(p.Graph, origin)
 	p.Graph.Unlock()
 
 	p.endpoint.out.RemoveClient(c)
@@ -379,7 +380,7 @@ func (t *ReplicationEndpoint) OnDisconnected(c ws.Speaker) {
 		return
 	}
 
-	origin := clientOrigin(c)
+	origin := gcommon.ClientOrigin(c)
 	if t.Graph.Origin() == origin {
 		return
 	}
@@ -387,7 +388,7 @@ func (t *ReplicationEndpoint) OnDisconnected(c ws.Speaker) {
 	logging.GetLogger().Debugf("Peer unregistered, delete resources of %s", origin)
 
 	t.Graph.Lock()
-	delSubGraphOfOrigin(t.cached, t.Graph, origin)
+	gcommon.DelSubGraphOfOrigin(t.Graph, origin)
 	t.Graph.Unlock()
 
 	delete(t.peerStates, host)

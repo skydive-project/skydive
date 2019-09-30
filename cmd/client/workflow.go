@@ -75,8 +75,6 @@ var WorkflowCreate = &cobra.Command{
 	Short:        "create workflow",
 	Long:         "create workflow",
 	SilenceUsage: false,
-	PreRun: func(cmd *cobra.Command, args []string) {
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {

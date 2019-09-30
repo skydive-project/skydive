@@ -15,19 +15,27 @@
  *
  */
 
-package pod
+package common
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/validator"
 	gws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/logging"
 	ws "github.com/skydive-project/skydive/websocket"
+)
+
+// PersistencePolicy defines Persistent policy for publishers
+type PersistencePolicy string
+
+const (
+	// Persistent means that the graph elements created will always remain
+	Persistent PersistencePolicy = "Persistent"
+	// DeleteOnDisconnect means the graph elements created will be deleted on client disconnect
+	DeleteOnDisconnect PersistencePolicy = "DeleteOnDisconnect"
 )
 
 // PublisherEndpoint serves the graph for external publishers, for instance
@@ -35,10 +43,37 @@ import (
 type PublisherEndpoint struct {
 	common.RWMutex
 	ws.DefaultSpeakerEventHandler
-	pool          ws.StructSpeakerPool
-	Graph         *graph.Graph
-	validator     validator.Validator
-	gremlinParser *traversal.GremlinTraversalParser
+	pool      ws.StructSpeakerPool
+	Graph     *graph.Graph
+	validator validator.Validator
+	authors   map[string]bool
+}
+
+// OnDisconnected called when a publisher got disconnected.
+func (t *PublisherEndpoint) OnDisconnected(c ws.Speaker) {
+	origin := ClientOrigin(c)
+
+	t.RLock()
+	_, ok := t.authors[origin]
+	t.RUnlock()
+
+	// not an author so do not delete resources
+	if !ok {
+		return
+	}
+
+	policy := PersistencePolicy(c.GetHeaders().Get("X-Persistence-Policy"))
+	if policy != Persistent {
+		logging.GetLogger().Debugf("Authoritative client unregistered, delete resources of %s", origin)
+
+		t.Graph.Lock()
+		DelSubGraphOfOrigin(t.Graph, origin)
+		t.Graph.Unlock()
+	}
+
+	t.Lock()
+	delete(t.authors, origin)
+	t.Unlock()
 }
 
 // OnStructMessage is triggered by message coming from a publisher.
@@ -49,11 +84,23 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 		return
 	}
 
+	origin := ClientOrigin(c)
+
+	t.Lock()
+	// received a message thus the pod has chosen this hub as master
+	if _, ok := t.authors[origin]; !ok {
+		t.authors[origin] = true
+		logging.GetLogger().Debugf("Authoritative client registered %s", origin)
+	}
+	t.Unlock()
+
 	if t.validator != nil {
 		switch msgType {
 		case gws.NodeAddedMsgType, gws.NodeUpdatedMsgType, gws.NodeDeletedMsgType:
+			obj.(*graph.Node).Origin = origin
 			err = t.validator.ValidateNode(obj.(*graph.Node))
 		case gws.EdgeAddedMsgType, gws.EdgeUpdatedMsgType, gws.EdgeDeletedMsgType:
+			obj.(*graph.Edge).Origin = origin
 			err = t.validator.ValidateEdge(obj.(*graph.Edge))
 		}
 
@@ -70,6 +117,25 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 	case gws.SyncRequestMsgType:
 		reply := msg.Reply(t.Graph, gws.SyncReplyMsgType, http.StatusOK)
 		c.SendMessage(reply)
+	case gws.SyncMsgType, gws.SyncReplyMsgType:
+		r := obj.(*gws.SyncMsg)
+
+		DelSubGraphOfOrigin(t.Graph, ClientOrigin(c))
+
+		for _, n := range r.Nodes {
+			if t.Graph.GetNode(n.ID) == nil {
+				if err := t.Graph.NodeAdded(n); err != nil {
+					logging.GetLogger().Error(err)
+				}
+			}
+		}
+		for _, e := range r.Edges {
+			if t.Graph.GetEdge(e.ID) == nil {
+				if err := t.Graph.EdgeAdded(e); err != nil {
+					logging.GetLogger().Error(err)
+				}
+			}
+		}
 	case gws.NodeUpdatedMsgType:
 		err = t.Graph.NodeUpdated(obj.(*graph.Node))
 	case gws.NodeDeletedMsgType:
@@ -84,42 +150,6 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 		}
 	case gws.EdgeAddedMsgType:
 		err = t.Graph.EdgeAdded(obj.(*graph.Edge))
-	case gws.NodePartiallyUpdatedMsgType:
-		updated := obj.(*gws.PartiallyUpdatedMsg)
-		node := t.Graph.GetNode(updated.ID)
-		if node == nil {
-			err = fmt.Errorf("Partial update node not found: %s", updated.ID)
-			break
-		}
-
-		tr := t.Graph.StartMetadataTransaction(node)
-		for _, op := range updated.Ops {
-			// TODO(safchain) should use a decoder here for each key/value to keep
-			// the type of the metadata
-			if op.Type == graph.PartiallyUpdatedAddOpType {
-				tr.AddMetadata(op.Key, op.Value)
-			} else {
-				tr.DelMetadata(op.Key)
-			}
-		}
-		tr.Commit()
-	case gws.EdgePartiallyUpdatedMsgType:
-		updated := obj.(*gws.PartiallyUpdatedMsg)
-		edge := t.Graph.GetEdge(updated.ID)
-		if edge == nil {
-			err = fmt.Errorf("Partial update edge not found: %s", updated.ID)
-			break
-		}
-
-		tr := t.Graph.StartMetadataTransaction(edge)
-		for _, op := range updated.Ops {
-			if op.Type == graph.PartiallyUpdatedAddOpType {
-				tr.AddMetadata(op.Key, op.Value)
-			} else {
-				tr.DelMetadata(op.Key)
-			}
-		}
-		tr.Commit()
 	}
 
 	if err != nil {
@@ -130,10 +160,10 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 // NewPublisherEndpoint returns a new server for external publishers.
 func NewPublisherEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, validator validator.Validator) (*PublisherEndpoint, error) {
 	t := &PublisherEndpoint{
-		Graph:         g,
-		pool:          pool,
-		validator:     validator,
-		gremlinParser: traversal.NewGremlinTraversalParser(),
+		Graph:     g,
+		pool:      pool,
+		validator: validator,
+		authors:   make(map[string]bool),
 	}
 
 	pool.AddEventHandler(t)

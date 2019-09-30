@@ -15,7 +15,7 @@
  *
  */
 
-package pod
+package common
 
 import (
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -30,11 +30,10 @@ import (
 type Forwarder struct {
 	masterElection *ws.MasterElection
 	graph          *graph.Graph
-	host           string
 }
 
 func (t *Forwarder) triggerResync() {
-	logging.GetLogger().Infof("Start a re-sync for %s", t.host)
+	logging.GetLogger().Infof("Start a re-sync")
 
 	// re-add all the nodes and edges
 	msg := &gws.SyncMsg{
@@ -103,13 +102,12 @@ func (t *Forwarder) GetMaster() ws.Speaker {
 
 // NewForwarder returns a new Graph forwarder which forwards event of the given graph
 // to the given WebSocket JSON speakers.
-func NewForwarder(host string, g *graph.Graph, pool ws.StructSpeakerPool) *Forwarder {
+func NewForwarder(g *graph.Graph, pool ws.StructSpeakerPool) *Forwarder {
 	masterElection := ws.NewMasterElection(pool)
 
 	t := &Forwarder{
 		masterElection: masterElection,
 		graph:          g,
-		host:           host,
 	}
 
 	masterElection.AddEventHandler(t)

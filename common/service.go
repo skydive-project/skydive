@@ -34,6 +34,8 @@ const (
 	AnalyzerService ServiceType = "analyzer"
 	// AgentService agent
 	AgentService ServiceType = "agent"
+	// SeedService seed
+	SeedService ServiceType = "seed"
 )
 
 // ServiceState describes the state of a service.
