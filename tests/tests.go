@@ -147,12 +147,13 @@ type helperParams map[string]interface{}
 
 // TestContext holds the context (client, captures, injections, timestamp, ...) of a test
 type TestContext struct {
-	gh         *gclient.GremlinQueryHelper
-	client     *shttp.CrudClient
-	captures   []*types.Capture
-	injections []*types.PacketInjection
-	setupTime  time.Time
-	data       map[string]interface{}
+	gh              *gclient.GremlinQueryHelper
+	client          *shttp.CrudClient
+	captures        []*types.Capture
+	injections      []*types.PacketInjection
+	setupTime       time.Time
+	data            map[string]interface{}
+	setupCmdOutputs []string
 }
 
 // TestCapture describes a capture to be created in tests
@@ -300,21 +301,23 @@ func initConfig(conf string, params ...helperParams) error {
 	return config.InitConfig("file", []string{f.Name()})
 }
 
-func execCmds(t *testing.T, cmds ...Cmd) (e error) {
-	for _, cmd := range cmds {
+func execCmds(t *testing.T, cmds ...Cmd) (outputs []string, e error) {
+	outputs = make([]string, len(cmds))
+	for i, cmd := range cmds {
 		args, err := shellquote.Split(cmd.Cmd)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		command := exec.Command(args[0], args[1:]...)
 		logging.GetLogger().Debugf("Executing command %+v", args)
 		stdouterr, err := command.CombinedOutput()
 		if stdouterr != nil {
 			logging.GetLogger().Debugf("Command returned %s", string(stdouterr))
+			outputs[i] = string(stdouterr)
 		}
 		if err != nil {
 			if cmd.Check {
-				return fmt.Errorf("cmd : (%s) returned error %s with output %s", cmd.Cmd, err, string(stdouterr))
+				return nil, fmt.Errorf("cmd : (%s) returned error %s with output %s", cmd.Cmd, err, string(stdouterr))
 			}
 			e = err
 		}
@@ -481,16 +484,16 @@ func RunTest(t *testing.T, test *Test) {
 		execCmds(t, test.tearDownCmds...)
 	}
 
-	if err := execCmds(t, test.setupCmds...); err != nil {
-		execCmds(t, test.tearDownCmds...)
-		t.Fatal(err)
-	}
-
 	context := &TestContext{
 		gh:       gclient.NewGremlinQueryHelper(&shttp.AuthenticationOpts{}),
 		client:   client,
 		captures: captures,
 		data:     make(map[string]interface{}),
+	}
+
+	if context.setupCmdOutputs, err = execCmds(t, test.setupCmds...); err != nil {
+		execCmds(t, test.tearDownCmds...)
+		t.Fatal(err)
 	}
 
 	t.Log("Checking captures are correctly set up")
@@ -743,7 +746,7 @@ func RunTest(t *testing.T, test *Test) {
 		}
 	}
 
-	if err := execCmds(t, test.tearDownCmds...); err != nil {
+	if _, err := execCmds(t, test.tearDownCmds...); err != nil {
 		t.Fatal(err)
 	}
 
