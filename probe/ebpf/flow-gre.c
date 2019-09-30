@@ -31,57 +31,59 @@
 
 #define MAX_GRE_ROUTING_INFO 4
 
-MAP(flow_nostack) {
+MAP(flow_nostack){
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(__u32),
 	.value_size = sizeof(struct flow),
 	.max_entries = 1,
 };
 
-MAP(jmp_map) {
+MAP(jmp_map){
 	.type = BPF_MAP_TYPE_PROG_ARRAY,
 	.key_size = sizeof(__u32),
 	.value_size = sizeof(__u32),
 	.max_entries = JMP_TABLE_SIZE,
 };
 
-MAP(u64_config_values) {
+MAP(u64_config_values){
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(__u32),
 	.value_size = sizeof(__u64),
 	.max_entries = 2,
 };
 
-MAP(stats_map) {
-        .type = BPF_MAP_TYPE_HASH,
-        .key_size = sizeof(__u32),
-        .value_size = sizeof(__u64),
-        .max_entries = 1,
+MAP(stats_map){
+	.type = BPF_MAP_TYPE_HASH,
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(__u64),
+	.max_entries = 1,
 };
 
-MAP(l2_table) {
+MAP(l2_table){
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(__u32),
 	.value_size = sizeof(struct l2),
 	.max_entries = 1,
 };
 
-MAP(flow_table_p1) {
+MAP(flow_table_p1){
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(__u64),
 	.value_size = sizeof(struct flow),
 	.max_entries = 500000,
 };
 
-MAP(flow_table_p2) {
+MAP(flow_table_p2){
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(__u64),
 	.value_size = sizeof(struct flow),
 	.max_entries = 500000,
 };
 
-static inline void add_layer_l2(struct l2 *l2, __u8 layer) {
-	if (l2->layers_path & (LAYERS_PATH_MASK << ((LAYERS_PATH_LEN-1)*LAYERS_PATH_SHIFT))) {
+static inline void add_layer_l2(struct l2 *l2, __u8 layer)
+{
+	if (l2->layers_path & (LAYERS_PATH_MASK << ((LAYERS_PATH_LEN - 1) * LAYERS_PATH_SHIFT)))
+	{
 		return;
 	}
 	l2->layers_path = (l2->layers_path << LAYERS_PATH_SHIFT) | layer;
@@ -94,33 +96,40 @@ static inline __u16 fill_gre(struct __sk_buff *skb, size_t *offset, struct flow 
 	__u8 cfg_routing = config & 0x40;
 	__u8 cfg_key = config & 0x20;
 	__u8 cfg_seq = config & 0x10;
-	__u8 flags = load_byte(skb, (*offset)+1);
+	__u8 flags = load_byte(skb, (*offset) + 1);
 	__u8 cfg_ack = flags & 0x80;
 
-	__u16 protocol = load_half(skb, (*offset)+2);
+	__u16 protocol = load_half(skb, (*offset) + 2);
 	(*offset) += 4;
-	if ((cfg_checksum > 0) || (cfg_routing > 0)) {
+	if ((cfg_checksum > 0) || (cfg_routing > 0))
+	{
 		(*offset) += 4;
 	}
-	if (cfg_key > 0) {
+	if (cfg_key > 0)
+	{
 		(*offset) += 4;
 	}
-	if (cfg_seq > 0) {
+	if (cfg_seq > 0)
+	{
 		(*offset) += 4;
 	}
-	if (cfg_routing > 0) {
+	if (cfg_routing > 0)
+	{
 #pragma unroll
-		for(int i = 0;i < MAX_GRE_ROUTING_INFO; i++) {
+		for (int i = 0; i < MAX_GRE_ROUTING_INFO; i++)
+		{
 			__u16 addr_family = load_half(skb, *offset);
-			__u8 len_SRE = load_byte(skb, (*offset)+3);
+			__u8 len_SRE = load_byte(skb, (*offset) + 3);
 
 			*offset += (4 + len_SRE);
-			if (addr_family == 0 && len_SRE == 0) {
+			if (addr_family == 0 && len_SRE == 0)
+			{
 				break;
 			}
 		}
 	}
-	if (cfg_ack > 0) {
+	if (cfg_ack > 0)
+	{
 		(*offset) += 4;
 	}
 	return protocol;
@@ -146,9 +155,12 @@ static inline void fill_network(struct __sk_buff *skb, __u16 netproto, size_t of
 #include "flow_network.c"
 
 	layer->_hash_src = hash_src;
-	if (ordered_src < ordered_dst) {
+	if (ordered_src < ordered_dst)
+	{
 		layer->_hash = FNV_BASIS ^ rotl(hash_src, 32) ^ hash_dst ^ netproto ^ transproto;
-	} else {
+	}
+	else
+	{
 		layer->_hash = FNV_BASIS ^ rotl(hash_dst, 32) ^ hash_src ^ netproto ^ transproto;
 	}
 
@@ -159,7 +171,7 @@ static inline void fill_network(struct __sk_buff *skb, __u16 netproto, size_t of
 	flow->key ^= flow->transport_layer._hash;
 	flow->key = rotl(flow->key, 16);
 	flow->key ^= flow->icmp_layer._hash;
-	
+
 	flow->layers_info |= NETWORK_LAYER_INFO;
 }
 
@@ -181,20 +193,25 @@ static inline __u16 fill_vlan(struct __sk_buff *skb, struct l2 *l2)
 	return protocol;
 }
 
-static inline void fill_vlans(struct __sk_buff *skb, __u16 *protocol, struct l2 *l2) {
-	if (*protocol == ETH_P_8021Q) {
-		#pragma unroll
-		for(int i=0;i<MAX_VLAN_LAYERS;i++) {
+static inline void fill_vlans(struct __sk_buff *skb, __u16 *protocol, struct l2 *l2)
+{
+	if (*protocol == ETH_P_8021Q)
+	{
+#pragma unroll
+		for (int i = 0; i < MAX_VLAN_LAYERS; i++)
+		{
 			*protocol = fill_vlan(skb, l2);
 			l2->next_layer_offset += 4;
-			if (*protocol != ETH_P_8021Q) {
+			if (*protocol != ETH_P_8021Q)
+			{
 				break;
 			}
 		}
 	}
 
 	struct link_layer *layer = &l2->link_layer;
-	if (skb->vlan_present) {
+	if (skb->vlan_present)
+	{
 		__u16 vlanID = skb->vlan_tci & 0x0fff;
 		layer->_hash ^= vlanID;
 		layer->id = (layer->id << 12) | vlanID;
@@ -229,20 +246,24 @@ static inline __u16 fill_l2(struct __sk_buff *skb, struct l2 *l2)
 {
 	__u16 protocol = bpf_ntohs((__u16)skb->protocol);
 
-	if (((protocol == ETH_P_IP) || (protocol == ETH_P_IPV6)) && (skb->len >= 14)) {
+	if (((protocol == ETH_P_IP) || (protocol == ETH_P_IPV6)) && (skb->len >= 14))
+	{
 		__u16 eth_proto = load_half(skb, 12);
-		if ((eth_proto == ETH_P_IP) || (eth_proto == ETH_P_IPV6)) {
+		if ((eth_proto == ETH_P_IP) || (eth_proto == ETH_P_IPV6))
+		{
 			protocol = ETH_P_ALL;
 		}
 	}
 
-	if ((protocol != ETH_P_IP) && (protocol != ETH_P_IPV6)) {
+	if ((protocol != ETH_P_IP) && (protocol != ETH_P_IPV6))
+	{
 		protocol = fill_link(skb, 0, l2);
 		l2->next_layer_offset = ETH_HLEN;
 
 		fill_vlans(skb, &protocol, l2);
 
-		if (protocol == ETH_P_ARP) {
+		if (protocol == ETH_P_ARP)
+		{
 			add_layer_l2(l2, ARP_LAYER);
 		}
 	}
@@ -259,13 +280,15 @@ int bpf_flow_table(struct __sk_buff *skb)
 
 	__u32 key = START_TIME_NS;
 	__u64 *sns = bpf_map_lookup_element(&u64_config_values, &key);
-	if (sns != NULL && *sns == 0) {
+	if (sns != NULL && *sns == 0)
+	{
 		bpf_map_update_element(&u64_config_values, &key, &tm, BPF_ANY);
 	}
 
 	__u32 k32 = 0;
 	struct l2 *l2 = bpf_map_lookup_element(&l2_table, &k32);
-	if (l2 == NULL) {
+	if (l2 == NULL)
+	{
 		bpf_printk("=== l2 not found bpf_flow_table ===\n");
 		return 0;
 	}
@@ -274,7 +297,7 @@ int bpf_flow_table(struct __sk_buff *skb)
 
 	l2->ethertype = fill_l2(skb, l2);
 
- 	bpf_tail_call(skb, &jmp_map, JMP_NETWORK_LAYER);
+	bpf_tail_call(skb, &jmp_map, JMP_NETWORK_LAYER);
 	bpf_printk("=== no tail call l2 key %x %x ====\n", l2->key, l2->link_layer.id);
 	return 0;
 }
@@ -284,25 +307,28 @@ int network_layer(struct __sk_buff *skb)
 {
 	__u32 k32 = 0;
 	struct l2 *l2 = bpf_map_lookup_element(&l2_table, &k32);
-	if (l2 == NULL) {
+	if (l2 == NULL)
+	{
 		bpf_printk("=== l2 not found network_layer ===\n");
 		return 0;
 	}
 
 	struct flow *new, *flow;
 	new = bpf_map_lookup_element(&flow_nostack, &k32);
-	if (new == NULL) {
+	if (new == NULL)
+	{
 		bpf_printk("=== no free struct flow\n");
 		return 0;
 	}
 	memset(new, 0, sizeof(struct flow));
-	
+
 	new->key = l2->key;
 	new->layers_path = l2->layers_path;
 	new->link_layer = l2->link_layer;
 	new->last = l2->last;
 
-	if (l2->next_layer_offset != 0) {
+	if (l2->next_layer_offset != 0)
+	{
 		new->layers_info |= LINK_LAYER_INFO;
 	}
 
@@ -312,28 +338,35 @@ int network_layer(struct __sk_buff *skb)
 	__u32 key = FLOW_PAGE;
 	__u64 *page = bpf_map_lookup_element(&u64_config_values, &key);
 	__u64 flow_page = 0;
-	if (page != NULL) {
+	if (page != NULL)
+	{
 		flow_page = *page;
 	}
 
 	struct bpf_map_def *flowtable = &flow_table_p1;
-	if (flow_page == 1) {
+	if (flow_page == 1)
+	{
 		flowtable = &flow_table_p2;
 	}
 	flow = bpf_map_lookup_element(flowtable, &new->key);
 
-	if (flow == NULL) {
+	if (flow == NULL)
+	{
 		/* New flow */
 		new->start = new->last;
 		update_metrics(skb, new, 1);
 
-		if (bpf_map_update_element(flowtable, &new->key, new, BPF_ANY) == -1) {
+		if (bpf_map_update_element(flowtable, &new->key, new, BPF_ANY) == -1)
+		{
 			__u32 stats_key = 0;
 			__u64 stats_update_val = 1;
 			__u64 *stats_val = bpf_map_lookup_element(&stats_map, &stats_key);
-			if (stats_val == NULL) {
+			if (stats_val == NULL)
+			{
 				bpf_map_update_element(&stats_map, &stats_key, &stats_update_val, BPF_ANY);
-			} else {
+			}
+			else
+			{
 				__sync_fetch_and_add(stats_val, stats_update_val);
 			}
 		}
@@ -344,19 +377,25 @@ int network_layer(struct __sk_buff *skb)
 	flow->last = l2->last;
 	update_metrics(skb, flow, is_ab_packet(new, flow));
 
-	if (flow->layers_info & TRANSPORT_LAYER_INFO) {
-#define update_transport_flags(ab, ba)					\
-		do {							\
-			if ((flow->transport_layer.ab == 0) && (new->transport_layer.ba != 0)) { \
-				flow->transport_layer.ab = new->transport_layer.ba; \
-			}						\
-		} while (0)
+	if (flow->layers_info & TRANSPORT_LAYER_INFO)
+	{
+#define update_transport_flags(ab, ba)                                         \
+	do                                                                         \
+	{                                                                          \
+		if ((flow->transport_layer.ab == 0) && (new->transport_layer.ba != 0)) \
+		{                                                                      \
+			flow->transport_layer.ab = new->transport_layer.ba;                \
+		}                                                                      \
+	} while (0)
 
-		if (flow->transport_layer.port_src == new->transport_layer.port_src) {
+		if (flow->transport_layer.port_src == new->transport_layer.port_src)
+		{
 			update_transport_flags(ab_syn, ab_syn);
 			update_transport_flags(ab_fin, ab_fin);
 			update_transport_flags(ab_rst, ab_rst);
-		} else {
+		}
+		else
+		{
 			update_transport_flags(ba_syn, ab_syn);
 			update_transport_flags(ba_fin, ab_fin);
 			update_transport_flags(ba_rst, ab_rst);
