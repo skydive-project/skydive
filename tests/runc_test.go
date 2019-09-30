@@ -19,6 +19,7 @@ package tests
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -36,8 +37,13 @@ func TestRuncSimple(t *testing.T) {
 		mode: Replay,
 
 		checks: []CheckFunction{func(c *CheckContext) error {
-			gremlin := c.gremlin.V().Has("Type", "netns", "Manager", "runc")
-			gremlin = gremlin.Out("Type", "container", "Manager", "runc", "Runc.CreateConfig.Labels.Name", "test")
+			outputLines := strings.Split(strings.TrimSpace(c.setupCmdOutputs[0]), "\n")
+			containerID := outputLines[len(outputLines)-1]
+
+			// Newer version of runc switched to bolt to store labels so
+			// we disable the test on labels for now
+			gremlin := c.gremlin.V().Has("Type", "container", "Manager", "runc", "Runc.ContainerID", containerID) // , "Runc.CreateConfig.Labels.Name", "test")
+			gremlin = gremlin.In("Type", "netns", "Manager", "runc")
 
 			nodes, err := c.gh.GetNodes(gremlin)
 			if err != nil {
