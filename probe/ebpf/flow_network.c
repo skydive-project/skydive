@@ -15,6 +15,9 @@
  *
  */
 
+#define IP_SRC (__u64) layer->ip_src
+#define IP_DST (__u64) layer->ip_dst
+
 	layer->protocol = netproto;
 	switch (netproto) {
 		case ETH_P_IP:
@@ -31,32 +34,26 @@
 			fill_ipv4(skb, offset + offsetof(struct iphdr, saddr), layer->ip_src, &hash_src);
 			fill_ipv4(skb, offset + offsetof(struct iphdr, daddr), layer->ip_dst, &hash_dst);
 
-			ordered_src = layer->ip_src[12] << 24 | layer->ip_src[13] << 16 | layer->ip_src[14] << 8 | layer->ip_src[15];
-			ordered_dst = layer->ip_dst[12] << 24 | layer->ip_dst[13] << 16 | layer->ip_dst[14] << 8 | layer->ip_dst[15];
-			offset += (verlen & 0xF) << 2;
-			len -= (verlen & 0xF) << 2;
-		}
-			break;
-		case ETH_P_IPV6:
-			add_layer(flow, IP6_LAYER);
-			transproto = load_byte(skb, offset + offsetof(struct ipv6hdr, nexthdr));
-			fill_ipv6(skb, offset + offsetof(struct ipv6hdr, saddr), layer->ip_src, &hash_src);
-			fill_ipv6(skb, offset + offsetof(struct ipv6hdr, daddr), layer->ip_dst, &hash_dst);
+		ordered_src = IP_SRC[12] << 24 | IP_SRC[13] << 16 | IP_SRC[14] << 8 | IP_SRC[15];
+		ordered_dst = IP_DST[12] << 24 | IP_DST[13] << 16 | IP_DST[14] << 8 | IP_DST[15];
+		offset += (verlen & 0xF) << 2;
+		len -= (verlen & 0xF) << 2;
+	}
+	break;
+	case ETH_P_IPV6:
+		add_layer(flow, IP6_LAYER);
+		transproto = load_byte(skb, offset + offsetof(struct ipv6hdr, nexthdr));
+		fill_ipv6(skb, offset + offsetof(struct ipv6hdr, saddr), layer->ip_src, &hash_src);
+		fill_ipv6(skb, offset + offsetof(struct ipv6hdr, daddr), layer->ip_dst, &hash_dst);
 #ifdef FIX_STACK_LIMIT
-			ordered_src = (
-				(__u64)layer->ip_src[0] << 56 | (__u64)layer->ip_src[1] << 48 | (__u64)layer->ip_src[2] << 40 | (__u64)layer->ip_src[3] << 32 |
-				(__u64)layer->ip_src[4] << 24 | (__u64)layer->ip_src[5] << 16 | (__u64)layer->ip_src[6] << 8 | (__u64)layer->ip_src[7]
-				) ^ (
-					(__u64)layer->ip_src[8] << 56 | (__u64)layer->ip_src[9] << 48 | (__u64)layer->ip_src[10] << 40 | (__u64)layer->ip_src[11] << 32 |
-					(__u64)layer->ip_src[12] << 24 | (__u64)layer->ip_src[13] << 16 | (__u64)layer->ip_src[14] << 8 | (__u64)layer->ip_src[15]
-					);
-			ordered_dst = (
-				(__u64)layer->ip_dst[0] << 56 | (__u64)layer->ip_dst[1] << 48 | (__u64)layer->ip_dst[2] << 40 | (__u64)layer->ip_dst[3] << 32 |
-				(__u64)layer->ip_dst[4] << 24 | (__u64)layer->ip_dst[5] << 16 | (__u64)layer->ip_dst[6] << 8 | (__u64)layer->ip_dst[7]
-				) ^ (
-					(__u64)layer->ip_dst[8] << 56 | (__u64)layer->ip_dst[9] << 48 | (__u64)layer->ip_dst[10] << 40 | (__u64)layer->ip_dst[11] << 32 |
-					(__u64)layer->ip_dst[12] << 24 | (__u64)layer->ip_dst[13] << 16 | (__u64)layer->ip_dst[14] << 8 | (__u64)layer->ip_dst[15]
-					);
+		ordered_src = (IP_SRC[0] << 56 | IP_SRC[1] << 48 | IP_SRC[2] << 40 | IP_SRC[3] << 32 |
+					   IP_SRC[4] << 24 | IP_SRC[5] << 16 | IP_SRC[6] << 8 | IP_SRC[7]) ^
+					  (IP_SRC[8] << 56 | IP_SRC[9] << 48 | IP_SRC[10] << 40 | IP_SRC[11] << 32 |
+					   IP_SRC[12] << 24 | IP_SRC[13] << 16 | IP_SRC[14] << 8 | IP_SRC[15]);
+		ordered_dst = (IP_DST[0] << 56 | IP_DST[1] << 48 | IP_DST[2] << 40 | IP_DST[3] << 32 |
+					   IP_DST[4] << 24 | IP_DST[5] << 16 | Ip_DST[6] << 8 | IP_DST[7]) ^
+					  (IP_DST[8] << 56 | IP_DST[9] << 48 | IP_DST[10] << 40 | IP_DST[11] << 32 |
+					   IP_DST[12] << 24 | IP_DST[13] << 16 | IP_DST[14] << 8 | IP_DST[15]);
 #endif
 			// TODO(nplanel) skip optional headers
 			offset += sizeof(struct ipv6hdr);

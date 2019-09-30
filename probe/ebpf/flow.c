@@ -27,19 +27,7 @@
 
 #include "defs.h"
 #include "flow.h"
-
-// Fowler/Noll/Vo hash
-#define FNV_BASIS ((__u64)14695981039346656037U)
-#define FNV_PRIME ((__u64)1099511628211U)
-
-#define IP_MF     0x2000
-#define IP_OFFSET	0x1FFF
-
-#define MAX_VLAN_LAYERS 5
-struct vlan {
-	__u16		tci;
-	__u16		ethertype;
-};
+#include "common.h"
 
 MAP(u64_config_values) {
 	.type = BPF_MAP_TYPE_ARRAY,
@@ -69,167 +57,6 @@ MAP(flow_table_p2) {
 	.max_entries = 500000,
 };
 
-static inline __u64 rotl(__u64 value, unsigned int shift) {
-	return (value << shift) | (value >> (64 - shift));
-}
-
-static inline void update_hash_byte(__u64 *key, __u8 byte)
-{
-	*key ^= (__u64)byte;
-	*key *= FNV_PRIME;
-}
-
-static inline void update_hash_half(__u64 *key, __u16 half)
-{
-	update_hash_byte(key, (half >> 8) & 0xff);
-	update_hash_byte(key, half & 0xff);
-}
-
-static inline void update_hash_word(__u64 *key, __u32 word)
-{
-	update_hash_half(key, (word >> 16) & 0xffff);
-	update_hash_half(key, word & 0xffff);
-}
-
-static inline void add_layer(struct flow *flow, __u8 layer) {
-	if (flow->layers_path & (LAYERS_PATH_MASK << ((LAYERS_PATH_LEN-1)*LAYERS_PATH_SHIFT))) {
-		return;
-	}
-	flow->layers_path = (flow->layers_path << LAYERS_PATH_SHIFT) | layer;
-}
-
-static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, int offset,
-				struct flow *flow, int len, __u64 tm, __u8 swap, __u8 netequal)
-{
-	struct transport_layer *layer = &flow->transport_layer;
-
-	layer->protocol = protocol;
-	layer->port_src = load_half(skb, offset);
-	layer->port_dst = load_half(skb, offset + sizeof(__be16));
-	if (netequal) {
-		swap = layer->port_src > layer->port_dst;
-	}
-
-	__u64 hash_src = 0;
-	update_hash_half(&hash_src, layer->port_src);
-
-	__u64 hash_dst = 0;
-	update_hash_half(&hash_dst, layer->port_dst);
-
-	__u8 flags = 0;
-
-	switch (protocol) {
-        case IPPROTO_SCTP:
-		add_layer(flow, SCTP_LAYER);
-		break;
-	case IPPROTO_UDP:
-		add_layer(flow, UDP_LAYER);
-		break;
-	case IPPROTO_TCP:
-		add_layer(flow, TCP_LAYER);
-		flags = load_byte(skb, offset + 14);
-		layer->ab_syn = (flags & 0x02) > 0 ? tm : 0;
-		layer->ab_fin = (flags & 0x01) > 0 ? tm : 0;
-		layer->ab_rst = (flags & 0x04) > 0 ? tm : 0;
-		break;
-	}
-
-	if (swap) {
-		layer->_hash = FNV_BASIS ^ rotl(hash_dst, 16) ^ hash_src;
-	} else {
-		layer->_hash = FNV_BASIS ^ rotl(hash_src, 16) ^ hash_dst;
-	}
-	flow->layers_info |= TRANSPORT_LAYER_INFO;
-}
-
-static inline void fill_icmpv4(struct __sk_buff *skb, int offset, struct flow *flow)
-{
-	struct icmp_layer *layer = &flow->icmp_layer;
-
-	layer->kind = load_byte(skb, offset + offsetof(struct icmphdr, type));
-	layer->code = load_byte(skb, offset + offsetof(struct icmphdr, code));
-
-	__u64 hash = 0;
-	update_hash_byte(&hash, layer->code);
-
-	switch (layer->kind) {
-		case ICMP_ECHO:
-		case ICMP_ECHOREPLY:
-			update_hash_byte(&hash, ICMP_ECHO|ICMP_ECHOREPLY);
-
-			layer->id = load_half(skb, offset + offsetof(struct icmphdr, un.echo.id));
-
-			update_hash_byte(&hash, layer->id);
-			break;
-	}
-
-	layer->_hash = FNV_BASIS ^ hash;
-
-	add_layer(flow, ICMP4_LAYER);
-	flow->layers_info |= ICMP_LAYER_INFO;
-}
-
-static inline void fill_icmpv6(struct __sk_buff *skb, int offset, struct flow *flow)
-{
-	struct icmp_layer *layer = &flow->icmp_layer;
-
-	layer->kind = load_byte(skb, offset + offsetof(struct icmp6hdr, icmp6_type));
-	layer->code = load_byte(skb, offset + offsetof(struct icmp6hdr, icmp6_code));
-
-	__u64 hash = 0;
-	update_hash_byte(&hash, layer->code);
-
-	switch (layer->kind) {
-		case ICMPV6_ECHO_REQUEST:
-		case ICMPV6_ECHO_REPLY:
-			update_hash_byte(&hash, ICMPV6_ECHO_REQUEST|ICMPV6_ECHO_REPLY);
-
-			layer->id = load_half(skb, offset + offsetof(struct icmp6hdr, icmp6_dataun.u_echo.identifier));
-
-			update_hash_byte(&hash, layer->id);
-			break;
-	}
-
-	layer->_hash = FNV_BASIS ^ hash;
-
-    add_layer(flow, ICMP6_LAYER);
-	flow->layers_info |= ICMP_LAYER_INFO;
-}
-
-static inline void fill_word(__u32 src, __u8 *dst, int offset)
-{
-	dst[offset] = (src >> 24) & 0xff;
-	dst[offset + 1] = (src >> 16) & 0xff;
-	dst[offset + 2] = (src >> 8) & 0xff;
-	dst[offset + 3] = src & 0xff;
-}
-
-static inline void fill_ipv4(struct __sk_buff *skb, int offset, __u8 *dst, __u64 *hash)
-{
-	__u32 w = load_word(skb, offset);
-	fill_word(w, dst, 12);
-	update_hash_word(hash, w);
-}
-
-static inline void fill_ipv6(struct __sk_buff *skb, int offset, __u8 *dst, __u64 *hash)
-{
-	__u32 w = load_word(skb, offset);
-	fill_word(w, dst, 0);
-	update_hash_word(hash, w);
-
-	w = load_word(skb, offset + 4);
-	fill_word(w, dst, 4);
-	update_hash_word(hash, w);
-
-	w = load_word(skb, offset + 8);
-	fill_word(w, dst, 8);
-	update_hash_word(hash, w);
-
-	w = load_word(skb, offset + 12);
-	fill_word(w, dst, 12);
-	update_hash_word(hash, w);
-}
-
 static inline void fill_network(struct __sk_buff *skb, __u16 netproto, int offset,
 	struct flow *flow, __u64 tm)
 {
@@ -246,6 +73,9 @@ static inline void fill_network(struct __sk_buff *skb, __u16 netproto, int offse
 	__u64 ordered_src = 0;
 	__u64 ordered_dst = 0;
 
+#define IP_SRC (__u64)layer->ip_src
+#define IP_DST (__u64)layer->ip_dst
+
 	layer->protocol = netproto;
 	switch (netproto) {
 		case ETH_P_IP:
@@ -258,29 +88,29 @@ static inline void fill_network(struct __sk_buff *skb, __u16 netproto, int offse
 			transproto = load_byte(skb, offset + offsetof(struct iphdr, protocol));
 			fill_ipv4(skb, offset + offsetof(struct iphdr, saddr), layer->ip_src, &hash_src);
 			fill_ipv4(skb, offset + offsetof(struct iphdr, daddr), layer->ip_dst, &hash_dst);
-			ordered_src = layer->ip_src[12] << 24 | layer->ip_src[13] << 16 | layer->ip_src[14] << 8 | layer->ip_src[15];
-			ordered_dst = layer->ip_dst[12] << 24 | layer->ip_dst[13] << 16 | layer->ip_dst[14] << 8 | layer->ip_dst[15];
+			ordered_src = IP_SRC[12] << 24 | IP_SRC[13] << 16 | IP_SRC[14] << 8 | IP_SRC[15];
+			ordered_dst = IP_DST[12] << 24 | IP_DST[13] << 16 | IP_DST[14] << 8 | IP_DST[15];
 			break;
 		case ETH_P_IPV6:
 			transproto = load_byte(skb, offset + offsetof(struct ipv6hdr, nexthdr));
 			fill_ipv6(skb, offset + offsetof(struct ipv6hdr, saddr), layer->ip_src, &hash_src);
 			fill_ipv6(skb, offset + offsetof(struct ipv6hdr, daddr), layer->ip_dst, &hash_dst);
 
-#ifdef FIX_STACK_512LIMIT			
+#ifdef FIX_STACK_512LIMIT
 			ordered_src = (
-				(__u64)layer->ip_src[0] << 56 | (__u64)layer->ip_src[1] << 48 | (__u64)layer->ip_src[2] << 40 | (__u64)layer->ip_src[3] << 32 |
-				(__u64)layer->ip_src[4] << 24 | (__u64)layer->ip_src[5] << 16 | (__u64)layer->ip_src[6] << 8 | (__u64)layer->ip_src[7]
-				) ^ (
-					(__u64)layer->ip_src[8] << 56 | (__u64)layer->ip_src[9] << 48 | (__u64)layer->ip_src[10] << 40 | (__u64)layer->ip_src[11] << 32 |
-					(__u64)layer->ip_src[12] << 24 | (__u64)layer->ip_src[13] << 16 | (__u64)layer->ip_src[14] << 8 | (__u64)layer->ip_src[15]
-					);
+				IP_SRC[0] << 56 | IP_SRC[1] << 48 | IP_SRC[2] << 40 | IP_SRC[3] << 32 |
+				IP_SRC[4] << 24 | IP_SRC[5] << 16 | IP_SRC[6] << 8 | IP_SRC[7]
+			) ^ (
+				IP_SRC[8] << 56 | IP_SRC[9] << 48 | IP_SRC[10] << 40 | IP_SRC[11] << 32 |
+				IP_SRC[12] << 24 | IP_SRC[13] << 16 | IP_SRC[14] << 8 | IP_SRC[15]
+			);
 			ordered_dst = (
-				(__u64)layer->ip_dst[0] << 56 | (__u64)layer->ip_dst[1] << 48 | (__u64)layer->ip_dst[2] << 40 | (__u64)layer->ip_dst[3] << 32 |
-				(__u64)layer->ip_dst[4] << 24 | (__u64)layer->ip_dst[5] << 16 | (__u64)layer->ip_dst[6] << 8 | (__u64)layer->ip_dst[7]
-				) ^ (
-					(__u64)layer->ip_dst[8] << 56 | (__u64)layer->ip_dst[9] << 48 | (__u64)layer->ip_dst[10] << 40 | (__u64)layer->ip_dst[11] << 32 |
-					(__u64)layer->ip_dst[12] << 24 | (__u64)layer->ip_dst[13] << 16 | (__u64)layer->ip_dst[14] << 8 | (__u64)layer->ip_dst[15]
-					);
+				IP_DST[0] << 56 | IP_DST[1] << 48 | IP_DST[2] << 40 | IP_DST[3] << 32 |
+				IP_DST[4] << 24 | IP_DST[5] << 16 | Ip_DST[6] << 8 | IP_DST[7]
+			) ^ (
+				IP_DST[8] << 56 | IP_DST[9] << 48 | IP_DST[10] << 40 | IP_DST[11] << 32 |
+				IP_DST[12] << 24 | IP_DST[13] << 16 | IP_DST[14] << 8 | IP_DST[15]
+			);
 #endif
 			break;
 		default:
@@ -299,7 +129,7 @@ static inline void fill_network(struct __sk_buff *skb, __u16 netproto, int offse
 			// TODO
 		case IPPROTO_UDP:
 		case IPPROTO_TCP:
-			fill_transport(skb, transproto, offset, flow, len, tm, ordered_src < ordered_dst, ordered_src == ordered_dst);
+			fill_transport(skb, transproto, offset, len, flow, ordered_src < ordered_dst, ordered_src == ordered_dst);
 			break;
 		case IPPROTO_ICMP:
 			fill_icmpv4(skb, offset, flow);
@@ -359,17 +189,6 @@ static inline void fill_vlans(struct __sk_buff *skb, __u16 *protocol, int *offse
 	}
 }
 
-static inline void fill_haddr(struct __sk_buff *skb, int offset,
-	unsigned char *mac)
-{
-	mac[0] = load_byte(skb, offset);
-	mac[1] = load_byte(skb, offset + 1);
-	mac[2] = load_byte(skb, offset + 2);
-	mac[3] = load_byte(skb, offset + 3);
-	mac[4] = load_byte(skb, offset + 4);
-	mac[5] = load_byte(skb, offset + 5);
-}
-
 static inline void fill_link(struct __sk_buff *skb, int offset, struct flow *flow)
 {
 	struct link_layer *layer = &flow->link_layer;
@@ -390,19 +209,6 @@ static inline void fill_link(struct __sk_buff *skb, int offset, struct flow *flo
 
 	add_layer(flow, ETH_LAYER);
 	flow->layers_info |= LINK_LAYER_INFO; 
-}
-
-static inline void update_metrics(struct __sk_buff *skb, struct flow *flow, __u64 tm, int ab)
-{
-	struct link_layer *layer = &flow->link_layer;
-
-	if (ab) {
-		__sync_fetch_and_add(&flow->metrics.ab_packets, 1);
-		__sync_fetch_and_add(&flow->metrics.ab_bytes, skb->len);
-	} else {
-		__sync_fetch_and_add(&flow->metrics.ba_packets, 1);
-		__sync_fetch_and_add(&flow->metrics.ba_bytes, skb->len);
-	}
 }
 
 static inline void fill_flow(struct __sk_buff *skb, struct flow *flow, __u64 tm)
@@ -434,17 +240,6 @@ static inline void fill_flow(struct __sk_buff *skb, struct flow *flow, __u64 tm)
 	flow->key ^= flow->icmp_layer._hash;
 }
 
-static __inline int is_ab_packet(struct flow *flow, struct flow *prev) {
-	int cmp = flow->link_layer._hash_src == prev->link_layer._hash_src;
-	if (memcmp(flow->link_layer.mac_src, flow->link_layer.mac_dst, ETH_ALEN) == 0) {
-		cmp = flow->network_layer._hash_src == prev->network_layer._hash_src;
-		if (memcmp(flow->network_layer.ip_src, flow->network_layer.ip_dst, 16) == 0) {
-			cmp = flow->transport_layer.port_src > flow->transport_layer.port_dst;
-		}
-	}
-	return cmp;
-}
-
 SOCKET(flow_table)
 int bpf_flow_table(struct __sk_buff *skb)
 {
@@ -470,9 +265,11 @@ int bpf_flow_table(struct __sk_buff *skb)
 	if (flow_page == 1) {
 		flowtable = &flow_table_p2;
 	}
+
 	prev = bpf_map_lookup_element(flowtable, &flow.key);
 	if (prev) {
-		update_metrics(skb, prev, tm, is_ab_packet(&flow, prev));
+		update_metrics(skb, prev, is_ab_packet(&flow, prev));
+
 		__sync_fetch_and_add(&prev->last, tm - prev->last);
 
 		if (prev->layers_info & flow.layers_info & TRANSPORT_LAYER_INFO > 0) {
@@ -486,8 +283,7 @@ int bpf_flow_table(struct __sk_buff *skb)
 				if (prev->transport_layer.ab_rst == 0 && flow.transport_layer.ab_rst != 0) {
 					__sync_fetch_and_add(&prev->transport_layer.ab_rst, flow.transport_layer.ab_rst);
 				}
-			}
-			else {
+			} else {
 				if (prev->transport_layer.ba_syn == 0 && flow.transport_layer.ab_syn != 0) {
 					__sync_fetch_and_add(&prev->transport_layer.ba_syn, flow.transport_layer.ab_syn);
 				}
@@ -500,7 +296,7 @@ int bpf_flow_table(struct __sk_buff *skb)
 			}
 		}
 	} else {
-		update_metrics(skb, &flow, tm, 1);
+		update_metrics(skb, &flow, 1);
 
 		__sync_fetch_and_add(&flow.start, tm);
 		__sync_fetch_and_add(&flow.last, tm);
@@ -508,7 +304,7 @@ int bpf_flow_table(struct __sk_buff *skb)
 		if (bpf_map_update_element(flowtable, &flow.key, &flow, BPF_ANY) == -1) {
 			__u32 stats_key = 0;
 			__u64 stats_update_val = 1;
-			__u64 *stats_val = bpf_map_lookup_element(&stats_map,&stats_key);
+			__u64 *stats_val = bpf_map_lookup_element(&stats_map, &stats_key);
 			if (stats_val == NULL) {
 				bpf_map_update_element(&stats_map, &stats_key, &stats_update_val, BPF_ANY);
 			} else {
