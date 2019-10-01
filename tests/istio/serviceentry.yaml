@@ -9,4 +9,3 @@ spec:
    - number: 1443
      name: extsvc-http
      protocol: HTTP # not HTTPS.
-   resolution: DNS

@@ -20,11 +20,12 @@ package istio
 import (
 	"fmt"
 
-	kiali "github.com/kiali/kiali/kubernetes"
-	"github.com/mitchellh/mapstructure"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
+	api "istio.io/api/networking/v1alpha3"
+	models "istio.io/client-go/pkg/apis/networking/v1alpha3"
+	client "istio.io/client-go/pkg/clientset/versioned"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -33,58 +34,22 @@ type virtualServiceHandler struct {
 
 // Map graph node to k8s resource
 func (h *virtualServiceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
-	vs := obj.(*kiali.VirtualService)
+	vs := obj.(*models.VirtualService)
 	m := k8s.NewMetadataFields(&vs.ObjectMeta)
 	return graph.Identifier(vs.GetUID()), k8s.NewMetadata(Manager, "virtualservice", m, vs, vs.Name)
 }
 
 // Dump k8s resource
 func (h *virtualServiceHandler) Dump(obj interface{}) string {
-	vs := obj.(*kiali.VirtualService)
+	vs := obj.(*models.VirtualService)
 	return fmt.Sprintf("virtualservice{Namespace: %s, Name: %s}", vs.Namespace, vs.Name)
 }
 
-func newVirtualServiceProbe(client interface{}, g *graph.Graph) k8s.Subprobe {
-	return k8s.NewResourceCache(client.(*kiali.IstioClient).GetIstioNetworkingApi(), &kiali.VirtualService{}, "virtualservices", g, &virtualServiceHandler{})
-}
-
-type route struct {
-	Destination struct {
-		App     string `mapstructure:"host"`
-		Version string `mapstructure:"subset"`
-	} `mapstructure:"destination"`
-	Weight int `mapstructure:"weight"`
-}
-
-type rule struct {
-	Match  interface{} `mapstructure:"match"`
-	Routes []route     `mapstructure:"route"`
-}
-
-type virtualServiceSpec struct {
-	HTTP []rule `mapstructure:"http"`
-	TLS  []rule `mapstructure:"tls"`
-	TCP  []rule `mapstructure:"tcp"`
+func newVirtualServiceProbe(c interface{}, g *graph.Graph) k8s.Subprobe {
+	return k8s.NewResourceCache(c.(*client.Clientset).NetworkingV1alpha3().RESTClient(), &models.VirtualService{}, "virtualservices", g, &virtualServiceHandler{})
 }
 
 type instanceMap map[string][]string
-
-func newInstanceMap() instanceMap {
-	return make(map[string][]string)
-}
-
-func (im instanceMap) addInstancesByRules(rules []rule) {
-	for _, vsRule := range rules {
-		for _, route := range vsRule.Routes {
-			app := route.Destination.App
-			if app == "" {
-				continue
-			}
-			version := route.Destination.Version
-			im[app] = append(im[app], version)
-		}
-	}
-}
 
 func (im instanceMap) has(instanceApp, instanceVersion string) bool {
 	for app, versions := range im {
@@ -99,21 +64,54 @@ func (im instanceMap) has(instanceApp, instanceVersion string) bool {
 	return false
 }
 
-func matchRoute(r route, app, version string) bool {
-	if r.Destination.App != app {
+func newInstanceMapFromHTTPRoutes(routes []*api.HTTPRoute) instanceMap {
+	im := make(map[string][]string)
+	for _, vsRule := range routes {
+		for _, route := range vsRule.Route {
+			if app := route.Destination.Host; app != "" {
+				im[app] = append(im[app], route.Destination.Subset)
+			}
+		}
+	}
+	return im
+}
+
+func newInstanceMapFromTLSRoutes(routes []*api.TLSRoute) instanceMap {
+	im := make(map[string][]string)
+	for _, vsRule := range routes {
+		for _, route := range vsRule.Route {
+			if app := route.Destination.Host; app != "" {
+				im[app] = append(im[app], route.Destination.Subset)
+			}
+		}
+	}
+	return im
+}
+
+func newInstanceMapFromTCPRoutes(routes []*api.TCPRoute) instanceMap {
+	im := make(map[string][]string)
+	for _, vsRule := range routes {
+		for _, route := range vsRule.GetRoute() {
+			if app := route.Destination.Host; app != "" {
+				im[app] = append(im[app], route.Destination.Subset)
+			}
+		}
+	}
+	return im
+}
+
+func matchRoute(r *api.HTTPRouteDestination, app, version string) bool {
+	if r.Destination.Host != app {
 		return false
 	}
 
-	return r.Destination.Version == version || r.Destination.Version == ""
+	return r.Destination.Subset == version || r.Destination.Subset == ""
 }
 
 func virtualServicePodMetadata(a, b interface{}, typeA, typeB, manager string) graph.Metadata {
-	vs := a.(*kiali.VirtualService)
+	vs := a.(*models.VirtualService)
 	pod := b.(*v1.Pod)
-	vsSpec := &virtualServiceSpec{}
-	if err := mapstructure.Decode(vs.Spec, vsSpec); err != nil {
-		return nil
-	}
+
 	m := k8s.NewEdgeMetadata(manager, typeA)
 	if pod.Labels["app"] == "" {
 		return m
@@ -121,18 +119,18 @@ func virtualServicePodMetadata(a, b interface{}, typeA, typeB, manager string) g
 
 	app, version := pod.Labels["app"], pod.Labels["version"]
 
-	for _, http := range vsSpec.HTTP {
+	for _, http := range vs.Spec.Http {
 		if http.Match != nil {
 			// weights calculation - only for the default unconditional rule
 			continue
 		}
 
-		if len(http.Routes) == 1 && matchRoute(http.Routes[0], app, version) {
+		if len(http.Route) == 1 && matchRoute(http.Route[0], app, version) {
 			m["Weight"] = 100
 			break
 		}
 
-		for _, route := range http.Routes {
+		for _, route := range http.Route {
 			if matchRoute(route, app, version) {
 				m["Weight"] = route.Weight
 				break
@@ -143,13 +141,13 @@ func virtualServicePodMetadata(a, b interface{}, typeA, typeB, manager string) g
 
 	protocols := []string{}
 
-	if findInstance(vsSpec.HTTP, app, version) {
+	if newInstanceMapFromHTTPRoutes(vs.Spec.Http).has(app, version) {
 		protocols = append(protocols, "HTTP")
 	}
-	if findInstance(vsSpec.TLS, app, version) {
+	if newInstanceMapFromTLSRoutes(vs.Spec.Tls).has(app, version) {
 		protocols = append(protocols, "TLS")
 	}
-	if findInstance(vsSpec.TCP, app, version) {
+	if newInstanceMapFromTCPRoutes(vs.Spec.Tcp).has(app, version) {
 		protocols = append(protocols, "TCP")
 	}
 
@@ -167,14 +165,8 @@ func arrayToString(arr []string) string {
 	return s
 }
 
-func findInstance(r []rule, app, version string) bool {
-	instances := newInstanceMap()
-	instances.addInstancesByRules(r)
-	return instances.has(app, version)
-}
-
 func virtualServicePodAreLinked(a, b interface{}) bool {
-	vs := a.(*kiali.VirtualService)
+	vs := a.(*models.VirtualService)
 	pod := b.(*v1.Pod)
 
 	if !k8s.MatchNamespace(vs, pod) {
@@ -183,12 +175,9 @@ func virtualServicePodAreLinked(a, b interface{}) bool {
 
 	app, version := pod.Labels["app"], pod.Labels["version"]
 
-	vsSpec := &virtualServiceSpec{}
-	if err := mapstructure.Decode(vs.Spec, vsSpec); err != nil {
-		return false
-	}
-
-	return findInstance(vsSpec.HTTP, app, version) || findInstance(vsSpec.TLS, app, version) || findInstance(vsSpec.TCP, app, version)
+	return newInstanceMapFromHTTPRoutes(vs.Spec.Http).has(app, version) ||
+		newInstanceMapFromTLSRoutes(vs.Spec.Tls).has(app, version) ||
+		newInstanceMapFromTCPRoutes(vs.Spec.Tcp).has(app, version)
 }
 
 func findMissingGateways(g *graph.Graph) {
@@ -199,15 +188,12 @@ func findMissingGateways(g *graph.Graph) {
 	vsCache := cache.(*k8s.ResourceCache)
 	vsList := vsCache.List()
 	for _, vs := range vsList {
-		vs := vs.(*kiali.VirtualService)
+		vs := vs.(*models.VirtualService)
 		if vsNode := g.GetNode(graph.Identifier(vs.GetUID())); vsNode != nil {
 			k8s.SetState(&vsNode.Metadata, true)
-			if vs.Spec["gateways"] != nil {
-				vsGateways := vs.Spec["gateways"].([]interface{})
-				for _, vsGateway := range vsGateways {
-					if isGatewayMissing(vsGateway.(string)) {
-						k8s.SetState(&vsNode.Metadata, false)
-					}
+			for _, vsGateway := range vs.Spec.Gateways {
+				if isGatewayMissing(vsGateway) {
+					k8s.SetState(&vsNode.Metadata, false)
 				}
 			}
 		}
@@ -222,7 +208,7 @@ func isGatewayMissing(name string) bool {
 	gatewayCache := cache.(*k8s.ResourceCache)
 	gatewaysList := gatewayCache.List()
 	for _, gateway := range gatewaysList {
-		gateway := gateway.(*kiali.Gateway)
+		gateway := gateway.(*models.Gateway)
 		if gateway.Name == name {
 			return false
 		}

@@ -20,9 +20,10 @@ package istio
 import (
 	"fmt"
 
-	kiali "github.com/kiali/kiali/kubernetes"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
+	models "istio.io/client-go/pkg/apis/networking/v1alpha3"
+	client "istio.io/client-go/pkg/clientset/versioned"
 )
 
 type serviceEntryHandler struct {
@@ -30,17 +31,17 @@ type serviceEntryHandler struct {
 
 // Map graph node to k8s resource
 func (h *serviceEntryHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
-	se := obj.(*kiali.ServiceEntry)
+	se := obj.(*models.ServiceEntry)
 	m := k8s.NewMetadataFields(&se.ObjectMeta)
 	return graph.Identifier(se.GetUID()), k8s.NewMetadata(Manager, "serviceentry", m, se, se.Name)
 }
 
 // Dump k8s resource
 func (h *serviceEntryHandler) Dump(obj interface{}) string {
-	se := obj.(*kiali.ServiceEntry)
+	se := obj.(*models.ServiceEntry)
 	return fmt.Sprintf("serviceentry{Namespace: %s, Name: %s}", se.Namespace, se.Name)
 }
 
-func newServiceEntryProbe(client interface{}, g *graph.Graph) k8s.Subprobe {
-	return k8s.NewResourceCache(client.(*kiali.IstioClient).GetIstioNetworkingApi(), &kiali.ServiceEntry{}, "serviceentries", g, &serviceEntryHandler{})
+func newServiceEntryProbe(c interface{}, g *graph.Graph) k8s.Subprobe {
+	return k8s.NewResourceCache(c.(*client.Clientset).NetworkingV1alpha3().RESTClient(), &models.ServiceEntry{}, "serviceentries", g, &serviceEntryHandler{})
 }

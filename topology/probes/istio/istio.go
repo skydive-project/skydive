@@ -21,8 +21,7 @@ import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
-
-	kiali "github.com/kiali/kiali/kubernetes"
+	client "istio.io/client-go/pkg/clientset/versioned"
 )
 
 // Probe describes the Istio probe in charge of importing
@@ -40,7 +39,7 @@ func NewIstioProbe(g *graph.Graph) (*k8s.Probe, error) {
 		return nil, err
 	}
 
-	client, err := kiali.NewClientFromConfig(config)
+	client, err := client.NewForConfig(config)
 	if err != nil {
 		return nil, err
 	}
