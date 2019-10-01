@@ -521,8 +521,6 @@ github.com/rogpeppe/fastuuid v1.2.0 h1:Ppwyp6VYCF1nvBTXL3trRso7mXMlRrw9ooo375wvi
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rs/xid v1.2.1/go.mod h1:+uKXf+4Djp6Md1KODXJxgGQPKngRmWyn10oCKFzNHOQ=
-github.com/safchain/easyjson v0.0.0-20180823135443-60711f1a8329 h1:s6RDJIHdOyyDH+5s2OA4X4uYmB9N5DQWbkt8MrtmJWw=
-github.com/safchain/easyjson v0.0.0-20180823135443-60711f1a8329/go.mod h1:5SeWk2A7AbWYrYSW6YxPZuWP/02yNQYWTreubGJ+yL8=
 github.com/safchain/ethtool v0.0.0-20190326074333-42ed695e3de8 h1:2c1EFnZHIPCW8qKWgHMH/fX2PkSabFc5mrVzfUNdg5U=
 github.com/safchain/ethtool v0.0.0-20190326074333-42ed695e3de8/go.mod h1:Z0q5wiBQGYcxhMZ6gUqHn6pYNLypFAvaL3UvgZLR0U4=
 github.com/safchain/insanelock v0.0.0-20180509135444-33bca4586648 h1:qwumKB12zaV9SrtbrgWiMJW4Gpsu4VrcKCZhsLMTvwI=
@@ -858,6 +856,7 @@ k8s.io/apimachinery v0.0.0-20190817221809-bf4de9df677c h1:TlFvXut3q9hNMA2UdjrC6L
 k8s.io/apimachinery v0.0.0-20190817221809-bf4de9df677c/go.mod h1:ccL7Eh7zubPUSh9A3USN90/OzHNSVN6zxzde07TDCL0=
 k8s.io/apiserver v0.0.0-20190111033246-d50e9ac5404f/go.mod h1:6bqaTSOSJavUIXUtfaR9Os9JtTCm8ZqH2SUl2S60C4w=
 k8s.io/client-go v0.0.0-20190409092706-ca8df85b1798/go.mod h1:4IOfimLkjvlSoc9wyI1VEwkNUG20XFNp7qO6XkH2gdI=
+k8s.io/client-go v0.0.0-20190620085101-78d2af792bab h1:E8Fecph0qbNsAbijJJQryKu4Oi9QTp5cVpjTE+nqg6g=
 k8s.io/client-go v0.0.0-20190620085101-78d2af792bab/go.mod h1:E95RaSlHr79aHaX0aGSwcPNfygDiPKOVXdmivCIZT0k=
 k8s.io/client-go v10.0.0+incompatible h1:F1IqCqw7oMBzDkqlcBymRq1450wD0eNqLE9jzUrIi34=
 k8s.io/client-go v10.0.0+incompatible/go.mod h1:7vJpHMYJwNQCWgzmNV+VYUl1zCObLyodBc8nIyt8L5s=

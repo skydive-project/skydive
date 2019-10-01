@@ -42,7 +42,7 @@ flow/flow.pb.go: flow/flow.proto filters/filters.proto
 	gofmt -s -w $@
 
 flow/flow.pb_easyjson.go: flow/flow.pb.go
-	go run github.com/safchain/easyjson/easyjson -all $<
+	go run github.com/mailru/easyjson/easyjson -all $<
 
 websocket/structmessage.pb.go: websocket/structmessage.proto
 	$(call PROTOC_GEN,$<)
