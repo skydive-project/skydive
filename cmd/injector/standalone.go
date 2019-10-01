@@ -46,25 +46,25 @@ var (
 	id               uint16
 	count            uint64
 	interval         uint64
-	increment        bool
+	mode             string
 	incrementPayload int64
 	ttl              uint8
 )
 
 // AddInjectPacketInjectFlags add the command line flags for a packet injection
 func AddInjectPacketInjectFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&srcIP, "srcIP", "", "", "source node IP")
-	cmd.Flags().StringVarP(&dstIP, "dstIP", "", "", "destination node IP")
-	cmd.Flags().StringVarP(&srcMAC, "srcMAC", "", "", "source node MAC")
-	cmd.Flags().StringVarP(&dstMAC, "dstMAC", "", "", "destination node MAC")
-	cmd.Flags().Uint16VarP(&srcPort, "srcPort", "", 0, "source port for TCP packet")
-	cmd.Flags().Uint16VarP(&dstPort, "dstPort", "", 0, "destination port for TCP packet")
+	cmd.Flags().StringVarP(&srcIP, "src-ip", "", "", "source node IP")
+	cmd.Flags().StringVarP(&dstIP, "dst-ip", "", "", "destination node IP")
+	cmd.Flags().StringVarP(&srcMAC, "src-mac", "", "", "source node MAC")
+	cmd.Flags().StringVarP(&dstMAC, "dst-mac", "", "", "destination node MAC")
+	cmd.Flags().Uint16VarP(&srcPort, "src-port", "", 0, "source port for TCP packet")
+	cmd.Flags().Uint16VarP(&dstPort, "dst-port", "", 0, "destination port for TCP packet")
 	cmd.Flags().StringVarP(&packetType, "type", "", "icmp4", "packet type: icmp4, icmp6, tcp4, tcp6, udp4 and udp6")
 	cmd.Flags().StringVarP(&payload, "payload", "", "", "payload")
 	cmd.Flags().StringVar(&pcap, "pcap", "", "PCAP file")
 	cmd.Flags().Uint16VarP(&id, "id", "", 0, "ICMP identification")
-	cmd.Flags().BoolVarP(&increment, "increment", "", false, "increment ICMP id for each packet")
-	cmd.Flags().Int64VarP(&incrementPayload, "incrementPayload", "", 0, "increase payload for each packet")
+	cmd.Flags().StringVarP(&mode, "mode", "", "unique", "specify mode of packet generation, `unique` or `random`")
+	cmd.Flags().Int64VarP(&incrementPayload, "inc-payload", "", 0, "increase payload size each packet")
 	cmd.Flags().Uint64VarP(&count, "count", "", 1, "number of packets to be generated")
 	cmd.Flags().Uint64VarP(&interval, "interval", "", 0, "wait interval milliseconds between sending each packet")
 	cmd.Flags().Uint8VarP(&ttl, "ttl", "", 64, "IP time-to-live header")
@@ -110,7 +110,7 @@ func GetPacketInjectRequest() (*pi.PacketInjectionRequest, error) {
 		Count:            count,
 		ICMPID:           id,
 		Interval:         interval,
-		Increment:        increment,
+		Mode:             mode,
 		IncrementPayload: incrementPayload,
 		Payload:          payload,
 		Pcap:             pcapContent,
@@ -199,8 +199,8 @@ var InjectPacketCmd = &cobra.Command{
 }
 
 func init() {
-	InjectPacketCmd.Flags().StringVarP(&ifName, "ifName", "", "", "interface to inject packets into")
-	InjectPacketCmd.Flags().StringVarP(&encapType, "encapType", "", "ether", "encapsulation type")
+	InjectPacketCmd.Flags().StringVarP(&ifName, "if-name", "", "", "interface to inject packets into")
+	InjectPacketCmd.Flags().StringVarP(&encapType, "encap-type", "", "ether", "encapsulation type")
 	AddInjectPacketInjectFlags(InjectPacketCmd)
 }
 

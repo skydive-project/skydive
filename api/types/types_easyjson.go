@@ -7,7 +7,6 @@ import (
 	easyjson "github.com/mailru/easyjson"
 	jlexer "github.com/mailru/easyjson/jlexer"
 	jwriter "github.com/mailru/easyjson/jwriter"
-	graph "github.com/skydive-project/skydive/graffiti/graph"
 )
 
 // suppress unused package warning
@@ -481,8 +480,8 @@ func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveApiTypes4(in *jlexer.Le
 			out.Count = uint64(in.Uint64())
 		case "Interval":
 			out.Interval = uint64(in.Uint64())
-		case "Increment":
-			out.Increment = bool(in.Bool())
+		case "Mode":
+			out.Mode = string(in.String())
 		case "IncrementPayload":
 			out.IncrementPayload = int64(in.Int64())
 		case "StartTime":
@@ -580,9 +579,9 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes4(out *jwriter.
 		out.Uint64(uint64(in.Interval))
 	}
 	{
-		const prefix string = ",\"Increment\":"
+		const prefix string = ",\"Mode\":"
 		out.RawString(prefix)
-		out.Bool(bool(in.Increment))
+		out.String(string(in.Mode))
 	}
 	{
 		const prefix string = ",\"IncrementPayload\":"
@@ -659,31 +658,7 @@ func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveApiTypes5(in *jlexer.Le
 		case "Description":
 			out.Description = string(in.String())
 		case "Metadata":
-			if in.IsNull() {
-				in.Skip()
-			} else {
-				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.Metadata = make(graph.Metadata)
-				} else {
-					out.Metadata = nil
-				}
-				for !in.IsDelim('}') {
-					key := string(in.String())
-					in.WantColon()
-					var v10 interface{}
-					if m, ok := v10.(easyjson.Unmarshaler); ok {
-						m.UnmarshalEasyJSON(in)
-					} else if m, ok := v10.(json.Unmarshaler); ok {
-						_ = m.UnmarshalJSON(in.Raw())
-					} else {
-						v10 = in.Interface()
-					}
-					(out.Metadata)[key] = v10
-					in.WantComma()
-				}
-				in.Delim('}')
-			}
+			(out.Metadata).UnmarshalEasyJSON(in)
 		case "Action":
 			out.Action = string(in.String())
 		case "Query":
@@ -717,29 +692,7 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes5(out *jwriter.
 	{
 		const prefix string = ",\"Metadata\":"
 		out.RawString(prefix)
-		if in.Metadata == nil && (out.Flags&jwriter.NilMapAsEmpty) == 0 {
-			out.RawString(`null`)
-		} else {
-			out.RawByte('{')
-			v11First := true
-			for v11Name, v11Value := range in.Metadata {
-				if v11First {
-					v11First = false
-				} else {
-					out.RawByte(',')
-				}
-				out.String(string(v11Name))
-				out.RawByte(':')
-				if m, ok := v11Value.(easyjson.Marshaler); ok {
-					m.MarshalEasyJSON(out)
-				} else if m, ok := v11Value.(json.Marshaler); ok {
-					out.Raw(m.MarshalJSON())
-				} else {
-					out.Raw(json.Marshal(v11Value))
-				}
-			}
-			out.RawByte('}')
-		}
+		(in.Metadata).MarshalEasyJSON(out)
 	}
 	{
 		const prefix string = ",\"Action\":"
@@ -810,31 +763,7 @@ func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveApiTypes6(in *jlexer.Le
 		case "Dst":
 			out.Dst = string(in.String())
 		case "Metadata":
-			if in.IsNull() {
-				in.Skip()
-			} else {
-				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.Metadata = make(graph.Metadata)
-				} else {
-					out.Metadata = nil
-				}
-				for !in.IsDelim('}') {
-					key := string(in.String())
-					in.WantColon()
-					var v12 interface{}
-					if m, ok := v12.(easyjson.Unmarshaler); ok {
-						m.UnmarshalEasyJSON(in)
-					} else if m, ok := v12.(json.Unmarshaler); ok {
-						_ = m.UnmarshalJSON(in.Raw())
-					} else {
-						v12 = in.Interface()
-					}
-					(out.Metadata)[key] = v12
-					in.WantComma()
-				}
-				in.Delim('}')
-			}
+			(out.Metadata).UnmarshalEasyJSON(in)
 		case "UUID":
 			out.UUID = string(in.String())
 		default:
@@ -874,29 +803,7 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes6(out *jwriter.
 	{
 		const prefix string = ",\"Metadata\":"
 		out.RawString(prefix)
-		if in.Metadata == nil && (out.Flags&jwriter.NilMapAsEmpty) == 0 {
-			out.RawString(`null`)
-		} else {
-			out.RawByte('{')
-			v13First := true
-			for v13Name, v13Value := range in.Metadata {
-				if v13First {
-					v13First = false
-				} else {
-					out.RawByte(',')
-				}
-				out.String(string(v13Name))
-				out.RawByte(':')
-				if m, ok := v13Value.(easyjson.Marshaler); ok {
-					m.MarshalEasyJSON(out)
-				} else if m, ok := v13Value.(json.Marshaler); ok {
-					out.Raw(m.MarshalJSON())
-				} else {
-					out.Raw(json.Marshal(v13Value))
-				}
-			}
-			out.RawByte('}')
-		}
+		(in.Metadata).MarshalEasyJSON(out)
 	}
 	{
 		const prefix string = ",\"UUID\":"

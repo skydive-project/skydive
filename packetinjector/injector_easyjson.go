@@ -72,8 +72,8 @@ func easyjsonFac7b200DecodeGithubComSkydiveProjectSkydivePacketinjector(in *jlex
 			out.ICMPID = uint16(in.Uint16())
 		case "Interval":
 			out.Interval = uint64(in.Uint64())
-		case "Increment":
-			out.Increment = bool(in.Bool())
+		case "Mode":
+			out.Mode = string(in.String())
 		case "IncrementPayload":
 			out.IncrementPayload = int64(in.Int64())
 		case "Payload":
@@ -157,9 +157,9 @@ func easyjsonFac7b200EncodeGithubComSkydiveProjectSkydivePacketinjector(out *jwr
 		out.Uint64(uint64(in.Interval))
 	}
 	{
-		const prefix string = ",\"Increment\":"
+		const prefix string = ",\"Mode\":"
 		out.RawString(prefix)
-		out.Bool(bool(in.Increment))
+		out.String(string(in.Mode))
 	}
 	{
 		const prefix string = ",\"IncrementPayload\":"
@@ -346,8 +346,8 @@ func easyjsonFac7b200DecodeGithubComSkydiveProjectSkydivePacketinjector2(in *jle
 			out.ICMPID = uint16(in.Uint16())
 		case "Interval":
 			out.Interval = uint64(in.Uint64())
-		case "Increment":
-			out.Increment = bool(in.Bool())
+		case "Mode":
+			out.Mode = string(in.String())
 		case "IncrementPayload":
 			out.IncrementPayload = int64(in.Int64())
 		case "Payload":
@@ -446,9 +446,9 @@ func easyjsonFac7b200EncodeGithubComSkydiveProjectSkydivePacketinjector2(out *jw
 		out.Uint64(uint64(in.Interval))
 	}
 	{
-		const prefix string = ",\"Increment\":"
+		const prefix string = ",\"Mode\":"
 		out.RawString(prefix)
-		out.Bool(bool(in.Increment))
+		out.String(string(in.Mode))
 	}
 	{
 		const prefix string = ",\"IncrementPayload\":"

@@ -105,9 +105,13 @@ func (h *onDemandPacketInjectionHandler) createRequest(nodeID graph.Identifier, 
 		Count:            pi.Count,
 		Interval:         pi.Interval,
 		ICMPID:           pi.ICMPID,
-		Increment:        pi.Increment,
+		Mode:             pi.Mode,
 		IncrementPayload: pi.IncrementPayload,
 		TTL:              pi.TTL,
+	}
+
+	if len(pir.Mode) == 0 {
+		pir.Mode = types.PIModeUniqPerNode
 	}
 
 	if len(pir.Pcap) == 0 {
@@ -228,10 +232,57 @@ func (h *onDemandPacketInjectionHandler) ResourceName() string {
 	return "PacketInjection"
 }
 
-func (h *onDemandPacketInjectionHandler) GetNodes(resource types.Resource) []interface{} {
-	query := resource.(*types.PacketInjection).Src
+func (h *onDemandPacketInjectionHandler) GetNodeResources(resource types.Resource) []client.OnDemandNodeResource {
+	var nrs []client.OnDemandNodeResource
+
+	pi := resource.(*types.PacketInjection)
+
+	query := pi.Src
 	query += fmt.Sprintf(".Dedup('TID').Has('PacketInjections.ID', NEE('%s'))", resource.ID())
-	return h.applyGremlinExpr(query)
+
+	if nodes := h.applyGremlinExpr(query); len(nodes) > 0 {
+		id := pi.ICMPID
+		srcPort := pi.SrcPort
+
+		if id == 0 {
+			id++
+		}
+
+		if srcPort == 0 {
+			srcPort++
+		}
+
+		addNrs := func(n *graph.Node) {
+			r := *pi
+			r.ICMPID = id
+			r.SrcPort = srcPort
+
+			nrs = append(nrs, client.OnDemandNodeResource{Node: n, Resource: &r})
+
+			if r.Mode == types.PIModeUniqPerNode {
+				switch r.Type {
+				case types.PITypeICMP4, types.PITypeICMP6:
+					id++
+				default:
+					srcPort++
+				}
+			}
+		}
+
+		for _, i := range nodes {
+			switch i.(type) {
+			case *graph.Node:
+				addNrs(i.(*graph.Node))
+			case []*graph.Node:
+				// case of shortestpath that returns a list of nodes
+				for _, node := range i.([]*graph.Node) {
+					addNrs(node)
+				}
+			}
+		}
+	}
+
+	return nrs
 }
 
 func (h *onDemandPacketInjectionHandler) applyGremlinExpr(query string) []interface{} {

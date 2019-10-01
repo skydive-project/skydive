@@ -44,37 +44,6 @@ func execNextHopQuery(t *testing.T, g *graph.Graph, query string) traversal.Grap
 	return res
 }
 
-/*This will test the nexthop in neighbors*/
-func TestNextHopStep1(t *testing.T) {
-	t.Skip("this usecase removed.")
-	g := newGraph(t)
-	var neighbors topology.Neighbors
-	neighbor := &topology.Neighbor{
-		IP:      net.ParseIP("192.168.0.2"),
-		IfIndex: 2,
-		MAC:     "fa:16:3e:c1:e8:d1",
-	}
-	neighbors = append(neighbors, neighbor)
-	m1 := graph.Metadata{
-		"Neighbors": &neighbors,
-	}
-	n, _ := g.NewNode(graph.GenID(), m1)
-	res := execNextHopQuery(t, g, "g.v().NextHop('192.168.0.2')")
-
-	if len(res.Values()) != 1 {
-		t.Fatalf("Should return 1 result, returned: %v", res.Values())
-	}
-
-	nexthops := res.Values()[0].(map[string]*topology.NextHop)
-	nexthop, ok := nexthops[string(n.ID)]
-	if !ok {
-		t.Fatalf("Node entry not found")
-	}
-	if nexthop.IP.String() != "192.168.0.2" {
-		t.Fatalf("IP not matching")
-	}
-}
-
 /*Find the nexthop IP in routing table and
 find the MAC in neighbors*/
 func TestNextHopStep2(t *testing.T) {
@@ -289,8 +258,8 @@ func TestNextHopStep5(t *testing.T) {
 	if !ok {
 		t.Fatalf("Node entry not found")
 	}
-	if nexthop.IP != nil {
-		t.Fatalf("IP not matching, got: %s", nexthop.IP)
+	if nexthop.IP == nil {
+		t.Fatal("IP should not be nil")
 	}
 	if nexthop.IfIndex != 5 {
 		t.Fatalf("Interface index not matching, got: %d", nexthop.IfIndex)

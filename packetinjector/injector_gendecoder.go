@@ -8,11 +8,6 @@ import (
 )
 
 func (obj *InjectionMetadata) GetFieldBool(key string) (bool, error) {
-	switch key {
-	case "Increment":
-		return obj.Increment, nil
-	}
-
 	return false, common.ErrFieldNotFound
 }
 
@@ -52,6 +47,8 @@ func (obj *InjectionMetadata) GetFieldString(key string) (string, error) {
 		return obj.DstMAC.String(), nil
 	case "Type":
 		return string(obj.Type), nil
+	case "Mode":
+		return string(obj.Mode), nil
 	case "Payload":
 		return string(obj.Payload), nil
 	case "ID":
@@ -75,7 +72,7 @@ func (obj *InjectionMetadata) GetFieldKeys() []string {
 		"Count",
 		"ICMPID",
 		"Interval",
-		"Increment",
+		"Mode",
 		"IncrementPayload",
 		"Payload",
 		"Pcap",
@@ -87,9 +84,6 @@ func (obj *InjectionMetadata) GetFieldKeys() []string {
 }
 
 func (obj *InjectionMetadata) MatchBool(key string, predicate common.BoolPredicate) bool {
-	if b, err := obj.GetFieldBool(key); err == nil {
-		return predicate(b)
-	}
 	return false
 }
 
@@ -116,10 +110,6 @@ func (obj *InjectionMetadata) GetField(key string) (interface{}, error) {
 		return i, nil
 	}
 
-	if b, err := obj.GetFieldBool(key); err == nil {
-		return b, nil
-	}
-
 	first := key
 	index := strings.Index(key, ".")
 	if index != -1 {
@@ -144,9 +134,6 @@ func (obj *InjectionMetadata) GetField(key string) (interface{}, error) {
 }
 
 func (obj *Injections) GetFieldBool(key string) (bool, error) {
-	switch key {
-	}
-
 	return false, common.ErrFieldNotFound
 }
 
@@ -175,7 +162,7 @@ func (obj *Injections) GetFieldKeys() []string {
 		"Count",
 		"ICMPID",
 		"Interval",
-		"Increment",
+		"Mode",
 		"IncrementPayload",
 		"Payload",
 		"Pcap",
@@ -240,8 +227,8 @@ func (obj *Injections) GetField(key string) (interface{}, error) {
 			result = append(result, o.ICMPID)
 		case "Interval":
 			result = append(result, o.Interval)
-		case "Increment":
-			result = append(result, o.Increment)
+		case "Mode":
+			result = append(result, o.Mode)
 		case "IncrementPayload":
 			result = append(result, o.IncrementPayload)
 		case "Payload":

@@ -56,29 +56,22 @@ Vue.component('inject-form', {
           <label for="inject-count">ICMP ID</label>\
           <input id="inject-id" type="number" class="form-control input-sm" v-model.number="id" min="0" />\
         </div>\
-        <div class="form-group">\
-          <label class="form-check-label">\
-            <input id="inject-increment" type="checkbox" class="form-check-input" v-model="increment">\
-            Increment ID at every packet\
-            <span class="checkmark"></span>\
-          </label>\
-        </div>\
       </div>\
       <div class="form-group form-inline">\
         <label class="radio-inline">\
-          <input type="radio" id="random" value="random" v-model="mode"> Payload Length\
+          <input type="radio" id="random" value="random" v-model="payloadMode"> Payload Length\
           <span class="checkmark"></span>\
         </label>\
         <label class="radio-inline">\
-          <input type="radio" id="custom" value="custom" v-model="mode"> Payload\
+          <input type="radio" id="custom" value="custom" v-model="payloadMode"> Payload\
           <span class="checkmark"></span>\
         </label>\
       </div>\
-      <div class="form-group" v-if="mode == \'random\'">\
+      <div class="form-group" v-if="payloadMode == \'random\'">\
         <label for="payload-length">Payload length</label>\
-        <input id="payload-length" type="number" class="form-control input-sm" v-model.number="payloadlength" min="0" />\
+        <input id="payload-length" type="number" class="form-control input-sm" v-model.number="payloadLength" min="0" />\
       </div>\
-      <div class="form-group" v-if="mode == \'custom\'">\
+      <div class="form-group" v-if="payloadMode == \'custom\'">\
         <label for="payld">Payload</label>\
         <input id="payld" type="text" class="form-control input-sm" v-model="payload"/>\
       </div>\
@@ -118,17 +111,16 @@ Vue.component('inject-form', {
       type: "icmp4",
       id: 0,
       interval: 0,
-      increment: false,
       port1: 0,
       port2: 0,
-      payloadlength: 0,
+      payloadLength: 0,
       srcNode: null,
       dstNode: null,
       srcIP: "",
       dstIP: "",
       srcMAC: "",
       dstMAC: "",
-      mode: "random",
+      payloadMode: "random",
       payload: "",
       incrementPayload: 0,
       ttl: 64,
@@ -237,15 +229,14 @@ Vue.component('inject-form', {
     },
 
     reset: function() {
-      var self = this;
       this.node1 = this.node2 = "";
       this.count = 1;
       this.type = "icmp4";
-      this.payloadlength = this.incrementPayload = 0;
+      this.payloadLength = this.incrementPayload = 0;
       this.srcNode = this.dstNode = null;
       this.srcIP = this.dstIP = "";
       this.srcMAC = this.dstMAC = "";
-      this.mode = "random";
+      this.payloadMode = "random";
       this.payload = "";
       this.ttl = 64;
     },
@@ -256,8 +247,8 @@ Vue.component('inject-form', {
         this.$error({message: this.error});
         return;
       }
-      if (this.mode == "random") {
-        this.payload = "x".repeat(this.payloadlength);
+      if (this.payloadMode == "random") {
+        this.payload = "x".repeat(this.payloadLength);
       }
       var requestTTL = this.interval*this.count;
       var headers = {"X-Resource-TTL": requestTTL + 5000 + "ms"};
@@ -276,7 +267,6 @@ Vue.component('inject-form', {
           "Type": this.type,
           "Count": this.count,
           "ICMPID": this.id,
-          "Increment": this.increment,
           "Interval": this.interval,
           "Payload": this.payload,
           "IncrementPayload": this.incrementPayload,

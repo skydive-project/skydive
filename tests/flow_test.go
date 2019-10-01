@@ -1010,11 +1010,11 @@ func TestICMP(t *testing.T) {
 
 		injections: []TestInjection{
 			{
-				from:      g.G.V().Has("Name", "icmp-vm1").Out().Has("Name", "icmp-intf1"),
-				to:        g.G.V().Has("Name", "icmp-vm2").Out().Has("Name", "icmp-intf2"),
-				count:     3,
-				id:        123,
-				increment: true,
+				from:  g.G.V().Has("Name", "icmp-vm1").Out().Has("Name", "icmp-intf1"),
+				to:    g.G.V().Has("Name", "icmp-vm2").Out().Has("Name", "icmp-intf2"),
+				count: 3,
+				id:    123,
+				mode:  types.PIModeRandom,
 			},
 			{
 				from:  g.G.V().Has("Name", "icmp-vm1").Out().Has("Name", "icmp-intf1", "Type", "internal"),
