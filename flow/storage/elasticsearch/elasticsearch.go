@@ -1,4 +1,4 @@
-//go:generate go run github.com/safchain/easyjson/easyjson $GOFILE
+//go:generate go run github.com/mailru/easyjson/easyjson $GOFILE
 
 /*
  * Copyright (C) 2015 Red Hat, Inc.

@@ -1,4 +1,5 @@
 //go:generate go run github.com/skydive-project/skydive/scripts/gendecoder -package github.com/skydive-project/skydive/topology/probes/nsm
+//go:generate go run github.com/mailru/easyjson/easyjson $GOFILE
 
 /*
  * Copyright (C) 2019 Orange

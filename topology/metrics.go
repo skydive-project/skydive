@@ -1,5 +1,5 @@
 //go:generate go run github.com/skydive-project/skydive/scripts/gendecoder -output metrics_gendecoder.go
-//go:generate go run github.com/safchain/easyjson/easyjson $GOFILE
+//go:generate go run github.com/mailru/easyjson/easyjson $GOFILE
 
 /*
  * Copyright (C) 2016 Red Hat, Inc.

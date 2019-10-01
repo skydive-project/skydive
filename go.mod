@@ -83,7 +83,6 @@ require (
 	github.com/pierrec/xxHash v0.0.0-20190318091927-d17cb990ad2d
 	github.com/pmylund/go-cache v0.0.0-20170722040110-a3647f8e31d7
 	github.com/robertkrimen/otto v0.0.0-20161004124959-bf1c3795ba07
-	github.com/safchain/easyjson v0.0.0-20180823135443-60711f1a8329
 	github.com/safchain/ethtool v0.0.0-20190326074333-42ed695e3de8
 	github.com/safchain/insanelock v0.0.0-20180509135444-33bca4586648
 	github.com/shirou/gopsutil v0.0.0-20180111024713-6a368fb7cd12

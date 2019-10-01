@@ -29,7 +29,7 @@ import (
 	_ "github.com/golangci/golangci-lint"
 	_ "github.com/gomatic/renderizer"
 	_ "github.com/jteeuwen/go-bindata"
+	_ "github.com/mailru/easyjson/easyjson"
 	_ "github.com/mattn/goveralls"
-	_ "github.com/safchain/easyjson/easyjson"
 	_ "github.com/t-yuki/gocover-cobertura"
 )
