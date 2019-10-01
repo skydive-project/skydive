@@ -37,6 +37,7 @@ import (
 
 // ovsMirrorProbe describes a mirror probe from OVS switch
 type ovsMirrorProbe struct {
+	Ctx        Context
 	id         string
 	graph      *graph.Graph
 	node       *graph.Node
@@ -308,6 +309,7 @@ func (o *OvsMirrorProbesHandler) unregisterProbeFromPort(portUUID string) error 
 // RegisterProbeOnPort registers a new probe on the OVS bridge
 func (o *OvsMirrorProbesHandler) RegisterProbeOnPort(n *graph.Node, portUUID string, capture *types.Capture) (Probe, error) {
 	probe := &ovsMirrorProbe{
+		Ctx:     o.Ctx,
 		id:      portUUID,
 		capture: capture,
 		graph:   o.Ctx.Graph,
@@ -436,7 +438,7 @@ func (o *ovsMirrorProbe) OnError(err error) {
 	o.graph.Lock()
 
 	setCaptureError := func(n *graph.Node, id string) {
-		o.graph.UpdateMetadata(n, "Captures", func(obj interface{}) bool {
+		errUpdate := o.graph.UpdateMetadata(n, "Captures", func(obj interface{}) bool {
 			captures := obj.(*Captures)
 			for _, capture := range *captures {
 				if capture.ID == id {
@@ -447,6 +449,9 @@ func (o *ovsMirrorProbe) OnError(err error) {
 			}
 			return false
 		})
+		if errUpdate != nil {
+			o.Ctx.Logger.Errorf("OnError() update metadata error : ", errUpdate)
+		}
 	}
 
 	setCaptureError(o.node, o.capture.UUID)

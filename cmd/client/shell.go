@@ -99,7 +99,7 @@ func (s *Session) saveHistory() error {
 		return nil
 	}
 
-	err := os.MkdirAll(filepath.Dir(s.historyFile), 0755)
+	err := os.MkdirAll(filepath.Dir(s.historyFile), 0750)
 	if err != nil {
 		return err
 	}

@@ -85,13 +85,15 @@ func GetProcessInfo(pid int) (*ProcessInfo, error) {
 	var state rune
 	var null int64
 
-	fmt.Sscanf(string(stat), "%d %s %c %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
+	_, err = fmt.Sscanf(string(stat), "%d %s %c %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
 		&pi.Pid, &name, &state, &pi.PPid, &pi.PGrp, &pi.Session,
 		&null, &null, &null, &null, &null, &null, &null,
 		&pi.Utime, &pi.Stime, &pi.CUtime, &pi.CStime, &pi.Priority, &pi.Nice, &pi.Threads,
 		&null,
 		&pi.Start, &pi.Vsize, &pi.RSS)
-
+	if err != nil {
+		return nil, err
+	}
 	pi.Name = name[1 : len(name)-1]
 	pi.State = ProcessState(state)
 
