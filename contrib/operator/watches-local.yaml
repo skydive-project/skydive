@@ -1,0 +1,5 @@
+---
+- version: v1alpha1
+  group: charts.helm.k8s.io
+  kind: Skydive
+  chart: helm-charts/skydive
