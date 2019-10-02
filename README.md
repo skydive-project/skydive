@@ -1,8 +1,9 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/skydive-project/skydive)](https://goreportcard.com/badge/github.com/skydive-project/skydive)
-[![GitHub license](https://img.shields.io/badge/license-Apache%20license%202.0-blue.svg)](https://github.com/networkservicemesh/networkservicemesh/blob/master/LICENSE)
+[![GitHub license](https://img.shields.io/badge/license-Apache%20license%202.0-blue.svg)](https://github.com/skydive-project/skydive/blob/master/LICENSE)
+[![Slack Channel](https://img.shields.io/badge/Slack:-%23skydive&hyphen;project-blue.svg?style=plastic&logo=slack)](https://skydive-project.slack.com)
+[![Weekly minutes](https://img.shields.io/badge/Weekly%20Meeting%20Minutes-Thu%2010:30am%20CEST-blue.svg?style=plastic)](https://docs.google.com/document/d/1eri4vyjmAwxiWs2Kp4HYdCUDWACF_HXZDrDL8WcPF-o/edit?ts=5d946ad5#heading=h.g8f8gdfq0un9)
 [![StackShare](https://img.shields.io/badge/tech-stack-0690fa.svg?style=flat)](https://stackshare.io/skydive-project/skydive)
 [![PyPI](https://img.shields.io/pypi/v/skydive-client.svg)](https://pypi.org/project/skydive-client/)
-[![IRC](https://www.irccloud.com/invite-svg?channel=%23skydive-project&amp;hostname=irc.freenode.net&amp;port=6697&amp;ssl=1)](http://webchat.freenode.net/?channels=skydive-project)
 
 # Skydive
 
@@ -30,7 +31,7 @@ topology and flows information.
 * Web and command line interfaces
 * REST API
 * Easy to deploy (standalone executable)
-* Connectors to OpenStack, Docker, OpenContrail
+* Connectors to OpenStack, Docker, OpenContrail, Kubernetes
 
 ## Quick start
 
@@ -39,8 +40,7 @@ topology and flows information.
 The easiest way to get started is to download the latest binary and to run it using the `all-in-one` mode :
 
 ```console
-curl -Lo skydive https://github.com/skydive-project/skydive-binaries/raw/jenkins-builds/skydive-latest && \
-chmod +x skydive && sudo mv skydive /usr/local/bin/
+curl -Lo - https://github.com/skydive-project/skydive-binaries/raw/jenkins-builds/skydive-latest.gz | gzip -d > skydive && chmod +x skydive && sudo mv skydive /usr/local/bin/
 
 SKYDIVE_ETCD_DATA_DIR=/tmp SKYDIVE_ANALYZER_LISTEN=0.0.0.0:8082 sudo -E /usr/local/bin/skydive allinone
 ```
@@ -88,16 +88,20 @@ Skydive tutorials can be found here:
 
 * http://skydive.network/tutorials/first-steps-1.html
 
+## Get involved
+
+* Weekly meeting
+    * [General - Weekly Hangout meeting](https://hangouts.google.com/call/TVzTtJpcW6BhSRhXgQNBAEEI) - every Thursday at 10:30 - 11:30 AM CEST
+    * [Minutes](https://docs.google.com/document/d/1eri4vyjmAwxiWs2Kp4HYdCUDWACF_HXZDrDL8WcPF-o/edit?ts=5d946ad5#heading=h.g8f8gdfq0un9)
+
+* Slack
+    * https://skydive-project.slack.com
+
 ## Contributing
 
 Your contributions are more than welcome. Please check
 https://github.com/skydive-project/skydive/blob/master/CONTRIBUTING.md
 to know about the process.
-
-## Contact
-
-* IRC: #skydive-project on irc.freenode.net
-* Mailing list: https://www.redhat.com/mailman/listinfo/skydive-dev
 
 ## License
 
