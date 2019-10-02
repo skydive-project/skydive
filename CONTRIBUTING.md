@@ -11,7 +11,7 @@ Before pushing your changes, please make sure the tests and the linters pass:
 
 * make fmt
 * make test
-* make functional
+* make test.functionals
 
 _Please note, make functional will create local network resources
 (bridges, namespaces, ...)_
@@ -64,7 +64,9 @@ https://github.com/skydive-project/skydive/issues
 Contact
 -------
 
-Contact the project developers via the project's "dev" list or IRC.
+* Weekly meeting
+    * [General - Weekly Hangout meeting](https://hangouts.google.com/call/TVzTtJpcW6BhSRhXgQNBAEEI) - every Thursday at 10:30 - 11:30 AM CEST
+    * [Minutes](https://docs.google.com/document/d/1eri4vyjmAwxiWs2Kp4HYdCUDWACF_HXZDrDL8WcPF-o/edit?ts=5d946ad5#heading=h.g8f8gdfq0un9)
 
-* IRC: #skydive-project on irc.freenode.net
-* Mailing list: https://www.redhat.com/mailman/listinfo/skydive-dev
+* Slack
+    * https://skydive-project.slack.com
