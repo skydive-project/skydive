@@ -11,7 +11,7 @@ Before pushing your changes, please make sure the tests and the linters pass:
 
 * make fmt
 * make test
-* make test.functionals
+* make functional
 
 _Please note, make functional will create local network resources
 (bridges, namespaces, ...)_
@@ -60,6 +60,16 @@ Be sure to search for existing bugs before you create another one.
 Remember that contributions are always welcome!
 
 https://github.com/skydive-project/skydive/issues
+
+Core contributors:
+------------------
+
+* Sylvain Baubeau (lebauce)
+* Nicolas Planel (nplanel)
+* Sylvain Afchain (safchain)
+* Aidan Shribman (hunchback)
+* Masco Kaliyamoorthy (masco)
+* Jean-Philippe Braun (eonpatapon)
 
 Contact
 -------
