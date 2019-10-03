@@ -44,7 +44,9 @@ type compressGzip struct {
 func (e *compressGzip) Compress(in []byte) (*bytes.Buffer, error) {
 	var out bytes.Buffer
 	w := gzip.NewWriter(&out)
-	w.Write(in)
+	if _, err := w.Write(in); err != nil {
+		return nil, err
+	}
 	w.Close()
 	return &out, nil
 }

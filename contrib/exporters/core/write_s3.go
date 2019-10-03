@@ -36,7 +36,8 @@ type writeS3 struct {
 }
 
 // Write stores a single file
-func (s *writeS3) Write(dirname, filename, content, contentType, contentEncoding string, metadata map[string]*string) error {
+func (s *writeS3) Write(dirname, filename, content, contentType, contentEncoding string,
+	metadata map[string]*string) error {
 	_, err := s.s3c.PutObject(&s3.PutObjectInput{
 		Body:            strings.NewReader(content),
 		Bucket:          aws.String(dirname),

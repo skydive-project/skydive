@@ -99,7 +99,8 @@ func (s *storeBuffered) StoreFlows(in map[Tag][]interface{}) error {
 		// check if need to trim flow array
 		overflowCount := len(s.flows[t]) - s.maxFlowArraySize
 		if overflowCount > 0 {
-			logging.GetLogger().Warningf("Flow array for tag '%s' overflowed maximum size. Discarding %d flows", string(t), overflowCount)
+			logging.GetLogger().Warningf("Flow array for tag '%s' overflowed maximum size. Discarding %d flows",
+				string(t), overflowCount)
 			s.flows[t] = s.flows[t][overflowCount:]
 		}
 	}
@@ -123,7 +124,9 @@ func (s *storeBuffered) StoreFlows(in map[Tag][]interface{}) error {
 	if s.maxObjectDuration > 0 {
 		for t := range tagsToTimerReset {
 			s.flushTimers[t] = time.AfterFunc(s.maxObjectDuration-time.Since(endTime), func() {
-				s.StoreFlows(nil)
+				if err := s.StoreFlows(nil); err != nil {
+					logging.GetLogger().Error("failed to store flows: ", err)
+				}
 			})
 
 			// a single timer will cover all of the flushed tags
@@ -161,21 +164,27 @@ func (s *storeBuffered) flushFlowsToObject(t Tag, endTime time.Time) error {
 
 	encodedFlows, err := s.pipeline.Encoder.Encode(flows)
 	if err != nil {
-		logging.GetLogger().Error("Failed to encode object: ", err)
+		logging.GetLogger().Error("failed to encode object: ", err)
 		return err
 	}
 
 	b, err := s.pipeline.Compressor.Compress(encodedFlows)
 	if err != nil {
-		logging.GetLogger().Error("Failed to compress object: ", err)
+		logging.GetLogger().Error("failed to compress object: ", err)
 		return err
 	}
 
-	objectKey := strings.Join([]string{s.filenamePrefix, string(t), currentStream.ID.UTC().Format("20060102T150405Z"), fmt.Sprintf("%08d.gz", currentStream.SeqNumber)}, "/")
-	err = s.pipeline.Writer.Write(s.dirname, objectKey, string(b.Bytes()), "application/json", "gzip", metadata)
+	keyParts := []string{
+		s.filenamePrefix,
+		string(t),
+		currentStream.ID.UTC().Format("20060102T150405Z"),
+		fmt.Sprintf("%08d.gz", currentStream.SeqNumber),
+	}
+	objectKey := strings.Join(keyParts, "/")
+	err = s.pipeline.Writer.Write(s.dirname, objectKey, b.String(), "application/json", "gzip", metadata)
 
 	if err != nil {
-		logging.GetLogger().Error("Failed to write object: ", err)
+		logging.GetLogger().Error("failed to write object: ", err)
 		return err
 	}
 

@@ -98,7 +98,7 @@ func NewClassifySubnet(cfg *viper.Viper) (interface{}, error) {
 	for _, netMask := range clusterNetMasks {
 		_, sa, err := net.ParseCIDR(netMask)
 		if err != nil {
-			return nil, fmt.Errorf("Cannot parse netmask '%s': %s", netMask, err)
+			return nil, fmt.Errorf("cannot parse netmask '%s': %s", netMask, err)
 		}
 		parsedNetMasks = append(parsedNetMasks, sa)
 	}
