@@ -34,7 +34,7 @@ func NewResolveDocker(cfg *viper.Viper) Resolver {
 }
 
 type resolveDocker struct {
-	gremlinClient *client.GremlinQueryHelper
+	gremlinClient GremlinNodeGetter
 }
 
 // IPToName resolve IP address to Docker container name.

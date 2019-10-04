@@ -150,3 +150,68 @@ func Test_Transform_Status_updates(t *testing.T) {
 	secAdvFlow = transformer.Transform(f).(*SecurityAdvisorFlow)
 	assertEqual(t, "ENDED", secAdvFlow.Status)
 }
+
+func getTestTransformerWithLocalTopology(t *testing.T) core.Transformer {
+	localGremlinClient := newLocalGremlinQueryHelper(newRuncTopologyGraph(t))
+
+	runcResolver := &resolveRunc{localGremlinClient}
+	dockerResolver := &resolveDocker{localGremlinClient}
+	resolver := NewResolveMulti(runcResolver, dockerResolver)
+	resolver = NewResolveFallback(resolver)
+	resolver = NewResolveCache(resolver)
+
+	return &securityAdvisorFlowTransformer{
+		flowUpdateCountCache: cache.New(10*time.Minute, 10*time.Minute),
+		resolver:             resolver,
+		excludeStartedFlows:  false,
+	}
+}
+
+func getRuncFlow() *flow.Flow {
+	t, _ := time.Parse(time.RFC3339, "2019-01-01T10:20:30Z")
+	start := common.UnixMillis(t)
+	return &flow.Flow{
+		UUID:        "66724f5d-718f-47a2-93a7-c807cd54241e",
+		LayersPath:  "Ethernet/IPv4/TCP",
+		Application: "TCP",
+		Link: &flow.FlowLayer{
+			Protocol: flow.FlowProtocol_ETHERNET,
+			A:        "fa:16:3e:29:e0:82",
+			B:        "fa:16:3e:96:06:e8",
+		},
+		Network: &flow.FlowLayer{
+			Protocol: flow.FlowProtocol_IPV4,
+			A:        "172.30.149.34",
+			B:        "111.112.113.114",
+		},
+		Transport: &flow.TransportLayer{
+			Protocol: flow.FlowProtocol_TCP,
+			A:        47838,
+			B:        80,
+		},
+		Metric: &flow.FlowMetric{
+			ABPackets: 6,
+			ABBytes:   516,
+			BAPackets: 4,
+			BABytes:   760,
+		},
+		Start:   start,
+		Last:    start,
+		NodeTID: "ce2ed4fb-1340-57b1-796f-5d648665aed7",
+	}
+}
+
+func TestTransformShouldResolveRuncContainerNames(t *testing.T) {
+	transformer := getTestTransformerWithLocalTopology(t)
+	f := getRuncFlow()
+	secAdvFlow := transformer.Transform(f).(*SecurityAdvisorFlow)
+	assertEqual(t, "netns", secAdvFlow.NodeType)
+	assertEqual(t, "0_0_my-container-name-5bbc557665-h66vq_0", secAdvFlow.Network.AName)
+}
+
+func TestTransformShouldUseIPWhenCantFindContainerNames(t *testing.T) {
+	transformer := getTestTransformerWithLocalTopology(t)
+	f := getRuncFlow()
+	secAdvFlow := transformer.Transform(f).(*SecurityAdvisorFlow)
+	assertEqual(t, "111.112.113.114", secAdvFlow.Network.BName)
+}
