@@ -43,6 +43,10 @@ func (p *PcapAPI) SendFlows(flows []*flow.Flow) {
 	}
 }
 
+// SendStatus implements the flow Sender interface
+func (p *PcapAPI) SendStatus(status flow.Status) {
+}
+
 func (p *PcapAPI) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	updateEvery := time.Duration(config.GetInt("flow.update")) * time.Second
 	expireAfter := time.Duration(config.GetInt("flow.expire")) * time.Second

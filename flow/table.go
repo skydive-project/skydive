@@ -118,6 +118,7 @@ type Operation struct {
 // Sender defines a flows sender interface
 type Sender interface {
 	SendFlows(flows []*Flow)
+	SendStatus(status Status)
 }
 
 func updateTCPFlagTime(prevFlagTime int64, currFlagTime int64) int64 {
@@ -582,10 +583,13 @@ func (ft *Table) Run() {
 				ft.ipDefragger.FlushOlderThan(t)
 			}
 		case <-statusTicker.C:
-			if ft.status.FlowDropped > 0 {
-				logging.GetLogger().Warningf("flow table overflow, %d flows were dropped from userspace table", ft.status.FlowDropped)
-				ft.status.FlowDropped = 0
-			}
+			ft.status.CaptureID = ft.uuids.CaptureID
+			ft.status.FlowCount = int64(ft.table.Len())
+
+			ft.sender.SendStatus(ft.status)
+
+			logging.GetLogger().Warningf("Flow table status: %+v", ft.status)
+			ft.status = Status{}
 		}
 	}
 }
