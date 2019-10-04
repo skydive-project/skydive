@@ -94,7 +94,7 @@ type Table struct {
 	opts              Opts
 	appPortMap        *ApplicationPortMap
 	appTimeout        map[string]int64
-	removedFlows      int
+	status            Status
 	uuids             UUIDs
 }
 
@@ -216,7 +216,7 @@ func (ft *Table) getOrCreateFlow(key uint64) (*Flow, bool) {
 
 	new := NewFlow()
 	if ft.table.Add(key, new) {
-		ft.removedFlows++
+		ft.status.FlowDropped++
 	}
 	return new, true
 }
@@ -224,7 +224,7 @@ func (ft *Table) getOrCreateFlow(key uint64) (*Flow, bool) {
 func (ft *Table) replaceFlow(key uint64, f *Flow) *Flow {
 	prev, _ := ft.table.Get(key)
 	if ft.table.Add(key, f) {
-		ft.removedFlows++
+		ft.status.FlowDropped++
 	}
 	if prev == nil {
 		return nil
@@ -498,7 +498,7 @@ func (ft *Table) processEBPFFlow(ebpfFlow *EBPFFlow) {
 
 		for i := range keys {
 			if ft.table.Add(keys[i], flows[i]) {
-				ft.removedFlows++
+				ft.status.FlowDropped++
 			}
 		}
 		return
@@ -543,8 +543,8 @@ func (ft *Table) Run() {
 	nowTicker := time.NewTicker(time.Second * 1)
 	defer nowTicker.Stop()
 
-	overFlowTicker := time.NewTicker(time.Second * 10)
-	defer overFlowTicker.Stop()
+	statusTicker := time.NewTicker(time.Second * 10)
+	defer statusTicker.Stop()
 
 	ft.query = make(chan *TableQuery, 100)
 	ft.reply = make(chan []byte, 100)
@@ -581,10 +581,10 @@ func (ft *Table) Run() {
 			if ft.ipDefragger != nil {
 				ft.ipDefragger.FlushOlderThan(t)
 			}
-		case <-overFlowTicker.C:
-			if ft.removedFlows > 0 {
-				logging.GetLogger().Warningf("flow table overflow, %d flows were dropped from userspace table", ft.removedFlows)
-				ft.removedFlows = 0
+		case <-statusTicker.C:
+			if ft.status.FlowDropped > 0 {
+				logging.GetLogger().Warningf("flow table overflow, %d flows were dropped from userspace table", ft.status.FlowDropped)
+				ft.status.FlowDropped = 0
 			}
 		}
 	}

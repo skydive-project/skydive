@@ -134,6 +134,17 @@ message TCPMetric {
 
 message Message {
   repeated Flow Flows = 1;
+  Status Status = 2;
+}
+
+message Status {
+  string CaptureID = 1;
+  int64 FlowCount = 2;
+  int64 FlowDropped = 3;
+  int64 KernelFlowDropped = 4;
+  int64 PacketDropped = 5;
+  int64 PacketCount = 6;
+  int64 ByteCount = 7;
 }
 
 message Flow {
