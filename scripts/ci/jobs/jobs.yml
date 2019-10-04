@@ -116,6 +116,17 @@
               variable: COPR_TOKEN
 
 - wrapper:
+    name: quay-credentials
+    wrappers:
+      - credentials-binding:
+          - text:
+              credential-id: quay-login
+              variable: QUAY_LOGIN
+          - text:
+              credential-id: quay-token
+              variable: QUAY_TOKEN
+
+- wrapper:
     name: coverage-credentials
     wrappers:
       - credentials-binding:
@@ -139,6 +150,17 @@
       - github-pull-request:
           status-url: http://ci-logs.skydive.network/${JOB_NAME}/builds/${BUILD_NUMBER}/log.html
           status-context: ${JOB_NAME}
+
+- publisher:
+    name: skydive-publishers
+    publishers:
+      - chuck-norris
+      - slack:
+          team-domain: skydive-project
+          auth-token-credential-id: slack-token
+          room: #ci-cd
+          notify-success: true
+          notify-every-failure: true
 
 - builder:
     name: skydive-cleanup
@@ -228,7 +250,7 @@
     wrappers:
       - skydive-wrappers
     publishers:
-      - chuck-norris
+      - skydive-publishers
 
 - job:
     name: skydive-go-fmt
@@ -258,7 +280,7 @@
     publishers:
       - junit:
           results: tests.xml
-      - chuck-norris
+      - skydive-publishers
 
 - job:
     name: skydive-compile-tests
@@ -299,7 +321,7 @@
     publishers:
       - junit:
           results: tests.xml
-      - chuck-norris
+      - skydive-publishers
 
 - job:
     name: skydive-helm-tests
@@ -321,7 +343,7 @@
     publishers:
       - junit:
           results: tests.xml
-      - chuck-norris
+      - skydive-publishers
 
 - job:
     name: skydive-opencontrail-tests
@@ -356,7 +378,7 @@
     publishers:
       - junit:
           results: tests.xml
-      - chuck-norris
+      - skydive-publishers
 
 - job:
     name: skydive-functional-tests-backend-orientdb
@@ -374,7 +396,7 @@
     publishers:
       - junit:
           results: tests.xml
-      - chuck-norris
+      - skydive-publishers
 
 - job:
     name: skydive-scale-tests
@@ -407,7 +429,6 @@
       - skydive-test:
           test: scripts/ci/run-cdd-overview-tests.sh
     publishers:
-      - chuck-norris
       - archive:
           artifacts: 'src/github.com/skydive-project/skydive/tests/postmortem.png'
           allow-empty: 'true'
@@ -420,6 +441,7 @@
       - archive:
           artifacts: 'src/github.com/skydive-project/skydive/tests/graph.json'
           allow-empty: 'true'
+      - skydive-publishers
 
 - job:
     name: skydive-release
@@ -658,7 +680,7 @@
       - skydive-wrappers
     publishers:
       - publish-cobertura
-      - chuck-norris
+      - skydive-publishers
 
 - trigger:
     name: skydive-github-trigger
@@ -739,6 +761,7 @@
               current-parameters: true
               git-revision: true
     publishers:
+      - skydive-publishers
       - email:
           recipients: skydivesoftware@gmail.com
 
@@ -784,7 +807,7 @@
     publishers:
       - junit:
           results: tests.xml
-      - chuck-norris
+      - skydive-publishers
 
 - job:
     name: skydive-functional-hw-tests
@@ -806,4 +829,4 @@
     publishers:
       - junit:
           results: tests.xml
-      - chuck-norris
+      - skydive-publishers

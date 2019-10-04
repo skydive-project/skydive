@@ -49,7 +49,7 @@
       envVars = envVarsNodePropertyList.get(0).getEnvVars();
     }
 
-    envVars.put("http_proxy", "http://localhost:3128");
+    // envVars.put("http_proxy", "http://localhost:3128");
     instance.save();
     ' http://localhost:8080/scriptText
 
@@ -96,7 +96,7 @@
     jsonObject.put("whiteListLabels", "");
     auth = new JSONObject();
     auth.put("serverAPIUrl", "https://api.github.com");
-    auth.put("credentialsId", "github");
+    auth.put("credentialsId", "github-token");
     jsonObject.put("githubAuth", auth);
     descriptor.configure(stapler, jsonObject);
     descriptor.save();
@@ -113,7 +113,7 @@
     store = Jenkins.instance.getExtensionList('com.cloudbees.plugins.credentials.SystemCredentialsProvider')[0].getStore();
     secretText = new StringCredentialsImpl( \
       CredentialsScope.GLOBAL, \
-      "github", \
+      "github-token", \
       "Github API key", \
       Secret.fromString("{{ github_secret }}")); \
     store.addCredentials(domain, secretText);
