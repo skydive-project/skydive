@@ -13,7 +13,7 @@ spec:
       annotations:
         productName: {{ .Chart.Name }}
         productID: 8e6bdbcba44f46939c3d1c54447386b2
-        productVersion: {{ .Chart.Version }} 
+        productVersion: {{ .Chart.Version }}
       labels:
         app: {{ template "fullname" . }}
         chart: "{{ .Chart.Name }}"
@@ -24,7 +24,7 @@ spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       securityContext:
-        runAsNonRoot: false        
+        runAsNonRoot: false
       affinity:
         {{- include "nodeaffinity" . | indent 6 }}
       tolerations:
@@ -34,7 +34,7 @@ spec:
       imagePullSecrets:
       - name: {{ .Values.image.secretName }}
       {{- end }}
-      {{- end }}      
+      {{- end }}
       containers:
       - name: skydive-agent
         image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -100,6 +100,10 @@ spec:
           mountPath: /var/data/kubelet
         - name: lib-kubelet
           mountPath: /var/lib/kubelet
+        - name: data-openshiftvolumes
+          mountPath: /var/data/openshiftvolumes
+        - name: lib-origin
+          mountPath: /var/lib/origin
       volumes:
       - name: docker
         hostPath:
@@ -125,3 +129,9 @@ spec:
       - name: lib-kubelet
         hostPath:
           path: /var/lib/kubelet
+      - name: data-openshiftvolumes
+        hostPath:
+          path: /var/data/openshiftvolumes
+      - name: lib-origin
+        hostPath:
+          path: /var/lib/origin
