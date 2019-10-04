@@ -34,7 +34,7 @@ func TestGroup(t *testing.T) {
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"PeerIntfMAC": "456"})
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"MAC": "789"})
 
-	_, flowChan := tc.t.Start(nil)
+	_, flowChan, _ := tc.t.Start(nil)
 	defer tc.t.Stop()
 	for tc.t.State() != common.RunningState {
 		time.Sleep(100 * time.Millisecond)

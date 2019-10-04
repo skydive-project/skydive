@@ -43,8 +43,8 @@ func (p *PcapAPI) SendFlows(flows []*flow.Flow) {
 	}
 }
 
-// SendStatus implements the flow Sender interface
-func (p *PcapAPI) SendStatus(status flow.Status) {
+// SendStats implements the flow Sender interface
+func (p *PcapAPI) SendStats(status flow.Stats) {
 }
 
 func (p *PcapAPI) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
@@ -57,7 +57,7 @@ func (p *PcapAPI) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest
 	}
 
 	flowtable := flow.NewTable(updateEvery, expireAfter, p, flow.UUIDs{}, flow.TableOpts{})
-	packetSeqChan, _ := flowtable.Start(nil)
+	packetSeqChan, _, _ := flowtable.Start(nil)
 
 	feeder, err := flow.NewPcapTableFeeder(r.Body, packetSeqChan, false, "")
 	if err != nil {

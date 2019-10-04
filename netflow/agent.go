@@ -150,7 +150,7 @@ func (nfa *Agent) feedFlowTable(extFlowChan chan *flow.ExtFlow) {
 }
 
 func (nfa *Agent) start() error {
-	_, extFlowChan := nfa.FlowTable.Start(nil)
+	_, extFlowChan, _ := nfa.FlowTable.Start(nil)
 	defer nfa.FlowTable.Stop()
 
 	nfa.feedFlowTable(extFlowChan)

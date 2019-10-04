@@ -184,13 +184,13 @@ func (c *FlowClient) sendFlows(flows []*flow.Flow) {
 	}
 }
 
-func (c *FlowClient) sendStatus(status flow.Status) {
+func (c *FlowClient) sendStats(stats flow.Stats) {
 	msg := flow.Message{
-		Status: &status,
+		Stats: &stats,
 	}
 
 	if err := c.SendMessage(&msg); err != nil {
-		logging.GetLogger().Errorf("Unable to send status: %s", err)
+		logging.GetLogger().Errorf("Unable to send stats: %s", err)
 	}
 }
 
@@ -274,7 +274,7 @@ func (p *FlowClientPool) SendFlows(flows []*flow.Flow) {
 }
 
 // SendStatus implements the flow Sender interface
-func (p *FlowClientPool) SendStatus(status flow.Status) {
+func (p *FlowClientPool) SendStats(stats flow.Stats) {
 	p.RLock()
 	defer p.RUnlock()
 
@@ -283,7 +283,7 @@ func (p *FlowClientPool) SendStatus(status flow.Status) {
 	}
 
 	fc := p.flowClients[rand.Intn(len(p.flowClients))]
-	fc.sendStatus(status)
+	fc.sendStats(stats)
 }
 
 // Close all connections

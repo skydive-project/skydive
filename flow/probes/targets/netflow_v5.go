@@ -201,8 +201,8 @@ func (nf *NetFlowV5Target) SendFlows(flows []*flow.Flow) {
 	}
 }
 
-// SendStatus implements the flow Sender interface
-func (nf *NetFlowV5Target) SendStatus(status flow.Status) {
+// SendStats implements the flow Sender interface
+func (nf *NetFlowV5Target) SendStats(stats flow.Stats) {
 }
 
 // Start start the target

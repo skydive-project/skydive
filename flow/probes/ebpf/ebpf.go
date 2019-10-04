@@ -98,7 +98,7 @@ func (p *Probe) run() {
 	var info syscall.Sysinfo_t
 	syscall.Sysinfo(&info)
 
-	_, extFlowChan := p.flowTable.Start(nil)
+	_, extFlowChan, statsChan := p.flowTable.Start(nil)
 	defer p.flowTable.Stop()
 
 	ebpfPollingRate := time.Second / time.Duration(p.Ctx.Config.GetInt("agent.flow.ebpf.polling_rate"))
@@ -133,14 +133,14 @@ func (p *Probe) run() {
 		case now = <-updateNow.C:
 		default:
 			if statsMap := p.module.Maps["stats_map"]; statsMap != nil {
-				var statsKey uint32
-				var statsVal int64
+				var dropKey uint32
+				var dropValue int64
 
-				if found, err := statsMap.Get(statsKey, &statsVal); err == nil && found {
-					if statsVal > 0 {
-						p.Ctx.Logger.Warningf("flow table overflow, %d flows were dropped from kernel table", statsVal)
+				if found, err := statsMap.Get(dropKey, &dropValue); err == nil && found {
+					if dropValue > 0 {
+						statsChan <- flow.Stats{KernelFlowDropped: dropValue}
 					}
-					statsMap.Delete(statsKey)
+					statsMap.Delete(dropKey)
 				}
 			}
 			// try to get start monotonic time

@@ -176,6 +176,10 @@ func (ers *ERSpanTarget) SendPacket(packet gopacket.Packet, bpf *flow.BPF) {
 	ers.gre.Seq++
 }
 
+// SendStats implements the Target interface
+func (ers *ERSpanTarget) SendStats(stats flow.Stats) {
+}
+
 // Start start the target
 func (ers *ERSpanTarget) Start() {
 }

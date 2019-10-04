@@ -57,7 +57,7 @@ func max(a, b int) int {
 
 // FlowServerConn describes a flow server connection
 type FlowServerConn interface {
-	Serve(flowChan chan *flow.Flow, statusChan chan *flow.Status, quit chan struct{}, wg *sync.WaitGroup)
+	Serve(flowChan chan *flow.Flow, statsChan chan *flow.Stats, quit chan struct{}, wg *sync.WaitGroup)
 }
 
 // FlowServerUDPConn describes a UDP flow server connection
@@ -73,7 +73,7 @@ type FlowServerWebSocketConn struct {
 	ws.DefaultSpeakerEventHandler
 	server                 *shttp.Server
 	flowChan               chan *flow.Flow
-	statusChan             chan *flow.Status
+	statsChan              chan *flow.Stats
 	timeOfLastLostFlowsLog time.Time
 	numOfLostFlows         int
 	maxFlowBufferSize      int
@@ -89,7 +89,7 @@ type FlowServer struct {
 	bulkInsert         int
 	bulkInsertDeadline time.Duration
 	flowChan           chan *flow.Flow
-	statusChan         chan *flow.Status
+	statsChan          chan *flow.Stats
 	quit               chan struct{}
 	auth               shttp.AuthenticationBackend
 	subscriberEndpoint *FlowSubscriberEndpoint
@@ -124,15 +124,15 @@ func (c *FlowServerWebSocketConn) OnMessage(client ws.Speaker, m ws.Message) {
 		c.flowChan <- f
 	}
 
-	if msg.Status != nil {
-		c.statusChan <- msg.Status
+	if msg.Stats != nil {
+		c.statsChan <- msg.Stats
 	}
 }
 
 // Serve starts a WebSocket flow server
-func (c *FlowServerWebSocketConn) Serve(flowChan chan *flow.Flow, statusChan chan *flow.Status, quit chan struct{}, wg *sync.WaitGroup) {
+func (c *FlowServerWebSocketConn) Serve(flowChan chan *flow.Flow, statsChan chan *flow.Stats, quit chan struct{}, wg *sync.WaitGroup) {
 	c.flowChan = flowChan
-	c.statusChan = statusChan
+	c.statsChan = statsChan
 
 	server := config.NewWSServer(c.server, "/ws/agent/flow", c.auth)
 	server.AddEventHandler(c)
@@ -150,7 +150,7 @@ func NewFlowServerWebSocketConn(server *shttp.Server, auth shttp.AuthenticationB
 }
 
 // Serve UDP connections
-func (c *FlowServerUDPConn) Serve(flowChan chan *flow.Flow, statusChan chan *flow.Status, quit chan struct{}, wg *sync.WaitGroup) {
+func (c *FlowServerUDPConn) Serve(flowChan chan *flow.Flow, statsChan chan *flow.Stats, quit chan struct{}, wg *sync.WaitGroup) {
 	go func() {
 		defer wg.Done()
 		// each flow can be HeaderSize * RawPackets + flow size (~500)
@@ -193,8 +193,8 @@ func (c *FlowServerUDPConn) Serve(flowChan chan *flow.Flow, statusChan chan *flo
 					flowChan <- f
 				}
 
-				if msg.Status != nil {
-					statusChan <- msg.Status
+				if msg.Stats != nil {
+					statsChan <- msg.Stats
 				}
 			}
 		}
@@ -233,8 +233,8 @@ func (s *FlowServer) handleFlows(flows []*flow.Flow) {
 	}
 }
 
-func (s *FlowServer) handleStatus(status *flow.Status) {
-	s.subscriberEndpoint.SendStatus(status)
+func (s *FlowServer) handleStats(stats *flow.Stats) {
+	s.subscriberEndpoint.SendStats(stats)
 }
 
 // Start the flow server
@@ -242,7 +242,7 @@ func (s *FlowServer) Start() {
 	s.state.Store(common.RunningState)
 	s.wgServer.Add(1)
 
-	s.conn.Serve(s.flowChan, s.statusChan, s.quit, &s.wgServer)
+	s.conn.Serve(s.flowChan, s.statsChan, s.quit, &s.wgServer)
 	go func() {
 		defer s.wgServer.Done()
 
@@ -265,8 +265,8 @@ func (s *FlowServer) Start() {
 					s.handleFlows(flows)
 					flows = flows[:0]
 				}
-			case status := <-s.statusChan:
-				s.handleStatus(status)
+			case stats := <-s.statsChan:
+				s.handleStats(stats)
 			}
 		}
 	}()
@@ -300,7 +300,7 @@ func (s *FlowServer) setupBulkConfigFromBackend() error {
 	flowsMax := config.GetConfig().GetInt("analyzer.flow.max_buffer_size")
 
 	s.flowChan = make(chan *flow.Flow, max(flowsMax, s.bulkInsert*2))
-	s.statusChan = make(chan *flow.Status)
+	s.statsChan = make(chan *flow.Stats)
 
 	return nil
 }

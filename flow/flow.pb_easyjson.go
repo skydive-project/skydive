@@ -1595,7 +1595,7 @@ func (v *TCPMetric) UnmarshalJSON(data []byte) error {
 func (v *TCPMetric) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow3(l, v)
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow4(in *jlexer.Lexer, out *Status) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow4(in *jlexer.Lexer, out *Stats) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -1622,12 +1622,10 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow4(in *jlexer.Lexer,
 			out.FlowDropped = int64(in.Int64())
 		case "KernelFlowDropped":
 			out.KernelFlowDropped = int64(in.Int64())
-		case "PacketDropped":
-			out.PacketDropped = int64(in.Int64())
-		case "PacketCount":
-			out.PacketCount = int64(in.Int64())
-		case "ByteCount":
-			out.ByteCount = int64(in.Int64())
+		case "PacketsDropped":
+			out.PacketsDropped = int64(in.Int64())
+		case "PacketsReceived":
+			out.PacketsReceived = int64(in.Int64())
 		default:
 			in.SkipRecursive()
 		}
@@ -1638,7 +1636,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow4(in *jlexer.Lexer,
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow4(out *jwriter.Writer, in Status) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow4(out *jwriter.Writer, in Stats) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -1669,44 +1667,39 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow4(out *jwriter.Writ
 		out.Int64(int64(in.KernelFlowDropped))
 	}
 	{
-		const prefix string = ",\"PacketDropped\":"
+		const prefix string = ",\"PacketsDropped\":"
 		out.RawString(prefix)
-		out.Int64(int64(in.PacketDropped))
+		out.Int64(int64(in.PacketsDropped))
 	}
 	{
-		const prefix string = ",\"PacketCount\":"
+		const prefix string = ",\"PacketsReceived\":"
 		out.RawString(prefix)
-		out.Int64(int64(in.PacketCount))
-	}
-	{
-		const prefix string = ",\"ByteCount\":"
-		out.RawString(prefix)
-		out.Int64(int64(in.ByteCount))
+		out.Int64(int64(in.PacketsReceived))
 	}
 	out.RawByte('}')
 }
 
 // MarshalJSON supports json.Marshaler interface
-func (v Status) MarshalJSON() ([]byte, error) {
+func (v Stats) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
 	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow4(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
-func (v Status) MarshalEasyJSON(w *jwriter.Writer) {
+func (v Stats) MarshalEasyJSON(w *jwriter.Writer) {
 	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow4(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
-func (v *Status) UnmarshalJSON(data []byte) error {
+func (v *Stats) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
 	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow4(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
-func (v *Status) UnmarshalEasyJSON(l *jlexer.Lexer) {
+func (v *Stats) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow4(l, v)
 }
 func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow5(in *jlexer.Lexer, out *RawPacket) {
@@ -1851,15 +1844,15 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow6(in *jlexer.Lexer,
 				}
 				in.Delim(']')
 			}
-		case "Status":
+		case "Stats":
 			if in.IsNull() {
 				in.Skip()
-				out.Status = nil
+				out.Stats = nil
 			} else {
-				if out.Status == nil {
-					out.Status = new(Status)
+				if out.Stats == nil {
+					out.Stats = new(Stats)
 				}
-				(*out.Status).UnmarshalEasyJSON(in)
+				(*out.Stats).UnmarshalEasyJSON(in)
 			}
 		default:
 			in.SkipRecursive()
@@ -1894,15 +1887,15 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow6(out *jwriter.Writ
 			out.RawByte(']')
 		}
 	}
-	if in.Status != nil {
-		const prefix string = ",\"Status\":"
+	if in.Stats != nil {
+		const prefix string = ",\"Stats\":"
 		if first {
 			first = false
 			out.RawString(prefix[1:])
 		} else {
 			out.RawString(prefix)
 		}
-		(*in.Status).MarshalEasyJSON(out)
+		(*in.Stats).MarshalEasyJSON(out)
 	}
 	out.RawByte('}')
 }

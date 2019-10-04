@@ -26,8 +26,9 @@ import (
 
 // LocalTarget send packet to an agent flow table
 type LocalTarget struct {
-	table *flow.Table
-	fta   *flow.TableAllocator
+	table     *flow.Table
+	fta       *flow.TableAllocator
+	statsChan chan flow.Stats
 }
 
 // SendPacket implements the Target interface
@@ -35,9 +36,14 @@ func (l *LocalTarget) SendPacket(packet gopacket.Packet, bpf *flow.BPF) {
 	l.table.FeedWithGoPacket(packet, bpf)
 }
 
+// SendStats implements the flow Sender interface
+func (l *LocalTarget) SendStats(stats flow.Stats) {
+	l.statsChan <- stats
+}
+
 // Start target
 func (l *LocalTarget) Start() {
-	l.table.Start(nil)
+	_, _, l.statsChan = l.table.Start(nil)
 }
 
 // Stop target

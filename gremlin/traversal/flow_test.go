@@ -104,6 +104,9 @@ type fakeMessageSender struct {
 func (f *fakeMessageSender) SendFlows(flows []*flow.Flow) {
 }
 
+func (f *fakeMessageSender) SendStats(stats flow.Stats) {
+}
+
 func newTable(nodeID string) *flow.Table {
 	return flow.NewTable(time.Second, time.Hour, &fakeMessageSender{}, flow.UUIDs{NodeTID: nodeID}, flow.TableOpts{})
 }
@@ -130,7 +133,7 @@ func newICMPFlow(id uint32) *flow.Flow {
 func TestHasStepOp(t *testing.T) {
 	tc := newFakeTableClient("node1")
 
-	_, extFlowChan := tc.t.Start(nil)
+	_, extFlowChan, _ := tc.t.Start(nil)
 	defer tc.t.Stop()
 	for tc.t.State() != common.RunningState {
 		time.Sleep(100 * time.Millisecond)
@@ -193,7 +196,7 @@ func TestHasStepOp(t *testing.T) {
 func TestLimitStepOp(t *testing.T) {
 	tc := newFakeTableClient("node1")
 
-	_, extFlowChan := tc.t.Start(nil)
+	_, extFlowChan, _ := tc.t.Start(nil)
 	defer tc.t.Stop()
 	for tc.t.State() != common.RunningState {
 		time.Sleep(100 * time.Millisecond)
@@ -226,7 +229,7 @@ func TestLimitStepOp(t *testing.T) {
 func TestDedupStepOp(t *testing.T) {
 	tc := newFakeTableClient("node1")
 
-	_, extFlowChan := tc.t.Start(nil)
+	_, extFlowChan, _ := tc.t.Start(nil)
 	defer tc.t.Stop()
 	for tc.t.State() != common.RunningState {
 		time.Sleep(100 * time.Millisecond)
@@ -269,7 +272,7 @@ func TestCaptureNodeStepOp(t *testing.T) {
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"TID": "456"})
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"TID": "789"})
 
-	_, extFlowChan := tc.t.Start(nil)
+	_, extFlowChan, _ := tc.t.Start(nil)
 	defer tc.t.Stop()
 	for tc.t.State() != common.RunningState {
 		time.Sleep(100 * time.Millisecond)
@@ -323,7 +326,7 @@ func TestInStepOp(t *testing.T) {
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"MAC": "456"})
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"MAC": "789"})
 
-	_, extFlowChan := tc.t.Start(nil)
+	_, extFlowChan, _ := tc.t.Start(nil)
 	defer tc.t.Stop()
 	for tc.t.State() != common.RunningState {
 		time.Sleep(100 * time.Millisecond)
@@ -378,7 +381,7 @@ func TestOutStepOp(t *testing.T) {
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"PeerIntfMAC": "456"})
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"MAC": "789"})
 
-	_, extFlowChan := tc.t.Start(nil)
+	_, extFlowChan, _ := tc.t.Start(nil)
 	defer tc.t.Stop()
 	for tc.t.State() != common.RunningState {
 		time.Sleep(100 * time.Millisecond)
@@ -433,7 +436,7 @@ func TestBothStepOp(t *testing.T) {
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"PeerIntfMAC": "456"})
 	tc.g.NewNode(graph.GenID(), graph.Metadata{"MAC": "789"})
 
-	_, extFlowChan := tc.t.Start(nil)
+	_, extFlowChan, _ := tc.t.Start(nil)
 	defer tc.t.Stop()
 	for tc.t.State() != common.RunningState {
 		time.Sleep(100 * time.Millisecond)

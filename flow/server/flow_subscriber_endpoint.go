@@ -32,8 +32,8 @@ type FlowSubscriberEndpoint struct {
 }
 
 const (
-	flowNS   = "flow"
-	statusNS = "status"
+	flowNS  = "flow"
+	statsNS = "stats"
 )
 
 func (fs *FlowSubscriberEndpoint) sendFlows(ns string, flows []*flow.Flow) {
@@ -64,15 +64,15 @@ func (fs *FlowSubscriberEndpoint) SendFlows(flows []*flow.Flow) {
 	}
 }
 
-// SendStatus send status to subscribers
-func (fs *FlowSubscriberEndpoint) SendStatus(status *flow.Status) {
+// SendStats send stats to subscribers
+func (fs *FlowSubscriberEndpoint) SendStats(stats *flow.Stats) {
 	fs.RLock()
-	_, ok := fs.nsSubscriber[statusNS]
+	_, ok := fs.nsSubscriber[statsNS]
 	fs.RUnlock()
 
 	// at least one speaker for the flow namespace
 	if ok {
-		msg := ws.NewStructMessage(statusNS, "status", status)
+		msg := ws.NewStructMessage(statsNS, "stats", stats)
 		fs.pool.BroadcastMessage(msg)
 	}
 }
@@ -81,7 +81,7 @@ func (fs *FlowSubscriberEndpoint) SendStatus(status *flow.Status) {
 func (fs *FlowSubscriberEndpoint) OnConnected(c ws.Speaker) {
 	namespaces, ok := c.GetHeaders()["X-Websocket-Namespace"]
 	if !ok {
-		namespaces = []string{flowNS, statusNS}
+		namespaces = []string{flowNS, statsNS}
 	}
 
 	fs.Lock()
