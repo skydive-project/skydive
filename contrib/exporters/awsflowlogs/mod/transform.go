@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	version   = 2
+	version   = 3
 	accountID = "12345678"
 )
 
@@ -45,15 +45,28 @@ const (
 	LogStatusSkipData LogStatus = "SKIPDATA"
 )
 
+const (
+	TCPFlagsFIN = 1
+	TCPFlagsSYN = 2
+	TCPFlagsRST = 4
+	TCPFlagsACK = 16
+)
+
+const (
+	TypeIPv4 = "IPv4"
+	TypeIPv6 = "IPv6"
+	TypeEFA  = "EFA" // Elastic Fabric Adapter.
+)
+
 // record struct is based on
 // https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html)
 type record struct {
 	// The VPC Flow Logs version.
 	Version int `csv:"version"`
 	// The AWS account ID for the flow log.
-	AccountID string `csv:"account_id"`
+	AccountID string `csv:"account-id"`
 	// The ID of the network interface for which the traffic is recorded.
-	InterfaceID string `csv:"interface_id"`
+	InterfaceID string `csv:"interface-id"`
 	// The source IPv4 or IPv6 address. The IPv4 address of the network
 	// interface is always its private IPv4 address.
 	SrcAddr string `csv:"srcadr"`
@@ -68,19 +81,38 @@ type record struct {
 	// Assigned Internet Protocol Numbers.
 	Protocol int `csv:"protocol"`
 	// The number of packets transferred during the capture window.
-	Packets int `csv:"packets"`
+	Packets int64 `csv:"packets"`
 	// The number of bytes transferred during the capture window.
 	Bytes int64 `csv:"bytes"`
 	// The time, in Unix seconds, of the start of the capture window.
-	Start int `csv:"start"`
+	Start int64 `csv:"start"`
 	// The time, in Unix seconds, of the end of the capture window.
-	End int `csv:"end"`
+	End int64 `csv:"end"`
 	// The recorded traffic: ACCEPT if permitted: REJECT if not permitted
 	// (by security groups of network ACLS).
 	Action Action `csv:"action"`
 	// The logging status: OK if logged normally; NODATA if no data during
 	// cature window; SKIPDATA due to possible cap of traffic.
-	LogStatus LogStatus `csv:"log_status"`
+	LogStatus LogStatus `csv:"log-status"`
+	// The ID of the VPC that contains the network interface for which the
+	// traffic is recorded.
+	VpcID string `csv:"vpc-id"`
+	// The ID of the subnet that contains the network interface for which
+	// the traffic is recorded.
+	SubnetID string `csv:"subnet-id"`
+	// The ID of the instance that's associated with network interface for
+	// which the traffic is recorded, if the instance is owned by you.
+	// Returns a '-' symbol for a requester-managed network interface; for
+	// example, the network interface for a NAT gateway.
+	InstanceID string `csv:"instance-id"`
+	// The bitmask value for select TCP flags.
+	TCPFlags int `csv:"tcp-flags"`
+	// The type of traffic.
+	Type string `csv:"type"`
+	// The packet-level (original) source IP address of the traffic.
+	PktSrcAddr string `csv:"pkt-srcadr"`
+	// The packet-level (original) destination IP address of the traffic.
+	PktDstAddr string `csv:"pkt-dstaddr"`
 }
 
 type transform struct {
@@ -127,6 +159,19 @@ func getTransportB(f *flow.Flow) int {
 	return int(f.Transport.B)
 }
 
+func getType(f *flow.Flow) string {
+	if f.Network != nil {
+		switch f.Network.Protocol {
+		case flow.FlowProtocol_IPV4:
+			return TypeIPv4
+		case flow.FlowProtocol_IPV6:
+			return TypeIPv6
+		}
+
+	}
+	return ""
+}
+
 // Transform transforms a flow before being stored
 func (t *transform) Transform(f *flow.Flow) interface{} {
 	return &record{
@@ -138,11 +183,19 @@ func (t *transform) Transform(f *flow.Flow) interface{} {
 		SrcPort:     getTransportA(f),
 		DstPort:     getTransportB(f),
 		Protocol:    getProtocol(f),
-		Packets:     int(f.Metric.ABPackets + f.Metric.BAPackets),
+		Packets:     int64(f.Metric.ABPackets + f.Metric.BAPackets),
 		Bytes:       f.Metric.ABBytes + f.Metric.BABytes,
-		Start:       int(f.Start / 1000),
-		End:         int(f.Last / 1000),
+		Start:       int64(f.Start / 1000),
+		End:         int64(f.Last / 1000),
 		Action:      ActionAccept,
 		LogStatus:   LogStatusOk,
+		VpcID:       "",
+		SubnetID:    "",
+		InstanceID:  "",
+		TCPFlags:    0, // TODO: extract from last packet
+		Type:        getType(f),
+		PktSrcAddr:  "", // TODO: get outer flow via f.ParentUID
+		PktDstAddr:  "", // TODO: get outer flow via f.ParentUID
+
 	}
 }
