@@ -47,7 +47,8 @@ func (s *storeDirect) StoreFlows(flows map[Tag][]interface{}) error {
 			return err
 		}
 
-		err = s.pipeline.Writer.Write("my_direname", "my_filename", string(compressed.Bytes()), "application/json", "gzip", map[string]*string{})
+		err = s.pipeline.Writer.Write("my_dirname", "my_filename", compressed.String(),
+			"application/json", "gzip", map[string]*string{})
 		if err != nil {
 			logging.GetLogger().Error("Failed to store object: ", err)
 			return err

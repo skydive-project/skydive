@@ -27,7 +27,8 @@ type writeStdout struct {
 }
 
 // Write stores a single file
-func (s *writeStdout) Write(dirname, filename, content, contentType, contentEncoding string, metadata map[string]*string) error {
+func (s *writeStdout) Write(dirname, filename, content, contentType, contentEncoding string,
+	metadata map[string]*string) error {
 	fmt.Printf("--- %s/%s ---\n", dirname, filename)
 	fmt.Printf("%s\n", content)
 	return nil

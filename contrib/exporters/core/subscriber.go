@@ -49,7 +49,7 @@ func NewSubscriber(pipeline *Pipeline, cfg *viper.Viper) (*websocket.StructSpeak
 	subscriberURLString := cfg.GetString(CfgRoot + "subscriber.url")
 	subscriberURL, err := url.Parse(subscriberURLString)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse subscriber URL: %s", err)
+		return nil, fmt.Errorf("failed to parse subscriber URL: %s", err)
 	}
 
 	namespace := "flow"
@@ -64,7 +64,7 @@ func NewSubscriber(pipeline *Pipeline, cfg *viper.Viper) (*websocket.StructSpeak
 	}
 	wsClient, err := config.NewWSClient(common.AnalyzerService, subscriberURL, clientOpts)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create websocket client: %s", err)
+		return nil, fmt.Errorf("failed to create websocket client: %s", err)
 	}
 	structSpeaker := wsClient.UpgradeToStructSpeaker()
 	structSpeaker.AddStructMessageHandler(pipeline, []string{namespace})
@@ -77,7 +77,7 @@ func SubscriberRun(s *websocket.StructSpeaker) {
 	s.Start()
 	defer s.Stop()
 
-	ch := make(chan os.Signal)
+	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 	<-ch
 }

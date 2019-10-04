@@ -256,7 +256,9 @@ func (p *Pipeline) mangle(in map[Tag][]interface{}) map[Tag][]interface{} {
 }
 
 func (p *Pipeline) store(in map[Tag][]interface{}) {
-	p.Storer.StoreFlows(in)
+	if err := p.Storer.StoreFlows(in); err != nil {
+		logging.GetLogger().Error("failed to store flows: ", err)
+	}
 }
 
 func (p *Pipeline) process(flows []*flow.Flow) {
@@ -276,12 +278,12 @@ func (p *Pipeline) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	case "store":
 		var flows []*flow.Flow
 		if err := json.Unmarshal(msg.Obj, &flows); err != nil {
-			logging.GetLogger().Error("Failed to unmarshal flows: ", err)
+			logging.GetLogger().Error("failed to unmarshal flows: ", err)
 			return
 		}
 
 		p.process(flows)
 	default:
-		logging.GetLogger().Error("Unknown message type: ", msg.Type)
+		logging.GetLogger().Error("unknown message type: ", msg.Type)
 	}
 }
