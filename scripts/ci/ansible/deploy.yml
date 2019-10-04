@@ -38,10 +38,10 @@
   become: yes
   roles:
     - role: geerlingguy.java
-    - role: geerlingguy.jenkins
-      when: deploy_master is defined
       java_packages:
         - java-1.8.0-openjdk
+    - role: geerlingguy.jenkins
+      when: deploy_master is defined
       jenkins_admin_password: "{{ jenkins_admin_password | default('admin', true) }}"
       jenkins_plugins:
         - github
@@ -63,9 +63,8 @@
         - nodelabelparameter
 
 - name: Install requirements
-  hosts: jenkins_master, slaves
+  hosts: slaves
   tags:
-    - master
     - slave
   become: yes
   tasks:
@@ -193,9 +192,8 @@
     with_items: "{{ slave_secrets.results }}"
 
 - name: Configure Jenkins
-  hosts: jenkins_master, slaves
+  hosts: slaves
   tags:
-    - master
     - slave
   become: yes
   tasks:
