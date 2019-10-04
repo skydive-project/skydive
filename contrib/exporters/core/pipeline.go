@@ -250,7 +250,7 @@ func (p *Pipeline) transform(in map[Tag][]*flow.Flow) map[Tag][]interface{} {
 func (p *Pipeline) mangle(in map[Tag][]interface{}) map[Tag][]interface{} {
 	out := make(map[Tag][]interface{})
 	for tag := range in {
-		out[tag] = p.Mangler.Mangle(out[tag])
+		out[tag] = p.Mangler.Mangle(in[tag])
 	}
 	return out
 }
