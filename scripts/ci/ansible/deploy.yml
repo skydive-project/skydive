@@ -361,3 +361,19 @@
     os_floating_ip_pool: os_floating_ip_pool | default('public')
     os_keypair: os_keypair | default(None, True)
     github_secret: github_secret | default(None, True)
+  tasks:
+    - copy:
+        content: |
+          <Directory "/var/lib/jenkins/jobs">
+              Options Indexes FollowSymLinks
+              AllowOverride None
+              Require all granted
+              RewriteEngine On
+              RewriteCond %{REQUEST_URI} "^/logs/.*"
+              RewriteRule "^logs/(.*)/(.*)$"  "$1/builds/$2/log" [L]
+              Require all granted
+          </Directory>
+        mode: 0644
+        dest: /etc/httpd/conf.d/jenkins-logs.conf
+        owner: root
+        group: root
