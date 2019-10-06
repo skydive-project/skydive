@@ -60,7 +60,6 @@ docker_skydive_builder() {
         ${TARGET_ARCH:+--build-arg TARGET_ARCH=${TARGET_ARCH}} \
         ${TARGET_GOARCH:+--build-arg TARGET_GOARCH=${TARGET_GOARCH}} \
         ${DEBARCH:+--build-arg DEBARCH=${DEBARCH}} \
-        ${BASE:+--build-arg BASE=${BASE}} \
         --build-arg UID=$uid \
         -f $DOCKER_DIR/$dockerfile $DOCKER_DIR
     docker volume create $GOMOD_VOL
