@@ -35,7 +35,8 @@ func NewTransform(cfg *viper.Viper) (interface{}, error) {
 
 	runcResolver := NewResolveRunc(cfg)
 	dockerResolver := NewResolveDocker(cfg)
-	resolver := NewResolveMulti(runcResolver, dockerResolver)
+	vmResolver := NewResolveVM(cfg)
+	resolver := NewResolveMulti(runcResolver, dockerResolver, vmResolver)
 	resolver = NewResolveFallback(resolver)
 	resolver = NewResolveCache(resolver)
 
