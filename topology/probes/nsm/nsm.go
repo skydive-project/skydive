@@ -22,6 +22,7 @@ package nsm
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -88,28 +89,26 @@ func getK8SConfig() (*rest.Config, error) {
 }
 
 // Start ...
-func (p *Probe) Start() {
+func (p *Probe) Start() error {
 	p.g.AddEventListener(p)
 	p.state.Store(common.RunningState)
 
 	config, err := getK8SConfig()
 	if err != nil {
-		return
+		return err
 	}
 
-	logging.GetLogger().Debugf("NSM: getting NSM client")
+	logging.GetLogger().Debug("NSM: getting NSM client")
 	// Initialize clientset
 	nsmClientSet, err := versioned.NewForConfig(config)
 	if err != nil {
-		logging.GetLogger().Errorf("Unable to initialize the NSM probe: %v", err)
-		return
+		return fmt.Errorf("Unable to initialize the NSM probe: %v", err)
 	}
 
 	factory := externalversions.NewSharedInformerFactory(nsmClientSet, 0)
 	genericInformer, err := factory.ForResource(v1.SchemeGroupVersion.WithResource(nsmResource))
 	if err != nil {
-		logging.GetLogger().Errorf("Unable to create the K8S cache factory: %v", err)
-		return
+		return fmt.Errorf("Unable to create the K8S cache factory: %v", err)
 	}
 
 	informer := genericInformer.Informer()
@@ -121,7 +120,9 @@ func (p *Probe) Start() {
 			go p.monitorCrossConnects(nsm.Status.URL)
 		},
 	})
+
 	go informer.Run(informerStopper)
+	return nil
 }
 
 // Stop ....

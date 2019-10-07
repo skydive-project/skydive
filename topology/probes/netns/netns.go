@@ -301,10 +301,6 @@ func (u *ProbeHandler) start() {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
-	if !u.state.CompareAndSwap(common.StoppedState, common.RunningState) {
-		return
-	}
-
 	for u.state.Load() == common.RunningState {
 		select {
 		case path := <-u.pending:
@@ -337,9 +333,14 @@ func (u *ProbeHandler) Watch(path string) {
 }
 
 // Start the probe
-func (u *ProbeHandler) Start() {
+func (u *ProbeHandler) Start() error {
+	if !u.state.CompareAndSwap(common.StoppedState, common.RunningState) {
+		return probe.ErrNotStopped
+	}
+
 	u.wg.Add(1)
 	go u.start()
+	return nil
 }
 
 // Stop the probe
@@ -373,8 +374,8 @@ func (u *ProbeHandler) Exclude(paths ...string) {
 	u.Unlock()
 }
 
-// Init initializes a new network namespace probe
-func (u *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+// NewProbe returns a new network namespace probe
+func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	nlHandler := bundle.GetHandler("netlink")
 	if nlHandler == nil {
 		return nil, errors.New("unable to find the netlink handler")
@@ -397,14 +398,16 @@ func (u *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler
 		return nil, fmt.Errorf("Unable to create a new Watcher: %s", err)
 	}
 
-	u.Ctx = ctx
-	u.nlHandler = nlHandler.(*netlink.ProbeHandler)
-	u.pathToNetNS = make(map[string]*NetNs)
-	u.nsNetLinkProbes = make(map[string]*nsNetLinkProbe)
-	u.rootNs = rootNs
-	u.watcher = watcher
-	u.pending = make(chan string, 10)
-	u.state = common.StoppedState
+	u := &ProbeHandler{
+		Ctx:             ctx,
+		nlHandler:       nlHandler.(*netlink.ProbeHandler),
+		pathToNetNS:     make(map[string]*NetNs),
+		nsNetLinkProbes: make(map[string]*nsNetLinkProbe),
+		rootNs:          rootNs,
+		watcher:         watcher,
+		pending:         make(chan string, 10),
+		state:           common.StoppedState,
+	}
 
 	if path := ctx.Config.GetString("agent.topology.netns.run_path"); path != "" {
 		u.Watch(path)

@@ -253,16 +253,18 @@ func (p *ProbeHandler) Do(ctx context.Context, wg *sync.WaitGroup) (err error) {
 	return err
 }
 
-// Init initializes a new topology Lxd probe
-func (p *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+// NewProbe returns a new topology LXD probe
+func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	nsHandler := bundle.GetHandler("netns")
 	if nsHandler == nil {
 		return nil, errors.New("unable to find the netns handler")
 	}
-	p.nsProbe = nsHandler.(*ns.ProbeHandler)
 
-	p.containerMap = make(map[string]containerInfo)
-	p.Ctx = ctx
+	p := &ProbeHandler{
+		nsProbe:      nsHandler.(*ns.ProbeHandler),
+		containerMap: make(map[string]containerInfo),
+		Ctx:          ctx,
+	}
 
 	return probes.NewProbeWrapper(p), nil
 }

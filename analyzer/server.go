@@ -162,12 +162,6 @@ func (s *Server) Stop() {
 	s.hub.Stop()
 	s.flowServer.Stop()
 	s.httpServer.Stop()
-	if s.embeddedEtcd != nil {
-		s.embeddedEtcd.Stop()
-	}
-	if s.storage != nil {
-		s.storage.Stop()
-	}
 	s.probeBundle.Stop()
 	s.onDemandClient.Stop()
 	s.piClient.Stop()
@@ -175,6 +169,12 @@ func (s *Server) Stop() {
 	s.topologyManager.Stop()
 	s.etcdClient.Stop()
 	s.wgServers.Wait()
+	if s.embeddedEtcd != nil {
+		s.embeddedEtcd.Stop()
+	}
+	if s.storage != nil {
+		s.storage.Stop()
+	}
 	if tr, ok := http.DefaultTransport.(interface {
 		CloseIdleConnections()
 	}); ok {

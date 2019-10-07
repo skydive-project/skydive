@@ -25,19 +25,7 @@ import (
 	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
-// Probe describes a probe that reads OpenContrail database and updates the graph
-type Probe struct {
-}
-
-// Start the probe
-func (p *Probe) Start() {
-}
-
-// Stop the probe
-func (p *Probe) Stop() {
-}
-
-// Init initializes a new OpenContrail probe based on configuration
-func (p *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+// NewProbe returns a new OpenContrail topology probe
+func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	return nil, common.ErrNotImplemented
 }

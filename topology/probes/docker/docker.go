@@ -256,8 +256,8 @@ func (p *ProbeHandler) Do(ctx context.Context, wg *sync.WaitGroup) error {
 	return nil
 }
 
-// Init initializes a new topology Docker probe
-func (p *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+// NewProbe returns a new topology Docker probe
+func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	nsHandler := bundle.GetHandler("netns")
 	if nsHandler == nil {
 		return nil, errors.New("unable to find the netns handler")
@@ -266,10 +266,12 @@ func (p *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler
 	dockerURL := ctx.Config.GetString("agent.topology.docker.url")
 	netnsRunPath := ctx.Config.GetString("agent.topology.docker.netns.run_path")
 
-	p.nsProbe = nsHandler.(*ns.ProbeHandler)
-	p.url = dockerURL
-	p.containerMap = make(map[string]containerInfo)
-	p.Ctx = ctx
+	p := &ProbeHandler{
+		nsProbe:      nsHandler.(*ns.ProbeHandler),
+		url:          dockerURL,
+		containerMap: make(map[string]containerInfo),
+		Ctx:          ctx,
+	}
 
 	if netnsRunPath != "" {
 		p.nsProbe.Exclude(netnsRunPath + "/default")

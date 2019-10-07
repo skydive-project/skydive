@@ -407,14 +407,15 @@ func (probe *Probe) Do(ctx context.Context, wg *sync.WaitGroup) error {
 	return nil
 }
 
-// Init initializes a libvirt topology probe
-func (probe *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+// NewProbe returns a new topology Libvirt probe
+func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	uri := ctx.Config.GetString("agent.topology.libvirt.url")
-
-	probe.Ctx = ctx
-	probe.tunProcessor = graph.NewProcessor(ctx.Graph, ctx.Graph, graph.Metadata{"Type": "tun"}, "Name")
-	probe.interfaceMap = make(map[string]*Interface)
-	probe.uri = uri
+	probe := &Probe{
+		Ctx:          ctx,
+		tunProcessor: graph.NewProcessor(ctx.Graph, ctx.Graph, graph.Metadata{"Type": "tun"}, "Name"),
+		interfaceMap: make(map[string]*Interface),
+		uri:          uri,
+	}
 
 	return probes.NewProbeWrapper(probe), nil
 }

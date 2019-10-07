@@ -143,7 +143,7 @@ func (rl *ResourceLinker) getLinks(node *Node, direction string) []*Edge {
 }
 
 // Start linking resources by listening for graph events
-func (rl *ResourceLinker) Start() {
+func (rl *ResourceLinker) Start() error {
 	links := make(map[Identifier]bool)
 
 	if len(rl.glhs1) > 0 {
@@ -177,6 +177,8 @@ func (rl *ResourceLinker) Start() {
 			handler.AddEventListener(rl.baListener)
 		}
 	}
+
+	return nil
 }
 
 // Stop linking resources

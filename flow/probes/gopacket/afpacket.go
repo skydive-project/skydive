@@ -17,7 +17,7 @@
  *
  */
 
-package probes
+package gopacket
 
 import (
 	"fmt"
@@ -27,6 +27,7 @@ import (
 	"github.com/google/gopacket/afpacket"
 	"github.com/google/gopacket/layers"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/probes"
 	"golang.org/x/net/bpf"
 )
 
@@ -81,12 +82,12 @@ func (a *AfpacketPacketProbe) Close() {
 }
 
 // Stats returns statistics about captured packets
-func (a *AfpacketPacketProbe) Stats() (*CaptureStats, error) {
+func (a *AfpacketPacketProbe) Stats() (*probes.CaptureStats, error) {
 	_, v3, e := a.handle.tpacket.SocketStats()
 	if e != nil {
 		return nil, fmt.Errorf("Cannot get afpacket capture stats")
 	}
-	return &CaptureStats{
+	return &probes.CaptureStats{
 		PacketsReceived: int64(v3.Packets()),
 		PacketsDropped:  int64(v3.Drops()),
 	}, nil

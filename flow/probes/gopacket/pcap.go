@@ -17,7 +17,7 @@
  *
  */
 
-package probes
+package gopacket
 
 import (
 	"fmt"
@@ -25,6 +25,7 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
+	"github.com/skydive-project/skydive/flow/probes"
 )
 
 // PcapPacketProbe describes a libpcap based packet probe
@@ -39,12 +40,12 @@ func (p *PcapPacketProbe) Close() {
 }
 
 // Stats returns statistics about captured packets
-func (p *PcapPacketProbe) Stats() (*CaptureStats, error) {
+func (p *PcapPacketProbe) Stats() (*probes.CaptureStats, error) {
 	stats, err := p.handle.Stats()
 	if err != nil {
 		return nil, err
 	}
-	return &CaptureStats{
+	return &probes.CaptureStats{
 		PacketsReceived:  int64(stats.PacketsReceived),
 		PacketsDropped:   int64(stats.PacketsDropped),
 		PacketsIfDropped: int64(stats.PacketsIfDropped),

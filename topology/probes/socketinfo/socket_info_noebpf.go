@@ -24,8 +24,9 @@ import (
 	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
-// Init initializes a new SocketInfo Probe
-func (s *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
-	s.Handler = NewProcProbe(ctx)
-	return s, nil
+// NewProbe returns a new socket info topology probe
+func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+	return &ProbeHandler{
+		Handler: NewProcProbe(ctx),
+	}, nil
 }

@@ -40,5 +40,4 @@ type Context struct {
 // Handler defines a topology probe handler
 type Handler interface {
 	probe.Handler
-	Init(ctx Context, bundle *probe.Bundle) (Handler, error)
 }

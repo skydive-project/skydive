@@ -720,9 +720,10 @@ func (o *Probe) OnOvsUpdate(monitor *ovsdb.OvsMonitor, row *libovsdb.RowUpdate) 
 }
 
 // Start the probe
-func (o *Probe) Start() {
+func (o *Probe) Start() error {
 	o.OvsMon.AddMonitorHandler(o)
 	o.OvsMon.StartMonitoring()
+	return nil
 }
 
 // Stop the probe
@@ -731,8 +732,8 @@ func (o *Probe) Stop() {
 	o.cancelFunc()
 }
 
-// Init initializes a new graph OVS database probe
-func (o *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+// NewProbe returns a new OVSDB topology probe
+func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	address := ctx.Config.GetString("ovs.ovsdb")
 	enableStats := ctx.Config.GetBool("ovs.enable_stats")
 
@@ -750,16 +751,16 @@ func (o *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error
 
 	cancelCtx, cancelFunc := context.WithCancel(context.Background())
 
-	o.Ctx = ctx
-	o.uuidToIntf = make(map[string]*graph.Node)
-	o.uuidToPort = make(map[string]*graph.Node)
-	o.intfToPort = make(map[string]*graph.Node)
-	o.portToIntf = make(map[string]*graph.Node)
-	o.portToBridge = make(map[string]*graph.Node)
-	o.OvsMon = mon
-	o.Handler = NewOvsOfProbeHandler(cancelCtx, ctx, mon.Target)
-	o.cancelFunc = cancelFunc
-	o.enableStats = enableStats
-
-	return o, nil
+	return &Probe{
+		Ctx:          ctx,
+		uuidToIntf:   make(map[string]*graph.Node),
+		uuidToPort:   make(map[string]*graph.Node),
+		intfToPort:   make(map[string]*graph.Node),
+		portToIntf:   make(map[string]*graph.Node),
+		portToBridge: make(map[string]*graph.Node),
+		OvsMon:       mon,
+		Handler:      NewOvsOfProbeHandler(cancelCtx, ctx, mon.Target),
+		cancelFunc:   cancelFunc,
+		enableStats:  enableStats,
+	}, nil
 }

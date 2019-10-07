@@ -26,16 +26,7 @@ import (
 	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
-// ProbeHandler describes a Lxd topology graph that enhance the graph
-type ProbeHandler struct{}
-
-// Start the probe handler
-func (p *ProbeHandler) Start() {}
-
-// Stop the probe handler
-func (p *ProbeHandler) Stop() {}
-
-// Init initializes a new topology Lxd probe
-func (p *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+// NewProbe returns a new topology LXD probe
+func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	return nil, common.ErrNotImplemented
 }

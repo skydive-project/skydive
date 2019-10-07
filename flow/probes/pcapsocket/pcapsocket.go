@@ -15,7 +15,7 @@
  *
  */
 
-package probes
+package pcapsocket
 
 import (
 	"fmt"
@@ -25,13 +25,14 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 )
 
-// PcapSocketProbe describes a TCP packet listener that inject packets in a flowtable
-type PcapSocketProbe struct {
-	Ctx       Context
+// Probe describes a TCP packet listener that inject packets in a flowtable
+type Probe struct {
+	Ctx       probes.Context
 	state     common.ServiceState
 	flowTable *flow.Table
 	listener  *net.TCPListener
@@ -39,15 +40,15 @@ type PcapSocketProbe struct {
 	bpfFilter string
 }
 
-// PcapSocketProbeHandler describes a Pcap socket probe in the graph
-type PcapSocketProbeHandler struct {
-	Ctx           Context
+// ProbeHandler describes a Pcap socket probe in the graph
+type ProbeHandler struct {
+	Ctx           probes.Context
 	addr          *net.TCPAddr
 	wg            sync.WaitGroup
 	portAllocator *common.PortAllocator
 }
 
-func (p *PcapSocketProbe) run() {
+func (p *Probe) run() {
 	p.state.Store(common.RunningState)
 
 	packetSeqChan, _ := p.flowTable.Start(nil)
@@ -74,7 +75,7 @@ func (p *PcapSocketProbe) run() {
 }
 
 // RegisterProbe registers a new probe in the graph
-func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e ProbeEventHandler) (Probe, error) {
+func (p *ProbeHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e probes.ProbeEventHandler) (probes.Probe, error) {
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
 		return nil, fmt.Errorf("No TID for node %v", n)
@@ -99,9 +100,9 @@ func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Cap
 	}
 
 	uuids := flow.UUIDs{NodeTID: tid, CaptureID: capture.UUID}
-	ft := p.Ctx.FTA.Alloc(uuids, tableOptsFromCapture(capture))
+	ft := p.Ctx.FTA.Alloc(uuids, probes.TableOptsFromCapture(capture))
 
-	probe := &PcapSocketProbe{
+	probe := &Probe{
 		Ctx:       p.Ctx,
 		state:     common.StoppedState,
 		flowTable: ft,
@@ -115,7 +116,7 @@ func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Cap
 	go func() {
 		defer p.wg.Done()
 
-		e.OnStarted(&CaptureMetadata{PCAPSocket: tcpAddr.String()})
+		e.OnStarted(&probes.CaptureMetadata{PCAPSocket: tcpAddr.String()})
 
 		probe.run()
 
@@ -126,8 +127,8 @@ func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Cap
 }
 
 // UnregisterProbe a probe
-func (p *PcapSocketProbeHandler) UnregisterProbe(n *graph.Node, e ProbeEventHandler, fp Probe) error {
-	probe := fp.(*PcapSocketProbe)
+func (p *ProbeHandler) UnregisterProbe(n *graph.Node, e probes.ProbeEventHandler, fp probes.Probe) error {
+	probe := fp.(*Probe)
 
 	p.Ctx.FTA.Release(probe.flowTable)
 
@@ -145,21 +146,22 @@ func (p *PcapSocketProbeHandler) UnregisterProbe(n *graph.Node, e ProbeEventHand
 }
 
 // Start the probe
-func (p *PcapSocketProbeHandler) Start() {
+func (p *ProbeHandler) Start() error {
+	return nil
 }
 
 // Stop the probe
-func (p *PcapSocketProbeHandler) Stop() {
+func (p *ProbeHandler) Stop() {
 	p.wg.Wait()
 }
 
 // CaptureTypes supported
-func (p *PcapSocketProbeHandler) CaptureTypes() []string {
+func (p *ProbeHandler) CaptureTypes() []string {
 	return []string{"pcapsocket"}
 }
 
-// Init initializes a new pcap socket probe
-func (p *PcapSocketProbeHandler) Init(ctx Context, bundle *probe.Bundle) (FlowProbeHandler, error) {
+// NewProbe returns a new pcapsocket probe
+func NewProbe(ctx probes.Context, bundle *probe.Bundle) (probes.FlowProbeHandler, error) {
 	listen := ctx.Config.GetString("agent.flow.pcapsocket.bind_address")
 	minPort := ctx.Config.GetInt("agent.flow.pcapsocket.min_port")
 	maxPort := ctx.Config.GetInt("agent.flow.pcapsocket.max_port")
@@ -174,9 +176,9 @@ func (p *PcapSocketProbeHandler) Init(ctx Context, bundle *probe.Bundle) (FlowPr
 		return nil, err
 	}
 
-	p.Ctx = ctx
-	p.addr = addr
-	p.portAllocator = portAllocator
-
-	return p, nil
+	return &ProbeHandler{
+		Ctx:           ctx,
+		addr:          addr,
+		portAllocator: portAllocator,
+	}, nil
 }

@@ -18,17 +18,24 @@
 package probe
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/skydive-project/skydive/common"
 )
 
-// ErrProbeNotCompiled is thrown when a flow probe was not compiled within the binary
-var ErrProbeNotCompiled = fmt.Errorf("probe not compiled")
+// ErrNotCompiled is thrown when a probe was not compiled within the binary
+var ErrNotCompiled = fmt.Errorf("probe not compiled")
 
-// Handler describes a ProbeHandler. A ProbeHandler aims to create probe
+// ErrNotStopped is used when a not stopped probe is started
+var ErrNotStopped = errors.New("probe is not stopped")
+
+// ErrNotRunning is used when a probe is not running
+var ErrNotRunning = errors.New("probe is not running")
+
+// Handler describes a probe
 type Handler interface {
-	Start()
+	Start() error
 	Stop()
 }
 
@@ -49,13 +56,17 @@ type Bundle struct {
 }
 
 // Start a bundle of probes
-func (p *Bundle) Start() {
+func (p *Bundle) Start() error {
 	p.RLock()
 	defer p.RUnlock()
 
 	for _, probe := range p.Handlers {
-		probe.Start()
+		if err := probe.Start(); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 // Stop a bundle of probes

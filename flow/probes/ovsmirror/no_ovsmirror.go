@@ -1,4 +1,4 @@
-// +build !linux !vpp
+// +build !linux
 
 /*
  * Copyright (C) 2018 Red Hat, Inc.
@@ -17,15 +17,15 @@
  *
  */
 
-package vpp
+package ovsmirror
 
 import (
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/probe"
-	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
-// NewProbe returns a new VPP probe
-func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+// NewProbe returns an empty flow probe handler and an error
+func NewProbe(ctx probes.Context, bundle *probe.Bundle) (probes.FlowProbeHandler, error) {
 	return nil, common.ErrNotImplemented
 }

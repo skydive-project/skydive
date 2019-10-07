@@ -25,19 +25,7 @@ import (
 	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
-// ProbeHandler describes a probe that collects active connections
-type ProbeHandler struct {
-}
-
-// Start the socket info probe
-func (s *ProbeHandler) Start() {
-}
-
-// Stop the socket info probe
-func (s *ProbeHandler) Stop() {
-}
-
-// Init initializes a new SocketInfo Probe
-func (s *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+// NewProbe returns a new socketinfo topology probe
+func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	return nil, common.ErrNotImplemented
 }

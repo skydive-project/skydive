@@ -387,7 +387,7 @@ func (p *Probe) OnNodeDeleted(n *graph.Node) {
 }
 
 // Start the probe
-func (p *Probe) Start() {
+func (p *Probe) Start() error {
 	p.Ctx.Graph.AddEventListener(p)
 
 	go func() {
@@ -438,6 +438,8 @@ func (p *Probe) Start() {
 
 		p.nodeUpdater()
 	}()
+
+	return nil
 }
 
 // Stop the probe
@@ -446,8 +448,8 @@ func (p *Probe) Stop() {
 	close(p.nodeUpdaterChan)
 }
 
-// Init initializes a new neutron probe based on configuration
-func (p *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+// NewProbe returns a new Neutron topology probe
+func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	authURL := ctx.Config.GetString("agent.topology.neutron.auth_url")
 	domainName := ctx.Config.GetString("agent.topology.neutron.domain_name")
 	endpointType := ctx.Config.GetString("agent.topology.neutron.endpoint_type")
@@ -467,26 +469,22 @@ func (p *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error
 		return nil, fmt.Errorf("Endpoint type '%s' is not valid (must be 'public', 'admin' or 'internal')", endpointType)
 	}
 
-	p.Ctx = ctx
-
-	// only looking for interfaces matching the following regex as nova, neutron interfaces match this pattern
-	p.intfRegexp = regexp.MustCompile(`((tap|qr-|qg-|qvo)[a-fA-F0-9\-]+)|(vnet[0-9]+)`)
-	p.nsRegexp = regexp.MustCompile(`(qrouter|qdhcp)-[a-fA-F0-9\-]+`)
-
-	p.opts = gophercloud.AuthOptions{
-		IdentityEndpoint: authURL,
-		Username:         username,
-		Password:         password,
-		TenantName:       tenantName,
-		DomainName:       domainName,
-		AllowReauth:      true,
-	}
-
-	p.regionName = regionName
-	p.availability = availability
-
-	p.nodeUpdaterChan = make(chan graph.Identifier, 500)
-	p.portMetadata = make(map[graph.Identifier]portMetadata)
-
-	return p, nil
+	return &Probe{
+		Ctx: ctx,
+		// only looking for interfaces matching the following regex as nova, neutron interfaces match this pattern
+		intfRegexp: regexp.MustCompile(`((tap|qr-|qg-|qvo)[a-fA-F0-9\-]+)|(vnet[0-9]+)`),
+		nsRegexp:   regexp.MustCompile(`(qrouter|qdhcp)-[a-fA-F0-9\-]+`),
+		opts: gophercloud.AuthOptions{
+			IdentityEndpoint: authURL,
+			Username:         username,
+			Password:         password,
+			TenantName:       tenantName,
+			DomainName:       domainName,
+			AllowReauth:      true,
+		},
+		regionName:      regionName,
+		availability:    availability,
+		nodeUpdaterChan: make(chan graph.Identifier, 500),
+		portMetadata:    make(map[graph.Identifier]portMetadata),
+	}, nil
 }

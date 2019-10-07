@@ -349,10 +349,10 @@ func (p *ProbeHandler) initializeFolder(path string) {
 	}
 }
 
-func (p *ProbeHandler) initialize(path string) {
+func (p *ProbeHandler) initialize(path string) error {
 	defer p.wg.Done()
 
-	common.Retry(func() error {
+	return common.Retry(func() error {
 		if p.state.Load() != common.RunningState {
 			return nil
 		}
@@ -384,16 +384,6 @@ func (p *ProbeHandler) isFolder(path string) bool {
 // Start the probe
 func (p *ProbeHandler) start() {
 	defer p.wg.Done()
-
-	var err error
-	if p.hostNs, err = netns.Get(); err != nil {
-		p.Ctx.Logger.Errorf("Unable to get host namespace: %s", err)
-		return
-	}
-
-	if !p.state.CompareAndSwap(common.StoppedState, common.RunningState) {
-		return
-	}
 
 	for _, path := range p.paths {
 		p.wg.Add(1)
@@ -461,9 +451,20 @@ func (p *ProbeHandler) start() {
 }
 
 // Start the probe
-func (p *ProbeHandler) Start() {
+func (p *ProbeHandler) Start() error {
+	if !p.state.CompareAndSwap(common.StoppedState, common.RunningState) {
+		return probe.ErrNotStopped
+	}
+
+	var err error
+	if p.hostNs, err = netns.Get(); err != nil {
+		p.Ctx.Logger.Errorf("Unable to get host namespace: %s", err)
+		return err
+	}
+
 	p.wg.Add(1)
 	go p.start()
+	return nil
 }
 
 // Stop the probe
@@ -478,8 +479,8 @@ func (p *ProbeHandler) Stop() {
 	p.state.Store(common.StoppedState)
 }
 
-// Init initializes a new topology runc probe
-func (p *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+// NewProbe returns a new runc topology probe
+func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	nsHandler := bundle.GetHandler("netns")
 	if nsHandler == nil {
 		return nil, errors.New("unable to find the netns handler")
@@ -490,13 +491,11 @@ func (p *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler
 		return nil, fmt.Errorf("Unable to create a new Watcher: %s", err)
 	}
 
-	paths := ctx.Config.GetStringSlice("agent.topology.runc.run_path")
-
-	p.ProbeHandler = nsHandler.(*ns.ProbeHandler)
-	p.state = common.StoppedState
-	p.watcher = watcher
-	p.paths = paths
-	p.containers = make(map[string]*container)
-
-	return p, nil
+	return &ProbeHandler{
+		ProbeHandler: nsHandler.(*ns.ProbeHandler),
+		state:        common.StoppedState,
+		watcher:      watcher,
+		paths:        ctx.Config.GetStringSlice("agent.topology.runc.run_path"),
+		containers:   make(map[string]*container),
+	}, nil
 }

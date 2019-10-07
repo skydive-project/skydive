@@ -25,19 +25,7 @@ import (
 	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
-// Probe describes a Libvirt probe that does nothing
-type Probe struct {
-}
-
-// Start of the probe interface
-func (p *Probe) Start() {
-}
-
-// Stop of the probe interface
-func (p *Probe) Stop() {
-}
-
-// Init initializes a libvirt topology probe
-func (p *Probe) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
+// NewProbe returns a new topology Libvirt probe
+func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	return nil, common.ErrNotImplemented
 }

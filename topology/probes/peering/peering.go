@@ -33,10 +33,11 @@ type Probe struct {
 }
 
 // Start the MAC peering resolver probe
-func (p *Probe) Start() {
+func (p *Probe) Start() error {
 	p.peerIntfMACIndexer.Start()
 	p.macIndexer.Start()
 	p.linker.Start()
+	return nil
 }
 
 // Stop the probe

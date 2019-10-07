@@ -2,18 +2,12 @@ package probes
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"time"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
-)
-
-var (
-	// ErrNotStopped is used when a not stopped probe is started
-	ErrNotStopped = errors.New("service is not stopped")
 )
 
 type handler interface {
@@ -46,7 +40,7 @@ func newServiceManager(handler handler, retryInterval time.Duration) *serviceMan
 // Start the daemon
 func (sm *serviceManager) Start(ctx context.Context) error {
 	if !sm.state.CompareAndSwap(common.StoppedState, common.StartingState) {
-		return ErrNotStopped
+		return probe.ErrNotStopped
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -110,10 +104,8 @@ func (p *ProbeWrapper) GetStatus() interface{} {
 }
 
 // Start the probe
-func (p *ProbeWrapper) Start() {
-	if err := p.sm.Start(context.Background()); err != nil {
-		logging.GetLogger().Error(err)
-	}
+func (p *ProbeWrapper) Start() error {
+	return p.sm.Start(context.Background())
 }
 
 // Stop the probe
