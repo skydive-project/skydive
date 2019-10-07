@@ -149,37 +149,45 @@ static inline void fill_ipv6(struct __sk_buff *skb, size_t offset, __u8 *dst, __
         update_hash_word(hash, w);
 }
 
-static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, size_t offset, int len,
-                                  struct flow *flow, __u8 swap, __u8 netequal)
-{
-        struct transport_layer *layer = &flow->transport_layer;
+struct transport_param {
+	struct flow *flow;
+	size_t offset;
+	int len;
+	__u8 swap;
+	__u8 netequal;
+	__u8 protocol;
+};
 
-        layer->protocol = protocol;
-        layer->port_src = load_half(skb, offset);
-        layer->port_dst = load_half(skb, offset + sizeof(__be16));
+static inline void fill_transport(struct __sk_buff *skb, struct transport_param *p)
+{
+        struct transport_layer *layer = &p->flow->transport_layer;
+
+        layer->protocol = p->protocol;
+        layer->port_src = load_half(skb, p->offset);
+        layer->port_dst = load_half(skb, p->offset + sizeof(__be16));
 
         __u64 hash_src = 0;
         update_hash_half(&hash_src, layer->port_src);
         __u64 hash_dst = 0;
         update_hash_half(&hash_dst, layer->port_dst);
-        if (netequal)
+        if (p->netequal)
         {
-                swap = layer->port_src > layer->port_dst;
+                p->swap = layer->port_src > layer->port_dst;
         }
 
-        switch (protocol)
+        switch (p->protocol)
         {
         case IPPROTO_SCTP:
-                add_layer(flow, SCTP_LAYER);
+                add_layer(p->flow, SCTP_LAYER);
                 break;
         case IPPROTO_UDP:
-                add_layer(flow, UDP_LAYER);
+                add_layer(p->flow, UDP_LAYER);
                 break;
         case IPPROTO_TCP:
         {
-                __u64 tm = flow->last;
-                __u8 flags = load_byte(skb, offset + 13);
-                add_layer(flow, TCP_LAYER);
+                __u64 tm = p->flow->last;
+                __u8 flags = load_byte(skb, p->offset + 13);
+                add_layer(p->flow, TCP_LAYER);
                 layer->ab_rst = (flags & 0x04) ? tm : 0;
                 layer->ab_syn = (flags & 0x02) ? tm : 0;
                 layer->ab_fin = (flags & 0x01) ? tm : 0;
@@ -187,7 +195,7 @@ static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, size_t o
         }
         }
 
-        if (swap)
+        if (p->swap)
         {
                 layer->_hash = FNV_BASIS ^ rotl(hash_dst, 16) ^ hash_src;
         }
@@ -196,7 +204,7 @@ static inline void fill_transport(struct __sk_buff *skb, __u8 protocol, size_t o
                 layer->_hash = FNV_BASIS ^ rotl(hash_src, 16) ^ hash_dst;
         }
 
-        flow->layers_info |= TRANSPORT_LAYER_INFO;
+        p->flow->layers_info |= TRANSPORT_LAYER_INFO;
 }
 
 static inline void fill_icmpv4(struct __sk_buff *skb, int offset, struct flow *flow)
