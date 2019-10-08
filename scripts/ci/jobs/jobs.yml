@@ -766,23 +766,6 @@
           recipients: skydivesoftware@gmail.com
 
 - job:
-    name: skydive-tripleo-tests
-    defaults: skydive
-    parameters:
-      - skydive-default-parameters
-      - skydive-labels:
-          slave-name: tripleo
-    triggers:
-      - skydive-pull-request:
-          name: tripleo-tests
-          trigger-prefix: "all "
-          only-trigger-phrase: true
-          cancel-builds-on-update: false
-    builders:
-      - skydive-test:
-          test: scripts/ci/run-tripleo-tests.sh
-
-- job:
     name: skydive-ppc64le-tests
     defaults: skydive
     parameters:
