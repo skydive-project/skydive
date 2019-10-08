@@ -8,7 +8,7 @@ require (
 	github.com/Microsoft/go-winio v0.0.0-20170201004330-fff283ad5116 // indirect
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/VerizonDigital/vflow v0.0.0-20190111005900-eb30d936249e
-	github.com/abbot/go-http-auth v0.0.0-20160118225252-ca62df34b58d
+	github.com/abbot/go-http-auth v0.4.0
 	github.com/bennyscetbun/jsongo v0.0.0-20190110163710-9624bef8c57b // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/casbin/casbin v0.0.0-20181031010332-5ff5a6f5e38a

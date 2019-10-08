@@ -34,8 +34,8 @@ github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 h1:fLjPD/aNc3UIO
 github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6/go.mod h1:3eOhrUMpNV+6aFIbp5/iudMxNCF27Vw2OZgy4xEx0Fg=
 github.com/VerizonDigital/vflow v0.0.0-20190111005900-eb30d936249e h1:sgN87Xf7rpa0EyEcTR5+JpVSLMdFR6nd9AJPeT8Obxo=
 github.com/VerizonDigital/vflow v0.0.0-20190111005900-eb30d936249e/go.mod h1:ndgc/OHsTT/XTXrEqJVhnL3MXJy4i/Y/gl1C3frfOSQ=
-github.com/abbot/go-http-auth v0.0.0-20160118225252-ca62df34b58d h1:tsTKMR/AWHVVxC1dErTv08F9TzPsBONstcje3FxemZ8=
-github.com/abbot/go-http-auth v0.0.0-20160118225252-ca62df34b58d/go.mod h1:Cz6ARTIzApMJDzh5bRMSUou6UMSp0IEXg9km/ci7TJM=
+github.com/abbot/go-http-auth v0.4.0 h1:QjmvZ5gSC7jm3Zg54DqWE/T5m1t2AfDu6QlXJT0EVT0=
+github.com/abbot/go-http-auth v0.4.0/go.mod h1:Cz6ARTIzApMJDzh5bRMSUou6UMSp0IEXg9km/ci7TJM=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf h1:qet1QNfXsQxTZqLG4oE62mJzwPIB8+Tee4RNCL9ulrY=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
