@@ -142,3 +142,5 @@ replace (
 	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20190817020851-f2f3a405f61d
 	k8s.io/client-go => k8s.io/client-go v0.0.0-20190620085101-78d2af792bab
 )
+
+go 1.11
