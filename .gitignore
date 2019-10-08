@@ -11,6 +11,6 @@ contrib/dev/.vagrant/
 contrib/snort/snortSkydive
 contrib/docker/skydive.*
 skydive.yml
-probe/ebpf/flow.o
+ebpf/flow.o
 js/node_modules/
 .idea

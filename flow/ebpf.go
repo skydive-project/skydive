@@ -32,7 +32,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 )
 
-// #cgo CFLAGS: -I../probe/ebpf
+// #cgo CFLAGS: -I../ebpf
 // #include "flow.h"
 import "C"
 

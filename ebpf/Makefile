@@ -27,7 +27,7 @@ all: clean docker-ebpf-build
 	rm -f ebpf.bc
 
 clean:
-	rm -f probe/ebpf/*.o
+	rm -f ebpf/*.o
 
 build-ebpf-docker-image:
 	docker build -t $(DOCKER_EBPF_BUILDER_IMAGE) -f $(DOCKER_FILE) .
@@ -42,6 +42,6 @@ docker-ebpf-build: pull-ebpf-docker-image
 		--env=GOPATH=/go \
 		-v $(GOPATH):/go \
 		-v $(GOPATH)/pkg:/go/pkg \
-		--workdir=/go/src/github.com/skydive-project/skydive/probe/ebpf \
+		--workdir=/go/src/github.com/skydive-project/skydive/ebpf \
 		$(DOCKER_EBPF_BUILDER_IMAGE) \
 		sh -c "make ebpf-build && chown -R $(UID):$(GID) ."
