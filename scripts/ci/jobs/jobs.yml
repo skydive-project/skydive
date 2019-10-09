@@ -815,7 +815,7 @@
     parameters:
       - skydive-default-parameters
       - skydive-labels:
-          slave-name: baremetal
+          slave-name: sriov
     triggers:
       - skydive-pull-request:
           name: functional-hw-tests
