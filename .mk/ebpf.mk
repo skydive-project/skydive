@@ -1,11 +1,11 @@
 .PHONY: .ebpf
 .ebpf: moddownload
 ifeq ($(WITH_EBPF_DOCKER_BUILDER), true)
-	$(MAKE) -C probe/ebpf docker-ebpf-build
+	$(MAKE) -C ebpf docker-ebpf-build
 else
-	$(MAKE) -C probe/ebpf
+	$(MAKE) -C ebpf
 endif
 
 .PHONY: .ebpf.clean
 .ebpf.clean:
-	$(MAKE) -C probe/ebpf clean
+	$(MAKE) -C ebpf clean

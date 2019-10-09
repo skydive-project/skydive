@@ -34,16 +34,16 @@ import (
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/ebpf/statics"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
-	"github.com/skydive-project/skydive/statics"
 	"github.com/skydive-project/skydive/topology"
 )
 
 /*
-#cgo CFLAGS: -I../../../probe/ebpf
+#cgo CFLAGS: -I../../../ebpf
 #include "flow.h"
 #include <string.h>
 #include <sys/resource.h>
@@ -385,11 +385,11 @@ func (p *ProbesHandler) loadModule() (*ebpf.Collection, error) {
 		return nil, fmt.Errorf("Failed to adjust rlimit map lock")
 	}
 
-	module, err := p.loadModuleFromAsset("probe/ebpf/flow-gre.o")
+	module, err := p.loadModuleFromAsset("ebpf/flow-gre.o")
 	if err != nil {
 		p.Ctx.Logger.Errorf("Unable to load eBPF elf binary (host %s) from bindata: %s, trying to fallback", runtime.GOARCH, err)
 
-		module, err = p.loadModuleFromAsset("probe/ebpf/flow.o")
+		module, err = p.loadModuleFromAsset("ebpf/flow.o")
 		if err != nil {
 			return nil, fmt.Errorf("Unable to load fallback eBPF elf binary (host %s) from bindata: %s", runtime.GOARCH, err)
 		}

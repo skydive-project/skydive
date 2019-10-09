@@ -23,6 +23,7 @@ package main
 
 import (
 	_ "git.fd.io/govpp.git/cmd/binapi-generator"
+	_ "github.com/davecgh/go-spew/spew"
 	_ "github.com/go-swagger/go-swagger/cmd/swagger"
 	_ "github.com/gogo/protobuf"
 	_ "github.com/golang/protobuf/protoc-gen-go"
@@ -32,4 +33,5 @@ import (
 	_ "github.com/mailru/easyjson/easyjson"
 	_ "github.com/mattn/goveralls"
 	_ "github.com/t-yuki/gocover-cobertura"
+	_ "golang.org/x/tools/go/loader"
 )

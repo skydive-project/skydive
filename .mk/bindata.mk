@@ -4,8 +4,8 @@ EXTRABINDATA:=
 
 EBPF_PROBES:=
 ifeq ($(WITH_EBPF), true)
-  EXTRABINDATA+=probe/ebpf/*.o
-  EBPF_PROBES+=probe/ebpf/flow.o probe/ebpf/flow-gre.o
+  EXTRABINDATA+=ebpf/*.o
+  EBPF_PROBES+=ebpf/flow.o ebpf/flow-gre.o
 endif
 
 BINDATA_DIRS := \
@@ -22,9 +22,12 @@ BINDATA_DIRS := \
 	${EXTRABINDATA}
 
 .PHONY: .bindata
-.bindata: statics/bindata.go
+.bindata: statics/bindata.go ebpf/statics/bindata.go
 
-statics/bindata.go: statics/js/bundle.js $(EBPF_PROBES) $(STATIC_FILES)
-	echo $(STATIC_FILES)
+ebpf/statics/bindata.go: $(EBPF_PROBES)
+	go run ${GO_BINDATA_GITHUB} ${GO_BINDATA_FLAGS} -nometadata -o ebpf/statics/bindata.go -pkg=statics -ignore=bindata.go $(EBPF_PROBES)
+	gofmt -w -s ebpf/statics/bindata.go
+
+statics/bindata.go: statics/js/bundle.js $(STATIC_FILES)
 	go run ${GO_BINDATA_GITHUB} ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go $(BINDATA_DIRS)
 	gofmt -w -s statics/bindata.go

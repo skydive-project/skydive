@@ -5,12 +5,12 @@ vendor/gopkg.in/
 vendor/go.uber.org/
 vendor/k8s.io/
 contrib/packaging/rpm/*.tar.gz
-statics/bindata.go
 contrib/vagrant/.vagrant/
 contrib/dev/.vagrant/
 contrib/snort/snortSkydive
 contrib/docker/skydive.*
 skydive.yml
-probe/ebpf/flow.o
+ebpf/flow.o
+ebpf/flow-gre.o
 js/node_modules/
 .idea

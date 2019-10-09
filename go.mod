@@ -8,7 +8,7 @@ require (
 	github.com/Microsoft/go-winio v0.0.0-20170201004330-fff283ad5116 // indirect
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/VerizonDigital/vflow v0.0.0-20190111005900-eb30d936249e
-	github.com/abbot/go-http-auth v0.0.0-20160118225252-ca62df34b58d
+	github.com/abbot/go-http-auth v0.4.0
 	github.com/bennyscetbun/jsongo v0.0.0-20190110163710-9624bef8c57b // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/casbin/casbin v0.0.0-20181031010332-5ff5a6f5e38a
@@ -104,9 +104,10 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20150808065054-e02fc20de94c // indirect
 	github.com/xeipuuv/gojsonschema v0.0.0-20180618132009-1d523034197f
 	go.uber.org/zap v1.10.0
-	golang.org/x/net v0.0.0-20190926025831-c00fd9afed17
+	golang.org/x/crypto v0.0.0-20191002192127-34f69633bfdc // indirect
+	golang.org/x/net v0.0.0-20191007182048-72f939374954
 	golang.org/x/sys v0.0.0-20190924154521-2837fb4f24fe
-	golang.org/x/tools v0.0.0-20190925230517-ea99b82c7b93
+	golang.org/x/tools v0.0.0-20191007185444-6536af71d98a
 	google.golang.org/genproto v0.0.0-20190926190326-7ee9db18f195 // indirect
 	google.golang.org/grpc v1.23.1
 	gopkg.in/errgo.v1 v1.0.0-20161222125816-442357a80af5 // indirect
@@ -135,7 +136,11 @@ replace (
 	github.com/skydive-project/skydive/scripts/gendecoder => ./scripts/gendecoder
 	github.com/spf13/viper v1.4.0 => github.com/lebauce/viper v0.0.0-20190903114911-3b7a98e30843
 	github.com/vishvananda/netlink v1.0.0 => github.com/lebauce/netlink v0.0.0-20190122103356-fa328be7c8d2
+	golang.org/x/sys => golang.org/x/sys v0.0.0-20190412213103-97732733099d
+	golang.org/x/tools => golang.org/x/tools v0.0.0-20190925230517-ea99b82c7b93
 	k8s.io/api => k8s.io/api v0.0.0-20190918195907-bd6ac527cfd2
 	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20190817020851-f2f3a405f61d
 	k8s.io/client-go => k8s.io/client-go v0.0.0-20190620085101-78d2af792bab
 )
+
+go 1.11
