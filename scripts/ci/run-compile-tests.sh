@@ -33,10 +33,10 @@ make WITH_DPDK=true WITH_EBPF=true WITH_VPP=true WITH_EBPF_DOCKER_BUILDER=true W
     WITH_HELM=true VERBOSE=true
 
 # Compile Skydive for Windows
-GO111MODULE=on GOOS=windows GOARCH=amd64 go build github.com/skydive-project/skydive
+GOOS=windows GOARCH=amd64 go build github.com/skydive-project/skydive
 
 # Compile Skydive for MacOS
-GO111MODULE=on GOOS=darwin GOARCH=amd64 go build github.com/skydive-project/skydive
+GOOS=darwin GOARCH=amd64 go build github.com/skydive-project/skydive
 
 # Compile profiling
 make WITH_PROF=true VERBOSE=true

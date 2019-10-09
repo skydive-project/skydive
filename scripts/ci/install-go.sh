@@ -16,6 +16,7 @@ chmod +x ~/bin/gimme
 # before changing this be sure that it will not break the RHEL packaging
 eval "$(gimme 1.11.13)"
 
+export GO111MODULE=on
 export GOPATH=$WORKSPACE
 export PATH=$PATH:$GOPATH/bin
 
