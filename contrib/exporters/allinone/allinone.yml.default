@@ -34,6 +34,8 @@ pipeline:
       max_seconds_per_object: 60
       max_seconds_per_stream: 86400
       max_flow_array_size: 100000
+  account:
+    type: none
   write:
     type: s3
     s3:

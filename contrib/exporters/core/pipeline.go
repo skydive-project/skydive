@@ -69,6 +69,12 @@ type Storer interface {
 	SetPipeline(p *Pipeline)
 }
 
+// Accounter helps in tracking how many bytes were exportered
+type Accounter interface {
+	Reset()
+	Add(bytes int64)
+}
+
 // Writer allows uploading objects to an object storage service
 type Writer interface {
 	Write(bucket, objectKey, data, contentType, contentEncoding string, metadata map[string]*string) error
@@ -89,6 +95,7 @@ var (
 	EncoderHandlers     HandlersMap
 	CompressorHandlers  HandlersMap
 	StorerHandlers      HandlersMap
+	AccounterHandlers   HandlersMap
 	WriterHandlers      HandlersMap
 )
 
@@ -136,6 +143,9 @@ func init() {
 	StorerHandlers.Register("buffered", NewStoreBuffered, true)
 	StorerHandlers.Register("direct", NewStoreDirect, false)
 
+	AccounterHandlers = make(HandlersMap)
+	AccounterHandlers.Register("none", NewAccountNone, true)
+
 	WriterHandlers = make(HandlersMap)
 	WriterHandlers.Register("s3", NewWriteS3, true)
 	WriterHandlers.Register("stdout", NewWriteStdout, false)
@@ -152,6 +162,7 @@ type Pipeline struct {
 	Encoder     Encoder
 	Compressor  Compressor
 	Storer      Storer
+	Accounter   Accounter
 	Writer      Writer
 }
 
@@ -192,6 +203,11 @@ func NewPipeline(cfg *viper.Viper) (*Pipeline, error) {
 		return nil, err
 	}
 
+	accounter, err := AccounterHandlers.Init(cfg, "account")
+	if err != nil {
+		return nil, err
+	}
+
 	writer, err := WriterHandlers.Init(cfg, "write")
 	if err != nil {
 		return nil, err
@@ -205,6 +221,7 @@ func NewPipeline(cfg *viper.Viper) (*Pipeline, error) {
 		Encoder:     encoder.(Encoder),
 		Compressor:  compressor.(Compressor),
 		Storer:      storer.(Storer),
+		Accounter:   accounter.(Accounter),
 		Writer:      writer.(Writer),
 	}
 	storer.(Storer).SetPipeline(p)
