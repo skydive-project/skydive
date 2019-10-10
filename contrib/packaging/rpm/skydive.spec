@@ -144,7 +144,6 @@ install -D -m 644 skydive-bash-completion.sh %{buildroot}/%{_sysconfdir}/bash_co
 install -d -m 755 %{buildroot}/%{_datadir}/skydive-ansible
 cp -R contrib/ansible/* %{buildroot}/%{_datadir}/skydive-ansible/
 install -d -m 755 %{buildroot}/%{_datadir}/doc/skydive-ansible
-cp -R contrib/tripleo/* %{buildroot}/%{_datadir}/doc/skydive-ansible/
 
 # SELinux
 install -D -m 644 contrib/packaging/rpm/skydive.pp.bz2 %{buildroot}%{_datadir}/selinux/packages/skydive.pp.bz2
@@ -241,7 +240,6 @@ fi
 %{_unitdir}/skydive-analyzer.service
 
 %files ansible
-%doc %{_docdir}/skydive-ansible/skydive-tripleo-inventory
 %{_datadir}/skydive-ansible
 
 %files selinux
