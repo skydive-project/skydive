@@ -1,11 +1,11 @@
 .PHONY: contribs.clean
-contribs.clean: contrib.exporters.clean contrib.snort.clean contrib.collectd.clean
+contribs.clean: contrib.exporters.clean contrib.snort.clean
 
 .PHONY: contribs.test
 contribs.test: contrib.exporters.test
 
 .PHONY: contribs
-contribs: contrib.exporters contrib.snort contrib.collectd
+contribs: contrib.exporters contrib.snort
 
 .PHONY: contribs.static
 contribs.static:
@@ -30,11 +30,3 @@ contrib.snort.clean:
 .PHONY: contrib.snort
 contrib.snort:genlocalfiles
 	$(MAKE) -C contrib/snort
-
-.PHONY: contrib.collectd.clean
-contrib.collectd.clean:
-	$(MAKE) -C contrib/collectd clean
-
-.PHONY: contrib.collectd
-contrib.collectd: genlocalfiles
-	$(MAKE) -C contrib/collectd

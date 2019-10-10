@@ -12,8 +12,14 @@ cd ${GOPATH}/src/github.com/skydive-project/skydive
 rm -rf /tmp/collectd
 git clone https://github.com/collectd/collectd.git /tmp/collectd
 
+# Compile collectd plugin
+rm -rf ../skydive-collectd-plugin
+git clone https://github.com/skydive-project/skydive-collectd-plugin ../skydive-collectd-plugin
+echo "replace github.com/skydive-project/skydive => ../skydive" >> ../skydive-collectd-plugin/go.mod
+COLLECTD_SRC=/tmp/collectd make -C ../skydive-collectd-plugin
+
 # Compile all contribs
-COLLECTD_SRC=/tmp/collectd make contribs
+make contribs
 
 # Compile with default options
 make
@@ -27,10 +33,10 @@ make WITH_DPDK=true WITH_EBPF=true WITH_VPP=true WITH_EBPF_DOCKER_BUILDER=true W
     WITH_HELM=true VERBOSE=true
 
 # Compile Skydive for Windows
-GO111MODULE=on GOOS=windows GOARCH=amd64 go build github.com/skydive-project/skydive
+GOOS=windows GOARCH=amd64 go build github.com/skydive-project/skydive
 
 # Compile Skydive for MacOS
-GO111MODULE=on GOOS=darwin GOARCH=amd64 go build github.com/skydive-project/skydive
+GOOS=darwin GOARCH=amd64 go build github.com/skydive-project/skydive
 
 # Compile profiling
 make WITH_PROF=true VERBOSE=true
