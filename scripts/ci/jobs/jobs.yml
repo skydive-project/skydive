@@ -54,38 +54,6 @@
                 failing: 3000000
 
 - wrapper:
-    name: openstack-credentials
-    wrappers:
-      - credentials-binding:
-          - text:
-              credential-id: openstack-username
-              variable: OS_USERNAME
-          - text:
-              credential-id: openstack-password
-              variable: OS_PASSWORD
-          - text:
-              credential-id: openstack-tenant-name
-              variable: OS_TENANT_NAME
-          - text:
-              credential-id: openstack-auth-url
-              variable: OS_AUTH_URL
-          - text:
-              credential-id: openstack-region-name
-              variable: OS_REGION_NAME
-          - text:
-              credential-id: openstack-public-network
-              variable: OS_PUBLIC_IP_POOL
-          - text:
-              credential-id: openstack-centos-image
-              variable: OS_CENTOS_IMAGE
-          - text:
-              credential-id: openstack-fedora-image
-              variable: OS_FEDORA_IMAGE
-          - text:
-              credential-id: openstack-large-flavor
-              variable: OS_LARGE_FLAVOR
-
-- wrapper:
     name: github-credentials
     wrappers:
       - credentials-binding:
@@ -554,7 +522,6 @@
       - skydive-test:
           test: scripts/ci/run-devstack-tests.sh
     wrappers:
-      - openstack-credentials
       - skydive-wrappers
 
 - job:
@@ -575,7 +542,6 @@
       - skydive-test:
           test: scripts/ci/run-kolla-tests.sh
     wrappers:
-      - openstack-credentials
       - skydive-wrappers
 
 - job:
@@ -603,7 +569,6 @@
       - skydive-test:
           test: VAGRANT_DEFAULT_PROVIDER=libvirt scripts/ci/run-vagrant-tests.sh
     wrappers:
-      - openstack-credentials
       - skydive-wrappers
 
 - job:
@@ -628,7 +593,6 @@
       - skydive-test:
           test: VAGRANT_DEFAULT_PROVIDER=libvirt scripts/ci/run-selinux-tests.sh
     wrappers:
-      - openstack-credentials
       - skydive-wrappers
 
 - job:
