@@ -45,3 +45,6 @@ docker-ebpf-build: pull-ebpf-docker-image
 		--workdir=/go/src/github.com/skydive-project/skydive/ebpf \
 		$(DOCKER_EBPF_BUILDER_IMAGE) \
 		sh -c "make ebpf-build && chown -R $(UID):$(GID) ."
+
+ebpf-test:
+	cd tests; go build -tags="ebpf" && sudo ./tests

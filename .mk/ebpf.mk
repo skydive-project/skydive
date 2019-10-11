@@ -6,6 +6,10 @@ else
 	$(MAKE) -C ebpf
 endif
 
+.PHONY: ebpf.test
+ebpf.test: .ebpf ebpf/statics/bindata.go
+	$(MAKE) -C ebpf ebpf-test
+
 .PHONY: .ebpf.clean
 .ebpf.clean:
 	$(MAKE) -C ebpf clean
