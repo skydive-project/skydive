@@ -1,5 +1,6 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/skydive-project/skydive)](https://goreportcard.com/badge/github.com/skydive-project/skydive)
 [![GitHub license](https://img.shields.io/badge/license-Apache%20license%202.0-blue.svg)](https://github.com/skydive-project/skydive/blob/master/LICENSE)
+[![Slack Invite](https://img.shields.io/badge/Slack:-%23skydive&hyphen;project%20invite-blue.svg?style=plastic&logo=slack)](https://slack.skydive.network)
 [![Slack Channel](https://img.shields.io/badge/Slack:-%23skydive&hyphen;project-blue.svg?style=plastic&logo=slack)](https://skydive-project.slack.com)
 [![Weekly minutes](https://img.shields.io/badge/Weekly%20Meeting%20Minutes-Thu%2010:30am%20CEST-blue.svg?style=plastic)](https://docs.google.com/document/d/1eri4vyjmAwxiWs2Kp4HYdCUDWACF_HXZDrDL8WcPF-o/edit?ts=5d946ad5#heading=h.g8f8gdfq0un9)
 [![StackShare](https://img.shields.io/badge/tech-stack-0690fa.svg?style=flat)](https://stackshare.io/skydive-project/skydive)
@@ -95,7 +96,8 @@ Skydive tutorials can be found here:
     * [Minutes](https://docs.google.com/document/d/1eri4vyjmAwxiWs2Kp4HYdCUDWACF_HXZDrDL8WcPF-o/edit?ts=5d946ad5#heading=h.g8f8gdfq0un9)
 
 * Slack
-    * https://skydive-project.slack.com
+    * Invite : https://slack.skydive.network
+    * Workspace : https://skydive-project.slack.com
 
 ## Contributing
 
