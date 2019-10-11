@@ -231,9 +231,6 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	// register metadata decoders
-	RegisterDecoders()
-
 	topologyProbeBundle, err := NewTopologyProbeBundle(g, rootNode)
 	if err != nil {
 		return nil, err

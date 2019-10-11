@@ -19,16 +19,13 @@ package agent
 
 import (
 	"fmt"
-	"path"
-	"plugin"
-	"reflect"
 	"runtime"
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/plugin"
 	"github.com/skydive-project/skydive/probe"
-	"github.com/skydive-project/skydive/topology/probes"
 	tp "github.com/skydive-project/skydive/topology/probes"
 	"github.com/skydive-project/skydive/topology/probes/docker"
 	"github.com/skydive-project/skydive/topology/probes/libvirt"
@@ -45,22 +42,17 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/vpp"
 )
 
-func registerStaticDecoders() {
-	netlink.RegisterDecoders()
-	docker.RegisterDecoders()
-	lldp.RegisterDecoders()
-	lxd.RegisterDecoders()
-	neutron.RegisterDecoders()
-	opencontrail.RegisterDecoders()
-	ovsdb.RegisterDecoders()
-	runc.RegisterDecoders()
-	libvirt.RegisterDecoders()
-	ovn.RegisterDecoders()
-}
-
-// RegisterDecoders register graph metadata decoders
-func RegisterDecoders() {
-	registerStaticDecoders()
+func registerStaticProbes() {
+	netlink.Register()
+	docker.Register()
+	lldp.Register()
+	lxd.Register()
+	neutron.Register()
+	opencontrail.Register()
+	ovsdb.Register()
+	runc.Register()
+	libvirt.Register()
+	ovn.Register()
 }
 
 // NewTopologyProbe creates a new topology probe
@@ -95,8 +87,47 @@ func NewTopologyProbe(name string, ctx tp.Context, bundle *probe.Bundle) (probe.
 	}
 }
 
+func loadPluginProbes(ctx tp.Context, bundle *probe.Bundle) error {
+	plugins, err := plugin.LoadTopologyPlugins()
+	if err != nil {
+		return err
+	}
+
+	for _, p := range plugins {
+		p.Register()
+	}
+
+	// then register agent plugins
+	for _, p := range plugins {
+		if p.AgentCtor != nil {
+			handler, err := p.AgentCtor(ctx, bundle)
+			if err != nil {
+				return fmt.Errorf("Failed to instantiate plugin %s: %s", p.Name, err)
+			}
+
+			bundle.AddHandler(p.Name, handler)
+		}
+	}
+
+	return nil
+}
+
 // NewTopologyProbeBundle creates a new topology probe.Bundle based on the configuration
 func NewTopologyProbeBundle(g *graph.Graph, hostNode *graph.Node) (*probe.Bundle, error) {
+	registerStaticProbes()
+
+	ctx := tp.Context{
+		Logger:   logging.GetLogger(),
+		Config:   config.GetConfig(),
+		Graph:    g,
+		RootNode: hostNode,
+	}
+
+	bundle := probe.NewBundle()
+	if err := loadPluginProbes(ctx, bundle); err != nil {
+		return nil, err
+	}
+
 	var probeList []string
 	if runtime.GOOS == "linux" {
 		probeList = append(probeList, "netlink", "netns")
@@ -104,14 +135,6 @@ func NewTopologyProbeBundle(g *graph.Graph, hostNode *graph.Node) (*probe.Bundle
 
 	probeList = append(probeList, config.GetStringSlice("agent.topology.probes")...)
 	logging.GetLogger().Infof("Topology probes: %v", probeList)
-
-	bundle := probe.NewBundle()
-	ctx := tp.Context{
-		Logger:   logging.GetLogger(),
-		Config:   config.GetConfig(),
-		Graph:    g,
-		RootNode: hostNode,
-	}
 
 	if runtime.GOOS == "linux" {
 		nlHandler, err := NewTopologyProbe("netlink", ctx, bundle)
@@ -138,37 +161,6 @@ func NewTopologyProbeBundle(g *graph.Graph, hostNode *graph.Node) (*probe.Bundle
 		} else if handler != nil {
 			bundle.AddHandler(t, handler)
 		}
-	}
-
-	pluginsDir := config.GetString("agent.topology.plugins_dir")
-	probeList = config.GetStringSlice("agent.topology.plugins")
-	logging.GetLogger().Infof("Topology plugins: %v", probeList)
-
-	for _, so := range probeList {
-		filename := path.Join(pluginsDir, so+".so")
-		logging.GetLogger().Infof("Loading plugin %s", filename)
-
-		plugin, err := plugin.Open(filename)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to load plugin %s: %s", so, err)
-		}
-
-		symbol, err := plugin.Lookup("NewProbe")
-		if err != nil {
-			return nil, fmt.Errorf("Non compliant plugin '%s': %s", so, err)
-		}
-
-		handlerCtor, ok := symbol.(func(ctx probes.Context, bundle *probe.Bundle) (probes.Handler, error))
-		if !ok {
-			return nil, fmt.Errorf("Invalid plugin %s, %s", so, reflect.TypeOf(symbol))
-		}
-
-		handler, err := handlerCtor(ctx, bundle)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to instantiate plugin %s: %s", so, err)
-		}
-
-		bundle.AddHandler(so, handler)
 	}
 
 	return bundle, nil

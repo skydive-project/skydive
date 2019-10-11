@@ -118,7 +118,3 @@ func CapturesMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
 
 	return &captures, nil
 }
-
-func init() {
-	graph.NodeMetadataDecoders["Captures"] = CapturesMetadataDecoder
-}

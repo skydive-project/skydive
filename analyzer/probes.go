@@ -23,6 +23,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/packetinjector"
+	"github.com/skydive-project/skydive/plugin"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/sflow"
 	"github.com/skydive-project/skydive/topology/probes/docker"
@@ -42,32 +43,55 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/runc"
 )
 
-func registerStaticDecoders() {
-	netlink.RegisterDecoders()
-	docker.RegisterDecoders()
-	lldp.RegisterDecoders()
-	lxd.RegisterDecoders()
-	neutron.RegisterDecoders()
-	opencontrail.RegisterDecoders()
-	ovsdb.RegisterDecoders()
-	runc.RegisterDecoders()
-	libvirt.RegisterDecoders()
-	ovn.RegisterDecoders()
+func registerStaticProbes() {
+	netlink.Register()
+	docker.Register()
+	lldp.Register()
+	lxd.Register()
+	neutron.Register()
+	opencontrail.Register()
+	ovsdb.Register()
+	runc.Register()
+	libvirt.Register()
+	ovn.Register()
 }
 
-// RegisterDecoders register graph metadata decoders
-func RegisterDecoders() {
-	registerStaticDecoders()
+func registerPluginProbes() error {
+	plugins, err := plugin.LoadTopologyPlugins()
+	if err != nil {
+		return err
+	}
+
+	for _, p := range plugins {
+		p.Register()
+	}
+
+	return nil
+}
+
+// RegisterProbes register graph metadata decoders
+func registerProbes() error {
+	registerStaticProbes()
+
+	if err := registerPluginProbes(); err != nil {
+		return err
+	}
 
 	graph.NodeMetadataDecoders["Captures"] = fp.CapturesMetadataDecoder
 	graph.NodeMetadataDecoders["PacketInjections"] = packetinjector.InjectionsMetadataDecoder
 
 	// TODO move it when flow probe plugin will be introduced
 	graph.NodeMetadataDecoders["SFlow"] = sflow.SFMetadataDecoder
+
+	return nil
 }
 
 // NewTopologyProbeBundleFromConfig creates a new topology server probes from configuration
 func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.Bundle, error) {
+	if err := registerProbes(); err != nil {
+		return nil, err
+	}
+
 	list := config.GetStringSlice("analyzer.topology.probes")
 
 	var handler probe.Handler

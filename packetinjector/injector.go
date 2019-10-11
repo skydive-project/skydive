@@ -28,7 +28,6 @@ import (
 	"github.com/google/gopacket"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
 // PacketInjectionRequest describes the packet parameters to be injected
@@ -107,8 +106,4 @@ func (p *Packet) Data() []byte {
 type PacketForger interface {
 	PacketSource() chan *Packet
 	Close()
-}
-
-func init() {
-	graph.NodeMetadataDecoders["PacketInjections"] = InjectionsMetadataDecoder
 }

@@ -300,9 +300,6 @@ func NewServerFromConfig() (*Server, error) {
 	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
 	tr.AddTraversalExtension(ge.NewGroupTraversalExtension())
 
-	// register metadata decoders
-	RegisterDecoders()
-
 	probeBundle, err := NewTopologyProbeBundleFromConfig(g)
 	if err != nil {
 		return nil, err

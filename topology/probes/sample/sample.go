@@ -27,12 +27,16 @@ func (p *probe) Start() error {
 
 // Stop the probe
 func (p *probe) Stop() {
-	p.ctx.Logger.Infof("Stopping sample probe")
+	p.ctx.Logger.Info("Stopping sample probe")
 }
 
-// NewProbe returns an new sample probe handler
-func NewProbe(ctx probes.Context, bundle *pr.Bundle) (probes.Handler, error) {
+// NewAgentProbe returns an new sample probe handler
+func NewAgentProbe(ctx probes.Context, bundle *pr.Bundle) (probes.Handler, error) {
 	return &probe{ctx: ctx}, nil
+}
+
+// Register registers graph metadata decoders
+func Register() {
 }
 
 func main() {

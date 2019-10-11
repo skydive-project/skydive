@@ -24,7 +24,6 @@ import (
 	"encoding/json"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
 // SFlow all sflow information
@@ -400,8 +399,4 @@ func (sm *SFMetric) Split(cut int64) (common.Metric, common.Metric) {
 	sm2.Start = cut
 
 	return sm1, sm2
-}
-
-func init() {
-	graph.NodeMetadataDecoders["SFlow"] = SFMetadataDecoder
 }
