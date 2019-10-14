@@ -51,4 +51,4 @@ CMD chown -R $UID /root/go/pkg/mod \
     CC=${TARGET_ARCH}-linux-gnu-gcc \
     GOOS=linux \
     GOARCH=$TARGET_GOARCH \
-    make compile WITH_OPENCONTRAIL=false WITH_LIBVIRT_GO=false WITH_EBPF=true WITH_EBPF_DOCKER_BUILDER=false
+    make install WITH_OPENCONTRAIL=false WITH_LIBVIRT_GO=false WITH_EBPF=true WITH_EBPF_DOCKER_BUILDER=false

@@ -118,7 +118,7 @@ This package installs and sets up the SELinux policy security module for Skydive
 
 %build
 export GOPATH=%{_builddir}/skydive-%{fullver}
-make compile VERSION=%{fullver} LDFLAGS=%{ldflags} GO111MODULE=off %{with_features}
+make build VERSION=%{fullver} LDFLAGS=%{ldflags} GO111MODULE=off %{with_features}
 %{_builddir}/skydive-%{fullver}/bin/skydive bash-completion
 
 # SELinux build
@@ -132,7 +132,7 @@ make -f /usr/share/selinux/devel/Makefile -C contrib/packaging/rpm/ skydive.pp
 bzip2 contrib/packaging/rpm/skydive.pp
 
 %install
-install -D -p -m 755 %{_builddir}/skydive-%{fullver}/bin/skydive %{buildroot}%{_bindir}/skydive
+install -D -p -m 755 %{_builddir}/skydive-%{fullver}/src/%{import_path}/skydive %{buildroot}%{_bindir}/skydive
 ln -s skydive %{buildroot}%{_bindir}/skydive-cli
 for bin in agent analyzer
 do

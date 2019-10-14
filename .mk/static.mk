@@ -38,15 +38,28 @@ endif
 STATIC_LIBS_ABS := $(addprefix $(STATIC_DIR)/,$(STATIC_LIBS))
 STATIC_BUILD_TAGS := $(filter-out libvirt,$(BUILD_TAGS))
 
-.PHONY: static
-static: skydive.clean genlocalfiles
-	$(MAKE) compile.static WITH_LIBVIRT_GO=false
-	$(MAKE) contribs.static
+.PHONY: static install.static
+static install.static: skydive.static
 
-.PHONY: compile.static
-compile.static:
-	CGO_CFLAGS_ALLOW='.*' CGO_LDFLAGS_ALLOW='.*' $(GO) install \
+define GOCOMPILE_STATIC
+	CGO_CFLAGS_ALLOW='.*' CGO_LDFLAGS_ALLOW='.*' $(GO) $1 \
 		-ldflags="${LDFLAGS} -B $(BUILD_ID) -X $(SKYDIVE_GITHUB_VERSION) '-extldflags=-static $(STATIC_LIBS_ABS)'" \
 		${GOFLAGS} \
 		${VERBOSE_FLAGS} -tags "netgo ${STATIC_BUILD_TAGS}" \
 		-installsuffix netgo || true
+endef
+
+.PHONY: .build.static
+.build.static:
+	$(call GOCOMPILE_STATIC,build)
+
+.PHONY: build.static
+build.static: genlocalfiles .build.static
+
+.PHONY: .install.static
+.install.static:
+	$(call GOCOMPILE_STATIC,install)
+
+.PHONY: skydive.static
+skydive.static: genlocalfiles
+	make .install.static WITH_LIBVIRT_GO=false
