@@ -251,7 +251,7 @@ func parseFile(filename string, pkgName string) (*module, error) {
 
 	program, err = conf.Load()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to load %s(%s): %s", filename, pkgName, err)
 	}
 
 	packages = make(map[string]*types.Package, len(program.AllPackages))
@@ -296,7 +296,7 @@ func parseFile(filename string, pkgName string) (*module, error) {
 	}
 
 	return &module{
-		Name:      filepath.Base(pkgname),
+		Name:      astFile.Name.Name,
 		BuildTags: buildTags,
 		Getters:   getters,
 	}, nil
