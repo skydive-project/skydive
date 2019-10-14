@@ -1,18 +1,21 @@
 LLC ?= llc
-CLANG ?= clang
+CLANG ?= /usr/local/ebpf/bin/bpf-unknown-none-gcc
 DOCKER_FILE ?= Dockerfile
 DOCKER_EBPF_BUILDER_IMAGE ?= skydive/ebpf-builder
+DOCKER_EBPF_BUILDER_IMAGE = ebpf-test
 UID ?= $(shell id -u)
 GID ?= $(shell id -g)
 
 .PHONY: clean build-ebpf-docker-image docker-ebpf-build
 
-ebpf-build: flow-gre.o flow.o
+ebpf-build: flow-gre.o
 
 all: clean docker-ebpf-build
 
 %.o: %.c
 	$(CLANG) \
+		-I/usr/local/ebpf/lib/gcc/bpf-unknown-none/10.0.0/include/ \
+		-I/usr/include \
 		-I$${GOPATH}/pkg/mod/github.com/lebauce/gobpf@v0.0.0-20190909090614-f9e9df81702a/elf \
 		-D__KERNEL__ -D__ASM_SYSREG_H -D__TARGET_ARCH_BPF -Wno-unused-value -Wno-pointer-sign \
 		-Wno-compare-distinct-pointer-types \
@@ -22,8 +25,8 @@ all: clean docker-ebpf-build
 		-fno-stack-protector \
 		-fno-jump-tables \
 		-fno-common \
-		-O2 -g -emit-llvm -c $< -o ebpf.bc
-	$(LLC) -march=bpf -filetype=obj -mattr=dwarfris -o $@ ebpf.bc
+		-O2 -g -emit-llvm -c $< -o $@
+#	$(LLC) -march=bpf -filetype=obj -mattr=dwarfris -o $@ ebpf.bc
 	rm -f ebpf.bc
 
 clean:

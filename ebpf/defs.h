@@ -3,9 +3,15 @@
 
 #define _GNU_SOURCE
 
-// from iovisor/gobpf
+#ifdef __GNUC__
+#include "/usr/local/ebpf/lib/gcc/bpf-unknown-none/10.0.0/include/bpf-helpers.h"
+#endif
+
 #include "bpf.h"
+#ifndef __GNUC__
+// from iovisor/gobpf
 #include "bpf_map.h"
+#endif
 
 #ifndef __inline
 #define __inline inline __attribute__((always_inline))
@@ -60,6 +66,7 @@ static __inline int discret_memcmp(char *s1, char *s2, int n)
 #define SOCKET(NAME) __section("socket_" #NAME)
 #define LICENSE __section("license")
 
+#ifndef __GNUC__
 /* llvm built-in functions */
 unsigned long long load_byte(void *skb,
                              unsigned long long off) asm("llvm.bpf.load.byte");
@@ -67,12 +74,19 @@ unsigned long long load_half(void *skb,
                              unsigned long long off) asm("llvm.bpf.load.half");
 unsigned long long load_word(void *skb,
                              unsigned long long off) asm("llvm.bpf.load.word");
+#endif
 
 static __inline __u16 bpf_ntohs(__u16 val)
 {
   return (val << 8) | (val >> 8);
 }
 
+#ifdef __GNUC__
+#define bpf_map_lookup_element bpf_map_lookup_elem
+#define bpf_map_update_element bpf_map_update_elem
+#define bpf_map_delete_element bpf_map_delete_elem
+
+#else
 /* helper functions called from eBPF programs written in C
  */
 static void *(*bpf_map_lookup_element)(void *map, void *key) =
@@ -95,6 +109,7 @@ static unsigned long long (*bpf_get_current_pid_tgid)(void) =
     (void *)BPF_FUNC_get_current_pid_tgid;
 static unsigned long long (*bpf_get_current_uid_gid)(void) =
     (void *)BPF_FUNC_get_current_uid_gid;
+#endif
 
 #define DEBUG
 #ifdef DEBUG

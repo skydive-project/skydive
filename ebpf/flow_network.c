@@ -54,7 +54,7 @@
 					  (IP_SRC[8] << 56 | IP_SRC[9] << 48 | IP_SRC[10] << 40 | IP_SRC[11] << 32 |
 					   IP_SRC[12] << 24 | IP_SRC[13] << 16 | IP_SRC[14] << 8 | IP_SRC[15]);
 		ordered_dst = (IP_DST[0] << 56 | IP_DST[1] << 48 | IP_DST[2] << 40 | IP_DST[3] << 32 |
-					   IP_DST[4] << 24 | IP_DST[5] << 16 | Ip_DST[6] << 8 | IP_DST[7]) ^
+					   IP_DST[4] << 24 | IP_DST[5] << 16 | IP_DST[6] << 8 | IP_DST[7]) ^
 					  (IP_DST[8] << 56 | IP_DST[9] << 48 | IP_DST[10] << 40 | IP_DST[11] << 32 |
 					   IP_DST[12] << 24 | IP_DST[13] << 16 | IP_DST[14] << 8 | IP_DST[15]);
 #endif
