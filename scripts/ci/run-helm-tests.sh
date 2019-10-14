@@ -22,7 +22,6 @@ helm_teardown() {
         [ "$KEEP_RESOURCES" = "true" ] || . "$DIR/install-minikube.sh" stop
 }
 
-. "$DIR/install-go.sh"
 . "$DIR/run-tests-utils.sh"
 network_setup
 helm_setup
