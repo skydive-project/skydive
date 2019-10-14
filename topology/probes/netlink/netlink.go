@@ -363,7 +363,7 @@ func newInterfaceMetricsFromNetlink(link netlink.Link) *topology.InterfaceMetric
 }
 
 func (u *Probe) updateLinkNetNsName(intf *graph.Node, link netlink.Link, metadata graph.Metadata) bool {
-	var context *common.NetNSContext
+	var context *common.NamespaceContext
 
 	lnsid := link.Attrs().NetNsID
 
@@ -1205,7 +1205,7 @@ func newProbe(ctx tp.Context, nsPath string, sriovProcessor *graph.Processor) (*
 		netNsNameTry:         make(map[graph.Identifier]int),
 		sriovProcessor:       sriovProcessor,
 	}
-	var context *common.NetNSContext
+	var context *common.NamespaceContext
 	var err error
 
 	errFnc := func(err error) (*Probe, error) {

@@ -38,29 +38,48 @@ func Hash(values ...interface{}) string {
 	return h
 }
 
-// Indexer provides a way to index graph nodes. A node can be mapped to
+// NodeIndex provides a way to index graph nodes. A node can be mapped to
 // multiple hash,value pairs. A hash can also be mapped to multiple nodes.
-type Indexer struct {
+type NodeIndex struct {
 	common.RWMutex
+	graph        *Graph
+	eventHandler *EventHandler
+	hashNode     NodeHasher
+	appendOnly   bool
+	hashToValues map[string]map[Identifier]interface{}
+	nodeToHashes map[Identifier]map[string]bool
+}
+
+// Indexer listens and indexes nodes using an Index
+type Indexer struct {
+	*NodeIndex
 	DefaultGraphListener
-	graph           *Graph
-	eventHandler    *EventHandler
 	listenerHandler ListenerHandler
 	hashNode        NodeHasher
-	appendOnly      bool
-	hashToValues    map[string]map[Identifier]interface{}
-	nodeToHashes    map[Identifier]map[string]bool
+}
+
+// FromHash returns the nodes mapped by a hash along with their associated values
+func (i *NodeIndex) FromHash(hash string) (nodes []*Node, values []interface{}) {
+	if ids, found := i.hashToValues[hash]; found {
+		for id, obj := range ids {
+			if node := i.graph.GetNode(id); node != nil {
+				nodes = append(nodes, node)
+				values = append(values, obj)
+			}
+		}
+	}
+	return
 }
 
 // Get computes the hash of the passed parameters and returns the matching
 // nodes with their respective value
-func (i *Indexer) Get(values ...interface{}) ([]*Node, []interface{}) {
+func (i *NodeIndex) Get(values ...interface{}) ([]*Node, []interface{}) {
 	return i.FromHash(Hash(values...))
 }
 
 // GetNode computes the hash of the passed parameters and returns the first
 // matching node with its respective value
-func (i *Indexer) GetNode(values ...interface{}) (*Node, interface{}) {
+func (i *NodeIndex) GetNode(values ...interface{}) (*Node, interface{}) {
 	nodes, values := i.Get(values...)
 	if len(nodes) > 0 && len(values) > 0 {
 		return nodes[0], values[0]
@@ -68,7 +87,7 @@ func (i *Indexer) GetNode(values ...interface{}) (*Node, interface{}) {
 	return nil, nil
 }
 
-func (i *Indexer) index(id Identifier, h string, value interface{}) {
+func (i *NodeIndex) index(id Identifier, h string, value interface{}) {
 	if _, found := i.hashToValues[h]; !found {
 		i.hashToValues[h] = make(map[Identifier]interface{})
 	}
@@ -76,7 +95,7 @@ func (i *Indexer) index(id Identifier, h string, value interface{}) {
 	i.nodeToHashes[id][h] = true
 }
 
-func (i *Indexer) unindex(id Identifier, h string) {
+func (i *NodeIndex) unindex(id Identifier, h string) {
 	delete(i.hashToValues[h], id)
 	if len(i.hashToValues[h]) == 0 {
 		delete(i.hashToValues, h)
@@ -84,7 +103,7 @@ func (i *Indexer) unindex(id Identifier, h string) {
 }
 
 // Index indexes a node with a set of hash -> value map
-func (i *Indexer) Index(id Identifier, n *Node, kv map[string]interface{}) {
+func (i *NodeIndex) Index(id Identifier, n *Node, kv map[string]interface{}) {
 	i.Lock()
 	defer i.Unlock()
 
@@ -115,7 +134,7 @@ func (i *Indexer) Index(id Identifier, n *Node, kv map[string]interface{}) {
 }
 
 // Unindex removes the node and its associated hashes from the index
-func (i *Indexer) Unindex(id Identifier, n *Node) {
+func (i *NodeIndex) Unindex(id Identifier, n *Node) {
 	i.Lock()
 	defer i.Unlock()
 
@@ -126,6 +145,27 @@ func (i *Indexer) Unindex(id Identifier, n *Node) {
 		}
 
 		i.eventHandler.NotifyEvent(NodeDeleted, n)
+	}
+}
+
+// AddEventListener subscribes a new graph listener
+func (i *NodeIndex) AddEventListener(l EventListener) {
+	i.eventHandler.AddEventListener(l)
+}
+
+// RemoveEventListener unsubscribe a graph listener
+func (i *NodeIndex) RemoveEventListener(l EventListener) {
+	i.eventHandler.RemoveEventListener(l)
+}
+
+// NewNodeIndex returns a new node index
+func NewNodeIndex(g *Graph, appendOnly bool) *NodeIndex {
+	return &NodeIndex{
+		graph:        g,
+		eventHandler: NewEventHandler(maxEvents),
+		hashToValues: make(map[string]map[Identifier]interface{}),
+		nodeToHashes: make(map[Identifier]map[string]bool),
+		appendOnly:   appendOnly,
 	}
 }
 
@@ -150,17 +190,6 @@ func (i *Indexer) OnNodeDeleted(n *Node) {
 	i.Unindex(n.ID, n)
 }
 
-// FromHash returns the nodes mapped by a hash along with their associated values
-func (i *Indexer) FromHash(hash string) (nodes []*Node, values []interface{}) {
-	if ids, found := i.hashToValues[hash]; found {
-		for id, obj := range ids {
-			nodes = append(nodes, i.graph.GetNode(id))
-			values = append(values, obj)
-		}
-	}
-	return
-}
-
 // Start registers the graph indexer as a graph listener
 func (i *Indexer) Start() error {
 	if i.listenerHandler != nil {
@@ -176,26 +205,15 @@ func (i *Indexer) Stop() {
 	}
 }
 
-// AddEventListener subscribes a new graph listener
-func (i *Indexer) AddEventListener(l EventListener) {
-	i.eventHandler.AddEventListener(l)
-}
-
-// RemoveEventListener unsubscribe a graph listener
-func (i *Indexer) RemoveEventListener(l EventListener) {
-	i.eventHandler.RemoveEventListener(l)
-}
-
 // NewIndexer returns a new graph indexer with the associated hashing callback
 func NewIndexer(g *Graph, listenerHandler ListenerHandler, hashNode NodeHasher, appendOnly bool) *Indexer {
+	if hashNode == nil {
+		hashNode = func(n *Node) map[string]interface{} { return nil }
+	}
 	indexer := &Indexer{
-		graph:           g,
-		eventHandler:    NewEventHandler(maxEvents),
+		NodeIndex:       NewNodeIndex(g, appendOnly),
 		listenerHandler: listenerHandler,
 		hashNode:        hashNode,
-		hashToValues:    make(map[string]map[Identifier]interface{}),
-		nodeToHashes:    make(map[Identifier]map[string]bool),
-		appendOnly:      appendOnly,
 	}
 	return indexer
 }

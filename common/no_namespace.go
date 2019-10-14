@@ -19,24 +19,24 @@
 
 package common
 
-// NetNSContext describes a NameSpace Context switch API
-type NetNSContext struct {
+// NamespaceContext describes a namespace context switch API
+type NamespaceContext struct {
 }
 
-// Quit the NameSpace and go back to the original one
-func (n *NetNSContext) Quit() error {
+// Quit the namespace and go back to the original one
+func (n *NamespaceContext) Quit() error {
 	return nil
 }
 
-// Close the NameSpace
-func (n *NetNSContext) Close() {
+// Close the namespace
+func (n *NamespaceContext) Close() {
 }
 
-// NewNetNsContext creates a new NameSpace context base on path
-func NewNetNsContext(path string) (*NetNSContext, error) {
+// NewNetNsContext creates a new namespace context base on path
+func NewNetNsContext(path string) (*NamespaceContext, error) {
 	if path != "" {
 		return nil, ErrNotImplemented
 	}
 
-	return &NetNSContext{}, nil
+	return &NamespaceContext{}, nil
 }

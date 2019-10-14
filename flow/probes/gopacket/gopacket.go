@@ -141,7 +141,7 @@ func (p *Probe) listen(packetCallback func(gopacket.Packet)) error {
 func (p *Probe) Run(packetCallback func(gopacket.Packet), e probes.ProbeEventHandler) error {
 	p.state.Store(common.RunningState)
 
-	var nsContext *common.NetNSContext
+	var nsContext *common.NamespaceContext
 	var err error
 	if p.nsPath != "" {
 		p.Ctx.Logger.Debugf("Switching to namespace (path: %s)", p.nsPath)

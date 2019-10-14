@@ -132,11 +132,7 @@ func (l *switchPortLinker) GetABLinks(lsNode *graph.Node) (edges []*graph.Edge) 
 	ports, _ := l.probe.ovndbapi.LSPList(name)
 	for _, lp := range ports {
 		if lpNode, _ := probe.lspIndexer.GetNode(lp.UUID); lpNode != nil {
-			link, err := topology.NewLink(probe.graph, lsNode, lpNode, topology.OwnershipLink, nil)
-			if err != nil {
-				logging.GetLogger().Error(err)
-				continue
-			}
+			link := topology.NewLink(probe.graph, lsNode, lpNode, topology.OwnershipLink, nil)
 			edges = append(edges, link)
 		}
 	}
@@ -153,11 +149,7 @@ func (l *switchPortLinker) GetBALinks(lpNode *graph.Node) (edges []*graph.Edge) 
 		for _, lp := range ports {
 			if lp.UUID == uuid {
 				if lsNode, _ := probe.lsIndexer.GetNode(ls.UUID); lsNode != nil {
-					link, err := topology.NewLink(probe.graph, lsNode, lpNode, topology.OwnershipLink, nil)
-					if err != nil {
-						logging.GetLogger().Error(link)
-						continue
-					}
+					link := topology.NewLink(probe.graph, lsNode, lpNode, topology.OwnershipLink, nil)
 					edges = append(edges, link)
 				}
 			}
@@ -177,11 +169,7 @@ func (l *routerPortLinker) GetABLinks(lrNode *graph.Node) (edges []*graph.Edge) 
 	ports, _ := l.probe.ovndbapi.LRPList(name)
 	for _, lp := range ports {
 		if lrpNode, _ := probe.lrpIndexer.GetNode(lp.UUID); lrpNode != nil {
-			link, err := topology.NewLink(probe.graph, lrNode, lrpNode, topology.OwnershipLink, nil)
-			if err != nil {
-				logging.GetLogger().Error(err)
-				continue
-			}
+			link := topology.NewLink(probe.graph, lrNode, lrpNode, topology.OwnershipLink, nil)
 			edges = append(edges, link)
 		}
 	}
@@ -198,11 +186,7 @@ func (l *routerPortLinker) GetBALinks(lrpNode *graph.Node) (edges []*graph.Edge)
 		for _, lp := range ports {
 			if lp.UUID == uuid {
 				if lrNode, _ := probe.lrIndexer.GetNode(lr.UUID); lrNode != nil {
-					link, err := topology.NewLink(probe.graph, lrNode, lrpNode, topology.OwnershipLink, nil)
-					if err != nil {
-						logging.GetLogger().Error(link)
-						continue
-					}
+					link := topology.NewLink(probe.graph, lrNode, lrpNode, topology.OwnershipLink, nil)
 					edges = append(edges, link)
 				}
 			}
@@ -221,9 +205,8 @@ func (l *aclLinker) GetABLinks(lsNode *graph.Node) (edges []*graph.Edge) {
 	acls, _ := l.probe.ovndbapi.ACLList(name)
 	for _, acl := range acls {
 		if aclNode, _ := l.probe.aclIndexer.GetNode(acl.UUID); aclNode != nil {
-			if link, _ := topology.NewLink(l.probe.graph, lsNode, aclNode, topology.OwnershipLink, nil); link != nil {
-				edges = append(edges, link)
-			}
+			link := topology.NewLink(l.probe.graph, lsNode, aclNode, topology.OwnershipLink, nil)
+			edges = append(edges, link)
 		}
 	}
 	return edges
@@ -238,11 +221,7 @@ func (l *aclLinker) GetBALinks(aclNode *graph.Node) (edges []*graph.Edge) {
 		for _, acl := range acls {
 			if acl.UUID == uuid {
 				if lsNode, _ := l.probe.lsIndexer.GetNode(ls.UUID); lsNode != nil {
-					link, err := topology.NewLink(l.probe.graph, lsNode, aclNode, topology.OwnershipLink, nil)
-					if err != nil {
-						logging.GetLogger().Error(link)
-						continue
-					}
+					link := topology.NewLink(l.probe.graph, lsNode, aclNode, topology.OwnershipLink, nil)
 					edges = append(edges, link)
 				}
 			}

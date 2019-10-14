@@ -23,6 +23,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/docker/docker/api/types"
@@ -105,13 +106,27 @@ func (p *ProbeHandler) registerContainer(id string) {
 
 	pid := int64(info.State.Pid)
 
-	dockerMetadata := Metadata{
+	dockerMetadata := &Metadata{
 		ContainerID:   info.ID,
 		ContainerName: info.Name[1:],
 	}
 
 	if len(info.Config.Labels) != 0 {
 		dockerMetadata.Labels = graph.Metadata(common.NormalizeValue(info.Config.Labels).(map[string]interface{}))
+	}
+
+	if len(info.HostConfig.Binds) > 0 {
+		dockerMetadata.Mounts = make([]*Mount, len(info.HostConfig.Binds))
+		for i, bind := range info.HostConfig.Binds {
+			split := strings.Split(bind, ":")
+			if len(split) >= 2 {
+				mount := &Mount{
+					Source:      split[0],
+					Destination: split[1],
+				}
+				dockerMetadata.Mounts[i] = mount
+			}
+		}
 	}
 
 	p.Ctx.Graph.Lock()

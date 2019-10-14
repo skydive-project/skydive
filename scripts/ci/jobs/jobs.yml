@@ -342,7 +342,7 @@
     builders:
       - skydive-cleanup
       - skydive-test:
-          test: BACKEND=elasticsearch ARGS="-ovs.oflow.native" scripts/ci/run-functional-tests.sh
+          test: BACKEND=elasticsearch WITH_DOCKER_VPP=true ARGS="-ovs.oflow.native" scripts/ci/run-functional-tests.sh
     publishers:
       - junit:
           results: tests.xml
@@ -360,7 +360,7 @@
     builders:
       - skydive-cleanup
       - skydive-test:
-          test: BACKEND=orientdb scripts/ci/run-functional-tests.sh
+          test: BACKEND=orientdb WITH_DOCKER_VPP=true scripts/ci/run-functional-tests.sh
     publishers:
       - junit:
           results: tests.xml
@@ -772,7 +772,7 @@
     builders:
       - skydive-cleanup
       - skydive-test:
-          test: BACKEND=elasticsearch WITH_EBPF=true WITH_VPP=true TEST_PATTERN='(EBPF|SRIOV|VPP|Libvirt)' TAGS="$TAGS libvirt_tests sriov_tests" scripts/ci/run-functional-tests.sh
+          test: scripts/ci/run-hw-functional-tests.sh
     publishers:
       - junit:
           results: tests.xml

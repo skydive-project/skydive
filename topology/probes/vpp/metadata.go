@@ -1,5 +1,5 @@
-//go:generate go run github.com/skydive-project/skydive/scripts/gendecoder -package github.com/skydive-project/skydive/topology/probes/docker
-//go:generate go run github.com/mailru/easyjson/easyjson $GOFILE
+//go:generate go run github.com/skydive-project/skydive/scripts/gendecoder -package github.com/skydive-project/skydive/topology/probes/vpp
+//go:generate go run github.com/safchain/easyjson/easyjson $GOFILE
 
 /*
  * Copyright (C) 2019 Red Hat, Inc.
@@ -18,39 +18,34 @@
  *
  */
 
-package docker
+package vpp
 
 import (
 	"encoding/json"
 	"fmt"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
-// Mount describes the metadata of a docker bind mount
-// easyjson:json
-// gendecoder
-type Mount struct {
-	Source      string
-	Destination string
-}
-
-// Metadata describe the metadata of a docker container
+// Metadata describes the metadata for a VPP interface
 // easyjson:json
 // gendecoder
 type Metadata struct {
-	ContainerID   string
-	ContainerName string
-	Labels        graph.Metadata `field:"Metadata"`
-	Mounts        []*Mount
+	SocketFilename string
+	ID             int64
+	SocketID       int64
+	Master         bool
+	Mode           string
+	RingSize       int64
+	BufferSize     int64
+	LinkUpDown     bool
 }
 
 // MetadataDecoder implements a json message raw decoder
 func MetadataDecoder(raw json.RawMessage) (common.Getter, error) {
 	var m Metadata
 	if err := json.Unmarshal(raw, &m); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal docker metadata %s: %s", string(raw), err)
+		return nil, fmt.Errorf("unable to unmarshal VPP metadata %s: %s", string(raw), err)
 	}
 
 	return &m, nil
