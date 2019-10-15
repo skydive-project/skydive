@@ -57,7 +57,7 @@ type PacketProbe interface {
 // Probe describes a new probe that store packets from gopacket pcap library in a flowtable
 type Probe struct {
 	Ctx         probes.Context
-	n           *graph.Node
+	node        *graph.Node
 	packetProbe PacketProbe
 	state       common.ServiceState
 	ifName      string
@@ -80,8 +80,11 @@ type ProbesHandler struct {
 	wg  sync.WaitGroup
 }
 
-func (p *Probe) updateStats(g *graph.Graph, n *graph.Node, captureStats *probes.CaptureStats, ticker *time.Ticker, done chan bool, wg *sync.WaitGroup) {
+func (p *Probe) updateStats(statsCallback func(flow.Stats), captureStats *probes.CaptureStats, ticker *time.Ticker, done chan bool, wg *sync.WaitGroup) {
 	defer wg.Done()
+
+	g := p.Ctx.Graph
+	n := p.node
 
 	for {
 		select {
@@ -97,6 +100,11 @@ func (p *Probe) updateStats(g *graph.Graph, n *graph.Node, captureStats *probes.
 					return true
 				})
 				g.Unlock()
+
+				statsCallback(flow.Stats{
+					PacketsDropped:  stats.PacketsDropped,
+					PacketsReceived: stats.PacketsReceived,
+				})
 			}
 		case <-done:
 			return
@@ -138,7 +146,7 @@ func (p *Probe) listen(packetCallback func(gopacket.Packet)) error {
 
 // Run starts capturing packet, calling the passed callback for every packet
 // and notifying the flow probe handler when the capture has started
-func (p *Probe) Run(packetCallback func(gopacket.Packet), e probes.ProbeEventHandler) error {
+func (p *Probe) Run(packetCallback func(gopacket.Packet), statsCallback func(flow.Stats), e probes.ProbeEventHandler) error {
 	p.state.Store(common.RunningState)
 
 	var nsContext *common.NetNSContext
@@ -190,7 +198,7 @@ func (p *Probe) Run(packetCallback func(gopacket.Packet), e probes.ProbeEventHan
 
 	// notify active
 	wg.Add(1)
-	go p.updateStats(p.Ctx.Graph, p.n, &metadata.CaptureStats, statsTicker, statsDone, &wg)
+	go p.updateStats(statsCallback, &metadata.CaptureStats, statsTicker, statsDone, &wg)
 
 	err = p.listen(packetCallback)
 
@@ -225,7 +233,7 @@ func NewCapture(ctx probes.Context, n *graph.Node, captureType, bpfFilter string
 
 	return &Probe{
 		Ctx:         ctx,
-		n:           n,
+		node:        n,
 		ifName:      ifName,
 		bpfFilter:   bpfFilter,
 		linkType:    linkType,
@@ -304,15 +312,18 @@ func (p *ProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e p
 		defer target.Stop()
 
 		count := 0
-		err := probe.Run(func(packet gopacket.Packet) {
-			target.SendPacket(packet, bpf)
-			// NOTE: bpf userspace filter is applied to the few first packets in order to avoid
-			// to get unexpected packets between capture start and bpf applying
-			if count > 50 {
-				bpf = nil
-			}
-			count++
-		}, e)
+		err := probe.Run(
+			func(packet gopacket.Packet) {
+				target.SendPacket(packet, bpf)
+				// NOTE: bpf userspace filter is applied to the few first packets in order to avoid
+				// to get unexpected packets between capture start and bpf applying
+				if count > 50 {
+					bpf = nil
+				}
+				count++
+			},
+			target.SendStats,
+			e)
 
 		if err != nil {
 			p.Ctx.Logger.Error(err)
@@ -327,7 +338,7 @@ func (p *ProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e p
 }
 
 func (p *ProbesHandler) unregisterProbe(probe *ftProbe) error {
-	p.Ctx.Logger.Debugf("Terminating gopacket capture on %s", probe.probe.n.ID)
+	p.Ctx.Logger.Debugf("Terminating gopacket capture on %s", probe.probe.node.ID)
 	probe.probe.Stop()
 	return nil
 }

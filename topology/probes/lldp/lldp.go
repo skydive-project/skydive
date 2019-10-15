@@ -33,6 +33,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/probes"
 	gp "github.com/skydive-project/skydive/flow/probes/gopacket"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -330,9 +331,15 @@ func (p *Probe) startCapture(ifName, mac string, n *graph.Node) error {
 			p.wg.Done()
 		}()
 
-		if err := packetProbe.Run(func(packet gopacket.Packet) {
-			p.handlePacket(n, ifName, packet)
-		}, &lldpCapture{}); err != nil {
+		err := packetProbe.Run(
+			func(packet gopacket.Packet) {
+				p.handlePacket(n, ifName, packet)
+			},
+			func(stats flow.Stats) {
+			},
+			&lldpCapture{})
+
+		if err != nil {
 			p.Ctx.Logger.Errorf("LLDP capture error on %s", ifName)
 		}
 	}()

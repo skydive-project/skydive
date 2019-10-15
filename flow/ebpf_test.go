@@ -29,7 +29,7 @@ func TestEBPFFlow(t *testing.T) {
 	defer close(expired)
 
 	table := NewTable(time.Minute, time.Hour, &fakeMessageSender{}, UUIDs{}, TableOpts{})
-	_, extFlowChan := table.Start(expired)
+	_, extFlowChan, _ := table.Start(expired)
 
 	for table.State() != common.RunningState {
 		time.Sleep(100 * time.Millisecond)

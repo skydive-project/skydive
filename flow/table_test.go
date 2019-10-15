@@ -54,6 +54,9 @@ func (f *fakeMessageSender) SendFlows(flows []*Flow) {
 	f.sent += len(flows)
 }
 
+func (f *fakeMessageSender) SendStats(stats Stats) {
+}
+
 func TestFlowExpire(t *testing.T) {
 	sender := &fakeMessageSender{}
 

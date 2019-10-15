@@ -51,7 +51,7 @@ type ProbeHandler struct {
 func (p *Probe) run() {
 	p.state.Store(common.RunningState)
 
-	packetSeqChan, _ := p.flowTable.Start(nil)
+	packetSeqChan, _, _ := p.flowTable.Start(nil)
 	defer p.flowTable.Stop()
 
 	for p.state.Load() == common.RunningState {

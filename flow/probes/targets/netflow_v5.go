@@ -201,6 +201,10 @@ func (nf *NetFlowV5Target) SendFlows(flows []*flow.Flow) {
 	}
 }
 
+// SendStats implements the flow Sender interface
+func (nf *NetFlowV5Target) SendStats(stats flow.Stats) {
+}
+
 // Start start the target
 func (nf *NetFlowV5Target) Start() {
 	conn, err := net.Dial("udp", nf.target)

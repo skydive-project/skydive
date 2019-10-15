@@ -159,8 +159,7 @@ retry:
 	return nil
 }
 
-// SendFlows implements the flow Sender interface
-func (c *FlowClient) SendFlows(flows []*flow.Flow) {
+func (c *FlowClient) sendFlows(flows []*flow.Flow) {
 	// NOTE: set it to 1 for udp to ensure that the flow can be sent
 	// even with rawpackets. Set it a bit bigger for websocket to
 	// improve performances.
@@ -179,10 +178,19 @@ func (c *FlowClient) SendFlows(flows []*flow.Flow) {
 
 		msg.Flows = flows[i:e]
 
-		err := c.SendMessage(&msg)
-		if err != nil {
+		if err := c.SendMessage(&msg); err != nil {
 			logging.GetLogger().Errorf("Unable to send flow: %s", err)
 		}
+	}
+}
+
+func (c *FlowClient) sendStats(stats flow.Stats) {
+	msg := flow.Message{
+		Stats: &stats,
+	}
+
+	if err := c.SendMessage(&msg); err != nil {
+		logging.GetLogger().Errorf("Unable to send stats: %s", err)
 	}
 }
 
@@ -262,7 +270,20 @@ func (p *FlowClientPool) SendFlows(flows []*flow.Flow) {
 	}
 
 	fc := p.flowClients[rand.Intn(len(p.flowClients))]
-	fc.SendFlows(flows)
+	fc.sendFlows(flows)
+}
+
+// SendStatus implements the flow Sender interface
+func (p *FlowClientPool) SendStats(stats flow.Stats) {
+	p.RLock()
+	defer p.RUnlock()
+
+	if len(p.flowClients) == 0 {
+		return
+	}
+
+	fc := p.flowClients[rand.Intn(len(p.flowClients))]
+	fc.sendStats(stats)
 }
 
 // Close all connections

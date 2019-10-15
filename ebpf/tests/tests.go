@@ -50,6 +50,9 @@ func (f *fakeMessageSender) SendFlows(flows []*flow.Flow) {
 	f.sent += len(flows)
 }
 
+func (f *fakeMessageSender) SendStats(stats flow.Stats) {
+}
+
 func getFlows(table *flow.Table, searchQuery *filters.SearchQuery) []*flow.Flow {
 	ft := flow.TableQuery{
 		Type:  "SearchQuery",
@@ -157,7 +160,7 @@ func fillTableFromPCAP(table *flow.Table, filename string, linkType layers.LinkT
 		data, _, err = pcapfile.ReadPacketData()
 	}
 
-	_, extFlowChan := table.Start(nil)
+	_, extFlowChan, _ := table.Start(nil)
 
 	var startKTimeNs int64
 	var start time.Time

@@ -73,6 +73,7 @@ type Table struct {
 	Opts              TableOpts
 	packetSeqChan     chan *PacketSequence
 	extFlowChan       chan *ExtFlow
+	statsChan         chan Stats
 	expiredExtKeyChan chan interface{} // used when flow expired, the extKey will be sent over this chan
 	table             *simplelru.LRU
 	flush             chan bool
@@ -94,7 +95,7 @@ type Table struct {
 	opts              Opts
 	appPortMap        *ApplicationPortMap
 	appTimeout        map[string]int64
-	removedFlows      int
+	stats             Stats
 	uuids             UUIDs
 }
 
@@ -118,6 +119,7 @@ type Operation struct {
 // Sender defines a flows sender interface
 type Sender interface {
 	SendFlows(flows []*Flow)
+	SendStats(stats Stats)
 }
 
 func updateTCPFlagTime(prevFlagTime int64, currFlagTime int64) int64 {
@@ -138,6 +140,7 @@ func NewTable(updateEvery, expireAfter time.Duration, sender Sender, uuids UUIDs
 	t := &Table{
 		packetSeqChan: make(chan *PacketSequence, 1000),
 		extFlowChan:   make(chan *ExtFlow, 1000),
+		statsChan:     make(chan Stats, 10),
 		table:         LRU,
 		flush:         make(chan bool),
 		flushDone:     make(chan bool),
@@ -216,7 +219,7 @@ func (ft *Table) getOrCreateFlow(key uint64) (*Flow, bool) {
 
 	new := NewFlow()
 	if ft.table.Add(key, new) {
-		ft.removedFlows++
+		ft.stats.FlowDropped++
 	}
 	return new, true
 }
@@ -224,7 +227,7 @@ func (ft *Table) getOrCreateFlow(key uint64) (*Flow, bool) {
 func (ft *Table) replaceFlow(key uint64, f *Flow) *Flow {
 	prev, _ := ft.table.Get(key)
 	if ft.table.Add(key, f) {
-		ft.removedFlows++
+		ft.stats.FlowDropped++
 	}
 	if prev == nil {
 		return nil
@@ -498,7 +501,7 @@ func (ft *Table) processEBPFFlow(ebpfFlow *EBPFFlow) {
 
 		for i := range keys {
 			if ft.table.Add(keys[i], flows[i]) {
-				ft.removedFlows++
+				ft.stats.FlowDropped++
 			}
 		}
 		return
@@ -543,8 +546,8 @@ func (ft *Table) Run() {
 	nowTicker := time.NewTicker(time.Second * 1)
 	defer nowTicker.Stop()
 
-	overFlowTicker := time.NewTicker(time.Second * 10)
-	defer overFlowTicker.Stop()
+	statsTicker := time.NewTicker(time.Second * 10)
+	defer statsTicker.Stop()
 
 	ft.query = make(chan *TableQuery, 100)
 	ft.reply = make(chan []byte, 100)
@@ -581,11 +584,18 @@ func (ft *Table) Run() {
 			if ft.ipDefragger != nil {
 				ft.ipDefragger.FlushOlderThan(t)
 			}
-		case <-overFlowTicker.C:
-			if ft.removedFlows > 0 {
-				logging.GetLogger().Warningf("flow table overflow, %d flows were dropped from userspace table", ft.removedFlows)
-				ft.removedFlows = 0
-			}
+		case s := <-ft.statsChan:
+			ft.stats.KernelFlowDropped += s.KernelFlowDropped
+			ft.stats.PacketsReceived += s.PacketsReceived
+			ft.stats.PacketsDropped += s.PacketsDropped
+		case <-statsTicker.C:
+			ft.stats.CaptureID = ft.uuids.CaptureID
+			ft.stats.FlowCount = int64(ft.table.Len())
+
+			ft.sender.SendStats(ft.stats)
+
+			logging.GetLogger().Debugf("Flow table stats: %+v", ft.stats)
+			ft.stats = Stats{}
 		}
 	}
 }
@@ -613,10 +623,10 @@ func (ft *Table) FeedWithSFlowSample(sample *layers.SFlowFlowSample, bpf *BPF) {
 }
 
 // Start the flow table
-func (ft *Table) Start(extFlowExp chan interface{}) (chan *PacketSequence, chan *ExtFlow) {
+func (ft *Table) Start(extFlowExp chan interface{}) (chan *PacketSequence, chan *ExtFlow, chan Stats) {
 	ft.expiredExtKeyChan = extFlowExp
 	go ft.Run()
-	return ft.packetSeqChan, ft.extFlowChan
+	return ft.packetSeqChan, ft.extFlowChan, ft.statsChan
 }
 
 // Stop the flow table

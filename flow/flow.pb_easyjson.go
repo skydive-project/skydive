@@ -1595,7 +1595,114 @@ func (v *TCPMetric) UnmarshalJSON(data []byte) error {
 func (v *TCPMetric) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow3(l, v)
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow4(in *jlexer.Lexer, out *RawPacket) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow4(in *jlexer.Lexer, out *Stats) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeString()
+		in.WantColon()
+		if in.IsNull() {
+			in.Skip()
+			in.WantComma()
+			continue
+		}
+		switch key {
+		case "CaptureID":
+			out.CaptureID = string(in.String())
+		case "FlowCount":
+			out.FlowCount = int64(in.Int64())
+		case "FlowDropped":
+			out.FlowDropped = int64(in.Int64())
+		case "KernelFlowDropped":
+			out.KernelFlowDropped = int64(in.Int64())
+		case "PacketsDropped":
+			out.PacketsDropped = int64(in.Int64())
+		case "PacketsReceived":
+			out.PacketsReceived = int64(in.Int64())
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow4(out *jwriter.Writer, in Stats) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	if in.CaptureID != "" {
+		const prefix string = ",\"CaptureID\":"
+		first = false
+		out.RawString(prefix[1:])
+		out.String(string(in.CaptureID))
+	}
+	{
+		const prefix string = ",\"FlowCount\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.Int64(int64(in.FlowCount))
+	}
+	{
+		const prefix string = ",\"FlowDropped\":"
+		out.RawString(prefix)
+		out.Int64(int64(in.FlowDropped))
+	}
+	{
+		const prefix string = ",\"KernelFlowDropped\":"
+		out.RawString(prefix)
+		out.Int64(int64(in.KernelFlowDropped))
+	}
+	{
+		const prefix string = ",\"PacketsDropped\":"
+		out.RawString(prefix)
+		out.Int64(int64(in.PacketsDropped))
+	}
+	{
+		const prefix string = ",\"PacketsReceived\":"
+		out.RawString(prefix)
+		out.Int64(int64(in.PacketsReceived))
+	}
+	out.RawByte('}')
+}
+
+// MarshalJSON supports json.Marshaler interface
+func (v Stats) MarshalJSON() ([]byte, error) {
+	w := jwriter.Writer{}
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow4(&w, v)
+	return w.Buffer.BuildBytes(), w.Error
+}
+
+// MarshalEasyJSON supports easyjson.Marshaler interface
+func (v Stats) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow4(w, v)
+}
+
+// UnmarshalJSON supports json.Unmarshaler interface
+func (v *Stats) UnmarshalJSON(data []byte) error {
+	r := jlexer.Lexer{Data: data}
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow4(&r, v)
+	return r.Error()
+}
+
+// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
+func (v *Stats) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow4(l, v)
+}
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow5(in *jlexer.Lexer, out *RawPacket) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -1637,7 +1744,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow4(in *jlexer.Lexer,
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow4(out *jwriter.Writer, in RawPacket) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow5(out *jwriter.Writer, in RawPacket) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -1667,27 +1774,27 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow4(out *jwriter.Writ
 // MarshalJSON supports json.Marshaler interface
 func (v RawPacket) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow4(&w, v)
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow5(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v RawPacket) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow4(w, v)
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow5(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *RawPacket) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow4(&r, v)
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow5(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *RawPacket) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow4(l, v)
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow5(l, v)
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow5(in *jlexer.Lexer, out *Message) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow6(in *jlexer.Lexer, out *Message) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -1737,6 +1844,16 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow5(in *jlexer.Lexer,
 				}
 				in.Delim(']')
 			}
+		case "Stats":
+			if in.IsNull() {
+				in.Skip()
+				out.Stats = nil
+			} else {
+				if out.Stats == nil {
+					out.Stats = new(Stats)
+				}
+				(*out.Stats).UnmarshalEasyJSON(in)
+			}
 		default:
 			in.SkipRecursive()
 		}
@@ -1747,7 +1864,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow5(in *jlexer.Lexer,
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow5(out *jwriter.Writer, in Message) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow6(out *jwriter.Writer, in Message) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -1770,33 +1887,43 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow5(out *jwriter.Writ
 			out.RawByte(']')
 		}
 	}
+	if in.Stats != nil {
+		const prefix string = ",\"Stats\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		(*in.Stats).MarshalEasyJSON(out)
+	}
 	out.RawByte('}')
 }
 
 // MarshalJSON supports json.Marshaler interface
 func (v Message) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow5(&w, v)
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow6(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Message) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow5(w, v)
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow6(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *Message) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow5(&r, v)
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow6(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *Message) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow5(l, v)
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow6(l, v)
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow6(in *jlexer.Lexer, out *IPMetric) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow7(in *jlexer.Lexer, out *IPMetric) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -1829,7 +1956,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow6(in *jlexer.Lexer,
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow6(out *jwriter.Writer, in IPMetric) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow7(out *jwriter.Writer, in IPMetric) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -1849,27 +1976,27 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow6(out *jwriter.Writ
 // MarshalJSON supports json.Marshaler interface
 func (v IPMetric) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow6(&w, v)
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow7(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v IPMetric) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow6(w, v)
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow7(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *IPMetric) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow6(&r, v)
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow7(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *IPMetric) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow6(l, v)
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow7(l, v)
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow7(in *jlexer.Lexer, out *ICMPLayer) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow8(in *jlexer.Lexer, out *ICMPLayer) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -1906,7 +2033,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow7(in *jlexer.Lexer,
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow7(out *jwriter.Writer, in ICMPLayer) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow8(out *jwriter.Writer, in ICMPLayer) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -1931,27 +2058,27 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow7(out *jwriter.Writ
 // MarshalJSON supports json.Marshaler interface
 func (v ICMPLayer) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow7(&w, v)
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow8(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v ICMPLayer) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow7(w, v)
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow8(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *ICMPLayer) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow7(&r, v)
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow8(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *ICMPLayer) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow7(l, v)
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow8(l, v)
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow8(in *jlexer.Lexer, out *FlowSet) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow9(in *jlexer.Lexer, out *FlowSet) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -2015,7 +2142,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow8(in *jlexer.Lexer,
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow8(out *jwriter.Writer, in FlowSet) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow9(out *jwriter.Writer, in FlowSet) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -2059,27 +2186,27 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow8(out *jwriter.Writ
 // MarshalJSON supports json.Marshaler interface
 func (v FlowSet) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow8(&w, v)
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow9(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v FlowSet) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow8(w, v)
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow9(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *FlowSet) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow8(&r, v)
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow9(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *FlowSet) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow8(l, v)
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow9(l, v)
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow9(in *jlexer.Lexer, out *FlowSearchReply) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow10(in *jlexer.Lexer, out *FlowSearchReply) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -2118,7 +2245,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow9(in *jlexer.Lexer,
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow9(out *jwriter.Writer, in FlowSearchReply) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow10(out *jwriter.Writer, in FlowSearchReply) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -2134,27 +2261,27 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow9(out *jwriter.Writ
 // MarshalJSON supports json.Marshaler interface
 func (v FlowSearchReply) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow9(&w, v)
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow10(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v FlowSearchReply) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow9(w, v)
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow10(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *FlowSearchReply) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow9(&r, v)
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow10(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *FlowSearchReply) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow9(l, v)
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow10(l, v)
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow10(in *jlexer.Lexer, out *FlowMetric) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow11(in *jlexer.Lexer, out *FlowMetric) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -2197,7 +2324,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow10(in *jlexer.Lexer
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow10(out *jwriter.Writer, in FlowMetric) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow11(out *jwriter.Writer, in FlowMetric) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -2242,27 +2369,27 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow10(out *jwriter.Wri
 // MarshalJSON supports json.Marshaler interface
 func (v FlowMetric) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow10(&w, v)
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow11(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v FlowMetric) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow10(w, v)
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow11(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *FlowMetric) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow10(&r, v)
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow11(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *FlowMetric) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow10(l, v)
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow11(l, v)
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow11(in *jlexer.Lexer, out *FlowLayer) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow12(in *jlexer.Lexer, out *FlowLayer) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -2301,7 +2428,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow11(in *jlexer.Lexer
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow11(out *jwriter.Writer, in FlowLayer) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow12(out *jwriter.Writer, in FlowLayer) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -2331,27 +2458,27 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow11(out *jwriter.Wri
 // MarshalJSON supports json.Marshaler interface
 func (v FlowLayer) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow11(&w, v)
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow12(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v FlowLayer) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow11(w, v)
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow12(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *FlowLayer) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow11(&r, v)
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow12(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *FlowLayer) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow11(l, v)
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow12(l, v)
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow12(in *jlexer.Lexer, out *Flow) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow13(in *jlexer.Lexer, out *Flow) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -2514,7 +2641,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow12(in *jlexer.Lexer
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow12(out *jwriter.Writer, in Flow) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow13(out *jwriter.Writer, in Flow) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -2714,25 +2841,25 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow12(out *jwriter.Wri
 // MarshalJSON supports json.Marshaler interface
 func (v Flow) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow12(&w, v)
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow13(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Flow) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow12(w, v)
+	easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow13(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *Flow) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow12(&r, v)
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow13(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *Flow) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow12(l, v)
+	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow13(l, v)
 }
 func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlowLayers2(in *jlexer.Lexer, out *layers1.VRRPv2) {
 	isTopLevel := in.IsStart()

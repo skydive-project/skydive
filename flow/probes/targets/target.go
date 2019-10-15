@@ -34,6 +34,7 @@ var (
 // Target interface
 type Target interface {
 	SendPacket(packet gopacket.Packet, bpf *flow.BPF)
+	SendStats(stats flow.Stats)
 	Start()
 	Stop()
 }
