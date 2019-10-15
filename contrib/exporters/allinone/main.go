@@ -28,6 +28,7 @@ func main() {
 }
 
 func init() {
+	core.ManglerHandlers.Register("logstatus", secadvisor.NewMangleLogStatus, false)
 	core.EncoderHandlers.Register("secadvisor", secadvisor.NewEncode, false)
 	core.TransformerHandlers.Register("awsflowlogs", awsflowlogs.NewTransform, false)
 	core.TransformerHandlers.Register("vpclogs", secadvisor.NewTransform, false)
