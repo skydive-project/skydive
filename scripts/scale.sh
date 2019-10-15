@@ -294,7 +294,7 @@ function create_analyzer() {
     echo "analyzers:" > $TEMP_DIR/$NAME.yml
 	for ANALYZER_I in $( seq $ANALYZER_NUM ); do
 		PORT=$(( $ANALYZER_PORT + ($ANALYZER_I - 1) * 2 ))
-		echo "  - localhost:$PORT" >> $TEMP_DIR/$NAME.yml
+		echo "  - 127.0.0.1:$PORT" >> $TEMP_DIR/$NAME.yml
 	done
 
 	STORAGE=""
