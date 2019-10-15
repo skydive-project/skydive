@@ -23,6 +23,7 @@ if [ "${DOCKER_IMAGE%/*/*}" != "${DOCKER_IMAGE}" ]; then
 fi
 
 DOCKER_DIR=contrib/docker
+GOPATH_DIR=/root/go
 GOMOD_VOL=mod
 GOMOD_DIR=/root/go/pkg/mod
 GOBUILD_VOL=gobuild-cache
@@ -67,7 +68,7 @@ docker_skydive_builder() {
     docker rm $image || true
     docker run --name $image \
         --env UID=$uid \
-        --env GOPATH=$GOPATH \
+        --env GOPATH=$GOPATH_DIR \
         --volume $TOPLEVEL_VOL:$TOPLEVEL_DIR \
         --volume $GOMOD_VOL:$GOMOD_DIR \
         --volume $GOBUILD_VOL:$GOBUILD_DIR \
