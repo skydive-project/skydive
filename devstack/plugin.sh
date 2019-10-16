@@ -15,8 +15,8 @@
 # The path where go binaries have to be installed
 GOROOT=${GOROOT:-/opt/go}
 
-# golang version. Skydive needs at least version 1.9
-GO_VERSION=${GO_VERSION:-1.9}
+# golang version. Skydive needs at least version 1.11
+GO_VERSION=${GO_VERSION:-1.11.13}
 
 # GOPATH where the go src, pkgs are installed
 GOPATH=/opt/stack/go
@@ -101,6 +101,7 @@ function install_go {
     export GOROOT=$GOROOT
     export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
     export GOPATH=$GOPATH
+    export GO111MODULE=on
 }
 
 function download_elasticsearch {
