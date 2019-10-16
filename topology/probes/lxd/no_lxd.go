@@ -30,3 +30,7 @@ import (
 func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	return nil, common.ErrNotImplemented
 }
+
+// Register registers graph metadata decoders
+func Register() {
+}

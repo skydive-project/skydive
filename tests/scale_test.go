@@ -301,13 +301,13 @@ func TestScaleHA(t *testing.T) {
 	config.InitConfig("file", []string{"/tmp/skydive-scale/agent-1.yml"})
 	authOptions := &shttp.AuthenticationOpts{Username: "admin", Password: "password"}
 
+	// switch to the other analyzer
+	os.Setenv("SKYDIVE_ANALYZERS", "127.0.0.1:8084")
+
 	client, err := gclient.NewCrudClientFromConfig(authOptions)
 	if err != nil {
 		t.Fatalf("Failed to create client: %s", err)
 	}
-
-	// switch to the other analyzer
-	os.Setenv("SKYDIVE_ANALYZERS", "localhost:8084")
 
 	gh := gclient.NewGremlinQueryHelper(authOptions)
 
@@ -386,7 +386,7 @@ func TestScaleHA(t *testing.T) {
 	}
 
 	// switch back to the first analyzer
-	os.Setenv("SKYDIVE_ANALYZERS", "localhost:8082")
+	os.Setenv("SKYDIVE_ANALYZERS", "127.0.0.1:8082")
 	client, err = gclient.NewCrudClientFromConfig(authOptions)
 	if err != nil {
 		t.Fatalf("Failed to create client: %s", err)

@@ -467,3 +467,8 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 		autoDiscovery: len(interfaces) == 0,
 	}, nil
 }
+
+// Register registers graph metadata decoders
+func Register() {
+	graph.NodeMetadataDecoders["LLDP"] = MetadataDecoder
+}

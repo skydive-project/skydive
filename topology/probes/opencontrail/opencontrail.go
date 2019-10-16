@@ -324,3 +324,8 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 		routingTableUpdaterChan: make(chan RoutingTableUpdate, 500),
 	}, nil
 }
+
+// Register registers graph metadata decoders
+func Register() {
+	graph.NodeMetadataDecoders["Contrail"] = MetadataDecoder
+}

@@ -477,3 +477,8 @@ func getLocalInode(conn *localconn.Connection) (int64, error) {
 	}
 	return inode, nil
 }
+
+// Register registers graph metadata decoders
+func Register() {
+	graph.EdgeMetadataDecoders["NSM"] = MetadataDecoder
+}

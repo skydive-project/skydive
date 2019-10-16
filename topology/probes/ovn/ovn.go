@@ -612,3 +612,8 @@ func NewProbe(g *graph.Graph, address string) (probe.Handler, error) {
 
 	return probes.NewProbeWrapper(p), nil
 }
+
+// Register registers graph metadata decoders
+func Register() {
+	graph.NodeMetadataDecoders["OVN"] = MetadataDecoder
+}

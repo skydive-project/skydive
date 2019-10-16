@@ -419,3 +419,8 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 
 	return probes.NewProbeWrapper(probe), nil
 }
+
+// Register registers graph metadata decoders
+func Register() {
+	graph.NodeMetadataDecoders["Libvirt"] = MetadataDecoder
+}

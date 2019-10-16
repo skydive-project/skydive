@@ -1374,3 +1374,15 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 		sriovProcessor: sriovProcessor,
 	}, nil
 }
+
+// Register registers graph metadata decoders
+func Register() {
+	graph.NodeMetadataDecoders["Vfs"] = VFSMetadataDecoder
+
+	graph.NodeMetadataDecoders["RoutingTables"] = topology.RoutingTablesMetadataDecoder
+	graph.NodeMetadataDecoders["FDB"] = topology.NeighborMetadataDecoder
+	graph.NodeMetadataDecoders["Neighbors"] = topology.NeighborMetadataDecoder
+
+	graph.NodeMetadataDecoders["Metric"] = topology.InterfaceMetricMetadataDecoder
+	graph.NodeMetadataDecoders["LastUpdateMetric"] = topology.InterfaceMetricMetadataDecoder
+}

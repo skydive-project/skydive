@@ -393,7 +393,7 @@ func (c *SkydiveConfig) GetEtcdServerAddrs() []string {
 	if address, err := c.GetOneAnalyzerServiceAddress(); err == nil {
 		return []string{fmt.Sprintf("http://%s:%d", address.Addr, port)}
 	}
-	return []string{fmt.Sprintf("http://localhost:%d", port)}
+	return []string{fmt.Sprintf("http://127.0.0.1:%d", port)}
 }
 
 // IsTLSEnabled returns true is the client / server certificates are set

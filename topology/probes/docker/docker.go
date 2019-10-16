@@ -280,3 +280,8 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 
 	return probes.NewProbeWrapper(p), nil
 }
+
+// Register registers graph metadata decoders
+func Register() {
+	graph.NodeMetadataDecoders["Docker"] = MetadataDecoder
+}
