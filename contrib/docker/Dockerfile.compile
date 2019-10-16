@@ -37,4 +37,4 @@ CMD chown -R $UID /root/go/pkg/mod \
     PATH=/usr/lib/go-1.11/bin:/root/go/bin:$PATH \
     CGO_ENABLED=1 \
     GOOS=linux \
-    make compile WITH_OPENCONTRAIL=false WITH_EBPF=true WITH_EBPF_DOCKER_BUILDER=false
+    make install WITH_OPENCONTRAIL=false WITH_EBPF=true WITH_EBPF_DOCKER_BUILDER=false

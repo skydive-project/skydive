@@ -123,15 +123,26 @@ all install: skydive
 version:
 	@echo -n ${VERSION}
 
-.PHONY: compile
-compile:
-	CGO_CFLAGS_ALLOW='.*' CGO_LDFLAGS_ALLOW='.*' $(GO) install \
-		-ldflags="${LDFLAGS} -B $(BUILD_ID) -X $(SKYDIVE_GITHUB_VERSION)" \
-		${GOFLAGS} -tags="${BUILD_TAGS}" ${VERBOSE_FLAGS} \
-		${SKYDIVE_GITHUB}
+define GOCOMPILE
+CGO_CFLAGS_ALLOW='.*' CGO_LDFLAGS_ALLOW='.*' $(GO) $1 \
+                -ldflags="${LDFLAGS} -B $(BUILD_ID) -X $(SKYDIVE_GITHUB_VERSION)" \
+                ${GOFLAGS} -tags="${BUILD_TAGS}" ${VERBOSE_FLAGS} \
+                ${SKYDIVE_GITHUB}
+endef
+
+.PHONY: .build
+.build:
+	$(call GOCOMPILE,build)
+
+.PHONY: build
+build: moddownload genlocalfiles .build
+
+.PHONY: .install
+.install:
+	$(call GOCOMPILE,install)
 
 .PHONY: skydive
-skydive: moddownload genlocalfiles compile
+skydive: moddownload genlocalfiles .install
 
 .PHONY: skydive.clean
 skydive.clean:

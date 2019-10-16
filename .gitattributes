@@ -1,12 +1,24 @@
+statics/js/vendor/*.js -diff -merge
 statics/js/vendor/*.js linguist-vendored=true
+statics/js/dev/*.js -diff -merge
 statics/js/dev/*.js linguist-vendored=true
-*.pb.go binary
-*_easyjson.go binary
-*_gendecoder.go binary
-ebpf/statics/bindata.go binary
-statics/bindata.go binary
-topology/probes/vpp/bin_api/interfaces/* binary
-topology/probes/vpp/bin_api/vpe/* binary
-statics/js/bundle.js binary
-js/browser.js binary
-js/api.js binary
+*.pb.go -diff -merge
+*.pb.go linguist-generated=true
+*_easyjson.go -diff -merge
+*_easyjson.go linguist-generated=true
+*_gendecoder.go -diff -merge
+*_gendecoder.go linguist-generated=true
+ebpf/statics/bindata.go -diff -merge
+ebpf/statics/bindata.go linguist-generated=true
+statics/bindata.go -diff -merge
+statics/bindata.go linguist-generated=true
+topology/probes/vpp/bin_api/interfaces/* -diff -merge
+topology/probes/vpp/bin_api/interfaces/* linguist-generated=true
+topology/probes/vpp/bin_api/vpe/* -diff -merge
+topology/probes/vpp/bin_api/vpe/* linguist-generated=true
+statics/js/bundle.js -diff -merge
+statics/js/bundle.js linguist-generated=true
+js/browser.js -diff -merge
+js/browser.js linguist-generated=true
+js/api.js -diff -merge
+js/api.js linguist-generated=true
