@@ -5,7 +5,7 @@
      - ffmpeg
      - gifsicle
      - libvirt
-     - vagrant-libvirt
+     - ruby-devel
      - virt-what
      - ansible
      - dnf-utils
