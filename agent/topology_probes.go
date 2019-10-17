@@ -27,6 +27,7 @@ import (
 	"github.com/skydive-project/skydive/plugin"
 	"github.com/skydive-project/skydive/probe"
 	tp "github.com/skydive-project/skydive/topology/probes"
+	"github.com/skydive-project/skydive/topology/probes/bess"
 	"github.com/skydive-project/skydive/topology/probes/docker"
 	"github.com/skydive-project/skydive/topology/probes/libvirt"
 	"github.com/skydive-project/skydive/topology/probes/lldp"
@@ -82,6 +83,8 @@ func NewTopologyProbe(name string, ctx tp.Context, bundle *probe.Bundle) (probe.
 		return runc.NewProbe(ctx, bundle)
 	case "vpp":
 		return vpp.NewProbe(ctx, bundle)
+	case "bess":
+		return bess.NewProbe(ctx, bundle)
 	default:
 		return nil, fmt.Errorf("unsupported probe %s", name)
 	}
