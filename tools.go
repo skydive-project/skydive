@@ -26,7 +26,7 @@ import (
 	_ "github.com/aktau/github-release"
 	_ "github.com/davecgh/go-spew/spew"
 	_ "github.com/go-swagger/go-swagger/cmd/swagger"
-	_ "github.com/gogo/protobuf"
+	_ "github.com/gogo/protobuf/protoc-gen-gogofaster"
 	_ "github.com/golang/protobuf/protoc-gen-go"
 	_ "github.com/golangci/golangci-lint"
 	_ "github.com/gomatic/renderizer"
