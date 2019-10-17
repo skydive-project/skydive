@@ -8,9 +8,6 @@ sudo yum -y install git iproute net-tools
 git clone https://git.openstack.org/openstack-dev/devstack devstack.git
 cd devstack.git
 
-# temp until an upstream fix
-sed -i -e 's/wait_for_service 30/wait_for_service 120/' pkg/elasticsearch.sh
-
 export PATH=$PATH:/usr/sbin
 host_ip_iface=${host_ip_iface:-$(ip -f inet route | awk '/default/ {print $5}' | head -1)}
 host_ips=$(LC_ALL=C ip -f inet addr show ${host_ip_iface} | sed /temporary/d |awk /inet'/ {split($2,parts,"/");  print parts[1]}')
