@@ -5,8 +5,6 @@ require (
 	github.com/GehirnInc/crypt v0.0.0-20170404120257-5a3fafaa7c86
 	github.com/IBM/ibm-cos-sdk-go v0.0.0-20190328184230-08c1143e8d36
 	github.com/Knetic/govaluate v0.0.0-20171022003610-9aa49832a739 // indirect
-	github.com/Microsoft/go-winio v0.0.0-20170201004330-fff283ad5116 // indirect
-	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/VerizonDigital/vflow v0.0.0-20190111005900-eb30d936249e
 	github.com/abbot/go-http-auth v0.4.0
 	github.com/bennyscetbun/jsongo v0.0.0-20190110163710-9624bef8c57b // indirect
@@ -25,29 +23,26 @@ require (
 	github.com/fortytw2/leaktest v1.3.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/gima/govalid v0.0.0-20150214172340-7b486932bea2
-	github.com/go-ole/go-ole v0.0.0-20171110160706-a41e3c4b706f // indirect
 	github.com/go-swagger/go-swagger v0.20.1
 	github.com/go-test/deep v0.0.0-20180509200213-57af0be209c5
 	github.com/gobwas/httphead v0.0.0-20171016043908-01c9b01b368a // indirect
 	github.com/gobwas/pool v0.0.0-20170829094749-32dbaa12caca // indirect
 	github.com/gobwas/ws v0.0.0-20171112092802-915eed324002 // indirect
 	github.com/gocarina/gocsv v0.0.0-20190624090726-71ad6676df57
-	github.com/gogo/protobuf v1.3.0
+	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.3.2
 	github.com/gomatic/funcmap v0.0.0-20190110133044-62047470c142 // indirect
 	github.com/gomatic/renderizer v1.0.1
 	github.com/google/gopacket v1.1.17
-	github.com/gophercloud/gophercloud v0.0.0-20190126172459-c818fa66e4c8
-	github.com/gorilla/context v0.0.0-20160817184632-08b5f424b927
+	github.com/gophercloud/gophercloud v0.0.0-20190307220656-fe1ba5ce12dd
+	github.com/gorilla/context v1.1.1
 	github.com/gorilla/handlers v1.4.2
-	github.com/gorilla/mux v0.0.0-20171208160815-5ab525f4fb16
+	github.com/gorilla/mux v1.7.0
 	github.com/gorilla/websocket v1.4.0
 	github.com/gosuri/uitable v0.0.0-20160404203958-36ee7e946282 // indirect
 	github.com/hashicorp/go-version v0.0.0-20180322230233-23480c066577
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/hydrogen18/stoppableListener v0.0.0-20151210151943-dadc9ccc400c
-	github.com/imdario/mergo v0.3.7 // indirect
-	github.com/inconshreveable/mousetrap v0.0.0-20141017200713-76626ae9c91c // indirect
 	github.com/intel-go/nff-go v0.0.0-20190620122648-8ab691c21da9
 	github.com/iovisor/gobpf v0.0.0-20190329163444-e0d8d785d368 // indirect
 	github.com/jbowtie/gokogiri v0.0.0-20190301021639-37f655d3078f // indirect
@@ -64,16 +59,17 @@ require (
 	github.com/kardianos/osext v0.0.0-20160811001526-c2c54e542fb7
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/libvirt/libvirt-go v0.0.0-20181005092746-9c5bdce3c18f
-	github.com/lunixbochs/struc v0.0.0-20180408203800-02e4c2afbb2a
+	github.com/lunixbochs/struc v0.0.0-20180408203800-02e4c2afbb2a // indirect
 	github.com/lxc/lxd v0.0.0-20171219222704-9907f3a64b6b
 	github.com/mailru/easyjson v0.7.0
 	github.com/mattn/go-runewidth v0.0.0-20160315040712-d6bea18f7897 // indirect
 	github.com/mattn/goveralls v0.0.2
-	github.com/mitchellh/go-homedir v0.0.0-20160621174243-756f7b183b7a
+	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/hashstructure v0.0.0-20170116052023-ab25296c0f51
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
-	github.com/networkservicemesh/networkservicemesh v0.1.0
+	github.com/networkservicemesh/networkservicemesh/controlplane/api v0.2.0
+	github.com/networkservicemesh/networkservicemesh/k8s v0.0.0-20191017074247-aa5815869b2c
 	github.com/newtools/ebpf v0.0.0-20190820102627-8b7eaed02eb9
 	github.com/nlewo/contrail-introspect-cli v0.0.0-20181003135217-0407b60f2edd
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
@@ -85,29 +81,28 @@ require (
 	github.com/robertkrimen/otto v0.0.0-20161004124959-bf1c3795ba07
 	github.com/safchain/ethtool v0.0.0-20190326074333-42ed695e3de8
 	github.com/safchain/insanelock v0.0.0-20180509135444-33bca4586648
-	github.com/shirou/gopsutil v0.0.0-20180111024713-6a368fb7cd12
-	github.com/shirou/w32 v0.0.0-20160930032740-bb4de0191aa4 // indirect
+	github.com/shirou/gopsutil v2.18.12+incompatible
 	github.com/sirupsen/logrus v1.4.2
 	github.com/skydive-project/dede v0.0.0-20180704100832-90df8e39b679
 	github.com/skydive-project/goloxi v0.0.0-20190117172159-db2324197a3e
 	github.com/socketplane/libovsdb v0.0.0-20160607151822-5113f8fb4d9d
-	github.com/spf13/cobra v0.0.0-20160830174925-9c28e4bbd74e
+	github.com/spf13/cobra v0.0.0-20180319062004-c439c4fa0937
 	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.4.0
 	github.com/t-yuki/gocover-cobertura v0.0.0-20180217150009-aaee18c8195c
 	github.com/tchap/zapext v0.0.0-20180117141735-e61c0c882339
 	github.com/tebeka/selenium v0.0.0-20170314201507-657e45ec600f
 	github.com/vishvananda/netlink v1.0.0
-	github.com/vishvananda/netns v0.0.0-20180720170159-13995c7128cc
+	github.com/vishvananda/netns v0.0.0-20190625233234-7109fa855b0f
 	github.com/weaveworks/tcptracer-bpf v0.0.0-20170817155301-e080bd747dc6
 	github.com/xeipuuv/gojsonpointer v0.0.0-20170225233418-6fe8760cad35 // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20150808065054-e02fc20de94c // indirect
 	github.com/xeipuuv/gojsonschema v0.0.0-20180618132009-1d523034197f
 	go.uber.org/zap v1.10.0
-	golang.org/x/crypto v0.0.0-20191002192127-34f69633bfdc // indirect
-	golang.org/x/net v0.0.0-20191007182048-72f939374954
-	golang.org/x/sys v0.0.0-20190924154521-2837fb4f24fe
-	golang.org/x/tools v0.0.0-20191007185444-6536af71d98a
+	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550 // indirect
+	golang.org/x/net v0.0.0-20191014212845-da9a3fd4c582
+	golang.org/x/sys v0.0.0-20191010194322-b09406accb47
+	golang.org/x/tools v0.0.0-20191015211201-9c6d90b5a7d0
 	google.golang.org/genproto v0.0.0-20190926190326-7ee9db18f195 // indirect
 	google.golang.org/grpc v1.23.1
 	gopkg.in/errgo.v1 v1.0.0-20161222125816-442357a80af5 // indirect
@@ -122,15 +117,25 @@ require (
 	gopkg.in/yaml.v2 v2.2.2
 	istio.io/api v0.0.0-20190925180116-1b594bcab992
 	istio.io/client-go v0.0.0-20190926163343-7a2173c3ba57
-	k8s.io/api v0.0.0-20190918195907-bd6ac527cfd2
-	k8s.io/apimachinery v0.0.0-20190817221809-bf4de9df677c
-	k8s.io/client-go v10.0.0+incompatible
+	k8s.io/api v0.0.0
+	k8s.io/apimachinery v0.0.0
+	k8s.io/client-go v11.0.0+incompatible
 	k8s.io/utils v0.0.0-20190607212802-c55fbcfc754a // indirect
 )
 
 replace (
 	github.com/digitalocean/go-libvirt => github.com/lebauce/go-libvirt v0.0.0-20190717144624-7799d804f7e4
 	github.com/iovisor/gobpf => github.com/lebauce/gobpf v0.0.0-20190909090614-f9e9df81702a
+	github.com/networkservicemesh/networkservicemesh => github.com/networkservicemesh/networkservicemesh v0.0.0-20191017074247-aa5815869b2c
+	github.com/networkservicemesh/networkservicemesh/controlplane => github.com/networkservicemesh/networkservicemesh/controlplane v0.0.0-20191017074247-aa5815869b2c
+	github.com/networkservicemesh/networkservicemesh/controlplane/api => github.com/networkservicemesh/networkservicemesh/controlplane/api v0.0.0-20191017074247-aa5815869b2c
+	github.com/networkservicemesh/networkservicemesh/dataplane => github.com/networkservicemesh/networkservicemesh/dataplane v0.0.0-20191017074247-aa5815869b2c
+	github.com/networkservicemesh/networkservicemesh/dataplane/api => github.com/networkservicemesh/networkservicemesh/dataplane/api v0.0.0-20191017074247-aa5815869b2c
+	github.com/networkservicemesh/networkservicemesh/k8s => github.com/networkservicemesh/networkservicemesh/k8s v0.0.0-20191017074247-aa5815869b2c
+	github.com/networkservicemesh/networkservicemesh/k8s/api => github.com/networkservicemesh/networkservicemesh/k8s/api v0.0.0-20191017074247-aa5815869b2c
+	github.com/networkservicemesh/networkservicemesh/pkg => github.com/networkservicemesh/networkservicemesh/pkg v0.0.0-20191017074247-aa5815869b2c
+	github.com/networkservicemesh/networkservicemesh/sdk => github.com/networkservicemesh/networkservicemesh/sdk v0.0.0-20191017074247-aa5815869b2c
+	github.com/networkservicemesh/networkservicemesh/utils => github.com/networkservicemesh/networkservicemesh/utils v0.0.0-20191017074247-aa5815869b2c
 	github.com/newtools/ebpf => github.com/nplanel/ebpf v0.0.0-20190918123742-99947faabce5
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.3
 	github.com/skydive-project/skydive/scripts/gendecoder => ./scripts/gendecoder
@@ -138,9 +143,30 @@ replace (
 	github.com/vishvananda/netlink v1.0.0 => github.com/lebauce/netlink v0.0.0-20190122103356-fa328be7c8d2
 	golang.org/x/sys => golang.org/x/sys v0.0.0-20190412213103-97732733099d
 	golang.org/x/tools => golang.org/x/tools v0.0.0-20190925230517-ea99b82c7b93
-	k8s.io/api => k8s.io/api v0.0.0-20190918195907-bd6ac527cfd2
+	k8s.io/api => k8s.io/api v0.0.0-20190819141258-3544db3b9e44
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20190819143637-0dbe462fe92d
 	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20190817020851-f2f3a405f61d
-	k8s.io/client-go => k8s.io/client-go v0.0.0-20190620085101-78d2af792bab
+	k8s.io/apiserver => k8s.io/apiserver v0.0.0-20190819142446-92cc630367d0
+	k8s.io/cli-runtime => k8s.io/cli-runtime v0.0.0-20190819144027-541433d7ce35
+	k8s.io/client-go => k8s.io/client-go v0.0.0-20190819141724-e14f31a72a77
+	k8s.io/cloud-provider => k8s.io/cloud-provider v0.0.0-20190819145148-d91c85d212d5
+	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.0.0-20190819145008-029dd04813af
+	k8s.io/code-generator => k8s.io/code-generator v0.0.0-20190612205613-18da4a14b22b
+	k8s.io/component-base => k8s.io/component-base v0.0.0-20190819141909-f0f7c184477d
+	k8s.io/cri-api => k8s.io/cri-api v0.0.0-20190817025403-3ae76f584e79
+	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.0.0-20190819145328-4831a4ced492
+	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.0.0-20190819142756-13daafd3604f
+	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.0.0-20190819144832-f53437941eef
+	k8s.io/kube-proxy => k8s.io/kube-proxy v0.0.0-20190819144346-2e47de1df0f0
+	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.0.0-20190819144657-d1a724e0828e
+	k8s.io/kubectl => k8s.io/kubectl v0.0.0-20190602132728-7075c07e78bf
+	k8s.io/kubelet => k8s.io/kubelet v0.0.0-20190819144524-827174bad5e8
+	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.0.0-20190819145509-592c9a46fd00
+	k8s.io/metrics => k8s.io/metrics v0.0.0-20190819143841-305e1cef1ab1
+	k8s.io/node-api => k8s.io/node-api v0.0.0-20190819145652-b61681edbd0a
+	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.0.0-20190819143045-c84c31c165c4
+	k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.0.0-20190819144209-f9ca4b649af0
+	k8s.io/sample-controller => k8s.io/sample-controller v0.0.0-20190819143301-7c475f5e1313
 )
 
 go 1.11

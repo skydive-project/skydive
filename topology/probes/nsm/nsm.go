@@ -29,9 +29,9 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
-	cc "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/crossconnect"
-	localconn "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/local/connection"
-	remoteconn "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/remote/connection"
+	cc "github.com/networkservicemesh/networkservicemesh/controlplane/api/crossconnect"
+	localconn "github.com/networkservicemesh/networkservicemesh/controlplane/api/local/connection"
+	remoteconn "github.com/networkservicemesh/networkservicemesh/controlplane/api/remote/connection"
 	v1 "github.com/networkservicemesh/networkservicemesh/k8s/pkg/apis/networkservice/v1alpha1"
 	"github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/clientset/versioned"
 	"github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/informers/externalversions"
@@ -117,7 +117,7 @@ func (p *Probe) Start() error {
 		AddFunc: func(obj interface{}) {
 			nsm := obj.(*v1.NetworkServiceManager)
 			logging.GetLogger().Infof("New NSMgr Added: %v", nsm)
-			go p.monitorCrossConnects(nsm.Status.URL)
+			go p.monitorCrossConnects(nsm.Spec.URL)
 		},
 	})
 
