@@ -24,10 +24,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/crossconnect"
-	cc "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/crossconnect"
-	localconn "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/local/connection"
-	remoteconn "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/remote/connection"
+	cc "github.com/networkservicemesh/networkservicemesh/controlplane/api/crossconnect"
+	localconn "github.com/networkservicemesh/networkservicemesh/controlplane/api/local/connection"
+	remoteconn "github.com/networkservicemesh/networkservicemesh/controlplane/api/remote/connection"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -140,7 +139,7 @@ func TestOnConnLocal_create_and_delete(t *testing.T) {
 
 	cconn := createConnectionLocalOnly("1", "2")
 
-	p.onConnLocalLocal(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn, "url")
+	p.onConnLocalLocal(cc.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn, "url")
 
 	// Ensure the link is correctly created
 	// TODO: test the metadata is correct
@@ -168,7 +167,7 @@ func TestOnConnLocal_create_and_delete(t *testing.T) {
 	}
 
 	// TODO: test metadatas
-	p.onConnLocalLocal(crossconnect.CrossConnectEventType_DELETE, cconn, "url")
+	p.onConnLocalLocal(cc.CrossConnectEventType_DELETE, cconn, "url")
 	if len(p.connections) != 0 {
 		t.Error("link list is not empty after deletion")
 	}
@@ -182,8 +181,8 @@ func TestOnConnLocal_create_and_delete(t *testing.T) {
 func TestOnConnRemote_create_and_delete(t *testing.T) {
 	p := setupProbe(t)
 	cconn1, cconn2 := createConnectionWithRemote("1", "2")
-	p.onConnLocalRemote(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn1, "url1")
-	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn2, "url2")
+	p.onConnLocalRemote(cc.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn1, "url1")
+	p.onConnRemoteLocal(cc.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn2, "url2")
 
 	srcInode, dstInode := p.connections[0].getInodes()
 	if srcInode != 1 || dstInode != 2 {
@@ -208,14 +207,14 @@ func TestOnConnRemote_create_and_delete(t *testing.T) {
 		t.Error("link is not created in the graph")
 	}
 
-	p.onConnLocalRemote(crossconnect.CrossConnectEventType_DELETE, cconn1, "url1")
+	p.onConnLocalRemote(cc.CrossConnectEventType_DELETE, cconn1, "url1")
 
 	// Ensure Edge is deleted
 	if p.g.AreLinked(n1, n2, nil) {
 		t.Error("link is not deleted in the graph")
 	}
 
-	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_DELETE, cconn2, "url2")
+	p.onConnRemoteLocal(cc.CrossConnectEventType_DELETE, cconn2, "url2")
 
 	if len(p.connections) != 0 {
 		t.Errorf("link list is not empty after deletion: %+v", p.connections)
@@ -230,11 +229,11 @@ func TestOnConnTwoCrossConnectsWithTheSameSourceAndDest_create_and_delete(t *tes
 	p := setupProbe(t)
 
 	cconn1, cconn2 := createConnectionWithRemote("1", "2")
-	p.onConnLocalRemote(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn1, "url1")
-	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn2, "url2")
+	p.onConnLocalRemote(cc.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn1, "url1")
+	p.onConnRemoteLocal(cc.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn2, "url2")
 	cconn3, cconn4 := createConnectionWithRemote("2", "3")
-	p.onConnLocalRemote(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn3, "url2")
-	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn4, "url3")
+	p.onConnLocalRemote(cc.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn3, "url2")
+	p.onConnRemoteLocal(cc.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn4, "url3")
 
 	// ensure that two connections are available in the connection list when looking for inode 2
 	c, _ := p.getConnectionsReadyWithInode(2)
@@ -269,10 +268,10 @@ func TestOnConnTwoCrossConnectsWithTheSameSourceAndDest_create_and_delete(t *tes
 		t.Errorf("link between inode 2 and inode 3 is not created in the graph : %v", p.connections)
 	}
 
-	p.onConnLocalRemote(crossconnect.CrossConnectEventType_DELETE, cconn1, "url1")
-	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_DELETE, cconn2, "url2")
-	p.onConnLocalRemote(crossconnect.CrossConnectEventType_DELETE, cconn3, "url2")
-	p.onConnRemoteLocal(crossconnect.CrossConnectEventType_DELETE, cconn4, "url3")
+	p.onConnLocalRemote(cc.CrossConnectEventType_DELETE, cconn1, "url1")
+	p.onConnRemoteLocal(cc.CrossConnectEventType_DELETE, cconn2, "url2")
+	p.onConnLocalRemote(cc.CrossConnectEventType_DELETE, cconn3, "url2")
+	p.onConnRemoteLocal(cc.CrossConnectEventType_DELETE, cconn4, "url3")
 	// Ensure Edge is deleted
 	if p.g.AreLinked(n1, n2, nil) || p.g.AreLinked(n2, n3, nil) {
 		t.Error("connections are not deleted in the graph")
@@ -289,9 +288,9 @@ func TestUpdateExistingConnection(t *testing.T) {
 
 	cconn := createConnectionLocalOnly("1", "2")
 
-	p.onConnLocalLocal(crossconnect.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn, "url1")
+	p.onConnLocalLocal(cc.CrossConnectEventType_INITIAL_STATE_TRANSFER, cconn, "url1")
 
-	p.onConnLocalLocal(crossconnect.CrossConnectEventType_UPDATE, cconn, "url1")
+	p.onConnLocalLocal(cc.CrossConnectEventType_UPDATE, cconn, "url1")
 
 	if len(p.connections) != 1 {
 		t.Errorf("connection count should be equal to 1 after receiving an UPDATE message for an existing connection, connection count: %d", len(p.connections))
