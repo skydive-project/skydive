@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.26.0] - 2019-10-18
+### Added
+
+- Add new `seed` mechanism to start a probe inside a container/process namespace
+- Add support for plugins
+- Add BESS topology probe (thanks to Tim Rozet)
+- Report active flows status through WebSocket
+
+### Changed
+- Use 1.11 as minimal Golang version
+- Moved to `go mod` to ease import from external projects
+- Use Ubuntu 19.04 as Docker base image
+
 ## [0.25.0] - 2019-09-10
 ### Added
 
