@@ -10,3 +10,7 @@ skydive_listen_ip=0.0.0.0
 
 [agents]
 10.0.0.9
+
+# For skydive-flow-matrix add skydive_extra_config:
+#[agents:vars]
+#skydive_extra_config={'agent.topology.probes': ['socketinfo',]}
