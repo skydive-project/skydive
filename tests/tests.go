@@ -81,6 +81,7 @@ agent:
   topology:
     probes:
     - ovsdb
+    - blockdev
     - docker
     - lxd
     - lldp
