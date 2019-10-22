@@ -13,10 +13,21 @@
   when:
     - skydive_container_cli is none or skydive_container_cli == ""
 
+- name: "Check {{ skydive_container_cli }}"
+  package:
+    list="{{ packages }}"
+  vars:
+    packages:
+    - "{{ skydive_container_cli }}"
+    - docker-ce
+  register: package_skydive_container_cli
+
 - name: "Install {{ skydive_container_cli }}"
   package:
     name: "{{ skydive_container_cli }}"
     state: present
+  when:
+    - package_skydive_container_cli.results | length != 0
 
 - name: Enable Docker service
   service:
