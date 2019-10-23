@@ -106,7 +106,7 @@ func (h *Hub) PodServer() *websocket.StructServer {
 	return h.podWSServer
 }
 
-// SubscriberServer returns the websocket server dedicated to subcribers
+// SubscriberServer returns the websocket server dedicated to subscribers
 func (h *Hub) SubscriberServer() *websocket.StructServer {
 	return h.subscriberWSServer
 }

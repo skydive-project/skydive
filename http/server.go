@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/abbot/go-http-auth"
+	auth "github.com/abbot/go-http-auth"
 	gcontext "github.com/gorilla/context"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -119,7 +119,11 @@ func (s *Server) Serve() {
 	defer s.wg.Done()
 	s.wg.Add(1)
 
-	s.Handler = handlers.CompressHandler(s.Router)
+	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"})
+	originsOk := handlers.AllowedOrigins([]string{"*"})
+	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
+
+	s.Handler = handlers.CompressHandler(handlers.CORS(headersOk, originsOk, methodsOk)(s.Router))
 
 	var err error
 	if s.TLSConfig != nil {

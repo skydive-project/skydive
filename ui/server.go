@@ -164,9 +164,6 @@ func (s *Server) ServeIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest)
 		Permissions: rbac.GetPermissionsForUser(username),
 	}
 
-	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-
 	shttp.SetTLSHeader(w, &r.Request)
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
@@ -186,6 +183,7 @@ func (s *Server) serveLogin(w http.ResponseWriter, r *http.Request, authBackend 
 			username, password := loginForm[0], passwordForm[0]
 
 			if _, err := shttp.Authenticate(authBackend, w, username, password); err == nil {
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
 				w.WriteHeader(http.StatusOK)
 
 				roles := rbac.GetUserRoles(username)
