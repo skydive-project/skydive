@@ -255,8 +255,6 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	uiServer.RegisterLoginRoute(apiAuthBackend)
-
 	peers, err := config.GetAnalyzerServiceAddresses()
 	if err != nil {
 		return nil, fmt.Errorf("Unable to get the analyzers list: %s", err)
