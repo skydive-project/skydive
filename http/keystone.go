@@ -163,11 +163,7 @@ func (b *KeystoneAuthenticationBackend) Authenticate(username string, password s
 // Wrap an HTTP handler with Keystone authentication
 func (b *KeystoneAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		token, err := authenticateWithHeaders(b, w, r)
-		if err != nil {
-			Unauthorized(w, r)
-			return
-		}
+		token := tokenFromHeaders(b, w, r)
 
 		if username, err := b.CheckUser(token); username == "" {
 			if err != nil {

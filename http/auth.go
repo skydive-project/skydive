@@ -23,11 +23,10 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/context"
 
-	"github.com/abbot/go-http-auth"
+	auth "github.com/abbot/go-http-auth"
 	"github.com/skydive-project/skydive/rbac"
 )
 
@@ -126,34 +125,18 @@ func Authenticate(backend AuthenticationBackend, w http.ResponseWriter, username
 	return token, nil
 }
 
-// Authenticate uses request and the given backend to authenticate
-func authenticateWithHeaders(backend AuthenticationBackend, w http.ResponseWriter, r *http.Request) (string, error) {
+func tokenFromHeaders(backend AuthenticationBackend, w http.ResponseWriter, r *http.Request) string {
 	// first try to get an already retrieve auth token through cookie
 	cookie, err := r.Cookie(tokenName)
 	if err == nil {
 		http.SetCookie(w, AuthCookie(cookie.Value, "/"))
-		return cookie.Value, nil
+		return cookie.Value
 	}
 
 	authorization := r.Header.Get("Authorization")
-	if authorization == "" {
-		return "", nil
+	if authorization != "" {
+		return authorization
 	}
 
-	s := strings.SplitN(authorization, " ", 2)
-	if len(s) != 2 || s[0] != "Basic" {
-		return "", ErrWrongCredentials
-	}
-
-	b, err := base64.StdEncoding.DecodeString(s[1])
-	if err != nil {
-		return "", ErrWrongCredentials
-	}
-	pair := strings.SplitN(string(b), ":", 2)
-	if len(pair) != 2 {
-		return "", ErrWrongCredentials
-	}
-	username, password := pair[0], pair[1]
-
-	return Authenticate(backend, w, username, password)
+	return ""
 }

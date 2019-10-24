@@ -20,8 +20,9 @@ package http
 import (
 	"encoding/base64"
 	"net/http"
+	"strings"
 
-	"github.com/abbot/go-http-auth"
+	auth "github.com/abbot/go-http-auth"
 )
 
 const (
@@ -67,10 +68,12 @@ func (b *BasicAuthenticationBackend) Authenticate(username string, password stri
 // Wrap an HTTP handler with BasicAuth authentication
 func (b *BasicAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		token, err := authenticateWithHeaders(b, w, r)
-		if err != nil {
-			Unauthorized(w, r)
-			return
+		token := tokenFromHeaders(b, w, r)
+
+		// if not coming from cookie or X-Auth-Token
+		s := strings.SplitN(token, " ", 2)
+		if len(s) == 2 || s[0] == "Basic" {
+			token = s[1]
 		}
 
 		// add "fake" header to let the basic auth library do the authentication
