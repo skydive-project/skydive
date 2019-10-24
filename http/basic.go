@@ -68,7 +68,7 @@ func (b *BasicAuthenticationBackend) Authenticate(username string, password stri
 // Wrap an HTTP handler with BasicAuth authentication
 func (b *BasicAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		token := tokenFromHeaders(b, w, r)
+		token := tokenFromRequest(r)
 
 		// if not coming from cookie or X-Auth-Token
 		s := strings.SplitN(token, " ", 2)

@@ -126,10 +126,8 @@ func Authenticate(backend AuthenticationBackend, w http.ResponseWriter, username
 	return token, permissions, nil
 }
 
-func tokenFromHeaders(backend AuthenticationBackend, w http.ResponseWriter, r *http.Request) string {
-	// first try to get an already retrieve auth token through cookie
+func tokenFromRequest(r *http.Request) string {
 	if cookie, err := r.Cookie(tokenName); err == nil {
-		http.SetCookie(w, AuthCookie(cookie.Value, "/"))
 		return cookie.Value
 	}
 
@@ -139,6 +137,11 @@ func tokenFromHeaders(backend AuthenticationBackend, w http.ResponseWriter, r *h
 
 	if token := r.Header.Get("X-Auth-Token"); token != "" {
 		return token
+	}
+
+	r.ParseForm()
+	if tokens := r.Form["x-auth-token"]; len(tokens) != 0 {
+		return tokens[0]
 	}
 
 	return ""
