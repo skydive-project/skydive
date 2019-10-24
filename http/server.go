@@ -163,8 +163,8 @@ func (s *Server) HandleFunc(path string, f auth.AuthenticatedHandlerFunc, authBa
 			rbac.AddRoleForUser(r.Username, authBackend.DefaultUserRole(r.Username))
 		}
 
-		// re-send the permissions
-		setPermissionsCookie(w, r.Username)
+		permissions := rbac.GetPermissionsForUser(r.Username)
+		setPermissionsCookie(w, permissions)
 
 		f(w, r)
 	}

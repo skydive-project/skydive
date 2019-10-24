@@ -38,7 +38,7 @@ var (
 const (
 	// DefaultUserRole is the default role to assign to a user
 	DefaultUserRole = "admin"
-	tokenName       = "authtok"
+	tokenName       = "authtoken"
 )
 
 // AuthenticationOpts describes the elements used by a client to authenticate
@@ -87,8 +87,8 @@ type AuthenticationBackend interface {
 	Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc
 }
 
-func setPermissionsCookie(w http.ResponseWriter, username string) {
-	jsonPerms, _ := json.Marshal(rbac.GetPermissionsForUser(username))
+func setPermissionsCookie(w http.ResponseWriter, permissions []rbac.Permission) {
+	jsonPerms, _ := json.Marshal(permissions)
 	http.SetCookie(w, &http.Cookie{
 		Name:  "permissions",
 		Value: base64.StdEncoding.EncodeToString([]byte(jsonPerms)),
@@ -106,10 +106,10 @@ func authCallWrapped(w http.ResponseWriter, r *http.Request, username string, wr
 // Authenticate checks a couple of username and password against an authentication backend.
 // If it succeeds, it set a token as a HTTP cookie. It then retrieves the roles for the
 // authenticated user from the backend.
-func Authenticate(backend AuthenticationBackend, w http.ResponseWriter, username, password string) (string, error) {
+func Authenticate(backend AuthenticationBackend, w http.ResponseWriter, username, password string) (string, []rbac.Permission, error) {
 	token, err := backend.Authenticate(username, password)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	if roles := rbac.GetUserRoles(username); len(roles) == 0 {
@@ -120,22 +120,25 @@ func Authenticate(backend AuthenticationBackend, w http.ResponseWriter, username
 		http.SetCookie(w, AuthCookie(token, "/"))
 	}
 
-	setPermissionsCookie(w, username)
+	permissions := rbac.GetPermissionsForUser(username)
+	setPermissionsCookie(w, permissions)
 
-	return token, nil
+	return token, permissions, nil
 }
 
 func tokenFromHeaders(backend AuthenticationBackend, w http.ResponseWriter, r *http.Request) string {
 	// first try to get an already retrieve auth token through cookie
-	cookie, err := r.Cookie(tokenName)
-	if err == nil {
+	if cookie, err := r.Cookie(tokenName); err == nil {
 		http.SetCookie(w, AuthCookie(cookie.Value, "/"))
 		return cookie.Value
 	}
 
-	authorization := r.Header.Get("Authorization")
-	if authorization != "" {
+	if authorization := r.Header.Get("Authorization"); authorization != "" {
 		return authorization
+	}
+
+	if token := r.Header.Get("X-Auth-Token"); token != "" {
+		return token
 	}
 
 	return ""

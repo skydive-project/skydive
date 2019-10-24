@@ -316,10 +316,23 @@ func (a *Server) serveLogin(w http.ResponseWriter, r *http.Request, authBackend 
 		if len(loginForm) != 0 && len(passwordForm) != 0 {
 			username, password := loginForm[0], passwordForm[0]
 
-			if _, err := shttp.Authenticate(authBackend, w, username, password); err == nil {
+			if token, permissions, err := shttp.Authenticate(authBackend, w, username, password); err == nil {
+				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
 				w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 				w.WriteHeader(http.StatusOK)
+
+				body := struct {
+					Token       string
+					Permissions []rbac.Permission
+				}{
+					Token:       token,
+					Permissions: permissions,
+				}
+
+				bytes, _ := json.Marshal(body)
+				w.Write(bytes)
 
 				roles := rbac.GetUserRoles(username)
 				logging.GetLogger().Infof("User %s authenticated with %s backend with roles %s", username, authBackend.Name(), roles)
