@@ -50,12 +50,8 @@ add_gz() {
     git add $dst.gz
 }
 
-allinone=$GOPATH/src/github.com/skydive-project/skydive/contrib/exporters/allinone
-
 add_gz skydive-latest ${GOPATH}/bin/skydive
 add swagger.json ${GOPATH}/src/github.com/skydive-project/skydive/swagger.json
-add_gz skydive-flow-exporter $allinone/allinone
-add skydive-flow-exporter.yml $allinone/allinone.yml.default
 
 git commit -m "${BUILD_TAG} Jenkins build" --amend --reset-author
 git config credential.helper "store --file=.git/credentials"
