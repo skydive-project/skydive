@@ -17,8 +17,17 @@ pipeline:
       # - internal
       # - other
   transform:
-    sa:
+    type: vpclogs
+    secadvisor:
       # exclude_started_flows: true
+  objheader:
+    type: vpclogs
+    vpclogs:
+      # collector_crn: xxxxxx
+      # attached_endpoint_type: xxxxxx
+      # network_interface_id: xxxxxx
+      # instance_crn: xxxxxx
+      # vpc_crn: xxxxxx
   store:
     type: buffered
     buffered:

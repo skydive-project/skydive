@@ -162,7 +162,9 @@ func (s *storeBuffered) flushFlowsToObject(t Tag, endTime time.Time) error {
 		currentStream = stream{ID: endTime}
 	}
 
-	encodedFlows, err := s.pipeline.Encoder.Encode(flows)
+	objectWithHeader := s.pipeline.ObjHeader.AddObjHeader(flows, startTimeString, endTimeString)
+
+	encodedFlows, err := s.pipeline.Encoder.Encode(objectWithHeader)
 	if err != nil {
 		logging.GetLogger().Error("failed to encode object: ", err)
 		return err

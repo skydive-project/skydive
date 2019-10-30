@@ -15,18 +15,25 @@
  *
  */
 
-package main
+package core
 
 import (
-	"github.com/skydive-project/skydive/contrib/exporters/core"
-	"github.com/skydive-project/skydive/contrib/exporters/vpclogs/mod"
+	"github.com/spf13/viper"
+
+	"github.com/skydive-project/skydive/logging"
 )
 
-func main() {
-	core.Main("/etc/skydive/vpclogs.yml")
+type objectHeaderNone struct {
 }
 
-func init() {
-	core.TransformerHandlers.Register("vpclogs", mod.NewTransform, false)
-	core.ObjHeaderHandlers.Register("vpclogs", mod.NewObjHeaderVpc, false)
+// Transform transforms a flow before being stored
+func (o *objectHeaderNone) AddObjHeader(flows []interface{}, startTime string, endTime string) interface{} {
+	logging.GetLogger().Debugf("entering objectHeaderNone AddObjHeader")
+	return flows
+}
+
+// NewTransformNone create a new transform
+func NewObjHeaderNone(cfg *viper.Viper) (interface{}, error) {
+	logging.GetLogger().Debugf("entering NewObjHeaderNone")
+	return &objectHeaderNone{}, nil
 }

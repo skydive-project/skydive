@@ -63,6 +63,11 @@ type Compressor interface {
 	Compress(b []byte) (*bytes.Buffer, error)
 }
 
+// ObjHeader produces the headere fields in the flow collection object
+type ObjHeader interface {
+	AddObjHeader(flows []interface{}, startTime string, endTime string) interface{}
+}
+
 // Storer interface of a store object
 type Storer interface {
 	StoreFlows(flows map[Tag][]interface{}) error
@@ -90,6 +95,7 @@ var (
 	CompressorHandlers  HandlersMap
 	StorerHandlers      HandlersMap
 	WriterHandlers      HandlersMap
+	ObjHeaderHandlers   HandlersMap
 )
 
 // Register associates a handler with its' label
@@ -132,6 +138,9 @@ func init() {
 	CompressorHandlers.Register("none", NewCompressNone, true)
 	CompressorHandlers.Register("gzip", NewCompressGzip, false)
 
+	ObjHeaderHandlers = make(HandlersMap)
+	ObjHeaderHandlers.Register("none", NewObjHeaderNone, true)
+
 	StorerHandlers = make(HandlersMap)
 	StorerHandlers.Register("buffered", NewStoreBuffered, true)
 	StorerHandlers.Register("direct", NewStoreDirect, false)
@@ -153,6 +162,7 @@ type Pipeline struct {
 	Compressor  Compressor
 	Storer      Storer
 	Writer      Writer
+	ObjHeader   ObjHeader
 }
 
 // NewPipeline defines the pipeline elements
@@ -187,6 +197,11 @@ func NewPipeline(cfg *viper.Viper) (*Pipeline, error) {
 		return nil, err
 	}
 
+	objHeader, err := ObjHeaderHandlers.Init(cfg, "objheader")
+	if err != nil {
+		return nil, err
+	}
+
 	storer, err := StorerHandlers.Init(cfg, "store")
 	if err != nil {
 		return nil, err
@@ -206,6 +221,7 @@ func NewPipeline(cfg *viper.Viper) (*Pipeline, error) {
 		Compressor:  compressor.(Compressor),
 		Storer:      storer.(Storer),
 		Writer:      writer.(Writer),
+		ObjHeader:   objHeader.(ObjHeader),
 	}
 	storer.(Storer).SetPipeline(p)
 
