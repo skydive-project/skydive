@@ -6,6 +6,8 @@ agents
 skydive_listen_ip=0.0.0.0
 skydive_username=admin
 skydive_password=secret
+# For debug display all variables:
+#display_all_variables=true
 
 [analyzers]
 localhost ansible_connection=local

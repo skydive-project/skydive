@@ -24,6 +24,9 @@ skydive_os_service_tenant_name=service
 skydive_os_service_domain_name=Default
 skydive_os_service_region_name=RegionOne
 
+# For debug display all variables:
+#display_all_variables=true
+
 [analyzers]
 localhost ansible_connection=local
 

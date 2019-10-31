@@ -4,6 +4,8 @@ agents
 
 [skydive:vars]
 skydive_listen_ip=0.0.0.0
+# For debug display all variables:
+#display_all_variables=true
 
 [analyzers]
 10.0.0.4
