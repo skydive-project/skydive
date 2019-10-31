@@ -1,17 +1,14 @@
 module github.com/skydive-project/skydive
 
 require (
-        github.com/nimbess/nimbess-agent v0.0.0-20190919205041-4e6f317ac4fd
 	git.fd.io/govpp.git v0.0.0-20190321220742-345201eedce4
 	github.com/GehirnInc/crypt v0.0.0-20170404120257-5a3fafaa7c86
 	github.com/IBM/ibm-cos-sdk-go v0.0.0-20190328184230-08c1143e8d36
 	github.com/Knetic/govaluate v0.0.0-20171022003610-9aa49832a739 // indirect
-	github.com/Microsoft/go-winio v0.0.0-20170201004330-fff283ad5116 // indirect
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/VerizonDigital/vflow v0.0.0-20190111005900-eb30d936249e
 	github.com/abbot/go-http-auth v0.4.0
 	github.com/bennyscetbun/jsongo v0.0.0-20190110163710-9624bef8c57b // indirect
-	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/casbin/casbin v0.0.0-20181031010332-5ff5a6f5e38a
 	github.com/cenk/hub v0.0.0-20160527103212-11382a9960d3 // indirect
 	github.com/cenk/rpc2 v0.0.0-20160427170138-7ab76d2e88c7 // indirect
@@ -33,29 +30,26 @@ require (
 	github.com/gobwas/pool v0.0.0-20170829094749-32dbaa12caca // indirect
 	github.com/gobwas/ws v0.0.0-20171112092802-915eed324002 // indirect
 	github.com/gocarina/gocsv v0.0.0-20190624090726-71ad6676df57
-	github.com/gogo/protobuf v1.3.0
+	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.3.2
 	github.com/gomatic/funcmap v0.0.0-20190110133044-62047470c142 // indirect
 	github.com/gomatic/renderizer v1.0.1
 	github.com/google/gopacket v1.1.17
-	github.com/gophercloud/gophercloud v0.0.0-20190126172459-c818fa66e4c8
-	github.com/gorilla/context v0.0.0-20160817184632-08b5f424b927
+	github.com/gophercloud/gophercloud v0.3.0
+	github.com/gorilla/context v1.1.1
 	github.com/gorilla/handlers v1.4.2
-	github.com/gorilla/mux v0.0.0-20171208160815-5ab525f4fb16
-	github.com/gorilla/websocket v1.4.0
+	github.com/gorilla/mux v1.7.0
+	github.com/gorilla/websocket v1.4.1
 	github.com/gosuri/uitable v0.0.0-20160404203958-36ee7e946282 // indirect
 	github.com/hashicorp/go-version v0.0.0-20180322230233-23480c066577
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/hydrogen18/stoppableListener v0.0.0-20151210151943-dadc9ccc400c
-	github.com/imdario/mergo v0.3.7 // indirect
-	github.com/inconshreveable/mousetrap v0.0.0-20141017200713-76626ae9c91c // indirect
 	github.com/intel-go/nff-go v0.0.0-20190620122648-8ab691c21da9
 	github.com/iovisor/gobpf v0.0.0-20190329163444-e0d8d785d368 // indirect
 	github.com/jbowtie/gokogiri v0.0.0-20190301021639-37f655d3078f // indirect
 	github.com/jteeuwen/go-bindata v0.0.0-20180305030458-6025e8de665b
 	github.com/juju/clock v0.0.0-20190205081909-9c5c9712527c // indirect
 	github.com/juju/errors v0.0.0-20190806202954-0232dcc7464d // indirect
-	github.com/juju/loggo v0.0.0-20170605014607-8232ab8918d9 // indirect
 	github.com/juju/retry v0.0.0-20180821225755-9058e192b216 // indirect
 	github.com/juju/testing v0.0.0-20190723135506-ce30eb24acd2 // indirect
 	github.com/juju/utils v0.0.0-20180820210520-bf9cc5bdd62d // indirect
@@ -70,12 +64,13 @@ require (
 	github.com/mailru/easyjson v0.7.0
 	github.com/mattn/go-runewidth v0.0.0-20160315040712-d6bea18f7897 // indirect
 	github.com/mattn/goveralls v0.0.2
-	github.com/mitchellh/go-homedir v0.0.0-20160621174243-756f7b183b7a
+	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/hashstructure v0.0.0-20170116052023-ab25296c0f51
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/networkservicemesh/networkservicemesh v0.1.0
 	github.com/newtools/ebpf v0.0.0-20190820102627-8b7eaed02eb9
+	github.com/nimbess/nimbess-agent v0.0.0-20190919205041-4e6f317ac4fd
 	github.com/nlewo/contrail-introspect-cli v0.0.0-20181003135217-0407b60f2edd
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/olivere/elastic v0.0.0-20190204160516-f82cf7c66881
@@ -92,7 +87,7 @@ require (
 	github.com/skydive-project/dede v0.0.0-20180704100832-90df8e39b679
 	github.com/skydive-project/goloxi v0.0.0-20190117172159-db2324197a3e
 	github.com/socketplane/libovsdb v0.0.0-20160607151822-5113f8fb4d9d
-	github.com/spf13/cobra v0.0.0-20160830174925-9c28e4bbd74e
+	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.4.0
 	github.com/t-yuki/gocover-cobertura v0.0.0-20180217150009-aaee18c8195c
@@ -120,13 +115,13 @@ require (
 	gopkg.in/sourcemap.v1 v1.0.0-20160602085544-eef8f47ab679 // indirect
 	gopkg.in/urfave/cli.v2 v2.0.0-20170928224240-b2bf3c5abeb9 // indirect
 	gopkg.in/validator.v2 v2.0.0-20160201165114-3e4f037f12a1
-	gopkg.in/yaml.v2 v2.2.2
-	istio.io/api v0.0.0-20190925180116-1b594bcab992
-	istio.io/client-go v0.0.0-20190926163343-7a2173c3ba57
-	k8s.io/api v0.0.0-20190918195907-bd6ac527cfd2
-	k8s.io/apimachinery v0.0.0-20190817221809-bf4de9df677c
+	gopkg.in/yaml.v2 v2.2.4
+	istio.io/api v0.0.0-20191029012234-9fe6a7da3673
+	istio.io/client-go v0.0.0-20191024204624-13a7366c1cab
+	k8s.io/api v0.0.0
+	k8s.io/apimachinery v0.0.0
 	k8s.io/client-go v10.0.0+incompatible
-	k8s.io/utils v0.0.0-20190607212802-c55fbcfc754a // indirect
+	k8s.io/kubernetes v1.16.2 // indirect
 )
 
 replace (
@@ -139,9 +134,27 @@ replace (
 	github.com/vishvananda/netlink v1.0.0 => github.com/lebauce/netlink v0.0.0-20190122103356-fa328be7c8d2
 	golang.org/x/sys => golang.org/x/sys v0.0.0-20190412213103-97732733099d
 	golang.org/x/tools => golang.org/x/tools v0.0.0-20190925230517-ea99b82c7b93
-	k8s.io/api => k8s.io/api v0.0.0-20190918195907-bd6ac527cfd2
-	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20190817020851-f2f3a405f61d
-	k8s.io/client-go => k8s.io/client-go v0.0.0-20190620085101-78d2af792bab
+	k8s.io/api => k8s.io/api v0.0.0-20191016110408-35e52d86657a
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20191016113550-5357c4baaf65
+	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20191004115801-a2eda9f80ab8
+	k8s.io/apiserver => k8s.io/apiserver v0.0.0-20191016112112-5190913f932d
+	k8s.io/cli-runtime => k8s.io/cli-runtime v0.0.0-20191016114015-74ad18325ed5
+	k8s.io/client-go => k8s.io/client-go v0.0.0-20191016111102-bec269661e48
+	k8s.io/cloud-provider => k8s.io/cloud-provider v0.0.0-20191016115326-20453efc2458
+	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.0.0-20191016115129-c07a134afb42
+	k8s.io/code-generator => k8s.io/code-generator v0.0.0-20191004115455-8e001e5d1894
+	k8s.io/component-base => k8s.io/component-base v0.0.0-20191016111319-039242c015a9
+	k8s.io/cri-api => k8s.io/cri-api v0.0.0-20190828162817-608eb1dad4ac
+	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.0.0-20191016115521-756ffa5af0bd
+	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.0.0-20191016112429-9587704a8ad4
+	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.0.0-20191016114939-2b2b218dc1df
+	k8s.io/kube-proxy => k8s.io/kube-proxy v0.0.0-20191016114407-2e83b6f20229
+	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.0.0-20191016114748-65049c67a58b
+	k8s.io/kubectl => k8s.io/kubectl v0.0.0-20191016120415-2ed914427d51
+	k8s.io/kubelet => k8s.io/kubelet v0.0.0-20191016114556-7841ed97f1b2
+	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.0.0-20191016115753-cf0698c3a16b
+	k8s.io/metrics => k8s.io/metrics v0.0.0-20191016113814-3b1a734dba6e
+	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.0.0-20191016112829-06bb3c9d77c9
 )
 
 go 1.11
