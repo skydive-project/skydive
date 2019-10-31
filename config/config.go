@@ -272,10 +272,15 @@ func LoadConfig(cfg *viper.Viper, backend string, paths []string) error {
 	switch backend {
 	case "file":
 		for _, path := range paths {
-			configFile, err := os.Open(path)
-			if err != nil {
-				return err
+			configFile := os.Stdin
+			if path != "-" {
+				var err error
+				configFile, err = os.Open(path)
+				if err != nil {
+					return err
+				}
 			}
+
 			if err := cfg.MergeConfig(configFile); err != nil {
 				return err
 			}
