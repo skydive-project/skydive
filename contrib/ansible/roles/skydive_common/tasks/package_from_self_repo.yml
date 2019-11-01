@@ -3,7 +3,7 @@
   yum_repository:
     name: self-repo-skydive-skydive
     description: Self repo for skydive
-    baseurl: {{ skydive_repo_baseurl }}
+    baseurl: "{{ skydive_repo_baseurl }}"
     skip_if_unavailable: yes
     gpgcheck: no
     repo_gpgcheck: no
