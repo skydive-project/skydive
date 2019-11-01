@@ -1,0 +1,18 @@
+---
+- name: Self repo for skydive
+  yum_repository:
+    name: self-repo-skydive-skydive
+    description: Self repo for skydive
+    baseurl: {{ skydive_repo_baseurl }}
+    skip_if_unavailable: yes
+    gpgcheck: no
+    repo_gpgcheck: no
+    enabled: yes
+  when:
+    - skydive_repo_baseurl is defined
+    - ansible_os_family == "RedHat"
+
+- name: Install skydive package
+  package:
+    name: skydive
+    state: present
