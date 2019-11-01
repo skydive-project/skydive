@@ -43,9 +43,6 @@
 - include_tasks: package.yml
   when: skydive_deployment_mode == "package"
 
-- include_tasks: package_from_self_repo.yml
-  when: skydive_deployment_mode == "package_from_self_repo"
-
 - include_tasks: binary.yml
   when: skydive_deployment_mode == "binary"
 
