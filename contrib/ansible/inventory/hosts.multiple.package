@@ -1,0 +1,19 @@
+[skydive:children]
+analyzers
+agents
+
+[skydive:vars]
+skydive_listen_ip=0.0.0.0
+# For install package from self repo.
+#skydive_deployment_mode="package_from_self_repo"
+#skydive_repo_baseurl=""
+
+[analyzers]
+10.0.0.4
+
+[agents]
+10.0.0.9
+
+# For skydive-flow-matrix add skydive_extra_config:
+#[agents:vars]
+#skydive_extra_config={'agent.topology.probes': ['socketinfo',]}
