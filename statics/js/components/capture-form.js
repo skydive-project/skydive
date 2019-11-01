@@ -82,11 +82,12 @@ Vue.component('capture-form', {
               <label for="targetType">Target type</label>\
               <select id="targetType" v-model="targetType" class="form-control custom-select">\
                 <option disabled value="">Select target type</option >\
+                <option value="">None</option>\
                 <option value="netflowv5">NetFlow</option>\
                 <option value="erspanv1">Erspan</option>\
               </select>\
             </div>\
-            <div class="form-group" v-else>\
+            <div class="form-group">\
               <div class="form-group">\
                 <label for="capture-layer-key-mode">Layers used for Flow Key</label>\
                 <select id="capture-layer-key-mode" v-model="layerKeyMode" class="form-control custom-select">\
@@ -116,7 +117,7 @@ Vue.component('capture-form', {
                   Reassemble TCP packets\
                   <span class="checkmark"></span>\
                 </label>\
-                <div class="form-group" v-if="isPacketCaptureEnabled">\
+                <div class="form-group" v-if="isPacketCaptureEnabled && !targetType">\
                   <label for="capture-raw-packets">Raw packets limit</label>\
                   <input id="capture-raw-packets" type="number" class="form-control input-sm" v-model.number="rawPackets" min="0" max="10"/>\
                 </div>\
