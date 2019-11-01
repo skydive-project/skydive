@@ -1,12 +1,9 @@
 ---
-- name: Upgrade all packages
-  yum: name=* state=latest
-  when: ansible_os_family == 'RedHat'
-
 - name: Install opstools repository
   package:
     name: centos-release-opstools
     state: present
+    update_cache: yes
   when: ansible_distribution == 'CentOS' and skydive_package_location is not defined
 
 - name: Copy skydive packages
