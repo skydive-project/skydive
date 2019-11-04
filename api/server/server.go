@@ -308,6 +308,89 @@ func (a *Server) GetHandler(hname string) Handler {
 	return a.handlers[hname]
 }
 
+func (a *Server) serveLogin(w http.ResponseWriter, r *http.Request, authBackend shttp.AuthenticationBackend) {
+	shttp.SetTLSHeader(w, r)
+	if r.Method == "POST" {
+		r.ParseForm()
+		loginForm, passwordForm := r.Form["username"], r.Form["password"]
+		if len(loginForm) != 0 && len(passwordForm) != 0 {
+			username, password := loginForm[0], passwordForm[0]
+
+			if token, permissions, err := shttp.Authenticate(authBackend, w, username, password); err == nil {
+				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+				w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+				w.WriteHeader(http.StatusOK)
+
+				body := struct {
+					Token       string
+					Permissions []rbac.Permission
+				}{
+					Token:       token,
+					Permissions: permissions,
+				}
+
+				bytes, _ := json.Marshal(body)
+				w.Write(bytes)
+
+				roles := rbac.GetUserRoles(username)
+				logging.GetLogger().Infof("User %s authenticated with %s backend with roles %s", username, authBackend.Name(), roles)
+				return
+			}
+
+			shttp.Unauthorized(w, r)
+		} else {
+			shttp.Unauthorized(w, r)
+		}
+	} else {
+		http.Redirect(w, r, "/", http.StatusFound)
+	}
+}
+
+func (a *Server) serveLoginHandlerFunc(authBackend shttp.AuthenticationBackend) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		a.serveLogin(w, r, authBackend)
+	}
+}
+
+func (a *Server) addLoginRoute(authBackend shttp.AuthenticationBackend) {
+	// swagger:operation POST /login login
+	//
+	// Login
+	//
+	// ---
+	// summary: Login
+	//
+	// tags:
+	// - Login
+	//
+	// consumes:
+	// - application/x-www-form-urlencoded
+	//
+	// schemes:
+	// - http
+	// - https
+	//
+	// parameters:
+	// - name: username
+	//   in: formData
+	//   required: true
+	//   type: string
+	// - name: password
+	//   in: formData
+	//   required: true
+	//   type: string
+	//
+	// responses:
+	//   200:
+	//     description: Authentication successful
+	//   401:
+	//     description: Unauthorized
+
+	a.HTTPServer.Router.HandleFunc("/login", a.serveLoginHandlerFunc(authBackend))
+}
+
 // NewAPI creates a new API server based on http
 func NewAPI(server *shttp.Server, kapi etcd.KeysAPI, service common.Service, authBackend shttp.AuthenticationBackend) (*Server, error) {
 	apiServer := &Server{
@@ -317,6 +400,7 @@ func NewAPI(server *shttp.Server, kapi etcd.KeysAPI, service common.Service, aut
 	}
 
 	apiServer.addAPIRootRoute(service, authBackend)
+	apiServer.addLoginRoute(authBackend)
 
 	return apiServer, nil
 }

@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/abbot/go-http-auth"
+	auth "github.com/abbot/go-http-auth"
 	gcontext "github.com/gorilla/context"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -119,7 +119,11 @@ func (s *Server) Serve() {
 	defer s.wg.Done()
 	s.wg.Add(1)
 
-	s.Handler = handlers.CompressHandler(s.Router)
+	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization", "X-Auth-Token"})
+	originsOk := handlers.AllowedOrigins([]string{"*"})
+	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
+
+	s.Handler = handlers.CompressHandler(handlers.CORS(headersOk, originsOk, methodsOk)(s.Router))
 
 	var err error
 	if s.TLSConfig != nil {
@@ -151,21 +155,28 @@ func (s *Server) Stop() {
 	s.wg.Wait()
 }
 
-// HandleFunc specifies the handler function and the authentication backend used for a given path
-func (s *Server) HandleFunc(path string, f auth.AuthenticatedHandlerFunc, authBackend AuthenticationBackend) {
-	postAuthHandler := func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+func postAuthHandler(f auth.AuthenticatedHandlerFunc, authBackend AuthenticationBackend) func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	return func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 		// re-add user to its group
 		if roles := rbac.GetUserRoles(r.Username); len(roles) == 0 {
 			rbac.AddRoleForUser(r.Username, authBackend.DefaultUserRole(r.Username))
 		}
 
-		// re-send the permissions
-		setPermissionsCookie(w, r.Username)
+		permissions := rbac.GetPermissionsForUser(r.Username)
+		setPermissionsCookie(w, permissions)
+
+		// re-add auth cookie
+		if token := tokenFromRequest(&r.Request); token != "" {
+			http.SetCookie(w, AuthCookie(token, "/"))
+		}
 
 		f(w, r)
 	}
+}
 
-	preAuthHandler := authBackend.Wrap(postAuthHandler)
+// HandleFunc specifies the handler function and the authentication backend used for a given path
+func (s *Server) HandleFunc(path string, f auth.AuthenticatedHandlerFunc, authBackend AuthenticationBackend) {
+	preAuthHandler := authBackend.Wrap(postAuthHandler(f, authBackend))
 
 	s.Router.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		// set tls headers first

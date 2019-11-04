@@ -23,11 +23,10 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/context"
 
-	"github.com/abbot/go-http-auth"
+	auth "github.com/abbot/go-http-auth"
 	"github.com/skydive-project/skydive/rbac"
 )
 
@@ -39,7 +38,7 @@ var (
 const (
 	// DefaultUserRole is the default role to assign to a user
 	DefaultUserRole = "admin"
-	tokenName       = "authtok"
+	tokenName       = "authtoken"
 )
 
 // AuthenticationOpts describes the elements used by a client to authenticate
@@ -88,8 +87,8 @@ type AuthenticationBackend interface {
 	Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc
 }
 
-func setPermissionsCookie(w http.ResponseWriter, username string) {
-	jsonPerms, _ := json.Marshal(rbac.GetPermissionsForUser(username))
+func setPermissionsCookie(w http.ResponseWriter, permissions []rbac.Permission) {
+	jsonPerms, _ := json.Marshal(permissions)
 	http.SetCookie(w, &http.Cookie{
 		Name:  "permissions",
 		Value: base64.StdEncoding.EncodeToString([]byte(jsonPerms)),
@@ -107,10 +106,10 @@ func authCallWrapped(w http.ResponseWriter, r *http.Request, username string, wr
 // Authenticate checks a couple of username and password against an authentication backend.
 // If it succeeds, it set a token as a HTTP cookie. It then retrieves the roles for the
 // authenticated user from the backend.
-func Authenticate(backend AuthenticationBackend, w http.ResponseWriter, username, password string) (string, error) {
+func Authenticate(backend AuthenticationBackend, w http.ResponseWriter, username, password string) (string, []rbac.Permission, error) {
 	token, err := backend.Authenticate(username, password)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	if roles := rbac.GetUserRoles(username); len(roles) == 0 {
@@ -121,39 +120,29 @@ func Authenticate(backend AuthenticationBackend, w http.ResponseWriter, username
 		http.SetCookie(w, AuthCookie(token, "/"))
 	}
 
-	setPermissionsCookie(w, username)
+	permissions := rbac.GetPermissionsForUser(username)
+	setPermissionsCookie(w, permissions)
 
-	return token, nil
+	return token, permissions, nil
 }
 
-// Authenticate uses request and the given backend to authenticate
-func authenticateWithHeaders(backend AuthenticationBackend, w http.ResponseWriter, r *http.Request) (string, error) {
-	// first try to get an already retrieve auth token through cookie
-	cookie, err := r.Cookie(tokenName)
-	if err == nil {
-		http.SetCookie(w, AuthCookie(cookie.Value, "/"))
-		return cookie.Value, nil
+func tokenFromRequest(r *http.Request) string {
+	if cookie, err := r.Cookie(tokenName); err == nil {
+		return cookie.Value
 	}
 
-	authorization := r.Header.Get("Authorization")
-	if authorization == "" {
-		return "", nil
+	if authorization := r.Header.Get("Authorization"); authorization != "" {
+		return authorization
 	}
 
-	s := strings.SplitN(authorization, " ", 2)
-	if len(s) != 2 || s[0] != "Basic" {
-		return "", ErrWrongCredentials
+	if token := r.Header.Get("X-Auth-Token"); token != "" {
+		return token
 	}
 
-	b, err := base64.StdEncoding.DecodeString(s[1])
-	if err != nil {
-		return "", ErrWrongCredentials
+	r.ParseForm()
+	if tokens := r.Form["x-auth-token"]; len(tokens) != 0 {
+		return tokens[0]
 	}
-	pair := strings.SplitN(string(b), ":", 2)
-	if len(pair) != 2 {
-		return "", ErrWrongCredentials
-	}
-	username, password := pair[0], pair[1]
 
-	return Authenticate(backend, w, username, password)
+	return ""
 }

@@ -52,13 +52,13 @@ func TestBasicAuthenticate(t *testing.T) {
 	}
 
 	var called bool
-	handler := basic.Wrap(func(w http.ResponseWriter, r *auth.AuthenticatedRequest) { called = true })
+	handler := basic.Wrap(postAuthHandler(func(w http.ResponseWriter, r *auth.AuthenticatedRequest) { called = true }, basic))
 
 	w := &fakeResponseWriter{headers: make(http.Header)}
 	r := &http.Request{Header: make(http.Header)}
 	r.SetBasicAuth("user1", "pass1")
 
-	checkAuth := func(creds bool) *http.Cookie {
+	checkAuth := func(checkPerms bool) *http.Cookie {
 		handler(w, r)
 
 		if !called {
@@ -68,7 +68,7 @@ func TestBasicAuthenticate(t *testing.T) {
 		r.Header = http.Header{"Cookie": w.Header()["Set-Cookie"]}
 
 		// check that permissions have been set by creds authentication
-		if creds {
+		if checkPerms {
 			if _, err = r.Cookie("permissions"); err != nil {
 				t.Fatal("permissions cookie not found in the response")
 			}

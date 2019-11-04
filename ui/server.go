@@ -164,9 +164,6 @@ func (s *Server) ServeIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest)
 		Permissions: rbac.GetPermissionsForUser(username),
 	}
 
-	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-
 	shttp.SetTLSHeader(w, &r.Request)
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
@@ -175,75 +172,6 @@ func (s *Server) ServeIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest)
 	if err := tmpl.Execute(w, data); err != nil {
 		logging.GetLogger().Criticalf("Unable to execute index template: %s", err)
 	}
-}
-
-func (s *Server) serveLogin(w http.ResponseWriter, r *http.Request, authBackend shttp.AuthenticationBackend) {
-	shttp.SetTLSHeader(w, r)
-	if r.Method == "POST" {
-		r.ParseForm()
-		loginForm, passwordForm := r.Form["username"], r.Form["password"]
-		if len(loginForm) != 0 && len(passwordForm) != 0 {
-			username, password := loginForm[0], passwordForm[0]
-
-			if _, err := shttp.Authenticate(authBackend, w, username, password); err == nil {
-				w.WriteHeader(http.StatusOK)
-
-				roles := rbac.GetUserRoles(username)
-				logging.GetLogger().Infof("User %s authenticated with %s backend with roles %s", username, authBackend.Name(), roles)
-				return
-			}
-
-			shttp.Unauthorized(w, r)
-		} else {
-			shttp.Unauthorized(w, r)
-		}
-	} else {
-		http.Redirect(w, r, "/", http.StatusFound)
-	}
-}
-
-func (s *Server) serveLoginHandlerFunc(authBackend shttp.AuthenticationBackend) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		s.serveLogin(w, r, authBackend)
-	}
-}
-
-// RegisterLoginRoute registers the login route with the provided auth backend
-func (s *Server) RegisterLoginRoute(authBackend shttp.AuthenticationBackend) {
-	// swagger:operation POST /login login
-	//
-	// Login
-	//
-	// ---
-	// summary: Login
-	//
-	// tags:
-	// - Login
-	//
-	// consumes:
-	// - application/x-www-form-urlencoded
-	//
-	// schemes:
-	// - http
-	// - https
-	//
-	// parameters:
-	// - name: username
-	//   in: formData
-	//   required: true
-	//   type: string
-	// - name: password
-	//   in: formData
-	//   required: true
-	//   type: string
-	//
-	// responses:
-	//   200:
-	//     description: Authentication successful
-	//   401:
-	//     description: Unauthorized
-
-	s.httpServer.Router.HandleFunc("/login", s.serveLoginHandlerFunc(authBackend))
 }
 
 // NewServer returns a new Web server that serves the Skydive UI
