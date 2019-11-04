@@ -99,27 +99,9 @@ func addMulticastAddr(intf string, addr string) error {
 
 	mac, _ := net.ParseMAC(addr)
 
-	var sockaddr syscall.RawSockaddr
-	// RawSockaddr.Data is []int8 on amd64 and []uint8 on ppc64le
-//	switch data := interface{}(sockaddr.Data).(type) {
-//	case [14]int8:
-//		for i, n := range mac {
-//			data[i] = int8(n)
-//		}
-//	case [14]uint8:
-//		for i, n := range mac {
-//			data[i] = uint8(n)
-//		}
-//	}
-
 	sockaddr := syscall.RawSockaddr{}
 	for i,n := range mac {
 		sockaddr.Data[i] = int8(n)
-	}
-
-	ifr := &ifreq{
-		ifrName:   name,
-		ifrHwaddr: sockaddr,
 	}
 
 	ifr := &ifreq{
