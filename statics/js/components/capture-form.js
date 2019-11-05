@@ -293,6 +293,10 @@ Vue.component('capture-form', {
         }
       }
     },
+
+    captureType: function(newType) {
+      this.targetType = "";
+    }
   },
 
   methods: {
