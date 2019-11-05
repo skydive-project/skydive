@@ -100,14 +100,17 @@ func addMulticastAddr(intf string, addr string) error {
 	mac, _ := net.ParseMAC(addr)
 
 	sockaddr := syscall.RawSockaddr{}
+	ptr := unsafe.Pointer(&sockaddr)
 	switch	interface{}(sockaddr.Data).(type){
 	case [14]int8:
+		ptr_int8 := (*[14]int8)(unsafe.Pointer(uintptr(ptr) + unsafe.Offsetof(sockaddr.Data)))
 		for i,n := range mac {
-			sockaddr.Data[i] = int8(n)
+			ptr_int8[i] = int8(n)
 		}
 	case [14]uint8:
+		ptr_uint8 := (*[14]uint8)(unsafe.Pointer(uintptr(ptr) + unsafe.Offsetof(sockaddr.Data)))
 		for i,n := range mac {
-			sockaddr.Data[i] = int8(n)
+			ptr_uint8[i] = uint8(n)
 		}
 	}
 
