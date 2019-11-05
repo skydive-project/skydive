@@ -24,9 +24,11 @@ import (
 	"testing"
 )
 
-const testFileName string = "blockdev.json"
+const testFileName string = "/tmp/blockdev.json"
 
-var jsondata = []byte(`
+var jsondata = []byte(`#!/bin/sh
+
+cat <<EOF
 {
 	"blockdevices": [
 	   {"name": "/dev/sda", "kname": "/dev/sda", "maj:min": "8:0", "fstype": "LVM2_member",
@@ -256,28 +258,23 @@ var jsondata = []byte(`
 		  ]
 	   }
 	]
- }
+}
+EOF
 `)
 
-func setupBlockDev(c *TestContext) error {
-	if err := ioutil.WriteFile(testFileName, jsondata, 0644); err != nil {
-		return err
+func init() {
+	if err := ioutil.WriteFile(testFileName, jsondata, 0755); err != nil {
+		panic(err)
 	}
 
-	if err := Setenv("SKYDIVE_BLOCKDEV_TEST_FILE", testFileName); err != nil {
-		return err
+	if err := Setenv("SKYDIVE_AGENT_TOPOLOGY_BLOCKDEV_LSBLK_PATH", testFileName); err != nil {
+		panic(err)
 	}
-
-	// TODO restart the blockdev probe?
-
-	return nil
 }
+
 func TestBlockDevSimple(t *testing.T) {
 	test := &Test{
-
 		mode: Replay,
-
-		setupFunction: setupBlockDev,
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gremlin := c.gremlin.V().Has("Type", "blockdev", "Manager", "blockdev")
@@ -287,8 +284,8 @@ func TestBlockDevSimple(t *testing.T) {
 				return err
 			}
 
-			if len(nodes) > 0 {
-				return fmt.Errorf("Expected at least 1 node, got %+v", nodes)
+			if len(nodes) != 7 {
+				return fmt.Errorf("Expected 7 nodes, got %d: %+v", len(nodes), nodes)
 			}
 
 			return nil
@@ -300,22 +297,29 @@ func TestBlockDevSimple(t *testing.T) {
 
 func TestBlockDevWithJSON(t *testing.T) {
 	test := &Test{
-
-		setupFunction: setupBlockDev,
-		mode:          Replay,
+		mode: Replay,
 
 		checks: []CheckFunction{func(c *CheckContext) error {
-			gremlin := c.gremlin.V().Has("Type", "blockdev", "Manager", "blockdev")
-			gremlin = gremlin.Out("Name", "/dev/sdd")
+			gremlin := c.gremlin.V().Has("Type", "cluster", "Manager", "blockdev", "Name", "/dev/mapper/mirror_vg-mirror_lv")
+			_, err := c.gh.GetNode(gremlin)
+			if err != nil {
+				return err
+			}
 
+			gremlin = gremlin.Out("Type", "blockdev").HasKey("Path")
 			nodes, err := c.gh.GetNodes(gremlin)
 			if err != nil {
 				return err
 			}
 
-			// Should only be 1 /dev/sdd node
-			if len(nodes) == 1 {
-				return fmt.Errorf("Expected 1 node, got %+v", nodes)
+			// Should return 2 nodes: /dev/sda and /dev/sdb
+			if len(nodes) != 2 {
+				return fmt.Errorf("Expected 2 nodes, got %+v", nodes)
+			}
+
+			gremlin = gremlin.In("Type", "blockdevlvm").Dedup()
+			if _, err = c.gh.GetNode(gremlin); err != nil {
+				return err
 			}
 
 			return nil
