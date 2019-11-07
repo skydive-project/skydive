@@ -119,7 +119,7 @@ This package installs and sets up the SELinux policy security module for Skydive
 %build
 export GOPATH=%{_builddir}/skydive-%{fullver}
 make build VERSION=%{fullver} LDFLAGS=%{ldflags} GO111MODULE=off %{with_features}
-%{_builddir}/skydive-%{fullver}/bin/skydive bash-completion
+%{_builddir}/skydive-%{fullver}/src/%{import_path}/skydive bash-completion
 
 # SELinux build
 %if 0%{?fedora} >= 27
