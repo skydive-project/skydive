@@ -1,6 +1,7 @@
 - name: Display all variables/facts known for a host
   debug:
     var: hostvars[inventory_hostname]
+    verbosity: 4
 
 - name: Set analyzers list
   set_fact:
