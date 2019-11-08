@@ -70,7 +70,7 @@ Vue.component('object-detail', {
             </div>\
           </collapse>\
         </div>\
-        <div v-else-if="typeof obj.value == \'boolean\'">\
+        <div v-else-if="typeof obj.value == \'boolean\' && !$.isEmptyObject(obj.value)">\
           <span class="object-key">{{obj.key}}</span> :\
           <span class="object-value copy-clipboard">\
             <i v-if="value == true" class="fa fa-check bool-value-true" aria-hidden="true"></i>\
