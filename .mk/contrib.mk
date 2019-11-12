@@ -1,27 +1,8 @@
 .PHONY: contribs.clean
-contribs.clean: contrib.exporters.clean contrib.snort.clean
-
-.PHONY: contribs.test
-contribs.test: contrib.exporters.test
+contribs.clean: contrib.snort.clean
 
 .PHONY: contribs
-contribs: contrib.exporters contrib.snort
-
-.PHONY: contribs.static
-contribs.static:
-	$(MAKE) -C contrib/exporters static
-
-.PHONY: contrib.exporters.clean
-contrib.exporters.clean:
-	$(MAKE) -C contrib/exporters clean
-
-.PHONY: contrib.exporters
-contrib.exporters: genlocalfiles
-	$(MAKE) -C contrib/exporters
-
-.PHONY: contrib.exporters.test
-contrib.exporters.test: genlocalfiles
-	$(MAKE) -C contrib/exporters test
+contribs: contrib.snort
 
 .PHONY: contribs.snort.clean
 contrib.snort.clean:

@@ -12,6 +12,4 @@ make test GOFLAGS="${GOFLAGS}" TAGS="${TAGS}" VERBOSE=true TIMEOUT=5m COVERAGE=$
 go2xunit -input $WORKSPACE/unit-tests.log -output $WORKSPACE/tests.xml
 sed -i 's/\x1b\[[0-9;]*m//g' $WORKSPACE/tests.xml
 
-make contribs.test
-
 make WITH_EBPF=true ebpf.test

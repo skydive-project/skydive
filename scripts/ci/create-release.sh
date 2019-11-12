@@ -68,11 +68,8 @@ ${dir}/../../contrib/packaging/rpm/generate-skydive-bootstrap.sh -s -r ${TAG}
 
 release "$changelog"
 
-allinone=$GOPATH/src/github.com/skydive-project/skydive/contrib/exporters/allinone
-
 upload skydive $GOPATH/bin/skydive
 upload skydive-${VERSION}.tar.gz rpmbuild/SOURCES/skydive-${VERSION}.tar.gz
-upload skydive-flow-exporter $allinone/allinone
 
 if [ -n "$DRY_RUN" ]; then
     cleanup
