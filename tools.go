@@ -23,6 +23,7 @@ package main
 
 import (
 	_ "git.fd.io/govpp.git/cmd/binapi-generator"
+	_ "github.com/aktau/github-release"
 	_ "github.com/davecgh/go-spew/spew"
 	_ "github.com/go-swagger/go-swagger/cmd/swagger"
 	_ "github.com/gogo/protobuf"
