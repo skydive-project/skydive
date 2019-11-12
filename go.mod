@@ -3,11 +3,11 @@ module github.com/skydive-project/skydive
 require (
 	git.fd.io/govpp.git v0.0.0-20190321220742-345201eedce4
 	github.com/GehirnInc/crypt v0.0.0-20170404120257-5a3fafaa7c86
-	github.com/IBM/ibm-cos-sdk-go v0.0.0-20190328184230-08c1143e8d36
 	github.com/Knetic/govaluate v0.0.0-20171022003610-9aa49832a739 // indirect
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/VerizonDigital/vflow v0.0.0-20190111005900-eb30d936249e
 	github.com/abbot/go-http-auth v0.4.0
+	github.com/aktau/github-release v0.7.2
 	github.com/bennyscetbun/jsongo v0.0.0-20190110163710-9624bef8c57b // indirect
 	github.com/casbin/casbin v0.0.0-20181031010332-5ff5a6f5e38a
 	github.com/cenk/hub v0.0.0-20160527103212-11382a9960d3 // indirect
@@ -18,6 +18,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/digitalocean/go-libvirt v0.0.0-20190715144809-7b622097a793
 	github.com/docker/docker v1.13.1
+	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/ebay/go-ovn v0.0.0-20190726163905-ca0da4d10c52
 	github.com/fatih/structs v0.0.0-20171020064819-f5faa72e7309
 	github.com/fortytw2/leaktest v1.3.0 // indirect
@@ -29,7 +30,6 @@ require (
 	github.com/gobwas/httphead v0.0.0-20171016043908-01c9b01b368a // indirect
 	github.com/gobwas/pool v0.0.0-20170829094749-32dbaa12caca // indirect
 	github.com/gobwas/ws v0.0.0-20171112092802-915eed324002 // indirect
-	github.com/gocarina/gocsv v0.0.0-20190624090726-71ad6676df57
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.3.2
 	github.com/gomatic/funcmap v0.0.0-20190110133044-62047470c142 // indirect
@@ -93,8 +93,10 @@ require (
 	github.com/t-yuki/gocover-cobertura v0.0.0-20180217150009-aaee18c8195c
 	github.com/tchap/zapext v0.0.0-20180117141735-e61c0c882339
 	github.com/tebeka/selenium v0.0.0-20170314201507-657e45ec600f
+	github.com/tomnomnom/linkheader v0.0.0-20180905144013-02ca5825eb80 // indirect
 	github.com/vishvananda/netlink v1.0.0
 	github.com/vishvananda/netns v0.0.0-20180720170159-13995c7128cc
+	github.com/voxelbrain/goptions v0.0.0-20180630082107-58cddc247ea2 // indirect
 	github.com/weaveworks/tcptracer-bpf v0.0.0-20170817155301-e080bd747dc6
 	github.com/xeipuuv/gojsonpointer v0.0.0-20170225233418-6fe8760cad35 // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20150808065054-e02fc20de94c // indirect
@@ -121,7 +123,6 @@ require (
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0
 	k8s.io/client-go v10.0.0+incompatible
-	k8s.io/kubernetes v1.16.2 // indirect
 )
 
 replace (
