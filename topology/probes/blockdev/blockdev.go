@@ -20,6 +20,7 @@ package blockdev
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os/exec"
 	"sync"
 	"time"
@@ -46,6 +47,38 @@ const blockdevNodeType string = "blockdev"
 const leafNodeType string = "blockdevleaf"
 
 const managerType string = "blockdev"
+
+const defaultIostatInterval int = 300
+
+type statistics struct {
+	Metrics []IOMetric `mapstructure:"disk"`
+}
+
+type hostdata struct {
+	Nodename   string       `mapstructure:"nodename"`
+	Sysname    string       `mapstructure:"sysname"`
+	Release    string       `mapstructure:"release"`
+	Machine    string       `mapstructure:"machine"`
+	Cpucount   uint32       `mapstructure:"number-of-cpus"`
+	Date       string       `mapstructure:"date"`
+	Statistics []statistics `mapstructure:"statistics"`
+}
+
+type hosts struct {
+	Hosts []hostdata `mapstructure:"hosts"`
+}
+type sysstat struct {
+	Sysstat hosts `mapstructure:"sysstat"`
+}
+
+// BlockDeviceAttrs use to hold IO stats for a block device
+type BlockDeviceAttrs struct {
+	tps        int64
+	kBReadPerS int64
+	kBWrtnPerS int64
+	kBRead     int64
+	kBWrtn     int64
+}
 
 // BlockDevice used for JSON parsing
 type BlockDevice struct {
@@ -258,12 +291,16 @@ func (p *ProbeHandler) getMetaData(blockdev BlockDevice, childCount int, parentW
 		Wsame:        blockdev.Wsame,
 		WWN:          WWN,
 	}
+
 	metadata = graph.Metadata{
 		"Path":     blockdev.getPath(),
 		"Type":     nodeType,
 		"Name":     blockdev.getName(),
 		"Manager":  managerType,
-		"BlockDev": blockdevMetadata,
+		"Blockdev": blockdevMetadata,
+	}
+	if metric := p.newMetricsFromBlockdev(blockdev.getPath()); metric != nil {
+		metadata["BlockdevMetric"] = metric
 	}
 
 	return metadata
@@ -343,7 +380,10 @@ func (p *ProbeHandler) registerBlockdev(blockdev BlockDevice, parentWWN string) 
 
 		// Link physical disks and DVD/rom devices to the blockdevGroupName
 		if blockdev.Type == "disk" || blockdev.Type == "rom" {
-			topology.AddLink(p.Ctx.Graph, p.Groups[blockdevGroupName], node, "connected", nil)
+			linkMetadata := graph.Metadata{
+				"Type": "blockdevlink",
+			}
+			topology.AddLink(p.Ctx.Graph, p.Groups[blockdevGroupName], node, "connected", linkMetadata)
 		}
 
 	}
@@ -415,6 +455,11 @@ func (p *ProbeHandler) connect() error {
 	)
 
 	lsblkPath := p.Ctx.Config.GetString("agent.topology.blockdev.lsblk_path")
+
+	if lsblkPath == "" {
+		lsblkPath = "/usr/bin/lsblk"
+	}
+
 	if cmdOut, err = exec.Command(lsblkPath, "-pO", "--json").Output(); err != nil {
 		return err
 	}
@@ -457,11 +502,67 @@ func (p *ProbeHandler) getName(blockdev BlockDevice) string {
 	return blockdev.Name
 }
 
+func (p *ProbeHandler) newMetricsFromBlockdev(blockdevPath string) *BlockMetric {
+	var (
+		cmdOut []byte
+		err    error
+		stats  sysstat
+		intf   interface{}
+	)
+
+	iostatPath := p.Ctx.Config.GetString("agent.topology.blockdev.iostat_path")
+
+	if iostatPath == "" {
+		iostatPath = "/usr/bin/iostat"
+	}
+
+	if cmdOut, err = exec.Command(iostatPath, "-dx", "-o", "JSON", blockdevPath).Output(); err != nil {
+		return nil
+	}
+
+	if err = json.Unmarshal([]byte(cmdOut[:]), &intf); err != nil {
+		return nil
+	}
+
+	if err = mapstructure.WeakDecode(intf, &stats); err != nil {
+		return nil
+	}
+
+	if stats.Sysstat.Hosts == nil || len(stats.Sysstat.Hosts) == 0 || stats.Sysstat.Hosts[0].Statistics == nil ||
+		len(stats.Sysstat.Hosts[0].Statistics) == 0 || stats.Sysstat.Hosts[0].Statistics[0].Metrics == nil ||
+		len(stats.Sysstat.Hosts[0].Statistics[0].Metrics) == 0 {
+		return nil
+	}
+	return stats.Sysstat.Hosts[0].Statistics[0].Metrics[0].MakeCopy()
+}
+
+func (p *ProbeHandler) updateBlockDevMetric(now, last time.Time) {
+	for _, blockdev := range p.blockdevMap {
+		node := blockdev.Node
+		if node == nil {
+			continue
+		}
+		path, err := node.GetField("Path")
+		if err != nil {
+			return
+		}
+		currMetric := p.newMetricsFromBlockdev(fmt.Sprintf("%v", path))
+		if currMetric == nil {
+			continue
+		}
+		currMetric.Last = int64(common.UnixMillis(now))
+		p.Ctx.Graph.Lock()
+		tr := p.Ctx.Graph.StartMetadataTransaction(node)
+		tr.AddMetadata("BlockdevMetric", currMetric)
+		tr.Commit()
+		p.Ctx.Graph.Unlock()
+	}
+}
+
 // Do adds a group for block devices, then issues a lsblk command and parsers the
 // JSON output as a basis for the blockdev links.
 func (p *ProbeHandler) Do(ctx context.Context, wg *sync.WaitGroup) error {
 	p.addGroupByName(blockdevGroupName, "")
-
 	p.Ctx.Graph.Lock()
 	defer p.Ctx.Graph.Unlock()
 
@@ -476,7 +577,13 @@ func (p *ProbeHandler) Do(ctx context.Context, wg *sync.WaitGroup) error {
 	go func() {
 		defer wg.Done()
 
-		after := time.After(10 * time.Minute)
+		metricTicker := time.NewTicker(time.Duration(30) * time.Second)
+		var sampleInterval int
+		if sampleInterval = p.Ctx.Config.GetInt("agent.topology.blockdev.iostat_update"); sampleInterval == 0 {
+			sampleInterval = defaultIostatInterval
+		}
+		after := time.After(time.Duration(sampleInterval) * time.Second)
+		last := time.Now().UTC()
 		for {
 			if err := p.connect(); err != nil {
 				p.Ctx.Logger.Error(err)
@@ -484,6 +591,10 @@ func (p *ProbeHandler) Do(ctx context.Context, wg *sync.WaitGroup) error {
 			}
 
 			select {
+			case t := <-metricTicker.C:
+				now := t.UTC()
+				p.updateBlockDevMetric(now, last)
+				last = now
 			case <-ctx.Done():
 				return
 			case <-after:
@@ -508,4 +619,5 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 // Register registers graph metadata decoders
 func Register() {
 	graph.NodeMetadataDecoders["BlockDev"] = MetadataDecoder
+	graph.NodeMetadataDecoders["BlockdevMetric"] = MetricDecoder
 }
