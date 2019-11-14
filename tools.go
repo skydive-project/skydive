@@ -28,7 +28,7 @@ import (
 	_ "github.com/go-swagger/go-swagger/cmd/swagger"
 	_ "github.com/gogo/protobuf/protoc-gen-gogofaster"
 	_ "github.com/golang/protobuf/protoc-gen-go"
-	_ "github.com/golangci/golangci-lint"
+	_ "github.com/golangci/golangci-lint/cmd/golangci-lint"
 	_ "github.com/gomatic/renderizer"
 	_ "github.com/jteeuwen/go-bindata"
 	_ "github.com/mailru/easyjson/easyjson"

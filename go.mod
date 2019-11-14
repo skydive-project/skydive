@@ -30,6 +30,7 @@ require (
 	github.com/gobwas/ws v0.0.0-20171112092802-915eed324002 // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.3.2
+	github.com/golangci/golangci-lint v1.18.0
 	github.com/gomatic/funcmap v0.0.0-20190110133044-62047470c142 // indirect
 	github.com/gomatic/renderizer v1.0.1
 	github.com/google/gopacket v1.1.17
@@ -85,7 +86,7 @@ require (
 	github.com/skydive-project/goloxi v0.0.0-20190117172159-db2324197a3e
 	github.com/socketplane/libovsdb v0.0.0-20160607151822-5113f8fb4d9d
 	github.com/spf13/cobra v0.0.5
-	github.com/spf13/pflag v1.0.3
+	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.4.0
 	github.com/t-yuki/gocover-cobertura v0.0.0-20180217150009-aaee18c8195c
 	github.com/tchap/zapext v0.0.0-20180117141735-e61c0c882339
