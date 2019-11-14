@@ -23,18 +23,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"strconv"
-	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
-	cc "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/crossconnect"
-	localconn "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/local/connection"
-	remoteconn "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/remote/connection"
+	connApi "github.com/networkservicemesh/networkservicemesh/controlplane/api/connection"
+	commonMechanism "github.com/networkservicemesh/networkservicemesh/controlplane/api/connection/mechanisms/common"
+	cc "github.com/networkservicemesh/networkservicemesh/controlplane/api/crossconnect"
 	v1 "github.com/networkservicemesh/networkservicemesh/k8s/pkg/apis/networkservice/v1alpha1"
 	"github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/clientset/versioned"
 	"github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/informers/externalversions"
+	"github.com/networkservicemesh/networkservicemesh/pkg/tools"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
@@ -117,7 +116,7 @@ func (p *Probe) Start() error {
 		AddFunc: func(obj interface{}) {
 			nsm := obj.(*v1.NetworkServiceManager)
 			logging.GetLogger().Infof("New NSMgr Added: %v", nsm)
-			go p.monitorCrossConnects(nsm.Status.URL)
+			go p.monitorCrossConnects(nsm.Spec.URL)
 		},
 	})
 
@@ -142,7 +141,7 @@ func (p *Probe) Stop() {
 }
 
 func (p *Probe) getNSMgrClient(url string) (cc.MonitorCrossConnectClient, error) {
-	conn, err := dial(context.Background(), "tcp", url)
+	conn, err := tools.DialTCP(url)
 	if err != nil {
 		logging.GetLogger().Errorf("NSM: unable to create grpc dialer, error: %+v", err)
 		return nil, err
@@ -191,14 +190,14 @@ func (p *Probe) monitorCrossConnects(url string) {
 			switch {
 			case lSrc != nil && rSrc == nil && lDst != nil && rDst == nil:
 				logging.GetLogger().Debugf("NSM: Got local to local CrossConnect:  %s", cconnStr)
-				if !isDelMsg && (lSrc.GetState() == localconn.State_DOWN || lDst.GetState() == localconn.State_DOWN) {
+				if !isDelMsg && (lSrc.GetState() == connApi.State_DOWN || lDst.GetState() == connApi.State_DOWN) {
 					logging.GetLogger().Debugf("NSM: one connection of the cross connect %s is in DOWN state, don't affect the skydive connections", cconn.GetId())
 					continue
 				}
 				p.onConnLocalLocal(event.GetType(), cconn, url)
 			case lSrc == nil && rSrc != nil && lDst != nil && rDst == nil:
 				logging.GetLogger().Debugf("NSM: Got remote to local CrossConnect: %s", cconnStr)
-				if !isDelMsg && (rSrc.GetState() == remoteconn.State_DOWN || lDst.GetState() == localconn.State_DOWN) {
+				if !isDelMsg && (rSrc.GetState() == connApi.State_DOWN || lDst.GetState() == connApi.State_DOWN) {
 					logging.GetLogger().Debugf("NSM: one connection of the cross connect %s is in DOWN state, don't affect the skydive connections", cconn.GetId())
 					continue
 				}
@@ -209,7 +208,7 @@ func (p *Probe) monitorCrossConnects(url string) {
 				p.onConnRemoteLocal(event.GetType(), cconn, url)
 			case lSrc != nil && rSrc == nil && lDst == nil && rDst != nil:
 				logging.GetLogger().Debugf("NSM: Got local to remote CrossConnect:  %s", cconnStr)
-				if !isDelMsg && (lSrc.GetState() == localconn.State_DOWN || rDst.GetState() == remoteconn.State_DOWN) {
+				if !isDelMsg && (lSrc.GetState() == connApi.State_DOWN || rDst.GetState() == connApi.State_DOWN) {
 					logging.GetLogger().Debugf("NSM: one connection of the cross connect %s is in DOWN state, don't affect the skydive connections", cconn.GetId())
 					continue
 				}
@@ -239,8 +238,8 @@ func (p *Probe) onConnLocalLocal(t cc.CrossConnectEventType, xconn *cc.CrossConn
 				},
 				baseConnectionPair: baseConnectionPair{
 					payload: xconn.GetPayload(),
-					src:     xconn.GetLocalSource(),
-					dst:     xconn.GetLocalDestination(),
+					src:     xconn.GetSource(),
+					dst:     xconn.GetDestination(),
 				},
 			}
 			p.addConnection(l)
@@ -416,7 +415,7 @@ func (p *Probe) getConnection(url string, id string) (connection, int) {
 	return nil, 0
 }
 
-func (p *Probe) getConnectionWithRemote(remote *remoteconn.Connection) (*remoteConnectionPair, int) {
+func (p *Probe) getConnectionWithRemote(remote *connApi.Connection) (*remoteConnectionPair, int) {
 	// the probe has to be locked before calling this function
 
 	// since the remote crossconnect id is issued by the responder to the connection request,
@@ -453,18 +452,9 @@ func (p *Probe) removeConnectionItem(i int) {
 	logging.GetLogger().Infof("NSM: %v connections left", len(p.connections))
 }
 
-func dial(ctx context.Context, network string, address string) (*grpc.ClientConn, error) {
-	conn, err := grpc.DialContext(ctx, address, grpc.WithInsecure(), grpc.WithBlock(),
-		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.Dial(network, addr)
-		}),
-	)
-	return conn, err
-}
-
 //TODO: consider moving this function to nsm helper functions in the local/connection package
-func getLocalInode(conn *localconn.Connection) (int64, error) {
-	inodeStr, ok := conn.Mechanism.Parameters[localconn.NetNsInodeKey]
+func getLocalInode(conn *connApi.Connection) (int64, error) {
+	inodeStr, ok := conn.Mechanism.Parameters[commonMechanism.NetNsInodeKey]
 	if !ok {
 		err := errors.New("NSM: no inodes in the connection parameters")
 		logging.GetLogger().Error(err)

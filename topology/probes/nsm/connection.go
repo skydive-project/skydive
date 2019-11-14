@@ -22,8 +22,7 @@ package nsm
 import (
 	"fmt"
 
-	localconn "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/local/connection"
-	remoteconn "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/remote/connection"
+	connApi "github.com/networkservicemesh/networkservicemesh/controlplane/api/connection"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
@@ -32,8 +31,8 @@ import (
 type connection interface {
 	addEdge(*graph.Graph)
 	delEdge(*graph.Graph)
-	getSource() *localconn.Connection
-	getDest() *localconn.Connection
+	getSource() *connApi.Connection
+	getDest() *connApi.Connection
 	getInodes() (int64, int64)
 	isCrossConnectOwner(string, string) bool
 	printCrossConnect() string
@@ -42,15 +41,15 @@ type connection interface {
 
 type baseConnectionPair struct {
 	payload string
-	src     *localconn.Connection
-	dst     *localconn.Connection
+	src     *connApi.Connection
+	dst     *connApi.Connection
 }
 
-func (b *baseConnectionPair) getSource() *localconn.Connection {
+func (b *baseConnectionPair) getSource() *connApi.Connection {
 	return b.src
 }
 
-func (b *baseConnectionPair) getDest() *localconn.Connection {
+func (b *baseConnectionPair) getDest() *connApi.Connection {
 	return b.dst
 }
 
@@ -95,7 +94,7 @@ type localConnectionPair struct {
 // A remote connection is composed of two cross-connects
 type remoteConnectionPair struct {
 	baseConnectionPair
-	remote *remoteconn.Connection // the remote connection shared between the two corss-connects
+	remote *connApi.Connection // the remote connection shared between the two corss-connects
 	srcCc  *crossConnect          // The id of the cross-connect with a local connection as source
 	dstCc  *crossConnect          // The id of the cross-connect with a local connection as destination
 
@@ -170,15 +169,15 @@ func (l *localConnectionPair) createMetadata() graph.Metadata {
 				NetworkService: l.getSource().GetNetworkService(),
 				Source: LocalConnectionMetadata{
 					BaseConnectionMetadata: BaseConnectionMetadata{
-						MechanismType:       l.getSource().GetMechanism().GetType().String(),
+						MechanismType:       l.getSource().GetMechanism().GetType(),
 						MechanismParameters: l.getSource().GetMechanism().GetParameters(),
 						Labels:              l.getSource().GetLabels(),
 					},
 				},
 				Destination: LocalConnectionMetadata{
-					IP: l.getDest().GetContext().GetDstIpAddr(),
+					IP: l.getDest().GetContext().GetIpContext().GetDstIpAddr(),
 					BaseConnectionMetadata: BaseConnectionMetadata{
-						MechanismType:       l.getDest().GetMechanism().GetType().String(),
+						MechanismType:       l.getDest().GetMechanism().GetType(),
 						MechanismParameters: l.getDest().GetMechanism().GetParameters(),
 						Labels:              l.getDest().GetLabels(),
 					},
@@ -247,23 +246,31 @@ func (r *remoteConnectionPair) delEdge(g *graph.Graph) {
 }
 
 func (r *remoteConnectionPair) createMetadata() graph.Metadata {
+	var srcNsmgr string
+	var dstNsmgr string
+	if len(r.remote.GetNetworkServiceManagers()) > 0 {
+		srcNsmgr = r.remote.GetNetworkServiceManagers()[0]
+	}
+	if len(r.remote.GetNetworkServiceManagers()) > 1 {
+		dstNsmgr = r.remote.GetNetworkServiceManagers()[1]
+	}
 	metadata := graph.Metadata{
 		"NSM": &EdgeMetadata{
 			BaseNSMMetadata: BaseNSMMetadata{
 				NetworkService: r.getSource().GetNetworkService(),
 				Payload:        r.payload,
 				Source: LocalConnectionMetadata{
-					IP: r.getSource().GetContext().GetSrcIpAddr(),
+					IP: r.getSource().GetContext().GetIpContext().GetSrcIpAddr(),
 					BaseConnectionMetadata: BaseConnectionMetadata{
-						MechanismType:       r.getSource().GetMechanism().GetType().String(),
+						MechanismType:       r.getSource().GetMechanism().GetType(),
 						MechanismParameters: r.getSource().GetMechanism().GetParameters(),
 						Labels:              r.getSource().GetLabels(),
 					},
 				},
 				Destination: LocalConnectionMetadata{
-					IP: r.getDest().GetContext().GetDstIpAddr(),
+					IP: r.getDest().GetContext().GetIpContext().GetDstIpAddr(),
 					BaseConnectionMetadata: BaseConnectionMetadata{
-						MechanismType:       r.getDest().GetMechanism().GetType().String(),
+						MechanismType:       r.getDest().GetMechanism().GetType(),
 						MechanismParameters: r.getDest().GetMechanism().GetParameters(),
 						Labels:              r.getDest().GetLabels(),
 					},
@@ -274,12 +281,12 @@ func (r *remoteConnectionPair) createMetadata() graph.Metadata {
 				DestinationCrossConnectID: r.dstCc.ID,
 				Via: RemoteConnectionMetadata{
 					BaseConnectionMetadata: BaseConnectionMetadata{
-						MechanismType:       r.remote.GetMechanism().GetType().String(),
+						MechanismType:       r.remote.GetMechanism().GetType(),
 						MechanismParameters: r.remote.GetMechanism().GetParameters(),
 						Labels:              r.remote.GetLabels(),
 					},
-					SourceNSM:              r.remote.GetSourceNetworkServiceManagerName(),
-					DestinationNSM:         r.remote.GetDestinationNetworkServiceManagerName(),
+					SourceNSM:              srcNsmgr,
+					DestinationNSM:         dstNsmgr,
 					NetworkServiceEndpoint: r.remote.GetNetworkServiceEndpointName(),
 				},
 			},

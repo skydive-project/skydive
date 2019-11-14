@@ -4,7 +4,6 @@ require (
 	git.fd.io/govpp.git v0.0.0-20190321220742-345201eedce4
 	github.com/GehirnInc/crypt v0.0.0-20170404120257-5a3fafaa7c86
 	github.com/Knetic/govaluate v0.0.0-20171022003610-9aa49832a739 // indirect
-	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/VerizonDigital/vflow v0.0.0-20190111005900-eb30d936249e
 	github.com/abbot/go-http-auth v0.4.0
 	github.com/aktau/github-release v0.7.2
@@ -18,13 +17,11 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/digitalocean/go-libvirt v0.0.0-20190715144809-7b622097a793
 	github.com/docker/docker v1.13.1
-	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/ebay/go-ovn v0.0.0-20190726163905-ca0da4d10c52
 	github.com/fatih/structs v0.0.0-20171020064819-f5faa72e7309
 	github.com/fortytw2/leaktest v1.3.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/gima/govalid v0.0.0-20150214172340-7b486932bea2
-	github.com/go-ole/go-ole v0.0.0-20171110160706-a41e3c4b706f // indirect
 	github.com/go-swagger/go-swagger v0.20.1
 	github.com/go-test/deep v0.0.0-20180509200213-57af0be209c5
 	github.com/gobwas/httphead v0.0.0-20171016043908-01c9b01b368a // indirect
@@ -68,7 +65,9 @@ require (
 	github.com/mitchellh/hashstructure v0.0.0-20170116052023-ab25296c0f51
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
-	github.com/networkservicemesh/networkservicemesh v0.1.0
+	github.com/networkservicemesh/networkservicemesh/controlplane/api v0.2.0
+	github.com/networkservicemesh/networkservicemesh/k8s v0.2.0
+	github.com/networkservicemesh/networkservicemesh/pkg v0.2.0
 	github.com/newtools/ebpf v0.0.0-20190820102627-8b7eaed02eb9
 	github.com/nimbess/nimbess-agent v0.0.0-20190919205041-4e6f317ac4fd
 	github.com/nlewo/contrail-introspect-cli v0.0.0-20181003135217-0407b60f2edd
@@ -81,8 +80,7 @@ require (
 	github.com/robertkrimen/otto v0.0.0-20161004124959-bf1c3795ba07
 	github.com/safchain/ethtool v0.0.0-20190326074333-42ed695e3de8
 	github.com/safchain/insanelock v0.0.0-20180509135444-33bca4586648
-	github.com/shirou/gopsutil v0.0.0-20180111024713-6a368fb7cd12
-	github.com/shirou/w32 v0.0.0-20160930032740-bb4de0191aa4 // indirect
+	github.com/shirou/gopsutil v2.18.12+incompatible
 	github.com/sirupsen/logrus v1.4.2
 	github.com/skydive-project/dede v0.0.0-20180704100832-90df8e39b679
 	github.com/skydive-project/goloxi v0.0.0-20190117172159-db2324197a3e
@@ -95,7 +93,7 @@ require (
 	github.com/tebeka/selenium v0.0.0-20170314201507-657e45ec600f
 	github.com/tomnomnom/linkheader v0.0.0-20180905144013-02ca5825eb80 // indirect
 	github.com/vishvananda/netlink v1.0.0
-	github.com/vishvananda/netns v0.0.0-20180720170159-13995c7128cc
+	github.com/vishvananda/netns v0.0.0-20190625233234-7109fa855b0f
 	github.com/voxelbrain/goptions v0.0.0-20180630082107-58cddc247ea2 // indirect
 	github.com/weaveworks/tcptracer-bpf v0.0.0-20170817155301-e080bd747dc6
 	github.com/xeipuuv/gojsonpointer v0.0.0-20170225233418-6fe8760cad35 // indirect
@@ -122,12 +120,22 @@ require (
 	istio.io/client-go v0.0.0-20191024204624-13a7366c1cab
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0
-	k8s.io/client-go v10.0.0+incompatible
+	k8s.io/client-go v11.0.0+incompatible
 )
 
 replace (
+	github.com/census-instrumentation/opencensus-proto v0.1.0-0.20181214143942-ba49f56771b8 => github.com/census-instrumentation/opencensus-proto v0.0.3-0.20181214143942-ba49f56771b8
 	github.com/digitalocean/go-libvirt => github.com/lebauce/go-libvirt v0.0.0-20190717144624-7799d804f7e4
 	github.com/iovisor/gobpf => github.com/lebauce/gobpf v0.0.0-20190909090614-f9e9df81702a
+	github.com/networkservicemesh/networkservicemesh/controlplane => github.com/networkservicemesh/networkservicemesh/controlplane v0.0.0-20191113145957-d036e3698c8d
+	github.com/networkservicemesh/networkservicemesh/controlplane/api => github.com/networkservicemesh/networkservicemesh/controlplane/api v0.0.0-20191113145957-d036e3698c8d
+	github.com/networkservicemesh/networkservicemesh/forwarder/ => github.com/networkservicemesh/networkservicemesh/utils v0.0.0-20191113145957-d036e3698c8d
+	github.com/networkservicemesh/networkservicemesh/forwarder/api => github.com/networkservicemesh/networkservicemesh/forwarder/api v0.0.0-20191113145957-d036e3698c8d
+	github.com/networkservicemesh/networkservicemesh/k8s => github.com/networkservicemesh/networkservicemesh/k8s v0.0.0-20191113145957-d036e3698c8d
+	github.com/networkservicemesh/networkservicemesh/k8s/api => github.com/networkservicemesh/networkservicemesh/k8s/api v0.0.0-20191113145957-d036e3698c8d
+	github.com/networkservicemesh/networkservicemesh/pkg => github.com/networkservicemesh/networkservicemesh/pkg v0.0.0-20191113145957-d036e3698c8d
+	github.com/networkservicemesh/networkservicemesh/sdk => github.com/networkservicemesh/networkservicemesh/sdk v0.0.0-20191113145957-d036e3698c8d
+	github.com/networkservicemesh/networkservicemesh/utils => github.com/networkservicemesh/networkservicemesh/utils v0.0.0-20191113145957-d036e3698c8d
 	github.com/newtools/ebpf => github.com/nplanel/ebpf v0.0.0-20190918123742-99947faabce5
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.3
 	github.com/skydive-project/skydive/scripts/gendecoder => ./scripts/gendecoder
