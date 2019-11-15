@@ -4,7 +4,6 @@ require (
 	git.fd.io/govpp.git v0.0.0-20190321220742-345201eedce4
 	github.com/GehirnInc/crypt v0.0.0-20170404120257-5a3fafaa7c86
 	github.com/Knetic/govaluate v0.0.0-20171022003610-9aa49832a739 // indirect
-	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/VerizonDigital/vflow v0.0.0-20190111005900-eb30d936249e
 	github.com/abbot/go-http-auth v0.4.0
 	github.com/aktau/github-release v0.7.2
@@ -24,7 +23,6 @@ require (
 	github.com/fortytw2/leaktest v1.3.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/gima/govalid v0.0.0-20150214172340-7b486932bea2
-	github.com/go-ole/go-ole v0.0.0-20171110160706-a41e3c4b706f // indirect
 	github.com/go-swagger/go-swagger v0.20.1
 	github.com/go-test/deep v0.0.0-20180509200213-57af0be209c5
 	github.com/gobwas/httphead v0.0.0-20171016043908-01c9b01b368a // indirect
@@ -32,6 +30,7 @@ require (
 	github.com/gobwas/ws v0.0.0-20171112092802-915eed324002 // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.3.2
+	github.com/golangci/golangci-lint v1.18.0
 	github.com/gomatic/funcmap v0.0.0-20190110133044-62047470c142 // indirect
 	github.com/gomatic/renderizer v1.0.1
 	github.com/google/gopacket v1.1.17
@@ -81,14 +80,13 @@ require (
 	github.com/robertkrimen/otto v0.0.0-20161004124959-bf1c3795ba07
 	github.com/safchain/ethtool v0.0.0-20190326074333-42ed695e3de8
 	github.com/safchain/insanelock v0.0.0-20180509135444-33bca4586648
-	github.com/shirou/gopsutil v0.0.0-20180111024713-6a368fb7cd12
-	github.com/shirou/w32 v0.0.0-20160930032740-bb4de0191aa4 // indirect
+	github.com/shirou/gopsutil v0.0.0-20180427012116-c95755e4bcd7
 	github.com/sirupsen/logrus v1.4.2
 	github.com/skydive-project/dede v0.0.0-20180704100832-90df8e39b679
 	github.com/skydive-project/goloxi v0.0.0-20190117172159-db2324197a3e
 	github.com/socketplane/libovsdb v0.0.0-20160607151822-5113f8fb4d9d
 	github.com/spf13/cobra v0.0.5
-	github.com/spf13/pflag v1.0.3
+	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.4.0
 	github.com/t-yuki/gocover-cobertura v0.0.0-20180217150009-aaee18c8195c
 	github.com/tchap/zapext v0.0.0-20180117141735-e61c0c882339
@@ -102,10 +100,10 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20150808065054-e02fc20de94c // indirect
 	github.com/xeipuuv/gojsonschema v0.0.0-20180618132009-1d523034197f
 	go.uber.org/zap v1.10.0
-	golang.org/x/crypto v0.0.0-20191002192127-34f69633bfdc // indirect
-	golang.org/x/net v0.0.0-20191007182048-72f939374954
-	golang.org/x/sys v0.0.0-20190924154521-2837fb4f24fe
-	golang.org/x/tools v0.0.0-20191007185444-6536af71d98a
+	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550 // indirect
+	golang.org/x/net v0.0.0-20191014212845-da9a3fd4c582
+	golang.org/x/sys v0.0.0-20191010194322-b09406accb47
+	golang.org/x/tools v0.0.0-20191017151554-a3bc800455d5
 	google.golang.org/genproto v0.0.0-20190926190326-7ee9db18f195 // indirect
 	google.golang.org/grpc v1.23.1
 	gopkg.in/errgo.v1 v1.0.0-20161222125816-442357a80af5 // indirect

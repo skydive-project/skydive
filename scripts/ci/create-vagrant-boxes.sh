@@ -36,10 +36,10 @@ set -e
 for provider in $PROVIDERS
 do
     [ "$provider" = "virtualbox" ] && export PRIVATE_IP=192.168.99.10
-    MEMORY=8192 PREPARE_BOX=true vagrant up --provider=$provider ${KEEP_RESOURCES:+--no-destroy-on-error}
+    MEMORY=8192 PREPARE_BOX=true SKYDIVE_SYNC_FOLDER=true vagrant up --provider=$provider ${KEEP_RESOURCES:+--no-destroy-on-error}
     [ "$provider" = "libvirt" ] && sudo chmod a+r /var/lib/libvirt/images/dev_dev.img || true
 
-    # skydive testing
+    echo "Running Skydive tests"
     vagrant ssh -c 'set -e; cd go/src/github.com/skydive-project/skydive; make test functional WITH_OVN=true; curl -XDELETE "localhost:9200/skydive*"'
     
     vagrant package --out skydive-dev-$provider.box

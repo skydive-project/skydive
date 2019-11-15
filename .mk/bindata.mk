@@ -1,10 +1,8 @@
 STATIC_FILES=$(shell find statics -type f \( ! -iname "bindata.go" ! -iname "bundle.js" \))
 GO_BINDATA_GITHUB:=github.com/jteeuwen/go-bindata/go-bindata
-EXTRABINDATA:=
 
 EBPF_PROBES:=
 ifeq ($(WITH_EBPF), true)
-  EXTRABINDATA+=ebpf/*.o
   EBPF_PROBES+=ebpf/flow.o ebpf/flow-gre.o
 endif
 
@@ -18,8 +16,7 @@ BINDATA_DIRS := \
 	statics/img/* \
 	statics/js/* \
 	statics/schemas/* \
-	statics/workflows/*.yaml \
-	${EXTRABINDATA}
+	statics/workflows/*.yaml
 
 .PHONY: .bindata
 .bindata: statics/bindata.go ebpf/statics/bindata.go
