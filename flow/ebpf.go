@@ -154,16 +154,16 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 
 			switch protocol {
 			case syscall.ETH_P_IP:
-				netA := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer_outer.ip_src[12]), net.IPv4len)
-				netB := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer_outer.ip_dst[12]), net.IPv4len)
+				netA := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer_outer.ip_src[12]), C.int(net.IPv4len))
+				netB := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer_outer.ip_dst[12]), C.int(net.IPv4len))
 				parent.Network = &FlowLayer{
 					Protocol: FlowProtocol_IPV4,
 					A:        net.IP(netA).To4().String(),
 					B:        net.IP(netB).To4().String(),
 				}
 			case syscall.ETH_P_IPV6:
-				netA := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer_outer.ip_src[0]), net.IPv6len)
-				netB := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer_outer.ip_dst[0]), net.IPv6len)
+				netA := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer_outer.ip_src[0]), C.int(net.IPv6len))
+				netB := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer_outer.ip_dst[0]), C.int(net.IPv6len))
 				parent.Network = &FlowLayer{
 					Protocol: FlowProtocol_IPV6,
 					A:        net.IP(netA).String(),
@@ -196,16 +196,16 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 
 		switch protocol {
 		case syscall.ETH_P_IP:
-			netA := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer.ip_src[12]), net.IPv4len)
-			netB := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer.ip_dst[12]), net.IPv4len)
+			netA := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer.ip_src[12]), C.int(net.IPv4len))
+			netB := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer.ip_dst[12]), C.int(net.IPv4len))
 			f.Network = &FlowLayer{
 				Protocol: FlowProtocol_IPV4,
 				A:        net.IP(netA).To4().String(),
 				B:        net.IP(netB).To4().String(),
 			}
 		case syscall.ETH_P_IPV6:
-			netA := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer.ip_src[0]), net.IPv6len)
-			netB := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer.ip_dst[0]), net.IPv6len)
+			netA := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer.ip_src[0]), C.int(net.IPv6len))
+			netB := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer.ip_dst[0]), C.int(net.IPv6len))
 			f.Network = &FlowLayer{
 				Protocol: FlowProtocol_IPV6,
 				A:        net.IP(netA).String(),
@@ -296,8 +296,8 @@ func isABPacket(ebpfFlow *EBPFFlow, f *Flow) bool {
 
 		if bytes.Equal(linkA, linkB) {
 			if layersInfo&uint8(C.NETWORK_LAYER_INFO) > 0 {
-				netA := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer_outer.ip_src[0]), net.IPv6len)
-				netB := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer_outer.ip_dst[0]), net.IPv6len)
+				netA := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer_outer.ip_src[0]), C.int(net.IPv6len))
+				netB := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer_outer.ip_dst[0]), C.int(net.IPv6len))
 				cmp = strings.Compare(f.Network.A, net.IP(netA).String()) == 0 &&
 					strings.Compare(f.Network.B, net.IP(netB).String()) == 0
 				if bytes.Equal(netA, netB) {
