@@ -158,5 +158,5 @@ endif
 genlocalfiles: $(EXTRA_BUILD_TARGET) .proto .bindata .gendecoder .easyjson .vppbinapi
 
 .PHONY: clean
-clean: skydive.clean test.functionals.clean contribs.clean .ebpf.clean .easyjson.clean .proto.clean .gendecoder.clean .typescript.clean .vppbinapi.clean
+clean: skydive.clean test.functionals.clean contribs.clean .ebpf.clean .easyjson.clean .proto.clean .gendecoder.clean .typescript.clean .vppbinapi.clean swagger.clean
 	go clean -i >/dev/null 2>&1 || true
