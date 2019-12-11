@@ -22,8 +22,8 @@ package nsm
 import (
 	"fmt"
 
-	localconn "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/local/connection"
-	remoteconn "github.com/networkservicemesh/networkservicemesh/controlplane/pkg/apis/remote/connection"
+	localconn "github.com/networkservicemesh/networkservicemesh/controlplane/api/local/connection"
+	remoteconn "github.com/networkservicemesh/networkservicemesh/controlplane/api/remote/connection"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
@@ -176,7 +176,7 @@ func (l *localConnectionPair) createMetadata() graph.Metadata {
 					},
 				},
 				Destination: LocalConnectionMetadata{
-					IP: l.getDest().GetContext().GetDstIpAddr(),
+					IP: l.getDest().GetContext().GetIpContext().GetDstIpAddr(),
 					BaseConnectionMetadata: BaseConnectionMetadata{
 						MechanismType:       l.getDest().GetMechanism().GetType().String(),
 						MechanismParameters: l.getDest().GetMechanism().GetParameters(),
@@ -253,7 +253,7 @@ func (r *remoteConnectionPair) createMetadata() graph.Metadata {
 				NetworkService: r.getSource().GetNetworkService(),
 				Payload:        r.payload,
 				Source: LocalConnectionMetadata{
-					IP: r.getSource().GetContext().GetSrcIpAddr(),
+					IP: r.getSource().GetContext().GetIpContext().GetSrcIpAddr(),
 					BaseConnectionMetadata: BaseConnectionMetadata{
 						MechanismType:       r.getSource().GetMechanism().GetType().String(),
 						MechanismParameters: r.getSource().GetMechanism().GetParameters(),
@@ -261,7 +261,7 @@ func (r *remoteConnectionPair) createMetadata() graph.Metadata {
 					},
 				},
 				Destination: LocalConnectionMetadata{
-					IP: r.getDest().GetContext().GetDstIpAddr(),
+					IP: r.getDest().GetContext().GetIpContext().GetDstIpAddr(),
 					BaseConnectionMetadata: BaseConnectionMetadata{
 						MechanismType:       r.getDest().GetMechanism().GetType().String(),
 						MechanismParameters: r.getDest().GetMechanism().GetParameters(),
