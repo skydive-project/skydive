@@ -372,6 +372,8 @@ func (a *Server) addLoginRoute(authBackend shttp.AuthenticationBackend) {
 	// - http
 	// - https
 	//
+	// security: []
+	//
 	// parameters:
 	// - name: username
 	//   in: formData

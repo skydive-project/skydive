@@ -12,3 +12,8 @@ swagger: $(SWAGGER_JSON_FILES)
 	done
 	jq -s  '.[0] * .[1]' /tmp/swagger.json api/server/swagger_base.json > swagger.json
 	sed -i 's/easyjson:json//g' swagger.json
+
+.PHONY: swagger.clean
+swagger.clean:
+	find -name "*_swagger.go" -exec rm {} \;
+	find -name "*_swagger.json" -exec rm {} \;
