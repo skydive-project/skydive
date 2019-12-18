@@ -68,7 +68,7 @@ class WSClientModifyProtocol(WSClientDebugProtocol):
 
                     self.sendWSMessage(msg)
 
-        self.stop()
+        self.stop_when_complete()
 
 
 def main():
