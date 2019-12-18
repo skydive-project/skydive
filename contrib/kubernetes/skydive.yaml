@@ -61,12 +61,16 @@ data:
   SKYDIVE_AGENT_TOPOLOGY_PROBES: runc docker
   SKYDIVE_AGENT_LISTEN: 127.0.0.1:8081
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: skydive-analyzer
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: skydive
+      tier: analyzer
   template:
     metadata:
       labels:
@@ -114,11 +118,15 @@ spec:
         ports:
         - containerPort: 9200
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: skydive-agent
 spec:
+  selector:
+    matchLabels:
+      app: skydive
+      tier: agent
   template:
     metadata:
       labels:
