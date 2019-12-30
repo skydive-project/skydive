@@ -144,6 +144,8 @@ type Devices struct {
 
 type blockdevInfo struct {
 	ID   string
+	Name string
+	Path string
 	Node *graph.Node
 }
 
@@ -319,16 +321,8 @@ func (p *ProbeHandler) findBlockDev(path string, id string, newDevInfo []BlockDe
 }
 
 func (p *ProbeHandler) deleteIfRemoved(currentDevInfo blockdevInfo, newDevInfo []BlockDevice) {
-	blockID, err := currentDevInfo.Node.GetFieldString("BlockID")
-	if err != nil {
-		return
-	}
-	path, err := currentDevInfo.Node.GetFieldString("Path")
-	if err != nil {
-		return
-	}
-	if p.findBlockDev(path, blockID, newDevInfo) == false {
-		p.unregisterBlockdev(path)
+	if p.findBlockDev(currentDevInfo.Path, currentDevInfo.ID, newDevInfo) == false {
+		p.unregisterBlockdev(currentDevInfo.Path)
 	}
 }
 
@@ -369,7 +363,7 @@ func (p *ProbeHandler) registerBlockdev(blockdev BlockDevice, parentWWN string) 
 
 		// If there is a WWN - check to see if there are other paths to the same block device.
 		if blockdev.WWN != "" {
-			multiPathNodes := p.Ctx.Graph.GetNodes(graph.Metadata{"BlockID": blockdev.getID()})
+			multiPathNodes := p.Ctx.Graph.GetNodes(graph.Metadata{"Index": blockdev.getID()})
 
 			for _, multiPathNode := range multiPathNodes {
 				topology.AddLink(p.Ctx.Graph, multiPathNode, node, "multipath", nil)
@@ -396,7 +390,9 @@ func (p *ProbeHandler) registerBlockdev(blockdev BlockDevice, parentWWN string) 
 	}
 
 	p.blockdevMap[blockdev.Name] = blockdevInfo{
-		ID:   blockdev.Name,
+		Name: blockdev.Name,
+		ID:   blockdev.getID(),
+		Path: blockdev.Path,
 		Node: node,
 	}
 	return groupNode
@@ -538,21 +534,13 @@ func (p *ProbeHandler) newMetricsFromBlockdev(blockdevPath string) *BlockMetric 
 
 func (p *ProbeHandler) updateBlockDevMetric(now, last time.Time) {
 	for _, blockdev := range p.blockdevMap {
-		node := blockdev.Node
-		if node == nil {
-			continue
-		}
-		path, err := node.GetField("Path")
-		if err != nil {
-			return
-		}
-		currMetric := p.newMetricsFromBlockdev(fmt.Sprintf("%v", path))
+		currMetric := p.newMetricsFromBlockdev(fmt.Sprintf("%v", blockdev.Path))
 		if currMetric == nil {
 			continue
 		}
 		currMetric.Last = int64(common.UnixMillis(now))
 		p.Ctx.Graph.Lock()
-		tr := p.Ctx.Graph.StartMetadataTransaction(node)
+		tr := p.Ctx.Graph.StartMetadataTransaction(blockdev.Node)
 		tr.AddMetadata("BlockdevMetric", currMetric)
 		tr.Commit()
 		p.Ctx.Graph.Unlock()
