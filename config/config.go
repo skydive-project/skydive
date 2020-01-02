@@ -110,6 +110,7 @@ func init() {
 	cfg.SetDefault("agent.flow.sflow.port_max", 6355)
 	cfg.SetDefault("agent.listen", "127.0.0.1:8081")
 	cfg.SetDefault("agent.topology.probes", []string{"ovsdb"})
+	cfg.SetDefault("agent.topology.blockdev.lsblk_path", "/usr/bin/lsblk")
 	cfg.SetDefault("agent.topology.docker.url", "unix:///var/run/docker.sock")
 	cfg.SetDefault("agent.topology.docker.netns.run_path", "/var/run/docker/netns")
 	cfg.SetDefault("agent.topology.netlink.metrics_update", 30)

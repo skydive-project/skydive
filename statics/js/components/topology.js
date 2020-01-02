@@ -249,6 +249,11 @@ var TopologyComponent = {
               :defaultKeys="[\'Last\', \'Start\', \'RxBytes\', \'RxPackets\', \'TxBytes\', \'TxPackets\']"></metrics-table>\
           </div>\
         </panel>\
+        <panel id="blockdev-metric" v-if="currentNodeBlockdevMetric"\
+               title="Blockdev Metrics">\
+          <h2>Total metrics</h2>\
+          <blockdev-metrics-table :object="currentNodeBlockdevMetric" :keys="globalVars[\'blockdev-metric-keys\']"></blockdev-metrics-table>\
+        </panel>\
         <panel id="ovs-metric" v-if="currentNodeOvsMetric"\
                title="OVS Metrics">\
           <h2>Total metrics</h2>\
@@ -463,7 +468,7 @@ var TopologyComponent = {
     currentNodeMetadata: function() {
       if (!this.currentNode) return null;
       return this.extractMetadata(this.currentNode.metadata,
-        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'SFlow.Metric', 'SFlow.LastUpdateMetric', 'RoutingTables', 'Features', 'K8s.Extra', 'Docker']);
+        ['LastUpdateMetric', 'Metric', 'Blockdev', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'SFlow.Metric', 'SFlow.LastUpdateMetric', 'RoutingTables', 'Features', 'K8s.Extra', 'Docker']);
     },
 
     currentNodeFlowsQuery: function() {
@@ -501,6 +506,11 @@ var TopologyComponent = {
     currentNodeFeatures: function() {
       if (!this.currentNodeMetadata || !this.currentNode.metadata.Features) return null;
       return this.currentNode.metadata.Features;
+    },
+
+    currentNodeBlockdevMetric: function() {
+      if (!this.currentNodeMetadata || !this.currentNode.metadata.BlockdevMetric) return null;
+      return this.normalizeMetric(this.currentNode.metadata.BlockdevMetric);
     },
 
     currentNodeMetric: function() {

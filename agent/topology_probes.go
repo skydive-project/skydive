@@ -28,6 +28,7 @@ import (
 	"github.com/skydive-project/skydive/probe"
 	tp "github.com/skydive-project/skydive/topology/probes"
 	"github.com/skydive-project/skydive/topology/probes/bess"
+	"github.com/skydive-project/skydive/topology/probes/blockdev"
 	"github.com/skydive-project/skydive/topology/probes/docker"
 	"github.com/skydive-project/skydive/topology/probes/libvirt"
 	"github.com/skydive-project/skydive/topology/probes/lldp"
@@ -44,6 +45,7 @@ import (
 )
 
 func registerStaticProbes() {
+	blockdev.Register()
 	netlink.Register()
 	docker.Register()
 	lldp.Register()
@@ -59,6 +61,8 @@ func registerStaticProbes() {
 // NewTopologyProbe creates a new topology probe
 func NewTopologyProbe(name string, ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	switch name {
+	case "blockdev":
+		return blockdev.NewProbe(ctx, bundle)
 	case "netlink":
 		return netlink.NewProbe(ctx, bundle)
 	case "netns":

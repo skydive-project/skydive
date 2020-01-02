@@ -34,5 +34,6 @@ import (
 	_ "github.com/mailru/easyjson/easyjson"
 	_ "github.com/mattn/goveralls"
 	_ "github.com/t-yuki/gocover-cobertura"
+	_ "github.com/tebeka/go2xunit"
 	_ "golang.org/x/tools/go/loader"
 )
