@@ -1,8 +1,6 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-require 'vagrant-openstack-provider'
-
 ADDR_PREFIX=ENV.fetch("ADDR_PREFIX", "192.168.50")
 AGENT_COUNT=ENV.fetch("AGENT_COUNT", "2").to_i
 ANALYZER_COUNT=ENV.fetch("ANALYZER_COUNT", "1").to_i
@@ -62,23 +60,6 @@ IFCFG
   return ifcfg_template
 end
 
-def populate_os_config(os, ip)
-  os.openstack_auth_url = ENV.fetch("OS_AUTH_URL", "'http://keystone-server.net/v2.0/tokens'")
-  os.username = ENV.fetch("OS_USERNAME", "openstackUser")
-  os.password = ENV.fetch("OS_PASSWORD", "openstackPassword")
-  os.tenant_name = ENV.fetch("OS_TENANT_NAME", "myTenant")
-  os.flavor = ENV.fetch("OS_FLAVOR", "m1.large")
-  os.image = ENV.fetch("OS_CENTOS_IMAGE", "centos")
-  os.floating_ip_pool = ENV.fetch("OS_PUBLIC_IP_POOL", "8.0.0.0/8")
-  os.networks = [
-    'private',
-    {
-      name: 'vagrant',
-      address: ip,
-    },
-  ]
-end
-
 def provision_es(vm, hosts)
   vm.provision "elasticsearch", type: "ansible" do |ansible|
     ansible.playbook = "playbook-es.yml"
@@ -97,14 +78,14 @@ end
 Vagrant.configure(2) do |config|
   config.ssh.username = 'centos'
 
+  config.vm.provider 'libvirt' do |v|
+    v.qemu_use_session = false
+  end
+
   (1..AGENT_COUNT).each do |i|
     ip = "#{ADDR_PREFIX}.#{(i+ANALYZER_COUNT+ELASTICSEARCH_COUNT)*10}"
 
     config.vm.define "agent#{i}" do |agent|
-      agent.vm.provider :openstack do |os|
-        populate_os_config(os, ip)
-      end
-
       agent.vm.provider :libvirt do |domain, override|
         domain.memory = 2560
         override.vm.box = "centos/7"
@@ -127,10 +108,6 @@ Vagrant.configure(2) do |config|
     ip = "#{ADDR_PREFIX}.#{(i+ANALYZER_COUNT)*10}"
 
     config.vm.define "elasticsearch#{i}" do |es|
-      es.vm.provider :openstack do |os|
-        populate_os_config(os, ip)
-      end
-
       es.vm.provider :libvirt do |domain, override|
         override.vm.box = "centos/7"
         override.ssh.username = 'vagrant'
@@ -159,10 +136,6 @@ Vagrant.configure(2) do |config|
       analyzer.vm.provision "networking", type: "shell", inline: ifcfg_config("eth1", "#{ADDR_PREFIX}.0", "255.255.255.0", ip)
       analyzer.vm.provision "common", type: "shell", path: "setup-common.sh"
       if i == 1 then
-        if ELASTICSEARCH_COUNT == 0
-          provision_es(analyzer.vm, Array.new(ANALYZER_COUNT){ |i| { "ip" => "#{ADDR_PREFIX}.#{(i+1)*10}", "name" => "analyzer#{(i+1).to_s}" } })
-        end
-
         analyzer.vm.provision "dev", type: "ansible" do |ansible|
           ansible.playbook = "playbook-dev.yml"
           ansible.groups = {
@@ -210,11 +183,6 @@ Vagrant.configure(2) do |config|
 
       if ANALYZER_EXTRA_PROVISION_SCRIPT != ""
         analyzer.vm.provision "extra", type: "shell", path: ANALYZER_EXTRA_PROVISION_SCRIPT
-      end
-
-      analyzer.vm.provider :openstack do |os|
-        populate_os_config(os, ip)
-        os.security_groups = [ 'skydive' ]
       end
 
       analyzer.vm.provider :libvirt do |domain, override|
