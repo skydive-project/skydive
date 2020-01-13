@@ -1,8 +1,6 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-require 'vagrant-openstack-provider'
-
 ADDR_PREFIX=ENV.fetch("ADDR_PREFIX", "192.168.50")
 AGENT_COUNT=ENV.fetch("AGENT_COUNT", "2").to_i
 ANALYZER_COUNT=ENV.fetch("ANALYZER_COUNT", "1").to_i
@@ -101,8 +99,10 @@ Vagrant.configure(2) do |config|
     ip = "#{ADDR_PREFIX}.#{(i+ANALYZER_COUNT+ELASTICSEARCH_COUNT)*10}"
 
     config.vm.define "agent#{i}" do |agent|
-      agent.vm.provider :openstack do |os|
-        populate_os_config(os, ip)
+      if Vagrant.has_plugin?("vagrant-openstack-provider")
+        agent.vm.provider :openstack do |os|
+          populate_os_config(os, ip)
+        end
       end
 
       agent.vm.provider :libvirt do |domain, override|
@@ -127,8 +127,10 @@ Vagrant.configure(2) do |config|
     ip = "#{ADDR_PREFIX}.#{(i+ANALYZER_COUNT)*10}"
 
     config.vm.define "elasticsearch#{i}" do |es|
-      es.vm.provider :openstack do |os|
-        populate_os_config(os, ip)
+      if Vagrant.has_plugin?("vagrant-openstack-provider")
+        es.vm.provider :openstack do |os|
+          populate_os_config(os, ip)
+        end
       end
 
       es.vm.provider :libvirt do |domain, override|
@@ -212,9 +214,11 @@ Vagrant.configure(2) do |config|
         analyzer.vm.provision "extra", type: "shell", path: ANALYZER_EXTRA_PROVISION_SCRIPT
       end
 
-      analyzer.vm.provider :openstack do |os|
-        populate_os_config(os, ip)
-        os.security_groups = [ 'skydive' ]
+      if Vagrant.has_plugin?("vagrant-openstack-provider")
+        analyzer.vm.provider :openstack do |os|
+          populate_os_config(os, ip)
+          os.security_groups = [ 'skydive' ]
+        end
       end
 
       analyzer.vm.provider :libvirt do |domain, override|
