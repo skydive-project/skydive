@@ -4,7 +4,7 @@
   roles:
   - role: elastic.elasticsearch
     es_major_version: "6.x"
-    es_version: "6.2.4"
+    es_version: "6.6.0"
     es_instance_name: "{{ inventory_hostname }}"
     es_heap_size: 256m
     es_config:
