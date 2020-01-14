@@ -1,6 +1,8 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+ENV['VAGRANT_NO_PARALLEL'] = 'yes'
+
 ADDR_PREFIX=ENV.fetch("ADDR_PREFIX", "192.168.50")
 AGENT_COUNT=ENV.fetch("AGENT_COUNT", "2").to_i
 ANALYZER_COUNT=ENV.fetch("ANALYZER_COUNT", "1").to_i
@@ -94,6 +96,10 @@ end
 
 Vagrant.configure(2) do |config|
   config.ssh.username = 'centos'
+
+  config.vm.provider 'libvirt' do |v|
+    v.qemu_use_session = false
+  end
 
   (1..AGENT_COUNT).each do |i|
     ip = "#{ADDR_PREFIX}.#{(i+ANALYZER_COUNT+ELASTICSEARCH_COUNT)*10}"
