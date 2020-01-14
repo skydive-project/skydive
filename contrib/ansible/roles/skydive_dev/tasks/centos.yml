@@ -7,8 +7,6 @@
      - https://www.rdoproject.org/repos/rdo-release.rpm
      - "https://dl.fedoraproject.org/pub/epel/epel-release-latest-{{ ansible_distribution_major_version }}.noarch.rpm"
 
-- shell: "yum update -y"
-
 - package:
     name: centos-release-openstack-queens
     state: present
