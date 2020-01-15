@@ -153,7 +153,7 @@ Vagrant.configure(2) do |config|
       if not SKYDIVE_SYNC_FOLDER then
         dev.vm.provision "skygive-git-clone", type: "shell", privileged: false, inline: $skydive_git_clone
       end
-      dev.vm.provision "shared-folders", type: "shell", inline: "sudo chown vagrant:vagrant #{GOPATH}/src #{GOPATH}/src/github.com #{GOPATH}/src/github.com/skydive-project"
+      dev.vm.provision "shared-folders", type: "shell", inline: "sudo chown vagrant:vagrant #{GOPATH} #{GOPATH}/src #{GOPATH}/src/github.com #{GOPATH}/src/github.com/skydive-project"
       dev.vm.provision "write-motd", type: "shell", inline: $write_motd_script
       dev.vm.provision "package-update", type: "shell", inline: $package_update_script
 
