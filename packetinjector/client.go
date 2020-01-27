@@ -241,7 +241,7 @@ func (h *onDemandPacketInjectionHandler) GetNodeResources(resource rest.Resource
 	pi := resource.(*types.PacketInjection)
 
 	query := pi.Src
-	query += fmt.Sprintf(".Dedup('TID').Has('PacketInjections.ID', NEE('%s'))", resource.ID())
+	query += fmt.Sprintf(".Dedup('TID').Has('PacketInjections.ID', NEE('%s'))", resource.GetID())
 
 	if nodes := h.applyGremlinExpr(query); len(nodes) > 0 {
 		id := pi.ICMPID
@@ -298,6 +298,6 @@ func (h *onDemandPacketInjectionHandler) applyGremlinExpr(query string) []interf
 }
 
 // NewOnDemandInjectionClient creates a new ondemand client based on API, graph and websocket
-func NewOnDemandInjectionClient(g *graph.Graph, ch rest.Handler, agentPool ws.StructSpeakerPool, subscriberPool ws.StructSpeakerPool, etcdClient *etcd.Client) *client.OnDemandClient {
+func NewOnDemandInjectionClient(g *graph.Graph, ch rest.WatchableHandler, agentPool ws.StructSpeakerPool, subscriberPool ws.StructSpeakerPool, etcdClient *etcd.Client) *client.OnDemandClient {
 	return client.NewOnDemandClient(g, ch, agentPool, subscriberPool, etcdClient, &onDemandPacketInjectionHandler{graph: g})
 }

@@ -37,6 +37,8 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
+// OnDemandNodeResource describes an association between a graph
+// node and its corresponding on-demand resource
 type OnDemandNodeResource struct {
 	Node     *graph.Node
 	Resource rest.Resource
@@ -57,7 +59,7 @@ type OnDemandClient struct {
 	common.MasterElection
 	graph.DefaultGraphListener
 	graph                   *graph.Graph
-	apiHandler              rest.Handler
+	apiHandler              rest.WatchableHandler
 	agentPool               ws.StructSpeakerPool
 	subscriberPool          ws.StructSpeakerPool
 	wsNamespace             string
@@ -115,14 +117,14 @@ func (o *OnDemandClient) OnStructMessage(c ws.Speaker, m *ws.StructMessage) {
 		// not registered thus remove from registered cache
 		if m.Status != http.StatusOK {
 			logging.GetLogger().Debugf("%s start request failed %v", o.resourceName, m.Debug())
-			o.removeRegisteredNode(rawQuery.NodeID, resource.ID())
+			o.removeRegisteredNode(rawQuery.NodeID, resource.GetID())
 		} else {
 			logging.GetLogger().Debugf("%s start request succeeded %v", o.resourceName, m.Debug())
 		}
 		o.subscriberPool.BroadcastMessage(ws.NewStructMessage(o.wsNotificationNamespace, "NodeUpdated", resource))
 	case "StopReply":
 		if m.Status == http.StatusOK {
-			o.removeRegisteredNode(rawQuery.NodeID, resource.ID())
+			o.removeRegisteredNode(rawQuery.NodeID, resource.GetID())
 		} else {
 			logging.GetLogger().Debugf("%s stop request failed %v", o.resourceName, m.Debug())
 		}
@@ -156,10 +158,10 @@ func (o *OnDemandClient) registerTask(np nodeTask) bool {
 	if _, found := o.registeredNodes[np.id]; !found {
 		o.registeredNodes[np.id] = make(map[string]bool)
 	}
-	o.registeredNodes[np.id][np.resource.ID()] = false
+	o.registeredNodes[np.id][np.resource.GetID()] = false
 	o.Unlock()
 
-	logging.GetLogger().Debugf("Registered task on %s with resource %s", np.id, np.resource.ID())
+	logging.GetLogger().Debugf("Registered task on %s with resource %s", np.id, np.resource.GetID())
 
 	return true
 }
@@ -181,7 +183,7 @@ func (o *OnDemandClient) unregisterTask(node *graph.Node, resource rest.Resource
 		return false
 	}
 
-	o.removeRegisteredNode(node.ID, resource.ID())
+	o.removeRegisteredNode(node.ID, resource.GetID())
 
 	return true
 }
@@ -191,11 +193,11 @@ func (o *OnDemandClient) nodeTasks(nrs []OnDemandNodeResource) map[graph.Identif
 		// check not already registered
 		tasks, ok := o.registeredNodes[nr.Node.ID]
 		if ok {
-			ok = tasks[nr.Resource.ID()]
+			ok = tasks[nr.Resource.GetID()]
 		}
 
 		if ok {
-			logging.GetLogger().Debugf("%s already registered on %s", nr.Resource.ID(), nr.Node.ID)
+			logging.GetLogger().Debugf("%s already registered on %s", nr.Resource.GetID(), nr.Node.ID)
 			return
 		}
 
@@ -305,7 +307,7 @@ func (o *OnDemandClient) registerResource(resource rest.Resource) {
 	o.Lock()
 	defer o.Unlock()
 
-	o.resources[resource.ID()] = resource
+	o.resources[resource.GetID()] = resource
 
 	if nrs := o.handler.GetNodeResources(resource); len(nrs) > 0 {
 		if nps := o.nodeTasks(nrs); len(nps) > 0 {
@@ -326,13 +328,13 @@ func (o *OnDemandClient) unregisterResource(resource rest.Resource) {
 	o.graph.RLock()
 	defer o.graph.RUnlock()
 
-	o.deletedNodeCache.Delete(resource.ID())
+	o.deletedNodeCache.Delete(resource.GetID())
 
 	o.Lock()
-	delete(o.resources, resource.ID())
+	delete(o.resources, resource.GetID())
 	o.Unlock()
 
-	filter := filters.NewTermStringFilter(fmt.Sprintf("%ss.ID", o.resourceName), resource.ID())
+	filter := filters.NewTermStringFilter(fmt.Sprintf("%ss.ID", o.resourceName), resource.GetID())
 	nodes := o.graph.GetNodes(graph.NewElementFilter(filter))
 	for _, node := range nodes {
 		go o.unregisterTask(node, resource)
@@ -344,7 +346,7 @@ func (o *OnDemandClient) onResourceDeleted(resource rest.Resource) {
 		// fill the cache with recent delete in order to be able to delete then
 		// in case we lose the master and nobody is master yet. This cache will
 		// be used when becoming master.
-		o.deletedNodeCache.Set(resource.ID(), resource, cache.DefaultExpiration)
+		o.deletedNodeCache.Set(resource.GetID(), resource, cache.DefaultExpiration)
 		return
 	}
 
@@ -410,7 +412,7 @@ func (o *OnDemandClient) Stop() {
 }
 
 // NewOnDemandClient creates a new ondemand task client based on API, graph and websocket
-func NewOnDemandClient(g *graph.Graph, ch rest.Handler, agentPool ws.StructSpeakerPool, subscriberPool ws.StructSpeakerPool, etcdClient *etcd.Client, handler OnDemandClientHandler) *OnDemandClient {
+func NewOnDemandClient(g *graph.Graph, ch rest.WatchableHandler, agentPool ws.StructSpeakerPool, subscriberPool ws.StructSpeakerPool, etcdClient *etcd.Client, handler OnDemandClientHandler) *OnDemandClient {
 	election := etcdClient.NewElection("ondemand-client-" + handler.ResourceName())
 	o := &OnDemandClient{
 		MasterElection:          election,

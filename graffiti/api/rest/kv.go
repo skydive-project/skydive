@@ -69,7 +69,7 @@ func (h *BasicAPIHandler) collectNodes(flatten map[string]Resource, nodes etcd.N
 				logging.GetLogger().Warningf("Failed to unmarshal capture: %s", err.Error())
 				continue
 			}
-			flatten[resource.ID()] = resource
+			flatten[resource.GetID()] = resource
 		}
 	}
 }
@@ -198,6 +198,25 @@ func (h *BasicAPIHandler) AsyncWatch(f WatcherCallback) StoppableWatcher {
 	}()
 
 	return sw
+}
+
+// WatcherCallback callback called by the resource watcher
+type WatcherCallback func(action string, id string, resource Resource)
+
+// StoppableWatcher interface
+type StoppableWatcher interface {
+	Stop()
+}
+
+// ResourceWatcher asynchronous interface
+type ResourceWatcher interface {
+	AsyncWatch(f WatcherCallback) StoppableWatcher
+}
+
+// WatchableHandler describes a handler that can watched for updates
+type WatchableHandler interface {
+	Handler
+	ResourceWatcher
 }
 
 // BasicStoppableWatcher basic implementation of a resource watcher

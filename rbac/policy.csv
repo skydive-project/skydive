@@ -17,8 +17,12 @@ p, admin, websocket, /ws/subscriber/flow, allow
 p, admin, websocket, /ws/publisher, allow
 p, admin, websocket, /ws/replication, allow
 p, admin, websocket, /ws/subscriber, allow
+p, admin, node, read, allow
+p, admin, node, write, allow
 p, admin, noderule, read, allow
 p, admin, noderule, write, allow
+p, admin, edge, read, allow
+p, admin, edge, write, allow
 p, admin, edgerule, read, allow
 p, admin, edgerule, write, allow
 p, admin, workflow.call, write, allow

@@ -71,7 +71,7 @@ func TestStartupCapture(t *testing.T) {
 				if err != nil {
 					return fmt.Errorf("Node %+v matched the capture but capture is not enabled", node)
 				}
-				if captureID != capture.ID() {
+				if captureID != capture.GetID() {
 					t.Errorf("Node %s matches multiple captures - %s", node.ID, node.String())
 				}
 			}
