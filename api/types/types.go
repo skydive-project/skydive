@@ -35,7 +35,7 @@ var schemaValidator *topology.SchemaValidator
 
 // Resource used as interface resources for each API
 type Resource interface {
-	ID() string
+	GetID() string
 	SetID(string)
 	GetName() string
 }
@@ -47,8 +47,8 @@ type BasicResource struct {
 	UUID string `yaml:"UUID"`
 }
 
-// ID returns the resource ID
-func (b *BasicResource) ID() string {
+// GetID returns the resource ID
+func (b *BasicResource) GetID() string {
 	return b.UUID
 }
 
@@ -161,6 +161,26 @@ func NewCapture(query string, bpfFilter string) *Capture {
 	}
 }
 
+// Edge object
+// easyjson:json
+// swagger:ignore
+type Edge graph.Edge
+
+// GetID returns the edge ID
+func (e *Edge) GetID() string {
+	return string(e.ID)
+}
+
+// SetID sets the node ID
+func (e *Edge) SetID(i string) {
+	e.ID = graph.Identifier(i)
+}
+
+// GetName returns the edge resource name
+func (e *Edge) GetName() string {
+	return "Edge"
+}
+
 // EdgeRule object
 //
 // Edge rules allow the dynamic creation of links between nodes of the graph.
@@ -193,6 +213,26 @@ func (e *EdgeRule) Validate() error {
 	n2 := graph.CreateNode(graph.GenID(), nil, graph.TimeUTC(), "", "")
 	edge := graph.CreateEdge(graph.GenID(), n1, n2, e.Metadata, graph.TimeUTC(), "", "")
 	return schemaValidator.ValidateEdge(edge)
+}
+
+// Node object
+// easyjson:json
+// swagger:ignore
+type Node graph.Node
+
+// GetID returns the node ID
+func (n *Node) GetID() string {
+	return string(n.ID)
+}
+
+// SetID sets the resource ID
+func (n *Node) SetID(i string) {
+	n.ID = graph.Identifier(i)
+}
+
+// GetName returns the node resource name
+func (n *Node) GetName() string {
+	return "Node"
 }
 
 // NodeRule object

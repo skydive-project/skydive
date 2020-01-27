@@ -460,7 +460,7 @@ func RunTest(t *testing.T, test *Test) {
 	defer func() {
 		t.Log("Removing existing captures")
 		for _, capture := range captures {
-			client.Delete("capture", capture.ID())
+			client.Delete("capture", capture.GetID())
 		}
 	}()
 
@@ -531,13 +531,13 @@ func RunTest(t *testing.T, test *Test) {
 					return nil
 				}
 
-				captureMetadata := findCapture(capture.ID())
+				captureMetadata := findCapture(capture.GetID())
 				if captureMetadata == nil {
-					return fmt.Errorf("Node %+v matched the capture but capture %s is not enabled, graph: %s", node, capture.ID(), context.getWholeGraph(t, time.Time{}))
+					return fmt.Errorf("Node %+v matched the capture but capture %s is not enabled, graph: %s", node, capture.GetID(), context.getWholeGraph(t, time.Time{}))
 				}
 
 				if captureMetadata.State != "active" {
-					return fmt.Errorf("Capture %s is not active, graph: %s", capture.ID(), context.getWholeGraph(t, time.Time{}))
+					return fmt.Errorf("Capture %s is not active, graph: %s", capture.GetID(), context.getWholeGraph(t, time.Time{}))
 				}
 
 				return nil
@@ -633,7 +633,7 @@ func RunTest(t *testing.T, test *Test) {
 	defer func() {
 		t.Log("Removing existing injections")
 		for _, injection := range context.injections {
-			client.Delete("injectpacket", injection.ID())
+			client.Delete("injectpacket", injection.GetID())
 		}
 	}()
 

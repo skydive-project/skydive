@@ -75,7 +75,7 @@ func (h *onDemandFlowHandler) GetNodeResources(resource types.Resource) []client
 	capture := resource.(*types.Capture)
 
 	query := capture.GremlinQuery
-	query += fmt.Sprintf(".Dedup().Has('Captures.ID', NEE('%s'))", resource.ID())
+	query += fmt.Sprintf(".Dedup().Has('Captures.ID', NEE('%s'))", resource.GetID())
 	if capture.Type != "" && !common.CheckProbeCapabilities(capture.Type, common.MultipleOnSameNodeCapability) {
 		query += fmt.Sprintf(".Has('Captures.Type', NEE('%s'))", capture.Type)
 	}
@@ -108,7 +108,7 @@ func (h *onDemandFlowHandler) applyGremlinExpr(query string) []interface{} {
 }
 
 // NewOnDemandFlowProbeClient creates a new ondemand probe client based on API, graph and websocket
-func NewOnDemandFlowProbeClient(g *graph.Graph, ch api.Handler, agentPool ws.StructSpeakerPool, subscriberPool ws.StructSpeakerPool, etcdClient *etcd.Client) *client.OnDemandClient {
+func NewOnDemandFlowProbeClient(g *graph.Graph, ch api.WatchableHandler, agentPool ws.StructSpeakerPool, subscriberPool ws.StructSpeakerPool, etcdClient *etcd.Client) *client.OnDemandClient {
 	nodeTypes := make([]interface{}, len(common.CaptureTypes))
 	i := 0
 	for nodeType := range common.CaptureTypes {

@@ -42,7 +42,6 @@ type Handler interface {
 	Decorate(resource types.Resource)
 	Create(resource types.Resource, createOpts *CreateOptions) error
 	Delete(id string) error
-	AsyncWatch(f WatcherCallback) StoppableWatcher
 }
 
 // CreateOptions describes the available options when creating a resource
@@ -86,6 +85,12 @@ type ResourceWatcher interface {
 	AsyncWatch(f WatcherCallback) StoppableWatcher
 }
 
+// WatchableHandler describes a handler that can watched for updates
+type WatchableHandler interface {
+	Handler
+	ResourceWatcher
+}
+
 // Stop the resource watcher
 func (s *BasicStoppableWatcher) Stop() {
 	s.cancel()
@@ -124,7 +129,7 @@ func (h *BasicAPIHandler) collectNodes(flatten map[string]types.Resource, nodes 
 				logging.GetLogger().Warningf("Failed to unmarshal capture: %s", err.Error())
 				continue
 			}
-			flatten[resource.ID()] = resource
+			flatten[resource.GetID()] = resource
 		}
 	}
 }

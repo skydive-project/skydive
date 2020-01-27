@@ -56,8 +56,8 @@ func (r *PacketInjectionRequest) GetName() string {
 	return "PacketInjection"
 }
 
-// ID returns the id of the packet injection request
-func (r *PacketInjectionRequest) ID() string {
+// GetID returns the id of the packet injection request
+func (r *PacketInjectionRequest) GetID() string {
 	return r.UUID
 }
 

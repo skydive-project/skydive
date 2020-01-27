@@ -205,7 +205,7 @@ func TestAlertWebhook(t *testing.T) {
 			sl.Close()
 			wg.Wait()
 
-			return c.client.Delete("alert", al.ID())
+			return c.client.Delete("alert", al.GetID())
 		},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
@@ -276,7 +276,7 @@ func TestAlertScript(t *testing.T) {
 		},
 
 		tearDownFunction: func(c *TestContext) error {
-			return c.client.Delete("alert", al.ID())
+			return c.client.Delete("alert", al.GetID())
 		},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
@@ -338,7 +338,7 @@ func TestAlertWithTimer(t *testing.T) {
 
 		tearDownFunction: func(c *TestContext) error {
 			wsClose(conn)
-			return c.client.Delete("alert", al.ID())
+			return c.client.Delete("alert", al.GetID())
 		},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
@@ -411,7 +411,7 @@ func TestMultipleTriggering(t *testing.T) {
 
 		tearDownFunction: func(c *TestContext) error {
 			wsClose(conn)
-			return c.client.Delete("alert", al.ID())
+			return c.client.Delete("alert", al.GetID())
 		},
 
 		retries: 1,

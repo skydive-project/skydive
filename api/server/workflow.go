@@ -101,7 +101,7 @@ func (w *WorkflowAPIHandler) Index() map[string]types.Resource {
 				logging.GetLogger().Errorf("Failed to load worklow asset %s: %s", asset, err)
 				continue
 			}
-			resources[workflow.ID()] = workflow
+			resources[workflow.GetID()] = workflow
 		}
 	}
 	return resources

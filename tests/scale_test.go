@@ -439,7 +439,7 @@ func TestScaleHA(t *testing.T) {
 	}
 
 	// delete the capture to check that all captures will be delete at the agent side
-	client.Delete("capture", capture.ID())
+	client.Delete("capture", capture.GetID())
 	if err = checkCaptures(gh, 0); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)

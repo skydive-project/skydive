@@ -64,7 +64,7 @@ type OnDemandServerHandler interface {
 var ErrTaskNotFound = errors.New("task not found")
 
 func (o *OnDemandServer) registerTask(n *graph.Node, resource types.Resource) bool {
-	logging.GetLogger().Debugf("Attempting to register %s %s on node %s", o.resourceName, resource.ID(), n.ID)
+	logging.GetLogger().Debugf("Attempting to register %s %s on node %s", o.resourceName, resource.GetID(), n.ID)
 
 	if _, err := n.GetFieldString("Type"); err != nil {
 		logging.GetLogger().Infof("Unable to register task type of node unknown %v", n)
@@ -75,8 +75,8 @@ func (o *OnDemandServer) registerTask(n *graph.Node, resource types.Resource) bo
 	defer o.Unlock()
 
 	if tasks, active := o.activeTasks[n.ID]; active {
-		if _, found := tasks[resource.ID()]; found {
-			logging.GetLogger().Debugf("A task already exists for %s on node %s", resource.ID(), n.ID)
+		if _, found := tasks[resource.GetID()]; found {
+			logging.GetLogger().Debugf("A task already exists for %s on node %s", resource.GetID(), n.ID)
 			return false
 		}
 	}
@@ -98,7 +98,7 @@ func (o *OnDemandServer) registerTask(n *graph.Node, resource types.Resource) bo
 	if _, found := o.activeTasks[n.ID]; !found {
 		o.activeTasks[n.ID] = make(map[string]*activeTask)
 	}
-	o.activeTasks[n.ID][resource.ID()] = active
+	o.activeTasks[n.ID][resource.GetID()] = active
 
 	logging.GetLogger().Debugf("New active task on: %v (%v)", n, resource)
 	return true
@@ -110,7 +110,7 @@ func (o *OnDemandServer) unregisterTask(n *graph.Node, resource types.Resource) 
 	var active *activeTask
 	tasks, isActive := o.activeTasks[n.ID]
 	if isActive {
-		active, isActive = tasks[resource.ID()]
+		active, isActive = tasks[resource.GetID()]
 	}
 	o.RUnlock()
 
@@ -127,7 +127,7 @@ func (o *OnDemandServer) unregisterTask(n *graph.Node, resource types.Resource) 
 
 	o.Lock()
 	if tasks, found := o.activeTasks[n.ID]; found {
-		delete(tasks, resource.ID())
+		delete(tasks, resource.GetID())
 	}
 	if len(o.activeTasks[n.ID]) == 0 {
 		delete(o.activeTasks, n.ID)
@@ -211,7 +211,7 @@ func (o *OnDemandServer) OnNodeDeleted(n *graph.Node) {
 			capture := task.resource
 			defer func() {
 				if err := o.unregisterTask(n, capture); err != nil {
-					logging.GetLogger().Errorf("Failed to unregister %s %s on node %s", o.resourceName, capture.ID(), n.ID)
+					logging.GetLogger().Errorf("Failed to unregister %s %s on node %s", o.resourceName, capture.GetID(), n.ID)
 				}
 			}()
 		}

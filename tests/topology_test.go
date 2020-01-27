@@ -613,7 +613,7 @@ func TestNodeRuleCreate(t *testing.T) {
 		},
 
 		tearDownFunction: func(c *TestContext) error {
-			c.client.Delete("noderule", nodeRule.ID())
+			c.client.Delete("noderule", nodeRule.GetID())
 			return nil
 		},
 
@@ -629,7 +629,7 @@ func TestNodeRuleCreate(t *testing.T) {
 			},
 
 			func(c *CheckContext) error {
-				c.client.Delete("noderule", nodeRule.ID())
+				c.client.Delete("noderule", nodeRule.GetID())
 
 				if node, err := c.gh.GetNode(c.gremlin.V().Has("Name", "TestNode")); err != common.ErrNotFound {
 					return fmt.Errorf("Node %+v found with name TestNode", node)
@@ -660,7 +660,7 @@ func TestNodeRuleUpdate(t *testing.T) {
 		},
 
 		tearDownFunction: func(c *TestContext) error {
-			c.client.Delete("noderule", nodeRule.ID())
+			c.client.Delete("noderule", nodeRule.GetID())
 			return nil
 		},
 
@@ -680,7 +680,7 @@ func TestNodeRuleUpdate(t *testing.T) {
 			},
 
 			func(c *CheckContext) error {
-				c.client.Delete("noderule", nodeRule.ID())
+				c.client.Delete("noderule", nodeRule.GetID())
 
 				if node, err := c.gh.GetNode(c.gremlin.V().Has("testKey", "testValue")); err != common.ErrNotFound {
 					return fmt.Errorf("Node %+v was found with metadata testKey", node)
@@ -713,7 +713,7 @@ func TestEdgeRuleCreate(t *testing.T) {
 		},
 
 		tearDownFunction: func(c *TestContext) error {
-			c.client.Delete("edgerule", edgeRule.ID())
+			c.client.Delete("edgerule", edgeRule.GetID())
 			return nil
 		},
 
@@ -742,7 +742,7 @@ func TestEdgeRuleCreate(t *testing.T) {
 				query = query.OutV().Has("Name", "br-dstnode", "Type", "ovsbridge")
 
 				if c.successTime.IsZero() {
-					c.client.Delete("edgerule", edgeRule.ID())
+					c.client.Delete("edgerule", edgeRule.GetID())
 				}
 
 				if _, err := c.gh.GetNode(query); err != common.ErrNotFound {

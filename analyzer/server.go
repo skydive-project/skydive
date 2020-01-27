@@ -326,15 +326,27 @@ func NewServerFromConfig() (*Server, error) {
 
 	piClient := packetinjector.NewOnDemandInjectionClient(g, piAPIHandler, hub.PodServer(), hub.SubscriberServer(), etcdClient)
 
-	nodeAPIHandler, err := api.RegisterNodeRuleAPI(apiServer, g, apiAuthBackend)
+	_, err = api.RegisterNodeAPI(apiServer, g, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
-	edgeAPIHandler, err := api.RegisterEdgeRuleAPI(apiServer, g, apiAuthBackend)
+
+	nodeRuleAPIHandler, err := api.RegisterNodeRuleAPI(apiServer, g, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
-	topologyManager := usertopology.NewTopologyManager(etcdClient, nodeAPIHandler, edgeAPIHandler, g)
+
+	_, err = api.RegisterEdgeAPI(apiServer, g, apiAuthBackend)
+	if err != nil {
+		return nil, err
+	}
+
+	edgeRuleAPIHandler, err := api.RegisterEdgeRuleAPI(apiServer, g, apiAuthBackend)
+	if err != nil {
+		return nil, err
+	}
+
+	topologyManager := usertopology.NewTopologyManager(etcdClient, nodeRuleAPIHandler, edgeRuleAPIHandler, g)
 
 	if _, err = api.RegisterAlertAPI(apiServer, apiAuthBackend); err != nil {
 		return nil, err

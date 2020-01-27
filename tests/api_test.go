@@ -102,7 +102,7 @@ func TestCaptureAPI(t *testing.T) {
 	}
 
 	capture2 := &types.Capture{}
-	if err := client.Get("capture", capture.ID(), &capture2); err != nil {
+	if err := client.Get("capture", capture.GetID(), &capture2); err != nil {
 		t.Error(err)
 	}
 
@@ -118,11 +118,11 @@ func TestCaptureAPI(t *testing.T) {
 		}
 	}
 
-	if captures[capture.ID()] != *capture {
-		t.Errorf("Capture corrupted: %+v != %+v", captures[capture.ID()], capture)
+	if captures[capture.GetID()] != *capture {
+		t.Errorf("Capture corrupted: %+v != %+v", captures[capture.GetID()], capture)
 	}
 
-	if err := client.Delete("capture", capture.ID()); err != nil {
+	if err := client.Delete("capture", capture.GetID()); err != nil {
 		t.Errorf("Failed to delete capture: %s", err.Error())
 	}
 
@@ -135,7 +135,7 @@ func TestCaptureAPI(t *testing.T) {
 		}
 	}
 
-	if err := client.Get("capture", capture.ID(), &capture2); err == nil {
-		t.Errorf("Found delete capture: %s", capture.ID())
+	if err := client.Get("capture", capture.GetID(), &capture2); err == nil {
+		t.Errorf("Found delete capture: %s", capture.GetID())
 	}
 }

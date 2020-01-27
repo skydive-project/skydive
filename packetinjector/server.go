@@ -49,7 +49,7 @@ type onDemandPacketInjectServer struct {
 }
 
 func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource types.Resource) (ondemand.Task, error) {
-	logging.GetLogger().Debugf("Registering packet injection %s on %s", resource.ID(), srcNode.ID)
+	logging.GetLogger().Debugf("Registering packet injection %s on %s", resource.GetID(), srcNode.ID)
 
 	pp := resource.(*PacketInjectionRequest)
 
@@ -92,8 +92,8 @@ func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource ty
 
 	metadata := &InjectionMetadata{
 		PacketInjectionRequest: *pp,
-		ID:    pp.UUID,
-		State: "active",
+		ID:                     pp.UUID,
+		State:                  "active",
 	}
 
 	if o.graph.UpdateMetadata(srcNode, "PacketInjections", func(obj interface{}) bool {
@@ -171,7 +171,7 @@ func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource ty
 }
 
 func (o *onDemandPacketInjectServer) RemoveTask(n *graph.Node, resource types.Resource, task ondemand.Task) error {
-	logging.GetLogger().Debugf("Unregister packet injection %s on %s", n.ID, resource.ID())
+	logging.GetLogger().Debugf("Unregister packet injection %s on %s", n.ID, resource.GetID())
 
 	cancel := task.(chan bool)
 	cancel <- true
