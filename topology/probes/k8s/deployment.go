@@ -23,7 +23,6 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -51,16 +50,6 @@ func (h *deploymentHandler) Map(obj interface{}) (graph.Identifier, graph.Metada
 
 func newDeploymentProbe(client interface{}, g *graph.Graph) Subprobe {
 	return NewResourceCache(client.(*kubernetes.Clientset).ExtensionsV1beta1().RESTClient(), &v1beta1.Deployment{}, "deployments", g, &deploymentHandler{})
-}
-
-func deploymentPodAreLinked(a, b interface{}) bool {
-	deployment := a.(*v1beta1.Deployment)
-	pod := b.(*v1.Pod)
-	return MatchNamespace(pod, deployment) && matchLabelSelector(pod, deployment.Spec.Selector)
-}
-
-func newDeploymentPodLinker(g *graph.Graph) probe.Handler {
-	return NewABLinker(g, Manager, "deployment", Manager, "pod", deploymentPodAreLinked)
 }
 
 func deploymentReplicaSetAreLinked(a, b interface{}) bool {

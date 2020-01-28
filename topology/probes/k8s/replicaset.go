@@ -19,9 +19,11 @@ package k8s
 
 import (
 	"fmt"
+	"github.com/skydive-project/skydive/probe"
 
 	"github.com/skydive-project/skydive/graffiti/graph"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -42,4 +44,14 @@ func (h *replicaSetHandler) Map(obj interface{}) (graph.Identifier, graph.Metada
 
 func newReplicaSetProbe(client interface{}, g *graph.Graph) Subprobe {
 	return NewResourceCache(client.(*kubernetes.Clientset).ExtensionsV1beta1().RESTClient(), &v1beta1.ReplicaSet{}, "replicasets", g, &replicaSetHandler{})
+}
+
+func replicaSetPodAreLinked(a, b interface{}) bool {
+	rc := a.(*v1beta1.ReplicaSet)
+	pod := b.(*v1.Pod)
+	return MatchNamespace(pod, rc) && matchLabelSelector(pod, rc.Spec.Selector)
+}
+
+func newReplicaSetPodLinker(g *graph.Graph) probe.Handler {
+	return NewABLinker(g, Manager, "replicaset", Manager, "pod", replicaSetPodAreLinked)
 }
