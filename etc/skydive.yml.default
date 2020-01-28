@@ -135,6 +135,7 @@ analyzer:
         - configmap
         - container
         - cronjob
+        - daemonset
         - deployment
         - endpoints
         - ingress
@@ -151,6 +152,8 @@ analyzer:
         - service
         - statefulset
         - storageclass
+
+      # cluster_name: "MyClusterName"
 
     istio:
       # specify the path of istio configuration YAML file.

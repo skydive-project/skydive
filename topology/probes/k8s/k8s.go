@@ -112,6 +112,7 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		newContainerDockerLinker,
 		newDeploymentPodLinker,
 		newDeploymentReplicaSetLinker,
+		newDaemonSetPodLinker,
 		newPodContainerLinker,
 		newPodConfigMapLinker,
 		newPodSecretLinker,
