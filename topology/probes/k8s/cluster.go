@@ -18,6 +18,7 @@
 package k8s
 
 import (
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
@@ -46,7 +47,7 @@ func (c *clusterCache) addClusterNode(clusterName string) error {
 	}
 
 	c.NotifyEvent(graph.NodeAdded, clusterNode)
-	logging.GetLogger().Debugf("Added cluster{Name: %s}", clusterName)
+	logging.GetLogger().Infof("Added cluster{Name: %s}", clusterName)
 	return nil
 }
 
@@ -63,14 +64,18 @@ func newClusterProbe(kubeconfig interface{}, g *graph.Graph) Subprobe {
 		graph:        g,
 	}
 
-	clusterName := "cluster"
-	if kubeconfig != nil {
-		cc := (kubeconfig).(*clientcmd.ClientConfig)
-		rawconfig, err := (*cc).RawConfig()
-		if err == nil {
-			if context := rawconfig.Contexts[rawconfig.CurrentContext]; context != nil {
-				if context.Cluster != "" {
-					clusterName = context.Cluster
+	clusterName := config.GetString("analyzer.topology.k8s.cluster_name")
+	if len(clusterName) == 0 {
+		clusterName = "cluster"
+
+		if kubeconfig != nil {
+			cc := (kubeconfig).(*clientcmd.ClientConfig)
+			rawconfig, err := (*cc).RawConfig()
+			if err == nil {
+				if context := rawconfig.Contexts[rawconfig.CurrentContext]; context != nil {
+					if context.Cluster != "" {
+						clusterName = context.Cluster
+					}
 				}
 			}
 		}
