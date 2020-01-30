@@ -51,6 +51,7 @@ type Config struct {
 	EntriesLimit int
 	AgeLimit     int
 	IndicesLimit int
+	NoSniffing   bool
 }
 
 // ClientInterface describes the mechanism API of ElasticSearch database client
@@ -158,6 +159,11 @@ func (c *Client) start() error {
 	esConfig, err := esconfig.Parse(c.url.String())
 	if err != nil {
 		return err
+	}
+
+	if c.cfg.NoSniffing {
+		esConfig.Sniff = new(bool)
+		*esConfig.Sniff = false
 	}
 
 	esClient, err := elastic.NewClientFromConfig(esConfig)

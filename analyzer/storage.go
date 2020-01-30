@@ -47,6 +47,7 @@ func NewESConfig(name ...string) es.Config {
 	cfg.EntriesLimit = config.GetInt(path + ".index_entries_limit")
 	cfg.AgeLimit = config.GetInt(path + ".index_age_limit")
 	cfg.IndicesLimit = config.GetInt(path + ".indices_to_keep")
+	cfg.NoSniffing = config.GetBool(path + ".disable_sniffing")
 
 	return cfg
 }
