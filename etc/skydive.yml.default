@@ -135,6 +135,7 @@ analyzer:
         - configmap
         - container
         - cronjob
+        - daemonset
         - deployment
         - endpoints
         - ingress
