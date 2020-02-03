@@ -22,6 +22,7 @@ spec:
         tier: agent
     spec:
       hostNetwork: true
+      serviceAccountName: skydive-service-account
       dnsPolicy: ClusterFirstWithHostNet
       securityContext:
         runAsNonRoot: false
