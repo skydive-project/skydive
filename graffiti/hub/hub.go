@@ -29,6 +29,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/validator"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/websocket"
 )
 
@@ -43,6 +44,7 @@ type Opts struct {
 	Validator          validator.Validator
 	TLSConfig          *tls.Config
 	EtcdKeysAPI        etcd.KeysAPI
+	Logger             logging.Logger
 }
 
 // Hub describes a graph hub that accepts incoming connections
@@ -154,7 +156,11 @@ func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.G
 
 	tr := traversal.NewGremlinTraversalParser()
 
-	httpServer := shttp.NewServer(service.ID, service.Type, sa.Addr, sa.Port, nil)
+	if opts.Logger == nil {
+		opts.Logger = logging.GetLogger()
+	}
+
+	httpServer := shttp.NewServer(service.ID, service.Type, sa.Addr, sa.Port, nil, opts.Logger)
 
 	apiServer, err := api.NewAPI(httpServer, opts.EtcdKeysAPI, service, opts.APIAuthBackend)
 	if err != nil {

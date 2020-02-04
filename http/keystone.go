@@ -19,6 +19,7 @@ package http
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -28,7 +29,6 @@ import (
 	tokens2 "github.com/gophercloud/gophercloud/openstack/identity/v2/tokens"
 	tokens3 "github.com/gophercloud/gophercloud/openstack/identity/v3/tokens"
 	"github.com/mitchellh/mapstructure"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // KeystoneAuthenticationBackend describes a Keystone based authentication backend.
@@ -76,8 +76,7 @@ func (b *KeystoneAuthenticationBackend) checkUserV2(client *gophercloud.ServiceC
 	}
 
 	if token.Tenant.Name != b.Tenant {
-		logging.GetLogger().Debugf("Keystone authentication error, tenant miss-match: %s vs %s", token.Tenant.Name, b.Tenant)
-		return "", ErrWrongCredentials
+		return "", fmt.Errorf("Tenant mismatch")
 	}
 
 	return user.UserName, nil
@@ -106,9 +105,10 @@ func (b *KeystoneAuthenticationBackend) checkUserV3(client *gophercloud.ServiceC
 
 	// test that the project is the same as the one provided in the conf file
 	project := response.Token.Project
-	if project.Name != b.Tenant || project.Domain.Name != b.Domain {
-		logging.GetLogger().Debugf("Keystone authentication error, tenant or domain miss-match: %s vs %s, %s vs %s", project.Name, b.Tenant, project.Domain.Name, b.Domain)
-		return "", ErrWrongCredentials
+	if project.Name != b.Tenant {
+		return "", fmt.Errorf("Tenant mismatch")
+	} else if project.Domain.Name != b.Domain {
+		return "", fmt.Errorf("Domain mismatch")
 	}
 
 	return response.Token.User.Name, nil
@@ -150,10 +150,7 @@ func (b *KeystoneAuthenticationBackend) Authenticate(username string, password s
 	}
 
 	if err := openstack.Authenticate(provider, opts); err != nil {
-		logging.GetLogger().Noticef("Keystone authentication error: %s", err)
-
 		opts.Password = "xxxxxxxxx"
-		logging.GetLogger().Debugf("Keystone endpoint: %s, request: %+v", b.AuthURL, opts)
 		return "", err
 	}
 
@@ -166,10 +163,7 @@ func (b *KeystoneAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFu
 		token := tokenFromRequest(r)
 
 		if username, err := b.CheckUser(token); username == "" {
-			if err != nil {
-				logging.GetLogger().Warningf("Failed to check token: %s", err)
-			}
-			Unauthorized(w, r)
+			Unauthorized(w, r, err)
 		} else {
 			authCallWrapped(w, r, username, wrapped)
 		}
