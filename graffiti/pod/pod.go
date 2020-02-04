@@ -28,6 +28,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/validator"
 	"github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/logging"
 )
 
 // Opts defines pod server options
@@ -37,6 +38,7 @@ type Opts struct {
 	TLSConfig          *tls.Config
 	APIAuthBackend     shttp.AuthenticationBackend
 	ClusterAuthOptions *shttp.AuthenticationOpts
+	Logger             logging.Logger
 }
 
 // Pod describes a graph pod. It maintains a local graph
@@ -135,7 +137,11 @@ func NewPod(id string, serviceType scommon.ServiceType, listen string, clientPoo
 		return nil, err
 	}
 
-	httpServer := shttp.NewServer(id, serviceType, sa.Addr, sa.Port, opts.TLSConfig)
+	if opts.Logger == nil {
+		opts.Logger = logging.GetLogger()
+	}
+
+	httpServer := shttp.NewServer(id, serviceType, sa.Addr, sa.Port, opts.TLSConfig, opts.Logger)
 
 	apiServer, err := api.NewAPI(httpServer, nil, service, opts.APIAuthBackend)
 	if err != nil {

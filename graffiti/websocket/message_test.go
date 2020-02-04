@@ -62,8 +62,8 @@ func newStructMessage(ns, tp string) *StructMessage {
 }
 
 func newHTTPServer() *shttp.Server {
-	httpserver := shttp.NewServer(defaultHostID, common.AnalyzerService, host, port, nil)
-	httpserver.ListenAndServe()
+	httpserver := shttp.NewServer(defaultHostID, common.AnalyzerService, host, port, nil, nil)
+	httpserver.Start()
 	return httpserver
 }
 

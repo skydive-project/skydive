@@ -310,7 +310,8 @@ func (a *Server) serveLogin(w http.ResponseWriter, r *http.Request, authBackend 
 		if len(loginForm) != 0 && len(passwordForm) != 0 {
 			username, password := loginForm[0], passwordForm[0]
 
-			if token, permissions, err := shttp.Authenticate(authBackend, w, username, password); err == nil {
+			token, permissions, err := shttp.Authenticate(authBackend, w, username, password)
+			if err == nil {
 				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
 				w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
@@ -333,9 +334,9 @@ func (a *Server) serveLogin(w http.ResponseWriter, r *http.Request, authBackend 
 				return
 			}
 
-			shttp.Unauthorized(w, r)
+			shttp.Unauthorized(w, r, err)
 		} else {
-			shttp.Unauthorized(w, r)
+			shttp.Unauthorized(w, r, errors.New("No credentials provided"))
 		}
 	} else {
 		http.Redirect(w, r, "/", http.StatusFound)

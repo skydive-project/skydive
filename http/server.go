@@ -60,6 +60,7 @@ type Server struct {
 	lock        sync.Mutex
 	listener    net.Listener
 	wg          sync.WaitGroup
+	logger      logging.Logger
 }
 
 func copyRequestVars(old, new *http.Request) {
@@ -101,7 +102,7 @@ func (s *Server) Listen() error {
 	}
 
 	s.listener = ln
-	logging.GetLogger().Infof("Listening on socket %s:%d", s.Addr, s.Port)
+	s.logger.Infof("Listening on socket %s:%d", s.Addr, s.Port)
 	return nil
 }
 
@@ -123,13 +124,13 @@ func (s *Server) Serve() {
 	if err == http.ErrServerClosed {
 		return
 	}
-	logging.GetLogger().Errorf("Failed to serve on %s:%d: %s", s.Addr, s.Port, err)
+	s.logger.Errorf("Failed to serve on %s:%d: %s", s.Addr, s.Port, err)
 }
 
 // Unauthorized returns a 401 response
-func Unauthorized(w http.ResponseWriter, r *http.Request) {
+func Unauthorized(w http.ResponseWriter, r *http.Request, err error) {
 	w.WriteHeader(http.StatusUnauthorized)
-	w.Write([]byte("401 Unauthorized\n"))
+	w.Write([]byte(err.Error()))
 }
 
 // Start listening and serving HTTP requests
@@ -153,7 +154,7 @@ func (s *Server) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := s.Server.Shutdown(ctx); err != nil {
-		logging.GetLogger().Error("Shutdown error :", err)
+		s.logger.Error("Shutdown error :", err)
 	}
 	s.listener.Close()
 	s.wg.Wait()
@@ -191,7 +192,11 @@ func (s *Server) HandleFunc(path string, f auth.AuthenticatedHandlerFunc, authBa
 }
 
 // NewServer returns a new HTTP service for a service
-func NewServer(host string, serviceType common.ServiceType, addr string, port int, tlsConfig *tls.Config) *Server {
+func NewServer(host string, serviceType common.ServiceType, addr string, port int, tlsConfig *tls.Config, logger logging.Logger) *Server {
+	if logger == nil {
+		logger = logging.GetLogger()
+	}
+
 	router := mux.NewRouter().StrictSlash(true)
 	router.Headers("X-Host-ID", host, "X-Service-Type", serviceType.String())
 
@@ -204,5 +209,6 @@ func NewServer(host string, serviceType common.ServiceType, addr string, port in
 		Router:      router,
 		Addr:        addr,
 		Port:        port,
+		logger:      logger,
 	}
 }
