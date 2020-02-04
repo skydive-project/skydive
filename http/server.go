@@ -105,20 +105,8 @@ func (s *Server) Listen() error {
 	return nil
 }
 
-// ListenAndServe starts listening and serving HTTP requests
-func (s *Server) ListenAndServe() {
-	if err := s.Listen(); err != nil {
-		logging.GetLogger().Critical(err)
-	}
-
-	go s.Serve()
-}
-
 // Serve HTTP request
 func (s *Server) Serve() {
-	defer s.wg.Done()
-	s.wg.Add(1)
-
 	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization", "X-Auth-Token"})
 	originsOk := handlers.AllowedOrigins([]string{"*"})
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
@@ -142,6 +130,22 @@ func (s *Server) Serve() {
 func Unauthorized(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusUnauthorized)
 	w.Write([]byte("401 Unauthorized\n"))
+}
+
+// Start listening and serving HTTP requests
+func (s *Server) Start() error {
+	if err := s.Listen(); err != nil {
+		return err
+	}
+
+	go func() {
+		defer s.wg.Done()
+		s.wg.Add(1)
+
+		s.Serve()
+	}()
+
+	return nil
 }
 
 // Stop the server

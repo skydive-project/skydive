@@ -109,7 +109,7 @@ func newTestServer(t *testing.T, hostID ...string) *testServer {
 func (s *testServer) start() {
 	httpServer := shttp.NewServer(s.hostID, common.AnalyzerService, host, port, nil)
 
-	httpServer.ListenAndServe()
+	httpServer.Start()
 	s.httpServer = httpServer
 
 	serverOpts := ServerOpts{

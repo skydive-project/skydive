@@ -26,9 +26,7 @@ import (
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/hub"
-	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/websocket"
@@ -56,12 +54,6 @@ var HubCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		logging.GetLogger().Noticef("Graffiti hub starting...")
 
-		sa, err := common.ServiceAddressFromString(hubListen)
-		if err != nil {
-			logging.GetLogger().Errorf("Configuration error: %s", err)
-			os.Exit(1)
-		}
-
 		hostname, err := os.Hostname()
 		if err != nil {
 			logging.GetLogger().Errorf("Failed to get hostname: %s", err)
@@ -80,46 +72,29 @@ var HubCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		service := common.Service{ID: hostname, Type: "Hub"}
 		g := graph.NewGraph(hostname, cached, serviceType)
-
-		httpServer := shttp.NewServer(hostname, service.Type, sa.Addr, sa.Port, nil)
-
-		if err := httpServer.Listen(); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
-		}
 
 		authBackend := shttp.NewNoAuthenticationBackend()
 
-		// declare all extension available through API and filtering
-		tr := traversal.NewGremlinTraversalParser()
-		tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
-
-		if _, err = api.NewAPI(httpServer, nil, service, authBackend); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
-		}
-		api.RegisterTopologyAPI(httpServer, g, tr, authBackend)
-
-		serverOpts := websocket.ServerOpts{
-			WriteCompression: writeCompression,
-			QueueSize:        queueSize,
-			PingDelay:        time.Second * time.Duration(pingDelay),
-			PongTimeout:      time.Second * time.Duration(pongTimeout),
-		}
-
 		hubOpts := hub.Opts{
-			ServerOpts: serverOpts,
+			Hostname: hostname,
+			WebsocketOpts: websocket.ServerOpts{
+				WriteCompression: writeCompression,
+				QueueSize:        queueSize,
+				PingDelay:        time.Second * time.Duration(pingDelay),
+				PongTimeout:      time.Second * time.Duration(pongTimeout),
+			},
+			APIAuthBackend:     authBackend,
+			ClusterAuthBackend: authBackend,
 		}
 
-		hub, err := hub.NewHub(httpServer, g, cached, authBackend, authBackend, nil, "/ws/pod", nil, hubOpts)
+		hub, err := hub.NewHub(hostname, common.ServiceType("Hub"), hubListen, g, cached, "/ws/pod", hubOpts)
 		if err != nil {
 			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
 
-		go httpServer.Serve()
+		api.RegisterStatusAPI(hub.HTTPServer(), hub, authBackend)
 
 		hub.Start()
 

@@ -25,12 +25,9 @@ import (
 	"syscall"
 	"time"
 
-	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/pod"
-	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/websocket"
@@ -64,19 +61,12 @@ var PodCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		logging.GetLogger().Noticef("Graffiti pod starting...")
 
-		sa, err := common.ServiceAddressFromString(podListen)
-		if err != nil {
-			logging.GetLogger().Errorf("Configuration error: %s", err)
-			os.Exit(1)
-		}
-
 		hostname, err := os.Hostname()
 		if err != nil {
 			logging.GetLogger().Errorf("Failed to get hostname: %s", err)
 			os.Exit(1)
 		}
 
-		service := common.Service{ID: hostname, Type: serviceType}
 		backend, err := graph.NewMemoryBackend()
 		if err != nil {
 			logging.GetLogger().Errorf("Failed to get hostname: %s", err)
@@ -85,27 +75,9 @@ var PodCmd = &cobra.Command{
 
 		clusterAuthOptions := &shttp.AuthenticationOpts{}
 
-		// declare all extension available through API and filtering
-		tr := traversal.NewGremlinTraversalParser()
-		tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
-
 		g := graph.NewGraph(hostname, backend, serviceType)
 
 		authBackend := shttp.NewNoAuthenticationBackend()
-
-		httpServer := shttp.NewServer(hostname, serviceType, sa.Addr, sa.Port, nil)
-
-		if err := httpServer.Listen(); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
-		}
-
-		apiServer, err := api.NewAPI(httpServer, nil, service, authBackend)
-		if err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
-		}
-		api.RegisterTopologyAPI(httpServer, g, tr, authBackend)
 
 		var addresses []common.ServiceAddress
 		for _, address := range hubServers {
@@ -130,21 +102,20 @@ var PodCmd = &cobra.Command{
 		clientPool := newHubClientPool(hostname, addresses, clientOpts)
 
 		podOpts := pod.Opts{
-			ServerOpts: websocket.ServerOpts{
+			WebsocketOpts: websocket.ServerOpts{
 				WriteCompression: writeCompression,
 				QueueSize:        queueSize,
 				PingDelay:        time.Second * time.Duration(pingDelay),
 				PongTimeout:      time.Second * time.Duration(pongTimeout),
 			},
+			APIAuthBackend: authBackend,
 		}
 
-		pod, err := pod.NewPod(apiServer, clientPool, g, authBackend, nil, tr, podOpts)
+		pod, err := pod.NewPod(hostname, serviceType, podListen, clientPool, g, podOpts)
 		if err != nil {
 			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
-
-		go httpServer.Serve()
 
 		// everything is ready, then initiate the websocket connection
 		go clientPool.ConnectAll()
