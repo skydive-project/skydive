@@ -300,7 +300,7 @@ func TestBlockDevWithJSON(t *testing.T) {
 		mode: Replay,
 
 		checks: []CheckFunction{func(c *CheckContext) error {
-			gremlin := c.gremlin.V().Has("Type", "cluster", "Manager", "blockdev", "Name", "/dev/mapper/mirror_vg-mirror_lv")
+			gremlin := c.gremlin.V().Has("Type", "cluster", "Manager", "blockdev", "Name", "/tmp/database")
 			_, err := c.gh.GetNode(gremlin)
 			if err != nil {
 				return err
