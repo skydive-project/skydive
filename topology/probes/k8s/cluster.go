@@ -18,14 +18,13 @@
 package k8s
 
 import (
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
-
-	"k8s.io/client-go/tools/clientcmd"
 )
+
+const Cluster = "cluster"
 
 var clusterNode *graph.Node
 
@@ -41,7 +40,11 @@ func (c *clusterCache) addClusterNode(clusterName string) error {
 	m := graph.Metadata{"Name": clusterName}
 
 	var err error
-	clusterNode, err = c.graph.NewNode(graph.GenID(), NewMetadata(Manager, "cluster", m, nil, clusterName), "")
+	metadata := NewMetadata(Manager, Cluster, m, nil, clusterName)
+	if len(clusterName) > 0 {
+		metadata.SetFieldAndNormalize(ClusterNameField, clusterName)
+	}
+	clusterNode, err = c.graph.NewNode(graph.GenID(), metadata)
 	if err != nil {
 		return err
 	}
@@ -58,31 +61,21 @@ func (c *clusterCache) Start() error {
 func (c *clusterCache) Stop() {
 }
 
-func newClusterProbe(kubeconfig interface{}, g *graph.Graph) Subprobe {
+func newClusterProbe(g *graph.Graph, clusterName string) Subprobe {
 	c := &clusterCache{
 		EventHandler: graph.NewEventHandler(100),
 		graph:        g,
 	}
-
-	clusterName := config.GetString("analyzer.topology.k8s.cluster_name")
-	if len(clusterName) == 0 {
-		clusterName = "cluster"
-
-		if kubeconfig != nil {
-			cc := (kubeconfig).(*clientcmd.ClientConfig)
-			rawconfig, err := (*cc).RawConfig()
-			if err == nil {
-				if context := rawconfig.Contexts[rawconfig.CurrentContext]; context != nil {
-					if context.Cluster != "" {
-						clusterName = context.Cluster
-					}
-				}
-			}
-		}
-	}
-
 	c.addClusterNode(clusterName)
 	return c
+}
+
+func initClusterSubprobe(g *graph.Graph, manager, clusterName string) {
+	if subprobes[manager] == nil {
+		subprobes[manager] = make(map[string]Subprobe)
+	}
+	subprobe := newClusterProbe(g, clusterName)
+	PutSubprobe(manager, Cluster, subprobe)
 }
 
 type clusterLinker struct {

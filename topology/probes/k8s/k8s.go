@@ -77,13 +77,10 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		return nil, fmt.Errorf("Failed to create Kubernetes client: %s", err)
 	}
 
+	clusterName := getClusterName(kubeconfig)
+	initClusterSubprobe(g, Manager, clusterName)
+
 	subprobeHandlers := map[string]SubprobeHandler{
-		"cluster": newClusterProbe,
-	}
-
-	InitSubprobes(enabledSubprobes, subprobeHandlers, kubeconfig, g, Manager)
-
-	subprobeHandlers = map[string]SubprobeHandler{
 		"configmap":             newConfigMapProbe,
 		"container":             newContainerProbe,
 		"cronjob":               newCronJobProbe,
@@ -106,7 +103,7 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		"storageclass":          newStorageClassProbe,
 	}
 
-	InitSubprobes(enabledSubprobes, subprobeHandlers, clientset, g, Manager)
+	InitSubprobes(enabledSubprobes, subprobeHandlers, clientset, g, Manager, clusterName)
 
 	linkerHandlers := []LinkHandler{
 		newContainerDockerLinker,
@@ -161,4 +158,23 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 	)
 
 	return probe, nil
+}
+
+func getClusterName(kubeconfig *clientcmd.ClientConfig) string {
+	clusterName := config.GetString("analyzer.topology.k8s.cluster_name")
+	if len(clusterName) == 0 {
+		clusterName = "cluster"
+
+		if kubeconfig != nil {
+			rawconfig, err := (*kubeconfig).RawConfig()
+			if err == nil {
+				if context := rawconfig.Contexts[rawconfig.CurrentContext]; context != nil {
+					if context.Cluster != "" {
+						clusterName = context.Cluster
+					}
+				}
+			}
+		}
+	}
+	return clusterName
 }

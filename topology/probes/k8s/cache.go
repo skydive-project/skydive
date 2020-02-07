@@ -201,8 +201,9 @@ type ResourceHandler interface {
 type ResourceCache struct {
 	*graph.EventHandler
 	*KubeCache
-	graph   *graph.Graph
-	handler ResourceHandler
+	graph       *graph.Graph
+	handler     ResourceHandler
+	clusterName string
 }
 
 // OnAdd is called when a new Kubernetes resource has been created
@@ -211,6 +212,10 @@ func (c *ResourceCache) OnAdd(obj interface{}) {
 	defer c.graph.Unlock()
 
 	id, metadata := c.handler.Map(obj)
+	if len(c.clusterName) > 0 {
+		metadata.SetField(ClusterNameField, c.clusterName)
+	}
+
 	node, err := c.graph.NewNode(id, metadata, "")
 	if err != nil {
 		logging.GetLogger().Error(err)
@@ -226,6 +231,9 @@ func (c *ResourceCache) OnUpdate(oldObj, newObj interface{}) {
 	defer c.graph.Unlock()
 
 	id, metadata := c.handler.Map(newObj)
+	if len(c.clusterName) > 0 {
+		metadata.SetFieldAndNormalize(ClusterNameField, c.clusterName)
+	}
 	if node := c.graph.GetNode(id); node != nil {
 		if err := c.graph.SetMetadata(node, metadata); err != nil {
 			logging.GetLogger().Error(err)

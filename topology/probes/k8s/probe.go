@@ -175,7 +175,7 @@ func NewProbe(g *graph.Graph, manager string, subprobes map[string]Subprobe, lin
 type SubprobeHandler func(client interface{}, g *graph.Graph) Subprobe
 
 // InitSubprobes initializes only the subprobes which are enabled
-func InitSubprobes(enabled []string, subprobeHandlers map[string]SubprobeHandler, client interface{}, g *graph.Graph, manager string) {
+func InitSubprobes(enabled []string, subprobeHandlers map[string]SubprobeHandler, client interface{}, g *graph.Graph, manager, clusterName string) {
 	if subprobes[manager] == nil {
 		subprobes[manager] = make(map[string]Subprobe)
 	}
@@ -189,6 +189,10 @@ func InitSubprobes(enabled []string, subprobeHandlers map[string]SubprobeHandler
 	for _, name := range enabled {
 		if handler := subprobeHandlers[name]; handler != nil {
 			subprobe := handler(client, g)
+			if resourceCache, ok := subprobe.(*ResourceCache); ok {
+				resourceCache.clusterName = clusterName
+			}
+
 			PutSubprobe(manager, name, subprobe)
 		}
 	}
