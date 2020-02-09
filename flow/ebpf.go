@@ -117,6 +117,15 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 	f.Init(common.UnixMillis(ebpfFlow.Start), "", &ft.uuids)
 	f.Last = common.UnixMillis(ebpfFlow.Last)
 
+	f.Metric = &FlowMetric{
+		ABBytes:   int64(ebpfFlow.KernFlow.metrics.ab_bytes),
+		ABPackets: int64(ebpfFlow.KernFlow.metrics.ab_packets),
+		BABytes:   int64(ebpfFlow.KernFlow.metrics.ba_bytes),
+		BAPackets: int64(ebpfFlow.KernFlow.metrics.ba_packets),
+		Start:     f.Start,
+		Last:      f.Last,
+	}
+
 	// Set the external key
 	f.XXX_state.extKey = ebpfFlow.KernFlow.key
 
@@ -245,6 +254,11 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 				ABRstStart: tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ab_rst, ebpfFlow.StartKTimeNs, ebpfFlow.Start),
 				BARstStart: tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ba_rst, ebpfFlow.StartKTimeNs, ebpfFlow.Start),
 			}
+
+			f.TCPMetric.ABBytes = f.Metric.ABBytes
+			f.TCPMetric.BABytes = f.Metric.BABytes
+			f.TCPMetric.ABPackets = f.Metric.ABPackets
+			f.TCPMetric.BAPackets = f.Metric.BAPackets
 		}
 	}
 
@@ -268,15 +282,6 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 	appLayers := strings.Split(f.LayersPath, "/")
 	f.Application = appLayers[len(appLayers)-1]
 
-	f.Metric = &FlowMetric{
-		ABBytes:   int64(ebpfFlow.KernFlow.metrics.ab_bytes),
-		ABPackets: int64(ebpfFlow.KernFlow.metrics.ab_packets),
-		BABytes:   int64(ebpfFlow.KernFlow.metrics.ba_bytes),
-		BAPackets: int64(ebpfFlow.KernFlow.metrics.ba_packets),
-		Start:     f.Start,
-		Last:      f.Last,
-	}
-
 	f.SetUUIDs(key, Opts{LayerKeyMode: L3PreferredKeyMode})
 
 	flows = append(flows, f)
@@ -288,14 +293,14 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 func isABPacket(ebpfFlow *EBPFFlow, f *Flow) bool {
 	cmp := true
 	layersInfo := uint8(ebpfFlow.KernFlow.layers_info)
-	if layersInfo&uint8(C.LINK_LAYER_INFO) > 0 {
+	if f.Link != nil {
 		linkA := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.link_layer.mac_src[0]), C.ETH_ALEN)
 		linkB := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.link_layer.mac_dst[0]), C.ETH_ALEN)
 		cmp = strings.Compare(f.Link.A, net.HardwareAddr(linkA).String()) == 0 &&
 			strings.Compare(f.Link.B, net.HardwareAddr(linkB).String()) == 0
 
 		if bytes.Equal(linkA, linkB) {
-			if layersInfo&uint8(C.NETWORK_LAYER_INFO) > 0 {
+			if f.Network != nil {
 				netA := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer_outer.ip_src[0]), C.int(net.IPv6len))
 				netB := C.GoBytes(unsafe.Pointer(&ebpfFlow.KernFlow.network_layer_outer.ip_dst[0]), C.int(net.IPv6len))
 				cmp = strings.Compare(f.Network.A, net.IP(netA).String()) == 0 &&
@@ -321,6 +326,17 @@ func (ft *Table) updateFlowFromEBPF(ebpfFlow *EBPFFlow, f *Flow) bool {
 	f.Last = last
 
 	isAB := isABPacket(ebpfFlow, f)
+	if isAB {
+		f.Metric.ABBytes += int64(ebpfFlow.KernFlow.metrics.ab_bytes)
+		f.Metric.ABPackets += int64(ebpfFlow.KernFlow.metrics.ab_packets)
+		f.Metric.BABytes += int64(ebpfFlow.KernFlow.metrics.ba_bytes)
+		f.Metric.BAPackets += int64(ebpfFlow.KernFlow.metrics.ba_packets)
+	} else {
+		f.Metric.ABBytes += int64(ebpfFlow.KernFlow.metrics.ba_bytes)
+		f.Metric.ABPackets += int64(ebpfFlow.KernFlow.metrics.ba_packets)
+		f.Metric.BABytes += int64(ebpfFlow.KernFlow.metrics.ab_bytes)
+		f.Metric.BAPackets += int64(ebpfFlow.KernFlow.metrics.ab_packets)
+	}
 
 	layersInfo := uint8(ebpfFlow.KernFlow.layers_info)
 	if layersInfo&uint8(C.TRANSPORT_LAYER_INFO) > 0 {
@@ -342,20 +358,14 @@ func (ft *Table) updateFlowFromEBPF(ebpfFlow *EBPFFlow, f *Flow) bool {
 				f.TCPMetric.ABRstStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ba_rst, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
 				f.TCPMetric.BARstStart = tcpFlagTime(ebpfFlow.KernFlow.transport_layer.ab_rst, ebpfFlow.StartKTimeNs, ebpfFlow.Start)
 			}
+
+			f.TCPMetric.ABBytes = f.Metric.ABBytes
+			f.TCPMetric.BABytes = f.Metric.BABytes
+			f.TCPMetric.ABPackets = f.Metric.ABPackets
+			f.TCPMetric.BAPackets = f.Metric.BAPackets
 		}
 	}
 
-	if isAB {
-		f.Metric.ABBytes += int64(ebpfFlow.KernFlow.metrics.ab_bytes)
-		f.Metric.ABPackets += int64(ebpfFlow.KernFlow.metrics.ab_packets)
-		f.Metric.BABytes += int64(ebpfFlow.KernFlow.metrics.ba_bytes)
-		f.Metric.BAPackets += int64(ebpfFlow.KernFlow.metrics.ba_packets)
-	} else {
-		f.Metric.ABBytes += int64(ebpfFlow.KernFlow.metrics.ba_bytes)
-		f.Metric.ABPackets += int64(ebpfFlow.KernFlow.metrics.ba_packets)
-		f.Metric.BABytes += int64(ebpfFlow.KernFlow.metrics.ab_bytes)
-		f.Metric.BAPackets += int64(ebpfFlow.KernFlow.metrics.ab_packets)
-	}
 	f.Metric.Start = f.Start
 	f.Metric.Last = last
 
