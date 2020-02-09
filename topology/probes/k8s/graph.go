@@ -32,6 +32,8 @@ const (
 	KubeKey = "K8s"
 	// ExtraKey is the metadata area for k8s extra fields
 	ExtraKey = "K8s.Extra"
+
+	ClusterNameField = "ClusterName"
 )
 
 // MetadataField is generates full path of a k8s specific field

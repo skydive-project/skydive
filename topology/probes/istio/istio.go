@@ -53,7 +53,7 @@ func NewIstioProbe(g *graph.Graph) (*k8s.Probe, error) {
 		"virtualservice":   newVirtualServiceProbe,
 	}
 
-	k8s.InitSubprobes(enabledSubprobes, subprobeHandlers, client, g, Manager)
+	k8s.InitSubprobes(enabledSubprobes, subprobeHandlers, client, g, Manager, "")
 
 	verifierHandlers := []verifierHandler{
 		newVirtualServiceGatewayVerifier,
