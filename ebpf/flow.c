@@ -239,6 +239,8 @@ static inline void fill_flow(struct __sk_buff *skb, struct flow *flow, __u64 tm)
 		break;
 	}
 
+	__sync_fetch_and_add(&flow->last, tm);
+
 	flow->key = flow->link_layer._hash;
 	flow->key = rotl(flow->key, 16);
 	flow->key ^= flow->network_layer._hash;
@@ -323,7 +325,6 @@ int bpf_flow_table(struct __sk_buff *skb)
 		update_metrics(skb, &flow, 1);
 
 		__sync_fetch_and_add(&flow.start, tm);
-		__sync_fetch_and_add(&flow.last, tm);
 
 		if (bpf_map_update_element(flowtable, &flow.key, &flow, BPF_ANY) == -1)
 		{
