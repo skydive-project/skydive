@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"path"
 	"sync"
 	"time"
 
@@ -182,10 +183,11 @@ func (bd *BlockDevice) getName() string {
 	if bd.Mountpoint != "" {
 		return bd.Mountpoint
 	}
-	return bd.Name
+	base := path.Base(bd.getPath())
+	return base
 }
 
-func (p *ProbeHandler) addGroupByName(name string, WWN string) *graph.Node {
+func (p *ProbeHandler) addGroupByName(name string, ID string) *graph.Node {
 	p.Lock()
 	defer p.Unlock()
 	if p.Groups[name] != nil {
@@ -196,7 +198,7 @@ func (p *ProbeHandler) addGroupByName(name string, WWN string) *graph.Node {
 	defer g.Unlock()
 	metadata := graph.Metadata{
 		"Name":    name,
-		"WWN":     WWN,
+		"ID":      ID,
 		"Type":    blockGroupType,
 		"Manager": managerType,
 	}
@@ -212,7 +214,7 @@ func (p *ProbeHandler) addGroupByName(name string, WWN string) *graph.Node {
 
 // addGroup adds a group to the graph
 func (p *ProbeHandler) addGroup(blockdev BlockDevice, WWN string) *graph.Node {
-	groupName := blockdev.getID()
+	groupName := blockdev.getName()
 	return p.addGroupByName(groupName, WWN)
 }
 
@@ -241,8 +243,7 @@ func (p *ProbeHandler) getMetaData(blockdev BlockDevice, childCount int, parentW
 	}
 
 	blockdevMetadata = Metadata{
-		Index:        p.getID(blockdev),
-		Name:         p.getName(blockdev),
+		Name:         blockdev.getName(),
 		Alignment:    blockdev.Alignment,
 		DiscAln:      blockdev.DiscAln,
 		DiscGran:     blockdev.DiscGran,
@@ -295,14 +296,13 @@ func (p *ProbeHandler) getMetaData(blockdev BlockDevice, childCount int, parentW
 	}
 
 	metadata = graph.Metadata{
-		"Path":     blockdev.getPath(),
-		"Type":     nodeType,
-		"Name":     blockdev.getName(),
-		"Manager":  managerType,
-		"Blockdev": blockdevMetadata,
-	}
-	if metric := p.newMetricsFromBlockdev(blockdev.getPath()); metric != nil {
-		metadata["BlockdevMetric"] = metric
+		"Index":      blockdev.getID(),
+		"Path":       blockdev.getPath(),
+		"MajorMinor": blockdev.MajMin,
+		"Type":       nodeType,
+		"Name":       blockdev.getName(),
+		"Manager":    managerType,
+		"Attributes": blockdevMetadata,
 	}
 
 	return metadata
@@ -392,7 +392,7 @@ func (p *ProbeHandler) registerBlockdev(blockdev BlockDevice, parentWWN string) 
 	p.blockdevMap[blockdev.Name] = blockdevInfo{
 		Name: blockdev.Name,
 		ID:   blockdev.getID(),
-		Path: blockdev.Path,
+		Path: blockdev.getPath(),
 		Node: node,
 	}
 	return groupNode
@@ -479,23 +479,6 @@ func (p *ProbeHandler) connect() error {
 	}
 
 	return nil
-}
-
-func (p *ProbeHandler) getID(blockdev BlockDevice) string {
-	if blockdev.WWN != "" {
-		return blockdev.WWN
-	}
-	if blockdev.Serial != "" {
-		return blockdev.Serial
-	}
-	return blockdev.Name
-}
-
-func (p *ProbeHandler) getName(blockdev BlockDevice) string {
-	if blockdev.Mountpoint != "" {
-		return blockdev.Mountpoint
-	}
-	return blockdev.Name
 }
 
 func (p *ProbeHandler) newMetricsFromBlockdev(blockdevPath string) *BlockMetric {
