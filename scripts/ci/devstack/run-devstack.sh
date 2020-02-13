@@ -4,7 +4,8 @@ set -v
 
 [ -z "$SKYDIVE_PATH" ] && SKYDIVE_PATH=`pwd`
 
-sudo yum -y install git iproute net-tools
+sudo yum -y install git iproute net-tools python3-devel
+sudo pip3 install -U --force-reinstall PyYAML
 git clone https://git.openstack.org/openstack-dev/devstack devstack.git
 cd devstack.git
 
