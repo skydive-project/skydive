@@ -23,11 +23,9 @@ import (
 	"net/url"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	fw "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	gws "github.com/skydive-project/skydive/graffiti/websocket"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	ws "github.com/skydive-project/skydive/websocket"
 )
@@ -151,52 +149,41 @@ func (s *Seed) Stop() {
 }
 
 // NewSeed returns a new seed
-func NewSeed(g *graph.Graph, clientType common.ServiceType, address, filter string, authOpts *shttp.AuthenticationOpts, logger logging.Logger) (*Seed, error) {
-	headers := http.Header{
-		"X-Websocket-Namespace": {gws.Namespace},
-	}
+func NewSeed(g *graph.Graph, clientType common.ServiceType, address, filter string, wsOpts ws.ClientOpts) (*Seed, error) {
+	wsOpts.Headers.Add("X-Websocket-Namespace", gws.Namespace)
 
 	if len(address) == 0 {
 		address = "127.0.0.1:8081"
 	}
 
-	u, err := url.Parse("ws://" + address + "/ws/publisher")
+	url, err := url.Parse("ws://" + address + "/ws/publisher")
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse the Address: %s, please check the configuration file", address)
 	}
 
-	pubClient, err := config.NewWSClient(clientType, u, ws.ClientOpts{AuthOpts: authOpts, Headers: headers, Logger: logger})
-	if err != nil {
-		return nil, fmt.Errorf("unable to initialize the websocket client: %s", err)
-	}
+	pubClient := ws.NewClient(g.GetHost(), clientType, url, wsOpts)
 
-	headers = http.Header{
-		"X-Gremlin-Filter": {filter},
-	}
-
-	pool := ws.NewStructClientPool("publisher", ws.PoolOpts{Logger: logger})
+	pool := ws.NewStructClientPool("publisher", ws.PoolOpts{Logger: wsOpts.Logger})
 	if err := pool.AddClient(pubClient); err != nil {
 		return nil, fmt.Errorf("failed to add client: %s", err)
 	}
 
 	fw.NewForwarder(g, pool)
 
-	if u, err = url.Parse("ws://" + address + "/ws/subscriber"); err != nil {
+	if url, err = url.Parse("ws://" + address + "/ws/subscriber"); err != nil {
 		return nil, fmt.Errorf("unable to parse the Address: %s, please check the configuration file", address)
 	}
 
-	subClient, err := config.NewWSClient(clientType, u, ws.ClientOpts{AuthOpts: authOpts, Headers: headers, Logger: logger})
-	if err != nil {
-		return nil, fmt.Errorf("unable to initialize the websocket client: %s", err)
-	}
+	wsOpts.Headers.Add("X-Gremlin-Filter", filter)
 
+	subClient := ws.NewClient(g.GetHost(), clientType, url, wsOpts)
 	subscriber := subClient.UpgradeToStructSpeaker()
 
 	s := &Seed{
 		g:          g,
 		publisher:  pubClient,
 		subscriber: subscriber,
-		logger:     logger,
+		logger:     wsOpts.Logger,
 	}
 
 	subscriber.AddEventHandler(s)
