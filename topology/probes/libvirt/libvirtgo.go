@@ -123,7 +123,7 @@ func newMonitor(ctx context.Context, probe *Probe, wg *sync.WaitGroup) (*Libvirt
 		}
 	}
 
-	monitor := &LibvirtgoMonitor{Connect: conn, cidLifecycle: -1}
+	monitor := &LibvirtgoMonitor{Connect: conn, cidLifecycle: -1, ctx: probe.Ctx}
 	if monitor.cidLifecycle, err = conn.DomainEventLifecycleRegister(nil, callback); err != nil {
 		return nil, fmt.Errorf("Could not register the lifecycle event handler %s", err)
 	}
