@@ -121,7 +121,7 @@ func (s *testServer) start() {
 		PongTimeout:      5 * time.Second,
 	}
 
-	wsServer := NewServer(httpServer, "/"+path, shttp.NewNoAuthenticationBackend(), serverOpts)
+	wsServer := NewServer(httpServer, "/"+path, serverOpts)
 
 	handler := &fakeServerSubscriptionHandler{t: s.t, server: wsServer}
 	wsServer.AddEventHandler(handler)

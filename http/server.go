@@ -181,6 +181,10 @@ func postAuthHandler(f auth.AuthenticatedHandlerFunc, authBackend Authentication
 
 // HandleFunc specifies the handler function and the authentication backend used for a given path
 func (s *Server) HandleFunc(path string, f auth.AuthenticatedHandlerFunc, authBackend AuthenticationBackend) {
+	if authBackend == nil {
+		authBackend = NewNoAuthenticationBackend()
+	}
+
 	preAuthHandler := authBackend.Wrap(postAuthHandler(f, authBackend))
 
 	s.Router.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {

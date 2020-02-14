@@ -54,8 +54,6 @@ type Opts struct {
 type Hub struct {
 	httpServer          *shttp.Server
 	apiServer           *api.Server
-	apiAuthBackend      shttp.AuthenticationBackend
-	clusterAuthBackend  shttp.AuthenticationBackend
 	embeddedEtcd        *etcdserver.EmbeddedServer
 	podWSServer         *websocket.StructServer
 	publisherWSServer   *websocket.StructServer
@@ -193,7 +191,9 @@ func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.G
 	api.RegisterTopologyAPI(httpServer, g, tr, opts.APIAuthBackend)
 
 	newWSServer := func(endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
-		return websocket.NewServer(httpServer, endpoint, authBackend, opts.WebsocketOpts)
+		opts := opts.WebsocketOpts
+		opts.AuthBackend = authBackend
+		return websocket.NewServer(httpServer, endpoint, opts)
 	}
 
 	podWSServer := websocket.NewStructServer(newWSServer(podEndpoint, opts.ClusterAuthBackend))
@@ -219,8 +219,6 @@ func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.G
 	return &Hub{
 		httpServer:          httpServer,
 		apiServer:           apiServer,
-		apiAuthBackend:      opts.APIAuthBackend,
-		clusterAuthBackend:  opts.ClusterAuthBackend,
 		podWSServer:         podWSServer,
 		replicationEndpoint: replicationEndpoint,
 		replicationWSServer: replicationWSServer,

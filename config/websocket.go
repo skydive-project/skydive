@@ -56,5 +56,7 @@ func NewWSServerOpts() websocket.ServerOpts {
 
 // NewWSServer creates a Server based on the configuration
 func NewWSServer(server *shttp.Server, endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
-	return websocket.NewServer(server, endpoint, authBackend, NewWSServerOpts())
+	opts := NewWSServerOpts()
+	opts.AuthBackend = authBackend
+	return websocket.NewServer(server, endpoint, opts)
 }

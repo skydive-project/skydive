@@ -149,7 +149,7 @@ func NewPod(id string, serviceType scommon.ServiceType, listen string, clientPoo
 	}
 
 	newWSServer := func(endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
-		return websocket.NewServer(httpServer, endpoint, authBackend, opts.WebsocketOpts)
+		return websocket.NewServer(httpServer, endpoint, opts.WebsocketOpts)
 	}
 
 	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", opts.APIAuthBackend))
