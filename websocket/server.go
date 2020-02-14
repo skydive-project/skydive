@@ -54,6 +54,7 @@ type ServerOpts struct {
 	PingDelay        time.Duration
 	PongTimeout      time.Duration
 	Logger           logging.Logger
+	AuthBackend      shttp.AuthenticationBackend
 }
 
 func getRequestParameter(r *http.Request, name string) string {
@@ -183,7 +184,7 @@ func (s *Server) newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRe
 }
 
 // NewServer returns a new Server. The given auth backend will validate the credentials
-func NewServer(server *shttp.Server, endpoint string, authBackend shttp.AuthenticationBackend, opts ServerOpts) *Server {
+func NewServer(server *shttp.Server, endpoint string, opts ServerOpts) *Server {
 	if opts.Logger == nil {
 		opts.Logger = logging.GetLogger()
 	}
@@ -202,6 +203,6 @@ func NewServer(server *shttp.Server, endpoint string, authBackend shttp.Authenti
 		return s.newIncomingClient(conn, r, promoter)
 	}
 
-	server.HandleFunc(endpoint, s.serveMessages, authBackend)
+	server.HandleFunc(endpoint, s.serveMessages, opts.AuthBackend)
 	return s
 }

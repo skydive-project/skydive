@@ -51,7 +51,8 @@ func NewWSServer(server *shttp.Server, endpoint string, authBackend shttp.Authen
 		QueueSize:        GetInt("http.ws.queue_size"),
 		PingDelay:        pingDelay,
 		PongTimeout:      time.Duration(GetInt("http.ws.pong_timeout"))*time.Second + pingDelay,
+		AuthBackend:      authBackend,
 	}
 
-	return websocket.NewServer(server, endpoint, authBackend, opts)
+	return websocket.NewServer(server, endpoint, opts)
 }

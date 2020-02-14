@@ -36,12 +36,12 @@ import (
 // Opts Hub options
 type Opts struct {
 	Hostname           string
+	WebsocketOpts      websocket.ServerOpts
+	Validator          validator.Validator
 	APIAuthBackend     shttp.AuthenticationBackend
 	ClusterAuthBackend shttp.AuthenticationBackend
 	ClusterAuthOptions *shttp.AuthenticationOpts
 	Peers              []common.ServiceAddress
-	WebsocketOpts      websocket.ServerOpts
-	Validator          validator.Validator
 	TLSConfig          *tls.Config
 	EtcdKeysAPI        etcd.KeysAPI
 	Logger             logging.Logger
@@ -52,8 +52,6 @@ type Opts struct {
 type Hub struct {
 	httpServer          *shttp.Server
 	apiServer           *api.Server
-	apiAuthBackend      shttp.AuthenticationBackend
-	clusterAuthBackend  shttp.AuthenticationBackend
 	podWSServer         *websocket.StructServer
 	publisherWSServer   *websocket.StructServer
 	replicationWSServer *websocket.StructServer
@@ -178,7 +176,9 @@ func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.G
 	}
 
 	newWSServer := func(endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
-		return websocket.NewServer(httpServer, endpoint, authBackend, opts.WebsocketOpts)
+		opts := opts.WebsocketOpts
+		opts.AuthBackend = authBackend
+		return websocket.NewServer(httpServer, endpoint, opts)
 	}
 
 	podWSServer := websocket.NewStructServer(newWSServer(podEndpoint, opts.ClusterAuthBackend))
@@ -204,8 +204,6 @@ func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.G
 	return &Hub{
 		httpServer:          httpServer,
 		apiServer:           apiServer,
-		apiAuthBackend:      opts.APIAuthBackend,
-		clusterAuthBackend:  opts.ClusterAuthBackend,
 		podWSServer:         podWSServer,
 		replicationEndpoint: replicationEndpoint,
 		replicationWSServer: replicationWSServer,
