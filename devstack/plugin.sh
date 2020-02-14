@@ -15,8 +15,8 @@
 # The path where go binaries have to be installed
 GOROOT=${GOROOT:-/opt/go}
 
-# golang version. Skydive needs at least version 1.9
-GO_VERSION=${GO_VERSION:-1.9}
+# golang version. Skydive needs at least version 1.11
+GO_VERSION=${GO_VERSION:-1.11.13}
 
 # GOPATH where the go src, pkgs are installed
 GOPATH=/opt/stack/go
@@ -101,6 +101,7 @@ function install_go {
     export GOROOT=$GOROOT
     export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
     export GOPATH=$GOPATH
+    export GO111MODULE=on
 }
 
 function download_elasticsearch {
@@ -115,14 +116,85 @@ function download_elasticsearch {
     fi
 }
 
+function install_elasticsearch {
+    if is_package_installed elasticsearch; then
+        echo "Note: elasticsearch was already installed."
+        return
+    fi
+    if is_ubuntu; then
+        is_package_installed default-jre-headless || install_package default-jre-headless
+        sudo dpkg -i ${TOP_DIR}/files/elasticsearch-${ELASTICSEARCH_VERSION}.deb
+        sudo update-rc.d elasticsearch defaults 95 10
+    elif is_fedora; then
+        is_package_installed java-1.8.0-openjdk-headless || install_package java-1.8.0-openjdk-headless
+        yum_install ${TOP_DIR}/files/elasticsearch-${ELASTICSEARCH_VERSION}.noarch.rpm
+        sudo /bin/systemctl daemon-reload
+        sudo /bin/systemctl enable elasticsearch.service
+    elif is_suse; then
+        is_package_installed java-1_8_0-openjdk-headless || install_package java-1_8_0-openjdk-headless
+        zypper_install --no-gpg-checks ${TOP_DIR}/files/elasticsearch-${ELASTICSEARCH_VERSION}.noarch.rpm
+        sudo /usr/bin/systemctl daemon-reload
+        sudo /usr/bin/systemctl enable elasticsearch.service
+    else
+        echo "Unsupported install of elasticsearch on this architecture."
+    fi
+}
+
+function uninstall_elasticsearch {
+    if is_package_installed elasticsearch; then
+        if is_ubuntu; then
+            sudo apt-get purge elasticsearch
+        elif is_fedora; then
+            sudo yum remove elasticsearch
+        elif is_suse; then
+            sudo zypper rm elasticsearch
+        else
+            echo "Unsupported install of elasticsearch on this architecture."
+        fi
+    fi
+}
+
+function _check_elasticsearch_ready {
+    # poll elasticsearch to see if it's started
+    if ! wait_for_service 120 http://localhost:9200; then
+        die $LINENO "Maximum timeout reached. Could not connect to ElasticSearch"
+    fi
+}
+
+function start_elasticsearch {
+    if is_ubuntu; then
+        sudo /etc/init.d/elasticsearch start
+        _check_elasticsearch_ready
+    elif is_fedora; then
+        sudo /bin/systemctl start elasticsearch.service
+        _check_elasticsearch_ready
+    elif is_suse; then
+        sudo /usr/bin/systemctl start elasticsearch.service
+        _check_elasticsearch_ready
+    else
+        echo "Unsupported architecture...can not start elasticsearch."
+    fi
+}
+
+function stop_elasticsearch {
+    if is_ubuntu; then
+        sudo /etc/init.d/elasticsearch stop
+    elif is_fedora; then
+        sudo /bin/systemctl stop elasticsearch.service
+    elif is_suse ; then
+        sudo /usr/bin/systemctl stop elasticsearch.service
+    else
+        echo "Unsupported architecture...can not stop elasticsearch."
+    fi
+}
+
 function pre_install_skydive {
     install_protoc
     install_go
     if [ ${USE_ELASTICSEARCH} -eq 1 ]; then
         if is_service_enabled skydive-analyzer; then
             download_elasticsearch
-            export ELASTICSEARCH_VERSION
-            $TOP_DIR/pkg/elasticsearch.sh install
+            install_elasticsearch
         fi
     fi
 }
@@ -286,7 +358,7 @@ function start_skydive {
 
     if is_service_enabled skydive-analyzer ; then
         if [ ${USE_ELASTICSEARCH} -eq 1 ]; then
-            $TOP_DIR/pkg/elasticsearch.sh start
+            start_elasticsearch
         fi
         run_process skydive-analyzer "/usr/bin/skydive analyzer --conf $SKYDIVE_CONFIG_FILE"
     fi
@@ -299,7 +371,7 @@ function stop_skydive {
 
     if is_service_enabled skydive-analyzer ; then
         if [ ${USE_ELASTICSEARCH} -eq 1 ]; then
-            $TOP_DIR/pkg/elasticsearch.sh stop
+            stop_elasticsearch
         fi
         stop_process skydive-analyzer
     fi
@@ -319,6 +391,8 @@ if is_service_enabled skydive-agent || is_service_enabled skydive-analyzer ; the
 
     if [[ "$1" == "unstack" ]]; then
         stop_skydive
+        stop_elasticsearch
+        uninstall_elasticsearch
         sudo rm $SKYDIVE_CONFIG_FILE
     fi
 fi

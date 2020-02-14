@@ -4,12 +4,10 @@ set -v
 
 [ -z "$SKYDIVE_PATH" ] && SKYDIVE_PATH=`pwd`
 
-sudo yum -y install git iproute net-tools
+sudo yum -y install git iproute net-tools python3-devel
+sudo pip3 install -U --force-reinstall PyYAML
 git clone https://git.openstack.org/openstack-dev/devstack devstack.git
 cd devstack.git
-
-# temp until an upstream fix
-sed -i -e 's/wait_for_service 30/wait_for_service 120/' pkg/elasticsearch.sh
 
 export PATH=$PATH:/usr/sbin
 host_ip_iface=${host_ip_iface:-$(ip -f inet route | awk '/default/ {print $5}' | head -1)}
