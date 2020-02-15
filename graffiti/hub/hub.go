@@ -24,6 +24,7 @@ import (
 
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/common"
+	etcdserver "github.com/skydive-project/skydive/etcd/server"
 	gc "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
@@ -44,6 +45,7 @@ type Opts struct {
 	Peers              []common.ServiceAddress
 	TLSConfig          *tls.Config
 	EtcdKeysAPI        etcd.KeysAPI
+	EtcdServerOpts     *etcdserver.EmbeddedServerOpts
 	Logger             logging.Logger
 }
 
@@ -58,6 +60,7 @@ type Hub struct {
 	replicationEndpoint *ReplicationEndpoint
 	subscriberWSServer  *websocket.StructServer
 	traversalParser     *traversal.GremlinTraversalParser
+	embeddedEtcd        *etcdserver.EmbeddedServer
 }
 
 // PeersStatus describes the state of a peer
@@ -99,7 +102,16 @@ func (h *Hub) GetStatus() interface{} {
 
 // Start the hub
 func (h *Hub) Start() error {
-	h.httpServer.Start()
+	if h.embeddedEtcd != nil {
+		if err := h.embeddedEtcd.Start(); err != nil {
+			return err
+		}
+	}
+
+	if err := h.httpServer.Start(); err != nil {
+		return err
+	}
+
 	h.podWSServer.Start()
 	h.replicationWSServer.Start()
 	h.replicationEndpoint.ConnectPeers()
@@ -116,6 +128,9 @@ func (h *Hub) Stop() {
 	h.replicationWSServer.Stop()
 	h.publisherWSServer.Stop()
 	h.subscriberWSServer.Stop()
+	if h.embeddedEtcd != nil {
+		h.embeddedEtcd.Stop()
+	}
 }
 
 // HTTPServer returns the hub HTTP server
@@ -145,6 +160,10 @@ func (h *Hub) GremlinTraversalParser() *traversal.GremlinTraversalParser {
 
 // NewHub returns a new hub
 func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.Graph, cached *graph.CachedBackend, podEndpoint string, opts Opts) (*Hub, error) {
+	if opts.Logger == nil {
+		opts.Logger = logging.GetLogger()
+	}
+
 	service := common.Service{ID: id, Type: serviceType}
 
 	sa, err := common.ServiceAddressFromString(listen)
@@ -152,11 +171,14 @@ func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.G
 		return nil, err
 	}
 
-	tr := traversal.NewGremlinTraversalParser()
-
-	if opts.Logger == nil {
-		opts.Logger = logging.GetLogger()
+	var embeddedEtcd *etcdserver.EmbeddedServer
+	if opts.EtcdServerOpts != nil {
+		if embeddedEtcd, err = etcdserver.NewEmbeddedServer(*opts.EtcdServerOpts); err != nil {
+			return nil, err
+		}
 	}
+
+	tr := traversal.NewGremlinTraversalParser()
 
 	httpServer := shttp.NewServer(service.ID, service.Type, sa.Addr, sa.Port, nil, opts.Logger)
 
@@ -210,5 +232,6 @@ func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.G
 		publisherWSServer:   publisherWSServer,
 		subscriberWSServer:  subscriberWSServer,
 		traversalParser:     tr,
+		embeddedEtcd:        embeddedEtcd,
 	}, nil
 }

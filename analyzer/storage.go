@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/etcd"
+	etcd "github.com/skydive-project/skydive/etcd/client"
 	"github.com/skydive-project/skydive/flow/storage"
 	"github.com/skydive-project/skydive/flow/storage/elasticsearch"
 	"github.com/skydive-project/skydive/flow/storage/orientdb"

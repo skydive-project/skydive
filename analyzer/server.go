@@ -29,7 +29,8 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/etcd"
+	etcdclient "github.com/skydive-project/skydive/etcd/client"
+	etcdserver "github.com/skydive-project/skydive/etcd/server"
 	"github.com/skydive-project/skydive/flow"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/client"
 	"github.com/skydive-project/skydive/flow/server"
@@ -82,8 +83,7 @@ type Server struct {
 	flowServer      *server.FlowServer
 	probeBundle     *probe.Bundle
 	storage         storage.Storage
-	embeddedEtcd    *etcd.EmbeddedEtcd
-	etcdClient      *etcd.Client
+	etcdClient      *etcdclient.Client
 }
 
 // GetStatus returns the status of an analyzer
@@ -122,8 +122,16 @@ func (s *Server) Start() error {
 		s.storage.Start()
 	}
 
-	s.hub.Start()
-	s.probeBundle.Start()
+	if err := s.hub.Start(); err != nil {
+		return err
+	}
+
+	s.etcdClient.Start()
+
+	if err := s.probeBundle.Start(); err != nil {
+		return err
+	}
+
 	s.onDemandClient.Start()
 	s.piClient.Start()
 	s.alertServer.Start()
@@ -143,9 +151,6 @@ func (s *Server) Stop() {
 	s.alertServer.Stop()
 	s.topologyManager.Stop()
 	s.etcdClient.Stop()
-	if s.embeddedEtcd != nil {
-		s.embeddedEtcd.Stop()
-	}
 	if s.storage != nil {
 		s.storage.Stop()
 	}
@@ -160,40 +165,30 @@ func (s *Server) Stop() {
 func NewServerFromConfig() (*Server, error) {
 	embedEtcd := config.GetBool("etcd.embedded")
 	host := config.GetString("host_id")
-
-	var embeddedEtcd *etcd.EmbeddedEtcd
-	var err error
-	if embedEtcd {
-		name := config.GetString("etcd.name")
-		dataDir := config.GetString("etcd.data_dir")
-		listen := config.GetString("etcd.listen")
-		maxWalFiles := uint(config.GetInt("etcd.max_wal_files"))
-		maxSnapFiles := uint(config.GetInt("etcd.max_snap_files"))
-		debug := config.GetBool("etcd.debug")
-		peers := config.GetStringMapString("etcd.peers")
-
-		if embeddedEtcd, err = etcd.NewEmbeddedEtcd(name, listen, peers, dataDir, maxWalFiles, maxSnapFiles, debug); err != nil {
-			return nil, err
-		}
-	}
-
 	service := common.Service{ID: host, Type: common.AnalyzerService}
 
-	etcdServers := config.GetEtcdServerAddrs()
-	etcdTimeout := config.GetInt("etcd.client_timeout")
-	etcdClient, err := etcd.NewClient(service, etcdServers, time.Duration(etcdTimeout)*time.Second)
-	if err != nil {
-		return nil, err
+	var etcdServerOpts *etcdserver.EmbeddedServerOpts
+	var err error
+	if embedEtcd {
+		etcdServerOpts = &etcdserver.EmbeddedServerOpts{
+			Name:         config.GetString("etcd.name"),
+			Listen:       config.GetString("etcd.listen"),
+			DataDir:      config.GetString("etcd.data_dir"),
+			MaxWalFiles:  uint(config.GetInt("etcd.max_wal_files")),
+			MaxSnapFiles: uint(config.GetInt("etcd.max_snap_files")),
+			Debug:        config.GetBool("etcd.debug"),
+			Peers:        config.GetStringMapString("etcd.peers"),
+		}
 	}
 
-	// wait for etcd to be ready
-	for {
-		if err = etcdClient.SetInt64(fmt.Sprintf("/analyzer:%s/start-time", host), time.Now().Unix()); err != nil {
-			logging.GetLogger().Errorf("Etcd server not ready: %s", err)
-			time.Sleep(time.Second)
-		} else {
-			break
-		}
+	etcdClientOpts := etcdclient.ClientOpts{
+		Servers: config.GetEtcdServerAddrs(),
+		Timeout: time.Duration(config.GetInt("etcd.client_timeout")) * time.Second,
+	}
+
+	etcdClient, err := etcdclient.NewClient(service, etcdClientOpts)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := config.InitRBAC(etcdClient.KeysAPI); err != nil {
@@ -259,6 +254,7 @@ func NewServerFromConfig() (*Server, error) {
 		TLSConfig:          tlsConfig,
 		Peers:              peers,
 		EtcdKeysAPI:        etcdClient.KeysAPI,
+		EtcdServerOpts:     etcdServerOpts,
 	}
 
 	listenAddr := config.GetString("analyzer.listen")
@@ -353,7 +349,6 @@ func NewServerFromConfig() (*Server, error) {
 	s := &Server{
 		hub:             hub,
 		probeBundle:     probeBundle,
-		embeddedEtcd:    embeddedEtcd,
 		etcdClient:      etcdClient,
 		onDemandClient:  onDemandClient,
 		piClient:        piClient,

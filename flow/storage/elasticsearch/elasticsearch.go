@@ -26,7 +26,7 @@ import (
 	"github.com/olivere/elastic"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/etcd"
+	etcd "github.com/skydive-project/skydive/etcd/client"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	fl "github.com/skydive-project/skydive/flow/layers"

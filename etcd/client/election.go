@@ -15,7 +15,7 @@
  *
  */
 
-package etcd
+package client
 
 import (
 	"sync"
