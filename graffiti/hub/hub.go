@@ -19,6 +19,7 @@ package hub
 
 import (
 	"github.com/skydive-project/skydive/common"
+	etcdserver "github.com/skydive-project/skydive/etcd/server"
 	gc "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
@@ -30,8 +31,9 @@ import (
 
 // Opts Hub options
 type Opts struct {
-	ServerOpts websocket.ServerOpts
-	Validator  validator.Validator
+	ServerOpts     websocket.ServerOpts
+	Validator      validator.Validator
+	EtcdServerOpts *etcdserver.EmbeddedServerOpts
 }
 
 // Hub describes a graph hub that accepts incoming connections
@@ -45,6 +47,7 @@ type Hub struct {
 	replicationWSServer *websocket.StructServer
 	replicationEndpoint *ReplicationEndpoint
 	subscriberWSServer  *websocket.StructServer
+	embeddedEtcd        *etcdserver.EmbeddedServer
 }
 
 // PeersStatus describes the state of a peer
@@ -85,12 +88,20 @@ func (h *Hub) GetStatus() *Status {
 }
 
 // Start the hub
-func (h *Hub) Start() {
+func (h *Hub) Start() error {
+	if h.embeddedEtcd != nil {
+		if err := h.embeddedEtcd.Start(); err != nil {
+			return err
+		}
+	}
+
 	h.podWSServer.Start()
 	h.replicationWSServer.Start()
 	h.replicationEndpoint.ConnectPeers()
 	h.publisherWSServer.Start()
 	h.subscriberWSServer.Start()
+
+	return nil
 }
 
 // Stop the hub
@@ -99,6 +110,9 @@ func (h *Hub) Stop() {
 	h.replicationWSServer.Stop()
 	h.publisherWSServer.Stop()
 	h.subscriberWSServer.Stop()
+	if h.embeddedEtcd != nil {
+		h.embeddedEtcd.Stop()
+	}
 }
 
 // PodServer returns the websocket server dedicated to pods
@@ -113,12 +127,20 @@ func (h *Hub) SubscriberServer() *websocket.StructServer {
 
 // NewHub returns a new hub
 func NewHub(server *shttp.Server, g *graph.Graph, cached *graph.CachedBackend, apiAuthBackend, clusterAuthBackend shttp.AuthenticationBackend, clusterAuthOptions *shttp.AuthenticationOpts, podEndpoint string, peers []common.ServiceAddress, opts Opts) (*Hub, error) {
+	var embeddedEtcd *etcdserver.EmbeddedServer
+	var err error
+	if opts.EtcdServerOpts != nil {
+		if embeddedEtcd, err = etcdserver.NewEmbeddedServer(*opts.EtcdServerOpts); err != nil {
+			return nil, err
+		}
+	}
+
 	newWSServer := func(endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
 		return websocket.NewServer(server, endpoint, authBackend, opts.ServerOpts)
 	}
 
 	podWSServer := websocket.NewStructServer(newWSServer(podEndpoint, clusterAuthBackend))
-	_, err := gc.NewPublisherEndpoint(podWSServer, g, nil)
+	_, err = gc.NewPublisherEndpoint(podWSServer, g, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -151,5 +173,6 @@ func NewHub(server *shttp.Server, g *graph.Graph, cached *graph.CachedBackend, a
 		replicationWSServer: replicationWSServer,
 		publisherWSServer:   publisherWSServer,
 		subscriberWSServer:  subscriberWSServer,
+		embeddedEtcd:        embeddedEtcd,
 	}, nil
 }

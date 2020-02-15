@@ -15,7 +15,7 @@
  *
  */
 
-package etcd
+package client
 
 import (
 	"context"
@@ -26,6 +26,14 @@ import (
 	etcd "github.com/coreos/etcd/client"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/logging"
+)
+
+// Client defaults
+const (
+	DefaultTimeout = 5 * time.Second
+	DefaultPort    = 12379
+	DefaultServer  = "127.0.0.1"
 )
 
 // Client describes a ETCD configuration client
@@ -33,6 +41,14 @@ type Client struct {
 	service common.Service
 	client  *etcd.Client
 	KeysAPI etcd.KeysAPI
+	logger  logging.Logger
+}
+
+// ClientOpts describes the options of an etcd client
+type ClientOpts struct {
+	Servers []string
+	Timeout time.Duration
+	Logger  logging.Logger
 }
 
 // GetInt64 returns an int64 value from the configuration key
@@ -50,6 +66,19 @@ func (client *Client) SetInt64(key string, value int64) error {
 	return err
 }
 
+// Start the client
+func (client *Client) Start() {
+	// wait for etcd to be ready
+	for {
+		if err := client.SetInt64(fmt.Sprintf("/analyzer:%s/start-time", client.service.ID), time.Now().Unix()); err != nil {
+			client.logger.Errorf("Etcd server not ready: %s", err)
+			time.Sleep(time.Second)
+		} else {
+			break
+		}
+	}
+}
+
 // Stop the client
 func (client *Client) Stop() {
 	if tr, ok := etcd.DefaultTransport.(interface {
@@ -65,11 +94,23 @@ func (client *Client) NewElection(name string) common.MasterElection {
 }
 
 // NewClient creates a new ETCD client connection to ETCD servers
-func NewClient(service common.Service, etcdServers []string, clientTimeout time.Duration) (*Client, error) {
+func NewClient(service common.Service, opts ClientOpts) (*Client, error) {
+	if opts.Timeout == 0 {
+		opts.Timeout = DefaultTimeout
+	}
+
+	if len(opts.Servers) == 0 {
+		opts.Servers = []string{fmt.Sprintf("%s:%d", DefaultServer, DefaultPort)}
+	}
+
+	if opts.Logger == nil {
+		opts.Logger = logging.GetLogger()
+	}
+
 	cfg := etcd.Config{
-		Endpoints:               etcdServers,
+		Endpoints:               opts.Servers,
 		Transport:               etcd.DefaultTransport,
-		HeaderTimeoutPerRequest: clientTimeout,
+		HeaderTimeoutPerRequest: opts.Timeout,
 	}
 
 	client, err := etcd.New(cfg)
@@ -83,5 +124,6 @@ func NewClient(service common.Service, etcdServers []string, clientTimeout time.
 		service: service,
 		client:  &client,
 		KeysAPI: kapi,
+		logger:  opts.Logger,
 	}, nil
 }

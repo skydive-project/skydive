@@ -15,21 +15,22 @@
  *
  */
 
-package etcd
+package server
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"net/url"
 	"time"
 
 	"github.com/coreos/etcd/client"
+
 	"github.com/coreos/etcd/embed"
-	"github.com/coreos/etcd/pkg/osutil"
 	"github.com/coreos/etcd/pkg/types"
+
+	"github.com/coreos/etcd/pkg/osutil"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
@@ -39,27 +40,44 @@ const (
 	startTimeout = 10 * time.Second
 )
 
-// EmbeddedEtcd provides a single node etcd server.
-type EmbeddedEtcd struct {
+// EmbeddedServer provides a single node etcd server.
+type EmbeddedServer struct {
 	Port   int
 	config *embed.Config
 	etcd   *embed.Etcd
+	logger logging.Logger
 }
 
-// NewEmbeddedEtcd creates a new embedded ETCD server
-func NewEmbeddedEtcd(name string, listen string, peers map[string]string, dataDir string, maxWalFiles, maxSnapFiles uint, debug bool) (*EmbeddedEtcd, error) {
-	sa, err := common.ServiceAddressFromString(listen)
+// EmbeddedServerOpts describes the options for an embedded etcd server
+type EmbeddedServerOpts struct {
+	Name         string
+	Listen       string
+	Peers        map[string]string
+	DataDir      string
+	MaxWalFiles  uint
+	MaxSnapFiles uint
+	Debug        bool
+	Logger       logging.Logger
+}
+
+// NewEmbeddedServer creates a new embedded ETCD server
+func NewEmbeddedServer(opts EmbeddedServerOpts) (*EmbeddedServer, error) {
+	if opts.Logger == nil {
+		opts.Logger = logging.GetLogger()
+	}
+
+	sa, err := common.ServiceAddressFromString(opts.Listen)
 	if err != nil {
 		return nil, err
 	}
 
 	cfg := embed.NewConfig()
-	cfg.Name = name
-	cfg.Debug = debug
-	cfg.Dir = dataDir
+	cfg.Name = opts.Name
+	cfg.Debug = opts.Debug
+	cfg.Dir = opts.DataDir
 	cfg.ClusterState = embed.ClusterStateFlagNew
-	cfg.MaxWalFiles = maxWalFiles
-	cfg.MaxSnapFiles = maxSnapFiles
+	cfg.MaxWalFiles = opts.MaxWalFiles
+	cfg.MaxSnapFiles = opts.MaxSnapFiles
 
 	var listenClientURLs types.URLs
 	var listenPeerURLs types.URLs
@@ -80,74 +98,81 @@ func NewEmbeddedEtcd(name string, listen string, peers map[string]string, dataDi
 	cfg.ACUrls = listenClientURLs // This probably won't work with proxy feature
 
 	var advertisePeerUrls types.URLs
-	if len(peers) != 0 {
-		initialPeers, err := types.NewURLsMapFromStringMap(peers, ",")
+	if len(opts.Peers) != 0 {
+		initialPeers, err := types.NewURLsMapFromStringMap(opts.Peers, ",")
 		if err != nil {
 			return nil, err
 		}
 
-		if advertisePeerUrls = initialPeers[name]; advertisePeerUrls == nil {
-			return nil, fmt.Errorf("Unable to find Etcd name entry in the peers list: %s", name)
+		if advertisePeerUrls = initialPeers[opts.Name]; advertisePeerUrls == nil {
+			return nil, fmt.Errorf("Unable to find Etcd name entry in the peers list: %s", opts.Name)
 		}
 		cfg.InitialCluster = initialPeers.String()
 	}
 
 	if advertisePeerUrls == nil {
 		advertisePeerUrls, _ = types.NewURLs([]string{fmt.Sprintf("http://localhost:%d", sa.Port+1)})
-		cfg.InitialCluster = types.URLsMap{name: advertisePeerUrls}.String()
+		cfg.InitialCluster = types.URLsMap{opts.Name: advertisePeerUrls}.String()
 	}
 
 	cfg.APUrls = advertisePeerUrls
 
+	return &EmbeddedServer{
+		Port:   sa.Port,
+		config: cfg,
+		logger: opts.Logger,
+	}, nil
+}
+
+// Start etcd server
+func (se *EmbeddedServer) Start() error {
+	cfg := se.config
 	etcd, err := embed.StartEtcd(cfg)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	se.etcd = etcd
 
 	osutil.RegisterInterruptHandler(etcd.Close)
 
 	select {
 	case <-etcd.Server.ReadyNotify():
-		log.Printf("Server is ready!")
+		se.logger.Infof("Server is ready!")
 	case <-time.After(60 * time.Second):
 		etcd.Server.Stop() // trigger a shutdown
-		log.Printf("Server took too long to start!")
+		se.logger.Errorf("Server took too long to start!")
 	}
 
 	// Wait for etcd server to be ready
 	t := time.Now().Add(startTimeout)
 
 	clientConfig := client.Config{
-		Endpoints:               listenClientURLs.StringSlice(),
+		Endpoints:               types.URLs(cfg.LCUrls).StringSlice(),
 		Transport:               client.DefaultTransport,
 		HeaderTimeoutPerRequest: time.Second,
 	}
 	etcdClient, err := client.New(clientConfig)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	kapi := client.NewKeysAPI(etcdClient)
 
 	for {
 		if time.Now().After(t) {
-			return nil, errors.New("Failed to start etcd")
+			return errors.New("Failed to start etcd")
 		}
-		if _, err := kapi.Set(context.Background(), "/skydive", "", nil); err == nil {
-			logging.GetLogger().Debugf("Successfully started etcd")
+		if _, err := kapi.Set(context.Background(), "/"+se.config.Name, "", nil); err == nil {
+			se.logger.Infof("Successfully started etcd")
 			break
 		}
 		time.Sleep(time.Second)
 	}
 
-	return &EmbeddedEtcd{
-		Port:   sa.Port,
-		config: cfg,
-		etcd:   etcd,
-	}, nil
+	return nil
 }
 
 // Stop the embedded server
-func (se *EmbeddedEtcd) Stop() error {
+func (se *EmbeddedServer) Stop() error {
 	se.etcd.Close()
 	return nil
 }

@@ -18,6 +18,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -25,6 +26,8 @@ import (
 
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/common"
+	etcdclient "github.com/skydive-project/skydive/etcd/client"
+	etcdserver "github.com/skydive-project/skydive/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/hub"
@@ -41,6 +44,7 @@ const (
 
 var (
 	hubListen        string
+	etcdServers      []string
 	writeCompression bool
 	queueSize        int
 	pingDelay        int
@@ -111,6 +115,11 @@ var HubCmd = &cobra.Command{
 
 		hubOpts := hub.Opts{
 			ServerOpts: serverOpts,
+			EtcdServerOpts: &etcdserver.EmbeddedServerOpts{
+				Name:    "localhost",
+				Listen:  "127.0.0.1:12379",
+				DataDir: "/tmp/etcd",
+			},
 		}
 
 		hub, err := hub.NewHub(httpServer, g, cached, authBackend, authBackend, nil, "/ws/pod", nil, hubOpts)
@@ -133,8 +142,10 @@ var HubCmd = &cobra.Command{
 }
 
 func init() {
+	defaultEtcdAddr := fmt.Sprintf("%s:%d", etcdclient.DefaultServer, etcdclient.DefaultPort)
 	HubCmd.Flags().StringVarP(&hubListen, "listen", "l", "127.0.0.1:8082", "address and port for the hub server")
-	HubCmd.Flags().IntVar(&queueSize, "queueSize", 10000, "websocket queue size")
-	HubCmd.Flags().IntVar(&pingDelay, "pingDelay", 2, "websocket ping delay")
-	HubCmd.Flags().IntVar(&pongTimeout, "pongTimeout", 10, "websocket pong timeout")
+	HubCmd.Flags().IntVar(&queueSize, "queue-size", 10000, "websocket queue size")
+	HubCmd.Flags().IntVar(&pingDelay, "ping-delay", 2, "websocket ping delay")
+	HubCmd.Flags().IntVar(&pongTimeout, "pong-timeout", 10, "websocket pong timeout")
+	HubCmd.Flags().StringArrayVar(&etcdServers, "etcd-servers", []string{defaultEtcdAddr}, "websocket pong timeout")
 }

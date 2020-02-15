@@ -37,7 +37,6 @@
 package server
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -241,12 +240,6 @@ func (a *Server) RegisterAPIHandler(handler Handler, authBackend shttp.Authentic
 	}
 
 	a.HTTPServer.RegisterRoutes(routes, authBackend)
-
-	if _, err := a.EtcdKeyAPI.Set(context.Background(), "/"+name, "", &etcd.SetOptions{Dir: true}); err != nil {
-		if _, err = a.EtcdKeyAPI.Get(context.Background(), "/"+name, nil); err != nil {
-			return err
-		}
-	}
 
 	a.handlers[handler.Name()] = handler
 
