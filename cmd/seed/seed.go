@@ -32,6 +32,7 @@ import (
 	"github.com/skydive-project/skydive/probe"
 	tp "github.com/skydive-project/skydive/topology/probes"
 	"github.com/skydive-project/skydive/version"
+	"github.com/skydive-project/skydive/websocket"
 
 	"github.com/spf13/cobra"
 )
@@ -107,11 +108,25 @@ var SeedCmd = &cobra.Command{
 		g := graph.NewGraph(hostID, memory, common.UnknownService)
 
 		probeBundle = probe.NewBundle()
-		seed, err := seed.NewSeed(g, common.SeedService, agentAddr, subscriberFilter, &authenticationOpts, logging.GetLogger())
+
+		tlsConfig, err := config.GetTLSClientConfig(true)
 		if err != nil {
 			logging.GetLogger().Errorf("Failed to start seed: %s", err)
 			os.Exit(1)
 		}
+
+		wsOpts := &websocket.ClientOpts{
+			QueueSize:        config.GetInt("http.ws.queue_size"),
+			WriteCompression: config.GetBool("http.ws.enable_write_compression"),
+			TLSConfig:        tlsConfig,
+		}
+
+		seed, err := seed.NewSeed(g, common.SeedService, agentAddr, subscriberFilter, *wsOpts)
+		if err != nil {
+			logging.GetLogger().Errorf("Failed to start seed: %s", err)
+			os.Exit(1)
+		}
+
 		seed.AddEventHandler(&seedHandler{g: g, probes: args})
 		seed.Start()
 
