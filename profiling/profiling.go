@@ -17,7 +17,7 @@
  *
  */
 
-package common
+package profiling
 
 import (
 	"log"
@@ -29,7 +29,7 @@ import (
 )
 
 // Profile start profiling loop
-func Profile() {
+func Profile(pathPrefix string) {
 	cpu := make(chan os.Signal, 1)
 	signal.Notify(cpu, syscall.SIGUSR1)
 
@@ -39,7 +39,7 @@ func Profile() {
 	for {
 		select {
 		case <-cpu:
-			f, err := os.Create("/tmp/skydive-cpu.prof")
+			f, err := os.Create(pathPrefix + "cpu.prof")
 			if err != nil {
 				log.Fatal("could not create CPU profile: ", err)
 			}
@@ -56,7 +56,7 @@ func Profile() {
 		case <-memory:
 			// Memory Profile
 			runtime.GC()
-			memProfile, err := os.Create("/tmp/skydive-memory.prof")
+			memProfile, err := os.Create(pathPrefix + "memory.prof")
 			if err != nil {
 				log.Fatal(err)
 			}
