@@ -19,7 +19,6 @@ package common
 
 import (
 	"fmt"
-	"math/rand"
 	"strings"
 	"time"
 )
@@ -47,17 +46,6 @@ func retry(fnc func() error, try int, baseDelay time.Duration, factor int64) err
 		delay = time.Duration(factor * int64(delay))
 	}
 	return err
-}
-
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-// RandString generates random string
-func RandString(n int) string {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
-	}
-	return string(b)
 }
 
 // ParseAddr parses an address of the form protocol://target such as

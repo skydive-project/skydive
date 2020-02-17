@@ -27,7 +27,6 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 )
@@ -46,6 +45,17 @@ type ForgedPacketGenerator struct {
 	*PacketInjectionRequest
 	LayerType gopacket.LayerType
 	close     chan bool
+}
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+// randString generates random string
+func randString(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
 }
 
 func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC net.HardwareAddr, TTL uint8, srcIP, dstIP net.IP, srcPort, dstPort uint16, ID uint16, data string) ([]byte, gopacket.Packet, error) {
@@ -141,7 +151,7 @@ func (f *ForgedPacketGenerator) PacketSource() chan *Packet {
 		payload := f.Payload
 		// use same size as ping when no payload specified
 		if len(payload) == 0 {
-			payload = common.RandString(56)
+			payload = randString(56)
 		}
 
 		if f.Count == 0 {
@@ -159,7 +169,7 @@ func (f *ForgedPacketGenerator) PacketSource() chan *Packet {
 			}
 
 			if f.IncrementPayload > 0 {
-				payload = payload + common.RandString(int(f.IncrementPayload))
+				payload = payload + randString(int(f.IncrementPayload))
 			}
 
 			select {
