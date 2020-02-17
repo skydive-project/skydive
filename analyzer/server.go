@@ -1,3 +1,5 @@
+//go:generate go run github.com/mailru/easyjson/easyjson $GOFILE
+
 /*
  * Copyright (C) 2015 Red Hat, Inc.
  *
@@ -52,6 +54,8 @@ import (
 )
 
 // ElectionStatus describes the status of an election
+//
+// easyjson:json
 type ElectionStatus struct {
 	IsMaster bool
 }
@@ -61,6 +65,7 @@ type ElectionStatus struct {
 // Status describes the status of an analyzer
 //
 // swagger:model AnalyzerStatus
+// easyjson:json
 type Status struct {
 	Agents      map[string]ws.ConnStatus
 	Peers       hub.PeersStatus
