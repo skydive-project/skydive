@@ -17,7 +17,7 @@
  *
  */
 
-package common
+package netns
 
 import (
 	"fmt"
@@ -26,14 +26,14 @@ import (
 	"github.com/vishvananda/netns"
 )
 
-// NetNSContext describes a NameSpace Context switch API
-type NetNSContext struct {
+// Context describes a NameSpace Context switch API
+type Context struct {
 	origns netns.NsHandle
 	newns  netns.NsHandle
 }
 
 // Quit the NameSpace and go back to the original one
-func (n *NetNSContext) Quit() error {
+func (n *Context) Quit() error {
 	if n != nil {
 		if err := netns.Set(n.origns); err != nil {
 			return err
@@ -45,7 +45,7 @@ func (n *NetNSContext) Quit() error {
 }
 
 // Close the NameSpace
-func (n *NetNSContext) Close() {
+func (n *Context) Close() {
 	if n != nil && n.origns.IsOpen() {
 		n.Quit()
 	}
@@ -53,8 +53,8 @@ func (n *NetNSContext) Close() {
 	runtime.UnlockOSThread()
 }
 
-// NewNetNsContext creates a new NameSpace context base on path
-func NewNetNsContext(path string) (*NetNSContext, error) {
+// NewContext creates a new NameSpace context base on path
+func NewContext(path string) (*Context, error) {
 	runtime.LockOSThread()
 
 	origns, err := netns.Get()
@@ -74,7 +74,7 @@ func NewNetNsContext(path string) (*NetNSContext, error) {
 		return nil, fmt.Errorf("Error while switching from root ns to %s: %s", path, err.Error())
 	}
 
-	return &NetNSContext{
+	return &Context{
 		origns: origns,
 		newns:  newns,
 	}, nil

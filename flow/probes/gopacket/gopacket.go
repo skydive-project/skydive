@@ -35,6 +35,7 @@ import (
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/flow/probes/targets"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/netns"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 )
@@ -149,11 +150,11 @@ func (p *Probe) listen(packetCallback func(gopacket.Packet)) error {
 func (p *Probe) Run(packetCallback func(gopacket.Packet), statsCallback func(flow.Stats), e probes.ProbeEventHandler) error {
 	p.state.Store(common.RunningState)
 
-	var nsContext *common.NetNSContext
+	var nsContext *netns.Context
 	var err error
 	if p.nsPath != "" {
 		p.Ctx.Logger.Debugf("Switching to namespace (path: %s)", p.nsPath)
-		if nsContext, err = common.NewNetNsContext(p.nsPath); err != nil {
+		if nsContext, err = netns.NewContext(p.nsPath); err != nil {
 			return err
 		}
 	}

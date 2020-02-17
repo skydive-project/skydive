@@ -36,6 +36,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/netns"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	tp "github.com/skydive-project/skydive/topology/probes"
@@ -363,7 +364,7 @@ func newInterfaceMetricsFromNetlink(link netlink.Link) *topology.InterfaceMetric
 }
 
 func (u *Probe) updateLinkNetNsName(intf *graph.Node, link netlink.Link, metadata graph.Metadata) bool {
-	var context *common.NetNSContext
+	var context *netns.Context
 
 	lnsid := link.Attrs().NetNsID
 
@@ -371,7 +372,7 @@ func (u *Probe) updateLinkNetNsName(intf *graph.Node, link netlink.Link, metadat
 	for _, n := range nodes {
 		if path, err := n.GetFieldString("Path"); err == nil {
 			if u.NsPath != "" {
-				context, err = common.NewNetNsContext(u.NsPath)
+				context, err = netns.NewContext(u.NsPath)
 				if err != nil {
 					continue
 				}
@@ -1205,7 +1206,7 @@ func newProbe(ctx tp.Context, nsPath string, sriovProcessor *graph.Processor) (*
 		netNsNameTry:         make(map[graph.Identifier]int),
 		sriovProcessor:       sriovProcessor,
 	}
-	var context *common.NetNSContext
+	var context *netns.Context
 	var err error
 
 	errFnc := func(err error) (*Probe, error) {
@@ -1217,7 +1218,7 @@ func newProbe(ctx tp.Context, nsPath string, sriovProcessor *graph.Processor) (*
 
 	// Enter the network namespace if necessary
 	if nsPath != "" {
-		context, err = common.NewNetNsContext(nsPath)
+		context, err = netns.NewContext(nsPath)
 		if err != nil {
 			return errFnc(fmt.Errorf("Failed to switch namespace: %s", err))
 		}

@@ -17,26 +17,26 @@
  *
  */
 
-package common
+package netns
 
-// NetNSContext describes a NameSpace Context switch API
-type NetNSContext struct {
+// Context describes a NameSpace Context switch API
+type Context struct {
 }
 
 // Quit the NameSpace and go back to the original one
-func (n *NetNSContext) Quit() error {
+func (n *Context) Quit() error {
 	return nil
 }
 
 // Close the NameSpace
-func (n *NetNSContext) Close() {
+func (n *Context) Close() {
 }
 
-// NewNetNsContext creates a new NameSpace context base on path
-func NewNetNsContext(path string) (*NetNSContext, error) {
+// NewContext creates a new NameSpace context base on path
+func NewContext(path string) (*Context, error) {
 	if path != "" {
 		return nil, ErrNotImplemented
 	}
 
-	return &NetNSContext{}, nil
+	return &Context{}, nil
 }
