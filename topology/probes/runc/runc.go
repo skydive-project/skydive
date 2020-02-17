@@ -37,6 +37,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
+	"github.com/skydive-project/skydive/process"
 	"github.com/skydive-project/skydive/topology"
 	tp "github.com/skydive-project/skydive/topology/probes"
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
@@ -143,11 +144,11 @@ func getStatus(state *containerState) string {
 		return "stopped"
 	}
 
-	info, err := common.GetProcessInfo(state.InitProcessPid)
+	info, err := process.GetInfo(state.InitProcessPid)
 	if err != nil {
 		return "stopped"
 	}
-	if info.Start != int64(state.InitProcessStart) || info.State == common.Zombie || info.State == common.Dead {
+	if info.Start != int64(state.InitProcessStart) || info.State == process.Zombie || info.State == process.Dead {
 		return "stopped"
 	}
 	base := path.Base(state.path)

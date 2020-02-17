@@ -32,8 +32,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/process"
 	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
@@ -61,7 +61,7 @@ type ProcProbe struct {
 }
 
 func getProcessInfo(pid int) (*ProcessInfo, error) {
-	pi, err := common.GetProcessInfo(pid)
+	pi, err := process.GetInfo(pid)
 	if err != nil {
 		return nil, err
 	}
