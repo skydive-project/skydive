@@ -19,8 +19,8 @@ package hub
 
 import (
 	"github.com/skydive-project/skydive/common"
-	etcdserver "github.com/skydive-project/skydive/etcd/server"
 	gc "github.com/skydive-project/skydive/graffiti/common"
+	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/validator"
