@@ -18,7 +18,6 @@
 package common
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -445,17 +444,4 @@ func IPV4CIDRToRegex(cidr string) (string, error) {
 		regex += ")"
 	}
 	return "^" + regex + `(\/[0-9]?[0-9])?$`, nil
-}
-
-// IPStrToUint32 converts IP string to 32bits
-func IPStrToUint32(ipAddr string) (uint32, error) {
-	ip := net.ParseIP(ipAddr)
-	if ip == nil {
-		return 0, errors.New("wrong ipAddr format")
-	}
-	ip = ip.To4()
-	if ip == nil {
-		return 0, errors.New("wrong ipAddr format")
-	}
-	return binary.BigEndian.Uint32(ip), nil
 }

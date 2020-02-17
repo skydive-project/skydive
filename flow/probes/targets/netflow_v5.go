@@ -20,6 +20,7 @@ package targets
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"math"
 	"net"
 	"sync"
@@ -46,6 +47,19 @@ type NetFlowV5Target struct {
 	seqNum    uint32
 }
 
+// ipStrToUint32 converts IP string to 32bits
+func ipStrToUint32(ipAddr string) (uint32, error) {
+	ip := net.ParseIP(ipAddr)
+	if ip == nil {
+		return 0, errors.New("wrong ipAddr format")
+	}
+	ip = ip.To4()
+	if ip == nil {
+		return 0, errors.New("wrong ipAddr format")
+	}
+	return binary.BigEndian.Uint32(ip), nil
+}
+
 // SendPacket implements the Target interface
 func (nf *NetFlowV5Target) SendPacket(packet gopacket.Packet, bpf *flow.BPF) {
 	nf.table.FeedWithGoPacket(packet, bpf)
@@ -61,13 +75,13 @@ func (nf *NetFlowV5Target) sendFlowBulk(flows []*flow.Flow, now time.Time) {
 		}
 
 		// Source IP Address
-		ipA, err := common.IPStrToUint32(f.Network.A)
+		ipA, err := ipStrToUint32(f.Network.A)
 		if err != nil {
 			continue
 		}
 
 		// Destination IP Address
-		ipB, err := common.IPStrToUint32(f.Network.B)
+		ipB, err := ipStrToUint32(f.Network.B)
 		if err != nil {
 			continue
 		}
