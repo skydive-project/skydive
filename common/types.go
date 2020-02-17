@@ -79,22 +79,6 @@ type Getter interface {
 	MatchString(field string, predicate StringPredicate) bool
 }
 
-// MinInt64 returns the lowest value
-func MinInt64(a, b int64) int64 {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-// MaxInt64 returns the biggest value
-func MaxInt64(a, b int64) int64 {
-	if a > b {
-		return a
-	}
-	return b
-}
-
 // NormalizeValue returns a version of the passed value
 // that can be safely marshalled to JSON
 func NormalizeValue(obj interface{}) interface{} {
