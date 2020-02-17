@@ -28,7 +28,7 @@ import (
 	"github.com/skydive-project/skydive/config"
 	gcommon "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	gws "github.com/skydive-project/skydive/graffiti/websocket"
+	"github.com/skydive-project/skydive/graffiti/messages"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/websocket"
@@ -99,11 +99,11 @@ func (p *ReplicatorPeer) OnConnected(c ws.Speaker) {
 		return
 	}
 
-	msg := &gws.SyncMsg{
+	msg := &messages.SyncMsg{
 		Elements: p.Graph.Elements(),
 	}
 
-	p.wsspeaker.SendMessage(gws.NewStructMessage(gws.SyncMsgType, msg))
+	p.wsspeaker.SendMessage(messages.NewStructMessage(messages.SyncMsgType, msg))
 
 	p.endpoint.out.AddClient(c)
 }
@@ -154,7 +154,7 @@ func (p *ReplicatorPeer) connect(wg *sync.WaitGroup) {
 	structClient.AddEventHandler(p)
 
 	// subscribe to the graph messages
-	structClient.AddStructMessageHandler(p.endpoint, []string{gws.Namespace})
+	structClient.AddStructMessageHandler(p.endpoint, []string{messages.Namespace})
 
 	p.wsspeaker = structClient
 	p.wsspeaker.Start()
@@ -213,7 +213,7 @@ func (t *ReplicationEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessag
 		return
 	}
 
-	msgType, obj, err := gws.UnmarshalMessage(msg)
+	msgType, obj, err := messages.UnmarshalMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
 		return
@@ -235,8 +235,8 @@ func (t *ReplicationEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessag
 	}
 
 	switch msgType {
-	case gws.SyncMsgType:
-		r := obj.(*gws.SyncMsg)
+	case messages.SyncMsgType:
+		r := obj.(*messages.SyncMsg)
 
 		for _, n := range r.Nodes {
 			if t.Graph.GetNode(n.ID) == nil {
@@ -252,19 +252,19 @@ func (t *ReplicationEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessag
 				}
 			}
 		}
-	case gws.NodeUpdatedMsgType:
+	case messages.NodeUpdatedMsgType:
 		err = t.Graph.NodeUpdated(obj.(*graph.Node))
-	case gws.NodeDeletedMsgType:
+	case messages.NodeDeletedMsgType:
 		err = t.Graph.NodeDeleted(obj.(*graph.Node))
-	case gws.NodeAddedMsgType:
+	case messages.NodeAddedMsgType:
 		err = t.Graph.NodeAdded(obj.(*graph.Node))
-	case gws.EdgeUpdatedMsgType:
+	case messages.EdgeUpdatedMsgType:
 		err = t.Graph.EdgeUpdated(obj.(*graph.Edge))
-	case gws.EdgeDeletedMsgType:
+	case messages.EdgeDeletedMsgType:
 		if err = t.Graph.EdgeDeleted(obj.(*graph.Edge)); err == graph.ErrEdgeNotFound {
 			return
 		}
-	case gws.EdgeAddedMsgType:
+	case messages.EdgeAddedMsgType:
 		err = t.Graph.EdgeAdded(obj.(*graph.Edge))
 	}
 
@@ -287,7 +287,7 @@ func (t *ReplicationEndpoint) notifyPeers(msg *ws.StructMessage) {
 // OnNodeUpdated graph node updated event. Implements the EventListener interface.
 func (t *ReplicationEndpoint) OnNodeUpdated(n *graph.Node) {
 	if t.replicateMsg.Load() == true {
-		msg := gws.NewStructMessage(gws.NodeUpdatedMsgType, n)
+		msg := messages.NewStructMessage(messages.NodeUpdatedMsgType, n)
 		t.notifyPeers(msg)
 	}
 }
@@ -295,7 +295,7 @@ func (t *ReplicationEndpoint) OnNodeUpdated(n *graph.Node) {
 // OnNodeAdded graph node added event. Implements the EventListener interface.
 func (t *ReplicationEndpoint) OnNodeAdded(n *graph.Node) {
 	if t.replicateMsg.Load() == true {
-		msg := gws.NewStructMessage(gws.NodeAddedMsgType, n)
+		msg := messages.NewStructMessage(messages.NodeAddedMsgType, n)
 		t.notifyPeers(msg)
 	}
 }
@@ -303,7 +303,7 @@ func (t *ReplicationEndpoint) OnNodeAdded(n *graph.Node) {
 // OnNodeDeleted graph node deleted event. Implements the EventListener interface.
 func (t *ReplicationEndpoint) OnNodeDeleted(n *graph.Node) {
 	if t.replicateMsg.Load() == true {
-		msg := gws.NewStructMessage(gws.NodeDeletedMsgType, n)
+		msg := messages.NewStructMessage(messages.NodeDeletedMsgType, n)
 		t.notifyPeers(msg)
 	}
 }
@@ -311,7 +311,7 @@ func (t *ReplicationEndpoint) OnNodeDeleted(n *graph.Node) {
 // OnEdgeUpdated graph edge updated event. Implements the EventListener interface.
 func (t *ReplicationEndpoint) OnEdgeUpdated(e *graph.Edge) {
 	if t.replicateMsg.Load() == true {
-		msg := gws.NewStructMessage(gws.EdgeUpdatedMsgType, e)
+		msg := messages.NewStructMessage(messages.EdgeUpdatedMsgType, e)
 		t.notifyPeers(msg)
 	}
 }
@@ -319,7 +319,7 @@ func (t *ReplicationEndpoint) OnEdgeUpdated(e *graph.Edge) {
 // OnEdgeAdded graph edge added event. Implements the EventListener interface.
 func (t *ReplicationEndpoint) OnEdgeAdded(e *graph.Edge) {
 	if t.replicateMsg.Load() == true {
-		msg := gws.NewStructMessage(gws.EdgeAddedMsgType, e)
+		msg := messages.NewStructMessage(messages.EdgeAddedMsgType, e)
 		t.notifyPeers(msg)
 	}
 }
@@ -327,7 +327,7 @@ func (t *ReplicationEndpoint) OnEdgeAdded(e *graph.Edge) {
 // OnEdgeDeleted graph edge deleted event. Implements the EventListener interface.
 func (t *ReplicationEndpoint) OnEdgeDeleted(e *graph.Edge) {
 	if t.replicateMsg.Load() == true {
-		msg := gws.NewStructMessage(gws.EdgeDeletedMsgType, e)
+		msg := messages.NewStructMessage(messages.EdgeDeletedMsgType, e)
 		t.notifyPeers(msg)
 	}
 }
@@ -363,16 +363,16 @@ func (t *ReplicationEndpoint) OnConnected(c ws.Speaker) {
 	}
 
 	// subscribe to websocket structured messages
-	c.(*ws.StructSpeaker).AddStructMessageHandler(t, []string{gws.Namespace})
+	c.(*ws.StructSpeaker).AddStructMessageHandler(t, []string{messages.Namespace})
 
 	t.Graph.RLock()
 	defer t.Graph.RUnlock()
 
-	msg := &gws.SyncMsg{
+	msg := &messages.SyncMsg{
 		Elements: t.Graph.Elements(),
 	}
 
-	c.SendMessage(gws.NewStructMessage(gws.SyncMsgType, msg))
+	c.SendMessage(messages.NewStructMessage(messages.SyncMsgType, msg))
 }
 
 // OnDisconnected is called when an incoming peer got disconnected.

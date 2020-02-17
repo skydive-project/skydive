@@ -15,7 +15,7 @@
  *
  */
 
-package graph
+package messages
 
 import (
 	"encoding/json"

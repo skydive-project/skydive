@@ -23,8 +23,8 @@ import (
 	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/messages"
 	"github.com/skydive-project/skydive/graffiti/validator"
-	gws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/logging"
 	ws "github.com/skydive-project/skydive/websocket"
 )
@@ -79,7 +79,7 @@ func (t *PublisherEndpoint) OnDisconnected(c ws.Speaker) {
 
 // OnStructMessage is triggered by message coming from a publisher.
 func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
-	msgType, obj, err := gws.UnmarshalMessage(msg)
+	msgType, obj, err := messages.UnmarshalMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
 		return
@@ -97,10 +97,10 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 
 	if t.validator != nil {
 		switch msgType {
-		case gws.NodeAddedMsgType, gws.NodeUpdatedMsgType, gws.NodeDeletedMsgType:
+		case messages.NodeAddedMsgType, messages.NodeUpdatedMsgType, messages.NodeDeletedMsgType:
 			obj.(*graph.Node).Origin = origin
 			err = t.validator.ValidateNode(obj.(*graph.Node))
-		case gws.EdgeAddedMsgType, gws.EdgeUpdatedMsgType, gws.EdgeDeletedMsgType:
+		case messages.EdgeAddedMsgType, messages.EdgeUpdatedMsgType, messages.EdgeDeletedMsgType:
 			obj.(*graph.Edge).Origin = origin
 			err = t.validator.ValidateEdge(obj.(*graph.Edge))
 		}
@@ -115,15 +115,15 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 	defer t.Graph.Unlock()
 
 	switch msgType {
-	case gws.SyncRequestMsgType:
-		reply := msg.Reply(t.Graph, gws.SyncReplyMsgType, http.StatusOK)
+	case messages.SyncRequestMsgType:
+		reply := msg.Reply(t.Graph, messages.SyncReplyMsgType, http.StatusOK)
 		c.SendMessage(reply)
-	case gws.SyncMsgType, gws.SyncReplyMsgType:
+	case messages.SyncMsgType, messages.SyncReplyMsgType:
 		logging.GetLogger().Debugf("Handling sync message from %s", c.GetRemoteHost())
 
 		DelSubGraphOfOrigin(t.Graph, ClientOrigin(c))
 
-		r := obj.(*gws.SyncMsg)
+		r := obj.(*messages.SyncMsg)
 		for _, n := range r.Nodes {
 			if t.Graph.GetNode(n.ID) == nil {
 				if err := t.Graph.NodeAdded(n); err != nil {
@@ -138,19 +138,19 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 				}
 			}
 		}
-	case gws.NodeUpdatedMsgType:
+	case messages.NodeUpdatedMsgType:
 		err = t.Graph.NodeUpdated(obj.(*graph.Node))
-	case gws.NodeDeletedMsgType:
+	case messages.NodeDeletedMsgType:
 		err = t.Graph.NodeDeleted(obj.(*graph.Node))
-	case gws.NodeAddedMsgType:
+	case messages.NodeAddedMsgType:
 		err = t.Graph.NodeAdded(obj.(*graph.Node))
-	case gws.EdgeUpdatedMsgType:
+	case messages.EdgeUpdatedMsgType:
 		err = t.Graph.EdgeUpdated(obj.(*graph.Edge))
-	case gws.EdgeDeletedMsgType:
+	case messages.EdgeDeletedMsgType:
 		if err = t.Graph.EdgeDeleted(obj.(*graph.Edge)); err == graph.ErrEdgeNotFound {
 			return
 		}
-	case gws.EdgeAddedMsgType:
+	case messages.EdgeAddedMsgType:
 		err = t.Graph.EdgeAdded(obj.(*graph.Edge))
 	}
 
@@ -171,7 +171,7 @@ func NewPublisherEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, validator v
 	pool.AddEventHandler(t)
 
 	// subscribe to the graph messages
-	pool.AddStructMessageHandler(t, []string{gws.Namespace})
+	pool.AddStructMessageHandler(t, []string{messages.Namespace})
 
 	return t, nil
 }
