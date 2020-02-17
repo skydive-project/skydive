@@ -100,7 +100,7 @@ type onDemandFlowProbeServer struct {
 func (o *onDemandFlowProbeServer) getProbeHandler(n *graph.Node, resource types.Resource) (probes.FlowProbeHandler, error) {
 	capture := resource.(*types.Capture)
 	tp, _ := n.GetFieldString("Type")
-	probeType, err := common.ProbeTypeForNode(tp, capture.Type)
+	probeType, err := probes.ProbeTypeForNode(tp, capture.Type)
 	if err != nil {
 		return nil, err
 	}
