@@ -246,12 +246,6 @@ func IPV4CIDRToRegex(cidr string) (string, error) {
 	return "^" + regex + `(\/[0-9]?[0-9])?$`, nil
 }
 
-// IsIPv6 returns whether is a IPV6 addresses or not
-func IsIPv6(addr string) bool {
-	ip := net.ParseIP(addr)
-	return ip != nil && len(ip) == net.IPv6len
-}
-
 // IPStrToUint32 converts IP string to 32bits
 func IPStrToUint32(ipAddr string) (uint32, error) {
 	ip := net.ParseIP(ipAddr)
@@ -263,13 +257,4 @@ func IPStrToUint32(ipAddr string) (uint32, error) {
 		return 0, errors.New("wrong ipAddr format")
 	}
 	return binary.BigEndian.Uint32(ip), nil
-}
-
-// NormalizeAddrForURL format the given address to be used in URL. For IPV6
-// addresses the brackets will be added.
-func NormalizeAddrForURL(addr string) string {
-	if IsIPv6(addr) {
-		return "[" + addr + "]"
-	}
-	return addr
 }

@@ -196,6 +196,16 @@ func (c *FlowClient) sendStats(stats flow.Stats) {
 	}
 }
 
+// normalizeAddrForURL format the given address to be used in URL. For IPV6
+// addresses the brackets will be added.
+func normalizeAddrForURL(addr string) string {
+	ip := net.ParseIP(addr)
+	if ip != nil && len(ip) == net.IPv6len {
+		return "[" + addr + "]"
+	}
+	return addr
+}
+
 // NewFlowClient creates a flow client and creates a new connection to the server
 func NewFlowClient(addr string, port int, authOpts *shttp.AuthenticationOpts) (*FlowClient, error) {
 	var (
@@ -205,9 +215,9 @@ func NewFlowClient(addr string, port int, authOpts *shttp.AuthenticationOpts) (*
 	protocol := strings.ToLower(config.GetString("flow.protocol"))
 	switch protocol {
 	case "udp":
-		connection, err = NewFlowClientUDPConn(common.NormalizeAddrForURL(addr), port)
+		connection, err = NewFlowClientUDPConn(normalizeAddrForURL(addr), port)
 	case "websocket":
-		endpoint := config.GetURL("ws", common.NormalizeAddrForURL(addr), port, "/ws/agent/flow")
+		endpoint := config.GetURL("ws", normalizeAddrForURL(addr), port, "/ws/agent/flow")
 		connection, err = NewFlowClientWebSocketConn(endpoint, authOpts)
 	default:
 		return nil, fmt.Errorf("Invalid protocol %s", protocol)
@@ -275,7 +285,7 @@ func (p *FlowClientPool) SendFlows(flows []*flow.Flow) {
 	fc.sendFlows(flows)
 }
 
-// SendStatus implements the flow Sender interface
+// SendStats implements the flow Sender interface
 func (p *FlowClientPool) SendStats(stats flow.Stats) {
 	p.RLock()
 	defer p.RUnlock()
