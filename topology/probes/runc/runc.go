@@ -24,7 +24,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"math"
 	"os"
 	"path"
 	"strings"
@@ -32,9 +31,9 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/safchain/insanelock"
 	"github.com/spf13/cast"
 	"github.com/vishvananda/netns"
-	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -325,7 +324,9 @@ func (p *ProbeHandler) registerContainer(path string) error {
 }
 
 func (p *ProbeHandler) initializeFolder(path string) {
-	p.watcher.Add(path)
+	if err := p.watcher.Add(path); err != nil {
+		p.Ctx.Logger.Error(err)
+	}
 
 	files, _ := ioutil.ReadDir(path)
 	for _, f := range files {
@@ -351,24 +352,18 @@ func (p *ProbeHandler) initializeFolder(path string) {
 	}
 }
 
-func (p *ProbeHandler) initialize(path string) error {
+func (p *ProbeHandler) initialize(path string) {
 	defer p.wg.Done()
 
-	return common.Retry(func() error {
-		if p.state.Load() != common.RunningState {
-			return nil
+	for p.state.Load() == common.RunningState {
+		if _, err := os.Stat(path); err == nil {
+			p.initializeFolder(path)
+			p.Ctx.Logger.Debugf("Probe initialized for %s", path)
+			return
 		}
 
-		if _, err := os.Stat(path); err != nil {
-			return err
-		}
-
-		p.initializeFolder(path)
-
-		p.Ctx.Logger.Debugf("Probe initialized for %s", path)
-
-		return nil
-	}, math.MaxInt32, time.Second)
+		time.Sleep(time.Second)
+	}
 }
 
 func (p *ProbeHandler) isStatePath(path string) bool {

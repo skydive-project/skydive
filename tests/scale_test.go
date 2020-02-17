@@ -28,6 +28,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avast/retry-go"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/skydive-project/skydive/analyzer"
 	gclient "github.com/skydive-project/skydive/api/client"
@@ -73,7 +75,7 @@ func checkAgents(client *shttp.CrudClient, agentsExpected int) error {
 }
 
 func checkHostNodes(client *shttp.CrudClient, gh *gclient.GremlinQueryHelper, nodeExpected int) error {
-	retry := func() error {
+	retryFn := func() error {
 		nodes, err := gh.GetNodes(g.G.V().Has("Type", "host"))
 		if err != nil {
 			return err
@@ -89,7 +91,7 @@ func checkHostNodes(client *shttp.CrudClient, gh *gclient.GremlinQueryHelper, no
 
 		return nil
 	}
-	return common.Retry(retry, 10, 5*time.Second)
+	return retry.Do(retryFn, retry.Attempts(30), retry.Delay(time.Second), retry.DelayType(retry.FixedDelay))
 }
 
 func checkPeers(client *shttp.CrudClient, peersExpected int, state websocket.ConnState) error {
@@ -137,7 +139,7 @@ func _checkICMPv4Flows(gh *gclient.GremlinQueryHelper, nodeSel g.QueryString, fl
 	}
 	gremlin := prefix.Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4", "NodeTID", tid).Sort()
 
-	retry := func() error {
+	return retry.Do(func() error {
 		flows, err := gh.GetFlows(gremlin)
 		if err != nil {
 			return fmt.Errorf("%s: %s", gremlin, err)
@@ -148,8 +150,7 @@ func _checkICMPv4Flows(gh *gclient.GremlinQueryHelper, nodeSel g.QueryString, fl
 		}
 
 		return nil
-	}
-	return common.Retry(retry, 40, time.Second)
+	}, retry.Attempts(40), retry.Delay(time.Second), retry.DelayType(retry.FixedDelay))
 }
 
 func checkICMPv4Flows(gh *gclient.GremlinQueryHelper, nodeSel g.QueryString, flowExpected int, cmp func(seen, exp int) bool, mode int) error {
@@ -168,7 +169,7 @@ func checkICMPv4Flows(gh *gclient.GremlinQueryHelper, nodeSel g.QueryString, flo
 }
 
 func checkIPerfFlows(gh *gclient.GremlinQueryHelper, flowExpected int) error {
-	retry := func() error {
+	retryFn := func() error {
 		flows, err := gh.GetFlows(g.G.Flows().Has("LayersPath", "Ethernet/IPv4/TCP").Has("Transport.B", 5001).Sort())
 		if err != nil {
 			return err
@@ -185,12 +186,12 @@ func checkIPerfFlows(gh *gclient.GremlinQueryHelper, flowExpected int) error {
 
 		return nil
 	}
-	if err := common.Retry(retry, 20, time.Second); err != nil {
+	if err := retry.Do(retryFn, retry.Attempts(20), retry.Delay(time.Second), retry.DelayType(retry.FixedDelay)); err != nil {
 		return err
 	}
 
 	// check in the storage
-	retry = func() error {
+	retryFn = func() error {
 		flows, err := gh.GetFlows(g.G.At("-1s", 300).Flows().Has("LayersPath", "Ethernet/IPv4/TCP").Has("Transport.B", 5001).Sort())
 		if err != nil {
 			return err
@@ -225,7 +226,7 @@ func checkIPerfFlows(gh *gclient.GremlinQueryHelper, flowExpected int) error {
 		}
 		return nil
 	}
-	if err := common.Retry(retry, 40, time.Second); err != nil {
+	if err := retry.Do(retryFn, retry.Attempts(40), retry.Delay(time.Second), retry.DelayType(retry.FixedDelay)); err != nil {
 		return err
 	}
 
@@ -233,7 +234,7 @@ func checkIPerfFlows(gh *gclient.GremlinQueryHelper, flowExpected int) error {
 }
 
 func checkCaptures(gh *gclient.GremlinQueryHelper, captureExpected int) error {
-	retry := func() error {
+	retryFn := func() error {
 		nodes, err := gh.GetNodes(g.G.V().Has("Captures.State", "active"))
 		if err != nil {
 			return err
@@ -246,11 +247,11 @@ func checkCaptures(gh *gclient.GremlinQueryHelper, captureExpected int) error {
 		return nil
 	}
 
-	return common.Retry(retry, 20, time.Second)
+	return retry.Do(retryFn, retry.Attempts(20), retry.Delay(time.Second), retry.DelayType(retry.FixedDelay))
 }
 
 func waitForFirstFlows(gh *gclient.GremlinQueryHelper, expected int) error {
-	retry := func() error {
+	retryFn := func() error {
 		flows, err := gh.GetFlows(g.G.Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4").Sort())
 		if err != nil {
 			return err
@@ -261,25 +262,25 @@ func waitForFirstFlows(gh *gclient.GremlinQueryHelper, expected int) error {
 		}
 		return nil
 	}
-	return common.Retry(retry, 10, time.Second)
+	return retry.Do(retryFn, retry.Attempts(10), retry.Delay(time.Second), retry.DelayType(retry.FixedDelay))
 }
 
-func genICMPv4(t *testing.T, scale, src string, dst string, count int) error {
+func genICMPv4(t *testing.T, scale, src string, dst string, count uint) error {
 	// generate some packet and wait for seeing them, to be sure that the capture is started
-	var seen int
+	var seen uint
 	pingFnc := func() error {
 		setupCmds := []Cmd{
 			{fmt.Sprintf("%s ping %s %s -c 1", scale, src, dst), false},
 		}
 		if _, err := execCmds(t, setupCmds...); err == nil {
 			seen++
-			if seen == count {
+			if seen >= count {
 				return nil
 			}
 		}
 		return errors.New("Quota not reached yet")
 	}
-	return common.Retry(pingFnc, 2*count, time.Second)
+	return retry.Do(pingFnc, retry.Attempts(2*count), retry.Delay(time.Second), retry.DelayType(retry.FixedDelay))
 }
 
 func TestScaleHA(t *testing.T) {
@@ -312,7 +313,9 @@ func TestScaleHA(t *testing.T) {
 	gh := gclient.NewGremlinQueryHelper(authOptions)
 
 	// expected 1 either Incomer or Outgoer
-	if err = common.Retry(func() error { return checkPeers(client, 1, websocket.ConnState(common.RunningState)) }, 5, time.Second); err != nil {
+	if err = retry.Do(func() error {
+		return checkPeers(client, 1, websocket.ConnState(common.RunningState))
+	}, retry.Attempts(5), retry.Delay(time.Second), retry.DelayType(retry.FixedDelay)); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
@@ -452,9 +455,9 @@ func TestScaleHA(t *testing.T) {
 	}
 	execCmds(t, setupCmds...)
 
-	if err = common.Retry(func() error {
+	if err = retry.Do(func() error {
 		return checkPeers(client, 1, websocket.ConnState(common.RunningState))
-	}, 15, time.Second); err != nil {
+	}, retry.Attempts(15), retry.Delay(time.Second), retry.DelayType(retry.FixedDelay)); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}

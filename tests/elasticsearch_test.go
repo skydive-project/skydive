@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avast/retry-go"
+
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	es "github.com/skydive-project/skydive/storage/elasticsearch"
@@ -57,12 +59,12 @@ func getClient(t *testing.T, indices []es.Index, cfg es.Config) (*es.Client, err
 	}
 	client.Start()
 
-	err = common.Retry(func() error {
+	err = retry.Do(func() error {
 		if client.Started() {
 			return nil
 		}
 		return errors.New("Elasticsearch connection not ready")
-	}, 10, time.Second)
+	})
 
 	if err != nil {
 		return nil, err
@@ -109,7 +111,7 @@ func TestRollingSimple(t *testing.T) {
 		client.Index(indices[1], id, map[string]string{"ID": id})
 	}
 
-	err = common.Retry(func() error {
+	err = retry.Do(func() error {
 		for _, index := range indices {
 			result, err := client.Search("object", nil, filters.SearchQuery{}, index.Alias())
 			if err != nil {
@@ -120,7 +122,7 @@ func TestRollingSimple(t *testing.T) {
 			}
 		}
 		return nil
-	}, 5, time.Second)
+	})
 
 	if err != nil {
 		t.Fatal(err)
@@ -135,7 +137,7 @@ func TestRollingSimple(t *testing.T) {
 
 	time.Sleep(es.RollingRate)
 
-	err = common.Retry(func() error {
+	err = retry.Do(func() error {
 		// test that the index has been rotated
 		result, err := client.Search("object", nil, filters.SearchQuery{}, indices[0].Alias())
 		if err != nil {
@@ -163,7 +165,7 @@ func TestRollingSimple(t *testing.T) {
 			return fmt.Errorf("Expected 11 entries, found: %+v", result.Hits.Hits)
 		}
 		return nil
-	}, 10, time.Second)
+	})
 
 	if err != nil {
 		t.Fatal(err)

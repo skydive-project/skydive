@@ -27,10 +27,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/nlewo/contrail-introspect-cli/collection"
 	"github.com/nlewo/contrail-introspect-cli/descriptions"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
@@ -72,7 +72,7 @@ func (p *Probe) retrieveMetadata(metadata graph.Metadata, itf collection.Element
 	if vrfName == "" {
 		return nil, errors.New("No vrf_name field")
 	}
-	vrfId, err := getVrfIdFromIntrospect(p.agentHost, p.agentPort, vrfName)
+	vrfID, err := getVrfIDFromIntrospect(p.agentHost, p.agentPort, vrfName)
 	if err != nil {
 		return nil, errors.New("No vrf_id found")
 	}
@@ -88,7 +88,7 @@ func (p *Probe) retrieveMetadata(metadata graph.Metadata, itf collection.Element
 		UUID:    portUUID,
 		MAC:     mac,
 		VRF:     vrfName,
-		VRFID:   int64(vrfId),
+		VRFID:   int64(vrfID),
 		LocalIP: mdataIP,
 	}, nil
 }
@@ -113,11 +113,11 @@ func getInterfaceFromIntrospect(host string, port int, name string) (col collect
 		return
 	}
 	// Retry during about 8 seconds
-	err = common.RetryExponential(getFromIntrospect, 5, 250*time.Millisecond)
+	err = retry.Do(getFromIntrospect, retry.Attempts(5), retry.Delay(250*time.Millisecond))
 	return
 }
 
-func getVrfIdFromIntrospect(host string, port int, vrfName string) (vrfId int, err error) {
+func getVrfIDFromIntrospect(host string, port int, vrfName string) (vrfID int, err error) {
 	col, err := collection.LoadCollection(descriptions.Vrf(), []string{fmt.Sprintf("%s:%d", host, port)})
 	if err != nil {
 		return
@@ -131,7 +131,7 @@ func getVrfIdFromIntrospect(host string, port int, vrfName string) (vrfId int, e
 	if field == "" {
 		return 0, errors.New("No ucindex field")
 	}
-	vrfId, err = strconv.Atoi(field)
+	vrfID, err = strconv.Atoi(field)
 	if err != nil {
 		return 0, err
 	}

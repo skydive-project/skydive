@@ -22,7 +22,8 @@ package tests
 import (
 	"fmt"
 	"testing"
-	"time"
+
+	"github.com/avast/retry-go"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -35,8 +36,7 @@ func k8sConfigFile(mngr, name string) string {
 }
 
 const (
-	k8sRetry = 3
-	k8sDelay = 10 * time.Second
+	k8sRetry = 12
 	objName  = "skydive-test"
 	contrib  = "../contrib/kubernetes/skydive.yaml"
 )
@@ -82,7 +82,7 @@ func makeHasArgsNode(node *graph.Node, args1 ...interface{}) []interface{} {
 
 func queryNodeCreation(t *testing.T, c *CheckContext, query g.QueryString) (node *graph.Node, err error) {
 	node = nil
-	err = common.Retry(func() error {
+	err = retry.Do(func() error {
 		const expectedNumNodes = 1
 
 		t.Logf("Executing query '%s'", query)
@@ -103,7 +103,7 @@ func queryNodeCreation(t *testing.T, c *CheckContext, query g.QueryString) (node
 			node = nodes[0]
 		}
 		return nil
-	}, k8sRetry, k8sDelay)
+	}, retry.Attempts(k8sRetry))
 	return
 }
 

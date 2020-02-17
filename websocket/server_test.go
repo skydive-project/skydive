@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/common"
@@ -52,7 +53,7 @@ func (f *fakeServerSubscriptionHandler) OnConnected(c Speaker) {
 	f.connected++
 	f.Unlock()
 
-	fnc := func() error {
+	go retry.Do(func() error {
 		f.RLock()
 		defer f.RUnlock()
 		if f.received == 0 {
@@ -61,8 +62,7 @@ func (f *fakeServerSubscriptionHandler) OnConnected(c Speaker) {
 		c.SendMessage(RawMessage{})
 
 		return nil
-	}
-	go common.Retry(fnc, 5, time.Second)
+	}, retry.Delay(10*time.Millisecond))
 }
 
 func (f *fakeServerSubscriptionHandler) OnMessage(c Speaker, m Message) {
@@ -229,7 +229,7 @@ func TestSubscription(t *testing.T) {
 	client.start()
 	defer client.stop()
 
-	err := common.Retry(func() error {
+	err := retry.Do(func() error {
 		client.handler.Lock()
 		defer client.handler.Unlock()
 
@@ -245,7 +245,7 @@ func TestSubscription(t *testing.T) {
 		}
 
 		return nil
-	}, 5, time.Second)
+	}, retry.Delay(10*time.Millisecond))
 
 	if err != nil {
 		t.Error(err.Error())
@@ -267,7 +267,7 @@ func TestSubscriptionMultiClient(t *testing.T) {
 		defer client[i].stop()
 	}
 
-	err := common.Retry(func() error {
+	err := retry.Do(func() error {
 		for i := 0; i < numClients; i++ {
 			client[i].handler.Lock()
 			defer client[i].handler.Unlock()
@@ -287,7 +287,7 @@ func TestSubscriptionMultiClient(t *testing.T) {
 		}
 
 		return nil
-	}, 5, time.Second)
+	}, retry.Delay(10*time.Millisecond))
 
 	if err != nil {
 		t.Error(err.Error())

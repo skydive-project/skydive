@@ -25,6 +25,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/afpacket"
 	"github.com/google/gopacket/layers"
@@ -167,10 +168,10 @@ func (p *Probe) Run(packetCallback func(gopacket.Packet), statsCallback func(flo
 		}
 		p.Ctx.Logger.Infof("PCAP Capture started on %s with First layer: %s", p.ifName, p.layerType)
 	default:
-		if err = common.Retry(func() error {
+		if err = retry.Do(func() error {
 			p.packetProbe, err = NewAfpacketPacketProbe(p.ifName, int(p.headerSize), p.layerType, p.linkType)
 			return err
-		}, 2, 100*time.Millisecond); err != nil {
+		}, retry.Attempts(4), retry.Delay(10*time.Millisecond)); err != nil {
 			return err
 		}
 		p.Ctx.Logger.Infof("AfPacket Capture started on %s with First layer: %s", p.ifName, p.layerType)

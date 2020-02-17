@@ -28,6 +28,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/socketplane/libovsdb"
 
 	"github.com/skydive-project/skydive/common"
@@ -682,7 +683,7 @@ func (o *Probe) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovs
 func (o *Probe) OnOvsUpdate(monitor *ovsdb.OvsMonitor, row *libovsdb.RowUpdate) {
 	// retry as for the first bridge created the interface can be seen by netlink before the
 	// db update
-	retry := func() error {
+	retryFn := func() error {
 		o.Ctx.Graph.Lock()
 		defer o.Ctx.Graph.Unlock()
 
@@ -716,7 +717,7 @@ func (o *Probe) OnOvsUpdate(monitor *ovsdb.OvsMonitor, row *libovsdb.RowUpdate) 
 
 		return nil
 	}
-	go common.Retry(retry, 2, 500*time.Millisecond)
+	go retry.Do(retryFn, retry.Attempts(8), retry.Delay(10*time.Millisecond))
 }
 
 // Start the probe
