@@ -85,6 +85,7 @@ require (
 	github.com/skydive-project/dede v0.0.0-20180704100832-90df8e39b679
 	github.com/skydive-project/goloxi v0.0.0-20190117172159-db2324197a3e
 	github.com/socketplane/libovsdb v0.0.0-20160607151822-5113f8fb4d9d
+	github.com/spf13/cast v1.3.0
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.4.0
@@ -122,6 +123,7 @@ require (
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0
 	k8s.io/client-go v11.0.0+incompatible
+	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
 
 replace (

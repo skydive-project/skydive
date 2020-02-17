@@ -31,6 +31,7 @@ import (
 
 	"github.com/safchain/ethtool"
 	"github.com/safchain/insanelock"
+	"github.com/spf13/cast"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netlink/nl"
 
@@ -546,7 +547,7 @@ func (u *Probe) addLinkToTopology(link netlink.Link) {
 	}
 
 	if vlan, ok := link.(*netlink.Vlan); ok {
-		if vlan, err := common.ToInt64(vlan.VlanId); err == nil {
+		if vlan, err := cast.ToInt64E(vlan.VlanId); err == nil {
 			metadata["Vlan"] = vlan
 		}
 	}

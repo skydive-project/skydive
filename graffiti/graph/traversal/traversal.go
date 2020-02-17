@@ -26,6 +26,8 @@ import (
 	"time"
 
 	"github.com/mitchellh/hashstructure"
+	"github.com/spf13/cast"
+
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -125,7 +127,7 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 		case bool:
 			neFilter = filters.NewTermBoolFilter(k, !t)
 		default:
-			i, err := common.ToInt64(t)
+			i, err := cast.ToInt64E(t)
 			if err != nil {
 				return nil, err
 			}
@@ -140,26 +142,26 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 		case bool:
 			return filters.NewTermBoolFilter(k, !t), nil
 		default:
-			i, err := common.ToInt64(t)
+			i, err := cast.ToInt64E(t)
 			if err != nil {
 				return nil, err
 			}
 			return filters.NewNotFilter(filters.NewTermInt64Filter(k, i)), nil
 		}
 	case *LTElementMatcher:
-		i, err := common.ToInt64(v.value)
+		i, err := cast.ToInt64E(v.value)
 		if err != nil {
 			return nil, errors.New("LT values should be of int64 type")
 		}
 		return filters.NewLtInt64Filter(k, i), nil
 	case *GTElementMatcher:
-		i, err := common.ToInt64(v.value)
+		i, err := cast.ToInt64E(v.value)
 		if err != nil {
 			return nil, errors.New("GT values should be of int64 type")
 		}
 		return filters.NewGtInt64Filter(k, i), nil
 	case *GTEElementMatcher:
-		i, err := common.ToInt64(v.value)
+		i, err := cast.ToInt64E(v.value)
 		if err != nil {
 			return nil, errors.New("GTE values should be of int64 type")
 		}
@@ -167,7 +169,7 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 			GteInt64Filter: &filters.GteInt64Filter{Key: k, Value: i},
 		}, nil
 	case *LTEElementMatcher:
-		i, err := common.ToInt64(v.value)
+		i, err := cast.ToInt64E(v.value)
 		if err != nil {
 			return nil, errors.New("LTE values should be of int64 type")
 		}
@@ -175,8 +177,8 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 			LteInt64Filter: &filters.LteInt64Filter{Key: k, Value: i},
 		}, nil
 	case *InsideElementMatcher:
-		f64, fok := common.ToInt64(v.from)
-		t64, tok := common.ToInt64(v.to)
+		f64, fok := cast.ToInt64E(v.from)
+		t64, tok := cast.ToInt64E(v.to)
 
 		if fok != nil || tok != nil {
 			return nil, errors.New("Inside values should be of int64 type")
@@ -184,8 +186,8 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 
 		return filters.NewAndFilter(filters.NewGtInt64Filter(k, f64), filters.NewLtInt64Filter(k, t64)), nil
 	case *OutsideElementMatcher:
-		f64, fok := common.ToInt64(v.from)
-		t64, tok := common.ToInt64(v.to)
+		f64, fok := cast.ToInt64E(v.from)
+		t64, tok := cast.ToInt64E(v.to)
 
 		if fok != nil || tok != nil {
 			return nil, errors.New("Outside values should be of int64 type")
@@ -193,8 +195,8 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 
 		return filters.NewAndFilter(filters.NewLtInt64Filter(k, f64), filters.NewGtInt64Filter(k, t64)), nil
 	case *BetweenElementMatcher:
-		f64, fok := common.ToInt64(v.from)
-		t64, tok := common.ToInt64(v.to)
+		f64, fok := cast.ToInt64E(v.from)
+		t64, tok := cast.ToInt64E(v.to)
 
 		if fok != nil || tok != nil {
 			return nil, errors.New("Between values should be of int64 type")
@@ -208,7 +210,7 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 			case string:
 				orFilters = append(orFilters, filters.NewTermStringFilter(k, v))
 			default:
-				i, err := common.ToInt64(v)
+				i, err := cast.ToInt64E(v)
 				if err != nil {
 					return nil, err
 				}
@@ -225,7 +227,7 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 			case string:
 				andFilters = append(andFilters, filters.NewNotFilter(filters.NewTermStringFilter(k, v)))
 			default:
-				i, err := common.ToInt64(v)
+				i, err := cast.ToInt64E(v)
 				if err != nil {
 					return nil, err
 				}
@@ -254,7 +256,7 @@ func KeyValueToFilter(k string, v interface{}) (*filters.Filter, error) {
 
 		return &filters.Filter{IPV4RangeFilter: rf}, nil
 	default:
-		i, err := common.ToInt64(v)
+		i, err := cast.ToInt64E(v)
 		if err != nil {
 			return nil, err
 		}

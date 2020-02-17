@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/spf13/cast"
 	"github.com/vishvananda/netns"
 	"github.com/safchain/insanelock"
 
@@ -91,7 +92,7 @@ func (ips *initProcessStart) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	i, err := common.ToInt64(v)
+	i, err := cast.ToInt64E(v)
 	if err != nil {
 		return err
 	}
