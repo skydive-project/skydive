@@ -39,6 +39,7 @@ import (
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
+	"github.com/skydive-project/skydive/rawsocket"
 	"github.com/skydive-project/skydive/topology"
 )
 
@@ -264,7 +265,7 @@ func (p *ProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e p
 		return nil, errors.New("No flow_table socket filter")
 	}
 
-	var rs *common.RawSocket
+	var rs *rawsocket.RawSocket
 	if nsPath != "" {
 		rs, err = common.NewRawSocketInNs(nsPath, ifName, syscall.ETH_P_ALL)
 	} else {

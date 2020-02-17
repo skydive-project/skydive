@@ -27,6 +27,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/packetinjector"
 	pi "github.com/skydive-project/skydive/packetinjector"
+	"github.com/skydive-project/skydive/rawsocket"
 	"github.com/skydive-project/skydive/validator"
 	"github.com/spf13/cobra"
 )
@@ -145,7 +146,7 @@ var InjectPacketCmd = &cobra.Command{
 			}
 		}
 
-		rawSocket, err := common.NewRawSocket(ifName, common.OnlyIPPackets)
+		rawSocket, err := rawsocket.NewRawSocket(ifName, rawsocket.OnlyIPPackets)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to open socket for interface %s, err: %s\n", ifName, err)
 			os.Exit(1)

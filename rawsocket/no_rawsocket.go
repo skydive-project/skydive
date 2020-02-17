@@ -17,8 +17,9 @@
  *
  */
 
-package common
+package rawsocket
 
+// Protocols to receive
 const (
 	AllPackets = iota
 	OnlyIPPackets

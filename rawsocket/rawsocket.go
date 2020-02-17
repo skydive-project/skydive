@@ -17,7 +17,7 @@
  *
  */
 
-package common
+package rawsocket
 
 /*
 #ifdef __linux__
