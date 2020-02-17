@@ -30,7 +30,7 @@ import (
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/ondemand/client"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/validator"

@@ -25,7 +25,7 @@ import (
 	api "github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/cmd/injector"
 	"github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/validator"
 
 	"github.com/spf13/cobra"

@@ -25,7 +25,7 @@ import (
 
 	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/version"
 
 	"github.com/spf13/cobra"

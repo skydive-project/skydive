@@ -27,7 +27,7 @@ import (
 	"github.com/google/gopacket/pcapgo"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 // PcapWriter provides helpers on top of gopacket pcap to write pcap files.

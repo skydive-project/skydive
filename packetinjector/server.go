@@ -30,7 +30,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/ondemand"
 	"github.com/skydive-project/skydive/ondemand/server"
 	"github.com/skydive-project/skydive/rawsocket"

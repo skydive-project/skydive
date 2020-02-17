@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	tp "github.com/skydive-project/skydive/topology/probes"
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
 )

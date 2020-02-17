@@ -32,7 +32,7 @@ import (
 	"github.com/skydive-project/skydive/filters"
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/ondemand"
 	ws "github.com/skydive-project/skydive/websocket"
 )

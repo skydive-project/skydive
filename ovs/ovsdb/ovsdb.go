@@ -28,7 +28,7 @@ import (
 	"github.com/socketplane/libovsdb"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 // OvsClient describes an OVS database client connection

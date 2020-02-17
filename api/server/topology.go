@@ -34,7 +34,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/rbac"
 	"github.com/skydive-project/skydive/validator"
 )

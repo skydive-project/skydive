@@ -33,7 +33,7 @@ import (
 	"github.com/coreos/etcd/pkg/osutil"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 const (

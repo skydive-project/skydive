@@ -29,7 +29,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/gremlin"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/ondemand/client"
 	ws "github.com/skydive-project/skydive/websocket"
 )

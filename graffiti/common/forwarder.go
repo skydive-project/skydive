@@ -20,7 +20,7 @@ package common
 import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	gws "github.com/skydive-project/skydive/graffiti/websocket"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	ws "github.com/skydive-project/skydive/websocket"
 )
 

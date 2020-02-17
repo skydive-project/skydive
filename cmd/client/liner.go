@@ -25,7 +25,7 @@ import (
 	"text/scanner"
 
 	"github.com/peterh/liner"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 const (

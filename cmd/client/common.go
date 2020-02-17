@@ -23,7 +23,7 @@ import (
 	"os"
 
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 // AuthenticationOpts Authentication options

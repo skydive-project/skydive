@@ -26,7 +26,7 @@ import (
 	remoteconn "github.com/networkservicemesh/networkservicemesh/controlplane/api/remote/connection"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 type connection interface {

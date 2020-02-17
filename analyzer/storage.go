@@ -27,7 +27,7 @@ import (
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	es "github.com/skydive-project/skydive/graffiti/storage/elasticsearch"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 // NewESConfig returns a new elasticsearch configuration for the given backend name

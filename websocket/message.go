@@ -30,7 +30,7 @@ import (
 	uuid "github.com/nu7hatch/gouuid"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 // Protocol used to transport messages

@@ -32,7 +32,7 @@ import (
 	"github.com/skydive-project/skydive/cmd/injector"
 	"github.com/skydive-project/skydive/cmd/seed"
 	"github.com/skydive-project/skydive/cmd/version"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/spf13/cobra"
 )
 

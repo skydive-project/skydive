@@ -32,7 +32,7 @@ import (
 
 	goovn "github.com/ebay/go-ovn"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/topology"
 )
 

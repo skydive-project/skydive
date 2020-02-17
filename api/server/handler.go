@@ -30,7 +30,7 @@ import (
 	uuid "github.com/nu7hatch/gouuid"
 
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 // Handler describes resources for each API

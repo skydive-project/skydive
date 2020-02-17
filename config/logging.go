@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 // InitLogging set up logging based on the section "logging" of

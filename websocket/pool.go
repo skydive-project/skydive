@@ -24,7 +24,7 @@ import (
 	"sync/atomic"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 // SpeakerPool is the interface that Speaker pools have to implement.
