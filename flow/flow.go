@@ -1235,6 +1235,54 @@ func PacketSeqFromSFlowSample(sample *layers.SFlowFlowSample, bpf *BPF, defragge
 	return pss
 }
 
+// lookupPath lookup through the given obj according to the given path
+// return the value found if the kind matches
+func lookupPath(obj interface{}, path string, kind reflect.Kind) (reflect.Value, bool) {
+	nodes := strings.Split(path, ".")
+
+	var name string
+	value := reflect.ValueOf(obj)
+
+LOOP:
+	for _, node := range nodes {
+		name = node
+		if value.Kind() == reflect.Struct {
+			t := value.Type()
+
+			for i := 0; i != t.NumField(); i++ {
+				if t.Field(i).Name == node {
+					value = value.Field(i)
+					if value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr {
+						value = value.Elem()
+					}
+
+					continue LOOP
+				}
+			}
+		} else {
+			break LOOP
+		}
+	}
+
+	if name != nodes[len(nodes)-1] {
+		return value, false
+	}
+
+	if kind == reflect.Interface {
+		return value, true
+	}
+
+	// convert result kind to int for all size of interger as then
+	// only a int64 version will be retrieve by value.Int()
+	rk := value.Kind()
+	switch rk {
+	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		rk = reflect.Int
+	}
+
+	return value, rk == kind
+}
+
 // GetFieldString returns the value of a Flow field
 func (f *Flow) GetFieldString(field string) (string, error) {
 	fields := strings.Split(field, ".")
@@ -1289,7 +1337,7 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 
 	// check extra layers
 	if _, ok := extraLayersMap[name]; ok {
-		if value, ok := common.LookupPath(*f, field, reflect.String); ok {
+		if value, ok := lookupPath(*f, field, reflect.String); ok {
 			return value.String(), nil
 		}
 	}
@@ -1355,7 +1403,7 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 
 	// check extra layers
 	if _, ok := extraLayersMap[name]; ok {
-		if value, ok := common.LookupPath(*f, field, reflect.Int); ok && value.IsValid() {
+		if value, ok := lookupPath(*f, field, reflect.Int); ok && value.IsValid() {
 			if i, err := common.ToInt64(value.Interface()); err == nil {
 				return i, nil
 			}
@@ -1386,7 +1434,7 @@ func (f *Flow) getFieldInterface(field string) (_ interface{}, err error) {
 
 	// check extra layers
 	if _, ok := extraLayersMap[field]; ok {
-		if value, ok := common.LookupPath(*f, field, reflect.Struct); ok && value.IsValid() {
+		if value, ok := lookupPath(*f, field, reflect.Struct); ok && value.IsValid() {
 			return value.Interface(), nil
 		}
 	}
@@ -1438,6 +1486,45 @@ func (f *Flow) MatchString(key string, predicate common.StringPredicate) bool {
 
 var flowFieldKeys []string
 
+func structFieldKeys(t reflect.Type, prefix string) []string {
+	var fFields []string
+	for i := 0; i < t.NumField(); i++ {
+		vField := t.Field(i)
+		tField := vField.Type
+
+		// ignore XXX fields as they are considered as private
+		if strings.HasPrefix(vField.Name, "XXX_") {
+			continue
+		}
+
+		vName := prefix + vField.Name
+
+		for tField.Kind() == reflect.Ptr {
+			tField = tField.Elem()
+		}
+
+		switch tField.Kind() {
+		case reflect.Struct:
+			fFields = append(fFields, structFieldKeys(tField, vName+".")...)
+		case reflect.Slice:
+			fFields = append(fFields, vName)
+
+			se := tField.Elem()
+			if se.Kind() == reflect.Ptr {
+				se = se.Elem()
+			}
+
+			if se.Kind() == reflect.Struct {
+				fFields = append(fFields, structFieldKeys(se, vName+".")...)
+			}
+		default:
+			fFields = append(fFields, vName)
+		}
+	}
+
+	return fFields
+}
+
 func init() {
-	flowFieldKeys = common.StructFieldKeys(Flow{})
+	flowFieldKeys = structFieldKeys(reflect.TypeOf(Flow{}), "")
 }
