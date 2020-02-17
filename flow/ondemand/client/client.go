@@ -25,7 +25,6 @@ import (
 
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	etcd "github.com/skydive-project/skydive/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/gremlin"
@@ -76,7 +75,7 @@ func (h *onDemandFlowHandler) GetNodeResources(resource types.Resource) []client
 
 	query := capture.GremlinQuery
 	query += fmt.Sprintf(".Dedup().Has('Captures.ID', NEE('%s'))", resource.GetID())
-	if capture.Type != "" && !common.CheckProbeCapabilities(capture.Type, common.MultipleOnSameNodeCapability) {
+	if capture.Type != "" && !probes.CheckProbeCapabilities(capture.Type, probes.MultipleOnSameNodeCapability) {
 		query += fmt.Sprintf(".Has('Captures.Type', NEE('%s'))", capture.Type)
 	}
 	query += h.nodeTypeQuery
@@ -109,9 +108,9 @@ func (h *onDemandFlowHandler) applyGremlinExpr(query string) []interface{} {
 
 // NewOnDemandFlowProbeClient creates a new ondemand probe client based on API, graph and websocket
 func NewOnDemandFlowProbeClient(g *graph.Graph, ch api.WatchableHandler, agentPool ws.StructSpeakerPool, subscriberPool ws.StructSpeakerPool, etcdClient *etcd.Client) *client.OnDemandClient {
-	nodeTypes := make([]interface{}, len(common.CaptureTypes))
+	nodeTypes := make([]interface{}, len(probes.CaptureTypes))
 	i := 0
-	for nodeType := range common.CaptureTypes {
+	for nodeType := range probes.CaptureTypes {
 		nodeTypes[i] = nodeType
 		i++
 	}

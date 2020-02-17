@@ -28,6 +28,7 @@ import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/flow/storage"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
@@ -829,7 +830,7 @@ func (s *FlowGremlinTraversalStep) makeSearchQuery() (fsq filters.SearchQuery, e
 func captureAllowedNodes(nodes []*graph.Node) []*graph.Node {
 	var allowed []*graph.Node
 	for _, n := range nodes {
-		if tp, _ := n.GetFieldString("Type"); tp != "" && common.IsCaptureAllowed(tp) {
+		if tp, _ := n.GetFieldString("Type"); tp != "" && probes.IsCaptureAllowed(tp) {
 			allowed = append(allowed, n)
 		}
 	}

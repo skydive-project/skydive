@@ -512,7 +512,7 @@ func RunTest(t *testing.T, test *Test) {
 
 			for _, node := range nodes {
 				tp, err := node.GetFieldString("Type")
-				if err != nil || !common.IsCaptureAllowed(tp) {
+				if err != nil || !probes.IsCaptureAllowed(tp) {
 					continue
 				}
 

@@ -495,7 +495,7 @@ func (o *ovsMirrorInterfaceHandler) onNodeEvent(n *graph.Node) {
 		return
 	}
 
-	subProbeTypes, ok := common.CaptureTypes["internal"]
+	subProbeTypes, ok := probes.CaptureTypes["internal"]
 	if !ok {
 		o.oph.Ctx.Logger.Errorf("Unable to find probe for this node type: internal")
 		return
