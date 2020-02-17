@@ -24,7 +24,7 @@ import (
 
 	localconn "github.com/networkservicemesh/networkservicemesh/controlplane/api/local/connection"
 	remoteconn "github.com/networkservicemesh/networkservicemesh/controlplane/api/remote/connection"
-	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/logging"
 )

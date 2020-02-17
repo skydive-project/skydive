@@ -17,7 +17,7 @@ package bess
 import (
 	"context"
 	"fmt"
-	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	"google.golang.org/grpc"
 	"strings"
 	"sync"

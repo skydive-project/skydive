@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/storage/orientdb"
 	"github.com/skydive-project/skydive/graffiti/logging"
 )

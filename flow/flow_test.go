@@ -31,7 +31,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
-	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	fl "github.com/skydive-project/skydive/flow/layers"
 )
 

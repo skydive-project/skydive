@@ -24,7 +24,7 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/filters"
 )
 
 func TestFlowCreateUpdate(t *testing.T) {

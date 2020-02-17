@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/filters"
 )
 
 // Metadata describes the graph node metadata type. It implements ElementMatcher

@@ -34,7 +34,7 @@ import (
 	esconfig "github.com/olivere/elastic/config"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/storage"
 	"github.com/skydive-project/skydive/graffiti/logging"
 )

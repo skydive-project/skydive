@@ -19,7 +19,7 @@ package flow
 
 import (
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/filters"
 )
 
 // MergeContext describes a mechanism to merge flow sets

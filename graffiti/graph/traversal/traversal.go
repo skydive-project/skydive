@@ -27,7 +27,7 @@ import (
 
 	"github.com/mitchellh/hashstructure"
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 )
 

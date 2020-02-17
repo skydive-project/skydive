@@ -21,7 +21,7 @@ package filters;
 
 import "gogoproto/gogo.proto";
 
-option go_package = "github.com/skydive-project/skydive/filters";
+option go_package = "github.com/skydive-project/skydive/graffiti/filters";
 option (gogoproto.protosizer_all) = true;
 option (gogoproto.sizer_all) = false;
 
