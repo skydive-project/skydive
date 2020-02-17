@@ -25,8 +25,8 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/ondemand"
-	"github.com/skydive-project/skydive/ondemand/server"
+	"github.com/skydive-project/skydive/graffiti/ondemand"
+	"github.com/skydive-project/skydive/graffiti/ondemand/server"
 	"github.com/skydive-project/skydive/probe"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 )

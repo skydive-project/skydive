@@ -24,7 +24,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/skydive-project/skydive/js"
-	"github.com/skydive-project/skydive/rbac"
+	"github.com/skydive-project/skydive/graffiti/rbac"
 
 	auth "github.com/abbot/go-http-auth"
 	"github.com/skydive-project/skydive/api/types"

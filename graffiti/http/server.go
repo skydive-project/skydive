@@ -33,7 +33,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/logging"
-	"github.com/skydive-project/skydive/rbac"
+	"github.com/skydive-project/skydive/graffiti/rbac"
 )
 
 // PathPrefix describes the prefix of the path of an URL

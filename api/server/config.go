@@ -11,7 +11,7 @@ import (
 	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
-	"github.com/skydive-project/skydive/rbac"
+	"github.com/skydive-project/skydive/graffiti/rbac"
 )
 
 type configAPI struct {

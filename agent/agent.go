@@ -32,11 +32,10 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
+	"github.com/skydive-project/skydive/graffiti/ondemand/server"
 	"github.com/skydive-project/skydive/graffiti/pod"
-	"github.com/skydive-project/skydive/graffiti/websocket"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
-	"github.com/skydive-project/skydive/ondemand/server"
 	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
@@ -77,7 +76,7 @@ func NewAnalyzerStructClientPool(authOpts *shttp.AuthenticationOpts) (*ws.Struct
 
 	for _, sa := range addresses {
 		url := config.GetURL("ws", sa.Addr, sa.Port, "/ws/agent/topology")
-		c, err := config.NewWSClient(common.AgentService, url, websocket.ClientOpts{AuthOpts: authOpts, Protocol: websocket.ProtobufProtocol})
+		c, err := config.NewWSClient(common.AgentService, url, ws.ClientOpts{AuthOpts: authOpts, Protocol: ws.ProtobufProtocol})
 		if err != nil {
 			return nil, err
 		}
@@ -187,7 +186,7 @@ func NewAgent() (*Agent, error) {
 	}
 
 	opts := pod.Opts{
-		WebsocketOpts: websocket.ServerOpts{
+		WebsocketOpts: ws.ServerOpts{
 			WriteCompression: true,
 			QueueSize:        10000,
 			PingDelay:        2 * time.Second,
