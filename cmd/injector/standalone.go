@@ -26,7 +26,6 @@ import (
 
 	"github.com/skydive-project/go-debouncer"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/packetinjector"
 	pi "github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/rawsocket"
