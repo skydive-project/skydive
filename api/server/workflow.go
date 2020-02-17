@@ -26,7 +26,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/skydive-project/skydive/api/types"
-	shttp "github.com/skydive-project/skydive/http"
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/statics"
 )

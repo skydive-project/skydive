@@ -51,7 +51,7 @@ import (
 	etcd "github.com/coreos/etcd/client"
 
 	"github.com/skydive-project/skydive/common"
-	shttp "github.com/skydive-project/skydive/http"
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/rbac"
 	"github.com/skydive-project/skydive/validator"

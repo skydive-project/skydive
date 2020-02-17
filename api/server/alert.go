@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/skydive-project/skydive/api/types"
-	shttp "github.com/skydive-project/skydive/http"
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 )
 
 // AlertResourceHandler aims to creates and manage a new Alert.

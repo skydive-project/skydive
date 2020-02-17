@@ -38,7 +38,7 @@ import (
 	cmdconfig "github.com/skydive-project/skydive/cmd/config"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
 )
 

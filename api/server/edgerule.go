@@ -23,7 +23,7 @@ package server
 import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	shttp "github.com/skydive-project/skydive/http"
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 )
 
 // EdgeRuleResourceHandler describes a edge rule resource handler

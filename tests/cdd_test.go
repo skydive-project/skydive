@@ -29,7 +29,7 @@ import (
 	"github.com/avast/retry-go"
 	"github.com/skydive-project/skydive/common"
 	g "github.com/skydive-project/skydive/gremlin"
-	shttp "github.com/skydive-project/skydive/http"
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/tebeka/selenium"
 )
 

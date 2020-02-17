@@ -19,7 +19,7 @@ package client
 
 import (
 	"github.com/skydive-project/skydive/config"
-	shttp "github.com/skydive-project/skydive/http"
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
 )
 

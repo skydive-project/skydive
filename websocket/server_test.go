@@ -27,7 +27,7 @@ import (
 	"github.com/avast/retry-go"
 
 	"github.com/skydive-project/skydive/common"
-	shttp "github.com/skydive-project/skydive/http"
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 )
 
 type fakeServerSubscriptionHandler struct {

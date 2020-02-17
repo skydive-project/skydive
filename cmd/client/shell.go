@@ -28,7 +28,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/skydive-project/skydive/api/client"
-	shttp "github.com/skydive-project/skydive/http"
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/js"
 	"github.com/skydive-project/skydive/graffiti/logging"
 )

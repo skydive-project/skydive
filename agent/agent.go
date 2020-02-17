@@ -32,7 +32,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/pod"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
-	shttp "github.com/skydive-project/skydive/http"
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/ondemand/server"
 	"github.com/skydive-project/skydive/packetinjector"
