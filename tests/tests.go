@@ -45,6 +45,7 @@ import (
 	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/profiling"
 )
 
 const (
@@ -844,7 +845,7 @@ var initStandalone = false
 
 func runStandalone() {
 	if profile {
-		go common.Profile()
+		go profiling.Profile("/tmp/skydive-test-")
 	}
 
 	server, err := analyzer.NewServerFromConfig()

@@ -17,8 +17,8 @@
  *
  */
 
-package common
+package profing
 
 // Profile start profiling loop
-func Profile() {
+func Profile(pathPrefix string) {
 }
