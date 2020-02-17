@@ -26,6 +26,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/safchain/insanelock"
+
 	"github.com/mitchellh/mapstructure"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -152,7 +154,7 @@ type blockdevInfo struct {
 
 // ProbeHandler describes a block device graph that enhances the graph
 type ProbeHandler struct {
-	common.RWMutex
+	insanelock.RWMutex
 	Ctx         tp.Context
 	blockdevMap map[string]blockdevInfo
 	wg          sync.WaitGroup

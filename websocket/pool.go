@@ -23,6 +23,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/safchain/insanelock"
+
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 )
@@ -46,12 +48,12 @@ type PoolOpts struct {
 
 // Pool is a connection container. It embed a list of Speaker.
 type Pool struct {
-	common.RWMutex
+	insanelock.RWMutex
 	name              string
 	wg                sync.WaitGroup
 	running           atomic.Value
 	eventHandlers     []SpeakerEventHandler
-	eventHandlersLock common.RWMutex
+	eventHandlersLock insanelock.RWMutex
 	speakers          []Speaker
 	opts              PoolOpts
 }

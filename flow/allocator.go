@@ -21,12 +21,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/safchain/insanelock"
 )
 
 // TableAllocator aims to create/allocate a new flow table
 type TableAllocator struct {
-	common.RWMutex
+	insanelock.RWMutex
 	updateEvery time.Duration
 	expireAfter time.Duration
 	sender      Sender

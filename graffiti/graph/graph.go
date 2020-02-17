@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	uuid "github.com/nu7hatch/gouuid"
+	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/common"
 )
@@ -129,7 +130,7 @@ var liveContext = Context{TimePoint: true}
 // Graph describes the graph object based on events and context mechanism
 // An associated backend is used as storage
 type Graph struct {
-	common.RWMutex
+	insanelock.RWMutex
 	eventHandler *EventHandler
 	backend      Backend
 	context      Context
@@ -191,7 +192,7 @@ type ListenerHandler interface {
 
 // EventHandler describes an object that notifies listeners with graph events
 type EventHandler struct {
-	common.RWMutex
+	insanelock.RWMutex
 	eventListeners       []EventListener
 	eventChan            chan graphEvent
 	eventConsumed        bool

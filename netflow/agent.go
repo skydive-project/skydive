@@ -24,8 +24,10 @@ import (
 	"net"
 	"time"
 
+	"github.com/safchain/insanelock"
 	netflow "github.com/VerizonDigital/vflow/netflow/v5"
 	"github.com/google/gopacket/layers"
+
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
@@ -43,7 +45,7 @@ var (
 
 // Agent describes NetFlow agent probe
 type Agent struct {
-	common.RWMutex
+	insanelock.RWMutex
 	UUID      string
 	Addr      string
 	Port      int
@@ -54,7 +56,7 @@ type Agent struct {
 
 // AgentAllocator describes an NetFlow agent allocator to manage multiple NetFlow agent probe
 type AgentAllocator struct {
-	common.RWMutex
+	insanelock.RWMutex
 	portAllocator *common.PortAllocator
 	agents        []*Agent
 }

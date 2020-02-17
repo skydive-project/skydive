@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
@@ -138,7 +139,7 @@ type Speaker interface {
 
 // Conn is the connection object of a Speaker
 type Conn struct {
-	common.RWMutex
+	insanelock.RWMutex
 	ConnStatus
 	flush            chan struct{}
 	send             chan []byte

@@ -25,15 +25,15 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/safchain/insanelock"
 	"github.com/socketplane/libovsdb"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 )
 
 // OvsClient describes an OVS database client connection
 type OvsClient struct {
-	common.RWMutex
+	insanelock.RWMutex
 	ovsdb     *libovsdb.OvsdbClient
 	connected uint64
 }
@@ -108,7 +108,7 @@ func (d *DefaultOvsMonitorHandler) OnOvsUpdate(monitor *OvsMonitor, row *libovsd
 
 // OvsMonitor describes an OVS client Monitor
 type OvsMonitor struct {
-	common.RWMutex
+	insanelock.RWMutex
 	Protocol        string
 	Target          string
 	OvsClient       *OvsClient

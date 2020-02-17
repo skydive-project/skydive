@@ -23,8 +23,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/safchain/insanelock"
+
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/ondemand"
@@ -41,7 +42,7 @@ type activeTask struct {
 
 // OnDemandServer describes an ondemand task server based on websocket
 type OnDemandServer struct {
-	common.RWMutex
+	insanelock.RWMutex
 	graph.DefaultGraphListener
 	ws.DefaultSpeakerEventHandler
 	Graph        *graph.Graph

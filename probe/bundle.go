@@ -21,6 +21,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/safchain/insanelock"
+
 	"github.com/skydive-project/skydive/common"
 )
 
@@ -51,7 +53,7 @@ type StatusReporter interface {
 
 // Bundle describes a bundle of probes (topology of flow)
 type Bundle struct {
-	common.RWMutex
+	insanelock.RWMutex
 	Handlers map[string]Handler
 }
 

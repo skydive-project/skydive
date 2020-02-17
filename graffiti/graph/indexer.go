@@ -19,8 +19,7 @@ package graph
 
 import (
 	"github.com/cnf/structhash"
-
-	"github.com/skydive-project/skydive/common"
+	"github.com/safchain/insanelock"
 )
 
 // NodeHasher describes a callback that is called to map a node to
@@ -41,7 +40,7 @@ func Hash(values ...interface{}) string {
 // Indexer provides a way to index graph nodes. A node can be mapped to
 // multiple hash,value pairs. A hash can also be mapped to multiple nodes.
 type Indexer struct {
-	common.RWMutex
+	insanelock.RWMutex
 	DefaultGraphListener
 	graph           *Graph
 	eventHandler    *EventHandler

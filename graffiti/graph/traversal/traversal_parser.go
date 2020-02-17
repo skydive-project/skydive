@@ -26,6 +26,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/safchain/insanelock"
+
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 )
@@ -179,7 +181,7 @@ var (
 // GremlinTraversalParser describes a parser of gremlin graph expression
 // The mechanism is based on Reduce and Exec steps
 type GremlinTraversalParser struct {
-	common.RWMutex
+	insanelock.RWMutex
 	scanner *GremlinTraversalScanner
 	buf     struct {
 		tok Token

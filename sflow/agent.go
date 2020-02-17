@@ -26,6 +26,7 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
@@ -45,7 +46,7 @@ var (
 
 // Agent describes SFlow agent probe
 type Agent struct {
-	common.RWMutex
+	insanelock.RWMutex
 	UUID       string
 	FlowTable  *flow.Table
 	Conn       *net.UDPConn
@@ -59,7 +60,7 @@ type Agent struct {
 
 // AgentAllocator describes an SFlow agent allocator to manage multiple SFlow agent probe
 type AgentAllocator struct {
-	common.RWMutex
+	insanelock.RWMutex
 	portAllocator *common.PortAllocator
 	agents        []*Agent
 }

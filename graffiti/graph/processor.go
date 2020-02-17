@@ -18,7 +18,7 @@
 package graph
 
 import (
-	"github.com/skydive-project/skydive/common"
+	"github.com/safchain/insanelock"
 )
 
 // NodeAction is a callback to perform on a node. The action is kept
@@ -36,7 +36,7 @@ type deferred struct {
 // Processor encapsulates an indexer that will process NodeActions
 // on the nodes that filter
 type Processor struct {
-	common.RWMutex
+	insanelock.RWMutex
 	DefaultGraphListener
 	*MetadataIndexer
 	actions map[string][]deferred

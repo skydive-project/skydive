@@ -20,10 +20,11 @@ package flow
 import (
 	"time"
 
+	"github.com/safchain/insanelock"
+
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/ip4defrag"
 	"github.com/google/gopacket/layers"
-	"github.com/skydive-project/skydive/common"
 )
 
 type ipv4Key struct {
@@ -39,7 +40,7 @@ type IPDefraggerMetric struct {
 
 // IPDefragger defines an IPv4 defragmenter
 type IPDefragger struct {
-	common.RWMutex
+	insanelock.RWMutex
 	defragger *ip4defrag.IPv4Defragmenter
 	dfmetrics map[ipv4Key]*IPDefraggerMetric
 }

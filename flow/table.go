@@ -22,10 +22,12 @@ import (
 	"sync"
 	"time"
 
+
+	"github.com/safchain/insanelock"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-
 	"github.com/hashicorp/golang-lru/simplelru"
+
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
@@ -81,7 +83,7 @@ type Table struct {
 	query             chan *TableQuery
 	reply             chan []byte
 	state             common.ServiceState
-	lockState         common.RWMutex
+	lockState         insanelock.RWMutex
 	wg                sync.WaitGroup
 	quit              chan bool
 	updateEvery       time.Duration

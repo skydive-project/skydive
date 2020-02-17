@@ -32,6 +32,7 @@ import (
 	"time"
 
 	fsnotify "gopkg.in/fsnotify/fsnotify.v1"
+	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -44,7 +45,7 @@ import (
 
 // ProbeHandler describes a netlink probe in a network namespace
 type ProbeHandler struct {
-	common.RWMutex
+	insanelock.RWMutex
 	Ctx             tp.Context
 	nlHandler       *netlink.ProbeHandler
 	pathToNetNS     map[string]*NetNs

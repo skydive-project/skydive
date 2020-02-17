@@ -28,6 +28,7 @@ import (
 	proto "github.com/gogo/protobuf/proto"
 	"github.com/gorilla/websocket"
 	uuid "github.com/nu7hatch/gouuid"
+	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
@@ -233,7 +234,7 @@ type SpeakerStructMessageDispatcher interface {
 }
 
 type structSpeakerEventDispatcher struct {
-	eventHandlersLock common.RWMutex
+	eventHandlersLock insanelock.RWMutex
 	nsEventHandlers   map[string][]SpeakerStructMessageHandler
 }
 
@@ -319,7 +320,7 @@ type StructSpeaker struct {
 	Speaker
 	*structSpeakerEventDispatcher
 	nsSubscribed   map[string]bool
-	replyChanMutex common.RWMutex
+	replyChanMutex insanelock.RWMutex
 	replyChan      map[string]chan *StructMessage
 	logger         logging.Logger
 }

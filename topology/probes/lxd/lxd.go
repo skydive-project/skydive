@@ -30,6 +30,7 @@ import (
 	lxd "github.com/lxc/lxd/client"
 	"github.com/mitchellh/mapstructure"
 	"github.com/vishvananda/netns"
+	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -59,7 +60,7 @@ type loggingEvent struct {
 
 // ProbeHandler describes a LXD topology graph that enhance the graph
 type ProbeHandler struct {
-	common.RWMutex
+	insanelock.RWMutex
 	Ctx          tp.Context
 	nsProbe      *ns.ProbeHandler
 	hostNs       netns.NsHandle

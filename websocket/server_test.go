@@ -24,12 +24,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/safchain/insanelock"
+
 	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
 )
 
 type fakeServerSubscriptionHandler struct {
-	common.RWMutex
+	insanelock.RWMutex
 	DefaultSpeakerEventHandler
 	t         *testing.T
 	server    *Server
@@ -38,7 +40,7 @@ type fakeServerSubscriptionHandler struct {
 }
 
 type fakeClientSubscriptionHandler struct {
-	common.RWMutex
+	insanelock.RWMutex
 	DefaultSpeakerEventHandler
 	t         *testing.T
 	received  int

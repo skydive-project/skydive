@@ -19,6 +19,8 @@ package common
 
 import (
 	"errors"
+
+	"github.com/safchain/insanelock"
 )
 
 var (
@@ -30,7 +32,7 @@ var (
 
 // PortAllocator describes a threads safe port list that can be allocated
 type PortAllocator struct {
-	RWMutex
+	insanelock.RWMutex
 	MinPort int
 	MaxPort int
 	PortMap map[int]bool

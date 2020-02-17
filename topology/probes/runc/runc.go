@@ -33,6 +33,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/vishvananda/netns"
+	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -44,7 +45,7 @@ import (
 
 // ProbeHandler describes a Docker topology graph that enhance the graph
 type ProbeHandler struct {
-	common.RWMutex
+	insanelock.RWMutex
 	*ns.ProbeHandler
 	state          common.ServiceState
 	hostNs         netns.NsHandle
@@ -52,7 +53,7 @@ type ProbeHandler struct {
 	watcher        *fsnotify.Watcher
 	paths          []string
 	containers     map[string]*container
-	containersLock common.RWMutex
+	containersLock insanelock.RWMutex
 }
 
 type container struct {

@@ -67,7 +67,7 @@ ifeq ($(WITH_CDD), true)
 endif
 
 ifeq ($(WITH_MUTEX_DEBUG), true)
-  BUILD_TAGS+=mutexdebug
+  BUILD_TAGS+=insanelock
 endif
 
 ifeq ($(WITH_K8S), true)

@@ -17,7 +17,7 @@
 
 package websocket
 
-import "github.com/skydive-project/skydive/common"
+import "github.com/safchain/insanelock"
 
 // MasterEventHandler is the interface to be implemented by master election listeners.
 type MasterEventHandler interface {
@@ -27,7 +27,7 @@ type MasterEventHandler interface {
 // MasterElection provides a mechanism based on etcd to elect a master from a
 // SpeakerPool.
 type MasterElection struct {
-	common.RWMutex
+	insanelock.RWMutex
 	DefaultSpeakerEventHandler
 	pool          SpeakerPool
 	master        Speaker

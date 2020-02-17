@@ -20,6 +20,8 @@ package graph
 import (
 	"reflect"
 
+	"github.com/safchain/insanelock"
+
 	"github.com/skydive-project/skydive/common"
 )
 
@@ -121,7 +123,7 @@ func (dl *DefaultLinker) GetBALinks(node *Node) []*Edge {
 // 2 graph events sources to determine if resources from one source should be
 // linked with resources of the other source.
 type ResourceLinker struct {
-	common.RWMutex
+	insanelock.RWMutex
 	g              *Graph
 	abListener     *listener
 	baListener     *listener
