@@ -101,11 +101,25 @@ func (fs *FlowSet) mergeDedup(ofs *FlowSet, field string) error {
 // Merge merges two FlowSet. If Sorted both of the FlowSet have to be sorted
 // first. If Dedup both of the FlowSet have to be dedup first too.
 func (fs *FlowSet) Merge(ofs *FlowSet, context MergeContext) error {
-	fs.Start = common.MinInt64(fs.Start, ofs.Start)
+	minInt64 := func(a, b int64) int64 {
+		if a < b {
+			return a
+		}
+		return b
+	}
+
+	maxInt64 := func(a, b int64) int64 {
+		if a > b {
+			return a
+		}
+		return b
+	}
+
+	fs.Start = minInt64(fs.Start, ofs.Start)
 	if fs.Start == 0 {
 		fs.Start = ofs.Start
 	}
-	fs.End = common.MaxInt64(fs.End, ofs.End)
+	fs.End = maxInt64(fs.End, ofs.End)
 
 	var err error
 	if context.Sort {
