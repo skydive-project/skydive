@@ -30,7 +30,6 @@ import (
 	"github.com/shirou/gopsutil/host"
 	"github.com/spf13/viper"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
@@ -63,7 +62,7 @@ func createRootNode(g *graph.Graph) (*graph.Node, error) {
 
 	// Fill the metadata from the configuration file
 	if configMetadata := config.Get("agent.metadata"); configMetadata != nil {
-		configMetadata, ok := common.NormalizeValue(configMetadata).(map[string]interface{})
+		configMetadata, ok := graph.NormalizeValue(configMetadata).(map[string]interface{})
 		if !ok {
 			return nil, errors.New("agent.metadata has wrong format")
 		}

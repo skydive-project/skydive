@@ -19,8 +19,6 @@ package graph
 
 import (
 	"reflect"
-
-	"github.com/skydive-project/skydive/common"
 )
 
 // MetadataTransaction describes a metadata transaction in the graph
@@ -67,7 +65,7 @@ func (t *MetadataTransaction) Commit() error {
 	}
 
 	for _, k := range t.removes {
-		updated = common.DelField(e.Metadata, k) || updated
+		updated = e.Metadata.DelField(k) || updated
 	}
 	if !updated {
 		return nil

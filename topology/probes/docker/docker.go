@@ -29,10 +29,9 @@ import (
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
-	"github.com/vishvananda/netns"
 	"github.com/safchain/insanelock"
+	"github.com/vishvananda/netns"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
@@ -112,7 +111,7 @@ func (p *ProbeHandler) registerContainer(id string) {
 	}
 
 	if len(info.Config.Labels) != 0 {
-		dockerMetadata.Labels = graph.Metadata(common.NormalizeValue(info.Config.Labels).(map[string]interface{}))
+		dockerMetadata.Labels = graph.Metadata(graph.NormalizeValue(info.Config.Labels).(map[string]interface{}))
 	}
 
 	p.Ctx.Graph.Lock()

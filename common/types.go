@@ -23,14 +23,10 @@ import (
 	"fmt"
 	"math"
 	"net"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/fatih/structs"
-	"github.com/mohae/deepcopy"
 )
 
 var (
@@ -79,44 +75,6 @@ type Getter interface {
 	MatchString(field string, predicate StringPredicate) bool
 }
 
-// NormalizeValue returns a version of the passed value
-// that can be safely marshalled to JSON
-func NormalizeValue(obj interface{}) interface{} {
-	obj = deepcopy.Copy(obj)
-	if structs.IsStruct(obj) {
-		obj = structs.Map(obj)
-	}
-	switch v := obj.(type) {
-	case map[string]interface{}:
-		m := make(map[string]interface{}, len(v))
-		for key, value := range v {
-			SetMapField(m, key, NormalizeValue(value))
-		}
-		return m
-	case map[interface{}]interface{}:
-		m := make(map[string]interface{}, len(v))
-		for key, value := range v {
-			SetMapField(m, key.(string), NormalizeValue(value))
-		}
-		return m
-	case map[string]string:
-		m := make(map[string]interface{}, len(v))
-		for key, value := range v {
-			SetMapField(m, key, value)
-		}
-		return m
-	case []interface{}:
-		for i, val := range v {
-			v[i] = NormalizeValue(val)
-		}
-	case string:
-		return v
-	case nil:
-		return ""
-	}
-	return obj
-}
-
 // UnixMillis returns the current time in miliseconds
 func UnixMillis(t time.Time) int64 {
 	return t.UTC().UnixNano() / 1000000
@@ -147,124 +105,6 @@ type Metric interface {
 	GetLast() int64
 	SetLast(last int64)
 	IsZero() bool
-}
-
-// SetMapField set a value in a tree based on dot key ("a.b.c.d" = "ok")
-func SetMapField(obj map[string]interface{}, k string, v interface{}) bool {
-	components := strings.Split(k, ".")
-	for n, component := range components {
-		if n == len(components)-1 {
-			obj[component] = v
-		} else {
-			m, ok := obj[component]
-			if !ok {
-				m := make(map[string]interface{})
-				obj[component] = m
-				obj = m
-			} else if obj, ok = m.(map[string]interface{}); !ok {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-// DelField deletes a value in a tree based on dot key
-func DelField(obj map[string]interface{}, k string) bool {
-	components := strings.Split(k, ".")
-	o, ok := obj[components[0]]
-	if !ok {
-		return false
-	}
-	if len(components) == 1 {
-		oldLength := len(obj)
-		delete(obj, k)
-		return oldLength != len(obj)
-	}
-
-	object, ok := o.(map[string]interface{})
-	if !ok {
-		return false
-	}
-	removed := DelField(object, strings.SplitN(k, ".", 2)[1])
-	if removed && len(object) == 0 {
-		delete(obj, components[0])
-	}
-
-	return removed
-}
-
-// GetMapField retrieves a value from a tree from the dot key like "a.b.c.d"
-func GetMapField(obj map[string]interface{}, k string) (interface{}, error) {
-	components := strings.Split(k, ".")
-	for n, component := range components {
-		i, ok := obj[component]
-		if !ok {
-			return nil, ErrFieldNotFound
-		}
-
-		if n == len(components)-1 {
-			return i, nil
-		}
-
-		subkey := strings.Join(components[n+1:], ".")
-
-		switch i.(type) {
-		case Getter:
-			return i.(Getter).GetField(subkey)
-		case []interface{}:
-			var results []interface{}
-			for _, v := range i.([]interface{}) {
-				switch v := v.(type) {
-				case Getter:
-					if obj, err := v.(Getter).GetField(subkey); err == nil {
-						results = append(results, obj)
-					}
-				case map[string]interface{}:
-					if obj, err := GetMapField(v, subkey); err == nil {
-						results = append(results, obj)
-					}
-				}
-			}
-			return results, nil
-		case map[string]interface{}:
-			obj = i.(map[string]interface{})
-		default:
-			return nil, fmt.Errorf("%s is not a supported type(%+v)", component, reflect.TypeOf(obj))
-		}
-	}
-
-	return obj, nil
-}
-
-func getFieldKeys(obj map[string]interface{}, path string) []string {
-	var fields []string
-
-	if path != "" {
-		path += "."
-	}
-
-	for k, v := range obj {
-		fields = append(fields, path+k)
-
-		switch v.(type) {
-		case Getter:
-			keys := v.(Getter).GetFieldKeys()
-			for _, subkey := range keys {
-				fields = append(fields, k+"."+subkey)
-			}
-		case map[string]interface{}:
-			subfields := getFieldKeys(v.(map[string]interface{}), path+k)
-			fields = append(fields, subfields...)
-		}
-	}
-
-	return fields
-}
-
-// GetMapFieldKeys returns all the keys using dot notation
-func GetMapFieldKeys(obj map[string]interface{}) []string {
-	return getFieldKeys(obj, "")
 }
 
 func splitToRanges(min, max int) []int {

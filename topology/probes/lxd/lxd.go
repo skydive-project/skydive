@@ -29,10 +29,9 @@ import (
 
 	lxd "github.com/lxc/lxd/client"
 	"github.com/mitchellh/mapstructure"
-	"github.com/vishvananda/netns"
 	"github.com/safchain/insanelock"
+	"github.com/vishvananda/netns"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
@@ -136,7 +135,7 @@ func (p *ProbeHandler) registerContainer(id string) {
 	}
 
 	if len(container.Config) != 0 {
-		metadata.Config = graph.Metadata(common.NormalizeValue(container.Config).(map[string]interface{}))
+		metadata.Config = graph.Metadata(graph.NormalizeValue(container.Config).(map[string]interface{}))
 	}
 
 	p.Ctx.Graph.Lock()
