@@ -26,8 +26,8 @@ import (
 	"github.com/skydive-project/skydive/flow/storage/orientdb"
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	es "github.com/skydive-project/skydive/graffiti/storage/elasticsearch"
 	"github.com/skydive-project/skydive/logging"
-	es "github.com/skydive-project/skydive/storage/elasticsearch"
 )
 
 // NewESConfig returns a new elasticsearch configuration for the given backend name
@@ -48,6 +48,7 @@ func NewESConfig(name ...string) es.Config {
 	cfg.AgeLimit = config.GetInt(path + ".index_age_limit")
 	cfg.IndicesLimit = config.GetInt(path + ".indices_to_keep")
 	cfg.NoSniffing = config.GetBool(path + ".disable_sniffing")
+	cfg.IndexPrefix = config.GetString(path + ".index_prefix")
 
 	return cfg
 }

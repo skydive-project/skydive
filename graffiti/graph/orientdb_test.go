@@ -28,8 +28,8 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
-	"github.com/skydive-project/skydive/storage"
-	"github.com/skydive-project/skydive/storage/orientdb"
+	"github.com/skydive-project/skydive/graffiti/storage"
+	"github.com/skydive-project/skydive/graffiti/storage/orientdb"
 )
 
 type op struct {

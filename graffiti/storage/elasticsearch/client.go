@@ -35,13 +35,12 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/storage"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/storage"
 )
 
 const (
 	schemaVersion  = "12"
-	indexPrefix    = "skydive"
 	minimalVersion = "5.5"
 )
 
@@ -53,6 +52,7 @@ type Config struct {
 	AgeLimit     int
 	IndicesLimit int
 	NoSniffing   bool
+	IndexPrefix  string
 }
 
 // ClientInterface describes the mechanism API of ElasticSearch database client
@@ -75,6 +75,7 @@ type Index struct {
 	Mapping   string
 	RollIndex bool
 	URL       string
+	Prefix    string
 }
 
 // Client describes a ElasticSearch client connection
@@ -103,18 +104,18 @@ func (i *Index) FullName() string {
 	if i.RollIndex {
 		suffix = "-000001"
 	}
-	return indexPrefix + "_" + i.Name + "_v" + schemaVersion + suffix
+	return i.Prefix + "_" + i.Name + "_v" + schemaVersion + suffix
 }
 
 // Alias returns the Alias of the index
 func (i *Index) Alias() string {
-	return indexPrefix + "_" + i.Name
+	return i.Prefix + "_" + i.Name
 }
 
 // IndexWildcard returns the Index wildcard search string used to all the indexes of an index
 // definition. Useful to request rolled over indexes.
 func (i *Index) IndexWildcard() string {
-	return indexPrefix + "_" + i.Name + "_v" + schemaVersion + "*"
+	return i.Prefix + "_" + i.Name + "_v" + schemaVersion + "*"
 }
 
 func (c *Client) createAliases(index Index) error {
@@ -138,7 +139,7 @@ func (c *Client) createIndices() error {
 	for _, index := range c.indices {
 		if exists, _ := c.esClient.IndexExists(index.FullName()).Do(context.Background()); !exists {
 			if _, err := c.esClient.CreateIndex(index.FullName()).Do(context.Background()); err != nil {
-				return fmt.Errorf("Unable to create the skydive index: %s", err)
+				return fmt.Errorf("Unable to create index %s: %s", index.FullName(), err)
 			}
 
 			if index.Mapping != "" {
@@ -318,7 +319,7 @@ func FormatFilter(filter *filters.Filter, mapKey string) elastic.Query {
 	return nil
 }
 
-// Index returns the skydive index
+// Index returns the current index
 func (c *Client) Index(index Index, id string, data interface{}) error {
 	if _, err := c.esClient.Index().Index(index.Alias()).Type(index.Type).Id(id).BodyJson(data).Do(context.Background()); err != nil {
 		return err

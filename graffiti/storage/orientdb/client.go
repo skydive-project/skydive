@@ -1,3 +1,5 @@
+//go:generate go run github.com/mailru/easyjson/easyjson $GOFILE
+
 /*
  * Copyright (C) 2016 Red Hat, Inc.
  *
@@ -32,7 +34,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
-	"github.com/skydive-project/skydive/storage"
+	"github.com/skydive-project/skydive/graffiti/storage"
 )
 
 // Result describes an orientdb request result
@@ -82,6 +84,7 @@ type Session struct {
 }
 
 // Error describes a OrientDB error
+// easyjson:json
 type Error struct {
 	Code    int    `json:"code"`
 	Reason  int    `json:"reason"`
@@ -89,11 +92,13 @@ type Error struct {
 }
 
 // Errors describes a list of OrientDB errors
+// easyjson:json
 type Errors struct {
 	Errors []Error `json:"errors"`
 }
 
 // Property describes a OrientDB property
+// easyjson:json
 type Property struct {
 	Name        string `json:"name,omitempty"`
 	Type        string `json:"type,omitempty"`
@@ -107,6 +112,7 @@ type Property struct {
 }
 
 // Index describes a OrientDB index
+// easyjson:json
 type Index struct {
 	Name   string   `json:"name"`
 	Type   string   `json:"type"`
@@ -114,6 +120,7 @@ type Index struct {
 }
 
 // ClassDefinition describes a OrientDB class definition
+// easyjson:json
 type ClassDefinition struct {
 	Name         string     `json:"name"`
 	SuperClass   string     `json:"superClass,omitempty"`
@@ -126,13 +133,15 @@ type ClassDefinition struct {
 }
 
 // DocumentClass describes OrientDB document
+// easyjson:json
 type DocumentClass struct {
 	Class ClassDefinition `json:"class"`
 }
 
 func parseError(body io.Reader) error {
 	var errs Errors
-	if err := common.JSONDecode(body, &errs); err != nil {
+	decoder := json.NewDecoder(body)
+	if err := decoder.Decode(&errs); err != nil {
 		return fmt.Errorf("Error while parsing error: %s (%s)", err, body)
 	}
 	var s string
