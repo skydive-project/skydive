@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avast/retry-go"
+
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	g "github.com/skydive-project/skydive/gremlin"
@@ -82,7 +84,7 @@ func makeHasArgsNode(node *graph.Node, args1 ...interface{}) []interface{} {
 
 func queryNodeCreation(t *testing.T, c *CheckContext, query g.QueryString) (node *graph.Node, err error) {
 	node = nil
-	err = common.Retry(func() error {
+	err = retry.Do(func() error {
 		const expectedNumNodes = 1
 
 		t.Logf("Executing query '%s'", query)
@@ -103,7 +105,7 @@ func queryNodeCreation(t *testing.T, c *CheckContext, query g.QueryString) (node
 			node = nodes[0]
 		}
 		return nil
-	}, k8sRetry, k8sDelay)
+	}, retry.Attempts(k8sRetry), retry.Delay(k8sDelay))
 	return
 }
 

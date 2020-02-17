@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/skydive-project/skydive/common"
 	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
@@ -169,7 +170,7 @@ func TestOverview(t *testing.T) {
 		}
 		ip3 := strings.Split(ipList3[0], "/")[0]
 
-		return common.Retry(func() error {
+		return retry.Do(func() error {
 			// do not check the direction as first packet could have been not seen
 			if err = sh.flowQuery(g.G.Flows().Has("Network", ip1, "Network", ip3)); err != nil {
 				return err
@@ -198,7 +199,7 @@ func TestOverview(t *testing.T) {
 				return fmt.Errorf("Network.A should be either '%s' or '%s' but got: %s", ip1, ip3, txt)
 			}
 			return nil
-		}, 10, time.Second)
+		}, retry.Attempts(10), retry.Delay(time.Second))
 	}
 
 	if err = verifyFlows(); err != nil {

@@ -28,6 +28,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/avast/retry-go"
 	version "github.com/hashicorp/go-version"
 	elastic "github.com/olivere/elastic"
 	esconfig "github.com/olivere/elastic/config"
@@ -395,15 +396,14 @@ func (c *Client) RollIndex() {
 
 // Start the Elasticsearch client background jobs
 func (c *Client) Start() {
-	retry := func() error {
+	retry.Do(func() error {
 		err := c.start()
 		if err == nil {
 			return nil
 		}
 		logging.GetLogger().Errorf("Elasticsearch not available: %s", err)
 		return err
-	}
-	common.Retry(retry, math.MaxInt64, time.Second)
+	}, retry.Attempts(math.MaxInt64), retry.Delay(time.Second))
 }
 
 // Stop Elasticsearch background client

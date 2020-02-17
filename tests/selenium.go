@@ -24,10 +24,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/tebeka/selenium"
 
 	gclient "github.com/skydive-project/skydive/api/client"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
@@ -67,13 +67,13 @@ func (s *seleniumHelper) login() error {
 }
 
 func (s *seleniumHelper) findElement(selection, xpath string) (el selenium.WebElement, err error) {
-	common.Retry(func() error {
+	retry.Do(func() error {
 		el, err = s.webdriver.FindElement(selection, xpath)
 		if err != nil || el == nil {
 			return fmt.Errorf("Failed to find element for %s (error: %+v)", xpath, err)
 		}
 		return nil
-	}, 10, time.Second)
+	}, retry.Attempts(10), retry.Delay(time.Second))
 
 	return
 }
@@ -123,7 +123,7 @@ func (s *seleniumHelper) clickOnNode(gremlin g.QueryString) error {
 		return err
 	}
 
-	return common.Retry(func() error {
+	return retry.Do(func() error {
 		el, err := s.webdriver.FindElement(selenium.ByXPATH, ".//*[@id='node-img-"+string(node.ID)+"']")
 		if err != nil {
 			return err
@@ -132,7 +132,7 @@ func (s *seleniumHelper) clickOnNode(gremlin g.QueryString) error {
 			return fmt.Errorf("Failed to click on source node: %s", err.Error())
 		}
 		return nil
-	}, 20, 200*time.Millisecond)
+	}, retry.Attempts(20), retry.Delay(200*time.Millisecond))
 }
 
 func (s *seleniumHelper) expand() error {
@@ -162,7 +162,7 @@ func (s *seleniumHelper) expandGroup(gremlin g.QueryString) error {
 		return err
 	}
 
-	err = common.Retry(func() error {
+	err = retry.Do(func() error {
 		el, err := s.findElement(selenium.ByXPATH, ".//*[@id='node-img-"+string(node.ID)+"']")
 		if err != nil {
 			return err
@@ -182,7 +182,7 @@ func (s *seleniumHelper) expandGroup(gremlin g.QueryString) error {
 		}
 
 		return nil
-	}, 40, 5*time.Millisecond)
+	}, retry.Attempts(40), retry.Delay(5*time.Millisecond))
 
 	if err != nil {
 		return err
@@ -195,7 +195,7 @@ func (s *seleniumHelper) getFlowRow(gremlin g.QueryString) (selenium.WebElement,
 	var flows []*flow.Flow
 	var err error
 
-	retry := func() error {
+	retryFn := func() error {
 		flows, err = s.gh.GetFlows(gremlin)
 		if err != nil {
 			return err
@@ -207,7 +207,7 @@ func (s *seleniumHelper) getFlowRow(gremlin g.QueryString) (selenium.WebElement,
 
 		return nil
 	}
-	if err = common.Retry(retry, 20, 200*time.Millisecond); err != nil {
+	if err = retry.Do(retryFn, retry.Attempts(20), retry.Delay(200*time.Millisecond)); err != nil {
 		time.Sleep(5 * time.Minute)
 
 		return nil, err
@@ -215,7 +215,7 @@ func (s *seleniumHelper) getFlowRow(gremlin g.QueryString) (selenium.WebElement,
 
 	// try to move to one of the flow
 	var el selenium.WebElement
-	retry = func() error {
+	retryFn = func() error {
 		for _, f := range flows {
 			el, err = s.webdriver.FindElement(selenium.ByXPATH, fmt.Sprintf(".//*[@id='flow-%s']", f.UUID))
 			if el != nil {
@@ -224,7 +224,7 @@ func (s *seleniumHelper) getFlowRow(gremlin g.QueryString) (selenium.WebElement,
 		}
 		return errors.New("Not found")
 	}
-	if err := common.Retry(retry, 20, 200*time.Millisecond); err != nil {
+	if err := retry.Do(retryFn, retry.Attempts(20), retry.Delay(200*time.Millisecond)); err != nil {
 		return nil, err
 	}
 
@@ -384,24 +384,24 @@ func (s *seleniumHelper) startGremlinCapture(gremlin g.QueryString) error {
 
 func (s *seleniumHelper) waitNotificationClose() error {
 	var notification selenium.WebElement
-	err := common.Retry(func() error {
+	err := retry.Do(func() error {
 		var err error
 		notification, err = s.findElement(selenium.ByXPATH, ".//*[@id='notification']")
 		return err
-	}, 50, time.Millisecond*100)
+	}, retry.Attempts(50), retry.Delay(time.Millisecond*100))
 
 	// notification not found thus no need to wait
 	if err != nil {
 		return nil
 	}
 
-	err = common.Retry(func() error {
+	err = retry.Do(func() error {
 		el, _ := notification.FindElement(selenium.ByClassName, "close")
 		if el != nil {
 			return errors.New("notification still there")
 		}
 		return nil
-	}, 10, time.Second)
+	}, retry.Attempts(10), retry.Delay(time.Second))
 	if err != nil {
 		return err
 	}
@@ -582,7 +582,7 @@ func newSeleniumHelper(t *testing.T, analyzerAddr string, analyzerPort int, auth
 	execCmds(t, setupCmds...)
 
 	var webdriver selenium.WebDriver
-	err := common.Retry(func() error {
+	err := retry.Do(func() error {
 		var err error
 
 		caps := selenium.Capabilities{"browserName": "chrome"}
@@ -594,7 +594,7 @@ func newSeleniumHelper(t *testing.T, analyzerAddr string, analyzerPort int, auth
 		webdriver.SetAsyncScriptTimeout(5 * time.Second)
 
 		return nil
-	}, 60, time.Second)
+	}, retry.Attempts(60), retry.Delay(time.Second))
 
 	if err != nil {
 		return nil, err

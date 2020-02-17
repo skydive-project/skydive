@@ -25,6 +25,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/cnf/structhash"
 	goloxi "github.com/skydive-project/goloxi"
 	"github.com/skydive-project/goloxi/of14"
@@ -330,7 +331,7 @@ func (probe *ofProbe) Monitor(ctx context.Context) (err error) {
 
 	probe.monitor.RegisterListener(&of10Handler{probe: probe})
 
-	if err = common.Retry(func() error { return probe.client.Start(ctx) }, 5, time.Second); err != nil {
+	if err = retry.Do(func() error { return probe.client.Start(ctx) }, retry.Attempts(5), retry.Delay(time.Second)); err != nil {
 		return err
 	}
 
@@ -349,7 +350,7 @@ func (probe *ofProbe) Monitor(ctx context.Context) (err error) {
 	}
 	probe.client.RegisterListener(probe.handler)
 
-	if err = common.Retry(func() error { return probe.monitor.Start(ctx) }, 5, time.Second); err != nil {
+	if err = retry.Do(func() error { return probe.monitor.Start(ctx) }, retry.Attempts(5), retry.Delay(time.Second)); err != nil {
 		return err
 	}
 

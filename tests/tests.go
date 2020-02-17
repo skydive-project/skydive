@@ -33,7 +33,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avast/retry-go"
 	shellquote "github.com/kballard/go-shellquote"
+
 	"github.com/skydive-project/skydive/agent"
 	"github.com/skydive-project/skydive/analyzer"
 	gclient "github.com/skydive-project/skydive/api/client"
@@ -217,7 +219,7 @@ type Test struct {
 	captures         []TestCapture
 	injections       []TestInjection
 	preCleanup       bool
-	retries          int
+	retries          uint
 	mode             int
 	checks           []CheckFunction
 	checkContexts    []*CheckContext
@@ -499,7 +501,7 @@ func RunTest(t *testing.T, test *Test) {
 	}
 
 	t.Log("Checking captures are correctly set up")
-	err = common.Retry(func() error {
+	err = retry.Do(func() error {
 		for _, capture := range captures {
 			nodes, err := context.gh.GetNodes(capture.GremlinQuery)
 			if err != nil {
@@ -546,7 +548,7 @@ func RunTest(t *testing.T, test *Test) {
 		}
 
 		return nil
-	}, 15, time.Second)
+	}, retry.Attempts(15), retry.Delay(time.Second))
 
 	if err != nil {
 		context.postmortem(t, test, time.Now())
@@ -565,9 +567,9 @@ func RunTest(t *testing.T, test *Test) {
 
 	t.Log("Executing settle function")
 	if test.settleFunction != nil {
-		err = common.Retry(func() error {
+		err = retry.Do(func() error {
 			return test.settleFunction(context)
-		}, retries, time.Second)
+		}, retry.Attempts(uint(retries)), retry.Delay(time.Second))
 
 		if err != nil {
 			t.Errorf("Test failed to settle: %s", err)
@@ -590,7 +592,7 @@ func RunTest(t *testing.T, test *Test) {
 	}
 
 	// Wait for the interfaces to be ready for packet injection
-	err = common.Retry(func() error {
+	err = retry.Do(func() error {
 		isReady := func(gremlin g.QueryString, ipv6 bool) error {
 			gremlin = gremlin.Has("LinkFlags", "UP")
 			if ipv6 {
@@ -624,7 +626,7 @@ func RunTest(t *testing.T, test *Test) {
 		}
 
 		return nil
-	}, 15, time.Second)
+	}, retry.Attempts(15), retry.Delay(time.Second))
 
 	if err != nil {
 		context.postmortem(t, test, time.Time{})
@@ -721,7 +723,7 @@ func RunTest(t *testing.T, test *Test) {
 		}
 		test.checkContexts[i] = checkContext
 
-		err = common.Retry(func() error {
+		err = retry.Do(func() error {
 			if err = check(checkContext); err != nil {
 				return err
 			}
@@ -730,7 +732,7 @@ func RunTest(t *testing.T, test *Test) {
 				checkContext.time = checkContext.successTime
 			}
 			return nil
-		}, retries, time.Second)
+		}, retry.Attempts(retries), retry.Delay(time.Second))
 
 		if err != nil {
 			t.Errorf("Test failed: %s", err)
@@ -758,9 +760,9 @@ func RunTest(t *testing.T, test *Test) {
 				checkContext := test.checkContexts[i]
 				checkContext.gremlin = checkContext.gremlin.Context(checkContext.time)
 				t.Logf("Replaying test with time %s (Unix: %d), startTime %s (Unix: %d)", checkContext.time, checkContext.time.Unix(), checkContext.startTime, checkContext.startTime.Unix())
-				err = common.Retry(func() error {
+				err = retry.Do(func() error {
 					return check(checkContext)
-				}, retries, time.Second)
+				}, retry.Attempts(retries), retry.Delay(time.Second))
 
 				if err != nil {
 					t.Errorf("Failed to replay test: %s, graph: %s, flows: %s", err, checkContext.getWholeGraph(t, checkContext.time), checkContext.getAllFlows(t, checkContext.time))

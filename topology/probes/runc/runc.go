@@ -31,6 +31,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/fsnotify/fsnotify"
 	"github.com/vishvananda/netns"
 
@@ -353,7 +354,7 @@ func (p *ProbeHandler) initializeFolder(path string) {
 func (p *ProbeHandler) initialize(path string) error {
 	defer p.wg.Done()
 
-	return common.Retry(func() error {
+	return retry.Do(func() error {
 		if p.state.Load() != common.RunningState {
 			return nil
 		}
@@ -367,7 +368,7 @@ func (p *ProbeHandler) initialize(path string) error {
 		p.Ctx.Logger.Debugf("Probe initialized for %s", path)
 
 		return nil
-	}, math.MaxInt32, time.Second)
+	}, retry.Attempts(math.MaxInt64), retry.Delay(time.Second))
 }
 
 func (p *ProbeHandler) isStatePath(path string) bool {

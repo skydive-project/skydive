@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
@@ -32,7 +33,6 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
 
 	gclient "github.com/skydive-project/skydive/api/client"
-	"github.com/skydive-project/skydive/common"
 	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
 )
@@ -84,7 +84,7 @@ func TestNeutron(t *testing.T) {
 		return nil
 	}
 	// yes 2 minutes but that's openstack !
-	if err := common.Retry(fnc, 120, time.Second); err != nil {
+	if err := retry.Do(fnc, retry.Attempts(120), retry.Delay(time.Second)); err != nil {
 		t.Fatalf(err.Error())
 	}
 
@@ -143,7 +143,7 @@ func TestNeutron(t *testing.T) {
 	gh := gclient.NewGremlinQueryHelper(authOptions)
 
 	var histo bool
-	retry := func() error {
+	retryFn := func() error {
 		prefix := g.G
 		if histo {
 			prefix = prefix.At("-1s")
@@ -162,13 +162,13 @@ func TestNeutron(t *testing.T) {
 	}
 
 	// test live mode
-	if err := common.Retry(retry, 10, time.Second); err != nil {
+	if err := retry.Do(retry, retry.Attempts(10), retry.Delay(time.Second)); err != nil {
 		t.Error(err)
 	}
 
 	// test histo mode
 	histo = true
-	if err := common.Retry(retry, 20, time.Second); err != nil {
+	if err := retry.Do(retryFn, retry.Attempts(20), retry.Delay(time.Second)); err != nil {
 		t.Error(err)
 	}
 }

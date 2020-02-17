@@ -28,9 +28,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/vishvananda/netlink"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
@@ -123,7 +123,7 @@ func (u *Probe) handleSriov(
 		// There is no VFS to monitor.
 		return
 	}
-	err = common.Retry(
+	err = retry.Do(
 		func() error {
 			numVfs, err = readIntFile(numVfsFile)
 			if err != nil {
@@ -133,13 +133,13 @@ func (u *Probe) handleSriov(
 				return errZeroVfs
 			}
 			return nil
-		}, 10, time.Second)
+		}, retry.Attempts(10), retry.Delay(time.Second))
 	if err != nil && err != errZeroVfs {
 		logging.GetLogger().Errorf(
 			"SR-IOV: cannot get numvfs of PCI - %s", err)
 		return
 	}
-	err = common.Retry(
+	err = retry.Do(
 		func() error {
 			link, err = netlink.LinkByIndex(id)
 			if err != nil {
@@ -150,7 +150,7 @@ func (u *Probe) handleSriov(
 				return errors.New("numVFS != #attrs.Vfs")
 			}
 			return nil
-		}, 10, time.Second)
+		}, retry.Attempts(10), retry.Delay(time.Second))
 
 	if err != nil {
 		logging.GetLogger().Errorf(

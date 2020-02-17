@@ -29,6 +29,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/safchain/ethtool"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netlink/nl"
@@ -200,7 +201,7 @@ func (u *Probe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 					}
 					return peerResolver(u.Ctx.RootNode)
 				}
-				if err := common.Retry(localFnc, 10, 100*time.Millisecond); err != nil {
+				if err := retry.Do(localFnc, retry.Attempts(10), retry.Delay(100*time.Millisecond)); err != nil {
 					peerResolver(nil)
 				}
 			}()
