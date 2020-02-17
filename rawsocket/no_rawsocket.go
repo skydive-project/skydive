@@ -17,8 +17,11 @@
  *
  */
 
-package common
+package rawsocket
 
+import "github.com/skydive-project/skydive/common"
+
+// Protocols to receive
 const (
 	AllPackets = iota
 	OnlyIPPackets
@@ -35,20 +38,20 @@ func (s *RawSocket) GetFd() int {
 
 // Write outputs some bytes to the file
 func (s *RawSocket) Write(data []byte) (int, error) {
-	return 0, ErrNotImplemented
+	return 0, common.ErrNotImplemented
 }
 
 // Close the file descriptor
 func (s *RawSocket) Close() error {
-	return ErrNotImplemented
+	return common.ErrNotImplemented
 }
 
 // NewRawSocket creates a raw socket for the network interface ifName
 func NewRawSocket(ifName string, protocol int) (*RawSocket, error) {
-	return nil, ErrNotImplemented
+	return nil, common.ErrNotImplemented
 }
 
 // NewRawSocketInNs create/open a socket in the namespace nsPath for the network interface ifName
 func NewRawSocketInNs(nsPath string, ifName string, protocol int) (*RawSocket, error) {
-	return nil, ErrNotImplemented
+	return nil, common.ErrNotImplemented
 }

@@ -26,15 +26,15 @@ import (
 	"time"
 
 	"github.com/google/gopacket/layers"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/ondemand"
-	"github.com/skydive-project/skydive/topology"
-
-	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/ondemand/server"
+	"github.com/skydive-project/skydive/rawsocket"
+	"github.com/skydive-project/skydive/topology"
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
@@ -55,11 +55,11 @@ func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource ty
 
 	encapType, _ := srcNode.GetFieldString("EncapType")
 
-	protocol := common.AllPackets
+	protocol := rawsocket.AllPackets
 	layerType, _ := flow.GetFirstLayerType(encapType)
 	switch layerType {
 	case flow.LayerTypeRawIP, layers.LayerTypeIPv4, layers.LayerTypeIPv6:
-		protocol = common.OnlyIPPackets
+		protocol = rawsocket.OnlyIPPackets
 	}
 
 	ifName, err := srcNode.GetFieldString("Name")
@@ -72,11 +72,11 @@ func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource ty
 		return nil, err
 	}
 
-	var rawSocket *common.RawSocket
+	var rawSocket *rawsocket.RawSocket
 	if nsPath != "" {
-		rawSocket, err = common.NewRawSocketInNs(nsPath, ifName, protocol)
+		rawSocket, err = rawsocket.NewRawSocketInNs(nsPath, ifName, protocol)
 	} else {
-		rawSocket, err = common.NewRawSocket(ifName, protocol)
+		rawSocket, err = rawsocket.NewRawSocket(ifName, protocol)
 	}
 	if err != nil {
 		return nil, err
