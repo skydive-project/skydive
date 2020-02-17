@@ -24,7 +24,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/go-debouncer"
+
 	"github.com/skydive-project/skydive/packetinjector"
 	pi "github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/rawsocket"
@@ -173,7 +174,7 @@ var InjectPacketCmd = &cobra.Command{
 			lastPacketCount = 0
 		}
 
-		debouncer := common.NewDebouncer(time.Second, showPacketCount)
+		debouncer := debouncer.New(time.Second, showPacketCount)
 		debouncer.Start()
 		defer debouncer.Stop()
 

@@ -84,6 +84,7 @@ require (
 	github.com/shirou/gopsutil v2.18.12+incompatible
 	github.com/sirupsen/logrus v1.4.2
 	github.com/skydive-project/dede v0.0.0-20180704100832-90df8e39b679
+	github.com/skydive-project/go-debouncer v1.0.0
 	github.com/skydive-project/goloxi v0.0.0-20190117172159-db2324197a3e
 	github.com/socketplane/libovsdb v0.0.0-20160607151822-5113f8fb4d9d
 	github.com/spf13/cobra v0.0.5

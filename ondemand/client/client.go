@@ -24,6 +24,7 @@ import (
 	"time"
 
 	cache "github.com/pmylund/go-cache"
+	"github.com/skydive-project/go-debouncer"
 
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
@@ -67,7 +68,7 @@ type OnDemandClient struct {
 	watcher                 api.StoppableWatcher
 	registeredNodes         map[graph.Identifier]map[string]bool
 	deletedNodeCache        *cache.Cache
-	checkForRegistration    *common.Debouncer
+	checkForRegistration    *debouncer.Debouncer
 	resourceName            string
 	handler                 OnDemandClientHandler
 }
@@ -427,7 +428,7 @@ func NewOnDemandClient(g *graph.Graph, ch api.WatchableHandler, agentPool ws.Str
 		registeredNodes:         make(map[graph.Identifier]map[string]bool),
 		deletedNodeCache:        cache.New(election.TTL()*2, election.TTL()*2),
 	}
-	o.checkForRegistration = common.NewDebouncer(time.Second, o.checkForRegistrationCallback)
+	o.checkForRegistration = debouncer.New(time.Second, o.checkForRegistrationCallback)
 
 	return o
 }
