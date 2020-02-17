@@ -27,6 +27,7 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/portallocator"
 	"github.com/skydive-project/skydive/probe"
 )
 
@@ -45,7 +46,7 @@ type ProbeHandler struct {
 	Ctx           probes.Context
 	addr          *net.TCPAddr
 	wg            sync.WaitGroup
-	portAllocator *common.PortAllocator
+	portAllocator *portallocator.PortAllocator
 }
 
 func (p *Probe) run() {
@@ -171,7 +172,7 @@ func NewProbe(ctx probes.Context, bundle *probe.Bundle) (probes.FlowProbeHandler
 		return nil, err
 	}
 
-	portAllocator, err := common.NewPortAllocator(minPort, maxPort)
+	portAllocator, err := portallocator.New(minPort, maxPort)
 	if err != nil {
 		return nil, err
 	}

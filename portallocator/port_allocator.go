@@ -15,10 +15,12 @@
  *
  */
 
-package common
+package portallocator
 
 import (
 	"errors"
+
+	"github.com/skydive-project/skydive/common"
 )
 
 var (
@@ -30,7 +32,7 @@ var (
 
 // PortAllocator describes a threads safe port list that can be allocated
 type PortAllocator struct {
-	RWMutex
+	common.RWMutex
 	MinPort int
 	MaxPort int
 	PortMap map[int]bool
@@ -74,8 +76,8 @@ func (p *PortAllocator) ReleaseAll() {
 	p.PortMap = make(map[int]bool)
 }
 
-// NewPortAllocator creates a new port allocator range
-func NewPortAllocator(min, max int) (*PortAllocator, error) {
+// New creates a new port allocator range
+func New(min, max int) (*PortAllocator, error) {
 	if min <= 0 || max < min {
 		return nil, ErrInvalidPortRange
 	}
