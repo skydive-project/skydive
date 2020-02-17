@@ -239,8 +239,6 @@ static inline void fill_flow(struct __sk_buff *skb, struct flow *flow, __u64 tm)
 		break;
 	}
 
-	__sync_fetch_and_add(&flow->last, tm);
-
 	flow->key = flow->link_layer._hash;
 	flow->key = rotl(flow->key, 16);
 	flow->key ^= flow->network_layer._hash;
@@ -262,7 +260,7 @@ int bpf_flow_table(struct __sk_buff *skb)
 		bpf_map_update_element(&u64_config_values, &key, &tm, BPF_ANY);
 	}
 
-	struct flow flow = {}, *prev;
+	struct flow flow = { .last = tm }, *prev;
 	fill_flow(skb, &flow, tm);
 
 	key = FLOW_PAGE;
