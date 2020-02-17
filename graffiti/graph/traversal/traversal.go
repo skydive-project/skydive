@@ -48,11 +48,11 @@ type StepContext struct {
 }
 
 // Iterator on the range
-func (r *GraphTraversalRange) Iterator() *common.Iterator {
+func (r *GraphTraversalRange) Iterator() *Iterator {
 	if r != nil {
-		return common.NewIterator(0, r[0], r[1])
+		return NewIterator(0, r[0], r[1])
 	}
-	return common.NewIterator()
+	return NewIterator()
 }
 
 // GraphTraversalRange is within a min and a max
