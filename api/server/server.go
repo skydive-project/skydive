@@ -167,7 +167,8 @@ func (a *Server) RegisterAPIHandler(handler Handler, authBackend shttp.Authentic
 						return
 					}
 				} else {
-					err = common.JSONDecode(r.Body, &resource)
+					decoder := json.NewDecoder(r.Body)
+					err = decoder.Decode(&resource)
 				}
 				if err != nil {
 					writeError(w, http.StatusBadRequest, err)

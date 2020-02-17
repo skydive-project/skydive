@@ -27,7 +27,6 @@ import (
 
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/validator"
 
@@ -178,7 +177,8 @@ var WorkflowCall = &cobra.Command{
 		}
 		defer resp.Body.Close()
 
-		if err := common.JSONDecode(resp.Body, &result); err != nil {
+		decoder := json.NewDecoder(resp.Body)
+		if err := decoder.Decode(&result); err != nil {
 			exitOnError(err)
 		}
 

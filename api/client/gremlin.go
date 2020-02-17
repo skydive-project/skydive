@@ -28,8 +28,8 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
+	"github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/sflow"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
@@ -267,7 +267,7 @@ func (g *GremlinQueryHelper) GetSockets(query interface{}) (sockets map[string][
 	// TODO: use real objects instead of interface + decode
 	// should be []map[string][]ConnectionInfo
 	var maps []map[string][]interface{}
-	if err := common.JSONDecode(bytes.NewReader(data), &maps); err != nil {
+	if err := json.Unmarshal(data, &maps); err != nil {
 		return nil, err
 	}
 
