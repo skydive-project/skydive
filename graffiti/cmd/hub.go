@@ -26,8 +26,8 @@ import (
 
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/common"
-	etcdclient "github.com/skydive-project/skydive/etcd/client"
-	etcdserver "github.com/skydive-project/skydive/etcd/server"
+	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
+	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/hub"
 	shttp "github.com/skydive-project/skydive/http"

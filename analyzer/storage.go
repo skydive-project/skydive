@@ -21,10 +21,10 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/config"
-	etcd "github.com/skydive-project/skydive/etcd/client"
 	"github.com/skydive-project/skydive/flow/storage"
 	"github.com/skydive-project/skydive/flow/storage/elasticsearch"
 	"github.com/skydive-project/skydive/flow/storage/orientdb"
+	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	es "github.com/skydive-project/skydive/storage/elasticsearch"

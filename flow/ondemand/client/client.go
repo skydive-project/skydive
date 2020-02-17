@@ -25,7 +25,7 @@ import (
 
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
-	etcd "github.com/skydive-project/skydive/etcd/client"
+	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/gremlin"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"

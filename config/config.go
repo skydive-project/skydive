@@ -32,7 +32,7 @@ import (
 	_ "github.com/spf13/viper/remote"
 
 	"github.com/skydive-project/skydive/common"
-	etcdclient "github.com/skydive-project/skydive/etcd/client"
+	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 )
 
 // ErrNoAnalyzerSpecified error no analyzer section is specified in the configuration file
