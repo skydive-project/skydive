@@ -40,7 +40,7 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
-	"github.com/skydive-project/skydive/websocket"
+	"github.com/skydive-project/skydive/graffiti/websocket"
 )
 
 func getAnalyzerStatus(client *shttp.CrudClient) (status analyzer.Status, err error) {

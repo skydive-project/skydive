@@ -21,7 +21,7 @@ package websocket;
 
 import "gogoproto/gogo.proto";
 
-option go_package = "github.com/skydive-project/skydive/websocket";
+option go_package = "github.com/skydive-project/skydive/graffiti/websocket";
 option (gogoproto.protosizer_all) = true;
 option (gogoproto.sizer_all) = false;
 

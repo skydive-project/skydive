@@ -24,7 +24,7 @@ import (
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/topology"
-	ws "github.com/skydive-project/skydive/websocket"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 )
 
 // TableClient describes a mechanism to query a flow table

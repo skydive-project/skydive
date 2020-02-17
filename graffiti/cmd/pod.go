@@ -30,7 +30,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/pod"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
-	"github.com/skydive-project/skydive/websocket"
+	"github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/spf13/cobra"
 )
 

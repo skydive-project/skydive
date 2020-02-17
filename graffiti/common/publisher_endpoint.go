@@ -25,7 +25,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/messages"
 	"github.com/skydive-project/skydive/graffiti/validator"
-	ws "github.com/skydive-project/skydive/websocket"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 )
 
 // PersistencePolicy defines Persistent policy for publishers

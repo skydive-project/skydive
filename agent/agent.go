@@ -30,17 +30,17 @@ import (
 	"github.com/skydive-project/skydive/flow/client"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/graffiti/pod"
-	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
+	"github.com/skydive-project/skydive/graffiti/pod"
+	"github.com/skydive-project/skydive/graffiti/websocket"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
+	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	"github.com/skydive-project/skydive/ondemand/server"
 	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/ui"
-	"github.com/skydive-project/skydive/websocket"
-	ws "github.com/skydive-project/skydive/websocket"
 )
 
 // Agent object started on each hosts/namespaces

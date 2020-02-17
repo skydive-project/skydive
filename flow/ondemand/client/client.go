@@ -31,7 +31,7 @@ import (
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/ondemand/client"
-	ws "github.com/skydive-project/skydive/websocket"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 )
 
 type onDemandFlowHandler struct {

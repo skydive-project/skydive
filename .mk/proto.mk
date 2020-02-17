@@ -41,10 +41,10 @@ flow/flow.pb.go: flow/flow.proto filters/filters.proto
 flow/flow.pb_easyjson.go: flow/flow.pb.go
 	go run github.com/mailru/easyjson/easyjson -all $<
 
-websocket/structmessage.pb.go: websocket/structmessage.proto
+graffiti/websocket/structmessage.pb.go: graffiti/websocket/structmessage.proto
 	$(call PROTOC_GEN,$<)
 
-	sed -e 's/type StructMessage struct {/type StructMessage struct { XXX_state structMessageState `json:"-"`/' -i websocket/structmessage.pb.go
+	sed -e 's/type StructMessage struct {/type StructMessage struct { XXX_state structMessageState `json:"-"`/' -i graffiti/websocket/structmessage.pb.go
 	gofmt -s -w $@
 
 .proto: $(GEN_PROTO_FILES)

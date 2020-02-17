@@ -28,8 +28,8 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/messages"
-	"github.com/skydive-project/skydive/websocket"
-	ws "github.com/skydive-project/skydive/websocket"
+	"github.com/skydive-project/skydive/graffiti/websocket"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 )
 
 type subscriber struct {

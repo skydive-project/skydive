@@ -34,7 +34,7 @@ import (
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/probe"
-	ws "github.com/skydive-project/skydive/websocket"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 )
 
 const (

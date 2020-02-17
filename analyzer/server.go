@@ -36,10 +36,11 @@ import (
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/graffiti/hub"
-	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
+	"github.com/skydive-project/skydive/graffiti/hub"
 	"github.com/skydive-project/skydive/graffiti/logging"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
+	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	"github.com/skydive-project/skydive/ondemand/client"
 	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/probe"
@@ -48,8 +49,6 @@ import (
 	usertopology "github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/probes/blockdev"
 	"github.com/skydive-project/skydive/ui"
-	"github.com/skydive-project/skydive/websocket"
-	ws "github.com/skydive-project/skydive/websocket"
 )
 
 // ElectionStatus describes the status of an election
@@ -241,7 +240,7 @@ func NewServerFromConfig() (*Server, error) {
 	}
 
 	opts := hub.Opts{
-		WebsocketOpts: websocket.ServerOpts{
+		WebsocketOpts: ws.ServerOpts{
 			WriteCompression: true,
 			QueueSize:        10000,
 			PingDelay:        2 * time.Second,

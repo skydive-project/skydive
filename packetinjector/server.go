@@ -35,7 +35,7 @@ import (
 	"github.com/skydive-project/skydive/ondemand/server"
 	"github.com/skydive-project/skydive/rawsocket"
 	"github.com/skydive-project/skydive/topology"
-	ws "github.com/skydive-project/skydive/websocket"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 )
 
 const (

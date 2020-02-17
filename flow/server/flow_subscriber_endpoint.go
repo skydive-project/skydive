@@ -21,7 +21,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/logging"
-	ws "github.com/skydive-project/skydive/websocket"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 )
 
 // FlowSubscriberEndpoint sends all the flows to its subscribers.

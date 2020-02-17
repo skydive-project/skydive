@@ -27,8 +27,8 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/messages"
-	"github.com/skydive-project/skydive/websocket"
-	ws "github.com/skydive-project/skydive/websocket"
+	"github.com/skydive-project/skydive/graffiti/websocket"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 )
 
 // DebugReplication enables replication debugging
