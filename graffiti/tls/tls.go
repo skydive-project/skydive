@@ -15,7 +15,7 @@
  *
  */
 
-package common
+package tls
 
 import (
 	"crypto/tls"
