@@ -1,3 +1,5 @@
+//go:generate go run github.com/mailru/easyjson/easyjson $GOFILE
+
 /*
  * Copyright (C) 2015 Red Hat, Inc.
  *
@@ -93,6 +95,7 @@ func NewAnalyzerStructClientPool(authOpts *shttp.AuthenticationOpts) (*ws.Struct
 // Status describes the status of an agent
 //
 // swagger:model AgentStatus
+// easyjson:json
 type Status struct {
 	Clients        map[string]ws.ConnStatus
 	Analyzers      map[string]pod.ConnStatus
