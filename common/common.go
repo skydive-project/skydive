@@ -43,14 +43,3 @@ func ParseAddr(address string) (protocol string, target string, err error) {
 	}
 	return
 }
-
-// NormalizeIP adds a default netmask
-func NormalizeIP(ip, ipFamily string) string {
-	if strings.Contains(ip, "/") {
-		return ip
-	}
-	if ipFamily == "IPV4" {
-		return ip + "/32"
-	}
-	return ip + "/64"
-}
