@@ -19,8 +19,8 @@ package common
 
 import (
 	"github.com/skydive-project/skydive/graffiti/graph"
-	gws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/graffiti/logging"
+	"github.com/skydive-project/skydive/graffiti/messages"
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
@@ -36,10 +36,10 @@ func (t *Forwarder) triggerResync() {
 	logging.GetLogger().Infof("Start a re-sync")
 
 	// re-add all the nodes and edges
-	msg := &gws.SyncMsg{
+	msg := &messages.SyncMsg{
 		Elements: t.graph.Elements(),
 	}
-	t.masterElection.SendMessageToMaster(gws.NewStructMessage(gws.SyncMsgType, msg))
+	t.masterElection.SendMessageToMaster(messages.NewStructMessage(messages.SyncMsgType, msg))
 }
 
 // OnNewMaster is called by the master election mechanism when a new master is elected. In
@@ -67,32 +67,32 @@ func (t *Forwarder) OnNewMaster(c ws.Speaker) {
 
 // OnNodeUpdated graph node updated event. Implements the EventListener interface.
 func (t *Forwarder) OnNodeUpdated(n *graph.Node) {
-	t.masterElection.SendMessageToMaster(gws.NewStructMessage(gws.NodeUpdatedMsgType, n))
+	t.masterElection.SendMessageToMaster(messages.NewStructMessage(messages.NodeUpdatedMsgType, n))
 }
 
 // OnNodeAdded graph node added event. Implements the EventListener interface.
 func (t *Forwarder) OnNodeAdded(n *graph.Node) {
-	t.masterElection.SendMessageToMaster(gws.NewStructMessage(gws.NodeAddedMsgType, n))
+	t.masterElection.SendMessageToMaster(messages.NewStructMessage(messages.NodeAddedMsgType, n))
 }
 
 // OnNodeDeleted graph node deleted event. Implements the EventListener interface.
 func (t *Forwarder) OnNodeDeleted(n *graph.Node) {
-	t.masterElection.SendMessageToMaster(gws.NewStructMessage(gws.NodeDeletedMsgType, n))
+	t.masterElection.SendMessageToMaster(messages.NewStructMessage(messages.NodeDeletedMsgType, n))
 }
 
 // OnEdgeUpdated graph edge updated event. Implements the EventListener interface.
 func (t *Forwarder) OnEdgeUpdated(e *graph.Edge) {
-	t.masterElection.SendMessageToMaster(gws.NewStructMessage(gws.EdgeUpdatedMsgType, e))
+	t.masterElection.SendMessageToMaster(messages.NewStructMessage(messages.EdgeUpdatedMsgType, e))
 }
 
 // OnEdgeAdded graph edge added event. Implements the EventListener interface.
 func (t *Forwarder) OnEdgeAdded(e *graph.Edge) {
-	t.masterElection.SendMessageToMaster(gws.NewStructMessage(gws.EdgeAddedMsgType, e))
+	t.masterElection.SendMessageToMaster(messages.NewStructMessage(messages.EdgeAddedMsgType, e))
 }
 
 // OnEdgeDeleted graph edge deleted event. Implements the EventListener interface.
 func (t *Forwarder) OnEdgeDeleted(e *graph.Edge) {
-	t.masterElection.SendMessageToMaster(gws.NewStructMessage(gws.EdgeDeletedMsgType, e))
+	t.masterElection.SendMessageToMaster(messages.NewStructMessage(messages.EdgeDeletedMsgType, e))
 }
 
 // GetMaster returns the current analyzer the agent is sending its events to
