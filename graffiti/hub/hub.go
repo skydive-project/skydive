@@ -214,8 +214,15 @@ func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.G
 		return nil, err
 	}
 
+	replicationWebsocketOpts := &websocket.ClientOpts{
+		AuthOpts:         opts.ClusterAuthOptions,
+		QueueSize:        opts.WebsocketOpts.QueueSize,
+		WriteCompression: opts.WebsocketOpts.WriteCompression,
+		TLSConfig:        opts.TLSConfig,
+		Logger:           opts.Logger,
+	}
 	replicationWSServer := websocket.NewStructServer(newWSServer("/ws/replication", opts.ClusterAuthBackend))
-	replicationEndpoint, err := NewReplicationEndpoint(replicationWSServer, opts.ClusterAuthOptions, cached, g, opts.Peers)
+	replicationEndpoint, err := NewReplicationEndpoint(replicationWSServer, replicationWebsocketOpts, cached, g, opts.Peers)
 	if err != nil {
 		return nil, err
 	}

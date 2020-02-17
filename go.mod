@@ -56,6 +56,7 @@ require (
 	github.com/kami-zh/go-capturer v0.0.0-20171211120116-e492ea43421d
 	github.com/kardianos/osext v0.0.0-20160811001526-c2c54e542fb7
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
+	github.com/lebauce/viper v0.0.0-20160508180713-d8a428b8a306 // indirect
 	github.com/libvirt/libvirt-go v0.0.0-20181005092746-9c5bdce3c18f
 	github.com/lunixbochs/struc v0.0.0-20180408203800-02e4c2afbb2a
 	github.com/lxc/lxd v0.0.0-20171219222704-9907f3a64b6b
