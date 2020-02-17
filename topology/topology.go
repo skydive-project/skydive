@@ -22,9 +22,9 @@ import (
 	"time"
 
 	uuid "github.com/nu7hatch/gouuid"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/netns"
 )
 
 // ErrNetworkPathNotFound
@@ -85,14 +85,14 @@ func NamespaceFromNode(g *graph.Graph, n *graph.Node) (string, string, error) {
 }
 
 // NewNetNSContextByNode creates a new network namespace context based on the node
-func NewNetNSContextByNode(g *graph.Graph, n *graph.Node) (*common.NetNSContext, error) {
+func NewNetNSContextByNode(g *graph.Graph, n *graph.Node) (*netns.Context, error) {
 	name, path, err := NamespaceFromNode(g, n)
 	if err != nil || name == "" || path == "" {
 		return nil, err
 	}
 
 	logging.GetLogger().Debugf("Switching to namespace %s (path: %s)", name, path)
-	return common.NewNetNsContext(path)
+	return netns.NewContext(path)
 }
 
 // HostNodeTIDMap a map that store the value node TID and the key node host
