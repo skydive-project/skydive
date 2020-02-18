@@ -32,7 +32,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/storage"
 )
@@ -260,7 +259,7 @@ func FilterToExpression(f *filters.Filter, formatter func(string) string) string
 
 	if f.IPV4RangeFilter != nil {
 		// ignore the error at this point it should have been catched earlier
-		regex, _ := common.IPV4CIDRToRegex(f.IPV4RangeFilter.Value)
+		regex, _ := filters.IPV4CIDRToRegex(f.IPV4RangeFilter.Value)
 
 		return fmt.Sprintf(`%s MATCHES "%s"`, formatter(f.IPV4RangeFilter.Key), strings.Replace(regex, `\`, `\\`, -1))
 	}

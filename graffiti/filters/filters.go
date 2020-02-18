@@ -23,7 +23,6 @@ import (
 
 	"github.com/pmylund/go-cache"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
@@ -77,7 +76,7 @@ func (f *Filter) Eval(g getter.Getter) bool {
 			re, found := regexpCache.Get(f.IPV4RangeFilter.Value)
 			if !found {
 				// ignore error at this point should have been check in the contructor
-				regex, _ := common.IPV4CIDRToRegex(f.IPV4RangeFilter.Value)
+				regex, _ := IPV4CIDRToRegex(f.IPV4RangeFilter.Value)
 				re = regexp.MustCompile(regex)
 				regexpCache.Set(f.IPV4RangeFilter.Value, re, cache.DefaultExpiration)
 			}
@@ -118,7 +117,7 @@ func NewRegexFilter(key string, pattern string) (*RegexFilter, error) {
 
 // NewIPV4RangeFilter creates a regex based filter corresponding to the ip range
 func NewIPV4RangeFilter(key, cidr string) (*IPV4RangeFilter, error) {
-	regex, err := common.IPV4CIDRToRegex(cidr)
+	regex, err := IPV4CIDRToRegex(cidr)
 	if err != nil {
 		return nil, err
 	}

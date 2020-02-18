@@ -15,7 +15,7 @@
  *
  */
 
-package common
+package filters
 
 import (
 	"fmt"
