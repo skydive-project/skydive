@@ -267,7 +267,7 @@ func (g *GremlinQueryHelper) GetSockets(query interface{}) (sockets map[string][
 	// TODO: use real objects instead of interface + decode
 	// should be []map[string][]ConnectionInfo
 	var maps []map[string][]interface{}
-	if err := common.JSONDecode(bytes.NewReader(data), &maps); err != nil {
+	if err := json.Unmarshal(data, &maps); err != nil {
 		return nil, err
 	}
 

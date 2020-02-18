@@ -140,7 +140,8 @@ type DocumentClass struct {
 
 func parseError(body io.Reader) error {
 	var errs Errors
-	if err := common.JSONDecode(body, &errs); err != nil {
+	decoder := json.NewDecoder(body)
+	if err := decoder.Decode(&errs); err != nil {
 		return fmt.Errorf("Error while parsing error: %s (%s)", err, body)
 	}
 	var s string

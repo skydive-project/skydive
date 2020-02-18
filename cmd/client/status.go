@@ -18,13 +18,13 @@
 package client
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 
 	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api/client"
-	"github.com/skydive-project/skydive/common"
 
 	"github.com/spf13/cobra"
 )
@@ -53,7 +53,8 @@ var StatusCmd = &cobra.Command{
 		}
 
 		var status analyzer.Status
-		if err := common.JSONDecode(resp.Body, &status); err != nil {
+		decoder := json.NewDecoder(resp.Body)
+		if err := decoder.Decode(&status); err != nil {
 			exitOnError(err)
 		}
 
