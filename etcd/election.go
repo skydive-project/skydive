@@ -22,6 +22,7 @@ import (
 	"time"
 
 	etcd "github.com/coreos/etcd/client"
+	"github.com/safchain/insanelock"
 	"golang.org/x/net/context"
 
 	"github.com/skydive-project/skydive/common"
@@ -34,7 +35,7 @@ const (
 
 // MasterElector describes an ETCD master elector
 type MasterElector struct {
-	common.RWMutex
+	insanelock.RWMutex
 	EtcdKeyAPI etcd.KeysAPI
 	Host       string
 	path       string

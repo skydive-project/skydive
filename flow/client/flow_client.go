@@ -25,6 +25,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/safchain/insanelock"
+
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
@@ -35,7 +37,7 @@ import (
 
 // FlowClientPool describes a flow client pool.
 type FlowClientPool struct {
-	common.RWMutex
+	insanelock.RWMutex
 	ws.DefaultSpeakerEventHandler
 	flowClients []*FlowClient
 	authOpts    *shttp.AuthenticationOpts

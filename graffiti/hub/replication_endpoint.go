@@ -22,6 +22,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/safchain/insanelock"
+
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	gcommon "github.com/skydive-project/skydive/graffiti/common"
@@ -51,7 +53,7 @@ type peerState struct {
 
 // ReplicationEndpoint serves the local Graph and send local modification to its peers.
 type ReplicationEndpoint struct {
-	common.RWMutex
+	insanelock.RWMutex
 	ws.DefaultSpeakerEventHandler
 	in           ws.StructSpeakerPool
 	out          *ws.StructClientPool

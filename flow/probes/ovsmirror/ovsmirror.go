@@ -25,6 +25,7 @@ import (
 
 	"github.com/socketplane/libovsdb"
 	"github.com/vishvananda/netlink"
+	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
@@ -54,7 +55,7 @@ type ProbesHandler struct {
 	Ctx         probes.Context
 	probes      map[string]*ovsMirrorProbe
 	probeBundle *probe.Bundle
-	probesLock  common.RWMutex
+	probesLock  insanelock.RWMutex
 	ovsClient   *ovsdb.OvsClient
 	intfIndexer *graph.MetadataIndexer
 	portIndexer *graph.MetadataIndexer

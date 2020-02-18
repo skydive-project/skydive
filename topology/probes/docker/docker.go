@@ -30,6 +30,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/vishvananda/netns"
+	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -51,7 +52,7 @@ type containerInfo struct {
 
 // ProbeHandler describes a Docker topology graph that enhance the graph
 type ProbeHandler struct {
-	common.RWMutex
+	insanelock.RWMutex
 	Ctx          tp.Context
 	nsProbe      *ns.ProbeHandler
 	url          string

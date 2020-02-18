@@ -28,6 +28,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/safchain/insanelock"
+
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
@@ -186,7 +188,7 @@ func NewGremlinAlert(alert *types.Alert, g *graph.Graph, p *traversal.GremlinTra
 // alerts on graph events or periodically and trigger them if their condition
 // evaluates to true
 type Server struct {
-	common.RWMutex
+	insanelock.RWMutex
 	common.MasterElection
 	Graph         *graph.Graph
 	Pool          ws.StructSpeakerPool

@@ -26,7 +26,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/safchain/insanelock"
 	proto "github.com/gogo/protobuf/proto"
+
 	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
 )
@@ -78,7 +80,7 @@ func newWsServer(httpserver *shttp.Server) *StructServer {
 }
 
 type fakeMessageServerSubscriptionHandler struct {
-	common.RWMutex
+	insanelock.RWMutex
 	DefaultSpeakerEventHandler
 	t             *testing.T
 	server        *StructServer
@@ -87,7 +89,7 @@ type fakeMessageServerSubscriptionHandler struct {
 }
 
 type fakeMessageServerSubscriptionHandler2 struct {
-	common.RWMutex
+	insanelock.RWMutex
 	DefaultSpeakerEventHandler
 	t             *testing.T
 	server        *StructServer
@@ -96,14 +98,14 @@ type fakeMessageServerSubscriptionHandler2 struct {
 }
 
 type fakeMessageClientSubscriptionHandler struct {
-	common.RWMutex
+	insanelock.RWMutex
 	DefaultSpeakerEventHandler
 	t        *testing.T
 	received map[string]bool
 }
 
 type fakeMessageClientSubscriptionHandler2 struct {
-	common.RWMutex
+	insanelock.RWMutex
 	DefaultSpeakerEventHandler
 	t        *testing.T
 	received map[string]bool

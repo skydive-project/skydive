@@ -18,7 +18,8 @@
 package server
 
 import (
-	"github.com/skydive-project/skydive/common"
+	"github.com/safchain/insanelock"
+
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 	ws "github.com/skydive-project/skydive/websocket"
@@ -26,7 +27,7 @@ import (
 
 // FlowSubscriberEndpoint sends all the flows to its subscribers.
 type FlowSubscriberEndpoint struct {
-	common.RWMutex
+	insanelock.RWMutex
 	pool         ws.StructSpeakerPool
 	nsSubscriber map[string][]ws.Speaker
 }

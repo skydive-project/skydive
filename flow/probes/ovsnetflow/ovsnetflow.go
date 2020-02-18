@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/socketplane/libovsdb"
+	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
@@ -46,7 +47,7 @@ type Probe struct {
 type ProbesHandler struct {
 	Ctx          probes.Context
 	probes       map[string]Probe
-	probesLock   common.RWMutex
+	probesLock   insanelock.RWMutex
 	Node         *graph.Node
 	ovsClient    *ovsdb.OvsClient
 	allocator    *netflow.AgentAllocator

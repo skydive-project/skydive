@@ -23,7 +23,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/safchain/insanelock"
+
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	gws "github.com/skydive-project/skydive/graffiti/websocket"
@@ -40,7 +41,7 @@ type subscriber struct {
 
 // SubscriberEndpoint sends all the modifications to its subscribers.
 type SubscriberEndpoint struct {
-	common.RWMutex
+	insanelock.RWMutex
 	ws.DefaultSpeakerEventHandler
 	pool          ws.StructSpeakerPool
 	Graph         *graph.Graph

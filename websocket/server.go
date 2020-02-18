@@ -26,6 +26,7 @@ import (
 
 	auth "github.com/abbot/go-http-auth"
 	"github.com/gorilla/websocket"
+	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
@@ -40,7 +41,7 @@ type IncomerHandler func(*websocket.Conn, *auth.AuthenticatedRequest, clientProm
 
 // Server implements a websocket server. It owns a Pool of incoming Speakers.
 type Server struct {
-	common.RWMutex
+	insanelock.RWMutex
 	*incomerPool
 	server         *shttp.Server
 	incomerHandler IncomerHandler

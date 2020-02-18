@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/safchain/ethtool"
+	"github.com/safchain/insanelock"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netlink/nl"
 
@@ -66,7 +67,7 @@ type pendingLink struct {
 
 // Probe describes a topology probe based on netlink in a network namespace
 type Probe struct {
-	common.RWMutex
+	insanelock.RWMutex
 	Ctx                  tp.Context
 	NsPath               string
 	epollFd              int
@@ -84,7 +85,7 @@ type Probe struct {
 
 // ProbeHandler describes a list NetLink NameSpace probe to enhance the graph
 type ProbeHandler struct {
-	common.RWMutex
+	insanelock.RWMutex
 	Ctx            tp.Context
 	epollFd        int
 	probes         map[int32]*Probe

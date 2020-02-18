@@ -27,6 +27,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/safchain/insanelock"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
 	cc "github.com/networkservicemesh/networkservicemesh/controlplane/api/crossconnect"
@@ -35,13 +37,14 @@ import (
 	v1 "github.com/networkservicemesh/networkservicemesh/k8s/pkg/apis/networkservice/v1alpha1"
 	"github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/clientset/versioned"
 	"github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/informers/externalversions"
-	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
 	"google.golang.org/grpc"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+
+	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/logging"
 )
 
 const nsmResource = "networkservicemanagers"
@@ -50,7 +53,7 @@ var informerStopper chan struct{}
 
 // Probe represents the NSM probe
 type Probe struct {
-	common.RWMutex
+	insanelock.RWMutex
 	graph.DefaultGraphListener
 	g     *graph.Graph
 	state common.ServiceState

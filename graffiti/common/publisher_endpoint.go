@@ -20,7 +20,8 @@ package common
 import (
 	"net/http"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/safchain/insanelock"
+
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/validator"
 	gws "github.com/skydive-project/skydive/graffiti/websocket"
@@ -41,7 +42,7 @@ const (
 // PublisherEndpoint serves the graph for external publishers, for instance
 // an external program that interacts with the Skydive graph.
 type PublisherEndpoint struct {
-	common.RWMutex
+	insanelock.RWMutex
 	ws.DefaultSpeakerEventHandler
 	pool      ws.StructSpeakerPool
 	Graph     *graph.Graph

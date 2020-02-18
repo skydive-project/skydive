@@ -24,6 +24,7 @@ import (
 	"time"
 
 	cache "github.com/pmylund/go-cache"
+	"github.com/safchain/insanelock"
 
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
@@ -52,7 +53,7 @@ type OnDemandClientHandler interface {
 
 // OnDemandClient describes an ondemand task client based on a websocket
 type OnDemandClient struct {
-	common.RWMutex
+	insanelock.RWMutex
 	common.MasterElection
 	graph.DefaultGraphListener
 	graph                   *graph.Graph
