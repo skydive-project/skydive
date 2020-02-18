@@ -25,9 +25,9 @@ import (
 	"time"
 
 	"github.com/google/gopacket/layers"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/ondemand"
 	"github.com/skydive-project/skydive/logging"
@@ -87,7 +87,7 @@ func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource re
 		captures := obj.(*Injections)
 		*captures = append(*captures, metadata)
 		return true
-	}) == common.ErrFieldNotFound {
+	}) == getter.ErrFieldNotFound {
 		o.graph.AddMetadata(srcNode, "PacketInjections", &Injections{metadata})
 	}
 

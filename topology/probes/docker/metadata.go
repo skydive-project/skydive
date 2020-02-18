@@ -24,7 +24,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
@@ -38,7 +38,7 @@ type Metadata struct {
 }
 
 // MetadataDecoder implements a json message raw decoder
-func MetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+func MetadataDecoder(raw json.RawMessage) (getter.Getter, error) {
 	var m Metadata
 	if err := json.Unmarshal(raw, &m); err != nil {
 		return nil, fmt.Errorf("unable to unmarshal docker metadata %s: %s", string(raw), err)

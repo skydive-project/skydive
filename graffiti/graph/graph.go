@@ -27,6 +27,7 @@ import (
 	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"github.com/skydive-project/skydive/graffiti/service"
 )
 
@@ -155,7 +156,7 @@ type Elements struct {
 
 // MetadataDecoder defines a json rawmessage decoder which has to return a object
 // implementing the getter interface
-type MetadataDecoder func(raw json.RawMessage) (common.Getter, error)
+type MetadataDecoder func(raw json.RawMessage) (getter.Getter, error)
 
 var (
 	// NodeMetadataDecoders is a map that owns special type metadata decoder
@@ -384,11 +385,11 @@ func (e *graphElement) GetFieldKeys() []string {
 	return append(keys, e.Metadata.GetFieldKeys()...)
 }
 
-func (e *graphElement) MatchBool(field string, predicate common.BoolPredicate) bool {
+func (e *graphElement) MatchBool(field string, predicate getter.BoolPredicate) bool {
 	if index := strings.Index(field, "."); index != -1 {
 		first := field[index+1:]
 		if v, found := e.Metadata[first]; found {
-			if getter, found := v.(common.Getter); found {
+			if getter, found := v.(getter.Getter); found {
 				return getter.MatchBool(field[index+1:], predicate)
 			}
 		}
@@ -396,7 +397,7 @@ func (e *graphElement) MatchBool(field string, predicate common.BoolPredicate) b
 	return e.Metadata.MatchBool(field, predicate)
 }
 
-func (e *graphElement) MatchInt64(field string, predicate common.Int64Predicate) bool {
+func (e *graphElement) MatchInt64(field string, predicate getter.Int64Predicate) bool {
 	if _, found := graphElementKeys[field]; found {
 		if n, err := e.GetFieldInt64(field); err == nil {
 			return predicate(n)
@@ -406,7 +407,7 @@ func (e *graphElement) MatchInt64(field string, predicate common.Int64Predicate)
 	if index := strings.Index(field, "."); index != -1 {
 		first := field[index+1:]
 		if v, found := e.Metadata[first]; found {
-			if getter, found := v.(common.Getter); found {
+			if getter, found := v.(getter.Getter); found {
 				return getter.MatchInt64(field[index+1:], predicate)
 			}
 		}
@@ -415,7 +416,7 @@ func (e *graphElement) MatchInt64(field string, predicate common.Int64Predicate)
 	return e.Metadata.MatchInt64(field, predicate)
 }
 
-func (e *graphElement) MatchString(field string, predicate common.StringPredicate) bool {
+func (e *graphElement) MatchString(field string, predicate getter.StringPredicate) bool {
 	if _, found := graphElementKeys[field]; found {
 		if s, err := e.GetFieldString(field); err == nil {
 			return predicate(s)
@@ -425,7 +426,7 @@ func (e *graphElement) MatchString(field string, predicate common.StringPredicat
 	if index := strings.Index(field, "."); index != -1 {
 		first := field[index+1:]
 		if v, found := e.Metadata[first]; found {
-			if getter, found := v.(common.Getter); found {
+			if getter, found := v.(getter.Getter); found {
 				return getter.MatchString(field[index+1:], predicate)
 			}
 		}
@@ -454,7 +455,7 @@ func (e *graphElement) GetFieldStringList(key string) ([]string, error) {
 	case []string:
 		return value, nil
 	default:
-		return nil, common.ErrFieldNotFound
+		return nil, getter.ErrFieldNotFound
 	}
 }
 
@@ -567,7 +568,7 @@ func (e *Edge) MatchMetadata(f ElementMatcher) bool {
 }
 
 // MatchBool implements Getter interface
-func (e *Edge) MatchBool(name string, predicate common.BoolPredicate) bool {
+func (e *Edge) MatchBool(name string, predicate getter.BoolPredicate) bool {
 	if b, err := e.GetFieldBool(name); err == nil {
 		return predicate(b)
 	}
@@ -575,7 +576,7 @@ func (e *Edge) MatchBool(name string, predicate common.BoolPredicate) bool {
 }
 
 // MatchInt64 implements Getter interface
-func (e *Edge) MatchInt64(name string, predicate common.Int64Predicate) bool {
+func (e *Edge) MatchInt64(name string, predicate getter.Int64Predicate) bool {
 	if n, err := e.GetFieldInt64(name); err == nil {
 		return predicate(n)
 	}
@@ -583,7 +584,7 @@ func (e *Edge) MatchInt64(name string, predicate common.Int64Predicate) bool {
 }
 
 // MatchString implements Getter interface
-func (e *Edge) MatchString(name string, predicate common.StringPredicate) bool {
+func (e *Edge) MatchString(name string, predicate getter.StringPredicate) bool {
 	if s, err := e.GetFieldString(name); err == nil {
 		return predicate(s)
 	}

@@ -3,12 +3,12 @@
 package topology
 
 import (
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"strings"
 )
 
 func (obj *Route) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *Route) GetFieldInt64(key string) (int64, error) {
@@ -16,7 +16,7 @@ func (obj *Route) GetFieldInt64(key string) (int64, error) {
 	case "Protocol":
 		return int64(obj.Protocol), nil
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *Route) GetFieldString(key string) (string, error) {
@@ -24,7 +24,7 @@ func (obj *Route) GetFieldString(key string) (string, error) {
 	case "Prefix":
 		return obj.Prefix.String(), nil
 	}
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *Route) GetFieldKeys() []string {
@@ -35,7 +35,7 @@ func (obj *Route) GetFieldKeys() []string {
 	}
 }
 
-func (obj *Route) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *Route) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	first := key
 	index := strings.Index(key, ".")
 	if index != -1 {
@@ -55,7 +55,7 @@ func (obj *Route) MatchBool(key string, predicate common.BoolPredicate) bool {
 	return false
 }
 
-func (obj *Route) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *Route) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if b, err := obj.GetFieldInt64(key); err == nil {
 		return predicate(b)
 	}
@@ -80,7 +80,7 @@ func (obj *Route) MatchInt64(key string, predicate common.Int64Predicate) bool {
 	return false
 }
 
-func (obj *Route) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *Route) MatchString(key string, predicate getter.StringPredicate) bool {
 	if b, err := obj.GetFieldString(key); err == nil {
 		return predicate(b)
 	}
@@ -141,11 +141,11 @@ func (obj *Route) GetField(key string) (interface{}, error) {
 		}
 
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func (obj *RoutingTable) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *RoutingTable) GetFieldInt64(key string) (int64, error) {
@@ -153,7 +153,7 @@ func (obj *RoutingTable) GetFieldInt64(key string) (int64, error) {
 	case "ID":
 		return int64(obj.ID), nil
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *RoutingTable) GetFieldString(key string) (string, error) {
@@ -161,7 +161,7 @@ func (obj *RoutingTable) GetFieldString(key string) (string, error) {
 	case "Src":
 		return obj.Src.String(), nil
 	}
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *RoutingTable) GetFieldKeys() []string {
@@ -172,7 +172,7 @@ func (obj *RoutingTable) GetFieldKeys() []string {
 	}
 }
 
-func (obj *RoutingTable) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *RoutingTable) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	first := key
 	index := strings.Index(key, ".")
 	if index != -1 {
@@ -192,7 +192,7 @@ func (obj *RoutingTable) MatchBool(key string, predicate common.BoolPredicate) b
 	return false
 }
 
-func (obj *RoutingTable) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *RoutingTable) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if b, err := obj.GetFieldInt64(key); err == nil {
 		return predicate(b)
 	}
@@ -217,7 +217,7 @@ func (obj *RoutingTable) MatchInt64(key string, predicate common.Int64Predicate)
 	return false
 }
 
-func (obj *RoutingTable) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *RoutingTable) MatchString(key string, predicate getter.StringPredicate) bool {
 	if b, err := obj.GetFieldString(key); err == nil {
 		return predicate(b)
 	}
@@ -278,23 +278,23 @@ func (obj *RoutingTable) GetField(key string) (interface{}, error) {
 		}
 
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func (obj *RoutingTables) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *RoutingTables) GetFieldInt64(key string) (int64, error) {
 	switch key {
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *RoutingTables) GetFieldString(key string) (string, error) {
 	switch key {
 	}
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *RoutingTables) GetFieldKeys() []string {
@@ -305,7 +305,7 @@ func (obj *RoutingTables) GetFieldKeys() []string {
 	}
 }
 
-func (obj *RoutingTables) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *RoutingTables) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	for _, obj := range *obj {
 		if obj.MatchBool(key, predicate) {
 			return true
@@ -314,7 +314,7 @@ func (obj *RoutingTables) MatchBool(key string, predicate common.BoolPredicate) 
 	return false
 }
 
-func (obj *RoutingTables) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *RoutingTables) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	for _, obj := range *obj {
 		if obj.MatchInt64(key, predicate) {
 			return true
@@ -323,7 +323,7 @@ func (obj *RoutingTables) MatchInt64(key string, predicate common.Int64Predicate
 	return false
 }
 
-func (obj *RoutingTables) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *RoutingTables) MatchString(key string, predicate getter.StringPredicate) bool {
 	for _, obj := range *obj {
 		if obj.MatchString(key, predicate) {
 			return true
@@ -344,7 +344,7 @@ func (obj *RoutingTables) GetField(key string) (interface{}, error) {
 		case "Routes":
 			result = append(result, o.Routes)
 		default:
-			return result, common.ErrFieldNotFound
+			return result, getter.ErrFieldNotFound
 		}
 	}
 

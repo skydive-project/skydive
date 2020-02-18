@@ -3,12 +3,12 @@
 package blockdev
 
 import (
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"strings"
 )
 
 func (obj *BlockMetric) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *BlockMetric) GetFieldInt64(key string) (int64, error) {
@@ -48,11 +48,11 @@ func (obj *BlockMetric) GetFieldInt64(key string) (int64, error) {
 	case "Last":
 		return int64(obj.Last), nil
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *BlockMetric) GetFieldString(key string) (string, error) {
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *BlockMetric) GetFieldKeys() []string {
@@ -77,18 +77,18 @@ func (obj *BlockMetric) GetFieldKeys() []string {
 	}
 }
 
-func (obj *BlockMetric) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *BlockMetric) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	return false
 }
 
-func (obj *BlockMetric) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *BlockMetric) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if b, err := obj.GetFieldInt64(key); err == nil {
 		return predicate(b)
 	}
 	return false
 }
 
-func (obj *BlockMetric) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *BlockMetric) MatchString(key string, predicate getter.StringPredicate) bool {
 	return false
 }
 
@@ -96,7 +96,7 @@ func (obj *BlockMetric) GetField(key string) (interface{}, error) {
 	if i, err := obj.GetFieldInt64(key); err == nil {
 		return i, nil
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func init() {

@@ -28,8 +28,8 @@ import (
 	"github.com/mohae/deepcopy"
 	"github.com/spf13/cast"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
 // Metadata describes the graph node metadata type. It implements ElementMatcher
@@ -38,7 +38,7 @@ import (
 type Metadata map[string]interface{}
 
 // Match returns true if the the given element matches the metadata.
-func (m Metadata) Match(g common.Getter) bool {
+func (m Metadata) Match(g getter.Getter) bool {
 	f, err := m.Filter()
 	if err != nil {
 		return false
@@ -92,7 +92,7 @@ func (m Metadata) GetFieldBool(key string) (bool, error) {
 		return b, nil
 	}
 
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 // GetFieldInt64 returns the value of a integer field
@@ -116,7 +116,7 @@ func (m Metadata) GetFieldString(key string) (string, error) {
 		return s, nil
 	}
 
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 // GetField returns the field with the given name
@@ -125,11 +125,11 @@ func (m Metadata) GetField(key string) (interface{}, error) {
 }
 
 // MatchBool implements Getter interface
-func (m Metadata) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (m Metadata) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	if index := strings.Index(key, "."); index != -1 {
 		first := key[:index]
 		if v, found := m[first]; found {
-			if getter, found := v.(common.Getter); found {
+			if getter, found := v.(getter.Getter); found {
 				return getter.MatchBool(key[index+1:], predicate)
 			}
 		}
@@ -161,11 +161,11 @@ func (m Metadata) MatchBool(key string, predicate common.BoolPredicate) bool {
 }
 
 // MatchInt64 implements Getter interface
-func (m Metadata) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (m Metadata) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if index := strings.Index(key, "."); index != -1 {
 		first := key[:index]
 		if v, found := m[first]; found {
-			if getter, found := v.(common.Getter); found {
+			if getter, found := v.(getter.Getter); found {
 				return getter.MatchInt64(key[index+1:], predicate)
 			}
 		}
@@ -201,11 +201,11 @@ func (m Metadata) MatchInt64(key string, predicate common.Int64Predicate) bool {
 }
 
 // MatchString implements Getter interface
-func (m Metadata) MatchString(key string, predicate common.StringPredicate) bool {
+func (m Metadata) MatchString(key string, predicate getter.StringPredicate) bool {
 	if index := strings.Index(key, "."); index != -1 {
 		first := key[:index]
 		if v, found := m[first]; found {
-			if getter, found := v.(common.Getter); found {
+			if getter, found := v.(getter.Getter); found {
 				return getter.MatchString(key[index+1:], predicate)
 			}
 		}
@@ -247,8 +247,8 @@ func getFieldKeys(obj map[string]interface{}, path string) []string {
 		fields = append(fields, path+k)
 
 		switch v.(type) {
-		case common.Getter:
-			keys := v.(common.Getter).GetFieldKeys()
+		case getter.Getter:
+			keys := v.(getter.Getter).GetFieldKeys()
 			for _, subkey := range keys {
 				fields = append(fields, k+"."+subkey)
 			}
@@ -376,7 +376,7 @@ func GetMapField(obj map[string]interface{}, k string) (interface{}, error) {
 	for n, component := range components {
 		i, ok := obj[component]
 		if !ok {
-			return nil, common.ErrFieldNotFound
+			return nil, getter.ErrFieldNotFound
 		}
 
 		if n == len(components)-1 {
@@ -386,14 +386,14 @@ func GetMapField(obj map[string]interface{}, k string) (interface{}, error) {
 		subkey := strings.Join(components[n+1:], ".")
 
 		switch i.(type) {
-		case common.Getter:
-			return i.(common.Getter).GetField(subkey)
+		case getter.Getter:
+			return i.(getter.Getter).GetField(subkey)
 		case []interface{}:
 			var results []interface{}
 			for _, v := range i.([]interface{}) {
 				switch v := v.(type) {
-				case common.Getter:
-					if obj, err := v.(common.Getter).GetField(subkey); err == nil {
+				case getter.Getter:
+					if obj, err := v.(getter.Getter).GetField(subkey); err == nil {
 						results = append(results, obj)
 					}
 				case map[string]interface{}:

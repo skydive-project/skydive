@@ -36,6 +36,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	fl "github.com/skydive-project/skydive/flow/layers"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -1288,7 +1289,7 @@ LOOP:
 func (f *Flow) GetFieldString(field string) (string, error) {
 	fields := strings.Split(field, ".")
 	if len(fields) < 1 {
-		return "", common.ErrFieldNotFound
+		return "", getter.ErrFieldNotFound
 	}
 
 	// root field
@@ -1314,7 +1315,7 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 
 	// sub field
 	if len(fields) != 2 {
-		return "", common.ErrFieldNotFound
+		return "", getter.ErrFieldNotFound
 	}
 
 	switch name {
@@ -1343,12 +1344,12 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 		}
 	}
 
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 // GetFieldBool returns the value of a boolean flow field
 func (f *Flow) GetFieldBool(field string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 // GetFieldInt64 returns the value of a Flow field
@@ -1362,7 +1363,7 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 
 	fields := strings.Split(field, ".")
 	if len(fields) != 2 {
-		return 0, common.ErrFieldNotFound
+		return 0, getter.ErrFieldNotFound
 	}
 	name := fields[0]
 	switch name {
@@ -1411,7 +1412,7 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 		}
 	}
 
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 // GetFieldInterface returns the value of a Flow field
@@ -1440,7 +1441,7 @@ func (f *Flow) getFieldInterface(field string) (_ interface{}, err error) {
 		}
 	}
 
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 // GetField returns the value of a field
@@ -1462,7 +1463,7 @@ func (f *Flow) GetFieldKeys() []string {
 }
 
 // MatchBool implements the Getter interface
-func (f *Flow) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (f *Flow) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	if b, err := f.GetFieldBool(key); err == nil {
 		return predicate(b)
 	}
@@ -1470,7 +1471,7 @@ func (f *Flow) MatchBool(key string, predicate common.BoolPredicate) bool {
 }
 
 // MatchInt64 implements the Getter interface
-func (f *Flow) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (f *Flow) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if i, err := f.GetFieldInt64(key); err == nil {
 		return predicate(i)
 	}
@@ -1478,7 +1479,7 @@ func (f *Flow) MatchInt64(key string, predicate common.Int64Predicate) bool {
 }
 
 // MatchString implements the Getter interface
-func (f *Flow) MatchString(key string, predicate common.StringPredicate) bool {
+func (f *Flow) MatchString(key string, predicate getter.StringPredicate) bool {
 	if s, err := f.GetFieldString(key); err == nil {
 		return predicate(s)
 	}

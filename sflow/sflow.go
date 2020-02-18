@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
 // SFlow all sflow information
@@ -36,7 +37,7 @@ type SFlow struct {
 }
 
 // SFMetadataDecoder implements a json message raw decoder
-func SFMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+func SFMetadataDecoder(raw json.RawMessage) (getter.Getter, error) {
 	var sf SFlow
 	if err := json.Unmarshal(raw, &sf); err != nil {
 		return nil, err

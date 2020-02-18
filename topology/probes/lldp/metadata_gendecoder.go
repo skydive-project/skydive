@@ -3,7 +3,7 @@
 package lldp
 
 import (
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"strings"
 )
 
@@ -15,7 +15,7 @@ func (obj *LinkAggregationMetadata) GetFieldBool(key string) (bool, error) {
 		return obj.Supported, nil
 	}
 
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *LinkAggregationMetadata) GetFieldInt64(key string) (int64, error) {
@@ -23,11 +23,11 @@ func (obj *LinkAggregationMetadata) GetFieldInt64(key string) (int64, error) {
 	case "PortID":
 		return int64(obj.PortID), nil
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *LinkAggregationMetadata) GetFieldString(key string) (string, error) {
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *LinkAggregationMetadata) GetFieldKeys() []string {
@@ -38,21 +38,21 @@ func (obj *LinkAggregationMetadata) GetFieldKeys() []string {
 	}
 }
 
-func (obj *LinkAggregationMetadata) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *LinkAggregationMetadata) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	if b, err := obj.GetFieldBool(key); err == nil {
 		return predicate(b)
 	}
 	return false
 }
 
-func (obj *LinkAggregationMetadata) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *LinkAggregationMetadata) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if b, err := obj.GetFieldInt64(key); err == nil {
 		return predicate(b)
 	}
 	return false
 }
 
-func (obj *LinkAggregationMetadata) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *LinkAggregationMetadata) MatchString(key string, predicate getter.StringPredicate) bool {
 	return false
 }
 
@@ -64,11 +64,11 @@ func (obj *LinkAggregationMetadata) GetField(key string) (interface{}, error) {
 	if b, err := obj.GetFieldBool(key); err == nil {
 		return b, nil
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func (obj *Metadata) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *Metadata) GetFieldInt64(key string) (int64, error) {
@@ -80,7 +80,7 @@ func (obj *Metadata) GetFieldInt64(key string) (int64, error) {
 	case "ManagementVID":
 		return int64(obj.ManagementVID), nil
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *Metadata) GetFieldString(key string) (string, error) {
@@ -100,7 +100,7 @@ func (obj *Metadata) GetFieldString(key string) (string, error) {
 	case "PortIDType":
 		return string(obj.PortIDType), nil
 	}
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *Metadata) GetFieldKeys() []string {
@@ -121,7 +121,7 @@ func (obj *Metadata) GetFieldKeys() []string {
 	}
 }
 
-func (obj *Metadata) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *Metadata) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	first := key
 	index := strings.Index(key, ".")
 	if index != -1 {
@@ -153,7 +153,7 @@ func (obj *Metadata) MatchBool(key string, predicate common.BoolPredicate) bool 
 	return false
 }
 
-func (obj *Metadata) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *Metadata) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if b, err := obj.GetFieldInt64(key); err == nil {
 		return predicate(b)
 	}
@@ -190,7 +190,7 @@ func (obj *Metadata) MatchInt64(key string, predicate common.Int64Predicate) boo
 	return false
 }
 
-func (obj *Metadata) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *Metadata) MatchString(key string, predicate getter.StringPredicate) bool {
 	if b, err := obj.GetFieldString(key); err == nil {
 		return predicate(b)
 	}
@@ -289,7 +289,7 @@ func (obj *Metadata) GetField(key string) (interface{}, error) {
 		}
 
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func (obj *PPVIDMetadata) GetFieldBool(key string) (bool, error) {
@@ -300,7 +300,7 @@ func (obj *PPVIDMetadata) GetFieldBool(key string) (bool, error) {
 		return obj.Supported, nil
 	}
 
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *PPVIDMetadata) GetFieldInt64(key string) (int64, error) {
@@ -308,11 +308,11 @@ func (obj *PPVIDMetadata) GetFieldInt64(key string) (int64, error) {
 	case "ID":
 		return int64(obj.ID), nil
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *PPVIDMetadata) GetFieldString(key string) (string, error) {
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *PPVIDMetadata) GetFieldKeys() []string {
@@ -323,21 +323,21 @@ func (obj *PPVIDMetadata) GetFieldKeys() []string {
 	}
 }
 
-func (obj *PPVIDMetadata) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *PPVIDMetadata) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	if b, err := obj.GetFieldBool(key); err == nil {
 		return predicate(b)
 	}
 	return false
 }
 
-func (obj *PPVIDMetadata) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *PPVIDMetadata) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if b, err := obj.GetFieldInt64(key); err == nil {
 		return predicate(b)
 	}
 	return false
 }
 
-func (obj *PPVIDMetadata) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *PPVIDMetadata) MatchString(key string, predicate getter.StringPredicate) bool {
 	return false
 }
 
@@ -349,11 +349,11 @@ func (obj *PPVIDMetadata) GetField(key string) (interface{}, error) {
 	if b, err := obj.GetFieldBool(key); err == nil {
 		return b, nil
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func (obj *VLANNameMetadata) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *VLANNameMetadata) GetFieldInt64(key string) (int64, error) {
@@ -361,7 +361,7 @@ func (obj *VLANNameMetadata) GetFieldInt64(key string) (int64, error) {
 	case "ID":
 		return int64(obj.ID), nil
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *VLANNameMetadata) GetFieldString(key string) (string, error) {
@@ -369,7 +369,7 @@ func (obj *VLANNameMetadata) GetFieldString(key string) (string, error) {
 	case "Name":
 		return string(obj.Name), nil
 	}
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *VLANNameMetadata) GetFieldKeys() []string {
@@ -379,18 +379,18 @@ func (obj *VLANNameMetadata) GetFieldKeys() []string {
 	}
 }
 
-func (obj *VLANNameMetadata) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *VLANNameMetadata) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	return false
 }
 
-func (obj *VLANNameMetadata) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *VLANNameMetadata) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if b, err := obj.GetFieldInt64(key); err == nil {
 		return predicate(b)
 	}
 	return false
 }
 
-func (obj *VLANNameMetadata) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *VLANNameMetadata) MatchString(key string, predicate getter.StringPredicate) bool {
 	if b, err := obj.GetFieldString(key); err == nil {
 		return predicate(b)
 	}
@@ -405,7 +405,7 @@ func (obj *VLANNameMetadata) GetField(key string) (interface{}, error) {
 	if i, err := obj.GetFieldInt64(key); err == nil {
 		return i, nil
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func init() {

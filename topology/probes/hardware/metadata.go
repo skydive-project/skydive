@@ -24,7 +24,7 @@ import (
 	json "encoding/json"
 	"fmt"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
 // easyjson:json
@@ -50,7 +50,7 @@ type CPUInfo struct {
 }
 
 // MetadataDecoder implements a json message raw decoder
-func MetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+func MetadataDecoder(raw json.RawMessage) (getter.Getter, error) {
 	var c CPUInfos
 	if err := json.Unmarshal(raw, &c); err != nil {
 		return nil, fmt.Errorf("unable to unmarshal Hardware metadata %s: %s", string(raw), err)

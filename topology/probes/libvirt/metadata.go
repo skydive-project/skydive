@@ -24,7 +24,7 @@ import (
 	json "encoding/json"
 	"fmt"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
 // Metadata describes the informations stored for a libvirt domain
@@ -39,7 +39,7 @@ type Metadata struct {
 }
 
 // MetadataDecoder implements a json message raw decoder
-func MetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+func MetadataDecoder(raw json.RawMessage) (getter.Getter, error) {
 	var m Metadata
 	if err := json.Unmarshal(raw, &m); err != nil {
 		return nil, fmt.Errorf("unable to unmarshal Libvirt metadata %s: %s", string(raw), err)

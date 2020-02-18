@@ -3,7 +3,7 @@
 package netlink
 
 import (
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"strings"
 )
 
@@ -13,7 +13,7 @@ func (obj *VF) GetFieldBool(key string) (bool, error) {
 		return obj.Spoofchk, nil
 	}
 
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *VF) GetFieldInt64(key string) (int64, error) {
@@ -29,7 +29,7 @@ func (obj *VF) GetFieldInt64(key string) (int64, error) {
 	case "Vlan":
 		return int64(obj.Vlan), nil
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *VF) GetFieldString(key string) (string, error) {
@@ -37,7 +37,7 @@ func (obj *VF) GetFieldString(key string) (string, error) {
 	case "MAC":
 		return string(obj.MAC), nil
 	}
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *VF) GetFieldKeys() []string {
@@ -52,21 +52,21 @@ func (obj *VF) GetFieldKeys() []string {
 	}
 }
 
-func (obj *VF) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *VF) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	if b, err := obj.GetFieldBool(key); err == nil {
 		return predicate(b)
 	}
 	return false
 }
 
-func (obj *VF) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *VF) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if b, err := obj.GetFieldInt64(key); err == nil {
 		return predicate(b)
 	}
 	return false
 }
 
-func (obj *VF) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *VF) MatchString(key string, predicate getter.StringPredicate) bool {
 	if b, err := obj.GetFieldString(key); err == nil {
 		return predicate(b)
 	}
@@ -85,26 +85,26 @@ func (obj *VF) GetField(key string) (interface{}, error) {
 	if b, err := obj.GetFieldBool(key); err == nil {
 		return b, nil
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func (obj *VFS) GetFieldBool(key string) (bool, error) {
 	switch key {
 	}
 
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *VFS) GetFieldInt64(key string) (int64, error) {
 	switch key {
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *VFS) GetFieldString(key string) (string, error) {
 	switch key {
 	}
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *VFS) GetFieldKeys() []string {
@@ -119,7 +119,7 @@ func (obj *VFS) GetFieldKeys() []string {
 	}
 }
 
-func (obj *VFS) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *VFS) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	for _, obj := range *obj {
 		if obj.MatchBool(key, predicate) {
 			return true
@@ -128,7 +128,7 @@ func (obj *VFS) MatchBool(key string, predicate common.BoolPredicate) bool {
 	return false
 }
 
-func (obj *VFS) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *VFS) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	for _, obj := range *obj {
 		if obj.MatchInt64(key, predicate) {
 			return true
@@ -137,7 +137,7 @@ func (obj *VFS) MatchInt64(key string, predicate common.Int64Predicate) bool {
 	return false
 }
 
-func (obj *VFS) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *VFS) MatchString(key string, predicate getter.StringPredicate) bool {
 	for _, obj := range *obj {
 		if obj.MatchString(key, predicate) {
 			return true
@@ -166,7 +166,7 @@ func (obj *VFS) GetField(key string) (interface{}, error) {
 		case "Vlan":
 			result = append(result, o.Vlan)
 		default:
-			return result, common.ErrFieldNotFound
+			return result, getter.ErrFieldNotFound
 		}
 	}
 

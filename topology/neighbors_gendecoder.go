@@ -3,12 +3,12 @@
 package topology
 
 import (
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"strings"
 )
 
 func (obj *Neighbor) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *Neighbor) GetFieldInt64(key string) (int64, error) {
@@ -20,7 +20,7 @@ func (obj *Neighbor) GetFieldInt64(key string) (int64, error) {
 	case "IfIndex":
 		return int64(obj.IfIndex), nil
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *Neighbor) GetFieldString(key string) (string, error) {
@@ -30,7 +30,7 @@ func (obj *Neighbor) GetFieldString(key string) (string, error) {
 	case "IP":
 		return obj.IP.String(), nil
 	}
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *Neighbor) GetFieldKeys() []string {
@@ -45,18 +45,18 @@ func (obj *Neighbor) GetFieldKeys() []string {
 	}
 }
 
-func (obj *Neighbor) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *Neighbor) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	return false
 }
 
-func (obj *Neighbor) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *Neighbor) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if b, err := obj.GetFieldInt64(key); err == nil {
 		return predicate(b)
 	}
 	return false
 }
 
-func (obj *Neighbor) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *Neighbor) MatchString(key string, predicate getter.StringPredicate) bool {
 	if b, err := obj.GetFieldString(key); err == nil {
 		return predicate(b)
 	}
@@ -129,23 +129,23 @@ func (obj *Neighbor) GetField(key string) (interface{}, error) {
 		}
 
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func (obj *Neighbors) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *Neighbors) GetFieldInt64(key string) (int64, error) {
 	switch key {
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *Neighbors) GetFieldString(key string) (string, error) {
 	switch key {
 	}
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *Neighbors) GetFieldKeys() []string {
@@ -160,7 +160,7 @@ func (obj *Neighbors) GetFieldKeys() []string {
 	}
 }
 
-func (obj *Neighbors) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *Neighbors) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	for _, obj := range *obj {
 		if obj.MatchBool(key, predicate) {
 			return true
@@ -169,7 +169,7 @@ func (obj *Neighbors) MatchBool(key string, predicate common.BoolPredicate) bool
 	return false
 }
 
-func (obj *Neighbors) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *Neighbors) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	for _, obj := range *obj {
 		if obj.MatchInt64(key, predicate) {
 			return true
@@ -178,7 +178,7 @@ func (obj *Neighbors) MatchInt64(key string, predicate common.Int64Predicate) bo
 	return false
 }
 
-func (obj *Neighbors) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *Neighbors) MatchString(key string, predicate getter.StringPredicate) bool {
 	for _, obj := range *obj {
 		if obj.MatchString(key, predicate) {
 			return true
@@ -207,7 +207,7 @@ func (obj *Neighbors) GetField(key string) (interface{}, error) {
 		case "IfIndex":
 			result = append(result, o.IfIndex)
 		default:
-			return result, common.ErrFieldNotFound
+			return result, getter.ErrFieldNotFound
 		}
 	}
 
