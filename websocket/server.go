@@ -26,7 +26,6 @@ import (
 
 	auth "github.com/abbot/go-http-auth"
 	"github.com/gorilla/websocket"
-	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
@@ -41,7 +40,6 @@ type IncomerHandler func(*websocket.Conn, *auth.AuthenticatedRequest, clientProm
 
 // Server implements a websocket server. It owns a Pool of incoming Speakers.
 type Server struct {
-	insanelock.RWMutex
 	*incomerPool
 	server         *shttp.Server
 	incomerHandler IncomerHandler
@@ -80,16 +78,12 @@ func (s *Server) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReque
 	}
 	s.opts.Logger.Debugf("Serving messages for client %s for pool %s", host, s.GetName())
 
-	s.incomerPool.RLock()
-	c := s.GetSpeakerByRemoteHost(host)
-	if c != nil {
+	if c := s.GetSpeakerByRemoteHost(host); c != nil {
 		s.opts.Logger.Errorf("host_id '%s' (%s) conflicts, same host_id used by %s:%s", host, r.RemoteAddr, c.GetRemoteHost(), c.GetRemoteServiceType())
-		s.incomerPool.RUnlock()
 		w.Header().Set("Connection", "close")
 		w.WriteHeader(http.StatusConflict)
 		return
 	}
-	s.incomerPool.RUnlock()
 
 	// reply with host-id and service type of the server
 	header := http.Header{}
