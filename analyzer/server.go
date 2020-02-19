@@ -90,7 +90,8 @@ type Server struct {
 	topologyManager *usertopology.TopologyManager
 	flowServer      *server.FlowServer
 	probeBundle     *probe.Bundle
-	storage         storage.Storage
+	graphStorage    graph.PersistentBackend
+	flowStorage     storage.Storage
 	wgServers       sync.WaitGroup
 	etcdClient      *etcdclient.Client
 }
@@ -139,8 +140,12 @@ func (s *Server) Start() error {
 
 	s.etcdClient.Start()
 
-	if s.storage != nil {
-		s.storage.Start()
+	if s.graphStorage != nil {
+		s.graphStorage.Start()
+	}
+
+	if s.flowStorage != nil {
+		s.flowStorage.Start()
 	}
 
 	if err := s.probeBundle.Start(); err != nil {
@@ -178,8 +183,12 @@ func (s *Server) Stop() {
 	s.topologyManager.Stop()
 	s.etcdClient.Stop()
 	s.wgServers.Wait()
-	if s.storage != nil {
-		s.storage.Stop()
+
+	if s.graphStorage != nil {
+		s.graphStorage.Stop()
+	}
+	if s.flowStorage != nil {
+		s.flowStorage.Stop()
 	}
 	if tr, ok := http.DefaultTransport.(interface {
 		CloseIdleConnections()
@@ -293,7 +302,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	tableClient := flow.NewWSTableClient(hub.PodServer())
 
-	storage, err := newFlowBackendFromConfig(etcdClient)
+	flowStorage, err := newFlowBackendFromConfig(etcdClient)
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +311,7 @@ func NewServerFromConfig() (*Server, error) {
 	tr := traversal.NewGremlinTraversalParser()
 	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewRawPacketsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewFlowTraversalExtension(tableClient, storage))
+	tr.AddTraversalExtension(ge.NewFlowTraversalExtension(tableClient, flowStorage))
 	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
@@ -354,7 +363,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	onDemandClient := ondemand.NewOnDemandFlowProbeClient(g, captureAPIHandler, hub.PodServer(), hub.SubscriberServer(), etcdClient)
 
-	flowServer, err := server.NewFlowServer(hserver, g, storage, flowSubscriberEndpoint, probeBundle, clusterAuthBackend)
+	flowServer, err := server.NewFlowServer(hserver, g, flowStorage, flowSubscriberEndpoint, probeBundle, clusterAuthBackend)
 	if err != nil {
 		return nil, err
 	}
@@ -373,13 +382,14 @@ func NewServerFromConfig() (*Server, error) {
 		onDemandClient:  onDemandClient,
 		piClient:        piClient,
 		topologyManager: topologyManager,
-		storage:         storage,
+		graphStorage:    persistent,
+		flowStorage:     flowStorage,
 		flowServer:      flowServer,
 		alertServer:     alertServer,
 	}
 
 	api.RegisterTopologyAPI(hserver, g, tr, apiAuthBackend)
-	api.RegisterPcapAPI(hserver, storage, apiAuthBackend)
+	api.RegisterPcapAPI(hserver, flowStorage, apiAuthBackend)
 	api.RegisterConfigAPI(hserver, apiAuthBackend)
 	api.RegisterStatusAPI(hserver, s, apiAuthBackend)
 	api.RegisterWorkflowCallAPI(hserver, apiAuthBackend, apiServer, g, tr)

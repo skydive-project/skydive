@@ -52,7 +52,7 @@ func NewESConfig(name ...string) es.Config {
 	return cfg
 }
 
-func newGraphBackendFromConfig(etcdClient *etcd.Client) (graph.Backend, error) {
+func newGraphBackendFromConfig(etcdClient *etcd.Client) (graph.PersistentBackend, error) {
 	backend := config.GetString("analyzer.topology.backend")
 	configPath := "storage." + backend
 	driver := config.GetString(configPath + ".driver")
