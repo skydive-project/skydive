@@ -81,46 +81,6 @@ type Getter interface {
 	MatchString(field string, predicate StringPredicate) bool
 }
 
-// ToInt64 Convert all number like type to int64
-func ToInt64(i interface{}) (int64, error) {
-	switch v := i.(type) {
-	case json.Number:
-		if i, err := v.Int64(); err == nil {
-			return i, nil
-		}
-		if f, err := v.Float64(); err == nil {
-			return int64(f), nil
-		}
-	case string:
-		return strconv.ParseInt(v, 10, 64)
-	case int:
-		return int64(v), nil
-	case uint:
-		return int64(v), nil
-	case int8:
-		return int64(v), nil
-	case uint8:
-		return int64(v), nil
-	case int16:
-		return int64(v), nil
-	case uint16:
-		return int64(v), nil
-	case int32:
-		return int64(v), nil
-	case uint32:
-		return int64(v), nil
-	case int64:
-		return v, nil
-	case uint64:
-		return int64(v), nil
-	case float32:
-		return int64(v), nil
-	case float64:
-		return int64(v), nil
-	}
-	return 0, fmt.Errorf("failed to convert to an integer: %v", i)
-}
-
 // MinInt64 returns the lowest value
 func MinInt64(a, b int64) int64 {
 	if a < b {

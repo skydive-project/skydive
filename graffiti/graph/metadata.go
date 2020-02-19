@@ -22,6 +22,8 @@ package graph
 import (
 	"strings"
 
+	"github.com/spf13/cast"
+
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 )
@@ -51,6 +53,12 @@ func (m Metadata) Filter() (*filters.Filter, error) {
 			termFilters = append(termFilters, filters.NewTermStringFilter(k, v))
 		case bool:
 			termFilters = append(termFilters, filters.NewTermBoolFilter(k, v))
+		case Metadata:
+			filters, err := v.Filter()
+			if err != nil {
+				return nil, err
+			}
+			termFilters = append(termFilters, filters)
 		case map[string]interface{}:
 			sm := Metadata(v)
 			filters, err := sm.Filter()
@@ -59,7 +67,7 @@ func (m Metadata) Filter() (*filters.Filter, error) {
 			}
 			termFilters = append(termFilters, filters)
 		default:
-			i, err := common.ToInt64(v)
+			i, err := cast.ToInt64E(v)
 			if err != nil {
 				return nil, err
 			}
@@ -90,7 +98,7 @@ func (m Metadata) GetFieldInt64(key string) (int64, error) {
 		return 0, err
 	}
 
-	return common.ToInt64(value)
+	return cast.ToInt64E(value)
 }
 
 // GetFieldString returns the value of a string field
@@ -167,7 +175,7 @@ func (m Metadata) MatchInt64(key string, predicate common.Int64Predicate) bool {
 	switch field := field.(type) {
 	case []interface{}:
 		for _, intf := range field {
-			if v, err := common.ToInt64(intf); err == nil && predicate(v) {
+			if v, err := cast.ToInt64E(intf); err == nil && predicate(v) {
 				return true
 			}
 		}
@@ -180,7 +188,7 @@ func (m Metadata) MatchInt64(key string, predicate common.Int64Predicate) bool {
 	case int64:
 		return predicate(field)
 	default:
-		if v, err := common.ToInt64(field); err == nil {
+		if v, err := cast.ToInt64E(field); err == nil {
 			return predicate(v)
 		}
 	}

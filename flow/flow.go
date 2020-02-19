@@ -31,6 +31,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/pierrec/xxHash/xxHash64"
+	"github.com/spf13/cast"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
@@ -1356,7 +1357,7 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 	// check extra layers
 	if _, ok := extraLayersMap[name]; ok {
 		if value, ok := common.LookupPath(*f, field, reflect.Int); ok && value.IsValid() {
-			if i, err := common.ToInt64(value.Interface()); err == nil {
+			if i, err := cast.ToInt64E(value.Interface()); err == nil {
 				return i, nil
 			}
 		}
