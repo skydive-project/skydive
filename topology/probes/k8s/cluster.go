@@ -30,19 +30,20 @@ var clusterNode *graph.Node
 
 type clusterCache struct {
 	*graph.EventHandler
-	graph *graph.Graph
+	graph       *graph.Graph
+	clusterName string
 }
 
-func (c *clusterCache) addClusterNode(clusterName string) error {
+func (c *clusterCache) addClusterNode() error {
 	c.graph.Lock()
 	defer c.graph.Unlock()
 
-	m := graph.Metadata{"Name": clusterName}
+	m := graph.Metadata{"Name": c.clusterName}
 
 	var err error
-	metadata := NewMetadata(Manager, Cluster, m, nil, clusterName)
-	if len(clusterName) > 0 {
-		metadata.SetField(ClusterNameField, clusterName)
+	metadata := NewMetadata(Manager, Cluster, m, nil, c.clusterName)
+	if len(c.clusterName) > 0 {
+		metadata.SetField(ClusterNameField, c.clusterName)
 	}
 	clusterNode, err = c.graph.NewNode(graph.GenID(), metadata)
 	if err != nil {
@@ -50,32 +51,30 @@ func (c *clusterCache) addClusterNode(clusterName string) error {
 	}
 
 	c.NotifyEvent(graph.NodeAdded, clusterNode)
-	logging.GetLogger().Infof("Added cluster{Name: %s}", clusterName)
+	logging.GetLogger().Infof("Added cluster{Name: %s}", c.clusterName)
 	return nil
 }
 
 func (c *clusterCache) Start() error {
-	return nil
+	return c.addClusterNode()
 }
 
 func (c *clusterCache) Stop() {
 }
 
 func newClusterProbe(g *graph.Graph, clusterName string) Subprobe {
-	c := &clusterCache{
+	return &clusterCache{
 		EventHandler: graph.NewEventHandler(100),
 		graph:        g,
+		clusterName:  clusterName,
 	}
-	c.addClusterNode(clusterName)
-	return c
 }
 
-func initClusterSubprobe(g *graph.Graph, manager, clusterName string) {
+func initClusterSubprobe(g *graph.Graph, manager, clusterName string) Subprobe {
 	if subprobes[manager] == nil {
 		subprobes[manager] = make(map[string]Subprobe)
 	}
-	subprobe := newClusterProbe(g, clusterName)
-	PutSubprobe(manager, Cluster, subprobe)
+	return newClusterProbe(g, clusterName)
 }
 
 type clusterLinker struct {
@@ -92,7 +91,7 @@ func (linker *clusterLinker) createEdge(cluster, object *graph.Node) *graph.Edge
 
 // GetBALinks returns all the incoming links for a node
 func (linker *clusterLinker) GetBALinks(objectNode *graph.Node) (edges []*graph.Edge) {
-	if ! isTheSameCluster(clusterNode, objectNode) {
+	if !isTheSameCluster(clusterNode, objectNode) {
 		return
 	}
 	edges = append(edges, linker.createEdge(clusterNode, objectNode))

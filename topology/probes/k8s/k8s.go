@@ -29,6 +29,21 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// K8sProbe defines the k8s probe
+type K8sProbe struct {
+	*Probe
+	clusterSubprobe Subprobe
+}
+
+// Start the k8s probe
+func (p *K8sProbe) Start() error {
+	if err := p.clusterSubprobe.Start(); err != nil {
+		return err
+	}
+
+	return p.Probe.Start()
+}
+
 // NewConfig returns a new Kubernetes configuration object
 func NewConfig(kubeconfigPath string) (*rest.Config, *clientcmd.ClientConfig, error) {
 	var err error
@@ -63,7 +78,7 @@ func NewConfig(kubeconfigPath string) (*rest.Config, *clientcmd.ClientConfig, er
 }
 
 // NewK8sProbe returns a new Kubernetes probe
-func NewK8sProbe(g *graph.Graph) (*Probe, error) {
+func NewK8sProbe(g *graph.Graph) (*K8sProbe, error) {
 	kubeconfigPath := config.GetString("analyzer.topology.k8s.config_file")
 	enabledSubprobes := config.GetStringSlice("analyzer.topology.k8s.probes")
 
@@ -78,7 +93,6 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 	}
 
 	clusterName := getClusterName(kubeconfig)
-	initClusterSubprobe(g, Manager, clusterName)
 
 	subprobeHandlers := map[string]SubprobeHandler{
 		"configmap":             newConfigMapProbe,
@@ -130,7 +144,10 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 
 	verifiers := []probe.Handler{}
 
-	probe := NewProbe(g, Manager, subprobes[Manager], linkers, verifiers)
+	probe := &K8sProbe{
+		Probe:           NewProbe(g, Manager, subprobes[Manager], linkers, verifiers),
+		clusterSubprobe: initClusterSubprobe(g, Manager, clusterName),
+	}
 
 	probe.AppendClusterLinkers(
 		"namespace",
