@@ -194,7 +194,7 @@ func (h *onDemandPacketInjectionHandler) createRequest(nodeID graph.Identifier, 
 		}
 	}
 
-	if errs := validator.Validate(pir); errs != nil {
+	if errs := validator.Validate("packetinjectionrequest", pir); errs != nil {
 		return "", nil, fmt.Errorf("All the params were not set properly: %s", errs)
 	}
 

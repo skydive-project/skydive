@@ -22,9 +22,9 @@ import (
 
 	"github.com/safchain/insanelock"
 
+	"github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/messages"
-	"github.com/skydive-project/skydive/graffiti/validator"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/logging"
 )
@@ -46,7 +46,7 @@ type PublisherEndpoint struct {
 	ws.DefaultSpeakerEventHandler
 	pool      ws.StructSpeakerPool
 	Graph     *graph.Graph
-	validator validator.Validator
+	validator server.Validator
 	authors   map[string]bool
 }
 
@@ -99,10 +99,10 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 		switch msgType {
 		case messages.NodeAddedMsgType, messages.NodeUpdatedMsgType, messages.NodeDeletedMsgType:
 			obj.(*graph.Node).Origin = origin
-			err = t.validator.ValidateNode(obj.(*graph.Node))
+			err = t.validator.Validate("node", obj.(*graph.Node))
 		case messages.EdgeAddedMsgType, messages.EdgeUpdatedMsgType, messages.EdgeDeletedMsgType:
 			obj.(*graph.Edge).Origin = origin
-			err = t.validator.ValidateEdge(obj.(*graph.Edge))
+			err = t.validator.Validate("edge", obj.(*graph.Edge))
 		}
 
 		if err != nil {
@@ -160,7 +160,7 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 }
 
 // NewPublisherEndpoint returns a new server for external publishers.
-func NewPublisherEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, validator validator.Validator) (*PublisherEndpoint, error) {
+func NewPublisherEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, validator server.Validator) (*PublisherEndpoint, error) {
 	t := &PublisherEndpoint{
 		Graph:     g,
 		pool:      pool,

@@ -223,12 +223,12 @@ func NewServerFromConfig() (*Server, error) {
 		}
 	}
 
-	s.graphStorage, err = newGraphBackendFromConfig(etcdClient)
+	graphStorage, err := newGraphBackendFromConfig(etcdClient)
 	if err != nil {
 		return nil, err
 	}
 
-	cached, err := graph.NewCachedBackend(s.graphStorage)
+	cached, err := graph.NewCachedBackend(graphStorage)
 	if err != nil {
 		return nil, err
 	}
@@ -274,12 +274,8 @@ func NewServerFromConfig() (*Server, error) {
 		probeBundle:  probeBundle,
 		embeddedEtcd: embeddedEtcd,
 		etcdClient:   etcdClient,
+		graphStorage: graphStorage,
 		storage:      storage,
-	}
-
-	validator, err := topology.NewSchemaValidator()
-	if err != nil {
-		return nil, fmt.Errorf("Unable to instantiate a schema validator: %s", err)
 	}
 
 	opts := hub.Opts{
@@ -287,7 +283,7 @@ func NewServerFromConfig() (*Server, error) {
 		WebsocketClientOpts: *wsClientOpts,
 		APIAuthBackend:      apiAuthBackend,
 		ClusterAuthBackend:  clusterAuthBackend,
-		Validator:           validator,
+		Validator:           topology.SchemaValidator,
 		StatusReporter:      s,
 		TLSConfig:           tlsConfig,
 		Peers:               peers,

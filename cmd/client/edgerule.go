@@ -69,7 +69,7 @@ var EdgeRuleCreate = &cobra.Command{
 		}
 		m["RelationType"] = relationType
 
-		edge := &api.EdgeRule{
+		edgeRule := &api.EdgeRule{
 			Name:        name,
 			Description: description,
 			Src:         src,
@@ -77,15 +77,15 @@ var EdgeRuleCreate = &cobra.Command{
 			Metadata:    m,
 		}
 
-		if err = validator.Validate(edge); err != nil {
+		if err = validator.Validate("edgerule", edgeRule); err != nil {
 			exitOnError(fmt.Errorf("Error while validating edge rule: %s", err))
 		}
 
-		if err = client.Create("edgerule", &edge, nil); err != nil {
+		if err = client.Create("edgerule", &edgeRule, nil); err != nil {
 			exitOnError(err)
 		}
 
-		printJSON(edge)
+		printJSON(edgeRule)
 	},
 }
 

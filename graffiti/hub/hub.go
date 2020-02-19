@@ -28,7 +28,6 @@ import (
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
-	"github.com/skydive-project/skydive/graffiti/validator"
 	"github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -40,7 +39,7 @@ type Opts struct {
 	Version             string
 	WebsocketOpts       websocket.ServerOpts
 	WebsocketClientOpts websocket.ClientOpts
-	Validator           validator.Validator
+	Validator           api.Validator
 	TopologyMarshallers api.TopologyMarshallers
 	StatusReporter      api.StatusReporter
 	APIAuthBackend      shttp.AuthenticationBackend
@@ -212,7 +211,7 @@ func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.G
 	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", opts.APIAuthBackend))
 	gc.NewSubscriberEndpoint(subscriberWSServer, g, tr)
 
-	apiServer, err := api.NewAPI(httpServer, opts.EtcdKeysAPI, opts.Version, service, opts.APIAuthBackend)
+	apiServer, err := api.NewAPI(httpServer, opts.EtcdKeysAPI, opts.Version, service, opts.APIAuthBackend, opts.Validator)
 	if err != nil {
 		return nil, err
 	}

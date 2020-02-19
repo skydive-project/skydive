@@ -99,11 +99,11 @@ var CaptureCreate = &cobra.Command{
 		capture.ReassembleTCP = reassembleTCP
 		capture.LayerKeyMode = layerKeyMode
 		capture.RawPacketLimit = rawPacketLimit
-		capture.ExtraLayers = layers
+		capture.ExtraLayers = int(layers)
 		capture.Target = target
 		capture.TargetType = targetType
 
-		if err := validator.Validate(capture); err != nil {
+		if err := validator.Validate("capture", capture); err != nil {
 			exitOnError(err)
 		}
 

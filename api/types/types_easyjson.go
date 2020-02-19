@@ -979,9 +979,7 @@ func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveApiTypes7(in *jlexer.Le
 		case "LayerKeyMode":
 			out.LayerKeyMode = string(in.String())
 		case "ExtraLayers":
-			if data := in.Raw(); in.Ok() {
-				in.AddError((out.ExtraLayers).UnmarshalJSON(data))
-			}
+			out.ExtraLayers = int(in.Int())
 		case "Target":
 			out.Target = string(in.String())
 		case "TargetType":
@@ -1106,7 +1104,7 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveApiTypes7(out *jwriter.
 	if in.ExtraLayers != 0 {
 		const prefix string = ",\"ExtraLayers\":"
 		out.RawString(prefix)
-		out.Raw((in.ExtraLayers).MarshalJSON())
+		out.Int(int(in.ExtraLayers))
 	}
 	if in.Target != "" {
 		const prefix string = ",\"Target\":"

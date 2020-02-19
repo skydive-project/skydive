@@ -25,12 +25,12 @@ type bpfTest struct {
 
 func TestBPFFilter(t *testing.T) {
 	b := bpfTest{BPFFilter: "port 22"}
-	if err := Validate(b); err != nil {
+	if err := Validate("", b); err != nil {
 		t.Errorf("Should not return an error: %s", err.Error())
 	}
 
 	b = bpfTest{BPFFilter: "err_port 22"}
-	if err := Validate(b); err == nil {
+	if err := Validate("", b); err == nil {
 		t.Error("Should return an error")
 	}
 }
@@ -41,12 +41,12 @@ type gremlinTest struct {
 
 func TestGremlin(t *testing.T) {
 	g := gremlinTest{GremlinQuery: "G.V().Has('Name', 'test')"}
-	if err := Validate(g); err != nil {
+	if err := Validate("", g); err != nil {
 		t.Errorf("Should not return an error: %s", err.Error())
 	}
 
 	g = gremlinTest{GremlinQuery: "G.V(.Has('Name', 'test')"}
-	if err := Validate(g); err == nil {
+	if err := Validate("", g); err == nil {
 		t.Error("Should return an error")
 	}
 }
@@ -57,12 +57,12 @@ type ipTest struct {
 
 func TestIP(t *testing.T) {
 	i := ipTest{IP: "192.255.0.1"}
-	if err := Validate(i); err != nil {
+	if err := Validate("", i); err != nil {
 		t.Errorf("Should not return an error: %s", err.Error())
 	}
 
 	i = ipTest{IP: "192.257.0.1"}
-	if err := Validate(i); err == nil {
+	if err := Validate("", i); err == nil {
 		t.Error("Should return an error")
 	}
 }

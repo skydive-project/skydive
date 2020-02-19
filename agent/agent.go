@@ -144,11 +144,6 @@ func NewAgent() (*Agent, error) {
 		logging.GetLogger().Info("Agent is running in standalone mode")
 	}
 
-	validator, err := topology.NewSchemaValidator()
-	if err != nil {
-		return nil, fmt.Errorf("Unable to instantiate a schema validator: %s", err)
-	}
-
 	var tlsConfig *tls.Config
 	if config.IsTLSEnabled() {
 		tlsConfig, err = config.GetTLSServerConfig(true)
@@ -168,7 +163,7 @@ func NewAgent() (*Agent, error) {
 		Hubs:                analyzers,
 		WebsocketOpts:       config.NewWSServerOpts(),
 		WebsocketClientOpts: *wsClientOpts,
-		Validator:           validator,
+		Validator:           topology.SchemaValidator,
 		TLSConfig:           tlsConfig,
 		APIAuthBackend:      apiAuthBackend,
 		TopologyMarshallers: api.TopologyMarshallers,

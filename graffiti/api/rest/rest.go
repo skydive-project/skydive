@@ -30,6 +30,7 @@ type Resource interface {
 	ID() string
 	SetID(string)
 	GetName() string
+	Validate() error
 }
 
 // Handler describes resources for each API
@@ -88,4 +89,9 @@ func (b *BasicResource) SetID(i string) {
 // GetName returns the resource name
 func (b *BasicResource) GetName() string {
 	return "BasicResource"
+}
+
+// Validate integrity of the resource
+func (b *BasicResource) Validate() error {
+	return nil
 }

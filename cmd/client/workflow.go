@@ -61,7 +61,7 @@ func loadWorklow(path string) (*types.Workflow, error) {
 		return nil, err
 	}
 
-	if err := validator.Validate(workflow); err != nil {
+	if err := validator.Validate("workflow", workflow); err != nil {
 		return nil, err
 	}
 

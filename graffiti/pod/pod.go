@@ -25,7 +25,6 @@ import (
 	"github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
-	"github.com/skydive-project/skydive/graffiti/validator"
 	"github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -37,7 +36,7 @@ type Opts struct {
 	Hubs                []scommon.ServiceAddress
 	WebsocketOpts       websocket.ServerOpts
 	WebsocketClientOpts websocket.ClientOpts
-	Validator           validator.Validator
+	Validator           api.Validator
 	TopologyMarshallers api.TopologyMarshallers
 	StatusReporter      api.StatusReporter
 	TLSConfig           *tls.Config
@@ -166,7 +165,7 @@ func NewPod(id string, serviceType scommon.ServiceType, listen string, podEndpoi
 
 	httpServer := shttp.NewServer(id, serviceType, sa.Addr, sa.Port, opts.TLSConfig, opts.Logger)
 
-	apiServer, err := api.NewAPI(httpServer, nil, opts.Version, service, opts.APIAuthBackend)
+	apiServer, err := api.NewAPI(httpServer, nil, opts.Version, service, opts.APIAuthBackend, opts.Validator)
 	if err != nil {
 		return nil, err
 	}

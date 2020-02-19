@@ -54,14 +54,19 @@ import (
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/rbac"
-	"github.com/skydive-project/skydive/validator"
 )
+
+// Validator is the interface to implement to validate REST resources
+type Validator interface {
+	Validate(string, interface{}) error
+}
 
 // Server defines an API server
 type Server struct {
 	HTTPServer *shttp.Server
 	EtcdKeyAPI etcd.KeysAPI
 	handlers   map[string]rest.Handler
+	validator  Validator
 }
 
 // Info for each host describes his API version and service
@@ -162,7 +167,7 @@ func (a *Server) RegisterAPIHandler(handler rest.Handler, authBackend shttp.Auth
 					return
 				}
 
-				if err := validator.Validate(resource); err != nil {
+				if err := a.validator.Validate(name, resource); err != nil {
 					http.Error(w, err.Error(), http.StatusBadRequest)
 					return
 				}
@@ -376,7 +381,7 @@ func (a *Server) addLoginRoute(authBackend shttp.AuthenticationBackend) {
 }
 
 // NewAPI creates a new API server based on http
-func NewAPI(server *shttp.Server, kapi etcd.KeysAPI, version string, service common.Service, authBackend shttp.AuthenticationBackend) (*Server, error) {
+func NewAPI(server *shttp.Server, kapi etcd.KeysAPI, version string, service common.Service, authBackend shttp.AuthenticationBackend, validator Validator) (*Server, error) {
 	if version == "" {
 		version = "unknown"
 	}
@@ -385,6 +390,7 @@ func NewAPI(server *shttp.Server, kapi etcd.KeysAPI, version string, service com
 		HTTPServer: server,
 		EtcdKeyAPI: kapi,
 		handlers:   make(map[string]rest.Handler),
+		validator:  validator,
 	}
 
 	apiServer.addAPIRootRoute(version, service, authBackend)

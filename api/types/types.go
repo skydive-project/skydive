@@ -26,13 +26,13 @@ import (
 	"errors"
 	"time"
 
-	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/topology"
+	"github.com/skydive-project/skydive/graffiti/schema"
 )
 
-var schemaValidator *topology.SchemaValidator
+// SchemaValidator validates resources against JSON schemas
+var SchemaValidator *schema.Validator
 
 // Alert object
 //
@@ -113,7 +113,7 @@ type Capture struct {
 	// First layer used by flow key calculation, L2 or L3
 	LayerKeyMode string `json:"LayerKeyMode,omitempty" valid:"isValidLayerKeyMode" yaml:"LayerKeyMode"`
 	// List of extra layers to be added to the flow, available: DNS|DHCPv4|VRRP
-	ExtraLayers flow.ExtraLayers `json:"ExtraLayers,omitempty" yaml:"ExtraLayers"`
+	ExtraLayers int `json:"ExtraLayers,omitempty" yaml:"ExtraLayers"`
 	// sFlow/NetFlow target, if empty the agent will be used
 	Target string `json:"Target,omitempty" valid:"isValidAddress" yaml:"Target"`
 	// target type (netflowv5, erspanv1), ignored in case of sFlow/NetFlow capture
@@ -164,7 +164,7 @@ func (e *EdgeRule) Validate() error {
 	n1 := graph.CreateNode(graph.GenID(), nil, graph.TimeUTC(), "", "")
 	n2 := graph.CreateNode(graph.GenID(), nil, graph.TimeUTC(), "", "")
 	edge := graph.CreateEdge(graph.GenID(), n1, n2, e.Metadata, graph.TimeUTC(), "", "")
-	return schemaValidator.ValidateEdge(edge)
+	return SchemaValidator.Validate("edge", edge)
 }
 
 // NodeRule object
@@ -200,7 +200,7 @@ func (n *NodeRule) Validate() error {
 	case "create":
 		// TODO: we should modify the JSON schema so that we can validate only the metadata
 		node := graph.CreateNode(graph.GenID(), n.Metadata, graph.TimeUTC(), "", "")
-		return schemaValidator.ValidateNode(node)
+		return SchemaValidator.Validate("node", node)
 	case "update":
 		if n.Metadata["Type"] != nil || n.Metadata["Name"] != nil {
 			return errors.New("Name and Type fields can not be changed")
@@ -335,8 +335,5 @@ type WorkflowCall struct {
 }
 
 func init() {
-	var err error
-	if schemaValidator, err = topology.NewSchemaValidator(); err != nil {
-		panic(err)
-	}
+	SchemaValidator = schema.NewValidator()
 }
