@@ -19,10 +19,8 @@ package common
 
 import (
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math"
 	"net"
 	"reflect"
@@ -133,13 +131,6 @@ func NormalizeValue(obj interface{}) interface{} {
 		return ""
 	}
 	return obj
-}
-
-// JSONDecode wrapper to UseNumber during JSON decoding
-func JSONDecode(r io.Reader, i interface{}) error {
-	decoder := json.NewDecoder(r)
-	decoder.UseNumber()
-	return decoder.Decode(i)
 }
 
 // UnixMillis returns the current time in miliseconds

@@ -20,6 +20,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -52,7 +53,8 @@ func getAnalyzerStatus(client *shttp.CrudClient) (status analyzer.Status, err er
 		return status, fmt.Errorf("Failed to get status, %s: %s", resp.Status, data)
 	}
 
-	if err := common.JSONDecode(resp.Body, &status); err != nil {
+	decoder := json.NewDecoder(resp.Body)
+	if err := decoder.Decode(&status); err != nil {
 		return status, err
 	}
 
