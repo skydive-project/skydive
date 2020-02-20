@@ -41,7 +41,8 @@ import (
 
 	"github.com/skydive-project/skydive/agent"
 	"github.com/skydive-project/skydive/analyzer"
-	gclient "github.com/skydive-project/skydive/api/client"
+	"github.com/skydive-project/skydive/api/client"
+	apiclient "github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
@@ -156,7 +157,7 @@ type helperParams map[string]interface{}
 
 // TestContext holds the context (client, captures, injections, timestamp, ...) of a test
 type TestContext struct {
-	gh              *gclient.GremlinQueryHelper
+	gh              *apiclient.GremlinQueryHelper
 	client          *shttp.CrudClient
 	captures        []*types.Capture
 	injections      []*types.PacketInjection
@@ -351,7 +352,7 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 	switch graphOutputFormat {
 	case "ascii":
 		header := make(http.Header)
-		header.Set("Accept", "vnd.graphviz")
+		header.Set("Accept", "text/vnd.graphviz")
 
 		resp, err := c.gh.Request(gremlin, header)
 		if err != nil {
@@ -460,7 +461,7 @@ func RunTest(t *testing.T, test *Test) {
 		runStandalone()
 	}
 
-	client, err := gclient.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
+	client, err := client.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
 	if err != nil {
 		t.Fatalf("Failed to create client: %s", err)
 	}
@@ -495,7 +496,7 @@ func RunTest(t *testing.T, test *Test) {
 	}
 
 	context := &TestContext{
-		gh:       gclient.NewGremlinQueryHelper(&shttp.AuthenticationOpts{}),
+		gh:       apiclient.NewGremlinQueryHelper(&shttp.AuthenticationOpts{}),
 		client:   client,
 		captures: captures,
 		data:     make(map[string]interface{}),

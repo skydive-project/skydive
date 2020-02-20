@@ -26,6 +26,8 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/probes"
+	"github.com/skydive-project/skydive/graffiti/api/rest"
+	api "github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
@@ -34,12 +36,12 @@ import (
 
 // CaptureResourceHandler describes a capture ressouce handler
 type CaptureResourceHandler struct {
-	ResourceHandler
+	rest.ResourceHandler
 }
 
 // CaptureAPIHandler based on BasicAPIHandler
 type CaptureAPIHandler struct {
-	BasicAPIHandler
+	rest.BasicAPIHandler
 	Graph *graph.Graph
 }
 
@@ -49,14 +51,14 @@ func (c *CaptureResourceHandler) Name() string {
 }
 
 // New creates a new capture resource
-func (c *CaptureResourceHandler) New() types.Resource {
+func (c *CaptureResourceHandler) New() rest.Resource {
 	return &types.Capture{
 		LayerKeyMode: flow.DefaultLayerKeyModeName(),
 	}
 }
 
 // Decorate populates the capture resource
-func (c *CaptureAPIHandler) Decorate(resource types.Resource) {
+func (c *CaptureAPIHandler) Decorate(resource rest.Resource) {
 	capture := resource.(*types.Capture)
 
 	count := 0
@@ -102,7 +104,7 @@ func (c *CaptureAPIHandler) Decorate(resource types.Resource) {
 }
 
 // Create tests that resource GremlinQuery does not exists already
-func (c *CaptureAPIHandler) Create(r types.Resource, opts *CreateOptions) error {
+func (c *CaptureAPIHandler) Create(r rest.Resource, opts *rest.CreateOptions) error {
 	capture := r.(*types.Capture)
 
 	// check capabilities
@@ -135,7 +137,7 @@ func (c *CaptureAPIHandler) Create(r types.Resource, opts *CreateOptions) error 
 
 		if sameCaptureType && sameGremlin {
 			if !supportsMulti || sameBPFFilter {
-				return ErrDuplicatedResource
+				return rest.ErrDuplicatedResource
 			}
 		}
 	}
@@ -144,9 +146,9 @@ func (c *CaptureAPIHandler) Create(r types.Resource, opts *CreateOptions) error 
 }
 
 // RegisterCaptureAPI registers an new resource, capture
-func RegisterCaptureAPI(apiServer *Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*CaptureAPIHandler, error) {
+func RegisterCaptureAPI(apiServer *api.Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*CaptureAPIHandler, error) {
 	captureAPIHandler := &CaptureAPIHandler{
-		BasicAPIHandler: BasicAPIHandler{
+		BasicAPIHandler: rest.BasicAPIHandler{
 			ResourceHandler: &CaptureResourceHandler{},
 			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
 		},

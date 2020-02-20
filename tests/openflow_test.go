@@ -25,9 +25,9 @@ import (
 	"testing"
 
 	"github.com/avast/retry-go"
-
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-test/deep"
+
 	"github.com/skydive-project/skydive/graffiti/graph"
 )
 

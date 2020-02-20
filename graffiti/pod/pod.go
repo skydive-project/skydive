@@ -20,8 +20,8 @@ package pod
 import (
 	"crypto/tls"
 
-	api "github.com/skydive-project/skydive/api/server"
 	scommon "github.com/skydive-project/skydive/common"
+	api "github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
@@ -33,12 +33,16 @@ import (
 
 // Opts defines pod server options
 type Opts struct {
-	WebsocketOpts      websocket.ServerOpts
-	Validator          validator.Validator
-	TLSConfig          *tls.Config
-	APIAuthBackend     shttp.AuthenticationBackend
-	ClusterAuthOptions *shttp.AuthenticationOpts
-	Logger             logging.Logger
+	Version             string
+	Hubs                []scommon.ServiceAddress
+	WebsocketOpts       websocket.ServerOpts
+	WebsocketClientOpts websocket.ClientOpts
+	Validator           validator.Validator
+	TopologyMarshallers api.TopologyMarshallers
+	StatusReporter      api.StatusReporter
+	TLSConfig           *tls.Config
+	APIAuthBackend      shttp.AuthenticationBackend
+	Logger              logging.Logger
 }
 
 // Pod describes a graph pod. It maintains a local graph
@@ -71,18 +75,22 @@ func (p *Pod) Start() error {
 	p.subscriberWSServer.Start()
 	p.publisherWSServer.Start()
 
+	// everything is ready, then initiate the websocket connection
+	go p.clientPool.ConnectAll()
+
 	return nil
 }
 
 // Stop the pod
 func (p *Pod) Stop() {
+	p.clientPool.Stop()
 	p.httpServer.Stop()
 	p.subscriberWSServer.Stop()
 	p.publisherWSServer.Stop()
 }
 
 // GetStatus returns the status of the pod
-func (p *Pod) GetStatus() *Status {
+func (p *Pod) GetStatus() interface{} {
 	var masterAddr string
 	var masterPort int
 	if master := p.forwarder.GetMaster(); master != nil {
@@ -123,13 +131,18 @@ func (p *Pod) APIServer() *api.Server {
 	return p.apiServer
 }
 
+// ClientPool returns the WebSocket client pool
+func (p *Pod) ClientPool() *websocket.StructClientPool {
+	return p.clientPool
+}
+
 // GremlinTraversalParser returns the pod Gremlin traversal parser
 func (p *Pod) GremlinTraversalParser() *traversal.GremlinTraversalParser {
 	return p.traversalParser
 }
 
 // NewPod returns a new pod
-func NewPod(id string, serviceType scommon.ServiceType, listen string, clientPool *websocket.StructClientPool, g *graph.Graph, opts Opts) (*Pod, error) {
+func NewPod(id string, serviceType scommon.ServiceType, listen string, podEndpoint string, g *graph.Graph, opts Opts) (*Pod, error) {
 	service := scommon.Service{ID: id, Type: serviceType}
 
 	sa, err := scommon.ServiceAddressFromString(listen)
@@ -141,9 +154,19 @@ func NewPod(id string, serviceType scommon.ServiceType, listen string, clientPoo
 		opts.Logger = logging.GetLogger()
 	}
 
+	// Creates a new http WebSocket client pool with authentication
+	clientPool := websocket.NewStructClientPool("HubClientPool", websocket.PoolOpts{})
+	clientOpts := opts.WebsocketClientOpts
+	clientOpts.Protocol = websocket.ProtobufProtocol
+	for _, sa := range opts.Hubs {
+		url := scommon.MakeURL("ws", sa.Addr, sa.Port, podEndpoint, clientOpts.TLSConfig != nil)
+		client := websocket.NewClient(id, serviceType, url, clientOpts)
+		clientPool.AddClient(client)
+	}
+
 	httpServer := shttp.NewServer(id, serviceType, sa.Addr, sa.Port, opts.TLSConfig, opts.Logger)
 
-	apiServer, err := api.NewAPI(httpServer, nil, service, opts.APIAuthBackend)
+	apiServer, err := api.NewAPI(httpServer, nil, opts.Version, service, opts.APIAuthBackend)
 	if err != nil {
 		return nil, err
 	}
@@ -163,9 +186,9 @@ func NewPod(id string, serviceType scommon.ServiceType, listen string, clientPoo
 		return nil, err
 	}
 
-	api.RegisterTopologyAPI(httpServer, g, tr, opts.APIAuthBackend)
+	api.RegisterTopologyAPI(httpServer, g, tr, opts.APIAuthBackend, opts.TopologyMarshallers)
 
-	return &Pod{
+	pod := &Pod{
 		httpServer:         httpServer,
 		apiServer:          apiServer,
 		subscriberWSServer: subscriberWSServer,
@@ -173,5 +196,12 @@ func NewPod(id string, serviceType scommon.ServiceType, listen string, clientPoo
 		forwarder:          forwarder,
 		clientPool:         clientPool,
 		traversalParser:    tr,
-	}, nil
+	}
+
+	if opts.StatusReporter == nil {
+		opts.StatusReporter = pod
+	}
+	api.RegisterStatusAPI(httpServer, opts.StatusReporter, opts.APIAuthBackend)
+
+	return pod, nil
 }

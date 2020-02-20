@@ -24,21 +24,23 @@ import (
 	"time"
 
 	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/graffiti/api/rest"
+	api "github.com/skydive-project/skydive/graffiti/api/server"
 	shttp "github.com/skydive-project/skydive/http"
 )
 
 // AlertResourceHandler aims to creates and manage a new Alert.
 type AlertResourceHandler struct {
-	ResourceHandler
+	rest.ResourceHandler
 }
 
 // AlertAPIHandler aims to exposes the Alert API.
 type AlertAPIHandler struct {
-	BasicAPIHandler
+	rest.BasicAPIHandler
 }
 
 // New creates a new alert
-func (a *AlertResourceHandler) New() types.Resource {
+func (a *AlertResourceHandler) New() rest.Resource {
 	return &types.Alert{
 		CreateTime: time.Now().UTC(),
 	}
@@ -50,9 +52,9 @@ func (a *AlertResourceHandler) Name() string {
 }
 
 // RegisterAlertAPI registers an Alert's API to a designated API Server
-func RegisterAlertAPI(apiServer *Server, authBackend shttp.AuthenticationBackend) (*AlertAPIHandler, error) {
+func RegisterAlertAPI(apiServer *api.Server, authBackend shttp.AuthenticationBackend) (*AlertAPIHandler, error) {
 	alertAPIHandler := &AlertAPIHandler{
-		BasicAPIHandler: BasicAPIHandler{
+		BasicAPIHandler: rest.BasicAPIHandler{
 			ResourceHandler: &AlertResourceHandler{},
 			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
 		},

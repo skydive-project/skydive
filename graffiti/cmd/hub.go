@@ -24,8 +24,8 @@ import (
 	"syscall"
 	"time"
 
-	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/common"
+	api "github.com/skydive-project/skydive/graffiti/api/server"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"

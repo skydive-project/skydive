@@ -25,13 +25,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/pod"
 	"github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -111,7 +112,7 @@ var PodCmd = &cobra.Command{
 			APIAuthBackend: authBackend,
 		}
 
-		pod, err := pod.NewPod(hostname, serviceType, podListen, clientPool, g, podOpts)
+		pod, err := pod.NewPod(hostname, serviceType, podListen, "/ws/pod", g, podOpts)
 		if err != nil {
 			logging.GetLogger().Error(err)
 			os.Exit(1)

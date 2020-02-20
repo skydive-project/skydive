@@ -27,10 +27,9 @@ import (
 	"github.com/safchain/insanelock"
 	"github.com/skydive-project/go-debouncer"
 
-	api "github.com/skydive-project/skydive/api/server"
-	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/api/rest"
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
@@ -40,16 +39,16 @@ import (
 
 type OnDemandNodeResource struct {
 	Node     *graph.Node
-	Resource types.Resource
+	Resource rest.Resource
 }
 
 // OnDemandClientHandler is the interface to be implemented by ondemand clients
 type OnDemandClientHandler interface {
 	ResourceName() string
-	GetNodeResources(resource types.Resource) []OnDemandNodeResource
-	CheckState(n *graph.Node, resource types.Resource) bool
-	DecodeMessage(msg json.RawMessage) (types.Resource, error)
-	EncodeMessage(nodeID graph.Identifier, resource types.Resource) (json.RawMessage, error)
+	GetNodeResources(resource rest.Resource) []OnDemandNodeResource
+	CheckState(n *graph.Node, resource rest.Resource) bool
+	DecodeMessage(msg json.RawMessage) (rest.Resource, error)
+	EncodeMessage(nodeID graph.Identifier, resource rest.Resource) (json.RawMessage, error)
 }
 
 // OnDemandClient describes an ondemand task client based on a websocket
@@ -58,13 +57,13 @@ type OnDemandClient struct {
 	common.MasterElection
 	graph.DefaultGraphListener
 	graph                   *graph.Graph
-	apiHandler              api.Handler
+	apiHandler              rest.Handler
 	agentPool               ws.StructSpeakerPool
 	subscriberPool          ws.StructSpeakerPool
 	wsNamespace             string
 	wsNotificationNamespace string
-	resources               map[string]types.Resource
-	watcher                 api.StoppableWatcher
+	resources               map[string]rest.Resource
+	watcher                 rest.StoppableWatcher
 	registeredNodes         map[graph.Identifier]map[string]bool
 	deletedNodeCache        *cache.Cache
 	checkForRegistration    *debouncer.Debouncer
@@ -80,7 +79,7 @@ type handlerNodeState struct {
 type nodeTask struct {
 	id       graph.Identifier
 	host     string
-	resource types.Resource
+	resource rest.Resource
 }
 
 func (o *OnDemandClient) removeRegisteredNode(nodeID graph.Identifier, resourceID string) {
@@ -165,7 +164,7 @@ func (o *OnDemandClient) registerTask(np nodeTask) bool {
 	return true
 }
 
-func (o *OnDemandClient) unregisterTask(node *graph.Node, resource types.Resource) bool {
+func (o *OnDemandClient) unregisterTask(node *graph.Node, resource rest.Resource) bool {
 	body, err := o.handler.EncodeMessage(node.ID, resource)
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to encode message for agent %s: %s", node.Host, err)
@@ -256,7 +255,7 @@ func (o *OnDemandClient) OnNodeAdded(n *graph.Node) {
 
 				// not present unregister it
 				logging.GetLogger().Debugf("Unregister remaining %s for node %s: %s", o.resourceName, n.ID, id)
-				go o.unregisterTask(n, &types.BasicResource{UUID: id})
+				go o.unregisterTask(n, &rest.BasicResource{UUID: id})
 			}
 		}
 	} else {
@@ -299,7 +298,7 @@ func (o *OnDemandClient) OnEdgeAdded(e *graph.Edge) {
 	o.checkForRegistration.Call()
 }
 
-func (o *OnDemandClient) registerResource(resource types.Resource) {
+func (o *OnDemandClient) registerResource(resource rest.Resource) {
 	o.graph.RLock()
 	defer o.graph.RUnlock()
 
@@ -315,7 +314,7 @@ func (o *OnDemandClient) registerResource(resource types.Resource) {
 	}
 }
 
-func (o *OnDemandClient) onResourceAdded(resource types.Resource) {
+func (o *OnDemandClient) onResourceAdded(resource rest.Resource) {
 	if !o.IsMaster() {
 		return
 	}
@@ -323,7 +322,7 @@ func (o *OnDemandClient) onResourceAdded(resource types.Resource) {
 	o.registerResource(resource)
 }
 
-func (o *OnDemandClient) unregisterResource(resource types.Resource) {
+func (o *OnDemandClient) unregisterResource(resource rest.Resource) {
 	o.graph.RLock()
 	defer o.graph.RUnlock()
 
@@ -340,7 +339,7 @@ func (o *OnDemandClient) unregisterResource(resource types.Resource) {
 	}
 }
 
-func (o *OnDemandClient) onResourceDeleted(resource types.Resource) {
+func (o *OnDemandClient) onResourceDeleted(resource rest.Resource) {
 	if !o.IsMaster() {
 		// fill the cache with recent delete in order to be able to delete then
 		// in case we lose the master and nobody is master yet. This cache will
@@ -364,12 +363,12 @@ func (o *OnDemandClient) OnStartAsSlave() {
 func (o *OnDemandClient) OnSwitchToMaster() {
 	// try to delete recently added resource to handle case where the api got a delete but wasn't yet master
 	for _, item := range o.deletedNodeCache.Items() {
-		resource := item.Object.(types.Resource)
+		resource := item.Object.(rest.Resource)
 		o.unregisterResource(resource)
 	}
 
 	for _, resource := range o.apiHandler.Index() {
-		resource := resource.(types.Resource)
+		resource := resource.(rest.Resource)
 		o.onResourceAdded(resource)
 	}
 }
@@ -378,7 +377,7 @@ func (o *OnDemandClient) OnSwitchToMaster() {
 func (o *OnDemandClient) OnSwitchToSlave() {
 }
 
-func (o *OnDemandClient) onAPIWatcherEvent(action string, id string, resource types.Resource) {
+func (o *OnDemandClient) onAPIWatcherEvent(action string, id string, resource rest.Resource) {
 	logging.GetLogger().Debugf("New watcher event %s for %s", action, id)
 	switch action {
 	case "init", "create", "set", "update":
@@ -411,7 +410,7 @@ func (o *OnDemandClient) Stop() {
 }
 
 // NewOnDemandClient creates a new ondemand task client based on API, graph and websocket
-func NewOnDemandClient(g *graph.Graph, ch api.Handler, agentPool ws.StructSpeakerPool, subscriberPool ws.StructSpeakerPool, etcdClient *etcd.Client, handler OnDemandClientHandler) *OnDemandClient {
+func NewOnDemandClient(g *graph.Graph, ch rest.Handler, agentPool ws.StructSpeakerPool, subscriberPool ws.StructSpeakerPool, etcdClient *etcd.Client, handler OnDemandClientHandler) *OnDemandClient {
 	election := etcdClient.NewElection("ondemand-client-" + handler.ResourceName())
 	o := &OnDemandClient{
 		MasterElection:          election,

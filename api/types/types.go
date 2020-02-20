@@ -27,40 +27,12 @@ import (
 	"time"
 
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/api/rest"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/topology"
 )
 
 var schemaValidator *topology.SchemaValidator
-
-// Resource used as interface resources for each API
-type Resource interface {
-	ID() string
-	SetID(string)
-	GetName() string
-}
-
-// BasicResource is a resource with a unique identifier
-// easyjson:json
-// swagger:ignore
-type BasicResource struct {
-	UUID string `yaml:"UUID"`
-}
-
-// ID returns the resource ID
-func (b *BasicResource) ID() string {
-	return b.UUID
-}
-
-// SetID sets the resource ID
-func (b *BasicResource) SetID(i string) {
-	b.UUID = i
-}
-
-// GetName returns the resource name
-func (b *BasicResource) GetName() string {
-	return "BasicResource"
-}
 
 // Alert object
 //
@@ -71,7 +43,7 @@ func (b *BasicResource) GetName() string {
 // swagger:model Alert
 type Alert struct {
 	// swagger:allOf
-	BasicResource `yaml:",inline"`
+	rest.BasicResource `yaml:",inline"`
 	// Alert name
 	Name string `json:",omitempty" yaml:"Name"`
 	// Alert description
@@ -107,7 +79,7 @@ func NewAlert() *Alert {
 // swagger:model Capture
 type Capture struct {
 	// swagger:allOf
-	BasicResource `yaml:",inline"`
+	rest.BasicResource `yaml:",inline"`
 	// Gremlin Query
 	// required: true
 	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr" yaml:"GremlinQuery"`
@@ -169,7 +141,7 @@ func NewCapture(query string, bpfFilter string) *Capture {
 // swagger:model
 type EdgeRule struct {
 	// swagger:allOf
-	BasicResource `yaml:",inline"`
+	rest.BasicResource `yaml:",inline"`
 	// Edge rule name
 	Name string `yaml:"Name"`
 	// Edge rule description
@@ -203,7 +175,7 @@ func (e *EdgeRule) Validate() error {
 // swagger:model
 type NodeRule struct {
 	// swagger:allOf
-	BasicResource `yaml:",inline"`
+	rest.BasicResource `yaml:",inline"`
 	// Node rule name
 	Name string `yaml:"Name"`
 	// Node rule description
@@ -262,25 +234,25 @@ const (
 // swagger:model
 type PacketInjection struct {
 	// swagger:allOf
-	BasicResource    `yaml:",inline"`
-	Src              string `yaml:"Src"`
-	Dst              string `yaml:"Dst"`
-	SrcIP            string `valid:"isIPOrCIDR" yaml:"SrcIP"`
-	DstIP            string `valid:"isIPOrCIDR" yaml:"DstIP"`
-	SrcMAC           string `valid:"isMAC" yaml:"SrcMAC"`
-	DstMAC           string `valid:"isMAC" yaml:"DstMAC"`
-	SrcPort          uint16 `yaml:"SrcPort"`
-	DstPort          uint16 `yaml:"DstPort"`
-	Type             string `yaml:"Type"`
-	Payload          string `yaml:"Payload"`
-	ICMPID           uint16 `yaml:"ICMPID"`
-	Count            uint64 `yaml:"Count"`
-	Interval         uint64 `yaml:"Interval"`
-	Mode             string `yaml:"Mode"`
-	IncrementPayload int64  `yaml:"IncrementPayload"`
-	StartTime        time.Time
-	Pcap             []byte `yaml:"Pcap"`
-	TTL              uint8  `yaml:"TTL"`
+	rest.BasicResource `yaml:",inline"`
+	Src                string `yaml:"Src"`
+	Dst                string `yaml:"Dst"`
+	SrcIP              string `valid:"isIPOrCIDR" yaml:"SrcIP"`
+	DstIP              string `valid:"isIPOrCIDR" yaml:"DstIP"`
+	SrcMAC             string `valid:"isMAC" yaml:"SrcMAC"`
+	DstMAC             string `valid:"isMAC" yaml:"DstMAC"`
+	SrcPort            uint16 `yaml:"SrcPort"`
+	DstPort            uint16 `yaml:"DstPort"`
+	Type               string `yaml:"Type"`
+	Payload            string `yaml:"Payload"`
+	ICMPID             uint16 `yaml:"ICMPID"`
+	Count              uint64 `yaml:"Count"`
+	Interval           uint64 `yaml:"Interval"`
+	Mode               string `yaml:"Mode"`
+	IncrementPayload   int64  `yaml:"IncrementPayload"`
+	StartTime          time.Time
+	Pcap               []byte `yaml:"Pcap"`
+	TTL                uint8  `yaml:"TTL"`
 }
 
 // GetName returns the resource name
@@ -342,7 +314,7 @@ type WorkflowParam struct {
 // swagger:model
 type Workflow struct {
 	// swagger:allOf
-	BasicResource `yaml:",inline"`
+	rest.BasicResource `yaml:",inline"`
 	// Workflow name
 	Name string `yaml:"Name" valid:"nonzero"`
 	// Workflow title

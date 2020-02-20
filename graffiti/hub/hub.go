@@ -22,8 +22,8 @@ import (
 
 	etcd "github.com/coreos/etcd/client"
 
-	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/common"
+	api "github.com/skydive-project/skydive/graffiti/api/server"
 	gc "github.com/skydive-project/skydive/graffiti/common"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -36,17 +36,20 @@ import (
 
 // Opts Hub options
 type Opts struct {
-	Hostname           string
-	WebsocketOpts      websocket.ServerOpts
-	Validator          validator.Validator
-	APIAuthBackend     shttp.AuthenticationBackend
-	ClusterAuthBackend shttp.AuthenticationBackend
-	ClusterAuthOptions *shttp.AuthenticationOpts
-	Peers              []common.ServiceAddress
-	TLSConfig          *tls.Config
-	EtcdServerOpts     *etcdserver.EmbeddedServerOpts
-	EtcdKeysAPI        etcd.KeysAPI
-	Logger             logging.Logger
+	Hostname            string
+	Version             string
+	WebsocketOpts       websocket.ServerOpts
+	WebsocketClientOpts websocket.ClientOpts
+	Validator           validator.Validator
+	TopologyMarshallers api.TopologyMarshallers
+	StatusReporter      api.StatusReporter
+	APIAuthBackend      shttp.AuthenticationBackend
+	ClusterAuthBackend  shttp.AuthenticationBackend
+	Peers               []common.ServiceAddress
+	TLSConfig           *tls.Config
+	EtcdServerOpts      *etcdserver.EmbeddedServerOpts
+	EtcdKeysAPI         etcd.KeysAPI
+	Logger              logging.Logger
 }
 
 // Hub describes a graph hub that accepts incoming connections
@@ -183,13 +186,6 @@ func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.G
 
 	httpServer := shttp.NewServer(service.ID, service.Type, sa.Addr, sa.Port, opts.TLSConfig, opts.Logger)
 
-	apiServer, err := api.NewAPI(httpServer, opts.EtcdKeysAPI, service, opts.APIAuthBackend)
-	if err != nil {
-		return nil, err
-	}
-
-	api.RegisterTopologyAPI(httpServer, g, tr, opts.APIAuthBackend)
-
 	newWSServer := func(endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
 		opts := opts.WebsocketOpts
 		opts.AuthBackend = authBackend
@@ -208,7 +204,7 @@ func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.G
 	}
 
 	replicationWSServer := websocket.NewStructServer(newWSServer("/ws/replication", opts.ClusterAuthBackend))
-	replicationEndpoint, err := NewReplicationEndpoint(replicationWSServer, opts.ClusterAuthOptions, cached, g, opts.Peers)
+	replicationEndpoint, err := NewReplicationEndpoint(replicationWSServer, &opts.WebsocketClientOpts, cached, g, opts.Peers)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +212,12 @@ func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.G
 	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", opts.APIAuthBackend))
 	gc.NewSubscriberEndpoint(subscriberWSServer, g, tr)
 
-	return &Hub{
+	apiServer, err := api.NewAPI(httpServer, opts.EtcdKeysAPI, opts.Version, service, opts.APIAuthBackend)
+	if err != nil {
+		return nil, err
+	}
+
+	hub := &Hub{
 		httpServer:          httpServer,
 		apiServer:           apiServer,
 		podWSServer:         podWSServer,
@@ -226,5 +227,14 @@ func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.G
 		subscriberWSServer:  subscriberWSServer,
 		embeddedEtcd:        embeddedEtcd,
 		traversalParser:     tr,
-	}, nil
+	}
+
+	if opts.StatusReporter == nil {
+		opts.StatusReporter = hub
+	}
+
+	api.RegisterStatusAPI(httpServer, opts.StatusReporter, opts.APIAuthBackend)
+	api.RegisterTopologyAPI(httpServer, g, tr, opts.APIAuthBackend, opts.TopologyMarshallers)
+
+	return hub, nil
 }

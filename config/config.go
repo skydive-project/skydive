@@ -129,7 +129,6 @@ func init() {
 	cfg.SetDefault("analyzer.flow.backend", "memory")
 	cfg.SetDefault("analyzer.flow.max_buffer_size", 100000)
 	cfg.SetDefault("analyzer.listen", "127.0.0.1:8082")
-	cfg.SetDefault("analyzer.replication.debug", false)
 	cfg.SetDefault("analyzer.topology.backend", "memory")
 	cfg.SetDefault("analyzer.topology.probes", []string{})
 	cfg.SetDefault("analyzer.topology.k8s.config_file", "/etc/skydive/kubeconfig")
@@ -541,11 +540,5 @@ func GetURL(protocol string, addr string, port int, path string) *url.URL {
 // GetURL constructs a URL from a tuple of protocol, address, port and path
 // If TLS is enabled, it will return the https (or wss) version of the URL.
 func (c *SkydiveConfig) GetURL(protocol string, addr string, port int, path string) *url.URL {
-	u, _ := url.Parse(fmt.Sprintf("%s://%s:%d%s", protocol, addr, port, path))
-
-	if (protocol == "http" || protocol == "ws") && c.IsTLSEnabled() == true {
-		u.Scheme += "s"
-	}
-
-	return u
+	return common.MakeURL(protocol, addr, port, path, c.IsTLSEnabled())
 }

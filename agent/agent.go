@@ -35,7 +35,6 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/pod"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
-	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/ondemand/server"
@@ -49,44 +48,13 @@ import (
 type Agent struct {
 	ws.DefaultSpeakerEventHandler
 	pod                 *pod.Pod
-	graph               *graph.Graph
-	analyzerClientPool  *ws.StructClientPool
-	rootNode            *graph.Node
 	topologyProbeBundle *probe.Bundle
 	flowProbeBundle     *probe.Bundle
-	flowTableAllocator  *flow.TableAllocator
 	flowClientPool      *client.FlowClientPool
 	onDemandProbeServer *server.OnDemandServer
 	onDemandPIServer    *server.OnDemandServer
 	httpServer          *shttp.Server
 	tidMapper           *topology.TIDMapper
-}
-
-// NewAnalyzerStructClientPool creates a new http WebSocket client Pool
-// with authentication
-func NewAnalyzerStructClientPool(authOpts *shttp.AuthenticationOpts) (*ws.StructClientPool, error) {
-	pool := ws.NewStructClientPool("AnalyzerClientPool", ws.PoolOpts{})
-
-	addresses, err := config.GetAnalyzerServiceAddresses()
-	if err != nil {
-		return nil, fmt.Errorf("Unable to get the analyzers list: %s", err)
-	}
-
-	if len(addresses) == 0 {
-		logging.GetLogger().Info("Agent is running in standalone mode")
-		return pool, nil
-	}
-
-	for _, sa := range addresses {
-		url := config.GetURL("ws", sa.Addr, sa.Port, "/ws/agent/topology")
-		c, err := config.NewWSClient(common.AgentService, url, ws.ClientOpts{AuthOpts: authOpts, Protocol: ws.ProtobufProtocol})
-		if err != nil {
-			return nil, err
-		}
-		pool.AddClient(c)
-	}
-
-	return pool, nil
 }
 
 // Status agent object
@@ -104,7 +72,7 @@ type Status struct {
 
 // GetStatus returns the status of an agent
 func (a *Agent) GetStatus() interface{} {
-	podStatus := a.pod.GetStatus()
+	podStatus := a.pod.GetStatus().(*pod.Status)
 
 	return &Status{
 		Clients:        podStatus.Subscribers,
@@ -121,9 +89,6 @@ func (a *Agent) Start() {
 	a.flowProbeBundle.Start()
 	a.onDemandPIServer.Start()
 	a.onDemandProbeServer.Start()
-
-	// everything is ready, then initiate the websocket connection
-	go a.analyzerClientPool.ConnectAll()
 }
 
 // Stop agent services
@@ -132,7 +97,6 @@ func (a *Agent) Stop() {
 	a.onDemandPIServer.Stop()
 	a.onDemandProbeServer.Stop()
 	a.flowProbeBundle.Stop()
-	a.analyzerClientPool.Stop()
 	a.topologyProbeBundle.Stop()
 	a.flowClientPool.Close()
 
@@ -159,16 +123,8 @@ func NewAgent() (*Agent, error) {
 	hostID := config.GetString("host_id")
 	g := graph.NewGraph(hostID, backend, common.AgentService)
 
-	tm := topology.NewTIDMapper(g)
-	tm.Start()
-
 	apiAuthBackendName := config.GetString("agent.auth.api.backend")
 	apiAuthBackend, err := config.NewAuthenticationBackendByName(apiAuthBackendName)
-	if err != nil {
-		return nil, err
-	}
-
-	rootNode, err := createRootNode(g)
 	if err != nil {
 		return nil, err
 	}
@@ -179,9 +135,13 @@ func NewAgent() (*Agent, error) {
 		Cookie:   config.GetStringMapString("http.cookie"),
 	}
 
-	analyzerClientPool, err := NewAnalyzerStructClientPool(clusterAuthOptions)
+	analyzers, err := config.GetAnalyzerServiceAddresses()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Unable to get the analyzers list: %s", err)
+	}
+
+	if len(analyzers) == 0 {
+		logging.GetLogger().Info("Agent is running in standalone mode")
 	}
 
 	validator, err := topology.NewSchemaValidator()
@@ -197,28 +157,40 @@ func NewAgent() (*Agent, error) {
 		}
 	}
 
-	opts := pod.Opts{
-		WebsocketOpts:      config.NewWSServerOpts(),
-		Validator:          validator,
-		TLSConfig:          tlsConfig,
-		APIAuthBackend:     apiAuthBackend,
-		ClusterAuthOptions: clusterAuthOptions,
-	}
-
-	listenAddr := config.GetString("agent.listen")
-	pod, err := pod.NewPod(hostID, common.AgentService, listenAddr, analyzerClientPool, g, opts)
+	wsClientOpts, err := config.NewWSClientOpts(clusterAuthOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	// declare all extension available through API and filtering
-	tr := pod.GremlinTraversalParser()
-	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
+	agent := &Agent{}
 
-	topologyProbeBundle, err := NewTopologyProbeBundle(g, rootNode)
+	opts := pod.Opts{
+		Hubs:                analyzers,
+		WebsocketOpts:       config.NewWSServerOpts(),
+		WebsocketClientOpts: *wsClientOpts,
+		Validator:           validator,
+		TLSConfig:           tlsConfig,
+		APIAuthBackend:      apiAuthBackend,
+		TopologyMarshallers: api.TopologyMarshallers,
+		StatusReporter:      agent,
+	}
+
+	listenAddr := config.GetString("agent.listen")
+	pod, err := pod.NewPod(hostID, common.AgentService, listenAddr, "/ws/agent/topology", g, opts)
+	if err != nil {
+		return nil, err
+	}
+	agent.pod = pod
+
+	agent.tidMapper = topology.NewTIDMapper(g)
+	agent.tidMapper.Start()
+
+	rootNode, err := createRootNode(g)
+	if err != nil {
+		return nil, err
+	}
+
+	agent.topologyProbeBundle, err = NewTopologyProbeBundle(g, rootNode)
 	if err != nil {
 		return nil, err
 	}
@@ -226,42 +198,27 @@ func NewAgent() (*Agent, error) {
 	updateEvery := time.Duration(config.GetInt("flow.update")) * time.Second
 	expireAfter := time.Duration(config.GetInt("flow.expire")) * time.Second
 
-	flowClientPool := client.NewFlowClientPool(analyzerClientPool, clusterAuthOptions)
-	flowTableAllocator := flow.NewTableAllocator(updateEvery, expireAfter, flowClientPool)
+	analyzerClientPool := pod.ClientPool()
+	agent.flowClientPool = client.NewFlowClientPool(analyzerClientPool, wsClientOpts)
+	flowTableAllocator := flow.NewTableAllocator(updateEvery, expireAfter, agent.flowClientPool)
 
-	// exposes a flow server through the client connections
-	flow.NewWSTableServer(flowTableAllocator, analyzerClientPool)
+	agent.flowProbeBundle = NewFlowProbeBundle(agent.topologyProbeBundle, g, flowTableAllocator)
 
-	flowProbeBundle := NewFlowProbeBundle(topologyProbeBundle, g, flowTableAllocator)
-
-	onDemandPIServer, err := packetinjector.NewOnDemandInjectionServer(g, analyzerClientPool)
+	agent.onDemandPIServer, err = packetinjector.NewOnDemandInjectionServer(g, analyzerClientPool)
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize on-demand packet injection: %s", err)
 	}
 
-	onDemandProbeServer, err := ondemand.NewOnDemandFlowProbeServer(flowProbeBundle, g, analyzerClientPool)
+	agent.onDemandProbeServer, err = ondemand.NewOnDemandFlowProbeServer(agent.flowProbeBundle, g, analyzerClientPool)
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize on-demand flow probe: %s", err)
 	}
 
+	// exposes a flow server through the client connections
+	flow.NewWSTableServer(flowTableAllocator, analyzerClientPool)
+
 	httpServer := pod.HTTPServer()
 	ui.NewServer(httpServer, config.GetString("ui.extra_assets"))
-
-	agent := &Agent{
-		pod:                 pod,
-		graph:               g,
-		analyzerClientPool:  analyzerClientPool,
-		rootNode:            rootNode,
-		topologyProbeBundle: topologyProbeBundle,
-		flowProbeBundle:     flowProbeBundle,
-		flowTableAllocator:  flowTableAllocator,
-		flowClientPool:      flowClientPool,
-		onDemandProbeServer: onDemandProbeServer,
-		onDemandPIServer:    onDemandPIServer,
-		tidMapper:           tm,
-	}
-
-	api.RegisterStatusAPI(httpServer, agent, apiAuthBackend)
 
 	return agent, nil
 }

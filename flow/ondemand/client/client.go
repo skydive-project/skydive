@@ -21,10 +21,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/skydive-project/skydive/flow/probes"
-
-	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/flow/probes"
+	"github.com/skydive-project/skydive/graffiti/api/rest"
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
@@ -39,7 +38,7 @@ type onDemandFlowHandler struct {
 	nodeTypeQuery string
 }
 
-func (h *onDemandFlowHandler) DecodeMessage(msg json.RawMessage) (types.Resource, error) {
+func (h *onDemandFlowHandler) DecodeMessage(msg json.RawMessage) (rest.Resource, error) {
 	var capture types.Capture
 	if err := json.Unmarshal(msg, &capture); err != nil {
 		return nil, fmt.Errorf("Unable to decode capture: %s", err)
@@ -47,12 +46,12 @@ func (h *onDemandFlowHandler) DecodeMessage(msg json.RawMessage) (types.Resource
 	return &capture, nil
 }
 
-func (h *onDemandFlowHandler) EncodeMessage(nodeID graph.Identifier, resource types.Resource) (json.RawMessage, error) {
+func (h *onDemandFlowHandler) EncodeMessage(nodeID graph.Identifier, resource rest.Resource) (json.RawMessage, error) {
 	bytes, err := json.Marshal(resource)
 	return json.RawMessage(bytes), err
 }
 
-func (h *onDemandFlowHandler) CheckState(node *graph.Node, resource types.Resource) bool {
+func (h *onDemandFlowHandler) CheckState(node *graph.Node, resource rest.Resource) bool {
 	capture := resource.(*types.Capture)
 	if captures, err := node.GetField("Captures"); err == nil {
 		for _, c := range *captures.(*probes.Captures) {
@@ -68,7 +67,7 @@ func (h *onDemandFlowHandler) ResourceName() string {
 	return "Capture"
 }
 
-func (h *onDemandFlowHandler) GetNodeResources(resource types.Resource) []client.OnDemandNodeResource {
+func (h *onDemandFlowHandler) GetNodeResources(resource rest.Resource) []client.OnDemandNodeResource {
 	var nrs []client.OnDemandNodeResource
 
 	capture := resource.(*types.Capture)
@@ -107,7 +106,7 @@ func (h *onDemandFlowHandler) applyGremlinExpr(query string) []interface{} {
 }
 
 // NewOnDemandFlowProbeClient creates a new ondemand probe client based on API, graph and websocket
-func NewOnDemandFlowProbeClient(g *graph.Graph, ch api.Handler, agentPool ws.StructSpeakerPool, subscriberPool ws.StructSpeakerPool, etcdClient *etcd.Client) *client.OnDemandClient {
+func NewOnDemandFlowProbeClient(g *graph.Graph, ch rest.Handler, agentPool ws.StructSpeakerPool, subscriberPool ws.StructSpeakerPool, etcdClient *etcd.Client) *client.OnDemandClient {
 	nodeTypes := make([]interface{}, len(probes.CaptureTypes))
 	i := 0
 	for nodeType := range probes.CaptureTypes {

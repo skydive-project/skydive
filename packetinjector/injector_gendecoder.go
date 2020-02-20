@@ -35,8 +35,6 @@ func (obj *InjectionMetadata) GetFieldInt64(key string) (int64, error) {
 
 func (obj *InjectionMetadata) GetFieldString(key string) (string, error) {
 	switch key {
-	case "UUID":
-		return string(obj.UUID), nil
 	case "SrcIP":
 		return obj.SrcIP.String(), nil
 	case "SrcMAC":
@@ -61,7 +59,6 @@ func (obj *InjectionMetadata) GetFieldString(key string) (string, error) {
 
 func (obj *InjectionMetadata) GetFieldKeys() []string {
 	return []string{
-		"UUID",
 		"SrcIP",
 		"SrcMAC",
 		"SrcPort",
@@ -151,7 +148,6 @@ func (obj *Injections) GetFieldString(key string) (string, error) {
 
 func (obj *Injections) GetFieldKeys() []string {
 	return []string{
-		"UUID",
 		"SrcIP",
 		"SrcMAC",
 		"SrcPort",
@@ -205,8 +201,6 @@ func (obj *Injections) GetField(key string) (interface{}, error) {
 
 	for _, o := range *obj {
 		switch key {
-		case "UUID":
-			result = append(result, o.UUID)
 		case "SrcIP":
 			result = append(result, o.SrcIP)
 		case "SrcMAC":

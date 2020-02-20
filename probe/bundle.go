@@ -24,6 +24,7 @@ import (
 	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/common"
+	api "github.com/skydive-project/skydive/graffiti/api/server"
 )
 
 // ErrNotCompiled is thrown when a probe was not compiled within the binary
@@ -44,11 +45,6 @@ type Handler interface {
 // ServiceStatus describes the status returned by GetStatus
 type ServiceStatus struct {
 	Status common.ServiceState
-}
-
-// StatusReporter can be implemented by probes to report their status
-type StatusReporter interface {
-	GetStatus() interface{}
 }
 
 // Bundle describes a bundle of probes (topology of flow)
@@ -111,7 +107,7 @@ func (p *Bundle) GetStatus() map[string]interface{} {
 
 	status := make(map[string]interface{})
 	for k, v := range p.Handlers {
-		if v, ok := v.(StatusReporter); ok {
+		if v, ok := v.(api.StatusReporter); ok {
 			status[k] = v.GetStatus()
 		} else {
 			status[k] = &ServiceStatus{Status: common.RunningState}

@@ -22,18 +22,20 @@ package server
 
 import (
 	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/graffiti/api/rest"
+	api "github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	shttp "github.com/skydive-project/skydive/http"
 )
 
 // NodeRuleResourceHandler describes a node resource handler
 type NodeRuleResourceHandler struct {
-	ResourceHandler
+	rest.ResourceHandler
 }
 
 // NodeRuleAPI based on BasicAPIHandler
 type NodeRuleAPI struct {
-	BasicAPIHandler
+	rest.BasicAPIHandler
 	Graph *graph.Graph
 }
 
@@ -43,14 +45,14 @@ func (nrh *NodeRuleResourceHandler) Name() string {
 }
 
 // New creates a new node rule
-func (nrh *NodeRuleResourceHandler) New() types.Resource {
+func (nrh *NodeRuleResourceHandler) New() rest.Resource {
 	return &types.NodeRule{}
 }
 
 // RegisterNodeRuleAPI register a new node rule api handler
-func RegisterNodeRuleAPI(apiServer *Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*NodeRuleAPI, error) {
+func RegisterNodeRuleAPI(apiServer *api.Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*NodeRuleAPI, error) {
 	nra := &NodeRuleAPI{
-		BasicAPIHandler: BasicAPIHandler{
+		BasicAPIHandler: rest.BasicAPIHandler{
 			ResourceHandler: &NodeRuleResourceHandler{},
 			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
 		},

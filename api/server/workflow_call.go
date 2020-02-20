@@ -22,20 +22,21 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gorilla/mux"
-	"github.com/skydive-project/skydive/js"
-	"github.com/skydive-project/skydive/rbac"
-
 	auth "github.com/abbot/go-http-auth"
+	"github.com/gorilla/mux"
+
 	"github.com/skydive-project/skydive/api/types"
+	api "github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/js"
+	"github.com/skydive-project/skydive/rbac"
 )
 
 // WorkflowCallAPIHandler based on BasicAPIHandler
 type WorkflowCallAPIHandler struct {
-	apiServer *Server
+	apiServer *api.Server
 	graph     *graph.Graph
 	parser    *traversal.GremlinTraversalParser
 	runtime   *js.Runtime
@@ -50,7 +51,7 @@ func (wc *WorkflowCallAPIHandler) executeWorkflow(w http.ResponseWriter, r *auth
 	decoder := json.NewDecoder(r.Body)
 	var wfCall types.WorkflowCall
 	if err := decoder.Decode(&wfCall); err != nil {
-		writeError(w, http.StatusBadRequest, err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -58,19 +59,19 @@ func (wc *WorkflowCallAPIHandler) executeWorkflow(w http.ResponseWriter, r *auth
 
 	workflow, err := wc.getWorkflow(vars["ID"])
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	ottoResult, err := wc.runtime.ExecFunction(workflow.Source, wfCall.Params...)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	result, err := ottoResult.Export()
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
@@ -144,7 +145,7 @@ func (wc *WorkflowCallAPIHandler) registerEndPoints(s *shttp.Server, authBackend
 }
 
 // RegisterWorkflowCallAPI registers a new workflow  call api handler
-func RegisterWorkflowCallAPI(s *shttp.Server, authBackend shttp.AuthenticationBackend, apiServer *Server, g *graph.Graph, tr *traversal.GremlinTraversalParser) error {
+func RegisterWorkflowCallAPI(s *shttp.Server, authBackend shttp.AuthenticationBackend, apiServer *api.Server, g *graph.Graph, tr *traversal.GremlinTraversalParser) error {
 	runtime, err := NewWorkflowRuntime(g, tr, apiServer)
 	if err != nil {
 		return err
