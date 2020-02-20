@@ -20,6 +20,7 @@
 package agent
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"os"
@@ -32,7 +33,6 @@ import (
 	"github.com/skydive-project/skydive/flow/client"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/pod"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
@@ -116,12 +116,7 @@ func (a *Agent) GetStatus() interface{} {
 
 // Start the agent services
 func (a *Agent) Start() {
-	if uid := os.Geteuid(); uid != 0 {
-		logging.GetLogger().Warning("Agent needs root permissions for some feature like capture, network namespace introspection, some feature might not work as expected")
-	}
-
-	go a.httpServer.Serve()
-
+	a.pod.Start()
 	a.topologyProbeBundle.Start()
 	a.flowProbeBundle.Start()
 	a.onDemandPIServer.Start()
@@ -133,12 +128,12 @@ func (a *Agent) Start() {
 
 // Stop agent services
 func (a *Agent) Stop() {
+	a.pod.Stop()
 	a.onDemandPIServer.Stop()
 	a.onDemandProbeServer.Stop()
 	a.flowProbeBundle.Stop()
 	a.analyzerClientPool.Stop()
 	a.topologyProbeBundle.Stop()
-	a.httpServer.Stop()
 	a.flowClientPool.Close()
 
 	if tr, ok := http.DefaultTransport.(interface {
@@ -152,15 +147,17 @@ func (a *Agent) Stop() {
 
 // NewAgent instantiates a new Agent aiming to launch probes (topology and flow)
 func NewAgent() (*Agent, error) {
+	if uid := os.Geteuid(); uid != 0 {
+		logging.GetLogger().Warning("Agent needs root permissions for some feature like capture, network namespace introspection, some feature might not work as expected")
+	}
+
 	backend, err := graph.NewMemoryBackend()
 	if err != nil {
 		return nil, err
 	}
 
 	hostID := config.GetString("host_id")
-	service := common.Service{ID: hostID, Type: common.AgentService}
-
-	g := graph.NewGraph(hostID, backend, service.Type)
+	g := graph.NewGraph(hostID, backend, common.AgentService)
 
 	tm := topology.NewTIDMapper(g)
 	tm.Start()
@@ -171,35 +168,10 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	hserver, err := config.NewHTTPServer(service.Type)
-	if err != nil {
-		return nil, err
-	}
-
-	ui.NewServer(hserver, config.GetString("ui.extra_assets"))
-
-	if err = hserver.Listen(); err != nil {
-		return nil, err
-	}
-
-	apiServer, err := api.NewAPI(hserver, nil, service, apiAuthBackend)
-	if err != nil {
-		return nil, err
-	}
-
-	// declare all extension available through API and filtering
-	tr := traversal.NewGremlinTraversalParser()
-	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
-
 	rootNode, err := createRootNode(g)
 	if err != nil {
 		return nil, err
 	}
-
-	api.RegisterTopologyAPI(hserver, g, tr, apiAuthBackend)
 
 	clusterAuthOptions := &shttp.AuthenticationOpts{
 		Username: config.GetString("agent.auth.cluster.username"),
@@ -217,15 +189,34 @@ func NewAgent() (*Agent, error) {
 		return nil, fmt.Errorf("Unable to instantiate a schema validator: %s", err)
 	}
 
-	opts := pod.Opts{
-		ServerOpts: config.NewWSServerOpts(),
-		Validator:  validator,
+	var tlsConfig *tls.Config
+	if config.IsTLSEnabled() {
+		tlsConfig, err = config.GetTLSServerConfig(true)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	pod, err := pod.NewPod(apiServer, analyzerClientPool, g, apiAuthBackend, clusterAuthOptions, tr, opts)
+	opts := pod.Opts{
+		WebsocketOpts:      config.NewWSServerOpts(),
+		Validator:          validator,
+		TLSConfig:          tlsConfig,
+		APIAuthBackend:     apiAuthBackend,
+		ClusterAuthOptions: clusterAuthOptions,
+	}
+
+	listenAddr := config.GetString("agent.listen")
+	pod, err := pod.NewPod(hostID, common.AgentService, listenAddr, analyzerClientPool, g, opts)
 	if err != nil {
 		return nil, err
 	}
+
+	// declare all extension available through API and filtering
+	tr := pod.GremlinTraversalParser()
+	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
 
 	topologyProbeBundle, err := NewTopologyProbeBundle(g, rootNode)
 	if err != nil {
@@ -253,6 +244,9 @@ func NewAgent() (*Agent, error) {
 		return nil, fmt.Errorf("unable to initialize on-demand flow probe: %s", err)
 	}
 
+	httpServer := pod.HTTPServer()
+	ui.NewServer(httpServer, config.GetString("ui.extra_assets"))
+
 	agent := &Agent{
 		pod:                 pod,
 		graph:               g,
@@ -264,11 +258,10 @@ func NewAgent() (*Agent, error) {
 		flowClientPool:      flowClientPool,
 		onDemandProbeServer: onDemandProbeServer,
 		onDemandPIServer:    onDemandPIServer,
-		httpServer:          hserver,
 		tidMapper:           tm,
 	}
 
-	api.RegisterStatusAPI(hserver, agent, apiAuthBackend)
+	api.RegisterStatusAPI(httpServer, agent, apiAuthBackend)
 
 	return agent, nil
 }

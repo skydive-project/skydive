@@ -18,7 +18,10 @@
 package pod
 
 import (
+	"crypto/tls"
+
 	api "github.com/skydive-project/skydive/api/server"
+	scommon "github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
@@ -29,17 +32,23 @@ import (
 
 // Opts defines pod server options
 type Opts struct {
-	ServerOpts websocket.ServerOpts
-	Validator  validator.Validator
+	WebsocketOpts      websocket.ServerOpts
+	Validator          validator.Validator
+	TLSConfig          *tls.Config
+	APIAuthBackend     shttp.AuthenticationBackend
+	ClusterAuthOptions *shttp.AuthenticationOpts
 }
 
 // Pod describes a graph pod. It maintains a local graph
 // in memory and forward any event to graph hubs
 type Pod struct {
+	httpServer         *shttp.Server
+	apiServer          *api.Server
 	subscriberWSServer *websocket.StructServer
 	publisherWSServer  *websocket.StructServer
 	forwarder          *common.Forwarder
 	clientPool         *websocket.StructClientPool
+	traversalParser    *traversal.GremlinTraversalParser
 }
 
 // Status describes the status of a pod
@@ -55,13 +64,17 @@ type ConnStatus struct {
 }
 
 // Start the pod
-func (p *Pod) Start() {
+func (p *Pod) Start() error {
+	p.httpServer.Start()
 	p.subscriberWSServer.Start()
 	p.publisherWSServer.Start()
+
+	return nil
 }
 
 // Stop the pod
 func (p *Pod) Stop() {
+	p.httpServer.Stop()
 	p.subscriberWSServer.Stop()
 	p.publisherWSServer.Stop()
 }
@@ -98,26 +111,61 @@ func (p *Pod) Forwarder() *common.Forwarder {
 	return p.forwarder
 }
 
+// HTTPServer returns the pod HTTP server
+func (p *Pod) HTTPServer() *shttp.Server {
+	return p.httpServer
+}
+
+// APIServer returns the pod API server
+func (p *Pod) APIServer() *api.Server {
+	return p.apiServer
+}
+
+// GremlinTraversalParser returns the pod Gremlin traversal parser
+func (p *Pod) GremlinTraversalParser() *traversal.GremlinTraversalParser {
+	return p.traversalParser
+}
+
 // NewPod returns a new pod
-func NewPod(server *api.Server, clientPool *websocket.StructClientPool, g *graph.Graph, apiAuthBackend shttp.AuthenticationBackend, clusterAuthOptions *shttp.AuthenticationOpts, tr *traversal.GremlinTraversalParser, opts Opts) (*Pod, error) {
-	newWSServer := func(endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
-		return websocket.NewServer(server.HTTPServer, endpoint, authBackend, opts.ServerOpts)
+func NewPod(id string, serviceType scommon.ServiceType, listen string, clientPool *websocket.StructClientPool, g *graph.Graph, opts Opts) (*Pod, error) {
+	service := scommon.Service{ID: id, Type: serviceType}
+
+	sa, err := scommon.ServiceAddressFromString(listen)
+	if err != nil {
+		return nil, err
 	}
 
-	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", apiAuthBackend))
+	httpServer := shttp.NewServer(id, serviceType, sa.Addr, sa.Port, opts.TLSConfig)
+
+	apiServer, err := api.NewAPI(httpServer, nil, service, opts.APIAuthBackend)
+	if err != nil {
+		return nil, err
+	}
+
+	newWSServer := func(endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
+		return websocket.NewServer(httpServer, endpoint, authBackend, opts.WebsocketOpts)
+	}
+
+	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", opts.APIAuthBackend))
+	tr := traversal.NewGremlinTraversalParser()
 	common.NewSubscriberEndpoint(subscriberWSServer, g, tr)
 
 	forwarder := common.NewForwarder(g, clientPool)
 
-	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", apiAuthBackend))
+	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", opts.APIAuthBackend))
 	if _, err := common.NewPublisherEndpoint(publisherWSServer, g, opts.Validator); err != nil {
 		return nil, err
 	}
 
+	api.RegisterTopologyAPI(httpServer, g, tr, opts.APIAuthBackend)
+
 	return &Pod{
+		httpServer:         httpServer,
+		apiServer:          apiServer,
 		subscriberWSServer: subscriberWSServer,
 		publisherWSServer:  publisherWSServer,
 		forwarder:          forwarder,
 		clientPool:         clientPool,
+		traversalParser:    tr,
 	}, nil
 }

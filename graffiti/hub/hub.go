@@ -18,6 +18,11 @@
 package hub
 
 import (
+	"crypto/tls"
+
+	etcd "github.com/coreos/etcd/client"
+
+	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/common"
 	gc "github.com/skydive-project/skydive/graffiti/common"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
@@ -25,29 +30,37 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/validator"
 	"github.com/skydive-project/skydive/graffiti/websocket"
-	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 )
 
 // Opts Hub options
 type Opts struct {
-	ServerOpts     websocket.ServerOpts
-	Validator      validator.Validator
-	EtcdServerOpts *etcdserver.EmbeddedServerOpts
+	Hostname           string
+	WebsocketOpts      websocket.ServerOpts
+	Validator          validator.Validator
+	APIAuthBackend     shttp.AuthenticationBackend
+	ClusterAuthBackend shttp.AuthenticationBackend
+	ClusterAuthOptions *shttp.AuthenticationOpts
+	Peers              []common.ServiceAddress
+	TLSConfig          *tls.Config
+	EtcdServerOpts     *etcdserver.EmbeddedServerOpts
+	EtcdKeysAPI        etcd.KeysAPI
 }
 
 // Hub describes a graph hub that accepts incoming connections
 // from pods, other hubs, subscribers or external publishers
 type Hub struct {
-	server              *shttp.Server
+	httpServer          *shttp.Server
+	apiServer           *api.Server
 	apiAuthBackend      shttp.AuthenticationBackend
 	clusterAuthBackend  shttp.AuthenticationBackend
+	embeddedEtcd        *etcdserver.EmbeddedServer
 	podWSServer         *websocket.StructServer
 	publisherWSServer   *websocket.StructServer
 	replicationWSServer *websocket.StructServer
 	replicationEndpoint *ReplicationEndpoint
 	subscriberWSServer  *websocket.StructServer
-	embeddedEtcd        *etcdserver.EmbeddedServer
+	traversalParser     *traversal.GremlinTraversalParser
 }
 
 // PeersStatus describes the state of a peer
@@ -65,7 +78,7 @@ type Status struct {
 }
 
 // GetStatus returns the status of a hub
-func (h *Hub) GetStatus() *Status {
+func (h *Hub) GetStatus() interface{} {
 	peersStatus := PeersStatus{
 		Incomers: make(map[string]websocket.ConnStatus),
 		Outgoers: make(map[string]websocket.ConnStatus),
@@ -95,6 +108,10 @@ func (h *Hub) Start() error {
 		}
 	}
 
+	if err := h.httpServer.Start(); err != nil {
+		return err
+	}
+
 	h.podWSServer.Start()
 	h.replicationWSServer.Start()
 	h.replicationEndpoint.ConnectPeers()
@@ -106,6 +123,7 @@ func (h *Hub) Start() error {
 
 // Stop the hub
 func (h *Hub) Stop() {
+	h.httpServer.Stop()
 	h.podWSServer.Stop()
 	h.replicationWSServer.Stop()
 	h.publisherWSServer.Stop()
@@ -113,6 +131,16 @@ func (h *Hub) Stop() {
 	if h.embeddedEtcd != nil {
 		h.embeddedEtcd.Stop()
 	}
+}
+
+// HTTPServer returns the hub HTTP server
+func (h *Hub) HTTPServer() *shttp.Server {
+	return h.httpServer
+}
+
+// APIServer returns the hub API server
+func (h *Hub) APIServer() *api.Server {
+	return h.apiServer
 }
 
 // PodServer returns the websocket server dedicated to pods
@@ -125,8 +153,13 @@ func (h *Hub) SubscriberServer() *websocket.StructServer {
 	return h.subscriberWSServer
 }
 
+// GremlinTraversalParser returns the hub Gremlin traversal parser
+func (h *Hub) GremlinTraversalParser() *traversal.GremlinTraversalParser {
+	return h.traversalParser
+}
+
 // NewHub returns a new hub
-func NewHub(server *shttp.Server, g *graph.Graph, cached *graph.CachedBackend, apiAuthBackend, clusterAuthBackend shttp.AuthenticationBackend, clusterAuthOptions *shttp.AuthenticationOpts, podEndpoint string, peers []common.ServiceAddress, opts Opts) (*Hub, error) {
+func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.Graph, cached *graph.CachedBackend, podEndpoint string, opts Opts) (*Hub, error) {
 	var embeddedEtcd *etcdserver.EmbeddedServer
 	var err error
 	if opts.EtcdServerOpts != nil {
@@ -135,44 +168,59 @@ func NewHub(server *shttp.Server, g *graph.Graph, cached *graph.CachedBackend, a
 		}
 	}
 
-	newWSServer := func(endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
-		return websocket.NewServer(server, endpoint, authBackend, opts.ServerOpts)
-	}
+	service := common.Service{ID: id, Type: serviceType}
 
-	podWSServer := websocket.NewStructServer(newWSServer(podEndpoint, clusterAuthBackend))
-	_, err = gc.NewPublisherEndpoint(podWSServer, g, nil)
+	sa, err := common.ServiceAddressFromString(listen)
 	if err != nil {
 		return nil, err
 	}
 
-	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", apiAuthBackend))
+	tr := traversal.NewGremlinTraversalParser()
+
+	httpServer := shttp.NewServer(service.ID, service.Type, sa.Addr, sa.Port, opts.TLSConfig)
+
+	apiServer, err := api.NewAPI(httpServer, opts.EtcdKeysAPI, service, opts.APIAuthBackend)
+	if err != nil {
+		return nil, err
+	}
+
+	api.RegisterTopologyAPI(httpServer, g, tr, opts.APIAuthBackend)
+
+	newWSServer := func(endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
+		return websocket.NewServer(httpServer, endpoint, authBackend, opts.WebsocketOpts)
+	}
+
+	podWSServer := websocket.NewStructServer(newWSServer(podEndpoint, opts.ClusterAuthBackend))
+	if _, err = gc.NewPublisherEndpoint(podWSServer, g, nil); err != nil {
+		return nil, err
+	}
+
+	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", opts.APIAuthBackend))
 	_, err = gc.NewPublisherEndpoint(publisherWSServer, g, opts.Validator)
 	if err != nil {
 		return nil, err
 	}
 
-	replicationWSServer := websocket.NewStructServer(newWSServer("/ws/replication", clusterAuthBackend))
-	replicationEndpoint, err := NewReplicationEndpoint(replicationWSServer, clusterAuthOptions, cached, g, peers)
+	replicationWSServer := websocket.NewStructServer(newWSServer("/ws/replication", opts.ClusterAuthBackend))
+	replicationEndpoint, err := NewReplicationEndpoint(replicationWSServer, opts.ClusterAuthOptions, cached, g, opts.Peers)
 	if err != nil {
 		return nil, err
 	}
 
-	// declare all extension available through API and filtering
-	tr := traversal.NewGremlinTraversalParser()
-	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
-
-	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", apiAuthBackend))
+	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", opts.APIAuthBackend))
 	gc.NewSubscriberEndpoint(subscriberWSServer, g, tr)
 
 	return &Hub{
-		server:              server,
-		apiAuthBackend:      apiAuthBackend,
-		clusterAuthBackend:  clusterAuthBackend,
+		httpServer:          httpServer,
+		apiServer:           apiServer,
+		apiAuthBackend:      opts.APIAuthBackend,
+		clusterAuthBackend:  opts.ClusterAuthBackend,
 		podWSServer:         podWSServer,
 		replicationEndpoint: replicationEndpoint,
 		replicationWSServer: replicationWSServer,
 		publisherWSServer:   publisherWSServer,
 		subscriberWSServer:  subscriberWSServer,
 		embeddedEtcd:        embeddedEtcd,
+		traversalParser:     tr,
 	}, nil
 }
