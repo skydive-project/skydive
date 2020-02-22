@@ -20,6 +20,7 @@ package k8s
 import (
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -88,6 +89,16 @@ func NewEdgeMetadata(manager, name string) graph.Metadata {
 		"RelationType": name,
 	}
 	return m
+}
+
+func isTheSameCluster(aObj, bObj *graph.Node) bool {
+	aCl, aErr := aObj.GetFieldString(ClusterNameField)
+	bCl, bErr := bObj.GetFieldString(ClusterNameField)
+	if aErr != nil || bErr != nil {
+		logging.GetLogger().Warning("ClusterNameFields are not defined \n")
+		return true
+	}
+	return aCl == bCl
 }
 
 func newTypesFilter(manager string, types ...string) *filters.Filter {
