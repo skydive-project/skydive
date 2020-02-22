@@ -42,7 +42,7 @@ func (c *clusterCache) addClusterNode(clusterName string) error {
 	var err error
 	metadata := NewMetadata(Manager, Cluster, m, nil, clusterName)
 	if len(clusterName) > 0 {
-		metadata.SetFieldAndNormalize(ClusterNameField, clusterName)
+		metadata.SetField(ClusterNameField, clusterName)
 	}
 	clusterNode, err = c.graph.NewNode(graph.GenID(), metadata)
 	if err != nil {
@@ -92,6 +92,9 @@ func (linker *clusterLinker) createEdge(cluster, object *graph.Node) *graph.Edge
 
 // GetBALinks returns all the incoming links for a node
 func (linker *clusterLinker) GetBALinks(objectNode *graph.Node) (edges []*graph.Edge) {
+	if ! isTheSameCluster(clusterNode, objectNode) {
+		return
+	}
 	edges = append(edges, linker.createEdge(clusterNode, objectNode))
 	return
 }
