@@ -31,6 +31,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/provider"
@@ -312,7 +313,7 @@ func (p *Probe) updateNode(node *graph.Node, attrs *Metadata) {
 
 				return nil
 			}
-			go common.Retry(retryFnc, 30, 2*time.Second)
+			go retry.Do(retryFnc, retry.Attempts(30), retry.Delay(2*time.Second), retry.DelayType(retry.FixedDelay))
 		}
 	}
 }

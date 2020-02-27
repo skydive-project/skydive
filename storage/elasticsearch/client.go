@@ -21,7 +21,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"net/url"
 	"strings"
 	"sync"
@@ -395,15 +394,14 @@ func (c *Client) RollIndex() {
 
 // Start the Elasticsearch client background jobs
 func (c *Client) Start() {
-	retry := func() error {
+	for {
 		err := c.start()
 		if err == nil {
-			return nil
+			break
 		}
 		logging.GetLogger().Errorf("Elasticsearch not available: %s", err)
-		return err
+		time.Sleep(time.Second)
 	}
-	common.Retry(retry, math.MaxInt64, time.Second)
 }
 
 // Stop Elasticsearch background client

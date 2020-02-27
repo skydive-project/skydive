@@ -34,9 +34,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avast/retry-go"
 	uuid "github.com/nu7hatch/gouuid"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/topology"
@@ -284,7 +284,7 @@ func (probe *OfctlProbe) launchContinuousOnSwitch(ctx context.Context, cmd []str
 	go func() {
 		probe.Ctx.Logger.Debugf("Launching continusously %v", cmd)
 		for ctx.Err() == nil {
-			retry := func() error {
+			retryFn := func() error {
 				out, com, err := executor.ExecCommandPipe(ctx, cmd[0], cmd[1:]...)
 				if err != nil {
 					probe.Ctx.Logger.Errorf("Can't execute command %v: %s", cmd, err)
@@ -314,7 +314,7 @@ func (probe *OfctlProbe) launchContinuousOnSwitch(ctx context.Context, cmd []str
 
 				return nil
 			}
-			if err := common.Retry(retry, 100, 50*time.Millisecond); err != nil {
+			if err := retry.Do(retryFn, retry.Attempts(100), retry.Delay(50*time.Millisecond), retry.DelayType(retry.FixedDelay)); err != nil {
 				probe.Ctx.Logger.Error(err)
 				break
 			}
@@ -652,11 +652,10 @@ func (probe *OfctlProbe) Monitor(ctx context.Context) error {
 
 // Check if a file is created in time
 func waitForFile(path string) error {
-	retry := func() error {
+	return retry.Do(func() error {
 		_, err := os.Stat(path)
 		return err
-	}
-	return common.Retry(retry, 10, 500*time.Millisecond)
+	}, retry.Attempts(8))
 }
 
 // MonitorGroup monitors the openflow groups of a bridge by

@@ -23,11 +23,11 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
-	"time"
+
+	"github.com/avast/retry-go"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-test/deep"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
@@ -191,7 +191,7 @@ func TestModOFRule(t *testing.T) {
 }
 
 func verifyGroup(c *CheckContext, bridge string, expected int) error {
-	retry := func() error {
+	return retry.Do(func() error {
 		gremlin := c.gremlin.V().Has("Type", "ovsbridge", "Name", bridge).Out("Type", "ofgroup")
 		nodes, err := c.gh.GetNodes(gremlin)
 		if err != nil {
@@ -228,8 +228,7 @@ func verifyGroup(c *CheckContext, bridge string, expected int) error {
 			}
 		}
 		return nil
-	}
-	return common.Retry(retry, 10, time.Second)
+	})
 }
 
 func TestAddOFGroup(t *testing.T) {

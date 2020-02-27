@@ -26,8 +26,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/safchain/insanelock"
+	"github.com/avast/retry-go"
 	proto "github.com/gogo/protobuf/proto"
+	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
@@ -113,7 +114,7 @@ type fakeMessageClientSubscriptionHandler2 struct {
 
 func (f *fakeMessageServerSubscriptionHandler) OnConnected(c Speaker) {
 	// wait first message received to be sure that the client can consume messages
-	fnc := func() error {
+	go retry.Do(func() error {
 		f.RLock()
 		defer f.RUnlock()
 		if f.receivedCount == 0 {
@@ -128,8 +129,7 @@ func (f *fakeMessageServerSubscriptionHandler) OnConnected(c Speaker) {
 		f.server.BroadcastMessage(newStructMessage("SrvValidNS", "SrvValidNSBroadcast3"))
 
 		return nil
-	}
-	go common.Retry(fnc, 5, time.Second)
+	}, retry.Delay(10*time.Millisecond))
 }
 
 func (f *fakeMessageServerSubscriptionHandler) OnStructMessage(c Speaker, m *StructMessage) {
@@ -141,7 +141,7 @@ func (f *fakeMessageServerSubscriptionHandler) OnStructMessage(c Speaker, m *Str
 
 func (f *fakeMessageServerSubscriptionHandler2) OnConnected(c Speaker) {
 	// wait first message received to be sure that the client can consume messages
-	fnc := func() error {
+	go retry.Do(func() error {
 		f.RLock()
 		defer f.RUnlock()
 
@@ -156,8 +156,7 @@ func (f *fakeMessageServerSubscriptionHandler2) OnConnected(c Speaker) {
 		f.server.BroadcastMessage(newStructMessage("flows/2", "SrvFlowBroadcast2"))
 
 		return nil
-	}
-	go common.Retry(fnc, 5, time.Second)
+	}, retry.Delay(10*time.Millisecond))
 }
 
 func (f *fakeMessageServerSubscriptionHandler2) OnStructMessage(c Speaker, m *StructMessage) {
@@ -220,7 +219,7 @@ func TestMessageSubscription1(t *testing.T) {
 
 	wspool.AddStructMessageHandler(clientHandler, []string{"SrvValidNS"})
 
-	err := common.Retry(func() error {
+	err := retry.Do(func() error {
 		clientHandler.Lock()
 		defer clientHandler.Unlock()
 		serverHandler.Lock()
@@ -247,7 +246,7 @@ func TestMessageSubscription1(t *testing.T) {
 		}
 
 		return nil
-	}, 5, time.Second)
+	}, retry.Delay(10*time.Millisecond))
 
 	if err != nil {
 		t.Error(err)
@@ -274,7 +273,7 @@ func TestMessageSubscription2(t *testing.T) {
 	clientHandler := &fakeMessageClientSubscriptionHandler2{t: t, received: make(map[string]bool)}
 	wspool.AddEventHandler(clientHandler)
 
-	err := common.Retry(func() error {
+	err := retry.Do(func() error {
 		clientHandler.Lock()
 		defer clientHandler.Unlock()
 
@@ -287,7 +286,7 @@ func TestMessageSubscription2(t *testing.T) {
 		}
 
 		return nil
-	}, 5, time.Second)
+	}, retry.Delay(10*time.Millisecond))
 
 	if err != nil {
 		t.Error(err)
@@ -319,7 +318,7 @@ func TestMessageSubscription3(t *testing.T) {
 	defer wsclient2.Stop()
 	wspool2.AddClient(wsclient2)
 
-	err := common.Retry(func() error {
+	err := retry.Do(func() error {
 		clientHandler1.Lock()
 		defer clientHandler1.Unlock()
 
@@ -332,13 +331,13 @@ func TestMessageSubscription3(t *testing.T) {
 		}
 
 		return nil
-	}, 5, time.Second)
+	}, retry.Delay(10*time.Millisecond))
 
 	if err != nil {
 		t.Error(err)
 	}
 
-	err = common.Retry(func() error {
+	err = retry.Do(func() error {
 		clientHandler2.Lock()
 		defer clientHandler2.Unlock()
 
@@ -351,7 +350,7 @@ func TestMessageSubscription3(t *testing.T) {
 		}
 
 		return nil
-	}, 5, time.Second)
+	}, retry.Delay(10*time.Millisecond))
 
 	if err != nil {
 		t.Error(err)

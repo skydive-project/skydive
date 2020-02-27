@@ -26,7 +26,8 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"time"
+
+	"github.com/avast/retry-go"
 
 	"github.com/kardianos/osext"
 	"github.com/spf13/cobra"
@@ -117,10 +118,10 @@ var AllInOneCmd = &cobra.Command{
 
 		restClient := http.NewRestClient(config.GetURL("http", addr, svcAddr.Port, ""), authOptions, tlsConfig)
 
-		err = common.Retry(func() error {
+		err = retry.Do(func() error {
 			_, err := restClient.Request("GET", "/api", nil, nil)
 			return err
-		}, 10, time.Second)
+		})
 
 		if err != nil {
 			logging.GetLogger().Errorf("Failed to start Skydive analyzer: %v", err)

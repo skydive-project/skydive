@@ -23,7 +23,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,8 +30,9 @@ import (
 	"syscall"
 	"time"
 
-	fsnotify "gopkg.in/fsnotify/fsnotify.v1"
+	"github.com/avast/retry-go"
 	"github.com/safchain/insanelock"
+	fsnotify "gopkg.in/fsnotify/fsnotify.v1"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -91,7 +91,7 @@ func (u *ProbeHandler) checkNamespace(path string) error {
 	// file in /proc/<pid>/tasks/<tid>/ns/net yet, so we wait a bit for the
 	// bind mount to be set up
 
-	return common.Retry(func() error {
+	return retry.Do(func() error {
 		var stats, parentStats syscall.Stat_t
 		fd, err := syscall.Open(path, syscall.O_RDONLY, 0)
 		if err != nil {
@@ -125,7 +125,7 @@ func (u *ProbeHandler) checkNamespace(path string) error {
 		}
 
 		return nil
-	}, 30, time.Millisecond*100)
+	}, retry.Delay(10*time.Millisecond))
 }
 
 // Register a new network namespace path
@@ -186,7 +186,7 @@ func (u *ProbeHandler) Register(path string, name string) (*graph.Node, error) {
 	u.Ctx.Logger.Debugf("Registering namespace: %s", nsString)
 
 	var probe *netlink.Probe
-	err = common.Retry(func() error {
+	err = retry.Do(func() error {
 		var err error
 
 		ctx := tp.Context{
@@ -201,7 +201,7 @@ func (u *ProbeHandler) Register(path string, name string) (*graph.Node, error) {
 			return fmt.Errorf("Could not register netlink probe within namespace: %s", err)
 		}
 		return nil
-	}, 100, 10*time.Millisecond)
+	}, retry.Attempts(100), retry.Delay(10*time.Millisecond), retry.DelayType(retry.FixedDelay))
 	if err != nil {
 		return nil, err
 	}
@@ -258,25 +258,16 @@ func (u *ProbeHandler) Unregister(path string) {
 func (u *ProbeHandler) initializeRunPath(path string) {
 	defer u.wg.Done()
 
-	err := common.Retry(func() error {
-		if u.state.Load() != common.RunningState {
-			return nil
+	for u.state.Load() == common.RunningState {
+		if _, err := os.Stat(path); err == nil {
+			if err = u.watcher.Add(path); err == nil {
+				break
+			} else {
+				u.Ctx.Logger.Errorf("Unable to watch %s: %s", path, err)
+			}
 		}
 
-		if _, err := os.Stat(path); err != nil {
-			return err
-		}
-
-		if err := u.watcher.Add(path); err != nil {
-			return fmt.Errorf("Unable to Watch %s: %s", path, err)
-		}
-
-		return nil
-	}, math.MaxInt32, time.Second)
-
-	if err != nil {
-		u.Ctx.Logger.Error(err)
-		return
+		time.Sleep(time.Second)
 	}
 
 	files, _ := ioutil.ReadDir(path)

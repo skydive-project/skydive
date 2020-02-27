@@ -21,33 +21,7 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
-	"time"
 )
-
-// Retry tries to execute the given function until a success applying a delay
-// between each try
-func Retry(fnc func() error, try int, delay time.Duration) error {
-	return retry(fnc, try, delay, 1)
-}
-
-// RetryExponential tries to execute the given function until a success applying a delay
-// between each try. The delay is doubled after each try. Its initial value is baseDelay.
-func RetryExponential(fnc func() error, try int, baseDelay time.Duration) error {
-	return retry(fnc, try, baseDelay, 2)
-}
-
-func retry(fnc func() error, try int, baseDelay time.Duration, factor int64) error {
-	var err error
-	delay := baseDelay
-	for i := 0; i < try; i++ {
-		if err = fnc(); err == nil {
-			return nil
-		}
-		time.Sleep(delay)
-		delay = time.Duration(factor * int64(delay))
-	}
-	return err
-}
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
