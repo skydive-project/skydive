@@ -119,6 +119,14 @@ type Backend interface {
 	IsHistorySupported() bool
 }
 
+// PersistentBackend describes the interface of a persistent storage backend
+type PersistentBackend interface {
+	Backend
+
+	Start() error
+	Stop()
+}
+
 // Context describes within time slice
 type Context struct {
 	TimeSlice *common.TimeSlice

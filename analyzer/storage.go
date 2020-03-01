@@ -21,10 +21,10 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow/storage"
 	"github.com/skydive-project/skydive/flow/storage/elasticsearch"
 	"github.com/skydive-project/skydive/flow/storage/orientdb"
+	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	es "github.com/skydive-project/skydive/storage/elasticsearch"
@@ -52,7 +52,7 @@ func NewESConfig(name ...string) es.Config {
 	return cfg
 }
 
-func newGraphBackendFromConfig(etcdClient *etcd.Client) (graph.Backend, error) {
+func newGraphBackendFromConfig(etcdClient *etcd.Client) (graph.PersistentBackend, error) {
 	backend := config.GetString("analyzer.topology.backend")
 	configPath := "storage." + backend
 	driver := config.GetString(configPath + ".driver")

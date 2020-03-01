@@ -32,6 +32,7 @@ import (
 	_ "github.com/spf13/viper/remote"
 
 	"github.com/skydive-project/skydive/common"
+	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 )
 
 // ErrNoAnalyzerSpecified error no analyzer section is specified in the configuration file
@@ -60,10 +61,6 @@ var (
 		"analyzer.topology.k8s.config_file":    {"k8s.config_file"},
 		"analyzer.topology.k8s.probes":         {"k8s.probes"},
 	}
-)
-
-const (
-	etcdDefaultPort = 12379
 )
 
 // Config defines a config interface
@@ -148,10 +145,10 @@ func init() {
 	cfg.SetDefault("cache.expire", 300)
 	cfg.SetDefault("cache.cleanup", 30)
 
-	cfg.SetDefault("etcd.client_timeout", 5)
+	cfg.SetDefault("etcd.client_timeout", etcdclient.DefaultTimeout)
 	cfg.SetDefault("etcd.data_dir", "/var/lib/skydive/etcd")
 	cfg.SetDefault("etcd.embedded", true)
-	cfg.SetDefault("etcd.listen", fmt.Sprintf("127.0.0.1:%d", etcdDefaultPort))
+	cfg.SetDefault("etcd.listen", fmt.Sprintf("%s:%d", etcdclient.DefaultServer, etcdclient.DefaultPort))
 	cfg.SetDefault("etcd.name", host)
 
 	cfg.SetDefault("flow.expire", 600)
@@ -390,7 +387,7 @@ func (c *SkydiveConfig) GetEtcdServerAddrs() []string {
 		return etcdServers
 	}
 
-	port := etcdDefaultPort
+	port := etcdclient.DefaultPort
 	if c.GetBool("etcd.embedded") {
 		sa, err := common.ServiceAddressFromString(c.GetString("etcd.listen"))
 		if err == nil {
@@ -401,7 +398,7 @@ func (c *SkydiveConfig) GetEtcdServerAddrs() []string {
 	if address, err := c.GetOneAnalyzerServiceAddress(); err == nil {
 		return []string{fmt.Sprintf("http://%s:%d", address.Addr, port)}
 	}
-	return []string{fmt.Sprintf("http://127.0.0.1:%d", port)}
+	return []string{fmt.Sprintf("http://%s:%d", etcdclient.DefaultServer, port)}
 }
 
 // IsTLSEnabled returns true is the client / server certificates are set

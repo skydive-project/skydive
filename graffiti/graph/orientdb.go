@@ -30,7 +30,7 @@ import (
 
 // OrientDBBackend describes an OrientDB backend
 type OrientDBBackend struct {
-	Backend
+	PersistentBackend
 	client   orientdb.ClientInterface
 	election common.MasterElection
 }
@@ -339,6 +339,15 @@ func (o *OrientDBBackend) flushGraph() error {
 	}
 
 	return nil
+}
+
+// Start backend
+func (o *OrientDBBackend) Start() error {
+	return nil
+}
+
+// Stop backend
+func (o *OrientDBBackend) Stop() {
 }
 
 // OnStarted implements storage client listener interface

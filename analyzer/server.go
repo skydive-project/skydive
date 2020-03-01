@@ -31,11 +31,12 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/client"
 	"github.com/skydive-project/skydive/flow/server"
 	"github.com/skydive-project/skydive/flow/storage"
+	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
+	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/hub"
@@ -80,6 +81,7 @@ type Status struct {
 // Server describes an Analyzer servers mechanism like http, websocket, topology, ondemand probes, ...
 type Server struct {
 	httpServer      *shttp.Server
+	apiServer       *api.Server
 	uiServer        *ui.Server
 	hub             *hub.Hub
 	alertServer     *alert.Server
@@ -88,10 +90,10 @@ type Server struct {
 	topologyManager *usertopology.TopologyManager
 	flowServer      *server.FlowServer
 	probeBundle     *probe.Bundle
-	storage         storage.Storage
-	embeddedEtcd    *etcd.EmbeddedEtcd
-	etcdClient      *etcd.Client
+	graphStorage    graph.PersistentBackend
+	flowStorage     storage.Storage
 	wgServers       sync.WaitGroup
+	etcdClient      *etcdclient.Client
 }
 
 // GetStatus returns the status of an analyzer
@@ -110,7 +112,9 @@ func (s *Server) GetStatus() interface{} {
 }
 
 // createStartupCapture creates capture based on preconfigured selected SubGraph
-func (s *Server) createStartupCapture(ch *api.CaptureAPIHandler) error {
+func (s *Server) createStartupCapture() error {
+	apiHandler := s.apiServer.GetHandler("capture").(*api.CaptureAPIHandler)
+
 	gremlin := config.GetString("analyzer.startup.capture_gremlin")
 	if gremlin == "" {
 		return nil
@@ -121,26 +125,42 @@ func (s *Server) createStartupCapture(ch *api.CaptureAPIHandler) error {
 	logging.GetLogger().Infof("Invoke capturing of type '%s' from startup with gremlin: %s and BPF: %s", captureType, gremlin, bpf)
 	capture := types.NewCapture(gremlin, bpf)
 	capture.Type = captureType
-	return ch.Create(capture, nil)
+	return apiHandler.Create(capture, nil)
 }
 
 // Start the analyzer server
 func (s *Server) Start() error {
-	if s.storage != nil {
-		s.storage.Start()
-	}
-
 	if err := s.httpServer.Listen(); err != nil {
 		return err
 	}
 
-	s.hub.Start()
-	s.probeBundle.Start()
+	if err := s.hub.Start(); err != nil {
+		return err
+	}
+
+	s.etcdClient.Start()
+
+	if s.graphStorage != nil {
+		s.graphStorage.Start()
+	}
+
+	if s.flowStorage != nil {
+		s.flowStorage.Start()
+	}
+
+	if err := s.probeBundle.Start(); err != nil {
+		return err
+	}
+
 	s.onDemandClient.Start()
 	s.piClient.Start()
 	s.alertServer.Start()
 	s.topologyManager.Start()
 	s.flowServer.Start()
+
+	if err := s.createStartupCapture(); err != nil {
+		return err
+	}
 
 	s.wgServers.Add(1)
 	go func() {
@@ -163,11 +183,12 @@ func (s *Server) Stop() {
 	s.topologyManager.Stop()
 	s.etcdClient.Stop()
 	s.wgServers.Wait()
-	if s.embeddedEtcd != nil {
-		s.embeddedEtcd.Stop()
+
+	if s.graphStorage != nil {
+		s.graphStorage.Stop()
 	}
-	if s.storage != nil {
-		s.storage.Stop()
+	if s.flowStorage != nil {
+		s.flowStorage.Stop()
 	}
 	if tr, ok := http.DefaultTransport.(interface {
 		CloseIdleConnections()
@@ -180,40 +201,30 @@ func (s *Server) Stop() {
 func NewServerFromConfig() (*Server, error) {
 	embedEtcd := config.GetBool("etcd.embedded")
 	host := config.GetString("host_id")
-
-	var embeddedEtcd *etcd.EmbeddedEtcd
-	var err error
-	if embedEtcd {
-		name := config.GetString("etcd.name")
-		dataDir := config.GetString("etcd.data_dir")
-		listen := config.GetString("etcd.listen")
-		maxWalFiles := uint(config.GetInt("etcd.max_wal_files"))
-		maxSnapFiles := uint(config.GetInt("etcd.max_snap_files"))
-		debug := config.GetBool("etcd.debug")
-		peers := config.GetStringMapString("etcd.peers")
-
-		if embeddedEtcd, err = etcd.NewEmbeddedEtcd(name, listen, peers, dataDir, maxWalFiles, maxSnapFiles, debug); err != nil {
-			return nil, err
-		}
-	}
-
 	service := common.Service{ID: host, Type: common.AnalyzerService}
 
-	etcdServers := config.GetEtcdServerAddrs()
-	etcdTimeout := config.GetInt("etcd.client_timeout")
-	etcdClient, err := etcd.NewClient(service, etcdServers, time.Duration(etcdTimeout)*time.Second)
-	if err != nil {
-		return nil, err
+	var etcdServerOpts *etcdserver.EmbeddedServerOpts
+	var err error
+	if embedEtcd {
+		etcdServerOpts = &etcdserver.EmbeddedServerOpts{
+			Name:         config.GetString("etcd.name"),
+			Listen:       config.GetString("etcd.listen"),
+			DataDir:      config.GetString("etcd.data_dir"),
+			MaxWalFiles:  uint(config.GetInt("etcd.max_wal_files")),
+			MaxSnapFiles: uint(config.GetInt("etcd.max_snap_files")),
+			Debug:        config.GetBool("etcd.debug"),
+			Peers:        config.GetStringMapString("etcd.peers"),
+		}
 	}
 
-	// wait for etcd to be ready
-	for {
-		if err = etcdClient.SetInt64(fmt.Sprintf("/analyzer:%s/start-time", host), time.Now().Unix()); err != nil {
-			logging.GetLogger().Errorf("Etcd server not ready: %s", err)
-			time.Sleep(time.Second)
-		} else {
-			break
-		}
+	etcdClientOpts := etcdclient.ClientOpts{
+		Servers: config.GetEtcdServerAddrs(),
+		Timeout: time.Duration(config.GetInt("etcd.client_timeout")) * time.Second,
+	}
+
+	etcdClient, err := etcdclient.NewClient(service, etcdClientOpts)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := config.InitRBAC(etcdClient.KeysAPI); err != nil {
@@ -279,7 +290,8 @@ func NewServerFromConfig() (*Server, error) {
 			PingDelay:        2 * time.Second,
 			PongTimeout:      5 * time.Second,
 		},
-		Validator: validator,
+		Validator:      validator,
+		EtcdServerOpts: etcdServerOpts,
 	}
 
 	clusterAuthOptions := ClusterAuthenticationOpts()
@@ -290,7 +302,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	tableClient := flow.NewWSTableClient(hub.PodServer())
 
-	storage, err := newFlowBackendFromConfig(etcdClient)
+	flowStorage, err := newFlowBackendFromConfig(etcdClient)
 	if err != nil {
 		return nil, err
 	}
@@ -299,7 +311,7 @@ func NewServerFromConfig() (*Server, error) {
 	tr := traversal.NewGremlinTraversalParser()
 	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewRawPacketsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewFlowTraversalExtension(tableClient, storage))
+	tr.AddTraversalExtension(ge.NewFlowTraversalExtension(tableClient, flowStorage))
 	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
@@ -351,7 +363,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	onDemandClient := ondemand.NewOnDemandFlowProbeClient(g, captureAPIHandler, hub.PodServer(), hub.SubscriberServer(), etcdClient)
 
-	flowServer, err := server.NewFlowServer(hserver, g, storage, flowSubscriberEndpoint, probeBundle, clusterAuthBackend)
+	flowServer, err := server.NewFlowServer(hserver, g, flowStorage, flowSubscriberEndpoint, probeBundle, clusterAuthBackend)
 	if err != nil {
 		return nil, err
 	}
@@ -363,22 +375,21 @@ func NewServerFromConfig() (*Server, error) {
 
 	s := &Server{
 		httpServer:      hserver,
+		apiServer:       apiServer,
 		hub:             hub,
 		probeBundle:     probeBundle,
-		embeddedEtcd:    embeddedEtcd,
 		etcdClient:      etcdClient,
 		onDemandClient:  onDemandClient,
 		piClient:        piClient,
 		topologyManager: topologyManager,
-		storage:         storage,
+		graphStorage:    persistent,
+		flowStorage:     flowStorage,
 		flowServer:      flowServer,
 		alertServer:     alertServer,
 	}
 
-	s.createStartupCapture(captureAPIHandler)
-
 	api.RegisterTopologyAPI(hserver, g, tr, apiAuthBackend)
-	api.RegisterPcapAPI(hserver, storage, apiAuthBackend)
+	api.RegisterPcapAPI(hserver, flowStorage, apiAuthBackend)
 	api.RegisterConfigAPI(hserver, apiAuthBackend)
 	api.RegisterStatusAPI(hserver, s, apiAuthBackend)
 	api.RegisterWorkflowCallAPI(hserver, apiAuthBackend, apiServer, g, tr)

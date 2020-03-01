@@ -91,7 +91,7 @@ const (
 
 // ElasticSearchBackend describes a persistent backend based on ElasticSearch
 type ElasticSearchBackend struct {
-	Backend
+	PersistentBackend
 	client       es.ClientInterface
 	prevRevision map[Identifier]*rawData
 	election     common.MasterElection
@@ -517,6 +517,18 @@ func (b *ElasticSearchBackend) flushGraph() error {
 	return b.client.UpdateByScript("graph_element", query, script, b.liveIndex.Alias(), b.archiveIndex.IndexWildcard())
 }
 
+// Start backend
+func (b *ElasticSearchBackend) Start() error {
+	b.election.StartAndWait()
+	b.client.AddEventListener(b)
+	b.client.Start()
+	return nil
+}
+
+// Stop backend
+func (b *ElasticSearchBackend) Stop() {
+}
+
 // OnStarted implements storage client listener interface
 func (b *ElasticSearchBackend) OnStarted() {
 	if b.election != nil && b.election.IsMaster() {
@@ -528,8 +540,8 @@ func (b *ElasticSearchBackend) OnStarted() {
 
 // newElasticSearchBackendFromClient creates a new graph backend using the given elasticsearch
 // client connection
-func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, archiveIndex es.Index, electionService common.MasterElectionService) (*ElasticSearchBackend, error) {
-	c := &ElasticSearchBackend{
+func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, archiveIndex es.Index, electionService common.MasterElectionService) *ElasticSearchBackend {
+	backend := &ElasticSearchBackend{
 		client:       client,
 		prevRevision: make(map[Identifier]*rawData),
 		liveIndex:    liveIndex,
@@ -537,14 +549,10 @@ func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, arc
 	}
 
 	if electionService != nil {
-		c.election = electionService.NewElection("es-graph-flush")
-		c.election.StartAndWait()
+		backend.election = electionService.NewElection("es-graph-flush")
 	}
 
-	client.AddEventListener(c)
-	client.Start()
-
-	return c, nil
+	return backend
 }
 
 // NewElasticSearchBackendFromConfig creates a new graph backend from an ES configuration structure
@@ -590,5 +598,5 @@ func NewElasticSearchBackendFromConfig(cfg es.Config, extraDynamicTemplates map[
 		return nil, err
 	}
 
-	return newElasticSearchBackendFromClient(client, liveIndex, archiveIndex, electionService)
+	return newElasticSearchBackendFromClient(client, liveIndex, archiveIndex, electionService), nil
 }

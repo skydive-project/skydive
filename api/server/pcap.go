@@ -32,13 +32,13 @@ import (
 
 // PcapAPI exposes the pcap injector API
 type PcapAPI struct {
-	Storage storage.Storage
+	storage storage.Storage
 }
 
 // SendFlows implements the flow Sender interface
 func (p *PcapAPI) SendFlows(flows []*flow.Flow) {
-	if p.Storage != nil && len(flows) > 0 {
-		p.Storage.StoreFlows(flows)
+	if p.storage != nil && len(flows) > 0 {
+		p.storage.StoreFlows(flows)
 		logging.GetLogger().Debugf("%d flows stored", len(flows))
 	}
 }
@@ -122,7 +122,7 @@ func RegisterPcapAPI(r *shttp.Server, store storage.Storage, authBackend shttp.A
 	//     description: invalid PCAP
 
 	p := &PcapAPI{
-		Storage: store,
+		storage: store,
 	}
 
 	p.registerEndpoints(r, authBackend)
