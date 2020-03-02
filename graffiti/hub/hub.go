@@ -46,7 +46,6 @@ type Opts struct {
 	ClusterAuthBackend  shttp.AuthenticationBackend
 	Peers               []common.ServiceAddress
 	TLSConfig           *tls.Config
-	EtcdServerOpts      *etcdserver.EmbeddedServerOpts
 	EtcdKeysAPI         etcd.KeysAPI
 	Logger              logging.Logger
 }
@@ -162,14 +161,6 @@ func (h *Hub) GremlinTraversalParser() *traversal.GremlinTraversalParser {
 
 // NewHub returns a new hub
 func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.Graph, cached *graph.CachedBackend, podEndpoint string, opts Opts) (*Hub, error) {
-	var embeddedEtcd *etcdserver.EmbeddedServer
-	var err error
-	if opts.EtcdServerOpts != nil {
-		if embeddedEtcd, err = etcdserver.NewEmbeddedServer(*opts.EtcdServerOpts); err != nil {
-			return nil, err
-		}
-	}
-
 	service := common.Service{ID: id, Type: serviceType}
 
 	sa, err := common.ServiceAddressFromString(listen)
@@ -224,7 +215,6 @@ func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.G
 		replicationWSServer: replicationWSServer,
 		publisherWSServer:   publisherWSServer,
 		subscriberWSServer:  subscriberWSServer,
-		embeddedEtcd:        embeddedEtcd,
 		traversalParser:     tr,
 	}
 

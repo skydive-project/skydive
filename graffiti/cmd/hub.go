@@ -42,6 +42,7 @@ const (
 
 var (
 	hubListen        string
+	embeddedEtcd     bool
 	etcdServers      []string
 	writeCompression bool
 	queueSize        int
@@ -80,6 +81,22 @@ var HubCmd = &cobra.Command{
 
 		authBackend := shttp.NewNoAuthenticationBackend()
 
+		var etcdServer *etcdserver.EmbeddedServer
+		if embeddedEtcd {
+			etcdServerOpts := &etcdserver.EmbeddedServerOpts{
+				Name:    "localhost",
+				Listen:  "127.0.0.1:12379",
+				DataDir: "/tmp/etcd",
+			}
+
+			if etcdServer, err = etcdserver.NewEmbeddedServer(*etcdServerOpts); err != nil {
+				logging.GetLogger().Error(err)
+				os.Exit(1)
+			}
+
+			etcdServer.Start()
+		}
+
 		hubOpts := hub.Opts{
 			Hostname: hostname,
 			WebsocketOpts: websocket.ServerOpts{
@@ -87,11 +104,6 @@ var HubCmd = &cobra.Command{
 				QueueSize:        queueSize,
 				PingDelay:        time.Second * time.Duration(pingDelay),
 				PongTimeout:      time.Second * time.Duration(pongTimeout),
-			},
-			EtcdServerOpts: &etcdserver.EmbeddedServerOpts{
-				Name:    "localhost",
-				Listen:  "127.0.0.1:12379",
-				DataDir: "/tmp/etcd",
 			},
 			APIAuthBackend:     authBackend,
 			ClusterAuthBackend: authBackend,
@@ -112,6 +124,11 @@ var HubCmd = &cobra.Command{
 		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 		<-ch
 
+		hub.Stop()
+		if etcdServer != nil {
+			etcdServer.Stop()
+		}
+
 		logging.GetLogger().Notice("Graffiti hub stopped.")
 	},
 }
@@ -122,5 +139,6 @@ func init() {
 	HubCmd.Flags().IntVar(&queueSize, "queue-size", 10000, "websocket queue size")
 	HubCmd.Flags().IntVar(&pingDelay, "ping-delay", 2, "websocket ping delay")
 	HubCmd.Flags().IntVar(&pongTimeout, "pong-timeout", 10, "websocket pong timeout")
-	HubCmd.Flags().StringArrayVar(&etcdServers, "etcd-servers", []string{defaultEtcdAddr}, "websocket pong timeout")
+	HubCmd.Flags().BoolVar(&embeddedEtcd, "embedded-etcd", false, "run embedded etcd server")
+	HubCmd.Flags().StringArrayVar(&etcdServers, "etcd-servers", []string{defaultEtcdAddr}, "etcd servers")
 }

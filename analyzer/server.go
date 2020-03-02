@@ -35,7 +35,6 @@ import (
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/client"
 	"github.com/skydive-project/skydive/flow/server"
 	"github.com/skydive-project/skydive/flow/storage"
-	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -89,7 +88,8 @@ type Server struct {
 	probeBundle     *probe.Bundle
 	graphStorage    graph.PersistentBackend
 	flowStorage     storage.Storage
-	etcdClient      *etcd.Client
+	etcdServer      *etcdserver.EmbeddedServer
+	etcdClient      *etcdclient.Client
 }
 
 // GetStatus returns the status of an analyzer
@@ -126,8 +126,10 @@ func (s *Server) createStartupCapture() error {
 
 // Start the analyzer server
 func (s *Server) Start() error {
-	if err := s.hub.Start(); err != nil {
-		return err
+	if s.etcdServer != nil {
+		if err := s.etcdServer.Start(); err != nil {
+			return err
+		}
 	}
 
 	s.etcdClient.Start()
@@ -149,6 +151,10 @@ func (s *Server) Start() error {
 	s.alertServer.Start()
 	s.topologyManager.Start()
 	s.flowServer.Start()
+
+	if err := s.hub.Start(); err != nil {
+		return err
+	}
 
 	if err := s.createStartupCapture(); err != nil {
 		return err
@@ -174,6 +180,9 @@ func (s *Server) Stop() {
 	if s.flowStorage != nil {
 		s.flowStorage.Stop()
 	}
+
+	s.etcdServer.Stop()
+
 	if tr, ok := http.DefaultTransport.(interface {
 		CloseIdleConnections()
 	}); ok {
@@ -187,10 +196,10 @@ func NewServerFromConfig() (*Server, error) {
 	host := config.GetString("host_id")
 	service := common.Service{ID: host, Type: common.AnalyzerService}
 
-	var etcdServerOpts *etcdserver.EmbeddedServerOpts
+	var etcdServer *etcdserver.EmbeddedServer
 	var err error
 	if embedEtcd {
-		etcdServerOpts = &etcdserver.EmbeddedServerOpts{
+		etcdServerOpts := &etcdserver.EmbeddedServerOpts{
 			Name:         config.GetString("etcd.name"),
 			Listen:       config.GetString("etcd.listen"),
 			DataDir:      config.GetString("etcd.data_dir"),
@@ -198,6 +207,10 @@ func NewServerFromConfig() (*Server, error) {
 			MaxSnapFiles: uint(config.GetInt("etcd.max_snap_files")),
 			Debug:        config.GetBool("etcd.debug"),
 			Peers:        config.GetStringMapString("etcd.peers"),
+		}
+
+		if etcdServer, err = etcdserver.NewEmbeddedServer(*etcdServerOpts); err != nil {
+			return nil, err
 		}
 	}
 
@@ -265,17 +278,11 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	storage, err := newFlowBackendFromConfig(etcdClient)
-	if err != nil {
-		return nil, err
-	}
-
 	s := &Server{
 		probeBundle:  probeBundle,
-		embeddedEtcd: embeddedEtcd,
 		etcdClient:   etcdClient,
+		etcdServer:   etcdServer,
 		graphStorage: graphStorage,
-		storage:      storage,
 	}
 
 	opts := hub.Opts{
@@ -287,7 +294,6 @@ func NewServerFromConfig() (*Server, error) {
 		StatusReporter:      s,
 		TLSConfig:           tlsConfig,
 		Peers:               peers,
-		EtcdServerOpts:      etcdServerOpts,
 		EtcdKeysAPI:         etcdClient.KeysAPI,
 		TopologyMarshallers: api.TopologyMarshallers,
 	}
@@ -321,7 +327,7 @@ func NewServerFromConfig() (*Server, error) {
 	tr := hub.GremlinTraversalParser()
 	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewRawPacketsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewFlowTraversalExtension(tableClient, flowStorage))
+	tr.AddTraversalExtension(ge.NewFlowTraversalExtension(tableClient, s.flowStorage))
 	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
@@ -365,7 +371,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	s.onDemandClient = ondemand.NewOnDemandFlowProbeClient(g, captureAPIHandler, hub.PodServer(), hub.SubscriberServer(), etcdClient)
 
-	s.flowServer, err = server.NewFlowServer(hub.HTTPServer(), g, flowStorage, flowSubscriberEndpoint, probeBundle, clusterAuthBackend)
+	s.flowServer, err = server.NewFlowServer(hub.HTTPServer(), g, s.flowStorage, flowSubscriberEndpoint, probeBundle, clusterAuthBackend)
 	if err != nil {
 		return nil, err
 	}
@@ -376,7 +382,7 @@ func NewServerFromConfig() (*Server, error) {
 	}
 
 	httpServer := hub.HTTPServer()
-	api.RegisterPcapAPI(httpServer, flowStorage, apiAuthBackend)
+	api.RegisterPcapAPI(httpServer, s.flowStorage, apiAuthBackend)
 	api.RegisterConfigAPI(httpServer, apiAuthBackend)
 	api.RegisterWorkflowCallAPI(httpServer, apiAuthBackend, apiServer, g, tr)
 
