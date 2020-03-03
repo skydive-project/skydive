@@ -18,10 +18,11 @@ export SKYDIVE=${GOPATH}/bin/skydive
 export FLOW_PROTOCOL=${FLOW_PROTOCOL:-websocket}
 export SKYDIVE_LOGGING_LEVEL=DEBUG
 
-make test.functionals WITH_SCALE=true TAGS=${TAGS} VERBOSE=true TIMEOUT=10m TEST_PATTERN=Scale
+make test.functionals WITH_SCALE=true TAGS=${TAGS} VERBOSE=true TIMEOUT=10m TEST_PATTERN=Scale EXTRA_ARGS="-logs=/tmp/skydive-scale/scale.log"
 status=$?
 
-cat /tmp/skydive-scale/{analyzer,agent}-?.log | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" | perl -ne '$d=$1 if /^(\d+-\d+-\d+),/; $k{$d}.=$_; END{print $k{$_} for sort keys(%k);}'
+cat /tmp/skydive-scale/scale.log
+
 if [ $status -ne 0 ] ; then
    echo "test Scale TLS:${TLS} FLOW_PROTOCOL:${FLOW_PROTOCOL} failed return ${status}"
    exit $status

@@ -220,11 +220,14 @@ ovs:
   ovsdb: unix://$TEMP_DIR/$NAME.sock
 logging:
   level: DEBUG
+  backends:
+    - stdout
+    - syslog
 EOF
 
         COVERFILE="$TEMP_DIR/$NAME.cover"
         PIDFILE="$TEMP_DIR/$NAME.pid"
-	sudo -E screen -S skydive-stress -X screen -t skydive-agent $WINDOW ip netns exec $NAME sh -c "export COVERFILE=$COVERFILE ; export PIDFILE=$PIDFILE ; $SKYDIVE agent -c $TEMP_DIR/$NAME.yml 2>&1 | tee $TEMP_DIR/$NAME.log"
+	sudo -E screen -S skydive-stress -X screen -t skydive-agent $WINDOW ip netns exec $NAME sh -c "export COVERFILE=$COVERFILE ; export PIDFILE=$PIDFILE ; export SKYDIVE_LOGGING_BACKENDS=\"$SKYDIVE_LOGGING_BACKENDS\" ; export SKYDIVE_LOGGING_SYSLOG_ADDRESS=$SKYDIVE_LOGGING_SYSLOG_ADDRESS ; $SKYDIVE agent -c $TEMP_DIR/$NAME.yml 2>&1 | tee $TEMP_DIR/$NAME.log"
 
 	sudo ip netns exec $NAME ovs-vsctl --db=unix:$TEMP_DIR/$NAME.sock add-br $NAME
 	sudo ip netns exec $NAME ovs-vsctl --db=unix:$TEMP_DIR/$NAME.sock set bridge $NAME rstp_enable=true
@@ -331,6 +334,9 @@ storage:
     host: $ELASTICSEARCH
 logging:
   level: DEBUG
+  backends:
+    - stdout
+    - syslog
 flow:
   expire: 600
   update: 5
@@ -384,7 +390,7 @@ EOF
 
 	COVERFILE="$TEMP_DIR/$NAME.cover"
 	PIDFILE="$TEMP_DIR/$NAME.pid"
-	sudo -E screen -S skydive-stress -X screen -t skydive-analyzer $WINDOW sh -c "export COVERFILE=$COVERFILE ; export PIDFILE=$PIDFILE ; $SKYDIVE analyzer -c $TEMP_DIR/$NAME.yml 2>&1 | tee $TEMP_DIR/$NAME.log"
+	sudo -E screen -S skydive-stress -X screen -t skydive-analyzer $WINDOW sh -c "export COVERFILE=$COVERFILE ; export PIDFILE=$PIDFILE ; export SKYDIVE_LOGGING_BACKENDS=\"$SKYDIVE_LOGGING_BACKENDS\" ; export SKYDIVE_LOGGING_SYSLOG_ADDRESS=$SKYDIVE_LOGGING_SYSLOG_ADDRESS ; $SKYDIVE analyzer -c $TEMP_DIR/$NAME.yml 2>&1 | tee $TEMP_DIR/$NAME.log"
 
 	touch $TEMP_DIR/$NAME.lock
 }

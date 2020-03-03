@@ -115,6 +115,7 @@ require (
 	gopkg.in/httprequest.v1 v1.0.0-20180209163514-93f8fee4081f // indirect
 	gopkg.in/macaroon-bakery.v2 v2.0.0-20180209090814-22c04a94d902 // indirect
 	gopkg.in/macaroon.v2 v2.0.0-20171017153037-bed2a428da6e // indirect
+	gopkg.in/mcuadros/go-syslog.v2 v2.3.0
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
 	gopkg.in/sourcemap.v1 v1.0.0-20160602085544-eef8f47ab679 // indirect
 	gopkg.in/urfave/cli.v2 v2.0.0-20170928224240-b2bf3c5abeb9 // indirect
