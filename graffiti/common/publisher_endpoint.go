@@ -119,21 +119,22 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 		reply := msg.Reply(t.Graph, gws.SyncReplyMsgType, http.StatusOK)
 		c.SendMessage(reply)
 	case gws.SyncMsgType, gws.SyncReplyMsgType:
-		r := obj.(*gws.SyncMsg)
+		logging.GetLogger().Debugf("Handling sync message from %s", c.GetRemoteHost())
 
 		DelSubGraphOfOrigin(t.Graph, ClientOrigin(c))
 
+		r := obj.(*gws.SyncMsg)
 		for _, n := range r.Nodes {
 			if t.Graph.GetNode(n.ID) == nil {
 				if err := t.Graph.NodeAdded(n); err != nil {
-					logging.GetLogger().Error(err)
+					logging.GetLogger().Errorf("Error while processing sync message from %s: %s", c.GetRemoteHost(), err)
 				}
 			}
 		}
 		for _, e := range r.Edges {
 			if t.Graph.GetEdge(e.ID) == nil {
 				if err := t.Graph.EdgeAdded(e); err != nil {
-					logging.GetLogger().Error(err)
+					logging.GetLogger().Errorf("Error while processing sync message from %s: %s", c.GetRemoteHost(), err)
 				}
 			}
 		}
@@ -154,7 +155,7 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 	}
 
 	if err != nil {
-		logging.GetLogger().Error(err)
+		logging.GetLogger().Errorf("Error while processing message type %s from %s: %s", msgType, c.GetRemoteHost(), err)
 	}
 }
 

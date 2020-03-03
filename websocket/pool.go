@@ -265,7 +265,7 @@ func (s *Pool) BroadcastMessage(m Message) {
 
 	for _, c := range s.speakers {
 		if err := c.SendMessage(m); err != nil {
-			s.opts.Logger.Errorf("Unable to send message from pool %s to %s: %s", s.name, c.GetRemoteHost, err)
+			s.opts.Logger.Errorf("Unable to send message from pool %s to %s: %s", s.name, c.GetRemoteHost(), err)
 		}
 	}
 }

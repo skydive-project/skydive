@@ -75,10 +75,15 @@ func (p *ReplicatorPeer) OnConnected(c ws.Speaker) {
 	p.endpoint.Lock()
 	defer p.endpoint.Unlock()
 
+	host := c.GetRemoteHost()
+	if c.GetHost() == host {
+		logging.GetLogger().Debugf("Disconnecting from %s since it's me", p.URL.String())
+		c.Stop()
+		return
+	}
+
 	p.Graph.RLock()
 	defer p.Graph.RUnlock()
-
-	host := c.GetRemoteHost()
 
 	state, ok := p.endpoint.peerStates[host]
 	if !ok {
@@ -86,12 +91,6 @@ func (p *ReplicatorPeer) OnConnected(c ws.Speaker) {
 		p.endpoint.peerStates[host] = state
 	}
 	state.cnt++
-
-	if host == config.GetString("host_id") {
-		logging.GetLogger().Debugf("Disconnecting from %s since it's me", p.URL.String())
-		c.Stop()
-		return
-	}
 
 	// disconnect as can be connected to the same host from different addresses.
 	if state.cnt > 1 {
@@ -115,6 +114,9 @@ func (p *ReplicatorPeer) OnDisconnected(c ws.Speaker) {
 	defer p.endpoint.Unlock()
 
 	host := c.GetRemoteHost()
+	if host == c.GetHost() {
+		return
+	}
 
 	state := p.endpoint.peerStates[host]
 	state.cnt--
@@ -267,7 +269,7 @@ func (t *ReplicationEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessag
 	}
 
 	if err != nil {
-		logging.GetLogger().Errorf("Error while processing message type %s: %s", msgType, err)
+		logging.GetLogger().Errorf("Error while processing message type %s from %s: %s", msgType, c.GetRemoteHost(), err)
 	}
 }
 
@@ -341,6 +343,11 @@ func (t *ReplicationEndpoint) OnConnected(c ws.Speaker) {
 	defer t.Unlock()
 
 	host := c.GetRemoteHost()
+	if host == c.GetHost() {
+		logging.GetLogger().Debugf("Disconnect %s since it's me", host)
+		c.Stop()
+		return
+	}
 
 	state, ok := t.peerStates[host]
 	if !ok {
@@ -351,7 +358,6 @@ func (t *ReplicationEndpoint) OnConnected(c ws.Speaker) {
 
 	if state.cnt > 1 {
 		logging.GetLogger().Debugf("Disconnecting %s from %s as already connected", host, c.GetURL())
-
 		c.Stop()
 		return
 	}
@@ -375,6 +381,9 @@ func (t *ReplicationEndpoint) OnDisconnected(c ws.Speaker) {
 	defer t.Unlock()
 
 	host := c.GetRemoteHost()
+	if host == c.GetHost() {
+		return
+	}
 
 	state := t.peerStates[host]
 	state.cnt--
