@@ -45,7 +45,9 @@ func InitLogging() error {
 			}
 		case "syslog":
 			syslogTag := cfg.GetString("logging.syslog.tag")
-			backend, err = logging.NewSyslogBackend(syslogTag)
+			protocol := cfg.GetString("logging.syslog.protocol")
+			addr := cfg.GetString("logging.syslog.address")
+			backend, err = logging.NewSyslogBackend(protocol, addr, syslogTag)
 			if err != nil {
 				return err
 			}
