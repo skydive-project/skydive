@@ -181,9 +181,6 @@ function create_agent() {
 
 		cat <<EOF >> $TEMP_DIR/$NAME.yml
 host_id: $NAME
-http:
-  ws:
-    pong_timeout: 15
 tls:
   ca_cert: $CA_CRT
   client_cert: $AGENT_CRT
@@ -320,9 +317,6 @@ function create_analyzer() {
 
 	cat <<EOF >> $TEMP_DIR/$NAME.yml
 host_id: $NAME
-http:
-  ws:
-    pong_timeout: 15
 etcd:
   embedded: $ETCD_EMBEDDED
   data_dir: $TEMP_DIR/$NAME-etcd
