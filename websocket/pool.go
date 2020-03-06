@@ -18,6 +18,7 @@
 package websocket
 
 import (
+	fmt "fmt"
 	"math/rand"
 	"reflect"
 	"sync"
@@ -35,7 +36,7 @@ type SpeakerPool interface {
 	RemoveClient(c Speaker) bool
 	AddEventHandler(h SpeakerEventHandler)
 	GetSpeakers() []Speaker
-	GetSpeakerByRemoteHost(host string) Speaker
+	GetSpeakerByRemoteHost(host string) (Speaker, error)
 	PickConnectedSpeaker() Speaker
 	BroadcastMessage(m Message)
 	SendMessageTo(m Message, host string) error
@@ -236,23 +237,24 @@ func (s *Pool) GetSpeakersByType(serviceType common.ServiceType) (speakers []Spe
 }
 
 // GetSpeakerByRemoteHost returns the Speaker for the given remote host.
-func (s *Pool) GetSpeakerByRemoteHost(host string) Speaker {
+func (s *Pool) GetSpeakerByRemoteHost(host string) (Speaker, error) {
 	s.RLock()
 	defer s.RUnlock()
 
 	for _, c := range s.speakers {
 		if c.GetRemoteHost() == host {
-			return c
+			return c, nil
 		}
 	}
-	return nil
+
+	return nil, fmt.Errorf("No speaker found for host '%s'", host)
 }
 
 // SendMessageTo sends message to Speaker for the given remote host.
 func (s *Pool) SendMessageTo(m Message, host string) error {
-	c := s.GetSpeakerByRemoteHost(host)
-	if c == nil {
-		return common.ErrNotFound
+	c, err := s.GetSpeakerByRemoteHost(host)
+	if err != nil {
+		return err
 	}
 
 	return c.SendMessage(m)

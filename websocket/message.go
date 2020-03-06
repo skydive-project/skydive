@@ -30,7 +30,6 @@ import (
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/safchain/insanelock"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -370,7 +369,7 @@ func (s *StructSpeaker) Request(m *StructMessage, timeout time.Duration) (*Struc
 	case resp := <-ch:
 		return resp, nil
 	case <-time.After(timeout):
-		return nil, common.ErrTimeout
+		return nil, errors.New("Timeout")
 	}
 }
 
@@ -451,9 +450,9 @@ func (s *StructClientPool) AddClient(c Speaker) error {
 
 // Request sends a Request Struct message to the Speaker of the given remote host.
 func (s *StructClientPool) Request(host string, request *StructMessage, timeout time.Duration) (*StructMessage, error) {
-	c := s.ClientPool.GetSpeakerByRemoteHost(host)
-	if c == nil {
-		return nil, common.ErrNotFound
+	c, err := s.ClientPool.GetSpeakerByRemoteHost(host)
+	if err != nil {
+		return nil, err
 	}
 
 	return c.(*StructSpeaker).Request(request, timeout)
@@ -476,9 +475,9 @@ type StructServer struct {
 
 // Request sends a Request Struct message to the Speaker of the given remote host.
 func (s *StructServer) Request(host string, request *StructMessage, timeout time.Duration) (*StructMessage, error) {
-	c := s.Server.GetSpeakerByRemoteHost(host)
-	if c == nil {
-		return nil, common.ErrNotFound
+	c, err := s.Server.GetSpeakerByRemoteHost(host)
+	if err != nil {
+		return nil, err
 	}
 
 	return c.(*StructSpeaker).Request(request, timeout)
