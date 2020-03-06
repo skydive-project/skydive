@@ -20,17 +20,18 @@ package openflow
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/skydive-project/goloxi"
 	"github.com/skydive-project/goloxi/of13"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -52,6 +53,7 @@ type Client struct {
 	sync.RWMutex
 	conn               net.Conn
 	addr               string
+	tlsConfig          *tls.Config
 	reader             *bufio.Reader
 	msgChan            chan (goloxi.Message)
 	listeners          []Listener
@@ -66,14 +68,24 @@ type Listener interface {
 }
 
 func (c *Client) connect(addr string) (net.Conn, error) {
-	scheme, addr, err := common.ParseAddr(addr)
-	if err != nil {
-		return nil, err
+	var protocol string
+
+	parts := strings.SplitN(addr, ":", 2)
+	if len(parts) > 1 {
+		protocol = parts[0]
+		addr = parts[1]
+	} else {
+		protocol = "unix"
+		if !strings.HasPrefix(addr, "/") {
+			addr = fmt.Sprintf("/var/run/openvswitch/%s.mgmt", addr)
+		}
 	}
 
-	switch scheme {
+	switch protocol {
 	case "tcp":
-		return net.Dial(scheme, addr)
+		return net.Dial(protocol, addr)
+	case "ssl":
+		return tls.Dial("tcp", addr, c.tlsConfig)
 	case "unix":
 		raddr, err := net.ResolveUnixAddr("unix", addr)
 		if err != nil {
@@ -81,7 +93,7 @@ func (c *Client) connect(addr string) (net.Conn, error) {
 		}
 		return net.DialUnix("unix", nil, raddr)
 	default:
-		return nil, fmt.Errorf("Unsupported connection scheme '%s'", scheme)
+		return nil, fmt.Errorf("Unsupported connection scheme '%s'", protocol)
 	}
 }
 
@@ -314,12 +326,13 @@ func (c *Client) GetProtocol() Protocol {
 }
 
 // NewClient returns a new OpenFlow client using either a UNIX socket or a TCP socket
-func NewClient(addr string, protocols []Protocol) (*Client, error) {
+func NewClient(addr string, tlsConfig *tls.Config, protocols []Protocol) (*Client, error) {
 	if len(protocols) == 0 {
 		protocols = []Protocol{OpenFlow10, OpenFlow11, OpenFlow12, OpenFlow13, OpenFlow14, OpenFlow15}
 	}
 	client := &Client{
 		addr:               addr,
+		tlsConfig:          tlsConfig,
 		msgChan:            make(chan goloxi.Message, 500),
 		supportedProtocols: protocols,
 	}

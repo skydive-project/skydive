@@ -341,7 +341,7 @@ func countElements(filter string) int {
 }
 
 func (probe *OfctlProbe) prefix() string {
-	return probe.Handler.Host + "-" + probe.Bridge + "-"
+	return probe.Handler.host + "-" + probe.Bridge + "-"
 }
 
 func (probe *OfctlProbe) dumpGroups() error {
@@ -405,7 +405,7 @@ func (probe *OfctlProbe) completeEvent(ctx context.Context, event *Event) error 
 	}
 	lines, err := probe.launchOnSwitch(command)
 	if err != nil && ctx.Err() == nil {
-		return fmt.Errorf("Cannot launch ovs-ofctl dump-flows on %s@%s with filter %s: %s", bridge, probe.Handler.Host, filter, err)
+		return fmt.Errorf("Cannot launch ovs-ofctl dump-flows on %s@%s with filter %s: %s", bridge, probe.Handler.host, filter, err)
 	}
 
 	prefix := probe.Host + "-" + probe.Bridge + "-"
@@ -574,9 +574,9 @@ func (probe *OfctlProbe) makeCommand(commands []string, bridge string, args ...s
 		if probe.Handler.sslOk {
 			commands = append(commands,
 				bridge,
-				"--certificate", probe.Handler.Certificate,
-				"--ca-cert", probe.Handler.CA,
-				"--private-key", probe.Handler.PrivateKey)
+				"--certificate", probe.Handler.certificate,
+				"--ca-cert", probe.Handler.ca,
+				"--private-key", probe.Handler.privateKey)
 		} else {
 			return commands, errors.New("Certificate, CA and private keys are necessary for communication with switch over SSL")
 		}

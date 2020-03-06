@@ -19,27 +19,29 @@ package ovsdb
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"sync"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	gtls "github.com/skydive-project/skydive/graffiti/tls"
 	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
 // OvsOfProbeHandler is the type of the probe retrieving Openflow rules on an Open Vswitch
 type OvsOfProbeHandler struct {
 	sync.Mutex
-	Host           string                    // The host
+	host           string                    // The host
+	protocol       string                    // Protocol to use to talk to the switch
 	Ctx            tp.Context                // Probe context
 	bridgeOfProbes map[string]*bridgeOfProbe // The table of probes associated to each bridge
-	Translation    map[string]string         // A translation table to find the url for a given bridge knowing its name
-	Certificate    string                    // Path to the certificate used for authenticated communication with bridges
-	PrivateKey     string                    // Path of the private key authenticating the probe.
-	CA             string                    // Path of the certicate of the Certificate authority used for authenticated communication with bridges
+	translation    map[string]string         // A translation table to find the url for a given bridge knowing its name
+	certificate    string                    // Path to the certificate used for authenticated communication with bridges
+	privateKey     string                    // Path of the private key authenticating the probe.
+	ca             string                    // Path of the certicate of the Certificate authority used for authenticated communication with bridges
 	sslOk          bool                      // cert private key and ca are provisionned.
+	tlsConfig      *tls.Config
 	useNative      bool
 	cancelCtx      context.Context
 }
@@ -61,14 +63,13 @@ var (
 )
 
 // newbridgeOfProbe creates a probe and launch the active process
-func (o *OvsOfProbeHandler) newbridgeOfProbe(host string, bridge string, uuid string, bridgeNode *graph.Node) (*bridgeOfProbe, error) {
-	address, ok := o.Translation[bridge]
+func (o *OvsOfProbeHandler) newbridgeOfProbe(bridge string, uuid string, bridgeNode *graph.Node) (*bridgeOfProbe, error) {
+	address, ok := o.translation[bridge]
 	if !ok {
-		protocol, target, err := common.ParseAddr(o.Ctx.Config.GetString("ovs.ovsdb"))
-		if err != nil || protocol != "unix" {
-			return nil, fmt.Errorf("Could not find translation unix address for %s in %v", bridge, o.Translation)
+		if o.protocol != "unix" {
+			return nil, fmt.Errorf("Could not find translation unix address for %s in %v", bridge, o.translation)
 		}
-		address = "unix://" + filepath.Join(filepath.Dir(target), fmt.Sprintf("%s.mgmt", bridge))
+		address = fmt.Sprintf("unix:/var/run/openvswitch/%s.mgmt", bridge)
 	}
 
 	cancelCtx, cancelFunc := context.WithCancel(o.cancelCtx)
@@ -82,9 +83,9 @@ func (o *OvsOfProbeHandler) newbridgeOfProbe(host string, bridge string, uuid st
 
 	var prober BridgeOfProber
 	if o.useNative {
-		prober = NewOfProbe(ctx, bridge, address)
+		prober = NewOfProbe(ctx, bridge, address, o.tlsConfig)
 	} else {
-		prober = NewOfctlProbe(ctx, host, bridge, uuid, address, o)
+		prober = NewOfctlProbe(ctx, o.host, bridge, uuid, address, o)
 	}
 
 	if err := prober.Monitor(cancelCtx); err != nil {
@@ -123,12 +124,12 @@ func (o *OvsOfProbeHandler) OnOvsBridgeAdd(bridgeNode *graph.Node) {
 		return
 	}
 
-	bridgeOfProbe, err := o.newbridgeOfProbe(o.Host, bridgeName, uuid, bridgeNode)
+	bridgeOfProbe, err := o.newbridgeOfProbe(bridgeName, uuid, bridgeNode)
 	if err != nil {
 		return
 	}
 
-	o.Ctx.Logger.Debugf("Probe added for %s on %s (%s)", bridgeName, o.Host, uuid)
+	o.Ctx.Logger.Debugf("Probe added for %s on %s (%s)", bridgeName, o.host, uuid)
 	o.bridgeOfProbes[uuid] = bridgeOfProbe
 }
 
@@ -167,9 +168,9 @@ func (o *OvsOfProbeHandler) OnOvsBridgeDel(uuid string) {
 }
 
 // NewOvsOfProbeHandler creates a new probe associated to a given graph, root node and host.
-func NewOvsOfProbeHandler(cancelCtx context.Context, ctx tp.Context, host string) *OvsOfProbeHandler {
+func NewOvsOfProbeHandler(cancelCtx context.Context, ctx tp.Context, host string, protocol string) (*OvsOfProbeHandler, error) {
 	if !ctx.Config.GetBool("ovs.oflow.enable") {
-		return nil
+		return nil, nil
 	}
 
 	ctx.Logger.Infof("Adding OVS probe on %s", host)
@@ -181,16 +182,30 @@ func NewOvsOfProbeHandler(cancelCtx context.Context, ctx tp.Context, host string
 	sslOk := (pk != "") && (ca != "") && (cert != "")
 	useNative := ctx.Config.GetBool("ovs.oflow.native")
 
+	var err error
+	var tlsConfig *tls.Config
+	if useNative && sslOk {
+		tlsConfig, err = gtls.SetupTLSClientConfig(cert, pk)
+		if err != nil {
+			return nil, err
+		}
+		if tlsConfig.RootCAs, err = gtls.SetupTLSLoadCA(ca); err != nil {
+			return nil, err
+		}
+	}
+
 	return &OvsOfProbeHandler{
-		Host:           host,
+		host:           host,
+		protocol:       protocol,
 		Ctx:            ctx,
 		bridgeOfProbes: make(map[string]*bridgeOfProbe),
-		Translation:    translate,
-		Certificate:    cert,
-		PrivateKey:     pk,
-		CA:             ca,
+		translation:    translate,
+		certificate:    cert,
+		privateKey:     pk,
+		ca:             ca,
+		tlsConfig:      tlsConfig,
 		sslOk:          sslOk,
 		useNative:      useNative,
 		cancelCtx:      cancelCtx,
-	}
+	}, nil
 }
