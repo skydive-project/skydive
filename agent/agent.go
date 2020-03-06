@@ -219,13 +219,8 @@ func NewAgent() (*Agent, error) {
 	}
 
 	opts := pod.Opts{
-		ServerOpts: websocket.ServerOpts{
-			WriteCompression: true,
-			QueueSize:        10000,
-			PingDelay:        2 * time.Second,
-			PongTimeout:      5 * time.Second,
-		},
-		Validator: validator,
+		ServerOpts: config.NewWSServerOpts(),
+		Validator:  validator,
 	}
 
 	pod, err := pod.NewPod(apiServer, analyzerClientPool, g, apiAuthBackend, clusterAuthOptions, tr, opts)

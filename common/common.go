@@ -19,20 +19,8 @@ package common
 
 import (
 	"fmt"
-	"math/rand"
 	"strings"
 )
-
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-// RandString generates random string
-func RandString(n int) string {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
-	}
-	return string(b)
-}
 
 // ParseAddr parses an address of the form protocol://target such as
 // unix:////var/run/service/program.sock or tcp://my.domain:2134. It also
@@ -54,15 +42,4 @@ func ParseAddr(address string) (protocol string, target string, err error) {
 		target = fmt.Sprintf("%s:%d", sa.Addr, sa.Port)
 	}
 	return
-}
-
-// NormalizeIP adds a default netmask
-func NormalizeIP(ip, ipFamily string) string {
-	if strings.Contains(ip, "/") {
-		return ip
-	}
-	if ipFamily == "IPV4" {
-		return ip + "/32"
-	}
-	return ip + "/64"
 }

@@ -754,7 +754,7 @@ func (g *Graph) DelMetadata(i interface{}, k string) error {
 		kind = EdgeUpdated
 	}
 
-	if updated := common.DelField(e.Metadata, k); !updated {
+	if updated := e.Metadata.DelField(k); !updated {
 		return nil
 	}
 

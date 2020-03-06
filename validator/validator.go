@@ -28,6 +28,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 )
@@ -66,7 +67,7 @@ var (
 	}
 	//CaptureTypeNotValid validator
 	CaptureTypeNotValid = func(t string) error {
-		return valid.TextErr{Err: fmt.Errorf("Not a valid capture type: %s, available types: %v", t, common.ProbeTypes)}
+		return valid.TextErr{Err: fmt.Errorf("Not a valid capture type: %s, available types: %v", t, probes.ProbeTypes)}
 	}
 	//AddressNotValid validator
 	AddressNotValid = func() error {
@@ -257,7 +258,7 @@ func isValidCaptureType(v interface{}, param string) error {
 		return nil
 	}
 
-	for _, t := range common.ProbeTypes {
+	for _, t := range probes.ProbeTypes {
 		if t == typ {
 			return nil
 		}

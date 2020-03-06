@@ -23,6 +23,6 @@ import (
 	"github.com/skydive-project/skydive/common"
 )
 
-func NewSyslogBackend(tag string) (Backend, error) {
+func NewSyslogBackend(protocol, address, tag string) (Backend, error) {
 	return nil, common.ErrNotImplemented
 }

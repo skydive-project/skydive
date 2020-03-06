@@ -23,12 +23,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/safchain/insanelock"
 	"github.com/socketplane/libovsdb"
 	"github.com/vishvananda/netlink"
-	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/ovs/ovsdb"
@@ -496,7 +495,7 @@ func (o *ovsMirrorInterfaceHandler) onNodeEvent(n *graph.Node) {
 		return
 	}
 
-	subProbeTypes, ok := common.CaptureTypes["internal"]
+	subProbeTypes, ok := probes.CaptureTypes["internal"]
 	if !ok {
 		o.oph.Ctx.Logger.Errorf("Unable to find probe for this node type: internal")
 		return

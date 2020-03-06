@@ -15,7 +15,7 @@
  *
  */
 
-package common
+package process
 
 import (
 	"fmt"
@@ -23,28 +23,28 @@ import (
 	"os"
 )
 
-// ProcessState describes the state of a process
-type ProcessState rune
+// State describes the state of a process
+type State rune
 
 const (
 	// Running state
-	Running ProcessState = 'R'
+	Running State = 'R'
 	// Sleeping state
-	Sleeping ProcessState = 'S'
+	Sleeping State = 'S'
 	// Waiting state
-	Waiting ProcessState = 'D'
+	Waiting State = 'D'
 	// Zombie state
-	Zombie ProcessState = 'Z'
+	Zombie State = 'Z'
 	// Stopped state
-	Stopped ProcessState = 'T'
+	Stopped State = 'T'
 	// TracingStop state
-	TracingStop ProcessState = 't'
+	TracingStop State = 't'
 	// Dead state
-	Dead ProcessState = 'X'
+	Dead State = 'X'
 )
 
-// ProcessInfo describes the information of a running process
-type ProcessInfo struct {
+// Info describes the information of a running process
+type Info struct {
 	Process  string
 	Pid      int64
 	Name     string
@@ -61,11 +61,11 @@ type ProcessInfo struct {
 	Start    int64
 	Vsize    int64
 	RSS      int64
-	State    ProcessState
+	State    State
 }
 
-// GetProcessInfo retrieve process info from /proc
-func GetProcessInfo(pid int) (*ProcessInfo, error) {
+// GetInfo retrieve process info from /proc
+func GetInfo(pid int) (*Info, error) {
 	processPath := fmt.Sprintf("/proc/%d", pid)
 	exe, err := os.Readlink(processPath + "/exe")
 	if err != nil {
@@ -77,7 +77,7 @@ func GetProcessInfo(pid int) (*ProcessInfo, error) {
 		return nil, err
 	}
 
-	pi := &ProcessInfo{
+	pi := &Info{
 		Process: exe,
 	}
 
@@ -95,7 +95,7 @@ func GetProcessInfo(pid int) (*ProcessInfo, error) {
 		return nil, err
 	}
 	pi.Name = name[1 : len(name)-1]
-	pi.State = ProcessState(state)
+	pi.State = State(state)
 
 	return pi, nil
 }

@@ -21,11 +21,11 @@ package main
 
 import (
 	"github.com/skydive-project/skydive/cmd/skydive"
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/profiling"
 )
 
 func main() {
-	go common.Profile()
+	go profiling.Profile("/tmp/skydive-")
 
 	skydive.RootCmd.Execute()
 }

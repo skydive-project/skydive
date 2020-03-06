@@ -24,7 +24,6 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -109,17 +108,17 @@ func (c *CaptureAPIHandler) Create(r types.Resource, opts *CreateOptions) error 
 	// check capabilities
 	if capture.Type != "" {
 		if capture.BPFFilter != "" {
-			if !common.CheckProbeCapabilities(capture.Type, common.BPFCapability) {
+			if !probes.CheckProbeCapabilities(capture.Type, probes.BPFCapability) {
 				return fmt.Errorf("%s capture doesn't support BPF filtering", capture.Type)
 			}
 		}
 		if capture.RawPacketLimit != 0 {
-			if !common.CheckProbeCapabilities(capture.Type, common.RawPacketsCapability) {
+			if !probes.CheckProbeCapabilities(capture.Type, probes.RawPacketsCapability) {
 				return fmt.Errorf("%s capture doesn't support raw packet capture", capture.Type)
 			}
 		}
 		if capture.ExtraTCPMetric {
-			if !common.CheckProbeCapabilities(capture.Type, common.ExtraTCPMetricCapability) {
+			if !probes.CheckProbeCapabilities(capture.Type, probes.ExtraTCPMetricCapability) {
 				return fmt.Errorf("%s capture doesn't support extra TCP metrics capture", capture.Type)
 			}
 		}
@@ -132,7 +131,7 @@ func (c *CaptureAPIHandler) Create(r types.Resource, opts *CreateOptions) error 
 		sameGremlin := resource.GremlinQuery == capture.GremlinQuery
 		sameBPFFilter := resource.BPFFilter == capture.BPFFilter
 		sameCaptureType := resource.Type == capture.Type
-		supportsMulti := capture.Type == "" || common.CheckProbeCapabilities(capture.Type, common.MultipleOnSameNodeCapability)
+		supportsMulti := capture.Type == "" || probes.CheckProbeCapabilities(capture.Type, probes.MultipleOnSameNodeCapability)
 
 		if sameCaptureType && sameGremlin {
 			if !supportsMulti || sameBPFFilter {

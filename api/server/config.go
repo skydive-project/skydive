@@ -7,8 +7,8 @@ import (
 	auth "github.com/abbot/go-http-auth"
 	"github.com/gorilla/mux"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/rbac"
@@ -27,7 +27,7 @@ func (c *configAPI) configGet(w http.ResponseWriter, r *auth.AuthenticatedReques
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	value := common.NormalizeValue(c.cfg.Get(key))
+	value := graph.NormalizeValue(c.cfg.Get(key))
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(value); err != nil {
 		logging.GetLogger().Warningf("Error while writing response: %s", err)

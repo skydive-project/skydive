@@ -15,7 +15,7 @@
  *
  */
 
-package common
+package portallocator
 
 import (
 	"errors"
@@ -76,8 +76,8 @@ func (p *PortAllocator) ReleaseAll() {
 	p.PortMap = make(map[int]bool)
 }
 
-// NewPortAllocator creates a new port allocator range
-func NewPortAllocator(min, max int) (*PortAllocator, error) {
+// New creates a new port allocator range
+func New(min, max int) (*PortAllocator, error) {
 	if min <= 0 || max < min {
 		return nil, ErrInvalidPortRange
 	}

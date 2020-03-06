@@ -2511,3 +2511,48 @@ func TestVlanBPF(t *testing.T) {
 		}
 	}
 }
+
+type structB struct {
+	I int16
+	S string
+}
+
+type structA struct {
+	Sub *structB
+}
+
+func TestLookupPath(t *testing.T) {
+	s := &structA{
+		Sub: &structB{
+			I: int16(22),
+			S: "rr",
+		},
+	}
+
+	value, ok := lookupPath(*s, "Sub", reflect.Struct)
+	if !ok {
+		t.Error("Should find the struct")
+	}
+
+	if value.Interface().(structB).I != 22 {
+		t.Error("Value expected not found")
+	}
+
+	value, ok = lookupPath(*s, "Sub.I", reflect.Int)
+	if !ok {
+		t.Error("Should find the struct")
+	}
+	if value.Int() != 22 {
+		t.Error("Value expected not found")
+	}
+
+	value, ok = lookupPath(*s, "Sub.Z", reflect.Int)
+	if ok {
+		t.Error("Shouldn't find the struct")
+	}
+
+	value, ok = lookupPath(*s, "Sub.S", reflect.Int)
+	if ok {
+		t.Error("Shouldn't find the struct")
+	}
+}

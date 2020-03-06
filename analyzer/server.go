@@ -51,7 +51,6 @@ import (
 	usertopology "github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/probes/blockdev"
 	"github.com/skydive-project/skydive/ui"
-	"github.com/skydive-project/skydive/websocket"
 	ws "github.com/skydive-project/skydive/websocket"
 )
 
@@ -284,12 +283,7 @@ func NewServerFromConfig() (*Server, error) {
 	}
 
 	opts := hub.Opts{
-		ServerOpts: websocket.ServerOpts{
-			WriteCompression: true,
-			QueueSize:        10000,
-			PingDelay:        2 * time.Second,
-			PongTimeout:      5 * time.Second,
-		},
+		ServerOpts:     config.NewWSServerOpts(),
 		Validator:      validator,
 		EtcdServerOpts: etcdServerOpts,
 	}

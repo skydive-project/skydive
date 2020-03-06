@@ -42,16 +42,19 @@ func NewWSClient(clientType common.ServiceType, url *url.URL, opts websocket.Cli
 	return websocket.NewClient(host, clientType, url, opts), nil
 }
 
-// NewWSServer creates a Server based on the configuration
-func NewWSServer(server *shttp.Server, endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
+// NewWSServerOpts returns WebSocket server options
+func NewWSServerOpts() websocket.ServerOpts {
 	pingDelay := time.Duration(GetInt("http.ws.ping_delay")) * time.Second
 
-	opts := websocket.ServerOpts{
+	return websocket.ServerOpts{
 		WriteCompression: GetBool("http.ws.enable_write_compression"),
 		QueueSize:        GetInt("http.ws.queue_size"),
 		PingDelay:        pingDelay,
 		PongTimeout:      time.Duration(GetInt("http.ws.pong_timeout"))*time.Second + pingDelay,
 	}
+}
 
-	return websocket.NewServer(server, endpoint, authBackend, opts)
+// NewWSServer creates a Server based on the configuration
+func NewWSServer(server *shttp.Server, endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
+	return websocket.NewServer(server, endpoint, authBackend, NewWSServerOpts())
 }

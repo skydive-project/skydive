@@ -33,6 +33,7 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/portallocator"
 )
 
 const (
@@ -61,7 +62,7 @@ type Agent struct {
 // AgentAllocator describes an SFlow agent allocator to manage multiple SFlow agent probe
 type AgentAllocator struct {
 	insanelock.RWMutex
-	portAllocator *common.PortAllocator
+	portAllocator *portallocator.PortAllocator
 	agents        []*Agent
 }
 
@@ -388,7 +389,7 @@ func NewAgentAllocator() (*AgentAllocator, error) {
 	min := config.GetInt("agent.flow.sflow.port_min")
 	max := config.GetInt("agent.flow.sflow.port_max")
 
-	portAllocator, err := common.NewPortAllocator(min, max)
+	portAllocator, err := portallocator.New(min, max)
 	if err != nil {
 		return nil, err
 	}

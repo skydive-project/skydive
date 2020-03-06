@@ -36,8 +36,8 @@ func (b *syslogBackend) Core(msgPriority zap.LevelEnablerFunc, encoder zapcore.E
 }
 
 // NewSyslogBackend returns a new backend that outputs to syslog
-func NewSyslogBackend(tag string) (Backend, error) {
-	w, err := syslog.New(syslog.LOG_CRIT, tag)
+func NewSyslogBackend(protocol, address, tag string) (Backend, error) {
+	w, err := syslog.Dial(protocol, address, syslog.LOG_EMERG|syslog.LOG_KERN, tag)
 	if err != nil {
 		return nil, err
 	}

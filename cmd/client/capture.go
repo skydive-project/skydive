@@ -25,8 +25,8 @@ import (
 
 	"github.com/skydive-project/skydive/api/client"
 	api "github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/validator"
@@ -191,7 +191,7 @@ var CaptureDelete = &cobra.Command{
 }
 
 func addCaptureFlags(cmd *cobra.Command) {
-	helpText := fmt.Sprintf("Allowed capture types: %v", common.ProbeTypes)
+	helpText := fmt.Sprintf("Allowed capture types: %v", probes.ProbeTypes)
 	cmd.Flags().StringVarP(&gremlinQuery, "gremlin", "", "", "Gremlin Query")
 	cmd.Flags().StringVarP(&nodeTID, "node", "", "", "node TID")
 	cmd.Flags().StringVarP(&bpfFilter, "bpf", "", "", "BPF filter")

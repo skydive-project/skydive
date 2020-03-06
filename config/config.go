@@ -171,6 +171,8 @@ func init() {
 	cfg.SetDefault("logging.encoder", "")
 	cfg.SetDefault("logging.file.path", "/var/log/skydive.log")
 	cfg.SetDefault("logging.level", "INFO")
+	cfg.SetDefault("logging.syslog.address", "/dev/log")
+	cfg.SetDefault("logging.syslog.protocol", "unixgram")
 	cfg.SetDefault("logging.syslog.tag", "skydive")
 
 	cfg.SetDefault("opencontrail.host", "localhost")

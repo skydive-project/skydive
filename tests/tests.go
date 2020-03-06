@@ -28,6 +28,8 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -35,6 +37,7 @@ import (
 
 	"github.com/avast/retry-go"
 	shellquote "github.com/kballard/go-shellquote"
+	"gopkg.in/mcuadros/go-syslog.v2"
 
 	"github.com/skydive-project/skydive/agent"
 	"github.com/skydive-project/skydive/analyzer"
@@ -47,6 +50,7 @@ import (
 	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/profiling"
 )
 
 const (
@@ -132,6 +136,8 @@ storage:
 
 logging:
   level: DEBUG
+  syslog:
+    address: /tmp/skydive-test-syslog
 
 etcd:
   data_dir: /tmp/skydive-etcd
@@ -229,6 +235,7 @@ var (
 	analyzerListen    string
 	analyzerProbes    string
 	etcdServer        string
+	testLogs          string
 	flowBackend       string
 	graphOutputFormat string
 	ovsOflowNative    bool
@@ -513,7 +520,7 @@ func RunTest(t *testing.T, test *Test) {
 
 			for _, node := range nodes {
 				tp, err := node.GetFieldString("Type")
-				if err != nil || !common.IsCaptureAllowed(tp) {
+				if err != nil || !probes.IsCaptureAllowed(tp) {
 					continue
 				}
 
@@ -846,7 +853,7 @@ var initStandalone = false
 
 func runStandalone() {
 	if profile {
-		go common.Profile()
+		go profiling.Profile("/tmp/skydive-test-")
 	}
 
 	server, err := analyzer.NewServerFromConfig()
@@ -869,6 +876,7 @@ func runStandalone() {
 
 func init() {
 	flag.BoolVar(&standalone, "standalone", false, "Start an analyzer and an agent")
+	flag.StringVar(&testLogs, "logs", "", "Capture test logs using syslog and write them to the specified file")
 	flag.StringVar(&etcdServer, "etcd.server", "", "Etcd server")
 	flag.StringVar(&topologyBackend, "analyzer.topology.backend", "memory", "Specify the graph storage backend used")
 	flag.StringVar(&graphOutputFormat, "graph.output", "", "Graph output format (json, dot or ascii)")
@@ -884,6 +892,45 @@ func init() {
 
 	if err := initConfig(testConfig); err != nil {
 		panic(fmt.Sprintf("Failed to initialize config: %s", err))
+	}
+
+	if testLogs != "" {
+		loggingBackends := config.GetStringSlice("logging.backends")
+		sort.Strings(loggingBackends)
+		if n := sort.SearchStrings(loggingBackends, "syslog"); n == len(loggingBackends) || loggingBackends[n] != "syslog" {
+			config.Set("logging.backends", append(loggingBackends, "syslog"))
+		}
+
+		channel := make(syslog.LogPartsChannel)
+		handler := syslog.NewChannelHandler(channel)
+
+		syslogServer := syslog.NewServer()
+		syslogServer.SetFormat(syslog.RFC3164)
+		syslogServer.SetHandler(handler)
+
+		if err := os.MkdirAll(filepath.Dir(testLogs), os.ModeDir); err != nil {
+			panic(err)
+		}
+
+		os.Remove("/tmp/skydive-test-syslog")
+		if err := syslogServer.ListenUnixgram("/tmp/skydive-test-syslog"); err != nil {
+			panic(err)
+		}
+
+		if err := syslogServer.Boot(); err != nil {
+			panic(err)
+		}
+
+		f, err := os.Create(testLogs)
+		if err != nil {
+			panic(err)
+		}
+
+		go func(channel syslog.LogPartsChannel) {
+			for logParts := range channel {
+				fmt.Fprintln(f, logParts["content"])
+			}
+		}(channel)
 	}
 
 	if err := config.InitLogging(); err != nil {

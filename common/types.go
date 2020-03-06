@@ -23,14 +23,10 @@ import (
 	"fmt"
 	"math"
 	"net"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/fatih/structs"
-	"github.com/mohae/deepcopy"
 )
 
 var (
@@ -79,60 +75,6 @@ type Getter interface {
 	MatchString(field string, predicate StringPredicate) bool
 }
 
-// MinInt64 returns the lowest value
-func MinInt64(a, b int64) int64 {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-// MaxInt64 returns the biggest value
-func MaxInt64(a, b int64) int64 {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-// NormalizeValue returns a version of the passed value
-// that can be safely marshalled to JSON
-func NormalizeValue(obj interface{}) interface{} {
-	obj = deepcopy.Copy(obj)
-	if structs.IsStruct(obj) {
-		obj = structs.Map(obj)
-	}
-	switch v := obj.(type) {
-	case map[string]interface{}:
-		m := make(map[string]interface{}, len(v))
-		for key, value := range v {
-			SetMapField(m, key, NormalizeValue(value))
-		}
-		return m
-	case map[interface{}]interface{}:
-		m := make(map[string]interface{}, len(v))
-		for key, value := range v {
-			SetMapField(m, key.(string), NormalizeValue(value))
-		}
-		return m
-	case map[string]string:
-		m := make(map[string]interface{}, len(v))
-		for key, value := range v {
-			SetMapField(m, key, value)
-		}
-		return m
-	case []interface{}:
-		for i, val := range v {
-			v[i] = NormalizeValue(val)
-		}
-	case string:
-		return v
-	case nil:
-		return ""
-	}
-	return obj
-}
-
 // UnixMillis returns the current time in miliseconds
 func UnixMillis(t time.Time) int64 {
 	return t.UTC().UnixNano() / 1000000
@@ -163,124 +105,6 @@ type Metric interface {
 	GetLast() int64
 	SetLast(last int64)
 	IsZero() bool
-}
-
-// SetMapField set a value in a tree based on dot key ("a.b.c.d" = "ok")
-func SetMapField(obj map[string]interface{}, k string, v interface{}) bool {
-	components := strings.Split(k, ".")
-	for n, component := range components {
-		if n == len(components)-1 {
-			obj[component] = v
-		} else {
-			m, ok := obj[component]
-			if !ok {
-				m := make(map[string]interface{})
-				obj[component] = m
-				obj = m
-			} else if obj, ok = m.(map[string]interface{}); !ok {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-// DelField deletes a value in a tree based on dot key
-func DelField(obj map[string]interface{}, k string) bool {
-	components := strings.Split(k, ".")
-	o, ok := obj[components[0]]
-	if !ok {
-		return false
-	}
-	if len(components) == 1 {
-		oldLength := len(obj)
-		delete(obj, k)
-		return oldLength != len(obj)
-	}
-
-	object, ok := o.(map[string]interface{})
-	if !ok {
-		return false
-	}
-	removed := DelField(object, strings.SplitN(k, ".", 2)[1])
-	if removed && len(object) == 0 {
-		delete(obj, components[0])
-	}
-
-	return removed
-}
-
-// GetMapField retrieves a value from a tree from the dot key like "a.b.c.d"
-func GetMapField(obj map[string]interface{}, k string) (interface{}, error) {
-	components := strings.Split(k, ".")
-	for n, component := range components {
-		i, ok := obj[component]
-		if !ok {
-			return nil, ErrFieldNotFound
-		}
-
-		if n == len(components)-1 {
-			return i, nil
-		}
-
-		subkey := strings.Join(components[n+1:], ".")
-
-		switch i.(type) {
-		case Getter:
-			return i.(Getter).GetField(subkey)
-		case []interface{}:
-			var results []interface{}
-			for _, v := range i.([]interface{}) {
-				switch v := v.(type) {
-				case Getter:
-					if obj, err := v.(Getter).GetField(subkey); err == nil {
-						results = append(results, obj)
-					}
-				case map[string]interface{}:
-					if obj, err := GetMapField(v, subkey); err == nil {
-						results = append(results, obj)
-					}
-				}
-			}
-			return results, nil
-		case map[string]interface{}:
-			obj = i.(map[string]interface{})
-		default:
-			return nil, fmt.Errorf("%s is not a supported type(%+v)", component, reflect.TypeOf(obj))
-		}
-	}
-
-	return obj, nil
-}
-
-func getFieldKeys(obj map[string]interface{}, path string) []string {
-	var fields []string
-
-	if path != "" {
-		path += "."
-	}
-
-	for k, v := range obj {
-		fields = append(fields, path+k)
-
-		switch v.(type) {
-		case Getter:
-			keys := v.(Getter).GetFieldKeys()
-			for _, subkey := range keys {
-				fields = append(fields, k+"."+subkey)
-			}
-		case map[string]interface{}:
-			subfields := getFieldKeys(v.(map[string]interface{}), path+k)
-			fields = append(fields, subfields...)
-		}
-	}
-
-	return fields
-}
-
-// GetMapFieldKeys returns all the keys using dot notation
-func GetMapFieldKeys(obj map[string]interface{}) []string {
-	return getFieldKeys(obj, "")
 }
 
 func splitToRanges(min, max int) []int {
@@ -422,12 +246,6 @@ func IPV4CIDRToRegex(cidr string) (string, error) {
 	return "^" + regex + `(\/[0-9]?[0-9])?$`, nil
 }
 
-// IsIPv6 returns whether is a IPV6 addresses or not
-func IsIPv6(addr string) bool {
-	ip := net.ParseIP(addr)
-	return ip != nil && len(ip) == net.IPv6len
-}
-
 // IPStrToUint32 converts IP string to 32bits
 func IPStrToUint32(ipAddr string) (uint32, error) {
 	ip := net.ParseIP(ipAddr)
@@ -439,105 +257,4 @@ func IPStrToUint32(ipAddr string) (uint32, error) {
 		return 0, errors.New("wrong ipAddr format")
 	}
 	return binary.BigEndian.Uint32(ip), nil
-}
-
-// NormalizeAddrForURL format the given address to be used in URL. For IPV6
-// addresses the brackets will be added.
-func NormalizeAddrForURL(addr string) string {
-	if IsIPv6(addr) {
-		return "[" + addr + "]"
-	}
-	return addr
-}
-
-func structFieldKeys(t reflect.Type, prefix string) []string {
-	var fFields []string
-	for i := 0; i < t.NumField(); i++ {
-		vField := t.Field(i)
-		tField := vField.Type
-
-		// ignore XXX fields as they are considered as private
-		if strings.HasPrefix(vField.Name, "XXX_") {
-			continue
-		}
-
-		vName := prefix + vField.Name
-
-		for tField.Kind() == reflect.Ptr {
-			tField = tField.Elem()
-		}
-
-		switch tField.Kind() {
-		case reflect.Struct:
-			fFields = append(fFields, structFieldKeys(tField, vName+".")...)
-		case reflect.Slice:
-			fFields = append(fFields, vName)
-
-			se := tField.Elem()
-			if se.Kind() == reflect.Ptr {
-				se = se.Elem()
-			}
-
-			if se.Kind() == reflect.Struct {
-				fFields = append(fFields, structFieldKeys(se, vName+".")...)
-			}
-		default:
-			fFields = append(fFields, vName)
-		}
-	}
-
-	return fFields
-}
-
-// StructFieldKeys returns field names of a structure
-func StructFieldKeys(i interface{}) []string {
-	return structFieldKeys(reflect.TypeOf(i), "")
-}
-
-// LookupPath lookup through the given obj according to the given path
-// return the value found if the kind matches
-func LookupPath(obj interface{}, path string, kind reflect.Kind) (reflect.Value, bool) {
-	nodes := strings.Split(path, ".")
-
-	var name string
-	value := reflect.ValueOf(obj)
-
-LOOP:
-	for _, node := range nodes {
-		name = node
-		if value.Kind() == reflect.Struct {
-			t := value.Type()
-
-			for i := 0; i != t.NumField(); i++ {
-				if t.Field(i).Name == node {
-					value = value.Field(i)
-					if value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr {
-						value = value.Elem()
-					}
-
-					continue LOOP
-				}
-			}
-		} else {
-			break LOOP
-		}
-	}
-
-	if name != nodes[len(nodes)-1] {
-		return value, false
-	}
-
-	if kind == reflect.Interface {
-		return value, true
-	}
-
-	// convert result kind to int for all size of interger as then
-	// only a int64 version will be retrieve by value.Int()
-	rk := value.Kind()
-	switch rk {
-	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		rk = reflect.Int
-	}
-
-	return value, rk == kind
 }

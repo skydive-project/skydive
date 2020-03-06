@@ -20,7 +20,7 @@ package config
 import (
 	"crypto/tls"
 
-	"github.com/skydive-project/skydive/common"
+	gtls "github.com/skydive-project/skydive/graffiti/tls"
 )
 
 // GetTLSClientConfig returns TLS config to be used by client
@@ -30,13 +30,13 @@ func GetTLSClientConfig(setupRootCA bool) (*tls.Config, error) {
 	var tlsConfig *tls.Config
 	if certPEM != "" && keyPEM != "" {
 		var err error
-		tlsConfig, err = common.SetupTLSClientConfig(certPEM, keyPEM)
+		tlsConfig, err = gtls.SetupTLSClientConfig(certPEM, keyPEM)
 		if err != nil {
 			return nil, err
 		}
 		if setupRootCA {
 			rootCaPEM := GetString("tls.ca_cert")
-			tlsConfig.RootCAs, err = common.SetupTLSLoadCA(rootCaPEM)
+			tlsConfig.RootCAs, err = gtls.SetupTLSLoadCA(rootCaPEM)
 			if err != nil {
 				return nil, err
 			}
@@ -50,13 +50,13 @@ func GetTLSServerConfig(setupRootCA bool) (*tls.Config, error) {
 	certPEM := GetString("tls.server_cert")
 	keyPEM := GetString("tls.server_key")
 
-	tlsConfig, err := common.SetupTLSServerConfig(certPEM, keyPEM)
+	tlsConfig, err := gtls.SetupTLSServerConfig(certPEM, keyPEM)
 	if err != nil {
 		return nil, err
 	}
 	if setupRootCA {
 		rootCaPEM := GetString("tls.ca_cert")
-		tlsConfig.ClientCAs, err = common.SetupTLSLoadCA(rootCaPEM)
+		tlsConfig.ClientCAs, err = gtls.SetupTLSLoadCA(rootCaPEM)
 		if err != nil {
 			return nil, err
 		}

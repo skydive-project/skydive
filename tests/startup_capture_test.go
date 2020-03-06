@@ -6,7 +6,7 @@ import (
 
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/flow/probes"
 	shttp "github.com/skydive-project/skydive/http"
 )
 
@@ -64,7 +64,7 @@ func TestStartupCapture(t *testing.T) {
 
 			for _, node := range nodes {
 				tp, err := node.GetFieldString("Type")
-				if err != nil || !common.IsCaptureAllowed(tp) {
+				if err != nil || !probes.IsCaptureAllowed(tp) {
 					continue
 				}
 				captureID, err := node.GetFieldString("Capture.ID")

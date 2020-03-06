@@ -335,6 +335,9 @@ func (c *Conn) run() {
 		for {
 			select {
 			case m := <-c:
+				if len(m) == 0 {
+					break
+				}
 				if err := cb(m); err != nil {
 					return err
 				}
@@ -352,9 +355,12 @@ func (c *Conn) run() {
 		return nil
 	}
 
+	var readWg sync.WaitGroup
+	readWg.Add(1)
+
 	// goroutine to read messages from the socket and put them into a channel
 	go func() {
-		defer c.wg.Done()
+		defer readWg.Done()
 
 		for c.running.Load() == true {
 			_, m, err := c.conn.ReadMessage()
@@ -373,7 +379,9 @@ func (c *Conn) run() {
 		c.State.Store(common.StoppedState)
 
 		// handle all the pending received messages
+		readWg.Wait()
 		flushChannel(c.read, handleReceivedMessage)
+		close(c.read)
 
 		for _, l := range c.cloneEventHandlers() {
 			l.OnDisconnected(c.wsSpeaker)
@@ -382,12 +390,18 @@ func (c *Conn) run() {
 		c.wg.Done()
 	}()
 
+	go func() {
+		defer c.wg.Done()
+
+		for m := range c.read {
+			handleReceivedMessage(m)
+		}
+	}()
+
 	for {
 		select {
 		case <-c.quit:
 			return
-		case m := <-c.read:
-			handleReceivedMessage(m)
 		case m := <-c.send:
 			if err := c.write(m); err != nil {
 				c.logger.Errorf("Error while sending message to %+v: %s", c, err)

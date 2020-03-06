@@ -385,13 +385,6 @@ func (c *Client) Search(typ string, query elastic.Query, opts filters.SearchQuer
 	return searchQuery.Do(context.Background())
 }
 
-// RollIndex forces a rolling index
-func (c *Client) RollIndex() {
-	if c.rollService != nil {
-		c.rollService.triggerRoll <- true
-	}
-}
-
 // Start the Elasticsearch client background jobs
 func (c *Client) Start() {
 	for {

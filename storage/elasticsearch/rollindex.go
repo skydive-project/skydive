@@ -40,12 +40,11 @@ var (
 )
 
 type rollIndexService struct {
-	client      *Client
-	config      Config
-	indices     []Index
-	triggerRoll chan bool
-	quit        chan bool
-	election    common.MasterElection
+	client   *Client
+	config   Config
+	indices  []Index
+	quit     chan bool
+	election common.MasterElection
 }
 
 func (r *rollIndexService) cleanup(index Index) {
@@ -131,13 +130,13 @@ func (r *rollIndexService) run() {
 
 	// try to cleanup first
 	for _, index := range r.indices {
-		r.cleanup(index)
+		if r.election == nil || r.election.IsMaster() {
+			r.cleanup(index)
+		}
 	}
 
 	for {
 		select {
-		case <-r.triggerRoll:
-			r.roll(true)
 		case <-timer.C:
 			if r.election == nil || r.election.IsMaster() {
 				r.roll(false)
@@ -178,11 +177,10 @@ func newRollIndexService(client *Client, indices []Index, cfg Config, electionSe
 	election := electionService.NewElection(key)
 
 	return &rollIndexService{
-		client:      client,
-		config:      cfg,
-		quit:        make(chan bool, 1),
-		triggerRoll: make(chan bool, 1),
-		indices:     indices,
-		election:    election,
+		client:   client,
+		config:   cfg,
+		quit:     make(chan bool, 1),
+		indices:  indices,
+		election: election,
 	}
 }

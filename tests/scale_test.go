@@ -26,12 +26,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/avast/retry-go"
-
 	"github.com/davecgh/go-spew/spew"
+
 	"github.com/skydive-project/skydive/analyzer"
 	gclient "github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
@@ -288,6 +289,9 @@ func genICMPv4(t *testing.T, scale, src string, dst string, count uint) error {
 func TestScaleHA(t *testing.T) {
 	gopath := os.Getenv("GOPATH")
 	scale := gopath + "/src/github.com/skydive-project/skydive/scripts/scale.sh"
+
+	os.Setenv("SKYDIVE_LOGGING_BACKENDS", strings.Join(config.GetStringSlice("logging.backends"), " "))
+	os.Setenv("SKYDIVE_LOGGING_SYSLOG_ADDRESS", config.GetString("logging.syslog.address"))
 
 	setupCmds := []Cmd{
 		{fmt.Sprintf("%s start 2 2 2", scale), true},

@@ -293,7 +293,7 @@ func (p *Probe) logicalSwitchMetadata(ls *goovn.LogicalSwitch) graph.Metadata {
 		"Manager": "ovn",
 		"UUID":    ls.UUID,
 		"OVN": &Metadata{
-			ExtID: common.NormalizeValue(ls.ExternalID).(map[string]interface{}),
+			ExtID: graph.NormalizeValue(ls.ExternalID).(map[string]interface{}),
 		},
 	}
 }
@@ -305,7 +305,7 @@ func (p *Probe) logicalRouterMetadata(lr *goovn.LogicalRouter) graph.Metadata {
 		"Manager": "ovn",
 		"UUID":    lr.UUID,
 		"OVN": &Metadata{
-			ExtID: common.NormalizeValue(lr.ExternalID).(map[string]interface{}),
+			ExtID: graph.NormalizeValue(lr.ExternalID).(map[string]interface{}),
 		},
 	}
 }
@@ -334,8 +334,8 @@ func (p *Probe) logicalPortMetadata(lp *goovn.LogicalSwitchPort) graph.Metadata 
 				DHCPv6Options: lp.DHCPv6Options,
 				Type:          lp.Type,
 			},
-			ExtID:   common.NormalizeValue(lp.ExternalID).(map[string]interface{}),
-			Options: common.NormalizeValue(lp.Options).(map[string]interface{}),
+			ExtID:   graph.NormalizeValue(lp.ExternalID).(map[string]interface{}),
+			Options: graph.NormalizeValue(lp.Options).(map[string]interface{}),
 		},
 	}
 }
@@ -351,12 +351,12 @@ func (p *Probe) logicalRouterPortMetadata(lp *goovn.LogicalRouterPort) graph.Met
 		"OVN": &Metadata{
 			LRPMetadata: LRPMetadata{
 				GatewayChassis: lp.GatewayChassis,
-				IPv6RAConfigs:  common.NormalizeValue(lp.IPv6RAConfigs).(map[string]interface{}),
+				IPv6RAConfigs:  graph.NormalizeValue(lp.IPv6RAConfigs).(map[string]interface{}),
 				Networks:       lp.Networks,
 				Peer:           lp.Peer,
 			},
-			ExtID:   common.NormalizeValue(lp.ExternalID).(map[string]interface{}),
-			Options: common.NormalizeValue(lp.Options).(map[string]interface{}),
+			ExtID:   graph.NormalizeValue(lp.ExternalID).(map[string]interface{}),
+			Options: graph.NormalizeValue(lp.Options).(map[string]interface{}),
 		},
 	}
 
@@ -437,7 +437,7 @@ func (p *Probe) aclMetadata(acl *goovn.ACL) graph.Metadata {
 				Match:     acl.Match,
 				Priority:  int64(acl.Priority),
 			},
-			ExtID: common.NormalizeValue(acl.ExternalID).(map[string]interface{}),
+			ExtID: graph.NormalizeValue(acl.ExternalID).(map[string]interface{}),
 		},
 	}
 }

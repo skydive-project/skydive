@@ -15,7 +15,7 @@
  *
  */
 
-package common
+package traversal
 
 // Iterator describes a int64 iterator
 type Iterator struct {

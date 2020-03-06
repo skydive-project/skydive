@@ -22,7 +22,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 	tp "github.com/skydive-project/skydive/topology/probes"
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
@@ -74,7 +73,7 @@ func TestLabels(t *testing.T) {
 	}
 
 	labels := handler.getLabels(state.Config.Labels)
-	value, err := common.GetMapField(labels, "io.kubernetes.container.ports.containerPort")
+	value, err := labels.GetField("io.kubernetes.container.ports.containerPort")
 	if err != nil || value.(float64) != 9090 {
 		t.Error("unable to find expected label value")
 	}
