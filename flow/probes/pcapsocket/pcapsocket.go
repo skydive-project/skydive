@@ -23,10 +23,10 @@ import (
 	"sync"
 
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/portallocator"
 	"github.com/skydive-project/skydive/probe"
 )
@@ -34,7 +34,7 @@ import (
 // Probe describes a TCP packet listener that inject packets in a flowtable
 type Probe struct {
 	Ctx       probes.Context
-	state     common.ServiceState
+	state     service.State
 	flowTable *flow.Table
 	listener  *net.TCPListener
 	port      int
@@ -50,15 +50,15 @@ type ProbeHandler struct {
 }
 
 func (p *Probe) run() {
-	p.state.Store(common.RunningState)
+	p.state.Store(service.RunningState)
 
 	packetSeqChan, _, _ := p.flowTable.Start(nil)
 	defer p.flowTable.Stop()
 
-	for p.state.Load() == common.RunningState {
+	for p.state.Load() == service.RunningState {
 		conn, err := p.listener.Accept()
 		if err != nil {
-			if p.state.Load() == common.RunningState {
+			if p.state.Load() == service.RunningState {
 				p.Ctx.Logger.Errorf("Error while accepting connection: %s", err)
 			}
 			break
@@ -105,7 +105,7 @@ func (p *ProbeHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e pr
 
 	probe := &Probe{
 		Ctx:       p.Ctx,
-		state:     common.StoppedState,
+		state:     service.StoppedState,
 		flowTable: ft,
 		listener:  listener,
 		port:      port,
@@ -133,7 +133,7 @@ func (p *ProbeHandler) UnregisterProbe(n *graph.Node, e probes.ProbeEventHandler
 
 	p.Ctx.FTA.Release(probe.flowTable)
 
-	probe.state.Store(common.StoppingState)
+	probe.state.Store(service.StoppingState)
 	err := probe.listener.Close()
 	if err != nil {
 		return err

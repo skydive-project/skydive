@@ -26,7 +26,7 @@ import (
 
 	"github.com/safchain/insanelock"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -225,7 +225,7 @@ func (s *Pool) DisconnectAll() {
 }
 
 // GetSpeakersByType returns Speakers matching the given type.
-func (s *Pool) GetSpeakersByType(serviceType common.ServiceType) (speakers []Speaker) {
+func (s *Pool) GetSpeakersByType(serviceType service.Type) (speakers []Speaker) {
 	s.RLock()
 	for _, c := range s.speakers {
 		if c.GetServiceType() == serviceType {

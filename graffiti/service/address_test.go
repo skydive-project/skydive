@@ -15,7 +15,7 @@
  *
  */
 
-package common
+package service
 
 import (
 	"net"
@@ -23,12 +23,12 @@ import (
 )
 
 func TestServiceAddress(t *testing.T) {
-	_, err := ServiceAddressFromString("aaa")
+	_, err := AddressFromString("aaa")
 	if err == nil {
 		t.Fatalf("should return an error")
 	}
 
-	sa, err := ServiceAddressFromString("8080")
+	sa, err := AddressFromString("8080")
 	if err != nil {
 		t.Errorf("should not return an error: %s", err)
 	}
@@ -36,7 +36,7 @@ func TestServiceAddress(t *testing.T) {
 		t.Errorf("expected not found, got: %s", sa)
 	}
 
-	sa, err = ServiceAddressFromString("0.0.0.0:8080")
+	sa, err = AddressFromString("0.0.0.0:8080")
 	if err != nil {
 		t.Errorf("should not return an error: %s", err)
 	}
@@ -44,7 +44,7 @@ func TestServiceAddress(t *testing.T) {
 		t.Errorf("expected not found, got: %s", sa)
 	}
 
-	sa, err = ServiceAddressFromString("skydive.network:8080")
+	sa, err = AddressFromString("skydive.network:8080")
 	if err != nil {
 		t.Errorf("should not return an error: %s", err)
 	}

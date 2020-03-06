@@ -27,7 +27,7 @@ import (
 	auth "github.com/abbot/go-http-auth"
 	"github.com/gorilla/websocket"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/service"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/rbac"
@@ -113,9 +113,9 @@ func (s *Server) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReque
 func (s *Server) newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRequest, promoter clientPromoter) (*wsIncomingClient, error) {
 	s.opts.Logger.Infof("New WebSocket Connection from %s : URI path %s", conn.RemoteAddr().String(), r.URL.Path)
 
-	clientType := common.ServiceType(getRequestParameter(&r.Request, "X-Client-Type"))
+	clientType := service.Type(getRequestParameter(&r.Request, "X-Client-Type"))
 	if clientType == "" {
-		clientType = common.UnknownService
+		clientType = service.UnknownService
 	}
 
 	var clientProtocol Protocol
@@ -123,7 +123,7 @@ func (s *Server) newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRe
 		return nil, fmt.Errorf("Protocol requested error: %s", err)
 	}
 
-	svc, _ := common.ServiceAddressFromString(conn.RemoteAddr().String())
+	svc, _ := service.AddressFromString(conn.RemoteAddr().String())
 	url, _ := url.Parse(fmt.Sprintf("http://%s:%d%s", svc.Addr, svc.Port, r.URL.Path+"?"+r.URL.RawQuery))
 
 	opts := ClientOpts{
@@ -159,7 +159,7 @@ func (s *Server) newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRe
 		return nil, err
 	}
 
-	c.State.Store(common.RunningState)
+	c.State.Store(service.RunningState)
 
 	// add the new Speaker to the server pool
 	s.AddClient(pc)

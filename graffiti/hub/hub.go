@@ -22,12 +22,12 @@ import (
 
 	etcd "github.com/coreos/etcd/client"
 
-	"github.com/skydive-project/skydive/common"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	gc "github.com/skydive-project/skydive/graffiti/common"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -44,7 +44,7 @@ type Opts struct {
 	StatusReporter      api.StatusReporter
 	APIAuthBackend      shttp.AuthenticationBackend
 	ClusterAuthBackend  shttp.AuthenticationBackend
-	Peers               []common.ServiceAddress
+	Peers               []service.Address
 	TLSConfig           *tls.Config
 	EtcdKeysAPI         etcd.KeysAPI
 	Logger              logging.Logger
@@ -160,10 +160,8 @@ func (h *Hub) GremlinTraversalParser() *traversal.GremlinTraversalParser {
 }
 
 // NewHub returns a new hub
-func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.Graph, cached *graph.CachedBackend, podEndpoint string, opts Opts) (*Hub, error) {
-	service := common.Service{ID: id, Type: serviceType}
-
-	sa, err := common.ServiceAddressFromString(listen)
+func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, cached *graph.CachedBackend, podEndpoint string, opts Opts) (*Hub, error) {
+	sa, err := service.AddressFromString(listen)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +172,7 @@ func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.G
 		opts.Logger = logging.GetLogger()
 	}
 
-	httpServer := shttp.NewServer(service.ID, service.Type, sa.Addr, sa.Port, opts.TLSConfig, opts.Logger)
+	httpServer := shttp.NewServer(id, serviceType, sa.Addr, sa.Port, opts.TLSConfig, opts.Logger)
 
 	newWSServer := func(endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
 		opts := opts.WebsocketOpts
@@ -202,6 +200,7 @@ func NewHub(id string, serviceType common.ServiceType, listen string, g *graph.G
 	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", opts.APIAuthBackend))
 	gc.NewSubscriberEndpoint(subscriberWSServer, g, tr)
 
+	service := service.Service{ID: id, Type: serviceType}
 	apiServer, err := api.NewAPI(httpServer, opts.EtcdKeysAPI, opts.Version, service, opts.APIAuthBackend, opts.Validator)
 	if err != nil {
 		return nil, err

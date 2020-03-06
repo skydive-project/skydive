@@ -26,11 +26,11 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/topology"
 )
 
@@ -40,7 +40,7 @@ func newGraph(t *testing.T) *graph.Graph {
 		t.Error(err)
 	}
 
-	return graph.NewGraph("testhost", b, common.UnknownService)
+	return graph.NewGraph("testhost", b, "test")
 }
 
 func newTransversalGraph(t *testing.T) *graph.Graph {
@@ -116,7 +116,7 @@ func newFakeTableClient(nodeID string) *fakeTableClient {
 
 	tc := &fakeTableClient{
 		t: newTable(nodeID),
-		g: graph.NewGraph("", b, common.AnalyzerService),
+		g: graph.NewGraph("", b, "test"),
 	}
 
 	return tc
@@ -135,7 +135,7 @@ func TestHasStepOp(t *testing.T) {
 
 	_, extFlowChan, _ := tc.t.Start(nil)
 	defer tc.t.Stop()
-	for tc.t.State() != common.RunningState {
+	for tc.t.State() != service.RunningState {
 		time.Sleep(100 * time.Millisecond)
 	}
 
@@ -198,7 +198,7 @@ func TestLimitStepOp(t *testing.T) {
 
 	_, extFlowChan, _ := tc.t.Start(nil)
 	defer tc.t.Stop()
-	for tc.t.State() != common.RunningState {
+	for tc.t.State() != service.RunningState {
 		time.Sleep(100 * time.Millisecond)
 	}
 
@@ -231,7 +231,7 @@ func TestDedupStepOp(t *testing.T) {
 
 	_, extFlowChan, _ := tc.t.Start(nil)
 	defer tc.t.Stop()
-	for tc.t.State() != common.RunningState {
+	for tc.t.State() != service.RunningState {
 		time.Sleep(100 * time.Millisecond)
 	}
 
@@ -274,7 +274,7 @@ func TestCaptureNodeStepOp(t *testing.T) {
 
 	_, extFlowChan, _ := tc.t.Start(nil)
 	defer tc.t.Stop()
-	for tc.t.State() != common.RunningState {
+	for tc.t.State() != service.RunningState {
 		time.Sleep(100 * time.Millisecond)
 	}
 
@@ -328,7 +328,7 @@ func TestInStepOp(t *testing.T) {
 
 	_, extFlowChan, _ := tc.t.Start(nil)
 	defer tc.t.Stop()
-	for tc.t.State() != common.RunningState {
+	for tc.t.State() != service.RunningState {
 		time.Sleep(100 * time.Millisecond)
 	}
 
@@ -383,7 +383,7 @@ func TestOutStepOp(t *testing.T) {
 
 	_, extFlowChan, _ := tc.t.Start(nil)
 	defer tc.t.Stop()
-	for tc.t.State() != common.RunningState {
+	for tc.t.State() != service.RunningState {
 		time.Sleep(100 * time.Millisecond)
 	}
 
@@ -438,7 +438,7 @@ func TestBothStepOp(t *testing.T) {
 
 	_, extFlowChan, _ := tc.t.Start(nil)
 	defer tc.t.Stop()
-	for tc.t.State() != common.RunningState {
+	for tc.t.State() != service.RunningState {
 		time.Sleep(100 * time.Millisecond)
 	}
 

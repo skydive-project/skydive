@@ -27,7 +27,6 @@ import (
 	cc "github.com/networkservicemesh/networkservicemesh/controlplane/api/crossconnect"
 	localconn "github.com/networkservicemesh/networkservicemesh/controlplane/api/local/connection"
 	remoteconn "github.com/networkservicemesh/networkservicemesh/controlplane/api/remote/connection"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
 )
@@ -123,7 +122,7 @@ func setupProbe(t *testing.T) *Probe {
 		t.Fatalf("Can't create the probe, error: %v", err)
 		return nil
 	}
-	g := graph.NewGraph("host_test", backend, common.AnalyzerService)
+	g := graph.NewGraph("host_test", backend, "test")
 	p, err := NewNsmProbe(g)
 	if err != nil {
 		t.Fatalf("Can't create the probe, error: %v", err)

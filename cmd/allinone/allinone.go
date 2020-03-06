@@ -35,8 +35,8 @@ import (
 	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/cmd"
 	cmdconfig "github.com/skydive-project/skydive/cmd/config"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 )
@@ -105,7 +105,7 @@ var AllInOneCmd = &cobra.Command{
 		}
 
 		authOptions := analyzer.ClusterAuthenticationOpts()
-		svcAddr, _ := common.ServiceAddressFromString(config.GetString("analyzer.listen"))
+		svcAddr, _ := service.AddressFromString(config.GetString("analyzer.listen"))
 		tlsConfig, err := config.GetTLSClientConfig(true)
 		if err != nil {
 			logging.GetLogger().Errorf("Can't start Skydive analyzer: %v", err)

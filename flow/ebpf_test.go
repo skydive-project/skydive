@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/service"
 )
 
 func TestEBPFFlow(t *testing.T) {
@@ -31,7 +31,7 @@ func TestEBPFFlow(t *testing.T) {
 	table := NewTable(time.Minute, time.Hour, &fakeMessageSender{}, UUIDs{}, TableOpts{})
 	_, extFlowChan, _ := table.Start(expired)
 
-	for table.State() != common.RunningState {
+	for table.State() != service.RunningState {
 		time.Sleep(100 * time.Millisecond)
 	}
 

@@ -23,7 +23,6 @@ import (
 	"syscall"
 
 	"github.com/skydive-project/skydive/agent"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/seed"
@@ -105,7 +104,7 @@ var SeedCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		g := graph.NewGraph(hostID, memory, common.UnknownService)
+		g := graph.NewGraph(hostID, memory, seed.Service)
 
 		probeBundle = probe.NewBundle()
 
@@ -121,7 +120,7 @@ var SeedCmd = &cobra.Command{
 			TLSConfig:        tlsConfig,
 		}
 
-		seed, err := seed.NewSeed(g, common.SeedService, agentAddr, subscriberFilter, *wsOpts)
+		seed, err := seed.NewSeed(g, seed.Service, agentAddr, subscriberFilter, *wsOpts)
 		if err != nil {
 			logging.GetLogger().Errorf("Failed to start seed: %s", err)
 			os.Exit(1)

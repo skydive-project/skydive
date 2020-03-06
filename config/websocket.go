@@ -21,7 +21,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
 )
@@ -43,7 +43,7 @@ func NewWSClientOpts(authOpts *shttp.AuthenticationOpts) (*websocket.ClientOpts,
 }
 
 // NewWSClient creates a Client based on the configuration
-func NewWSClient(clientType common.ServiceType, url *url.URL, opts websocket.ClientOpts) (*websocket.Client, error) {
+func NewWSClient(clientType service.Type, url *url.URL, opts websocket.ClientOpts) (*websocket.Client, error) {
 	host := GetString("host_id")
 
 	return websocket.NewClient(host, clientType, url, opts), nil

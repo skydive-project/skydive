@@ -36,9 +36,9 @@ import (
 	"github.com/skydive-project/skydive/analyzer"
 	gclient "github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/websocket"
 	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
@@ -320,7 +320,7 @@ func TestScaleHA(t *testing.T) {
 
 	// expected 1 either Incomer or Outgoer
 	if err = retry.Do(func() error {
-		return checkPeers(client, 1, websocket.ConnState(common.RunningState))
+		return checkPeers(client, 1, websocket.ConnState(service.RunningState))
 	}, retry.Attempts(5), retry.Delay(time.Second), retry.DelayType(retry.FixedDelay)); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
@@ -414,7 +414,7 @@ func TestScaleHA(t *testing.T) {
 	}
 	execCmds(t, setupCmds...)
 
-	if err = checkPeers(client, 0, websocket.ConnState(common.RunningState)); err != nil {
+	if err = checkPeers(client, 0, websocket.ConnState(service.RunningState)); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
@@ -462,7 +462,7 @@ func TestScaleHA(t *testing.T) {
 	execCmds(t, setupCmds...)
 
 	if err = retry.Do(func() error {
-		return checkPeers(client, 1, websocket.ConnState(common.RunningState))
+		return checkPeers(client, 1, websocket.ConnState(service.RunningState))
 	}, retry.Attempts(15), retry.Delay(time.Second), retry.DelayType(retry.FixedDelay)); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)

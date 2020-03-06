@@ -23,8 +23,8 @@ import (
 
 	"github.com/safchain/insanelock"
 
-	"github.com/skydive-project/skydive/common"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
+	"github.com/skydive-project/skydive/graffiti/service"
 )
 
 // ErrNotCompiled is thrown when a probe was not compiled within the binary
@@ -44,7 +44,7 @@ type Handler interface {
 
 // ServiceStatus describes the status returned by GetStatus
 type ServiceStatus struct {
-	Status common.ServiceState
+	Status service.State
 }
 
 // Bundle describes a bundle of probes (topology of flow)
@@ -110,7 +110,7 @@ func (p *Bundle) GetStatus() map[string]interface{} {
 		if v, ok := v.(api.StatusReporter); ok {
 			status[k] = v.GetStatus()
 		} else {
-			status[k] = &ServiceStatus{Status: common.RunningState}
+			status[k] = &ServiceStatus{Status: service.RunningState}
 		}
 	}
 	return status

@@ -22,13 +22,16 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/skydive-project/skydive/common"
 	fw "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/messages"
+	"github.com/skydive-project/skydive/graffiti/service"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/logging"
 )
+
+// Service defines the seed service type
+const Service service.Type = "seed"
 
 // EventHandler is the interface to be implemented by event handler
 type EventHandler interface {
@@ -149,7 +152,7 @@ func (s *Seed) Stop() {
 }
 
 // NewSeed returns a new seed
-func NewSeed(g *graph.Graph, clientType common.ServiceType, address, filter string, wsOpts ws.ClientOpts) (*Seed, error) {
+func NewSeed(g *graph.Graph, clientType service.Type, address, filter string, wsOpts ws.ClientOpts) (*Seed, error) {
 	wsOpts.Headers.Add("X-Websocket-Namespace", messages.Namespace)
 
 	if len(address) == 0 {

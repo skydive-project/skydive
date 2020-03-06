@@ -31,7 +31,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/rbac"
 )
@@ -53,7 +53,7 @@ type Server struct {
 	sync.RWMutex
 	http.Server
 	Host        string
-	ServiceType common.ServiceType
+	ServiceType service.Type
 	Router      *mux.Router
 	Addr        string
 	Port        int
@@ -196,7 +196,7 @@ func (s *Server) HandleFunc(path string, f auth.AuthenticatedHandlerFunc, authBa
 }
 
 // NewServer returns a new HTTP service for a service
-func NewServer(host string, serviceType common.ServiceType, addr string, port int, tlsConfig *tls.Config, logger logging.Logger) *Server {
+func NewServer(host string, serviceType service.Type, addr string, port int, tlsConfig *tls.Config, logger logging.Logger) *Server {
 	if logger == nil {
 		logger = logging.GetLogger()
 	}

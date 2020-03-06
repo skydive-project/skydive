@@ -34,8 +34,8 @@ import (
 	"github.com/safchain/insanelock"
 	fsnotify "gopkg.in/fsnotify/fsnotify.v1"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	tp "github.com/skydive-project/skydive/topology/probes"
@@ -54,7 +54,7 @@ type ProbeHandler struct {
 	watcher         *fsnotify.Watcher
 	pending         chan string
 	exclude         []string
-	state           common.ServiceState
+	state           service.State
 	wg              sync.WaitGroup
 }
 
@@ -258,7 +258,7 @@ func (u *ProbeHandler) Unregister(path string) {
 func (u *ProbeHandler) initializeRunPath(path string) {
 	defer u.wg.Done()
 
-	for u.state.Load() == common.RunningState {
+	for u.state.Load() == service.RunningState {
 		if _, err := os.Stat(path); err == nil {
 			if err = u.watcher.Add(path); err == nil {
 				break
@@ -293,7 +293,7 @@ func (u *ProbeHandler) start() {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
-	for u.state.Load() == common.RunningState {
+	for u.state.Load() == service.RunningState {
 		select {
 		case path := <-u.pending:
 			u.wg.Add(1)
@@ -326,7 +326,7 @@ func (u *ProbeHandler) Watch(path string) {
 
 // Start the probe
 func (u *ProbeHandler) Start() error {
-	if !u.state.CompareAndSwap(common.StoppedState, common.RunningState) {
+	if !u.state.CompareAndSwap(service.StoppedState, service.RunningState) {
 		return probe.ErrNotStopped
 	}
 
@@ -337,14 +337,14 @@ func (u *ProbeHandler) Start() error {
 
 // Stop the probe
 func (u *ProbeHandler) Stop() {
-	if !u.state.CompareAndSwap(common.RunningState, common.StoppingState) {
+	if !u.state.CompareAndSwap(service.RunningState, service.StoppingState) {
 		return
 	}
 	u.wg.Wait()
 
 	u.nlHandler.Stop()
 
-	u.state.Store(common.StoppedState)
+	u.state.Store(service.StoppedState)
 }
 
 func (u *ProbeHandler) isPathExcluded(path string) bool {
@@ -398,7 +398,7 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 		rootNs:          rootNs,
 		watcher:         watcher,
 		pending:         make(chan string, 10),
-		state:           common.StoppedState,
+		state:           service.StoppedState,
 	}
 
 	if path := ctx.Config.GetString("agent.topology.netns.run_path"); path != "" {

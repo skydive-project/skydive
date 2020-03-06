@@ -27,7 +27,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go"
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/service"
 	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/tebeka/selenium"
@@ -53,7 +53,7 @@ func TestOverview(t *testing.T) {
 	defer execCmds(t, tearDownCmds...)
 
 	// IP prefix set in the scale.sh script
-	sa, err := common.ServiceAddressFromString(fmt.Sprintf("192.168.50.254:%s", port))
+	sa, err := service.AddressFromString(fmt.Sprintf("192.168.50.254:%s", port))
 	if err != nil {
 		t.Error(err)
 		return

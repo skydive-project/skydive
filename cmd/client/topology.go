@@ -25,11 +25,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	gcommon "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/messages"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/spf13/cobra"
 )
@@ -73,7 +73,7 @@ var TopologyImport = &cobra.Command{
 		url := config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher")
 		opts := websocket.ClientOpts{AuthOpts: &AuthenticationOpts, Headers: http.Header{}}
 		opts.Headers.Add("X-Persistence-Policy", string(gcommon.Persistent))
-		client, err := config.NewWSClient(common.UnknownService, url, opts)
+		client, err := config.NewWSClient(service.UnknownService, url, opts)
 		if err != nil {
 			exitOnError(err)
 		}

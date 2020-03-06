@@ -26,6 +26,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -42,7 +43,7 @@ type MasterElector struct {
 	listeners  []common.MasterElectionListener
 	cancel     context.CancelFunc
 	master     bool
-	state      common.ServiceState
+	state      service.State
 	wg         sync.WaitGroup
 }
 
@@ -131,8 +132,8 @@ func (le *MasterElector) start(first chan struct{}) {
 	le.wg.Add(1)
 	defer le.wg.Done()
 
-	le.state.Store(common.RunningState)
-	for le.state.Load() == common.RunningState {
+	le.state.Store(service.RunningState)
+	for le.state.Load() == service.RunningState {
 		resp, err := watcher.Next(ctx)
 		if err != nil {
 			if err == context.Canceled {
@@ -195,7 +196,7 @@ func (le *MasterElector) StartAndWait() {
 
 // Stop the election mechanism
 func (le *MasterElector) Stop() {
-	if le.state.CompareAndSwap(common.RunningState, common.StoppingState) {
+	if le.state.CompareAndSwap(service.RunningState, service.StoppingState) {
 		le.cancel()
 		le.wg.Wait()
 	}

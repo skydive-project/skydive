@@ -35,8 +35,8 @@ import (
 	"github.com/spf13/cast"
 	"github.com/vishvananda/netns"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/process"
 	"github.com/skydive-project/skydive/topology"
@@ -48,7 +48,7 @@ import (
 type ProbeHandler struct {
 	insanelock.RWMutex
 	*ns.ProbeHandler
-	state          common.ServiceState
+	state          service.State
 	hostNs         netns.NsHandle
 	wg             sync.WaitGroup
 	watcher        *fsnotify.Watcher
@@ -356,7 +356,7 @@ func (p *ProbeHandler) initializeFolder(path string) {
 func (p *ProbeHandler) initialize(path string) {
 	defer p.wg.Done()
 
-	for p.state.Load() == common.RunningState {
+	for p.state.Load() == service.RunningState {
 		if _, err := os.Stat(path); err == nil {
 			p.initializeFolder(path)
 			p.Ctx.Logger.Debugf("Probe initialized for %s", path)
@@ -391,7 +391,7 @@ func (p *ProbeHandler) start() {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
-	for p.state.Load() == common.RunningState {
+	for p.state.Load() == service.RunningState {
 		select {
 		case ev := <-p.watcher.Events:
 			if ev.Op&fsnotify.Create == fsnotify.Create {
@@ -450,7 +450,7 @@ func (p *ProbeHandler) start() {
 
 // Start the probe
 func (p *ProbeHandler) Start() error {
-	if !p.state.CompareAndSwap(common.StoppedState, common.RunningState) {
+	if !p.state.CompareAndSwap(service.StoppedState, service.RunningState) {
 		return probe.ErrNotStopped
 	}
 
@@ -467,14 +467,14 @@ func (p *ProbeHandler) Start() error {
 
 // Stop the probe
 func (p *ProbeHandler) Stop() {
-	if !p.state.CompareAndSwap(common.RunningState, common.StoppingState) {
+	if !p.state.CompareAndSwap(service.RunningState, service.StoppingState) {
 		return
 	}
 	p.wg.Wait()
 
 	p.hostNs.Close()
 
-	p.state.Store(common.StoppedState)
+	p.state.Store(service.StoppedState)
 }
 
 // NewProbe returns a new runc topology probe
@@ -491,7 +491,7 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 
 	return &ProbeHandler{
 		ProbeHandler: nsHandler.(*ns.ProbeHandler),
-		state:        common.StoppedState,
+		state:        service.StoppedState,
 		watcher:      watcher,
 		paths:        ctx.Config.GetStringSlice("agent.topology.runc.run_path"),
 		containers:   make(map[string]*container),

@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/service"
 )
 
 func newGraph(t *testing.T) *Graph {
@@ -32,7 +32,7 @@ func newGraph(t *testing.T) *Graph {
 		t.Error(err.Error())
 	}
 
-	return NewGraph("testhost", b, common.UnknownService)
+	return NewGraph("testhost", b, service.UnknownService)
 }
 
 func TestLinks(t *testing.T) {

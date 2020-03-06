@@ -26,11 +26,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/storage"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -84,7 +84,7 @@ type FlowServerWebSocketConn struct {
 type FlowServer struct {
 	storage            storage.Storage
 	conn               FlowServerConn
-	state              common.ServiceState
+	state              service.State
 	wgServer           sync.WaitGroup
 	bulkInsert         int
 	bulkInsertDeadline time.Duration
@@ -239,7 +239,7 @@ func (s *FlowServer) handleStats(stats *flow.Stats) {
 
 // Start the flow server
 func (s *FlowServer) Start() {
-	s.state.Store(common.RunningState)
+	s.state.Store(service.RunningState)
 	s.wgServer.Add(1)
 
 	s.conn.Serve(s.flowChan, s.statsChan, s.quit, &s.wgServer)
@@ -274,7 +274,7 @@ func (s *FlowServer) Start() {
 
 // Stop the server
 func (s *FlowServer) Stop() {
-	if s.state.CompareAndSwap(common.RunningState, common.StoppingState) {
+	if s.state.CompareAndSwap(service.RunningState, service.StoppingState) {
 		s.quit <- struct{}{}
 		s.quit <- struct{}{}
 		s.wgServer.Wait()

@@ -32,7 +32,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/safchain/insanelock"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/service"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 )
@@ -43,11 +43,11 @@ const (
 )
 
 // ConnState describes the connection state
-type ConnState common.ServiceState
+type ConnState service.State
 
 // ConnStatus describes the status of a WebSocket connection
 type ConnStatus struct {
-	ServiceType       common.ServiceType
+	ServiceType       service.Type
 	ClientProtocol    Protocol
 	Addr              string
 	Port              int
@@ -56,31 +56,31 @@ type ConnStatus struct {
 	URL               *url.URL    `json:"-"`
 	Headers           http.Header `json:"-"`
 	ConnectTime       time.Time
-	RemoteHost        string             `json:",omitempty"`
-	RemoteServiceType common.ServiceType `json:",omitempty"`
+	RemoteHost        string       `json:",omitempty"`
+	RemoteServiceType service.Type `json:",omitempty"`
 }
 
 // Store atomatically stores the state
-func (s *ConnState) Store(state common.ServiceState) {
-	(*common.ServiceState)(s).Store(state)
+func (s *ConnState) Store(state service.State) {
+	(*service.State)(s).Store(state)
 }
 
 // Load atomatically loads and returns the state
-func (s *ConnState) Load() common.ServiceState {
-	return (*common.ServiceState)(s).Load()
+func (s *ConnState) Load() service.State {
+	return (*service.State)(s).Load()
 }
 
 // CompareAndSwap executes the compare-and-swap operation for a state
-func (s *ConnState) CompareAndSwap(old, new common.ServiceState) bool {
+func (s *ConnState) CompareAndSwap(old, new service.State) bool {
 	return atomic.CompareAndSwapInt64((*int64)(s), int64(old), int64(new))
 }
 
 // MarshalJSON marshal the connection state to JSON
 func (s *ConnState) MarshalJSON() ([]byte, error) {
-	switch common.ServiceState(*s) {
-	case common.RunningState:
+	switch service.State(*s) {
+	case service.RunningState:
 		return []byte("true"), nil
-	case common.StoppedState:
+	case service.StoppedState:
 		return []byte("false"), nil
 	}
 	return nil, fmt.Errorf("Invalid state: %d", s)
@@ -94,9 +94,9 @@ func (s *ConnState) UnmarshalJSON(b []byte) error {
 	}
 
 	if state {
-		*s = ConnState(common.RunningState)
+		*s = ConnState(service.RunningState)
 	} else {
-		*s = ConnState(common.StoppedState)
+		*s = ConnState(service.StoppedState)
 	}
 
 	return nil
@@ -121,7 +121,7 @@ type Speaker interface {
 	GetStatus() ConnStatus
 	GetHost() string
 	GetAddrPort() (string, int)
-	GetServiceType() common.ServiceType
+	GetServiceType() service.Type
 	GetClientProtocol() Protocol
 	GetHeaders() http.Header
 	GetURL() *url.URL
@@ -134,7 +134,7 @@ type Speaker interface {
 	StopAndWait()
 	AddEventHandler(SpeakerEventHandler)
 	GetRemoteHost() string
-	GetRemoteServiceType() common.ServiceType
+	GetRemoteServiceType() service.Type
 }
 
 // Conn is the connection object of a Speaker
@@ -222,7 +222,7 @@ func (c *Conn) GetURL() *url.URL {
 
 // IsConnected returns the connection status.
 func (c *Conn) IsConnected() bool {
-	return c.State.Load() == common.RunningState
+	return c.State.Load() == service.RunningState
 }
 
 // GetStatus returns the status of a WebSocket connection
@@ -269,7 +269,7 @@ func (c *Conn) SendRaw(b []byte) error {
 }
 
 // GetServiceType returns the client type.
-func (c *Conn) GetServiceType() common.ServiceType {
+func (c *Conn) GetServiceType() service.Type {
 	return c.ServiceType
 }
 
@@ -289,7 +289,7 @@ func (c *Conn) GetRemoteHost() string {
 }
 
 // GetRemoteServiceType returns the remote service type.
-func (c *Conn) GetRemoteServiceType() common.ServiceType {
+func (c *Conn) GetRemoteServiceType() service.Type {
 	return c.RemoteServiceType
 }
 
@@ -376,7 +376,7 @@ func (c *Conn) run() {
 
 	defer func() {
 		c.conn.Close()
-		c.State.Store(common.StoppedState)
+		c.State.Store(service.StoppedState)
 
 		// handle all the pending received messages
 		readWg.Wait()
@@ -451,7 +451,7 @@ func (c *Conn) Flush() {
 // Stop disconnect the speaker
 func (c *Conn) Stop() {
 	c.running.Store(false)
-	if c.State.CompareAndSwap(common.RunningState, common.StoppingState) {
+	if c.State.CompareAndSwap(service.RunningState, service.StoppingState) {
 		c.quit <- true
 	}
 }
@@ -462,7 +462,7 @@ func (c *Conn) StopAndWait() {
 	c.wg.Wait()
 }
 
-func newConn(host string, clientType common.ServiceType, clientProtocol Protocol, url *url.URL, headers http.Header, opts ClientOpts) *Conn {
+func newConn(host string, clientType service.Type, clientProtocol Protocol, url *url.URL, headers http.Header, opts ClientOpts) *Conn {
 	if headers == nil {
 		headers = http.Header{}
 	}
@@ -495,7 +495,7 @@ func newConn(host string, clientType common.ServiceType, clientProtocol Protocol
 		c.messageType = websocket.BinaryMessage
 	}
 
-	c.State.Store(common.StoppedState)
+	c.State.Store(service.StoppedState)
 	c.running.Store(true)
 	return c
 }
@@ -545,7 +545,7 @@ func (c *Client) Connect() error {
 	c.conn.SetPingHandler(nil)
 	c.conn.EnableWriteCompression(c.writeCompression)
 
-	c.State.Store(common.RunningState)
+	c.State.Store(service.RunningState)
 
 	c.Opts.Logger.Infof("Connected to %s", endpoint)
 
@@ -557,9 +557,9 @@ func (c *Client) Connect() error {
 		c.RemoteHost = c.conn.RemoteAddr().String()
 	}
 
-	c.RemoteServiceType = common.ServiceType(resp.Header.Get("X-Service-Type"))
+	c.RemoteServiceType = service.Type(resp.Header.Get("X-Service-Type"))
 	if c.RemoteServiceType == "" {
-		c.RemoteServiceType = common.UnknownService
+		c.RemoteServiceType = service.UnknownService
 	}
 
 	// notify connected
@@ -588,7 +588,7 @@ func (c *Client) Start() {
 }
 
 // NewClient returns a Client with a new connection.
-func NewClient(host string, clientType common.ServiceType, url *url.URL, opts ClientOpts) *Client {
+func NewClient(host string, clientType service.Type, url *url.URL, opts ClientOpts) *Client {
 	if opts.Logger == nil {
 		opts.Logger = logging.GetLogger()
 	}

@@ -24,12 +24,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/skydive-project/skydive/common"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/hub"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -109,7 +109,7 @@ var HubCmd = &cobra.Command{
 			ClusterAuthBackend: authBackend,
 		}
 
-		hub, err := hub.NewHub(hostname, common.ServiceType("Hub"), hubListen, g, cached, "/ws/pod", hubOpts)
+		hub, err := hub.NewHub(hostname, service.Type("Hub"), hubListen, g, cached, "/ws/pod", hubOpts)
 		if err != nil {
 			logging.GetLogger().Error(err)
 			os.Exit(1)

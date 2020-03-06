@@ -30,7 +30,6 @@ import (
 	proto "github.com/gogo/protobuf/proto"
 	"github.com/safchain/insanelock"
 
-	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
 )
 
@@ -62,14 +61,14 @@ func newStructMessage(ns, tp string) *StructMessage {
 }
 
 func newHTTPServer() *shttp.Server {
-	httpserver := shttp.NewServer(defaultHostID, common.AnalyzerService, host, port, nil, nil)
+	httpserver := shttp.NewServer(defaultHostID, "server", host, port, nil, nil)
 	httpserver.Start()
 	return httpserver
 }
 
 func newWsClient(hostID string, ns ...string) *Client {
 	u, _ := url.Parse(fmt.Sprintf("ws://%s:%d/%s", host, port, path))
-	wsclient := NewClient(hostID, common.AgentService, u, newClientOpts(ns...))
+	wsclient := NewClient(hostID, "agent", u, newClientOpts(ns...))
 	wsclient.Start()
 	return wsclient
 }

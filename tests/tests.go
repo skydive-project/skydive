@@ -44,10 +44,10 @@ import (
 	"github.com/skydive-project/skydive/api/client"
 	apiclient "github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/probes"
+	"github.com/skydive-project/skydive/graffiti/service"
 	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -255,7 +255,7 @@ func initConfig(conf string, params ...helperParams) error {
 		params = []helperParams{make(helperParams)}
 	}
 
-	sa, err := common.ServiceAddressFromString(analyzerListen)
+	sa, err := service.AddressFromString(analyzerListen)
 	if err != nil {
 		return err
 	}

@@ -25,8 +25,8 @@ import (
 	"github.com/go-test/deep"
 	"github.com/olivere/elastic"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/storage"
 	es "github.com/skydive-project/skydive/storage/elasticsearch"
 )
@@ -98,7 +98,7 @@ func newElasticsearchGraph(t *testing.T) (*Graph, *fakeESClient) {
 	}
 	b := newElasticSearchBackendFromClient(client, es.Index{Name: "topology_live"}, es.Index{Name: "topology_archive"}, nil)
 	client.searchResult.Hits = &elastic.SearchHits{}
-	return NewGraph("host1", b, common.UnknownService), client
+	return NewGraph("host1", b, service.UnknownService), client
 }
 
 func TestElasticsearchNode(t *testing.T) {
@@ -108,7 +108,7 @@ func TestElasticsearchNode(t *testing.T) {
 	g.AddNode(node)
 	g.addMetadata(node, "MTU", 1510, Unix(2, 0))
 
-	origin := common.UnknownService.String() + ".host1"
+	origin := service.UnknownService.String() + ".host1"
 
 	expectedLive := map[string]interface{}{
 		"aaa": map[string]interface{}{
@@ -273,7 +273,7 @@ func TestElasticsearchEdge(t *testing.T) {
 	g.AddEdge(edge)
 	g.addMetadata(edge, "Type", "veth", Unix(2, 0))
 
-	origin := common.UnknownService.String() + ".host1"
+	origin := service.UnknownService.String() + ".host1"
 
 	expectedLive := map[string]interface{}{
 		"aaa": map[string]interface{}{

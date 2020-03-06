@@ -17,16 +17,17 @@ package bess
 import (
 	"context"
 	"fmt"
-	"github.com/skydive-project/skydive/filters"
-	"google.golang.org/grpc"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/skydive-project/skydive/filters"
+	"google.golang.org/grpc"
+
 	"github.com/nimbess/nimbess-agent/pkg/proto/bess_pb"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/probes"
@@ -38,7 +39,7 @@ type Probe struct {
 	graph.DefaultGraphListener
 	Ctx         probes.Context
 	bessClient  bess_pb.BESSControlClient
-	state       common.ServiceState
+	state       service.State
 	bessPort    int
 	bessHost    string
 	bessContext context.Context
@@ -240,9 +241,9 @@ func (p *Probe) Do(ctx context.Context, wg *sync.WaitGroup) error {
 // NewProbe returns a BESS topology probe
 func NewProbe(ctx probes.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	p := &Probe{
-		Ctx:	ctx,
+		Ctx: ctx,
 	}
-	p.state.Store(common.StoppedState)
+	p.state.Store(service.StoppedState)
 	p.bessHost = ctx.Config.GetString("agent.topology.bess.host")
 	p.bessPort = ctx.Config.GetInt("agent.topology.bess.port")
 	p.bessContext = context.Background()
