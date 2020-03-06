@@ -28,8 +28,8 @@ import (
 	"github.com/casbin/casbin/model"
 	"github.com/casbin/casbin/persist"
 	etcd "github.com/coreos/etcd/client"
+	"github.com/skydive-project/skydive/graffiti/rbac"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/rbac"
 	"github.com/skydive-project/skydive/statics"
 )
 
