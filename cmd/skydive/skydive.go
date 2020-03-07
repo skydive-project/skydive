@@ -72,8 +72,9 @@ func init() {
 		RootCmd.AddCommand(client.ClientCmd)
 		RootCmd.AddCommand(seed.SeedCmd)
 		RootCmd.AddCommand(version.VersionCmd)
-		RootCmd.AddCommand(injector.InjectPacketCmd)
-
+		if injector.InjectPacketCmd != nil {
+			RootCmd.AddCommand(injector.InjectPacketCmd)
+		}
 		if allinone.AllInOneCmd != nil {
 			RootCmd.AddCommand(allinone.AllInOneCmd)
 		}
