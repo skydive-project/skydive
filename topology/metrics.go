@@ -1,4 +1,4 @@
-//go:generate go run github.com/skydive-project/skydive/scripts/gendecoder -output metrics_gendecoder.go
+//go:generate go run github.com/skydive-project/skydive/graffiti/gendecoder -output metrics_gendecoder.go
 //go:generate go run github.com/mailru/easyjson/easyjson $GOFILE
 
 /*
