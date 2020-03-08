@@ -27,6 +27,9 @@ import (
 	"github.com/skydive-project/skydive/graffiti/service"
 )
 
+// ErrNotImplemented unimplemented feature
+var ErrNotImplemented = errors.New("not implemented")
+
 // ErrNotCompiled is thrown when a probe was not compiled within the binary
 var ErrNotCompiled = fmt.Errorf("probe not compiled")
 

@@ -127,6 +127,9 @@ func (h *BasicAPIHandler) Delete(id string) error {
 	etcdPath := fmt.Sprintf("/%s/%s", h.ResourceHandler.Name(), id)
 
 	_, err := h.EtcdKeyAPI.Delete(context.Background(), etcdPath, nil)
+	if err, ok := err.(etcd.Error); ok && err.Code == etcd.ErrorCodeKeyNotFound {
+		return ErrNotFound
+	}
 	return err
 }
 

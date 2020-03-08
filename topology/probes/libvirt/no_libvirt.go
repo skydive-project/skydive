@@ -20,14 +20,13 @@
 package libvirt
 
 import (
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/probe"
 	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
 // NewProbe returns a new topology Libvirt probe
 func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
-	return nil, common.ErrNotImplemented
+	return nil, probe.ErrNotImplemented
 }
 
 // Register registers graph metadata decoders

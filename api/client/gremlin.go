@@ -20,12 +20,12 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
@@ -34,6 +34,9 @@ import (
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
 )
+
+// ErrNoResult is returned when a query returned no result
+var ErrNoResult = errors.New("no result")
 
 // GremlinQueryHelper describes a gremlin query request query helper mechanism
 type GremlinQueryHelper struct {
@@ -137,7 +140,7 @@ func (g *GremlinQueryHelper) GetNode(query interface{}) (node *graph.Node, _ err
 		return nodes[0], nil
 	}
 
-	return nil, common.ErrNotFound
+	return nil, ErrNoResult
 }
 
 // GetFlows from the Gremlin query
@@ -206,7 +209,7 @@ func (g *GremlinQueryHelper) GetFlowMetrics(query interface{}) (map[string][]*fl
 	}
 
 	if len(result) == 0 {
-		return nil, common.ErrNotFound
+		return nil, ErrNoResult
 	}
 
 	return result[0], nil

@@ -25,8 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/topology"
@@ -631,7 +631,7 @@ func TestNodeRuleCreate(t *testing.T) {
 			func(c *CheckContext) error {
 				c.client.Delete("noderule", nodeRule.GetID())
 
-				if node, err := c.gh.GetNode(c.gremlin.V().Has("Name", "TestNode")); err != common.ErrNotFound {
+				if node, err := c.gh.GetNode(c.gremlin.V().Has("Name", "TestNode")); err != client.ErrNoResult {
 					return fmt.Errorf("Node %+v found with name TestNode", node)
 				}
 
@@ -682,7 +682,7 @@ func TestNodeRuleUpdate(t *testing.T) {
 			func(c *CheckContext) error {
 				c.client.Delete("noderule", nodeRule.GetID())
 
-				if node, err := c.gh.GetNode(c.gremlin.V().Has("testKey", "testValue")); err != common.ErrNotFound {
+				if node, err := c.gh.GetNode(c.gremlin.V().Has("testKey", "testValue")); err != client.ErrNoResult {
 					return fmt.Errorf("Node %+v was found with metadata testKey", node)
 				}
 
@@ -745,7 +745,7 @@ func TestEdgeRuleCreate(t *testing.T) {
 					c.client.Delete("edgerule", edgeRule.GetID())
 				}
 
-				if _, err := c.gh.GetNode(query); err != common.ErrNotFound {
+				if _, err := c.gh.GetNode(query); err != client.ErrNoResult {
 					return errors.New("Found a layer2 link")
 				}
 

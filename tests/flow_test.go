@@ -36,7 +36,6 @@ import (
 	"github.com/google/gopacket/pcapgo"
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	g "github.com/skydive-project/skydive/gremlin"
@@ -610,13 +609,14 @@ func TestFlowMetrics(t *testing.T) {
 				return fmt.Errorf("Layers bytes error, got: %v", icmp)
 			}
 
+			errNotFound := errors.New("not found")
 			getFirstFlowMetric := func(query interface{}) (*flow.FlowMetric, error) {
 				flows, err := c.gh.GetFlows(query)
 				if err != nil {
 					return nil, err
 				}
 				if len(flows) == 0 {
-					return nil, common.ErrNotFound
+					return nil, errNotFound
 				}
 				return flows[0].Metric, nil
 			}
@@ -628,7 +628,7 @@ func TestFlowMetrics(t *testing.T) {
 			}
 
 			metric, err = getFirstFlowMetric(gremlin.Has("Metric.ABBytes", g.Gt(pingLen)))
-			if err != common.ErrNotFound {
+			if err != errNotFound {
 				return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 			}
 
@@ -638,7 +638,7 @@ func TestFlowMetrics(t *testing.T) {
 			}
 
 			metric, err = getFirstFlowMetric(gremlin.Has("Metric.ABBytes", g.Gte(pingLen+1)))
-			if err != common.ErrNotFound {
+			if err != errNotFound {
 				return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 			}
 
@@ -648,7 +648,7 @@ func TestFlowMetrics(t *testing.T) {
 			}
 
 			metric, err = getFirstFlowMetric(gremlin.Has("Metric.ABBytes", g.Lt(pingLen)))
-			if err != common.ErrNotFound {
+			if err != errNotFound {
 				return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 			}
 
@@ -658,7 +658,7 @@ func TestFlowMetrics(t *testing.T) {
 			}
 
 			metric, err = getFirstFlowMetric(gremlin.Has("Metric.ABBytes", g.Lte(pingLen-1)))
-			if err != common.ErrNotFound {
+			if err != errNotFound {
 				return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 			}
 
@@ -668,7 +668,7 @@ func TestFlowMetrics(t *testing.T) {
 			}
 
 			metric, err = getFirstFlowMetric(gremlin.Has("Metric.ABBytes", g.Inside(pingLen, pingLen+1)))
-			if err != common.ErrNotFound {
+			if err != errNotFound {
 				return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 			}
 
@@ -678,7 +678,7 @@ func TestFlowMetrics(t *testing.T) {
 			}
 
 			metric, err = getFirstFlowMetric(gremlin.Has("Metric.ABBytes", g.Between(pingLen, pingLen)))
-			if err != common.ErrNotFound {
+			if err != errNotFound {
 				return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 			}
 

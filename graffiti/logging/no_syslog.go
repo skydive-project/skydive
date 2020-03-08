@@ -19,10 +19,8 @@
 
 package logging
 
-import (
-	"github.com/skydive-project/skydive/common"
-)
+import "errors"
 
 func NewSyslogBackend(protocol, address, tag string) (Backend, error) {
-	return nil, common.ErrNotImplemented
+	return nil, errors.New("Syslog backend is only supported on Linux and Unix")
 }

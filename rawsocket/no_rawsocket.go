@@ -19,7 +19,9 @@
 
 package rawsocket
 
-import "github.com/skydive-project/skydive/common"
+import "errors"
+
+var errNotSupported = errors.New("Raw sockets are only supported on Linux")
 
 // Protocols to receive
 const (
@@ -38,20 +40,20 @@ func (s *RawSocket) GetFd() int {
 
 // Write outputs some bytes to the file
 func (s *RawSocket) Write(data []byte) (int, error) {
-	return 0, common.ErrNotImplemented
+	return 0, errNotSupported
 }
 
 // Close the file descriptor
 func (s *RawSocket) Close() error {
-	return common.ErrNotImplemented
+	return errNotSupported
 }
 
 // NewRawSocket creates a raw socket for the network interface ifName
 func NewRawSocket(ifName string, protocol int) (*RawSocket, error) {
-	return nil, common.ErrNotImplemented
+	return nil, errNotSupported
 }
 
 // NewRawSocketInNs create/open a socket in the namespace nsPath for the network interface ifName
 func NewRawSocketInNs(nsPath string, ifName string, protocol int) (*RawSocket, error) {
-	return nil, common.ErrNotImplemented
+	return nil, errNotSupported
 }

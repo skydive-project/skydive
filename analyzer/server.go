@@ -296,7 +296,6 @@ func NewServerFromConfig() (*Server, error) {
 		StatusReporter:      s,
 		TLSConfig:           tlsConfig,
 		Peers:               peers,
-		EtcdKeysAPI:         etcdClient.KeysAPI,
 		TopologyMarshallers: api.TopologyMarshallers,
 	}
 
@@ -339,13 +338,13 @@ func NewServerFromConfig() (*Server, error) {
 	flowSubscriberWSServer := ws.NewStructServer(config.NewWSServer(hub.HTTPServer(), "/ws/subscriber/flow", apiAuthBackend))
 	flowSubscriberEndpoint := server.NewFlowSubscriberEndpoint(flowSubscriberWSServer)
 
-	captureAPIHandler, err := api.RegisterCaptureAPI(hub.APIServer(), g, apiAuthBackend)
+	captureAPIHandler, err := api.RegisterCaptureAPI(hub.APIServer(), etcdClient.KeysAPI, g, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
 
 	apiServer := hub.APIServer()
-	piAPIHandler, err := api.RegisterPacketInjectorAPI(g, apiServer, apiAuthBackend)
+	piAPIHandler, err := api.RegisterPacketInjectorAPI(g, apiServer, etcdClient.KeysAPI, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
@@ -357,7 +356,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	nodeRuleAPIHandler, err := api.RegisterNodeRuleAPI(apiServer, g, apiAuthBackend)
+	nodeRuleAPIHandler, err := api.RegisterNodeRuleAPI(apiServer, etcdClient.KeysAPI, g, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
@@ -367,18 +366,18 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	edgeRuleAPIHandler, err := api.RegisterEdgeRuleAPI(apiServer, g, apiAuthBackend)
+	edgeRuleAPIHandler, err := api.RegisterEdgeRuleAPI(apiServer, etcdClient.KeysAPI, g, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
 
 	s.topologyManager = usertopology.NewTopologyManager(etcdClient, nodeRuleAPIHandler, edgeRuleAPIHandler, g)
 
-	if _, err = api.RegisterAlertAPI(apiServer, apiAuthBackend); err != nil {
+	if _, err = api.RegisterAlertAPI(apiServer, etcdClient.KeysAPI, apiAuthBackend); err != nil {
 		return nil, err
 	}
 
-	if _, err := api.RegisterWorkflowAPI(apiServer, apiAuthBackend); err != nil {
+	if _, err := api.RegisterWorkflowAPI(apiServer, etcdClient.KeysAPI, apiAuthBackend); err != nil {
 		return nil, err
 	}
 

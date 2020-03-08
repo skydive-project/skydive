@@ -166,7 +166,7 @@ func NewPod(id string, serviceType service.Type, listen string, podEndpoint stri
 	httpServer := shttp.NewServer(id, serviceType, sa.Addr, sa.Port, opts.TLSConfig, opts.Logger)
 
 	svc := service.Service{ID: id, Type: serviceType}
-	apiServer, err := api.NewAPI(httpServer, nil, opts.Version, svc, opts.APIAuthBackend, opts.APIValidator)
+	apiServer, err := api.NewAPI(httpServer, opts.Version, svc, opts.APIAuthBackend, opts.APIValidator)
 	if err != nil {
 		return nil, err
 	}

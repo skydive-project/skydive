@@ -20,11 +20,11 @@
 package nsm
 
 import (
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/probe"
 )
 
 func NewNsmProbe(g *graph.Graph) (probes.FlowProbeHandler, error) {
-	return nil, common.ErrNotImplemented
+	return nil, probe.ErrNotImplemented
 }

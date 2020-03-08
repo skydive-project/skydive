@@ -448,7 +448,7 @@ func (e *graphElement) GetFieldStringList(key string) ([]string, error) {
 			if s, ok := s.(string); ok {
 				strings = append(strings, s)
 			} else {
-				return nil, common.ErrFieldWrongType
+				return nil, errors.New("one array entry could not be converted to string")
 			}
 		}
 		return strings, nil

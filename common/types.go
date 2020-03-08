@@ -17,23 +17,6 @@
 
 package common
 
-import (
-	"errors"
-)
-
-var (
-	// ErrCantCompareInterface error can't compare interface
-	ErrCantCompareInterface = errors.New("Can't compare interface")
-	// ErrFieldWrongType error field has wrong type
-	ErrFieldWrongType = errors.New("Field has wrong type")
-	// ErrNotFound error no result was found
-	ErrNotFound = errors.New("No result found")
-	// ErrTimeout network timeout
-	ErrTimeout = errors.New("Timeout")
-	// ErrNotImplemented unimplemented feature
-	ErrNotImplemented = errors.New("Not implemented")
-)
-
 // SortOrder describes ascending or descending order
 type SortOrder string
 

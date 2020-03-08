@@ -21,11 +21,14 @@
 package topology
 
 import (
+	"errors"
 	"net"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 )
+
+// ErrNoNextHop is returned when no next hop could be determined
+var ErrNoNextHop = errors.New("no next hop")
 
 // NextHop describes a next hop
 // easyjson:json
@@ -101,5 +104,5 @@ func GetNextHop(node *graph.Node, ip net.IP) (*NextHop, error) {
 		}
 	}
 
-	return nil, common.ErrNotFound
+	return nil, ErrNoNextHop
 }

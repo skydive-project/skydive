@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -110,7 +109,7 @@ func (h *NodeAPIHandler) Delete(id string) error {
 
 	node := h.g.GetNode(graph.Identifier(id))
 	if node == nil {
-		return common.ErrNotFound
+		return rest.ErrNotFound
 	}
 
 	return h.g.DelNode(node)

@@ -25,6 +25,7 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 
+	etcd "github.com/coreos/etcd/client"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
@@ -110,11 +111,11 @@ func (w *WorkflowAPIHandler) Index() map[string]rest.Resource {
 }
 
 // RegisterWorkflowAPI registers a new workflow api handler
-func RegisterWorkflowAPI(apiServer *api.Server, authBackend shttp.AuthenticationBackend) (*WorkflowAPIHandler, error) {
+func RegisterWorkflowAPI(apiServer *api.Server, kapi etcd.KeysAPI, authBackend shttp.AuthenticationBackend) (*WorkflowAPIHandler, error) {
 	workflowAPIHandler := &WorkflowAPIHandler{
 		BasicAPIHandler: rest.BasicAPIHandler{
 			ResourceHandler: &WorkflowResourceHandler{},
-			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
+			EtcdKeyAPI:      kapi,
 		},
 	}
 	if err := apiServer.RegisterAPIHandler(workflowAPIHandler, authBackend); err != nil {

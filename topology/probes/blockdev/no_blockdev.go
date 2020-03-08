@@ -20,12 +20,11 @@
 package blockdev
 
 import (
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/probe"
 	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
 // Init initializes a new topology block device probe
 func (p *ProbeHandler) Init(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
-	return nil, common.ErrNotImplemented
+	return nil, probe.ErrNotImplemented
 }
