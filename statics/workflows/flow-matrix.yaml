@@ -325,12 +325,12 @@ Source: |
                 ownerEdge.Child = childNodeID
                 g.edges[ownerEdgeID] = ownerEdge
 
-                var edgeID = new UUID(5, "ns:URL", childNodeID+parentNodeID).toString()
+                var edgeID = new UUID(5, "ns:URL", childNodeID+parentNodeID+entry.servicePort).toString()
                 var edge = new api.GraphEdge()
                 edge.ID = edgeID
                 edge.Host = entry.serviceHost
                 edge.Metadata = { "RelationType": "connection",
-                                "Port": entry.servicePort }
+                                  "Port": entry.servicePort }
                 edge.Parent = childNodeID
                 edge.Child = parentNodeID
 
