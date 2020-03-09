@@ -838,7 +838,7 @@ func captureAllowedNodes(nodes []*graph.Node) []*graph.Node {
 	return allowed
 }
 
-func (s *FlowGremlinTraversalStep) addTimeFilter(fsq *filters.SearchQuery, timeContext *common.TimeSlice) {
+func (s *FlowGremlinTraversalStep) addTimeFilter(fsq *filters.SearchQuery, timeContext *graph.TimeSlice) {
 	var timeFilter *filters.Filter
 	tr := filters.Range{
 		// When we query the flows on the agents, we get the flows that have not

@@ -131,7 +131,7 @@ type PersistentBackend interface {
 
 // Context describes within time slice
 type Context struct {
-	TimeSlice *common.TimeSlice
+	TimeSlice *TimeSlice
 	TimePoint bool
 }
 

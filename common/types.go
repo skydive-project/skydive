@@ -50,17 +50,6 @@ func UnixMillis(t time.Time) int64 {
 	return t.UTC().UnixNano() / 1000000
 }
 
-// TimeSlice defines a time boudary values
-type TimeSlice struct {
-	Start int64 `json:"Start"`
-	Last  int64 `json:"Last"`
-}
-
-// NewTimeSlice creates a new TimeSlice based on Start and Last
-func NewTimeSlice(s, l int64) *TimeSlice {
-	return &TimeSlice{Start: s, Last: l}
-}
-
 // Metric defines a common metric interface
 type Metric interface {
 	// part of the Getter interface
