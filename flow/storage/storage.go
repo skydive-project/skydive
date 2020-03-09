@@ -21,8 +21,8 @@ import (
 	"errors"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/filters"
 )
 
 // ErrNoStorageConfigured error no storage has been configured

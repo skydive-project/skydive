@@ -28,7 +28,7 @@ import (
 	"github.com/mohae/deepcopy"
 	"github.com/spf13/cast"
 
-	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/getter"
 )
 

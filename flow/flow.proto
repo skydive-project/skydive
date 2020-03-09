@@ -24,7 +24,7 @@ import "dns.proto";
 import "dhcpv4.proto";
 import "vrrpv2.proto";
 
-import "filters/filters.proto";
+import "graffiti/filters/filters.proto";
 
 option go_package = "github.com/skydive-project/skydive/flow";
 option (gogoproto.protosizer_all) = true;

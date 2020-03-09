@@ -20,7 +20,7 @@ package graph
 import (
 	"testing"
 
-	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/filters"
 )
 
 func TestMetadataIndexer(t *testing.T) {

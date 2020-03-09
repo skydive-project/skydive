@@ -27,9 +27,9 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	fl "github.com/skydive-project/skydive/flow/layers"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	orient "github.com/skydive-project/skydive/graffiti/storage/orientdb"
 	"github.com/skydive-project/skydive/logging"
 )

@@ -27,7 +27,7 @@ import (
 	"github.com/avast/retry-go"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	es "github.com/skydive-project/skydive/graffiti/storage/elasticsearch"
 )
 
