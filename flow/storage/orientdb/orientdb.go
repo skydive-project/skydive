@@ -30,8 +30,8 @@ import (
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	fl "github.com/skydive-project/skydive/flow/layers"
+	orient "github.com/skydive-project/skydive/graffiti/storage/orientdb"
 	"github.com/skydive-project/skydive/logging"
-	orient "github.com/skydive-project/skydive/storage/orientdb"
 )
 
 // Storage describes a OrientDB database client

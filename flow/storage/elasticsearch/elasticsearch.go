@@ -30,7 +30,7 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	fl "github.com/skydive-project/skydive/flow/layers"
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
-	es "github.com/skydive-project/skydive/storage/elasticsearch"
+	es "github.com/skydive-project/skydive/graffiti/storage/elasticsearch"
 )
 
 const flowMapping = `
