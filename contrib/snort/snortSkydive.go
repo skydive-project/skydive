@@ -34,9 +34,9 @@ import (
 	"github.com/google/gopacket/layers"
 
 	"github.com/skydive-project/skydive/analyzer"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	es "github.com/skydive-project/skydive/graffiti/storage/elasticsearch"
 )
@@ -96,7 +96,7 @@ type snortMessage struct {
 type fakeMasterElection struct {
 }
 
-func (f *fakeMasterElection) NewElection(name string) common.MasterElection {
+func (f *fakeMasterElection) NewElection(name string) etcd.MasterElection {
 	return nil
 }
 

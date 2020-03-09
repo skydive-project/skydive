@@ -32,7 +32,6 @@ import (
 
 	"github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
@@ -191,7 +190,7 @@ func NewGremlinAlert(alert *types.Alert, g *graph.Graph, p *traversal.GremlinTra
 // evaluates to true
 type Server struct {
 	insanelock.RWMutex
-	common.MasterElection
+	etcd.MasterElection
 	Graph         *graph.Graph
 	Pool          ws.StructSpeakerPool
 	AlertHandler  rest.ResourceWatcher

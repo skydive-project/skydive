@@ -32,6 +32,7 @@ import (
 	esconfig "github.com/olivere/elastic/v7/config"
 
 	"github.com/skydive-project/skydive/common"
+	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/storage"
@@ -445,7 +446,7 @@ func (c *Client) AddEventListener(listener storage.EventListener) {
 }
 
 // NewClient creates a new ElasticSearch client based on configuration
-func NewClient(indices []Index, cfg Config, electionService common.MasterElectionService) (*Client, error) {
+func NewClient(indices []Index, cfg Config, electionService etcd.MasterElectionService) (*Client, error) {
 	url, err := urlFromHost(cfg.ElasticHost)
 	if err != nil {
 		return nil, err

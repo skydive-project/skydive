@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/skydive-project/skydive/common"
+	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/storage/orientdb"
@@ -32,8 +32,8 @@ import (
 type OrientDBBackend struct {
 	PersistentBackend
 	client   orientdb.ClientInterface
-	election common.MasterElection
 	logger   logging.Logger
+	election etcd.MasterElection
 }
 
 type eventTime struct {
@@ -357,8 +357,7 @@ func (o *OrientDBBackend) OnStarted() {
 	}
 }
 
-
-func newOrientDBBackend(client orientdb.ClientInterface, electionService common.MasterElectionService, logger logging.Logger) (*OrientDBBackend, error) {
+func newOrientDBBackend(client orientdb.ClientInterface, electionService etcd.MasterElectionService, logger logging.Logger) (*OrientDBBackend, error) {
 	if logger == nil {
 		logger = logging.GetLogger()
 	}
@@ -435,7 +434,7 @@ func newOrientDBBackend(client orientdb.ClientInterface, electionService common.
 
 // NewOrientDBBackend creates a new graph backend and
 // connect to an OrientDB instance
-func NewOrientDBBackend(addr string, database string, username string, password string, electionService common.MasterElectionService, logger logging.Logger) (*OrientDBBackend, error) {
+func NewOrientDBBackend(addr string, database string, username string, password string, electionService etcd.MasterElectionService, logger logging.Logger) (*OrientDBBackend, error) {
 	client, err := orientdb.NewClient(addr, database, username, password)
 	if err != nil {
 		return nil, err

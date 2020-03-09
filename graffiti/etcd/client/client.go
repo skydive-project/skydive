@@ -25,7 +25,6 @@ import (
 
 	etcd "github.com/coreos/etcd/client"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/service"
 )
@@ -36,6 +35,29 @@ const (
 	DefaultPort    = 12379
 	DefaultServer  = "127.0.0.1"
 )
+
+// MasterElectionListener describes the multi election mechanism
+type MasterElectionListener interface {
+	OnStartAsMaster()
+	OnStartAsSlave()
+	OnSwitchToMaster()
+	OnSwitchToSlave()
+}
+
+// MasterElection describes the master election mechanism
+type MasterElection interface {
+	Start()
+	StartAndWait()
+	Stop()
+	IsMaster() bool
+	AddEventListener(listener MasterElectionListener)
+	TTL() time.Duration
+}
+
+// MasterElectionService describes the election service mechanism
+type MasterElectionService interface {
+	NewElection(key string) MasterElection
+}
 
 // Client describes a ETCD configuration client
 type Client struct {
@@ -90,7 +112,7 @@ func (client *Client) Stop() {
 }
 
 // NewElection creates a new ETCD master elector
-func (client *Client) NewElection(name string) common.MasterElection {
+func (client *Client) NewElection(name string) MasterElection {
 	return NewMasterElector(client, name)
 }
 

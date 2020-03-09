@@ -25,7 +25,7 @@ import (
 
 	"github.com/olivere/elastic/v7"
 
-	"github.com/skydive-project/skydive/common"
+	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	es "github.com/skydive-project/skydive/graffiti/storage/elasticsearch"
@@ -94,7 +94,7 @@ type ElasticSearchBackend struct {
 	PersistentBackend
 	client       es.ClientInterface
 	prevRevision map[Identifier]*rawData
-	election     common.MasterElection
+	election     etcd.MasterElection
 	liveIndex    es.Index
 	archiveIndex es.Index
 	logger       logging.Logger
@@ -541,7 +541,7 @@ func (b *ElasticSearchBackend) OnStarted() {
 
 // newElasticSearchBackendFromClient creates a new graph backend using the given elasticsearch
 // client connection
-func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, archiveIndex es.Index, electionService common.MasterElectionService, logger logging.Logger) *ElasticSearchBackend {
+func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, archiveIndex es.Index, electionService etcd.MasterElectionService, logger logging.Logger) *ElasticSearchBackend {
 	if logger == nil {
 		logger = logging.GetLogger()
 	}
@@ -562,7 +562,7 @@ func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, arc
 }
 
 // NewElasticSearchBackendFromConfig creates a new graph backend from an ES configuration structure
-func NewElasticSearchBackendFromConfig(cfg es.Config, extraDynamicTemplates map[string]interface{}, electionService common.MasterElectionService, logger logging.Logger) (*ElasticSearchBackend, error) {
+func NewElasticSearchBackendFromConfig(cfg es.Config, extraDynamicTemplates map[string]interface{}, electionService etcd.MasterElectionService, logger logging.Logger) (*ElasticSearchBackend, error) {
 	mapping := make(map[string]interface{})
 	if err := json.Unmarshal([]byte(graphElementMapping), &mapping); err != nil {
 		return nil, err

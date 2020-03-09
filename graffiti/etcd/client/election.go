@@ -25,7 +25,6 @@ import (
 	"github.com/safchain/insanelock"
 	"golang.org/x/net/context"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/service"
 )
@@ -40,7 +39,7 @@ type MasterElector struct {
 	EtcdKeyAPI etcd.KeysAPI
 	Host       string
 	path       string
-	listeners  []common.MasterElectionListener
+	listeners  []MasterElectionListener
 	cancel     context.CancelFunc
 	master     bool
 	state      service.State
@@ -204,7 +203,7 @@ func (le *MasterElector) Stop() {
 }
 
 // AddEventListener registers a new listener
-func (le *MasterElector) AddEventListener(listener common.MasterElectionListener) {
+func (le *MasterElector) AddEventListener(listener MasterElectionListener) {
 	le.listeners = append(le.listeners, listener)
 }
 
