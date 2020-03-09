@@ -213,11 +213,18 @@ func TestCheckMTUWorkflow(t *testing.T) {
 	RunTest(t, test)
 }
 
-func TestFlowValidation1(t *testing.T) {
+func TestFlowValidationWorkflow(t *testing.T) {
 	runtime, err := js.NewRuntime()
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	var (
+		flowValidation *types.Workflow
+		checkPoint1TID string
+		checkPoint2TID string
+		checkPoint3TID string
+	)
 
 	test := &Test{
 		retries: 5,
@@ -237,25 +244,71 @@ func TestFlowValidation1(t *testing.T) {
 			{"ip netns exec vm2 ip link set intf2 up", true},
 			{"ip netns exec vm2 ip address add 192.168.0.2/24 dev intf2", true},
 
+			{"ip link add vm2-eth1 type veth peer name intf3 netns vm2", true},
+			{"ip link set vm2-eth1 up", true},
+			{"ip netns exec vm2 ip link set intf3 up", true},
+			{"ip netns exec vm2 ip address add 192.168.0.3/24 dev intf3", true},
+
 			{"ovs-vsctl add-port br-int vm1-eth0", true},
 			{"ovs-vsctl add-port br-int vm2-eth0", true},
+			{"ovs-vsctl add-port br-int vm2-eth1", true},
+			{"ovs-ofctl add-flow br-int ip,nw_dst=192.168.0.3,actions=drop", true},
 		},
 
 		tearDownCmds: []Cmd{
 			{"ovs-vsctl del-br br-int", true},
 			{"ip link del vm1-eth0", true},
 			{"ip link del vm2-eth0", true},
+			{"ip link del vm2-eth1", true},
 			{"ip netns del vm1", true},
 			{"ip netns del vm2", true},
 		},
 
-		injections: []TestInjection{
-			{from: g.G.V().Has("Name", "intf1"), to: g.G.V().Has("Name", "intf2"), count: 60, id: 123},
-		},
+		injections: []TestInjection{{
+			from:  g.G.V().Has("Name", "vm1").Out().Has("Name", "intf1"),
+			to:    g.G.V().Has("Name", "vm2").Out().Has("Name", "intf2"),
+			count: 60,
+			id:    123,
+		}, {
+			from:  g.G.V().Has("Name", "vm1").Out().Has("Name", "intf1"),
+			to:    g.G.V().Has("Name", "vm2").Out().Has("Name", "intf3"),
+			count: 60,
+			id:    456,
+		}},
 
 		setupFunction: func(c *TestContext) error {
 			runtime.Start()
 			runtime.RegisterAPIClient(c.client)
+
+			return nil
+		},
+
+		settleFunction: func(c *TestContext) error {
+			var err error
+
+			flowValidation, err = lookupWorkflow(c.client, "FlowValidation")
+			if err != nil {
+				return err
+			}
+
+			checkPoint1, err := c.gh.GetNode(g.G.V().Has("Name", "vm1").Out().Has("Name", "intf1"))
+			if err != nil {
+				return err
+			}
+
+			checkPoint2, err := c.gh.GetNode(g.G.V().Has("Name", "vm2").Out().Has("Name", "intf2"))
+			if err != nil {
+				return err
+			}
+
+			checkPoint3, err := c.gh.GetNode(g.G.V().Has("Name", "vm2").Out().Has("Name", "intf3"))
+			if err != nil {
+				return err
+			}
+
+			checkPoint1TID, _ = checkPoint1.GetFieldString("TID")
+			checkPoint2TID, _ = checkPoint2.GetFieldString("TID")
+			checkPoint3TID, _ = checkPoint3.GetFieldString("TID")
 
 			return nil
 		},
@@ -265,24 +318,6 @@ func TestFlowValidation1(t *testing.T) {
 		},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
-			flowValidation, err := lookupWorkflow(c.client, "FlowValidation")
-			if err != nil {
-				return err
-			}
-
-			checkPoint1, err := c.gh.GetNode(c.gremlin.V().Has("Name", "intf1"))
-			if err != nil {
-				return err
-			}
-
-			checkPoint2, err := c.gh.GetNode(c.gremlin.V().Has("Name", "intf2"))
-			if err != nil {
-				return err
-			}
-
-			checkPoint1TID, _ := checkPoint1.GetFieldString("TID")
-			checkPoint2TID, _ := checkPoint2.GetFieldString("TID")
-
 			result, err := runtime.ExecFunction(flowValidation.Source, checkPoint1TID, checkPoint2TID, true, "icmp", "192.168.0.1", "192.168.0.2", "123", 10)
 			if err != nil {
 				return fmt.Errorf("Error while calling workflow: %s", err)
@@ -307,84 +342,8 @@ func TestFlowValidation1(t *testing.T) {
 			}
 
 			return nil
-		}},
-	}
-
-	RunTest(t, test)
-}
-
-func TestFlowValidation2(t *testing.T) {
-	runtime, err := js.NewRuntime()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	test := &Test{
-		retries: 5,
-
-		setupCmds: []Cmd{
-			{"ovs-vsctl add-br br-int", true},
-
-			{"ip netns add vm1", true},
-			{"ip link add vm1-eth0 type veth peer name intf1 netns vm1", true},
-			{"ip link set vm1-eth0 up", true},
-			{"ip netns exec vm1 ip link set intf1 up", true},
-			{"ip netns exec vm1 ip address add 192.168.0.1/24 dev intf1", true},
-
-			{"ip netns add vm2", true},
-			{"ip link add vm2-eth0 type veth peer name intf2 netns vm2", true},
-			{"ip link set vm2-eth0 up", true},
-			{"ip netns exec vm2 ip link set intf2 up", true},
-			{"ip netns exec vm2 ip address add 192.168.0.2/24 dev intf2", true},
-
-			{"ovs-vsctl add-port br-int vm1-eth0", true},
-			{"ovs-vsctl add-port br-int vm2-eth0", true},
-			{"ovs-ofctl add-flow br-int nw_dst=192.168.0.2,actions=drop", true},
-		},
-
-		tearDownCmds: []Cmd{
-			{"ovs-vsctl del-br br-int", true},
-			{"ip link del vm1-eth0", true},
-			{"ip link del vm2-eth0", true},
-			{"ip netns del vm1", true},
-			{"ip netns del vm2", true},
-		},
-
-		injections: []TestInjection{
-			{from: g.G.V().Has("Name", "intf1"), to: g.G.V().Has("Name", "intf2"), count: 60, id: 123},
-		},
-
-		setupFunction: func(c *TestContext) error {
-			runtime.Start()
-			runtime.RegisterAPIClient(c.client)
-
-			return nil
-		},
-
-		tearDownFunction: func(c *TestContext) error {
-			return nil
-		},
-
-		checks: []CheckFunction{func(c *CheckContext) error {
-			flowValidation, err := lookupWorkflow(c.client, "FlowValidation")
-			if err != nil {
-				return err
-			}
-
-			checkPoint1, err := c.gh.GetNode(c.gremlin.V().Has("Name", "intf1"))
-			if err != nil {
-				return err
-			}
-
-			checkPoint2, err := c.gh.GetNode(c.gremlin.V().Has("Name", "intf2"))
-			if err != nil {
-				return err
-			}
-
-			checkPoint1TID, _ := checkPoint1.GetFieldString("TID")
-			checkPoint2TID, _ := checkPoint2.GetFieldString("TID")
-
-			result, err := runtime.ExecFunction(flowValidation.Source, checkPoint1TID, checkPoint2TID, true, "icmp", "192.168.0.1", "192.168.0.2", "123", 10)
+		}, func(c *CheckContext) error {
+			result, err := runtime.ExecFunction(flowValidation.Source, checkPoint1TID, checkPoint3TID, true, "icmp", "192.168.0.1", "192.168.0.3", "456", 10)
 			if err != nil {
 				return fmt.Errorf("Error while calling workflow: %s", err)
 			}
