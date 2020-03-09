@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"sync"
 	"time"
 
@@ -738,12 +739,21 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	address := ctx.Config.GetString("ovs.ovsdb")
 	enableStats := ctx.Config.GetBool("ovs.enable_stats")
 
-	protocol, target, err := common.ParseAddr(address)
+	u, err := url.Parse(address)
 	if err != nil {
-		return nil, err
+		if u, err = url.Parse("tcp://" + address); err != nil {
+			return nil, err
+		}
 	}
 
-	mon := ovsdb.NewOvsMonitor(protocol, target)
+	var target string
+	if u.Scheme == "unix" {
+		target = u.Path
+	} else {
+		target = u.Host
+	}
+
+	mon := ovsdb.NewOvsMonitor(u.Scheme, target)
 	mon.ExcludeColumn("*", "statistics")
 	mon.ExcludeColumn("Port", "rstp_statistics")
 	if enableStats {
@@ -751,6 +761,11 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	}
 
 	cancelCtx, cancelFunc := context.WithCancel(context.Background())
+	ofHandler, err := NewOvsOfProbeHandler(cancelCtx, ctx, mon.Target, u.Scheme)
+	if err != nil {
+		cancelFunc()
+		return nil, err
+	}
 
 	return &Probe{
 		Ctx:          ctx,
@@ -760,7 +775,7 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 		portToIntf:   make(map[string]*graph.Node),
 		portToBridge: make(map[string]*graph.Node),
 		OvsMon:       mon,
-		Handler:      NewOvsOfProbeHandler(cancelCtx, ctx, mon.Target),
+		Handler:      ofHandler,
 		cancelFunc:   cancelFunc,
 		enableStats:  enableStats,
 	}, nil

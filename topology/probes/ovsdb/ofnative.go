@@ -19,6 +19,7 @@ package ovsdb
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"sort"
@@ -52,6 +53,7 @@ type ofProbe struct {
 	Ctx              tp.Context
 	bridge           string
 	address          string
+	tlsConfig        *tls.Config
 	handler          ofHandler
 	client           *openflow.Client
 	monitor          *monitor.Monitor
@@ -294,7 +296,7 @@ func (probe *ofProbe) sendGroupStatsDescRequest() error {
 }
 
 func (probe *ofProbe) Monitor(ctx context.Context) (err error) {
-	probe.monitor, err = monitor.NewMonitor(probe.address)
+	probe.monitor, err = monitor.NewMonitor(probe.address, probe.tlsConfig)
 	if err != nil {
 		return err
 	}
@@ -322,7 +324,7 @@ func (probe *ofProbe) Monitor(ctx context.Context) (err error) {
 		}
 	}
 
-	probe.client, err = openflow.NewClient(probe.address, protocols)
+	probe.client, err = openflow.NewClient(probe.address, probe.tlsConfig, protocols)
 	if err != nil {
 		return err
 	}
@@ -514,12 +516,13 @@ func (probe *ofProbe) handleFlowStats(xid uint32, rule *ofRule, actions, writeAc
 }
 
 // NewOfProbe returns a new OpenFlow natively speaking probe
-func NewOfProbe(ctx tp.Context, bridge string, address string) BridgeOfProber {
+func NewOfProbe(ctx tp.Context, bridge string, address string, tlsConfig *tls.Config) BridgeOfProber {
 	return &ofProbe{
-		Ctx:      ctx,
-		address:  address,
-		bridge:   bridge,
-		rules:    make(map[graph.Identifier]graph.Identifier),
-		requests: make(map[uint32]*ofRule),
+		Ctx:       ctx,
+		address:   address,
+		bridge:    bridge,
+		tlsConfig: tlsConfig,
+		rules:     make(map[graph.Identifier]graph.Identifier),
+		requests:  make(map[uint32]*ofRule),
 	}
 }

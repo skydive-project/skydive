@@ -19,6 +19,7 @@ package monitor
 
 import (
 	"context"
+	"crypto/tls"
 
 	"github.com/skydive-project/goloxi/of10"
 	"github.com/skydive-project/skydive/openflow"
@@ -66,8 +67,8 @@ func (m *Monitor) Start(ctx context.Context) error {
 }
 
 // NewMonitor returns a new OVS monitor using either a UNIX socket or a TCP socket
-func NewMonitor(addr string) (*Monitor, error) {
-	client, err := openflow.NewClient(addr, []openflow.Protocol{openflow.OpenFlow10})
+func NewMonitor(addr string, tlsConfig *tls.Config) (*Monitor, error) {
+	client, err := openflow.NewClient(addr, tlsConfig, []openflow.Protocol{openflow.OpenFlow10})
 	if err != nil {
 		return nil, err
 	}

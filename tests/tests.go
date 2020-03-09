@@ -125,7 +125,7 @@ ovs:
     enable: true
     native: {{.OvsOflowNative}}
     address:
-      br-test: tcp://127.0.0.1:16633
+      br-test: tcp:127.0.0.1:16633
 
 storage:
   orientdb:

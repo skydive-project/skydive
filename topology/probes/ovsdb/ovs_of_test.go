@@ -168,12 +168,12 @@ func (r ExecuteForTest) Wait() error {
 func TestMakeCommand(t *testing.T) {
 	probe := &OfctlProbe{
 		Handler: &OvsOfProbeHandler{
-			Host:           "host",
+			host:           "host",
 			bridgeOfProbes: make(map[string]*bridgeOfProbe),
-			Translation:    make(map[string]string),
-			Certificate:    "",
-			PrivateKey:     "",
-			CA:             "",
+			translation:    make(map[string]string),
+			certificate:    "",
+			privateKey:     "",
+			ca:             "",
 			sslOk:          false,
 		},
 	}
@@ -190,9 +190,9 @@ func TestMakeCommand(t *testing.T) {
 	if err == nil {
 		t.Error("ssl case: should fail")
 	}
-	probe.Handler.Certificate = "/cert"
-	probe.Handler.PrivateKey = "/pk"
-	probe.Handler.CA = "/ca"
+	probe.Handler.certificate = "/cert"
+	probe.Handler.privateKey = "/pk"
+	probe.Handler.ca = "/ca"
 	probe.Handler.sslOk = true
 	r, err = probe.makeCommand(com, ssl, arg1, arg2)
 	expected = []string{"c1", "c2", "ssl://sw:8000", "--certificate", "/cert", "--ca-cert", "/ca", "--private-key", "/pk", "a1", "a2"}
@@ -212,12 +212,12 @@ func TestCompleteRule(t *testing.T) {
 		Bridge: "br",
 		Handler: &OvsOfProbeHandler{
 			Ctx:            ctx,
-			Host:           "host",
+			host:           "host",
 			bridgeOfProbes: make(map[string]*bridgeOfProbe),
-			Translation:    make(map[string]string),
-			Certificate:    "",
-			PrivateKey:     "",
-			CA:             "",
+			translation:    make(map[string]string),
+			certificate:    "",
+			privateKey:     "",
+			ca:             "",
 			sslOk:          false,
 		},
 	}

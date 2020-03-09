@@ -363,7 +363,7 @@ ovs:
 
     address:
       # Map translating bridge names into URL for remote connection
-      # - bridge: ssl:xxx.yyy.zzz.ttt:port
+      # bridge: ssl:xxx.yyy.zzz.ttt:port
 
 netns:
   # allow to specify where the netns probe is watching network namespace
