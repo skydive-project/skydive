@@ -78,7 +78,7 @@ func (s *Server) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReque
 	}
 	s.opts.Logger.Debugf("Serving messages for client %s for pool %s", host, s.GetName())
 
-	if c := s.GetSpeakerByRemoteHost(host); c != nil {
+	if c, err := s.GetSpeakerByRemoteHost(host); err == nil {
 		s.opts.Logger.Errorf("host_id '%s' (%s) conflicts, same host_id used by %s:%s", host, r.RemoteAddr, c.GetRemoteHost(), c.GetRemoteServiceType())
 		w.Header().Set("Connection", "close")
 		w.WriteHeader(http.StatusConflict)
