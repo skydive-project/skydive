@@ -24,9 +24,9 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/validator"
+	"github.com/skydive-project/skydive/graffiti/websocket"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/websocket"
 )
 
 // Opts Hub options

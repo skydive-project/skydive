@@ -34,6 +34,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/pod"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -42,8 +43,6 @@ import (
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/ui"
-	"github.com/skydive-project/skydive/websocket"
-	ws "github.com/skydive-project/skydive/websocket"
 )
 
 // Agent object started on each hosts/namespaces
@@ -80,7 +79,7 @@ func NewAnalyzerStructClientPool(authOpts *shttp.AuthenticationOpts) (*ws.Struct
 
 	for _, sa := range addresses {
 		url := config.GetURL("ws", sa.Addr, sa.Port, "/ws/agent/topology")
-		c, err := config.NewWSClient(common.AgentService, url, websocket.ClientOpts{AuthOpts: authOpts, Protocol: websocket.ProtobufProtocol})
+		c, err := config.NewWSClient(common.AgentService, url, ws.ClientOpts{AuthOpts: authOpts, Protocol: ws.ProtobufProtocol})
 		if err != nil {
 			return nil, err
 		}

@@ -36,9 +36,9 @@ import (
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/js"
 	"github.com/skydive-project/skydive/logging"
-	ws "github.com/skydive-project/skydive/websocket"
 )
 
 const (

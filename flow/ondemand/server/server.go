@@ -25,10 +25,10 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/ondemand"
 	"github.com/skydive-project/skydive/ondemand/server"
 	"github.com/skydive-project/skydive/probe"
-	ws "github.com/skydive-project/skydive/websocket"
 )
 
 type activeProbe struct {

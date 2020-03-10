@@ -40,6 +40,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/hub"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -51,7 +52,6 @@ import (
 	usertopology "github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/probes/blockdev"
 	"github.com/skydive-project/skydive/ui"
-	ws "github.com/skydive-project/skydive/websocket"
 )
 
 // ElectionStatus describes the status of an election

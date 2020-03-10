@@ -28,9 +28,8 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/messages"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/websocket"
-	ws "github.com/skydive-project/skydive/websocket"
 )
 
 type subscriber struct {
@@ -285,7 +284,7 @@ func NewSubscriberEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, tr *traver
 }
 
 // ClientOrigin return a string identifying a client using its service type and host id
-func ClientOrigin(c websocket.Speaker) string {
+func ClientOrigin(c ws.Speaker) string {
 	origin := string(c.GetServiceType())
 	if len(c.GetRemoteHost()) > 0 {
 		origin += "." + c.GetRemoteHost()

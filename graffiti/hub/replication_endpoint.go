@@ -29,10 +29,9 @@ import (
 	gcommon "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/messages"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/websocket"
-	ws "github.com/skydive-project/skydive/websocket"
 )
 
 // ReplicatorPeer is a remote connection to another Graph server. Only modification
@@ -143,7 +142,7 @@ func (p *ReplicatorPeer) connect(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	logging.GetLogger().Infof("Connecting to peer: %s", p.URL.String())
-	wsClient, err := config.NewWSClient(common.AnalyzerService, p.URL, websocket.ClientOpts{AuthOpts: p.AuthOpts})
+	wsClient, err := config.NewWSClient(common.AnalyzerService, p.URL, ws.ClientOpts{AuthOpts: p.AuthOpts})
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to create client: %s", err)
 		return

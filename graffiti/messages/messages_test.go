@@ -21,7 +21,7 @@ import (
 	"net/http"
 	"testing"
 
-	ws "github.com/skydive-project/skydive/websocket"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 )
 
 func TestNullNodesEdges(t *testing.T) {

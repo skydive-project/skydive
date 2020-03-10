@@ -26,7 +26,8 @@ import (
 	fw "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/messages"
-	ws "github.com/skydive-project/skydive/websocket"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
+	"github.com/skydive-project/skydive/logging"
 )
 
 // EventHandler is the interface to be implemented by event handler

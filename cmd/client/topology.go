@@ -30,7 +30,7 @@ import (
 	gcommon "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/messages"
-	"github.com/skydive-project/skydive/websocket"
+	"github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/spf13/cobra"
 )
 

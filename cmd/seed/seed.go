@@ -27,12 +27,12 @@ import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/seed"
+	"github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	tp "github.com/skydive-project/skydive/topology/probes"
 	"github.com/skydive-project/skydive/version"
-	"github.com/skydive-project/skydive/websocket"
 
 	"github.com/spf13/cobra"
 )

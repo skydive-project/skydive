@@ -21,8 +21,8 @@ import (
 	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/flow"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/logging"
-	ws "github.com/skydive-project/skydive/websocket"
 )
 
 // FlowSubscriberEndpoint sends all the flows to its subscribers.

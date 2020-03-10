@@ -37,7 +37,7 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	ws "github.com/skydive-project/skydive/websocket"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 )
 
 var alertLock sync.Mutex

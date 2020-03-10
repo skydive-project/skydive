@@ -9,7 +9,7 @@ import (
 	jwriter "github.com/mailru/easyjson/jwriter"
 	common "github.com/skydive-project/skydive/common"
 	pod "github.com/skydive-project/skydive/graffiti/pod"
-	websocket "github.com/skydive-project/skydive/websocket"
+	websocket "github.com/skydive-project/skydive/graffiti/websocket"
 )
 
 // suppress unused package warning
@@ -53,7 +53,7 @@ func easyjsonCb9d4455DecodeGithubComSkydiveProjectSkydiveAgent(in *jlexer.Lexer,
 					key := string(in.String())
 					in.WantColon()
 					var v1 websocket.ConnStatus
-					easyjsonCb9d4455DecodeGithubComSkydiveProjectSkydiveWebsocket(in, &v1)
+					easyjsonCb9d4455DecodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(in, &v1)
 					(out.Clients)[key] = v1
 					in.WantComma()
 				}
@@ -158,7 +158,7 @@ func easyjsonCb9d4455EncodeGithubComSkydiveProjectSkydiveAgent(out *jwriter.Writ
 				}
 				out.String(string(v5Name))
 				out.RawByte(':')
-				easyjsonCb9d4455EncodeGithubComSkydiveProjectSkydiveWebsocket(out, v5Value)
+				easyjsonCb9d4455EncodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(out, v5Value)
 			}
 			out.RawByte('}')
 		}
@@ -367,7 +367,7 @@ func easyjsonCb9d4455EncodeGithubComSkydiveProjectSkydiveGraffitiPod(out *jwrite
 	}
 	out.RawByte('}')
 }
-func easyjsonCb9d4455DecodeGithubComSkydiveProjectSkydiveWebsocket(in *jlexer.Lexer, out *websocket.ConnStatus) {
+func easyjsonCb9d4455DecodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(in *jlexer.Lexer, out *websocket.ConnStatus) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -424,7 +424,7 @@ func easyjsonCb9d4455DecodeGithubComSkydiveProjectSkydiveWebsocket(in *jlexer.Le
 		in.Consumed()
 	}
 }
-func easyjsonCb9d4455EncodeGithubComSkydiveProjectSkydiveWebsocket(out *jwriter.Writer, in websocket.ConnStatus) {
+func easyjsonCb9d4455EncodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(out *jwriter.Writer, in websocket.ConnStatus) {
 	out.RawByte('{')
 	first := true
 	_ = first

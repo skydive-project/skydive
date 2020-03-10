@@ -23,8 +23,8 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/validator"
+	"github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/websocket"
 )
 
 // Opts defines pod server options
