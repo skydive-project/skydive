@@ -46,8 +46,8 @@ func graphElementToOrientDBSetString(e graphElement) (s string) {
 		fmt.Sprintf("ID = \"%s\"", string(e.ID)),
 		fmt.Sprintf("Host = \"%s\"", e.Host),
 		fmt.Sprintf("Origin = \"%s\"", e.Origin),
-		fmt.Sprintf("CreatedAt = %d", e.CreatedAt.Unix()),
-		fmt.Sprintf("UpdatedAt = %d", e.UpdatedAt.Unix()),
+		fmt.Sprintf("CreatedAt = %d", e.CreatedAt.UnixMilli()),
+		fmt.Sprintf("UpdatedAt = %d", e.UpdatedAt.UnixMilli()),
 		fmt.Sprintf("Revision = %d", e.Revision),
 	}
 	s = strings.Join(properties, ", ")
@@ -89,7 +89,7 @@ func metadataToOrientDBSelectString(m ElementMatcher) string {
 func (o *OrientDBBackend) updateTimes(e string, id string, events ...eventTime) error {
 	attrs := []string{}
 	for _, event := range events {
-		attrs = append(attrs, fmt.Sprintf("%s = %d", event.name, event.t.Unix()))
+		attrs = append(attrs, fmt.Sprintf("%s = %d", event.name, event.t.UnixMilli()))
 	}
 	query := fmt.Sprintf("UPDATE %s SET %s WHERE ID = '%s' AND DeletedAt IS NULL AND ArchivedAt IS NULL", e, strings.Join(attrs, ", "), id)
 	result, err := o.client.SQL(query)
@@ -326,7 +326,7 @@ func (o *OrientDBBackend) IsHistorySupported() bool {
 func (o *OrientDBBackend) flushGraph() error {
 	o.logger.Info("Flush graph elements")
 
-	now := TimeUTC().Unix()
+	now := TimeUTC().UnixMilli()
 
 	query := fmt.Sprintf("UPDATE Node SET DeletedAt = %d, ArchivedAt = %d WHERE DeletedAt IS NULL", now, now)
 	if _, err := o.client.SQL(query); err != nil {

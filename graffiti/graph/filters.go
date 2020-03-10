@@ -18,9 +18,6 @@
 package graph
 
 import (
-	"time"
-
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/getter"
 )
@@ -74,8 +71,8 @@ func NewTimeSlice(s, l int64) *TimeSlice {
 // startName and endName. time.Now() is used as reference if t == nil
 func filterForTimeSlice(t *TimeSlice, startName, endName string) *filters.Filter {
 	if t == nil {
-		u := common.UnixMillis(time.Now())
-		t = NewTimeSlice(u, u)
+		now := TimeNow().UnixMilli()
+		t = NewTimeSlice(now, now)
 	}
 
 	return filters.NewAndFilter(

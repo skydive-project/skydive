@@ -36,7 +36,6 @@ import (
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netlink/nl"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/service"
@@ -994,7 +993,7 @@ func (u *Probe) updateIntfMetric(now, last time.Time) {
 			if currMetric == nil || currMetric.IsZero() {
 				continue
 			}
-			currMetric.Last = int64(common.UnixMillis(now))
+			currMetric.Last = graph.Time(now).UnixMilli()
 
 			u.Ctx.Graph.Lock()
 			tr := u.Ctx.Graph.StartMetadataTransaction(node)
@@ -1014,8 +1013,8 @@ func (u *Probe) updateIntfMetric(now, last time.Time) {
 
 			tr.AddMetadata("Metric", currMetric)
 			if lastUpdateMetric != nil {
-				lastUpdateMetric.Start = int64(common.UnixMillis(last))
-				lastUpdateMetric.Last = int64(common.UnixMillis(now))
+				lastUpdateMetric.Start = graph.Time(last).UnixMilli()
+				lastUpdateMetric.Last = graph.Time(now).UnixMilli()
 				tr.AddMetadata("LastUpdateMetric", lastUpdateMetric)
 			}
 

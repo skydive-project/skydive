@@ -336,11 +336,11 @@ func (e *graphElement) GetFieldBool(field string) (_ bool, err error) {
 func (e *graphElement) GetFieldInt64(field string) (_ int64, err error) {
 	switch field {
 	case "CreatedAt":
-		return e.CreatedAt.Unix(), nil
+		return e.CreatedAt.UnixMilli(), nil
 	case "UpdatedAt":
-		return e.UpdatedAt.Unix(), nil
+		return e.UpdatedAt.UnixMilli(), nil
 	case "DeletedAt":
-		return e.DeletedAt.Unix(), nil
+		return e.DeletedAt.UnixMilli(), nil
 	case "Revision":
 		return e.Revision, nil
 	default:

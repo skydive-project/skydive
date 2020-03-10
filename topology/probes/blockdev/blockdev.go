@@ -29,7 +29,6 @@ import (
 	"github.com/safchain/insanelock"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
@@ -523,7 +522,7 @@ func (p *ProbeHandler) updateBlockDevMetric(now, last time.Time) {
 		if currMetric == nil {
 			continue
 		}
-		currMetric.Last = int64(common.UnixMillis(now))
+		currMetric.Last = graph.Time(now).UnixMilli()
 		p.Ctx.Graph.Lock()
 		tr := p.Ctx.Graph.StartMetadataTransaction(blockdev.Node)
 		tr.AddMetadata("BlockdevMetric", currMetric)

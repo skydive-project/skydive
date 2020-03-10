@@ -28,8 +28,6 @@ import (
 	"syscall"
 	"time"
 	"unsafe"
-
-	"github.com/skydive-project/skydive/common"
 )
 
 // #cgo CFLAGS: -I../ebpf
@@ -58,7 +56,7 @@ func tcpFlagTime(currFlagTime C.__u64, startKTimeNs int64, start time.Time) int6
 	if currFlagTime == 0 {
 		return 0
 	}
-	return common.UnixMillis(start.Add(time.Duration(int64(currFlagTime) - startKTimeNs)))
+	return UnixMilli(start.Add(time.Duration(int64(currFlagTime) - startKTimeNs)))
 }
 
 func kernLayersPath(kernFlow *C.struct_flow) (string, bool) {
@@ -114,8 +112,8 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 	var keys []uint64
 
 	f := NewFlow()
-	f.Init(common.UnixMillis(ebpfFlow.Start), "", &ft.uuids)
-	f.Last = common.UnixMillis(ebpfFlow.Last)
+	f.Init(UnixMilli(ebpfFlow.Start), "", &ft.uuids)
+	f.Last = UnixMilli(ebpfFlow.Last)
 
 	f.Metric = &FlowMetric{
 		ABBytes:   int64(ebpfFlow.KernFlow.metrics.ab_bytes),
@@ -194,8 +192,8 @@ func (ft *Table) newFlowFromEBPF(ebpfFlow *EBPFFlow, key uint64) ([]uint64, []*F
 
 		// inner layer
 		f = NewFlow()
-		f.Init(common.UnixMillis(ebpfFlow.Start), parent.UUID, &ft.uuids)
-		f.Last = common.UnixMillis(ebpfFlow.Last)
+		f.Init(UnixMilli(ebpfFlow.Start), parent.UUID, &ft.uuids)
+		f.Last = UnixMilli(ebpfFlow.Last)
 		f.LayersPath = innerLayerPath
 	}
 
@@ -319,7 +317,7 @@ func isABPacket(ebpfFlow *EBPFFlow, f *Flow) bool {
 }
 
 func (ft *Table) updateFlowFromEBPF(ebpfFlow *EBPFFlow, f *Flow) bool {
-	last := common.UnixMillis(ebpfFlow.Last)
+	last := UnixMilli(ebpfFlow.Last)
 	if last == f.Last {
 		return false
 	}

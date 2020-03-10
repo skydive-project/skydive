@@ -29,7 +29,6 @@ import (
 	"github.com/google/gopacket"
 
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -255,7 +254,7 @@ func NewNetFlowV5Target(g *graph.Graph, n *graph.Node, capture *types.Capture, u
 	nf := &NetFlowV5Target{
 		target:    capture.Target,
 		sysBoot:   now,
-		sysBootMs: common.UnixMillis(now),
+		sysBootMs: flow.UnixMilli(now),
 	}
 
 	nf.table = flow.NewTable(updateEvery, expireAfter, nf, uuids, tableOptsFromCapture(capture))

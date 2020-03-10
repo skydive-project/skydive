@@ -134,14 +134,14 @@ func graphElementToRaw(typ string, e *graphElement) (*rawData, error) {
 		ID:        string(e.ID),
 		Host:      e.Host,
 		Origin:    e.Origin,
-		CreatedAt: e.CreatedAt.Unix(),
-		UpdatedAt: e.UpdatedAt.Unix(),
+		CreatedAt: e.CreatedAt.UnixMilli(),
+		UpdatedAt: e.UpdatedAt.UnixMilli(),
 		Metadata:  json.RawMessage(data),
 		Revision:  e.Revision,
 	}
 
 	if !e.DeletedAt.IsZero() {
-		raw.DeletedAt = e.DeletedAt.Unix()
+		raw.DeletedAt = e.DeletedAt.UnixMilli()
 	}
 
 	return raw, nil
@@ -162,7 +162,7 @@ func edgeToRaw(e *Edge) (*rawData, error) {
 }
 
 func (b *ElasticSearchBackend) archive(raw *rawData, at Time) error {
-	raw.ArchivedAt = at.Unix()
+	raw.ArchivedAt = at.UnixMilli()
 
 	data, err := json.Marshal(raw)
 	if err != nil {
@@ -512,7 +512,7 @@ func (b *ElasticSearchBackend) flushGraph() error {
 	script := elastic.NewScript("ctx._source.DeletedAt = params.now; ctx._source.ArchivedAt = params.now;")
 	script.Lang("painless")
 	script.Params(map[string]interface{}{
-		"now": TimeUTC().Unix(),
+		"now": TimeUTC().UnixMilli(),
 	})
 
 	return b.client.UpdateByScript(query, script, b.liveIndex.Alias(), b.archiveIndex.IndexWildcard())

@@ -556,7 +556,7 @@ func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
 
 	g, err := t.Graph.CloneWithContext(graph.Context{
 		TimePoint: len(s) == 1,
-		TimeSlice: graph.NewTimeSlice(common.UnixMillis(at.Add(-duration)), common.UnixMillis(at)),
+		TimeSlice: graph.NewTimeSlice(graph.Time(at.Add(-duration)).UnixMilli(), graph.Time(at).UnixMilli()),
 	})
 	if err != nil {
 		return &GraphTraversal{error: err}

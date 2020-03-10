@@ -33,7 +33,6 @@ import (
 	"github.com/pierrec/xxHash/xxHash64"
 	"github.com/spf13/cast"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	fl "github.com/skydive-project/skydive/flow/layers"
 	"github.com/skydive-project/skydive/graffiti/getter"
@@ -67,6 +66,12 @@ type flowState struct {
 	updateVersion int64
 	ipv4          *layers.IPv4
 	ipv6          *layers.IPv6
+}
+
+// UnixMilli returns t as a Unix time, the number of milliseconds elapsed
+// since January 1, 1970 UTC.
+func UnixMilli(t time.Time) int64 {
+	return t.UTC().UnixNano() / 1000000
 }
 
 // Packet describes one packet
@@ -583,7 +588,7 @@ func (f *Flow) Init(now int64, parentUUID string, uuids *UUIDs) {
 
 // initFromPacket initializes the flow based on packet data, flow key and ids
 func (f *Flow) initFromPacket(key, l2Key, l3Key uint64, packet *Packet, parentUUID string, uuids *UUIDs, opts *Opts) {
-	now := common.UnixMillis(packet.GoPacket.Metadata().CaptureInfo.Timestamp)
+	now := UnixMilli(packet.GoPacket.Metadata().CaptureInfo.Timestamp)
 	f.Init(now, parentUUID, uuids)
 
 	f.newLinkLayer(packet)
@@ -607,7 +612,7 @@ func (f *Flow) initFromPacket(key, l2Key, l3Key uint64, packet *Packet, parentUU
 
 // Update a flow metrics and latency
 func (f *Flow) Update(packet *Packet, opts *Opts) {
-	now := common.UnixMillis(packet.GoPacket.Metadata().CaptureInfo.Timestamp)
+	now := UnixMilli(packet.GoPacket.Metadata().CaptureInfo.Timestamp)
 	f.Last = now
 	f.Metric.Last = now
 
@@ -956,7 +961,7 @@ func (f *Flow) updateTCPMetrics(packet *Packet) error {
 		return nil
 	}
 
-	captureTime := common.UnixMillis(metadata.CaptureInfo.Timestamp)
+	captureTime := UnixMilli(metadata.CaptureInfo.Timestamp)
 
 	switch {
 	case tcpPacket.SYN:

@@ -32,7 +32,6 @@ import (
 	"github.com/avast/retry-go"
 	"github.com/socketplane/libovsdb"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/getter"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -464,7 +463,7 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 	}
 
 	if field, ok := row.New.Fields["statistics"]; ok && o.enableStats {
-		now := int64(common.UnixMillis(time.Now()))
+		now := graph.TimeNow().UnixMilli()
 
 		statistics := field.(libovsdb.OvsMap)
 		currMetric := newInterfaceMetricsFromOVSDB(statistics)

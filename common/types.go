@@ -19,7 +19,6 @@ package common
 
 import (
 	"errors"
-	"time"
 )
 
 var (
@@ -44,11 +43,6 @@ const (
 	// SortDescending sorting order
 	SortDescending SortOrder = "DESC"
 )
-
-// UnixMillis returns the current time in miliseconds
-func UnixMillis(t time.Time) int64 {
-	return t.UTC().UnixNano() / 1000000
-}
 
 // Metric defines a common metric interface
 type Metric interface {
