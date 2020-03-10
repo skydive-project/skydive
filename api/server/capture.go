@@ -29,9 +29,9 @@ import (
 	"github.com/skydive-project/skydive/graffiti/api/rest"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // CaptureResourceHandler describes a capture ressouce handler

@@ -43,8 +43,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/service"
-	"github.com/skydive-project/skydive/logging"
 )
 
 const nsmResource = "networkservicemanagers"

@@ -19,9 +19,9 @@ package common
 
 import (
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/messages"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // Forwarder forwards the topology to only one master server.

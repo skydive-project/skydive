@@ -30,10 +30,10 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/storage"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/service"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 )
 

@@ -28,9 +28,10 @@ import (
 	"sync"
 
 	auth "github.com/abbot/go-http-auth"
+
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/rbac"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/statics"
 )
 

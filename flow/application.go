@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 // ApplicationPortMap maps UDP and TCP port numbers to service names

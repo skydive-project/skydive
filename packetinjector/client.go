@@ -30,10 +30,10 @@ import (
 	"github.com/skydive-project/skydive/graffiti/api/rest"
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/ondemand/client"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/validator"
 )

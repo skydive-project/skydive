@@ -24,7 +24,7 @@ import (
 	"os"
 
 	"github.com/skydive-project/skydive/api/client"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 
 	"github.com/spf13/cobra"
 )

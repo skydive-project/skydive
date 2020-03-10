@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/probe"
 
 	"k8s.io/apimachinery/pkg/util/runtime"

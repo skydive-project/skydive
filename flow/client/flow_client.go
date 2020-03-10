@@ -29,8 +29,8 @@ import (
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // FlowClientPool describes a flow client pool.

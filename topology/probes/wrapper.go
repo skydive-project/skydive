@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/service"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 )
 

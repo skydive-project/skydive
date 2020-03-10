@@ -23,7 +23,7 @@ import (
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/plugin"
 	"github.com/skydive-project/skydive/probe"
 	tp "github.com/skydive-project/skydive/topology/probes"

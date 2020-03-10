@@ -28,8 +28,8 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/statics"
 )
 

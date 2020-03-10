@@ -26,14 +26,12 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/client"
-
 	"github.com/coreos/etcd/embed"
+	"github.com/coreos/etcd/pkg/osutil"
 	"github.com/coreos/etcd/pkg/types"
 
-	"github.com/coreos/etcd/pkg/osutil"
-
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/service"
-	"github.com/skydive-project/skydive/logging"
 )
 
 const (

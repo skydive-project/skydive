@@ -24,8 +24,8 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/filters"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/storage/orientdb"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // OrientDBBackend describes an OrientDB backend

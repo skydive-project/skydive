@@ -18,10 +18,9 @@
 package topology
 
 import (
-	"github.com/nu7hatch/gouuid"
-
+	uuid "github.com/nu7hatch/gouuid"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 // TIDMapper describes the hostID nodes stored in a graph

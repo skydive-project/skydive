@@ -27,10 +27,10 @@ import (
 	auth "github.com/abbot/go-http-auth"
 	"github.com/gorilla/websocket"
 
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/rbac"
 	"github.com/skydive-project/skydive/graffiti/service"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
 )
 
 type clientPromoter func(c *wsIncomingClient) (Speaker, error)

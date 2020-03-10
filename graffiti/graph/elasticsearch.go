@@ -27,8 +27,8 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/filters"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	es "github.com/skydive-project/skydive/graffiti/storage/elasticsearch"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // graphElementMapping  elasticsearch db mapping scheme

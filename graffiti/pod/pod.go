@@ -24,12 +24,11 @@ import (
 	"github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/schema"
 	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/websocket"
-	"github.com/skydive-project/skydive/http"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // Opts defines pod server options
@@ -159,7 +158,7 @@ func NewPod(id string, serviceType service.Type, listen string, podEndpoint stri
 	clientOpts := opts.WebsocketClientOpts
 	clientOpts.Protocol = websocket.ProtobufProtocol
 	for _, sa := range opts.Hubs {
-		url := http.MakeURL("ws", sa.Addr, sa.Port, podEndpoint, clientOpts.TLSConfig != nil)
+		url := shttp.MakeURL("ws", sa.Addr, sa.Port, podEndpoint, clientOpts.TLSConfig != nil)
 		client := websocket.NewClient(id, serviceType, url, clientOpts)
 		clientPool.AddClient(client)
 	}

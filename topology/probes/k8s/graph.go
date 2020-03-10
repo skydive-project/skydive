@@ -20,7 +20,7 @@ package k8s
 import (
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/probe"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

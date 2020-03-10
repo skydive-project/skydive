@@ -26,8 +26,8 @@ import (
 	etcd "github.com/coreos/etcd/client"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/service"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // Client defaults

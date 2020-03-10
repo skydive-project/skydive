@@ -24,10 +24,10 @@ import (
 
 	fw "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/messages"
 	"github.com/skydive-project/skydive/graffiti/service"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // Service defines the seed service type

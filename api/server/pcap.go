@@ -22,12 +22,13 @@ import (
 	"time"
 
 	auth "github.com/abbot/go-http-auth"
+
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/storage"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/rbac"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // PcapAPI exposes the pcap injector API

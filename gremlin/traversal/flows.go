@@ -33,7 +33,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/getter"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
 )

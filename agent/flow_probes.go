@@ -32,7 +32,7 @@ import (
 	"github.com/skydive-project/skydive/flow/probes/pcapsocket"
 	"github.com/skydive-project/skydive/flow/probes/sflow"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/probe"
 )
 

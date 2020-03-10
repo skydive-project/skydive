@@ -24,16 +24,17 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/hub"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
-	"github.com/spf13/cobra"
 )
 
 const (
