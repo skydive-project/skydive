@@ -24,8 +24,8 @@ import (
 
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	g "github.com/skydive-project/skydive/gremlin"
-	shttp "github.com/skydive-project/skydive/http"
 )
 
 func getCrudClient() (c *shttp.CrudClient, err error) {

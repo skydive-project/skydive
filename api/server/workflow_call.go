@@ -29,8 +29,8 @@ import (
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/rbac"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/js"
 )
 

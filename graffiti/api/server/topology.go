@@ -30,9 +30,9 @@ import (
 
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/rbac"
-	shttp "github.com/skydive-project/skydive/http"
 )
 
 // TopologyMarshaller is used to output a gremlin step

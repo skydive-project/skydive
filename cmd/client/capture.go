@@ -23,14 +23,15 @@ import (
 	"os"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/skydive-project/skydive/api/client"
 	api "github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/probes"
+	"github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
-	"github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/validator"
-	"github.com/spf13/cobra"
 )
 
 var (

@@ -29,8 +29,9 @@ import (
 	"time"
 
 	"github.com/robertkrimen/otto"
+
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/statics"
 )
 

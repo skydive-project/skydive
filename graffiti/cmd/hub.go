@@ -30,11 +30,11 @@ import (
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/hub"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/websocket"
-	shttp "github.com/skydive-project/skydive/http"
 )
 
 const (

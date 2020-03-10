@@ -23,7 +23,7 @@ import (
 	"os"
 
 	auth "github.com/abbot/go-http-auth"
-	shttp "github.com/skydive-project/skydive/http"
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 )
 
 // NewAuthenticationBackendByName creates a new auth backend based on the name

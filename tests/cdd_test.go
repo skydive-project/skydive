@@ -27,10 +27,11 @@ import (
 	"time"
 
 	"github.com/avast/retry-go"
+	"github.com/tebeka/selenium"
+
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/service"
 	g "github.com/skydive-project/skydive/gremlin"
-	shttp "github.com/skydive-project/skydive/http"
-	"github.com/tebeka/selenium"
 )
 
 func TestOverview(t *testing.T) {

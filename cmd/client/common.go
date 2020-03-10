@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"os"
 
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
-	shttp "github.com/skydive-project/skydive/http"
 )
 
 // AuthenticationOpts Authentication options

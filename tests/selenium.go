@@ -29,8 +29,8 @@ import (
 
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/flow"
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	g "github.com/skydive-project/skydive/gremlin"
-	shttp "github.com/skydive-project/skydive/http"
 )
 
 type seleniumHelper struct {
