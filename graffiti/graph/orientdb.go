@@ -33,6 +33,7 @@ type OrientDBBackend struct {
 	PersistentBackend
 	client   orientdb.ClientInterface
 	election common.MasterElection
+	logger   logging.Logger
 }
 
 type eventTime struct {
@@ -150,7 +151,7 @@ func (o *OrientDBBackend) searchNodes(t Context, where string) []*Node {
 
 	result, err := o.client.SQL(query)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while retrieving nodes: %s", err)
+		o.logger.Errorf("Error while retrieving nodes: %s", err)
 		return nil
 	}
 
@@ -159,7 +160,7 @@ func (o *OrientDBBackend) searchNodes(t Context, where string) []*Node {
 	}{}
 
 	if err := json.Unmarshal(result.Body, &nodes); err != nil {
-		logging.GetLogger().Errorf("Error while parsing nodes: %s, %s", err, string(result.Body))
+		o.logger.Errorf("Error while parsing nodes: %s, %s", err, string(result.Body))
 	}
 
 	if len(nodes.Result) > 1 && t.TimePoint {
@@ -177,7 +178,7 @@ func (o *OrientDBBackend) searchEdges(t Context, where string) []*Edge {
 
 	result, err := o.client.SQL(query)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while retrieving edges: %s", err)
+		o.logger.Errorf("Error while retrieving edges: %s", err)
 		return nil
 	}
 
@@ -186,7 +187,7 @@ func (o *OrientDBBackend) searchEdges(t Context, where string) []*Edge {
 	}{}
 
 	if err := json.Unmarshal(result.Body, &edges); err != nil {
-		logging.GetLogger().Errorf("Error while parsing edges: %s, %s", err, string(result.Body))
+		o.logger.Errorf("Error while parsing edges: %s, %s", err, string(result.Body))
 	}
 
 	if len(edges.Result) > 1 && t.TimePoint {
@@ -304,7 +305,6 @@ func (o *OrientDBBackend) GetNodes(t Context, m ElementMatcher) (nodes []*Node) 
 		query += " AND " + metadataQuery
 	}
 
-	logging.GetLogger().Debugf("GetNodes %+v => %s (%+v)", t, query, getTimeFilter(t.TimeSlice))
 	return o.searchNodes(t, query)
 }
 
@@ -324,7 +324,7 @@ func (o *OrientDBBackend) IsHistorySupported() bool {
 }
 
 func (o *OrientDBBackend) flushGraph() error {
-	logging.GetLogger().Info("Flush graph elements")
+	o.logger.Info("Flush graph elements")
 
 	now := TimeUTC().Unix()
 
@@ -357,9 +357,14 @@ func (o *OrientDBBackend) OnStarted() {
 	}
 }
 
-func newOrientDBBackend(client orientdb.ClientInterface, electionService common.MasterElectionService) (*OrientDBBackend, error) {
+func newOrientDBBackend(client orientdb.ClientInterface, electionService common.MasterElectionService, logger logging.Logger) (*OrientDBBackend, error) {
+	if logger == nil {
+		logger = logging.GetLogger()
+	}
+
 	o := &OrientDBBackend{
 		client: client,
+		logger: logger,
 	}
 
 	if electionService != nil {
@@ -429,11 +434,11 @@ func newOrientDBBackend(client orientdb.ClientInterface, electionService common.
 
 // NewOrientDBBackend creates a new graph backend and
 // connect to an OrientDB instance
-func NewOrientDBBackend(addr string, database string, username string, password string, electionService common.MasterElectionService) (*OrientDBBackend, error) {
+func NewOrientDBBackend(addr string, database string, username string, password string, electionService common.MasterElectionService, logger logging.Logger) (*OrientDBBackend, error) {
 	client, err := orientdb.NewClient(addr, database, username, password)
 	if err != nil {
 		return nil, err
 	}
 
-	return newOrientDBBackend(client, electionService)
+	return newOrientDBBackend(client, electionService, logger)
 }

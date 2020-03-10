@@ -91,7 +91,7 @@ func newGraphBackendFromConfig(etcdClient *etcd.Client) (graph.PersistentBackend
 				},
 			},
 		}
-		return graph.NewElasticSearchBackendFromConfig(cfg, dynamicTemplates, etcdClient)
+		return graph.NewElasticSearchBackendFromConfig(cfg, dynamicTemplates, etcdClient, logging.GetLogger())
 	case "memory":
 		// cached memory will be used
 		return nil, nil
@@ -100,7 +100,7 @@ func newGraphBackendFromConfig(etcdClient *etcd.Client) (graph.PersistentBackend
 		database := config.GetString(configPath + ".database")
 		username := config.GetString(configPath + ".username")
 		password := config.GetString(configPath + ".password")
-		return graph.NewOrientDBBackend(addr, database, username, password, etcdClient)
+		return graph.NewOrientDBBackend(addr, database, username, password, etcdClient, logging.GetLogger())
 	default:
 		return nil, fmt.Errorf("Topology backend driver '%s' not supported", driver)
 	}

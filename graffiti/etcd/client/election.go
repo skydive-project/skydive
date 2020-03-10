@@ -45,6 +45,7 @@ type MasterElector struct {
 	master     bool
 	state      service.State
 	wg         sync.WaitGroup
+	logger     logging.Logger
 }
 
 // TTL time to live
@@ -101,7 +102,7 @@ func (le *MasterElector) start(first chan struct{}) {
 	}
 
 	if _, err := le.EtcdKeyAPI.Set(context.Background(), le.path, le.Host, setOptions); err == nil {
-		logging.GetLogger().Infof("starting as the master for %s: %s", le.path, le.Host)
+		le.logger.Infof("starting as the master for %s: %s", le.path, le.Host)
 
 		le.Lock()
 		le.master = true
@@ -113,7 +114,7 @@ func (le *MasterElector) start(first chan struct{}) {
 			listener.OnStartAsMaster()
 		}
 	} else {
-		logging.GetLogger().Infof("starting as a follower for %s: %s", le.path, le.Host)
+		le.logger.Infof("starting as a follower for %s: %s", le.path, le.Host)
 		for _, listener := range le.listeners {
 			listener.OnStartAsSlave()
 		}
@@ -140,7 +141,7 @@ func (le *MasterElector) start(first chan struct{}) {
 				break
 			}
 
-			logging.GetLogger().Errorf("Error while watching etcd: %s", err.Error())
+			le.logger.Errorf("Error while watching etcd: %s", err.Error())
 
 			time.Sleep(1 * time.Second)
 			continue
@@ -156,7 +157,7 @@ func (le *MasterElector) start(first chan struct{}) {
 
 				go le.holdLock(quit)
 
-				logging.GetLogger().Infof("I'm now the master: %s", le.Host)
+				le.logger.Infof("I'm now the master: %s", le.Host)
 				for _, listener := range le.listeners {
 					listener.OnSwitchToMaster()
 				}
@@ -167,7 +168,7 @@ func (le *MasterElector) start(first chan struct{}) {
 			le.RUnlock()
 
 			if !master {
-				logging.GetLogger().Infof("The master is now: %s", resp.Node.Value)
+				le.logger.Infof("The master is now: %s", resp.Node.Value)
 				for _, listener := range le.listeners {
 					listener.OnSwitchToSlave()
 				}
@@ -214,5 +215,6 @@ func NewMasterElector(etcdClient *Client, key string) *MasterElector {
 		Host:       etcdClient.service.ID,
 		path:       "/master-" + etcdClient.service.Type.String() + "-" + key,
 		master:     false,
+		logger:     etcdClient.logger,
 	}
 }

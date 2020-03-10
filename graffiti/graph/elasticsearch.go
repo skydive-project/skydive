@@ -97,6 +97,7 @@ type ElasticSearchBackend struct {
 	election     common.MasterElection
 	liveIndex    es.Index
 	archiveIndex es.Index
+	logger       logging.Logger
 }
 
 // TimedSearchQuery describes a search query within a time slice and metadata filters
@@ -353,7 +354,7 @@ func (b *ElasticSearchBackend) Query(typ string, tsq *TimedSearchQuery) (sr *ela
 func (b *ElasticSearchBackend) searchNodes(tsq *TimedSearchQuery) (nodes []*Node) {
 	out, err := b.Query(nodeType, tsq)
 	if err != nil {
-		logging.GetLogger().Errorf("Failed to query nodes: %s", err)
+		b.logger.Errorf("Failed to query nodes: %s", err)
 		return
 	}
 
@@ -361,7 +362,7 @@ func (b *ElasticSearchBackend) searchNodes(tsq *TimedSearchQuery) (nodes []*Node
 		for _, d := range out.Hits.Hits {
 			var node Node
 			if err := json.Unmarshal(*d.Source, &node); err != nil {
-				logging.GetLogger().Errorf("Failed to unmarshal node %s: %s", err, string(*d.Source))
+				b.logger.Errorf("Failed to unmarshal node %s: %s", err, string(*d.Source))
 				continue
 			}
 			nodes = append(nodes, &node)
@@ -375,7 +376,7 @@ func (b *ElasticSearchBackend) searchNodes(tsq *TimedSearchQuery) (nodes []*Node
 func (b *ElasticSearchBackend) searchEdges(tsq *TimedSearchQuery) (edges []*Edge) {
 	out, err := b.Query(edgeType, tsq)
 	if err != nil {
-		logging.GetLogger().Errorf("Failed to query edges: %s", err)
+		b.logger.Errorf("Failed to query edges: %s", err)
 		return
 	}
 
@@ -383,7 +384,7 @@ func (b *ElasticSearchBackend) searchEdges(tsq *TimedSearchQuery) (edges []*Edge
 		for _, d := range out.Hits.Hits {
 			var edge Edge
 			if err := json.Unmarshal(*d.Source, &edge); err != nil {
-				logging.GetLogger().Errorf("Failed to unmarshal edge %s: %s", err, string(*d.Source))
+				b.logger.Errorf("Failed to unmarshal edge %s: %s", err, string(*d.Source))
 				continue
 			}
 			edges = append(edges, &edge)
@@ -504,7 +505,7 @@ func (b *ElasticSearchBackend) IsHistorySupported() bool {
 }
 
 func (b *ElasticSearchBackend) flushGraph() error {
-	logging.GetLogger().Info("Flush graph elements")
+	b.logger.Info("Flush graph elements")
 
 	query := es.FormatFilter(filters.NewNullFilter("DeletedAt"), "")
 
@@ -533,19 +534,24 @@ func (b *ElasticSearchBackend) Stop() {
 func (b *ElasticSearchBackend) OnStarted() {
 	if b.election != nil && b.election.IsMaster() {
 		if err := b.flushGraph(); err != nil {
-			logging.GetLogger().Errorf("Unable to flush graph element: %s", err)
+			b.logger.Errorf("Unable to flush graph element: %s", err)
 		}
 	}
 }
 
 // newElasticSearchBackendFromClient creates a new graph backend using the given elasticsearch
 // client connection
-func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, archiveIndex es.Index, electionService common.MasterElectionService) *ElasticSearchBackend {
+func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, archiveIndex es.Index, electionService common.MasterElectionService, logger logging.Logger) *ElasticSearchBackend {
+	if logger == nil {
+		logger = logging.GetLogger()
+	}
+
 	backend := &ElasticSearchBackend{
 		client:       client,
 		prevRevision: make(map[Identifier]*rawData),
 		liveIndex:    liveIndex,
 		archiveIndex: archiveIndex,
+		logger:       logger,
 	}
 
 	if electionService != nil {
@@ -556,7 +562,7 @@ func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, arc
 }
 
 // NewElasticSearchBackendFromConfig creates a new graph backend from an ES configuration structure
-func NewElasticSearchBackendFromConfig(cfg es.Config, extraDynamicTemplates map[string]interface{}, electionService common.MasterElectionService) (*ElasticSearchBackend, error) {
+func NewElasticSearchBackendFromConfig(cfg es.Config, extraDynamicTemplates map[string]interface{}, electionService common.MasterElectionService, logger logging.Logger) (*ElasticSearchBackend, error) {
 	mapping := make(map[string]interface{})
 	if err := json.Unmarshal([]byte(graphElementMapping), &mapping); err != nil {
 		return nil, err
@@ -598,5 +604,5 @@ func NewElasticSearchBackendFromConfig(cfg es.Config, extraDynamicTemplates map[
 		return nil, err
 	}
 
-	return newElasticSearchBackendFromClient(client, liveIndex, archiveIndex, electionService), nil
+	return newElasticSearchBackendFromClient(client, liveIndex, archiveIndex, electionService, logger), nil
 }

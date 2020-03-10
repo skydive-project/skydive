@@ -120,7 +120,7 @@ var SeedCmd = &cobra.Command{
 			TLSConfig:        tlsConfig,
 		}
 
-		seed, err := seed.NewSeed(g, seed.Service, agentAddr, subscriberFilter, *wsOpts)
+		seed, err := seed.NewSeed(g, seed.Service, agentAddr, subscriberFilter, *wsOpts, logging.GetLogger())
 		if err != nil {
 			logging.GetLogger().Errorf("Failed to start seed: %s", err)
 			os.Exit(1)

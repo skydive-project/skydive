@@ -62,6 +62,7 @@ type ReplicationEndpoint struct {
 	cached       *graph.CachedBackend
 	replicateMsg atomic.Value
 	wg           sync.WaitGroup
+	logger       logging.Logger
 }
 
 // OnConnected is called when the peer gets connected then the whole graph
@@ -72,7 +73,7 @@ func (p *ReplicatorPeer) OnConnected(c ws.Speaker) {
 
 	host := c.GetRemoteHost()
 	if c.GetHost() == host {
-		logging.GetLogger().Debugf("Disconnecting from %s since it's me", p.URL.String())
+		p.endpoint.logger.Debugf("Disconnecting from %s since it's me", p.URL.String())
 		c.Stop()
 		return
 	}
@@ -89,7 +90,7 @@ func (p *ReplicatorPeer) OnConnected(c ws.Speaker) {
 
 	// disconnect as can be connected to the same host from different addresses.
 	if state.cnt > 1 {
-		logging.GetLogger().Debugf("Disconnecting from %s as already connected through %s", p.URL.String(), c.GetURL().String())
+		p.endpoint.logger.Debugf("Disconnecting from %s as already connected through %s", p.URL.String(), c.GetURL().String())
 		c.Stop()
 		return
 	}
@@ -124,7 +125,7 @@ func (p *ReplicatorPeer) OnDisconnected(c ws.Speaker) {
 		return
 	}
 
-	logging.GetLogger().Debugf("Peer unregistered, delete resources of %s", origin)
+	p.endpoint.logger.Debugf("Peer unregistered, delete resources of %s", origin)
 
 	p.Graph.Lock()
 	gcommon.DelSubGraphOfOrigin(p.Graph, origin)
@@ -137,7 +138,7 @@ func (p *ReplicatorPeer) OnDisconnected(c ws.Speaker) {
 func (p *ReplicatorPeer) connect(wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	logging.GetLogger().Infof("Connecting to peer: %s", p.URL.String())
+	p.endpoint.logger.Infof("Connecting to peer: %s", p.URL.String())
 	serviceType := service.Type(strings.SplitN(p.Graph.Origin(), ".", 2)[0])
 	wsClient := ws.NewClient(p.Graph.GetHost(), serviceType, p.URL, *p.opts)
 
@@ -196,13 +197,13 @@ func (t *ReplicationEndpoint) DisconnectPeers() {
 // OnStructMessage is triggered by message coming from an other peer.
 func (t *ReplicationEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	if c.GetRemoteHost() == t.Graph.GetHost() {
-		logging.GetLogger().Debugf("Ignore message from myself(%s), %s", c.GetURL().String())
+		t.logger.Debugf("Ignore message from myself(%s), %s", c.GetURL().String())
 		return
 	}
 
 	msgType, obj, err := messages.UnmarshalMessage(msg)
 	if err != nil {
-		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
+		t.logger.Errorf("Graph: Unable to parse the event %v: %s", msg, err)
 		return
 	}
 
@@ -223,14 +224,14 @@ func (t *ReplicationEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessag
 		for _, n := range r.Nodes {
 			if t.Graph.GetNode(n.ID) == nil {
 				if err := t.Graph.NodeAdded(n); err != nil {
-					logging.GetLogger().Errorf("%s, %+v", err, n)
+					t.logger.Errorf("%s, %+v", err, n)
 				}
 			}
 		}
 		for _, e := range r.Edges {
 			if t.Graph.GetEdge(e.ID) == nil {
 				if err := t.Graph.EdgeAdded(e); err != nil {
-					logging.GetLogger().Errorf("%s, %+v", err, e)
+					t.logger.Errorf("%s, %+v", err, e)
 				}
 			}
 		}
@@ -251,7 +252,7 @@ func (t *ReplicationEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessag
 	}
 
 	if err != nil {
-		logging.GetLogger().Errorf("Error while processing message type %s from %s: %s", msgType, c.GetRemoteHost(), err)
+		t.logger.Errorf("Error while processing message type %s from %s: %s", msgType, c.GetRemoteHost(), err)
 	}
 }
 
@@ -321,7 +322,7 @@ func (t *ReplicationEndpoint) OnConnected(c ws.Speaker) {
 
 	host := c.GetRemoteHost()
 	if host == c.GetHost() {
-		logging.GetLogger().Debugf("Disconnect %s since it's me", host)
+		t.logger.Debugf("Disconnect %s since it's me", host)
 		c.Stop()
 		return
 	}
@@ -334,7 +335,7 @@ func (t *ReplicationEndpoint) OnConnected(c ws.Speaker) {
 	state.cnt++
 
 	if state.cnt > 1 {
-		logging.GetLogger().Debugf("Disconnecting %s from %s as already connected", host, c.GetURL())
+		t.logger.Debugf("Disconnecting %s from %s as already connected", host, c.GetURL())
 		c.Stop()
 		return
 	}
@@ -373,7 +374,7 @@ func (t *ReplicationEndpoint) OnDisconnected(c ws.Speaker) {
 		return
 	}
 
-	logging.GetLogger().Debugf("Peer unregistered, delete resources of %s", origin)
+	t.logger.Debugf("Peer unregistered, delete resources of %s", origin)
 
 	t.Graph.Lock()
 	gcommon.DelSubGraphOfOrigin(t.Graph, origin)
@@ -383,13 +384,18 @@ func (t *ReplicationEndpoint) OnDisconnected(c ws.Speaker) {
 }
 
 // NewReplicationEndpoint returns a new server to be used by other analyzers for replication.
-func NewReplicationEndpoint(pool ws.StructSpeakerPool, opts *ws.ClientOpts, cached *graph.CachedBackend, g *graph.Graph, peers []service.Address) (*ReplicationEndpoint, error) {
+func NewReplicationEndpoint(pool ws.StructSpeakerPool, opts *ws.ClientOpts, cached *graph.CachedBackend, g *graph.Graph, peers []service.Address, logger logging.Logger) (*ReplicationEndpoint, error) {
+	if logger == nil {
+		logger = logging.GetLogger()
+	}
+
 	t := &ReplicationEndpoint{
 		Graph:      g,
 		cached:     cached,
 		in:         pool,
 		out:        ws.NewStructClientPool("ReplicationEndpoint", ws.PoolOpts{}),
 		peerStates: make(map[string]*peerState),
+		logger:     logger,
 	}
 	t.replicateMsg.Store(true)
 

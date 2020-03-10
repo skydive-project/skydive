@@ -152,7 +152,7 @@ func (s *Seed) Stop() {
 }
 
 // NewSeed returns a new seed
-func NewSeed(g *graph.Graph, clientType service.Type, address, filter string, wsOpts ws.ClientOpts) (*Seed, error) {
+func NewSeed(g *graph.Graph, clientType service.Type, address, filter string, wsOpts ws.ClientOpts, logger logging.Logger) (*Seed, error) {
 	wsOpts.Headers.Add("X-Websocket-Namespace", messages.Namespace)
 
 	if len(address) == 0 {
@@ -171,7 +171,7 @@ func NewSeed(g *graph.Graph, clientType service.Type, address, filter string, ws
 		return nil, fmt.Errorf("failed to add client: %s", err)
 	}
 
-	fw.NewForwarder(g, pool)
+	fw.NewForwarder(g, pool, logger)
 
 	if url, err = url.Parse("ws://" + address + "/ws/subscriber"); err != nil {
 		return nil, fmt.Errorf("unable to parse the Address: %s, please check the configuration file", address)

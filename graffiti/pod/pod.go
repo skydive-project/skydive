@@ -177,12 +177,12 @@ func NewPod(id string, serviceType service.Type, listen string, podEndpoint stri
 
 	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", opts.APIAuthBackend))
 	tr := traversal.NewGremlinTraversalParser()
-	common.NewSubscriberEndpoint(subscriberWSServer, g, tr)
+	common.NewSubscriberEndpoint(subscriberWSServer, g, tr, opts.Logger)
 
-	forwarder := common.NewForwarder(g, clientPool)
+	forwarder := common.NewForwarder(g, clientPool, logging.GetLogger())
 
 	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", opts.APIAuthBackend))
-	if _, err := common.NewPublisherEndpoint(publisherWSServer, g, opts.GraphValidator); err != nil {
+	if _, err := common.NewPublisherEndpoint(publisherWSServer, g, opts.GraphValidator, opts.Logger); err != nil {
 		return nil, err
 	}
 
