@@ -30,12 +30,12 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/ondemand"
 	"github.com/skydive-project/skydive/ondemand/server"
 	"github.com/skydive-project/skydive/rawsocket"
 	"github.com/skydive-project/skydive/topology"
-	ws "github.com/skydive-project/skydive/websocket"
 )
 
 const (
@@ -92,8 +92,8 @@ func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource ty
 
 	metadata := &InjectionMetadata{
 		PacketInjectionRequest: *pp,
-		ID:    pp.UUID,
-		State: "active",
+		ID:                     pp.UUID,
+		State:                  "active",
 	}
 
 	if o.graph.UpdateMetadata(srcNode, "PacketInjections", func(obj interface{}) bool {

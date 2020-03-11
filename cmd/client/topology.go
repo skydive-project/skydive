@@ -29,8 +29,8 @@ import (
 	"github.com/skydive-project/skydive/config"
 	gcommon "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	gws "github.com/skydive-project/skydive/graffiti/websocket"
-	"github.com/skydive-project/skydive/websocket"
+	"github.com/skydive-project/skydive/graffiti/messages"
+	"github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/spf13/cobra"
 )
 
@@ -103,14 +103,14 @@ var TopologyImport = &cobra.Command{
 		}
 
 		for _, node := range els[0].Nodes {
-			msg := gws.NewStructMessage(gws.NodeAddedMsgType, node)
+			msg := messages.NewStructMessage(messages.NodeAddedMsgType, node)
 			if err := client.SendMessage(msg); err != nil {
 				exitOnError(fmt.Errorf("Failed to send message: %s", err))
 			}
 		}
 
 		for _, edge := range els[0].Edges {
-			msg := gws.NewStructMessage(gws.EdgeAddedMsgType, edge)
+			msg := messages.NewStructMessage(messages.EdgeAddedMsgType, edge)
 			if err := client.SendMessage(msg); err != nil {
 				exitOnError(fmt.Errorf("Failed to send message: %s", err))
 			}

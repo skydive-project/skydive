@@ -33,9 +33,9 @@ import (
 	"github.com/skydive-project/skydive/filters"
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/ondemand"
-	ws "github.com/skydive-project/skydive/websocket"
 )
 
 type OnDemandNodeResource struct {

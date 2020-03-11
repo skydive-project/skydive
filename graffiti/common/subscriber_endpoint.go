@@ -27,10 +27,9 @@ import (
 
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
-	gws "github.com/skydive-project/skydive/graffiti/websocket"
+	"github.com/skydive-project/skydive/graffiti/messages"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/websocket"
-	ws "github.com/skydive-project/skydive/websocket"
 )
 
 type subscriber struct {
@@ -109,22 +108,22 @@ func (t *SubscriberEndpoint) OnDisconnected(c ws.Speaker) {
 // OnStructMessage is triggered when receiving a message from a subscriber.
 // It only responds to SyncRequestMsgType messages
 func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
-	msgType, obj, err := gws.UnmarshalMessage(msg)
+	msgType, obj, err := messages.UnmarshalMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
 		return
 	}
 
 	// this kind of message usually comes from external clients like the WebUI
-	if msgType == gws.SyncRequestMsgType {
+	if msgType == messages.SyncRequestMsgType {
 		t.Graph.RLock()
 		defer t.Graph.RUnlock()
 
-		syncMsg, status := obj.(*gws.SyncRequestMsg), http.StatusOK
+		syncMsg, status := obj.(*messages.SyncRequestMsg), http.StatusOK
 		result, err := t.Graph.CloneWithContext(syncMsg.Context)
 		if err != nil {
 			logging.GetLogger().Errorf("unable to get a graph with context %+v: %s", syncMsg, err)
-			reply := msg.Reply(nil, gws.SyncReplyMsgType, http.StatusBadRequest)
+			reply := msg.Reply(nil, messages.SyncReplyMsgType, http.StatusBadRequest)
 			c.SendMessage(reply)
 			return
 		}
@@ -142,7 +141,7 @@ func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage
 				if err != nil {
 					logging.GetLogger().Error(err)
 
-					reply := msg.Reply(err.Error(), gws.SyncReplyMsgType, http.StatusBadRequest)
+					reply := msg.Reply(err.Error(), messages.SyncReplyMsgType, http.StatusBadRequest)
 					c.SendMessage(reply)
 
 					t.Lock()
@@ -169,7 +168,7 @@ func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage
 			}
 		}
 
-		reply := msg.Reply(result, gws.SyncReplyMsgType, status)
+		reply := msg.Reply(result, messages.SyncReplyMsgType, status)
 		c.SendMessage(reply)
 
 		return
@@ -200,68 +199,68 @@ func (t *SubscriberEndpoint) notifyClients(typ string, i interface{}) {
 			addedNodes, removedNodes, addedEdges, removedEdges := subscriber.graph.Diff(g)
 
 			for _, n := range addedNodes {
-				c.SendMessage(gws.NewStructMessage(gws.NodeAddedMsgType, n))
+				c.SendMessage(messages.NewStructMessage(messages.NodeAddedMsgType, n))
 			}
 
 			for _, n := range removedNodes {
-				c.SendMessage(gws.NewStructMessage(gws.NodeDeletedMsgType, n))
+				c.SendMessage(messages.NewStructMessage(messages.NodeDeletedMsgType, n))
 			}
 
 			for _, e := range addedEdges {
-				c.SendMessage(gws.NewStructMessage(gws.EdgeAddedMsgType, e))
+				c.SendMessage(messages.NewStructMessage(messages.EdgeAddedMsgType, e))
 			}
 
 			for _, e := range removedEdges {
-				c.SendMessage(gws.NewStructMessage(gws.EdgeDeletedMsgType, e))
+				c.SendMessage(messages.NewStructMessage(messages.EdgeDeletedMsgType, e))
 			}
 
 			// handle updates
 			switch typ {
-			case gws.NodeUpdatedMsgType:
+			case messages.NodeUpdatedMsgType:
 				if g.GetNode(i.(*graph.Node).ID) != nil {
-					c.SendMessage(gws.NewStructMessage(gws.NodeUpdatedMsgType, i))
+					c.SendMessage(messages.NewStructMessage(messages.NodeUpdatedMsgType, i))
 				}
-			case gws.EdgeUpdatedMsgType:
+			case messages.EdgeUpdatedMsgType:
 				if g.GetEdge(i.(*graph.Edge).ID) != nil {
-					c.SendMessage(gws.NewStructMessage(gws.EdgeUpdatedMsgType, i))
+					c.SendMessage(messages.NewStructMessage(messages.EdgeUpdatedMsgType, i))
 				}
 			}
 
 			subscriber.graph = g
 		} else {
-			c.SendMessage(gws.NewStructMessage(typ, i))
+			c.SendMessage(messages.NewStructMessage(typ, i))
 		}
 	}
 }
 
 // OnNodeUpdated graph node updated event. Implements the GraphEventListener interface.
 func (t *SubscriberEndpoint) OnNodeUpdated(n *graph.Node) {
-	t.notifyClients(gws.NodeUpdatedMsgType, n)
+	t.notifyClients(messages.NodeUpdatedMsgType, n)
 }
 
 // OnNodeAdded graph node added event. Implements the GraphEventListener interface.
 func (t *SubscriberEndpoint) OnNodeAdded(n *graph.Node) {
-	t.notifyClients(gws.NodeAddedMsgType, n)
+	t.notifyClients(messages.NodeAddedMsgType, n)
 }
 
 // OnNodeDeleted graph node deleted event. Implements the GraphEventListener interface.
 func (t *SubscriberEndpoint) OnNodeDeleted(n *graph.Node) {
-	t.notifyClients(gws.NodeDeletedMsgType, n)
+	t.notifyClients(messages.NodeDeletedMsgType, n)
 }
 
 // OnEdgeUpdated graph edge updated event. Implements the GraphEventListener interface.
 func (t *SubscriberEndpoint) OnEdgeUpdated(e *graph.Edge) {
-	t.notifyClients(gws.EdgeUpdatedMsgType, e)
+	t.notifyClients(messages.EdgeUpdatedMsgType, e)
 }
 
 // OnEdgeAdded graph edge added event. Implements the GraphEventListener interface.
 func (t *SubscriberEndpoint) OnEdgeAdded(e *graph.Edge) {
-	t.notifyClients(gws.EdgeAddedMsgType, e)
+	t.notifyClients(messages.EdgeAddedMsgType, e)
 }
 
 // OnEdgeDeleted graph edge deleted event. Implements the GraphEventListener interface.
 func (t *SubscriberEndpoint) OnEdgeDeleted(e *graph.Edge) {
-	t.notifyClients(gws.EdgeDeletedMsgType, e)
+	t.notifyClients(messages.EdgeDeletedMsgType, e)
 }
 
 // NewSubscriberEndpoint returns a new server to be used by external subscribers,
@@ -277,7 +276,7 @@ func NewSubscriberEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, tr *traver
 	pool.AddEventHandler(t)
 
 	// subscribe to the graph messages
-	pool.AddStructMessageHandler(t, []string{gws.Namespace})
+	pool.AddStructMessageHandler(t, []string{messages.Namespace})
 
 	// subscribe to the local graph event
 	g.AddEventListener(t)
@@ -285,7 +284,7 @@ func NewSubscriberEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, tr *traver
 }
 
 // ClientOrigin return a string identifying a client using its service type and host id
-func ClientOrigin(c websocket.Speaker) string {
+func ClientOrigin(c ws.Speaker) string {
 	origin := string(c.GetServiceType())
 	if len(c.GetRemoteHost()) > 0 {
 		origin += "." + c.GetRemoteHost()

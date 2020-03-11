@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/websocket"
 )
 
 // NewWSClient creates a Client based on the configuration

@@ -9,7 +9,7 @@ import (
 	jwriter "github.com/mailru/easyjson/jwriter"
 	common "github.com/skydive-project/skydive/common"
 	hub "github.com/skydive-project/skydive/graffiti/hub"
-	websocket "github.com/skydive-project/skydive/websocket"
+	websocket "github.com/skydive-project/skydive/graffiti/websocket"
 )
 
 // suppress unused package warning
@@ -53,7 +53,7 @@ func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveAnalyzer(in *jlexer.Lex
 					key := string(in.String())
 					in.WantColon()
 					var v1 websocket.ConnStatus
-					easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveWebsocket(in, &v1)
+					easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(in, &v1)
 					(out.Agents)[key] = v1
 					in.WantComma()
 				}
@@ -75,7 +75,7 @@ func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveAnalyzer(in *jlexer.Lex
 					key := string(in.String())
 					in.WantColon()
 					var v2 websocket.ConnStatus
-					easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveWebsocket(in, &v2)
+					easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(in, &v2)
 					(out.Publishers)[key] = v2
 					in.WantComma()
 				}
@@ -95,7 +95,7 @@ func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveAnalyzer(in *jlexer.Lex
 					key := string(in.String())
 					in.WantColon()
 					var v3 websocket.ConnStatus
-					easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveWebsocket(in, &v3)
+					easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(in, &v3)
 					(out.Subscribers)[key] = v3
 					in.WantComma()
 				}
@@ -161,7 +161,7 @@ func easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveAnalyzer(out *jwriter.W
 				}
 				out.String(string(v5Name))
 				out.RawByte(':')
-				easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveWebsocket(out, v5Value)
+				easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(out, v5Value)
 			}
 			out.RawByte('}')
 		}
@@ -187,7 +187,7 @@ func easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveAnalyzer(out *jwriter.W
 				}
 				out.String(string(v6Name))
 				out.RawByte(':')
-				easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveWebsocket(out, v6Value)
+				easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(out, v6Value)
 			}
 			out.RawByte('}')
 		}
@@ -208,7 +208,7 @@ func easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveAnalyzer(out *jwriter.W
 				}
 				out.String(string(v7Name))
 				out.RawByte(':')
-				easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveWebsocket(out, v7Value)
+				easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(out, v7Value)
 			}
 			out.RawByte('}')
 		}
@@ -309,7 +309,7 @@ func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveGraffitiHub(in *jlexer.
 					key := string(in.String())
 					in.WantColon()
 					var v9 websocket.ConnStatus
-					easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveWebsocket(in, &v9)
+					easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(in, &v9)
 					(out.Incomers)[key] = v9
 					in.WantComma()
 				}
@@ -329,7 +329,7 @@ func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveGraffitiHub(in *jlexer.
 					key := string(in.String())
 					in.WantColon()
 					var v10 websocket.ConnStatus
-					easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveWebsocket(in, &v10)
+					easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(in, &v10)
 					(out.Outgoers)[key] = v10
 					in.WantComma()
 				}
@@ -365,7 +365,7 @@ func easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveGraffitiHub(out *jwrite
 				}
 				out.String(string(v11Name))
 				out.RawByte(':')
-				easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveWebsocket(out, v11Value)
+				easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(out, v11Value)
 			}
 			out.RawByte('}')
 		}
@@ -386,14 +386,14 @@ func easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveGraffitiHub(out *jwrite
 				}
 				out.String(string(v12Name))
 				out.RawByte(':')
-				easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveWebsocket(out, v12Value)
+				easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(out, v12Value)
 			}
 			out.RawByte('}')
 		}
 	}
 	out.RawByte('}')
 }
-func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveWebsocket(in *jlexer.Lexer, out *websocket.ConnStatus) {
+func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(in *jlexer.Lexer, out *websocket.ConnStatus) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -450,7 +450,7 @@ func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveWebsocket(in *jlexer.Le
 		in.Consumed()
 	}
 }
-func easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveWebsocket(out *jwriter.Writer, in websocket.ConnStatus) {
+func easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(out *jwriter.Writer, in websocket.ConnStatus) {
 	out.RawByte('{')
 	first := true
 	_ = first

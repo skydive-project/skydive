@@ -25,9 +25,9 @@ import (
 	"github.com/skydive-project/skydive/common"
 	fw "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	gws "github.com/skydive-project/skydive/graffiti/websocket"
+	"github.com/skydive-project/skydive/graffiti/messages"
+	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/logging"
-	ws "github.com/skydive-project/skydive/websocket"
 )
 
 // EventHandler is the interface to be implemented by event handler
@@ -53,7 +53,7 @@ type Seed struct {
 // OnConnected websocket listener
 func (s *Seed) OnConnected(c ws.Speaker) {
 	s.logger.Infof("connected to %s", c.GetHost())
-	s.subscriber.SendMessage(gws.NewStructMessage(gws.SyncRequestMsgType, gws.SyncRequestMsg{}))
+	s.subscriber.SendMessage(messages.NewStructMessage(messages.SyncRequestMsgType, messages.SyncRequestMsg{}))
 }
 
 // OnStructMessage callback
@@ -68,7 +68,7 @@ func (s *Seed) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 		origin += "." + c.GetRemoteHost()
 	}
 
-	msgType, obj, err := gws.UnmarshalMessage(msg)
+	msgType, obj, err := messages.UnmarshalMessage(msg)
 	if err != nil {
 		s.logger.Error("unable to parse websocket message: %s", err)
 		return
@@ -78,8 +78,8 @@ func (s *Seed) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	defer s.g.Unlock()
 
 	switch msgType {
-	case gws.SyncMsgType, gws.SyncReplyMsgType:
-		r := obj.(*gws.SyncMsg)
+	case messages.SyncMsgType, messages.SyncReplyMsgType:
+		r := obj.(*messages.SyncMsg)
 
 		s.g.DelNodes(graph.Metadata{"Origin": origin})
 
@@ -100,19 +100,19 @@ func (s *Seed) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 		for _, listener := range s.listeners {
 			listener.OnSynchronized()
 		}
-	case gws.NodeUpdatedMsgType:
+	case messages.NodeUpdatedMsgType:
 		err = s.g.NodeUpdated(obj.(*graph.Node))
-	case gws.NodeDeletedMsgType:
+	case messages.NodeDeletedMsgType:
 		err = s.g.NodeDeleted(obj.(*graph.Node))
-	case gws.NodeAddedMsgType:
+	case messages.NodeAddedMsgType:
 		err = s.g.NodeAdded(obj.(*graph.Node))
-	case gws.EdgeUpdatedMsgType:
+	case messages.EdgeUpdatedMsgType:
 		err = s.g.EdgeUpdated(obj.(*graph.Edge))
-	case gws.EdgeDeletedMsgType:
+	case messages.EdgeDeletedMsgType:
 		if err = s.g.EdgeDeleted(obj.(*graph.Edge)); err == graph.ErrEdgeNotFound {
 			return
 		}
-	case gws.EdgeAddedMsgType:
+	case messages.EdgeAddedMsgType:
 		err = s.g.EdgeAdded(obj.(*graph.Edge))
 	}
 
@@ -150,7 +150,7 @@ func (s *Seed) Stop() {
 
 // NewSeed returns a new seed
 func NewSeed(g *graph.Graph, clientType common.ServiceType, address, filter string, wsOpts ws.ClientOpts) (*Seed, error) {
-	wsOpts.Headers.Add("X-Websocket-Namespace", gws.Namespace)
+	wsOpts.Headers.Add("X-Websocket-Namespace", messages.Namespace)
 
 	if len(address) == 0 {
 		address = "127.0.0.1:8081"
@@ -187,7 +187,7 @@ func NewSeed(g *graph.Graph, clientType common.ServiceType, address, filter stri
 	}
 
 	subscriber.AddEventHandler(s)
-	subscriber.AddStructMessageHandler(s, []string{gws.Namespace})
+	subscriber.AddStructMessageHandler(s, []string{messages.Namespace})
 
 	return s, nil
 }
