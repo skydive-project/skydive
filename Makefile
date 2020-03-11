@@ -38,6 +38,7 @@ WITH_OPENCONTRAIL?=true
 WITH_LIBVIRT_GO?=true
 WITH_EBPF_DOCKER_BUILDER?=true
 WITH_VPP?=false
+WITH_PACKETINJECT?=true
 
 EXTRA_BUILD_TARGET=
 
@@ -96,6 +97,10 @@ endif
 
 ifeq ($(WITH_OPENCONTRAIL), true)
   BUILD_TAGS+=opencontrail
+endif
+
+ifeq ($(WITH_PACKETINJECT), true)
+  BUILD_TAGS+=packetinject
 endif
 
 include .mk/ebpf.mk
