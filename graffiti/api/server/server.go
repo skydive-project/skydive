@@ -19,19 +19,19 @@
 //
 // The Skydive REST API allows to communicate with a Skydive analyzer.
 //
-//     Schemes: http, https
-//     Host: localhost:8082
-//     BasePath: /api
-//     Version: 0.28.0
-//     License: Apache http://opensource.org/licenses/Apache-2.0
-//     Contact: Skydive mailing list <skydive-dev@redhat.com>
+//	Schemes: http, https
+//	Host: localhost:8082
+//	BasePath: /api
+//	Version: 0.28.0
+//	License: Apache http://opensource.org/licenses/Apache-2.0
+//	Contact: Skydive mailing list <skydive-dev@redhat.com>
 //
-//     Consumes:
-//     - application/json
+//	Consumes:
+//	- application/json
 //
-//     Produces:
-//     - application/json
-//     - text/plain
+//	Produces:
+//	- application/json
+//	- text/plain
 //
 // swagger:meta
 package server

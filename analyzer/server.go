@@ -64,7 +64,7 @@ const workflowAssetDir = "statics/workflows"
 
 // Status analyzer object
 //
-// Status describes the status of an analyzer
+// # Status describes the status of an analyzer
 //
 // swagger:model AnalyzerStatus
 // easyjson:json
@@ -354,18 +354,6 @@ func NewServerFromConfig() (*Server, error) {
 
 	tableClient := flow.NewWSTableClient(hub.PodServer())
 
-	// declare all extension available through API and filtering
-	tr := hub.GremlinTraversalParser()
-	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewRawPacketsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewFlowTraversalExtension(tableClient, s.flowStorage))
-	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewAscendantsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewNeighborsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
-	tr.AddTraversalExtension(ge.NewGroupTraversalExtension())
-
 	// new flow subscriber endpoints
 	flowSubscriberWSServer := ws.NewStructServer(config.NewWSServer(hub.HTTPServer(), "/ws/subscriber/flow", apiAuthBackend))
 	flowSubscriberEndpoint := server.NewFlowSubscriberEndpoint(flowSubscriberWSServer)
@@ -381,6 +369,18 @@ func NewServerFromConfig() (*Server, error) {
 	edgeRuleAPIHandler := api.RegisterEdgeRuleAPI(apiServer, g, apiAuthBackend)
 	s.topologyManager = usertopology.NewTopologyManager(etcdClient, nodeRuleAPIHandler, edgeRuleAPIHandler, g)
 
+	_ = gapi.RegisterAlertAPI(apiServer, apiAuthBackend)
+
+	tr := hub.GremlinTraversalParser()
+	jsre, err := api.NewRuntime(g, tr, apiServer, opts.Assets)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := api.RegisterWorkflowAPI(apiServer, apiAuthBackend, jsre); err != nil {
+		return nil, err
+	}
+
 	s.onDemandClient = ondemand.NewOnDemandFlowProbeClient(g, captureAPIHandler, hub.PodServer(), hub.SubscriberServer(), etcdClient)
 
 	s.flowServer, err = server.NewFlowServer(hub.HTTPServer(), g, s.flowStorage, flowSubscriberEndpoint, probeBundle, clusterAuthBackend)
@@ -392,15 +392,23 @@ func NewServerFromConfig() (*Server, error) {
 	api.RegisterPcapAPI(httpServer, s.flowStorage, apiAuthBackend)
 	api.RegisterConfigAPI(httpServer, apiAuthBackend)
 
-	if err := s.loadStaticWorkflows(); err != nil {
-		return nil, err
-	}
-
 	if config.GetBool("analyzer.ssh_enabled") {
 		if err := dede.RegisterHandler("terminal", "/dede", httpServer.Router); err != nil {
 			return nil, err
 		}
 	}
+
+	// declare all extension available through API and filtering
+	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewRawPacketsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewFlowTraversalExtension(tableClient, s.flowStorage))
+	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewAscendantsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewNeighborsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
+	tr.AddTraversalExtension(ge.NewGroupTraversalExtension())
+	tr.AddTraversalExtension(ge.NewWorkflowTraversalExtension(apiServer.GetHandler("workflow"), jsre))
 
 	return s, nil
 }

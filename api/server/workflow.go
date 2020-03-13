@@ -1,5 +1,5 @@
-//go:generate sh -c "go run github.com/gomatic/renderizer --name=workflow --resource=workflow --type=Workflow --title=Workflow --article=a ../../../api/server/swagger_operations.tmpl > workflow_swagger.go"
-//go:generate sh -c "go run github.com/gomatic/renderizer --name=workflow --resource=workflow --type=Workflow --title=Workflow --article=a ../../../api/server/swagger_definitions.tmpl > workflow_swagger.json"
+//go:generate sh -c "go run github.com/gomatic/renderizer --name=workflow --resource=workflow --type=Workflow --title=Workflow --article=a swagger_operations.tmpl > workflow_swagger.go"
+//go:generate sh -c "go run github.com/gomatic/renderizer --name=workflow --resource=workflow --type=Workflow --title=Workflow --article=a swagger_definitions.tmpl > workflow_swagger.json"
 
 /*
  * Copyright (C) 2018 Red Hat, Inc.
@@ -27,17 +27,19 @@ import (
 
 	auth "github.com/abbot/go-http-auth"
 	"github.com/gorilla/mux"
+	yaml "gopkg.in/yaml.v2"
+
 	"github.com/skydive-project/skydive/graffiti/api/rest"
+	api "github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/api/types"
-	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/js"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/rbac"
+	"github.com/skydive-project/skydive/statics"
 )
 
-// StaticWorkflows holds a list of hardcoded workflows
-var StaticWorkflows []*types.Workflow
+const workflowAssetDir = "statics/workflows"
 
 // WorkflowResourceHandler describes a workflow resource handler
 type WorkflowResourceHandler struct {
@@ -46,10 +48,7 @@ type WorkflowResourceHandler struct {
 // WorkflowAPIHandler based on BasicAPIHandler
 type WorkflowAPIHandler struct {
 	rest.BasicAPIHandler
-	apiServer *Server
-	graph     *graph.Graph
-	parser    *traversal.GremlinTraversalParser
-	runtime   *js.Runtime
+	runtime *js.Runtime
 }
 
 // New creates a new workflow resource
@@ -76,6 +75,20 @@ func (w *WorkflowAPIHandler) Create(r rest.Resource, opts *rest.CreateOptions) e
 	return w.BasicAPIHandler.Create(workflow, opts)
 }
 
+func (w *WorkflowAPIHandler) loadWorkflowAsset(name string) (*types.Workflow, error) {
+	yml, err := statics.Asset(name)
+	if err != nil {
+		return nil, err
+	}
+
+	var workflow types.Workflow
+	if err := yaml.Unmarshal([]byte(yml), &workflow); err != nil {
+		return nil, err
+	}
+
+	return &workflow, nil
+}
+
 // Get retrieves a workflow based on its id
 func (w *WorkflowAPIHandler) Get(id string) (rest.Resource, bool) {
 	workflows := w.Index()
@@ -89,24 +102,23 @@ func (w *WorkflowAPIHandler) Get(id string) (rest.Resource, bool) {
 // Index returns a map of workflows indexed by id
 func (w *WorkflowAPIHandler) Index() map[string]rest.Resource {
 	resources := w.BasicAPIHandler.Index()
-	for _, workflow := range StaticWorkflows {
-		resources[workflow.GetID()] = workflow
+	assets, err := statics.AssetDir(workflowAssetDir)
+	if err == nil {
+		for _, asset := range assets {
+			workflow, err := w.loadWorkflowAsset(workflowAssetDir + "/" + asset)
+			if err != nil {
+				logging.GetLogger().Errorf("Failed to load worklow asset %s: %s", asset, err)
+				continue
+			}
+			resources[workflow.GetID()] = workflow
+		}
 	}
 	return resources
 }
 
-func (w *WorkflowAPIHandler) getWorkflow(id string) (*types.Workflow, error) {
-	handler := w.apiServer.GetHandler("workflow")
-	workflow, ok := handler.Get(id)
-	if !ok {
-		return nil, fmt.Errorf("No workflow found with ID: %s", id)
-	}
-	return workflow.(*types.Workflow), nil
-}
-
 func (w *WorkflowAPIHandler) executeWorkflow(resp http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	if !rbac.Enforce(r.Username, "workflow.call", "write") {
-		resp.WriteHeader(http.StatusMethodNotAllowed)
+		http.Error(resp, http.StatusText(http.StatusUnauthorized), http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -119,11 +131,12 @@ func (w *WorkflowAPIHandler) executeWorkflow(resp http.ResponseWriter, r *auth.A
 
 	vars := mux.Vars(&r.Request)
 
-	workflow, err := w.getWorkflow(vars["ID"])
-	if err != nil {
-		http.Error(resp, err.Error(), http.StatusBadRequest)
+	resource, ok := w.Get(vars["ID"])
+	if !ok {
+		http.Error(resp, fmt.Sprintf("no workflow '%s' was found", vars["ID"]), http.StatusNotFound)
 		return
 	}
+	workflow := resource.(*types.Workflow)
 
 	ottoResult, err := w.runtime.ExecFunction(workflow.Source, wfCall.Params...)
 	if err != nil {
@@ -136,6 +149,7 @@ func (w *WorkflowAPIHandler) executeWorkflow(resp http.ResponseWriter, r *auth.A
 		http.Error(resp, err.Error(), http.StatusBadRequest)
 		return
 	}
+
 	resp.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	resp.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(resp).Encode(result); err != nil {
@@ -177,13 +191,15 @@ func (w *WorkflowAPIHandler) registerEndPoints(s *shttp.Server, authBackend shtt
 	//       $ref: '#/definitions/WorkflowCall'
 	//
 	// responses:
-	//   202:
+	//   200:
 	//     description: Request accepted
 	//     schema:
 	//       $ref: '#/definitions/AnyValue'
 	//
 	//   400:
-	//     description: Invalid PCAP
+	//     description: Error while executing workflow
+	//   404:
+	//     description: Unknown workflow
 
 	routes := []shttp.Route{
 		{
@@ -198,20 +214,15 @@ func (w *WorkflowAPIHandler) registerEndPoints(s *shttp.Server, authBackend shtt
 }
 
 // RegisterWorkflowAPI registers a new workflow api handler
-func RegisterWorkflowAPI(apiServer *Server, g *graph.Graph, parser *traversal.GremlinTraversalParser, authBackend shttp.AuthenticationBackend, runtime *js.Runtime) (*WorkflowAPIHandler, error) {
+func RegisterWorkflowAPI(apiServer *api.Server, authBackend shttp.AuthenticationBackend, runtime *js.Runtime) (*WorkflowAPIHandler, error) {
 	workflowAPIHandler := &WorkflowAPIHandler{
 		BasicAPIHandler: rest.BasicAPIHandler{
 			ResourceHandler: &WorkflowResourceHandler{},
 			EtcdClient:      apiServer.EtcdClient,
 		},
-		apiServer: apiServer,
-		graph:     g,
-		parser:    parser,
-		runtime:   runtime,
+		runtime: runtime,
 	}
-
 	apiServer.RegisterAPIHandler(workflowAPIHandler, authBackend)
 	workflowAPIHandler.registerEndPoints(apiServer.HTTPServer, authBackend)
-
 	return workflowAPIHandler, nil
 }

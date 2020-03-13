@@ -459,7 +459,12 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 	api.RegisterEdgeAPI(apiServer, g, opts.APIAuthBackend)
 	api.RegisterAlertAPI(apiServer, opts.APIAuthBackend)
 
-	if _, err := api.RegisterWorkflowAPI(apiServer, g, tr, opts.Assets, opts.APIAuthBackend); err != nil {
+	jsre, err := api.NewRuntime(g, tr, apiServer, opts.Assets)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := api.RegisterWorkflowAPI(apiServer, g, tr, opts.APIAuthBackend, jsre); err != nil {
 		return nil, err
 	}
 
