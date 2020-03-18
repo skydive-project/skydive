@@ -62,7 +62,7 @@ var AlertCreate = &cobra.Command{
 		alert.Trigger = alertTrigger
 		alert.Action = alertAction
 
-		if err := validator.Validate(alert); err != nil {
+		if err := validator.Validate("alert", alert); err != nil {
 			exitOnError(err)
 		}
 

@@ -34,7 +34,7 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcapgo"
-	gclient "github.com/skydive-project/skydive/api/client"
+	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
@@ -1765,7 +1765,7 @@ func TestFlowsWithShortestPath(t *testing.T) {
 	RunTest(t, test)
 }
 
-func printRawPackets(t *testing.T, gh *gclient.GremlinQueryHelper, query g.QueryString) error {
+func printRawPackets(t *testing.T, gh *client.GremlinQueryHelper, query g.QueryString) error {
 	header := make(http.Header)
 	resp, err := gh.Request(query.String(), header)
 	if err != nil {
@@ -1785,9 +1785,9 @@ func printRawPackets(t *testing.T, gh *gclient.GremlinQueryHelper, query g.Query
 	return nil
 }
 
-func getRawPackets(gh *gclient.GremlinQueryHelper, query g.QueryString) ([]gopacket.Packet, error) {
+func getRawPackets(gh *client.GremlinQueryHelper, query g.QueryString) ([]gopacket.Packet, error) {
 	header := make(http.Header)
-	header.Set("Accept", "vnd.tcpdump.pcap")
+	header.Set("Accept", "application/vnd.tcpdump.pcap")
 
 	resp, err := gh.Request(query.String(), header)
 	if err != nil {

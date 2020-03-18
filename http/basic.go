@@ -80,7 +80,7 @@ func (b *BasicAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc)
 		r.Header.Set("Authorization", "Basic "+token)
 
 		if username := b.CheckAuth(r); username == "" {
-			Unauthorized(w, r)
+			Unauthorized(w, r, ErrWrongCredentials)
 		} else {
 			authCallWrapped(w, r, username, wrapped)
 		}

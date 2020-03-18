@@ -23,7 +23,6 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api/client"
 
 	"github.com/spf13/cobra"
@@ -52,7 +51,7 @@ var StatusCmd = &cobra.Command{
 			exitOnError(fmt.Errorf("Failed to get status, %s: %s", resp.Status, data))
 		}
 
-		var status analyzer.Status
+		var status interface{}
 		decoder := json.NewDecoder(resp.Body)
 		if err := decoder.Decode(&status); err != nil {
 			exitOnError(err)

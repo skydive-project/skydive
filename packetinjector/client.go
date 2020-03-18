@@ -27,6 +27,7 @@ import (
 	apiServer "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/api/rest"
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
@@ -52,7 +53,7 @@ type Reply struct {
 type Client struct {
 	common.MasterElection
 	pool      ws.StructSpeakerPool
-	watcher   apiServer.StoppableWatcher
+	watcher   rest.StoppableWatcher
 	graph     *graph.Graph
 	piHandler *apiServer.PacketInjectorAPI
 }
@@ -92,7 +93,9 @@ func (h *onDemandPacketInjectionHandler) createRequest(nodeID graph.Identifier, 
 	dstMAC, _ := net.ParseMAC(pi.DstMAC)
 
 	pir := &PacketInjectionRequest{
-		UUID:             pi.UUID,
+		BasicResource: rest.BasicResource{
+			UUID: pi.UUID,
+		},
 		SrcIP:            net.ParseIP(pi.SrcIP),
 		SrcMAC:           srcMAC,
 		SrcPort:          pi.SrcPort,
@@ -191,14 +194,14 @@ func (h *onDemandPacketInjectionHandler) createRequest(nodeID graph.Identifier, 
 		}
 	}
 
-	if errs := validator.Validate(pir); errs != nil {
+	if errs := validator.Validate("packetinjectionrequest", pir); errs != nil {
 		return "", nil, fmt.Errorf("All the params were not set properly: %s", errs)
 	}
 
 	return srcNode.Host, pir, nil
 }
 
-func (h *onDemandPacketInjectionHandler) DecodeMessage(msg json.RawMessage) (types.Resource, error) {
+func (h *onDemandPacketInjectionHandler) DecodeMessage(msg json.RawMessage) (rest.Resource, error) {
 	var pi PacketInjectionRequest
 	if err := json.Unmarshal(msg, &pi); err != nil {
 		return nil, fmt.Errorf("Unable to decode packet injection: %s", err)
@@ -206,7 +209,7 @@ func (h *onDemandPacketInjectionHandler) DecodeMessage(msg json.RawMessage) (typ
 	return &pi, nil
 }
 
-func (h *onDemandPacketInjectionHandler) EncodeMessage(nodeID graph.Identifier, resource types.Resource) (json.RawMessage, error) {
+func (h *onDemandPacketInjectionHandler) EncodeMessage(nodeID graph.Identifier, resource rest.Resource) (json.RawMessage, error) {
 	_, request, err := h.createRequest(nodeID, resource.(*types.PacketInjection))
 	if err != nil {
 		return nil, err
@@ -216,7 +219,7 @@ func (h *onDemandPacketInjectionHandler) EncodeMessage(nodeID graph.Identifier, 
 	return json.RawMessage(bytes), err
 }
 
-func (h *onDemandPacketInjectionHandler) CheckState(node *graph.Node, resource types.Resource) bool {
+func (h *onDemandPacketInjectionHandler) CheckState(node *graph.Node, resource rest.Resource) bool {
 	injection := resource.(*types.PacketInjection)
 	if injections, err := node.GetField("PacketInjections"); err == nil {
 		for _, i := range *injections.(*Injections) {
@@ -232,7 +235,7 @@ func (h *onDemandPacketInjectionHandler) ResourceName() string {
 	return "PacketInjection"
 }
 
-func (h *onDemandPacketInjectionHandler) GetNodeResources(resource types.Resource) []client.OnDemandNodeResource {
+func (h *onDemandPacketInjectionHandler) GetNodeResources(resource rest.Resource) []client.OnDemandNodeResource {
 	var nrs []client.OnDemandNodeResource
 
 	pi := resource.(*types.PacketInjection)
@@ -295,6 +298,6 @@ func (h *onDemandPacketInjectionHandler) applyGremlinExpr(query string) []interf
 }
 
 // NewOnDemandInjectionClient creates a new ondemand client based on API, graph and websocket
-func NewOnDemandInjectionClient(g *graph.Graph, ch apiServer.Handler, agentPool ws.StructSpeakerPool, subscriberPool ws.StructSpeakerPool, etcdClient *etcd.Client) *client.OnDemandClient {
+func NewOnDemandInjectionClient(g *graph.Graph, ch rest.Handler, agentPool ws.StructSpeakerPool, subscriberPool ws.StructSpeakerPool, etcdClient *etcd.Client) *client.OnDemandClient {
 	return client.NewOnDemandClient(g, ch, agentPool, subscriberPool, etcdClient, &onDemandPacketInjectionHandler{graph: g})
 }

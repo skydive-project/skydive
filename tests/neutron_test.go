@@ -32,7 +32,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
 
-	gclient "github.com/skydive-project/skydive/api/client"
+	sclient "github.com/skydive-project/skydive/api/client"
 	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
 )
@@ -140,7 +140,7 @@ func TestNeutron(t *testing.T) {
 	execCmds(t, setupCmds...)
 	defer execCmds(t, tearDownCmds...)
 
-	gh := gclient.NewGremlinQueryHelper(authOptions)
+	gh := sclient.NewGremlinQueryHelper(authOptions)
 
 	var histo bool
 	retryFn := func() error {

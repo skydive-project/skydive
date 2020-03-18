@@ -28,12 +28,13 @@ import (
 	"github.com/google/gopacket"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/api/rest"
 )
 
 // PacketInjectionRequest describes the packet parameters to be injected
 // easyjson:json
 type PacketInjectionRequest struct {
-	UUID             string
+	rest.BasicResource
 	SrcIP            net.IP           `valid:"isIP"`
 	SrcMAC           net.HardwareAddr `valid:"isMAC"`
 	SrcPort          uint16
@@ -54,16 +55,6 @@ type PacketInjectionRequest struct {
 // GetName returns the name of the resource
 func (r *PacketInjectionRequest) GetName() string {
 	return "PacketInjection"
-}
-
-// ID returns the id of the packet injection request
-func (r *PacketInjectionRequest) ID() string {
-	return r.UUID
-}
-
-// SetID sets the id of the packet injection request
-func (r *PacketInjectionRequest) SetID(id string) {
-	r.UUID = id
 }
 
 // Injections holds the injections metadata

@@ -31,7 +31,6 @@ import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -40,7 +39,7 @@ type FlowClientPool struct {
 	insanelock.RWMutex
 	ws.DefaultSpeakerEventHandler
 	flowClients []*FlowClient
-	authOpts    *shttp.AuthenticationOpts
+	wsOpts      *ws.ClientOpts
 }
 
 // FlowClient describes a flow client connection
@@ -69,7 +68,7 @@ type FlowClientWebSocketConn struct {
 	ws.DefaultSpeakerEventHandler
 	url      *url.URL
 	wsClient *ws.Client
-	authOpts *shttp.AuthenticationOpts
+	opts     *ws.ClientOpts
 }
 
 // Close the connection
@@ -108,8 +107,8 @@ func (c *FlowClientWebSocketConn) Close() error {
 
 // Connect to the WebSocket flow server
 func (c *FlowClientWebSocketConn) Connect() (err error) {
-	if c.wsClient, err = config.NewWSClient(common.AgentService, c.url, ws.ClientOpts{AuthOpts: c.authOpts}); err != nil {
-		return nil
+	if c.wsClient, err = config.NewWSClient(common.AgentService, c.url, *c.opts); err != nil {
+		return err
 	}
 
 	c.wsClient.Start()
@@ -125,8 +124,8 @@ func (c *FlowClientWebSocketConn) Send(data []byte) error {
 }
 
 // NewFlowClientWebSocketConn returns a new WebSocket flow client
-func NewFlowClientWebSocketConn(url *url.URL, authOpts *shttp.AuthenticationOpts) (*FlowClientWebSocketConn, error) {
-	return &FlowClientWebSocketConn{url: url, authOpts: authOpts}, nil
+func NewFlowClientWebSocketConn(url *url.URL, wsOpts *ws.ClientOpts) *FlowClientWebSocketConn {
+	return &FlowClientWebSocketConn{url: url, opts: wsOpts}
 }
 
 func (c *FlowClient) connect() {
@@ -207,7 +206,7 @@ func normalizeAddrForURL(addr string) string {
 }
 
 // NewFlowClient creates a flow client and creates a new connection to the server
-func NewFlowClient(addr string, port int, authOpts *shttp.AuthenticationOpts) (*FlowClient, error) {
+func NewFlowClient(addr string, port int, wsOpts *ws.ClientOpts) (*FlowClient, error) {
 	var (
 		connection FlowClientConn
 		err        error
@@ -216,15 +215,14 @@ func NewFlowClient(addr string, port int, authOpts *shttp.AuthenticationOpts) (*
 	switch protocol {
 	case "udp":
 		connection, err = NewFlowClientUDPConn(normalizeAddrForURL(addr), port)
+		if err != nil {
+			return nil, err
+		}
 	case "websocket":
 		endpoint := config.GetURL("ws", normalizeAddrForURL(addr), port, "/ws/agent/flow")
-		connection, err = NewFlowClientWebSocketConn(endpoint, authOpts)
+		connection = NewFlowClientWebSocketConn(endpoint, wsOpts)
 	default:
 		return nil, fmt.Errorf("Invalid protocol %s", protocol)
-	}
-
-	if err != nil {
-		return nil, err
 	}
 
 	fc := &FlowClient{addr: addr, port: port, protocol: protocol, flowClientConn: connection}
@@ -248,7 +246,7 @@ func (p *FlowClientPool) OnConnected(c ws.Speaker) {
 		}
 	}
 
-	flowClient, err := NewFlowClient(addr, port, p.authOpts)
+	flowClient, err := NewFlowClient(addr, port, p.wsOpts)
 	if err != nil {
 		logging.GetLogger().Error(err)
 		return
@@ -308,10 +306,10 @@ func (p *FlowClientPool) Close() {
 // NewFlowClientPool returns a new FlowClientPool using the websocket connections
 // to maintain the pool of client up to date according to the websocket connections
 // status.
-func NewFlowClientPool(pool ws.SpeakerPool, authOpts *shttp.AuthenticationOpts) *FlowClientPool {
+func NewFlowClientPool(pool ws.SpeakerPool, opts *ws.ClientOpts) *FlowClientPool {
 	p := &FlowClientPool{
 		flowClients: make([]*FlowClient, 0),
-		authOpts:    authOpts,
+		wsOpts:      opts,
 	}
 	pool.AddEventHandler(p)
 	return p

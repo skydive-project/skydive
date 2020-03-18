@@ -62,8 +62,8 @@ func newStructMessage(ns, tp string) *StructMessage {
 }
 
 func newHTTPServer() *shttp.Server {
-	httpserver := shttp.NewServer(defaultHostID, common.AnalyzerService, host, port, nil)
-	httpserver.ListenAndServe()
+	httpserver := shttp.NewServer(defaultHostID, common.AnalyzerService, host, port, nil, nil)
+	httpserver.Start()
 	return httpserver
 }
 
@@ -75,7 +75,7 @@ func newWsClient(hostID string, ns ...string) *Client {
 }
 
 func newWsServer(httpserver *shttp.Server) *StructServer {
-	wsserver := NewStructServer(NewServer(httpserver, "/"+path, shttp.NewNoAuthenticationBackend(), newServerOpts()))
+	wsserver := NewStructServer(NewServer(httpserver, "/"+path, newServerOpts()))
 	wsserver.Start()
 	return wsserver
 }

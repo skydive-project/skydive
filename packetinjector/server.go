@@ -26,9 +26,9 @@ import (
 	"time"
 
 	"github.com/google/gopacket/layers"
-	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/api/rest"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/logging"
@@ -48,7 +48,7 @@ type onDemandPacketInjectServer struct {
 	graph *graph.Graph
 }
 
-func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource types.Resource) (ondemand.Task, error) {
+func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource rest.Resource) (ondemand.Task, error) {
 	logging.GetLogger().Debugf("Registering packet injection %s on %s", resource.ID(), srcNode.ID)
 
 	pp := resource.(*PacketInjectionRequest)
@@ -170,7 +170,7 @@ func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource ty
 	return cancel, nil
 }
 
-func (o *onDemandPacketInjectServer) RemoveTask(n *graph.Node, resource types.Resource, task ondemand.Task) error {
+func (o *onDemandPacketInjectServer) RemoveTask(n *graph.Node, resource rest.Resource, task ondemand.Task) error {
 	logging.GetLogger().Debugf("Unregister packet injection %s on %s", n.ID, resource.ID())
 
 	cancel := task.(chan bool)
@@ -182,7 +182,7 @@ func (o *onDemandPacketInjectServer) ResourceName() string {
 	return "PacketInjection"
 }
 
-func (o *onDemandPacketInjectServer) DecodeMessage(msg json.RawMessage) (types.Resource, error) {
+func (o *onDemandPacketInjectServer) DecodeMessage(msg json.RawMessage) (rest.Resource, error) {
 	var params PacketInjectionRequest
 	if err := json.Unmarshal(msg, &params); err != nil {
 		return nil, fmt.Errorf("Unable to decode packet inject param message %v", msg)

@@ -59,7 +59,7 @@ var QueryCmd = &cobra.Command{
 			out.WriteTo(os.Stdout)
 		case "dot":
 			header := make(http.Header)
-			header.Set("Accept", "vnd.graphviz")
+			header.Set("Accept", "text/vnd.graphviz")
 			resp, err := queryHelper.Request(gremlinQuery, header)
 			if err != nil {
 				exitOnError(err)
@@ -73,7 +73,7 @@ var QueryCmd = &cobra.Command{
 			bufio.NewReader(resp.Body).WriteTo(os.Stdout)
 		case "pcap":
 			header := make(http.Header)
-			header.Set("Accept", "vnd.tcpdump.pcap")
+			header.Set("Accept", "application/vnd.tcpdump.pcap")
 			resp, err := queryHelper.Request(gremlinQuery, header)
 			if err != nil {
 				exitOnError(err)

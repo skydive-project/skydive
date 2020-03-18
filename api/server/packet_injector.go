@@ -25,21 +25,22 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/skydive-project/skydive/topology"
-
 	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/graffiti/api/rest"
+	api "github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/topology"
 )
 
 type packetInjectorResourceHandler struct {
-	ResourceHandler
+	rest.ResourceHandler
 }
 
 // PacketInjectorAPI exposes the packet injector API
 type PacketInjectorAPI struct {
-	BasicAPIHandler
+	rest.BasicAPIHandler
 	Graph *graph.Graph
 }
 
@@ -47,12 +48,12 @@ func (pirh *packetInjectorResourceHandler) Name() string {
 	return "injectpacket"
 }
 
-func (pirh *packetInjectorResourceHandler) New() types.Resource {
+func (pirh *packetInjectorResourceHandler) New() rest.Resource {
 	return &types.PacketInjection{}
 }
 
 // Create allocates a new packet injection
-func (pi *PacketInjectorAPI) Create(r types.Resource, opts *CreateOptions) error {
+func (pi *PacketInjectorAPI) Create(r rest.Resource, opts *rest.CreateOptions) error {
 	ppr := r.(*types.PacketInjection)
 
 	if err := pi.validateRequest(ppr); err != nil {
@@ -140,9 +141,9 @@ func (pi *PacketInjectorAPI) getNode(gremlinQuery string) *graph.Node {
 }
 
 // RegisterPacketInjectorAPI registers a new packet injector resource in the API
-func RegisterPacketInjectorAPI(g *graph.Graph, apiServer *Server, authBackend shttp.AuthenticationBackend) (*PacketInjectorAPI, error) {
+func RegisterPacketInjectorAPI(g *graph.Graph, apiServer *api.Server, authBackend shttp.AuthenticationBackend) (*PacketInjectorAPI, error) {
 	pia := &PacketInjectorAPI{
-		BasicAPIHandler: BasicAPIHandler{
+		BasicAPIHandler: rest.BasicAPIHandler{
 			ResourceHandler: &packetInjectorResourceHandler{},
 			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
 		},

@@ -121,7 +121,7 @@ func GetPacketInjectRequest() (*pi.PacketInjectionRequest, error) {
 		TTL:              ttl,
 	}
 
-	if err := validator.Validate(request); err != nil {
+	if err := validator.Validate("packetinjection", request); err != nil {
 		return nil, err
 	}
 
@@ -186,7 +186,7 @@ var PacketInjectionCreate = &cobra.Command{
 			packet.DstMAC = request.DstMAC.String()
 		}
 
-		if err = validator.Validate(packet); err != nil {
+		if err = validator.Validate("packetinjection", packet); err != nil {
 			exitOnError(err)
 		}
 

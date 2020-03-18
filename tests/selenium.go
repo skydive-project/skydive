@@ -27,7 +27,7 @@ import (
 	"github.com/avast/retry-go"
 	"github.com/tebeka/selenium"
 
-	gclient "github.com/skydive-project/skydive/api/client"
+	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/flow"
 	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
@@ -37,7 +37,7 @@ type seleniumHelper struct {
 	addr             string
 	port             int
 	webdriver        selenium.WebDriver
-	gh               *gclient.GremlinQueryHelper
+	gh               *client.GremlinQueryHelper
 	fakeMousePointer bool
 	activeTabID      string
 	t                *testing.T
@@ -602,7 +602,7 @@ func newSeleniumHelper(t *testing.T, analyzerAddr string, analyzerPort int, auth
 
 	os.Setenv("SKYDIVE_ANALYZERS", fmt.Sprintf("%s:%d", analyzerAddr, analyzerPort))
 
-	gh := gclient.NewGremlinQueryHelper(authOptions)
+	gh := client.NewGremlinQueryHelper(authOptions)
 
 	sh := &seleniumHelper{
 		addr:        analyzerAddr,

@@ -77,7 +77,7 @@ var NodeRuleCreate = &cobra.Command{
 			m["Type"] = nodeType
 		}
 
-		node := &api.NodeRule{
+		nodeRule := &api.NodeRule{
 			Name:        name,
 			Description: description,
 			Metadata:    m,
@@ -85,15 +85,15 @@ var NodeRuleCreate = &cobra.Command{
 			Action:      action,
 		}
 
-		if err = validator.Validate(node); err != nil {
+		if err = validator.Validate("noderule", nodeRule); err != nil {
 			exitOnError(fmt.Errorf("Error while validating node rule: %s", err))
 		}
 
-		if err = client.Create("noderule", &node, nil); err != nil {
+		if err = client.Create("noderule", &nodeRule, nil); err != nil {
 			exitOnError(err)
 		}
 
-		printJSON(node)
+		printJSON(nodeRule)
 	},
 }
 

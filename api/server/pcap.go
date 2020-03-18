@@ -61,7 +61,7 @@ func (p *PcapAPI) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest
 
 	feeder, err := flow.NewPcapTableFeeder(r.Body, packetSeqChan, false, "")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

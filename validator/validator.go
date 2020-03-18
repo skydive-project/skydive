@@ -30,16 +30,20 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/schema"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
+	"github.com/skydive-project/skydive/statics"
+	"github.com/skydive-project/skydive/topology"
 )
 
-// Validator interface used to validate value type in Gremlin expression
-type Validator interface {
-	Validate() error
+type validator struct {
+	validator       *valid.Validator
+	schemaValidator *schema.Validator
 }
 
 var (
-	skydiveValidator = valid.NewValidator()
+	// Validator is the global validator for all Skydive resources
+	Validator *validator
 
 	//IPNotValid validator
 	IPNotValid = func() error {
@@ -268,30 +272,46 @@ func isValidCaptureType(v interface{}, param string) error {
 }
 
 // Validate an object based on previously (at init) registered function
-func Validate(value interface{}) error {
-	if err := skydiveValidator.Validate(value); err != nil {
+func Validate(kind string, value interface{}) error {
+	if err := Validator.validator.Validate(value); err != nil {
 		return err
 	}
 
-	if obj, ok := value.(Validator); ok {
-		return obj.Validate()
-	}
-
-	return nil
+	return Validator.schemaValidator.Validate(kind, value)
 }
 
 func init() {
-	skydiveValidator.SetValidationFunc("isIP", isIP)
-	skydiveValidator.SetValidationFunc("isMAC", isMAC)
-	skydiveValidator.SetValidationFunc("isIPOrCIDR", isIPOrCIDR)
-	skydiveValidator.SetValidationFunc("isGremlinExpr", isGremlinExpr)
-	skydiveValidator.SetValidationFunc("isGremlinOrEmpty", isGremlinOrEmpty)
-	skydiveValidator.SetValidationFunc("isBPFFilter", isBPFFilter)
-	skydiveValidator.SetValidationFunc("isValidCaptureHeaderSize", isValidCaptureHeaderSize)
-	skydiveValidator.SetValidationFunc("isValidRawPacketLimit", isValidRawPacketLimit)
-	skydiveValidator.SetValidationFunc("isValidLayerKeyMode", isValidLayerKeyMode)
-	skydiveValidator.SetValidationFunc("isValidWorkflow", isValidWorkflow)
-	skydiveValidator.SetValidationFunc("isValidCaptureType", isValidCaptureType)
-	skydiveValidator.SetValidationFunc("isValidAddress", isValidAddress)
-	skydiveValidator.SetTag("valid")
+	v := valid.NewValidator()
+	v.SetValidationFunc("isIP", isIP)
+	v.SetValidationFunc("isMAC", isMAC)
+	v.SetValidationFunc("isIPOrCIDR", isIPOrCIDR)
+	v.SetValidationFunc("isGremlinExpr", isGremlinExpr)
+	v.SetValidationFunc("isGremlinOrEmpty", isGremlinOrEmpty)
+	v.SetValidationFunc("isBPFFilter", isBPFFilter)
+	v.SetValidationFunc("isValidCaptureHeaderSize", isValidCaptureHeaderSize)
+	v.SetValidationFunc("isValidRawPacketLimit", isValidRawPacketLimit)
+	v.SetValidationFunc("isValidLayerKeyMode", isValidLayerKeyMode)
+	v.SetValidationFunc("isValidWorkflow", isValidWorkflow)
+	v.SetValidationFunc("isValidCaptureType", isValidCaptureType)
+	v.SetValidationFunc("isValidAddress", isValidAddress)
+	v.SetTag("valid")
+
+	nodeSchema, err := statics.Asset("statics/schemas/node.schema")
+	if err != nil {
+		panic(err)
+	}
+
+	edgeSchema, err := statics.Asset("statics/schemas/edge.schema")
+	if err != nil {
+		panic(err)
+	}
+
+	schemaValidator := schema.NewValidator()
+	schemaValidator.LoadSchema("node", nodeSchema)
+	schemaValidator.LoadSchema("edge", edgeSchema)
+
+	Validator = &validator{
+		validator:       v,
+		schemaValidator: topology.SchemaValidator,
+	}
 }

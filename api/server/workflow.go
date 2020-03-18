@@ -26,6 +26,8 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/graffiti/api/rest"
+	api "github.com/skydive-project/skydive/graffiti/api/server"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/statics"
@@ -39,11 +41,11 @@ type WorkflowResourceHandler struct {
 
 // WorkflowAPIHandler based on BasicAPIHandler
 type WorkflowAPIHandler struct {
-	BasicAPIHandler
+	rest.BasicAPIHandler
 }
 
 // New creates a new workflow resource
-func (w *WorkflowResourceHandler) New() types.Resource {
+func (w *WorkflowResourceHandler) New() rest.Resource {
 	return &types.Workflow{}
 }
 
@@ -53,7 +55,7 @@ func (w *WorkflowResourceHandler) Name() string {
 }
 
 // Create tests whether the resource is a duplicate or is unique
-func (w *WorkflowAPIHandler) Create(r types.Resource, opts *CreateOptions) error {
+func (w *WorkflowAPIHandler) Create(r rest.Resource, opts *rest.CreateOptions) error {
 	workflow := r.(*types.Workflow)
 
 	for _, resource := range w.Index() {
@@ -81,7 +83,7 @@ func (w *WorkflowAPIHandler) loadWorkflowAsset(name string) (*types.Workflow, er
 }
 
 // Get retrieves a workflow based on its id
-func (w *WorkflowAPIHandler) Get(id string) (types.Resource, bool) {
+func (w *WorkflowAPIHandler) Get(id string) (rest.Resource, bool) {
 	workflows := w.Index()
 	workflow, found := workflows[id]
 	if !found {
@@ -91,7 +93,7 @@ func (w *WorkflowAPIHandler) Get(id string) (types.Resource, bool) {
 }
 
 // Index returns a map of workflows indexed by id
-func (w *WorkflowAPIHandler) Index() map[string]types.Resource {
+func (w *WorkflowAPIHandler) Index() map[string]rest.Resource {
 	resources := w.BasicAPIHandler.Index()
 	assets, err := statics.AssetDir(workflowAssetDir)
 	if err == nil {
@@ -108,9 +110,9 @@ func (w *WorkflowAPIHandler) Index() map[string]types.Resource {
 }
 
 // RegisterWorkflowAPI registers a new workflow api handler
-func RegisterWorkflowAPI(apiServer *Server, authBackend shttp.AuthenticationBackend) (*WorkflowAPIHandler, error) {
+func RegisterWorkflowAPI(apiServer *api.Server, authBackend shttp.AuthenticationBackend) (*WorkflowAPIHandler, error) {
 	workflowAPIHandler := &WorkflowAPIHandler{
-		BasicAPIHandler: BasicAPIHandler{
+		BasicAPIHandler: rest.BasicAPIHandler{
 			ResourceHandler: &WorkflowResourceHandler{},
 			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
 		},

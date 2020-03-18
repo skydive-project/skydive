@@ -26,12 +26,13 @@ import (
 
 	"github.com/robertkrimen/otto"
 	"github.com/skydive-project/skydive/api/types"
+	api "github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 )
 
 // NewWorkflowRuntime returns a new Workflow runtime
-func NewWorkflowRuntime(g *graph.Graph, tr *traversal.GremlinTraversalParser, server *Server) (*js.Runtime, error) {
+func NewWorkflowRuntime(g *graph.Graph, tr *traversal.GremlinTraversalParser, server *api.Server) (*js.Runtime, error) {
 	runtime, err := js.NewRuntime()
 	if err != nil {
 		return nil, err

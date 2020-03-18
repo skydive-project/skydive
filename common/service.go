@@ -20,6 +20,7 @@ package common
 import (
 	"fmt"
 	"net"
+	"net/url"
 	"strings"
 	"sync/atomic"
 )
@@ -145,4 +146,16 @@ func NormalizeIPForURL(ip net.IP) string {
 		return "[" + ip.String() + "]"
 	}
 	return ip.String()
+}
+
+// MakeURL creates an URL for the specified protocol, address, port and path,
+// whether TLS is required or not
+func MakeURL(protocol string, addr string, port int, path string, useTLS bool) *url.URL {
+	u, _ := url.Parse(fmt.Sprintf("%s://%s:%d%s", protocol, addr, port, path))
+
+	if (protocol == "http" || protocol == "ws") && useTLS {
+		u.Scheme += "s"
+	}
+
+	return u
 }

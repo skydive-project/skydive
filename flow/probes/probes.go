@@ -74,7 +74,7 @@ func TableOptsFromCapture(capture *types.Capture) flow.TableOpts {
 		IPDefrag:       capture.IPDefrag,
 		ReassembleTCP:  capture.ReassembleTCP,
 		LayerKeyMode:   layerKeyMode,
-		ExtraLayers:    capture.ExtraLayers,
+		ExtraLayers:    flow.ExtraLayers(capture.ExtraLayers),
 	}
 }
 

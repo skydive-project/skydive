@@ -18,58 +18,28 @@
 package topology
 
 import (
-	"errors"
-
-	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/graffiti/schema"
 	"github.com/skydive-project/skydive/statics"
-	"github.com/xeipuuv/gojsonschema"
 )
 
-// ErrInvalidSchema is return when a JSON schema is invalid
-var ErrInvalidSchema = errors.New("Invalid schema")
+// SchemaValidator is the global validator for Skydive resources
+var SchemaValidator *schema.Validator
 
-// SchemaValidator validates graph nodes and edges using a JSON schema
-type SchemaValidator struct {
-	nodeSchema gojsonschema.JSONLoader
-	edgeSchema gojsonschema.JSONLoader
-}
-
-func (v *SchemaValidator) validate(obj interface{}, schema gojsonschema.JSONLoader) error {
-	loader := gojsonschema.NewGoLoader(obj)
-	result, err := gojsonschema.Validate(schema, loader)
-	if err != nil {
-		return err
-	} else if !result.Valid() {
-		return ErrInvalidSchema
-	}
-	return nil
-}
-
-// ValidateNode valides a graph node
-func (v *SchemaValidator) ValidateNode(node *graph.Node) error {
-	return v.validate(node, v.nodeSchema)
-}
-
-// ValidateEdge valides a graph edge
-func (v *SchemaValidator) ValidateEdge(edge *graph.Edge) error {
-	return v.validate(edge, v.edgeSchema)
-}
-
-// NewSchemaValidator returns a new JSON schema validator for
-// graph nodes and edges. based on JSON schema bundled with go-bindata
-func NewSchemaValidator() (*SchemaValidator, error) {
+func init() {
 	nodeSchema, err := statics.Asset("statics/schemas/node.schema")
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
 	edgeSchema, err := statics.Asset("statics/schemas/edge.schema")
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	return &SchemaValidator{
-		nodeSchema: gojsonschema.NewBytesLoader(nodeSchema),
-		edgeSchema: gojsonschema.NewBytesLoader(edgeSchema),
-	}, nil
+	SchemaValidator = schema.NewValidator()
+	SchemaValidator.LoadSchema("node", nodeSchema)
+	SchemaValidator.LoadSchema("edge", edgeSchema)
+
+	types.SchemaValidator = SchemaValidator
 }

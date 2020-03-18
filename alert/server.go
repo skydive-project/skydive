@@ -30,9 +30,11 @@ import (
 
 	"github.com/safchain/insanelock"
 
-	api "github.com/skydive-project/skydive/api/server"
+	"github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/api/rest"
+	api "github.com/skydive-project/skydive/graffiti/api/server"
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
@@ -192,9 +194,9 @@ type Server struct {
 	common.MasterElection
 	Graph         *graph.Graph
 	Pool          ws.StructSpeakerPool
-	AlertHandler  api.Handler
+	AlertHandler  rest.Handler
 	apiServer     *api.Server
-	watcher       api.StoppableWatcher
+	watcher       rest.StoppableWatcher
 	graphAlerts   map[string]*GremlinAlert
 	alertTimers   map[string]chan bool
 	gremlinParser *traversal.GremlinTraversalParser
@@ -376,7 +378,7 @@ func (a *Server) unregisterAlert(id string) {
 	}
 }
 
-func (a *Server) onAPIWatcherEvent(action string, id string, resource types.Resource) {
+func (a *Server) onAPIWatcherEvent(action string, id string, resource rest.Resource) {
 	switch action {
 	case "init", "create", "set", "update":
 		if err := a.registerAlert(resource.(*types.Alert)); err != nil {
@@ -404,7 +406,7 @@ func (a *Server) Stop() {
 func NewServer(apiServer *api.Server, pool ws.StructSpeakerPool, graph *graph.Graph, parser *traversal.GremlinTraversalParser, etcdClient *etcd.Client) (*Server, error) {
 	election := etcdClient.NewElection("alert-server")
 
-	runtime, err := api.NewWorkflowRuntime(graph, parser, apiServer)
+	runtime, err := server.NewWorkflowRuntime(graph, parser, apiServer)
 	if err != nil {
 		return nil, err
 	}

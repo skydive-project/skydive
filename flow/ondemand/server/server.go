@@ -24,6 +24,7 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow/probes"
+	"github.com/skydive-project/skydive/graffiti/api/rest"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/ondemand"
@@ -97,7 +98,7 @@ type onDemandFlowProbeServer struct {
 	probeHandlers *probe.Bundle
 }
 
-func (o *onDemandFlowProbeServer) getProbeHandler(n *graph.Node, resource types.Resource) (probes.FlowProbeHandler, error) {
+func (o *onDemandFlowProbeServer) getProbeHandler(n *graph.Node, resource rest.Resource) (probes.FlowProbeHandler, error) {
 	capture := resource.(*types.Capture)
 	tp, _ := n.GetFieldString("Type")
 	probeType, err := probes.ProbeTypeForNode(tp, capture.Type)
@@ -113,7 +114,7 @@ func (o *onDemandFlowProbeServer) getProbeHandler(n *graph.Node, resource types.
 	return handler.(probes.FlowProbeHandler), nil
 }
 
-func (o *onDemandFlowProbeServer) CreateTask(n *graph.Node, resource types.Resource) (ondemand.Task, error) {
+func (o *onDemandFlowProbeServer) CreateTask(n *graph.Node, resource rest.Resource) (ondemand.Task, error) {
 	handler, err := o.getProbeHandler(n, resource)
 	if err != nil {
 		return nil, err
@@ -128,7 +129,7 @@ func (o *onDemandFlowProbeServer) CreateTask(n *graph.Node, resource types.Resou
 	return active, nil
 }
 
-func (o *onDemandFlowProbeServer) RemoveTask(n *graph.Node, resource types.Resource, task ondemand.Task) error {
+func (o *onDemandFlowProbeServer) RemoveTask(n *graph.Node, resource rest.Resource, task ondemand.Task) error {
 	activeProbe := task.(*activeProbe)
 	return activeProbe.handler.UnregisterProbe(n, activeProbe, activeProbe.probe)
 }
@@ -137,7 +138,7 @@ func (o *onDemandFlowProbeServer) ResourceName() string {
 	return "Capture"
 }
 
-func (o *onDemandFlowProbeServer) DecodeMessage(msg json.RawMessage) (types.Resource, error) {
+func (o *onDemandFlowProbeServer) DecodeMessage(msg json.RawMessage) (rest.Resource, error) {
 	var capture types.Capture
 	if err := json.Unmarshal(msg, &capture); err != nil {
 		return nil, fmt.Errorf("Unable to decode %s: %s", o.ResourceName(), err)

@@ -18,28 +18,42 @@
 package pod
 
 import (
-	api "github.com/skydive-project/skydive/api/server"
+	"crypto/tls"
+
+	scommon "github.com/skydive-project/skydive/common"
+	api "github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
-	"github.com/skydive-project/skydive/graffiti/validator"
 	"github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/logging"
 )
 
 // Opts defines pod server options
 type Opts struct {
-	ServerOpts websocket.ServerOpts
-	Validator  validator.Validator
+	Version             string
+	Hubs                []scommon.ServiceAddress
+	WebsocketOpts       websocket.ServerOpts
+	WebsocketClientOpts websocket.ClientOpts
+	Validator           api.Validator
+	TopologyMarshallers api.TopologyMarshallers
+	StatusReporter      api.StatusReporter
+	TLSConfig           *tls.Config
+	APIAuthBackend      shttp.AuthenticationBackend
+	Logger              logging.Logger
 }
 
 // Pod describes a graph pod. It maintains a local graph
 // in memory and forward any event to graph hubs
 type Pod struct {
+	httpServer         *shttp.Server
+	apiServer          *api.Server
 	subscriberWSServer *websocket.StructServer
 	publisherWSServer  *websocket.StructServer
 	forwarder          *common.Forwarder
 	clientPool         *websocket.StructClientPool
+	traversalParser    *traversal.GremlinTraversalParser
 }
 
 // Status describes the status of a pod
@@ -55,19 +69,27 @@ type ConnStatus struct {
 }
 
 // Start the pod
-func (p *Pod) Start() {
+func (p *Pod) Start() error {
+	p.httpServer.Start()
 	p.subscriberWSServer.Start()
 	p.publisherWSServer.Start()
+
+	// everything is ready, then initiate the websocket connection
+	go p.clientPool.ConnectAll()
+
+	return nil
 }
 
 // Stop the pod
 func (p *Pod) Stop() {
+	p.clientPool.Stop()
+	p.httpServer.Stop()
 	p.subscriberWSServer.Stop()
 	p.publisherWSServer.Stop()
 }
 
 // GetStatus returns the status of the pod
-func (p *Pod) GetStatus() *Status {
+func (p *Pod) GetStatus() interface{} {
 	var masterAddr string
 	var masterPort int
 	if master := p.forwarder.GetMaster(); master != nil {
@@ -98,26 +120,87 @@ func (p *Pod) Forwarder() *common.Forwarder {
 	return p.forwarder
 }
 
+// HTTPServer returns the pod HTTP server
+func (p *Pod) HTTPServer() *shttp.Server {
+	return p.httpServer
+}
+
+// APIServer returns the pod API server
+func (p *Pod) APIServer() *api.Server {
+	return p.apiServer
+}
+
+// ClientPool returns the WebSocket client pool
+func (p *Pod) ClientPool() *websocket.StructClientPool {
+	return p.clientPool
+}
+
+// GremlinTraversalParser returns the pod Gremlin traversal parser
+func (p *Pod) GremlinTraversalParser() *traversal.GremlinTraversalParser {
+	return p.traversalParser
+}
+
 // NewPod returns a new pod
-func NewPod(server *api.Server, clientPool *websocket.StructClientPool, g *graph.Graph, apiAuthBackend shttp.AuthenticationBackend, clusterAuthOptions *shttp.AuthenticationOpts, tr *traversal.GremlinTraversalParser, opts Opts) (*Pod, error) {
-	newWSServer := func(endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
-		return websocket.NewServer(server.HTTPServer, endpoint, authBackend, opts.ServerOpts)
+func NewPod(id string, serviceType scommon.ServiceType, listen string, podEndpoint string, g *graph.Graph, opts Opts) (*Pod, error) {
+	service := scommon.Service{ID: id, Type: serviceType}
+
+	sa, err := scommon.ServiceAddressFromString(listen)
+	if err != nil {
+		return nil, err
 	}
 
-	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", apiAuthBackend))
+	if opts.Logger == nil {
+		opts.Logger = logging.GetLogger()
+	}
+
+	// Creates a new http WebSocket client pool with authentication
+	clientPool := websocket.NewStructClientPool("HubClientPool", websocket.PoolOpts{})
+	clientOpts := opts.WebsocketClientOpts
+	clientOpts.Protocol = websocket.ProtobufProtocol
+	for _, sa := range opts.Hubs {
+		url := scommon.MakeURL("ws", sa.Addr, sa.Port, podEndpoint, clientOpts.TLSConfig != nil)
+		client := websocket.NewClient(id, serviceType, url, clientOpts)
+		clientPool.AddClient(client)
+	}
+
+	httpServer := shttp.NewServer(id, serviceType, sa.Addr, sa.Port, opts.TLSConfig, opts.Logger)
+
+	apiServer, err := api.NewAPI(httpServer, nil, opts.Version, service, opts.APIAuthBackend, opts.Validator)
+	if err != nil {
+		return nil, err
+	}
+
+	newWSServer := func(endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
+		return websocket.NewServer(httpServer, endpoint, opts.WebsocketOpts)
+	}
+
+	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", opts.APIAuthBackend))
+	tr := traversal.NewGremlinTraversalParser()
 	common.NewSubscriberEndpoint(subscriberWSServer, g, tr)
 
 	forwarder := common.NewForwarder(g, clientPool)
 
-	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", apiAuthBackend))
+	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", opts.APIAuthBackend))
 	if _, err := common.NewPublisherEndpoint(publisherWSServer, g, opts.Validator); err != nil {
 		return nil, err
 	}
 
-	return &Pod{
+	api.RegisterTopologyAPI(httpServer, g, tr, opts.APIAuthBackend, opts.TopologyMarshallers)
+
+	pod := &Pod{
+		httpServer:         httpServer,
+		apiServer:          apiServer,
 		subscriberWSServer: subscriberWSServer,
 		publisherWSServer:  publisherWSServer,
 		forwarder:          forwarder,
 		clientPool:         clientPool,
-	}, nil
+		traversalParser:    tr,
+	}
+
+	if opts.StatusReporter == nil {
+		opts.StatusReporter = pod
+	}
+	api.RegisterStatusAPI(httpServer, opts.StatusReporter, opts.APIAuthBackend)
+
+	return pod, nil
 }

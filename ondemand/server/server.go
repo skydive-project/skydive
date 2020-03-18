@@ -25,7 +25,7 @@ import (
 
 	"github.com/safchain/insanelock"
 
-	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/graffiti/api/rest"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/logging"
@@ -35,7 +35,7 @@ import (
 type activeTask struct {
 	graph    *graph.Graph
 	node     *graph.Node
-	resource types.Resource
+	resource rest.Resource
 	task     ondemand.Task
 	handler  OnDemandServerHandler
 }
@@ -56,15 +56,15 @@ type OnDemandServer struct {
 // OnDemandServerHandler is the interface to be implemented by ondemand servers
 type OnDemandServerHandler interface {
 	ResourceName() string
-	DecodeMessage(msg json.RawMessage) (types.Resource, error)
-	CreateTask(*graph.Node, types.Resource) (interface{}, error)
-	RemoveTask(*graph.Node, types.Resource, interface{}) error
+	DecodeMessage(msg json.RawMessage) (rest.Resource, error)
+	CreateTask(*graph.Node, rest.Resource) (interface{}, error)
+	RemoveTask(*graph.Node, rest.Resource, interface{}) error
 }
 
 // ErrTaskNotFound used when a task is not found for a specific node
 var ErrTaskNotFound = errors.New("task not found")
 
-func (o *OnDemandServer) registerTask(n *graph.Node, resource types.Resource) bool {
+func (o *OnDemandServer) registerTask(n *graph.Node, resource rest.Resource) bool {
 	logging.GetLogger().Debugf("Attempting to register %s %s on node %s", o.resourceName, resource.ID(), n.ID)
 
 	if _, err := n.GetFieldString("Type"); err != nil {
@@ -106,7 +106,7 @@ func (o *OnDemandServer) registerTask(n *graph.Node, resource types.Resource) bo
 }
 
 // unregisterTask should be executed under graph lock
-func (o *OnDemandServer) unregisterTask(n *graph.Node, resource types.Resource) error {
+func (o *OnDemandServer) unregisterTask(n *graph.Node, resource rest.Resource) error {
 	o.RLock()
 	var active *activeTask
 	tasks, isActive := o.activeTasks[n.ID]

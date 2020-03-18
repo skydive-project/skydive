@@ -22,9 +22,10 @@ import (
 	"fmt"
 	"strings"
 
-	apiServer "github.com/skydive-project/skydive/api/server"
+	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/api/rest"
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
@@ -36,10 +37,10 @@ import (
 type TopologyManager struct {
 	common.MasterElection
 	graph.DefaultGraphListener
-	watcher1    apiServer.StoppableWatcher
-	watcher2    apiServer.StoppableWatcher
-	nodeHandler *apiServer.NodeRuleAPI
-	edgeHandler *apiServer.EdgeRuleAPI
+	watcher1    rest.StoppableWatcher
+	watcher2    rest.StoppableWatcher
+	nodeHandler *api.NodeRuleAPI
+	edgeHandler *api.EdgeRuleAPI
 	graph       *graph.Graph
 }
 
@@ -206,7 +207,7 @@ func (tm *TopologyManager) getNodes(gremlinQuery string) []*graph.Node {
 	return nodes
 }
 
-func (tm *TopologyManager) handleNodeRuleRequest(action string, resource types.Resource) error {
+func (tm *TopologyManager) handleNodeRuleRequest(action string, resource rest.Resource) error {
 	node := resource.(*types.NodeRule)
 	switch action {
 	case "create", "set":
@@ -225,7 +226,7 @@ func (tm *TopologyManager) handleNodeRuleRequest(action string, resource types.R
 	return nil
 }
 
-func (tm *TopologyManager) handleEdgeRuleRequest(action string, resource types.Resource) error {
+func (tm *TopologyManager) handleEdgeRuleRequest(action string, resource rest.Resource) error {
 	edge := resource.(*types.EdgeRule)
 	switch action {
 	case "create", "set":
@@ -250,7 +251,7 @@ func (tm *TopologyManager) handleEdgeRuleRequest(action string, resource types.R
 	return nil
 }
 
-func (tm *TopologyManager) onAPIWatcherEvent(action string, id string, resource types.Resource) {
+func (tm *TopologyManager) onAPIWatcherEvent(action string, id string, resource rest.Resource) {
 	switch resource.(type) {
 	case *types.NodeRule:
 		tm.graph.Lock()
@@ -295,7 +296,7 @@ func (tm *TopologyManager) Stop() {
 }
 
 // NewTopologyManager returns new topology manager
-func NewTopologyManager(etcdClient *etcd.Client, nodeHandler *apiServer.NodeRuleAPI, edgeHandler *apiServer.EdgeRuleAPI, g *graph.Graph) *TopologyManager {
+func NewTopologyManager(etcdClient *etcd.Client, nodeHandler *api.NodeRuleAPI, edgeHandler *api.EdgeRuleAPI, g *graph.Graph) *TopologyManager {
 	tm := &TopologyManager{
 		nodeHandler: nodeHandler,
 		edgeHandler: edgeHandler,

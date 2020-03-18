@@ -62,7 +62,7 @@ var apiMixin = {
         }
       };
       xhr.setRequestHeader('Content-type', 'application/json; charset=utf-8');
-      xhr.setRequestHeader('Accept', 'vnd.tcpdump.pcap');
+      xhr.setRequestHeader('Accept', 'application/vnd.tcpdump.pcap');
 
       var query = 'G';
       if (datastore) {

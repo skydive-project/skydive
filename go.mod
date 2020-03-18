@@ -145,7 +145,6 @@ replace (
 	github.com/networkservicemesh/networkservicemesh/utils => github.com/networkservicemesh/networkservicemesh/utils v0.0.0-20191017074247-aa5815869b2c
 	github.com/newtools/ebpf => github.com/nplanel/ebpf v0.0.0-20190918123742-99947faabce5
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.3
-
 	github.com/skydive-project/skydive/scripts/gendecoder => ./scripts/gendecoder
 	github.com/spf13/viper v1.4.0 => github.com/lebauce/viper v0.0.0-20190903114911-3b7a98e30843
 	github.com/vishvananda/netlink v1.0.0 => github.com/lebauce/netlink v0.0.0-20190122103356-fa328be7c8d2

@@ -24,15 +24,13 @@ import (
 	"syscall"
 	"time"
 
-	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/common"
+	api "github.com/skydive-project/skydive/graffiti/api/server"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/hub"
 	"github.com/skydive-project/skydive/graffiti/websocket"
-	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/spf13/cobra"
@@ -44,6 +42,7 @@ const (
 
 var (
 	hubListen        string
+	embeddedEtcd     bool
 	etcdServers      []string
 	writeCompression bool
 	queueSize        int
@@ -59,12 +58,6 @@ var HubCmd = &cobra.Command{
 	SilenceUsage: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		logging.GetLogger().Noticef("Graffiti hub starting...")
-
-		sa, err := common.ServiceAddressFromString(hubListen)
-		if err != nil {
-			logging.GetLogger().Errorf("Configuration error: %s", err)
-			os.Exit(1)
-		}
 
 		hostname, err := os.Hostname()
 		if err != nil {
@@ -84,51 +77,45 @@ var HubCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		service := common.Service{ID: hostname, Type: "Hub"}
 		g := graph.NewGraph(hostname, cached, serviceType)
-
-		httpServer := shttp.NewServer(hostname, service.Type, sa.Addr, sa.Port, nil)
-
-		if err := httpServer.Listen(); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
-		}
 
 		authBackend := shttp.NewNoAuthenticationBackend()
 
-		// declare all extension available through API and filtering
-		tr := traversal.NewGremlinTraversalParser()
-		tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
-
-		if _, err = api.NewAPI(httpServer, nil, service, authBackend); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
-		}
-		api.RegisterTopologyAPI(httpServer, g, tr, authBackend)
-
-		serverOpts := websocket.ServerOpts{
-			WriteCompression: writeCompression,
-			QueueSize:        queueSize,
-			PingDelay:        time.Second * time.Duration(pingDelay),
-			PongTimeout:      time.Second * time.Duration(pongTimeout),
-		}
-
-		hubOpts := hub.Opts{
-			ServerOpts: serverOpts,
-			EtcdServerOpts: &etcdserver.EmbeddedServerOpts{
+		var etcdServer *etcdserver.EmbeddedServer
+		if embeddedEtcd {
+			etcdServerOpts := &etcdserver.EmbeddedServerOpts{
 				Name:    "localhost",
 				Listen:  "127.0.0.1:12379",
 				DataDir: "/tmp/etcd",
-			},
+			}
+
+			if etcdServer, err = etcdserver.NewEmbeddedServer(*etcdServerOpts); err != nil {
+				logging.GetLogger().Error(err)
+				os.Exit(1)
+			}
+
+			etcdServer.Start()
 		}
 
-		hub, err := hub.NewHub(httpServer, g, cached, authBackend, authBackend, nil, "/ws/pod", nil, hubOpts)
+		hubOpts := hub.Opts{
+			Hostname: hostname,
+			WebsocketOpts: websocket.ServerOpts{
+				WriteCompression: writeCompression,
+				QueueSize:        queueSize,
+				PingDelay:        time.Second * time.Duration(pingDelay),
+				PongTimeout:      time.Second * time.Duration(pongTimeout),
+			},
+			APIAuthBackend:     authBackend,
+			ClusterAuthBackend: authBackend,
+		}
+
+		hub, err := hub.NewHub(hostname, common.ServiceType("Hub"), hubListen, g, cached, "/ws/pod", hubOpts)
 		if err != nil {
 			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
 
-		go httpServer.Serve()
+		api.RegisterStatusAPI(hub.HTTPServer(), hub, authBackend)
 
 		hub.Start()
 
@@ -136,6 +123,11 @@ var HubCmd = &cobra.Command{
 		ch := make(chan os.Signal)
 		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 		<-ch
+
+		hub.Stop()
+		if etcdServer != nil {
+			etcdServer.Stop()
+		}
 
 		logging.GetLogger().Notice("Graffiti hub stopped.")
 	},
@@ -147,5 +139,6 @@ func init() {
 	HubCmd.Flags().IntVar(&queueSize, "queue-size", 10000, "websocket queue size")
 	HubCmd.Flags().IntVar(&pingDelay, "ping-delay", 2, "websocket ping delay")
 	HubCmd.Flags().IntVar(&pongTimeout, "pong-timeout", 10, "websocket pong timeout")
-	HubCmd.Flags().StringArrayVar(&etcdServers, "etcd-servers", []string{defaultEtcdAddr}, "websocket pong timeout")
+	HubCmd.Flags().BoolVar(&embeddedEtcd, "embedded-etcd", false, "run embedded etcd server")
+	HubCmd.Flags().StringArrayVar(&etcdServers, "etcd-servers", []string{defaultEtcdAddr}, "etcd servers")
 }

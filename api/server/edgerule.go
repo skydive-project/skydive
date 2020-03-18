@@ -22,18 +22,20 @@ package server
 
 import (
 	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/graffiti/api/rest"
+	api "github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	shttp "github.com/skydive-project/skydive/http"
 )
 
 // EdgeRuleResourceHandler describes a edge rule resource handler
 type EdgeRuleResourceHandler struct {
-	ResourceHandler
+	rest.ResourceHandler
 }
 
 // EdgeRuleAPI based on BasicAPIHandler
 type EdgeRuleAPI struct {
-	BasicAPIHandler
+	rest.BasicAPIHandler
 	Graph *graph.Graph
 }
 
@@ -43,14 +45,14 @@ func (erh *EdgeRuleResourceHandler) Name() string {
 }
 
 // New creates a new EdgeRule
-func (erh *EdgeRuleResourceHandler) New() types.Resource {
+func (erh *EdgeRuleResourceHandler) New() rest.Resource {
 	return &types.EdgeRule{}
 }
 
 // RegisterEdgeRuleAPI registers an EdgeRule's API to a designated API Server
-func RegisterEdgeRuleAPI(apiServer *Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*EdgeRuleAPI, error) {
+func RegisterEdgeRuleAPI(apiServer *api.Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*EdgeRuleAPI, error) {
 	era := &EdgeRuleAPI{
-		BasicAPIHandler: BasicAPIHandler{
+		BasicAPIHandler: rest.BasicAPIHandler{
 			ResourceHandler: &EdgeRuleResourceHandler{},
 			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
 		},

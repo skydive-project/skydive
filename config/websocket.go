@@ -26,18 +26,25 @@ import (
 	shttp "github.com/skydive-project/skydive/http"
 )
 
-// NewWSClient creates a Client based on the configuration
-func NewWSClient(clientType common.ServiceType, url *url.URL, opts websocket.ClientOpts) (*websocket.Client, error) {
-	host := GetString("host_id")
-
+// NewWSClientOpts creates WebSocket options object from the configuration
+func NewWSClientOpts(authOpts *shttp.AuthenticationOpts) (*websocket.ClientOpts, error) {
 	// override some of the options with config value
-	opts.QueueSize = GetInt("http.ws.queue_size")
-	opts.WriteCompression = GetBool("http.ws.enable_write_compression")
 	tlsConfig, err := GetTLSClientConfig(true)
 	if err != nil {
 		return nil, err
 	}
-	opts.TLSConfig = tlsConfig
+
+	return &websocket.ClientOpts{
+		QueueSize:        GetInt("http.ws.queue_size"),
+		WriteCompression: GetBool("http.ws.enable_write_compression"),
+		TLSConfig:        tlsConfig,
+		AuthOpts:         authOpts,
+	}, nil
+}
+
+// NewWSClient creates a Client based on the configuration
+func NewWSClient(clientType common.ServiceType, url *url.URL, opts websocket.ClientOpts) (*websocket.Client, error) {
+	host := GetString("host_id")
 
 	return websocket.NewClient(host, clientType, url, opts), nil
 }
@@ -56,5 +63,7 @@ func NewWSServerOpts() websocket.ServerOpts {
 
 // NewWSServer creates a Server based on the configuration
 func NewWSServer(server *shttp.Server, endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
-	return websocket.NewServer(server, endpoint, authBackend, NewWSServerOpts())
+	opts := NewWSServerOpts()
+	opts.AuthBackend = authBackend
+	return websocket.NewServer(server, endpoint, opts)
 }

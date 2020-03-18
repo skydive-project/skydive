@@ -36,8 +36,6 @@ func easyjsonFac7b200DecodeGithubComSkydiveProjectSkydivePacketinjector(in *jlex
 			continue
 		}
 		switch key {
-		case "UUID":
-			out.UUID = string(in.String())
 		case "SrcIP":
 			if data := in.UnsafeBytes(); in.Ok() {
 				in.AddError((out.SrcIP).UnmarshalText(data))
@@ -87,6 +85,8 @@ func easyjsonFac7b200DecodeGithubComSkydiveProjectSkydivePacketinjector(in *jlex
 			}
 		case "TTL":
 			out.TTL = uint8(in.Uint8())
+		case "UUID":
+			out.UUID = string(in.String())
 		default:
 			in.SkipRecursive()
 		}
@@ -102,13 +102,8 @@ func easyjsonFac7b200EncodeGithubComSkydiveProjectSkydivePacketinjector(out *jwr
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"UUID\":"
-		out.RawString(prefix[1:])
-		out.String(string(in.UUID))
-	}
-	{
 		const prefix string = ",\"SrcIP\":"
-		out.RawString(prefix)
+		out.RawString(prefix[1:])
 		out.RawText((in.SrcIP).MarshalText())
 	}
 	{
@@ -180,6 +175,11 @@ func easyjsonFac7b200EncodeGithubComSkydiveProjectSkydivePacketinjector(out *jwr
 		const prefix string = ",\"TTL\":"
 		out.RawString(prefix)
 		out.Uint8(uint8(in.TTL))
+	}
+	{
+		const prefix string = ",\"UUID\":"
+		out.RawString(prefix)
+		out.String(string(in.UUID))
 	}
 	out.RawByte('}')
 }
@@ -310,8 +310,6 @@ func easyjsonFac7b200DecodeGithubComSkydiveProjectSkydivePacketinjector2(in *jle
 			out.State = string(in.String())
 		case "PacketCount":
 			out.PacketCount = int64(in.Int64())
-		case "UUID":
-			out.UUID = string(in.String())
 		case "SrcIP":
 			if data := in.UnsafeBytes(); in.Ok() {
 				in.AddError((out.SrcIP).UnmarshalText(data))
@@ -361,6 +359,8 @@ func easyjsonFac7b200DecodeGithubComSkydiveProjectSkydivePacketinjector2(in *jle
 			}
 		case "TTL":
 			out.TTL = uint8(in.Uint8())
+		case "UUID":
+			out.UUID = string(in.String())
 		default:
 			in.SkipRecursive()
 		}
@@ -389,11 +389,6 @@ func easyjsonFac7b200EncodeGithubComSkydiveProjectSkydivePacketinjector2(out *jw
 		const prefix string = ",\"PacketCount\":"
 		out.RawString(prefix)
 		out.Int64(int64(in.PacketCount))
-	}
-	{
-		const prefix string = ",\"UUID\":"
-		out.RawString(prefix)
-		out.String(string(in.UUID))
 	}
 	{
 		const prefix string = ",\"SrcIP\":"
@@ -469,6 +464,11 @@ func easyjsonFac7b200EncodeGithubComSkydiveProjectSkydivePacketinjector2(out *jw
 		const prefix string = ",\"TTL\":"
 		out.RawString(prefix)
 		out.Uint8(uint8(in.TTL))
+	}
+	{
+		const prefix string = ",\"UUID\":"
+		out.RawString(prefix)
+		out.String(string(in.UUID))
 	}
 	out.RawByte('}')
 }
