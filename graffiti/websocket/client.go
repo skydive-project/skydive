@@ -143,7 +143,7 @@ type Conn struct {
 	ConnStatus
 	flush            chan struct{}
 	send             chan []byte
-	read             chan []byte
+	queueSize        int
 	quit             chan bool
 	wg               sync.WaitGroup
 	conn             *websocket.Conn
@@ -331,6 +331,8 @@ func (c *Conn) cloneEventHandlers() (handlers []SpeakerEventHandler) {
 
 // main loop to read and send messages
 func (c *Conn) run() {
+	read := make(chan []byte, c.queueSize)
+
 	flushChannel := func(c chan []byte, cb func(msg []byte) error) error {
 		for {
 			select {
@@ -370,7 +372,7 @@ func (c *Conn) run() {
 				}
 				break
 			}
-			c.read <- m
+			read <- m
 		}
 	}()
 
@@ -380,8 +382,8 @@ func (c *Conn) run() {
 
 		// handle all the pending received messages
 		readWg.Wait()
-		flushChannel(c.read, handleReceivedMessage)
-		close(c.read)
+		flushChannel(read, handleReceivedMessage)
+		close(read)
 
 		for _, l := range c.cloneEventHandlers() {
 			l.OnDisconnected(c.wsSpeaker)
@@ -393,7 +395,7 @@ func (c *Conn) run() {
 	go func() {
 		defer c.wg.Done()
 
-		for m := range c.read {
+		for m := range read {
 			handleReceivedMessage(m)
 		}
 	}()
@@ -481,7 +483,7 @@ func newConn(host string, clientType common.ServiceType, clientProtocol Protocol
 			ConnectTime:    time.Now(),
 		},
 		send:             make(chan []byte, opts.QueueSize),
-		read:             make(chan []byte, opts.QueueSize),
+		queueSize:        opts.QueueSize,
 		flush:            make(chan struct{}),
 		quit:             make(chan bool, 2),
 		pingTicker:       &time.Ticker{},
