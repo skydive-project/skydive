@@ -1,3 +1,5 @@
+// +build packetinject
+
 /*
  * Copyright (C) 2016 Red Hat, Inc.
  *
@@ -18,10 +20,7 @@
 package packetinjector
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
-	"sync"
 	"syscall"
 	"time"
 
@@ -30,23 +29,11 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/ondemand"
-	"github.com/skydive-project/skydive/ondemand/server"
 	"github.com/skydive-project/skydive/rawsocket"
 	"github.com/skydive-project/skydive/topology"
 )
-
-const (
-	// Namespace PacketInjector
-	Namespace = "PacketInjector"
-)
-
-type onDemandPacketInjectServer struct {
-	sync.RWMutex
-	graph *graph.Graph
-}
 
 func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource rest.Resource) (ondemand.Task, error) {
 	logging.GetLogger().Debugf("Registering packet injection %s on %s", resource.ID(), srcNode.ID)
@@ -176,23 +163,4 @@ func (o *onDemandPacketInjectServer) RemoveTask(n *graph.Node, resource rest.Res
 	cancel := task.(chan bool)
 	cancel <- true
 	return nil
-}
-
-func (o *onDemandPacketInjectServer) ResourceName() string {
-	return "PacketInjection"
-}
-
-func (o *onDemandPacketInjectServer) DecodeMessage(msg json.RawMessage) (rest.Resource, error) {
-	var params PacketInjectionRequest
-	if err := json.Unmarshal(msg, &params); err != nil {
-		return nil, fmt.Errorf("Unable to decode packet inject param message %v", msg)
-	}
-	return &params, nil
-}
-
-// NewOnDemandInjectionServer creates a new Ondemand probes server based on graph and websocket
-func NewOnDemandInjectionServer(g *graph.Graph, pool *ws.StructClientPool) (*server.OnDemandServer, error) {
-	return server.NewOnDemandServer(g, pool, &onDemandPacketInjectServer{
-		graph: g,
-	})
 }
