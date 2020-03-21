@@ -36,8 +36,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	tp "github.com/skydive-project/skydive/topology/probes"
@@ -59,7 +59,7 @@ type Probe struct {
 	interfaceMap map[uint32]*interfaces.SwInterfaceDetails // MAP of VPP interfaces
 	vppRootNode  *graph.Node                               // root node for ownership
 	notifChan    chan api.Message                          // notification channel on interfaces events
-	state        common.ServiceState                       // state of the probe (running or stopped)
+	state        service.State                             // state of the probe (running or stopped)
 	wg           sync.WaitGroup                            // goroutines wait group
 }
 
@@ -200,7 +200,7 @@ func (p *Probe) interfacesEvents() {
 
 	p.interfaceEventsEnableDisable(ch, true)
 
-	for p.state.Load() == common.RunningState {
+	for p.state.Load() == service.RunningState {
 		notif := <-p.notifChan
 		if notif == nil {
 			break
@@ -237,7 +237,7 @@ func (p *Probe) interfacesPolling() {
 		return
 	}
 
-	for p.state.Load() == common.RunningState {
+	for p.state.Load() == service.RunningState {
 		foundInterfaces := make(map[uint32]struct{})
 		needUpdate := make(map[uint32]struct{})
 
@@ -329,7 +329,7 @@ func (p *Probe) Start() error {
 	}
 	topology.AddOwnershipLink(p.Ctx.Graph, p.Ctx.RootNode, p.vppRootNode, nil)
 
-	p.state.Store(common.RunningState)
+	p.state.Store(service.RunningState)
 
 	p.wg.Add(2)
 	go p.interfacesPolling()
@@ -340,7 +340,7 @@ func (p *Probe) Start() error {
 
 // Stop the probe
 func (p *Probe) Stop() {
-	p.state.Store(common.StoppingState)
+	p.state.Store(service.StoppingState)
 	close(p.notifChan)
 	p.conn.Disconnect()
 	p.wg.Wait()
@@ -356,7 +356,7 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 		interfaceMap: make(map[uint32]*interfaces.SwInterfaceDetails),
 		notifChan:    make(chan api.Message, 100),
 	}
-	p.state.Store(common.StoppedState)
+	p.state.Store(service.StoppedState)
 
 	/* Forward all govpp logging to Skydive logging */
 	l := logrus.New()

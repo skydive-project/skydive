@@ -7,8 +7,8 @@ import (
 	easyjson "github.com/mailru/easyjson"
 	jlexer "github.com/mailru/easyjson/jlexer"
 	jwriter "github.com/mailru/easyjson/jwriter"
-	common "github.com/skydive-project/skydive/common"
 	hub "github.com/skydive-project/skydive/graffiti/hub"
+	service "github.com/skydive-project/skydive/graffiti/service"
 	websocket "github.com/skydive-project/skydive/graffiti/websocket"
 )
 
@@ -413,7 +413,7 @@ func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(in *j
 		}
 		switch key {
 		case "ServiceType":
-			out.ServiceType = common.ServiceType(in.String())
+			out.ServiceType = service.Type(in.String())
 		case "ClientProtocol":
 			out.ClientProtocol = websocket.Protocol(in.String())
 		case "Addr":
@@ -439,7 +439,7 @@ func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(in *j
 		case "RemoteHost":
 			out.RemoteHost = string(in.String())
 		case "RemoteServiceType":
-			out.RemoteServiceType = common.ServiceType(in.String())
+			out.RemoteServiceType = service.Type(in.String())
 		default:
 			in.SkipRecursive()
 		}

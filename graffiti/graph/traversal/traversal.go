@@ -31,6 +31,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 )
 
 const (
@@ -1396,7 +1397,7 @@ func (tv *GraphTraversalV) SubGraph(ctx StepContext, s ...interface{}) *GraphTra
 		}
 	}
 
-	ng := graph.NewGraph(tv.GraphTraversal.Graph.GetHost(), memory, common.UnknownService)
+	ng := graph.NewGraph(tv.GraphTraversal.Graph.GetHost(), memory, service.UnknownService)
 
 	return NewGraphTraversal(ng, tv.GraphTraversal.lockGraph)
 }
@@ -1436,7 +1437,7 @@ func (sp *GraphTraversalShortestPath) SubGraph(ctx StepContext, s ...interface{}
 		}
 	}
 
-	ng := graph.NewGraph(sp.GraphTraversal.Graph.GetHost(), memory, common.UnknownService)
+	ng := graph.NewGraph(sp.GraphTraversal.Graph.GetHost(), memory, service.UnknownService)
 
 	return NewGraphTraversal(ng, sp.GraphTraversal.lockGraph)
 }
@@ -1766,7 +1767,7 @@ func (te *GraphTraversalE) SubGraph(ctx StepContext, s ...interface{}) *GraphTra
 		}
 	}
 
-	ng := graph.NewGraph(te.GraphTraversal.Graph.GetHost(), memory, common.UnknownService)
+	ng := graph.NewGraph(te.GraphTraversal.Graph.GetHost(), memory, service.UnknownService)
 
 	return NewGraphTraversal(ng, te.GraphTraversal.lockGraph)
 }

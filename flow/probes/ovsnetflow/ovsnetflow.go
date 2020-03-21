@@ -21,14 +21,14 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/socketplane/libovsdb"
 	"github.com/safchain/insanelock"
+	"github.com/socketplane/libovsdb"
 
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/netflow"
 	"github.com/skydive-project/skydive/ovs/ovsdb"
 	"github.com/skydive-project/skydive/probe"
@@ -181,7 +181,7 @@ func (o *ProbesHandler) registerProbeOnBridge(bridgeUUID string, tid string, cap
 			address = "127.0.0.1"
 		}
 
-		addr := common.ServiceAddress{Addr: address, Port: 0}
+		addr := service.Address{Addr: address, Port: 0}
 		agent, err := o.allocator.Alloc(bridgeUUID, probe.flowTable, &addr, uuids)
 		if err != nil && err != netflow.ErrAgentAlreadyAllocated {
 			return nil, err

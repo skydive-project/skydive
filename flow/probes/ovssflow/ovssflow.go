@@ -25,10 +25,10 @@ import (
 	"github.com/socketplane/libovsdb"
 
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/ovs/ovsdb"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/sflow"
@@ -187,7 +187,7 @@ func (o *ProbesHandler) registerProbeOnBridge(bridgeUUID string, tid string, cap
 			address = "127.0.0.1"
 		}
 
-		addr := common.ServiceAddress{Addr: address}
+		addr := service.Address{Addr: address}
 		bfpFilter := probes.NormalizeBPFFilter(capture)
 
 		agent, err := o.allocator.Alloc(bridgeUUID, probe.flowTable, bfpFilter, headerSize, &addr, n, o.Ctx.Graph)

@@ -7,8 +7,8 @@ import (
 	easyjson "github.com/mailru/easyjson"
 	jlexer "github.com/mailru/easyjson/jlexer"
 	jwriter "github.com/mailru/easyjson/jwriter"
-	common "github.com/skydive-project/skydive/common"
 	pod "github.com/skydive-project/skydive/graffiti/pod"
+	service "github.com/skydive-project/skydive/graffiti/service"
 	websocket "github.com/skydive-project/skydive/graffiti/websocket"
 )
 
@@ -275,7 +275,7 @@ func easyjsonCb9d4455DecodeGithubComSkydiveProjectSkydiveGraffitiPod(in *jlexer.
 		case "IsMaster":
 			out.IsMaster = bool(in.Bool())
 		case "ServiceType":
-			out.ServiceType = common.ServiceType(in.String())
+			out.ServiceType = service.Type(in.String())
 		case "ClientProtocol":
 			out.ClientProtocol = websocket.Protocol(in.String())
 		case "Addr":
@@ -301,7 +301,7 @@ func easyjsonCb9d4455DecodeGithubComSkydiveProjectSkydiveGraffitiPod(in *jlexer.
 		case "RemoteHost":
 			out.RemoteHost = string(in.String())
 		case "RemoteServiceType":
-			out.RemoteServiceType = common.ServiceType(in.String())
+			out.RemoteServiceType = service.Type(in.String())
 		default:
 			in.SkipRecursive()
 		}
@@ -387,7 +387,7 @@ func easyjsonCb9d4455DecodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(in *j
 		}
 		switch key {
 		case "ServiceType":
-			out.ServiceType = common.ServiceType(in.String())
+			out.ServiceType = service.Type(in.String())
 		case "ClientProtocol":
 			out.ClientProtocol = websocket.Protocol(in.String())
 		case "Addr":
@@ -413,7 +413,7 @@ func easyjsonCb9d4455DecodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(in *j
 		case "RemoteHost":
 			out.RemoteHost = string(in.String())
 		case "RemoteServiceType":
-			out.RemoteServiceType = common.ServiceType(in.String())
+			out.RemoteServiceType = service.Type(in.String())
 		default:
 			in.SkipRecursive()
 		}

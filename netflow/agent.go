@@ -31,6 +31,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/portallocator"
 )
@@ -219,7 +220,7 @@ func (a *AgentAllocator) ReleaseAll() {
 }
 
 // Alloc allocates a new netflow agent
-func (a *AgentAllocator) Alloc(uuid string, ft *flow.Table, addr *common.ServiceAddress, uuids flow.UUIDs) (agent *Agent, _ error) {
+func (a *AgentAllocator) Alloc(uuid string, ft *flow.Table, addr *service.Address, uuids flow.UUIDs) (agent *Agent, _ error) {
 	a.Lock()
 	defer a.Unlock()
 

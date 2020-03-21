@@ -26,6 +26,7 @@ import (
 	etcd "github.com/coreos/etcd/client"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -38,14 +39,14 @@ const (
 
 // Client describes a ETCD configuration client
 type Client struct {
-	service common.Service
+	service service.Service
 	client  *etcd.Client
 	KeysAPI etcd.KeysAPI
 	logger  logging.Logger
 }
 
-// ClientOpts describes the options of an etcd client
-type ClientOpts struct {
+// Opts describes the options of an etcd client
+type Opts struct {
 	Servers []string
 	Timeout time.Duration
 	Logger  logging.Logger
@@ -94,7 +95,7 @@ func (client *Client) NewElection(name string) common.MasterElection {
 }
 
 // NewClient creates a new ETCD client connection to ETCD servers
-func NewClient(service common.Service, opts ClientOpts) (*Client, error) {
+func NewClient(service service.Service, opts Opts) (*Client, error) {
 	if opts.Timeout == 0 {
 		opts.Timeout = DefaultTimeout
 	}

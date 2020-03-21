@@ -31,8 +31,16 @@ import (
 	// Viper remote client need to be internally initialized
 	_ "github.com/spf13/viper/remote"
 
-	"github.com/skydive-project/skydive/common"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
+	"github.com/skydive-project/skydive/graffiti/service"
+	"github.com/skydive-project/skydive/http"
+)
+
+const (
+	// AnalyzerService analyzer
+	AnalyzerService service.Type = "analyzer"
+	// AgentService agent
+	AgentService service.Type = "agent"
 )
 
 // ErrNoAnalyzerSpecified error no analyzer section is specified in the configuration file
@@ -333,15 +341,15 @@ func (c *SkydiveConfig) SetDefault(key string, value interface{}) {
 }
 
 // GetAnalyzerServiceAddresses returns a list of connectable Analyzers
-func GetAnalyzerServiceAddresses() ([]common.ServiceAddress, error) {
+func GetAnalyzerServiceAddresses() ([]service.Address, error) {
 	return cfg.GetAnalyzerServiceAddresses()
 }
 
 // GetAnalyzerServiceAddresses returns a list of connectable Analyzers
-func (c *SkydiveConfig) GetAnalyzerServiceAddresses() ([]common.ServiceAddress, error) {
-	var addresses []common.ServiceAddress
+func (c *SkydiveConfig) GetAnalyzerServiceAddresses() ([]service.Address, error) {
+	var addresses []service.Address
 	for _, a := range c.GetStringSlice("analyzers") {
-		sa, err := common.ServiceAddressFromString(a)
+		sa, err := service.AddressFromString(a)
 		if err != nil {
 			return nil, err
 		}
@@ -358,19 +366,19 @@ func (c *SkydiveConfig) GetAnalyzerServiceAddresses() ([]common.ServiceAddress, 
 }
 
 // GetOneAnalyzerServiceAddress returns a random connectable Analyzer
-func GetOneAnalyzerServiceAddress() (common.ServiceAddress, error) {
+func GetOneAnalyzerServiceAddress() (service.Address, error) {
 	return cfg.GetOneAnalyzerServiceAddress()
 }
 
 // GetOneAnalyzerServiceAddress returns a random connectable Analyzer
-func (c *SkydiveConfig) GetOneAnalyzerServiceAddress() (common.ServiceAddress, error) {
+func (c *SkydiveConfig) GetOneAnalyzerServiceAddress() (service.Address, error) {
 	addresses, err := c.GetAnalyzerServiceAddresses()
 	if err != nil {
-		return common.ServiceAddress{}, err
+		return service.Address{}, err
 	}
 
 	if len(addresses) == 0 {
-		return common.ServiceAddress{}, ErrNoAnalyzerSpecified
+		return service.Address{}, ErrNoAnalyzerSpecified
 	}
 
 	return addresses[rand.Intn(len(addresses))], nil
@@ -390,7 +398,7 @@ func (c *SkydiveConfig) GetEtcdServerAddrs() []string {
 
 	port := etcdclient.DefaultPort
 	if c.GetBool("etcd.embedded") {
-		sa, err := common.ServiceAddressFromString(c.GetString("etcd.listen"))
+		sa, err := service.AddressFromString(c.GetString("etcd.listen"))
 		if err == nil {
 			port = sa.Port
 		}
@@ -540,5 +548,5 @@ func GetURL(protocol string, addr string, port int, path string) *url.URL {
 // GetURL constructs a URL from a tuple of protocol, address, port and path
 // If TLS is enabled, it will return the https (or wss) version of the URL.
 func (c *SkydiveConfig) GetURL(protocol string, addr string, port int, path string) *url.URL {
-	return common.MakeURL(protocol, addr, port, path, c.IsTLSEnabled())
+	return http.MakeURL(protocol, addr, port, path, c.IsTLSEnabled())
 }

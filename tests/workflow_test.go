@@ -26,9 +26,9 @@ import (
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/service"
 	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/js"
@@ -481,7 +481,7 @@ func TestFlowMatrixWorkflow(t *testing.T) {
 			}
 
 			backend, _ := graph.NewMemoryBackend()
-			g := graph.NewGraph("test", backend, common.UnknownService)
+			g := graph.NewGraph("test", backend, service.UnknownService)
 
 			for _, n := range subgraph.Nodes {
 				g.NodeAdded(n)

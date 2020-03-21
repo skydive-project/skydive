@@ -22,9 +22,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 )
 
 func TestGroup(t *testing.T) {
@@ -36,7 +36,7 @@ func TestGroup(t *testing.T) {
 
 	_, flowChan, _ := tc.t.Start(nil)
 	defer tc.t.Stop()
-	for tc.t.State() != common.RunningState {
+	for tc.t.State() != service.RunningState {
 		time.Sleep(100 * time.Millisecond)
 	}
 

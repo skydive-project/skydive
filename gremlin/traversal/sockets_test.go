@@ -20,7 +20,6 @@ package traversal
 import (
 	"testing"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
 )
@@ -31,7 +30,7 @@ func TestSocketsIndexer(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	g := graph.NewGraph("testhost", b, common.UnknownService)
+	g := graph.NewGraph("testhost", b, "test")
 	indexer := NewSocketIndexer(g)
 	indexer.Start()
 

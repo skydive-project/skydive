@@ -27,7 +27,6 @@ import (
 	"time"
 
 	api "github.com/skydive-project/skydive/api/server"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/client"
@@ -121,7 +120,7 @@ func NewAgent() (*Agent, error) {
 	}
 
 	hostID := config.GetString("host_id")
-	g := graph.NewGraph(hostID, backend, common.AgentService)
+	g := graph.NewGraph(hostID, backend, config.AgentService)
 
 	apiAuthBackendName := config.GetString("agent.auth.api.backend")
 	apiAuthBackend, err := config.NewAuthenticationBackendByName(apiAuthBackendName)
@@ -171,7 +170,7 @@ func NewAgent() (*Agent, error) {
 	}
 
 	listenAddr := config.GetString("agent.listen")
-	pod, err := pod.NewPod(hostID, common.AgentService, listenAddr, "/ws/agent/topology", g, opts)
+	pod, err := pod.NewPod(hostID, config.AgentService, listenAddr, "/ws/agent/topology", g, opts)
 	if err != nil {
 		return nil, err
 	}

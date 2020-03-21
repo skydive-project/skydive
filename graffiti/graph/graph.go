@@ -27,6 +27,7 @@ import (
 	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/service"
 )
 
 const (
@@ -143,7 +144,7 @@ type Graph struct {
 	backend      Backend
 	context      Context
 	host         string
-	service      common.ServiceType
+	service      service.Type
 }
 
 // Elements struct containing nodes and edges
@@ -1108,7 +1109,7 @@ func (g *Graph) GetNode(i Identifier) *Node {
 }
 
 // CreateNode returns a new node not bound to a graph
-func CreateNode(i Identifier, m Metadata, t Time, h string, s common.ServiceType) *Node {
+func CreateNode(i Identifier, m Metadata, t Time, h string, s service.Type) *Node {
 	o := string(s)
 	if len(h) > 0 {
 		o += "." + h
@@ -1156,7 +1157,7 @@ func (g *Graph) NewNode(i Identifier, m Metadata, h ...string) (*Node, error) {
 }
 
 // CreateEdge returns a new edge not bound to any graph
-func CreateEdge(i Identifier, p *Node, c *Node, m Metadata, t Time, h string, s common.ServiceType) *Edge {
+func CreateEdge(i Identifier, p *Node, c *Node, m Metadata, t Time, h string, s service.Type) *Edge {
 	o := string(s)
 	if len(h) > 0 {
 		o += "." + h
@@ -1390,7 +1391,7 @@ func (g *Graph) RemoveEventListener(l EventListener) {
 }
 
 // NewGraph creates a new graph based on the backend
-func NewGraph(host string, backend Backend, service common.ServiceType) *Graph {
+func NewGraph(host string, backend Backend, service service.Type) *Graph {
 	return &Graph{
 		eventHandler: NewEventHandler(maxEvents),
 		backend:      backend,

@@ -39,6 +39,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/netns"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
@@ -79,7 +80,7 @@ type Probe struct {
 	socket               *nl.NetlinkSocket
 	indexToChildrenQueue map[int64][]pendingLink
 	links                map[int]*graph.Node
-	state                common.ServiceState
+	state                service.State
 	wg                   sync.WaitGroup
 	quit                 chan bool
 	netNsNameTry         map[graph.Identifier]int
@@ -92,7 +93,7 @@ type ProbeHandler struct {
 	Ctx            tp.Context
 	epollFd        int
 	probes         map[int32]*Probe
-	state          common.ServiceState
+	state          service.State
 	wg             sync.WaitGroup
 	sriovProcessor *graph.Processor
 }
@@ -970,7 +971,7 @@ func parseAddr(m []byte) (addr netlink.Addr, family, index int, err error) {
 }
 
 func (u *Probe) isRunning() bool {
-	return u.state.Load() == common.RunningState
+	return u.state.Load() == service.RunningState
 }
 
 func (u *Probe) cloneLinkNodes() map[int]*graph.Node {
@@ -1073,15 +1074,15 @@ func (u *Probe) start(handler *ProbeHandler) {
 Ready:
 	for {
 		switch handler.state.Load() {
-		case common.StoppingState, common.StoppedState:
+		case service.StoppingState, service.StoppedState:
 			return
-		case common.RunningState:
+		case service.RunningState:
 			break Ready
 		default:
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
-	u.state.Store(common.RunningState)
+	u.state.Store(service.RunningState)
 
 	fd := u.socket.GetFd()
 
@@ -1192,7 +1193,7 @@ func (u *Probe) closeFds() {
 }
 
 func (u *Probe) stop() {
-	if u.state.CompareAndSwap(common.RunningState, common.StoppingState) {
+	if u.state.CompareAndSwap(service.RunningState, service.StoppingState) {
 		u.quit <- true
 		u.wg.Wait()
 	}
@@ -1309,8 +1310,8 @@ func (u *ProbeHandler) start() {
 
 	events := make([]syscall.EpollEvent, maxEpollEvents)
 
-	u.state.Store(common.RunningState)
-	for u.state.Load() == common.RunningState {
+	u.state.Store(service.RunningState)
+	for u.state.Load() == service.RunningState {
 		nevents, err := syscall.EpollWait(u.epollFd, events[:], 200)
 		if err != nil {
 			if errno, ok := err.(syscall.Errno); ok && errno != syscall.EINTR {
@@ -1344,7 +1345,7 @@ func (u *ProbeHandler) Start() error {
 
 // Stop the probe
 func (u *ProbeHandler) Stop() {
-	if u.state.CompareAndSwap(common.RunningState, common.StoppingState) {
+	if u.state.CompareAndSwap(service.RunningState, service.StoppingState) {
 		u.wg.Wait()
 
 		u.RLock()

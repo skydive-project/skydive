@@ -32,6 +32,7 @@ import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/portallocator"
 )
@@ -336,7 +337,7 @@ func (a *AgentAllocator) ReleaseAll() {
 }
 
 // Alloc allocates a new sFlow agent
-func (a *AgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter string, headerSize uint32, addr *common.ServiceAddress, n *graph.Node, g *graph.Graph) (*Agent, error) {
+func (a *AgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter string, headerSize uint32, addr *service.Address, n *graph.Node, g *graph.Graph) (*Agent, error) {
 	a.Lock()
 	defer a.Unlock()
 

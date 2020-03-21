@@ -31,11 +31,11 @@ import (
 	"github.com/google/gopacket/layers"
 
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/flow/probes/targets"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/netns"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
@@ -61,7 +61,7 @@ type Probe struct {
 	Ctx         probes.Context
 	node        *graph.Node
 	packetProbe PacketProbe
-	state       common.ServiceState
+	state       service.State
 	ifName      string
 	bpfFilter   string
 	nsPath      string
@@ -93,7 +93,7 @@ func (p *Probe) updateStats(statsCallback func(flow.Stats), captureStats *probes
 		case <-ticker.C:
 			if stats, err := p.packetProbe.Stats(); err != nil {
 				p.Ctx.Logger.Error(err)
-			} else if p.state.Load() == common.RunningState {
+			} else if p.state.Load() == service.RunningState {
 				g.Lock()
 				g.UpdateMetadata(n, "Captures", func(obj interface{}) bool {
 					captureStats.PacketsDropped = stats.PacketsDropped
@@ -118,7 +118,7 @@ func (p *Probe) listen(packetCallback func(gopacket.Packet)) error {
 	packetSource := p.packetProbe.PacketSource()
 
 	var errs int
-	for p.state.Load() == common.RunningState {
+	for p.state.Load() == service.RunningState {
 		packet, err := packetSource.NextPacket()
 		switch err {
 		case nil:
@@ -149,7 +149,7 @@ func (p *Probe) listen(packetCallback func(gopacket.Packet)) error {
 // Run starts capturing packet, calling the passed callback for every packet
 // and notifying the flow probe handler when the capture has started
 func (p *Probe) Run(packetCallback func(gopacket.Packet), statsCallback func(flow.Stats), e probes.ProbeEventHandler) error {
-	p.state.Store(common.RunningState)
+	p.state.Store(service.RunningState)
 
 	var nsContext *netns.Context
 	var err error
@@ -209,14 +209,14 @@ func (p *Probe) Run(packetCallback func(gopacket.Packet), statsCallback func(flo
 	statsTicker.Stop()
 
 	p.packetProbe.Close()
-	p.state.Store(common.StoppedState)
+	p.state.Store(service.StoppedState)
 
 	return err
 }
 
 // Stop capturing packets
 func (p *Probe) Stop() {
-	p.state.Store(common.StoppingState)
+	p.state.Store(service.StoppingState)
 }
 
 // NewCapture returns a new Gopacket flow probe. It can use either `pcap` or `afpacket`
@@ -241,7 +241,7 @@ func NewCapture(ctx probes.Context, n *graph.Node, captureType, bpfFilter string
 		linkType:    linkType,
 		layerType:   firstLayerType,
 		headerSize:  headerSize,
-		state:       common.StoppedState,
+		state:       service.StoppedState,
 		nsPath:      nsPath,
 		captureType: captureType,
 	}, nil

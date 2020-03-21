@@ -27,7 +27,6 @@ import (
 	"github.com/avast/retry-go"
 	"github.com/safchain/insanelock"
 
-	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
 )
 
@@ -109,7 +108,7 @@ func newTestServer(t *testing.T, hostID ...string) *testServer {
 }
 
 func (s *testServer) start() {
-	httpServer := shttp.NewServer(s.hostID, common.AnalyzerService, host, port, nil, nil)
+	httpServer := shttp.NewServer(s.hostID, "test", host, port, nil, nil)
 
 	httpServer.Start()
 	s.httpServer = httpServer
@@ -181,7 +180,7 @@ func (c *testClient) start() {
 		WriteCompression: true,
 	}
 
-	wsClient := NewClient(c.hostID, common.AgentService, u, opts)
+	wsClient := NewClient(c.hostID, "test", u, opts)
 	wsPool := NewClientPool("TestSubscription", PoolOpts{})
 
 	wsPool.AddClient(wsClient)

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 )
@@ -22,7 +22,7 @@ type handler interface {
 // try to reconnect. If the connection is lost, the service will return
 // in Starting mode.
 type serviceManager struct {
-	state         common.ServiceState
+	state         service.State
 	handler       handler
 	retryInterval time.Duration
 	wg            sync.WaitGroup
@@ -32,14 +32,14 @@ type serviceManager struct {
 func newServiceManager(handler handler, retryInterval time.Duration) *serviceManager {
 	return &serviceManager{
 		handler:       handler,
-		state:         common.StoppedState,
+		state:         service.StoppedState,
 		retryInterval: retryInterval,
 	}
 }
 
 // Start the daemon
 func (sm *serviceManager) Start(ctx context.Context) error {
-	if !sm.state.CompareAndSwap(common.StoppedState, common.StartingState) {
+	if !sm.state.CompareAndSwap(service.StoppedState, service.StartingState) {
 		return probe.ErrNotStopped
 	}
 
@@ -47,12 +47,12 @@ func (sm *serviceManager) Start(ctx context.Context) error {
 	sm.cancel = cancel
 
 	go func() {
-		for state := sm.state.Load(); state != common.StoppingState && state != common.StoppedState && ctx.Err() != context.Canceled; state = sm.state.Load() {
+		for state := sm.state.Load(); state != service.StoppingState && state != service.StoppedState && ctx.Err() != context.Canceled; state = sm.state.Load() {
 			if err := sm.handler.Do(ctx, &sm.wg); err != nil {
 				logging.GetLogger().Error(err)
 			} else {
-				state = common.RunningState
-				if !sm.state.CompareAndSwap(common.StartingState, common.RunningState) {
+				state = service.RunningState
+				if !sm.state.CompareAndSwap(service.StartingState, service.RunningState) {
 					return
 				}
 
@@ -60,7 +60,7 @@ func (sm *serviceManager) Start(ctx context.Context) error {
 			}
 
 			after := time.After(sm.retryInterval)
-			if sm.state.CompareAndSwap(state, common.StartingState) {
+			if sm.state.CompareAndSwap(state, service.StartingState) {
 				select {
 				case <-ctx.Done():
 					return
@@ -75,11 +75,11 @@ func (sm *serviceManager) Start(ctx context.Context) error {
 
 func (sm *serviceManager) Stop() {
 	state := sm.state.Load()
-	if state == common.StoppedState || state == common.StoppingState {
+	if state == service.StoppedState || state == service.StoppingState {
 		return
 	}
 
-	if !sm.state.CompareAndSwap(state, common.StoppingState) {
+	if !sm.state.CompareAndSwap(state, service.StoppingState) {
 		return
 	}
 
@@ -87,7 +87,7 @@ func (sm *serviceManager) Stop() {
 
 	sm.wg.Wait()
 
-	sm.state.Store(common.StoppedState)
+	sm.state.Store(service.StoppedState)
 }
 
 // ProbeWrapper wraps a probe so that it tries to reconnect if the connection
@@ -99,7 +99,7 @@ type ProbeWrapper struct {
 // GetStatus returns the status of the probe
 func (p *ProbeWrapper) GetStatus() interface{} {
 	return &probe.ServiceStatus{
-		Status: common.ServiceState(p.sm.state),
+		Status: service.State(p.sm.state),
 	}
 }
 

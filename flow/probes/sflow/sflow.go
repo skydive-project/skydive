@@ -22,10 +22,10 @@ import (
 	"strings"
 
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/sflow"
 )
@@ -90,7 +90,7 @@ func (d *ProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e p
 	uuids := flow.UUIDs{NodeTID: tid, CaptureID: capture.UUID}
 	ft := d.Ctx.FTA.Alloc(uuids, probes.TableOptsFromCapture(capture))
 
-	addr := common.ServiceAddress{Addr: address, Port: port}
+	addr := service.Address{Addr: address, Port: port}
 	if _, err := d.allocator.Alloc(tid, ft, capture.BPFFilter, headerSize, &addr, n, d.Ctx.Graph); err != nil {
 		return nil, err
 	}

@@ -32,7 +32,7 @@ import (
 
 	"github.com/coreos/etcd/pkg/osutil"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -66,7 +66,7 @@ func NewEmbeddedServer(opts EmbeddedServerOpts) (*EmbeddedServer, error) {
 		opts.Logger = logging.GetLogger()
 	}
 
-	sa, err := common.ServiceAddressFromString(opts.Listen)
+	sa, err := service.AddressFromString(opts.Listen)
 	if err != nil {
 		return nil, err
 	}

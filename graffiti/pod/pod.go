@@ -20,12 +20,13 @@ package pod
 import (
 	"crypto/tls"
 
-	scommon "github.com/skydive-project/skydive/common"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/websocket"
+	"github.com/skydive-project/skydive/http"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 )
@@ -33,7 +34,7 @@ import (
 // Opts defines pod server options
 type Opts struct {
 	Version             string
-	Hubs                []scommon.ServiceAddress
+	Hubs                []service.Address
 	WebsocketOpts       websocket.ServerOpts
 	WebsocketClientOpts websocket.ClientOpts
 	Validator           api.Validator
@@ -141,10 +142,8 @@ func (p *Pod) GremlinTraversalParser() *traversal.GremlinTraversalParser {
 }
 
 // NewPod returns a new pod
-func NewPod(id string, serviceType scommon.ServiceType, listen string, podEndpoint string, g *graph.Graph, opts Opts) (*Pod, error) {
-	service := scommon.Service{ID: id, Type: serviceType}
-
-	sa, err := scommon.ServiceAddressFromString(listen)
+func NewPod(id string, serviceType service.Type, listen string, podEndpoint string, g *graph.Graph, opts Opts) (*Pod, error) {
+	sa, err := service.AddressFromString(listen)
 	if err != nil {
 		return nil, err
 	}
@@ -158,14 +157,15 @@ func NewPod(id string, serviceType scommon.ServiceType, listen string, podEndpoi
 	clientOpts := opts.WebsocketClientOpts
 	clientOpts.Protocol = websocket.ProtobufProtocol
 	for _, sa := range opts.Hubs {
-		url := scommon.MakeURL("ws", sa.Addr, sa.Port, podEndpoint, clientOpts.TLSConfig != nil)
+		url := http.MakeURL("ws", sa.Addr, sa.Port, podEndpoint, clientOpts.TLSConfig != nil)
 		client := websocket.NewClient(id, serviceType, url, clientOpts)
 		clientPool.AddClient(client)
 	}
 
 	httpServer := shttp.NewServer(id, serviceType, sa.Addr, sa.Port, opts.TLSConfig, opts.Logger)
 
-	apiServer, err := api.NewAPI(httpServer, nil, opts.Version, service, opts.APIAuthBackend, opts.Validator)
+	svc := service.Service{ID: id, Type: serviceType}
+	apiServer, err := api.NewAPI(httpServer, nil, opts.Version, svc, opts.APIAuthBackend, opts.Validator)
 	if err != nil {
 		return nil, err
 	}

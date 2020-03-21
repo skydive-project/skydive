@@ -26,7 +26,7 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcapgo"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -38,7 +38,7 @@ type PcapWriter struct {
 // PcapTableFeeder replaies a pcap file
 type PcapTableFeeder struct {
 	sync.WaitGroup
-	state       common.ServiceState
+	state       service.State
 	replay      bool
 	r           io.ReadCloser
 	handleRead  *pcapgo.Reader
@@ -48,7 +48,7 @@ type PcapTableFeeder struct {
 
 // Start a pcap injector
 func (p *PcapTableFeeder) Start() {
-	if p.state.CompareAndSwap(common.StoppedState, common.RunningState) {
+	if p.state.CompareAndSwap(service.StoppedState, service.RunningState) {
 		p.Add(1)
 		go p.feedFlowTable()
 	}
@@ -56,11 +56,11 @@ func (p *PcapTableFeeder) Start() {
 
 // Stop a pcap injector
 func (p *PcapTableFeeder) Stop() {
-	if p.state.CompareAndSwap(common.RunningState, common.StoppingState) {
-		p.state.Store(common.StoppingState)
+	if p.state.CompareAndSwap(service.RunningState, service.StoppingState) {
+		p.state.Store(service.StoppingState)
 		p.r.Close()
 		p.Wait()
-		p.state.Store(common.StoppedState)
+		p.state.Store(service.StoppedState)
 	}
 }
 
@@ -80,12 +80,12 @@ func (p *PcapTableFeeder) feedFlowTable() {
 		logging.GetLogger().Error(err.Error())
 	}
 
-	p.state.Store(common.RunningState)
-	for p.state.Load() == common.RunningState {
+	p.state.Store(service.RunningState)
+	for p.state.Load() == service.RunningState {
 		logging.GetLogger().Debugf("Reading one pcap packet")
 		data, ci, err := p.handleRead.ReadPacketData()
 		if err != nil {
-			if p.state.Load() == common.RunningState && err != io.EOF {
+			if p.state.Load() == service.RunningState && err != io.EOF {
 				logging.GetLogger().Warningf("Failed to read packet: %s\n", err)
 			}
 			p.r.Close()
@@ -131,7 +131,7 @@ func NewPcapTableFeeder(r io.ReadCloser, packetsChan chan *PacketSequence, repla
 		replay:      replay,
 		r:           r,
 		handleRead:  handle,
-		state:       common.StoppedState,
+		state:       service.StoppedState,
 		packetsChan: packetsChan,
 		bpfFilter:   bpfFilter,
 	}, nil

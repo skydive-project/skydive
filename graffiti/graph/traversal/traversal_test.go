@@ -21,8 +21,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 )
 
 func newGraph(t *testing.T) *graph.Graph {
@@ -31,7 +31,7 @@ func newGraph(t *testing.T) *graph.Graph {
 		t.Error(err)
 	}
 
-	return graph.NewGraph("testhost", b, common.UnknownService)
+	return graph.NewGraph("testhost", b, service.UnknownService)
 }
 
 func newTransversalGraph(t *testing.T) *graph.Graph {

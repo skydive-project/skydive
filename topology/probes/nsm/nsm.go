@@ -42,8 +42,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -56,7 +56,7 @@ type Probe struct {
 	insanelock.RWMutex
 	graph.DefaultGraphListener
 	g     *graph.Graph
-	state common.ServiceState
+	state service.State
 	nsmds map[string]*grpc.ClientConn
 
 	// slice of connections to track existing links between inodes
@@ -70,7 +70,7 @@ func NewNsmProbe(g *graph.Graph) (*Probe, error) {
 		g:     g,
 		nsmds: make(map[string]*grpc.ClientConn),
 	}
-	probe.state.Store(common.StoppedState)
+	probe.state.Store(service.StoppedState)
 	return probe, nil
 }
 
@@ -94,7 +94,7 @@ func getK8SConfig() (*rest.Config, error) {
 // Start ...
 func (p *Probe) Start() error {
 	p.g.AddEventListener(p)
-	p.state.Store(common.RunningState)
+	p.state.Store(service.RunningState)
 
 	config, err := getK8SConfig()
 	if err != nil {
@@ -132,7 +132,7 @@ func (p *Probe) Start() error {
 func (p *Probe) Stop() {
 	p.Lock()
 	defer p.Unlock()
-	if !p.state.CompareAndSwap(common.RunningState, common.StoppingState) {
+	if !p.state.CompareAndSwap(service.RunningState, service.StoppingState) {
 		return
 	}
 	p.g.RemoveEventListener(p)

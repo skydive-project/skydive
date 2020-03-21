@@ -27,21 +27,22 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/pod"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 )
 
+const serviceType = service.Type("Pod")
+
 var (
-	hubServers  []string
-	podListen   string
-	serviceType = common.ServiceType("Pod")
+	hubServers []string
+	podListen  string
 )
 
-func newHubClientPool(host string, addresses []common.ServiceAddress, opts websocket.ClientOpts) *websocket.StructClientPool {
+func newHubClientPool(host string, addresses []service.Address, opts websocket.ClientOpts) *websocket.StructClientPool {
 	pool := websocket.NewStructClientPool("HubClientPool", websocket.PoolOpts{Logger: opts.Logger})
 
 	for _, sa := range addresses {
@@ -80,9 +81,9 @@ var PodCmd = &cobra.Command{
 
 		authBackend := shttp.NewNoAuthenticationBackend()
 
-		var addresses []common.ServiceAddress
+		var addresses []service.Address
 		for _, address := range hubServers {
-			sa, err := common.ServiceAddressFromString(address)
+			sa, err := service.AddressFromString(address)
 			if err != nil {
 				logging.GetLogger().Error(err)
 				os.Exit(1)

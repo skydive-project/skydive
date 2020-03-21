@@ -32,11 +32,11 @@ import (
 	"github.com/safchain/ethtool"
 	"golang.org/x/sys/unix"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/probes"
 	gp "github.com/skydive-project/skydive/flow/probes/gopacket"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	tp "github.com/skydive-project/skydive/topology/probes"
@@ -65,7 +65,7 @@ type Probe struct {
 	graph.DefaultGraphListener
 	Ctx           tp.Context
 	interfaceMap  map[string]*gp.Probe // map interface names to the packet probes
-	state         common.ServiceState  // state of the probe (running or stopped)
+	state         service.State        // state of the probe (running or stopped)
 	wg            sync.WaitGroup       // capture goroutines wait group
 	autoDiscovery bool                 // capture LLDP traffic on all capable interfaces
 }
@@ -404,7 +404,7 @@ func (p *Probe) OnNodeUpdated(n *graph.Node) {
 
 // Start capturing LLDP packets
 func (p *Probe) Start() error {
-	if !p.state.CompareAndSwap(common.StoppedState, common.RunningState) {
+	if !p.state.CompareAndSwap(service.StoppedState, service.RunningState) {
 		return probe.ErrNotStopped
 	}
 
@@ -427,7 +427,7 @@ func (p *Probe) Start() error {
 // Stop capturing LLDP packets
 func (p *Probe) Stop() {
 	p.Ctx.Graph.RemoveEventListener(p)
-	p.state.Store(common.StoppingState)
+	p.state.Store(service.StoppingState)
 	for intf, activeProbe := range p.interfaceMap {
 		if activeProbe != nil {
 			p.Ctx.Logger.Debugf("Stopping probe on %s", intf)
@@ -449,7 +449,7 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	return &Probe{
 		Ctx:           ctx,
 		interfaceMap:  interfaceMap,
-		state:         common.StoppedState,
+		state:         service.StoppedState,
 		autoDiscovery: len(interfaces) == 0,
 	}, nil
 }

@@ -22,15 +22,15 @@ import (
 	"sync"
 	"time"
 
-
-	"github.com/safchain/insanelock"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/hashicorp/golang-lru/simplelru"
+	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -82,7 +82,7 @@ type Table struct {
 	flushDone         chan bool
 	query             chan *TableQuery
 	reply             chan []byte
-	state             common.ServiceState
+	state             service.State
 	lockState         insanelock.RWMutex
 	wg                sync.WaitGroup
 	quit              chan bool
@@ -146,7 +146,7 @@ func NewTable(updateEvery, expireAfter time.Duration, sender Sender, uuids UUIDs
 		table:         LRU,
 		flush:         make(chan bool),
 		flushDone:     make(chan bool),
-		state:         common.StoppedState,
+		state:         service.StoppedState,
 		quit:          make(chan bool),
 		updateEvery:   updateEvery,
 		expireAfter:   expireAfter,
@@ -375,7 +375,7 @@ func (ft *Table) Query(query *TableQuery) []byte {
 	ft.lockState.Lock()
 	defer ft.lockState.Unlock()
 
-	if ft.state.Load() == common.RunningState {
+	if ft.state.Load() == service.RunningState {
 		ft.query <- query
 
 		timer := time.NewTicker(1 * time.Second)
@@ -386,7 +386,7 @@ func (ft *Table) Query(query *TableQuery) []byte {
 			case r := <-ft.reply:
 				return r
 			case <-timer.C:
-				if ft.state.Load() != common.RunningState {
+				if ft.state.Load() != service.RunningState {
 					return nil
 				}
 			}
@@ -524,7 +524,7 @@ func (ft *Table) processExtFlow(extFlow *ExtFlow) {
 }
 
 // State returns the state of the flow table, stopped, running...
-func (ft *Table) State() common.ServiceState {
+func (ft *Table) State() service.State {
 	return ft.state.Load()
 }
 
@@ -554,7 +554,7 @@ func (ft *Table) Run() {
 	ft.query = make(chan *TableQuery, 100)
 	ft.reply = make(chan []byte, 100)
 
-	ft.state.Store(common.RunningState)
+	ft.state.Store(service.RunningState)
 	for {
 		select {
 		case <-ft.quit:
@@ -636,7 +636,7 @@ func (ft *Table) Stop() {
 	ft.lockState.Lock()
 	defer ft.lockState.Unlock()
 
-	if ft.state.CompareAndSwap(common.RunningState, common.StoppingState) {
+	if ft.state.CompareAndSwap(service.RunningState, service.StoppingState) {
 		ft.quit <- true
 		ft.wg.Wait()
 

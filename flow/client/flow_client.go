@@ -27,7 +27,6 @@ import (
 
 	"github.com/safchain/insanelock"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
@@ -107,7 +106,7 @@ func (c *FlowClientWebSocketConn) Close() error {
 
 // Connect to the WebSocket flow server
 func (c *FlowClientWebSocketConn) Connect() (err error) {
-	if c.wsClient, err = config.NewWSClient(common.AgentService, c.url, *c.opts); err != nil {
+	if c.wsClient, err = config.NewWSClient(config.AgentService, c.url, *c.opts); err != nil {
 		return err
 	}
 

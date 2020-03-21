@@ -49,8 +49,8 @@ import (
 	etcd "github.com/coreos/etcd/client"
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
+	"github.com/skydive-project/skydive/graffiti/service"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/rbac"
@@ -238,7 +238,7 @@ func (a *Server) RegisterAPIHandler(handler rest.Handler, authBackend shttp.Auth
 	return nil
 }
 
-func (a *Server) addAPIRootRoute(version string, service common.Service, authBackend shttp.AuthenticationBackend) {
+func (a *Server) addAPIRootRoute(version string, service service.Service, authBackend shttp.AuthenticationBackend) {
 	// swagger:operation GET / getApi
 	//
 	// Get API version
@@ -381,7 +381,7 @@ func (a *Server) addLoginRoute(authBackend shttp.AuthenticationBackend) {
 }
 
 // NewAPI creates a new API server based on http
-func NewAPI(server *shttp.Server, kapi etcd.KeysAPI, version string, service common.Service, authBackend shttp.AuthenticationBackend, validator Validator) (*Server, error) {
+func NewAPI(server *shttp.Server, kapi etcd.KeysAPI, version string, service service.Service, authBackend shttp.AuthenticationBackend, validator Validator) (*Server, error) {
 	if version == "" {
 		version = "unknown"
 	}

@@ -21,6 +21,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/logging"
@@ -77,7 +78,7 @@ func (f *WSTableClient) lookupFlows(flowset chan *FlowSet, host string, flowSear
 
 // LookupFlows query flow table based on a filter search query
 func (f *WSTableClient) LookupFlows(flowSearchQuery filters.SearchQuery) (*FlowSet, error) {
-	speakers := f.structServer.GetSpeakersByType(common.AgentService)
+	speakers := f.structServer.GetSpeakersByType(config.AgentService)
 	ch := make(chan *FlowSet, len(speakers))
 
 	for _, c := range speakers {
