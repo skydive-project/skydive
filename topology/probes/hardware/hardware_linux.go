@@ -17,16 +17,30 @@
  *
  */
 
-package agent
+package hardware
 
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 )
 
+func toString(buffer []byte) string {
+	str := strings.TrimSpace(string(buffer))
+	str = strings.TrimRightFunc(str, func(c rune) bool {
+		return c == '\r' || c == '\n'
+	})
+
+	return str
+}
+
 func parseIsolatedCPUs(str string) ([]int64, error) {
+	if str == "" {
+		return nil, nil
+	}
+
 	list := strings.Split(str, ",")
 
 	var isolated []int64
@@ -72,5 +86,34 @@ func getIsolatedCPUs() ([]int64, error) {
 		return nil, err
 	}
 
-	return parseIsolatedCPUs(strings.TrimSpace(string(buffer)))
+	return parseIsolatedCPUs(toString(buffer))
+}
+
+func getInstanceID() (string, error) {
+	buffer, err := ioutil.ReadFile("/var/lib/cloud/data/instance-id")
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+
+	}
+	return toString(buffer), nil
+}
+
+func getKernelCmd() (map[string]interface{}, error) {
+	cmdline, err := ioutil.ReadFile("/proc/cmdline")
+	if err != nil {
+		return nil, err
+	}
+
+	kernelArgs := make(map[string]interface{})
+	for _, arg := range strings.Split(string(cmdline), " ") {
+		if splitted := strings.SplitN(arg, "=", 2); len(splitted) == 1 {
+			kernelArgs[strings.TrimSpace(splitted[0])] = true
+		} else {
+			kernelArgs[strings.TrimSpace(splitted[0])] = strings.TrimSpace(splitted[1])
+		}
+	}
+	return kernelArgs, nil
 }

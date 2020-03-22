@@ -1,4 +1,4 @@
-// +build linux
+// +build !linux
 
 /*
  * Copyright (C) 2018 Red Hat, Inc.
@@ -17,34 +17,16 @@
  *
  */
 
-package agent
+package hardware
 
-import (
-	"reflect"
-	"testing"
-)
+func getIsolatedCPUs() ([]int64, error) {
+	return nil, nil
+}
 
-func TestIsolatedCPU(t *testing.T) {
-	ic := "3,4,7-9,10"
+func getInstanceID() (string, error) {
+	return "", nil
+}
 
-	expected := []int64{3, 4, 7, 8, 9, 10}
-
-	list, err := parseIsolatedCPUs(ic)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !reflect.DeepEqual(list, expected) {
-		t.Fatalf("Parsing of isolated cpu failed, expected: %v, got: %v", expected, list)
-	}
-
-	_, err = parseIsolatedCPUs("3,4,9-7,10")
-	if err == nil {
-		t.Fatal("Parsing of isolated cpu should return an error")
-	}
-
-	_, err = parseIsolatedCPUs("3,4,7-,10")
-	if err == nil {
-		t.Fatal("Parsing of isolated cpu should return an error")
-	}
+func getKernelCmd() (map[string]interface{}, error) {
+	return nil, nil
 }
