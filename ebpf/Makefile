@@ -13,7 +13,7 @@ all: clean docker-ebpf-build
 
 %.o: %.c
 	$(CLANG) \
-		-I$${GOPATH}/pkg/mod/github.com/lebauce/gobpf@v0.0.0-20190909090614-f9e9df81702a/elf \
+		-I$${GOPATH}/pkg/mod/github.com/iovisor/gobpf@v0.0.0-20200329161226-8b2cce9dac28/elf/include \
 		-D__KERNEL__ -D__ASM_SYSREG_H -D__TARGET_ARCH_BPF -Wno-unused-value -Wno-pointer-sign \
 		-Wno-compare-distinct-pointer-types \
 		-Wno-gnu-variable-sized-type-not-at-end \

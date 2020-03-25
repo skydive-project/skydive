@@ -45,7 +45,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/hydrogen18/stoppableListener v0.0.0-20151210151943-dadc9ccc400c
 	github.com/intel-go/nff-go v0.0.0-20190620122648-8ab691c21da9
-	github.com/iovisor/gobpf v0.0.0-20190329163444-e0d8d785d368 // indirect
+	github.com/iovisor/gobpf v0.0.0-20200329161226-8b2cce9dac28 // indirect
 	github.com/jbowtie/gokogiri v0.0.0-20190301021639-37f655d3078f // indirect
 	github.com/jteeuwen/go-bindata v0.0.0-20180305030458-6025e8de665b
 	github.com/kami-zh/go-capturer v0.0.0-20171211120116-e492ea43421d
@@ -123,7 +123,6 @@ require (
 replace (
 	github.com/census-instrumentation/opencensus-proto v0.1.0-0.20181214143942-ba49f56771b8 => github.com/census-instrumentation/opencensus-proto v0.0.3-0.20181214143942-ba49f56771b8
 	github.com/digitalocean/go-libvirt => github.com/lebauce/go-libvirt v0.0.0-20190717144624-7799d804f7e4
-	github.com/iovisor/gobpf => github.com/lebauce/gobpf v0.0.0-20190909090614-f9e9df81702a
 	github.com/networkservicemesh/networkservicemesh => github.com/networkservicemesh/networkservicemesh v0.0.0-20191017074247-aa5815869b2c
 	github.com/networkservicemesh/networkservicemesh/controlplane => github.com/networkservicemesh/networkservicemesh/controlplane v0.0.0-20191017074247-aa5815869b2c
 	github.com/networkservicemesh/networkservicemesh/controlplane/api => github.com/networkservicemesh/networkservicemesh/controlplane/api v0.0.0-20191017074247-aa5815869b2c
