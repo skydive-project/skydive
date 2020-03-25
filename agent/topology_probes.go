@@ -42,6 +42,7 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/runc"
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
 	"github.com/skydive-project/skydive/topology/probes/vpp"
+	"github.com/skydive-project/skydive/topology/probes/hardware"
 )
 
 func registerStaticProbes() {
@@ -56,6 +57,7 @@ func registerStaticProbes() {
 	runc.Register()
 	libvirt.Register()
 	ovn.Register()
+	hardware.Register()
 }
 
 // NewTopologyProbe creates a new topology probe
@@ -89,6 +91,8 @@ func NewTopologyProbe(name string, ctx tp.Context, bundle *probe.Bundle) (probe.
 		return vpp.NewProbe(ctx, bundle)
 	case "bess":
 		return bess.NewProbe(ctx, bundle)
+	case "hardware":
+		return hardware.NewProbe(ctx, bundle)
 	default:
 		return nil, fmt.Errorf("unsupported probe %s", name)
 	}
@@ -135,7 +139,7 @@ func NewTopologyProbeBundle(g *graph.Graph, hostNode *graph.Node) (*probe.Bundle
 		return nil, err
 	}
 
-	var probeList []string
+	probeList := []string{"hardware"}
 	if runtime.GOOS == "linux" {
 		probeList = append(probeList, "netlink", "netns")
 	}
