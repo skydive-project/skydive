@@ -22,10 +22,9 @@ package packetinjector
 import (
 	"fmt"
 
-	"github.com/skydive-project/skydive/ondemand"
-
 	"github.com/skydive-project/skydive/graffiti/api/rest"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/ondemand"
 )
 
 func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource rest.Resource) (ondemand.Task, error) {
