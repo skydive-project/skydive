@@ -147,7 +147,7 @@ replace (
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.3
 	github.com/skydive-project/skydive/scripts/gendecoder => ./scripts/gendecoder
 	github.com/spf13/viper v1.4.0 => github.com/lebauce/viper v0.0.0-20190903114911-3b7a98e30843
-	github.com/vishvananda/netlink v1.0.0 => github.com/lebauce/netlink v0.0.0-20190122103356-fa328be7c8d2
+	github.com/vishvananda/netlink v1.0.0 => github.com/lebauce/netlink v0.0.0-20200327202635-f4921fca5803
 	golang.org/x/sys => golang.org/x/sys v0.0.0-20190412213103-97732733099d
 	golang.org/x/tools => golang.org/x/tools v0.0.0-20190925230517-ea99b82c7b93
 	k8s.io/api => k8s.io/api v0.0.0-20191016110408-35e52d86657a
