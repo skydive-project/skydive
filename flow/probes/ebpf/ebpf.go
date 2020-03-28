@@ -121,7 +121,13 @@ func (p *Probe) run() {
 		}
 	}
 
+	zeroKey := make([]byte, 8)
 	prevKey := make([]byte, 8)
+	delPrevKey := func() {
+		if string(prevKey) != string(zeroKey) {
+			p.fmap[p.flowPage].Delete(prevKey)
+		}
+	}
 	key := make([]byte, 8)
 	var nextAvailablePtr int
 	now := time.Now()
@@ -152,6 +158,7 @@ func (p *Probe) run() {
 					startKTimeNs = sns
 					start = now
 				}
+				time.Sleep(time.Second)
 				continue
 			}
 
@@ -172,16 +179,20 @@ func (p *Probe) run() {
 					found, err = p.fmap[p.flowPage].NextKey(prevKey, &key)
 				}
 				if !found || err != nil {
+					delPrevKey()
 					getFirstKey = true
+					prevKey = zeroKey
 					break
 				}
 
 				kernFlow := unsafe.Pointer(&kernFlows[nextAvailablePtr])
 				if _, err = p.fmap[p.flowPage].GetBytes(key, kernFlow); err != nil {
+					delPrevKey()
 					getFirstKey = true
+					prevKey = zeroKey
 					break
 				}
-				p.fmap[p.flowPage].Delete(key)
+				delPrevKey()
 				prevKey = key
 
 				lastK := int64(kernFlows[nextAvailablePtr].last)
