@@ -20,6 +20,7 @@ require (
 	github.com/docker/docker v1.13.1
 	github.com/ebay/go-ovn v0.0.0-20190726163905-ca0da4d10c52
 	github.com/fatih/structs v0.0.0-20171020064819-f5faa72e7309
+	github.com/flosch/pongo2 v0.0.0-20190707114632-bbf5a6c351f4 // indirect
 	github.com/fortytw2/leaktest v1.3.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/gima/govalid v0.0.0-20150214172340-7b486932bea2
@@ -47,19 +48,12 @@ require (
 	github.com/iovisor/gobpf v0.0.0-20190329163444-e0d8d785d368 // indirect
 	github.com/jbowtie/gokogiri v0.0.0-20190301021639-37f655d3078f // indirect
 	github.com/jteeuwen/go-bindata v0.0.0-20180305030458-6025e8de665b
-	github.com/juju/clock v0.0.0-20190205081909-9c5c9712527c // indirect
-	github.com/juju/errors v0.0.0-20190806202954-0232dcc7464d // indirect
-	github.com/juju/retry v0.0.0-20180821225755-9058e192b216 // indirect
-	github.com/juju/testing v0.0.0-20190723135506-ce30eb24acd2 // indirect
-	github.com/juju/utils v0.0.0-20180820210520-bf9cc5bdd62d // indirect
-	github.com/juju/version v0.0.0-20180108022336-b64dbd566305 // indirect
-	github.com/juju/webbrowser v0.0.0-20160309143629-54b8c57083b4 // indirect
 	github.com/kami-zh/go-capturer v0.0.0-20171211120116-e492ea43421d
 	github.com/kardianos/osext v0.0.0-20160811001526-c2c54e542fb7
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/libvirt/libvirt-go v0.0.0-20181005092746-9c5bdce3c18f
 	github.com/lunixbochs/struc v0.0.0-20180408203800-02e4c2afbb2a
-	github.com/lxc/lxd v0.0.0-20171219222704-9907f3a64b6b
+	github.com/lxc/lxd v0.0.0-20200330183600-518f06676866
 	github.com/mailru/easyjson v0.7.0
 	github.com/mattn/go-runewidth v0.0.0-20160315040712-d6bea18f7897 // indirect
 	github.com/mattn/goveralls v0.0.2
@@ -110,13 +104,11 @@ require (
 	golang.org/x/tools v0.0.0-20191017151554-a3bc800455d5
 	google.golang.org/genproto v0.0.0-20190926190326-7ee9db18f195 // indirect
 	google.golang.org/grpc v1.23.1
-	gopkg.in/errgo.v1 v1.0.0-20161222125816-442357a80af5 // indirect
 	gopkg.in/fsnotify/fsnotify.v1 v1.0.0-20180110053347-c2828203cd70
-	gopkg.in/httprequest.v1 v1.0.0-20180209163514-93f8fee4081f // indirect
-	gopkg.in/macaroon-bakery.v2 v2.0.0-20180209090814-22c04a94d902 // indirect
-	gopkg.in/macaroon.v2 v2.0.0-20171017153037-bed2a428da6e // indirect
+	gopkg.in/macaroon-bakery.v2 v2.2.0 // indirect
 	gopkg.in/mcuadros/go-syslog.v2 v2.3.0
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
+	gopkg.in/robfig/cron.v2 v2.0.0-20150107220207-be2e0b0deed5 // indirect
 	gopkg.in/sourcemap.v1 v1.0.0-20160602085544-eef8f47ab679 // indirect
 	gopkg.in/urfave/cli.v2 v2.0.0-20170928224240-b2bf3c5abeb9 // indirect
 	gopkg.in/validator.v2 v2.0.0-20160201165114-3e4f037f12a1
@@ -126,7 +118,6 @@ require (
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0
 	k8s.io/client-go v11.0.0+incompatible
-	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
 
 replace (
