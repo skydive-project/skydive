@@ -41,22 +41,30 @@ func (s *EBPFProbe) TCPEventV4(tcpV4 tracer.TcpV4) {
 	srcAddr := &net.TCPAddr{IP: tcpV4.SAddr.To4(), Port: int(tcpV4.SPort)}
 	dstAddr := &net.TCPAddr{IP: tcpV4.DAddr.To4(), Port: int(tcpV4.DPort)}
 
-	switch tcpV4.Type {
-	case tracer.EventConnect, tracer.EventAccept:
-		if processInfo, err := getProcessInfo(int(tcpV4.Pid)); err == nil {
-			conn := &ConnectionInfo{
-				ProcessInfo:   *processInfo,
-				LocalAddress:  srcAddr.IP.String(),
-				LocalPort:     int64(srcAddr.Port),
-				RemoteAddress: dstAddr.IP.String(),
-				RemotePort:    int64(dstAddr.Port),
-				State:         ConnectionState(tcpStates[1]),
-				Protocol:      flow.FlowProtocol_TCP,
-			}
-			s.connCache.Set(conn.Hash(), conn)
-		}
-	case tracer.EventClose:
+	if tcpV4.Type == tracer.EventClose {
 		s.connCache.Remove(flow.FlowProtocol_TCP, srcAddr, dstAddr)
+		return
+	}
+
+	if processInfo, err := getProcessInfo(int(tcpV4.Pid)); err == nil {
+		conn := &ConnectionInfo{
+			ProcessInfo:   *processInfo,
+			LocalAddress:  srcAddr.IP.String(),
+			LocalPort:     int64(srcAddr.Port),
+			RemoteAddress: dstAddr.IP.String(),
+			RemotePort:    int64(dstAddr.Port),
+			State:         ConnectionState(StateEstablished),
+			Protocol:      flow.FlowProtocol_TCP,
+		}
+		s.connCache.Set(conn.Hash(), conn)
+
+		if tcpV4.Type == tracer.EventAccept {
+			listenConn := *conn
+			listenConn.State = StateListen
+			listenConn.RemoteAddress = "0.0.0.0"
+			listenConn.RemotePort = 0
+			s.connCache.Set(listenConn.Hash(), &listenConn)
+		}
 	}
 }
 
@@ -69,22 +77,30 @@ func (s *EBPFProbe) TCPEventV6(tcpV6 tracer.TcpV6) {
 	srcAddr := &net.TCPAddr{IP: tcpV6.SAddr.To16(), Port: int(tcpV6.SPort)}
 	dstAddr := &net.TCPAddr{IP: tcpV6.DAddr.To16(), Port: int(tcpV6.DPort)}
 
-	switch tcpV6.Type {
-	case tracer.EventConnect, tracer.EventAccept:
-		if processInfo, err := getProcessInfo(int(tcpV6.Pid)); err == nil {
-			conn := &ConnectionInfo{
-				ProcessInfo:   *processInfo,
-				LocalAddress:  srcAddr.IP.String(),
-				LocalPort:     int64(srcAddr.Port),
-				RemoteAddress: dstAddr.IP.String(),
-				RemotePort:    int64(dstAddr.Port),
-				State:         ConnectionState(tcpStates[1]),
-				Protocol:      flow.FlowProtocol_TCP,
-			}
-			s.connCache.Set(conn.Hash(), conn)
-		}
-	case tracer.EventClose:
+	if tcpV6.Type == tracer.EventClose {
 		s.connCache.Remove(flow.FlowProtocol_TCP, srcAddr, dstAddr)
+		return
+	}
+
+	if processInfo, err := getProcessInfo(int(tcpV6.Pid)); err == nil {
+		conn := &ConnectionInfo{
+			ProcessInfo:   *processInfo,
+			LocalAddress:  srcAddr.IP.String(),
+			LocalPort:     int64(srcAddr.Port),
+			RemoteAddress: dstAddr.IP.String(),
+			RemotePort:    int64(dstAddr.Port),
+			State:         ConnectionState(StateEstablished),
+			Protocol:      flow.FlowProtocol_TCP,
+		}
+		s.connCache.Set(conn.Hash(), conn)
+
+		if tcpV6.Type == tracer.EventAccept {
+			listenConn := *conn
+			listenConn.State = StateListen
+			listenConn.RemoteAddress = "::/0"
+			listenConn.RemotePort = 0
+			s.connCache.Set(listenConn.Hash(), &listenConn)
+		}
 	}
 }
 

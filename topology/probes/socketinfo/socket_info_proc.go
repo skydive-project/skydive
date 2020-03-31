@@ -37,19 +37,34 @@ import (
 	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
-var tcpStates = []string{
-	"UNKNOWN",
-	"ESTABLISHED",
-	"SYN_SENT",
-	"SYN_RECV",
-	"FIN_WAIT1",
-	"FIN_WAIT2",
-	"TIME_WAIT",
-	"CLOSE",
-	"CLOSE_WAIT",
-	"LAST_ACK",
-	"LISTEN",
-	"CLOSING",
+const (
+	StateUnknown     = "UNKNOWN"
+	StateEstablished = "ESTABLISHED"
+	StateSynSent     = "SYN_SENT"
+	StateSynRecv     = "SYN_RECV"
+	StateFinWait1    = "FIN_WAIT1"
+	StateFinWait2    = "FIN_WAIT2"
+	StateTimeWait    = "TIME_WAIT"
+	StateClose       = "CLOSE"
+	StateCloseWait   = "CLOSE_WAIT"
+	StateLastAck     = "LAST_ACK"
+	StateListen      = "LISTEN"
+	StateClosing     = "CLOSING"
+)
+
+var tcpStateMap = []string{
+	StateUnknown,
+	StateEstablished,
+	StateSynSent,
+	StateSynRecv,
+	StateFinWait1,
+	StateFinWait2,
+	StateTimeWait,
+	StateTimeWait,
+	StateCloseWait,
+	StateLastAck,
+	StateListen,
+	StateClosing,
 }
 
 // ProcProbe describes a probe that collects active connections
@@ -160,7 +175,7 @@ func (s *ProcProbe) scanProc() error {
 			LocalPort:     int64(localPort),
 			RemoteAddress: remoteIP.String(),
 			RemotePort:    int64(remotePort),
-			State:         ConnectionState(tcpStates[state]),
+			State:         ConnectionState(tcpStateMap[state]),
 		}, nil
 	}
 
