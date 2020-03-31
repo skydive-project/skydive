@@ -32,7 +32,7 @@ import (
 )
 
 // SchemaValidator validates resources against JSON schemas
-var SchemaValidator *schema.Validator
+var SchemaValidator schema.Validator
 
 // Alert object
 //
@@ -335,5 +335,5 @@ type WorkflowCall struct {
 }
 
 func init() {
-	SchemaValidator = schema.NewValidator()
+	SchemaValidator = schema.NewJSONValidator()
 }

@@ -26,13 +26,18 @@ import (
 // ErrInvalidSchema is return when a JSON schema is invalid
 var ErrInvalidSchema = errors.New("Invalid schema")
 
-// Validator validates graph nodes and edges using a JSON schema
-type Validator struct {
+// Validator is the interface to implement to validate REST resources
+type Validator interface {
+	Validate(string, interface{}) error
+}
+
+// JSONValidator validates graph nodes and edges using a JSON schema
+type JSONValidator struct {
 	schemas map[string]gojsonschema.JSONLoader
 }
 
 // Validate an object against the JSON schema associated to its kind
-func (v *Validator) Validate(kind string, obj interface{}) error {
+func (v *JSONValidator) Validate(kind string, obj interface{}) error {
 	schema := v.schemas[kind]
 	if schema == nil {
 		return nil
@@ -49,13 +54,13 @@ func (v *Validator) Validate(kind string, obj interface{}) error {
 }
 
 // LoadSchema loads a JSON schema for a kind of object
-func (v *Validator) LoadSchema(kind string, schema []byte) {
+func (v *JSONValidator) LoadSchema(kind string, schema []byte) {
 	v.schemas[kind] = gojsonschema.NewBytesLoader(schema)
 }
 
-// NewValidator returns a new JSON schema validator
-func NewValidator() *Validator {
-	return &Validator{
+// NewJSONValidator returns a new JSON schema validator
+func NewJSONValidator() *JSONValidator {
+	return &JSONValidator{
 		schemas: make(map[string]gojsonschema.JSONLoader),
 	}
 }

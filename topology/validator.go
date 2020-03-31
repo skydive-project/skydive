@@ -24,7 +24,7 @@ import (
 )
 
 // SchemaValidator is the global validator for Skydive resources
-var SchemaValidator *schema.Validator
+var SchemaValidator *schema.JSONValidator
 
 func init() {
 	nodeSchema, err := statics.Asset("statics/schemas/node.schema")
@@ -37,7 +37,7 @@ func init() {
 		panic(err)
 	}
 
-	SchemaValidator = schema.NewValidator()
+	SchemaValidator = schema.NewJSONValidator()
 	SchemaValidator.LoadSchema("node", nodeSchema)
 	SchemaValidator.LoadSchema("edge", edgeSchema)
 

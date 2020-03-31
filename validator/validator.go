@@ -32,13 +32,12 @@ import (
 	"github.com/skydive-project/skydive/graffiti/schema"
 	"github.com/skydive-project/skydive/graffiti/service"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
-	"github.com/skydive-project/skydive/statics"
 	"github.com/skydive-project/skydive/topology"
 )
 
 type validator struct {
 	validator       *valid.Validator
-	schemaValidator *schema.Validator
+	schemaValidator schema.Validator
 }
 
 var (
@@ -272,12 +271,17 @@ func isValidCaptureType(v interface{}, param string) error {
 }
 
 // Validate an object based on previously (at init) registered function
-func Validate(kind string, value interface{}) error {
+func (v *validator) Validate(kind string, value interface{}) error {
 	if err := Validator.validator.Validate(value); err != nil {
 		return err
 	}
 
 	return Validator.schemaValidator.Validate(kind, value)
+}
+
+// Validate an object based on previously (at init) registered function
+func Validate(kind string, value interface{}) error {
+	return Validator.Validate(kind, value)
 }
 
 func init() {
@@ -295,20 +299,6 @@ func init() {
 	v.SetValidationFunc("isValidCaptureType", isValidCaptureType)
 	v.SetValidationFunc("isValidAddress", isValidAddress)
 	v.SetTag("valid")
-
-	nodeSchema, err := statics.Asset("statics/schemas/node.schema")
-	if err != nil {
-		panic(err)
-	}
-
-	edgeSchema, err := statics.Asset("statics/schemas/edge.schema")
-	if err != nil {
-		panic(err)
-	}
-
-	schemaValidator := schema.NewValidator()
-	schemaValidator.LoadSchema("node", nodeSchema)
-	schemaValidator.LoadSchema("edge", edgeSchema)
 
 	Validator = &validator{
 		validator:       v,

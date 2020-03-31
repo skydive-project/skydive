@@ -51,6 +51,7 @@ import (
 	usertopology "github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/probes/blockdev"
 	"github.com/skydive-project/skydive/ui"
+	"github.com/skydive-project/skydive/validator"
 )
 
 // ElectionStatus describes the status of an election
@@ -290,7 +291,8 @@ func NewServerFromConfig() (*Server, error) {
 		WebsocketClientOpts: *wsClientOpts,
 		APIAuthBackend:      apiAuthBackend,
 		ClusterAuthBackend:  clusterAuthBackend,
-		Validator:           topology.SchemaValidator,
+		APIValidator:        validator.Validator,
+		GraphValidator:      topology.SchemaValidator,
 		StatusReporter:      s,
 		TLSConfig:           tlsConfig,
 		Peers:               peers,
