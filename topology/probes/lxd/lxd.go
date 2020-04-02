@@ -22,13 +22,14 @@ package lxd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
 	"sync"
 
 	lxd "github.com/lxc/lxd/client"
-	"github.com/mitchellh/mapstructure"
+	"github.com/lxc/lxd/shared/api"
 	"github.com/safchain/insanelock"
 	"github.com/vishvananda/netns"
 
@@ -197,17 +198,17 @@ func (p *ProbeHandler) Do(ctx context.Context, wg *sync.WaitGroup) (err error) {
 		return err
 	}
 
-	target, err := events.AddHandler(nil, func(obj interface{}) {
-		var event loggingEvent
-		if err := mapstructure.Decode(obj, &event); err != nil {
-			return
-		}
-
+	target, err := events.AddHandler(nil, func(event api.Event) {
 		if event.Type == "logging" {
-			if event.Metadata.Context.Action == "start" && event.Metadata.Message == "Started container" {
-				p.registerContainer(event.Metadata.Context.Name)
-			} else if event.Metadata.Message == "Deleted container" {
-				p.unregisterContainer(event.Metadata.Context.Name)
+			logEntry := api.EventLogging{}
+			if err := json.Unmarshal(event.Metadata, &logEntry); err != nil || logEntry.Context == nil {
+				return
+			}
+
+			if logEntry.Message == "Started container" && logEntry.Context["action"] == "start" {
+				p.registerContainer(logEntry.Context["name"])
+			} else if logEntry.Message == "Deleted container" {
+				p.unregisterContainer(logEntry.Context["name"])
 			}
 		}
 	})
