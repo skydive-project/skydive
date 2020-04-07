@@ -296,6 +296,7 @@ func NewServerFromConfig() (*Server, error) {
 		StatusReporter:      s,
 		TLSConfig:           tlsConfig,
 		Peers:               peers,
+		EtcdClient:          etcdClient,
 		TopologyMarshallers: api.TopologyMarshallers,
 	}
 

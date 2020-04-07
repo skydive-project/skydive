@@ -38,6 +38,11 @@ type clientPromoter func(c *wsIncomingClient) (Speaker, error)
 // IncomerHandler incoming client handler interface.
 type IncomerHandler func(*websocket.Conn, *auth.AuthenticatedRequest, clientPromoter) (Speaker, error)
 
+// PongListener listens pong event
+type PongListener interface {
+	OnPong(speaker Speaker)
+}
+
 // Server implements a websocket server. It owns a Pool of incoming Speakers.
 type Server struct {
 	*incomerPool
@@ -54,6 +59,7 @@ type ServerOpts struct {
 	PongTimeout      time.Duration
 	Logger           logging.Logger
 	AuthBackend      shttp.AuthenticationBackend
+	PongListeners    []PongListener
 }
 
 func getRequestParameter(r *http.Request, name string) string {
@@ -142,17 +148,21 @@ func (s *Server) newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRe
 		wsconn.RemoteHost = r.RemoteAddr
 	}
 
-	conn.SetReadLimit(maxMessageSize)
-	conn.SetReadDeadline(time.Now().Add(s.opts.PongTimeout))
-	conn.SetPongHandler(func(string) error {
-		conn.SetReadDeadline(time.Now().Add(s.opts.PongTimeout))
-		return nil
-	})
-
 	c := &wsIncomingClient{
 		Conn: wsconn,
 	}
 	wsconn.wsSpeaker = c
+
+	conn.SetReadLimit(maxMessageSize)
+	conn.SetReadDeadline(time.Now().Add(s.opts.PongTimeout))
+	conn.SetPongHandler(func(string) error {
+		for _, listener := range s.opts.PongListeners {
+			listener.OnPong(c)
+		}
+
+		conn.SetReadDeadline(time.Now().Add(s.opts.PongTimeout))
+		return nil
+	})
 
 	pc, err := promoter(c)
 	if err != nil {

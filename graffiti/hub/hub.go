@@ -19,10 +19,12 @@ package hub
 
 import (
 	"crypto/tls"
+	"fmt"
+	"time"
 
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	gc "github.com/skydive-project/skydive/graffiti/common"
-	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
+	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
@@ -46,6 +48,7 @@ type Opts struct {
 	ClusterAuthBackend  shttp.AuthenticationBackend
 	Peers               []service.Address
 	TLSConfig           *tls.Config
+	EtcdClient          *etcdclient.Client
 	Logger              logging.Logger
 }
 
@@ -54,7 +57,7 @@ type Opts struct {
 type Hub struct {
 	httpServer          *shttp.Server
 	apiServer           *api.Server
-	embeddedEtcd        *etcdserver.EmbeddedServer
+	etcdClient          *etcdclient.Client
 	podWSServer         *websocket.StructServer
 	publisherWSServer   *websocket.StructServer
 	replicationWSServer *websocket.StructServer
@@ -102,12 +105,6 @@ func (h *Hub) GetStatus() interface{} {
 
 // Start the hub
 func (h *Hub) Start() error {
-	if h.embeddedEtcd != nil {
-		if err := h.embeddedEtcd.Start(); err != nil {
-			return err
-		}
-	}
-
 	if err := h.httpServer.Start(); err != nil {
 		return err
 	}
@@ -128,9 +125,6 @@ func (h *Hub) Stop() {
 	h.replicationWSServer.Stop()
 	h.publisherWSServer.Stop()
 	h.subscriberWSServer.Stop()
-	if h.embeddedEtcd != nil {
-		h.embeddedEtcd.Stop()
-	}
 }
 
 // HTTPServer returns the hub HTTP server
@@ -158,6 +152,14 @@ func (h *Hub) GremlinTraversalParser() *traversal.GremlinTraversalParser {
 	return h.traversalParser
 }
 
+// OnPong handles pong messages
+func (h *Hub) OnPong(speaker websocket.Speaker) {
+	key := fmt.Sprintf("/pods/%s/last-pong", gc.ClientOrigin(speaker))
+	if err := h.etcdClient.SetInt64(key, time.Now().Unix()); err != nil {
+		logging.GetLogger().Errorf("Error while recording agent pong time: %s", err)
+	}
+}
+
 // NewHub returns a new hub
 func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, cached *graph.CachedBackend, podEndpoint string, opts Opts) (*Hub, error) {
 	sa, err := service.AddressFromString(listen)
@@ -171,50 +173,54 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 		opts.Logger = logging.GetLogger()
 	}
 
+	hub := &Hub{}
+
 	httpServer := shttp.NewServer(id, serviceType, sa.Addr, sa.Port, opts.TLSConfig, opts.Logger)
 
-	newWSServer := func(endpoint string, authBackend shttp.AuthenticationBackend) *websocket.Server {
-		opts := opts.WebsocketOpts
-		opts.AuthBackend = authBackend
-		return websocket.NewServer(httpServer, endpoint, opts)
-	}
-
-	podWSServer := websocket.NewStructServer(newWSServer(podEndpoint, opts.ClusterAuthBackend))
+	podOpts := opts.WebsocketOpts
+	podOpts.AuthBackend = opts.ClusterAuthBackend
+	podOpts.PongListeners = []websocket.PongListener{hub}
+	podWSServer := websocket.NewStructServer(websocket.NewServer(httpServer, podEndpoint, podOpts))
 	if _, err = gc.NewPublisherEndpoint(podWSServer, g, nil, opts.Logger); err != nil {
 		return nil, err
 	}
 
-	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", opts.APIAuthBackend))
+	pubOpts := opts.WebsocketOpts
+	pubOpts.AuthBackend = opts.APIAuthBackend
+	publisherWSServer := websocket.NewStructServer(websocket.NewServer(httpServer, "/ws/publisher", pubOpts))
 	_, err = gc.NewPublisherEndpoint(publisherWSServer, g, opts.GraphValidator, opts.Logger)
 	if err != nil {
 		return nil, err
 	}
 
-	replicationWSServer := websocket.NewStructServer(newWSServer("/ws/replication", opts.ClusterAuthBackend))
+	repOpts := opts.WebsocketOpts
+	repOpts.AuthBackend = opts.ClusterAuthBackend
+	replicationWSServer := websocket.NewStructServer(websocket.NewServer(httpServer, "/ws/replication", repOpts))
 	replicationEndpoint, err := NewReplicationEndpoint(replicationWSServer, &opts.WebsocketClientOpts, cached, g, opts.Peers, opts.Logger)
 	if err != nil {
 		return nil, err
 	}
 
-	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", opts.APIAuthBackend))
+	subOpts := opts.WebsocketOpts
+	subOpts.AuthBackend = opts.APIAuthBackend
+	subscriberWSServer := websocket.NewStructServer(websocket.NewServer(httpServer, "/ws/subscriber", subOpts))
 	gc.NewSubscriberEndpoint(subscriberWSServer, g, tr, opts.Logger)
 
 	service := service.Service{ID: id, Type: serviceType}
-	apiServer, err := api.NewAPI(httpServer, opts.Version, service, opts.APIAuthBackend, opts.APIValidator)
+	apiServer, err := api.NewAPI(httpServer, opts.EtcdClient.KeysAPI, opts.Version, service, opts.APIAuthBackend, opts.APIValidator)
 	if err != nil {
 		return nil, err
 	}
 
-	hub := &Hub{
-		httpServer:          httpServer,
-		apiServer:           apiServer,
-		podWSServer:         podWSServer,
-		replicationEndpoint: replicationEndpoint,
-		replicationWSServer: replicationWSServer,
-		publisherWSServer:   publisherWSServer,
-		subscriberWSServer:  subscriberWSServer,
-		traversalParser:     tr,
-	}
+	hub.httpServer = httpServer
+	hub.apiServer = apiServer
+	hub.podWSServer = podWSServer
+	hub.replicationEndpoint = replicationEndpoint
+	hub.replicationWSServer = replicationWSServer
+	hub.publisherWSServer = publisherWSServer
+	hub.subscriberWSServer = subscriberWSServer
+	hub.traversalParser = tr
+	hub.etcdClient = opts.EtcdClient
 
 	if opts.StatusReporter == nil {
 		opts.StatusReporter = hub
