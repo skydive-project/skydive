@@ -27,8 +27,8 @@ import (
 
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/graffiti/service"
-	"github.com/skydive-project/skydive/storage"
-	es "github.com/skydive-project/skydive/storage/elasticsearch"
+	"github.com/skydive-project/skydive/graffiti/storage"
+	es "github.com/skydive-project/skydive/graffiti/storage/elasticsearch"
 )
 
 type fakeESIndex struct {

@@ -37,8 +37,8 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	es "github.com/skydive-project/skydive/graffiti/storage/elasticsearch"
 	"github.com/skydive-project/skydive/logging"
-	es "github.com/skydive-project/skydive/storage/elasticsearch"
 )
 
 // sudo -E /usr/bin/snort -A cmg -c /etc/snort/snort.lua -R snort3-community-rules/snort3-community.rules -i br-gre -X 2>/dev/null | go run contrib/snort/snortSkydive.go

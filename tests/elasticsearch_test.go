@@ -28,7 +28,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
-	es "github.com/skydive-project/skydive/storage/elasticsearch"
+	es "github.com/skydive-project/skydive/graffiti/storage/elasticsearch"
 )
 
 type fakeMasterElection struct {

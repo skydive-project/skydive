@@ -34,7 +34,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
-	"github.com/skydive-project/skydive/storage"
+	"github.com/skydive-project/skydive/graffiti/storage"
 )
 
 // Result describes an orientdb request result
