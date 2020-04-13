@@ -1,4 +1,4 @@
-//go:generate go run github.com/skydive-project/skydive/scripts/gendecoder -package github.com/skydive-project/skydive/topology/probes/ovsdb
+//go:generate go run github.com/skydive-project/skydive/graffiti/gendecoder -package github.com/skydive-project/skydive/topology/probes/ovsdb
 //go:generate go run github.com/mailru/easyjson/easyjson $GOFILE
 
 /*
@@ -34,6 +34,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/ovs/ovsdb"
 	"github.com/skydive-project/skydive/probe"
@@ -75,7 +76,7 @@ type OvsMetadata struct {
 }
 
 // OvsMetadataDecoder implements a json message raw decoder
-func OvsMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+func OvsMetadataDecoder(raw json.RawMessage) (getter.Getter, error) {
 	var ovs OvsMetadata
 	if err := json.Unmarshal(raw, &ovs); err != nil {
 		return nil, fmt.Errorf("unable to unmarshal ovs metadata %s: %s", string(raw), err)

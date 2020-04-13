@@ -30,6 +30,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/service"
 )
@@ -730,7 +731,7 @@ func (tv *GraphTraversalV) Sum(ctx StepContext, keys ...interface{}) *GraphTrave
 	for _, n := range tv.nodes {
 		if value, err := n.GetFieldInt64(key); err == nil {
 			s += value
-		} else if err != common.ErrFieldNotFound {
+		} else if err != getter.ErrFieldNotFound {
 			return NewGraphTraversalValueFromError(err)
 		}
 	}
@@ -920,7 +921,7 @@ func (tv *GraphTraversalV) Sort(ctx StepContext, keys ...interface{}) *GraphTrav
 	return tv
 }
 
-func dedupValues(g common.Getter, keys []string) []interface{} {
+func dedupValues(g getter.Getter, keys []string) []interface{} {
 	var values []interface{}
 	for _, key := range keys {
 		v, err := g.GetField(key)
@@ -1871,7 +1872,7 @@ func (t *GraphTraversalValue) Has(ctx StepContext, s ...interface{}) *GraphTrave
 			}
 
 			switch item := item.(type) {
-			case common.Getter:
+			case getter.Getter:
 				if filter.Eval(item) && it.Next() {
 					values = append(values, item)
 				}

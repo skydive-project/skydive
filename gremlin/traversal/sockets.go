@@ -20,8 +20,8 @@ package traversal
 import (
 	"encoding/json"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
@@ -102,7 +102,7 @@ func (s *SocketsTraversalStep) PropertyValues(ctx traversal.StepContext, keys ..
 		for _, socket := range sockets {
 			v, err := socket.GetField(key)
 			if err != nil {
-				return traversal.NewGraphTraversalValueFromError(common.ErrFieldNotFound)
+				return traversal.NewGraphTraversalValueFromError(getter.ErrFieldNotFound)
 			}
 			values = append(values, v)
 		}

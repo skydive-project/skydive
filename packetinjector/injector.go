@@ -1,4 +1,4 @@
-//go:generate go run github.com/skydive-project/skydive/scripts/gendecoder
+//go:generate go run github.com/skydive-project/skydive/graffiti/gendecoder
 //go:generate go run github.com/mailru/easyjson/easyjson $GOFILE
 
 /*
@@ -27,8 +27,8 @@ import (
 
 	"github.com/google/gopacket"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
+	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
 // PacketInjectionRequest describes the packet parameters to be injected
@@ -73,7 +73,7 @@ type InjectionMetadata struct {
 }
 
 // InjectionsMetadataDecoder implements a json message raw decoder
-func InjectionsMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+func InjectionsMetadataDecoder(raw json.RawMessage) (getter.Getter, error) {
 	var injections Injections
 	if err := json.Unmarshal(raw, &injections); err != nil {
 		return nil, fmt.Errorf("unable to unmarshal injections metadata %s: %s", string(raw), err)

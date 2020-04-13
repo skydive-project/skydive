@@ -1,4 +1,4 @@
-//go:generate go run github.com/skydive-project/skydive/scripts/gendecoder -package github.com/skydive-project/skydive/flow/probes
+//go:generate go run github.com/skydive-project/skydive/graffiti/gendecoder -package github.com/skydive-project/skydive/flow/probes
 //go:generate go run github.com/mailru/easyjson/easyjson $GOFILE
 
 /*
@@ -25,9 +25,9 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/ondemand"
 	"github.com/skydive-project/skydive/logging"
@@ -110,7 +110,7 @@ type CaptureStats struct {
 }
 
 // CapturesMetadataDecoder implements a json message raw decoder
-func CapturesMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+func CapturesMetadataDecoder(raw json.RawMessage) (getter.Getter, error) {
 	var captures Captures
 	if err := json.Unmarshal(raw, &captures); err != nil {
 		return nil, fmt.Errorf("unable to unmarshal captures metadata %s: %s", string(raw), err)

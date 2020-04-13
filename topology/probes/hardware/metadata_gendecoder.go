@@ -3,12 +3,12 @@
 package hardware
 
 import (
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"strings"
 )
 
 func (obj *CPUInfo) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *CPUInfo) GetFieldInt64(key string) (int64, error) {
@@ -24,7 +24,7 @@ func (obj *CPUInfo) GetFieldInt64(key string) (int64, error) {
 	case "CacheSize":
 		return int64(obj.CacheSize), nil
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *CPUInfo) GetFieldString(key string) (string, error) {
@@ -44,7 +44,7 @@ func (obj *CPUInfo) GetFieldString(key string) (string, error) {
 	case "Microcode":
 		return string(obj.Microcode), nil
 	}
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *CPUInfo) GetFieldKeys() []string {
@@ -64,18 +64,18 @@ func (obj *CPUInfo) GetFieldKeys() []string {
 	}
 }
 
-func (obj *CPUInfo) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *CPUInfo) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	return false
 }
 
-func (obj *CPUInfo) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *CPUInfo) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if b, err := obj.GetFieldInt64(key); err == nil {
 		return predicate(b)
 	}
 	return false
 }
 
-func (obj *CPUInfo) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *CPUInfo) MatchString(key string, predicate getter.StringPredicate) bool {
 	if b, err := obj.GetFieldString(key); err == nil {
 		return predicate(b)
 	}
@@ -90,23 +90,23 @@ func (obj *CPUInfo) GetField(key string) (interface{}, error) {
 	if i, err := obj.GetFieldInt64(key); err == nil {
 		return i, nil
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func (obj *CPUInfos) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *CPUInfos) GetFieldInt64(key string) (int64, error) {
 	switch key {
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *CPUInfos) GetFieldString(key string) (string, error) {
 	switch key {
 	}
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *CPUInfos) GetFieldKeys() []string {
@@ -126,7 +126,7 @@ func (obj *CPUInfos) GetFieldKeys() []string {
 	}
 }
 
-func (obj *CPUInfos) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *CPUInfos) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	for _, obj := range *obj {
 		if obj.MatchBool(key, predicate) {
 			return true
@@ -135,7 +135,7 @@ func (obj *CPUInfos) MatchBool(key string, predicate common.BoolPredicate) bool 
 	return false
 }
 
-func (obj *CPUInfos) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *CPUInfos) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	for _, obj := range *obj {
 		if obj.MatchInt64(key, predicate) {
 			return true
@@ -144,7 +144,7 @@ func (obj *CPUInfos) MatchInt64(key string, predicate common.Int64Predicate) boo
 	return false
 }
 
-func (obj *CPUInfos) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *CPUInfos) MatchString(key string, predicate getter.StringPredicate) bool {
 	for _, obj := range *obj {
 		if obj.MatchString(key, predicate) {
 			return true
@@ -183,7 +183,7 @@ func (obj *CPUInfos) GetField(key string) (interface{}, error) {
 		case "Microcode":
 			result = append(result, o.Microcode)
 		default:
-			return result, common.ErrFieldNotFound
+			return result, getter.ErrFieldNotFound
 		}
 	}
 

@@ -20,6 +20,7 @@ package flow
 import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
 // MergeContext describes a mechanism to merge flow sets
@@ -65,7 +66,7 @@ func compareByField(lf, rf *Flow, field string) (bool, error) {
 		return v1 <= v2, nil
 	}
 
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 // mergeDedup merges the flowset given as argument. Both of the flowset have

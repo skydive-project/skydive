@@ -3,12 +3,12 @@
 package packetinjector
 
 import (
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"strings"
 )
 
 func (obj *InjectionMetadata) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *InjectionMetadata) GetFieldInt64(key string) (int64, error) {
@@ -30,7 +30,7 @@ func (obj *InjectionMetadata) GetFieldInt64(key string) (int64, error) {
 	case "PacketCount":
 		return int64(obj.PacketCount), nil
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *InjectionMetadata) GetFieldString(key string) (string, error) {
@@ -54,7 +54,7 @@ func (obj *InjectionMetadata) GetFieldString(key string) (string, error) {
 	case "State":
 		return string(obj.State), nil
 	}
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *InjectionMetadata) GetFieldKeys() []string {
@@ -80,18 +80,18 @@ func (obj *InjectionMetadata) GetFieldKeys() []string {
 	}
 }
 
-func (obj *InjectionMetadata) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *InjectionMetadata) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	return false
 }
 
-func (obj *InjectionMetadata) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *InjectionMetadata) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if b, err := obj.GetFieldInt64(key); err == nil {
 		return predicate(b)
 	}
 	return false
 }
 
-func (obj *InjectionMetadata) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *InjectionMetadata) MatchString(key string, predicate getter.StringPredicate) bool {
 	if b, err := obj.GetFieldString(key); err == nil {
 		return predicate(b)
 	}
@@ -127,23 +127,23 @@ func (obj *InjectionMetadata) GetField(key string) (interface{}, error) {
 		}
 
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func (obj *Injections) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *Injections) GetFieldInt64(key string) (int64, error) {
 	switch key {
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *Injections) GetFieldString(key string) (string, error) {
 	switch key {
 	}
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *Injections) GetFieldKeys() []string {
@@ -169,7 +169,7 @@ func (obj *Injections) GetFieldKeys() []string {
 	}
 }
 
-func (obj *Injections) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *Injections) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	for _, obj := range *obj {
 		if obj.MatchBool(key, predicate) {
 			return true
@@ -178,7 +178,7 @@ func (obj *Injections) MatchBool(key string, predicate common.BoolPredicate) boo
 	return false
 }
 
-func (obj *Injections) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *Injections) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	for _, obj := range *obj {
 		if obj.MatchInt64(key, predicate) {
 			return true
@@ -187,7 +187,7 @@ func (obj *Injections) MatchInt64(key string, predicate common.Int64Predicate) b
 	return false
 }
 
-func (obj *Injections) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *Injections) MatchString(key string, predicate getter.StringPredicate) bool {
 	for _, obj := range *obj {
 		if obj.MatchString(key, predicate) {
 			return true
@@ -238,7 +238,7 @@ func (obj *Injections) GetField(key string) (interface{}, error) {
 		case "PacketCount":
 			result = append(result, o.PacketCount)
 		default:
-			return result, common.ErrFieldNotFound
+			return result, getter.ErrFieldNotFound
 		}
 	}
 

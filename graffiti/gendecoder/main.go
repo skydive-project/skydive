@@ -331,7 +331,7 @@ package	{{.Name}}
 
 import (
 	"strings"
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
 {{- define "splitKey" -}}
@@ -352,7 +352,7 @@ func (obj *{{.Name}}) GetFieldString(key string) (string, error) {
 		return obj.{{.Name}}.String(), nil
 {{end}}{{end}}{{end}}	}
 	{{end -}}
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 {{- end -}}
 
@@ -364,7 +364,7 @@ func (obj *{{.Name}}) GetFieldBool(key string) (bool, error) {
 		return obj.{{.Name}}, nil
 {{end}}{{end}}{{end}}	}
 	{{end}}
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 {{- end -}}
 
@@ -376,7 +376,7 @@ func (obj *{{.Name}}) GetFieldInt64(key string) (int64, error) {
 		return int64(obj.{{.Name}}), nil
 {{end}}{{end}}{{- end -}}	}
 	{{- end}}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 {{- end -}}
 
@@ -421,7 +421,7 @@ func (obj *{{.Name}}) GetFieldKeys() []string {
 
 {{template "keysGetter" .}}
 
-func (obj *{{.Name}}) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *{{.Name}}) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	{{- if .IsArray}}
 	for _, obj := range *obj {
 		if obj.MatchBool(key, predicate) {
@@ -468,7 +468,7 @@ func (obj *{{.Name}}) MatchBool(key string, predicate common.BoolPredicate) bool
 	return false
 }
 
-func (obj *{{.Name}}) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *{{.Name}}) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	{{- if .IsArray}}
 	for _, obj := range *obj {
 		if obj.MatchInt64(key, predicate) {
@@ -515,7 +515,7 @@ func (obj *{{.Name}}) MatchInt64(key string, predicate common.Int64Predicate) bo
 	return false
 }
 
-func (obj *{{.Name}}) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *{{.Name}}) MatchString(key string, predicate getter.StringPredicate) bool {
 	{{- if .IsArray}}
 	for _, obj := range *obj {
 		if obj.MatchString(key, predicate) {
@@ -615,7 +615,7 @@ func (obj *{{.Name}}) GetField(key string) (interface{}, error) {
 {{end}}{{end}}
 	}
 	{{end -}}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 {{else}}	var result []interface{}
 
 	for _, o := range *obj {
@@ -623,7 +623,7 @@ func (obj *{{.Name}}) GetField(key string) (interface{}, error) {
 {{range .Fields}}		case "{{.Name}}":
 			result = append(result, o.{{.Name}})
 {{end}}		default:
-			return result, common.ErrFieldNotFound
+			return result, getter.ErrFieldNotFound
 		}
 	}
 

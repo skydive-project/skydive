@@ -35,7 +35,7 @@ flow/flow.pb.go: flow/flow.proto filters/filters.proto
 	sed -e 's/type TCPMetric struct {/\/\/ gendecoder\ntype TCPMetric struct {/' -i $@
 	# This is to allow calling go generate on flow/flow.pb.go
 	sed -e 's/DO NOT EDIT./DO NOT MODIFY/' -i $@
-	sed '1 i //go:generate go run github.com/skydive-project/skydive/scripts/gendecoder' -i $@
+	sed '1 i //go:generate go run github.com/skydive-project/skydive/graffiti/gendecoder' -i $@
 	gofmt -s -w $@
 
 flow/flow.pb_easyjson.go: flow/flow.pb.go

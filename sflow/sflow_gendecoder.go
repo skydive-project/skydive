@@ -3,12 +3,12 @@
 package sflow
 
 import (
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"strings"
 )
 
 func (obj *EthMetric) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *EthMetric) GetFieldInt64(key string) (int64, error) {
@@ -40,11 +40,11 @@ func (obj *EthMetric) GetFieldInt64(key string) (int64, error) {
 	case "EthSymbolErrors":
 		return int64(obj.EthSymbolErrors), nil
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *EthMetric) GetFieldString(key string) (string, error) {
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *EthMetric) GetFieldKeys() []string {
@@ -65,18 +65,18 @@ func (obj *EthMetric) GetFieldKeys() []string {
 	}
 }
 
-func (obj *EthMetric) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *EthMetric) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	return false
 }
 
-func (obj *EthMetric) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *EthMetric) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if b, err := obj.GetFieldInt64(key); err == nil {
 		return predicate(b)
 	}
 	return false
 }
 
-func (obj *EthMetric) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *EthMetric) MatchString(key string, predicate getter.StringPredicate) bool {
 	return false
 }
 
@@ -84,11 +84,11 @@ func (obj *EthMetric) GetField(key string) (interface{}, error) {
 	if i, err := obj.GetFieldInt64(key); err == nil {
 		return i, nil
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func (obj *IfMetric) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *IfMetric) GetFieldInt64(key string) (int64, error) {
@@ -120,11 +120,11 @@ func (obj *IfMetric) GetFieldInt64(key string) (int64, error) {
 	case "IfOutErrors":
 		return int64(obj.IfOutErrors), nil
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *IfMetric) GetFieldString(key string) (string, error) {
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *IfMetric) GetFieldKeys() []string {
@@ -145,18 +145,18 @@ func (obj *IfMetric) GetFieldKeys() []string {
 	}
 }
 
-func (obj *IfMetric) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *IfMetric) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	return false
 }
 
-func (obj *IfMetric) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *IfMetric) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if b, err := obj.GetFieldInt64(key); err == nil {
 		return predicate(b)
 	}
 	return false
 }
 
-func (obj *IfMetric) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *IfMetric) MatchString(key string, predicate getter.StringPredicate) bool {
 	return false
 }
 
@@ -164,11 +164,11 @@ func (obj *IfMetric) GetField(key string) (interface{}, error) {
 	if i, err := obj.GetFieldInt64(key); err == nil {
 		return i, nil
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func (obj *OvsMetric) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *OvsMetric) GetFieldInt64(key string) (int64, error) {
@@ -198,11 +198,11 @@ func (obj *OvsMetric) GetFieldInt64(key string) (int64, error) {
 	case "OvsAppMemMax":
 		return int64(obj.OvsAppMemMax), nil
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *OvsMetric) GetFieldString(key string) (string, error) {
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *OvsMetric) GetFieldKeys() []string {
@@ -222,18 +222,18 @@ func (obj *OvsMetric) GetFieldKeys() []string {
 	}
 }
 
-func (obj *OvsMetric) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *OvsMetric) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	return false
 }
 
-func (obj *OvsMetric) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *OvsMetric) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if b, err := obj.GetFieldInt64(key); err == nil {
 		return predicate(b)
 	}
 	return false
 }
 
-func (obj *OvsMetric) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *OvsMetric) MatchString(key string, predicate getter.StringPredicate) bool {
 	return false
 }
 
@@ -241,11 +241,11 @@ func (obj *OvsMetric) GetField(key string) (interface{}, error) {
 	if i, err := obj.GetFieldInt64(key); err == nil {
 		return i, nil
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func (obj *SFMetric) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *SFMetric) GetFieldInt64(key string) (int64, error) {
@@ -341,11 +341,11 @@ func (obj *SFMetric) GetFieldInt64(key string) (int64, error) {
 	case "Last":
 		return int64(obj.Last), nil
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *SFMetric) GetFieldString(key string) (string, error) {
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *SFMetric) GetFieldKeys() []string {
@@ -398,18 +398,18 @@ func (obj *SFMetric) GetFieldKeys() []string {
 	}
 }
 
-func (obj *SFMetric) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *SFMetric) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	return false
 }
 
-func (obj *SFMetric) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *SFMetric) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if b, err := obj.GetFieldInt64(key); err == nil {
 		return predicate(b)
 	}
 	return false
 }
 
-func (obj *SFMetric) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *SFMetric) MatchString(key string, predicate getter.StringPredicate) bool {
 	return false
 }
 
@@ -417,19 +417,19 @@ func (obj *SFMetric) GetField(key string) (interface{}, error) {
 	if i, err := obj.GetFieldInt64(key); err == nil {
 		return i, nil
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func (obj *SFlow) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *SFlow) GetFieldInt64(key string) (int64, error) {
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *SFlow) GetFieldString(key string) (string, error) {
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *SFlow) GetFieldKeys() []string {
@@ -439,7 +439,7 @@ func (obj *SFlow) GetFieldKeys() []string {
 	}
 }
 
-func (obj *SFlow) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *SFlow) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	first := key
 	index := strings.Index(key, ".")
 	if index != -1 {
@@ -459,7 +459,7 @@ func (obj *SFlow) MatchBool(key string, predicate common.BoolPredicate) bool {
 	return false
 }
 
-func (obj *SFlow) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *SFlow) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	first := key
 	index := strings.Index(key, ".")
 	if index != -1 {
@@ -480,7 +480,7 @@ func (obj *SFlow) MatchInt64(key string, predicate common.Int64Predicate) bool {
 	return false
 }
 
-func (obj *SFlow) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *SFlow) MatchString(key string, predicate getter.StringPredicate) bool {
 	first := key
 	index := strings.Index(key, ".")
 	if index != -1 {
@@ -527,11 +527,11 @@ func (obj *SFlow) GetField(key string) (interface{}, error) {
 		}
 
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func (obj *VlanMetric) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *VlanMetric) GetFieldInt64(key string) (int64, error) {
@@ -547,11 +547,11 @@ func (obj *VlanMetric) GetFieldInt64(key string) (int64, error) {
 	case "VlanDiscards":
 		return int64(obj.VlanDiscards), nil
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *VlanMetric) GetFieldString(key string) (string, error) {
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *VlanMetric) GetFieldKeys() []string {
@@ -564,18 +564,18 @@ func (obj *VlanMetric) GetFieldKeys() []string {
 	}
 }
 
-func (obj *VlanMetric) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *VlanMetric) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	return false
 }
 
-func (obj *VlanMetric) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *VlanMetric) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if b, err := obj.GetFieldInt64(key); err == nil {
 		return predicate(b)
 	}
 	return false
 }
 
-func (obj *VlanMetric) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *VlanMetric) MatchString(key string, predicate getter.StringPredicate) bool {
 	return false
 }
 
@@ -583,7 +583,7 @@ func (obj *VlanMetric) GetField(key string) (interface{}, error) {
 	if i, err := obj.GetFieldInt64(key); err == nil {
 		return i, nil
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func init() {

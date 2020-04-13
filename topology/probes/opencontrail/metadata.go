@@ -1,4 +1,4 @@
-//go:generate go run github.com/skydive-project/skydive/scripts/gendecoder -package github.com/skydive-project/skydive/topology/probes/opencontrail
+//go:generate go run github.com/skydive-project/skydive/graffiti/gendecoder -package github.com/skydive-project/skydive/topology/probes/opencontrail
 //go:generate go run github.com/mailru/easyjson/easyjson $GOFILE
 
 /*
@@ -24,7 +24,7 @@ import (
 	json "encoding/json"
 	"fmt"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
 // Metadata defines the information stored about a Contrail interface
@@ -61,7 +61,7 @@ type RoutingTable struct {
 }
 
 // MetadataDecoder implements a json message raw decoder
-func MetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+func MetadataDecoder(raw json.RawMessage) (getter.Getter, error) {
 	var m Metadata
 	if err := json.Unmarshal(raw, &m); err != nil {
 		return nil, fmt.Errorf("unable to unmarshal opencontrail object %s: %s", string(raw), err)

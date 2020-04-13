@@ -22,7 +22,7 @@ import (
 
 	"github.com/safchain/insanelock"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
 // Linker describes an object that returns incoming edges to a node
@@ -236,7 +236,7 @@ func NewResourceLinker(g *Graph, glhs1 []ListenerHandler, glhs2 []ListenerHandle
 }
 
 // getFieldsAsArray returns an array of corresponding values from a field list
-func getFieldsAsArray(obj common.Getter, fields []string) ([][]interface{}, error) {
+func getFieldsAsArray(obj getter.Getter, fields []string) ([][]interface{}, error) {
 	values := make([][]interface{}, len(fields))
 	for i, index := range fields {
 		v, err := obj.GetField(index)

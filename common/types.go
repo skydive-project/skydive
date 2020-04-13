@@ -32,8 +32,6 @@ import (
 var (
 	// ErrCantCompareInterface error can't compare interface
 	ErrCantCompareInterface = errors.New("Can't compare interface")
-	// ErrFieldNotFound error field not found
-	ErrFieldNotFound = errors.New("Field not found")
 	// ErrFieldWrongType error field has wrong type
 	ErrFieldWrongType = errors.New("Field has wrong type")
 	// ErrNotFound error no result was found
@@ -53,27 +51,6 @@ const (
 	// SortDescending sorting order
 	SortDescending SortOrder = "DESC"
 )
-
-// BoolPredicate is a function that applies a test against a boolean
-type BoolPredicate func(b bool) bool
-
-// Int64Predicate is a function that applies a test against an integer
-type Int64Predicate func(i int64) bool
-
-// StringPredicate is a function that applies a test against a string
-type StringPredicate func(s string) bool
-
-// Getter describes filter getter fields
-type Getter interface {
-	GetField(field string) (interface{}, error)
-	GetFieldKeys() []string
-	GetFieldBool(field string) (bool, error)
-	GetFieldInt64(field string) (int64, error)
-	GetFieldString(field string) (string, error)
-	MatchBool(field string, predicate BoolPredicate) bool
-	MatchInt64(field string, predicate Int64Predicate) bool
-	MatchString(field string, predicate StringPredicate) bool
-}
 
 // UnixMillis returns the current time in miliseconds
 func UnixMillis(t time.Time) int64 {

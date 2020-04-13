@@ -3,12 +3,12 @@
 package topology
 
 import (
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"strings"
 )
 
 func (obj *InterfaceMetric) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *InterfaceMetric) GetFieldInt64(key string) (int64, error) {
@@ -64,11 +64,11 @@ func (obj *InterfaceMetric) GetFieldInt64(key string) (int64, error) {
 	case "Last":
 		return int64(obj.Last), nil
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *InterfaceMetric) GetFieldString(key string) (string, error) {
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *InterfaceMetric) GetFieldKeys() []string {
@@ -101,18 +101,18 @@ func (obj *InterfaceMetric) GetFieldKeys() []string {
 	}
 }
 
-func (obj *InterfaceMetric) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *InterfaceMetric) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	return false
 }
 
-func (obj *InterfaceMetric) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *InterfaceMetric) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if b, err := obj.GetFieldInt64(key); err == nil {
 		return predicate(b)
 	}
 	return false
 }
 
-func (obj *InterfaceMetric) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *InterfaceMetric) MatchString(key string, predicate getter.StringPredicate) bool {
 	return false
 }
 
@@ -120,7 +120,7 @@ func (obj *InterfaceMetric) GetField(key string) (interface{}, error) {
 	if i, err := obj.GetFieldInt64(key); err == nil {
 		return i, nil
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func init() {

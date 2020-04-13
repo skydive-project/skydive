@@ -1,4 +1,4 @@
-//go:generate go run github.com/skydive-project/skydive/scripts/gendecoder -output routes_gendecoder.go
+//go:generate go run github.com/skydive-project/skydive/graffiti/gendecoder -output routes_gendecoder.go
 //go:generate go run github.com/mailru/easyjson/easyjson $GOFILE
 
 /*
@@ -25,7 +25,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
 // RoutingTables describes a list of routing table
@@ -97,7 +97,7 @@ func (p *Prefix) UnmarshalJSON(b []byte) error {
 }
 
 // RoutingTablesMetadataDecoder implements a json message raw decoder
-func RoutingTablesMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+func RoutingTablesMetadataDecoder(raw json.RawMessage) (getter.Getter, error) {
 	var rt RoutingTables
 	if err := json.Unmarshal(raw, &rt); err != nil {
 		return nil, fmt.Errorf("unable to unmarshal routing table %s: %s", string(raw), err)

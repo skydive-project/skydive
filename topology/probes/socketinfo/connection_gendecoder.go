@@ -3,12 +3,12 @@
 package socketinfo
 
 import (
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"strings"
 )
 
 func (obj *ConnectionInfo) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *ConnectionInfo) GetFieldInt64(key string) (int64, error) {
@@ -20,7 +20,7 @@ func (obj *ConnectionInfo) GetFieldInt64(key string) (int64, error) {
 	case "RemotePort":
 		return int64(obj.RemotePort), nil
 	}
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *ConnectionInfo) GetFieldString(key string) (string, error) {
@@ -38,7 +38,7 @@ func (obj *ConnectionInfo) GetFieldString(key string) (string, error) {
 	case "State":
 		return string(obj.State), nil
 	}
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *ConnectionInfo) GetFieldKeys() []string {
@@ -55,18 +55,18 @@ func (obj *ConnectionInfo) GetFieldKeys() []string {
 	}
 }
 
-func (obj *ConnectionInfo) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *ConnectionInfo) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	return false
 }
 
-func (obj *ConnectionInfo) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *ConnectionInfo) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	if b, err := obj.GetFieldInt64(key); err == nil {
 		return predicate(b)
 	}
 	return false
 }
 
-func (obj *ConnectionInfo) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *ConnectionInfo) MatchString(key string, predicate getter.StringPredicate) bool {
 	if b, err := obj.GetFieldString(key); err == nil {
 		return predicate(b)
 	}
@@ -81,7 +81,7 @@ func (obj *ConnectionInfo) GetField(key string) (interface{}, error) {
 	if i, err := obj.GetFieldInt64(key); err == nil {
 		return i, nil
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func init() {

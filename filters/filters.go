@@ -24,12 +24,13 @@ import (
 	"github.com/pmylund/go-cache"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
 var regexpCache *cache.Cache
 
 // Eval evaluates a filter
-func (f *Filter) Eval(g common.Getter) bool {
+func (f *Filter) Eval(g getter.Getter) bool {
 	if f.BoolFilter != nil {
 		return f.BoolFilter.Eval(g)
 	}
@@ -89,7 +90,7 @@ func (f *Filter) Eval(g common.Getter) bool {
 }
 
 // Eval evaluates a boolean (not, and, or) filter
-func (b *BoolFilter) Eval(g common.Getter) bool {
+func (b *BoolFilter) Eval(g getter.Getter) bool {
 	for _, filter := range b.Filters {
 		result := filter.Eval(g)
 		if b.Op == BoolFilterOp_NOT && !result {

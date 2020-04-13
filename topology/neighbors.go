@@ -1,4 +1,4 @@
-//go:generate go run github.com/skydive-project/skydive/scripts/gendecoder -output neighbors_gendecoder.go
+//go:generate go run github.com/skydive-project/skydive/graffiti/gendecoder -output neighbors_gendecoder.go
 //go:generate go run github.com/mailru/easyjson/easyjson $GOFILE
 
 /*
@@ -25,7 +25,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
 // Neighbors describes a list of neighbors
@@ -56,7 +56,7 @@ func (neighbors *Neighbors) getMAC(ip net.IP) string {
 }
 
 // NeighborMetadataDecoder implements a json message raw decoder
-func NeighborMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+func NeighborMetadataDecoder(raw json.RawMessage) (getter.Getter, error) {
 	var nbs Neighbors
 	if err := json.Unmarshal(raw, &nbs); err != nil {
 		return nil, fmt.Errorf("unable to unmarshal routing table %s: %s", string(raw), err)

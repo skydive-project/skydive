@@ -1,4 +1,4 @@
-//go:generate go run github.com/skydive-project/skydive/scripts/gendecoder -package github.com/skydive-project/skydive/topology/probes/lldp
+//go:generate go run github.com/skydive-project/skydive/graffiti/gendecoder -package github.com/skydive-project/skydive/topology/probes/lldp
 //go:generate go run github.com/mailru/easyjson/easyjson $GOFILE
 
 /*
@@ -24,7 +24,7 @@ import (
 	json "encoding/json"
 	"fmt"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
 // Metadata describes the LLDP chassis metadata
@@ -73,7 +73,7 @@ type VLANNameMetadata struct {
 }
 
 // MetadataDecoder implements the JSON raw decoder for LLDP metadata
-func MetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+func MetadataDecoder(raw json.RawMessage) (getter.Getter, error) {
 	var metadata Metadata
 	if err := json.Unmarshal(raw, &metadata); err != nil {
 		return nil, fmt.Errorf("unable to unmarshal LLDP metadata %s: %s", string(raw), err)

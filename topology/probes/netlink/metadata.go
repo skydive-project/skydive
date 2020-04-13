@@ -1,4 +1,4 @@
-//go:generate go run github.com/skydive-project/skydive/scripts/gendecoder -package github.com/skydive-project/skydive/topology/probes/netlink
+//go:generate go run github.com/skydive-project/skydive/graffiti/gendecoder -package github.com/skydive-project/skydive/topology/probes/netlink
 //go:generate go run github.com/mailru/easyjson/easyjson $GOFILE
 
 /*
@@ -24,7 +24,7 @@ import (
 	json "encoding/json"
 	"fmt"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
 // VFS describes a list of virtual functions
@@ -46,7 +46,7 @@ type VF struct {
 }
 
 // VFSMetadataDecoder implements a json message raw decoder
-func VFSMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+func VFSMetadataDecoder(raw json.RawMessage) (getter.Getter, error) {
 	var vfs VFS
 	if err := json.Unmarshal(raw, &vfs); err != nil {
 		return nil, fmt.Errorf("unable to unmarshal routing table %s: %s", string(raw), err)

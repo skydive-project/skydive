@@ -3,16 +3,16 @@
 package ovsdb
 
 import (
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"strings"
 )
 
 func (obj *OvsMetadata) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *OvsMetadata) GetFieldInt64(key string) (int64, error) {
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *OvsMetadata) GetFieldString(key string) (string, error) {
@@ -24,7 +24,7 @@ func (obj *OvsMetadata) GetFieldString(key string) (string, error) {
 	case "Error":
 		return string(obj.Error), nil
 	}
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *OvsMetadata) GetFieldKeys() []string {
@@ -40,7 +40,7 @@ func (obj *OvsMetadata) GetFieldKeys() []string {
 	}
 }
 
-func (obj *OvsMetadata) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *OvsMetadata) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	first := key
 	index := strings.Index(key, ".")
 	if index != -1 {
@@ -60,7 +60,7 @@ func (obj *OvsMetadata) MatchBool(key string, predicate common.BoolPredicate) bo
 	return false
 }
 
-func (obj *OvsMetadata) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *OvsMetadata) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	first := key
 	index := strings.Index(key, ".")
 	if index != -1 {
@@ -81,7 +81,7 @@ func (obj *OvsMetadata) MatchInt64(key string, predicate common.Int64Predicate) 
 	return false
 }
 
-func (obj *OvsMetadata) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *OvsMetadata) MatchString(key string, predicate getter.StringPredicate) bool {
 	if b, err := obj.GetFieldString(key); err == nil {
 		return predicate(b)
 	}
@@ -179,7 +179,7 @@ func (obj *OvsMetadata) GetField(key string) (interface{}, error) {
 		}
 
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func init() {

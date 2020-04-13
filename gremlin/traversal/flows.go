@@ -30,6 +30,7 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/flow/storage"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/logging"
@@ -519,7 +520,7 @@ func (f *FlowTraversalStep) PropertyValues(ctx traversal.StepContext, keys ...in
 	for _, fl := range f.flowset.Flows {
 		v, err := fl.GetField(key)
 		if err != nil {
-			return traversal.NewGraphTraversalValueFromError(common.ErrFieldNotFound)
+			return traversal.NewGraphTraversalValueFromError(getter.ErrFieldNotFound)
 		}
 		s = append(s, v)
 	}

@@ -1,4 +1,4 @@
-//go:generate go run github.com/skydive-project/skydive/scripts/gendecoder -package github.com/skydive-project/skydive/topology/probes/blockdev
+//go:generate go run github.com/skydive-project/skydive/graffiti/gendecoder -package github.com/skydive-project/skydive/topology/probes/blockdev
 //go:generate go run github.com/mailru/easyjson/easyjson $GOFILE
 
 /*
@@ -23,7 +23,7 @@ package blockdev
 import (
 	"encoding/json"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
 // BlockMetric container for the blockdevice IO stats
@@ -94,7 +94,7 @@ func (im *IOMetric) MakeCopy() *BlockMetric {
 }
 
 // MetricDecoder implements a json message raw decoder
-func MetricDecoder(raw json.RawMessage) (common.Getter, error) {
+func MetricDecoder(raw json.RawMessage) (getter.Getter, error) {
 	var metric BlockMetric
 	if err := json.Unmarshal(raw, &metric); err != nil {
 		return nil, err

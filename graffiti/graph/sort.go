@@ -21,6 +21,7 @@ import (
 	"sort"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
 // Sort criteria
@@ -30,7 +31,7 @@ const (
 )
 
 type slice interface {
-	Get(i int) common.Getter
+	Get(i int) getter.Getter
 	Swap(i, j int)
 }
 
@@ -101,7 +102,7 @@ func (s sortableNodeSlice) Swap(i, j int) {
 	s.nodes[i], s.nodes[j] = s.nodes[j], s.nodes[i]
 }
 
-func (s sortableNodeSlice) Get(i int) common.Getter {
+func (s sortableNodeSlice) Get(i int) getter.Getter {
 	return s.nodes[i]
 }
 
@@ -109,7 +110,7 @@ func (s sortableEdgeSlice) Swap(i, j int) {
 	s.edges[i], s.edges[j] = s.edges[j], s.edges[i]
 }
 
-func (s sortableEdgeSlice) Get(i int) common.Getter {
+func (s sortableEdgeSlice) Get(i int) getter.Getter {
 	return s.edges[i]
 }
 

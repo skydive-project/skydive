@@ -22,11 +22,12 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
 // ElementMatcher defines an interface used to match an element
 type ElementMatcher interface {
-	Match(g common.Getter) bool
+	Match(g getter.Getter) bool
 	Filter() (*filters.Filter, error)
 }
 
@@ -36,7 +37,7 @@ type ElementFilter struct {
 }
 
 // Match returns true if the given element matches the filter.
-func (mf *ElementFilter) Match(g common.Getter) bool {
+func (mf *ElementFilter) Match(g getter.Getter) bool {
 	return mf.filter.Eval(g)
 }
 

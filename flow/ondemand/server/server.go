@@ -22,9 +22,9 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/ondemand"
 	"github.com/skydive-project/skydive/graffiti/ondemand/server"
@@ -52,7 +52,7 @@ func (p *activeProbe) OnStarted(metadata *probes.CaptureMetadata) {
 		captures := obj.(*probes.Captures)
 		*captures = append(*captures, metadata)
 		return true
-	}) == common.ErrFieldNotFound {
+	}) == getter.ErrFieldNotFound {
 		p.graph.AddMetadata(p.n, "Captures", &probes.Captures{metadata})
 	}
 	p.graph.Unlock()

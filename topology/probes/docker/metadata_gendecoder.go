@@ -3,16 +3,16 @@
 package docker
 
 import (
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 	"strings"
 )
 
 func (obj *Metadata) GetFieldBool(key string) (bool, error) {
-	return false, common.ErrFieldNotFound
+	return false, getter.ErrFieldNotFound
 }
 
 func (obj *Metadata) GetFieldInt64(key string) (int64, error) {
-	return 0, common.ErrFieldNotFound
+	return 0, getter.ErrFieldNotFound
 }
 
 func (obj *Metadata) GetFieldString(key string) (string, error) {
@@ -22,7 +22,7 @@ func (obj *Metadata) GetFieldString(key string) (string, error) {
 	case "ContainerName":
 		return string(obj.ContainerName), nil
 	}
-	return "", common.ErrFieldNotFound
+	return "", getter.ErrFieldNotFound
 }
 
 func (obj *Metadata) GetFieldKeys() []string {
@@ -33,7 +33,7 @@ func (obj *Metadata) GetFieldKeys() []string {
 	}
 }
 
-func (obj *Metadata) MatchBool(key string, predicate common.BoolPredicate) bool {
+func (obj *Metadata) MatchBool(key string, predicate getter.BoolPredicate) bool {
 	first := key
 	index := strings.Index(key, ".")
 	if index != -1 {
@@ -49,7 +49,7 @@ func (obj *Metadata) MatchBool(key string, predicate common.BoolPredicate) bool 
 	return false
 }
 
-func (obj *Metadata) MatchInt64(key string, predicate common.Int64Predicate) bool {
+func (obj *Metadata) MatchInt64(key string, predicate getter.Int64Predicate) bool {
 	first := key
 	index := strings.Index(key, ".")
 	if index != -1 {
@@ -66,7 +66,7 @@ func (obj *Metadata) MatchInt64(key string, predicate common.Int64Predicate) boo
 	return false
 }
 
-func (obj *Metadata) MatchString(key string, predicate common.StringPredicate) bool {
+func (obj *Metadata) MatchString(key string, predicate getter.StringPredicate) bool {
 	if b, err := obj.GetFieldString(key); err == nil {
 		return predicate(b)
 	}
@@ -109,7 +109,7 @@ func (obj *Metadata) GetField(key string) (interface{}, error) {
 		}
 
 	}
-	return nil, common.ErrFieldNotFound
+	return nil, getter.ErrFieldNotFound
 }
 
 func init() {

@@ -1,4 +1,4 @@
-//go:generate go run github.com/skydive-project/skydive/scripts/gendecoder -output metrics_gendecoder.go
+//go:generate go run github.com/skydive-project/skydive/graffiti/gendecoder -output metrics_gendecoder.go
 //go:generate go run github.com/mailru/easyjson/easyjson $GOFILE
 
 /*
@@ -24,6 +24,7 @@ import (
 	json "encoding/json"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
 // InterfaceMetric the interface packets counters
@@ -58,7 +59,7 @@ type InterfaceMetric struct {
 }
 
 // InterfaceMetricMetadataDecoder implements a json message raw decoder
-func InterfaceMetricMetadataDecoder(raw json.RawMessage) (common.Getter, error) {
+func InterfaceMetricMetadataDecoder(raw json.RawMessage) (getter.Getter, error) {
 	var metric InterfaceMetric
 	if err := json.Unmarshal(raw, &metric); err != nil {
 		return nil, err
