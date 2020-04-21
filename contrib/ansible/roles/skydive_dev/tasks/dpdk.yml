@@ -8,10 +8,10 @@
     - libmnl-devel
     - libibverbs-devel
 - git:
-    repo: 'http://dpdk.org/git/dpdk'
+    repo: 'http://dpdk.org/git/dpdk-stable'
     dest: /usr/local/src/dpdk
-    version: v19.05
+    version: v18.11.5
 - shell: |
     export RTE_TARGET=x86_64-native-linuxapp-gcc
     make -C /usr/local/src/dpdk config T=$RTE_TARGET
-    make -C /usr/local/src/dpdk install T=$RTE_TARGET DESTDIR=/usr/local EXTRA_CFLAGS=-fPIC
+    make -C /usr/local/src/dpdk install T=$RTE_TARGET DESTDIR=/usr/local EXTRA_CFLAGS=-fPIC CONFIG_RTE_KNI_KMOD=n CONFIG_RTE_EAL_IGB_UIO=n CONFIG_RTE_LIBRTE_MLX4_PMD=y CONFIG_RTE_LIBRTE_MLX4_DLOPEN_DEPS=y CONFIG_RTE_LIBRTE_MLX5_PMD=y CONFIG_RTE_LIBRTE_MLX5_DLOPEN_DEPS=y
