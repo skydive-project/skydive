@@ -114,10 +114,10 @@ void nsexec(void)
 	int verbose = 0;
 	int need_to_fork = 0;
 	int option_index;
-	char c;
+	int c;
 	while ((c = getopt_long(argc, argv, ":m:p:u:i:n:v:",
 			longopts, &option_index)) != -1) {
-		switch (c) {
+		switch ((char)c) {
 		case 'u':
 			set_namespace_path(CLONE_NEWUSER, optarg);
 			break;
