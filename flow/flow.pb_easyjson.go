@@ -8,8 +8,8 @@ import (
 	easyjson "github.com/mailru/easyjson"
 	jlexer "github.com/mailru/easyjson/jlexer"
 	jwriter "github.com/mailru/easyjson/jwriter"
-	filters "github.com/skydive-project/skydive/filters"
 	layers1 "github.com/skydive-project/skydive/flow/layers"
+	filters "github.com/skydive-project/skydive/graffiti/filters"
 )
 
 // suppress unused package warning
@@ -252,7 +252,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow2(in *jlexer.Lexer,
 				if out.Query == nil {
 					out.Query = new(filters.SearchQuery)
 				}
-				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters(in, out.Query)
+				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters(in, out.Query)
 			}
 		default:
 			in.SkipRecursive()
@@ -282,7 +282,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFlow2(out *jwriter.Writ
 		} else {
 			out.RawString(prefix)
 		}
-		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters(out, *in.Query)
+		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters(out, *in.Query)
 	}
 	out.RawByte('}')
 }
@@ -310,7 +310,7 @@ func (v *TableQuery) UnmarshalJSON(data []byte) error {
 func (v *TableQuery) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow2(l, v)
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters(in *jlexer.Lexer, out *filters.SearchQuery) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters(in *jlexer.Lexer, out *filters.SearchQuery) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -337,7 +337,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters(in *jlexer.Lexe
 				if out.Filter == nil {
 					out.Filter = new(filters.Filter)
 				}
-				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters1(in, out.Filter)
+				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters1(in, out.Filter)
 			}
 		case "PaginationRange":
 			if in.IsNull() {
@@ -347,7 +347,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters(in *jlexer.Lexe
 				if out.PaginationRange == nil {
 					out.PaginationRange = new(filters.Range)
 				}
-				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters2(in, out.PaginationRange)
+				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters2(in, out.PaginationRange)
 			}
 		case "Sort":
 			out.Sort = bool(in.Bool())
@@ -369,7 +369,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters(in *jlexer.Lexe
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters(out *jwriter.Writer, in filters.SearchQuery) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters(out *jwriter.Writer, in filters.SearchQuery) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -377,7 +377,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters(out *jwriter.Wr
 		const prefix string = ",\"Filter\":"
 		first = false
 		out.RawString(prefix[1:])
-		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters1(out, *in.Filter)
+		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters1(out, *in.Filter)
 	}
 	if in.PaginationRange != nil {
 		const prefix string = ",\"PaginationRange\":"
@@ -387,7 +387,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters(out *jwriter.Wr
 		} else {
 			out.RawString(prefix)
 		}
-		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters2(out, *in.PaginationRange)
+		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters2(out, *in.PaginationRange)
 	}
 	if in.Sort {
 		const prefix string = ",\"Sort\":"
@@ -441,7 +441,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters(out *jwriter.Wr
 	}
 	out.RawByte('}')
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters2(in *jlexer.Lexer, out *filters.Range) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters2(in *jlexer.Lexer, out *filters.Range) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -474,7 +474,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters2(in *jlexer.Lex
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters2(out *jwriter.Writer, in filters.Range) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters2(out *jwriter.Writer, in filters.Range) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -496,7 +496,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters2(out *jwriter.W
 	}
 	out.RawByte('}')
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters1(in *jlexer.Lexer, out *filters.Filter) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters1(in *jlexer.Lexer, out *filters.Filter) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -523,7 +523,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters1(in *jlexer.Lex
 				if out.TermStringFilter == nil {
 					out.TermStringFilter = new(filters.TermStringFilter)
 				}
-				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters3(in, out.TermStringFilter)
+				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters3(in, out.TermStringFilter)
 			}
 		case "TermInt64Filter":
 			if in.IsNull() {
@@ -533,7 +533,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters1(in *jlexer.Lex
 				if out.TermInt64Filter == nil {
 					out.TermInt64Filter = new(filters.TermInt64Filter)
 				}
-				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters4(in, out.TermInt64Filter)
+				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters4(in, out.TermInt64Filter)
 			}
 		case "TermBoolFilter":
 			if in.IsNull() {
@@ -543,7 +543,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters1(in *jlexer.Lex
 				if out.TermBoolFilter == nil {
 					out.TermBoolFilter = new(filters.TermBoolFilter)
 				}
-				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters5(in, out.TermBoolFilter)
+				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters5(in, out.TermBoolFilter)
 			}
 		case "GtInt64Filter":
 			if in.IsNull() {
@@ -553,7 +553,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters1(in *jlexer.Lex
 				if out.GtInt64Filter == nil {
 					out.GtInt64Filter = new(filters.GtInt64Filter)
 				}
-				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters6(in, out.GtInt64Filter)
+				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters6(in, out.GtInt64Filter)
 			}
 		case "LtInt64Filter":
 			if in.IsNull() {
@@ -563,7 +563,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters1(in *jlexer.Lex
 				if out.LtInt64Filter == nil {
 					out.LtInt64Filter = new(filters.LtInt64Filter)
 				}
-				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters7(in, out.LtInt64Filter)
+				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters7(in, out.LtInt64Filter)
 			}
 		case "GteInt64Filter":
 			if in.IsNull() {
@@ -573,7 +573,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters1(in *jlexer.Lex
 				if out.GteInt64Filter == nil {
 					out.GteInt64Filter = new(filters.GteInt64Filter)
 				}
-				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters8(in, out.GteInt64Filter)
+				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters8(in, out.GteInt64Filter)
 			}
 		case "LteInt64Filter":
 			if in.IsNull() {
@@ -583,7 +583,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters1(in *jlexer.Lex
 				if out.LteInt64Filter == nil {
 					out.LteInt64Filter = new(filters.LteInt64Filter)
 				}
-				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters9(in, out.LteInt64Filter)
+				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters9(in, out.LteInt64Filter)
 			}
 		case "BoolFilter":
 			if in.IsNull() {
@@ -593,7 +593,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters1(in *jlexer.Lex
 				if out.BoolFilter == nil {
 					out.BoolFilter = new(filters.BoolFilter)
 				}
-				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters10(in, out.BoolFilter)
+				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters10(in, out.BoolFilter)
 			}
 		case "RegexFilter":
 			if in.IsNull() {
@@ -603,7 +603,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters1(in *jlexer.Lex
 				if out.RegexFilter == nil {
 					out.RegexFilter = new(filters.RegexFilter)
 				}
-				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters11(in, out.RegexFilter)
+				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters11(in, out.RegexFilter)
 			}
 		case "NullFilter":
 			if in.IsNull() {
@@ -613,7 +613,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters1(in *jlexer.Lex
 				if out.NullFilter == nil {
 					out.NullFilter = new(filters.NullFilter)
 				}
-				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters12(in, out.NullFilter)
+				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters12(in, out.NullFilter)
 			}
 		case "IPV4RangeFilter":
 			if in.IsNull() {
@@ -623,7 +623,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters1(in *jlexer.Lex
 				if out.IPV4RangeFilter == nil {
 					out.IPV4RangeFilter = new(filters.IPV4RangeFilter)
 				}
-				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters13(in, out.IPV4RangeFilter)
+				easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters13(in, out.IPV4RangeFilter)
 			}
 		default:
 			in.SkipRecursive()
@@ -635,7 +635,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters1(in *jlexer.Lex
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters1(out *jwriter.Writer, in filters.Filter) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters1(out *jwriter.Writer, in filters.Filter) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -643,7 +643,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters1(out *jwriter.W
 		const prefix string = ",\"TermStringFilter\":"
 		first = false
 		out.RawString(prefix[1:])
-		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters3(out, *in.TermStringFilter)
+		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters3(out, *in.TermStringFilter)
 	}
 	if in.TermInt64Filter != nil {
 		const prefix string = ",\"TermInt64Filter\":"
@@ -653,7 +653,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters1(out *jwriter.W
 		} else {
 			out.RawString(prefix)
 		}
-		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters4(out, *in.TermInt64Filter)
+		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters4(out, *in.TermInt64Filter)
 	}
 	if in.TermBoolFilter != nil {
 		const prefix string = ",\"TermBoolFilter\":"
@@ -663,7 +663,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters1(out *jwriter.W
 		} else {
 			out.RawString(prefix)
 		}
-		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters5(out, *in.TermBoolFilter)
+		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters5(out, *in.TermBoolFilter)
 	}
 	if in.GtInt64Filter != nil {
 		const prefix string = ",\"GtInt64Filter\":"
@@ -673,7 +673,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters1(out *jwriter.W
 		} else {
 			out.RawString(prefix)
 		}
-		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters6(out, *in.GtInt64Filter)
+		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters6(out, *in.GtInt64Filter)
 	}
 	if in.LtInt64Filter != nil {
 		const prefix string = ",\"LtInt64Filter\":"
@@ -683,7 +683,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters1(out *jwriter.W
 		} else {
 			out.RawString(prefix)
 		}
-		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters7(out, *in.LtInt64Filter)
+		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters7(out, *in.LtInt64Filter)
 	}
 	if in.GteInt64Filter != nil {
 		const prefix string = ",\"GteInt64Filter\":"
@@ -693,7 +693,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters1(out *jwriter.W
 		} else {
 			out.RawString(prefix)
 		}
-		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters8(out, *in.GteInt64Filter)
+		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters8(out, *in.GteInt64Filter)
 	}
 	if in.LteInt64Filter != nil {
 		const prefix string = ",\"LteInt64Filter\":"
@@ -703,7 +703,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters1(out *jwriter.W
 		} else {
 			out.RawString(prefix)
 		}
-		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters9(out, *in.LteInt64Filter)
+		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters9(out, *in.LteInt64Filter)
 	}
 	if in.BoolFilter != nil {
 		const prefix string = ",\"BoolFilter\":"
@@ -713,7 +713,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters1(out *jwriter.W
 		} else {
 			out.RawString(prefix)
 		}
-		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters10(out, *in.BoolFilter)
+		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters10(out, *in.BoolFilter)
 	}
 	if in.RegexFilter != nil {
 		const prefix string = ",\"RegexFilter\":"
@@ -723,7 +723,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters1(out *jwriter.W
 		} else {
 			out.RawString(prefix)
 		}
-		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters11(out, *in.RegexFilter)
+		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters11(out, *in.RegexFilter)
 	}
 	if in.NullFilter != nil {
 		const prefix string = ",\"NullFilter\":"
@@ -733,7 +733,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters1(out *jwriter.W
 		} else {
 			out.RawString(prefix)
 		}
-		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters12(out, *in.NullFilter)
+		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters12(out, *in.NullFilter)
 	}
 	if in.IPV4RangeFilter != nil {
 		const prefix string = ",\"IPV4RangeFilter\":"
@@ -743,11 +743,11 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters1(out *jwriter.W
 		} else {
 			out.RawString(prefix)
 		}
-		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters13(out, *in.IPV4RangeFilter)
+		easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters13(out, *in.IPV4RangeFilter)
 	}
 	out.RawByte('}')
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters13(in *jlexer.Lexer, out *filters.IPV4RangeFilter) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters13(in *jlexer.Lexer, out *filters.IPV4RangeFilter) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -780,7 +780,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters13(in *jlexer.Le
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters13(out *jwriter.Writer, in filters.IPV4RangeFilter) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters13(out *jwriter.Writer, in filters.IPV4RangeFilter) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -802,7 +802,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters13(out *jwriter.
 	}
 	out.RawByte('}')
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters12(in *jlexer.Lexer, out *filters.NullFilter) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters12(in *jlexer.Lexer, out *filters.NullFilter) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -833,7 +833,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters12(in *jlexer.Le
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters12(out *jwriter.Writer, in filters.NullFilter) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters12(out *jwriter.Writer, in filters.NullFilter) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -845,7 +845,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters12(out *jwriter.
 	}
 	out.RawByte('}')
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters11(in *jlexer.Lexer, out *filters.RegexFilter) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters11(in *jlexer.Lexer, out *filters.RegexFilter) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -878,7 +878,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters11(in *jlexer.Le
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters11(out *jwriter.Writer, in filters.RegexFilter) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters11(out *jwriter.Writer, in filters.RegexFilter) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -900,7 +900,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters11(out *jwriter.
 	}
 	out.RawByte('}')
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters10(in *jlexer.Lexer, out *filters.BoolFilter) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters10(in *jlexer.Lexer, out *filters.BoolFilter) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -945,7 +945,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters10(in *jlexer.Le
 						if v7 == nil {
 							v7 = new(filters.Filter)
 						}
-						easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters1(in, v7)
+						easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters1(in, v7)
 					}
 					out.Filters = append(out.Filters, v7)
 					in.WantComma()
@@ -962,7 +962,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters10(in *jlexer.Le
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters10(out *jwriter.Writer, in filters.BoolFilter) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters10(out *jwriter.Writer, in filters.BoolFilter) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -989,7 +989,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters10(out *jwriter.
 				if v9 == nil {
 					out.RawString("null")
 				} else {
-					easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters1(out, *v9)
+					easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters1(out, *v9)
 				}
 			}
 			out.RawByte(']')
@@ -997,7 +997,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters10(out *jwriter.
 	}
 	out.RawByte('}')
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters9(in *jlexer.Lexer, out *filters.LteInt64Filter) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters9(in *jlexer.Lexer, out *filters.LteInt64Filter) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -1030,7 +1030,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters9(in *jlexer.Lex
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters9(out *jwriter.Writer, in filters.LteInt64Filter) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters9(out *jwriter.Writer, in filters.LteInt64Filter) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -1052,7 +1052,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters9(out *jwriter.W
 	}
 	out.RawByte('}')
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters8(in *jlexer.Lexer, out *filters.GteInt64Filter) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters8(in *jlexer.Lexer, out *filters.GteInt64Filter) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -1085,7 +1085,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters8(in *jlexer.Lex
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters8(out *jwriter.Writer, in filters.GteInt64Filter) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters8(out *jwriter.Writer, in filters.GteInt64Filter) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -1107,7 +1107,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters8(out *jwriter.W
 	}
 	out.RawByte('}')
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters7(in *jlexer.Lexer, out *filters.LtInt64Filter) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters7(in *jlexer.Lexer, out *filters.LtInt64Filter) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -1140,7 +1140,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters7(in *jlexer.Lex
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters7(out *jwriter.Writer, in filters.LtInt64Filter) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters7(out *jwriter.Writer, in filters.LtInt64Filter) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -1162,7 +1162,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters7(out *jwriter.W
 	}
 	out.RawByte('}')
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters6(in *jlexer.Lexer, out *filters.GtInt64Filter) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters6(in *jlexer.Lexer, out *filters.GtInt64Filter) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -1195,7 +1195,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters6(in *jlexer.Lex
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters6(out *jwriter.Writer, in filters.GtInt64Filter) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters6(out *jwriter.Writer, in filters.GtInt64Filter) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -1217,7 +1217,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters6(out *jwriter.W
 	}
 	out.RawByte('}')
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters5(in *jlexer.Lexer, out *filters.TermBoolFilter) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters5(in *jlexer.Lexer, out *filters.TermBoolFilter) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -1250,7 +1250,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters5(in *jlexer.Lex
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters5(out *jwriter.Writer, in filters.TermBoolFilter) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters5(out *jwriter.Writer, in filters.TermBoolFilter) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -1272,7 +1272,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters5(out *jwriter.W
 	}
 	out.RawByte('}')
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters4(in *jlexer.Lexer, out *filters.TermInt64Filter) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters4(in *jlexer.Lexer, out *filters.TermInt64Filter) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -1305,7 +1305,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters4(in *jlexer.Lex
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters4(out *jwriter.Writer, in filters.TermInt64Filter) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters4(out *jwriter.Writer, in filters.TermInt64Filter) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -1327,7 +1327,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters4(out *jwriter.W
 	}
 	out.RawByte('}')
 }
-func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters3(in *jlexer.Lexer, out *filters.TermStringFilter) {
+func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters3(in *jlexer.Lexer, out *filters.TermStringFilter) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -1360,7 +1360,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFilters3(in *jlexer.Lex
 		in.Consumed()
 	}
 }
-func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveFilters3(out *jwriter.Writer, in filters.TermStringFilter) {
+func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters3(out *jwriter.Writer, in filters.TermStringFilter) {
 	out.RawByte('{')
 	first := true
 	_ = first

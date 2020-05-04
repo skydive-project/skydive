@@ -21,11 +21,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/skydive-project/skydive/filters"
 	"google.golang.org/grpc"
 
 	"github.com/nimbess/nimbess-agent/pkg/proto/bess_pb"
 
+	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/probe"

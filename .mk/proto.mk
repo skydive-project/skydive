@@ -9,7 +9,7 @@ GEN_PROTO_FILES = $(patsubst %.proto,%.pb.go,$(shell find . -name *.proto | grep
 %.pb.go: %.proto
 	$(call PROTOC_GEN,$<)
 
-flow/flow.pb.go: flow/flow.proto filters/filters.proto
+flow/flow.pb.go: flow/flow.proto graffiti/filters/filters.proto
 	$(call PROTOC_GEN,flow/flow.proto)
 
 	# always export flow.ParentUUID as we need to store this information to know

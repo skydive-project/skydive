@@ -26,7 +26,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 
-	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/storage"
 	"github.com/skydive-project/skydive/graffiti/storage/orientdb"

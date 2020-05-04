@@ -26,8 +26,8 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/service"

@@ -26,7 +26,7 @@ import (
 	"github.com/olivere/elastic"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	es "github.com/skydive-project/skydive/graffiti/storage/elasticsearch"
 	"github.com/skydive-project/skydive/logging"
 )

@@ -32,7 +32,7 @@ import (
 	esconfig "github.com/olivere/elastic/config"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/storage"
 	"github.com/skydive-project/skydive/logging"
 )
@@ -289,7 +289,7 @@ func FormatFilter(filter *filters.Filter, mapKey string) elastic.Query {
 		// use a regex
 
 		// ignore the error at this point it should have been catched earlier
-		regex, _ := common.IPV4CIDRToRegex(f.Value)
+		regex, _ := filters.IPV4CIDRToRegex(f.Value)
 
 		// remove anchors as ES matches the whole string and doesn't support them
 		value := strings.TrimPrefix(regex, "^")
