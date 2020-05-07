@@ -76,7 +76,10 @@ class RESTClient:
         for k, v in self.cookies.items():
             opener.append = (k, v)
 
-        headers = {'Content-Type': 'application/json'}
+        headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+        }
         req = request.Request(url,
                               data=encoded_data,
                               headers=headers)
