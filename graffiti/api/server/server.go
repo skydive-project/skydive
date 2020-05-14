@@ -172,6 +172,11 @@ func (a *Server) RegisterAPIHandler(handler rest.Handler, authBackend shttp.Auth
 					return
 				}
 
+				if err := resource.Validate(); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
 				var createOpts rest.CreateOptions
 				if ttlHeader := r.Header.Get("X-Resource-TTL"); ttlHeader != "" {
 					if createOpts.TTL, err = time.ParseDuration(ttlHeader); err != nil {

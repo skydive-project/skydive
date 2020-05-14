@@ -41,6 +41,7 @@ import (
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/ui"
+	"github.com/skydive-project/skydive/validator"
 )
 
 // Agent object started on each hosts/namespaces
@@ -162,7 +163,8 @@ func NewAgent() (*Agent, error) {
 		Hubs:                analyzers,
 		WebsocketOpts:       config.NewWSServerOpts(),
 		WebsocketClientOpts: *wsClientOpts,
-		Validator:           topology.SchemaValidator,
+		APIValidator:        validator.Validator,
+		GraphValidator:      topology.SchemaValidator,
 		TLSConfig:           tlsConfig,
 		APIAuthBackend:      apiAuthBackend,
 		TopologyMarshallers: api.TopologyMarshallers,

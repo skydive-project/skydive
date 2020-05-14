@@ -24,6 +24,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/schema"
 	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/http"
@@ -37,7 +38,8 @@ type Opts struct {
 	Hubs                []service.Address
 	WebsocketOpts       websocket.ServerOpts
 	WebsocketClientOpts websocket.ClientOpts
-	Validator           api.Validator
+	APIValidator        api.Validator
+	GraphValidator      schema.Validator
 	TopologyMarshallers api.TopologyMarshallers
 	StatusReporter      api.StatusReporter
 	TLSConfig           *tls.Config
@@ -165,7 +167,7 @@ func NewPod(id string, serviceType service.Type, listen string, podEndpoint stri
 	httpServer := shttp.NewServer(id, serviceType, sa.Addr, sa.Port, opts.TLSConfig, opts.Logger)
 
 	svc := service.Service{ID: id, Type: serviceType}
-	apiServer, err := api.NewAPI(httpServer, nil, opts.Version, svc, opts.APIAuthBackend, opts.Validator)
+	apiServer, err := api.NewAPI(httpServer, nil, opts.Version, svc, opts.APIAuthBackend, opts.APIValidator)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +183,7 @@ func NewPod(id string, serviceType service.Type, listen string, podEndpoint stri
 	forwarder := common.NewForwarder(g, clientPool)
 
 	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", opts.APIAuthBackend))
-	if _, err := common.NewPublisherEndpoint(publisherWSServer, g, opts.Validator); err != nil {
+	if _, err := common.NewPublisherEndpoint(publisherWSServer, g, opts.GraphValidator); err != nil {
 		return nil, err
 	}
 
