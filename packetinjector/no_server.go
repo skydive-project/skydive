@@ -28,7 +28,7 @@ import (
 )
 
 func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource rest.Resource) (ondemand.Task, error) {
-	return nil, fmt.Errorf("packet injection %s ignored on %s because skydive was not built with \"packetinject\" build tag", resource.ID(), srcNode.ID)
+	return nil, fmt.Errorf("packet injection %s ignored on %s because skydive was not built with \"packetinject\" build tag", resource.GetID(), srcNode.ID)
 }
 
 func (o *onDemandPacketInjectServer) RemoveTask(n *graph.Node, resource rest.Resource, task ondemand.Task) error {

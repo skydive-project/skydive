@@ -350,7 +350,17 @@ func NewServerFromConfig() (*Server, error) {
 
 	s.piClient = packetinjector.NewOnDemandInjectionClient(g, piAPIHandler, hub.PodServer(), hub.SubscriberServer(), etcdClient)
 
+	_, err = api.RegisterNodeAPI(apiServer, g, apiAuthBackend)
+	if err != nil {
+		return nil, err
+	}
+
 	nodeRuleAPIHandler, err := api.RegisterNodeRuleAPI(apiServer, g, apiAuthBackend)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = api.RegisterEdgeAPI(apiServer, g, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
@@ -359,6 +369,7 @@ func NewServerFromConfig() (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	s.topologyManager = usertopology.NewTopologyManager(etcdClient, nodeRuleAPIHandler, edgeRuleAPIHandler, g)
 
 	if _, err = api.RegisterAlertAPI(apiServer, apiAuthBackend); err != nil {

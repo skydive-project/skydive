@@ -57,6 +57,16 @@ func (r *PacketInjectionRequest) GetName() string {
 	return "PacketInjection"
 }
 
+// GetID returns the id of the packet injection request
+func (r *PacketInjectionRequest) GetID() string {
+	return r.UUID
+}
+
+// SetID sets the id of the packet injection request
+func (r *PacketInjectionRequest) SetID(id string) {
+	r.UUID = id
+}
+
 // Injections holds the injections metadata
 // easyjson:json
 // gendecoder

@@ -27,7 +27,7 @@ var ErrDuplicatedResource = errors.New("Duplicated resource")
 
 // Resource used as interface resources for each API
 type Resource interface {
-	ID() string
+	GetID() string
 	SetID(string)
 	GetName() string
 	Validate() error
@@ -42,7 +42,6 @@ type Handler interface {
 	Decorate(resource Resource)
 	Create(resource Resource, createOpts *CreateOptions) error
 	Delete(id string) error
-	AsyncWatch(f WatcherCallback) StoppableWatcher
 }
 
 // CreateOptions describes the available options when creating a resource
@@ -56,19 +55,6 @@ type ResourceHandler interface {
 	New() Resource
 }
 
-// WatcherCallback callback called by the resource watcher
-type WatcherCallback func(action string, id string, resource Resource)
-
-// StoppableWatcher interface
-type StoppableWatcher interface {
-	Stop()
-}
-
-// ResourceWatcher asynchronous interface
-type ResourceWatcher interface {
-	AsyncWatch(f WatcherCallback) StoppableWatcher
-}
-
 // BasicResource is a resource with a unique identifier
 // easyjson:json
 // swagger:ignore
@@ -76,8 +62,8 @@ type BasicResource struct {
 	UUID string `yaml:"UUID"`
 }
 
-// ID returns the resource ID
-func (b *BasicResource) ID() string {
+// GetID returns the resource ID
+func (b *BasicResource) GetID() string {
 	return b.UUID
 }
 

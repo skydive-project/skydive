@@ -194,7 +194,7 @@ type Server struct {
 	common.MasterElection
 	Graph         *graph.Graph
 	Pool          ws.StructSpeakerPool
-	AlertHandler  rest.Handler
+	AlertHandler  rest.ResourceWatcher
 	apiServer     *api.Server
 	watcher       rest.StoppableWatcher
 	graphAlerts   map[string]*GremlinAlert
@@ -414,7 +414,7 @@ func NewServer(apiServer *api.Server, pool ws.StructSpeakerPool, graph *graph.Gr
 	as := &Server{
 		MasterElection: election,
 		Pool:           pool,
-		AlertHandler:   apiServer.GetHandler("alert"),
+		AlertHandler:   apiServer.GetHandler("alert").(rest.ResourceWatcher),
 		Graph:          graph,
 		graphAlerts:    make(map[string]*GremlinAlert),
 		alertTimers:    make(map[string]chan bool),

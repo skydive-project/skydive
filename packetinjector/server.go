@@ -36,7 +36,7 @@ import (
 )
 
 func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource rest.Resource) (ondemand.Task, error) {
-	logging.GetLogger().Debugf("Registering packet injection %s on %s", resource.ID(), srcNode.ID)
+	logging.GetLogger().Debugf("Registering packet injection %s on %s", resource.GetID(), srcNode.ID)
 
 	pp := resource.(*PacketInjectionRequest)
 
@@ -158,7 +158,7 @@ func (o *onDemandPacketInjectServer) CreateTask(srcNode *graph.Node, resource re
 }
 
 func (o *onDemandPacketInjectServer) RemoveTask(n *graph.Node, resource rest.Resource, task ondemand.Task) error {
-	logging.GetLogger().Debugf("Unregister packet injection %s on %s", n.ID, resource.ID())
+	logging.GetLogger().Debugf("Unregister packet injection %s on %s", n.ID, resource.GetID())
 
 	cancel := task.(chan bool)
 	cancel <- true
