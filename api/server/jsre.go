@@ -31,8 +31,9 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 )
 
-// NewWorkflowRuntime returns a new Workflow runtime
-func NewWorkflowRuntime(g *graph.Graph, tr *traversal.GremlinTraversalParser, server *api.Server) (*js.Runtime, error) {
+// NewRuntime returns a new JavaScript runtime where accesses to resources are done
+// directly using the handlers, not through HTTP requests.
+func NewRuntime(g *graph.Graph, tr *traversal.GremlinTraversalParser, server *api.Server) (*js.Runtime, error) {
 	runtime, err := js.NewRuntime()
 	if err != nil {
 		return nil, err

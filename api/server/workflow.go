@@ -21,15 +21,21 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 
 	yaml "gopkg.in/yaml.v2"
 
+	auth "github.com/abbot/go-http-auth"
+	"github.com/gorilla/mux"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/js"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/rbac"
 	"github.com/skydive-project/skydive/statics"
 )
 
@@ -42,6 +48,7 @@ type WorkflowResourceHandler struct {
 // WorkflowAPIHandler based on BasicAPIHandler
 type WorkflowAPIHandler struct {
 	rest.BasicAPIHandler
+	runtime *js.Runtime
 }
 
 // New creates a new workflow resource
@@ -109,16 +116,115 @@ func (w *WorkflowAPIHandler) Index() map[string]rest.Resource {
 	return resources
 }
 
+func (w *WorkflowAPIHandler) executeWorkflow(resp http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	if !rbac.Enforce(r.Username, "workflow.call", "write") {
+		http.Error(resp, http.StatusText(http.StatusUnauthorized), http.StatusMethodNotAllowed)
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	var wfCall types.WorkflowCall
+	if err := decoder.Decode(&wfCall); err != nil {
+		http.Error(resp, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	vars := mux.Vars(&r.Request)
+
+	resource, ok := w.Get(vars["ID"])
+	if !ok {
+		http.Error(resp, fmt.Sprintf("no workflow '%s' was found", vars["ID"]), http.StatusNotFound)
+		return
+	}
+	workflow := resource.(*types.Workflow)
+
+	ottoResult, err := w.runtime.ExecFunction(workflow.Source, wfCall.Params...)
+	if err != nil {
+		http.Error(resp, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	result, err := ottoResult.Export()
+	if err != nil {
+		http.Error(resp, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	resp.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	resp.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(resp).Encode(result); err != nil {
+		panic(err)
+	}
+}
+
+func (w *WorkflowAPIHandler) registerEndPoints(s *shttp.Server, authBackend shttp.AuthenticationBackend) {
+	// swagger:operation POST /workflow/{id}/call callWorkflow
+	//
+	// Call workflow
+	//
+	// ---
+	// summary: Call workflow
+	//
+	// tags:
+	// - Workflows
+	//
+	// consumes:
+	// - application/json
+	//
+	// produces:
+	// - application/json
+	//
+	// schemes:
+	// - http
+	// - https
+	//
+	// parameters:
+	//   - name: id
+	//     in: path
+	//     required: true
+	//     type: string
+	//
+	//   - name: params
+	//     in: body
+	//     required: true
+	//     schema:
+	//       $ref: '#/definitions/WorkflowCall'
+	//
+	// responses:
+	//   200:
+	//     description: Request accepted
+	//     schema:
+	//       $ref: '#/definitions/AnyValue'
+	//
+	//   400:
+	//     description: Error while executing workflow
+	//   404:
+	//     description: Unknown workflow
+
+	routes := []shttp.Route{
+		{
+			Name:        "WorkflowCall",
+			Method:      "POST",
+			Path:        "/api/workflow/{ID}/call",
+			HandlerFunc: w.executeWorkflow,
+		},
+	}
+
+	s.RegisterRoutes(routes, authBackend)
+}
+
 // RegisterWorkflowAPI registers a new workflow api handler
-func RegisterWorkflowAPI(apiServer *api.Server, authBackend shttp.AuthenticationBackend) (*WorkflowAPIHandler, error) {
+func RegisterWorkflowAPI(apiServer *api.Server, authBackend shttp.AuthenticationBackend, runtime *js.Runtime) (*WorkflowAPIHandler, error) {
 	workflowAPIHandler := &WorkflowAPIHandler{
 		BasicAPIHandler: rest.BasicAPIHandler{
 			ResourceHandler: &WorkflowResourceHandler{},
 			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
 		},
+		runtime: runtime,
 	}
 	if err := apiServer.RegisterAPIHandler(workflowAPIHandler, authBackend); err != nil {
 		return nil, err
 	}
+	workflowAPIHandler.registerEndPoints(apiServer.HTTPServer, authBackend)
 	return workflowAPIHandler, nil
 }

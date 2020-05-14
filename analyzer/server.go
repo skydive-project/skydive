@@ -325,16 +325,6 @@ func NewServerFromConfig() (*Server, error) {
 
 	tableClient := flow.NewWSTableClient(hub.PodServer())
 
-	// declare all extension available through API and filtering
-	tr := hub.GremlinTraversalParser()
-	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewRawPacketsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewFlowTraversalExtension(tableClient, s.flowStorage))
-	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
-	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
-	tr.AddTraversalExtension(ge.NewGroupTraversalExtension())
-
 	// new flow subscriber endpoints
 	flowSubscriberWSServer := ws.NewStructServer(config.NewWSServer(hub.HTTPServer(), "/ws/subscriber/flow", apiAuthBackend))
 	flowSubscriberEndpoint := server.NewFlowSubscriberEndpoint(flowSubscriberWSServer)
@@ -378,7 +368,13 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	if _, err := api.RegisterWorkflowAPI(apiServer, apiAuthBackend); err != nil {
+	tr := hub.GremlinTraversalParser()
+	jsre, err := api.NewRuntime(g, tr, apiServer)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := api.RegisterWorkflowAPI(apiServer, apiAuthBackend, jsre); err != nil {
 		return nil, err
 	}
 
@@ -397,13 +393,22 @@ func NewServerFromConfig() (*Server, error) {
 	httpServer := hub.HTTPServer()
 	api.RegisterPcapAPI(httpServer, s.flowStorage, apiAuthBackend)
 	api.RegisterConfigAPI(httpServer, apiAuthBackend)
-	api.RegisterWorkflowCallAPI(httpServer, apiAuthBackend, apiServer, g, tr)
 
 	if config.GetBool("analyzer.ssh_enabled") {
 		if err := dede.RegisterHandler("terminal", "/dede", httpServer.Router); err != nil {
 			return nil, err
 		}
 	}
+
+	// declare all extension available through API and filtering
+	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewRawPacketsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewFlowTraversalExtension(tableClient, s.flowStorage))
+	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
+	tr.AddTraversalExtension(ge.NewGroupTraversalExtension())
+	tr.AddTraversalExtension(ge.NewWorkflowTraversalExtension(apiServer.GetHandler("workflow"), jsre))
 
 	return s, nil
 }

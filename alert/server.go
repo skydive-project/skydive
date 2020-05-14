@@ -406,7 +406,7 @@ func (a *Server) Stop() {
 func NewServer(apiServer *api.Server, pool ws.StructSpeakerPool, graph *graph.Graph, parser *traversal.GremlinTraversalParser, etcdClient *etcd.Client) (*Server, error) {
 	election := etcdClient.NewElection("alert-server")
 
-	runtime, err := server.NewWorkflowRuntime(graph, parser, apiServer)
+	runtime, err := server.NewRuntime(graph, parser, apiServer)
 	if err != nil {
 		return nil, err
 	}
