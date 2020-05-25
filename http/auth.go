@@ -24,10 +24,10 @@ import (
 	"errors"
 	"net/http"
 
+	auth "github.com/abbot/go-http-auth"
 	"github.com/gorilla/context"
 
-	auth "github.com/abbot/go-http-auth"
-	"github.com/skydive-project/skydive/rbac"
+	"github.com/skydive-project/skydive/graffiti/rbac"
 )
 
 var (

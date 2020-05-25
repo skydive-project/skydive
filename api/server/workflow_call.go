@@ -29,9 +29,9 @@ import (
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/rbac"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/js"
-	"github.com/skydive-project/skydive/rbac"
 )
 
 // WorkflowCallAPIHandler based on BasicAPIHandler
