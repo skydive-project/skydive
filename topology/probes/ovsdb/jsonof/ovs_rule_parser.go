@@ -38,7 +38,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 // JSONRule is an openflow rule ready for JSON export

@@ -50,10 +50,10 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/skydive-project/skydive/graffiti/api/rest"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/rbac"
 	"github.com/skydive-project/skydive/graffiti/service"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // Validator is the interface to implement to validate REST resources

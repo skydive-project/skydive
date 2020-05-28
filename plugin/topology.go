@@ -24,7 +24,7 @@ import (
 	"reflect"
 
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/probes"
 )

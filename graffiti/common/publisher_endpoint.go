@@ -24,9 +24,9 @@ import (
 
 	"github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/messages"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // PersistencePolicy defines Persistent policy for publishers
@@ -48,6 +48,7 @@ type PublisherEndpoint struct {
 	Graph     *graph.Graph
 	validator server.Validator
 	authors   map[string]bool
+	logger    logging.Logger
 }
 
 // OnDisconnected called when a publisher got disconnected.
@@ -65,7 +66,7 @@ func (t *PublisherEndpoint) OnDisconnected(c ws.Speaker) {
 
 	policy := PersistencePolicy(c.GetHeaders().Get("X-Persistence-Policy"))
 	if policy != Persistent {
-		logging.GetLogger().Debugf("Authoritative client unregistered, delete resources of %s", origin)
+		t.logger.Debugf("Authoritative client unregistered, delete resources of %s", origin)
 
 		t.Graph.Lock()
 		DelSubGraphOfOrigin(t.Graph, origin)
@@ -81,7 +82,7 @@ func (t *PublisherEndpoint) OnDisconnected(c ws.Speaker) {
 func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	msgType, obj, err := messages.UnmarshalMessage(msg)
 	if err != nil {
-		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
+		t.logger.Errorf("Graph: Unable to parse the event %v: %s", msg, err)
 		return
 	}
 
@@ -91,7 +92,7 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 	// received a message thus the pod has chosen this hub as master
 	if _, ok := t.authors[origin]; !ok {
 		t.authors[origin] = true
-		logging.GetLogger().Debugf("Authoritative client registered %s", origin)
+		t.logger.Debugf("Authoritative client registered %s", origin)
 	}
 	t.Unlock()
 
@@ -106,7 +107,7 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 		}
 
 		if err != nil {
-			logging.GetLogger().Error(err)
+			t.logger.Error(err)
 			return
 		}
 	}
@@ -119,7 +120,7 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 		reply := msg.Reply(t.Graph, messages.SyncReplyMsgType, http.StatusOK)
 		c.SendMessage(reply)
 	case messages.SyncMsgType, messages.SyncReplyMsgType:
-		logging.GetLogger().Debugf("Handling sync message from %s", c.GetRemoteHost())
+		t.logger.Debugf("Handling sync message from %s", c.GetRemoteHost())
 
 		DelSubGraphOfOrigin(t.Graph, ClientOrigin(c))
 
@@ -127,14 +128,14 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 		for _, n := range r.Nodes {
 			if t.Graph.GetNode(n.ID) == nil {
 				if err := t.Graph.NodeAdded(n); err != nil {
-					logging.GetLogger().Errorf("Error while processing sync message from %s: %s", c.GetRemoteHost(), err)
+					t.logger.Errorf("Error while processing sync message from %s: %s", c.GetRemoteHost(), err)
 				}
 			}
 		}
 		for _, e := range r.Edges {
 			if t.Graph.GetEdge(e.ID) == nil {
 				if err := t.Graph.EdgeAdded(e); err != nil {
-					logging.GetLogger().Errorf("Error while processing sync message from %s: %s", c.GetRemoteHost(), err)
+					t.logger.Errorf("Error while processing sync message from %s: %s", c.GetRemoteHost(), err)
 				}
 			}
 		}
@@ -155,17 +156,22 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 	}
 
 	if err != nil {
-		logging.GetLogger().Errorf("Error while processing message type %s from %s: %s", msgType, c.GetRemoteHost(), err)
+		t.logger.Errorf("Error while processing message type %s from %s: %s", msgType, c.GetRemoteHost(), err)
 	}
 }
 
 // NewPublisherEndpoint returns a new server for external publishers.
-func NewPublisherEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, validator server.Validator) (*PublisherEndpoint, error) {
+func NewPublisherEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, validator server.Validator, logger logging.Logger) (*PublisherEndpoint, error) {
+	if logger == nil {
+		logger = logging.GetLogger()
+	}
+
 	t := &PublisherEndpoint{
 		Graph:     g,
 		pool:      pool,
 		validator: validator,
 		authors:   make(map[string]bool),
+		logger:    logger,
 	}
 
 	pool.AddEventHandler(t)

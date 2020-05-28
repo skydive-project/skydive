@@ -21,7 +21,7 @@ import (
 	"github.com/skydive-project/skydive/config"
 	fp "github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/plugin"
 	"github.com/skydive-project/skydive/probe"

@@ -28,11 +28,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/pod"
 	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
 )
 
 const serviceType = service.Type("Pod")

@@ -28,7 +28,7 @@ import (
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 // createRootNode creates a graph.Node based on the host properties and aims to have an unique ID

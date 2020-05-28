@@ -19,8 +19,9 @@ package flow
 
 import (
 	"github.com/golang/protobuf/proto"
+
+	"github.com/skydive-project/skydive/graffiti/logging"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // Namespace "Flow"

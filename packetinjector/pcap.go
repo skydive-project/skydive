@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/google/gopacket/pcapgo"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 // PcapPacketGenerator reads packets from a pcap file and inject it into a channel
@@ -115,6 +115,6 @@ func (p *PcapPacketGenerator) PacketSource() chan *Packet {
 func NewPcapPacketGenerator(pp *PacketInjectionRequest) (*PcapPacketGenerator, error) {
 	return &PcapPacketGenerator{
 		PacketInjectionRequest: pp,
-		close: make(chan bool, 1),
+		close:                  make(chan bool, 1),
 	}, nil
 }

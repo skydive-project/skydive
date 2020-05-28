@@ -19,8 +19,8 @@ package client
 
 import (
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // NewCrudClientFromConfig creates a new REST client on /api

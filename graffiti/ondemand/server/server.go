@@ -27,9 +27,9 @@ import (
 
 	"github.com/skydive-project/skydive/graffiti/api/rest"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/ondemand"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
-	"github.com/skydive-project/skydive/logging"
 )
 
 type activeTask struct {

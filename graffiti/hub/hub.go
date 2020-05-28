@@ -27,11 +27,11 @@ import (
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/schema"
 	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // Opts Hub options
@@ -183,24 +183,24 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 	}
 
 	podWSServer := websocket.NewStructServer(newWSServer(podEndpoint, opts.ClusterAuthBackend))
-	if _, err = gc.NewPublisherEndpoint(podWSServer, g, nil); err != nil {
+	if _, err = gc.NewPublisherEndpoint(podWSServer, g, nil, opts.Logger); err != nil {
 		return nil, err
 	}
 
 	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", opts.APIAuthBackend))
-	_, err = gc.NewPublisherEndpoint(publisherWSServer, g, opts.GraphValidator)
+	_, err = gc.NewPublisherEndpoint(publisherWSServer, g, opts.GraphValidator, opts.Logger)
 	if err != nil {
 		return nil, err
 	}
 
 	replicationWSServer := websocket.NewStructServer(newWSServer("/ws/replication", opts.ClusterAuthBackend))
-	replicationEndpoint, err := NewReplicationEndpoint(replicationWSServer, &opts.WebsocketClientOpts, cached, g, opts.Peers)
+	replicationEndpoint, err := NewReplicationEndpoint(replicationWSServer, &opts.WebsocketClientOpts, cached, g, opts.Peers, opts.Logger)
 	if err != nil {
 		return nil, err
 	}
 
 	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", opts.APIAuthBackend))
-	gc.NewSubscriberEndpoint(subscriberWSServer, g, tr)
+	gc.NewSubscriberEndpoint(subscriberWSServer, g, tr, opts.Logger)
 
 	service := service.Service{ID: id, Type: serviceType}
 	apiServer, err := api.NewAPI(httpServer, opts.EtcdKeysAPI, opts.Version, service, opts.APIAuthBackend, opts.APIValidator)

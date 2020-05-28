@@ -38,8 +38,8 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	g "github.com/skydive-project/skydive/gremlin"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // ipv6Supported returns true if the platform support IPv6

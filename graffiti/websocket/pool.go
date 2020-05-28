@@ -26,8 +26,8 @@ import (
 
 	"github.com/safchain/insanelock"
 
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/service"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // SpeakerPool is the interface that Speaker pools have to implement.

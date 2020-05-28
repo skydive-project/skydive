@@ -27,9 +27,9 @@ import (
 
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/messages"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
-	"github.com/skydive-project/skydive/logging"
 )
 
 type subscriber struct {
@@ -47,6 +47,7 @@ type SubscriberEndpoint struct {
 	wg            sync.WaitGroup
 	gremlinParser *traversal.GremlinTraversalParser
 	subscribers   map[ws.Speaker]*subscriber
+	logger        logging.Logger
 }
 
 func (t *SubscriberEndpoint) getGraph(gremlinQuery string, ts *traversal.GremlinTraversalSequence, lockGraph bool) (*graph.Graph, error) {
@@ -89,11 +90,11 @@ func (t *SubscriberEndpoint) OnConnected(c ws.Speaker) {
 
 		subscriber, err := t.newSubscriber(host, gremlinFilter, false)
 		if err != nil {
-			logging.GetLogger().Error(err)
+			t.logger.Error(err)
 			return
 		}
 
-		logging.GetLogger().Infof("Client %s subscribed with filter %s during the connection", host, gremlinFilter)
+		t.logger.Infof("Client %s subscribed with filter %s during the connection", host, gremlinFilter)
 		t.subscribers[c] = subscriber
 	}
 }
@@ -110,7 +111,7 @@ func (t *SubscriberEndpoint) OnDisconnected(c ws.Speaker) {
 func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
 	msgType, obj, err := messages.UnmarshalMessage(msg)
 	if err != nil {
-		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err)
+		t.logger.Errorf("Graph: Unable to parse the event %v: %s", msg, err)
 		return
 	}
 
@@ -122,7 +123,7 @@ func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage
 		syncMsg, status := obj.(*messages.SyncRequestMsg), http.StatusOK
 		result, err := t.Graph.CloneWithContext(syncMsg.Context)
 		if err != nil {
-			logging.GetLogger().Errorf("unable to get a graph with context %+v: %s", syncMsg, err)
+			t.logger.Errorf("unable to get a graph with context %+v: %s", syncMsg, err)
 			reply := msg.Reply(nil, messages.SyncReplyMsgType, http.StatusBadRequest)
 			c.SendMessage(reply)
 			return
@@ -139,7 +140,7 @@ func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage
 			} else {
 				subscriber, err := t.newSubscriber(host, *syncMsg.GremlinFilter, false)
 				if err != nil {
-					logging.GetLogger().Error(err)
+					t.logger.Error(err)
 
 					reply := msg.Reply(err.Error(), messages.SyncReplyMsgType, http.StatusBadRequest)
 					c.SendMessage(reply)
@@ -151,7 +152,7 @@ func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage
 					return
 				}
 
-				logging.GetLogger().Infof("Client %s requested subscription with filter %s", host, *syncMsg.GremlinFilter)
+				t.logger.Infof("Client %s requested subscription with filter %s", host, *syncMsg.GremlinFilter)
 				result = subscriber.graph
 
 				t.Lock()
@@ -192,7 +193,7 @@ func (t *SubscriberEndpoint) notifyClients(typ string, i interface{}) {
 
 			g, err := t.getGraph(subscriber.gremlinFilter, subscriber.ts, false)
 			if err != nil {
-				logging.GetLogger().Error(err)
+				t.logger.Error(err)
 				continue
 			}
 
@@ -265,12 +266,17 @@ func (t *SubscriberEndpoint) OnEdgeDeleted(e *graph.Edge) {
 
 // NewSubscriberEndpoint returns a new server to be used by external subscribers,
 // for instance the WebUI.
-func NewSubscriberEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, tr *traversal.GremlinTraversalParser) *SubscriberEndpoint {
+func NewSubscriberEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, tr *traversal.GremlinTraversalParser, logger logging.Logger) *SubscriberEndpoint {
+	if logger == nil {
+		logger = logging.GetLogger()
+	}
+
 	t := &SubscriberEndpoint{
 		Graph:         g,
 		pool:          pool,
 		subscribers:   make(map[ws.Speaker]*subscriber),
 		gremlinParser: tr,
+		logger:        logger,
 	}
 
 	pool.AddEventHandler(t)

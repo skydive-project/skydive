@@ -114,7 +114,7 @@ func (f *fakeOrientDBClient) AddEventListener(l storage.EventListener) {
 
 func newOrientDBGraph(t *testing.T) (*Graph, *fakeOrientDBClient) {
 	client := &fakeOrientDBClient{}
-	b, err := newOrientDBBackend(client, nil)
+	b, err := newOrientDBBackend(client, nil, nil)
 	if err != nil {
 		t.Error(err)
 	}

@@ -28,7 +28,7 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 var (

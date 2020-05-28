@@ -24,7 +24,7 @@ import (
 	"github.com/skydive-project/skydive/api/client"
 	api "github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	usertopology "github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/validator"
 

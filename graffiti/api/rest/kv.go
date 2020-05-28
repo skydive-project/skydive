@@ -28,7 +28,8 @@ import (
 
 	etcd "github.com/coreos/etcd/client"
 	uuid "github.com/nu7hatch/gouuid"
-	"github.com/skydive-project/skydive/logging"
+
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 // BasicAPIHandler basic implementation of an Handler, should be used as embedded struct

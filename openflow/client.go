@@ -32,7 +32,7 @@ import (
 
 	"github.com/skydive-project/goloxi"
 	"github.com/skydive-project/goloxi/of13"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 const (

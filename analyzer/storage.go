@@ -26,8 +26,8 @@ import (
 	"github.com/skydive-project/skydive/flow/storage/orientdb"
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	es "github.com/skydive-project/skydive/graffiti/storage/elasticsearch"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // NewESConfig returns a new elasticsearch configuration for the given backend name
@@ -91,7 +91,7 @@ func newGraphBackendFromConfig(etcdClient *etcd.Client) (graph.PersistentBackend
 				},
 			},
 		}
-		return graph.NewElasticSearchBackendFromConfig(cfg, dynamicTemplates, etcdClient)
+		return graph.NewElasticSearchBackendFromConfig(cfg, dynamicTemplates, etcdClient, logging.GetLogger())
 	case "memory":
 		// cached memory will be used
 		return nil, nil
@@ -100,7 +100,7 @@ func newGraphBackendFromConfig(etcdClient *etcd.Client) (graph.PersistentBackend
 		database := config.GetString(configPath + ".database")
 		username := config.GetString(configPath + ".username")
 		password := config.GetString(configPath + ".password")
-		return graph.NewOrientDBBackend(addr, database, username, password, etcdClient)
+		return graph.NewOrientDBBackend(addr, database, username, password, etcdClient, logging.GetLogger())
 	default:
 		return nil, fmt.Errorf("Topology backend driver '%s' not supported", driver)
 	}

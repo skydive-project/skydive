@@ -25,10 +25,10 @@ import (
 	"github.com/skydive-project/skydive/agent"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/seed"
 	"github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	tp "github.com/skydive-project/skydive/topology/probes"
 	"github.com/skydive-project/skydive/version"
@@ -120,7 +120,7 @@ var SeedCmd = &cobra.Command{
 			TLSConfig:        tlsConfig,
 		}
 
-		seed, err := seed.NewSeed(g, seed.Service, agentAddr, subscriberFilter, *wsOpts)
+		seed, err := seed.NewSeed(g, seed.Service, agentAddr, subscriberFilter, *wsOpts, logging.GetLogger())
 		if err != nil {
 			logging.GetLogger().Errorf("Failed to start seed: %s", err)
 			os.Exit(1)

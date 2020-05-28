@@ -19,9 +19,9 @@ package common
 
 import (
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/messages"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
-	"github.com/skydive-project/skydive/logging"
 )
 
 // Forwarder forwards the topology to only one master server.
@@ -30,10 +30,11 @@ import (
 type Forwarder struct {
 	masterElection *ws.MasterElection
 	graph          *graph.Graph
+	logger         logging.Logger
 }
 
 func (t *Forwarder) triggerResync() {
-	logging.GetLogger().Infof("Start a re-sync")
+	t.logger.Infof("Start a re-sync")
 
 	// re-add all the nodes and edges
 	msg := &messages.SyncMsg{
@@ -46,13 +47,13 @@ func (t *Forwarder) triggerResync() {
 // such case a "Re-sync" is triggered in order to be in sync with the new master.
 func (t *Forwarder) OnNewMaster(c ws.Speaker) {
 	if c == nil {
-		logging.GetLogger().Warning("Lost connection to master")
+		t.logger.Warning("Lost connection to master")
 
 		// do not forward message before re-sync
 		t.graph.RemoveEventListener(t)
 	} else {
 		addr, port := c.GetAddrPort()
-		logging.GetLogger().Infof("Using %s:%d as master of topology forwarder", addr, port)
+		t.logger.Infof("Using %s:%d as master of topology forwarder", addr, port)
 
 		t.graph.RLock()
 
@@ -102,12 +103,17 @@ func (t *Forwarder) GetMaster() ws.Speaker {
 
 // NewForwarder returns a new Graph forwarder which forwards event of the given graph
 // to the given WebSocket JSON speakers.
-func NewForwarder(g *graph.Graph, pool ws.StructSpeakerPool) *Forwarder {
+func NewForwarder(g *graph.Graph, pool ws.StructSpeakerPool, logger logging.Logger) *Forwarder {
+	if logger == nil {
+		logger = logging.GetLogger()
+	}
+
 	masterElection := ws.NewMasterElection(pool)
 
 	t := &Forwarder{
 		masterElection: masterElection,
 		graph:          g,
+		logger:         logger,
 	}
 
 	masterElection.AddEventHandler(t)
