@@ -103,6 +103,7 @@ ifeq ($(WITH_PACKETINJECT), true)
   BUILD_TAGS+=packetinject
 endif
 
+
 include .mk/ebpf.mk
 include .mk/api.mk
 include .mk/bench.mk
@@ -140,14 +141,14 @@ endef
 	$(call GOCOMPILE,build)
 
 .PHONY: build
-build: moddownload genlocalfiles .build
+build: gopath moddownload genlocalfiles .build
 
 .PHONY: .install
 .install:
 	$(call GOCOMPILE,install)
 
 .PHONY: skydive
-skydive: moddownload genlocalfiles .install
+skydive: gopath moddownload genlocalfiles .install
 
 .PHONY: skydive.clean
 skydive.clean:

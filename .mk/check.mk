@@ -1,4 +1,11 @@
 
+.PHONY: gopath
+gopath:
+
+ifndef GOPATH
+	$(error GOPATH is undefined, Skydive requires to have GOPATH defined to build)
+endif
+
 .PHONY: fmt
 fmt: genlocalfiles
 	@echo "+ $@"
