@@ -18,6 +18,7 @@
 package websocket
 
 import (
+	"errors"
 	fmt "fmt"
 	"net/http"
 	"net/url"
@@ -121,7 +122,7 @@ func (s *Server) newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRe
 
 	clientType := service.Type(getRequestParameter(&r.Request, "X-Client-Type"))
 	if clientType == "" {
-		clientType = service.UnknownService
+		return nil, errors.New("X-Client-Type header not provided")
 	}
 
 	var clientProtocol Protocol

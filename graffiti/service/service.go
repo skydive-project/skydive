@@ -20,9 +20,6 @@ package service
 // Type describes the service type
 type Type string
 
-// UnknownService for unknown client types
-const UnknownService Type = "unknown"
-
 func (t Type) String() string {
 	return string(t)
 }

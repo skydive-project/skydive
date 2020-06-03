@@ -85,7 +85,12 @@ func newClient(endpoint string) (*websocket.Conn, error) {
 		return nil, err
 	}
 
-	wsConn, _, err := websocket.NewClient(conn, u, http.Header{"Origin": {endpoint}}, 1024, 1024)
+	headers := http.Header{
+		"X-Host-ID":      {"host-test"},
+		"X-Client-Type": {"alert-srv"},
+	}
+
+	wsConn, _, err := websocket.NewClient(conn, u, headers, 1024, 1024)
 	if err != nil {
 		return nil, err
 	}

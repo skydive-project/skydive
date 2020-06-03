@@ -38,7 +38,7 @@ func (b *FakeGraphBackend) IsHistorySupported() bool {
 }
 
 func testMetric(t *testing.T, metrics, expected map[string][]common.Metric, tm time.Time, dr time.Duration) {
-	g := graph.NewGraph("test", &FakeGraphBackend{}, service.UnknownService)
+	g := graph.NewGraph("test", &FakeGraphBackend{}, service.Type("graph-test"))
 
 	gt := traversal.NewGraphTraversal(g, false)
 	gt = gt.Context(tm, dr)
@@ -606,7 +606,7 @@ func TestFlowMetricsAggregates13(t *testing.T) {
 }
 
 func testMetricSum(t *testing.T, metrics map[string][]common.Metric, expected common.Metric, tm time.Time, dr time.Duration) {
-	g := graph.NewGraph("test", &FakeGraphBackend{}, service.UnknownService)
+	g := graph.NewGraph("test", &FakeGraphBackend{}, service.Type("graph-test"))
 
 	gt := traversal.NewGraphTraversal(g, false)
 	gt = gt.Context(tm, dr)

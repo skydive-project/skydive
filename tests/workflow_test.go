@@ -481,7 +481,7 @@ func TestFlowMatrixWorkflow(t *testing.T) {
 			}
 
 			backend, _ := graph.NewMemoryBackend()
-			g := graph.NewGraph("test", backend, service.UnknownService)
+			g := graph.NewGraph("test", backend, service.Type("graph-test"))
 
 			for _, n := range subgraph.Nodes {
 				g.NodeAdded(n)

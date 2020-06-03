@@ -119,7 +119,7 @@ func newOrientDBGraph(t *testing.T) (*Graph, *fakeOrientDBClient) {
 		t.Error(err)
 	}
 
-	return NewGraph("host1", b, service.UnknownService), client
+	return NewGraph("host1", b, service.Type("graph-test")), client
 }
 
 // test history when doing local modification
@@ -134,7 +134,7 @@ func TestLocalHistory(t *testing.T) {
 	g.AddNode(node)
 	g.addMetadata(node, "MTU", 1510, Unix(2, 0))
 
-	origin := service.UnknownService.String() + ".host1"
+	origin := "graph-test.host1"
 
 	expected := []op{
 		{

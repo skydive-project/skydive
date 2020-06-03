@@ -73,7 +73,7 @@ var TopologyImport = &cobra.Command{
 		url := config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher")
 		opts := websocket.ClientOpts{AuthOpts: &AuthenticationOpts, Headers: http.Header{}}
 		opts.Headers.Add("X-Persistence-Policy", string(gcommon.Persistent))
-		client, err := config.NewWSClient(service.UnknownService, url, opts)
+		client, err := config.NewWSClient(service.Type("SkydiveCLI"), url, opts)
 		if err != nil {
 			exitOnError(err)
 		}

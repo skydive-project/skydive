@@ -339,13 +339,14 @@ func NewServerFromConfig() (*Server, error) {
 	flowSubscriberWSServer := ws.NewStructServer(config.NewWSServer(hub.HTTPServer(), "/ws/subscriber/flow", apiAuthBackend))
 	flowSubscriberEndpoint := server.NewFlowSubscriberEndpoint(flowSubscriberWSServer)
 
-	captureAPIHandler, err := api.RegisterCaptureAPI(hub.APIServer(), etcdClient.KeysAPI, g, apiAuthBackend)
+	apiServer := hub.APIServer()
+
+	captureAPIHandler, err := api.RegisterCaptureAPI(apiServer, g, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
 
-	apiServer := hub.APIServer()
-	piAPIHandler, err := api.RegisterPacketInjectorAPI(g, apiServer, etcdClient.KeysAPI, apiAuthBackend)
+	piAPIHandler, err := api.RegisterPacketInjectorAPI(g, apiServer, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
