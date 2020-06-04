@@ -17,10 +17,10 @@ ifeq (${DEBUG}, true)
   export DEBUG
 endif
 
-.PHONY: debug.agent
+.PHONY: run.agent
 run.agent:
 	$(call skydive_run,agent)
 
-.PHONY: debug.analyzer
+.PHONY: run.analyzer
 run.analyzer:
 	$(call skydive_run,analyzer)
