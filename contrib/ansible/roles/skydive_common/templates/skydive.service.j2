@@ -5,6 +5,7 @@ After=docker.service
 {% endif %}
 
 [Service]
+Type=simple
 EnvironmentFile=-/etc/environment
 EnvironmentFile=-/etc/sysconfig/{{ service_name }}
 {% if exec_start_pre is defined %}
