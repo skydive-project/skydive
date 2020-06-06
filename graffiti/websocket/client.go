@@ -32,9 +32,9 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/safchain/insanelock"
 
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/service"
-	shttp "github.com/skydive-project/skydive/http"
 )
 
 const (

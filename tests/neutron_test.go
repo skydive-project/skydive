@@ -32,13 +32,13 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
 
-	sclient "github.com/skydive-project/skydive/api/client"
+	apiclient "github.com/skydive-project/skydive/api/client"
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	g "github.com/skydive-project/skydive/gremlin"
-	shttp "github.com/skydive-project/skydive/http"
 )
 
 func TestNeutron(t *testing.T) {
-	authUrl := os.Getenv("OS_AUTH_URL")
+	authURL := os.Getenv("OS_AUTH_URL")
 	username := os.Getenv("OS_USERNAME")
 	password := os.Getenv("OS_PASSWORD")
 	tenantName := os.Getenv("OS_TENANT_NAME")
@@ -46,7 +46,7 @@ func TestNeutron(t *testing.T) {
 	domainID := os.Getenv("OS_PROJECT_DOMAIN_ID")
 
 	opts := gophercloud.AuthOptions{
-		IdentityEndpoint: authUrl,
+		IdentityEndpoint: authURL,
 		Username:         username,
 		Password:         password,
 		TenantName:       tenantName,
@@ -140,7 +140,7 @@ func TestNeutron(t *testing.T) {
 	execCmds(t, setupCmds...)
 	defer execCmds(t, tearDownCmds...)
 
-	gh := sclient.NewGremlinQueryHelper(authOptions)
+	gh := apiclient.NewGremlinQueryHelper(authOptions)
 
 	var histo bool
 	retryFn := func() error {

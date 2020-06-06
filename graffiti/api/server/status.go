@@ -23,9 +23,9 @@ import (
 
 	auth "github.com/abbot/go-http-auth"
 
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/rbac"
-	shttp "github.com/skydive-project/skydive/http"
 )
 
 // StatusReporter is the interface to report the status of a service

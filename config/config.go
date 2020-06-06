@@ -32,8 +32,8 @@ import (
 	_ "github.com/spf13/viper/remote"
 
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
+	"github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/service"
-	"github.com/skydive-project/skydive/http"
 )
 
 const (

@@ -21,9 +21,9 @@ import (
 	"net/url"
 	"time"
 
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/websocket"
-	shttp "github.com/skydive-project/skydive/http"
 )
 
 // NewWSClientOpts creates WebSocket options object from the configuration

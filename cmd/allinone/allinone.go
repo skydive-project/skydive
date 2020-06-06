@@ -28,7 +28,6 @@ import (
 	"syscall"
 
 	"github.com/avast/retry-go"
-
 	"github.com/kardianos/osext"
 	"github.com/spf13/cobra"
 
@@ -36,9 +35,9 @@ import (
 	"github.com/skydive-project/skydive/cmd"
 	cmdconfig "github.com/skydive-project/skydive/cmd/config"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/service"
-	"github.com/skydive-project/skydive/http"
 )
 
 var (

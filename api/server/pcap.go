@@ -26,9 +26,9 @@ import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/storage"
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/rbac"
-	shttp "github.com/skydive-project/skydive/http"
 )
 
 // PcapAPI exposes the pcap injector API
