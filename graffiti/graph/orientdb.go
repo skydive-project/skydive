@@ -323,24 +323,6 @@ func (o *OrientDBBackend) IsHistorySupported() bool {
 	return true
 }
 
-func (o *OrientDBBackend) flushGraph() error {
-	o.logger.Info("Flush graph elements")
-
-	now := TimeUTC().UnixMilli()
-
-	query := fmt.Sprintf("UPDATE Node SET DeletedAt = %d, ArchivedAt = %d WHERE DeletedAt IS NULL", now, now)
-	if _, err := o.client.SQL(query); err != nil {
-		return fmt.Errorf("Error while flushing graph: %s", err)
-	}
-
-	query = fmt.Sprintf("UPDATE Edge SET DeletedAt = %d, ArchivedAt = %d WHERE DeletedAt IS NULL", now, now)
-	if _, err := o.client.SQL(query); err != nil {
-		return fmt.Errorf("Error while flushing graph: %s", err)
-	}
-
-	return nil
-}
-
 // Start backend
 func (o *OrientDBBackend) Start() error {
 	return nil
@@ -351,11 +333,7 @@ func (o *OrientDBBackend) Stop() {
 }
 
 // OnStarted implements storage client listener interface
-func (o *OrientDBBackend) OnStarted() {
-	if o.election != nil && o.election.IsMaster() {
-		o.flushGraph()
-	}
-}
+func (o *OrientDBBackend) OnStarted() {}
 
 func newOrientDBBackend(client orientdb.ClientInterface, electionService etcd.MasterElectionService, logger logging.Logger) (*OrientDBBackend, error) {
 	if logger == nil {

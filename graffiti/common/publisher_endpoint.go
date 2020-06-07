@@ -51,6 +51,16 @@ type PublisherEndpoint struct {
 	logger    logging.Logger
 }
 
+// ClientOrigin return a string identifying a client using its service type and host id
+func ClientOrigin(c ws.Speaker) string {
+	return string(c.GetServiceType()) + "." + c.GetRemoteHost()
+}
+
+// DelSubGraphOfOrigin deletes all the nodes with a specified origin
+func DelSubGraphOfOrigin(g *graph.Graph, c ws.Speaker) {
+	g.DelNodes(graph.Metadata{"Origin": ClientOrigin(c)})
+}
+
 // OnDisconnected called when a publisher got disconnected.
 func (t *PublisherEndpoint) OnDisconnected(c ws.Speaker) {
 	origin := ClientOrigin(c)
@@ -65,11 +75,11 @@ func (t *PublisherEndpoint) OnDisconnected(c ws.Speaker) {
 	}
 
 	policy := PersistencePolicy(c.GetHeaders().Get("X-Persistence-Policy"))
-	if policy != Persistent {
+	if policy == DeleteOnDisconnect {
 		t.logger.Debugf("Authoritative client unregistered, delete resources of %s", origin)
 
 		t.Graph.Lock()
-		DelSubGraphOfOrigin(t.Graph, origin)
+		DelSubGraphOfOrigin(t.Graph, c)
 		t.Graph.Unlock()
 	}
 
@@ -122,7 +132,7 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 	case messages.SyncMsgType, messages.SyncReplyMsgType:
 		t.logger.Debugf("Handling sync message from %s", c.GetRemoteHost())
 
-		DelSubGraphOfOrigin(t.Graph, ClientOrigin(c))
+		DelSubGraphOfOrigin(t.Graph, c)
 
 		r := obj.(*messages.SyncMsg)
 		for _, n := range r.Nodes {

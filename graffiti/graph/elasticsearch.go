@@ -504,20 +504,6 @@ func (b *ElasticSearchBackend) IsHistorySupported() bool {
 	return true
 }
 
-func (b *ElasticSearchBackend) flushGraph() error {
-	b.logger.Info("Flush graph elements")
-
-	query := es.FormatFilter(filters.NewNullFilter("DeletedAt"), "")
-
-	script := elastic.NewScript("ctx._source.DeletedAt = params.now; ctx._source.ArchivedAt = params.now;")
-	script.Lang("painless")
-	script.Params(map[string]interface{}{
-		"now": TimeUTC().UnixMilli(),
-	})
-
-	return b.client.UpdateByScript(query, script, b.liveIndex.Alias(), b.archiveIndex.IndexWildcard())
-}
-
 // Start backend
 func (b *ElasticSearchBackend) Start() error {
 	b.election.StartAndWait()
@@ -531,13 +517,7 @@ func (b *ElasticSearchBackend) Stop() {
 }
 
 // OnStarted implements storage client listener interface
-func (b *ElasticSearchBackend) OnStarted() {
-	if b.election != nil && b.election.IsMaster() {
-		if err := b.flushGraph(); err != nil {
-			b.logger.Errorf("Unable to flush graph element: %s", err)
-		}
-	}
-}
+func (b *ElasticSearchBackend) OnStarted() {}
 
 // newElasticSearchBackendFromClient creates a new graph backend using the given elasticsearch
 // client connection

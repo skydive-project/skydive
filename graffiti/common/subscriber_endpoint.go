@@ -288,18 +288,3 @@ func NewSubscriberEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, tr *traver
 	g.AddEventListener(t)
 	return t
 }
-
-// ClientOrigin return a string identifying a client using its service type and host id
-func ClientOrigin(c ws.Speaker) string {
-	origin := string(c.GetServiceType())
-	if len(c.GetRemoteHost()) > 0 {
-		origin += "." + c.GetRemoteHost()
-	}
-
-	return origin
-}
-
-// DelSubGraphOfOrigin deletes all the nodes with a specified origin
-func DelSubGraphOfOrigin(g *graph.Graph, origin string) {
-	g.DelNodes(graph.Metadata{"Origin": origin})
-}
