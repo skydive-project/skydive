@@ -172,6 +172,12 @@ func (s *Server) newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRe
 
 	c.State.Store(service.RunningState)
 
+	// call pong handlers just after connection to avoid race between cleanup and
+	// insert
+	for _, listener := range s.opts.PongListeners {
+		listener.OnPong(c)
+	}
+
 	// add the new Speaker to the server pool
 	s.AddClient(pc)
 

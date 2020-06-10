@@ -18,9 +18,14 @@
 package hub
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
+
+	etcd "github.com/coreos/etcd/client"
 
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	gc "github.com/skydive-project/skydive/graffiti/common"
@@ -32,6 +37,10 @@ import (
 	"github.com/skydive-project/skydive/graffiti/schema"
 	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/websocket"
+)
+
+const (
+	etcPodPongPath = "/ws-pong/pods"
 )
 
 // Opts Hub options
@@ -52,9 +61,15 @@ type Opts struct {
 	Logger              logging.Logger
 }
 
+type podOrigin struct {
+	HostID      string
+	ServiceType service.Type
+}
+
 // Hub describes a graph hub that accepts incoming connections
 // from pods, other hubs, subscribers or external publishers
 type Hub struct {
+	Graph               *graph.Graph
 	httpServer          *shttp.Server
 	apiServer           *api.Server
 	etcdClient          *etcdclient.Client
@@ -64,6 +79,8 @@ type Hub struct {
 	replicationEndpoint *ReplicationEndpoint
 	subscriberWSServer  *websocket.StructServer
 	traversalParser     *traversal.GremlinTraversalParser
+	expirationDelay     time.Duration
+	quit                chan bool
 }
 
 // PeersStatus describes the state of a peer
@@ -105,6 +122,8 @@ func (h *Hub) GetStatus() interface{} {
 
 // Start the hub
 func (h *Hub) Start() error {
+	go h.watchOrigin()
+
 	if err := h.httpServer.Start(); err != nil {
 		return err
 	}
@@ -152,11 +171,45 @@ func (h *Hub) GremlinTraversalParser() *traversal.GremlinTraversalParser {
 	return h.traversalParser
 }
 
-// OnPong handles pong messages
+// OnPong handles pong messages and store the last pong timestamp in etcd
 func (h *Hub) OnPong(speaker websocket.Speaker) {
-	key := fmt.Sprintf("/pods/%s/last-pong", gc.ClientOrigin(speaker))
+	key := fmt.Sprintf("%s/%s", etcPodPongPath, gc.ClientOrigin(speaker))
 	if err := h.etcdClient.SetInt64(key, time.Now().Unix()); err != nil {
-		logging.GetLogger().Errorf("Error while recording agent pong time: %s", err)
+		logging.GetLogger().Errorf("Error while recording Pod pong time: %s", err)
+	}
+}
+
+func (h *Hub) watchOrigin() {
+	tick := time.NewTicker(5 * time.Second)
+	defer tick.Stop()
+
+	for {
+		select {
+		case <-tick.C:
+			resp, err := h.etcdClient.KeysAPI.Get(context.Background(), etcPodPongPath, &etcd.GetOptions{Recursive: true})
+			if err != nil {
+				continue
+			}
+
+			for _, node := range resp.Node.Nodes {
+				t, _ := strconv.ParseInt(node.Value, 10, 64)
+				if t+int64(h.expirationDelay.Seconds()) < time.Now().Unix() {
+					origin := strings.TrimPrefix(node.Key, etcPodPongPath+"/")
+
+					logging.GetLogger().Infof("pod of origin %s expired, removing resources", origin)
+
+					h.Graph.Lock()
+					gc.DelSubGraphOfOrigin(h.Graph, origin)
+					h.Graph.Unlock()
+
+					if _, err := h.etcdClient.KeysAPI.Delete(context.Background(), node.Key, &etcd.DeleteOptions{}); err != nil {
+						logging.GetLogger().Infof("unable to delete pod entry %s: %s", node.Key, err)
+					}
+				}
+			}
+		case <-h.quit:
+			return
+		}
 	}
 }
 
@@ -173,7 +226,11 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 		opts.Logger = logging.GetLogger()
 	}
 
-	hub := &Hub{}
+	hub := &Hub{
+		Graph:           g,
+		expirationDelay: opts.WebsocketOpts.PongTimeout * 5,
+		quit:            make(chan bool),
+	}
 
 	httpServer := shttp.NewServer(id, serviceType, sa.Addr, sa.Port, opts.TLSConfig, opts.Logger)
 

@@ -67,7 +67,7 @@ func (h *BasicAPIHandler) collectNodes(flatten map[string]Resource, nodes etcd.N
 		} else {
 			resource, err := h.Unmarshal([]byte(node.Value))
 			if err != nil {
-				logging.GetLogger().Warningf("Failed to unmarshal capture: %s", err.Error())
+				logging.GetLogger().Warningf("Failed to unmarshal capture: %s", err)
 				continue
 			}
 			flatten[resource.GetID()] = resource
