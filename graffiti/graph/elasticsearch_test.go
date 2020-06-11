@@ -26,7 +26,6 @@ import (
 	"github.com/olivere/elastic/v7"
 
 	"github.com/skydive-project/skydive/graffiti/filters"
-	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/storage"
 	es "github.com/skydive-project/skydive/graffiti/storage/elasticsearch"
 )
@@ -98,7 +97,7 @@ func newElasticsearchGraph(t *testing.T) (*Graph, *fakeESClient) {
 	}
 	b := newElasticSearchBackendFromClient(client, es.Index{Name: "topology_live"}, es.Index{Name: "topology_archive"}, nil, nil)
 	client.searchResult.Hits = &elastic.SearchHits{}
-	return NewGraph("host1", b, service.Type("graph-test")), client
+	return NewGraph("host1", b, "graph-test.host1"), client
 }
 
 func TestElasticsearchNode(t *testing.T) {

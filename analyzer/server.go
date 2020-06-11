@@ -34,6 +34,7 @@ import (
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/client"
 	"github.com/skydive-project/skydive/flow/server"
 	"github.com/skydive-project/skydive/flow/storage"
+	"github.com/skydive-project/skydive/graffiti/common"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -247,7 +248,8 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	g := graph.NewGraph(host, cached, service.Type)
+	origin := common.Origin(host, service.Type)
+	g := graph.NewGraph(host, cached, origin)
 
 	clusterAuthBackendName := config.GetString("analyzer.auth.cluster.backend")
 	clusterAuthBackend, err := config.NewAuthenticationBackendByName(clusterAuthBackendName)

@@ -18,7 +18,10 @@
 package common
 
 import (
+	"fmt"
+
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 )
 
@@ -35,4 +38,8 @@ func DelSubGraphOfOrigin(g *graph.Graph, origin string) {
 // DelSubGraphOfClient deletes all the nodes of the given client
 func DelSubGraphOfClient(g *graph.Graph, c ws.Speaker) {
 	g.DelNodes(graph.Metadata{"Origin": ClientOrigin(c)})
+}
+
+func Origin(hostID string, kind service.Type) string {
+	return fmt.Sprintf("%s.%s", kind, hostID)
 }

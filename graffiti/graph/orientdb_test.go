@@ -27,7 +27,6 @@ import (
 	"github.com/davecgh/go-spew/spew"
 
 	"github.com/skydive-project/skydive/graffiti/filters"
-	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/storage"
 	"github.com/skydive-project/skydive/graffiti/storage/orientdb"
 )
@@ -119,7 +118,7 @@ func newOrientDBGraph(t *testing.T) (*Graph, *fakeOrientDBClient) {
 		t.Error(err)
 	}
 
-	return NewGraph("host1", b, service.Type("graph-test")), client
+	return NewGraph("host1", b, "graph-test.host1"), client
 }
 
 // test history when doing local modification

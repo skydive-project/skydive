@@ -22,10 +22,18 @@ import (
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/logging"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/spf13/cobra"
 )
 
-var analyzerAddr string
+const (
+	CLIService service.Type = "cli"
+)
+
+var (
+	host         string
+	analyzerAddr string
+)
 
 // ClientCmd describe the skydive client root command
 var ClientCmd = &cobra.Command{
@@ -87,6 +95,8 @@ func exitOnError(err error) {
 }
 
 func init() {
+	host, _ = os.Hostname()
+
 	ClientCmd.PersistentFlags().StringVarP(&AuthenticationOpts.Username, "username", "", os.Getenv("SKYDIVE_USERNAME"), "username auth parameter")
 	ClientCmd.PersistentFlags().StringVarP(&AuthenticationOpts.Password, "password", "", os.Getenv("SKYDIVE_PASSWORD"), "password auth parameter")
 	ClientCmd.PersistentFlags().StringVarP(&analyzerAddr, "analyzer", "", os.Getenv("SKYDIVE_ANALYZER"), "analyzer address")

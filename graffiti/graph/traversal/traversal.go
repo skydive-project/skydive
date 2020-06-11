@@ -31,7 +31,6 @@ import (
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/getter"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/graffiti/service"
 )
 
 const (
@@ -1403,7 +1402,7 @@ func (tv *GraphTraversalV) SubGraph(ctx StepContext, s ...interface{}) *GraphTra
 		}
 	}
 
-	ng := graph.NewGraph(tv.GraphTraversal.Graph.GetHost(), memory, service.Type("GremlinTraversal"))
+	ng := graph.NewGraph(tv.GraphTraversal.Graph.GetHost(), memory, "GremlinTraversal")
 
 	return NewGraphTraversal(ng, tv.GraphTraversal.lockGraph)
 }
@@ -1443,7 +1442,7 @@ func (sp *GraphTraversalShortestPath) SubGraph(ctx StepContext, s ...interface{}
 		}
 	}
 
-	ng := graph.NewGraph(sp.GraphTraversal.Graph.GetHost(), memory, service.Type("GremlinTraversal"))
+	ng := graph.NewGraph(sp.GraphTraversal.Graph.GetHost(), memory, "GremlinTraversal")
 
 	return NewGraphTraversal(ng, sp.GraphTraversal.lockGraph)
 }
@@ -1773,7 +1772,7 @@ func (te *GraphTraversalE) SubGraph(ctx StepContext, s ...interface{}) *GraphTra
 		}
 	}
 
-	ng := graph.NewGraph(te.GraphTraversal.Graph.GetHost(), memory, service.Type("GremlinTraversal"))
+	ng := graph.NewGraph(te.GraphTraversal.Graph.GetHost(), memory, "GremlinTraversal")
 
 	return NewGraphTraversal(ng, te.GraphTraversal.lockGraph)
 }

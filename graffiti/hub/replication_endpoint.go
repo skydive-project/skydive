@@ -121,7 +121,7 @@ func (p *ReplicatorPeer) OnDisconnected(c ws.Speaker) {
 	}
 
 	origin := gcommon.ClientOrigin(c)
-	if p.Graph.Origin() == origin {
+	if p.Graph.GetOrigin() == origin {
 		return
 	}
 
@@ -133,7 +133,7 @@ func (p *ReplicatorPeer) connect(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	p.endpoint.logger.Infof("Connecting to peer: %s", p.URL.String())
-	serviceType := service.Type(strings.SplitN(p.Graph.Origin(), ".", 2)[0])
+	serviceType := service.Type(strings.SplitN(p.Graph.GetOrigin(), ".", 2)[0])
 	wsClient := ws.NewClient(p.Graph.GetHost(), serviceType, p.URL, *p.opts)
 
 	structClient := wsClient.UpgradeToStructSpeaker()
@@ -364,7 +364,7 @@ func (t *ReplicationEndpoint) OnDisconnected(c ws.Speaker) {
 	}
 
 	origin := gcommon.ClientOrigin(c)
-	if t.Graph.Origin() == origin {
+	if t.Graph.GetOrigin() == origin {
 		return
 	}
 

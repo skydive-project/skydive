@@ -29,7 +29,6 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
-	"github.com/skydive-project/skydive/graffiti/service"
 	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/js"
 )
@@ -481,7 +480,7 @@ func TestFlowMatrixWorkflow(t *testing.T) {
 			}
 
 			backend, _ := graph.NewMemoryBackend()
-			g := graph.NewGraph("test", backend, service.Type("graph-test"))
+			g := graph.NewGraph("test", backend, "graph-test")
 
 			for _, n := range subgraph.Nodes {
 				g.NodeAdded(n)

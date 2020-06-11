@@ -28,7 +28,6 @@ import (
 
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/getter"
-	"github.com/skydive-project/skydive/graffiti/service"
 )
 
 const (
@@ -145,7 +144,7 @@ type Graph struct {
 	backend      Backend
 	context      Context
 	host         string
-	service      service.Type
+	origin       string
 }
 
 // Elements struct containing nodes and edges
@@ -1110,12 +1109,7 @@ func (g *Graph) GetNode(i Identifier) *Node {
 }
 
 // CreateNode returns a new node not bound to a graph
-func CreateNode(i Identifier, m Metadata, t Time, h string, s service.Type) *Node {
-	o := string(s)
-	if len(h) > 0 {
-		o += "." + h
-	}
-
+func CreateNode(i Identifier, m Metadata, t Time, h string, o string) *Node {
 	n := &Node{
 		graphElement: graphElement{
 			ID:        i,
@@ -1143,7 +1137,7 @@ func (g *Graph) CreateNode(i Identifier, m Metadata, t Time, h ...string) *Node 
 		hostname = h[0]
 	}
 
-	return CreateNode(i, m, t, hostname, g.service)
+	return CreateNode(i, m, t, hostname, g.origin)
 }
 
 // NewNode creates a new node in the graph with attached metadata
@@ -1158,11 +1152,7 @@ func (g *Graph) NewNode(i Identifier, m Metadata, h ...string) (*Node, error) {
 }
 
 // CreateEdge returns a new edge not bound to any graph
-func CreateEdge(i Identifier, p *Node, c *Node, m Metadata, t Time, h string, s service.Type) *Edge {
-	o := string(s)
-	if len(h) > 0 {
-		o += "." + h
-	}
+func CreateEdge(i Identifier, p *Node, c *Node, m Metadata, t Time, h string, o string) *Edge {
 	e := &Edge{
 		Parent: p.ID,
 		Child:  c.ID,
@@ -1197,7 +1187,7 @@ func (g *Graph) CreateEdge(i Identifier, p *Node, c *Node, m Metadata, t Time, h
 		i = Identifier(u.String())
 	}
 
-	return CreateEdge(i, p, c, m, t, hostname, g.service)
+	return CreateEdge(i, p, c, m, t, hostname, g.origin)
 }
 
 // NewEdge creates a new edge in the graph based on Identifier, parent, child nodes and metadata
@@ -1303,13 +1293,9 @@ func (g *Graph) String() string {
 	return string(j)
 }
 
-// Origin returns service type with host name
-func (g *Graph) Origin() string {
-	o := string(g.service)
-	if len(g.host) > 0 {
-		o += "." + g.host
-	}
-	return o
+// GetOrigin returns the origin of a graph
+func (g *Graph) GetOrigin() string {
+	return g.origin
 }
 
 // Elements returns graph elements
@@ -1333,7 +1319,7 @@ func (g *Graph) MarshalJSON() ([]byte, error) {
 
 // CloneWithContext creates a new graph based on the given one and the given context
 func (g *Graph) CloneWithContext(context Context) (*Graph, error) {
-	ng := NewGraph(g.host, g.backend, g.service)
+	ng := NewGraph(g.host, g.backend, g.origin)
 	if context.TimeSlice != nil && !g.backend.IsHistorySupported() {
 		return nil, errors.New("Backend does not support history")
 	}
@@ -1392,12 +1378,12 @@ func (g *Graph) RemoveEventListener(l EventListener) {
 }
 
 // NewGraph creates a new graph based on the backend
-func NewGraph(host string, backend Backend, service service.Type) *Graph {
+func NewGraph(host string, backend Backend, origin string) *Graph {
 	return &Graph{
 		eventHandler: NewEventHandler(maxEvents),
 		backend:      backend,
 		host:         host,
 		context:      Context{TimePoint: true},
-		service:      service,
+		origin:       origin,
 	}
 }
