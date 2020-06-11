@@ -27,7 +27,6 @@ import (
 	"github.com/hashicorp/golang-lru/simplelru"
 	"github.com/safchain/insanelock"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/logging"
@@ -200,7 +199,7 @@ func (ft *Table) getFlows(query *filters.SearchQuery) *FlowSet {
 	}
 
 	if query.Sort {
-		flowset.Sort(common.SortOrder(query.SortOrder), query.SortBy)
+		flowset.Sort(query.SortOrder, query.SortBy)
 	}
 
 	if query.Dedup {

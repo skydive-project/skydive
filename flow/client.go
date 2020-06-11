@@ -20,7 +20,6 @@ package flow
 import (
 	"github.com/golang/protobuf/proto"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/logging"
@@ -60,7 +59,7 @@ func (f *WSTableClient) lookupFlows(flowset chan *FlowSet, host string, flowSear
 	context := MergeContext{
 		Sort:      flowSearchQuery.Sort,
 		SortBy:    flowSearchQuery.SortBy,
-		SortOrder: common.SortOrder(flowSearchQuery.SortOrder),
+		SortOrder: flowSearchQuery.SortOrder,
 		Dedup:     flowSearchQuery.Dedup,
 		DedupBy:   flowSearchQuery.DedupBy,
 	}
@@ -92,7 +91,7 @@ func (f *WSTableClient) LookupFlows(flowSearchQuery filters.SearchQuery) (*FlowS
 	context := MergeContext{
 		Sort:      flowSearchQuery.Sort,
 		SortBy:    flowSearchQuery.SortBy,
-		SortOrder: common.SortOrder(flowSearchQuery.SortOrder),
+		SortOrder: flowSearchQuery.SortOrder,
 		Dedup:     flowSearchQuery.Dedup,
 		DedupBy:   flowSearchQuery.DedupBy,
 	}
@@ -122,7 +121,7 @@ func (f *WSTableClient) LookupFlowsByNodes(hnmap topology.HostNodeTIDMap, flowSe
 	context := MergeContext{
 		Sort:      flowSearchQuery.Sort,
 		SortBy:    flowSearchQuery.SortBy,
-		SortOrder: common.SortOrder(flowSearchQuery.SortOrder),
+		SortOrder: flowSearchQuery.SortOrder,
 		Dedup:     flowSearchQuery.Dedup,
 		DedupBy:   flowSearchQuery.DedupBy,
 	}

@@ -22,7 +22,6 @@ package orientdb
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/google/gopacket/layers"
 	"github.com/skydive-project/skydive/common"
@@ -267,8 +266,8 @@ func (c *Storage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filter
 
 	if fsq.Sort {
 		sql += " ORDER BY " + fsq.SortBy
-		if fsq.SortOrder != "" {
-			sql += " " + strings.ToUpper(fsq.SortOrder)
+		if fsq.SortOrder == filters.SortOrder_Descending {
+			sql += " DESC"
 		}
 	}
 
@@ -308,8 +307,8 @@ func (c *Storage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.F
 
 	if fsq.Sort {
 		sql += " ORDER BY " + fsq.SortBy
-		if fsq.SortOrder != "" {
-			sql += " " + strings.ToUpper(fsq.SortOrder)
+		if fsq.SortOrder == filters.SortOrder_Descending {
+			sql += " DESC"
 		}
 	}
 

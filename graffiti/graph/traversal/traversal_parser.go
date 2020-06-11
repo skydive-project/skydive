@@ -28,7 +28,7 @@ import (
 
 	"github.com/safchain/insanelock"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
@@ -1058,9 +1058,9 @@ func (p *GremlinTraversalParser) parseStepParams() ([]interface{}, error) {
 				return nil, fmt.Errorf("REGEX predicate expects a string as parameter, got: %s", lit)
 			}
 		case ASC:
-			params = append(params, common.SortAscending)
+			params = append(params, ASC)
 		case DESC:
-			params = append(params, common.SortDescending)
+			params = append(params, DESC)
 		case IPV4RANGE:
 			ipParams, err := p.parseStepParams()
 			if err != nil {
@@ -1197,16 +1197,22 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 			return &GremlinTraversalStepSort{gremlinStepContext}, nil
 		case 1:
 			if _, ok := params[0].(string); !ok {
-				return nil, fmt.Errorf("Sort parameter has to be a string key : %v", params)
+				return nil, fmt.Errorf("Sort parameter has to be a string key : %s", params[0])
 			}
-			gremlinStepContext.Params = []interface{}{common.SortAscending, params[0]}
+			gremlinStepContext.Params = []interface{}{filters.SortOrder_Ascending, params[0]}
 			return &GremlinTraversalStepSort{gremlinStepContext}, nil
 		case 2:
-			if _, ok := params[0].(common.SortOrder); !ok {
-				return nil, fmt.Errorf("Use ASC or DESC predicate : %v", params)
+			switch params[0] {
+			case ASC:
+				params[0] = filters.SortOrder_Ascending
+			case DESC:
+				params[0] = filters.SortOrder_Descending
+			default:
+				return nil, fmt.Errorf("Use ASC or DESC predicate : %s", params[0])
 			}
+
 			if _, ok := params[1].(string); !ok {
-				return nil, fmt.Errorf("Second sort parameter has to be a string key : %v", params)
+				return nil, fmt.Errorf("Second sort parameter has to be a string key : %s", params[1])
 			}
 			return &GremlinTraversalStepSort{gremlinStepContext}, nil
 		default:

@@ -1542,7 +1542,7 @@ func TestSort(t *testing.T) {
 			}
 			if len(flows) != 2 {
 				flows, _ = c.gh.GetFlows(prefix.Flows())
-				return fmt.Errorf("Expected two flow, got %+v", flows)
+				return fmt.Errorf("Expected two flows, got %d: %+v", len(flows), flows)
 			}
 			//check is it in ascending order by Last field
 			if flows[0].Last > flows[1].Last {
@@ -1557,7 +1557,7 @@ func TestSort(t *testing.T) {
 			}
 			if len(flows) != 2 {
 				flows, _ = c.gh.GetFlows(prefix.Flows())
-				return fmt.Errorf("Expected two flow, got %+v", flows)
+				return fmt.Errorf("Expected two flows in descending order, got %d: %+v", len(flows), flows)
 			}
 			//check is it in descending order by Start field
 			if flows[0].Start < flows[1].Start {

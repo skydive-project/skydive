@@ -26,7 +26,7 @@ import (
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/safchain/insanelock"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/getter"
 	"github.com/skydive-project/skydive/graffiti/service"
 )
@@ -1315,10 +1315,10 @@ func (g *Graph) Origin() string {
 // Elements returns graph elements
 func (g *Graph) Elements() *Elements {
 	nodes := g.GetNodes(nil)
-	SortNodes(nodes, "CreatedAt", common.SortAscending)
+	SortNodes(nodes, "CreatedAt", filters.SortOrder_Ascending)
 
 	edges := g.GetEdges(nil)
-	SortEdges(edges, "CreatedAt", common.SortAscending)
+	SortEdges(edges, "CreatedAt", filters.SortOrder_Ascending)
 
 	return &Elements{
 		Nodes: nodes,

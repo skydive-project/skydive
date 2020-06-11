@@ -17,16 +17,6 @@
 
 package common
 
-// SortOrder describes ascending or descending order
-type SortOrder string
-
-const (
-	// SortAscending sorting order
-	SortAscending SortOrder = "ASC"
-	// SortDescending sorting order
-	SortDescending SortOrder = "DESC"
-)
-
 // Metric defines a common metric interface
 type Metric interface {
 	// part of the Getter interface

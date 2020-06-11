@@ -18,7 +18,6 @@
 package flow
 
 import (
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/getter"
 )
@@ -27,7 +26,7 @@ import (
 type MergeContext struct {
 	Sort      bool
 	SortBy    string
-	SortOrder common.SortOrder
+	SortOrder filters.SortOrder
 	Dedup     bool
 	DedupBy   string
 }
@@ -202,7 +201,7 @@ func (fs *FlowSet) mergeSortedFlows(left, right []*Flow, context MergeContext) (
 		if err != nil {
 			return nil, err
 		}
-		if context.SortOrder != common.SortAscending {
+		if context.SortOrder != filters.SortOrder_Ascending {
 			cv = !cv
 		}
 
@@ -281,8 +280,8 @@ func (fs *FlowSet) Dedup(field string) error {
 }
 
 // Sort flows in a FlowSet
-func (fs *FlowSet) Sort(order common.SortOrder, orberBy string) {
-	context := MergeContext{Sort: true, SortBy: orberBy, SortOrder: order}
+func (fs *FlowSet) Sort(order filters.SortOrder, orderBy string) {
+	context := MergeContext{Sort: true, SortBy: orderBy, SortOrder: order}
 	fs.Flows = fs.sortFlows(fs.Flows, context)
 }
 

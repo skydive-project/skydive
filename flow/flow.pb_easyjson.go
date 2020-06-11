@@ -358,7 +358,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters(in *jle
 		case "SortBy":
 			out.SortBy = string(in.String())
 		case "SortOrder":
-			out.SortOrder = string(in.String())
+			out.SortOrder = filters.SortOrder(in.Int32())
 		default:
 			in.SkipRecursive()
 		}
@@ -429,7 +429,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters(out *jw
 		}
 		out.String(string(in.SortBy))
 	}
-	if in.SortOrder != "" {
+	if in.SortOrder != 0 {
 		const prefix string = ",\"SortOrder\":"
 		if first {
 			first = false
@@ -437,7 +437,7 @@ func easyjsonA60071beEncodeGithubComSkydiveProjectSkydiveGraffitiFilters(out *jw
 		} else {
 			out.RawString(prefix)
 		}
-		out.String(string(in.SortOrder))
+		out.Int32(int32(in.SortOrder))
 	}
 	out.RawByte('}')
 }

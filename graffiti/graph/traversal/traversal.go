@@ -28,7 +28,6 @@ import (
 	"github.com/mitchellh/hashstructure"
 	"github.com/spf13/cast"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/getter"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -882,24 +881,27 @@ func (te *GraphTraversalE) G() *GraphTraversal {
 }
 
 // ParseSortParameter helper
-func ParseSortParameter(keys ...interface{}) (order common.SortOrder, sortBy string, err error) {
-	order = common.SortAscending
-
+func ParseSortParameter(keys ...interface{}) (filters.SortOrder, string, error) {
 	switch len(keys) {
 	case 0:
 	case 2:
-		var ok1, ok2 bool
-
-		order, ok1 = keys[0].(common.SortOrder)
-		sortBy, ok2 = keys[1].(string)
-		if !ok1 || !ok2 {
-			return order, sortBy, errors.New("Sort parameters have to be SortOrder(ASC/DESC) and a sort string Key")
+		sortOrder, ok := keys[0].(filters.SortOrder)
+		if !ok {
+			return filters.SortOrder_NoOrder, "", errors.New("Sort order has to be either ASC or DESC")
 		}
+
+		sortBy, ok := keys[1].(string)
+		if !ok {
+			return filters.SortOrder_NoOrder, "", errors.New("Sort key have to be a valid string")
+		}
+
+		return sortOrder, sortBy, nil
+
 	default:
-		return order, sortBy, errors.New("Sort accepts up to 2 parameters only")
+		return filters.SortOrder_NoOrder, "", errors.New("Sort accepts up to 2 parameters only")
 	}
 
-	return order, sortBy, err
+	return filters.SortOrder_Ascending, "", nil
 }
 
 // Sort step

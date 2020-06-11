@@ -31,7 +31,6 @@ import (
 	elastic "github.com/olivere/elastic/v7"
 	esconfig "github.com/olivere/elastic/v7/config"
 
-	"github.com/skydive-project/skydive/common"
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/logging"
@@ -384,7 +383,7 @@ func (c *Client) Search(query elastic.Query, opts filters.SearchQuery, indices .
 	if opts.Sort {
 		searchQuery = searchQuery.SortWithInfo(elastic.SortInfo{
 			Field:        opts.SortBy,
-			Ascending:    common.SortOrder(opts.SortOrder) != common.SortDescending,
+			Ascending:    opts.SortOrder != filters.SortOrder_Descending,
 			UnmappedType: "date",
 		})
 	}

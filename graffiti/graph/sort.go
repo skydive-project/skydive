@@ -20,7 +20,7 @@ package graph
 import (
 	"sort"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/getter"
 )
 
@@ -37,7 +37,7 @@ type slice interface {
 
 type sortableSlice struct {
 	sortBy     string
-	sortOrder  common.SortOrder
+	sortOrder  filters.SortOrder
 	sortByType int
 	length     int
 	items      slice
@@ -63,7 +63,7 @@ func (s sortableSlice) lessInt64(i, j int) bool {
 	i1, _ := s.items.Get(i).GetFieldInt64(s.sortBy)
 	i2, _ := s.items.Get(j).GetFieldInt64(s.sortBy)
 
-	if s.sortOrder == common.SortAscending {
+	if s.sortOrder == filters.SortOrder_Ascending {
 		return i1 < i2
 	}
 	return i1 > i2
@@ -73,7 +73,7 @@ func (s sortableSlice) lessString(i, j int) bool {
 	s1, _ := s.items.Get(i).GetFieldString(s.sortBy)
 	s2, _ := s.items.Get(j).GetFieldString(s.sortBy)
 
-	if s.sortOrder == common.SortAscending {
+	if s.sortOrder == filters.SortOrder_Ascending {
 		return s1 < s2
 	}
 
@@ -114,7 +114,7 @@ func (s sortableEdgeSlice) Get(i int) getter.Getter {
 	return s.edges[i]
 }
 
-func sortSlice(items slice, length int, sortBy string, sortOrder common.SortOrder) {
+func sortSlice(items slice, length int, sortBy string, sortOrder filters.SortOrder) {
 	sort.Sort(sortableSlice{
 		sortBy:    sortBy,
 		sortOrder: sortOrder,
@@ -124,11 +124,11 @@ func sortSlice(items slice, length int, sortBy string, sortOrder common.SortOrde
 }
 
 // SortNodes sorts a set of nodes
-func SortNodes(nodes []*Node, sortBy string, sortOrder common.SortOrder) {
+func SortNodes(nodes []*Node, sortBy string, sortOrder filters.SortOrder) {
 	sortSlice(sortableNodeSlice{nodes: nodes}, len(nodes), sortBy, sortOrder)
 }
 
 // SortEdges sorts a set of edges
-func SortEdges(edges []*Edge, sortBy string, sortOrder common.SortOrder) {
+func SortEdges(edges []*Edge, sortBy string, sortOrder filters.SortOrder) {
 	sortSlice(sortableEdgeSlice{edges: edges}, len(edges), sortBy, sortOrder)
 }

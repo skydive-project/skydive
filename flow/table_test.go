@@ -23,7 +23,6 @@ import (
 
 	"github.com/google/gopacket/layers"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/filters"
 )
@@ -100,7 +99,7 @@ func TestGetFlowsWithFilters(t *testing.T) {
 	// sort test
 	searchQuery.Sort = true
 	searchQuery.SortBy = "Network.A"
-	searchQuery.SortOrder = string(common.SortAscending)
+	searchQuery.SortOrder = filters.SortOrder_Ascending
 
 	flows = table.getFlows(searchQuery).Flows
 
@@ -112,7 +111,7 @@ func TestGetFlowsWithFilters(t *testing.T) {
 		last = f.Network.A
 	}
 
-	searchQuery.SortOrder = string(common.SortDescending)
+	searchQuery.SortOrder = filters.SortOrder_Descending
 
 	flows = table.getFlows(searchQuery).Flows
 

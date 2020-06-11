@@ -31,6 +31,12 @@ enum BoolFilterOp {
   NOT = 2;
 }
 
+enum SortOrder {
+  NoOrder = 0;
+  Ascending = 1;
+  Descending = 2;
+}
+
 message TermStringFilter {
   string Key = 1;
   string Value = 2;
@@ -123,5 +129,5 @@ message SearchQuery {
   bool Dedup = 4;
   string DedupBy = 5;
   string SortBy = 6;
-  string SortOrder = 7;
+  SortOrder SortOrder = 7;
 }
