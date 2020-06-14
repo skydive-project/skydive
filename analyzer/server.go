@@ -36,7 +36,6 @@ import (
 	"github.com/skydive-project/skydive/flow/storage"
 	"github.com/skydive-project/skydive/graffiti/common"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
-	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/hub"
@@ -90,7 +89,6 @@ type Server struct {
 	probeBundle     *probe.Bundle
 	graphStorage    graph.PersistentBackend
 	flowStorage     storage.Storage
-	etcdServer      *etcdserver.EmbeddedServer
 	etcdClient      *etcdclient.Client
 }
 
@@ -128,10 +126,8 @@ func (s *Server) createStartupCapture() error {
 
 // Start the analyzer server
 func (s *Server) Start() error {
-	if s.etcdServer != nil {
-		if err := s.etcdServer.Start(); err != nil {
-			return err
-		}
+	if err := s.hub.Start(); err != nil {
+		return err
 	}
 
 	s.etcdClient.Start()
@@ -153,10 +149,6 @@ func (s *Server) Start() error {
 	s.alertServer.Start()
 	s.topologyManager.Start()
 	s.flowServer.Start()
-
-	if err := s.hub.Start(); err != nil {
-		return err
-	}
 
 	if err := s.createStartupCapture(); err != nil {
 		return err
@@ -183,8 +175,6 @@ func (s *Server) Stop() {
 		s.flowStorage.Stop()
 	}
 
-	s.etcdServer.Stop()
-
 	if tr, ok := http.DefaultTransport.(interface {
 		CloseIdleConnections()
 	}); ok {
@@ -194,27 +184,8 @@ func (s *Server) Stop() {
 
 // NewServerFromConfig creates a new empty server
 func NewServerFromConfig() (*Server, error) {
-	embedEtcd := config.GetBool("etcd.embedded")
 	host := config.GetString("host_id")
 	service := service.Service{ID: host, Type: config.AnalyzerService}
-
-	var etcdServer *etcdserver.EmbeddedServer
-	var err error
-	if embedEtcd {
-		etcdServerOpts := &etcdserver.EmbeddedServerOpts{
-			Name:         config.GetString("etcd.name"),
-			Listen:       config.GetString("etcd.listen"),
-			DataDir:      config.GetString("etcd.data_dir"),
-			MaxWalFiles:  uint(config.GetInt("etcd.max_wal_files")),
-			MaxSnapFiles: uint(config.GetInt("etcd.max_snap_files")),
-			Debug:        config.GetBool("etcd.debug"),
-			Peers:        config.GetStringMapString("etcd.peers"),
-		}
-
-		if etcdServer, err = etcdserver.NewEmbeddedServer(*etcdServerOpts); err != nil {
-			return nil, err
-		}
-	}
 
 	etcdClientOpts := etcdclient.Opts{
 		Servers: config.GetEtcdServerAddrs(),
@@ -284,7 +255,6 @@ func NewServerFromConfig() (*Server, error) {
 	s := &Server{
 		probeBundle:  probeBundle,
 		etcdClient:   etcdClient,
-		etcdServer:   etcdServer,
 		graphStorage: graphStorage,
 	}
 

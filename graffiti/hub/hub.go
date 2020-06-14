@@ -27,9 +27,11 @@ import (
 
 	etcd "github.com/coreos/etcd/client"
 
+	"github.com/skydive-project/skydive/config"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	gc "github.com/skydive-project/skydive/graffiti/common"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
+	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
@@ -72,6 +74,7 @@ type Hub struct {
 	Graph               *graph.Graph
 	httpServer          *shttp.Server
 	apiServer           *api.Server
+	embeddedEtcd        *etcdserver.EmbeddedServer
 	etcdClient          *etcdclient.Client
 	podWSServer         *websocket.StructServer
 	publisherWSServer   *websocket.StructServer
@@ -122,6 +125,12 @@ func (h *Hub) GetStatus() interface{} {
 
 // Start the hub
 func (h *Hub) Start() error {
+	if h.embeddedEtcd != nil {
+		if err := h.embeddedEtcd.Start(); err != nil {
+			return err
+		}
+	}
+
 	go h.watchOrigin()
 
 	if err := h.httpServer.Start(); err != nil {
@@ -144,6 +153,9 @@ func (h *Hub) Stop() {
 	h.replicationWSServer.Stop()
 	h.publisherWSServer.Stop()
 	h.subscriberWSServer.Stop()
+	if h.embeddedEtcd != nil {
+		h.embeddedEtcd.Stop()
+	}
 }
 
 // HTTPServer returns the hub HTTP server
@@ -230,6 +242,24 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 		Graph:           g,
 		expirationDelay: opts.WebsocketOpts.PongTimeout * 5,
 		quit:            make(chan bool),
+	}
+
+	if config.GetBool("etcd.embedded") {
+		etcdServerOpts := &etcdserver.EmbeddedServerOpts{
+			Name:         config.GetString("etcd.name"),
+			Listen:       config.GetString("etcd.listen"),
+			DataDir:      config.GetString("etcd.data_dir"),
+			MaxWalFiles:  uint(config.GetInt("etcd.max_wal_files")),
+			MaxSnapFiles: uint(config.GetInt("etcd.max_snap_files")),
+			Debug:        config.GetBool("etcd.debug"),
+			Peers:        config.GetStringMapString("etcd.peers"),
+		}
+
+		embeddedEtcd, err := etcdserver.NewEmbeddedServer(*etcdServerOpts)
+		if err != nil {
+			return nil, err
+		}
+		hub.embeddedEtcd = embeddedEtcd
 	}
 
 	httpServer := shttp.NewServer(id, serviceType, sa.Addr, sa.Port, opts.TLSConfig, opts.Logger)
