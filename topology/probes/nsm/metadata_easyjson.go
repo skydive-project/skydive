@@ -129,11 +129,7 @@ func easyjsonBa0ee0e3DecodeGithubComSkydiveProjectSkydiveTopologyProbesNsm1(in *
 				in.Skip()
 			} else {
 				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.MechanismParameters = make(map[string]string)
-				} else {
-					out.MechanismParameters = nil
-				}
+				out.MechanismParameters = make(map[string]string)
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
@@ -149,11 +145,7 @@ func easyjsonBa0ee0e3DecodeGithubComSkydiveProjectSkydiveTopologyProbesNsm1(in *
 				in.Skip()
 			} else {
 				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.Labels = make(map[string]string)
-				} else {
-					out.Labels = nil
-				}
+				out.Labels = make(map[string]string)
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
@@ -360,11 +352,7 @@ func easyjsonBa0ee0e3DecodeGithubComSkydiveProjectSkydiveTopologyProbesNsm3(in *
 				in.Skip()
 			} else {
 				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.MechanismParameters = make(map[string]string)
-				} else {
-					out.MechanismParameters = nil
-				}
+				out.MechanismParameters = make(map[string]string)
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
@@ -380,11 +368,7 @@ func easyjsonBa0ee0e3DecodeGithubComSkydiveProjectSkydiveTopologyProbesNsm3(in *
 				in.Skip()
 			} else {
 				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.Labels = make(map[string]string)
-				} else {
-					out.Labels = nil
-				}
+				out.Labels = make(map[string]string)
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
@@ -715,11 +699,7 @@ func easyjsonBa0ee0e3DecodeGithubComSkydiveProjectSkydiveTopologyProbesNsm6(in *
 				in.Skip()
 			} else {
 				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.MechanismParameters = make(map[string]string)
-				} else {
-					out.MechanismParameters = nil
-				}
+				out.MechanismParameters = make(map[string]string)
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
@@ -735,11 +715,7 @@ func easyjsonBa0ee0e3DecodeGithubComSkydiveProjectSkydiveTopologyProbesNsm6(in *
 				in.Skip()
 			} else {
 				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.Labels = make(map[string]string)
-				} else {
-					out.Labels = nil
-				}
+				out.Labels = make(map[string]string)
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()

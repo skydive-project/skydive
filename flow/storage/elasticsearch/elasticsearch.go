@@ -23,7 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/olivere/elastic"
+	"github.com/olivere/elastic/v7"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
@@ -102,19 +102,16 @@ const flowMapping = `
 var (
 	flowIndex = es.Index{
 		Name:      "flow",
-		Type:      "flow",
 		Mapping:   flowMapping,
 		RollIndex: true,
 	}
 	metricIndex = es.Index{
 		Name:      "metric",
-		Type:      "metric",
 		Mapping:   flowMapping,
 		RollIndex: true,
 	}
 	rawpacketIndex = es.Index{
 		Name:      "rawpacket",
-		Type:      "rawpacket",
 		Mapping:   flowMapping,
 		RollIndex: true,
 	}
@@ -232,8 +229,8 @@ func (c *Storage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (c *Storage) sendRequest(typ string, query elastic.Query, pagination filters.SearchQuery, indices ...string) (*elastic.SearchResult, error) {
-	return c.client.Search(typ, query, pagination, indices...)
+func (c *Storage) sendRequest(query elastic.Query, pagination filters.SearchQuery, indices ...string) (*elastic.SearchResult, error) {
+	return c.client.Search(query, pagination, indices...)
 }
 
 // SearchRawPackets searches flow raw packets matching filters in the database
@@ -249,7 +246,7 @@ func (c *Storage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filter
 		mustQueries = append(mustQueries, es.FormatFilter(packetFilter, ""))
 	}
 
-	out, err := c.sendRequest("rawpacket", elastic.NewBoolQuery().Must(mustQueries...), fsq, rawpacketIndex.IndexWildcard())
+	out, err := c.sendRequest(elastic.NewBoolQuery().Must(mustQueries...), fsq, rawpacketIndex.IndexWildcard())
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +255,7 @@ func (c *Storage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filter
 	if len(out.Hits.Hits) > 0 {
 		for _, d := range out.Hits.Hits {
 			var record rawpacketRecord
-			if err := json.Unmarshal([]byte(*d.Source), &record); err != nil {
+			if err := json.Unmarshal(d.Source, &record); err != nil {
 				return nil, err
 			}
 
@@ -282,7 +279,7 @@ func (c *Storage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.F
 	metricQuery := es.FormatFilter(metricFilter, "")
 
 	query := elastic.NewBoolQuery().Must(flowQuery, metricQuery)
-	out, err := c.sendRequest("metric", query, fsq, metricIndex.IndexWildcard())
+	out, err := c.sendRequest(query, fsq, metricIndex.IndexWildcard())
 	if err != nil {
 		return nil, err
 	}
@@ -291,7 +288,7 @@ func (c *Storage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.F
 	if len(out.Hits.Hits) > 0 {
 		for _, d := range out.Hits.Hits {
 			var record metricRecord
-			if err := json.Unmarshal([]byte(*d.Source), &record); err != nil {
+			if err := json.Unmarshal(d.Source, &record); err != nil {
 				return nil, err
 			}
 
@@ -313,7 +310,7 @@ func (c *Storage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error) {
 	}
 
 	// TODO: dedup and sort in order to remove duplicate flow UUID due to rolling index
-	out, err := c.sendRequest("flow", es.FormatFilter(fsq.Filter, ""), fsq, flowIndex.IndexWildcard())
+	out, err := c.sendRequest(es.FormatFilter(fsq.Filter, ""), fsq, flowIndex.IndexWildcard())
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +319,7 @@ func (c *Storage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error) {
 	if len(out.Hits.Hits) > 0 {
 		for _, d := range out.Hits.Hits {
 			f := new(flow.Flow)
-			if err := json.Unmarshal([]byte(*d.Source), f); err != nil {
+			if err := json.Unmarshal(d.Source, f); err != nil {
 				return nil, err
 			}
 			flowset.Flows = append(flowset.Flows, f)

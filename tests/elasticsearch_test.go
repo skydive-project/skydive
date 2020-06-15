@@ -85,12 +85,10 @@ func TestRollingSimple(t *testing.T) {
 	indices := []es.Index{
 		{
 			Name:      "rolling",
-			Type:      "object",
 			RollIndex: true,
 		},
 		{
 			Name: "not_rolling",
-			Type: "object",
 		},
 	}
 
@@ -113,7 +111,7 @@ func TestRollingSimple(t *testing.T) {
 
 	err = retry.Do(func() error {
 		for _, index := range indices {
-			result, err := client.Search("object", nil, filters.SearchQuery{}, index.Alias())
+			result, err := client.Search(nil, filters.SearchQuery{}, index.Alias())
 			if err != nil {
 				return err
 			}
@@ -139,7 +137,7 @@ func TestRollingSimple(t *testing.T) {
 
 	err = retry.Do(func() error {
 		// test that the index has been rotated
-		result, err := client.Search("object", nil, filters.SearchQuery{}, indices[0].Alias())
+		result, err := client.Search(nil, filters.SearchQuery{}, indices[0].Alias())
 		if err != nil {
 			return err
 		}
@@ -148,7 +146,7 @@ func TestRollingSimple(t *testing.T) {
 		}
 
 		// test that using the wilcard we can get all the records
-		result, err = client.Search("object", nil, filters.SearchQuery{}, indices[0].IndexWildcard())
+		result, err = client.Search(nil, filters.SearchQuery{}, indices[0].IndexWildcard())
 		if err != nil {
 			return err
 		}
@@ -157,7 +155,7 @@ func TestRollingSimple(t *testing.T) {
 		}
 
 		// test that the no rolling index has not been rotated
-		result, err = client.Search("object", nil, filters.SearchQuery{}, indices[1].Alias())
+		result, err = client.Search(nil, filters.SearchQuery{}, indices[1].Alias())
 		if err != nil {
 			return err
 		}

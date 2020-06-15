@@ -59,7 +59,6 @@ const snortMessageMapping = `
 
 var snortIndex = es.Index{
 	Name:    "snort",
-	Type:    "snort_message",
 	Mapping: snortMessageMapping,
 }
 

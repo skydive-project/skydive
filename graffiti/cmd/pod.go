@@ -77,7 +77,7 @@ var PodCmd = &cobra.Command{
 
 		clusterAuthOptions := &shttp.AuthenticationOpts{}
 
-		g := graph.NewGraph(hostname, backend, serviceType)
+		g := graph.NewGraph(hostname, backend, "graffiti-pod")
 
 		authBackend := shttp.NewNoAuthenticationBackend()
 

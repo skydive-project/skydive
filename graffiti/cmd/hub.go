@@ -66,19 +66,13 @@ var HubCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		persistent, err := graph.NewMemoryBackend()
+		cached, err := graph.NewCachedBackend(nil)
 		if err != nil {
 			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
 
-		cached, err := graph.NewCachedBackend(persistent)
-		if err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
-		}
-
-		g := graph.NewGraph(hostname, cached, serviceType)
+		g := graph.NewGraph(hostname, cached, "graffiti-hub")
 
 		authBackend := shttp.NewNoAuthenticationBackend()
 

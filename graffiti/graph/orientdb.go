@@ -357,6 +357,7 @@ func (o *OrientDBBackend) OnStarted() {
 	}
 }
 
+
 func newOrientDBBackend(client orientdb.ClientInterface, electionService common.MasterElectionService, logger logging.Logger) (*OrientDBBackend, error) {
 	if logger == nil {
 		logger = logging.GetLogger()
