@@ -120,9 +120,15 @@ type Backend interface {
 	IsHistorySupported() bool
 }
 
+type PersistentBackendListener interface {
+	OnStarted()
+}
+
 // PersistentBackend describes the interface of a persistent storage backend
 type PersistentBackend interface {
 	Backend
+
+	AddListener(listener PersistentBackendListener)
 
 	Start() error
 	Stop()

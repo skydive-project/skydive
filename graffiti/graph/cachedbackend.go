@@ -199,8 +199,19 @@ func (c *CachedBackend) IsHistorySupported() bool {
 	return c.persistent != nil && c.persistent.IsHistorySupported()
 }
 
+// OnStarted implements PeristentBackendListener interface
+func (c *CachedBackend) OnStarted() {
+	// re-insert valid nodes and edges
+	for _, node := range c.persistent.GetNodes(Context{}, nil) {
+		c.memory.NodeAdded(node)
+	}
+	for _, edge := range c.persistent.GetEdges(Context{}, nil) {
+		c.memory.EdgeAdded(edge)
+	}
+}
+
 // NewCachedBackend creates new graph cache mechanism
-func NewCachedBackend(persistent Backend) (*CachedBackend, error) {
+func NewCachedBackend(persistent PersistentBackend) (*CachedBackend, error) {
 	memory, err := NewMemoryBackend()
 	if err != nil {
 		return nil, err
@@ -212,6 +223,10 @@ func NewCachedBackend(persistent Backend) (*CachedBackend, error) {
 	}
 
 	sb.cacheMode.Store(DefaultMode)
+
+	if persistent != nil {
+		persistent.AddListener(sb)
+	}
 
 	return sb, nil
 }

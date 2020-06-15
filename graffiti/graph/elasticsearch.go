@@ -98,6 +98,7 @@ type ElasticSearchBackend struct {
 	liveIndex    es.Index
 	archiveIndex es.Index
 	logger       logging.Logger
+	listeners    []PersistentBackendListener
 }
 
 // TimedSearchQuery describes a search query within a time slice and metadata filters
@@ -513,11 +514,19 @@ func (b *ElasticSearchBackend) Start() error {
 }
 
 // Stop backend
-func (b *ElasticSearchBackend) Stop() {
-}
+func (b *ElasticSearchBackend) Stop() {}
 
 // OnStarted implements storage client listener interface
-func (b *ElasticSearchBackend) OnStarted() {}
+func (b *ElasticSearchBackend) OnStarted() {
+	for _, listener := range b.listeners {
+		listener.OnStarted()
+	}
+}
+
+// AddListener implement PersistentBackendListener interface
+func (b *ElasticSearchBackend) AddListener(listener PersistentBackendListener) {
+	b.listeners = append(b.listeners, listener)
+}
 
 // newElasticSearchBackendFromClient creates a new graph backend using the given elasticsearch
 // client connection

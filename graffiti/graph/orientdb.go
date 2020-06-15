@@ -31,9 +31,10 @@ import (
 // OrientDBBackend describes an OrientDB backend
 type OrientDBBackend struct {
 	PersistentBackend
-	client   orientdb.ClientInterface
-	logger   logging.Logger
-	election etcd.MasterElection
+	client    orientdb.ClientInterface
+	election  etcd.MasterElection
+	logger    logging.Logger
+	listeners []PersistentBackendListener
 }
 
 type eventTime struct {
