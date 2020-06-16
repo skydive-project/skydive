@@ -412,7 +412,7 @@ func (o *OnDemandClient) Stop() {
 
 // NewOnDemandClient creates a new ondemand task client based on API, graph and websocket
 func NewOnDemandClient(g *graph.Graph, ch rest.WatchableHandler, agentPool ws.StructSpeakerPool, subscriberPool ws.StructSpeakerPool, etcdClient *etcd.Client, handler OnDemandClientHandler) *OnDemandClient {
-	election := etcdClient.NewElection("ondemand-client-" + handler.ResourceName())
+	election := etcdClient.NewElection("/elections/ondemand-client-" + handler.ResourceName())
 	o := &OnDemandClient{
 		MasterElection:          election,
 		graph:                   g,

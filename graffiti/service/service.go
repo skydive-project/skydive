@@ -23,9 +23,3 @@ type Type string
 func (t Type) String() string {
 	return string(t)
 }
-
-// Service describes a service identified by its type and identifier
-type Service struct {
-	Type Type
-	ID   string
-}

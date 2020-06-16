@@ -544,7 +544,7 @@ func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, arc
 	}
 
 	if electionService != nil {
-		backend.election = electionService.NewElection("es-graph-flush")
+		backend.election = electionService.NewElection("/elections/es-graph-flush")
 	}
 
 	return backend

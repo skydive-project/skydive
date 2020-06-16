@@ -347,7 +347,7 @@ func newOrientDBBackend(client orientdb.ClientInterface, electionService etcd.Ma
 	}
 
 	if electionService != nil {
-		o.election = electionService.NewElection("orientdb-graph-flush")
+		o.election = electionService.NewElection("/elections/orientdb-graph-flush")
 		o.election.StartAndWait()
 	}
 

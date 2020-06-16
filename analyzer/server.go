@@ -41,7 +41,6 @@ import (
 	"github.com/skydive-project/skydive/graffiti/hub"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/ondemand/client"
-	"github.com/skydive-project/skydive/graffiti/service"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	"github.com/skydive-project/skydive/packetinjector"
@@ -185,14 +184,13 @@ func (s *Server) Stop() {
 // NewServerFromConfig creates a new empty server
 func NewServerFromConfig() (*Server, error) {
 	host := config.GetString("host_id")
-	service := service.Service{ID: host, Type: config.AnalyzerService}
 
 	etcdClientOpts := etcdclient.Opts{
 		Servers: config.GetEtcdServerAddrs(),
 		Timeout: time.Duration(config.GetInt("etcd.client_timeout")) * time.Second,
 	}
 
-	etcdClient, err := etcdclient.NewClient(service, etcdClientOpts)
+	etcdClient, err := etcdclient.NewClient(host, etcdClientOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +217,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	origin := common.Origin(host, service.Type)
+	origin := common.Origin(host, config.AnalyzerService)
 	g := graph.NewGraph(host, cached, origin)
 
 	clusterAuthBackendName := config.GetString("analyzer.auth.cluster.backend")

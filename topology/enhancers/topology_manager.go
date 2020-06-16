@@ -302,7 +302,7 @@ func NewTopologyManager(etcdClient *etcd.Client, nodeHandler *api.NodeRuleAPI, e
 		graph:       g,
 	}
 
-	tm.MasterElection = etcdClient.NewElection("topology-manager")
+	tm.MasterElection = etcdClient.NewElection("/elections/topology-manager")
 	tm.MasterElection.AddEventListener(tm)
 
 	tm.graph.Lock()

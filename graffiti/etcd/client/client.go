@@ -26,7 +26,6 @@ import (
 	etcd "github.com/coreos/etcd/client"
 
 	"github.com/skydive-project/skydive/graffiti/logging"
-	"github.com/skydive-project/skydive/graffiti/service"
 )
 
 // Client defaults
@@ -61,7 +60,7 @@ type MasterElectionService interface {
 
 // Client describes a ETCD configuration client
 type Client struct {
-	service service.Service
+	id      string
 	client  *etcd.Client
 	KeysAPI etcd.KeysAPI
 	logger  logging.Logger
@@ -93,7 +92,7 @@ func (client *Client) SetInt64(key string, value int64) error {
 func (client *Client) Start() {
 	// wait for etcd to be ready
 	for {
-		if err := client.SetInt64(fmt.Sprintf("/analyzer:%s/start-time", client.service.ID), time.Now().Unix()); err != nil {
+		if err := client.SetInt64(fmt.Sprintf("/client:%s/start-time", client.id), time.Now().Unix()); err != nil {
 			client.logger.Errorf("Etcd server not ready: %s", err)
 			time.Sleep(time.Second)
 		} else {
@@ -112,12 +111,12 @@ func (client *Client) Stop() {
 }
 
 // NewElection creates a new ETCD master elector
-func (client *Client) NewElection(name string) MasterElection {
-	return NewMasterElector(client, name)
+func (client *Client) NewElection(path string) MasterElection {
+	return NewMasterElector(client, path)
 }
 
 // NewClient creates a new ETCD client connection to ETCD servers
-func NewClient(service service.Service, opts Opts) (*Client, error) {
+func NewClient(id string, opts Opts) (*Client, error) {
 	if opts.Timeout == 0 {
 		opts.Timeout = DefaultTimeout
 	}
@@ -144,7 +143,7 @@ func NewClient(service service.Service, opts Opts) (*Client, error) {
 	kapi := etcd.NewKeysAPI(client)
 
 	return &Client{
-		service: service,
+		id:      id,
 		client:  &client,
 		KeysAPI: kapi,
 		logger:  opts.Logger,

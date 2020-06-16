@@ -37,7 +37,7 @@ const (
 type MasterElector struct {
 	insanelock.RWMutex
 	EtcdKeyAPI etcd.KeysAPI
-	Host       string
+	HolderID   string
 	path       string
 	listeners  []MasterElectionListener
 	cancel     context.CancelFunc
@@ -61,7 +61,7 @@ func (le *MasterElector) holdLock(quit chan bool) {
 	setOptions := &etcd.SetOptions{
 		TTL:       timeout,
 		PrevExist: etcd.PrevExist,
-		PrevValue: le.Host,
+		PrevValue: le.HolderID,
 	}
 
 	ch := tick.C
@@ -69,7 +69,7 @@ func (le *MasterElector) holdLock(quit chan bool) {
 	for {
 		select {
 		case <-ch:
-			if _, err := le.EtcdKeyAPI.Set(context.Background(), le.path, le.Host, setOptions); err != nil {
+			if _, err := le.EtcdKeyAPI.Set(context.Background(), le.path, le.HolderID, setOptions); err != nil {
 				return
 			}
 		case <-quit:
@@ -90,7 +90,7 @@ func (le *MasterElector) IsMaster() bool {
 // election is done
 func (le *MasterElector) start(first chan struct{}) {
 	// delete previous Lock
-	le.EtcdKeyAPI.Delete(context.Background(), le.path, &etcd.DeleteOptions{PrevValue: le.Host})
+	le.EtcdKeyAPI.Delete(context.Background(), le.path, &etcd.DeleteOptions{PrevValue: le.HolderID})
 
 	quit := make(chan bool)
 
@@ -100,8 +100,8 @@ func (le *MasterElector) start(first chan struct{}) {
 		PrevExist: etcd.PrevNoExist,
 	}
 
-	if _, err := le.EtcdKeyAPI.Set(context.Background(), le.path, le.Host, setOptions); err == nil {
-		le.logger.Infof("starting as the master for %s: %s", le.path, le.Host)
+	if _, err := le.EtcdKeyAPI.Set(context.Background(), le.path, le.HolderID, setOptions); err == nil {
+		le.logger.Infof("starting as the master for %s: %s", le.path, le.HolderID)
 
 		le.Lock()
 		le.master = true
@@ -113,7 +113,7 @@ func (le *MasterElector) start(first chan struct{}) {
 			listener.OnStartAsMaster()
 		}
 	} else {
-		le.logger.Infof("starting as a follower for %s: %s", le.path, le.Host)
+		le.logger.Infof("starting as a follower for %s: %s", le.path, le.HolderID)
 		for _, listener := range le.listeners {
 			listener.OnStartAsSlave()
 		}
@@ -148,7 +148,7 @@ func (le *MasterElector) start(first chan struct{}) {
 
 		switch resp.Action {
 		case "expire", "delete", "compareAndDelete":
-			_, err = le.EtcdKeyAPI.Set(context.Background(), le.path, le.Host, setOptions)
+			_, err = le.EtcdKeyAPI.Set(context.Background(), le.path, le.HolderID, setOptions)
 			if err == nil && !le.master {
 				le.Lock()
 				le.master = true
@@ -156,7 +156,7 @@ func (le *MasterElector) start(first chan struct{}) {
 
 				go le.holdLock(quit)
 
-				le.logger.Infof("I'm now the master: %s", le.Host)
+				le.logger.Infof("I'm now the master: %s", le.HolderID)
 				for _, listener := range le.listeners {
 					listener.OnSwitchToMaster()
 				}
@@ -176,7 +176,7 @@ func (le *MasterElector) start(first chan struct{}) {
 	}
 
 	// unlock before leaving so that another can take the lead
-	le.EtcdKeyAPI.Delete(context.Background(), le.path, &etcd.DeleteOptions{PrevValue: le.Host})
+	le.EtcdKeyAPI.Delete(context.Background(), le.path, &etcd.DeleteOptions{PrevValue: le.HolderID})
 }
 
 // Start the master election mechanism
@@ -208,11 +208,11 @@ func (le *MasterElector) AddEventListener(listener MasterElectionListener) {
 }
 
 // NewMasterElector creates a new ETCD master elector
-func NewMasterElector(etcdClient *Client, key string) *MasterElector {
+func NewMasterElector(etcdClient *Client, path string) *MasterElector {
 	return &MasterElector{
 		EtcdKeyAPI: etcdClient.KeysAPI,
-		Host:       etcdClient.service.ID,
-		path:       "/master-" + etcdClient.service.Type.String() + "-" + key,
+		HolderID:   etcdClient.id,
+		path:      	path,
 		master:     false,
 		logger:     etcdClient.logger,
 	}

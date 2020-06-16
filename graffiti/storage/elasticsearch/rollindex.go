@@ -173,8 +173,8 @@ func newRollIndexService(client *Client, indices []Index, cfg Config, electionSe
 		hasher.Write([]byte(index.Name))
 	}
 	hash := hex.EncodeToString(hasher.Sum(nil))[0:8]
-	key := fmt.Sprintf("es-rolling-index:%s", hash)
-	election := electionService.NewElection(key)
+	path := fmt.Sprintf("/elections/es-rolling-index:%s", hash)
+	election := electionService.NewElection(path)
 
 	return &rollIndexService{
 		client:   client,
