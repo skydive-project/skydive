@@ -46,6 +46,7 @@ import (
 	"time"
 
 	auth "github.com/abbot/go-http-auth"
+	jsonpatch "github.com/evanphx/json-patch"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/skydive-project/skydive/graffiti/api/rest"
@@ -196,6 +197,94 @@ func (a *Server) RegisterAPIHandler(handler rest.Handler, authBackend shttp.Auth
 				}
 
 				data, err := json.Marshal(&resource)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+				w.WriteHeader(http.StatusCreated)
+				if _, err := w.Write(data); err != nil {
+					logging.GetLogger().Criticalf("Failed to create %s: %s", name, err)
+				}
+			},
+		},
+		{
+			Name:   title + "Update",
+			Method: "PATCH",
+			Path:   shttp.PathPrefix(fmt.Sprintf("/api/%s/", name)),
+			HandlerFunc: func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+				if !rbac.Enforce(r.Username, name, "write") {
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					return
+				}
+
+				id := r.URL.Path[len(fmt.Sprintf("/api/%s/", name)):]
+				if id == "" {
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+
+				// Get the resource to be modified
+				resource, ok := handler.Get(id)
+				if !ok {
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+
+				// Decode patch operations (json-path format)
+				content, err := ioutil.ReadAll(r.Body)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				patch, err := jsonpatch.DecodePatch(content)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				// Convert node to JSON to apply the JSON patch
+				resourceJSON, err := json.Marshal(resource)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				// Patch are applied to the json body in []byte format
+				resourcePatchedJSON, err := patch.Apply(resourceJSON)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				resourcePatched := handler.New()
+				err = json.Unmarshal(resourcePatchedJSON, resourcePatched)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				if err := a.validator.Validate(name, resourcePatched); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				if err := resourcePatched.Validate(); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				// TODO for node implementation avoid modifiying .Metadata{.TID, .Name, .Type}
+				// Test for *rules, and others resources, that it is working
+				// Test with ES backend
+				if err := handler.Update(id, resourcePatched); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				data, err := json.Marshal(&resourcePatched)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusBadRequest)
 					return

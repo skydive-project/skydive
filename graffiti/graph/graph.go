@@ -20,6 +20,7 @@ package graph
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -724,6 +725,8 @@ func (g *Graph) SetMetadata(i interface{}, m Metadata) error {
 	case *Edge:
 		e = &i.graphElement
 		kind = EdgeUpdated
+	default:
+		panic(fmt.Sprintf("SetMetadata is only implemented for Node or Edge resources, current type: %T", i))
 	}
 
 	if reflect.DeepEqual(m, e.Metadata) {

@@ -21,6 +21,7 @@
 package server
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/skydive-project/skydive/api/types"
@@ -113,6 +114,49 @@ func (h *NodeAPIHandler) Delete(id string) error {
 	}
 
 	return h.g.DelNode(node)
+}
+
+// Update a node metadata
+func (h *NodeAPIHandler) Update(id string, resource rest.Resource) error {
+	n := h.g.GetNode(graph.Identifier(id))
+	if n == nil {
+		return fmt.Errorf("Node to be updated not found")
+	}
+
+	// Node to be updated
+	actualNode := types.Node(*n)
+	graphNode := graph.Node(actualNode)
+
+	// Node containing the metadata updated
+	updateData := resource.(*types.Node)
+
+	// TODO filter Metadata.TID not to be modified. But looks like its not mandatoy
+
+	// Metadata.Name and Metadata.Type are used to identfy globally the node, they
+	// should not be modified
+	actualNodeName, err := graphNode.Metadata.GetFieldString("Name")
+	if err != nil {
+		panic("Metadata.Name should be always defined")
+	}
+
+	updateNodeName, err := updateData.Metadata.GetFieldString("Name")
+	if err != nil {
+		panic("Metadata.Name should be always defined")
+	}
+
+	if actualNodeName != updateNodeName {
+		return fmt.Errorf("Metadata.Name could not be modified")
+	}
+
+	// Metadata.Type is not mandatory, but should not be changed if it is already defined
+	actualNodeType, _ := graphNode.Metadata.GetFieldString("Type")
+	updateNodeType, _ := updateData.Metadata.GetFieldString("Type")
+
+	if actualNodeType != "" && actualNodeType != updateNodeType {
+		return fmt.Errorf("Metadata.Type could not be modified")
+	}
+
+	return h.g.SetMetadata(&graphNode, updateData.Metadata)
 }
 
 // RegisterNodeAPI registers the node API

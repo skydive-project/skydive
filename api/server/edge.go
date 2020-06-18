@@ -21,6 +21,7 @@
 package server
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/skydive-project/skydive/api/types"
@@ -113,6 +114,23 @@ func (h *EdgeAPIHandler) Delete(id string) error {
 	}
 
 	return h.g.DelEdge(edge)
+}
+
+// Update a edge metadata
+func (h *EdgeAPIHandler) Update(id string, resource rest.Resource) error {
+	e := h.g.GetEdge(graph.Identifier(id))
+	if e == nil {
+		return fmt.Errorf("Edge to be updated not found")
+	}
+
+	// Edge to be updated
+	actualEdge := types.Edge(*e)
+	graphEdge := graph.Edge(actualEdge)
+
+	// Edge containing the metadata updated
+	updateData := resource.(*types.Edge)
+
+	return h.g.SetMetadata(&graphEdge, updateData.Metadata)
 }
 
 // RegisterEdgeAPI registers the edge API
