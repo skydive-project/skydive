@@ -36,8 +36,9 @@ var (
 // CachedBackend describes a cache mechanism in memory and/or persistent database
 type CachedBackend struct {
 	memory     *MemoryBackend
-	persistent Backend
+	persistent PersistentBackend
 	cacheMode  atomic.Value
+	listeners  []PersistentBackendListener
 }
 
 // SetMode set cache mode
@@ -208,6 +209,33 @@ func (c *CachedBackend) OnStarted() {
 	for _, edge := range c.persistent.GetEdges(Context{}, nil) {
 		c.memory.EdgeAdded(edge)
 	}
+
+	for _, listener := range c.listeners {
+		listener.OnStarted()
+	}
+}
+
+// Start the Backend
+func (c *CachedBackend) Start() error {
+	if c.persistent != nil {
+		return c.persistent.Start()
+	} else {
+		for _, listener := range c.listeners {
+			listener.OnStarted()
+		}
+	}
+	return nil
+}
+
+// Stop the backend
+func (c *CachedBackend) Stop() {
+	if c.persistent != nil {
+		c.persistent.Stop()
+	}
+}
+
+func (c *CachedBackend) AddListener(listener PersistentBackendListener) {
+	c.listeners = append(c.listeners, listener)
 }
 
 // NewCachedBackend creates new graph cache mechanism

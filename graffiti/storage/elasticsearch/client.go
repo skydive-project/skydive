@@ -212,7 +212,7 @@ func (c *Client) start() error {
 
 	min, _ := version.NewVersion(minimalVersion)
 	if v.LessThan(min) {
-		return fmt.Errorf("Skydive support only version > %s, found: %s", minimalVersion, vt)
+		return fmt.Errorf("Elasticsearch backend requires a minimal version of %s, found: %s", minimalVersion, vt)
 	}
 
 	if err := c.createIndices(); err != nil {

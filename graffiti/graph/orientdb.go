@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"strings"
 
-	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/storage/orientdb"
@@ -30,9 +29,7 @@ import (
 
 // OrientDBBackend describes an OrientDB backend
 type OrientDBBackend struct {
-	PersistentBackend
 	client    orientdb.ClientInterface
-	election  etcd.MasterElection
 	logger    logging.Logger
 	listeners []PersistentBackendListener
 }
@@ -326,35 +323,16 @@ func (o *OrientDBBackend) IsHistorySupported() bool {
 
 // Start backend
 func (o *OrientDBBackend) Start() error {
-	return nil
+	return o.client.Connect()
 }
 
 // Stop backend
 func (o *OrientDBBackend) Stop() {
 }
 
-// OnStarted implements storage client listener interface
-func (o *OrientDBBackend) OnStarted() {}
-
-func newOrientDBBackend(client orientdb.ClientInterface, electionService etcd.MasterElectionService, logger logging.Logger) (*OrientDBBackend, error) {
-	if logger == nil {
-		logger = logging.GetLogger()
-	}
-
-	o := &OrientDBBackend{
-		client: client,
-		logger: logger,
-	}
-
-	if electionService != nil {
-		o.election = electionService.NewElection("/elections/orientdb-graph-flush")
-		o.election.StartAndWait()
-	}
-
-	client.AddEventListener(o)
-	client.Connect()
-
-	if _, err := client.GetDocumentClass("Node"); err != nil {
+// OnStarted implements the client interface
+func (o *OrientDBBackend) OnStarted() {
+	if _, err := o.client.GetDocumentClass("Node"); err != nil {
 		class := orientdb.ClassDefinition{
 			Name:       "Node",
 			SuperClass: "V",
@@ -375,12 +353,13 @@ func newOrientDBBackend(client orientdb.ClientInterface, electionService etcd.Ma
 				{Name: "Node.ArchiveTime", Fields: []string{"UpdatedAt", "ArchivedAt"}, Type: "NOTUNIQUE"},
 			},
 		}
-		if err := client.CreateDocumentClass(class); err != nil {
-			return nil, fmt.Errorf("Failed to register class Node: %s", err)
+		if err := o.client.CreateDocumentClass(class); err != nil {
+			o.logger.Errorf("Failed to register class Node: %s", err)
+			return
 		}
 	}
 
-	if _, err := client.GetDocumentClass("Link"); err != nil {
+	if _, err := o.client.GetDocumentClass("Link"); err != nil {
 		class := orientdb.ClassDefinition{
 			Name:       "Link",
 			SuperClass: "E",
@@ -403,21 +382,44 @@ func newOrientDBBackend(client orientdb.ClientInterface, electionService etcd.Ma
 				{Name: "Link.ArchiveTime", Fields: []string{"UpdatedAt", "ArchivedAt"}, Type: "NOTUNIQUE"},
 			},
 		}
-		if err := client.CreateDocumentClass(class); err != nil {
-			return nil, fmt.Errorf("Failed to register class Link: %s", err)
+		if err := o.client.CreateDocumentClass(class); err != nil {
+			o.logger.Errorf("Failed to register class Link: %s", err)
+			return
 		}
 	}
+
+	for _, listener := range o.listeners {
+		listener.OnStarted()
+	}
+}
+
+// AddListener implement PersistentBackendListener interface
+func (o *OrientDBBackend) AddListener(listener PersistentBackendListener) {
+	o.listeners = append(o.listeners, listener)
+}
+
+func newOrientDBBackend(client orientdb.ClientInterface, logger logging.Logger) (*OrientDBBackend, error) {
+	if logger == nil {
+		logger = logging.GetLogger()
+	}
+
+	o := &OrientDBBackend{
+		client: client,
+		logger: logger,
+	}
+
+	client.AddEventListener(o)
 
 	return o, nil
 }
 
 // NewOrientDBBackend creates a new graph backend and
 // connect to an OrientDB instance
-func NewOrientDBBackend(addr string, database string, username string, password string, electionService etcd.MasterElectionService, logger logging.Logger) (*OrientDBBackend, error) {
+func NewOrientDBBackend(addr string, database string, username string, password string, logger logging.Logger) (*OrientDBBackend, error) {
 	client, err := orientdb.NewClient(addr, database, username, password)
 	if err != nil {
 		return nil, err
 	}
 
-	return newOrientDBBackend(client, electionService, logger)
+	return newOrientDBBackend(client, logger)
 }

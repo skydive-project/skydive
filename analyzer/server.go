@@ -131,10 +131,6 @@ func (s *Server) Start() error {
 
 	s.etcdClient.Start()
 
-	if s.graphStorage != nil {
-		s.graphStorage.Start()
-	}
-
 	if s.flowStorage != nil {
 		s.flowStorage.Start()
 	}
@@ -167,9 +163,6 @@ func (s *Server) Stop() {
 	s.topologyManager.Stop()
 	s.etcdClient.Stop()
 
-	if s.graphStorage != nil {
-		s.graphStorage.Stop()
-	}
 	if s.flowStorage != nil {
 		s.flowStorage.Stop()
 	}

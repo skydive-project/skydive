@@ -72,6 +72,7 @@ type podOrigin struct {
 // from pods, other hubs, subscribers or external publishers
 type Hub struct {
 	Graph               *graph.Graph
+	cached              *graph.CachedBackend
 	httpServer          *shttp.Server
 	apiServer           *api.Server
 	embeddedEtcd        *etcdserver.EmbeddedServer
@@ -123,6 +124,22 @@ func (h *Hub) GetStatus() interface{} {
 	}
 }
 
+// OnStarted - Persistent backend listener
+func (h *Hub) OnStarted() {
+	go h.watchOrigin()
+
+	if err := h.httpServer.Start(); err != nil {
+		logging.GetLogger().Errorf("Error while starting http server: %s", err)
+		return
+	}
+
+	h.podWSServer.Start()
+	h.replicationWSServer.Start()
+	h.replicationEndpoint.ConnectPeers()
+	h.publisherWSServer.Start()
+	h.subscriberWSServer.Start()
+}
+
 // Start the hub
 func (h *Hub) Start() error {
 	if h.embeddedEtcd != nil {
@@ -131,17 +148,9 @@ func (h *Hub) Start() error {
 		}
 	}
 
-	go h.watchOrigin()
-
-	if err := h.httpServer.Start(); err != nil {
+	if err := h.cached.Start(); err != nil {
 		return err
 	}
-
-	h.podWSServer.Start()
-	h.replicationWSServer.Start()
-	h.replicationEndpoint.ConnectPeers()
-	h.publisherWSServer.Start()
-	h.subscriberWSServer.Start()
 
 	return nil
 }
@@ -153,6 +162,7 @@ func (h *Hub) Stop() {
 	h.replicationWSServer.Stop()
 	h.publisherWSServer.Stop()
 	h.subscriberWSServer.Stop()
+	h.cached.Stop()
 	if h.embeddedEtcd != nil {
 		h.embeddedEtcd.Stop()
 	}
@@ -240,9 +250,11 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 
 	hub := &Hub{
 		Graph:           g,
+		cached:          cached,
 		expirationDelay: opts.WebsocketOpts.PongTimeout * 5,
 		quit:            make(chan bool),
 	}
+	cached.AddListener(hub)
 
 	if config.GetBool("etcd.embedded") {
 		etcdServerOpts := &etcdserver.EmbeddedServerOpts{

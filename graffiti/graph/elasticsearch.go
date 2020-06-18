@@ -91,10 +91,8 @@ const (
 
 // ElasticSearchBackend describes a persistent backend based on ElasticSearch
 type ElasticSearchBackend struct {
-	PersistentBackend
 	client       es.ClientInterface
 	prevRevision map[Identifier]*rawData
-	election     etcd.MasterElection
 	liveIndex    es.Index
 	archiveIndex es.Index
 	logger       logging.Logger
@@ -507,7 +505,6 @@ func (b *ElasticSearchBackend) IsHistorySupported() bool {
 
 // Start backend
 func (b *ElasticSearchBackend) Start() error {
-	b.election.StartAndWait()
 	b.client.AddEventListener(b)
 	b.client.Start()
 	return nil
@@ -530,7 +527,7 @@ func (b *ElasticSearchBackend) AddListener(listener PersistentBackendListener) {
 
 // newElasticSearchBackendFromClient creates a new graph backend using the given elasticsearch
 // client connection
-func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, archiveIndex es.Index, electionService etcd.MasterElectionService, logger logging.Logger) *ElasticSearchBackend {
+func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, archiveIndex es.Index, logger logging.Logger) *ElasticSearchBackend {
 	if logger == nil {
 		logger = logging.GetLogger()
 	}
@@ -541,10 +538,6 @@ func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, arc
 		liveIndex:    liveIndex,
 		archiveIndex: archiveIndex,
 		logger:       logger,
-	}
-
-	if electionService != nil {
-		backend.election = electionService.NewElection("/elections/es-graph-flush")
 	}
 
 	return backend
@@ -591,5 +584,5 @@ func NewElasticSearchBackendFromConfig(cfg es.Config, extraDynamicTemplates map[
 		return nil, err
 	}
 
-	return newElasticSearchBackendFromClient(client, liveIndex, archiveIndex, electionService, logger), nil
+	return newElasticSearchBackendFromClient(client, liveIndex, archiveIndex, logger), nil
 }

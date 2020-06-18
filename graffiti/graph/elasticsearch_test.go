@@ -95,7 +95,7 @@ func newElasticsearchGraph(t *testing.T) (*Graph, *fakeESClient) {
 	client := &fakeESClient{
 		indices: make(map[string]*fakeESIndex),
 	}
-	b := newElasticSearchBackendFromClient(client, es.Index{Name: "topology_live"}, es.Index{Name: "topology_archive"}, nil, nil)
+	b := newElasticSearchBackendFromClient(client, es.Index{Name: "topology_live"}, es.Index{Name: "topology_archive"}, nil)
 	client.searchResult.Hits = &elastic.SearchHits{}
 	return NewGraph("host1", b, "graph-test.host1"), client
 }
