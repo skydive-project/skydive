@@ -19,6 +19,7 @@ require (
 	github.com/digitalocean/go-libvirt v0.0.0-20190715144809-7b622097a793
 	github.com/docker/docker v1.13.1
 	github.com/ebay/go-ovn v0.0.0-20190726163905-ca0da4d10c52
+	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/fatih/structs v0.0.0-20171020064819-f5faa72e7309
 	github.com/flosch/pongo2 v0.0.0-20190707114632-bbf5a6c351f4 // indirect
 	github.com/fsnotify/fsnotify v1.4.7

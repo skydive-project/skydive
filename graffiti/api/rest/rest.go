@@ -42,6 +42,7 @@ type Handler interface {
 	Decorate(resource Resource)
 	Create(resource Resource, createOpts *CreateOptions) error
 	Delete(id string) error
+	Update(id string, resource Resource) error
 }
 
 // CreateOptions describes the available options when creating a resource
