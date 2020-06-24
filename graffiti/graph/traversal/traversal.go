@@ -562,7 +562,10 @@ func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
 		return &GraphTraversal{error: err}
 	}
 
-	return &GraphTraversal{Graph: g}
+	return &GraphTraversal{
+		Graph: g,
+		as:    make(map[string]*GraphTraversalAs),
+	}
 }
 
 // V step : [node ID]
