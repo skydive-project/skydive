@@ -19,6 +19,7 @@ package schema
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/xeipuuv/gojsonschema"
 )
@@ -48,7 +49,7 @@ func (v *JSONValidator) Validate(kind string, obj interface{}) error {
 	if err != nil {
 		return err
 	} else if !result.Valid() {
-		return ErrInvalidSchema
+		return fmt.Errorf("%v: %v", ErrInvalidSchema, result.Errors())
 	}
 	return nil
 }
