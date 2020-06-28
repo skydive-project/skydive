@@ -134,6 +134,8 @@ storage:
     database: Skydive
     username: root
     password: {{.OrientDBRootPassword}}
+  elasticsearch:
+    host: 127.0.0.1:9201
 
 logging:
   level: DEBUG
