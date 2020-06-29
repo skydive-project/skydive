@@ -18,13 +18,24 @@
 package schema
 
 import (
-	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/xeipuuv/gojsonschema"
 )
 
 // ErrInvalidSchema is return when a JSON schema is invalid
-var ErrInvalidSchema = errors.New("Invalid schema")
+type ErrInvalidSchema struct {
+	Errors []gojsonschema.ResultError
+}
+
+func (e ErrInvalidSchema) Error() string {
+	msg := make([]string, len(e.Errors))
+	for i, err := range e.Errors {
+		msg[len(e.Errors)-i-1] = err.String()
+	}
+	return fmt.Sprintf("invalid schema: %v", strings.Join(msg, "\n"))
+}
 
 // Validator is the interface to implement to validate REST resources
 type Validator interface {
@@ -48,7 +59,7 @@ func (v *JSONValidator) Validate(kind string, obj interface{}) error {
 	if err != nil {
 		return err
 	} else if !result.Valid() {
-		return ErrInvalidSchema
+		return &ErrInvalidSchema{Errors: result.Errors()}
 	}
 	return nil
 }
