@@ -30,13 +30,11 @@ type ErrInvalidSchema struct {
 }
 
 func (e ErrInvalidSchema) Error() string {
-	stringErrors := []string{}
-
-	for _, e := range e.Errors {
-		stringErrors = append(stringErrors, fmt.Sprint(e))
+	msg := make([]string, len(e.Errors))
+	for i, err := range e.Errors {
+		msg[len(e.Errors)-i-1] = err.String()
 	}
-
-	return fmt.Sprintf("invalid schema: %v", strings.Join(stringErrors, "; "))
+	return fmt.Sprintf("invalid schema: %v", strings.Join(msg, "\n"))
 }
 
 // Validator is the interface to implement to validate REST resources
