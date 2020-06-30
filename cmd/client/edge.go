@@ -66,6 +66,10 @@ var EdgeCreate = &cobra.Command{
 			exitOnError(err)
 		}
 
+		if edgeType != "" {
+			m["Type"] = edgeType
+		}
+
 		var parentNode, childNode graph.Node
 		if err := client.Get("node", parentNodeID, &parentNode); err != nil {
 			exitOnError(fmt.Errorf("Could not find parent node: %s", err))
