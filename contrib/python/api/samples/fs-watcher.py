@@ -1,9 +1,7 @@
 import asyncio
 import aionotify
-import logging
-import sys
 import os
-from stat import *
+import stat
 import hashlib
 import argparse
 
@@ -43,24 +41,26 @@ class WSClientInjectProtocol(WSClientDebugProtocol):
             statinfo = os.lstat(file_path)
 
             type = "file"
-            if S_ISDIR(statinfo.st_mode):
+            if stat.S_ISDIR(statinfo.st_mode):
                 type = "folder"
 
             # create node for the current file
             node = self.addNode(file_path,
-                                {"Name": event.name, "Type": type,
-                                 "UID": statinfo.st_uid, "GID": statinfo.st_gid})
+                                {"Name": event.name,
+                                 "Type": type,
+                                 "UID": statinfo.st_uid,
+                                 "GID": statinfo.st_gid})
 
             # link the file with its parent node
             self.addEdge(root_node.id, node.id, {"RelationType": "ownership"})
 
-            if S_ISDIR(statinfo.st_mode):
+            if stat.S_ISDIR(statinfo.st_mode):
                 # if folder start another watcher
                 sub_watcher = aionotify.Watcher()
                 sub_watcher.watch(alias=event.name, path=file_path,
                                   flags=aionotify.Flags.CREATE)
                 loop.create_task(self.inotify(sub_watcher, node, file_path))
-            elif S_ISLNK(statinfo.st_mode):
+            elif stat.S_ISLNK(statinfo.st_mode):
                 # if link add an edge between two node
                 src = os.readlink(file_path)
                 self.addEdge(node.id, hashlib.md5(src.encode()).hexdigest(),
