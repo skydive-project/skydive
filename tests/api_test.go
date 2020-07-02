@@ -24,6 +24,7 @@ import (
 
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 	g "github.com/skydive-project/skydive/gremlin"
 )
@@ -137,5 +138,35 @@ func TestCaptureAPI(t *testing.T) {
 
 	if err := client.Get("capture", capture.GetID(), &capture2); err == nil {
 		t.Errorf("Found delete capture: %s", capture.GetID())
+	}
+}
+
+func TestNodeAPI(t *testing.T) {
+	client, err := getCrudClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	node := new(types.Node)
+
+	if err := client.Create("node", node, nil); err == nil {
+		t.Fatalf("Expected error when creating a node without ID")
+	}
+
+	node.ID = graph.GenID()
+	node.Metadata = graph.Metadata{"Type": "mytype"}
+
+	if err := client.Create("node", node, nil); err == nil {
+		t.Fatalf("Expected error when creating a node without name")
+	}
+
+	node.Metadata["Name"] = "myname"
+	if err := client.Create("node", node, nil); err != nil {
+		t.Error(err)
+	}
+
+	var node2 types.Node
+	if err := client.Get("node", string(node.ID), &node2); err != nil {
+		t.Error(err)
 	}
 }
