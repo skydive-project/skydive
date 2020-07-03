@@ -53,22 +53,26 @@ func (h *NodeAPIHandler) Name() string {
 
 // Index returns the list of existing nodes
 func (h *NodeAPIHandler) Index() map[string]rest.Resource {
+	h.g.RLock()
 	nodes := h.g.GetNodes(nil)
 	nodeMap := make(map[string]rest.Resource, len(nodes))
 	for _, node := range nodes {
 		n := types.Node(*node)
 		nodeMap[string(node.ID)] = &n
 	}
+	h.g.RUnlock()
 	return nodeMap
 }
 
 // Get returns a node with the specified id
 func (h *NodeAPIHandler) Get(id string) (rest.Resource, bool) {
+	h.g.RLock()
 	n := h.g.GetNode(graph.Identifier(id))
 	if n == nil {
 		return nil, false
 	}
 	node := types.Node(*n)
+	h.g.RUnlock()
 	return &node, true
 }
 
@@ -92,15 +96,23 @@ func (h *NodeAPIHandler) Create(resource rest.Resource, createOpts *rest.CreateO
 	if graphNode.Metadata == nil {
 		graphNode.Metadata = graph.Metadata{}
 	}
-	return h.g.AddNode(&graphNode)
+
+	h.g.Lock()
+	err := h.g.AddNode(&graphNode)
+	h.g.Unlock()
+	return err
 }
 
 // Delete the node with the specified id from the graph
 func (h *NodeAPIHandler) Delete(id string) error {
+	h.g.Lock()
+	defer h.g.Unlock()
+
 	node := h.g.GetNode(graph.Identifier(id))
 	if node == nil {
 		return common.ErrNotFound
 	}
+
 	return h.g.DelNode(node)
 }
 
