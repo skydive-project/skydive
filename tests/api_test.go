@@ -150,14 +150,14 @@ func TestNodeAPI(t *testing.T) {
 	node := new(types.Node)
 
 	if err := client.Create("node", node, nil); err == nil {
-		t.Fatalf("Expected error when creating a node without ID")
+		t.Errorf("Expected error when creating a node without ID")
 	}
 
 	node.ID = graph.GenID()
 	node.Metadata = graph.Metadata{"Type": "mytype"}
 
 	if err := client.Create("node", node, nil); err == nil {
-		t.Fatalf("Expected error when creating a node without name")
+		t.Errorf("Expected error when creating a node without name")
 	}
 
 	node.Metadata["Name"] = "myname"
@@ -165,8 +165,69 @@ func TestNodeAPI(t *testing.T) {
 		t.Error(err)
 	}
 
-	var node2 types.Node
-	if err := client.Get("node", string(node.ID), &node2); err != nil {
+	if err := client.Get("node", string(node.ID), &node); err != nil {
 		t.Error(err)
+	}
+
+	name, _ := node.GetFieldString("Name")
+	typ, _ := node.GetFieldString("Type")
+	if name != "myname" || typ != "mytype" {
+		t.Errorf("Expected node with name 'myname' and type 'mytype'")
+	}
+}
+
+func TestEdgeAPI(t *testing.T) {
+	client, err := getCrudClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	node1 := new(types.Node)
+	node1.ID = graph.GenID()
+	node1.Metadata = graph.Metadata{"Type": "mytype", "Name": "node1"}
+
+	node2 := new(types.Node)
+	node2.ID = graph.GenID()
+	node2.Metadata = graph.Metadata{"Type": "mytype", "Name": "node2"}
+
+	if err := client.Create("node", node1, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := client.Create("node", node2, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	edge := new(types.Edge)
+
+	if err := client.Create("edge", edge, nil); err == nil {
+		t.Errorf("Expected error when creating a edge without ID")
+	}
+
+	edge.ID = graph.GenID()
+
+	if err := client.Create("edge", edge, nil); err == nil {
+		t.Errorf("Expected error when creating a edge without relation type")
+	}
+
+	edge.Metadata = graph.Metadata{"RelationType": "mylink"}
+
+	if err := client.Create("edge", edge, nil); err == nil {
+		t.Errorf("Expected error when creating a edge without parent and child")
+	}
+
+	edge.Parent = node1.ID
+	edge.Child = node2.ID
+
+	if err := client.Create("edge", edge, nil); err != nil {
+		t.Error(err)
+	}
+
+	if err := client.Get("edge", string(edge.ID), &edge); err != nil {
+		t.Error(err)
+	}
+
+	if relationType, _ := edge.GetFieldString("RelationType"); relationType != "mylink" {
+		t.Errorf("Expected edge with relation type 'mylink'")
 	}
 }
