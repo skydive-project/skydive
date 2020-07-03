@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "id": "http://skydive.network/schemas/node.json",
+  "$id": "http://skydive.network/schemas/node.json",
   "definitions": {
     "graphElement": {
       "properties": {
@@ -9,16 +9,16 @@
           "minLength": 1
         },
         "Host": {
-          "type": "string"
+          "type": [ "string", "null" ]
         },
         "Origin": {
-          "type": "string"
+          "type": [ "string", "null" ]
         },
         "CreatedAt": {
-          "type": "integer"
+          "type": [ "integer", "null" ]
         },
         "UpdatedAt": {
-          "type": "integer"
+          "type": [ "integer", "null" ]
         }
       },
       "required": [
@@ -73,7 +73,7 @@
                       "minLength": 1
                     }
                   },
-                  "required": [ "Type" ]
+                  "required": [ "Type", "Name" ]
                 }
               ]
             }
