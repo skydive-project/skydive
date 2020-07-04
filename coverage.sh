@@ -42,7 +42,7 @@ generate_cover_data() {
     if [ "$scale" -eq 1 ]; then
         # scale test
         export SKYDIVE_ANALYZERS=localhost:8082
-        export ELASTICSEARCH=localhost:9200
+        export ELASTICSEARCH=localhost:9201
         export TLS=true
         coverfile="../$workdir/scale.cover"
         export SKYDIVE="${GOPATH}/src/github.com/skydive-project/skydive/scripts/skydive_coverage.sh"

@@ -21,7 +21,6 @@ require (
 	github.com/ebay/go-ovn v0.0.0-20190726163905-ca0da4d10c52
 	github.com/fatih/structs v0.0.0-20171020064819-f5faa72e7309
 	github.com/flosch/pongo2 v0.0.0-20190707114632-bbf5a6c351f4 // indirect
-	github.com/fortytw2/leaktest v1.3.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/gima/govalid v0.0.0-20150214172340-7b486932bea2
 	github.com/go-swagger/go-swagger v0.20.1
@@ -54,7 +53,7 @@ require (
 	github.com/libvirt/libvirt-go v0.0.0-20181005092746-9c5bdce3c18f
 	github.com/lunixbochs/struc v0.0.0-20180408203800-02e4c2afbb2a
 	github.com/lxc/lxd v0.0.0-20200330183600-518f06676866
-	github.com/mailru/easyjson v0.7.0
+	github.com/mailru/easyjson v0.7.1
 	github.com/mattn/go-runewidth v0.0.0-20160315040712-d6bea18f7897 // indirect
 	github.com/mattn/goveralls v0.0.2
 	github.com/mitchellh/go-homedir v1.1.0
@@ -67,7 +66,7 @@ require (
 	github.com/nimbess/nimbess-agent v0.0.0-20190919205041-4e6f317ac4fd
 	github.com/nlewo/contrail-introspect-cli v0.0.0-20181003135217-0407b60f2edd
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
-	github.com/olivere/elastic v0.0.0-20190204160516-f82cf7c66881
+	github.com/olivere/elastic/v7 v7.0.17
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7 // indirect
 	github.com/peterh/liner v0.0.0-20160615113019-8975875355a8
 	github.com/pierrec/xxHash v0.0.0-20190318091927-d17cb990ad2d
@@ -99,7 +98,7 @@ require (
 	github.com/xeipuuv/gojsonschema v0.0.0-20180618132009-1d523034197f
 	go.uber.org/zap v1.10.0
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550 // indirect
-	golang.org/x/net v0.0.0-20191014212845-da9a3fd4c582
+	golang.org/x/net v0.0.0-20200202094626-16171245cfb2
 	golang.org/x/sys v0.0.0-20191010194322-b09406accb47
 	golang.org/x/tools v0.0.0-20191017151554-a3bc800455d5
 	google.golang.org/genproto v0.0.0-20190926190326-7ee9db18f195 // indirect

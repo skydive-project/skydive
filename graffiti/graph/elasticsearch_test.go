@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/olivere/elastic"
+	"github.com/olivere/elastic/v7"
 
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/service"
@@ -80,7 +80,7 @@ func (f *fakeESClient) BulkDelete(index es.Index, id string) error {
 	_, ok := f.Delete(index, id)
 	return ok
 }
-func (f *fakeESClient) Search(typ string, query elastic.Query, fsq filters.SearchQuery, indices ...string) (*elastic.SearchResult, error) {
+func (f *fakeESClient) Search(query elastic.Query, fsq filters.SearchQuery, indices ...string) (*elastic.SearchResult, error) {
 	f.searches = append(f.searches, query)
 	return &f.searchResult, nil
 }
@@ -88,7 +88,7 @@ func (f *fakeESClient) Start() {
 }
 func (f *fakeESClient) AddEventListener(l storage.EventListener) {
 }
-func (f *fakeESClient) UpdateByScript(typ string, query elastic.Query, script *elastic.Script, indices ...string) error {
+func (f *fakeESClient) UpdateByScript(query elastic.Query, script *elastic.Script, indices ...string) error {
 	return nil
 }
 

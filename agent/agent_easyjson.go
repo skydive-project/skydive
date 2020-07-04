@@ -44,11 +44,7 @@ func easyjsonCb9d4455DecodeGithubComSkydiveProjectSkydiveAgent(in *jlexer.Lexer,
 				in.Skip()
 			} else {
 				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.Clients = make(map[string]websocket.ConnStatus)
-				} else {
-					out.Clients = nil
-				}
+				out.Clients = make(map[string]websocket.ConnStatus)
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
@@ -64,11 +60,7 @@ func easyjsonCb9d4455DecodeGithubComSkydiveProjectSkydiveAgent(in *jlexer.Lexer,
 				in.Skip()
 			} else {
 				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.Analyzers = make(map[string]pod.ConnStatus)
-				} else {
-					out.Analyzers = nil
-				}
+				out.Analyzers = make(map[string]pod.ConnStatus)
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
@@ -84,11 +76,7 @@ func easyjsonCb9d4455DecodeGithubComSkydiveProjectSkydiveAgent(in *jlexer.Lexer,
 				in.Skip()
 			} else {
 				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.TopologyProbes = make(map[string]interface{})
-				} else {
-					out.TopologyProbes = nil
-				}
+				out.TopologyProbes = make(map[string]interface{})
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()

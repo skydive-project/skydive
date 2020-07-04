@@ -16,6 +16,15 @@ mem_prof() {
         done
 }
 
+es_setup() {
+    docker run -d --name elasticsearch  -p 9201:9200 -p 9301:9300 -e "discovery.type=single-node" elasticsearch:7.7.1
+}
+
+es_cleanup() {
+    docker stop elasticsearch
+    docker rm elasticsearch
+}
+
 tests_run() {
         cd ${GOPATH}/src/github.com/skydive-project/skydive
 
@@ -27,6 +36,11 @@ tests_run() {
         TESTFILE=$WORKSPACE/tests.xml
 
         BACKEND=${BACKEND:-memory}
+
+        if [ "$BACKEND" = "elasticsearch" ]; then
+                es_setup && trap es_cleanup EXIT
+        fi
+
         ARGS="$ARGS -standalone -analyzer.topology.backend $BACKEND -analyzer.flow.backend $BACKEND"
         export ORIENTDB_ROOT_PASSWORD=root
 

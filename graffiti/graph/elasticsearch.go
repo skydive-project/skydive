@@ -23,7 +23,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/olivere/elastic"
+	"github.com/olivere/elastic/v7"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/filters"
@@ -347,7 +347,7 @@ func (b *ElasticSearchBackend) Query(typ string, tsq *TimedSearchQuery) (sr *ela
 
 	mustQuery := elastic.NewBoolQuery().Must(fltrs...)
 
-	return b.client.Search("graph_element", mustQuery, tsq.SearchQuery, b.liveIndex.Alias(), b.archiveIndex.IndexWildcard())
+	return b.client.Search(mustQuery, tsq.SearchQuery, b.liveIndex.Alias(), b.archiveIndex.IndexWildcard())
 }
 
 // searchNodes search nodes matching the query
@@ -361,8 +361,8 @@ func (b *ElasticSearchBackend) searchNodes(tsq *TimedSearchQuery) (nodes []*Node
 	if out != nil && len(out.Hits.Hits) > 0 {
 		for _, d := range out.Hits.Hits {
 			var node Node
-			if err := json.Unmarshal(*d.Source, &node); err != nil {
-				b.logger.Errorf("Failed to unmarshal node %s: %s", err, string(*d.Source))
+			if err := json.Unmarshal(d.Source, &node); err != nil {
+				b.logger.Errorf("Failed to unmarshal node %s: %s", err, string(d.Source))
 				continue
 			}
 			nodes = append(nodes, &node)
@@ -383,8 +383,8 @@ func (b *ElasticSearchBackend) searchEdges(tsq *TimedSearchQuery) (edges []*Edge
 	if out != nil && len(out.Hits.Hits) > 0 {
 		for _, d := range out.Hits.Hits {
 			var edge Edge
-			if err := json.Unmarshal(*d.Source, &edge); err != nil {
-				b.logger.Errorf("Failed to unmarshal edge %s: %s", err, string(*d.Source))
+			if err := json.Unmarshal(d.Source, &edge); err != nil {
+				b.logger.Errorf("Failed to unmarshal edge %s: %s", err, string(d.Source))
 				continue
 			}
 			edges = append(edges, &edge)
@@ -515,7 +515,7 @@ func (b *ElasticSearchBackend) flushGraph() error {
 		"now": TimeUTC().Unix(),
 	})
 
-	return b.client.UpdateByScript("graph_element", query, script, b.liveIndex.Alias(), b.archiveIndex.IndexWildcard())
+	return b.client.UpdateByScript(query, script, b.liveIndex.Alias(), b.archiveIndex.IndexWildcard())
 }
 
 // Start backend
@@ -583,13 +583,11 @@ func NewElasticSearchBackendFromConfig(cfg es.Config, extraDynamicTemplates map[
 
 	liveIndex := es.Index{
 		Name:    "topology_live",
-		Type:    "graph_element",
 		Mapping: string(content),
 	}
 
 	archiveIndex := es.Index{
 		Name:      "topology_archive",
-		Type:      "graph_element",
 		Mapping:   string(content),
 		RollIndex: true,
 	}

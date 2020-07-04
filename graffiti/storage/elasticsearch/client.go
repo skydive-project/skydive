@@ -28,8 +28,8 @@ import (
 	"time"
 
 	version "github.com/hashicorp/go-version"
-	elastic "github.com/olivere/elastic"
-	esconfig "github.com/olivere/elastic/config"
+	elastic "github.com/olivere/elastic/v7"
+	esconfig "github.com/olivere/elastic/v7/config"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/filters"
@@ -60,16 +60,15 @@ type ClientInterface interface {
 	Get(index Index, id string) (*elastic.GetResult, error)
 	Delete(index Index, id string) (*elastic.DeleteResponse, error)
 	BulkDelete(index Index, id string) error
-	Search(typ string, query elastic.Query, pagination filters.SearchQuery, indices ...string) (*elastic.SearchResult, error)
+	Search(query elastic.Query, pagination filters.SearchQuery, indices ...string) (*elastic.SearchResult, error)
 	Start()
 	AddEventListener(listener storage.EventListener)
-	UpdateByScript(typ string, query elastic.Query, script *elastic.Script, indices ...string) error
+	UpdateByScript(query elastic.Query, script *elastic.Script, indices ...string) error
 }
 
 // Index defines a Client Index
 type Index struct {
 	Name      string
-	Type      string
 	Mapping   string
 	RollIndex bool
 	URL       string
@@ -126,7 +125,7 @@ func (c *Client) createAliases(index Index) error {
 }
 
 func (c *Client) addMapping(index Index) error {
-	if _, err := c.esClient.PutMapping().Index(index.FullName()).Type(index.Type).BodyString(index.Mapping).Do(context.Background()); err != nil {
+	if _, err := c.esClient.PutMapping().Index(index.FullName()).BodyString(index.Mapping).Do(context.Background()); err != nil {
 		return fmt.Errorf("Unable to create %s mapping: %s", index.Mapping, err)
 	}
 	return nil
@@ -141,11 +140,19 @@ func (c *Client) createIndices() error {
 
 			if index.Mapping != "" {
 				if err := c.addMapping(index); err != nil {
+					if _, err := c.esClient.DeleteIndex(index.FullName()).Do(context.Background()); err != nil {
+						logging.GetLogger().Errorf("Error while deleting indices: %s", err)
+					}
+
 					return err
 				}
 			}
 
 			if err := c.createAliases(index); err != nil {
+				if _, err := c.esClient.DeleteIndex(index.FullName()).Do(context.Background()); err != nil {
+					logging.GetLogger().Errorf("Error while deleting indices: %s", err)
+				}
+
 				return err
 			}
 		}
@@ -318,7 +325,7 @@ func FormatFilter(filter *filters.Filter, mapKey string) elastic.Query {
 
 // Index returns the skydive index
 func (c *Client) Index(index Index, id string, data interface{}) error {
-	if _, err := c.esClient.Index().Index(index.Alias()).Type(index.Type).Id(id).BodyJson(data).Do(context.Background()); err != nil {
+	if _, err := c.esClient.Index().Index(index.Alias()).Id(id).BodyJson(data).Do(context.Background()); err != nil {
 		return err
 	}
 	return nil
@@ -326,7 +333,7 @@ func (c *Client) Index(index Index, id string, data interface{}) error {
 
 // BulkIndex returns the bulk index from the indexer
 func (c *Client) BulkIndex(index Index, id string, data interface{}) error {
-	req := elastic.NewBulkIndexRequest().Index(index.Alias()).Type(index.Type).Id(id).Doc(data)
+	req := elastic.NewBulkIndexRequest().Index(index.Alias()).Id(id).Doc(data)
 	c.bulkProcessor.Add(req)
 
 	return nil
@@ -334,36 +341,35 @@ func (c *Client) BulkIndex(index Index, id string, data interface{}) error {
 
 // Get an object
 func (c *Client) Get(index Index, id string) (*elastic.GetResult, error) {
-	return c.esClient.Get().Index(index.Alias()).Type(index.Type).Id(id).Do(context.Background())
+	return c.esClient.Get().Index(index.Alias()).Id(id).Do(context.Background())
 }
 
 // Delete an object
 func (c *Client) Delete(index Index, id string) (*elastic.DeleteResponse, error) {
-	return c.esClient.Delete().Index(index.Alias()).Type(index.Type).Id(id).Do(context.Background())
+	return c.esClient.Delete().Index(index.Alias()).Id(id).Do(context.Background())
 }
 
 // BulkDelete an object with the indexer
 func (c *Client) BulkDelete(index Index, id string) error {
-	req := elastic.NewBulkDeleteRequest().Index(index.Alias()).Type(index.Type).Id(id)
+	req := elastic.NewBulkDeleteRequest().Index(index.Alias()).Id(id)
 	c.bulkProcessor.Add(req)
 
 	return nil
 }
 
 // UpdateByScript updates the document using the given script
-func (c *Client) UpdateByScript(typ string, query elastic.Query, script *elastic.Script, indices ...string) error {
-	if _, err := c.esClient.UpdateByQuery(indices...).Type(typ).Query(query).Script(script).Do(context.Background()); err != nil {
+func (c *Client) UpdateByScript(query elastic.Query, script *elastic.Script, indices ...string) error {
+	if _, err := c.esClient.UpdateByQuery(indices...).Query(query).Script(script).Do(context.Background()); err != nil {
 		return err
 	}
 	return nil
 }
 
 // Search an object
-func (c *Client) Search(typ string, query elastic.Query, opts filters.SearchQuery, indices ...string) (*elastic.SearchResult, error) {
+func (c *Client) Search(query elastic.Query, opts filters.SearchQuery, indices ...string) (*elastic.SearchResult, error) {
 	searchQuery := c.esClient.
 		Search().
 		Index(indices...).
-		Type(typ).
 		Query(query).
 		Size(10000)
 

@@ -67,8 +67,7 @@ if [ "x$PUBLIC_INTERFACE" != "x" ]; then
     SKYDIVE_PUBLIC_INTERFACES=${SKYDIVE_PUBLIC_INTERFACES:-$LOCAL_HOSTNAME/$PUBLIC_INTERFACE}
 fi
 
-ELASTICSEARCH_BASE_URL=https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution
-ELASTICSEARCH_VERSION=5.6.14
+ELASTICSEARCH_VERSION=7.8.0
 
 USE_ELASTICSEARCH=0
 if [ "${SKYDIVE_FLOWS_STORAGE}" == "elasticsearch" ] || [ "${SKYDIVE_GRAPH_STORAGE}" == "elasticsearch" ]; then
@@ -107,10 +106,10 @@ function install_go {
 function download_elasticsearch {
     if [ ! -f ${TOP_DIR}/files/elasticsearch-${ELASTICSEARCH_VERSION}.* ]; then
         if is_ubuntu; then
-            wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ELASTICSEARCH_VERSION}.deb \
+            wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ELASTICSEARCH_VERSION}-amd64.deb \
                 -O ${TOP_DIR}/files/elasticsearch-${ELASTICSEARCH_VERSION}.deb
         elif is_fedora; then
-            wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ELASTICSEARCH_VERSION}.rpm \
+            wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ELASTICSEARCH_VERSION}-x86_64.rpm \
                 -O ${TOP_DIR}/files/elasticsearch-${ELASTICSEARCH_VERSION}.noarch.rpm
         fi
     fi

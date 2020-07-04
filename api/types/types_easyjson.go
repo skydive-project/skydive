@@ -663,11 +663,7 @@ func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveApiTypes5(in *jlexer.Le
 				in.Skip()
 			} else {
 				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.Metadata = make(graph.Metadata)
-				} else {
-					out.Metadata = nil
-				}
+				out.Metadata = make(graph.Metadata)
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
@@ -808,11 +804,7 @@ func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveApiTypes6(in *jlexer.Le
 				in.Skip()
 			} else {
 				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.Metadata = make(graph.Metadata)
-				} else {
-					out.Metadata = nil
-				}
+				out.Metadata = make(graph.Metadata)
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
@@ -981,11 +973,7 @@ func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveApiTypes7(in *jlexer.Le
 				in.Skip()
 			} else {
 				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.Metadata = make(graph.Metadata)
-				} else {
-					out.Metadata = nil
-				}
+				out.Metadata = make(graph.Metadata)
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
@@ -1126,11 +1114,7 @@ func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveApiTypes8(in *jlexer.Le
 				in.Skip()
 			} else {
 				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.Metadata = make(graph.Metadata)
-				} else {
-					out.Metadata = nil
-				}
+				out.Metadata = make(graph.Metadata)
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()

@@ -23,11 +23,7 @@ func easyjsonBa0ee0e3DecodeGithubComSkydiveProjectSkydiveGraffitiGraph(in *jlexe
 		in.Skip()
 	} else {
 		in.Delim('{')
-		if !in.IsDelim('}') {
-			*out = make(Metadata)
-		} else {
-			*out = nil
-		}
+		*out = make(Metadata)
 		for !in.IsDelim('}') {
 			key := string(in.String())
 			in.WantColon()

@@ -44,11 +44,7 @@ func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveAnalyzer(in *jlexer.Lex
 				in.Skip()
 			} else {
 				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.Agents = make(map[string]websocket.ConnStatus)
-				} else {
-					out.Agents = nil
-				}
+				out.Agents = make(map[string]websocket.ConnStatus)
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
@@ -66,11 +62,7 @@ func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveAnalyzer(in *jlexer.Lex
 				in.Skip()
 			} else {
 				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.Publishers = make(map[string]websocket.ConnStatus)
-				} else {
-					out.Publishers = nil
-				}
+				out.Publishers = make(map[string]websocket.ConnStatus)
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
@@ -86,11 +78,7 @@ func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveAnalyzer(in *jlexer.Lex
 				in.Skip()
 			} else {
 				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.Subscribers = make(map[string]websocket.ConnStatus)
-				} else {
-					out.Subscribers = nil
-				}
+				out.Subscribers = make(map[string]websocket.ConnStatus)
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
@@ -110,11 +98,7 @@ func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveAnalyzer(in *jlexer.Lex
 				in.Skip()
 			} else {
 				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.Probes = make(map[string]interface{})
-				} else {
-					out.Probes = nil
-				}
+				out.Probes = make(map[string]interface{})
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
@@ -300,11 +284,7 @@ func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveGraffitiHub(in *jlexer.
 				in.Skip()
 			} else {
 				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.Incomers = make(map[string]websocket.ConnStatus)
-				} else {
-					out.Incomers = nil
-				}
+				out.Incomers = make(map[string]websocket.ConnStatus)
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
@@ -320,11 +300,7 @@ func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveGraffitiHub(in *jlexer.
 				in.Skip()
 			} else {
 				in.Delim('{')
-				if !in.IsDelim('}') {
-					out.Outgoers = make(map[string]websocket.ConnStatus)
-				} else {
-					out.Outgoers = nil
-				}
+				out.Outgoers = make(map[string]websocket.ConnStatus)
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
