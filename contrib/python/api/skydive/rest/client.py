@@ -21,6 +21,10 @@ try:
 except ImportError:
     import urllib2 as request
 
+from time import time
+from socket import gethostname
+from uuid import uuid4
+
 from skydive.auth import Authenticate
 from skydive.graph import Node, Edge
 from skydive.rules import NodeRule, EdgeRule
@@ -225,6 +229,66 @@ class RESTClient:
 
     def edgerule_delete(self, rule_id):
         path = "/api/edgerule/%s" % rule_id
+        self.request(path, method="DELETE")
+
+    def node_create(self, node_id=None, host=None, metadata=None):
+        now = int(time())
+        if not node_id:
+            node_id = str(uuid4())
+
+        if not host:
+            host = gethostname()
+
+        data = json.dumps(
+            {
+                "ID": node_id,
+                "CreatedAt": now,
+                "UpdatedAt": now,
+                "Host": host,
+                "Metadata": metadata,
+                "Revision": 1
+            }
+        )
+        r = self.request("/api/node", method="POST", data=data)
+        return Node.from_object(r)
+
+    def node_list(self):
+        objs = self.request("/api/node")
+        return [Node.from_object(o) for o in objs.values()]
+
+    def node_delete(self, node_id):
+        path = "/api/node/%s" % node_id
+        return self.request(path, method="DELETE")
+
+    def edge_create(self, parent_id, child_id, edge_id=None, host=None,
+                    metadata=None):
+        now = int(time())
+        if not edge_id:
+            edge_id = str(uuid4())
+
+        if not host:
+            host = gethostname()
+
+        data = json.dumps(
+            {
+                "ID": edge_id,
+                "CreatedAt": now,
+                "UpdatedAt": now,
+                "Host": host,
+                "Parent": parent_id,
+                "Child": child_id,
+                "Metadata": metadata
+            }
+        )
+        r = self.request("/api/edge", method="POST", data=data)
+        return Edge.from_object(r)
+
+    def edge_list(self):
+        objs = self.request("/api/edge")
+        return [Edge.from_object(o) for o in objs.values()]
+
+    def edge_delete(self, edge_id):
+        path = "/api/edge/%s" % edge_id
         self.request(path, method="DELETE")
 
     def injection_create(self, src_query="", dst_query="", type="icmp4",
