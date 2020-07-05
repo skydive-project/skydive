@@ -62,6 +62,14 @@ var NodeCreate = &cobra.Command{
 			exitOnError(err)
 		}
 
+		if nodeName != "" {
+			m["Name"] = nodeName
+		}
+
+		if nodeType != "" {
+			m["Type"] = nodeType
+		}
+
 		node := api.Node(*graph.CreateNode(graph.GenID(), m, graph.Time(time.Now()), host, config.AgentService))
 
 		if err = validator.Validate("node", &node); err != nil {
