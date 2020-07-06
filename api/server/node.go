@@ -107,45 +107,25 @@ func (h *NodeAPIHandler) Delete(id string) error {
 
 // Update a node metadata
 func (h *NodeAPIHandler) Update(id string, resource rest.Resource) error {
+	// Current node, to be updated
 	n := h.g.GetNode(graph.Identifier(id))
 	if n == nil {
 		return fmt.Errorf("Node to be updated not found")
 	}
 
-	// Node to be updated
-	actualNode := types.Node(*n)
-	graphNode := graph.Node(actualNode)
-
 	// Node containing the metadata updated
-	updateData := resource.(*types.Node)
+	patchedNode := resource.(*types.Node)
 
-	// TODO filter Metadata.TID not to be modified. But looks like its not mandatoy
+	// Do not modify/replace Metadata.(TID|Name|Entity), use actual node values
+	actualNodeMetadataTID, _ := n.Metadata.GetFieldString("TID")
+	actualNodeMetadataName, _ := n.Metadata.GetFieldString("Name")
+	actualNodeMetadataType, _ := n.Metadata.GetFieldString("Type")
+	patchedNode.Metadata.SetField("TID", actualNodeMetadataTID)
+	patchedNode.Metadata.SetField("Name", actualNodeMetadataName)
+	patchedNode.Metadata.SetField("Type", actualNodeMetadataType)
 
-	// Metadata.Name and Metadata.Type are used to identfy globally the node, they
-	// should not be modified
-	actualNodeName, err := graphNode.Metadata.GetFieldString("Name")
-	if err != nil {
-		panic("Metadata.Name should be always defined")
-	}
-
-	updateNodeName, err := updateData.Metadata.GetFieldString("Name")
-	if err != nil {
-		panic("Metadata.Name should be always defined")
-	}
-
-	if actualNodeName != updateNodeName {
-		return fmt.Errorf("Metadata.Name could not be modified")
-	}
-
-	// Metadata.Type is not mandatory, but should not be changed if it is already defined
-	actualNodeType, _ := graphNode.Metadata.GetFieldString("Type")
-	updateNodeType, _ := updateData.Metadata.GetFieldString("Type")
-
-	if actualNodeType != "" && actualNodeType != updateNodeType {
-		return fmt.Errorf("Metadata.Type could not be modified")
-	}
-
-	return h.g.SetMetadata(&graphNode, updateData.Metadata)
+	// Update actual node Metadata with new patched node
+	return h.g.SetMetadata(n, patchedNode.Metadata)
 }
 
 // RegisterNodeAPI registers the node API
