@@ -351,7 +351,7 @@ func (p *Probe) enhanceNode(node *graph.Node) {
 }
 
 // OnNodeUpdated event
-func (p *Probe) OnNodeUpdated(n *graph.Node) {
+func (p *Probe) OnNodeUpdated(n *graph.Node, ops []graph.PartiallyUpdatedOp) {
 	p.enhanceNode(n)
 }
 

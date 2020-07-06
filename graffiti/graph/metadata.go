@@ -37,6 +37,15 @@ import (
 // easyjson:json
 type Metadata map[string]interface{}
 
+// Copy returns a copy of the metadata
+func (m Metadata) Copy() Metadata {
+	m2 := Metadata{}
+	for k, v := range m {
+		m2[k] = v
+	}
+	return m2
+}
+
 // Match returns true if the the given element matches the metadata.
 func (m Metadata) Match(g getter.Getter) bool {
 	f, err := m.Filter()
@@ -284,6 +293,19 @@ func (m Metadata) DelField(k string) bool {
 // SetFieldAndNormalize set metadata value after normalization (and deepcopy)
 func (m *Metadata) SetFieldAndNormalize(k string, v interface{}) bool {
 	return SetMapField(*m, k, NormalizeValue(v))
+}
+
+// ApplyUpdates applies a serie of partial updates to a graph element
+func (m *Metadata) ApplyUpdates(ops ...PartiallyUpdatedOp) error {
+	for _, op := range ops {
+		if op.Type == PartiallyUpdatedAddOpType {
+			m.SetField(op.Key, op.Value)
+		} else {
+			m.DelField(op.Key)
+		}
+	}
+
+	return nil
 }
 
 // SetMapField set a value in a tree based on dot key ("a.b.c.d" = "ok")

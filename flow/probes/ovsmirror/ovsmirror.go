@@ -464,12 +464,7 @@ func (o *ovsMirrorProbe) OnError(err error) {
 	o.graph.Unlock()
 }
 
-func (o *ovsMirrorInterfaceHandler) onNodeEvent(n *graph.Node) {
-	probeID, _ := n.GetFieldString("ExtID.skydive-probe-id")
-	if probeID == "" {
-		return
-	}
-
+func (o *ovsMirrorInterfaceHandler) onNodeEvent(n *graph.Node, probeID string) {
 	o.oph.probesLock.RLock()
 	ovsProbe, ok := o.oph.probes[probeID]
 	o.oph.probesLock.RUnlock()
@@ -520,11 +515,15 @@ func (o *ovsMirrorInterfaceHandler) onNodeEvent(n *graph.Node) {
 }
 
 func (o *ovsMirrorInterfaceHandler) OnNodeAdded(n *graph.Node) {
-	o.onNodeEvent(n)
+	if probeID, _ := n.GetFieldString("ExtID.skydive-probe-id"); probeID != "" {
+		o.onNodeEvent(n, probeID)
+	}
 }
 
-func (o *ovsMirrorInterfaceHandler) OnNodeUpdated(n *graph.Node) {
-	o.onNodeEvent(n)
+func (o *ovsMirrorInterfaceHandler) OnNodeUpdated(n *graph.Node, ops []graph.PartiallyUpdatedOp) {
+	if probeID, _ := n.GetFieldString("ExtID.skydive-probe-id"); probeID != "" {
+		o.onNodeEvent(n, probeID)
+	}
 }
 
 func (o *ovsMirrorPortHandler) OnNodeAdded(n *graph.Node) {

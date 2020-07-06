@@ -136,7 +136,7 @@ func (i *Indexer) OnNodeAdded(n *Node) {
 }
 
 // OnNodeUpdated event
-func (i *Indexer) OnNodeUpdated(n *Node) {
+func (i *Indexer) OnNodeUpdated(n *Node, ops []PartiallyUpdatedOp) {
 	if kv := i.hashNode(n); len(kv) != 0 {
 		i.Index(n.ID, n, kv)
 	} else {

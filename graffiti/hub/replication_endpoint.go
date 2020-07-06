@@ -253,6 +253,12 @@ func (t *ReplicationEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessag
 		}
 	case messages.EdgeAddedMsgType:
 		err = t.Graph.EdgeAdded(obj.(*graph.Edge))
+	case messages.NodePartiallyUpdatedMsgType:
+		updateMsg := obj.(*messages.PartiallyUpdatedMsg)
+		err = t.Graph.NodePartiallyUpdated(updateMsg.ID, updateMsg.Revision, updateMsg.UpdatedAt, updateMsg.Ops...)
+	case messages.EdgePartiallyUpdatedMsgType:
+		updateMsg := obj.(*messages.PartiallyUpdatedMsg)
+		err = t.Graph.EdgePartiallyUpdated(updateMsg.ID, updateMsg.Revision, updateMsg.UpdatedAt, updateMsg.Ops...)
 	}
 
 	if err != nil {
@@ -267,9 +273,17 @@ func (t *ReplicationEndpoint) notifyPeers(msg *ws.StructMessage) {
 }
 
 // OnNodeUpdated graph node updated event. Implements the EventListener interface.
-func (t *ReplicationEndpoint) OnNodeUpdated(n *graph.Node) {
+func (t *ReplicationEndpoint) OnNodeUpdated(n *graph.Node, ops []graph.PartiallyUpdatedOp) {
 	if t.replicateMsg.Load() == true {
-		msg := messages.NewStructMessage(messages.NodeUpdatedMsgType, n)
+		msg := messages.NewStructMessage(
+			messages.NodePartiallyUpdatedMsgType,
+			messages.PartiallyUpdatedMsg{
+				ID:        n.ID,
+				Revision:  n.Revision,
+				UpdatedAt: n.UpdatedAt,
+				Ops:       ops,
+			},
+		)
 		t.notifyPeers(msg)
 	}
 }
@@ -291,9 +305,17 @@ func (t *ReplicationEndpoint) OnNodeDeleted(n *graph.Node) {
 }
 
 // OnEdgeUpdated graph edge updated event. Implements the EventListener interface.
-func (t *ReplicationEndpoint) OnEdgeUpdated(e *graph.Edge) {
+func (t *ReplicationEndpoint) OnEdgeUpdated(e *graph.Edge, ops []graph.PartiallyUpdatedOp) {
 	if t.replicateMsg.Load() == true {
-		msg := messages.NewStructMessage(messages.EdgeUpdatedMsgType, e)
+		msg := messages.NewStructMessage(
+			messages.EdgePartiallyUpdatedMsgType,
+			messages.PartiallyUpdatedMsg{
+				ID:        e.ID,
+				Revision:  e.Revision,
+				UpdatedAt: e.UpdatedAt,
+				Ops:       ops,
+			},
+		)
 		t.notifyPeers(msg)
 	}
 }

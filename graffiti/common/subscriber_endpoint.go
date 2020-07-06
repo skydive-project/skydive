@@ -32,10 +32,41 @@ import (
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 )
 
+// UpdatePolicy specifies whether we should send partial or full updates
+type UpdatePolicy = string
+
+// Update policies
+const (
+	FullUpdates    UpdatePolicy = "full"
+	PartialUpdates              = "partial"
+)
+
 type subscriber struct {
-	graph         *graph.Graph
+	ws.Speaker
+	lastGraph     *graph.Graph
 	gremlinFilter string
 	ts            *traversal.GremlinTraversalSequence
+	updatePolicy  UpdatePolicy
+}
+
+func (s *subscriber) getSubGraph(g *graph.Graph, lockGraph bool) (*graph.Graph, error) {
+	res, err := s.ts.Exec(g, lockGraph)
+	if err != nil {
+		return nil, err
+	}
+
+	tv, ok := res.(*traversal.GraphTraversal)
+	if !ok {
+		return nil, fmt.Errorf("Gremlin query '%s' did not return a graph", s.gremlinFilter)
+	}
+
+	return tv.Graph, nil
+}
+
+func (s *subscriber) resetFilter() {
+	s.gremlinFilter = ""
+	s.ts = nil
+	s.lastGraph = nil
 }
 
 // SubscriberEndpoint sends all the modifications to its subscribers.
@@ -43,39 +74,30 @@ type SubscriberEndpoint struct {
 	insanelock.RWMutex
 	ws.DefaultSpeakerEventHandler
 	pool          ws.StructSpeakerPool
-	Graph         *graph.Graph
+	graph         *graph.Graph
 	wg            sync.WaitGroup
 	gremlinParser *traversal.GremlinTraversalParser
 	subscribers   map[ws.Speaker]*subscriber
 	logger        logging.Logger
 }
 
-func (t *SubscriberEndpoint) getGraph(gremlinQuery string, ts *traversal.GremlinTraversalSequence, lockGraph bool) (*graph.Graph, error) {
-	res, err := ts.Exec(t.Graph, lockGraph)
-	if err != nil {
-		return nil, err
+func (t *SubscriberEndpoint) newSubscriber(speaker ws.Speaker, gremlinFilter string, lockGraph bool) (s *subscriber, err error) {
+	s = &subscriber{Speaker: speaker, gremlinFilter: gremlinFilter}
+
+	if gremlinFilter != "" {
+		s.ts, err = t.gremlinParser.Parse(strings.NewReader(gremlinFilter))
+		if err != nil {
+			return nil, fmt.Errorf("Invalid Gremlin filter '%s' for client %s", gremlinFilter, speaker.GetRemoteHost())
+		}
+
+		if s.lastGraph, err = s.getSubGraph(t.graph, lockGraph); err != nil {
+			return nil, err
+		}
+	} else {
+		s.lastGraph = t.graph
 	}
 
-	tv, ok := res.(*traversal.GraphTraversal)
-	if !ok {
-		return nil, fmt.Errorf("Gremlin query '%s' did not return a graph", gremlinQuery)
-	}
-
-	return tv.Graph, nil
-}
-
-func (t *SubscriberEndpoint) newSubscriber(host string, gremlinFilter string, lockGraph bool) (*subscriber, error) {
-	ts, err := t.gremlinParser.Parse(strings.NewReader(gremlinFilter))
-	if err != nil {
-		return nil, fmt.Errorf("Invalid Gremlin filter '%s' for client %s", gremlinFilter, host)
-	}
-
-	g, err := t.getGraph(gremlinFilter, ts, lockGraph)
-	if err != nil {
-		return nil, err
-	}
-
-	return &subscriber{graph: g, ts: ts, gremlinFilter: gremlinFilter}, nil
+	return s, nil
 }
 
 // OnConnected called when a subscriber got connected.
@@ -85,18 +107,33 @@ func (t *SubscriberEndpoint) OnConnected(c ws.Speaker) error {
 		gremlinFilter = c.GetURL().Query().Get("x-gremlin-filter")
 	}
 
-	if gremlinFilter != "" {
-		host := c.GetRemoteHost()
-
-		subscriber, err := t.newSubscriber(host, gremlinFilter, true)
-		if err != nil {
-			t.logger.Error(err)
-			return err
-		}
-
-		t.logger.Infof("Client %s subscribed with filter %s during the connection", host, gremlinFilter)
-		t.subscribers[c] = subscriber
+	subscriber, err := t.newSubscriber(c, gremlinFilter, true)
+	if err != nil {
+		t.logger.Error(err)
+		return err
 	}
+
+	updatePolicy := c.GetHeaders().Get("X-Update-Policy")
+	if updatePolicy == "" {
+		updatePolicy = c.GetURL().Query().Get("x-update-policy")
+	}
+
+	switch strings.ToLower(updatePolicy) {
+	case FullUpdates, PartialUpdates:
+	case "":
+		updatePolicy = FullUpdates
+	default:
+		err = fmt.Errorf("invalid update policy '%s'", subscriber.updatePolicy)
+		t.logger.Error(err)
+		return err
+	}
+
+	subscriber.updatePolicy = updatePolicy
+
+	t.logger.Infof("Client %s subscribed with filter '%s' and update policy '%s'", c.GetRemoteHost(), gremlinFilter, updatePolicy)
+	t.Lock()
+	t.subscribers[c] = subscriber
+	t.Unlock()
 
 	return nil
 }
@@ -119,11 +156,11 @@ func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage
 
 	// this kind of message usually comes from external clients like the WebUI
 	if msgType == messages.SyncRequestMsgType {
-		t.Graph.RLock()
-		defer t.Graph.RUnlock()
+		t.graph.RLock()
+		defer t.graph.RUnlock()
 
 		syncMsg, status := obj.(*messages.SyncRequestMsg), http.StatusOK
-		result, err := t.Graph.CloneWithContext(syncMsg.Context)
+		result, err := t.graph.CloneWithContext(syncMsg.Context)
 		if err != nil {
 			t.logger.Errorf("unable to get a graph with context %+v: %s", syncMsg, err)
 			reply := msg.Reply(nil, messages.SyncReplyMsgType, http.StatusBadRequest)
@@ -137,25 +174,21 @@ func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage
 			// filter reset
 			if *syncMsg.GremlinFilter == "" {
 				t.Lock()
-				delete(t.subscribers, c)
+				t.subscribers[c].resetFilter()
 				t.Unlock()
 			} else {
-				subscriber, err := t.newSubscriber(host, *syncMsg.GremlinFilter, false)
+				subscriber, err := t.newSubscriber(c, *syncMsg.GremlinFilter, false)
 				if err != nil {
 					t.logger.Error(err)
 
 					reply := msg.Reply(err.Error(), messages.SyncReplyMsgType, http.StatusBadRequest)
 					c.SendMessage(reply)
 
-					t.Lock()
-					t.subscribers[c] = nil
-					t.Unlock()
-
 					return
 				}
 
 				t.logger.Infof("Client %s requested subscription with filter %s", host, *syncMsg.GremlinFilter)
-				result = subscriber.graph
+				result = subscriber.lastGraph
 
 				t.Lock()
 				t.subscribers[c] = subscriber
@@ -167,7 +200,7 @@ func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage
 			t.RUnlock()
 
 			if subscriber != nil {
-				result = subscriber.graph
+				result = subscriber.lastGraph
 			}
 		}
 
@@ -181,89 +214,110 @@ func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage
 // notifyClients forwards local graph modification to subscribers. If a subscriber
 // specified a Gremlin filter, a 'Diff' is applied between the previous graph state
 // for this subscriber and the current graph state.
-func (t *SubscriberEndpoint) notifyClients(typ string, i interface{}) {
-	for _, c := range t.pool.GetSpeakers() {
-		t.RLock()
-		subscriber, found := t.subscribers[c]
-		t.RUnlock()
+func (t *SubscriberEndpoint) notifyClients(typ string, i interface{}, ops []graph.PartiallyUpdatedOp) {
+	t.RLock()
+	subscribers := t.subscribers
+	t.RUnlock()
 
-		if found {
-			// in the case of an error during the subscription we got a nil subscriber
-			if subscriber == nil {
-				return
+	for _, subscriber := range subscribers {
+		msg := i
+		msgType := typ
+
+		if subscriber.updatePolicy == PartialUpdates {
+			switch typ {
+			case messages.NodeUpdatedMsgType:
+				msgType = messages.NodePartiallyUpdatedMsgType
+				n := msg.(*graph.Node)
+				msg = messages.PartiallyUpdatedMsg{
+					ID:        n.ID,
+					Revision:  n.Revision,
+					UpdatedAt: n.UpdatedAt,
+					Ops:       ops,
+				}
+			case messages.EdgeUpdatedMsgType:
+				msgType = messages.EdgePartiallyUpdatedMsgType
+				e := msg.(*graph.Edge)
+				msg = messages.PartiallyUpdatedMsg{
+					ID:        e.ID,
+					Revision:  e.Revision,
+					UpdatedAt: e.UpdatedAt,
+					Ops:       ops,
+				}
 			}
+		}
 
-			g, err := t.getGraph(subscriber.gremlinFilter, subscriber.ts, false)
+		if subscriber.gremlinFilter != "" {
+			g, err := subscriber.getSubGraph(t.graph, false)
 			if err != nil {
 				t.logger.Error(err)
 				continue
 			}
 
-			addedNodes, removedNodes, addedEdges, removedEdges := subscriber.graph.Diff(g)
+			addedNodes, removedNodes, addedEdges, removedEdges := subscriber.lastGraph.Diff(g)
 
 			for _, n := range addedNodes {
-				c.SendMessage(messages.NewStructMessage(messages.NodeAddedMsgType, n))
+				subscriber.SendMessage(messages.NewStructMessage(messages.NodeAddedMsgType, n))
 			}
 
 			for _, n := range removedNodes {
-				c.SendMessage(messages.NewStructMessage(messages.NodeDeletedMsgType, n))
+				subscriber.SendMessage(messages.NewStructMessage(messages.NodeDeletedMsgType, n))
 			}
 
 			for _, e := range addedEdges {
-				c.SendMessage(messages.NewStructMessage(messages.EdgeAddedMsgType, e))
+				subscriber.SendMessage(messages.NewStructMessage(messages.EdgeAddedMsgType, e))
 			}
 
 			for _, e := range removedEdges {
-				c.SendMessage(messages.NewStructMessage(messages.EdgeDeletedMsgType, e))
+				subscriber.SendMessage(messages.NewStructMessage(messages.EdgeDeletedMsgType, e))
 			}
 
 			// handle updates
 			switch typ {
-			case messages.NodeUpdatedMsgType:
+			case messages.NodeUpdatedMsgType, messages.NodePartiallyUpdatedMsgType:
 				if g.GetNode(i.(*graph.Node).ID) != nil {
-					c.SendMessage(messages.NewStructMessage(messages.NodeUpdatedMsgType, i))
+					subscriber.SendMessage(messages.NewStructMessage(msgType, msg))
 				}
-			case messages.EdgeUpdatedMsgType:
+			case messages.EdgeUpdatedMsgType, messages.EdgePartiallyUpdatedMsgType:
 				if g.GetEdge(i.(*graph.Edge).ID) != nil {
-					c.SendMessage(messages.NewStructMessage(messages.EdgeUpdatedMsgType, i))
+					subscriber.SendMessage(messages.NewStructMessage(msgType, msg))
 				}
 			}
 
-			subscriber.graph = g
+			subscriber.lastGraph = g
 		} else {
-			c.SendMessage(messages.NewStructMessage(typ, i))
+			subscriber.SendMessage(messages.NewStructMessage(msgType, msg))
 		}
 	}
 }
 
 // OnNodeUpdated graph node updated event. Implements the GraphEventListener interface.
-func (t *SubscriberEndpoint) OnNodeUpdated(n *graph.Node) {
-	t.notifyClients(messages.NodeUpdatedMsgType, n)
+func (t *SubscriberEndpoint) OnNodeUpdated(n *graph.Node, ops []graph.PartiallyUpdatedOp) {
+	t.notifyClients(messages.NodeUpdatedMsgType, n, ops)
 }
 
 // OnNodeAdded graph node added event. Implements the GraphEventListener interface.
 func (t *SubscriberEndpoint) OnNodeAdded(n *graph.Node) {
-	t.notifyClients(messages.NodeAddedMsgType, n)
+	t.notifyClients(messages.NodeAddedMsgType, n, nil)
 }
 
 // OnNodeDeleted graph node deleted event. Implements the GraphEventListener interface.
 func (t *SubscriberEndpoint) OnNodeDeleted(n *graph.Node) {
-	t.notifyClients(messages.NodeDeletedMsgType, n)
+	t.notifyClients(messages.NodeDeletedMsgType, n, nil)
 }
 
 // OnEdgeUpdated graph edge updated event. Implements the GraphEventListener interface.
-func (t *SubscriberEndpoint) OnEdgeUpdated(e *graph.Edge) {
-	t.notifyClients(messages.EdgeUpdatedMsgType, e)
+func (t *SubscriberEndpoint) OnEdgeUpdated(e *graph.Edge, ops []graph.PartiallyUpdatedOp) {
+	t.notifyClients(messages.EdgeUpdatedMsgType, e, nil)
 }
 
 // OnEdgeAdded graph edge added event. Implements the GraphEventListener interface.
 func (t *SubscriberEndpoint) OnEdgeAdded(e *graph.Edge) {
-	t.notifyClients(messages.EdgeAddedMsgType, e)
+	t.notifyClients(messages.EdgeAddedMsgType, e, nil)
 }
 
 // OnEdgeDeleted graph edge deleted event. Implements the GraphEventListener interface.
 func (t *SubscriberEndpoint) OnEdgeDeleted(e *graph.Edge) {
-	t.notifyClients(messages.EdgeDeletedMsgType, e)
+	t.notifyClients(messages.EdgeDeletedMsgType, e, nil)
 }
 
 // NewSubscriberEndpoint returns a new server to be used by external subscribers,
@@ -274,7 +328,7 @@ func NewSubscriberEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, tr *traver
 	}
 
 	t := &SubscriberEndpoint{
-		Graph:         g,
+		graph:         g,
 		pool:          pool,
 		subscribers:   make(map[ws.Speaker]*subscriber),
 		gremlinParser: tr,

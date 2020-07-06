@@ -247,7 +247,7 @@ func (tm *TopologyManager) OnNodeAdded(n *graph.Node) {
 }
 
 // OnNodeUpdated event
-func (tm *TopologyManager) OnNodeUpdated(n *graph.Node) {
+func (tm *TopologyManager) OnNodeUpdated(n *graph.Node, ops []graph.PartiallyUpdatedOp) {
 	tm.syncTopology()
 }
 

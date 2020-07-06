@@ -155,6 +155,12 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 		}
 	case messages.EdgeAddedMsgType:
 		err = t.Graph.EdgeAdded(obj.(*graph.Edge))
+	case messages.NodePartiallyUpdatedMsgType:
+		updateMsg := obj.(*messages.PartiallyUpdatedMsg)
+		err = t.Graph.NodePartiallyUpdated(updateMsg.ID, updateMsg.Revision, updateMsg.UpdatedAt, updateMsg.Ops...)
+	case messages.EdgePartiallyUpdatedMsgType:
+		updateMsg := obj.(*messages.PartiallyUpdatedMsg)
+		err = t.Graph.EdgePartiallyUpdated(updateMsg.ID, updateMsg.Revision, updateMsg.UpdatedAt, updateMsg.Ops...)
 	}
 
 	if err != nil {

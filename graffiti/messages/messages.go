@@ -19,7 +19,9 @@ package messages
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
+
+	"github.com/pkg/errors"
 
 	"github.com/skydive-project/skydive/graffiti/graph"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
@@ -62,10 +64,67 @@ type SyncMsg struct {
 	*graph.Elements
 }
 
+// PartiallyUpdatedOpMsg describes a partial update operation message
+type PartiallyUpdatedOpMsg struct {
+	Type  graph.PartiallyUpdatedOpType
+	Key   string
+	Value json.RawMessage
+}
+
+// PartiallyUpdatedRawMsg describes multiple graph modifications
+type PartiallyUpdatedRawMsg struct {
+	ID        graph.Identifier
+	UpdatedAt graph.Time
+	Revision  int64
+	Ops       []PartiallyUpdatedOpMsg
+}
+
+// Decode a raw partial update message
+func (m *PartiallyUpdatedRawMsg) Decode(decoders map[string]graph.MetadataDecoder) (*PartiallyUpdatedMsg, error) {
+	ops := make([]graph.PartiallyUpdatedOp, len(m.Ops))
+
+	for i, op := range m.Ops {
+		var value interface{}
+
+		switch op.Type {
+		case graph.PartiallyUpdatedAddOpType:
+			var err error
+			if decoder, found := decoders[op.Key]; found {
+				value, err = decoder(op.Value)
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to decode partial operation for '%s'", op.Key)
+				}
+			} else {
+				if err = json.Unmarshal(op.Value, &value); err != nil {
+					return nil, errors.Wrapf(err, "failed to decode partial update of key 's'", op.Key)
+				}
+			}
+		case graph.PartiallyUpdatedDelOpType:
+		default:
+			return nil, fmt.Errorf("invalid update operation %d for key %s", op.Type, op.Key)
+		}
+
+		ops[i] = graph.PartiallyUpdatedOp{
+			Type:  op.Type,
+			Key:   op.Key,
+			Value: value,
+		}
+	}
+
+	return &PartiallyUpdatedMsg{
+		ID:        m.ID,
+		UpdatedAt: m.UpdatedAt,
+		Revision:  m.Revision,
+		Ops:       ops,
+	}, nil
+}
+
 // PartiallyUpdatedMsg describes multiple graph modifications
 type PartiallyUpdatedMsg struct {
-	ID  graph.Identifier
-	Ops []graph.PartiallyUpdatedOp
+	ID        graph.Identifier
+	UpdatedAt graph.Time
+	Revision  int64
+	Ops       []graph.PartiallyUpdatedOp
 }
 
 // NewStructMessage returns a new graffiti websocket StructMessage
@@ -119,13 +178,26 @@ func UnmarshalMessage(msg *ws.StructMessage) (string, interface{}, error) {
 			return "", msg, err
 		}
 		return msg.Type, &edge, nil
-	case NodePartiallyUpdatedMsgType, EdgePartiallyUpdatedMsgType:
-		var pu PartiallyUpdatedMsg
+	case NodePartiallyUpdatedMsgType:
+		var pu PartiallyUpdatedRawMsg
 		if err := json.Unmarshal(msg.Obj, &pu); err != nil {
 			return "", msg, err
 		}
-
-		return msg.Type, &pu, nil
+		updateMsg, err := pu.Decode(graph.NodeMetadataDecoders)
+		if err != nil {
+			return "", msg, err
+		}
+		return msg.Type, updateMsg, nil
+	case EdgePartiallyUpdatedMsgType:
+		var pu PartiallyUpdatedRawMsg
+		if err := json.Unmarshal(msg.Obj, &pu); err != nil {
+			return "", msg, err
+		}
+		updateMsg, err := pu.Decode(graph.EdgeMetadataDecoders)
+		if err != nil {
+			return "", msg, err
+		}
+		return msg.Type, updateMsg, nil
 	}
 
 	return "", msg, nil

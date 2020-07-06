@@ -393,7 +393,7 @@ func (p *Probe) OnEdgeAdded(e *graph.Edge) {
 }
 
 // OnNodeUpdated is called when a new node was updated on the graph
-func (p *Probe) OnNodeUpdated(n *graph.Node) {
+func (p *Probe) OnNodeUpdated(n *graph.Node, ops []graph.PartiallyUpdatedOp) {
 	p.Lock()
 	defer p.Unlock()
 

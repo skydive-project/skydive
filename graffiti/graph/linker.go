@@ -97,7 +97,7 @@ func (l *listener) OnNodeAdded(node *Node) {
 	l.nodeEvent(node, false)
 }
 
-func (l *listener) OnNodeUpdated(node *Node) {
+func (l *listener) OnNodeUpdated(node *Node, ops []PartiallyUpdatedOp) {
 	l.nodeEvent(node, false)
 }
 

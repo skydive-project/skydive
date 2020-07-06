@@ -67,33 +67,61 @@ func (t *Forwarder) OnNewMaster(c ws.Speaker) {
 }
 
 // OnNodeUpdated graph node updated event. Implements the EventListener interface.
-func (t *Forwarder) OnNodeUpdated(n *graph.Node) {
-	t.masterElection.SendMessageToMaster(messages.NewStructMessage(messages.NodeUpdatedMsgType, n))
+func (t *Forwarder) OnNodeUpdated(n *graph.Node, ops []graph.PartiallyUpdatedOp) {
+	t.masterElection.SendMessageToMaster(
+		messages.NewStructMessage(
+			messages.NodePartiallyUpdatedMsgType,
+			messages.PartiallyUpdatedMsg{
+				ID:        n.ID,
+				UpdatedAt: n.UpdatedAt,
+				Revision:  n.Revision,
+				Ops:       ops,
+			},
+		),
+	)
 }
 
 // OnNodeAdded graph node added event. Implements the EventListener interface.
 func (t *Forwarder) OnNodeAdded(n *graph.Node) {
-	t.masterElection.SendMessageToMaster(messages.NewStructMessage(messages.NodeAddedMsgType, n))
+	t.masterElection.SendMessageToMaster(
+		messages.NewStructMessage(messages.NodeAddedMsgType, n),
+	)
 }
 
 // OnNodeDeleted graph node deleted event. Implements the EventListener interface.
 func (t *Forwarder) OnNodeDeleted(n *graph.Node) {
-	t.masterElection.SendMessageToMaster(messages.NewStructMessage(messages.NodeDeletedMsgType, n))
+	t.masterElection.SendMessageToMaster(
+		messages.NewStructMessage(messages.NodeDeletedMsgType, n),
+	)
 }
 
 // OnEdgeUpdated graph edge updated event. Implements the EventListener interface.
-func (t *Forwarder) OnEdgeUpdated(e *graph.Edge) {
-	t.masterElection.SendMessageToMaster(messages.NewStructMessage(messages.EdgeUpdatedMsgType, e))
+func (t *Forwarder) OnEdgeUpdated(e *graph.Edge, ops []graph.PartiallyUpdatedOp) {
+	t.masterElection.SendMessageToMaster(
+		messages.NewStructMessage(
+			messages.EdgePartiallyUpdatedMsgType,
+			messages.PartiallyUpdatedMsg{
+				ID:        e.ID,
+				UpdatedAt: e.UpdatedAt,
+				Revision:  e.Revision,
+				Ops:       ops,
+			},
+		),
+	)
 }
 
 // OnEdgeAdded graph edge added event. Implements the EventListener interface.
 func (t *Forwarder) OnEdgeAdded(e *graph.Edge) {
-	t.masterElection.SendMessageToMaster(messages.NewStructMessage(messages.EdgeAddedMsgType, e))
+	t.masterElection.SendMessageToMaster(
+		messages.NewStructMessage(messages.EdgeAddedMsgType, e),
+	)
 }
 
 // OnEdgeDeleted graph edge deleted event. Implements the EventListener interface.
 func (t *Forwarder) OnEdgeDeleted(e *graph.Edge) {
-	t.masterElection.SendMessageToMaster(messages.NewStructMessage(messages.EdgeDeletedMsgType, e))
+	t.masterElection.SendMessageToMaster(
+		messages.NewStructMessage(messages.EdgeDeletedMsgType, e),
+	)
 }
 
 // GetMaster returns the current analyzer the agent is sending its events to

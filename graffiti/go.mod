@@ -15,6 +15,7 @@ require (
 	github.com/fatih/structs v1.1.0
 	github.com/go-test/deep v1.0.7
 	github.com/gogo/protobuf v1.3.1
+	github.com/golang/protobuf v1.3.2
 	github.com/gomatic/funcmap v1.1.0 // indirect
 	github.com/gomatic/renderizer v1.0.1 // indirect
 	github.com/gophercloud/gophercloud v0.13.0

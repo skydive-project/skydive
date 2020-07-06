@@ -1,5 +1,8 @@
 /* jshint multistr: true */
 
+var PartialUpdateAdd = 1;
+var PartialUpdateDel = 2;
+
 var topologyComponent
 
 var TopologyComponent = {
@@ -1125,8 +1128,43 @@ Graph.prototype = {
     return node;
   },
 
-  updateNode: function(id, metadata) {
-    this.nodes[id].metadata = metadata;
+  setField: function(metadata, key, value) {
+    var i;
+    var splitted = key.split(".");
+    for (i = 0; i < splitted.length; i++) {
+      if (i === splitted.length - 1) {
+        metadata[key] = value;
+        break
+      }
+      metadata = metadata[splitted[i]];
+    }
+  },
+
+  removeField: function(metadata, key) {
+    var i;
+    var splitted = key.split(".");
+    for (i = 0; i < splitted.length; i++) {
+      if (i === splitted.length - 1) {
+        delete metadata[key];
+        break
+      }
+      metadata = metadata[splitted[i]];
+    }
+  },
+
+  updateNode: function(id, ops) {
+    var i;
+    for (i = 0; i < ops.length; i++) {
+      var op = ops[i];
+      switch(op.Type) {
+        case PartialUpdateAdd:
+          this.setField(this.nodes[id].metadata, op.Key, op.Value);
+          break;
+        case PartialUpdateDel:
+          this.removeField(this.nodes[id].metadata, op.Key);
+          break;
+      }
+    }
 
     this.notifyHandlers('nodeUpdated', this.nodes[id]);
   },
@@ -1400,7 +1438,12 @@ Graph.prototype = {
         break;
 
       case "NodeUpdated":
-        this.updateNode(msg.Obj.ID, msg.Obj.Metadata);
+        this.nodes[msg.Obj.ID].metadata = msg.Obj.Metadata;
+        this.updateNode(msg.Obj.ID, []);
+        break;
+
+      case "NodePartiallyUpdated":
+        this.updateNode(msg.Obj.ID, msg.Obj.Ops);
         break;
 
       case "NodeAdded":
@@ -1418,7 +1461,12 @@ Graph.prototype = {
         break;
 
       case "EdgeUpdated":
-        this.updateEdge(msg.Obj.ID, msg.Obj.Metadata);
+        this.edges[msg.Obj.ID].metadata = msg.Obj.Metadata;
+        this.updateEdge(msg.Obj.ID, []);
+        break;
+
+      case "EdgePartiallyUpdated":
+        this.updateEdge(msg.Obj.ID, msg.Obj.Ops);
         break;
 
       case "EdgeAdded":

@@ -268,11 +268,6 @@ func (p *Probe) enhanceNode(node *graph.Node) {
 	}
 }
 
-// OnNodeUpdated event
-func (p *Probe) OnNodeUpdated(n *graph.Node) {
-	return
-}
-
 // OnNodeAdded event
 func (p *Probe) OnNodeAdded(n *graph.Node) {
 	p.enhanceNode(n)
