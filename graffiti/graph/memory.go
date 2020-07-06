@@ -41,19 +41,13 @@ type MemoryBackend struct {
 func (m *MemoryBackend) MetadataUpdated(i interface{}) error {
 	switch i := i.(type) {
 	case *Node:
-		node, ok := m.nodes[i.ID]
-		if !ok {
+		if _, ok := m.nodes[i.ID]; !ok {
 			return ErrNodeNotFound
 		}
-		node.graphElement.Metadata = i.graphElement.Metadata
 	case *Edge:
-		edge, ok := m.edges[i.ID]
-		if !ok {
+		if _, ok := m.edges[i.ID]; !ok {
 			return ErrEdgeNotFound
 		}
-		edge.graphElement.Metadata = i.graphElement.Metadata
-	default:
-		panic(fmt.Sprintf("MetadataUpdated is only implemented for Node or Edge resources, current type: %T", i))
 	}
 
 	return nil
