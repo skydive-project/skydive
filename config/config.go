@@ -197,18 +197,22 @@ func init() {
 	cfg.SetDefault("rbac.model.policy_effect", []string{"some(where (p_eft == allow)) && !some(where (p_eft == deny))"})
 	cfg.SetDefault("rbac.model.matchers", []string{"g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act"})
 
-	cfg.SetDefault("storage.elasticsearch.driver", "elasticsearch")  // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.elasticsearch.host", "127.0.0.1:9200")   // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.elasticsearch.bulk_maxdelay", 5)         // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.elasticsearch.index_age_limit", 0)       // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.elasticsearch.index_entries_limit", 0)   // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.elasticsearch.indices_to_keep", 0)       // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.memory.driver", "memory")                // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.orientdb.driver", "orientdb")            // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.orientdb.addr", "http://localhost:2480") // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.orientdb.database", "Skydive")           // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.orientdb.username", "root")              // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.orientdb.password", "root")              // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.elasticsearch.driver", "elasticsearch")           // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.elasticsearch.hosts", []string{"127.0.0.1:9200"}) // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.elasticsearch.ssl_insecure", false)               // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.elasticsearch.bulk_maxdelay", 5)                  // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.elasticsearch.index_age_limit", 0)                // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.elasticsearch.index_entries_limit", 0)            // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.elasticsearch.indices_to_keep", 0)                // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.elasticsearch.disable_sniffing", false)           // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.elasticsearch.sniffing_scheme", "http")           // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.elasticsearch.disable_healthcheck", false)        // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.memory.driver", "memory")                         // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.orientdb.driver", "orientdb")                     // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.orientdb.addr", "http://localhost:2480")          // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.orientdb.database", "Skydive")                    // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.orientdb.username", "root")                       // defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.orientdb.password", "root")                       // defined for backward compatibility and to set defaults
 
 	cfg.SetDefault("ui", map[string]interface{}{})
 
