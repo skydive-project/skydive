@@ -19,8 +19,9 @@ package elasticsearch
 
 import (
 	"context"
-	"errors"
+	"crypto/tls"
 	"fmt"
+	"net/http"
 	"net/url"
 	"sort"
 	"strings"
@@ -31,7 +32,7 @@ import (
 	version "github.com/hashicorp/go-version"
 	uuid "github.com/nu7hatch/gouuid"
 	elastic "github.com/olivere/elastic/v7"
-	esconfig "github.com/olivere/elastic/v7/config"
+	"github.com/pkg/errors"
 
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/filters"
@@ -41,19 +42,27 @@ import (
 
 const (
 	schemaVersion  = "13"
-	minimalVersion = "5.5"
+	minimalVersion = "7.0"
 )
+
+var errOutdatedVersion = errors.New("elasticsearch server doesn't match the minimal required version")
 
 // Config describes configuration for elasticsearch
 type Config struct {
-	ElasticHost      string
-	BulkMaxDelay     int
-	TotalFieldsLimit int
-	EntriesLimit     int
-	AgeLimit         int
-	IndicesLimit     int
-	NoSniffing       bool
-	IndexPrefix      string
+	ElasticHosts       []string
+	InsecureSkipVerify bool
+	Username           string
+	Password           string
+	BulkMaxDelay       int
+	TotalFieldsLimit   int
+	EntriesLimit       int
+	AgeLimit           int
+	IndicesLimit       int
+	NoSniffing         bool
+	IndexPrefix        string
+	SniffingScheme     string
+	NoHealthcheck      bool
+	Debug              bool
 }
 
 // ClientInterface describes the mechanism API of ElasticSearch database client
@@ -81,7 +90,6 @@ type Index struct {
 type Client struct {
 	sync.RWMutex
 	Config         Config
-	url            *url.URL
 	esClient       *elastic.Client
 	bulkProcessor  *elastic.BulkProcessor
 	started        atomic.Value
@@ -89,6 +97,30 @@ type Client struct {
 	rollService    *rollIndexService
 	listeners      []storage.EventListener
 	masterElection etcd.MasterElection
+}
+
+// TraceLogger implements the oliviere/elastic Logger interface to be used with trace messages
+type TraceLogger struct{}
+
+// Printf sends elastic trace messages to skydive logger Debug
+func (l TraceLogger) Printf(format string, v ...interface{}) {
+	logging.GetLogger().Debugf(format, v...)
+}
+
+// InfoLogger implements the oliviere/elastic Logger interface to be used with info messages
+type InfoLogger struct{}
+
+// Printf sends elastic info messages to skydive logger Info
+func (l InfoLogger) Printf(format string, v ...interface{}) {
+	logging.GetLogger().Infof(format, v...)
+}
+
+// ErrorLogger implements the oliviere/elastic Logger interface to be used with error mesages
+type ErrorLogger struct{}
+
+// Printf sends elastic error messages to skydive logger Error
+func (l ErrorLogger) Printf(format string, v ...interface{}) {
+	logging.GetLogger().Errorf(format, v...)
 }
 
 var (
@@ -203,20 +235,65 @@ func (c *Client) createIndices() error {
 	return nil
 }
 
+func (c *Client) checkServerVersion(host, minimalVersion string) error {
+	vt, err := c.esClient.ElasticsearchVersion(host)
+	if err != nil {
+		return errors.Wrapf(err, "unable to retrieve the version for '%s'", host)
+	}
+
+	v, err := version.NewVersion(vt)
+	if err != nil {
+		return errors.Wrapf(err, "unable to parse the version for '%s'", host)
+	}
+
+	min, _ := version.NewVersion(minimalVersion)
+	if v.LessThan(min) {
+		return errors.Wrapf(errOutdatedVersion, "requires at least %s, found %s", minimalVersion, vt)
+	}
+
+	return nil
+}
+
 func (c *Client) start() error {
-	esConfig, err := esconfig.Parse(c.url.String())
-	if err != nil {
-		return err
+	httpClient := http.DefaultClient
+
+	if c.Config.InsecureSkipVerify {
+		logging.GetLogger().Warning("Skipping SSL certificates verification")
+
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		httpClient = &http.Client{Transport: tr}
 	}
 
-	if c.Config.NoSniffing {
-		esConfig.Sniff = new(bool)
-		*esConfig.Sniff = false
+	var traceLogger, infoLogger elastic.Logger
+	if c.Config.Debug {
+		traceLogger = TraceLogger{}
+		infoLogger = InfoLogger{}
 	}
 
-	esClient, err := elastic.NewClientFromConfig(esConfig)
+	scheme := elastic.DefaultScheme
+	if len(c.Config.ElasticHosts) > 0 {
+		url, err := url.Parse(c.Config.ElasticHosts[0])
+		if err != nil {
+			return errors.Wrap(err, "invalid host url")
+		}
+		scheme = url.Scheme
+	}
+
+	esClient, err := elastic.NewClient(
+		elastic.SetHttpClient(httpClient),
+		elastic.SetURL(c.Config.ElasticHosts...),
+		elastic.SetBasicAuth(c.Config.Username, c.Config.Password),
+		elastic.SetSniff(!c.Config.NoSniffing),
+		elastic.SetScheme(scheme),
+		elastic.SetHealthcheck(!c.Config.NoHealthcheck),
+		elastic.SetTraceLog(traceLogger),
+		elastic.SetInfoLog(infoLogger),
+		elastic.SetErrorLog(ErrorLogger{}),
+	)
 	if err != nil {
-		return err
+		return fmt.Errorf("creating elasticsearch client: %s", err)
 	}
 	c.esClient = esClient
 
@@ -237,24 +314,27 @@ func (c *Client) start() error {
 		FlushInterval(time.Duration(c.Config.BulkMaxDelay) * time.Second).
 		Do(context.Background())
 	if err != nil {
-		return err
+		return fmt.Errorf("creating elasticsearch bulk processor: %s", err)
 	}
 
 	c.bulkProcessor = bulkProcessor
 
-	vt, err := esClient.ElasticsearchVersion(c.url.String())
-	if err != nil {
-		return fmt.Errorf("Unable to get the version: %s", vt)
+	// check minimal version for all servers
+	checkVersion := false
+	for _, host := range c.Config.ElasticHosts {
+		err := c.checkServerVersion(host, minimalVersion)
+		if err != nil {
+			if errors.Is(err, errOutdatedVersion) {
+				return err
+			}
+			logging.GetLogger().Warning(err)
+		} else {
+			checkVersion = true
+		}
 	}
 
-	v, err := version.NewVersion(vt)
-	if err != nil {
-		return fmt.Errorf("Unable to parse the version: %s", vt)
-	}
-
-	min, _ := version.NewVersion(minimalVersion)
-	if v.LessThan(min) {
-		return fmt.Errorf("Elasticsearch backend requires a minimal version of %s, found: %s", minimalVersion, vt)
+	if !checkVersion {
+		return errors.New("failed to verify minimal versions of elasticsearch servers")
 	}
 
 	if c.masterElection == nil || c.masterElection.IsMaster() {
@@ -471,19 +551,6 @@ func (c *Client) Started() bool {
 	return c.started.Load() == true
 }
 
-func urlFromHost(host string) (*url.URL, error) {
-	urlStr := host
-	if !strings.HasPrefix(urlStr, "http://") && !strings.HasPrefix(urlStr, "https://") {
-		urlStr = "http://" + urlStr
-	}
-
-	url, err := url.Parse(urlStr)
-	if err != nil || url.Port() == "" {
-		return nil, ErrBadConfig(fmt.Sprintf("wrong url format, %s", urlStr))
-	}
-	return url, nil
-}
-
 // GetClient returns the elastic client object
 func (c *Client) GetClient() *elastic.Client {
 	return c.esClient
@@ -498,11 +565,6 @@ func (c *Client) AddEventListener(listener storage.EventListener) {
 
 // NewClient creates a new ElasticSearch client based on configuration
 func NewClient(indices []Index, cfg Config, electionService etcd.MasterElectionService) (*Client, error) {
-	url, err := urlFromHost(cfg.ElasticHost)
-	if err != nil {
-		return nil, err
-	}
-
 	var names []string
 
 	indicesMap := make(map[string]Index, 0)
@@ -525,7 +587,6 @@ func NewClient(indices []Index, cfg Config, electionService etcd.MasterElectionS
 
 	client := &Client{
 		Config:         cfg,
-		url:            url,
 		indices:        indicesMap,
 		masterElection: electionService.NewElection("/elections/es-index-creator-" + u5.String()),
 	}

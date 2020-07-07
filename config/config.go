@@ -197,9 +197,10 @@ func init() {
 	cfg.SetDefault("rbac.model.policy_effect", []string{"some(where (p_eft == allow)) && !some(where (p_eft == deny))"})
 	cfg.SetDefault("rbac.model.matchers", []string{"g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act"})
 
-	// defined for backward compatibility and to set defaults
+	// storage section is defined for backward compatibility and to set defaults
 	cfg.SetDefault("storage.elasticsearch.driver", "elasticsearch")
-	cfg.SetDefault("storage.elasticsearch.host", "127.0.0.1:9200")
+	cfg.SetDefault("storage.elasticsearch.hosts", []string{"http://127.0.0.1:9200"})
+	cfg.SetDefault("storage.elasticsearch.ssl_insecure", false)
 	cfg.SetDefault("storage.elasticsearch.bulk_maxdelay", 5)
 	cfg.SetDefault("storage.elasticsearch.total_fields_limit", 1000)
 	cfg.SetDefault("storage.elasticsearch.index_age_limit", 0)
@@ -219,6 +220,8 @@ func init() {
 		"Metadata.OVN.Options",
 		"Metadata.OVN.IPv6RAConfigs",
 	})
+	cfg.SetDefault("storage.elasticsearch.disable_sniffing", false)
+	cfg.SetDefault("storage.elasticsearch.disable_healthcheck", false)
 	cfg.SetDefault("storage.memory.driver", "memory")
 	cfg.SetDefault("storage.orientdb.driver", "orientdb")
 	cfg.SetDefault("storage.orientdb.addr", "http://localhost:2480")

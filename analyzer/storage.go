@@ -41,15 +41,27 @@ func NewESConfig(name ...string) es.Config {
 		path += "elasticsearch"
 	}
 
-	cfg.ElasticHost = config.GetString(path + ".host")
+	// To be backwards compatible, check if .host key (old) has a string value.
+	// In that case, use that value as .hosts (converting the ip:port to http://ip:port)
+	// .host will have preference over .hosts
+	cfg.ElasticHosts = config.GetStringSlice(path + ".hosts")
+	oldElasticHost := config.GetString(path + ".host")
+	if oldElasticHost != "" {
+		cfg.ElasticHosts = []string{fmt.Sprintf("http://%s", oldElasticHost)}
+	}
+
+	cfg.InsecureSkipVerify = config.GetBool(path + ".ssl_insecure")
+	cfg.Username = config.GetString(path + ".auth.username")
+	cfg.Password = config.GetString(path + ".auth.password")
 	cfg.BulkMaxDelay = config.GetInt(path + ".bulk_maxdelay")
 	cfg.TotalFieldsLimit = config.GetInt(path + ".total_fields_limit")
-
 	cfg.EntriesLimit = config.GetInt(path + ".index_entries_limit")
 	cfg.AgeLimit = config.GetInt(path + ".index_age_limit")
 	cfg.IndicesLimit = config.GetInt(path + ".indices_to_keep")
 	cfg.NoSniffing = config.GetBool(path + ".disable_sniffing")
 	cfg.IndexPrefix = config.GetString(path + ".index_prefix")
+	cfg.NoHealthcheck = config.GetBool(path + ".disable_healthcheck")
+	cfg.Debug = config.GetBool(path + ".debug")
 
 	return cfg
 }

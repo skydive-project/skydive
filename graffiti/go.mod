@@ -29,6 +29,7 @@ require (
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/olivere/elastic/v7 v7.0.21
 	github.com/pierrec/xxHash v0.1.5
+	github.com/pkg/errors v0.9.1
 	github.com/pmylund/go-cache v2.1.0+incompatible
 	github.com/safchain/insanelock v0.0.0-20200217234559-cfbf166e05b3
 	github.com/skydive-project/go-debouncer v1.0.0

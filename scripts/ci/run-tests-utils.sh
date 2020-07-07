@@ -1,3 +1,7 @@
+#!/bin/bash
+
+set -v
+
 network_setup() {
         sudo iptables -F
         sudo iptables -P FORWARD ACCEPT
