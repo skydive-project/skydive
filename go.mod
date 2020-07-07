@@ -93,9 +93,7 @@ require (
 	github.com/vishvananda/netns v0.0.0-20190625233234-7109fa855b0f
 	github.com/voxelbrain/goptions v0.0.0-20180630082107-58cddc247ea2 // indirect
 	github.com/weaveworks/tcptracer-bpf v0.0.0-20170817155301-e080bd747dc6
-	github.com/xeipuuv/gojsonpointer v0.0.0-20170225233418-6fe8760cad35 // indirect
-	github.com/xeipuuv/gojsonreference v0.0.0-20150808065054-e02fc20de94c // indirect
-	github.com/xeipuuv/gojsonschema v0.0.0-20180618132009-1d523034197f
+	github.com/xeipuuv/gojsonschema v1.2.0
 	go.uber.org/zap v1.10.0
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550 // indirect
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2

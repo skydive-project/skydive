@@ -53,22 +53,26 @@ func (h *EdgeAPIHandler) Name() string {
 
 // Index returns the list of existing edges
 func (h *EdgeAPIHandler) Index() map[string]rest.Resource {
+	h.g.RLock()
 	edges := h.g.GetEdges(nil)
 	edgeMap := make(map[string]rest.Resource, len(edges))
 	for _, edge := range edges {
 		n := types.Edge(*edge)
 		edgeMap[string(edge.ID)] = &n
 	}
+	h.g.RUnlock()
 	return edgeMap
 }
 
 // Get returns a edge with the specified id
 func (h *EdgeAPIHandler) Get(id string) (rest.Resource, bool) {
+	h.g.RLock()
 	n := h.g.GetEdge(graph.Identifier(id))
 	if n == nil {
 		return nil, false
 	}
 	edge := types.Edge(*n)
+	h.g.RUnlock()
 	return &edge, true
 }
 
@@ -92,15 +96,23 @@ func (h *EdgeAPIHandler) Create(resource rest.Resource, createOpts *rest.CreateO
 	if graphEdge.Metadata == nil {
 		graphEdge.Metadata = graph.Metadata{}
 	}
-	return h.g.AddEdge(&graphEdge)
+
+	h.g.Lock()
+	err := h.g.AddEdge(&graphEdge)
+	h.g.Unlock()
+	return err
 }
 
 // Delete the edge with the specified id from the graph
 func (h *EdgeAPIHandler) Delete(id string) error {
+	h.g.RLock()
+	defer h.g.RUnlock()
+
 	edge := h.g.GetEdge(graph.Identifier(id))
 	if edge == nil {
 		return common.ErrNotFound
 	}
+
 	return h.g.DelEdge(edge)
 }
 

@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "id": "http://skydive.network/schemas/edge.json",
+  "$id": "http://skydive.network/schemas/edge.json",
   "type": "object",
   "definitions": {
     "graphElement": {
@@ -10,16 +10,16 @@
           "minLength": 1
         },
         "Host": {
-          "type": "string"
+          "type": [ "string", "null" ]
         },
         "Origin": {
-          "type": "string"
+          "type": [ "string", "null" ]
         },
         "CreatedAt": {
-          "type": "integer"
+          "type": [ "integer", "null" ]
         },
         "UpdatedAt": {
-          "type": "integer"
+          "type": [ "integer", "null" ]
         },
         "Metadata": {
           "allOf": [
