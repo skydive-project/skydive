@@ -18,7 +18,6 @@
 package service
 
 import (
-	"net"
 	"testing"
 )
 
@@ -32,7 +31,7 @@ func TestServiceAddress(t *testing.T) {
 	if err != nil {
 		t.Errorf("should not return an error: %s", err)
 	}
-	if (sa.Addr != "[::1]" && sa.Addr != "127.0.0.1") || sa.Port != 8080 {
+	if (sa.Addr != "[::1]" && sa.Addr != "127.0.0.1" && sa.Addr != "localhost") || sa.Port != 8080 {
 		t.Errorf("expected not found, got: %s", sa)
 	}
 
@@ -48,8 +47,7 @@ func TestServiceAddress(t *testing.T) {
 	if err != nil {
 		t.Errorf("should not return an error: %s", err)
 	}
-	ip := net.ParseIP(sa.Addr)
-	if ip == nil {
-		t.Errorf("IP expected not found, got: %s", sa)
+	if sa.Addr != "skydive.network" {
+		t.Errorf("Expected domain, got: %s", sa.Addr)
 	}
 }

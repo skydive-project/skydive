@@ -52,19 +52,8 @@ func AddressFromString(addressPort string) (Address, error) {
 		return Address{}, err
 	}
 
-	ips, err := net.LookupIP(host)
-	if err != nil {
-		return Address{}, err
-	}
-	if len(ips) == 0 {
-		return Address{}, fmt.Errorf("no address found for %s", host)
-	}
-
-	// just take the first address returned
-	addr := normalizeIPForURL(ips[0])
-
 	return Address{
-		Addr: addr,
+		Addr: host,
 		Port: portNum,
 	}, nil
 }
