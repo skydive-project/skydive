@@ -26,6 +26,7 @@ import (
 
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 	g "github.com/skydive-project/skydive/gremlin"
 )
@@ -139,6 +140,97 @@ func TestCaptureAPI(t *testing.T) {
 
 	if err := client.Get("capture", capture.GetID(), &capture2); err == nil {
 		t.Errorf("Found delete capture: %s", capture.GetID())
+	}
+}
+
+func TestNodeAPI(t *testing.T) {
+	client, err := getCrudClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	node := new(types.Node)
+
+	if err := client.Create("node", node, nil); err == nil {
+		t.Errorf("Expected error when creating a node without ID")
+	}
+
+	node.ID = graph.GenID()
+	node.Metadata = graph.Metadata{"Type": "mytype"}
+
+	if err := client.Create("node", node, nil); err == nil {
+		t.Errorf("Expected error when creating a node without name")
+	}
+
+	node.Metadata["Name"] = "myname"
+	if err := client.Create("node", node, nil); err != nil {
+		t.Error(err)
+	}
+
+	if err := client.Get("node", string(node.ID), &node); err != nil {
+		t.Error(err)
+	}
+
+	name, _ := node.GetFieldString("Name")
+	typ, _ := node.GetFieldString("Type")
+	if name != "myname" || typ != "mytype" {
+		t.Errorf("Expected node with name 'myname' and type 'mytype'")
+	}
+}
+
+func TestEdgeAPI(t *testing.T) {
+	client, err := getCrudClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	node1 := new(types.Node)
+	node1.ID = graph.GenID()
+	node1.Metadata = graph.Metadata{"Type": "mytype", "Name": "node1"}
+
+	node2 := new(types.Node)
+	node2.ID = graph.GenID()
+	node2.Metadata = graph.Metadata{"Type": "mytype", "Name": "node2"}
+
+	if err := client.Create("node", node1, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := client.Create("node", node2, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	edge := new(types.Edge)
+
+	if err := client.Create("edge", edge, nil); err == nil {
+		t.Errorf("Expected error when creating a edge without ID")
+	}
+
+	edge.ID = graph.GenID()
+
+	if err := client.Create("edge", edge, nil); err == nil {
+		t.Errorf("Expected error when creating a edge without relation type")
+	}
+
+	edge.Metadata = graph.Metadata{"RelationType": "mylink"}
+
+	if err := client.Create("edge", edge, nil); err == nil {
+		t.Errorf("Expected error when creating a edge without parent and child")
+	}
+
+	edge.Parent = node1.ID
+	edge.Child = node2.ID
+
+	if err := client.Create("edge", edge, nil); err != nil {
+		t.Error(err)
+	}
+
+	if err := client.Get("edge", string(edge.ID), &edge); err != nil {
+		t.Error(err)
+	}
+
+	if relationType, _ := edge.GetFieldString("RelationType"); relationType != "mylink" {
+		t.Errorf("Expected edge with relation type 'mylink'")
 	}
 }
 

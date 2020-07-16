@@ -13,6 +13,9 @@ swagger: $(SWAGGER_JSON_FILES)
 	jq -s  '.[0] * .[1]' /tmp/swagger.json api/server/swagger_base.json > swagger.json
 	sed -i 's/easyjson:json//g' swagger.json
 
+swagger-ui: swagger
+	docker run -p 80:8080 -e SWAGGER_JSON=/swagger.json -v `pwd`/swagger.json:/swagger.json swaggerapi/swagger-ui
+
 .PHONY: swagger.clean
 swagger.clean:
 	find -name "*_swagger.go" -exec rm {} \;

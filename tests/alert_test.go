@@ -459,3 +459,10 @@ func TestMultipleTriggering(t *testing.T) {
 
 	RunTest(t, test)
 }
+
+// Ideally, this function should be in tests.go. But as this file
+// doesn't contain any test, we need to put it inside a file that
+// actually has some tests.
+func TestMain(m *testing.M) {
+	setupTests(m)
+}

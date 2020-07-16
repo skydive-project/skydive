@@ -459,10 +459,6 @@ func (c *TestContext) postmortem(t *testing.T, test *Test, timestamp time.Time) 
 // - execute the cleanup functions and commands
 // - replay the tests against the history with the recorded timestamps
 func RunTest(t *testing.T, test *Test) {
-	if standalone && !initStandalone {
-		runStandalone()
-	}
-
 	client, err := client.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
 	if err != nil {
 		t.Fatalf("Failed to create client: %s", err)
@@ -877,18 +873,7 @@ func runStandalone() {
 	initStandalone = true
 }
 
-func init() {
-	flag.BoolVar(&standalone, "standalone", false, "Start an analyzer and an agent")
-	flag.StringVar(&testLogs, "logs", "", "Capture test logs using syslog and write them to the specified file")
-	flag.StringVar(&etcdServer, "etcd.server", "", "Etcd server")
-	flag.StringVar(&topologyBackend, "analyzer.topology.backend", "memory", "Specify the graph storage backend used")
-	flag.StringVar(&graphOutputFormat, "graph.output", "", "Graph output format (json, dot or ascii)")
-	flag.StringVar(&flowBackend, "analyzer.flow.backend", "", "Specify the flow storage backend used")
-	flag.StringVar(&analyzerListen, "analyzer.listen", "0.0.0.0:64500", "Specify the analyzer listen address")
-	flag.StringVar(&analyzerProbes, "analyzer.topology.probes", "", "Specify the analyzer probes to enable")
-	flag.StringVar(&agentProbes, "agent.topology.probes", "", "Specify the extra agent probes to enable")
-	flag.BoolVar(&ovsOflowNative, "ovs.oflow.native", false, "Use native OpenFlow protocol instead of ovs-ofctl")
-	flag.BoolVar(&profile, "profile", false, "Start profiling")
+func setupTests(m *testing.M) {
 	flag.Parse()
 
 	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 100
@@ -939,4 +924,24 @@ func init() {
 	if err := config.InitLogging(); err != nil {
 		panic(fmt.Sprintf("Failed to initialize logging system: %s", err))
 	}
+
+	if standalone && !initStandalone {
+		runStandalone()
+	}
+
+	os.Exit(m.Run())
+}
+
+func init() {
+	flag.BoolVar(&standalone, "standalone", false, "Start an analyzer and an agent")
+	flag.StringVar(&testLogs, "logs", "", "Capture test logs using syslog and write them to the specified file")
+	flag.StringVar(&etcdServer, "etcd.server", "", "Etcd server")
+	flag.StringVar(&topologyBackend, "analyzer.topology.backend", "memory", "Specify the graph storage backend used")
+	flag.StringVar(&graphOutputFormat, "graph.output", "", "Graph output format (json, dot or ascii)")
+	flag.StringVar(&flowBackend, "analyzer.flow.backend", "", "Specify the flow storage backend used")
+	flag.StringVar(&analyzerListen, "analyzer.listen", "0.0.0.0:64500", "Specify the analyzer listen address")
+	flag.StringVar(&analyzerProbes, "analyzer.topology.probes", "", "Specify the analyzer probes to enable")
+	flag.StringVar(&agentProbes, "agent.topology.probes", "", "Specify the extra agent probes to enable")
+	flag.BoolVar(&ovsOflowNative, "ovs.oflow.native", false, "Use native OpenFlow protocol instead of ovs-ofctl")
+	flag.BoolVar(&profile, "profile", false, "Start profiling")
 }

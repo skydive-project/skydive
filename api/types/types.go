@@ -135,7 +135,7 @@ func NewCapture(query string, bpfFilter string) *Capture {
 
 // Edge object
 // easyjson:json
-// swagger:ignore
+// swagger:model
 type Edge graph.Edge
 
 // GetID returns the edge ID
@@ -194,7 +194,7 @@ func (e *EdgeRule) Validate() error {
 
 // Node object
 // easyjson:json
-// swagger:ignore
+// swagger:model
 type Node graph.Node
 
 // GetID returns the node ID
