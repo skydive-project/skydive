@@ -93,7 +93,7 @@ func TestRollingSimple(t *testing.T) {
 	}
 
 	cfg := es.Config{
-		ElasticHost:  "localhost:9200",
+		ElasticHosts: []string{"http://localhost:9200"},
 		EntriesLimit: 10,
 	}
 

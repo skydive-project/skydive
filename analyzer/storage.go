@@ -41,7 +41,15 @@ func NewESConfig(name ...string) es.Config {
 		path += "elasticsearch"
 	}
 
-	cfg.ElasticHost = config.GetStringSlice(path + ".hosts")
+	// To be backwards compatible, check if .host key (old) has a string value.
+	// In that case, use that value as .hosts (converting the ip:port to http://ip:port)
+	// .host will have preference over .hosts
+	cfg.ElasticHosts = config.GetStringSlice(path + ".hosts")
+	oldElasticHost := config.GetString(path + ".host")
+	if oldElasticHost != "" {
+		cfg.ElasticHosts = []string{fmt.Sprintf("http://%s", oldElasticHost)}
+	}
+
 	cfg.InsecureSkipVerify = config.GetBool(path + ".ssl_insecure")
 	cfg.Auth = config.GetStringMapString(path + ".auth")
 	cfg.BulkMaxDelay = config.GetInt(path + ".bulk_maxdelay")

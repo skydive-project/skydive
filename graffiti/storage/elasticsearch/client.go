@@ -47,7 +47,7 @@ const (
 
 // Config describes configuration for elasticsearch
 type Config struct {
-	ElasticHost        []string
+	ElasticHosts       []string
 	InsecureSkipVerify bool
 	Auth               map[string]string
 	BulkMaxDelay       int
@@ -533,7 +533,7 @@ func NewClient(indices []Index, cfg Config, electionService etcd.MasterElectionS
 	}
 
 	client := &Client{
-		hosts:          cfg.ElasticHost,
+		hosts:          cfg.ElasticHosts,
 		cfg:            cfg,
 		indices:        indicesMap,
 		masterElection: electionService.NewElection("/elections/es-index-creator-" + u5.String()),
