@@ -195,7 +195,7 @@ func (h *Hub) GremlinTraversalParser() *traversal.GremlinTraversalParser {
 
 // OnPong handles pong messages and store the last pong timestamp in etcd
 func (h *Hub) OnPong(speaker websocket.Speaker) {
-	key := fmt.Sprintf("%s/%s", etcPodPongPath, gc.ClientOrigin(speaker))
+	key := fmt.Sprintf("%s/%s", etcPodPongPath, graph.ClientOrigin(speaker))
 	if err := h.etcdClient.SetInt64(key, time.Now().Unix()); err != nil {
 		logging.GetLogger().Errorf("Error while recording Pod pong time: %s", err)
 	}
@@ -221,7 +221,7 @@ func (h *Hub) watchOrigin() {
 					logging.GetLogger().Infof("pod of origin %s expired, removing resources", origin)
 
 					h.Graph.Lock()
-					gc.DelSubGraphOfOrigin(h.Graph, origin)
+					graph.DelSubGraphOfOrigin(h.Graph, origin)
 					h.Graph.Unlock()
 
 					if _, err := h.etcdClient.KeysAPI.Delete(context.Background(), node.Key, &etcd.DeleteOptions{}); err != nil {

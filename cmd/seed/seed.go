@@ -26,7 +26,6 @@ import (
 
 	"github.com/skydive-project/skydive/agent"
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
@@ -105,7 +104,7 @@ var SeedCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		origin := common.Origin(hostID, seed.Service)
+		origin := graph.Origin(hostID, seed.Service)
 		g := graph.NewGraph(hostID, memory, origin)
 
 		probeBundle = probe.NewBundle()

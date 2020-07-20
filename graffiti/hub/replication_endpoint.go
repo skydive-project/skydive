@@ -25,7 +25,6 @@ import (
 
 	"github.com/safchain/insanelock"
 
-	gcommon "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
@@ -120,7 +119,7 @@ func (p *ReplicatorPeer) OnDisconnected(c ws.Speaker) {
 		return
 	}
 
-	origin := gcommon.ClientOrigin(c)
+	origin := graph.ClientOrigin(c)
 	if p.Graph.GetOrigin() == origin {
 		return
 	}
@@ -363,7 +362,7 @@ func (t *ReplicationEndpoint) OnDisconnected(c ws.Speaker) {
 		return
 	}
 
-	origin := gcommon.ClientOrigin(c)
+	origin := graph.ClientOrigin(c)
 	if t.Graph.GetOrigin() == origin {
 		return
 	}

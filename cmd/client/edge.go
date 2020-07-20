@@ -25,7 +25,6 @@ import (
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
 	api "github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
@@ -80,7 +79,7 @@ var EdgeCreate = &cobra.Command{
 			exitOnError(fmt.Errorf("Could not find child node: %s", err))
 		}
 
-		origin := common.Origin(host, CLIService)
+		origin := graph.Origin(host, CLIService)
 		edge := api.Edge(*graph.CreateEdge(graph.GenID(), &parentNode, &childNode, m, graph.Time(time.Now()), host, origin))
 
 		if err = validator.Validate("edge", &edge); err != nil {

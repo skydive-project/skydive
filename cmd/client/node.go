@@ -27,7 +27,6 @@ import (
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
 	api "github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
@@ -78,7 +77,7 @@ var NodeCreate = &cobra.Command{
 			m["Type"] = nodeType
 		}
 
-		origin := common.Origin(host, CLIService)
+		origin := graph.Origin(host, CLIService)
 		node := api.Node(*graph.CreateNode(graph.GenID(), m, graph.Time(time.Now()), host, origin))
 		if err = validator.Validate("node", &node); err != nil {
 			exitOnError(fmt.Errorf("Error while validating node: %s", err))
