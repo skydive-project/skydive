@@ -305,7 +305,7 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 	subscriberWSServer := websocket.NewStructServer(websocket.NewServer(httpServer, "/ws/subscriber", subOpts))
 	gc.NewSubscriberEndpoint(subscriberWSServer, g, tr, opts.Logger)
 
-	apiServer, err := api.NewAPI(httpServer, opts.EtcdClient.KeysAPI, opts.Version, id, serviceType, opts.APIAuthBackend, opts.APIValidator)
+	apiServer, err := api.NewAPI(httpServer, opts.EtcdClient, opts.Version, id, serviceType, opts.APIAuthBackend, opts.APIValidator)
 	if err != nil {
 		return nil, err
 	}

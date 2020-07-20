@@ -92,6 +92,22 @@ var HubCmd = &cobra.Command{
 			etcdServer.Start()
 		}
 
+		if len(etcdServers) == 0 {
+			logging.GetLogger().Error("No Etcd server provided")
+			os.Exit(1)
+		}
+
+		etcdClientOpts := etcdclient.Opts{
+			Servers: etcdServers,
+			Timeout: 5 * time.Second,
+		}
+
+		etcdClient, err := etcdclient.NewClient(hostname, etcdClientOpts)
+		if err != nil {
+			logging.GetLogger().Error(err)
+			os.Exit(1)
+		}
+
 		hubOpts := hub.Opts{
 			Hostname: hostname,
 			WebsocketOpts: websocket.ServerOpts{
@@ -102,6 +118,7 @@ var HubCmd = &cobra.Command{
 			},
 			APIAuthBackend:     authBackend,
 			ClusterAuthBackend: authBackend,
+			EtcdClient:         etcdClient,
 		}
 
 		hub, err := hub.NewHub(hostname, service.Type("Hub"), hubListen, g, cached, "/ws/pod", hubOpts)
@@ -129,7 +146,7 @@ var HubCmd = &cobra.Command{
 }
 
 func init() {
-	defaultEtcdAddr := fmt.Sprintf("%s:%d", etcdclient.DefaultServer, etcdclient.DefaultPort)
+	defaultEtcdAddr := fmt.Sprintf("http://%s:%d", etcdclient.DefaultServer, etcdclient.DefaultPort)
 	HubCmd.Flags().StringVarP(&hubListen, "listen", "l", "127.0.0.1:8082", "address and port for the hub server")
 	HubCmd.Flags().IntVar(&queueSize, "queue-size", 10000, "websocket queue size")
 	HubCmd.Flags().IntVar(&pingDelay, "ping-delay", 2, "websocket ping delay")

@@ -23,7 +23,6 @@ package server
 import (
 	"time"
 
-	etcd "github.com/coreos/etcd/client"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
@@ -53,11 +52,11 @@ func (a *AlertResourceHandler) Name() string {
 }
 
 // RegisterAlertAPI registers an Alert's API to a designated API Server
-func RegisterAlertAPI(apiServer *api.Server, kapi etcd.KeysAPI, authBackend shttp.AuthenticationBackend) (*AlertAPIHandler, error) {
+func RegisterAlertAPI(apiServer *api.Server, authBackend shttp.AuthenticationBackend) (*AlertAPIHandler, error) {
 	alertAPIHandler := &AlertAPIHandler{
 		BasicAPIHandler: rest.BasicAPIHandler{
 			ResourceHandler: &AlertResourceHandler{},
-			EtcdKeyAPI:      kapi,
+			EtcdClient:      apiServer.EtcdClient,
 		},
 	}
 	if err := apiServer.RegisterAPIHandler(alertAPIHandler, authBackend); err != nil {

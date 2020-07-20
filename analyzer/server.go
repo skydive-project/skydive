@@ -320,7 +320,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	nodeRuleAPIHandler, err := api.RegisterNodeRuleAPI(apiServer, etcdClient.KeysAPI, g, apiAuthBackend)
+	nodeRuleAPIHandler, err := api.RegisterNodeRuleAPI(apiServer, g, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
@@ -330,18 +330,18 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	edgeRuleAPIHandler, err := api.RegisterEdgeRuleAPI(apiServer, etcdClient.KeysAPI, g, apiAuthBackend)
+	edgeRuleAPIHandler, err := api.RegisterEdgeRuleAPI(apiServer, g, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
 
 	s.topologyManager = usertopology.NewTopologyManager(etcdClient, nodeRuleAPIHandler, edgeRuleAPIHandler, g)
 
-	if _, err = api.RegisterAlertAPI(apiServer, etcdClient.KeysAPI, apiAuthBackend); err != nil {
+	if _, err = api.RegisterAlertAPI(apiServer, apiAuthBackend); err != nil {
 		return nil, err
 	}
 
-	if _, err := api.RegisterWorkflowAPI(apiServer, etcdClient.KeysAPI, apiAuthBackend); err != nil {
+	if _, err := api.RegisterWorkflowAPI(apiServer, apiAuthBackend); err != nil {
 		return nil, err
 	}
 

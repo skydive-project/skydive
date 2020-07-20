@@ -156,7 +156,7 @@ func RegisterCaptureAPI(apiServer *api.Server, kapi etcd.KeysAPI, g *graph.Graph
 	captureAPIHandler := &CaptureAPIHandler{
 		BasicAPIHandler: rest.BasicAPIHandler{
 			ResourceHandler: &CaptureResourceHandler{},
-			EtcdKeyAPI:      kapi,
+			EtcdClient:      apiServer.EtcdClient,
 		},
 		Graph: g,
 	}
