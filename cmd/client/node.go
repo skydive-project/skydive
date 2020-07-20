@@ -154,6 +154,7 @@ var NodeDelete = &cobra.Command{
 
 func addCreateNodeFlags(cmd *cobra.Command) {
 	host, _ = os.Hostname()
+	cmd.Flags().StringVarP(&nodeName, "node-name", "", "", "node name")
 	cmd.Flags().StringVarP(&nodeType, "node-type", "", "", "node type")
 	cmd.Flags().StringVarP(&metadata, "metadata", "", "", "node metadata, key value pairs. 'k1=v1, k2=v2'")
 	cmd.Flags().StringVarP(&metadata, "host", "", host, "host")
