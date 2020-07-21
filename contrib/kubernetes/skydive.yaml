@@ -111,10 +111,12 @@ spec:
         - configMapRef:
             name: skydive-analyzer-config
       - name: skydive-elasticsearch
-        image: elasticsearch:5
-        args:
-        - -E
-        - "http.port=9200"
+        image: elasticsearch:7.8.0
+        env:
+        - name: http.port
+          value: "9200"
+        - name: discovery.type
+          value: "single-node"
         ports:
         - containerPort: 9200
 ---
