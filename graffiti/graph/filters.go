@@ -18,9 +18,6 @@
 package graph
 
 import (
-	"time"
-
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/getter"
 )
@@ -59,12 +56,23 @@ func NewFilterForEdge(parent Identifier, child Identifier) *filters.Filter {
 	)
 }
 
+// TimeSlice defines a time boudary values
+type TimeSlice struct {
+	Start int64 `json:"Start"`
+	Last  int64 `json:"Last"`
+}
+
+// NewTimeSlice creates a new TimeSlice based on Start and Last
+func NewTimeSlice(s, l int64) *TimeSlice {
+	return &TimeSlice{Start: s, Last: l}
+}
+
 // filterForTimeSlice creates a filter based on a time slice between
 // startName and endName. time.Now() is used as reference if t == nil
-func filterForTimeSlice(t *common.TimeSlice, startName, endName string) *filters.Filter {
+func filterForTimeSlice(t *TimeSlice, startName, endName string) *filters.Filter {
 	if t == nil {
-		u := common.UnixMillis(time.Now())
-		t = common.NewTimeSlice(u, u)
+		now := TimeNow().UnixMilli()
+		t = NewTimeSlice(now, now)
 	}
 
 	return filters.NewAndFilter(
@@ -76,7 +84,7 @@ func filterForTimeSlice(t *common.TimeSlice, startName, endName string) *filters
 	)
 }
 
-func getTimeFilter(t *common.TimeSlice) *filters.Filter {
+func getTimeFilter(t *TimeSlice) *filters.Filter {
 	if t == nil {
 		return filters.NewNullFilter("ArchivedAt")
 	}

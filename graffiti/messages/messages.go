@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 )
@@ -86,7 +85,7 @@ func (s *SyncRequestMsg) UnmarshalJSON(b []byte) error {
 	}
 
 	if raw.Time != 0 {
-		s.TimeSlice = common.NewTimeSlice(raw.Time, raw.Time)
+		s.TimeSlice = graph.NewTimeSlice(raw.Time, raw.Time)
 	}
 	s.GremlinFilter = raw.GremlinFilter
 

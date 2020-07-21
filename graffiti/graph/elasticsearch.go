@@ -25,7 +25,7 @@ import (
 
 	"github.com/olivere/elastic/v7"
 
-	"github.com/skydive-project/skydive/common"
+	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	es "github.com/skydive-project/skydive/graffiti/storage/elasticsearch"
@@ -94,7 +94,7 @@ type ElasticSearchBackend struct {
 	PersistentBackend
 	client       es.ClientInterface
 	prevRevision map[Identifier]*rawData
-	election     common.MasterElection
+	election     etcd.MasterElection
 	liveIndex    es.Index
 	archiveIndex es.Index
 	logger       logging.Logger
@@ -134,14 +134,14 @@ func graphElementToRaw(typ string, e *graphElement) (*rawData, error) {
 		ID:        string(e.ID),
 		Host:      e.Host,
 		Origin:    e.Origin,
-		CreatedAt: e.CreatedAt.Unix(),
-		UpdatedAt: e.UpdatedAt.Unix(),
+		CreatedAt: e.CreatedAt.UnixMilli(),
+		UpdatedAt: e.UpdatedAt.UnixMilli(),
 		Metadata:  json.RawMessage(data),
 		Revision:  e.Revision,
 	}
 
 	if !e.DeletedAt.IsZero() {
-		raw.DeletedAt = e.DeletedAt.Unix()
+		raw.DeletedAt = e.DeletedAt.UnixMilli()
 	}
 
 	return raw, nil
@@ -162,7 +162,7 @@ func edgeToRaw(e *Edge) (*rawData, error) {
 }
 
 func (b *ElasticSearchBackend) archive(raw *rawData, at Time) error {
-	raw.ArchivedAt = at.Unix()
+	raw.ArchivedAt = at.UnixMilli()
 
 	data, err := json.Marshal(raw)
 	if err != nil {
@@ -512,7 +512,7 @@ func (b *ElasticSearchBackend) flushGraph() error {
 	script := elastic.NewScript("ctx._source.DeletedAt = params.now; ctx._source.ArchivedAt = params.now;")
 	script.Lang("painless")
 	script.Params(map[string]interface{}{
-		"now": TimeUTC().Unix(),
+		"now": TimeUTC().UnixMilli(),
 	})
 
 	return b.client.UpdateByScript(query, script, b.liveIndex.Alias(), b.archiveIndex.IndexWildcard())
@@ -541,7 +541,7 @@ func (b *ElasticSearchBackend) OnStarted() {
 
 // newElasticSearchBackendFromClient creates a new graph backend using the given elasticsearch
 // client connection
-func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, archiveIndex es.Index, electionService common.MasterElectionService, logger logging.Logger) *ElasticSearchBackend {
+func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, archiveIndex es.Index, electionService etcd.MasterElectionService, logger logging.Logger) *ElasticSearchBackend {
 	if logger == nil {
 		logger = logging.GetLogger()
 	}
@@ -562,7 +562,7 @@ func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, arc
 }
 
 // NewElasticSearchBackendFromConfig creates a new graph backend from an ES configuration structure
-func NewElasticSearchBackendFromConfig(cfg es.Config, extraDynamicTemplates map[string]interface{}, electionService common.MasterElectionService, logger logging.Logger) (*ElasticSearchBackend, error) {
+func NewElasticSearchBackendFromConfig(cfg es.Config, extraDynamicTemplates map[string]interface{}, electionService etcd.MasterElectionService, logger logging.Logger) (*ElasticSearchBackend, error) {
 	mapping := make(map[string]interface{})
 	if err := json.Unmarshal([]byte(graphElementMapping), &mapping); err != nil {
 		return nil, err

@@ -26,7 +26,7 @@ import (
 
 	"github.com/avast/retry-go"
 
-	"github.com/skydive-project/skydive/common"
+	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/filters"
 	es "github.com/skydive-project/skydive/graffiti/storage/elasticsearch"
 )
@@ -34,7 +34,7 @@ import (
 type fakeMasterElection struct {
 }
 
-func (f *fakeMasterElection) NewElection(name string) common.MasterElection {
+func (f *fakeMasterElection) NewElection(name string) etcd.MasterElection {
 	return nil
 }
 

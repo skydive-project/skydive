@@ -21,8 +21,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/skydive-project/skydive/common"
 )
 
 // QueryString used to construct string representation of query
@@ -117,7 +115,7 @@ func (q QueryString) Context(list ...interface{}) QueryString {
 			if t.IsZero() {
 				return q
 			}
-			newQ = newQ.appends(fmt.Sprintf("%d", common.UnixMillis(t)))
+			newQ = newQ.appends(fmt.Sprintf("%d", t.UnixNano()/int64(time.Millisecond)))
 		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 			newQ = newQ.appends(fmt.Sprintf("%d", t))
 		default:

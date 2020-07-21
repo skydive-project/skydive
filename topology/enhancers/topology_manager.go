@@ -24,7 +24,6 @@ import (
 
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -35,7 +34,7 @@ import (
 
 // TopologyManager describes topology manager
 type TopologyManager struct {
-	common.MasterElection
+	etcd.MasterElection
 	graph.DefaultGraphListener
 	watcher1    rest.StoppableWatcher
 	watcher2    rest.StoppableWatcher

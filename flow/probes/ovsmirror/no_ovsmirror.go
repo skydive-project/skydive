@@ -20,12 +20,11 @@
 package ovsmirror
 
 import (
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/probe"
 )
 
 // NewProbe returns an empty flow probe handler and an error
 func NewProbe(ctx probes.Context, bundle *probe.Bundle) (probes.FlowProbeHandler, error) {
-	return nil, common.ErrNotImplemented
+	return nil, probe.ErrNotImplemented
 }

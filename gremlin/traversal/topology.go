@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
@@ -34,7 +35,7 @@ func InterfaceMetrics(ctx traversal.StepContext, tv *traversal.GraphTraversalV, 
 	}
 
 	startField := key + ".Start"
-	tv = tv.Dedup(ctx, "ID", startField).Sort(ctx, common.SortAscending, startField)
+	tv = tv.Dedup(ctx, "ID", startField).Sort(ctx, filters.SortOrder_Ascending, startField)
 
 	if tv.Error() != nil {
 		return NewMetricsTraversalStepFromError(tv.Error())

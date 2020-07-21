@@ -20,6 +20,7 @@ package targets
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"math"
 	"net"
 	"sync"
@@ -28,7 +29,6 @@ import (
 	"github.com/google/gopacket"
 
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -54,6 +54,18 @@ func (nf *NetFlowV5Target) SendPacket(packet gopacket.Packet, bpf *flow.BPF) {
 func (nf *NetFlowV5Target) sendFlowBulk(flows []*flow.Flow, now time.Time) {
 	records := new(bytes.Buffer)
 
+	ipStrToUint32 := func(ipAddr string) (uint32, error) {
+		ip := net.ParseIP(ipAddr)
+		if ip == nil {
+			return 0, errors.New("wrong ipAddr format")
+		}
+		ip = ip.To4()
+		if ip == nil {
+			return 0, errors.New("wrong ipAddr format")
+		}
+		return binary.BigEndian.Uint32(ip), nil
+	}
+
 	var nFlows uint16
 	for _, f := range flows {
 		if f.Network == nil {
@@ -61,13 +73,13 @@ func (nf *NetFlowV5Target) sendFlowBulk(flows []*flow.Flow, now time.Time) {
 		}
 
 		// Source IP Address
-		ipA, err := common.IPStrToUint32(f.Network.A)
+		ipA, err := ipStrToUint32(f.Network.A)
 		if err != nil {
 			continue
 		}
 
 		// Destination IP Address
-		ipB, err := common.IPStrToUint32(f.Network.B)
+		ipB, err := ipStrToUint32(f.Network.B)
 		if err != nil {
 			continue
 		}
@@ -242,7 +254,7 @@ func NewNetFlowV5Target(g *graph.Graph, n *graph.Node, capture *types.Capture, u
 	nf := &NetFlowV5Target{
 		target:    capture.Target,
 		sysBoot:   now,
-		sysBootMs: common.UnixMillis(now),
+		sysBootMs: flow.UnixMilli(now),
 	}
 
 	nf.table = flow.NewTable(updateEvery, expireAfter, nf, uuids, tableOptsFromCapture(capture))

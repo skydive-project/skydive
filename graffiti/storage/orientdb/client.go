@@ -581,8 +581,8 @@ func (c *Client) Query(obj string, query *filters.SearchQuery) (*Result, error) 
 	if query.Sort {
 		sql += " ORDER BY " + query.SortBy
 
-		if query.SortOrder != "" {
-			sql += " " + strings.ToUpper(query.SortOrder)
+		if query.SortOrder == filters.SortOrder_Descending {
+			sql += " DESC"
 		}
 	}
 

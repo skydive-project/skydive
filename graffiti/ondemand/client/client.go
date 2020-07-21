@@ -27,7 +27,6 @@ import (
 	"github.com/safchain/insanelock"
 	"github.com/skydive-project/go-debouncer"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/filters"
@@ -56,7 +55,7 @@ type OnDemandClientHandler interface {
 // OnDemandClient describes an ondemand task client based on a websocket
 type OnDemandClient struct {
 	insanelock.RWMutex
-	common.MasterElection
+	etcd.MasterElection
 	graph.DefaultGraphListener
 	graph                   *graph.Graph
 	apiHandler              rest.WatchableHandler

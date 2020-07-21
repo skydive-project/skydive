@@ -17,52 +17,6 @@
 
 package common
 
-import (
-	"encoding/binary"
-	"errors"
-	"net"
-	"time"
-)
-
-var (
-	// ErrCantCompareInterface error can't compare interface
-	ErrCantCompareInterface = errors.New("Can't compare interface")
-	// ErrFieldWrongType error field has wrong type
-	ErrFieldWrongType = errors.New("Field has wrong type")
-	// ErrNotFound error no result was found
-	ErrNotFound = errors.New("No result found")
-	// ErrTimeout network timeout
-	ErrTimeout = errors.New("Timeout")
-	// ErrNotImplemented unimplemented feature
-	ErrNotImplemented = errors.New("Not implemented")
-)
-
-// SortOrder describes ascending or descending order
-type SortOrder string
-
-const (
-	// SortAscending sorting order
-	SortAscending SortOrder = "ASC"
-	// SortDescending sorting order
-	SortDescending SortOrder = "DESC"
-)
-
-// UnixMillis returns the current time in miliseconds
-func UnixMillis(t time.Time) int64 {
-	return t.UTC().UnixNano() / 1000000
-}
-
-// TimeSlice defines a time boudary values
-type TimeSlice struct {
-	Start int64 `json:"Start"`
-	Last  int64 `json:"Last"`
-}
-
-// NewTimeSlice creates a new TimeSlice based on Start and Last
-func NewTimeSlice(s, l int64) *TimeSlice {
-	return &TimeSlice{Start: s, Last: l}
-}
-
 // Metric defines a common metric interface
 type Metric interface {
 	// part of the Getter interface
@@ -77,17 +31,4 @@ type Metric interface {
 	GetLast() int64
 	SetLast(last int64)
 	IsZero() bool
-}
-
-// IPStrToUint32 converts IP string to 32bits
-func IPStrToUint32(ipAddr string) (uint32, error) {
-	ip := net.ParseIP(ipAddr)
-	if ip == nil {
-		return 0, errors.New("wrong ipAddr format")
-	}
-	ip = ip.To4()
-	if ip == nil {
-		return 0, errors.New("wrong ipAddr format")
-	}
-	return binary.BigEndian.Uint32(ip), nil
 }

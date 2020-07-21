@@ -20,12 +20,11 @@
 package gopacket
 
 import (
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/probe"
 )
 
 // NewProbe returns a new GoPacket probe
 func NewProbe(ctx probes.Context, bundle *probe.Bundle) (probes.FlowProbeHandler, error) {
-	return nil, common.ErrNotImplemented
+	return nil, probe.ErrNotImplemented
 }

@@ -26,7 +26,6 @@ import (
 
 	apiServer "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -51,7 +50,7 @@ type Reply struct {
 
 // Client describes a packet injector client
 type Client struct {
-	common.MasterElection
+	etcd.MasterElection
 	pool      ws.StructSpeakerPool
 	watcher   rest.StoppableWatcher
 	graph     *graph.Graph

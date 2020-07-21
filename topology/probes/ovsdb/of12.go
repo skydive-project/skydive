@@ -18,13 +18,13 @@
 package ovsdb
 
 import (
+	"errors"
 	"time"
 
 	goloxi "github.com/skydive-project/goloxi"
 	"github.com/skydive-project/goloxi/of12"
 	"github.com/skydive-project/goloxi/of13"
 	"github.com/skydive-project/goloxi/of15"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/openflow"
 )
 
@@ -63,11 +63,11 @@ func (h *of12Handler) OnMessage(msg goloxi.Message) {
 }
 
 func (h *of12Handler) NewGroupForwardRequest() (goloxi.Message, error) {
-	return nil, common.ErrNotImplemented
+	return nil, errors.New("Not supported on OpenFlow 1.2")
 }
 
 func (h *of12Handler) NewRoleRequest() (goloxi.Message, error) {
-	return nil, common.ErrNotImplemented
+	return nil, errors.New("Not supported on OpenFlow 1.2")
 }
 
 func (h *of12Handler) NewFlowStatsRequest(match Match) (goloxi.Message, error) {

@@ -26,7 +26,7 @@ import (
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/safchain/insanelock"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/getter"
 	"github.com/skydive-project/skydive/graffiti/service"
 )
@@ -131,7 +131,7 @@ type PersistentBackend interface {
 
 // Context describes within time slice
 type Context struct {
-	TimeSlice *common.TimeSlice
+	TimeSlice *TimeSlice
 	TimePoint bool
 }
 
@@ -336,11 +336,11 @@ func (e *graphElement) GetFieldBool(field string) (_ bool, err error) {
 func (e *graphElement) GetFieldInt64(field string) (_ int64, err error) {
 	switch field {
 	case "CreatedAt":
-		return e.CreatedAt.Unix(), nil
+		return e.CreatedAt.UnixMilli(), nil
 	case "UpdatedAt":
-		return e.UpdatedAt.Unix(), nil
+		return e.UpdatedAt.UnixMilli(), nil
 	case "DeletedAt":
-		return e.DeletedAt.Unix(), nil
+		return e.DeletedAt.UnixMilli(), nil
 	case "Revision":
 		return e.Revision, nil
 	default:
@@ -448,7 +448,7 @@ func (e *graphElement) GetFieldStringList(key string) ([]string, error) {
 			if s, ok := s.(string); ok {
 				strings = append(strings, s)
 			} else {
-				return nil, common.ErrFieldWrongType
+				return nil, errors.New("one array entry could not be converted to string")
 			}
 		}
 		return strings, nil
@@ -1315,10 +1315,10 @@ func (g *Graph) Origin() string {
 // Elements returns graph elements
 func (g *Graph) Elements() *Elements {
 	nodes := g.GetNodes(nil)
-	SortNodes(nodes, "CreatedAt", common.SortAscending)
+	SortNodes(nodes, "CreatedAt", filters.SortOrder_Ascending)
 
 	edges := g.GetEdges(nil)
-	SortEdges(edges, "CreatedAt", common.SortAscending)
+	SortEdges(edges, "CreatedAt", filters.SortOrder_Ascending)
 
 	return &Elements{
 		Nodes: nodes,

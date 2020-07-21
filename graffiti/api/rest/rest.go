@@ -23,7 +23,10 @@ import (
 )
 
 // ErrDuplicatedResource is returned when a resource is duplicated
-var ErrDuplicatedResource = errors.New("Duplicated resource")
+var ErrDuplicatedResource = errors.New("duplicated resource")
+
+// ErrNotFound is returned when a resource could not be found
+var ErrNotFound = errors.New("resource not found")
 
 // Resource used as interface resources for each API
 type Resource interface {

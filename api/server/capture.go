@@ -23,6 +23,7 @@ package server
 import (
 	"fmt"
 
+	etcd "github.com/coreos/etcd/client"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/probes"
@@ -146,11 +147,11 @@ func (c *CaptureAPIHandler) Create(r rest.Resource, opts *rest.CreateOptions) er
 }
 
 // RegisterCaptureAPI registers an new resource, capture
-func RegisterCaptureAPI(apiServer *api.Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*CaptureAPIHandler, error) {
+func RegisterCaptureAPI(apiServer *api.Server, kapi etcd.KeysAPI, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*CaptureAPIHandler, error) {
 	captureAPIHandler := &CaptureAPIHandler{
 		BasicAPIHandler: rest.BasicAPIHandler{
 			ResourceHandler: &CaptureResourceHandler{},
-			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
+			EtcdKeyAPI:      kapi,
 		},
 		Graph: g,
 	}

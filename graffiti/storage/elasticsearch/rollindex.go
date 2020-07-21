@@ -28,7 +28,7 @@ import (
 
 	"github.com/pierrec/xxHash/xxHash64"
 
-	"github.com/skydive-project/skydive/common"
+	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
@@ -44,7 +44,7 @@ type rollIndexService struct {
 	config   Config
 	indices  []Index
 	quit     chan bool
-	election common.MasterElection
+	election etcd.MasterElection
 }
 
 func (r *rollIndexService) cleanup(index Index) {
@@ -167,7 +167,7 @@ func SetRollingRate(rate time.Duration) {
 	rollingRateLock.Unlock()
 }
 
-func newRollIndexService(client *Client, indices []Index, cfg Config, electionService common.MasterElectionService) *rollIndexService {
+func newRollIndexService(client *Client, indices []Index, cfg Config, electionService etcd.MasterElectionService) *rollIndexService {
 	hasher := xxHash64.New(0)
 	for _, index := range indices {
 		hasher.Write([]byte(index.Name))

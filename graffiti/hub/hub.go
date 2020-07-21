@@ -20,8 +20,6 @@ package hub
 import (
 	"crypto/tls"
 
-	etcd "github.com/coreos/etcd/client"
-
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	gc "github.com/skydive-project/skydive/graffiti/common"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
@@ -48,7 +46,6 @@ type Opts struct {
 	ClusterAuthBackend  shttp.AuthenticationBackend
 	Peers               []service.Address
 	TLSConfig           *tls.Config
-	EtcdKeysAPI         etcd.KeysAPI
 	Logger              logging.Logger
 }
 
@@ -203,7 +200,7 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 	gc.NewSubscriberEndpoint(subscriberWSServer, g, tr, opts.Logger)
 
 	service := service.Service{ID: id, Type: serviceType}
-	apiServer, err := api.NewAPI(httpServer, opts.EtcdKeysAPI, opts.Version, service, opts.APIAuthBackend, opts.APIValidator)
+	apiServer, err := api.NewAPI(httpServer, opts.Version, service, opts.APIAuthBackend, opts.APIValidator)
 	if err != nil {
 		return nil, err
 	}

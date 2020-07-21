@@ -46,7 +46,6 @@ import (
 	"time"
 
 	auth "github.com/abbot/go-http-auth"
-	etcd "github.com/coreos/etcd/client"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/skydive-project/skydive/graffiti/api/rest"
@@ -64,7 +63,6 @@ type Validator interface {
 // Server defines an API server
 type Server struct {
 	HTTPServer *shttp.Server
-	EtcdKeyAPI etcd.KeysAPI
 	handlers   map[string]rest.Handler
 	validator  Validator
 }
@@ -84,6 +82,10 @@ type Info struct {
 func (a *Server) RegisterAPIHandler(handler rest.Handler, authBackend shttp.AuthenticationBackend) error {
 	name := handler.Name()
 	title := strings.Title(name)
+
+	aclError := func(username, resource, permission string) string {
+		return fmt.Sprintf("'%s' has no '%s' permission on '%s'", username, permission, resource)
+	}
 
 	routes := []shttp.Route{
 		{
@@ -115,19 +117,19 @@ func (a *Server) RegisterAPIHandler(handler rest.Handler, authBackend shttp.Auth
 			Path:   shttp.PathPrefix(fmt.Sprintf("/api/%s/", name)),
 			HandlerFunc: func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 				if !rbac.Enforce(r.Username, name, "read") {
-					w.WriteHeader(http.StatusMethodNotAllowed)
+					http.Error(w, aclError(r.Username, name, "read"), http.StatusMethodNotAllowed)
 					return
 				}
 
 				id := r.URL.Path[len(fmt.Sprintf("/api/%s/", name)):]
 				if id == "" {
-					w.WriteHeader(http.StatusBadRequest)
+					http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 					return
 				}
 
 				resource, ok := handler.Get(id)
 				if !ok {
-					w.WriteHeader(http.StatusNotFound)
+					http.Error(w, fmt.Sprintf("%s '%s' not found", title, id), http.StatusNotFound)
 					return
 				}
 				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
@@ -144,7 +146,7 @@ func (a *Server) RegisterAPIHandler(handler rest.Handler, authBackend shttp.Auth
 			Path:   "/api/" + name,
 			HandlerFunc: func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 				if !rbac.Enforce(r.Username, name, "write") {
-					w.WriteHeader(http.StatusMethodNotAllowed)
+					http.Error(w, aclError(r.Username, name, "write"), http.StatusMethodNotAllowed)
 					return
 				}
 
@@ -155,7 +157,7 @@ func (a *Server) RegisterAPIHandler(handler rest.Handler, authBackend shttp.Auth
 					if content, e := ioutil.ReadAll(r.Body); e == nil {
 						err = yaml.Unmarshal(content, resource)
 					} else {
-						http.Error(w, err.Error(), http.StatusBadRequest)
+						http.Error(w, e.Error(), http.StatusBadRequest)
 						return
 					}
 				} else {
@@ -212,19 +214,19 @@ func (a *Server) RegisterAPIHandler(handler rest.Handler, authBackend shttp.Auth
 			Path:   shttp.PathPrefix(fmt.Sprintf("/api/%s/", name)),
 			HandlerFunc: func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 				if !rbac.Enforce(r.Username, name, "write") {
-					w.WriteHeader(http.StatusMethodNotAllowed)
+					http.Error(w, aclError(r.Username, name, "write"), http.StatusMethodNotAllowed)
 					return
 				}
 
 				id := r.URL.Path[len(fmt.Sprintf("/api/%s/", name)):]
 				if id == "" {
-					w.WriteHeader(http.StatusBadRequest)
+					http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 					return
 				}
 
 				if err := handler.Delete(id); err != nil {
-					if err, ok := err.(etcd.Error); ok && err.Code == etcd.ErrorCodeKeyNotFound {
-						http.Error(w, err.Error(), http.StatusNotFound)
+					if err == rest.ErrNotFound {
+						http.Error(w, fmt.Sprintf("%s '%s' not found", title, id), http.StatusNotFound)
 					} else {
 						http.Error(w, err.Error(), http.StatusBadRequest)
 					}
@@ -386,14 +388,13 @@ func (a *Server) addLoginRoute(authBackend shttp.AuthenticationBackend) {
 }
 
 // NewAPI creates a new API server based on http
-func NewAPI(server *shttp.Server, kapi etcd.KeysAPI, version string, service service.Service, authBackend shttp.AuthenticationBackend, validator Validator) (*Server, error) {
+func NewAPI(server *shttp.Server, version string, service service.Service, authBackend shttp.AuthenticationBackend, validator Validator) (*Server, error) {
 	if version == "" {
 		version = "unknown"
 	}
 
 	apiServer := &Server{
 		HTTPServer: server,
-		EtcdKeyAPI: kapi,
 		handlers:   make(map[string]rest.Handler),
 		validator:  validator,
 	}

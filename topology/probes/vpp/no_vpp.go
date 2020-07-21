@@ -20,12 +20,11 @@
 package vpp
 
 import (
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/probe"
 	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
 // NewProbe returns a new VPP probe
 func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
-	return nil, common.ErrNotImplemented
+	return nil, probe.ErrNotImplemented
 }

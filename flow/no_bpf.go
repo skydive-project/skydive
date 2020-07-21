@@ -20,11 +20,13 @@
 package flow
 
 import (
+	"errors"
+
 	"github.com/google/gopacket/layers"
 	"golang.org/x/net/bpf"
-
-	"github.com/skydive-project/skydive/common"
 )
+
+var errNeedPcap = errors.New("BPF filtering needs libpcap support")
 
 // BPF describes a filter
 type BPF struct {
@@ -33,7 +35,7 @@ type BPF struct {
 
 // BPFFilterToRaw creates a raw binary filter from a BPF expression
 func BPFFilterToRaw(linkType layers.LinkType, captureLength uint32, filter string) ([]bpf.RawInstruction, error) {
-	return nil, common.ErrNotImplemented
+	return nil, errNeedPcap
 }
 
 // Matches returns true data match the filter
@@ -43,5 +45,5 @@ func (b *BPF) Matches(data []byte) bool {
 
 // NewBPF creates a new BPF filter
 func NewBPF(linkType layers.LinkType, captureLength uint32, filter string) (*BPF, error) {
-	return nil, common.ErrNotImplemented
+	return nil, errNeedPcap
 }

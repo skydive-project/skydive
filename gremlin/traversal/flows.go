@@ -67,7 +67,7 @@ type FlowGremlinTraversalStep struct {
 	dedupBy            string
 	sort               bool
 	sortBy             string
-	sortOrder          common.SortOrder
+	sortOrder          filters.SortOrder
 }
 
 // FlowTraversalStep a flow step linked to a storage
@@ -465,7 +465,7 @@ func (f *FlowTraversalStep) Sort(ctx traversal.StepContext, keys ...interface{})
 		return f
 	}
 
-	order, sortBy, err := traversal.ParseSortParameter(keys...)
+	sortOrder, sortBy, err := traversal.ParseSortParameter(keys...)
 	if err != nil {
 		return &FlowTraversalStep{error: err}
 	}
@@ -474,7 +474,7 @@ func (f *FlowTraversalStep) Sort(ctx traversal.StepContext, keys ...interface{})
 		sortBy = defaultSortBy
 	}
 
-	f.flowset.Sort(order, sortBy)
+	f.flowset.Sort(sortOrder, sortBy)
 	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, Storage: f.Storage, flowset: f.flowset}
 }
 
@@ -571,7 +571,7 @@ func (f *FlowTraversalStep) FlowMetrics(ctx traversal.StepContext) *MetricsTrave
 
 		f.flowSearchQuery.Sort = true
 		f.flowSearchQuery.SortBy = defaultSortBy
-		f.flowSearchQuery.SortOrder = string(common.SortAscending)
+		f.flowSearchQuery.SortOrder = filters.SortOrder_Ascending
 
 		var err error
 		if flowMetrics, err = f.Storage.SearchMetrics(f.flowSearchQuery, metricFilter); err != nil {
@@ -629,7 +629,7 @@ func (f *FlowTraversalStep) RawPackets(ctx traversal.StepContext) *RawPacketsTra
 
 		f.flowSearchQuery.Sort = true
 		f.flowSearchQuery.SortBy = "Index"
-		f.flowSearchQuery.SortOrder = string(common.SortAscending)
+		f.flowSearchQuery.SortOrder = filters.SortOrder_Ascending
 
 		var err error
 		if rawPackets, err = f.Storage.SearchRawPackets(f.flowSearchQuery, rawPacketsFilter); err != nil {
@@ -822,7 +822,7 @@ func (s *FlowGremlinTraversalStep) makeSearchQuery() (fsq filters.SearchQuery, e
 		DedupBy:         s.dedupBy,
 		Sort:            s.sort,
 		SortBy:          s.sortBy,
-		SortOrder:       string(s.sortOrder),
+		SortOrder:       s.sortOrder,
 	}
 
 	return
@@ -838,7 +838,7 @@ func captureAllowedNodes(nodes []*graph.Node) []*graph.Node {
 	return allowed
 }
 
-func (s *FlowGremlinTraversalStep) addTimeFilter(fsq *filters.SearchQuery, timeContext *common.TimeSlice) {
+func (s *FlowGremlinTraversalStep) addTimeFilter(fsq *filters.SearchQuery, timeContext *graph.TimeSlice) {
 	var timeFilter *filters.Filter
 	tr := filters.Range{
 		// When we query the flows on the agents, we get the flows that have not
@@ -995,7 +995,7 @@ func (s *FlowGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) (
 	if sortStep, ok := next.(*traversal.GremlinTraversalStepSort); ok {
 		s.sort = true
 		s.sortBy = defaultSortBy
-		s.sortOrder = common.SortAscending
+		s.sortOrder = filters.SortOrder_Ascending
 		if len(sortStep.Params) > 0 {
 			var err error
 			if s.sortOrder, s.sortBy, err = traversal.ParseSortParameter(sortStep.Params...); err != nil {

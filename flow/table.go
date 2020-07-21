@@ -27,7 +27,6 @@ import (
 	"github.com/hashicorp/golang-lru/simplelru"
 	"github.com/safchain/insanelock"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/logging"
@@ -200,7 +199,7 @@ func (ft *Table) getFlows(query *filters.SearchQuery) *FlowSet {
 	}
 
 	if query.Sort {
-		flowset.Sort(common.SortOrder(query.SortOrder), query.SortBy)
+		flowset.Sort(query.SortOrder, query.SortBy)
 	}
 
 	if query.Dedup {
@@ -276,7 +275,7 @@ func (ft *Table) expire(expireBefore int64) {
 }
 
 func (ft *Table) updateAt(now time.Time) {
-	updateTime := common.UnixMillis(now)
+	updateTime := UnixMilli(now)
 	ft.update(ft.lastUpdate, updateTime)
 	ft.lastUpdate = updateTime
 	ft.updateVersion++
@@ -350,7 +349,7 @@ func (ft *Table) expireNow() {
 
 func (ft *Table) expireAt(now time.Time) {
 	ft.expire(ft.lastExpire)
-	ft.lastExpire = common.UnixMillis(now)
+	ft.lastExpire = UnixMilli(now)
 }
 
 func (ft *Table) onQuery(tq *TableQuery) []byte {
@@ -427,7 +426,7 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
 		flow.RawPacketsCaptured++
 		linkType, _ := flow.LinkType()
 		data := &RawPacket{
-			Timestamp: common.UnixMillis(packet.GoPacket.Metadata().CaptureInfo.Timestamp),
+			Timestamp: UnixMilli(packet.GoPacket.Metadata().CaptureInfo.Timestamp),
 			Index:     flow.RawPacketsCaptured,
 			Data:      packet.Data,
 			LinkType:  linkType,

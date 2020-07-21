@@ -28,7 +28,6 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/safchain/insanelock"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -245,7 +244,7 @@ func (sfa *Agent) feedFlowTable() {
 			continue
 		}
 
-		now := int64(common.UnixMillis(time.Now()))
+		now := int64(flow.UnixMilli(time.Now()))
 
 		if lastUpdateMetric := sf.Metric.Sub(prevMetric).(*SFMetric); !lastUpdateMetric.IsZero() {
 			lastUpdateMetric.Start = sf.Metric.Last

@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/google/gopacket/layers"
-	"github.com/skydive-project/skydive/common"
+
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/filters"
 )
@@ -99,7 +99,7 @@ func TestGetFlowsWithFilters(t *testing.T) {
 	// sort test
 	searchQuery.Sort = true
 	searchQuery.SortBy = "Network.A"
-	searchQuery.SortOrder = string(common.SortAscending)
+	searchQuery.SortOrder = filters.SortOrder_Ascending
 
 	flows = table.getFlows(searchQuery).Flows
 
@@ -111,7 +111,7 @@ func TestGetFlowsWithFilters(t *testing.T) {
 		last = f.Network.A
 	}
 
-	searchQuery.SortOrder = string(common.SortDescending)
+	searchQuery.SortOrder = filters.SortOrder_Descending
 
 	flows = table.getFlows(searchQuery).Flows
 
@@ -144,7 +144,7 @@ func TestUpdate(t *testing.T) {
 	flow1.XXX_state.updateVersion = table.updateVersion + 1
 
 	// check that LastUpdateMetric is filled after a expire before an update
-	table.expire(common.UnixMillis(time.Now()))
+	table.expire(UnixMilli(time.Now()))
 
 	if flow1.LastUpdateMetric.ABBytes != 1 {
 		t.Errorf("Flow should have been updated by expire : %+v", flow1)
@@ -217,11 +217,11 @@ func TestAppSpecificTimeout(t *testing.T) {
 	flowsTime := time.Now()
 
 	arpFlow, _ := table.getOrCreateFlow(123)
-	arpFlow.Last = common.UnixMillis(flowsTime)
+	arpFlow.Last = UnixMilli(flowsTime)
 	arpFlow.Application = "ARP"
 
 	dnsFlow, _ := table.getOrCreateFlow(456)
-	dnsFlow.Last = common.UnixMillis(flowsTime)
+	dnsFlow.Last = UnixMilli(flowsTime)
 	dnsFlow.Application = "DNS"
 
 	table.updateAt(flowsTime.Add(time.Duration(15) * time.Second))
@@ -241,7 +241,7 @@ func TestHold(t *testing.T) {
 	flowTime := time.Now()
 
 	flow1, _ := table.getOrCreateFlow(123)
-	flow1.Last = common.UnixMillis(flowTime)
+	flow1.Last = UnixMilli(flowTime)
 	flow1.FinishType = FlowFinishType_TCP_FIN
 
 	table.updateAt(flowTime.Add(time.Duration(5) * time.Second))
@@ -254,7 +254,7 @@ func TestHold(t *testing.T) {
 	}
 
 	flow2, _ := table.getOrCreateFlow(456)
-	flow2.Last = common.UnixMillis(flowTime)
+	flow2.Last = UnixMilli(flowTime)
 	flow2.FinishType = FlowFinishType_TCP_FIN
 	table.updateAt(flowTime.Add(time.Duration(5) * time.Second))
 	flow2.FinishType = FlowFinishType_NOT_FINISHED

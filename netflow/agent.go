@@ -28,7 +28,6 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/safchain/insanelock"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/logging"
@@ -88,7 +87,7 @@ func (nfa *Agent) feedFlowTable(extFlowChan chan *flow.ExtFlow) {
 			continue
 		}
 
-		bootTime := common.UnixMillis(time.Now()) - int64(msg.Header.SysUpTimeMSecs)
+		bootTime := flow.UnixMilli(time.Now()) - int64(msg.Header.SysUpTimeMSecs)
 
 	LOOP:
 		for _, nf := range msg.Flows {

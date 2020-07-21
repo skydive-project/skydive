@@ -19,7 +19,7 @@
 
 package netns
 
-import "github.com/skydive-project/skydive/common"
+import "errors"
 
 // Context describes a NameSpace Context switch API
 type Context struct {
@@ -37,7 +37,7 @@ func (n *Context) Close() {
 // NewContext creates a new NameSpace context base on path
 func NewContext(path string) (*Context, error) {
 	if path != "" {
-		return nil, common.ErrNotImplemented
+		return nil, errors.New("Network namespaces are only supported on Linux")
 	}
 
 	return &Context{}, nil

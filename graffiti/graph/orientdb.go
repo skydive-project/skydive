@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/skydive-project/skydive/common"
+	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/storage/orientdb"
@@ -32,8 +32,8 @@ import (
 type OrientDBBackend struct {
 	PersistentBackend
 	client   orientdb.ClientInterface
-	election common.MasterElection
 	logger   logging.Logger
+	election etcd.MasterElection
 }
 
 type eventTime struct {
@@ -46,8 +46,8 @@ func graphElementToOrientDBSetString(e graphElement) (s string) {
 		fmt.Sprintf("ID = \"%s\"", string(e.ID)),
 		fmt.Sprintf("Host = \"%s\"", e.Host),
 		fmt.Sprintf("Origin = \"%s\"", e.Origin),
-		fmt.Sprintf("CreatedAt = %d", e.CreatedAt.Unix()),
-		fmt.Sprintf("UpdatedAt = %d", e.UpdatedAt.Unix()),
+		fmt.Sprintf("CreatedAt = %d", e.CreatedAt.UnixMilli()),
+		fmt.Sprintf("UpdatedAt = %d", e.UpdatedAt.UnixMilli()),
 		fmt.Sprintf("Revision = %d", e.Revision),
 	}
 	s = strings.Join(properties, ", ")
@@ -89,7 +89,7 @@ func metadataToOrientDBSelectString(m ElementMatcher) string {
 func (o *OrientDBBackend) updateTimes(e string, id string, events ...eventTime) error {
 	attrs := []string{}
 	for _, event := range events {
-		attrs = append(attrs, fmt.Sprintf("%s = %d", event.name, event.t.Unix()))
+		attrs = append(attrs, fmt.Sprintf("%s = %d", event.name, event.t.UnixMilli()))
 	}
 	query := fmt.Sprintf("UPDATE %s SET %s WHERE ID = '%s' AND DeletedAt IS NULL AND ArchivedAt IS NULL", e, strings.Join(attrs, ", "), id)
 	result, err := o.client.SQL(query)
@@ -326,7 +326,7 @@ func (o *OrientDBBackend) IsHistorySupported() bool {
 func (o *OrientDBBackend) flushGraph() error {
 	o.logger.Info("Flush graph elements")
 
-	now := TimeUTC().Unix()
+	now := TimeUTC().UnixMilli()
 
 	query := fmt.Sprintf("UPDATE Node SET DeletedAt = %d, ArchivedAt = %d WHERE DeletedAt IS NULL", now, now)
 	if _, err := o.client.SQL(query); err != nil {
@@ -357,8 +357,7 @@ func (o *OrientDBBackend) OnStarted() {
 	}
 }
 
-
-func newOrientDBBackend(client orientdb.ClientInterface, electionService common.MasterElectionService, logger logging.Logger) (*OrientDBBackend, error) {
+func newOrientDBBackend(client orientdb.ClientInterface, electionService etcd.MasterElectionService, logger logging.Logger) (*OrientDBBackend, error) {
 	if logger == nil {
 		logger = logging.GetLogger()
 	}
@@ -435,7 +434,7 @@ func newOrientDBBackend(client orientdb.ClientInterface, electionService common.
 
 // NewOrientDBBackend creates a new graph backend and
 // connect to an OrientDB instance
-func NewOrientDBBackend(addr string, database string, username string, password string, electionService common.MasterElectionService, logger logging.Logger) (*OrientDBBackend, error) {
+func NewOrientDBBackend(addr string, database string, username string, password string, electionService etcd.MasterElectionService, logger logging.Logger) (*OrientDBBackend, error) {
 	client, err := orientdb.NewClient(addr, database, username, password)
 	if err != nil {
 		return nil, err

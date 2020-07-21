@@ -31,7 +31,6 @@ import (
 	goloxi "github.com/skydive-project/goloxi"
 	"github.com/skydive-project/goloxi/of14"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/openflow"
 	"github.com/skydive-project/skydive/ovs/monitor"
@@ -506,8 +505,8 @@ func (probe *ofProbe) handleFlowStats(xid uint32, rule *ofRule, actions, writeAc
 
 	tr.AddMetadata("Metric", currMetric)
 	if lastUpdateMetric != nil {
-		lastUpdateMetric.Start = int64(common.UnixMillis(last))
-		lastUpdateMetric.Last = int64(common.UnixMillis(now))
+		lastUpdateMetric.Start = graph.Time(last).UnixMilli()
+		lastUpdateMetric.Last = graph.Time(now).UnixMilli()
 		tr.AddMetadata("LastUpdateMetric", lastUpdateMetric)
 	}
 	tr.Commit()

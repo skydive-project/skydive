@@ -21,6 +21,7 @@
 package server
 
 import (
+	etcd "github.com/coreos/etcd/client"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
@@ -76,11 +77,11 @@ func (pi *PacketInjectorAPI) getNode(gremlinQuery string) *graph.Node {
 }
 
 // RegisterPacketInjectorAPI registers a new packet injector resource in the API
-func RegisterPacketInjectorAPI(g *graph.Graph, apiServer *api.Server, authBackend shttp.AuthenticationBackend) (*PacketInjectorAPI, error) {
+func RegisterPacketInjectorAPI(g *graph.Graph, apiServer *api.Server, kapi etcd.KeysAPI, authBackend shttp.AuthenticationBackend) (*PacketInjectorAPI, error) {
 	pia := &PacketInjectorAPI{
 		BasicAPIHandler: rest.BasicAPIHandler{
 			ResourceHandler: &packetInjectorResourceHandler{},
-			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
+			EtcdKeyAPI:      kapi,
 		},
 		Graph: g,
 	}
