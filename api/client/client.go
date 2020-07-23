@@ -25,18 +25,12 @@ import (
 
 // NewCrudClientFromConfig creates a new REST client on /api
 func NewCrudClientFromConfig(authOptions *shttp.AuthenticationOpts) (*shttp.CrudClient, error) {
-	tlsConfig, err := config.GetTLSClientConfig(true)
+	restClient, err := NewRestClientFromConfig(authOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	sa, err := config.GetOneAnalyzerServiceAddress()
-	if err != nil && err != config.ErrNoAnalyzerSpecified {
-		logging.GetLogger().Errorf("Unable to parse analyzer client %s", err.Error())
-		return nil, err
-	}
-
-	return shttp.NewCrudClient(config.GetURL("http", sa.Addr, sa.Port, "/api/"), authOptions, tlsConfig), nil
+	return shttp.NewCrudClient(restClient), nil
 }
 
 // NewRestClientFromConfig creates a new REST client

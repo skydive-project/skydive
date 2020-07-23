@@ -311,23 +311,24 @@ func TestScaleHA(t *testing.T) {
 	// switch to the other analyzer
 	os.Setenv("SKYDIVE_ANALYZERS", "127.0.0.1:8084")
 
-	client, err := gclient.NewCrudClientFromConfig(authOptions)
+	restClient, err := gclient.NewRestClientFromConfig(authOptions)
 	if err != nil {
 		t.Fatalf("Failed to create client: %s", err)
 	}
 
-	gh := gclient.NewGremlinQueryHelper(authOptions)
+	crudClient := shttp.NewCrudClient(restClient)
+	gh := gclient.NewGremlinQueryHelper(restClient)
 
 	// expected 1 either Incomer or Outgoer
 	if err = retry.Do(func() error {
-		return checkPeers(client, 1, websocket.ConnState(service.RunningState))
+		return checkPeers(crudClient, 1, websocket.ConnState(service.RunningState))
 	}, retry.Attempts(5), retry.Delay(time.Second), retry.DelayType(retry.FixedDelay)); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// test if we have our 2 hosts
-	if err = checkHostNodes(client, gh, 2); err != nil {
+	if err = checkHostNodes(crudClient, gh, 2); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
@@ -335,7 +336,7 @@ func TestScaleHA(t *testing.T) {
 	// start a capture
 	capture := types.NewCapture(g.G.V().Has("Type", "netns", "Name", "vm1").Out().Has("Name", "eth0").String(), "")
 	capture.Type = "pcap"
-	if err = client.Create("capture", capture, nil); err != nil {
+	if err = crudClient.Create("capture", capture, nil); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
@@ -371,7 +372,7 @@ func TestScaleHA(t *testing.T) {
 	execCmds(t, setupCmds...)
 
 	// test if we have now 4 hosts
-	if err = checkHostNodes(client, gh, 4); err != nil {
+	if err = checkHostNodes(crudClient, gh, 4); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
@@ -389,20 +390,24 @@ func TestScaleHA(t *testing.T) {
 	execCmds(t, setupCmds...)
 
 	// test if we have now 3 hosts
-	if err = checkHostNodes(client, gh, 3); err != nil {
+	if err = checkHostNodes(crudClient, gh, 3); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// switch back to the first analyzer
 	os.Setenv("SKYDIVE_ANALYZERS", "127.0.0.1:8082")
-	client, err = gclient.NewCrudClientFromConfig(authOptions)
+
+	restClient, err = gclient.NewRestClientFromConfig(authOptions)
 	if err != nil {
 		t.Fatalf("Failed to create client: %s", err)
 	}
 
+	crudClient = shttp.NewCrudClient(restClient)
+	gh = gclient.NewGremlinQueryHelper(restClient)
+
 	// test if we have still 3 hosts
-	if err = checkHostNodes(client, gh, 3); err != nil {
+	if err = checkHostNodes(crudClient, gh, 3); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
@@ -414,13 +419,13 @@ func TestScaleHA(t *testing.T) {
 	}
 	execCmds(t, setupCmds...)
 
-	if err = checkPeers(client, 0, websocket.ConnState(service.RunningState)); err != nil {
+	if err = checkPeers(crudClient, 0, websocket.ConnState(service.RunningState)); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
 
 	// test if the remaining analyzer have a correct graph
-	if err = checkHostNodes(client, gh, 3); err != nil {
+	if err = checkHostNodes(crudClient, gh, 3); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
@@ -448,7 +453,7 @@ func TestScaleHA(t *testing.T) {
 	}
 
 	// delete the capture to check that all captures will be delete at the agent side
-	client.Delete("capture", capture.GetID())
+	crudClient.Delete("capture", capture.GetID())
 	if err = checkCaptures(gh, 0); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
@@ -462,7 +467,7 @@ func TestScaleHA(t *testing.T) {
 	execCmds(t, setupCmds...)
 
 	if err = retry.Do(func() error {
-		return checkPeers(client, 1, websocket.ConnState(service.RunningState))
+		return checkPeers(crudClient, 1, websocket.ConnState(service.RunningState))
 	}, retry.Attempts(15), retry.Delay(time.Second), retry.DelayType(retry.FixedDelay)); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
@@ -475,7 +480,7 @@ func TestScaleHA(t *testing.T) {
 	execCmds(t, setupCmds...)
 
 	// test if we have now 2 hosts
-	if err = checkHostNodes(client, gh, 2); err != nil {
+	if err = checkHostNodes(crudClient, gh, 2); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
@@ -488,7 +493,7 @@ func TestScaleHA(t *testing.T) {
 	execCmds(t, setupCmds...)
 
 	// test if we have now 2 hosts
-	if err = checkHostNodes(client, gh, 3); err != nil {
+	if err = checkHostNodes(crudClient, gh, 3); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
@@ -496,7 +501,7 @@ func TestScaleHA(t *testing.T) {
 	// restart a capture on all eth0
 	capture = types.NewCapture(g.G.V().Has("Type", "netns", "Name", "vm1").Out().Has("Name", "eth0").String(), "")
 	capture.Type = "pcap"
-	if err = client.Create("capture", capture, nil); err != nil {
+	if err = crudClient.Create("capture", capture, nil); err != nil {
 		t.Fatal(err)
 	}
 

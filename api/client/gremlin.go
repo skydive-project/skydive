@@ -40,16 +40,12 @@ var ErrNoResult = errors.New("no result")
 
 // GremlinQueryHelper describes a gremlin query request query helper mechanism
 type GremlinQueryHelper struct {
+	restClient  *shttp.RestClient
 	authOptions *shttp.AuthenticationOpts
 }
 
 // Request send a Gremlin request to the topology API
 func (g *GremlinQueryHelper) Request(query interface{}, header http.Header) (*http.Response, error) {
-	client, err := NewRestClientFromConfig(g.authOptions)
-	if err != nil {
-		return nil, err
-	}
-
 	gq := types.TopologyParams{GremlinQuery: gremlin.NewQueryStringFromArgument(query).String()}
 	s, err := json.Marshal(gq)
 	if err != nil {
@@ -58,7 +54,7 @@ func (g *GremlinQueryHelper) Request(query interface{}, header http.Header) (*ht
 
 	contentReader := bytes.NewReader(s)
 
-	return client.Request("POST", "topology", contentReader, header)
+	return g.restClient.Request("POST", "topology", contentReader, header)
 }
 
 // Query queries the topology API
@@ -141,6 +137,40 @@ func (g *GremlinQueryHelper) GetNode(query interface{}) (node *graph.Node, _ err
 	}
 
 	return nil, ErrNoResult
+}
+
+// GetEdges from the Gremlin query
+func (g *GremlinQueryHelper) GetEdges(query interface{}) ([]*graph.Edge, error) {
+	data, err := g.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []json.RawMessage
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, err
+	}
+
+	var edges []*graph.Edge
+	for _, obj := range result {
+		// hacky stuff to know how to decode
+		switch obj[0] {
+		case '[':
+			var e []*graph.Edge
+			if err := json.Unmarshal(obj, &e); err != nil {
+				return nil, err
+			}
+			edges = append(edges, e...)
+		case '{':
+			var e graph.Edge
+			if err := json.Unmarshal(obj, &e); err != nil {
+				return nil, err
+			}
+			edges = append(edges, &e)
+		}
+	}
+
+	return edges, nil
 }
 
 // GetFlows from the Gremlin query
@@ -289,8 +319,16 @@ func (g *GremlinQueryHelper) GetSockets(query interface{}) (sockets map[string][
 }
 
 // NewGremlinQueryHelper creates a new Gremlin query helper based on authentication
-func NewGremlinQueryHelper(authOptions *shttp.AuthenticationOpts) *GremlinQueryHelper {
-	return &GremlinQueryHelper{
-		authOptions: authOptions,
+func NewGremlinQueryHelper(restClient *shttp.RestClient) *GremlinQueryHelper {
+	return &GremlinQueryHelper{restClient: restClient}
+}
+
+// NewGremlinQueryHelperFromConfig creates a new Gremlin query helper based on authentication based on configuration file
+func NewGremlinQueryHelperFromConfig(authOptions *shttp.AuthenticationOpts) (*GremlinQueryHelper, error) {
+	restClient, err := NewRestClientFromConfig(authOptions)
+	if err != nil {
+		return nil, err
 	}
+
+	return NewGremlinQueryHelper(restClient), nil
 }

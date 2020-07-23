@@ -32,6 +32,8 @@ import (
 	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
+var delete bool
+
 // QueryCmd skydive topology query command
 var QueryCmd = &cobra.Command{
 	Use:   "query [gremlin]",
@@ -45,7 +47,10 @@ var QueryCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		gremlinQuery = args[0]
-		queryHelper := client.NewGremlinQueryHelper(&AuthenticationOpts)
+		queryHelper, err := client.NewGremlinQueryHelperFromConfig(&AuthenticationOpts)
+		if err != nil {
+			exitOnError(err)
+		}
 
 		switch outputFormat {
 		case "json":
@@ -95,4 +100,5 @@ var QueryCmd = &cobra.Command{
 
 func init() {
 	QueryCmd.Flags().StringVarP(&outputFormat, "format", "", "json", "Output format (json, dot or pcap)")
+	QueryCmd.Flags().BoolVarP(&delete, "delete", "", false, "Deletes the query output nodes and edges")
 }
