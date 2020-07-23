@@ -88,7 +88,7 @@ func (t *SubscriberEndpoint) OnConnected(c ws.Speaker) {
 	if gremlinFilter != "" {
 		host := c.GetRemoteHost()
 
-		subscriber, err := t.newSubscriber(host, gremlinFilter, false)
+		subscriber, err := t.newSubscriber(host, gremlinFilter, true)
 		if err != nil {
 			t.logger.Error(err)
 			return
