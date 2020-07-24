@@ -14,7 +14,7 @@ require (
 	github.com/cenk/rpc2 v0.0.0-20160427170138-7ab76d2e88c7 // indirect
 	github.com/cenkalti/rpc2 v0.0.0-20180727162946-9642ea02d0aa // indirect
 	github.com/cnf/structhash v0.0.0-20170702194520-7710f1f78fb9
-	github.com/coreos/etcd v3.3.15+incompatible
+	github.com/coreos/etcd v3.3.22+incompatible
 	github.com/davecgh/go-spew v1.1.1
 	github.com/digitalocean/go-libvirt v0.0.0-20190715144809-7b622097a793
 	github.com/docker/docker v1.13.1
@@ -46,6 +46,7 @@ require (
 	github.com/intel-go/nff-go v0.0.0-20190620122648-8ab691c21da9
 	github.com/iovisor/gobpf v0.0.0-20200329161226-8b2cce9dac28 // indirect
 	github.com/jbowtie/gokogiri v0.0.0-20190301021639-37f655d3078f // indirect
+	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/jteeuwen/go-bindata v0.0.0-20180305030458-6025e8de665b
 	github.com/kami-zh/go-capturer v0.0.0-20171211120116-e492ea43421d
 	github.com/kardianos/osext v0.0.0-20160811001526-c2c54e542fb7
@@ -97,7 +98,7 @@ require (
 	go.uber.org/zap v1.10.0
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550 // indirect
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2
-	golang.org/x/sys v0.0.0-20191010194322-b09406accb47
+	golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5
 	golang.org/x/tools v0.0.0-20191017151554-a3bc800455d5
 	google.golang.org/genproto v0.0.0-20190926190326-7ee9db18f195 // indirect
 	google.golang.org/grpc v1.23.1
@@ -119,6 +120,7 @@ require (
 
 replace (
 	github.com/census-instrumentation/opencensus-proto v0.1.0-0.20181214143942-ba49f56771b8 => github.com/census-instrumentation/opencensus-proto v0.0.3-0.20181214143942-ba49f56771b8
+	github.com/coreos/bbolt => go.etcd.io/bbolt v1.3.5
 	github.com/digitalocean/go-libvirt => github.com/lebauce/go-libvirt v0.0.0-20190717144624-7799d804f7e4
 	github.com/networkservicemesh/networkservicemesh => github.com/networkservicemesh/networkservicemesh v0.0.0-20191017074247-aa5815869b2c
 	github.com/networkservicemesh/networkservicemesh/controlplane => github.com/networkservicemesh/networkservicemesh/controlplane v0.0.0-20191017074247-aa5815869b2c
