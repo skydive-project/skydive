@@ -28,6 +28,9 @@ var ErrDuplicatedResource = errors.New("duplicated resource")
 // ErrNotFound is returned when a resource could not be found
 var ErrNotFound = errors.New("resource not found")
 
+// ErrNotUpdatable is returned when an resource could not be modified
+var ErrNotUpdatable = errors.New("resource not updatable")
+
 // Resource used as interface resources for each API
 type Resource interface {
 	GetID() string

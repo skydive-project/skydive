@@ -146,6 +146,11 @@ func (c *CaptureAPIHandler) Create(r rest.Resource, opts *rest.CreateOptions) er
 	return c.BasicAPIHandler.Create(r, opts)
 }
 
+// Update a capture
+func (c *CaptureAPIHandler) Update(id string, resource rest.Resource) (rest.Resource, bool, error) {
+	return nil, false, rest.ErrNotUpdatable
+}
+
 // RegisterCaptureAPI registers an new resource, capture
 func RegisterCaptureAPI(apiServer *api.Server, kapi etcd.KeysAPI, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*CaptureAPIHandler, error) {
 	captureAPIHandler := &CaptureAPIHandler{

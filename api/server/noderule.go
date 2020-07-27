@@ -50,6 +50,11 @@ func (nrh *NodeRuleResourceHandler) New() rest.Resource {
 	return &types.NodeRule{}
 }
 
+// Update an edge rule
+func (a *NodeRuleAPI) Update(id string, resource rest.Resource) (rest.Resource, bool, error) {
+	return nil, false, rest.ErrNotUpdatable
+}
+
 // RegisterNodeRuleAPI register a new node rule api handler
 func RegisterNodeRuleAPI(apiServer *api.Server, kapi etcd.KeysAPI, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*NodeRuleAPI, error) {
 	nra := &NodeRuleAPI{
