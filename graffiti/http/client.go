@@ -113,13 +113,15 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 		return resp, err
 	}
 
-	switch resp.Header.Get("Content-Encoding") {
-	case "gzip":
-		resp.Body, err = gzip.NewReader(resp.Body)
-		resp.Uncompressed = true
-		resp.ContentLength = -1
-		if err != nil {
-			return nil, err
+	if resp.ContentLength != 0 {
+		switch resp.Header.Get("Content-Encoding") {
+		case "gzip":
+			resp.Body, err = gzip.NewReader(resp.Body)
+			resp.Uncompressed = true
+			resp.ContentLength = -1
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -192,7 +194,7 @@ func (c *CrudClient) Create(resource string, value interface{}, opts *CreateOpti
 
 // Update modify a resource using a PUT call to the API
 // Server JSON response is unmarshalled into "ret"
-func (c *CrudClient) Update(resource string, id string, value interface{}, ret interface{}) error {
+func (c *CrudClient) Update(resource string, id string, value interface{}, result interface{}) error {
 	s, err := json.Marshal(value)
 	if err != nil {
 		return fmt.Errorf("marshaling value: %v", err)
@@ -209,10 +211,12 @@ func (c *CrudClient) Update(resource string, id string, value interface{}, ret i
 		return fmt.Errorf("Failed to update %s, %s: %s", resource, resp.Status, readBody(resp))
 	}
 
-	decoder := json.NewDecoder(resp.Body)
-	err = decoder.Decode(ret)
-	if err != nil {
-		return fmt.Errorf("parsing response body: %v", err)
+	if resp.ContentLength != 0 {
+		decoder := json.NewDecoder(resp.Body)
+		err = decoder.Decode(result)
+		if err != nil {
+			return fmt.Errorf("parsing response body: %v", err)
+		}
 	}
 
 	return nil
