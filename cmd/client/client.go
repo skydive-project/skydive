@@ -60,6 +60,27 @@ func RegisterClientCommands(cmd *cobra.Command) {
 	cmd.AddCommand(EdgeRuleCmd)
 }
 
+// Operation describes a JSONPatch operation
+type Operation struct {
+	Op    string      `json:"op"`
+	Path  string      `json:"path"`
+	Value interface{} `json:"value"`
+}
+
+func newPatchOperation(op, path string, value ...interface{}) Operation {
+	patchOperation := Operation{
+		Op:   op,
+		Path: path,
+	}
+	if len(value) > 0 {
+		patchOperation.Value = value[0]
+	}
+	return patchOperation
+}
+
+// JSONPatch describes a JSON patch
+type JSONPatch []Operation
+
 func exitOnError(err error) {
 	logging.GetLogger().Error(err)
 	os.Exit(1)

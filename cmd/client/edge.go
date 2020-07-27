@@ -181,6 +181,43 @@ var EdgeDelete = &cobra.Command{
 	},
 }
 
+// EdgeUpdate node delete command
+var EdgeUpdate = &cobra.Command{
+	Use:   "update [edge]",
+	Short: "Update edge",
+	Long:  "Update edge",
+	PreRun: func(cmd *cobra.Command, args []string) {
+		if len(args) == 0 {
+			cmd.Usage()
+			os.Exit(1)
+		}
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
+		if err != nil {
+			exitOnError(err)
+		}
+
+		patch, err := createMetadataJSONPatch()
+		if err != nil {
+			exitOnError(err)
+		}
+
+		var result interface{}
+		for _, id := range args {
+			if err := client.Update("edge", id, patch, &result); err != nil {
+				exitOnError(err)
+			}
+		}
+
+		if result == nil {
+			fmt.Println("Not modified")
+		} else {
+			printJSON(result)
+		}
+	},
+}
+
 func addCreateEdgeFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&edgeType, "edge-type", "", "", "edge type")
 	cmd.Flags().StringVarP(&parentNodeID, "parent", "", "", "parent node identifier")
@@ -191,9 +228,14 @@ func addCreateEdgeFlags(cmd *cobra.Command) {
 func init() {
 	EdgeCmd.AddCommand(EdgeList)
 	EdgeCmd.AddCommand(EdgeGet)
-	EdgeCmd.AddCommand(EdgeCreate)
-	EdgeCmd.AddCommand(EdgeDelete)
-	EdgeDelete.Flags().BoolVarP(&gremlinFlag, "gremlin", "", false, "use Gremlin expressions instead of a node identifiers")
 
 	addCreateEdgeFlags(EdgeCreate)
+	EdgeCmd.AddCommand(EdgeCreate)
+
+	EdgeDelete.Flags().BoolVarP(&gremlinFlag, "gremlin", "", false, "use Gremlin expressions instead of a node identifiers")
+	EdgeCmd.AddCommand(EdgeDelete)
+
+	EdgeUpdate.Flags().StringArrayVarP(&addMetadata, "add", "a", nil, "edge metadata to add, key value pair. 'k1=v1'")
+	EdgeUpdate.Flags().StringArrayVarP(&removeMetadata, "remove", "r", nil, "edge metadata keys to remove")
+	EdgeCmd.AddCommand(EdgeUpdate)
 }

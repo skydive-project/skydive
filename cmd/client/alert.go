@@ -141,6 +141,51 @@ var AlertDelete = &cobra.Command{
 	},
 }
 
+// AlertUpdate skydive alert delete command
+var AlertUpdate = &cobra.Command{
+	Use:   "update [alert]",
+	Short: "Update alert",
+	Long:  "Update alert",
+	PreRun: func(cmd *cobra.Command, args []string) {
+		if len(args) == 0 {
+			cmd.Usage()
+			os.Exit(1)
+		}
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
+		if err != nil {
+			exitOnError(err)
+		}
+
+		var patch JSONPatch
+		if alertName != "" {
+			patch = append(patch, newPatchOperation("add", "/Name", alertName))
+		}
+		if alertDescription != "" {
+			patch = append(patch, newPatchOperation("add", "/Description", alertDescription))
+		}
+		if alertTrigger != "" {
+			patch = append(patch, newPatchOperation("add", "/Trigger", alertTrigger))
+		}
+		if alertExpression != "" {
+			patch = append(patch, newPatchOperation("add", "/Expression", alertExpression))
+		}
+		if alertAction != "" {
+			patch = append(patch, newPatchOperation("add", "/Action", alertAction))
+		}
+
+		var result interface{}
+		for _, id := range args {
+			if err := client.Update("alert", id, &patch, &result); err != nil {
+				exitOnError(err)
+			}
+		}
+
+		printJSON(result)
+	},
+}
+
 func addAlertFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&alertName, "name", "", "", "alert name")
 	cmd.Flags().StringVarP(&alertDescription, "description", "", "", "description of the alert")
@@ -154,6 +199,8 @@ func init() {
 	AlertCmd.AddCommand(AlertGet)
 	AlertCmd.AddCommand(AlertCreate)
 	AlertCmd.AddCommand(AlertDelete)
+	AlertCmd.AddCommand(AlertUpdate)
 
 	addAlertFlags(AlertCreate)
+	addAlertFlags(AlertUpdate)
 }
