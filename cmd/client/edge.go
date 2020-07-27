@@ -68,7 +68,7 @@ var EdgeCreate = &cobra.Command{
 		}
 
 		if edgeType != "" {
-			m["Type"] = edgeType
+			m["RelationType"] = edgeType
 		}
 
 		var parentNode, childNode graph.Node
