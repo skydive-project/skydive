@@ -21,7 +21,6 @@
 package server
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/skydive-project/skydive/api/types"
@@ -67,13 +66,14 @@ func (h *EdgeAPIHandler) Index() map[string]rest.Resource {
 // Get returns a edge with the specified id
 func (h *EdgeAPIHandler) Get(id string) (rest.Resource, bool) {
 	h.g.RLock()
-	n := h.g.GetEdge(graph.Identifier(id))
-	if n == nil {
+	defer h.g.RUnlock()
+
+	e := h.g.GetEdge(graph.Identifier(id))
+	if e == nil {
 		return nil, false
 	}
-	edge := types.Edge(*n)
-	h.g.RUnlock()
-	return &edge, true
+	edge := (*types.Edge)(e)
+	return edge, true
 }
 
 // Decorate the specified edge
@@ -117,20 +117,24 @@ func (h *EdgeAPIHandler) Delete(id string) error {
 }
 
 // Update a edge metadata
-func (h *EdgeAPIHandler) Update(id string, resource rest.Resource) error {
+func (h *EdgeAPIHandler) Update(id string, resource rest.Resource) (rest.Resource, bool, error) {
+	h.g.Lock()
+	defer h.g.Unlock()
+
 	e := h.g.GetEdge(graph.Identifier(id))
 	if e == nil {
-		return fmt.Errorf("Edge to be updated not found")
+		return nil, false, rest.ErrNotFound
 	}
-
-	// Edge to be updated
-	actualEdge := types.Edge(*e)
-	graphEdge := graph.Edge(actualEdge)
 
 	// Edge containing the metadata updated
 	updateData := resource.(*types.Edge)
 
-	return h.g.SetMetadata(&graphEdge, updateData.Metadata)
+	previousRevision := e.Revision
+	if err := h.g.SetMetadata(e, updateData.Metadata); err != nil {
+		return nil, false, err
+	}
+
+	return (*types.Edge)(e), e.Revision != previousRevision, nil
 }
 
 // RegisterEdgeAPI registers the edge API

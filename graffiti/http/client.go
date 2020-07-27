@@ -207,7 +207,7 @@ func (c *CrudClient) Update(resource string, id string, value interface{}, resul
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusCreated {
+	if resp.StatusCode >= http.StatusBadRequest {
 		return fmt.Errorf("Failed to update %s, %s: %s", resource, resp.Status, readBody(resp))
 	}
 

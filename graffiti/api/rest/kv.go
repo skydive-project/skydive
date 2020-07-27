@@ -134,15 +134,24 @@ func (h *BasicAPIHandler) Delete(id string) error {
 }
 
 // Update a resource
-func (h *BasicAPIHandler) Update(id string, resource Resource) error {
+func (h *BasicAPIHandler) Update(id string, resource Resource) (Resource, bool, error) {
 	data, err := json.Marshal(&resource)
 	if err != nil {
-		return err
+		return resource, false, err
 	}
 
 	etcdPath := fmt.Sprintf("/%s/%s", h.ResourceHandler.Name(), id)
-	_, err = h.EtcdKeyAPI.Update(context.Background(), etcdPath, string(data))
-	return err
+	resp, err := h.EtcdKeyAPI.Update(context.Background(), etcdPath, string(data))
+	if err != nil {
+		return nil, false, err
+	}
+
+	resource, err = h.Unmarshal([]byte(resp.Node.Value))
+	if err != nil {
+		return nil, true, err
+	}
+
+	return resource, true, err
 }
 
 // AsyncWatch registers a new resource watcher

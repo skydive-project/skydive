@@ -242,8 +242,8 @@ func (a *Server) RegisterAPIHandler(handler rest.Handler, authBackend shttp.Auth
 					return
 				}
 
-				data, err := patchMethod(handler, a.validator, id, content)
-				if _, ok := err.(ResourceNotFound); ok {
+				data, modified, err := patchMethod(handler, a.validator, id, content)
+				if err == rest.ErrNotFound {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				} else if err != nil {
@@ -252,9 +252,13 @@ func (a *Server) RegisterAPIHandler(handler rest.Handler, authBackend shttp.Auth
 				}
 
 				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-				w.WriteHeader(http.StatusCreated)
-				if _, err := w.Write(data); err != nil {
-					logging.GetLogger().Criticalf("Failed to create %s: %s", name, err)
+				if modified {
+					w.WriteHeader(http.StatusOK)
+					if _, err := w.Write(data); err != nil {
+						logging.GetLogger().Criticalf("Failed to update %s: %s", name, err)
+					}
+				} else {
+					w.WriteHeader(http.StatusNotModified)
 				}
 			},
 		},
@@ -439,62 +443,60 @@ func (a *Server) addLoginRoute(authBackend shttp.AuthenticationBackend) {
 
 // patchMethod modifies a resource identified by "id" with the JSON patch.
 // Returns the resource modified or an error
-func patchMethod(handler rest.Handler, validator Validator, id string, jsonPatch []byte) ([]byte, error) {
+func patchMethod(handler rest.Handler, validator Validator, id string, jsonPatch []byte) ([]byte, bool, error) {
 	// Get the resource to be modified
 	resource, ok := handler.Get(id)
 	if !ok {
-		return nil, ResourceNotFound{
-			ID:   id,
-			Type: handler.Name(),
-		}
+		return nil, false, rest.ErrNotFound
 	}
 
 	// Convert user content to a JSON patch
 	patch, err := jsonpatch.DecodePatch(jsonPatch)
 	if err != nil {
-		return nil, fmt.Errorf("incorrect JSON patch: %v. Patch: %s", err, jsonPatch)
+		return nil, false, fmt.Errorf("incorrect JSON patch: %v. Patch: %s", err, jsonPatch)
 	}
 
 	// Convert node to JSON to apply the JSON patch
 	resourceJSON, err := json.Marshal(resource)
 	if err != nil {
-		return nil, fmt.Errorf("converting current stored node to JSON: %v", err)
+		return nil, false, fmt.Errorf("converting current stored node to JSON: %v", err)
 	}
 
 	// Patch are applied to the json body in []byte format
 	resourcePatchedJSON, err := patch.Apply(resourceJSON)
 	if err != nil {
-		return nil, fmt.Errorf("applying JSON patch to resource: %v", err)
+		return nil, false, fmt.Errorf("applying JSON patch to resource: %v", err)
 	}
 
 	// Create a new node with the content of the patched resource
 	resourcePatched := handler.New()
 	if err = json.Unmarshal(resourcePatchedJSON, resourcePatched); err != nil {
-		return nil, fmt.Errorf("creating a new resource from the patched JSON body: %v", err)
+		return nil, false, fmt.Errorf("creating a new resource from the patched JSON body: %v", err)
 	}
 
 	// Validates new resource is valid
 	if err = validator.Validate(handler.Name(), resourcePatched); err != nil {
-		return nil, fmt.Errorf("validating patched resource: %v", err)
+		return nil, false, fmt.Errorf("validating patched resource: %v", err)
 	}
 
 	if err = resourcePatched.Validate(); err != nil {
-		return nil, fmt.Errorf("validating patched resource: %v", err)
+		return nil, false, fmt.Errorf("validating patched resource: %v", err)
 	}
 
 	// TODO for node implementation avoid modifiying .Metadata{.TID, .Name, .Type}
 	// Test for *rules, and others resources, that it is working
 	// Test with ES backend
-	if err = handler.Update(id, resourcePatched); err != nil {
-		return nil, fmt.Errorf("updating resource with patched version: %v", err)
-	}
-
-	data, err := json.Marshal(&resourcePatched)
+	newResource, modified, err := handler.Update(id, resourcePatched)
 	if err != nil {
-		return nil, fmt.Errorf("marshaling patched resource to JSON: %v", err)
+		return nil, false, fmt.Errorf("updating resource with patched version: %v", err)
 	}
 
-	return data, nil
+	data, err := json.Marshal(&newResource)
+	if err != nil {
+		return nil, modified, fmt.Errorf("marshaling patched resource to JSON: %v", err)
+	}
+
+	return data, modified, nil
 }
 
 // NewAPI creates a new API server based on http
