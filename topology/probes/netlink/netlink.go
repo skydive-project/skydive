@@ -838,17 +838,19 @@ func (u *Probe) initialize() {
 		u.Ctx.Logger.Errorf("Unable to list interfaces: %s", err)
 		return
 	}
+	if len(links) == 0 {
+		return
+	}
 
+	u.Ctx.Graph.Lock()
 	for _, link := range links {
 		attrs := link.Attrs()
-
 		u.Ctx.Logger.Debugf("Initialize ADD %s(%d,%s) within %s", attrs.Name, attrs.Index, link.Type(), u.Ctx.RootNode.ID)
-		u.Ctx.Graph.Lock()
 		if u.Ctx.Graph.LookupFirstChild(u.Ctx.RootNode, graph.Metadata{"Name": attrs.Name, "IfIndex": int64(attrs.Index)}) == nil {
 			u.addLinkToTopology(link)
 		}
-		u.Ctx.Graph.Unlock()
 	}
+	u.Ctx.Graph.Unlock()
 }
 
 func (u *Probe) onNeighborsChanged(index int64, fdb *topology.Neighbors, neighbors *topology.Neighbors) {
