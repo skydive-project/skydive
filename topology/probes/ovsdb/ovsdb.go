@@ -339,6 +339,7 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 		}
 
 		andFilters := []*filters.Filter{
+			filters.NewNotFilter(filters.NewTermStringFilter("UUID", uuid)),
 			filters.NewTermStringFilter("Name", name),
 			filters.NewOrFilter(macFilters...),
 		}
