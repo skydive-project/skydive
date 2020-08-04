@@ -330,12 +330,12 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 		var macFilters []*filters.Filter
 		if oldMAC != "" {
 			macFilters = append(macFilters, filters.NewTermStringFilter("MAC", oldMAC))
-		}
-		if mac != "" {
-			macFilters = append(macFilters, filters.NewTermStringFilter("MAC", mac))
-		}
-		if attachedMAC != "" {
-			macFilters = append(macFilters, filters.NewTermStringFilter("MAC", attachedMAC))
+			if mac != "" {
+				macFilters = append(macFilters, filters.NewTermStringFilter("MAC", mac))
+			}
+			if attachedMAC != "" {
+				macFilters = append(macFilters, filters.NewTermStringFilter("MAC", attachedMAC))
+			}
 		}
 
 		andFilters := []*filters.Filter{
@@ -352,6 +352,7 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 
 		if intf == nil {
 			// no already inserted ovs interface but maybe already detected by netlink
+			o.Ctx.Logger.Debugf("Looking for Netlink interface, oldMAC: %s, MAC: %s, attachedMAC: %s", oldMAC, mac, attachedMAC)
 			intf = o.Ctx.Graph.LookupFirstNode(graph.NewElementFilter(andFilter))
 		} else {
 			// if there is a interface with the same MAC, name and optionally
@@ -375,6 +376,7 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 			o.Ctx.Logger.Error(err)
 			return
 		}
+		o.Ctx.Logger.Debugf("Added new OVS link %+v", intf)
 	}
 
 	var ovsMetadata OvsMetadata
@@ -406,15 +408,16 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 		tr.AddMetadata("OfPort", ofport)
 	}
 
-	// If the type of the interface is "internal", we will get the ifindex and MAC updates through netlink
+	// If the type of the interface is "internal", we will get the MAC updates through netlink
+	// The MAC seems to be unreliable during internal interface creation.
 	if itype != "internal" {
-		if ifindex > 0 {
-			tr.AddMetadata("IfIndex", ifindex)
-		}
-
 		if mac != "" {
 			tr.AddMetadata("MAC", mac)
 		}
+	}
+
+	if ifindex > 0 {
+		tr.AddMetadata("IfIndex", ifindex)
 	}
 
 	if itype != "" {
