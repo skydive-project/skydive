@@ -406,12 +406,15 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 		tr.AddMetadata("OfPort", ofport)
 	}
 
-	if ifindex > 0 {
-		tr.AddMetadata("IfIndex", ifindex)
-	}
+	// If the type of the interface is "internal", we will get the ifindex and MAC updates through netlink
+	if itype != "internal" {
+		if ifindex > 0 {
+			tr.AddMetadata("IfIndex", ifindex)
+		}
 
-	if mac != "" {
-		tr.AddMetadata("MAC", mac)
+		if mac != "" {
+			tr.AddMetadata("MAC", mac)
+		}
 	}
 
 	if itype != "" {
