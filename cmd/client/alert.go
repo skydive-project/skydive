@@ -177,7 +177,7 @@ var AlertUpdate = &cobra.Command{
 
 		var result interface{}
 		for _, id := range args {
-			if err := client.Update("alert", id, &patch, &result); err != nil {
+			if _, err := client.Update("alert", id, &patch, &result); err != nil {
 				exitOnError(err)
 			}
 		}

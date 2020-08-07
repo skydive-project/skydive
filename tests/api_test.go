@@ -695,7 +695,7 @@ func TestAPIPatchNodeNameDeleteValidationError(t *testing.T) {
 	}
 }
 
-// Erroneous patch
+// Erroneous node patch
 func TestAPIPatchNodeErroneousPatch(t *testing.T) {
 	client, err := getCrudClient()
 	if err != nil {
@@ -715,6 +715,302 @@ func TestAPIPatchNodeErroneousPatch(t *testing.T) {
 
 	// Patch node
 	_, err = client.Update("node", "foo", patch, &patchedNode)
+	if err == nil {
+		t.Fatal("Error should be returned if patch is incorrect")
+	}
+}
+
+// Create two nodes, an edge, patch edge, check modification has been made and updatedAt/revision updated
+func TestAPIPatchEdgeTable(t *testing.T) {
+	tests := []struct {
+		name         string
+		originalEdge []byte
+		patch        []JSONPatch
+		expectedEdge []byte
+		updated      bool
+	}{
+		{
+			name: "PATCH edge, add new attribute",
+			originalEdge: []byte(`{
+							"ID": "test1",
+							"Parent": "nodeA",
+							"Child": "nodeB",
+							"Metadata": {
+								"RelationType": "type1"
+							},
+							"Host": "host1",
+							"Origin": "origin1",
+							"CreatedAt": 0,
+							"UpdatedAt": 0,
+							"Revision":  0
+						}`),
+			patch: []JSONPatch{
+				{
+					Op:    "add",
+					Path:  "/Metadata/foo",
+					Value: "bar",
+				},
+			},
+			expectedEdge: []byte(`{
+							"ID": "test1",
+							"Parent": "nodeA",
+							"Child": "nodeB",
+							"Metadata": {
+								"RelationType": "type1",
+								"foo": "bar"
+							},
+							"Host": "host1",
+							"Origin": "origin1",
+							"CreatedAt": 0,
+							"UpdatedAt": 1,
+							"Revision":  1
+						}`),
+			updated: true,
+		},
+		{
+			name: "PATCH edge, modify attribute",
+			originalEdge: []byte(`{
+							"ID": "test1",
+							"Parent": "nodeA",
+							"Child": "nodeB",
+							"Metadata": {
+								"RelationType": "type1",
+								"foo": "bar"
+							},
+							"Host": "host1",
+							"Origin": "origin1",
+							"CreatedAt": 0,
+							"UpdatedAt": 0,
+							"Revision":  0
+						}`),
+			patch: []JSONPatch{
+				{
+					Op:    "replace",
+					Path:  "/Metadata/foo",
+					Value: "foo",
+				},
+			},
+			expectedEdge: []byte(`{
+							"ID": "test1",
+							"Parent": "nodeA",
+							"Child": "nodeB",
+							"Metadata": {
+								"RelationType": "type1",
+								"foo": "foo"
+							},
+							"Host": "host1",
+							"Origin": "origin1",
+							"CreatedAt": 0,
+							"UpdatedAt": 1,
+							"Revision":  1
+						}`),
+			updated: true,
+		},
+		{
+			name: "PATCH edge, delete attribute",
+			originalEdge: []byte(`{
+							"ID": "test1",
+							"Parent": "nodeA",
+							"Child": "nodeB",
+							"Metadata": {
+								"RelationType": "type1",
+								"foo": "bar"
+							},
+							"Host": "host1",
+							"Origin": "origin1",
+							"CreatedAt": 0,
+							"UpdatedAt": 0,
+							"Revision":  0
+						}`),
+			patch: []JSONPatch{
+				{
+					Op:   "remove",
+					Path: "/Metadata/foo",
+				},
+			},
+			expectedEdge: []byte(`{
+							"ID": "test1",
+							"Parent": "nodeA",
+							"Child": "nodeB",
+							"Metadata": {
+								"RelationType": "type1"
+							},
+							"Host": "host1",
+							"Origin": "origin1",
+							"CreatedAt": 0,
+							"UpdatedAt": 1,
+							"Revision":  1
+						}`),
+			updated: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			client, err := getCrudClient()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			nodeA := types.Node{}
+			if err := json.Unmarshal([]byte(`{
+                             "ID": "nodeA",
+                             "Metadata": {
+                                     "TID": "nodeA",
+                                     "Name": "name1",
+                                     "Type": "type1"
+                             },
+                             "Host": "host1",
+                             "Origin": "origin1",
+                             "CreatedAt": 0,
+                             "UpdatedAt": 0,
+                             "Revision":  0
+                        }`), &nodeA); err != nil {
+				t.Fatalf("error unmarshal nodeA: %v", err)
+			}
+
+			if err := client.Create("node", &nodeA, nil); err != nil {
+				t.Fatalf("Failed to create nodeA: %s", err.Error())
+			}
+
+			nodeB := types.Node{}
+			if err := json.Unmarshal([]byte(`{
+                             "ID": "nodeB",
+                             "Metadata": {
+                                     "TID": "nodeB",
+                                     "Name": "name1",
+                                     "Type": "type1"
+                             },
+                             "Host": "host1",
+                             "Origin": "origin1",
+                             "CreatedAt": 0,
+                             "UpdatedAt": 0,
+                             "Revision":  0
+                        }`), &nodeB); err != nil {
+				t.Fatalf("error unmarshal nodeB: %v", err)
+			}
+
+			if err := client.Create("node", &nodeB, nil); err != nil {
+				t.Fatalf("Failed to create nodeB: %s", err.Error())
+			}
+
+			// Clean nodes for next execution
+			defer func() {
+				if err := client.Delete("node", nodeA.GetID()); err != nil {
+					t.Fatalf("Failed to clean nodeA: %s", err.Error())
+				}
+				if err := client.Delete("node", nodeB.GetID()); err != nil {
+					t.Fatalf("Failed to clean nodeB: %s", err.Error())
+				}
+			}()
+
+			// Add originalNode to the graph
+			originalEdge := types.Edge{}
+			expectedEdge := types.Edge{}
+			patchedEdge := types.Edge{}
+			getPatchedEdge := types.Edge{}
+
+			if err := json.Unmarshal(test.originalEdge, &originalEdge); err != nil {
+				t.Fatalf("error unmarshal originalEdge: %v", err)
+			}
+
+			if err := json.Unmarshal(test.expectedEdge, &expectedEdge); err != nil {
+				t.Fatalf("error unmarshal expectedEdge: %v", err)
+			}
+
+			// Create original node
+			if err := client.Create("edge", &originalEdge, nil); err != nil {
+				t.Fatalf("Failed to create originalEdge: %s", err.Error())
+			}
+
+			// Patch node
+			updated, err := client.Update("edge", originalEdge.GetID(), test.patch, &patchedEdge)
+			if err != nil {
+				t.Fatalf("Failed to apply patch: %s", err.Error())
+			}
+
+			err = client.Get("edge", originalEdge.GetID(), &getPatchedEdge)
+			if err != nil {
+				t.Fatalf("Failed to get edge after patching: %s", err.Error())
+			}
+
+			// Compare edges
+			if !reflect.DeepEqual(expectedEdge.Metadata, getPatchedEdge.Metadata) {
+				t.Errorf("JSON Patch was not applied.\nMetadata expected: %+v\nMetadata patched:  %+v", expectedEdge.Metadata, getPatchedEdge.Metadata)
+			}
+
+			if test.updated != updated {
+				t.Errorf("Wrong resource update status. Expected: %v. Received:  %v", test.updated, updated)
+			}
+
+			// If server returns 304 (Not modified), it does not return the JSON with the patched node.
+			// In that case, ignore comparasion between PATCH response and node stored
+			if updated {
+				if !reflect.DeepEqual(patchedEdge, getPatchedEdge) {
+					t.Errorf("Response from PATCH method and node stored are not the same.\nPATCH response: %+v\nEdge stored:  %+v", patchedEdge, getPatchedEdge)
+				}
+			}
+
+			if expectedEdge.Revision != getPatchedEdge.Revision {
+				t.Errorf("Revision version is not being updated by PATCH")
+			}
+
+			// If expectedEdge.UpdatedAt is "1", we expect a change in the UpdatedAt field
+			if expectedEdge.UpdatedAt.UnixMilli() == 1 && getPatchedEdge.UpdatedAt.IsZero() {
+				t.Error("UpdatedAt is not being updated by PATCH")
+			}
+		})
+	}
+}
+
+// Try to patch a non existing node
+func TestAPIPatchEdgeNonExistingEdge(t *testing.T) {
+	client, err := getCrudClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	patchedEdge := types.Edge{}
+
+	patch := []JSONPatch{
+		{
+			Op:    "add",
+			Path:  "/Metadata/Foo",
+			Value: "bar",
+		},
+	}
+
+	expectedError := fmt.Errorf("Failed to update edge, 404 Not Found: ")
+
+	// Patch edge
+	_, err = client.Update("edge", "foo", patch, &patchedEdge)
+	if err == nil {
+		t.Fatal("Error should be returned because trying to modify a edge that does not exists")
+	} else if err.Error() != expectedError.Error() {
+		t.Fatalf("Returned error is incorrect.\nExpected: %v\nReturned: %v", expectedError, err)
+	}
+}
+
+// Erroneous edge patch
+func TestAPIPatchEdgeErroneousPatch(t *testing.T) {
+	client, err := getCrudClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add originalEdge to the graph
+	patchedEdge := types.Edge{}
+
+	patch := []JSONPatch{
+		{
+			Op:    "foobar",
+			Path:  "/Metadata/Foo",
+			Value: "bar",
+		},
+	}
+
+	// Patch edge
+	_, err = client.Update("edge", "foo", patch, &patchedEdge)
 	if err == nil {
 		t.Fatal("Error should be returned if patch is incorrect")
 	}

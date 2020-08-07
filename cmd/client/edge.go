@@ -205,7 +205,7 @@ var EdgeUpdate = &cobra.Command{
 
 		var result interface{}
 		for _, id := range args {
-			if err := client.Update("edge", id, patch, &result); err != nil {
+			if _, err := client.Update("edge", id, patch, &result); err != nil {
 				exitOnError(err)
 			}
 		}
