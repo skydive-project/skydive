@@ -19,6 +19,7 @@ package tests
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -623,7 +624,6 @@ func TestAPIPatchNodeNonExistingNode(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Add originalNode to the graph
 	patchedNode := types.Node{}
 
 	patch := []JSONPatch{
@@ -634,10 +634,14 @@ func TestAPIPatchNodeNonExistingNode(t *testing.T) {
 		},
 	}
 
+	expectedError := fmt.Errorf("Failed to update node, 404 Not Found: ")
+
 	// Patch node
 	_, err = client.Update("node", "foo", patch, &patchedNode)
 	if err == nil {
-		t.Fatal("Error should be returned if node id does not exists")
+		t.Fatal("Error should be returned because trying to modify a node that does not exists")
+	} else if err.Error() != expectedError.Error() {
+		t.Fatalf("Returned error is incorrect.\nExpected: %v\nReturned: %v", expectedError, err)
 	}
 }
 
@@ -653,19 +657,24 @@ func TestAPIPatchNodeNameDeleteValidationError(t *testing.T) {
 	patchedNode := types.Node{}
 
 	if err := json.Unmarshal([]byte(`{
-					"ID": "test1",
-					"Metadata": {
-						"TID": "test1",
-						"Name": "name1",
-						"Type": "type1"
-					},
-					"Host": "host1",
-					"Origin": "origin1",
-					"CreatedAt": 0,
-					"UpdatedAt": 0,
-					"Revision":  0
-				}`), &originalNode); err != nil {
+                             "ID": "foo",
+                             "Metadata": {
+                                     "TID": "foo",
+                                     "Name": "name1",
+                                     "Type": "type1"
+                             },
+                             "Host": "host1",
+                             "Origin": "origin1",
+                             "CreatedAt": 0,
+                             "UpdatedAt": 0,
+                             "Revision":  0
+                        }`), &originalNode); err != nil {
 		t.Fatalf("error unmarshal originalNode: %v", err)
+	}
+
+	// Create original node
+	if err := client.Create("node", &originalNode, nil); err != nil {
+		t.Fatalf("Failed to create originalNode: %s", err.Error())
 	}
 
 	patch := []JSONPatch{
@@ -675,10 +684,14 @@ func TestAPIPatchNodeNameDeleteValidationError(t *testing.T) {
 		},
 	}
 
+	expectedError := fmt.Errorf("Failed to update node, 400 Bad Request: validating patched resource: invalid schema: (root): Must validate all the schemas (allOf)\nMetadata: Must validate all the schemas (allOf)\nMetadata: Name is required\n(root): Must validate at least one schema (anyOf)\n")
+
 	// Patch node
 	_, err = client.Update("node", "foo", patch, &patchedNode)
 	if err == nil {
 		t.Fatal("Error should be returned because trying to remove Metadata.Name violates validation")
+	} else if err.Error() != expectedError.Error() {
+		t.Fatalf("Returned error is incorrect.\nExpected: %v\nReturned: %v", expectedError, err)
 	}
 }
 
