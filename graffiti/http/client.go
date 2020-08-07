@@ -194,32 +194,32 @@ func (c *CrudClient) Create(resource string, value interface{}, opts *CreateOpti
 
 // Update modify a resource using a PUT call to the API
 // Server JSON response is unmarshalled into "ret"
-func (c *CrudClient) Update(resource string, id string, value interface{}, result interface{}) error {
+func (c *CrudClient) Update(resource string, id string, value interface{}, result interface{}) (bool, error) {
 	s, err := json.Marshal(value)
 	if err != nil {
-		return fmt.Errorf("marshaling value: %v", err)
+		return false, fmt.Errorf("marshaling value: %v", err)
 	}
 
 	contentReader := bytes.NewReader(s)
 	resp, err := c.Request("PATCH", resource+"/"+id, contentReader, nil)
 	if err != nil {
-		return fmt.Errorf("request: %v", err)
+		return false, fmt.Errorf("request: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= http.StatusBadRequest {
-		return fmt.Errorf("Failed to update %s, %s: %s", resource, resp.Status, readBody(resp))
+		return false, fmt.Errorf("Failed to update %s, %s: %s", resource, resp.Status, readBody(resp))
 	}
 
 	if resp.ContentLength != 0 {
 		decoder := json.NewDecoder(resp.Body)
 		err = decoder.Decode(result)
 		if err != nil {
-			return fmt.Errorf("parsing response body: %v", err)
+			return false, fmt.Errorf("parsing response body: %v", err)
 		}
 	}
 
-	return nil
+	return resp.StatusCode == http.StatusOK, err
 }
 
 // Delete removes a resource using a DELETE call to the API

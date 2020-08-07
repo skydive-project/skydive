@@ -242,28 +242,29 @@ type JSONPatch struct {
 }
 
 // Create node, patch node, check modification has been made and updatedAt/revision updated
-func TestAPIPatchNode(t *testing.T) {
+func TestAPIPatchNodeTable(t *testing.T) {
 	tests := []struct {
 		name         string
 		originalNode []byte
 		patch        []JSONPatch
 		expectedNode []byte
+		updated      bool
 	}{
 		{
 			name: "PATCH node, add new attribute",
 			originalNode: []byte(`{
-					"ID": "test1",
-					"Metadata": {
-						"TID": "test1",
-						"Name": "name1",
-						"Type": "type1"
-					},
-					"Host": "host1",
-					"Origin": "origin1",
-					"CreatedAt": 0,
-					"UpdatedAt": 0,
-					"Revision":  0
-				}`),
+							"ID": "test1",
+							"Metadata": {
+								"TID": "test1",
+								"Name": "name1",
+								"Type": "type1"
+							},
+							"Host": "host1",
+							"Origin": "origin1",
+							"CreatedAt": 0,
+							"UpdatedAt": 0,
+							"Revision":  0
+						}`),
 			patch: []JSONPatch{
 				{
 					Op:    "add",
@@ -272,36 +273,37 @@ func TestAPIPatchNode(t *testing.T) {
 				},
 			},
 			expectedNode: []byte(`{
-					"ID": "test1",
-					"Metadata": {
-						"TID":  "test1",
-						"Name": "name1",
-						"Type": "type1",
-						"foo": "bar"
-					},
-					"Host": "host1",
-					"Origin": "origin1",
-					"CreatedAt": 0,
-					"UpdatedAt": 1,
-					"Revision":  0
-				}`),
+							"ID": "test1",
+							"Metadata": {
+								"TID":  "test1",
+								"Name": "name1",
+								"Type": "type1",
+								"foo": "bar"
+							},
+							"Host": "host1",
+							"Origin": "origin1",
+							"CreatedAt": 0,
+							"UpdatedAt": 1,
+							"Revision":  1
+						}`),
+			updated: true,
 		},
 		{
 			name: "PATCH node, modify attribute",
 			originalNode: []byte(`{
-					"ID": "test2",
-					"Metadata": {
-						"TID": "test2",
-						"Name": "name2",
-						"Type": "type2",
-						"foo": "bar"
-					},
-					"Host": "host2",
-					"Origin": "origin2",
-					"CreatedAt": 0,
-					"UpdatedAt": 0,
-					"Revision":  0
-				}`),
+							"ID": "test2",
+							"Metadata": {
+								"TID": "test2",
+								"Name": "name2",
+								"Type": "type2",
+								"foo": "bar"
+							},
+							"Host": "host2",
+							"Origin": "origin2",
+							"CreatedAt": 0,
+							"UpdatedAt": 0,
+							"Revision":  0
+						}`),
 			patch: []JSONPatch{
 				{
 					Op:    "replace",
@@ -310,36 +312,37 @@ func TestAPIPatchNode(t *testing.T) {
 				},
 			},
 			expectedNode: []byte(`{
-					"ID": "test2",
-					"Metadata": {
-						"TID":  "test2",
-						"Name": "name2",
-						"Type": "type2",
-						"foo": "foo"
-					},
-					"Host": "host2",
-					"Origin": "origin2",
-					"CreatedAt": 0,
-					"UpdatedAt": 1,
-					"Revision":  0
-				}`),
+							"ID": "test2",
+							"Metadata": {
+								"TID":  "test2",
+								"Name": "name2",
+								"Type": "type2",
+								"foo": "foo"
+							},
+							"Host": "host2",
+							"Origin": "origin2",
+							"CreatedAt": 0,
+							"UpdatedAt": 1,
+							"Revision":  1
+						}`),
+			updated: true,
 		},
 		{
 			name: "PATCH node, delete attribute",
 			originalNode: []byte(`{
-					"ID": "test3",
-					"Metadata": {
-						"TID": "test3",
-						"Name": "name3",
-						"Type": "type3",
-						"foo": "bar"
-					},
-					"Host": "host3",
-					"Origin": "origin3",
-					"CreatedAt": 0,
-					"UpdatedAt": 0,
-					"Revision":  0
-				}`),
+							"ID": "test3",
+							"Metadata": {
+								"TID": "test3",
+								"Name": "name3",
+								"Type": "type3",
+								"foo": "bar"
+							},
+							"Host": "host3",
+							"Origin": "origin3",
+							"CreatedAt": 0,
+							"UpdatedAt": 0,
+							"Revision":  0
+						}`),
 			patch: []JSONPatch{
 				{
 					Op:   "remove",
@@ -347,34 +350,35 @@ func TestAPIPatchNode(t *testing.T) {
 				},
 			},
 			expectedNode: []byte(`{
-					"ID": "test3",
-					"Metadata": {
-						"TID":  "test3",
-						"Name": "name3",
-						"Type": "type3"
-					},
-					"Host": "host3",
-					"Origin": "origin3",
-					"CreatedAt": 0,
-					"UpdatedAt": 1,
-					"Revision":  0
-				}`),
+							"ID": "test3",
+							"Metadata": {
+								"TID":  "test3",
+								"Name": "name3",
+								"Type": "type3"
+							},
+							"Host": "host3",
+							"Origin": "origin3",
+							"CreatedAt": 0,
+							"UpdatedAt": 1,
+							"Revision":  1
+						}`),
+			updated: true,
 		},
 		{
 			name: "PATCH node, modify attribute Metadata.TID is ignored",
 			originalNode: []byte(`{
-					"ID": "test4",
-					"Metadata": {
-						"TID": "test4",
-						"Name": "name4",
-						"Type": "type4"
-					},
-					"Host": "host4",
-					"Origin": "origin4",
-					"CreatedAt": 0,
-					"UpdatedAt": 0,
-					"Revision":  0
-				}`),
+							"ID": "test4",
+							"Metadata": {
+								"TID": "test4",
+								"Name": "name4",
+								"Type": "type4"
+							},
+							"Host": "host4",
+							"Origin": "origin4",
+							"CreatedAt": 0,
+							"UpdatedAt": 0,
+							"Revision":  0
+						}`),
 			patch: []JSONPatch{
 				{
 					Op:    "replace",
@@ -383,34 +387,35 @@ func TestAPIPatchNode(t *testing.T) {
 				},
 			},
 			expectedNode: []byte(`{
-					"ID": "test4",
-					"Metadata": {
-						"TID":  "test4",
-						"Name": "name4",
-						"Type": "type4"
-					},
-					"Host": "host4",
-					"Origin": "origin4",
-					"CreatedAt": 0,
-					"UpdatedAt": 0,
-					"Revision":  0
-				}`),
+							"ID": "test4",
+							"Metadata": {
+								"TID":  "test4",
+								"Name": "name4",
+								"Type": "type4"
+							},
+							"Host": "host4",
+							"Origin": "origin4",
+							"CreatedAt": 0,
+							"UpdatedAt": 0,
+							"Revision":  0
+						}`),
+			updated: false,
 		},
 		{
 			name: "PATCH node, modify attribute Metadata.Name is ignored",
 			originalNode: []byte(`{
-					"ID": "test5",
-					"Metadata": {
-						"TID": "test5",
-						"Name": "name5",
-						"Type": "type5"
-					},
-					"Host": "host5",
-					"Origin": "origin5",
-					"CreatedAt": 0,
-					"UpdatedAt": 0,
-					"Revision":  0
-				}`),
+							"ID": "test5",
+							"Metadata": {
+								"TID": "test5",
+								"Name": "name5",
+								"Type": "type5"
+							},
+							"Host": "host5",
+							"Origin": "origin5",
+							"CreatedAt": 0,
+							"UpdatedAt": 0,
+							"Revision":  0
+						}`),
 			patch: []JSONPatch{
 				{
 					Op:    "replace",
@@ -419,34 +424,35 @@ func TestAPIPatchNode(t *testing.T) {
 				},
 			},
 			expectedNode: []byte(`{
-					"ID": "test5",
-					"Metadata": {
-						"TID":  "test5",
-						"Name": "name5",
-						"Type": "type5"
-					},
-					"Host": "host5",
-					"Origin": "origin5",
-					"CreatedAt": 0,
-					"UpdatedAt": 0,
-					"Revision":  0
-				}`),
+							"ID": "test5",
+							"Metadata": {
+								"TID":  "test5",
+								"Name": "name5",
+								"Type": "type5"
+							},
+							"Host": "host5",
+							"Origin": "origin5",
+							"CreatedAt": 0,
+							"UpdatedAt": 0,
+							"Revision":  0
+						}`),
+			updated: false,
 		},
 		{
 			name: "PATCH node, modify attribute Metadata.Type is ignored",
 			originalNode: []byte(`{
-					"ID": "test6",
-					"Metadata": {
-						"TID": "test6",
-						"Name": "name6",
-						"Type": "type6"
-					},
-					"Host": "host6",
-					"Origin": "origin6",
-					"CreatedAt": 0,
-					"UpdatedAt": 0,
-					"Revision":  0
-				}`),
+							"ID": "test6",
+							"Metadata": {
+								"TID": "test6",
+								"Name": "name6",
+								"Type": "type6"
+							},
+							"Host": "host6",
+							"Origin": "origin6",
+							"CreatedAt": 0,
+							"UpdatedAt": 0,
+							"Revision":  0
+						}`),
 			patch: []JSONPatch{
 				{
 					Op:    "replace",
@@ -455,34 +461,35 @@ func TestAPIPatchNode(t *testing.T) {
 				},
 			},
 			expectedNode: []byte(`{
-					"ID": "test6",
-					"Metadata": {
-						"TID":  "test6",
-						"Name": "name6",
-						"Type": "type6"
-					},
-					"Host": "host6",
-					"Origin": "origin6",
-					"CreatedAt": 0,
-					"UpdatedAt": 0,
-					"Revision":  0
-				}`),
+							"ID": "test6",
+							"Metadata": {
+								"TID":  "test6",
+								"Name": "name6",
+								"Type": "type6"
+							},
+							"Host": "host6",
+							"Origin": "origin6",
+							"CreatedAt": 0,
+							"UpdatedAt": 0,
+							"Revision":  0
+						}`),
+			updated: false,
 		},
 		{
 			name: "PATCH node, delete attributes Metadata.TID is ignored",
 			originalNode: []byte(`{
-					"ID": "test7",
-					"Metadata": {
-						"TID": "test7",
-						"Name": "name7",
-						"Type": "type7"
-					},
-					"Host": "host7",
-					"Origin": "origin7",
-					"CreatedAt": 0,
-					"UpdatedAt": 0,
-					"Revision":  0
-				}`),
+							"ID": "test7",
+							"Metadata": {
+								"TID": "test7",
+								"Name": "name7",
+								"Type": "type7"
+							},
+							"Host": "host7",
+							"Origin": "origin7",
+							"CreatedAt": 0,
+							"UpdatedAt": 0,
+							"Revision":  0
+						}`),
 			patch: []JSONPatch{
 				{
 					Op:   "remove",
@@ -490,34 +497,35 @@ func TestAPIPatchNode(t *testing.T) {
 				},
 			},
 			expectedNode: []byte(`{
-					"ID": "test7",
-					"Metadata": {
-						"TID":  "test7",
-						"Name": "name7",
-						"Type": "type7"
-					},
-					"Host": "host7",
-					"Origin": "origin7",
-					"CreatedAt": 0,
-					"UpdatedAt": 0,
-					"Revision":  0
-				}`),
+							"ID": "test7",
+							"Metadata": {
+								"TID":  "test7",
+								"Name": "name7",
+								"Type": "type7"
+							},
+							"Host": "host7",
+							"Origin": "origin7",
+							"CreatedAt": 0,
+							"UpdatedAt": 0,
+							"Revision":  0
+						}`),
+			updated: false,
 		},
 		{
 			name: "PATCH node, modifying values outside Metadata are ignored",
 			originalNode: []byte(`{
-					"ID": "test8",
-					"Metadata": {
-						"TID": "test8",
-						"Name": "name8",
-						"Type": "type8"
-					},
-					"Host": "host8",
-					"Origin": "origin8",
-					"CreatedAt": 0,
-					"UpdatedAt": 0,
-					"Revision":  0
-				}`),
+						"ID": "test8",
+						"Metadata": {
+							"TID": "test8",
+							"Name": "name8",
+							"Type": "type8"
+						},
+						"Host": "host8",
+						"Origin": "origin8",
+						"CreatedAt": 0,
+						"UpdatedAt": 0,
+						"Revision":  0
+					}`),
 			patch: []JSONPatch{
 				{
 					Op:    "replace",
@@ -526,18 +534,19 @@ func TestAPIPatchNode(t *testing.T) {
 				},
 			},
 			expectedNode: []byte(`{
-					"ID": "test8",
-					"Metadata": {
-						"TID":  "test8",
-						"Name": "name8",
-						"Type": "type8"
-					},
-					"Host": "host8",
-					"Origin": "origin8",
-					"CreatedAt": 0,
-					"UpdatedAt": 0,
-					"Revision":  0
-				}`),
+						"ID": "test8",
+						"Metadata": {
+							"TID":  "test8",
+							"Name": "name8",
+							"Type": "type8"
+						},
+						"Host": "host8",
+						"Origin": "origin8",
+						"CreatedAt": 0,
+						"UpdatedAt": 0,
+						"Revision":  0
+					}`),
+			updated: false,
 		},
 	}
 
@@ -568,7 +577,7 @@ func TestAPIPatchNode(t *testing.T) {
 			}
 
 			// Patch node
-			err = client.Update("node", originalNode.GetID(), test.patch, &patchedNode)
+			updated, err := client.Update("node", originalNode.GetID(), test.patch, &patchedNode)
 			if err != nil {
 				t.Fatalf("Failed to apply patch: %s", err.Error())
 			}
@@ -579,20 +588,28 @@ func TestAPIPatchNode(t *testing.T) {
 			}
 
 			// Compare nodes
-			if !reflect.DeepEqual(expectedNode.Metadata, patchedNode.Metadata) {
-				t.Errorf("JSON Patch was not applied.\nMetadata original: %+v\nMetadata patched:  %+v", originalNode.Metadata, patchedNode.Metadata)
+			if !reflect.DeepEqual(expectedNode.Metadata, getPatchedNode.Metadata) {
+				t.Errorf("JSON Patch was not applied.\nMetadata expected: %+v\nMetadata patched:  %+v", expectedNode.Metadata, getPatchedNode.Metadata)
 			}
 
-			if !reflect.DeepEqual(patchedNode.Metadata, getPatchedNode.Metadata) {
-				t.Errorf("Response from PATCH method and node stored are not the same.\nMetadata PATCH response: %+v\nMetadata node stored:  %+v", patchedNode.Metadata, getPatchedNode.Metadata)
+			if test.updated != updated {
+				t.Errorf("Wrong resource update status. Expected: %v. Received:  %v", test.updated, updated)
 			}
 
-			if expectedNode.Revision != patchedNode.Revision {
+			// If server returns 304 (Not modified), it does not return the JSON with the patched node.
+			// In that case, ignore comparasion between PATCH response and node stored
+			if updated {
+				if !reflect.DeepEqual(patchedNode, getPatchedNode) {
+					t.Errorf("Response from PATCH method and node stored are not the same.\nPATCH response: %+v\nNode stored:  %+v", patchedNode, getPatchedNode)
+				}
+			}
+
+			if expectedNode.Revision != getPatchedNode.Revision {
 				t.Errorf("Revision version is not being updated by PATCH")
 			}
 
 			// If expectedNode.UpdatedAt is "1", we expect a change in the UpdatedAt field
-			if expectedNode.UpdatedAt.UnixMilli() == 1 && patchedNode.UpdatedAt.IsZero() {
+			if expectedNode.UpdatedAt.UnixMilli() == 1 && getPatchedNode.UpdatedAt.IsZero() {
 				t.Error("UpdatedAt is not being updated by PATCH")
 			}
 		})
@@ -618,7 +635,7 @@ func TestAPIPatchNodeNonExistingNode(t *testing.T) {
 	}
 
 	// Patch node
-	err = client.Update("node", "foo", patch, &patchedNode)
+	_, err = client.Update("node", "foo", patch, &patchedNode)
 	if err == nil {
 		t.Fatal("Error should be returned if node id does not exists")
 	}
@@ -659,7 +676,7 @@ func TestAPIPatchNodeNameDeleteValidationError(t *testing.T) {
 	}
 
 	// Patch node
-	err = client.Update("node", "foo", patch, &patchedNode)
+	_, err = client.Update("node", "foo", patch, &patchedNode)
 	if err == nil {
 		t.Fatal("Error should be returned because trying to remove Metadata.Name violates validation")
 	}
@@ -684,7 +701,7 @@ func TestAPIPatchNodeErroneousPatch(t *testing.T) {
 	}
 
 	// Patch node
-	err = client.Update("node", "foo", patch, &patchedNode)
+	_, err = client.Update("node", "foo", patch, &patchedNode)
 	if err == nil {
 		t.Fatal("Error should be returned if patch is incorrect")
 	}
