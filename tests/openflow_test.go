@@ -234,8 +234,7 @@ func verifyGroup(c *CheckContext, bridge string, expected int) error {
 func TestAddOFGroup(t *testing.T) {
 	setupCmds := []Cmd{
 		{"ovs-vsctl --if-exists del-br br-of6", true},
-		{"ovs-vsctl add-br br-of6", true},
-		{"ovs-vsctl set bridge br-of6 protocols=OpenFlow10,OpenFlow14,OpenFlow15", true},
+		{"ovs-vsctl add-br br-of6 -- set bridge br-of6 protocols=OpenFlow10,OpenFlow14,OpenFlow15", true},
 		{"ovs-vsctl add-port br-of6 intf1-6 -- set interface intf1-6 type=internal", true},
 		{"ovs-vsctl add-port br-of6 intf2-6 -- set interface intf2-6 type=internal", true},
 		{"sleep 1", true},
@@ -258,8 +257,7 @@ func TestAddOFGroup(t *testing.T) {
 func TestModOFGroup(t *testing.T) {
 	setupCmds := []Cmd{
 		{"ovs-vsctl --if-exists del-br br-of7", true},
-		{"ovs-vsctl add-br br-of7", true},
-		{"ovs-vsctl set bridge br-of7 protocols=OpenFlow10,OpenFlow14,OpenFlow15", true},
+		{"ovs-vsctl add-br br-of7 -- set bridge br-of7 protocols=OpenFlow10,OpenFlow14,OpenFlow15", true},
 		{"sleep 1", true},
 		{"ovs-vsctl add-port br-of7 intf1-7 -- set interface intf1-7 type=internal", true},
 		{"ovs-vsctl add-port br-of7 intf2-7 -- set interface intf2-7 type=internal", true},
@@ -283,8 +281,7 @@ func TestModOFGroup(t *testing.T) {
 func TestDelOFGroup(t *testing.T) {
 	setupCmds := []Cmd{
 		{"ovs-vsctl --if-exists del-br br-of4", true},
-		{"ovs-vsctl add-br br-of8", true},
-		{"ovs-vsctl set bridge br-of8 protocols=OpenFlow10,OpenFlow14,OpenFlow15", true},
+		{"ovs-vsctl add-br br-of8 -- set bridge br-of8 protocols=OpenFlow10,OpenFlow14,OpenFlow15", true},
 		{"ovs-vsctl add-port br-of8 intf1-8 -- set interface intf1-8 type=internal", true},
 		{"ovs-vsctl add-port br-of8 intf2-8 -- set interface intf2-8 type=internal", true},
 		{"sleep 1", true},
