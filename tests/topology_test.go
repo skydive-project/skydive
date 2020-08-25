@@ -552,10 +552,10 @@ func TestOVSOwnershipLink(t *testing.T) {
 	test := &Test{
 		setupCmds: []Cmd{
 			{"ovs-vsctl add-br br-owner", true},
-			{"ovs-vsctl add-port br-owner patch-br-owner -- set interface patch-br-owner type=patch", true},
-			{"ovs-vsctl add-port br-owner gre-br-owner -- set interface gre-br-owner type=gre", true},
-			{"ovs-vsctl add-port br-owner vxlan-br-owner -- set interface vxlan-br-owner type=vxlan", true},
-			{"ovs-vsctl add-port br-owner geneve-br-owner -- set interface geneve-br-owner type=geneve", true},
+			{"ovs-vsctl add-port br-owner patch-br-owner -- set interface patch-br-owner type=patch options:peer=intf", true},
+			{"ovs-vsctl add-port br-owner gre-br-owner -- set interface gre-br-owner type=gre options:remote_ip=10.10.10.10", true},
+			{"ovs-vsctl add-port br-owner vxlan-br-owner -- set interface vxlan-br-owner type=vxlan options:remote_ip=10.10.10.20", true},
+			{"ovs-vsctl add-port br-owner geneve-br-owner -- set interface geneve-br-owner type=geneve options:remote_ip=10.10.10.30", true},
 			{"ovs-vsctl add-port br-owner intf-owner -- set interface intf-owner type=internal", true},
 		},
 

@@ -247,7 +247,7 @@ func (p *ProbeHandler) Do(ctx context.Context, wg *sync.WaitGroup) (err error) {
 		select {
 		case <-ctx.Done():
 			events.Disconnect()
-		case err = <-disconnected:
+		case <-disconnected:
 		}
 	}()
 

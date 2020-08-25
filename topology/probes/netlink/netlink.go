@@ -226,6 +226,7 @@ func (u *Probe) addGenericLinkToTopology(link netlink.Link, m graph.Metadata) *g
 			u.Ctx.Logger.Error(err)
 			return nil
 		}
+		u.Ctx.Logger.Debugf("Added new Netlink node %+v", intf)
 	}
 
 	if !topology.HaveOwnershipLink(u.Ctx.Graph, u.Ctx.RootNode, intf) {
@@ -247,13 +248,13 @@ func (u *Probe) addBridgeLinkToTopology(link netlink.Link, m graph.Metadata) *gr
 func (u *Probe) addOvsLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
 	attrs := link.Attrs()
 	name := attrs.Name
+	index := int64(attrs.Index)
 
+	// we can't have multiple interfaces with the same name thus searching only with name and index
+	// should be enough
 	filter := filters.NewAndFilter(
 		filters.NewTermStringFilter("Name", name),
-		filters.NewOrFilter(
-			filters.NewTermStringFilter("MAC", attrs.HardwareAddr.String()),
-			filters.NewTermStringFilter("ExtID.attached-mac", attrs.HardwareAddr.String()),
-		),
+		filters.NewTermInt64Filter("IfIndex", index),
 		filters.NewNotNullFilter("UUID"),
 	)
 
@@ -838,17 +839,19 @@ func (u *Probe) initialize() {
 		u.Ctx.Logger.Errorf("Unable to list interfaces: %s", err)
 		return
 	}
+	if len(links) == 0 {
+		return
+	}
 
+	u.Ctx.Graph.Lock()
 	for _, link := range links {
 		attrs := link.Attrs()
-
 		u.Ctx.Logger.Debugf("Initialize ADD %s(%d,%s) within %s", attrs.Name, attrs.Index, link.Type(), u.Ctx.RootNode.ID)
-		u.Ctx.Graph.Lock()
 		if u.Ctx.Graph.LookupFirstChild(u.Ctx.RootNode, graph.Metadata{"Name": attrs.Name, "IfIndex": int64(attrs.Index)}) == nil {
 			u.addLinkToTopology(link)
 		}
-		u.Ctx.Graph.Unlock()
 	}
+	u.Ctx.Graph.Unlock()
 }
 
 func (u *Probe) onNeighborsChanged(index int64, fdb *topology.Neighbors, neighbors *topology.Neighbors) {
