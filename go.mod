@@ -91,7 +91,7 @@ require (
 	github.com/tebeka/selenium v0.0.0-20170314201507-657e45ec600f
 	github.com/tomnomnom/linkheader v0.0.0-20180905144013-02ca5825eb80 // indirect
 	github.com/vishvananda/netlink v1.0.0
-	github.com/vishvananda/netns v0.0.0-20190625233234-7109fa855b0f
+	github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df
 	github.com/voxelbrain/goptions v0.0.0-20180630082107-58cddc247ea2 // indirect
 	github.com/weaveworks/tcptracer-bpf v0.0.0-20170817155301-e080bd747dc6
 	github.com/xeipuuv/gojsonschema v1.2.0
@@ -136,8 +136,7 @@ replace (
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.3
 	github.com/skydive-project/skydive/graffiti/gendecoder => ./graffiti/gendecoder
 	github.com/spf13/viper v1.4.0 => github.com/lebauce/viper v0.0.0-20190903114911-3b7a98e30843
-	github.com/vishvananda/netlink v1.0.0 => github.com/lebauce/netlink v0.0.0-20200327202635-f4921fca5803
-	golang.org/x/sys => golang.org/x/sys v0.0.0-20190412213103-97732733099d
+	github.com/vishvananda/netlink v1.0.0 => github.com/lebauce/netlink v0.0.0-20200826081334-244950452e97
 	golang.org/x/tools => golang.org/x/tools v0.0.0-20190925230517-ea99b82c7b93
 	k8s.io/api => k8s.io/api v0.0.0-20191016110408-35e52d86657a
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20191016113550-5357c4baaf65

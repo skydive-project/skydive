@@ -481,9 +481,10 @@ func (u *Probe) addLinkToTopology(link netlink.Link) {
 		metadata["MAC"] = mac
 	}
 
-	if bondSlave := attrs.BondSlave; bondSlave != nil {
+	if attrs.Slave != nil && attrs.Slave.SlaveType() == "bond" {
+		bondSlave := attrs.Slave.(*netlink.BondSlave)
 		slaveMetadata := map[string]interface{}{
-			"Type":                   bondSlave.Type,
+			"Type":                   bondSlave.SlaveType(),
 			"State":                  bondSlave.State.String(),
 			"MiiStatus":              bondSlave.MiiStatus.String(),
 			"LinkFailureCount":       int64(bondSlave.LinkFailureCount),
@@ -1120,7 +1121,7 @@ Ready:
 }
 
 func (u *Probe) onMessageAvailable() {
-	msgs, err := u.socket.Receive()
+	msgs, _, err := u.socket.Receive()
 	if err != nil {
 		if errno, ok := err.(syscall.Errno); !ok || !errno.Temporary() {
 			u.Ctx.Logger.Errorf("Failed to receive from netlink messages: %s", err)
