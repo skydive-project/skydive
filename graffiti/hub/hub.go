@@ -85,6 +85,7 @@ type Hub struct {
 	traversalParser     *traversal.GremlinTraversalParser
 	expirationDelay     time.Duration
 	quit                chan bool
+	masterElection      etcdclient.MasterElection
 }
 
 // PeersStatus describes the state of a peer
@@ -126,7 +127,7 @@ func (h *Hub) GetStatus() interface{} {
 
 // OnStarted - Persistent backend listener
 func (h *Hub) OnStarted() {
-	go h.watchOrigin()
+	go h.watchOrigins()
 
 	if err := h.httpServer.Start(); err != nil {
 		logging.GetLogger().Errorf("Error while starting http server: %s", err)
@@ -148,6 +149,8 @@ func (h *Hub) Start() error {
 		}
 	}
 
+	h.masterElection.StartAndWait()
+
 	if err := h.cached.Start(); err != nil {
 		return err
 	}
@@ -163,6 +166,7 @@ func (h *Hub) Stop() {
 	h.publisherWSServer.Stop()
 	h.subscriberWSServer.Stop()
 	h.cached.Stop()
+	h.masterElection.Stop()
 	if h.embeddedEtcd != nil {
 		h.embeddedEtcd.Stop()
 	}
@@ -201,13 +205,17 @@ func (h *Hub) OnPong(speaker websocket.Speaker) {
 	}
 }
 
-func (h *Hub) watchOrigin() {
+func (h *Hub) watchOrigins() {
 	tick := time.NewTicker(5 * time.Second)
 	defer tick.Stop()
 
 	for {
 		select {
 		case <-tick.C:
+			if !h.masterElection.IsMaster() {
+				break
+			}
+
 			resp, err := h.etcdClient.KeysAPI.Get(context.Background(), etcPodPongPath, &etcd.GetOptions{Recursive: true})
 			if err != nil {
 				continue
@@ -215,6 +223,9 @@ func (h *Hub) watchOrigin() {
 
 			for _, node := range resp.Node.Nodes {
 				t, _ := strconv.ParseInt(node.Value, 10, 64)
+
+				logging.GetLogger().Infof("TTL of pod of origin %s is %d", node.Key, t)
+
 				if t+int64(h.expirationDelay.Seconds()) < time.Now().Unix() {
 					origin := strings.TrimPrefix(node.Key, etcPodPongPath+"/")
 
@@ -319,6 +330,9 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 	hub.subscriberWSServer = subscriberWSServer
 	hub.traversalParser = tr
 	hub.etcdClient = opts.EtcdClient
+
+	election := hub.etcdClient.NewElection("/elections/hub-origin-watcher")
+	hub.masterElection = election
 
 	if opts.StatusReporter == nil {
 		opts.StatusReporter = hub

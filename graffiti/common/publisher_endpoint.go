@@ -55,6 +55,8 @@ type PublisherEndpoint struct {
 func (t *PublisherEndpoint) OnDisconnected(c ws.Speaker) {
 	origin := graph.ClientOrigin(c)
 
+	t.logger.Debugf("Client or origin %s disconnected", origin)
+
 	t.RLock()
 	_, ok := t.authors[origin]
 	t.RUnlock()
@@ -69,7 +71,7 @@ func (t *PublisherEndpoint) OnDisconnected(c ws.Speaker) {
 		t.logger.Debugf("Authoritative client unregistered, delete resources of %s", origin)
 
 		t.Graph.Lock()
-		graph.DelSubGraphOfClient(t.Graph, c)
+		graph.DelSubGraphOfOrigin(t.Graph, origin)
 		t.Graph.Unlock()
 	}
 
@@ -122,7 +124,7 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 	case messages.SyncMsgType, messages.SyncReplyMsgType:
 		t.logger.Debugf("Handling sync message from %s", c.GetRemoteHost())
 
-		graph.DelSubGraphOfClient(t.Graph, c)
+		graph.DelSubGraphOfOrigin(t.Graph, graph.ClientOrigin(c))
 
 		r := obj.(*messages.SyncMsg)
 		for _, n := range r.Nodes {

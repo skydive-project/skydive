@@ -34,11 +34,6 @@ func DelSubGraphOfOrigin(g *Graph, origin string) {
 	g.DelNodes(Metadata{"Origin": origin})
 }
 
-// DelSubGraphOfClient deletes all the nodes of the given client
-func DelSubGraphOfClient(g *Graph, c ws.Speaker) {
-	g.DelNodes(Metadata{"Origin": ClientOrigin(c)})
-}
-
 func Origin(hostID string, kind service.Type) string {
 	return fmt.Sprintf("%s.%s", kind, hostID)
 }
