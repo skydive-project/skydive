@@ -141,23 +141,15 @@ func (ga *GremlinAlert) trigger(payload []byte) error {
 		logging.GetLogger().Debugf("Executing command '%s'", ga.data)
 
 		cmd := exec.Command(ga.data)
-		stdin, err := cmd.StdinPipe()
-		if err != nil {
-			return fmt.Errorf("Failed to get stdin for command '%s': %s", ga.data, err)
-		}
+		cmd.Stdin = bytes.NewReader(payload)
+		out := new(bytes.Buffer)
+		cmd.Stdout = out
 
-		if _, err = stdin.Write(payload); err != nil {
-			return fmt.Errorf("Failed to write to stdin for '%s': %s", ga.data, err)
-		}
-		stdin.Write([]byte("\n"))
-
-		output, err := cmd.CombinedOutput()
-		if err != nil {
+		if err := cmd.Run(); err != nil {
 			return err
 		}
 
-		logging.GetLogger().Infof("Command successfully executed '%s': %s", cmd.Path, output)
-		stdin.Close()
+		logging.GetLogger().Infof("Command successfully executed '%s': %s", cmd.Path, out.String())
 	}
 
 	return nil
