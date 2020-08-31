@@ -51,7 +51,7 @@ func TestStartupCapture(t *testing.T) {
 				return fmt.Errorf("Preconfigured capture wasn't created")
 			}
 
-			gh := client.NewGremlinQueryHelper(&shttp.AuthenticationOpts{})
+			gh := client.NewGremlinQueryHelper(cl.RestClient)
 
 			nodes, err := gh.GetNodes(capture.GremlinQuery)
 			if err != nil {

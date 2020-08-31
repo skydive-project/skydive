@@ -27,6 +27,7 @@ import (
 	api "github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	usertopology "github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/validator"
@@ -34,7 +35,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var host string
+var (
+	host        string
+	gremlinFlag bool
+)
 
 // NodeCmd skydive node rule root command
 var NodeCmd = &cobra.Command{
@@ -139,13 +143,32 @@ var NodeDelete = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
+		restClient, err := client.NewRestClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			exitOnError(err)
 		}
 
-		for _, id := range args {
-			if err := client.Delete("node", id); err != nil {
+		var ids []string
+		if gremlinFlag {
+			queryHelper := client.NewGremlinQueryHelper(restClient)
+
+			for _, gremlinQuery := range args {
+				nodes, err := queryHelper.GetNodes(gremlinQuery)
+				if err != nil {
+					exitOnError(err)
+				}
+
+				for _, node := range nodes {
+					ids = append(ids, string(node.ID))
+				}
+			}
+		} else {
+			ids = args
+		}
+
+		crudClient := http.NewCrudClient(restClient)
+		for _, arg := range ids {
+			if err := crudClient.Delete("node", arg); err != nil {
 				logging.GetLogger().Error(err)
 			}
 		}
@@ -165,6 +188,7 @@ func init() {
 	NodeCmd.AddCommand(NodeGet)
 	NodeCmd.AddCommand(NodeCreate)
 	NodeCmd.AddCommand(NodeDelete)
+	NodeDelete.Flags().BoolVarP(&gremlinFlag, "gremlin", "", false, "use Gremlin expressions instead of a node identifiers")
 
 	addCreateNodeFlags(NodeCreate)
 }

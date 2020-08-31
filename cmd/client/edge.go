@@ -27,6 +27,7 @@ import (
 	api "github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	usertopology "github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/validator"
@@ -148,13 +149,32 @@ var EdgeDelete = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
+		restClient, err := client.NewRestClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			exitOnError(err)
 		}
 
-		for _, id := range args {
-			if err := client.Delete("edge", id); err != nil {
+		var ids []string
+		if gremlinFlag {
+			queryHelper := client.NewGremlinQueryHelper(restClient)
+
+			for _, gremlinQuery := range args {
+				edges, err := queryHelper.GetEdges(gremlinQuery)
+				if err != nil {
+					exitOnError(err)
+				}
+
+				for _, edge := range edges {
+					ids = append(ids, string(edge.ID))
+				}
+			}
+		} else {
+			ids = args
+		}
+
+		crudClient := http.NewCrudClient(restClient)
+		for _, arg := range ids {
+			if err := crudClient.Delete("edge", arg); err != nil {
 				logging.GetLogger().Error(err)
 			}
 		}
@@ -173,6 +193,7 @@ func init() {
 	EdgeCmd.AddCommand(EdgeGet)
 	EdgeCmd.AddCommand(EdgeCreate)
 	EdgeCmd.AddCommand(EdgeDelete)
+	EdgeDelete.Flags().BoolVarP(&gremlinFlag, "gremlin", "", false, "use Gremlin expressions instead of a node identifiers")
 
 	addCreateEdgeFlags(EdgeCreate)
 }

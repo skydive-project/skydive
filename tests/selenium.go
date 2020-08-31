@@ -602,7 +602,10 @@ func newSeleniumHelper(t *testing.T, analyzerAddr string, analyzerPort int, auth
 
 	os.Setenv("SKYDIVE_ANALYZERS", fmt.Sprintf("%s:%d", analyzerAddr, analyzerPort))
 
-	gh := client.NewGremlinQueryHelper(authOptions)
+	gh, err := client.NewGremlinQueryHelperFromConfig(authOptions)
+	if err != nil {
+		return nil, err
+	}
 
 	sh := &seleniumHelper{
 		addr:        analyzerAddr,

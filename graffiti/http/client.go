@@ -127,10 +127,8 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 }
 
 // NewCrudClient returns a new REST client that is able to issue CRUD requests
-func NewCrudClient(url *url.URL, authOpts *AuthenticationOpts, tlsConfig *tls.Config) *CrudClient {
-	return &CrudClient{
-		RestClient: NewRestClient(url, authOpts, tlsConfig),
-	}
+func NewCrudClient(restClient *RestClient) *CrudClient {
+	return &CrudClient{RestClient: restClient}
 }
 
 // List returns all the resources for a type

@@ -45,6 +45,16 @@ func TestNeutron(t *testing.T) {
 	regionName := os.Getenv("OS_REGION_NAME")
 	domainID := os.Getenv("OS_PROJECT_DOMAIN_ID")
 
+	authOptions := &shttp.AuthenticationOpts{
+		Username: username,
+		Password: password,
+	}
+
+	gh, err := apiclient.NewGremlinQueryHelperFromConfig(authOptions)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: authURL,
 		Username:         username,
@@ -117,11 +127,6 @@ func TestNeutron(t *testing.T) {
 	defer subnets.Delete(client, subnet.ID)
 	defer networks.Delete(client, network.ID)
 
-	authOptions := &shttp.AuthenticationOpts{
-		Username: username,
-		Password: password,
-	}
-
 	subID := port.ID[0:11]
 	dev := fmt.Sprintf("tap%s", subID)
 
@@ -139,8 +144,6 @@ func TestNeutron(t *testing.T) {
 	}
 	execCmds(t, setupCmds...)
 	defer execCmds(t, tearDownCmds...)
-
-	gh := apiclient.NewGremlinQueryHelper(authOptions)
 
 	var histo bool
 	retryFn := func() error {

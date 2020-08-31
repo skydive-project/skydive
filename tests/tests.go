@@ -494,7 +494,7 @@ func RunTest(t *testing.T, test *Test) {
 	}
 
 	context := &TestContext{
-		gh:       apiclient.NewGremlinQueryHelper(&shttp.AuthenticationOpts{}),
+		gh:       apiclient.NewGremlinQueryHelper(client.RestClient),
 		client:   client,
 		captures: captures,
 		data:     make(map[string]interface{}),
