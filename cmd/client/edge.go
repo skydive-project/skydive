@@ -219,10 +219,12 @@ var EdgeUpdate = &cobra.Command{
 }
 
 func addCreateEdgeFlags(cmd *cobra.Command) {
+	host, _ = os.Hostname()
 	cmd.Flags().StringVarP(&edgeType, "edge-type", "", "", "edge type")
 	cmd.Flags().StringVarP(&parentNodeID, "parent", "", "", "parent node identifier")
 	cmd.Flags().StringVarP(&childNodeID, "child", "", "", "child node identifier")
 	cmd.Flags().StringVarP(&metadata, "metadata", "", "", "edge metadata, key value pairs. 'k1=v1, k2=v2'")
+	cmd.Flags().StringVarP(&host, "host", "", host, "host")
 }
 
 func init() {

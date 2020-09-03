@@ -37,7 +37,6 @@ import (
 )
 
 var (
-	host           string
 	gremlinFlag    bool
 	addMetadata    []string
 	removeMetadata []string
