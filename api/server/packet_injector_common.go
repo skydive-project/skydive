@@ -59,6 +59,11 @@ func (pi *PacketInjectorAPI) Create(r rest.Resource, opts *rest.CreateOptions) e
 	return e
 }
 
+// Update a packet injection
+func (pi *PacketInjectorAPI) Update(id string, resource rest.Resource) (rest.Resource, bool, error) {
+	return nil, false, rest.ErrNotUpdatable
+}
+
 func (pi *PacketInjectorAPI) getNode(gremlinQuery string) *graph.Node {
 	res, err := ge.TopologyGremlinQuery(pi.Graph, gremlinQuery)
 	if err != nil {

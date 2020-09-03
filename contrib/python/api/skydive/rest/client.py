@@ -252,6 +252,12 @@ class RESTClient:
         r = self.request("/api/node", method="POST", data=data)
         return Node.from_object(r)
 
+    def node_update(self, node_id=None, patches=[]):
+        data = json.dumps(patches)
+        path = "/api/node/%s" % node_id
+        r = self.request(path, method="PATCH", data=data)
+        return Node.from_object(r)
+
     def node_list(self):
         objs = self.request("/api/node")
         return [Node.from_object(o) for o in objs.values()]
@@ -281,6 +287,12 @@ class RESTClient:
             }
         )
         r = self.request("/api/edge", method="POST", data=data)
+        return Edge.from_object(r)
+
+    def edge_update(self, edge_id=None, patches=[]):
+        data = json.dumps(patches)
+        path = "/api/edge/%s" % edge_id
+        r = self.request(path, method="PATCH", data=data)
         return Edge.from_object(r)
 
     def edge_list(self):

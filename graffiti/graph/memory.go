@@ -42,7 +42,6 @@ func (m *MemoryBackend) MetadataUpdated(i interface{}) error {
 	switch i := i.(type) {
 	case *Node:
 		if _, ok := m.nodes[i.ID]; !ok {
-
 			return ErrNodeNotFound
 		}
 	case *Edge:

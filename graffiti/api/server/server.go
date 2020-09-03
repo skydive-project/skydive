@@ -46,6 +46,7 @@ import (
 	"time"
 
 	auth "github.com/abbot/go-http-auth"
+	jsonpatch "github.com/evanphx/json-patch"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/skydive-project/skydive/graffiti/api/rest"
@@ -76,6 +77,16 @@ type Info struct {
 	Version string
 	// Service type
 	Service string
+}
+
+// ResourceNotFound error generated when a resource does not exists
+type ResourceNotFound struct {
+	ID   string
+	Type string
+}
+
+func (r ResourceNotFound) Error() string {
+	return fmt.Sprintf("Resource %s with id=%v has not been found", r.Type, r.ID)
 }
 
 // RegisterAPIHandler registers a new handler for an API
@@ -205,6 +216,49 @@ func (a *Server) RegisterAPIHandler(handler rest.Handler, authBackend shttp.Auth
 				w.WriteHeader(http.StatusCreated)
 				if _, err := w.Write(data); err != nil {
 					logging.GetLogger().Criticalf("Failed to create %s: %s", name, err)
+				}
+			},
+		},
+		{
+			Name:   title + "Update",
+			Method: "PATCH",
+			Path:   shttp.PathPrefix(fmt.Sprintf("/api/%s/", name)),
+			HandlerFunc: func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+				if !rbac.Enforce(r.Username, name, "write") {
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					return
+				}
+
+				id := r.URL.Path[len(fmt.Sprintf("/api/%s/", name)):]
+				if id == "" {
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+
+				// Decode patch operations (json-path format)
+				content, err := ioutil.ReadAll(r.Body)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				data, modified, err := patchMethod(handler, a.validator, id, content)
+				if err == rest.ErrNotFound {
+					w.WriteHeader(http.StatusNotFound)
+					return
+				} else if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+				if modified {
+					w.WriteHeader(http.StatusOK)
+					if _, err := w.Write(data); err != nil {
+						logging.GetLogger().Criticalf("Failed to update %s: %s", name, err)
+					}
+				} else {
+					w.WriteHeader(http.StatusNotModified)
 				}
 			},
 		},
@@ -385,6 +439,64 @@ func (a *Server) addLoginRoute(authBackend shttp.AuthenticationBackend) {
 	//     description: Unauthorized
 
 	a.HTTPServer.Router.HandleFunc("/login", a.serveLoginHandlerFunc(authBackend))
+}
+
+// patchMethod modifies a resource identified by "id" with the JSON patch.
+// Returns the resource modified or an error
+func patchMethod(handler rest.Handler, validator Validator, id string, jsonPatch []byte) ([]byte, bool, error) {
+	// Get the resource to be modified
+	resource, ok := handler.Get(id)
+	if !ok {
+		return nil, false, rest.ErrNotFound
+	}
+
+	// Convert user content to a JSON patch
+	patch, err := jsonpatch.DecodePatch(jsonPatch)
+	if err != nil {
+		return nil, false, fmt.Errorf("incorrect JSON patch: %v. Patch: %s", err, jsonPatch)
+	}
+
+	// Convert node to JSON to apply the JSON patch
+	resourceJSON, err := json.Marshal(resource)
+	if err != nil {
+		return nil, false, fmt.Errorf("converting current stored node to JSON: %v", err)
+	}
+
+	// Patch are applied to the json body in []byte format
+	resourcePatchedJSON, err := patch.Apply(resourceJSON)
+	if err != nil {
+		return nil, false, fmt.Errorf("applying JSON patch to resource: %v", err)
+	}
+
+	// Create a new node with the content of the patched resource
+	resourcePatched := handler.New()
+	if err = json.Unmarshal(resourcePatchedJSON, resourcePatched); err != nil {
+		return nil, false, fmt.Errorf("creating a new resource from the patched JSON body: %v", err)
+	}
+
+	// Validates new resource is valid
+	if err = validator.Validate(handler.Name(), resourcePatched); err != nil {
+		return nil, false, fmt.Errorf("validating patched resource: %v", err)
+	}
+
+	if err = resourcePatched.Validate(); err != nil {
+		return nil, false, fmt.Errorf("validating patched resource: %v", err)
+	}
+
+	// TODO for node implementation avoid modifiying .Metadata{.TID, .Name, .Type}
+	// Test for *rules, and others resources, that it is working
+	// Test with ES backend
+	newResource, modified, err := handler.Update(id, resourcePatched)
+	if err != nil {
+		return nil, false, fmt.Errorf("updating resource with patched version: %v", err)
+	}
+
+	data, err := json.Marshal(&newResource)
+	if err != nil {
+		return nil, modified, fmt.Errorf("marshaling patched resource to JSON: %v", err)
+	}
+
+	return data, modified, nil
 }
 
 // NewAPI creates a new API server based on http

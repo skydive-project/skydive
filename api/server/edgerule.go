@@ -50,6 +50,11 @@ func (erh *EdgeRuleResourceHandler) New() rest.Resource {
 	return &types.EdgeRule{}
 }
 
+// Update an edge rule
+func (a *EdgeRuleAPI) Update(id string, resource rest.Resource) (rest.Resource, bool, error) {
+	return nil, false, rest.ErrNotUpdatable
+}
+
 // RegisterEdgeRuleAPI registers an EdgeRule's API to a designated API Server
 func RegisterEdgeRuleAPI(apiServer *api.Server, kapi etcd.KeysAPI, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*EdgeRuleAPI, error) {
 	era := &EdgeRuleAPI{

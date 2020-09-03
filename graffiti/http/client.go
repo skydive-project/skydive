@@ -113,13 +113,15 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 		return resp, err
 	}
 
-	switch resp.Header.Get("Content-Encoding") {
-	case "gzip":
-		resp.Body, err = gzip.NewReader(resp.Body)
-		resp.Uncompressed = true
-		resp.ContentLength = -1
-		if err != nil {
-			return nil, err
+	if resp.ContentLength != 0 {
+		switch resp.Header.Get("Content-Encoding") {
+		case "gzip":
+			resp.Body, err = gzip.NewReader(resp.Body)
+			resp.Uncompressed = true
+			resp.ContentLength = -1
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -191,25 +193,33 @@ func (c *CrudClient) Create(resource string, value interface{}, opts *CreateOpti
 }
 
 // Update modify a resource using a PUT call to the API
-func (c *CrudClient) Update(resource string, id string, value interface{}) error {
+// Server JSON response is unmarshalled into "ret"
+func (c *CrudClient) Update(resource string, id string, value interface{}, result interface{}) (bool, error) {
 	s, err := json.Marshal(value)
 	if err != nil {
-		return err
+		return false, fmt.Errorf("marshaling value: %v", err)
 	}
 
 	contentReader := bytes.NewReader(s)
-	resp, err := c.Request("PUT", resource+"/"+id, contentReader, nil)
+	resp, err := c.Request("PATCH", resource+"/"+id, contentReader, nil)
 	if err != nil {
-		return err
+		return false, fmt.Errorf("request: %v", err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Failed to update %s, %s: %s", resource, resp.Status, readBody(resp))
+	if resp.StatusCode >= http.StatusBadRequest {
+		return false, fmt.Errorf("Failed to update %s, %s: %s", resource, resp.Status, readBody(resp))
 	}
 
-	decoder := json.NewDecoder(resp.Body)
-	return decoder.Decode(value)
+	if resp.ContentLength != 0 {
+		decoder := json.NewDecoder(resp.Body)
+		err = decoder.Decode(result)
+		if err != nil {
+			return false, fmt.Errorf("parsing response body: %v", err)
+		}
+	}
+
+	return resp.StatusCode == http.StatusOK, err
 }
 
 // Delete removes a resource using a DELETE call to the API

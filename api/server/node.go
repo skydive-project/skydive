@@ -66,13 +66,14 @@ func (h *NodeAPIHandler) Index() map[string]rest.Resource {
 // Get returns a node with the specified id
 func (h *NodeAPIHandler) Get(id string) (rest.Resource, bool) {
 	h.g.RLock()
+	defer h.g.RUnlock()
+
 	n := h.g.GetNode(graph.Identifier(id))
 	if n == nil {
 		return nil, false
 	}
-	node := types.Node(*n)
-	h.g.RUnlock()
-	return &node, true
+	node := (*types.Node)(n)
+	return node, true
 }
 
 // Decorate the specified node
@@ -113,6 +114,38 @@ func (h *NodeAPIHandler) Delete(id string) error {
 	}
 
 	return h.g.DelNode(node)
+}
+
+// Update a node metadata
+func (h *NodeAPIHandler) Update(id string, resource rest.Resource) (rest.Resource, bool, error) {
+	h.g.Lock()
+	defer h.g.Unlock()
+
+	// Current node, to be updated
+	n := h.g.GetNode(graph.Identifier(id))
+	if n == nil {
+		return nil, false, rest.ErrNotFound
+	}
+
+	// Node containing the metadata updated
+	patchedNode := resource.(*types.Node)
+
+	// Do not modify/replace Metadata.(TID|Name|Type), use actual node values
+	if actualTID, _ := n.Metadata.GetFieldString("TID"); actualTID != "" {
+		patchedNode.Metadata.SetField("TID", actualTID)
+	}
+	actualName, _ := n.Metadata.GetFieldString("Name")
+	patchedNode.Metadata.SetField("Name", actualName)
+	actualType, _ := n.Metadata.GetFieldString("Type")
+	patchedNode.Metadata.SetField("Type", actualType)
+
+	// Update actual node Metadata with new patched node
+	previousRevision := n.Revision
+	if err := h.g.SetMetadata(n, patchedNode.Metadata); err != nil {
+		return nil, false, err
+	}
+
+	return (*types.Node)(n), n.Revision != previousRevision, nil
 }
 
 // RegisterNodeAPI registers the node API
