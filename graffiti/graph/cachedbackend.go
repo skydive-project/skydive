@@ -20,6 +20,8 @@ package graph
 import (
 	"errors"
 	"sync/atomic"
+
+	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 )
 
 // Define the running cache mode, memory and/or persistent
@@ -35,10 +37,11 @@ var (
 
 // CachedBackend describes a cache mechanism in memory and/or persistent database
 type CachedBackend struct {
-	memory     *MemoryBackend
-	persistent PersistentBackend
-	cacheMode  atomic.Value
-	listeners  []PersistentBackendListener
+	memory         *MemoryBackend
+	persistent     PersistentBackend
+	cacheMode      atomic.Value
+	listeners      []PersistentBackendListener
+	masterElection etcd.MasterElection
 }
 
 // SetMode set cache mode
@@ -200,14 +203,18 @@ func (c *CachedBackend) IsHistorySupported() bool {
 	return c.persistent != nil && c.persistent.IsHistorySupported()
 }
 
-// OnStarted implements PeristentBackendListener interface
+// OnStarted implements PersistentBackendListener interface
 func (c *CachedBackend) OnStarted() {
-	// re-insert valid nodes and edges
-	for _, node := range c.persistent.GetNodes(Context{}, nil) {
-		c.memory.NodeAdded(node)
-	}
-	for _, edge := range c.persistent.GetEdges(Context{}, nil) {
-		c.memory.EdgeAdded(edge)
+	if c.masterElection.IsMaster() {
+
+		// re-insert valid nodes and edges
+		for _, node := range c.persistent.GetNodes(Context{}, nil) {
+			c.memory.NodeAdded(node)
+		}
+
+		for _, edge := range c.persistent.GetEdges(Context{}, nil) {
+			c.memory.EdgeAdded(edge)
+		}
 	}
 
 	for _, listener := range c.listeners {
@@ -217,6 +224,8 @@ func (c *CachedBackend) OnStarted() {
 
 // Start the Backend
 func (c *CachedBackend) Start() error {
+	c.masterElection.StartAndWait()
+
 	if c.persistent != nil {
 		return c.persistent.Start()
 	} else {
@@ -239,15 +248,16 @@ func (c *CachedBackend) AddListener(listener PersistentBackendListener) {
 }
 
 // NewCachedBackend creates new graph cache mechanism
-func NewCachedBackend(persistent PersistentBackend) (*CachedBackend, error) {
+func NewCachedBackend(persistent PersistentBackend, electionService etcd.MasterElectionService) (*CachedBackend, error) {
 	memory, err := NewMemoryBackend()
 	if err != nil {
 		return nil, err
 	}
 
 	sb := &CachedBackend{
-		persistent: persistent,
-		memory:     memory,
+		persistent:     persistent,
+		memory:         memory,
+		masterElection: electionService.NewElection("/elections/cachedbackend-persistent"),
 	}
 
 	sb.cacheMode.Store(DefaultMode)

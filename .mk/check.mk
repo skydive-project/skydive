@@ -29,7 +29,7 @@ check: lint
 	# check if Go modules are in sync
 	$(GO) mod tidy
 	@test -z "$$(git diff)" || \
-		(echo -e "Repository is altered after build:\n$$(git diff)" && /bin/false)
+		(echo -e "Repository is altered after build:\n$$(git diff --text)" && /bin/false)
 	nbnotcomment=$$(grep '"linter":"golint"' lint.json | wc -l); \
 	if [ $$nbnotcomment -gt 0 ]; then \
 		cat lint.json; \

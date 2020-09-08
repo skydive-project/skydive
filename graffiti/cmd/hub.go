@@ -66,14 +66,6 @@ var HubCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		cached, err := graph.NewCachedBackend(nil)
-		if err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
-		}
-
-		g := graph.NewGraph(hostname, cached, "graffiti-hub")
-
 		authBackend := shttp.NewNoAuthenticationBackend()
 
 		var etcdServer *etcdserver.EmbeddedServer
@@ -107,6 +99,14 @@ var HubCmd = &cobra.Command{
 			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
+
+		cached, err := graph.NewCachedBackend(nil, etcdClient)
+		if err != nil {
+			logging.GetLogger().Error(err)
+			os.Exit(1)
+		}
+
+		g := graph.NewGraph(hostname, cached, "graffiti-hub")
 
 		hubOpts := hub.Opts{
 			Hostname: hostname,
