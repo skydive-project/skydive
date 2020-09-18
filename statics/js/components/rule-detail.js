@@ -247,7 +247,7 @@ function summarizeGroup(group) {
     var content;
     var actions = bucket.Actions.map(textAction).join(',');
     if (bucket.Meta) {
-      content = bucket.meta.map(textMeta).join(',') + ',actions=' + actions;
+      content = bucket.Meta.map(textMeta).join(',') + ',actions=' + actions;
     } else {
       content = 'actions=' + actions;
     }
