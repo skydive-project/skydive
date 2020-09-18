@@ -23,7 +23,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 
-	"k8s.io/api/apps/v1beta1"
+	v1apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -32,12 +32,12 @@ type statefulSetHandler struct {
 }
 
 func (h *statefulSetHandler) Dump(obj interface{}) string {
-	ss := obj.(*v1beta1.StatefulSet)
+	ss := obj.(*v1apps.StatefulSet)
 	return fmt.Sprintf("statefulset{Namespace: %s, Name: %s}", ss.Namespace, ss.Name)
 }
 
 func (h *statefulSetHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
-	ss := obj.(*v1beta1.StatefulSet)
+	ss := obj.(*v1apps.StatefulSet)
 
 	m := NewMetadataFields(&ss.ObjectMeta)
 	m.SetField("DesiredReplicas", int32ValueOrDefault(ss.Spec.Replicas, 1))
@@ -53,11 +53,11 @@ func (h *statefulSetHandler) Map(obj interface{}) (graph.Identifier, graph.Metad
 }
 
 func newStatefulSetProbe(client interface{}, g *graph.Graph) Subprobe {
-	return NewResourceCache(client.(*kubernetes.Clientset).AppsV1beta1().RESTClient(), &v1beta1.StatefulSet{}, "statefulsets", g, &statefulSetHandler{})
+	return NewResourceCache(client.(*kubernetes.Clientset).AppsV1().RESTClient(), &v1apps.StatefulSet{}, "statefulsets", g, &statefulSetHandler{})
 }
 
 func statefulSetPodAreLinked(a, b interface{}) bool {
-	statefulset := a.(*v1beta1.StatefulSet)
+	statefulset := a.(*v1apps.StatefulSet)
 	pod := b.(*v1.Pod)
 	return MatchNamespace(pod, statefulset) && matchLabelSelector(pod, statefulset.Spec.Selector)
 }

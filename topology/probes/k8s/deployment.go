@@ -23,7 +23,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 
-	"k8s.io/api/extensions/v1beta1"
+	v1apps "k8s.io/api/apps/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -31,12 +31,12 @@ type deploymentHandler struct {
 }
 
 func (h *deploymentHandler) Dump(obj interface{}) string {
-	deployment := obj.(*v1beta1.Deployment)
+	deployment := obj.(*v1apps.Deployment)
 	return fmt.Sprintf("deployment{Namespace: %s, Name: %s}", deployment.Namespace, deployment.Name)
 }
 
 func (h *deploymentHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
-	deployment := obj.(*v1beta1.Deployment)
+	deployment := obj.(*v1apps.Deployment)
 
 	m := NewMetadataFields(&deployment.ObjectMeta)
 	m.SetField("DesiredReplicas", int32ValueOrDefault(deployment.Spec.Replicas, 1))
@@ -49,12 +49,12 @@ func (h *deploymentHandler) Map(obj interface{}) (graph.Identifier, graph.Metada
 }
 
 func newDeploymentProbe(client interface{}, g *graph.Graph) Subprobe {
-	return NewResourceCache(client.(*kubernetes.Clientset).ExtensionsV1beta1().RESTClient(), &v1beta1.Deployment{}, "deployments", g, &deploymentHandler{})
+	return NewResourceCache(client.(*kubernetes.Clientset).AppsV1().RESTClient(), &v1apps.Deployment{}, "deployments", g, &deploymentHandler{})
 }
 
 func deploymentReplicaSetAreLinked(a, b interface{}) bool {
-	deployment := a.(*v1beta1.Deployment)
-	replicaset := b.(*v1beta1.ReplicaSet)
+	deployment := a.(*v1apps.Deployment)
+	replicaset := b.(*v1apps.ReplicaSet)
 	return MatchNamespace(replicaset, deployment) && matchLabelSelector(replicaset, deployment.Spec.Selector)
 }
 

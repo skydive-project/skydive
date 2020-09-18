@@ -24,7 +24,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
+	v1apps "k8s.io/api/apps/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -32,22 +32,22 @@ type replicaSetHandler struct {
 }
 
 func (h *replicaSetHandler) Dump(obj interface{}) string {
-	rs := obj.(*v1beta1.ReplicaSet)
+	rs := obj.(*v1apps.ReplicaSet)
 	return fmt.Sprintf("replicaset{Name: %s}", rs.GetName())
 }
 
 func (h *replicaSetHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
-	rs := obj.(*v1beta1.ReplicaSet)
+	rs := obj.(*v1apps.ReplicaSet)
 	m := NewMetadataFields(&rs.ObjectMeta)
 	return graph.Identifier(rs.GetUID()), NewMetadata(Manager, "replicaset", m, rs, rs.Name)
 }
 
 func newReplicaSetProbe(client interface{}, g *graph.Graph) Subprobe {
-	return NewResourceCache(client.(*kubernetes.Clientset).ExtensionsV1beta1().RESTClient(), &v1beta1.ReplicaSet{}, "replicasets", g, &replicaSetHandler{})
+	return NewResourceCache(client.(*kubernetes.Clientset).AppsV1().RESTClient(), &v1apps.ReplicaSet{}, "replicasets", g, &replicaSetHandler{})
 }
 
 func replicaSetPodAreLinked(a, b interface{}) bool {
-	rc := a.(*v1beta1.ReplicaSet)
+	rc := a.(*v1apps.ReplicaSet)
 	pod := b.(*v1.Pod)
 	return MatchNamespace(pod, rc) && matchLabelSelector(pod, rc.Spec.Selector)
 }
