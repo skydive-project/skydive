@@ -3,8 +3,6 @@
 set -v
 set -e
 
-go get -f -u github.com/tebeka/go2xunit
-
 DIR="$(dirname "$0")"
 
 helm_setup() {
