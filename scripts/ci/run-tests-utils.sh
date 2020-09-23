@@ -64,8 +64,7 @@ tests_run() {
                 kill $MEMPROFPID 2>/dev/null
         fi
 
-        go get -f -u github.com/tebeka/go2xunit
-        go2xunit -fail -fail-on-race -suite-name-prefix tests \
+        go run github.com/tebeka/go2xunit -fail -fail-on-race -suite-name-prefix tests \
                 -input $LOGFILE -output $TESTFILE
         sed -i 's/\x1b\[[0-9;]*m//g' $TESTFILE
 

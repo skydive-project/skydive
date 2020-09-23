@@ -29,6 +29,7 @@ import (
 	etcd "github.com/coreos/etcd/client"
 	uuid "github.com/nu7hatch/gouuid"
 
+	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
@@ -36,7 +37,7 @@ import (
 // for the most part of the resource
 type BasicAPIHandler struct {
 	ResourceHandler ResourceHandler
-	EtcdKeyAPI      etcd.KeysAPI
+	EtcdClient      *etcdclient.Client
 }
 
 // Name returns the resource name
@@ -67,7 +68,7 @@ func (h *BasicAPIHandler) collectNodes(flatten map[string]Resource, nodes etcd.N
 		} else {
 			resource, err := h.Unmarshal([]byte(node.Value))
 			if err != nil {
-				logging.GetLogger().Warningf("Failed to unmarshal capture: %s", err.Error())
+				logging.GetLogger().Warningf("Failed to unmarshal capture: %s", err)
 				continue
 			}
 			flatten[resource.GetID()] = resource
@@ -79,7 +80,7 @@ func (h *BasicAPIHandler) collectNodes(flatten map[string]Resource, nodes etcd.N
 func (h *BasicAPIHandler) Index() map[string]Resource {
 	etcdPath := fmt.Sprintf("/%s/", h.ResourceHandler.Name())
 
-	resp, err := h.EtcdKeyAPI.Get(context.Background(), etcdPath, &etcd.GetOptions{Recursive: true})
+	resp, err := h.EtcdClient.KeysAPI.Get(context.Background(), etcdPath, &etcd.GetOptions{Recursive: true})
 	resources := make(map[string]Resource)
 
 	if err == nil {
@@ -93,7 +94,7 @@ func (h *BasicAPIHandler) Index() map[string]Resource {
 func (h *BasicAPIHandler) Get(id string) (Resource, bool) {
 	etcdPath := fmt.Sprintf("/%s/%s", h.ResourceHandler.Name(), id)
 
-	resp, err := h.EtcdKeyAPI.Get(context.Background(), etcdPath, nil)
+	resp, err := h.EtcdClient.KeysAPI.Get(context.Background(), etcdPath, nil)
 	if err != nil {
 		return nil, false
 	}
@@ -118,7 +119,7 @@ func (h *BasicAPIHandler) Create(resource Resource, createOpts *CreateOptions) e
 	}
 
 	etcdPath := fmt.Sprintf("/%s/%s", h.ResourceHandler.Name(), id)
-	_, err = h.EtcdKeyAPI.Set(context.Background(), etcdPath, string(data), setOptions)
+	_, err = h.EtcdClient.KeysAPI.Set(context.Background(), etcdPath, string(data), setOptions)
 	return err
 }
 
@@ -126,7 +127,7 @@ func (h *BasicAPIHandler) Create(resource Resource, createOpts *CreateOptions) e
 func (h *BasicAPIHandler) Delete(id string) error {
 	etcdPath := fmt.Sprintf("/%s/%s", h.ResourceHandler.Name(), id)
 
-	_, err := h.EtcdKeyAPI.Delete(context.Background(), etcdPath, nil)
+	_, err := h.EtcdClient.KeysAPI.Delete(context.Background(), etcdPath, nil)
 	if err, ok := err.(etcd.Error); ok && err.Code == etcd.ErrorCodeKeyNotFound {
 		return ErrNotFound
 	}
@@ -141,7 +142,7 @@ func (h *BasicAPIHandler) Update(id string, resource Resource) (Resource, bool, 
 	}
 
 	etcdPath := fmt.Sprintf("/%s/%s", h.ResourceHandler.Name(), id)
-	resp, err := h.EtcdKeyAPI.Update(context.Background(), etcdPath, string(data))
+	resp, err := h.EtcdClient.KeysAPI.Update(context.Background(), etcdPath, string(data))
 	if err != nil {
 		return nil, false, err
 	}
@@ -158,7 +159,7 @@ func (h *BasicAPIHandler) Update(id string, resource Resource) (Resource, bool, 
 func (h *BasicAPIHandler) AsyncWatch(f WatcherCallback) StoppableWatcher {
 	etcdPath := fmt.Sprintf("/%s/", h.ResourceHandler.Name())
 
-	watcher := h.EtcdKeyAPI.Watcher(etcdPath, &etcd.WatcherOptions{Recursive: true})
+	watcher := h.EtcdClient.KeysAPI.Watcher(etcdPath, &etcd.WatcherOptions{Recursive: true})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	sw := &BasicStoppableWatcher{

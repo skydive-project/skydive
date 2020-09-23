@@ -26,7 +26,6 @@ import (
 	"github.com/olivere/elastic/v7"
 
 	"github.com/skydive-project/skydive/graffiti/filters"
-	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/storage"
 	es "github.com/skydive-project/skydive/graffiti/storage/elasticsearch"
 )
@@ -96,9 +95,9 @@ func newElasticsearchGraph(t *testing.T) (*Graph, *fakeESClient) {
 	client := &fakeESClient{
 		indices: make(map[string]*fakeESIndex),
 	}
-	b := newElasticSearchBackendFromClient(client, es.Index{Name: "topology_live"}, es.Index{Name: "topology_archive"}, nil, nil)
+	b := newElasticSearchBackendFromClient(client, es.Index{Name: "topology_live"}, es.Index{Name: "topology_archive"}, nil)
 	client.searchResult.Hits = &elastic.SearchHits{}
-	return NewGraph("host1", b, service.UnknownService), client
+	return NewGraph("host1", b, "graph-test.host1"), client
 }
 
 func TestElasticsearchNode(t *testing.T) {
@@ -108,7 +107,7 @@ func TestElasticsearchNode(t *testing.T) {
 	g.AddNode(node)
 	g.addMetadata(node, "MTU", 1510, Unix(2, 0))
 
-	origin := service.UnknownService.String() + ".host1"
+	origin := "graph-test.host1"
 
 	expectedLive := map[string]interface{}{
 		"aaa": map[string]interface{}{
@@ -273,7 +272,7 @@ func TestElasticsearchEdge(t *testing.T) {
 	g.AddEdge(edge)
 	g.addMetadata(edge, "Type", "veth", Unix(2, 0))
 
-	origin := service.UnknownService.String() + ".host1"
+	origin := "graph-test.host1"
 
 	expectedLive := map[string]interface{}{
 		"aaa": map[string]interface{}{

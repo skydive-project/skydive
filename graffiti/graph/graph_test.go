@@ -22,8 +22,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-
-	"github.com/skydive-project/skydive/graffiti/service"
 )
 
 func newGraph(t *testing.T) *Graph {
@@ -32,7 +30,7 @@ func newGraph(t *testing.T) *Graph {
 		t.Error(err.Error())
 	}
 
-	return NewGraph("testhost", b, service.UnknownService)
+	return NewGraph("testhost", b, "graph-test")
 }
 
 func TestLinks(t *testing.T) {

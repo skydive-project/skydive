@@ -27,7 +27,6 @@ import (
 	"github.com/davecgh/go-spew/spew"
 
 	"github.com/skydive-project/skydive/graffiti/filters"
-	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/storage"
 	"github.com/skydive-project/skydive/graffiti/storage/orientdb"
 )
@@ -114,12 +113,12 @@ func (f *fakeOrientDBClient) AddEventListener(l storage.EventListener) {
 
 func newOrientDBGraph(t *testing.T) (*Graph, *fakeOrientDBClient) {
 	client := &fakeOrientDBClient{}
-	b, err := newOrientDBBackend(client, nil, nil)
+	b, err := newOrientDBBackend(client, nil)
 	if err != nil {
 		t.Error(err)
 	}
 
-	return NewGraph("host1", b, service.UnknownService), client
+	return NewGraph("host1", b, "graph-test.host1"), client
 }
 
 // test history when doing local modification
@@ -134,7 +133,7 @@ func TestLocalHistory(t *testing.T) {
 	g.AddNode(node)
 	g.addMetadata(node, "MTU", 1510, Unix(2, 0))
 
-	origin := service.UnknownService.String() + ".host1"
+	origin := "graph-test.host1"
 
 	expected := []op{
 		{

@@ -322,7 +322,7 @@ func TestScaleHA(t *testing.T) {
 	// expected 1 either Incomer or Outgoer
 	if err = retry.Do(func() error {
 		return checkPeers(crudClient, 1, websocket.ConnState(service.RunningState))
-	}, retry.Attempts(5), retry.Delay(time.Second), retry.DelayType(retry.FixedDelay)); err != nil {
+	}, retry.Attempts(15), retry.Delay(time.Second), retry.DelayType(retry.FixedDelay)); err != nil {
 		execCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}

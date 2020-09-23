@@ -35,13 +35,11 @@ import (
 	"github.com/skydive-project/skydive/flow/server"
 	"github.com/skydive-project/skydive/flow/storage"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
-	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/hub"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/ondemand/client"
-	"github.com/skydive-project/skydive/graffiti/service"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	"github.com/skydive-project/skydive/packetinjector"
@@ -89,7 +87,6 @@ type Server struct {
 	probeBundle     *probe.Bundle
 	graphStorage    graph.PersistentBackend
 	flowStorage     storage.Storage
-	etcdServer      *etcdserver.EmbeddedServer
 	etcdClient      *etcdclient.Client
 }
 
@@ -127,17 +124,11 @@ func (s *Server) createStartupCapture() error {
 
 // Start the analyzer server
 func (s *Server) Start() error {
-	if s.etcdServer != nil {
-		if err := s.etcdServer.Start(); err != nil {
-			return err
-		}
+	if err := s.hub.Start(); err != nil {
+		return err
 	}
 
 	s.etcdClient.Start()
-
-	if s.graphStorage != nil {
-		s.graphStorage.Start()
-	}
 
 	if s.flowStorage != nil {
 		s.flowStorage.Start()
@@ -152,10 +143,6 @@ func (s *Server) Start() error {
 	s.alertServer.Start()
 	s.topologyManager.Start()
 	s.flowServer.Start()
-
-	if err := s.hub.Start(); err != nil {
-		return err
-	}
 
 	if err := s.createStartupCapture(); err != nil {
 		return err
@@ -175,14 +162,9 @@ func (s *Server) Stop() {
 	s.topologyManager.Stop()
 	s.etcdClient.Stop()
 
-	if s.graphStorage != nil {
-		s.graphStorage.Stop()
-	}
 	if s.flowStorage != nil {
 		s.flowStorage.Stop()
 	}
-
-	s.etcdServer.Stop()
 
 	if tr, ok := http.DefaultTransport.(interface {
 		CloseIdleConnections()
@@ -193,34 +175,14 @@ func (s *Server) Stop() {
 
 // NewServerFromConfig creates a new empty server
 func NewServerFromConfig() (*Server, error) {
-	embedEtcd := config.GetBool("etcd.embedded")
 	host := config.GetString("host_id")
-	service := service.Service{ID: host, Type: config.AnalyzerService}
-
-	var etcdServer *etcdserver.EmbeddedServer
-	var err error
-	if embedEtcd {
-		etcdServerOpts := &etcdserver.EmbeddedServerOpts{
-			Name:         config.GetString("etcd.name"),
-			Listen:       config.GetString("etcd.listen"),
-			DataDir:      config.GetString("etcd.data_dir"),
-			MaxWalFiles:  uint(config.GetInt("etcd.max_wal_files")),
-			MaxSnapFiles: uint(config.GetInt("etcd.max_snap_files")),
-			Debug:        config.GetBool("etcd.debug"),
-			Peers:        config.GetStringMapString("etcd.peers"),
-		}
-
-		if etcdServer, err = etcdserver.NewEmbeddedServer(*etcdServerOpts); err != nil {
-			return nil, err
-		}
-	}
 
 	etcdClientOpts := etcdclient.Opts{
 		Servers: config.GetEtcdServerAddrs(),
 		Timeout: time.Duration(config.GetInt("etcd.client_timeout")) * time.Second,
 	}
 
-	etcdClient, err := etcdclient.NewClient(service, etcdClientOpts)
+	etcdClient, err := etcdclient.NewClient(host, etcdClientOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -242,12 +204,13 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	cached, err := graph.NewCachedBackend(graphStorage)
+	cached, err := graph.NewCachedBackend(graphStorage, etcdClient)
 	if err != nil {
 		return nil, err
 	}
 
-	g := graph.NewGraph(host, cached, service.Type)
+	origin := graph.Origin(host, config.AnalyzerService)
+	g := graph.NewGraph(host, cached, origin)
 
 	clusterAuthBackendName := config.GetString("analyzer.auth.cluster.backend")
 	clusterAuthBackend, err := config.NewAuthenticationBackendByName(clusterAuthBackendName)
@@ -282,7 +245,6 @@ func NewServerFromConfig() (*Server, error) {
 	s := &Server{
 		probeBundle:  probeBundle,
 		etcdClient:   etcdClient,
-		etcdServer:   etcdServer,
 		graphStorage: graphStorage,
 	}
 
@@ -296,6 +258,7 @@ func NewServerFromConfig() (*Server, error) {
 		StatusReporter:      s,
 		TLSConfig:           tlsConfig,
 		Peers:               peers,
+		EtcdClient:          etcdClient,
 		TopologyMarshallers: api.TopologyMarshallers,
 	}
 
@@ -338,13 +301,14 @@ func NewServerFromConfig() (*Server, error) {
 	flowSubscriberWSServer := ws.NewStructServer(config.NewWSServer(hub.HTTPServer(), "/ws/subscriber/flow", apiAuthBackend))
 	flowSubscriberEndpoint := server.NewFlowSubscriberEndpoint(flowSubscriberWSServer)
 
-	captureAPIHandler, err := api.RegisterCaptureAPI(hub.APIServer(), etcdClient.KeysAPI, g, apiAuthBackend)
+	apiServer := hub.APIServer()
+
+	captureAPIHandler, err := api.RegisterCaptureAPI(apiServer, g, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
 
-	apiServer := hub.APIServer()
-	piAPIHandler, err := api.RegisterPacketInjectorAPI(g, apiServer, etcdClient.KeysAPI, apiAuthBackend)
+	piAPIHandler, err := api.RegisterPacketInjectorAPI(g, apiServer, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
@@ -356,7 +320,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	nodeRuleAPIHandler, err := api.RegisterNodeRuleAPI(apiServer, etcdClient.KeysAPI, g, apiAuthBackend)
+	nodeRuleAPIHandler, err := api.RegisterNodeRuleAPI(apiServer, g, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
@@ -366,18 +330,18 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	edgeRuleAPIHandler, err := api.RegisterEdgeRuleAPI(apiServer, etcdClient.KeysAPI, g, apiAuthBackend)
+	edgeRuleAPIHandler, err := api.RegisterEdgeRuleAPI(apiServer, g, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
 
 	s.topologyManager = usertopology.NewTopologyManager(etcdClient, nodeRuleAPIHandler, edgeRuleAPIHandler, g)
 
-	if _, err = api.RegisterAlertAPI(apiServer, etcdClient.KeysAPI, apiAuthBackend); err != nil {
+	if _, err = api.RegisterAlertAPI(apiServer, apiAuthBackend); err != nil {
 		return nil, err
 	}
 
-	if _, err := api.RegisterWorkflowAPI(apiServer, etcdClient.KeysAPI, apiAuthBackend); err != nil {
+	if _, err := api.RegisterWorkflowAPI(apiServer, apiAuthBackend); err != nil {
 		return nil, err
 	}
 

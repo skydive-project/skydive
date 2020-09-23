@@ -12,7 +12,7 @@ cd ${GOPATH}/src/github.com/skydive-project/skydive
 make install
 
 export SKYDIVE_ANALYZERS=localhost:8082
-export ELASTICSEARCH=localhost:9201
+export ELASTICSEARCH=127.0.0.1:9201
 export TLS=true
 export SKYDIVE=${GOPATH}/bin/skydive
 export FLOW_PROTOCOL=${FLOW_PROTOCOL:-websocket}
@@ -24,7 +24,7 @@ es_setup && trap es_cleanup EXIT
 make test.functionals WITH_SCALE=true TAGS=${TAGS} VERBOSE=true TIMEOUT=10m TEST_PATTERN=Scale EXTRA_ARGS="-logs=/tmp/skydive-scale/scale.log"
 status=$?
 
-cat /tmp/skydive-scale/scale.log
+sudo cat /tmp/skydive-scale/scale.log
 
 if [ $status -ne 0 ] ; then
    echo "test Scale TLS:${TLS} FLOW_PROTOCOL:${FLOW_PROTOCOL} failed return ${status}"

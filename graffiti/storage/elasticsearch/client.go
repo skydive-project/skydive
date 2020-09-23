@@ -22,12 +22,14 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	version "github.com/hashicorp/go-version"
+	uuid "github.com/nu7hatch/gouuid"
 	elastic "github.com/olivere/elastic/v7"
 	esconfig "github.com/olivere/elastic/v7/config"
 
@@ -77,14 +79,15 @@ type Index struct {
 // Client describes a ElasticSearch client connection
 type Client struct {
 	sync.RWMutex
-	url           *url.URL
-	esClient      *elastic.Client
-	bulkProcessor *elastic.BulkProcessor
-	started       atomic.Value
-	cfg           Config
-	indices       map[string]Index
-	rollService   *rollIndexService
-	listeners     []storage.EventListener
+	url            *url.URL
+	esClient       *elastic.Client
+	bulkProcessor  *elastic.BulkProcessor
+	started        atomic.Value
+	cfg            Config
+	indices        map[string]Index
+	rollService    *rollIndexService
+	listeners      []storage.EventListener
+	masterElection etcd.MasterElection
 }
 
 var (
@@ -131,6 +134,25 @@ func (c *Client) addMapping(index Index) error {
 	return nil
 }
 
+func (c *Client) checkIndices() error {
+	aliases, err := c.esClient.Aliases().Do(context.Background())
+	if err != nil {
+		return err
+	}
+
+LOOP:
+	for _, index := range c.indices {
+		for name := range aliases.Indices {
+			if index.FullName() == name {
+				continue LOOP
+			}
+		}
+		return fmt.Errorf("Alias missing: %s", index.Alias())
+	}
+
+	return nil
+}
+
 func (c *Client) createIndices() error {
 	for _, index := range c.indices {
 		if exists, _ := c.esClient.IndexExists(index.FullName()).Do(context.Background()); !exists {
@@ -149,7 +171,7 @@ func (c *Client) createIndices() error {
 			}
 
 			if err := c.createAliases(index); err != nil {
-				if _, err := c.esClient.DeleteIndex(index.FullName()).Do(context.Background()); err != nil {
+				if _, err := c.esClient.DeleteIndex(index.Alias()).Do(context.Background()); err != nil {
 					logging.GetLogger().Errorf("Error while deleting indices: %s", err)
 				}
 
@@ -212,11 +234,17 @@ func (c *Client) start() error {
 
 	min, _ := version.NewVersion(minimalVersion)
 	if v.LessThan(min) {
-		return fmt.Errorf("Skydive support only version > %s, found: %s", minimalVersion, vt)
+		return fmt.Errorf("Elasticsearch backend requires a minimal version of %s, found: %s", minimalVersion, vt)
 	}
 
-	if err := c.createIndices(); err != nil {
-		return fmt.Errorf("Failed to create index: %s", err)
+	if c.masterElection == nil || c.masterElection.IsMaster() {
+		if err := c.createIndices(); err != nil {
+			return fmt.Errorf("Failed to create index: %s", err)
+		}
+	} else {
+		if err := c.checkIndices(); err != nil {
+			return fmt.Errorf("Failed to check index: %s", err)
+		}
 	}
 
 	c.bulkProcessor.Start(context.Background())
@@ -393,6 +421,10 @@ func (c *Client) Search(query elastic.Query, opts filters.SearchQuery, indices .
 
 // Start the Elasticsearch client background jobs
 func (c *Client) Start() {
+	if c.masterElection != nil {
+		c.masterElection.StartAndWait()
+	}
+
 	for {
 		err := c.start()
 		if err == nil {
@@ -451,6 +483,8 @@ func NewClient(indices []Index, cfg Config, electionService etcd.MasterElectionS
 		return nil, err
 	}
 
+	var names []string
+
 	indicesMap := make(map[string]Index, 0)
 	rollIndices := []Index{}
 	for _, index := range indices {
@@ -459,12 +493,21 @@ func NewClient(indices []Index, cfg Config, electionService etcd.MasterElectionS
 		if index.RollIndex {
 			rollIndices = append(rollIndices, index)
 		}
+
+		names = append(names, index.Name)
+	}
+	sort.Strings(names)
+
+	u5, err := uuid.NewV5(uuid.NamespaceOID, []byte(strings.Join(names, ",")))
+	if err != nil {
+		return nil, err
 	}
 
 	client := &Client{
-		url:     url,
-		cfg:     cfg,
-		indices: indicesMap,
+		url:            url,
+		cfg:            cfg,
+		indices:        indicesMap,
+		masterElection: electionService.NewElection("/elections/es-index-creator-" + u5.String()),
 	}
 
 	if len(rollIndices) > 0 {

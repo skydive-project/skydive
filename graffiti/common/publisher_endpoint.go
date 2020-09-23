@@ -53,7 +53,9 @@ type PublisherEndpoint struct {
 
 // OnDisconnected called when a publisher got disconnected.
 func (t *PublisherEndpoint) OnDisconnected(c ws.Speaker) {
-	origin := ClientOrigin(c)
+	origin := graph.ClientOrigin(c)
+
+	t.logger.Debugf("Client or origin %s disconnected", origin)
 
 	t.RLock()
 	_, ok := t.authors[origin]
@@ -65,11 +67,11 @@ func (t *PublisherEndpoint) OnDisconnected(c ws.Speaker) {
 	}
 
 	policy := PersistencePolicy(c.GetHeaders().Get("X-Persistence-Policy"))
-	if policy != Persistent {
+	if policy == DeleteOnDisconnect {
 		t.logger.Debugf("Authoritative client unregistered, delete resources of %s", origin)
 
 		t.Graph.Lock()
-		DelSubGraphOfOrigin(t.Graph, origin)
+		graph.DelSubGraphOfOrigin(t.Graph, origin)
 		t.Graph.Unlock()
 	}
 
@@ -86,7 +88,7 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 		return
 	}
 
-	origin := ClientOrigin(c)
+	origin := graph.ClientOrigin(c)
 
 	t.Lock()
 	// received a message thus the pod has chosen this hub as master
@@ -122,7 +124,7 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 	case messages.SyncMsgType, messages.SyncReplyMsgType:
 		t.logger.Debugf("Handling sync message from %s", c.GetRemoteHost())
 
-		DelSubGraphOfOrigin(t.Graph, ClientOrigin(c))
+		graph.DelSubGraphOfOrigin(t.Graph, graph.ClientOrigin(c))
 
 		r := obj.(*messages.SyncMsg)
 		for _, n := range r.Nodes {

@@ -91,7 +91,7 @@ func (h *NodeAPIHandler) Create(resource rest.Resource, createOpts *rest.CreateO
 		graphNode.UpdatedAt = graphNode.CreatedAt
 	}
 	if graphNode.Origin == "" {
-		graphNode.Origin = h.g.Origin()
+		graphNode.Origin = h.g.GetOrigin()
 	}
 	if graphNode.Metadata == nil {
 		graphNode.Metadata = graph.Metadata{}

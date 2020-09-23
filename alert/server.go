@@ -395,7 +395,7 @@ func (a *Server) Stop() {
 
 // NewServer creates a new alerting server
 func NewServer(apiServer *api.Server, pool ws.StructSpeakerPool, graph *graph.Graph, parser *traversal.GremlinTraversalParser, etcdClient *etcd.Client) (*Server, error) {
-	election := etcdClient.NewElection("alert-server")
+	election := etcdClient.NewElection("/elections/alert-server")
 
 	runtime, err := server.NewWorkflowRuntime(graph, parser, apiServer)
 	if err != nil {

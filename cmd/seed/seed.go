@@ -104,7 +104,8 @@ var SeedCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		g := graph.NewGraph(hostID, memory, seed.Service)
+		origin := graph.Origin(hostID, seed.Service)
+		g := graph.NewGraph(hostID, memory, origin)
 
 		probeBundle = probe.NewBundle()
 

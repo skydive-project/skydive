@@ -21,7 +21,6 @@
 package server
 
 import (
-	etcd "github.com/coreos/etcd/client"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
@@ -56,11 +55,11 @@ func (a *NodeRuleAPI) Update(id string, resource rest.Resource) (rest.Resource, 
 }
 
 // RegisterNodeRuleAPI register a new node rule api handler
-func RegisterNodeRuleAPI(apiServer *api.Server, kapi etcd.KeysAPI, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*NodeRuleAPI, error) {
+func RegisterNodeRuleAPI(apiServer *api.Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*NodeRuleAPI, error) {
 	nra := &NodeRuleAPI{
 		BasicAPIHandler: rest.BasicAPIHandler{
 			ResourceHandler: &NodeRuleResourceHandler{},
-			EtcdKeyAPI:      kapi,
+			EtcdClient:      apiServer.EtcdClient,
 		},
 		Graph: g,
 	}

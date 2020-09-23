@@ -121,7 +121,8 @@ func NewAgent() (*Agent, error) {
 	}
 
 	hostID := config.GetString("host_id")
-	g := graph.NewGraph(hostID, backend, config.AgentService)
+	origin := graph.Origin(hostID, config.AgentService)
+	g := graph.NewGraph(hostID, backend, origin)
 
 	apiAuthBackendName := config.GetString("agent.auth.api.backend")
 	apiAuthBackend, err := config.NewAuthenticationBackendByName(apiAuthBackendName)

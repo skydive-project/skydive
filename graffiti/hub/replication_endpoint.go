@@ -25,7 +25,6 @@ import (
 
 	"github.com/safchain/insanelock"
 
-	gcommon "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
@@ -120,16 +119,10 @@ func (p *ReplicatorPeer) OnDisconnected(c ws.Speaker) {
 		return
 	}
 
-	origin := gcommon.ClientOrigin(c)
-	if p.Graph.Origin() == origin {
+	origin := graph.ClientOrigin(c)
+	if p.Graph.GetOrigin() == origin {
 		return
 	}
-
-	p.endpoint.logger.Debugf("Peer unregistered, delete resources of %s", origin)
-
-	p.Graph.Lock()
-	gcommon.DelSubGraphOfOrigin(p.Graph, origin)
-	p.Graph.Unlock()
 
 	p.endpoint.out.RemoveClient(c)
 	delete(p.endpoint.peerStates, host)
@@ -139,7 +132,7 @@ func (p *ReplicatorPeer) connect(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	p.endpoint.logger.Infof("Connecting to peer: %s", p.URL.String())
-	serviceType := service.Type(strings.SplitN(p.Graph.Origin(), ".", 2)[0])
+	serviceType := service.Type(strings.SplitN(p.Graph.GetOrigin(), ".", 2)[0])
 	wsClient := ws.NewClient(p.Graph.GetHost(), serviceType, p.URL, *p.opts)
 
 	structClient := wsClient.UpgradeToStructSpeaker()
@@ -369,16 +362,10 @@ func (t *ReplicationEndpoint) OnDisconnected(c ws.Speaker) {
 		return
 	}
 
-	origin := gcommon.ClientOrigin(c)
-	if t.Graph.Origin() == origin {
+	origin := graph.ClientOrigin(c)
+	if t.Graph.GetOrigin() == origin {
 		return
 	}
-
-	t.logger.Debugf("Peer unregistered, delete resources of %s", origin)
-
-	t.Graph.Lock()
-	gcommon.DelSubGraphOfOrigin(t.Graph, origin)
-	t.Graph.Unlock()
 
 	delete(t.peerStates, host)
 }

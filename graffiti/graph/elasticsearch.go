@@ -91,13 +91,12 @@ const (
 
 // ElasticSearchBackend describes a persistent backend based on ElasticSearch
 type ElasticSearchBackend struct {
-	PersistentBackend
 	client       es.ClientInterface
 	prevRevision map[Identifier]*rawData
-	election     etcd.MasterElection
 	liveIndex    es.Index
 	archiveIndex es.Index
 	logger       logging.Logger
+	listeners    []PersistentBackendListener
 }
 
 // TimedSearchQuery describes a search query within a time slice and metadata filters
@@ -504,44 +503,31 @@ func (b *ElasticSearchBackend) IsHistorySupported() bool {
 	return true
 }
 
-func (b *ElasticSearchBackend) flushGraph() error {
-	b.logger.Info("Flush graph elements")
-
-	query := es.FormatFilter(filters.NewNullFilter("DeletedAt"), "")
-
-	script := elastic.NewScript("ctx._source.DeletedAt = params.now; ctx._source.ArchivedAt = params.now;")
-	script.Lang("painless")
-	script.Params(map[string]interface{}{
-		"now": TimeUTC().UnixMilli(),
-	})
-
-	return b.client.UpdateByScript(query, script, b.liveIndex.Alias(), b.archiveIndex.IndexWildcard())
-}
-
 // Start backend
 func (b *ElasticSearchBackend) Start() error {
-	b.election.StartAndWait()
 	b.client.AddEventListener(b)
 	b.client.Start()
 	return nil
 }
 
 // Stop backend
-func (b *ElasticSearchBackend) Stop() {
-}
+func (b *ElasticSearchBackend) Stop() {}
 
 // OnStarted implements storage client listener interface
 func (b *ElasticSearchBackend) OnStarted() {
-	if b.election != nil && b.election.IsMaster() {
-		if err := b.flushGraph(); err != nil {
-			b.logger.Errorf("Unable to flush graph element: %s", err)
-		}
+	for _, listener := range b.listeners {
+		listener.OnStarted()
 	}
+}
+
+// AddListener implement PersistentBackendListener interface
+func (b *ElasticSearchBackend) AddListener(listener PersistentBackendListener) {
+	b.listeners = append(b.listeners, listener)
 }
 
 // newElasticSearchBackendFromClient creates a new graph backend using the given elasticsearch
 // client connection
-func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, archiveIndex es.Index, electionService etcd.MasterElectionService, logger logging.Logger) *ElasticSearchBackend {
+func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, archiveIndex es.Index, logger logging.Logger) *ElasticSearchBackend {
 	if logger == nil {
 		logger = logging.GetLogger()
 	}
@@ -552,10 +538,6 @@ func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, arc
 		liveIndex:    liveIndex,
 		archiveIndex: archiveIndex,
 		logger:       logger,
-	}
-
-	if electionService != nil {
-		backend.election = electionService.NewElection("es-graph-flush")
 	}
 
 	return backend
@@ -602,5 +584,5 @@ func NewElasticSearchBackendFromConfig(cfg es.Config, extraDynamicTemplates map[
 		return nil, err
 	}
 
-	return newElasticSearchBackendFromClient(client, liveIndex, archiveIndex, electionService, logger), nil
+	return newElasticSearchBackendFromClient(client, liveIndex, archiveIndex, logger), nil
 }

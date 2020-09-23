@@ -25,7 +25,6 @@ import (
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
 	api "github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
@@ -80,7 +79,8 @@ var EdgeCreate = &cobra.Command{
 			exitOnError(fmt.Errorf("Could not find child node: %s", err))
 		}
 
-		edge := api.Edge(*graph.CreateEdge(graph.GenID(), &parentNode, &childNode, m, graph.Time(time.Now()), "", config.AgentService))
+		origin := graph.Origin(host, CLIService)
+		edge := api.Edge(*graph.CreateEdge(graph.GenID(), &parentNode, &childNode, m, graph.Time(time.Now()), host, origin))
 
 		if err = validator.Validate("edge", &edge); err != nil {
 			exitOnError(fmt.Errorf("Error while validating edge: %s", err))
@@ -219,10 +219,12 @@ var EdgeUpdate = &cobra.Command{
 }
 
 func addCreateEdgeFlags(cmd *cobra.Command) {
+	host, _ = os.Hostname()
 	cmd.Flags().StringVarP(&edgeType, "edge-type", "", "", "edge type")
 	cmd.Flags().StringVarP(&parentNodeID, "parent", "", "", "parent node identifier")
 	cmd.Flags().StringVarP(&childNodeID, "child", "", "", "child node identifier")
 	cmd.Flags().StringVarP(&metadata, "metadata", "", "", "edge metadata, key value pairs. 'k1=v1, k2=v2'")
+	cmd.Flags().StringVarP(&host, "host", "", host, "host")
 }
 
 func init() {

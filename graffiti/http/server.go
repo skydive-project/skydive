@@ -156,7 +156,9 @@ func (s *Server) Stop() {
 	if err := s.Server.Shutdown(ctx); err != nil {
 		s.logger.Error("Shutdown error :", err)
 	}
-	s.listener.Close()
+	if s.listener != nil {
+		s.listener.Close()
+	}
 	s.wg.Wait()
 }
 

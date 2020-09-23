@@ -19,6 +19,7 @@ package pod
 
 import (
 	"crypto/tls"
+	"net/http"
 
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/common"
@@ -157,6 +158,7 @@ func NewPod(id string, serviceType service.Type, listen string, podEndpoint stri
 	clientPool := websocket.NewStructClientPool("HubClientPool", websocket.PoolOpts{})
 	clientOpts := opts.WebsocketClientOpts
 	clientOpts.Protocol = websocket.ProtobufProtocol
+	clientOpts.Headers = http.Header{"X-Persistence-Policy": {string(common.DeleteOnDisconnect)}}
 	for _, sa := range opts.Hubs {
 		url := shttp.MakeURL("ws", sa.Addr, sa.Port, podEndpoint, clientOpts.TLSConfig != nil)
 		client := websocket.NewClient(id, serviceType, url, clientOpts)
@@ -165,8 +167,7 @@ func NewPod(id string, serviceType service.Type, listen string, podEndpoint stri
 
 	httpServer := shttp.NewServer(id, serviceType, sa.Addr, sa.Port, opts.TLSConfig, opts.Logger)
 
-	svc := service.Service{ID: id, Type: serviceType}
-	apiServer, err := api.NewAPI(httpServer, opts.Version, svc, opts.APIAuthBackend, opts.APIValidator)
+	apiServer, err := api.NewAPI(httpServer, nil, opts.Version, id, serviceType, opts.APIAuthBackend, opts.APIValidator)
 	if err != nil {
 		return nil, err
 	}

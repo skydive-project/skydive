@@ -50,6 +50,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/skydive-project/skydive/graffiti/api/rest"
+	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/rbac"
@@ -64,6 +65,7 @@ type Validator interface {
 // Server defines an API server
 type Server struct {
 	HTTPServer *shttp.Server
+	EtcdClient *etcdclient.Client
 	handlers   map[string]rest.Handler
 	validator  Validator
 }
@@ -299,7 +301,7 @@ func (a *Server) RegisterAPIHandler(handler rest.Handler, authBackend shttp.Auth
 	return nil
 }
 
-func (a *Server) addAPIRootRoute(version string, service service.Service, authBackend shttp.AuthenticationBackend) {
+func (a *Server) addAPIRootRoute(version, hostID string, kind service.Type, authBackend shttp.AuthenticationBackend) {
 	// swagger:operation GET / getApi
 	//
 	// Get API version
@@ -328,8 +330,8 @@ func (a *Server) addAPIRootRoute(version string, service service.Service, authBa
 
 	info := Info{
 		Version: version,
-		Service: string(service.Type),
-		Host:    service.ID,
+		Service: string(kind),
+		Host:    hostID,
 	}
 
 	routes := []shttp.Route{
@@ -500,18 +502,19 @@ func patchMethod(handler rest.Handler, validator Validator, id string, jsonPatch
 }
 
 // NewAPI creates a new API server based on http
-func NewAPI(server *shttp.Server, version string, service service.Service, authBackend shttp.AuthenticationBackend, validator Validator) (*Server, error) {
+func NewAPI(server *shttp.Server, etcdClient *etcdclient.Client, version, hostID string, kind service.Type, authBackend shttp.AuthenticationBackend, validator Validator) (*Server, error) {
 	if version == "" {
 		version = "unknown"
 	}
 
 	apiServer := &Server{
 		HTTPServer: server,
+		EtcdClient: etcdClient,
 		handlers:   make(map[string]rest.Handler),
 		validator:  validator,
 	}
 
-	apiServer.addAPIRootRoute(version, service, authBackend)
+	apiServer.addAPIRootRoute(version, hostID, kind, authBackend)
 	apiServer.addLoginRoute(authBackend)
 
 	return apiServer, nil

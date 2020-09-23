@@ -20,15 +20,6 @@ package service
 // Type describes the service type
 type Type string
 
-// UnknownService for unknown client types
-const UnknownService Type = "unknown"
-
 func (t Type) String() string {
 	return string(t)
-}
-
-// Service describes a service identified by its type and identifier
-type Service struct {
-	Type Type
-	ID   string
 }

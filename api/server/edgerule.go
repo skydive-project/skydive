@@ -21,7 +21,6 @@
 package server
 
 import (
-	etcd "github.com/coreos/etcd/client"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
@@ -56,11 +55,11 @@ func (a *EdgeRuleAPI) Update(id string, resource rest.Resource) (rest.Resource, 
 }
 
 // RegisterEdgeRuleAPI registers an EdgeRule's API to a designated API Server
-func RegisterEdgeRuleAPI(apiServer *api.Server, kapi etcd.KeysAPI, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*EdgeRuleAPI, error) {
+func RegisterEdgeRuleAPI(apiServer *api.Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*EdgeRuleAPI, error) {
 	era := &EdgeRuleAPI{
 		BasicAPIHandler: rest.BasicAPIHandler{
 			ResourceHandler: &EdgeRuleResourceHandler{},
-			EtcdKeyAPI:      kapi,
+			EtcdClient:      apiServer.EtcdClient,
 		},
 		Graph: g,
 	}

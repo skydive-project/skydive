@@ -515,7 +515,6 @@ func (c *Client) Connect() error {
 	endpoint := c.URL.String()
 	headers := http.Header{
 		"X-Host-ID":             {c.Host},
-		"Origin":                {endpoint},
 		"X-Client-Type":         {c.ServiceType.String()},
 		"X-Client-Protocol":     {c.ClientProtocol.String()},
 		"X-Websocket-Namespace": {WildcardNamespace},
@@ -544,25 +543,22 @@ func (c *Client) Connect() error {
 		return fmt.Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err)
 	}
 
+	if c.RemoteHost = resp.Header.Get("X-Host-ID"); c.RemoteHost == "" {
+		c.conn.Close()
+		return errors.New("X-Host-ID header not provided")
+	}
+
+	if c.RemoteServiceType = service.Type(resp.Header.Get("X-Service-Type")); c.RemoteServiceType == "" {
+		c.conn.Close()
+		return errors.New("X-Service-Type header not provided")
+	}
+
 	c.conn.SetPingHandler(nil)
 	c.conn.EnableWriteCompression(c.writeCompression)
 
 	c.State.Store(service.RunningState)
 
 	c.Opts.Logger.Infof("Connected to %s", endpoint)
-
-	c.RemoteHost = resp.Header.Get("X-Host-ID")
-
-	// NOTE(safchain): fallback to remote addr if host id not provided
-	// should be removed, connection should be refused if host id not provided
-	if c.RemoteHost == "" {
-		c.RemoteHost = c.conn.RemoteAddr().String()
-	}
-
-	c.RemoteServiceType = service.Type(resp.Header.Get("X-Service-Type"))
-	if c.RemoteServiceType == "" {
-		c.RemoteServiceType = service.UnknownService
-	}
 
 	// notify connected
 	for _, l := range c.cloneEventHandlers() {
