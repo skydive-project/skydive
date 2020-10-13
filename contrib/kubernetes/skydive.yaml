@@ -49,7 +49,7 @@ metadata:
 data:
   SKYDIVE_ANALYZER_FLOW_BACKEND: elasticsearch
   SKYDIVE_ANALYZER_TOPOLOGY_BACKEND: elasticsearch
-  SKYDIVE_ANALYZER_TOPOLOGY_PROBES: k8s
+  SKYDIVE_ANALYZER_TOPOLOGY_PROBES: k8s ovn
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -107,6 +107,8 @@ spec:
           value: "0.0.0.0:$(SKYDIVE_ANALYZER_SERVICE_PORT_API)"
         - name: SKYDIVE_ETCD_LISTEN
           value: "0.0.0.0:$(SKYDIVE_ANALYZER_SERVICE_PORT_ETCD)"
+        - name: SKYDIVE_ANALYZER_TOPOLOGY_OVN_ADDRESS
+          value: "tcp:172.18.0.3:6641"
         envFrom:
         - configMapRef:
             name: skydive-analyzer-config
