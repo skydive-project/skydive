@@ -466,6 +466,30 @@ func (p *Probe) OnDisconnected() {
 // Do implements the probe main loop
 func (p *Probe) Do(ctx context.Context, wg *sync.WaitGroup) error {
 	var err error
+
+	wg.Add(1)
+	go func() {
+		defer func() {
+			wg.Done()
+			p.bundle.Stop()
+		}()
+
+		for {
+			select {
+			case eventCallback, ok := <-p.eventChan:
+				if !ok {
+					return
+				}
+				eventCallback()
+			case <-ctx.Done():
+				if p.ovndbapi != nil {
+					p.ovndbapi.Close()
+				}
+				return
+			}
+		}
+	}()
+
 	logging.GetLogger().Debugf("Trying to get an OVN DB api")
 	cfg := &goovn.Config{
 		Addr:         p.address,
@@ -510,28 +534,6 @@ func (p *Probe) Do(ctx context.Context, wg *sync.WaitGroup) error {
 			p.OnLogicalRouterPortCreate(lp)
 		}
 	}
-
-	wg.Add(1)
-
-	go func() {
-		defer func() {
-			wg.Done()
-			p.bundle.Stop()
-		}()
-
-		for {
-			select {
-			case eventCallback, ok := <-p.eventChan:
-				if !ok {
-					return
-				}
-				eventCallback()
-			case <-ctx.Done():
-				p.ovndbapi.Close()
-				return
-			}
-		}
-	}()
 
 	return nil
 }
