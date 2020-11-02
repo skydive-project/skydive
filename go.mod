@@ -2,30 +2,26 @@ module github.com/skydive-project/skydive
 
 require (
 	git.fd.io/govpp.git v0.0.0-20190321220742-345201eedce4
-	github.com/GehirnInc/crypt v0.0.0-20170404120257-5a3fafaa7c86
-	github.com/Knetic/govaluate v0.0.0-20171022003610-9aa49832a739 // indirect
 	github.com/VerizonDigital/vflow v0.0.0-20190111005900-eb30d936249e
 	github.com/abbot/go-http-auth v0.4.0
 	github.com/aktau/github-release v0.7.2
-	github.com/avast/retry-go v2.5.0+incompatible
+	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/bennyscetbun/jsongo v0.0.0-20190110163710-9624bef8c57b // indirect
-	github.com/casbin/casbin v0.0.0-20181031010332-5ff5a6f5e38a
+	github.com/casbin/casbin v1.9.1
 	github.com/cenk/hub v0.0.0-20160527103212-11382a9960d3 // indirect
 	github.com/cenk/rpc2 v0.0.0-20160427170138-7ab76d2e88c7 // indirect
 	github.com/cenkalti/rpc2 v0.0.0-20180727162946-9642ea02d0aa // indirect
-	github.com/cnf/structhash v0.0.0-20170702194520-7710f1f78fb9
+	github.com/cnf/structhash v0.0.0-20201013183111-a92e111048cd
 	github.com/coreos/etcd v3.3.22+incompatible
 	github.com/davecgh/go-spew v1.1.1
 	github.com/digitalocean/go-libvirt v0.0.0-20190715144809-7b622097a793
 	github.com/docker/docker v1.13.1
 	github.com/ebay/go-ovn v0.0.0-20190726163905-ca0da4d10c52
-	github.com/evanphx/json-patch v4.5.0+incompatible
-	github.com/fatih/structs v0.0.0-20171020064819-f5faa72e7309
 	github.com/flosch/pongo2 v0.0.0-20190707114632-bbf5a6c351f4 // indirect
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/gima/govalid v0.0.0-20150214172340-7b486932bea2
 	github.com/go-swagger/go-swagger v0.20.1
-	github.com/go-test/deep v0.0.0-20180509200213-57af0be209c5
+	github.com/go-test/deep v1.0.7
 	github.com/gobwas/httphead v0.0.0-20171016043908-01c9b01b368a // indirect
 	github.com/gobwas/pool v0.0.0-20170829094749-32dbaa12caca // indirect
 	github.com/gobwas/ws v0.0.0-20171112092802-915eed324002 // indirect
@@ -35,13 +31,10 @@ require (
 	github.com/gomatic/funcmap v0.0.0-20190110133044-62047470c142 // indirect
 	github.com/gomatic/renderizer v1.0.1
 	github.com/google/gopacket v1.1.17
-	github.com/gophercloud/gophercloud v0.3.0
-	github.com/gorilla/context v1.1.1
-	github.com/gorilla/handlers v1.4.2
-	github.com/gorilla/mux v1.7.0
-	github.com/gorilla/websocket v1.4.1
+	github.com/gophercloud/gophercloud v0.13.0
+	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/websocket v1.4.2
 	github.com/gosuri/uitable v0.0.0-20160404203958-36ee7e946282 // indirect
-	github.com/hashicorp/go-version v0.0.0-20180322230233-23480c066577
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/hydrogen18/stoppableListener v0.0.0-20151210151943-dadc9ccc400c
 	github.com/intel-go/nff-go v0.0.0-20190620122648-8ab691c21da9
@@ -55,12 +48,11 @@ require (
 	github.com/libvirt/libvirt-go v0.0.0-20181005092746-9c5bdce3c18f
 	github.com/lunixbochs/struc v0.0.0-20180408203800-02e4c2afbb2a
 	github.com/lxc/lxd v0.0.0-20200330183600-518f06676866
-	github.com/mailru/easyjson v0.7.1
+	github.com/mailru/easyjson v0.7.6
 	github.com/mattn/go-runewidth v0.0.0-20160315040712-d6bea18f7897 // indirect
 	github.com/mattn/goveralls v0.0.2
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/mitchellh/hashstructure v0.0.0-20170116052023-ab25296c0f51
-	github.com/mitchellh/mapstructure v1.1.2
+	github.com/mitchellh/mapstructure v1.3.3
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/networkservicemesh/networkservicemesh/controlplane/api v0.2.0
 	github.com/networkservicemesh/networkservicemesh/k8s v0.0.0-20191017074247-aa5815869b2c
@@ -68,11 +60,11 @@ require (
 	github.com/nimbess/nimbess-agent v0.0.0-20190919205041-4e6f317ac4fd
 	github.com/nlewo/contrail-introspect-cli v0.0.0-20181003135217-0407b60f2edd
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
-	github.com/olivere/elastic/v7 v7.0.17
+	github.com/olivere/elastic/v7 v7.0.21
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7 // indirect
 	github.com/peterh/liner v0.0.0-20160615113019-8975875355a8
-	github.com/pierrec/xxHash v0.0.0-20190318091927-d17cb990ad2d
-	github.com/pmylund/go-cache v0.0.0-20170722040110-a3647f8e31d7
+	github.com/pierrec/xxHash v0.1.5
+	github.com/pmylund/go-cache v2.1.0+incompatible
 	github.com/robertkrimen/otto v0.0.0-20161004124959-bf1c3795ba07
 	github.com/safchain/ethtool v0.0.0-20190326074333-42ed695e3de8
 	github.com/safchain/insanelock v0.0.0-20200217234559-cfbf166e05b3
@@ -81,13 +73,13 @@ require (
 	github.com/skydive-project/dede v0.0.0-20200217172954-b1b74a5bb856
 	github.com/skydive-project/go-debouncer v1.0.0
 	github.com/skydive-project/goloxi v0.0.0-20190117172159-db2324197a3e
+	github.com/skydive-project/skydive/graffiti v0.26.0
 	github.com/socketplane/libovsdb v0.0.0-20160607151822-5113f8fb4d9d
-	github.com/spf13/cast v1.3.0
-	github.com/spf13/cobra v0.0.5
+	github.com/spf13/cast v1.3.1
+	github.com/spf13/cobra v1.1.1
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.4.0
+	github.com/spf13/viper v1.7.0
 	github.com/t-yuki/gocover-cobertura v0.0.0-20180217150009-aaee18c8195c
-	github.com/tchap/zapext v0.0.0-20180117141735-e61c0c882339
 	github.com/tebeka/go2xunit v1.4.10
 	github.com/tebeka/selenium v0.0.0-20170314201507-657e45ec600f
 	github.com/tomnomnom/linkheader v0.0.0-20180905144013-02ca5825eb80 // indirect
@@ -95,13 +87,9 @@ require (
 	github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df
 	github.com/voxelbrain/goptions v0.0.0-20180630082107-58cddc247ea2 // indirect
 	github.com/weaveworks/tcptracer-bpf v0.0.0-20170817155301-e080bd747dc6
-	github.com/xeipuuv/gojsonschema v1.2.0
-	go.uber.org/zap v1.10.0
-	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550 // indirect
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2
 	golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5
-	golang.org/x/tools v0.0.0-20191017151554-a3bc800455d5
-	google.golang.org/genproto v0.0.0-20190926190326-7ee9db18f195 // indirect
+	golang.org/x/tools v0.0.0-20191112195655-aa38f8e97acc
 	google.golang.org/grpc v1.23.1
 	gopkg.in/fsnotify/fsnotify.v1 v1.0.0-20180110053347-c2828203cd70
 	gopkg.in/macaroon-bakery.v2 v2.2.0 // indirect
@@ -111,7 +99,7 @@ require (
 	gopkg.in/sourcemap.v1 v1.0.0-20160602085544-eef8f47ab679 // indirect
 	gopkg.in/urfave/cli.v2 v2.0.0-20170928224240-b2bf3c5abeb9 // indirect
 	gopkg.in/validator.v2 v2.0.0-20160201165114-3e4f037f12a1
-	gopkg.in/yaml.v2 v2.2.4
+	gopkg.in/yaml.v2 v2.3.0
 	istio.io/api v0.0.0-20191029012234-9fe6a7da3673
 	istio.io/client-go v0.0.0-20191024204624-13a7366c1cab
 	k8s.io/api v0.0.0
@@ -135,8 +123,8 @@ replace (
 	github.com/networkservicemesh/networkservicemesh/utils => github.com/networkservicemesh/networkservicemesh/utils v0.0.0-20191017074247-aa5815869b2c
 	github.com/newtools/ebpf => github.com/nplanel/ebpf v0.0.0-20190918123742-99947faabce5
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.3
-	github.com/skydive-project/skydive/graffiti/gendecoder => ./graffiti/gendecoder
-	github.com/spf13/viper v1.4.0 => github.com/lebauce/viper v0.0.0-20190903114911-3b7a98e30843
+	github.com/skydive-project/skydive/graffiti => ./graffiti
+	github.com/spf13/viper v1.7.0 => github.com/lebauce/viper v0.0.0-20190903114911-3b7a98e30843
 	github.com/vishvananda/netlink v1.0.0 => github.com/lebauce/netlink v0.0.0-20200826081334-244950452e97
 	golang.org/x/tools => golang.org/x/tools v0.0.0-20190925230517-ea99b82c7b93
 	k8s.io/api => k8s.io/api v0.0.0-20191016110408-35e52d86657a

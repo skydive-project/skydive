@@ -106,7 +106,7 @@ func easyjson43db4356DecodeGithubComSkydiveProjectSkydiveTopology1(in *jlexer.Le
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -232,7 +232,7 @@ func easyjson43db4356DecodeGithubComSkydiveProjectSkydiveTopology2(in *jlexer.Le
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()

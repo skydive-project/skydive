@@ -32,7 +32,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowStorageElasticsearch
 	out.RawPacket = new(flow.RawPacket)
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -144,7 +144,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowStorageElasticsearch
 	out.FlowMetric = new(flow.FlowMetric)
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -271,7 +271,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowStorageElasticsearch
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -582,7 +582,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers2(in *jlexer.L
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -719,7 +719,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers1(in *jlexer.L
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -784,7 +784,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers1(in *jlexer.L
 				in.Delim('[')
 				if out.Answers == nil {
 					if !in.IsDelim(']') {
-						out.Answers = make([]layers1.DNSResourceRecord, 0, 1)
+						out.Answers = make([]layers1.DNSResourceRecord, 0, 0)
 					} else {
 						out.Answers = []layers1.DNSResourceRecord{}
 					}
@@ -807,7 +807,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers1(in *jlexer.L
 				in.Delim('[')
 				if out.Authorities == nil {
 					if !in.IsDelim(']') {
-						out.Authorities = make([]layers1.DNSResourceRecord, 0, 1)
+						out.Authorities = make([]layers1.DNSResourceRecord, 0, 0)
 					} else {
 						out.Authorities = []layers1.DNSResourceRecord{}
 					}
@@ -830,7 +830,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers1(in *jlexer.L
 				in.Delim('[')
 				if out.Additionals == nil {
 					if !in.IsDelim(']') {
-						out.Additionals = make([]layers1.DNSResourceRecord, 0, 1)
+						out.Additionals = make([]layers1.DNSResourceRecord, 0, 0)
 					} else {
 						out.Additionals = []layers1.DNSResourceRecord{}
 					}
@@ -1088,7 +1088,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers4(in *jlexer.L
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -1383,7 +1383,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers8(in *jlexer.L
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -1438,7 +1438,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers7(in *jlexer.L
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -1493,7 +1493,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers6(in *jlexer.L
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -1572,7 +1572,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers5(in *jlexer.L
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -1687,7 +1687,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers3(in *jlexer.L
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -1754,7 +1754,7 @@ func easyjson71f4917DecodeGithubComSkydiveProjectSkydiveFlowLayers(in *jlexer.Le
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()

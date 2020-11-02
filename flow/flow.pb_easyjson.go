@@ -31,7 +31,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow(in *jlexer.Lexer, 
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -120,7 +120,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow1(in *jlexer.Lexer,
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -234,7 +234,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow2(in *jlexer.Lexer,
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -321,7 +321,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters(in *jle
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -452,7 +452,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters2(in *jl
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -507,7 +507,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters1(in *jl
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -758,7 +758,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters13(in *j
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -813,7 +813,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters12(in *j
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -856,7 +856,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters11(in *j
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -911,7 +911,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters10(in *j
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -1008,7 +1008,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters9(in *jl
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -1063,7 +1063,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters8(in *jl
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -1118,7 +1118,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters7(in *jl
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -1173,7 +1173,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters6(in *jl
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -1228,7 +1228,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters5(in *jl
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -1283,7 +1283,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters4(in *jl
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -1338,7 +1338,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveGraffitiFilters3(in *jl
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -1393,7 +1393,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow3(in *jlexer.Lexer,
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -1606,7 +1606,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow4(in *jlexer.Lexer,
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -1713,7 +1713,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow5(in *jlexer.Lexer,
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -1805,7 +1805,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow6(in *jlexer.Lexer,
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -1934,7 +1934,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow7(in *jlexer.Lexer,
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -2007,7 +2007,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow8(in *jlexer.Lexer,
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -2089,7 +2089,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow9(in *jlexer.Lexer,
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -2217,7 +2217,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow10(in *jlexer.Lexer
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -2292,7 +2292,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow11(in *jlexer.Lexer
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -2400,7 +2400,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow12(in *jlexer.Lexer
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -2489,7 +2489,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlow13(in *jlexer.Lexer
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -2872,7 +2872,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlowLayers2(in *jlexer.
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -3009,7 +3009,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlowLayers1(in *jlexer.
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -3074,7 +3074,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlowLayers1(in *jlexer.
 				in.Delim('[')
 				if out.Answers == nil {
 					if !in.IsDelim(']') {
-						out.Answers = make([]layers1.DNSResourceRecord, 0, 1)
+						out.Answers = make([]layers1.DNSResourceRecord, 0, 0)
 					} else {
 						out.Answers = []layers1.DNSResourceRecord{}
 					}
@@ -3097,7 +3097,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlowLayers1(in *jlexer.
 				in.Delim('[')
 				if out.Authorities == nil {
 					if !in.IsDelim(']') {
-						out.Authorities = make([]layers1.DNSResourceRecord, 0, 1)
+						out.Authorities = make([]layers1.DNSResourceRecord, 0, 0)
 					} else {
 						out.Authorities = []layers1.DNSResourceRecord{}
 					}
@@ -3120,7 +3120,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlowLayers1(in *jlexer.
 				in.Delim('[')
 				if out.Additionals == nil {
 					if !in.IsDelim(']') {
-						out.Additionals = make([]layers1.DNSResourceRecord, 0, 1)
+						out.Additionals = make([]layers1.DNSResourceRecord, 0, 0)
 					} else {
 						out.Additionals = []layers1.DNSResourceRecord{}
 					}
@@ -3378,7 +3378,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlowLayers4(in *jlexer.
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -3673,7 +3673,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlowLayers8(in *jlexer.
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -3728,7 +3728,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlowLayers7(in *jlexer.
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -3783,7 +3783,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlowLayers6(in *jlexer.
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -3862,7 +3862,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlowLayers5(in *jlexer.
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -3977,7 +3977,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlowLayers3(in *jlexer.
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -4044,7 +4044,7 @@ func easyjsonA60071beDecodeGithubComSkydiveProjectSkydiveFlowLayers(in *jlexer.L
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()

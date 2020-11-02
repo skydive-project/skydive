@@ -28,7 +28,7 @@ func easyjson36bd8e45DecodeGithubComSkydiveProjectSkydiveTopologyProbesOvn(in *j
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -395,7 +395,7 @@ func easyjson36bd8e45DecodeGithubComSkydiveProjectSkydiveTopologyProbesOvn1(in *
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -570,7 +570,7 @@ func easyjson36bd8e45DecodeGithubComSkydiveProjectSkydiveTopologyProbesOvn2(in *
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -733,7 +733,7 @@ func easyjson36bd8e45DecodeGithubComSkydiveProjectSkydiveTopologyProbesOvn3(in *
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
