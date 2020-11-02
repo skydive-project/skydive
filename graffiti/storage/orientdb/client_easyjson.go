@@ -28,7 +28,7 @@ func easyjsonC0e5e3f1DecodeGithubComSkydiveProjectSkydiveGraffitiStorageOrientdb
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -171,7 +171,7 @@ func easyjsonC0e5e3f1DecodeGithubComSkydiveProjectSkydiveGraffitiStorageOrientdb
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -283,7 +283,7 @@ func easyjsonC0e5e3f1DecodeGithubComSkydiveProjectSkydiveGraffitiStorageOrientdb
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -381,7 +381,7 @@ func easyjsonC0e5e3f1DecodeGithubComSkydiveProjectSkydiveGraffitiStorageOrientdb
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -461,7 +461,7 @@ func easyjsonC0e5e3f1DecodeGithubComSkydiveProjectSkydiveGraffitiStorageOrientdb
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -527,7 +527,7 @@ func easyjsonC0e5e3f1DecodeGithubComSkydiveProjectSkydiveGraffitiStorageOrientdb
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -576,7 +576,7 @@ func easyjsonC0e5e3f1DecodeGithubComSkydiveProjectSkydiveGraffitiStorageOrientdb
 				in.Delim('[')
 				if out.Properties == nil {
 					if !in.IsDelim(']') {
-						out.Properties = make([]Property, 0, 1)
+						out.Properties = make([]Property, 0, 0)
 					} else {
 						out.Properties = []Property{}
 					}
