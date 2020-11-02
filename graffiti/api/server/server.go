@@ -384,8 +384,12 @@ func (a *Server) serveLogin(w http.ResponseWriter, r *http.Request, authBackend 
 				bytes, _ := json.Marshal(body)
 				w.Write(bytes)
 
-				roles := rbac.GetUserRoles(username)
-				logging.GetLogger().Infof("User %s authenticated with %s backend with roles %s", username, authBackend.Name(), roles)
+				roles, err := rbac.GetUserRoles(username)
+				if err != nil {
+					logging.GetLogger().Errorf("Failed to get roles for user '%s': err", username, err)
+				} else {
+					logging.GetLogger().Infof("User %s authenticated with %s backend with roles %s", username, authBackend.Name(), roles)
+				}
 				return
 			}
 

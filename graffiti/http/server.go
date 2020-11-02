@@ -165,11 +165,19 @@ func (s *Server) Stop() {
 func postAuthHandler(f auth.AuthenticatedHandlerFunc, authBackend AuthenticationBackend) func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	return func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 		// re-add user to its group
-		if roles := rbac.GetUserRoles(r.Username); len(roles) == 0 {
+		roles, err := rbac.GetUserRoles(r.Username)
+		if err != nil {
+			return
+		}
+
+		if len(roles) == 0 {
 			rbac.AddRoleForUser(r.Username, authBackend.DefaultUserRole(r.Username))
 		}
 
-		permissions := rbac.GetPermissionsForUser(r.Username)
+		permissions, err := rbac.GetPermissionsForUser(r.Username)
+		if err != nil {
+			return
+		}
 		setPermissionsCookie(w, permissions)
 
 		// re-add auth cookie
