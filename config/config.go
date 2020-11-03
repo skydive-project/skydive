@@ -423,11 +423,9 @@ func (c *SkydiveConfig) IsTLSEnabled() bool {
 	serverKey := c.GetString("tls.server_key")
 	ca := c.GetString("tls.ca_cert")
 
-	if len(client) > 0 &&
-		len(clientKey) > 0 &&
-		len(server) > 0 &&
-		len(serverKey) > 0 &&
-		len(ca) > 0 {
+	if len(ca) > 0 &&
+		(len(client) > 0 && len(clientKey) > 0) ||
+		(len(server) > 0 && len(serverKey) > 0) {
 		return true
 	}
 

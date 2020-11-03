@@ -101,5 +101,12 @@ func init() {
 	ClientCmd.PersistentFlags().StringVarP(&AuthenticationOpts.Password, "password", "", os.Getenv("SKYDIVE_PASSWORD"), "password auth parameter")
 	ClientCmd.PersistentFlags().StringVarP(&analyzerAddr, "analyzer", "", os.Getenv("SKYDIVE_ANALYZER"), "analyzer address")
 
+	ClientCmd.PersistentFlags().String("cacert", "", "certificate file to verify the peer")
+	config.BindPFlag("tls.ca_cert", ClientCmd.PersistentFlags().Lookup("cacert"))
+	ClientCmd.PersistentFlags().String("cert", "", "client certificate file")
+	config.BindPFlag("tls.client_cert", ClientCmd.PersistentFlags().Lookup("cert"))
+	ClientCmd.PersistentFlags().String("key", "", "private key file name")
+	config.BindPFlag("tls.client_key", ClientCmd.PersistentFlags().Lookup("key"))
+
 	RegisterClientCommands(ClientCmd)
 }
