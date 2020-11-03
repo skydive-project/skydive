@@ -16,9 +16,11 @@ GOPATH = "/home/vagrant/go"
 
 SKYDIVE_SYNC_FOLDER = ENV.fetch("SKYDIVE_SYNC_FOLDER", "false") == "true" ? true : false
 SKYDIVE_GITHUB = "github.com/skydive-project/skydive"
+SKYDIVE_GITHUB = "github.com/skydive-project/skydive-ci"
 SKYDIVE_DIR = "/src/#{SKYDIVE_GITHUB}"
 SKYDIVE_HOST = ENV.has_key?("GOPATH") ? ENV.fetch("GOPATH") + SKYDIVE_DIR : DEVMODE_ROOT
 SKYDIVE_GUEST = GOPATH + SKYDIVE_DIR
+SKYDIVE_CI_GUEST = GOPATH + "/src/#{SKYDIVE_CI_GITHUB}"
 
 ANSIBLE_DIR = "/contrib/ansible"
 ANSIBLE_HOST = DEVMODE_ROOT + ANSIBLE_DIR
@@ -35,7 +37,8 @@ $skydive_extra_config = {
 
 $skydive_git_clone = <<SCRIPT
 sudo dnf -y install git
-mkdir -p #{SKYDIVE_GUEST}
+mkdir -p #{SKYDIVE_CI_GUEST} #{SKYDIVE_GUEST}
+git clone https://#{SKYDIVE_GITHUB} #{SKYDIVE_CI_GUEST}
 cd #{SKYDIVE_GUEST}
 git clone https://#{SKYDIVE_GITHUB} .
 SCRIPT
@@ -113,10 +116,10 @@ EOF
 SCRIPT
 
 $setup_cleanup = <<SCRIPT
-sudo /home/vagrant/go/src/github.com/skydive-project/skydive/scripts/ci/cleanup.sh init
+sudo /home/vagrant/go/src/github.com/skydive-project/skydive-ci/scripts/cleanup.sh init
 cat >> ~/.bash_profile <<'EOF'
 export WORKSPACE=/home/vagrant/go
-alias cleanup="(sudo /home/vagrant/go/src/github.com/skydive-project/skydive/scripts/ci/cleanup.sh snapshot; sudo /home/vagrant/go/src/github.com/skydive-project/skydive/scripts/ci/cleanup.sh cleanup) &> /dev/null"
+alias cleanup="(sudo /home/vagrant/go/src/github.com/skydive-project/skydive-ci/scripts/cleanup.sh snapshot; sudo /home/vagrant/go/src/github.com/skydive-project/skydive-ci/scripts/cleanup.sh cleanup) &> /dev/null"
 EOF
 SCRIPT
 

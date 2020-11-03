@@ -79,10 +79,6 @@ ifeq ($(WITH_ISTIO), true)
   BUILD_TAGS+=k8s istio
 endif
 
-ifeq ($(WITH_HELM), true)
-  BUILD_TAGS+=helm
-endif
-
 ifeq ($(WITH_LXD), true)
   BUILD_TAGS+=lxd
 endif
