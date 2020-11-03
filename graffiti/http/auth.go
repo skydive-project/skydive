@@ -112,7 +112,10 @@ func Authenticate(backend AuthenticationBackend, w http.ResponseWriter, username
 		return "", nil, err
 	}
 
-	if roles := rbac.GetUserRoles(username); len(roles) == 0 {
+	roles, err := rbac.GetUserRoles(username)
+	if err != nil {
+		return "", nil, err
+	} else if len(roles) == 0 {
 		rbac.AddRoleForUser(username, backend.DefaultUserRole(username))
 	}
 
@@ -120,7 +123,10 @@ func Authenticate(backend AuthenticationBackend, w http.ResponseWriter, username
 		http.SetCookie(w, AuthCookie(token, "/"))
 	}
 
-	permissions := rbac.GetPermissionsForUser(username)
+	permissions, err := rbac.GetPermissionsForUser(username)
+	if err != nil {
+		return "", nil, err
+	}
 	setPermissionsCookie(w, permissions)
 
 	return token, permissions, nil

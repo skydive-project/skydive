@@ -27,7 +27,6 @@ import (
 
 	etcd "github.com/coreos/etcd/client"
 
-	"github.com/skydive-project/skydive/config"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	gc "github.com/skydive-project/skydive/graffiti/common"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
@@ -60,6 +59,7 @@ type Opts struct {
 	Peers               []service.Address
 	TLSConfig           *tls.Config
 	EtcdClient          *etcdclient.Client
+	EtcdServerOpts      *etcdserver.EmbeddedServerOpts
 	Logger              logging.Logger
 }
 
@@ -267,18 +267,8 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 	}
 	cached.AddListener(hub)
 
-	if config.GetBool("etcd.embedded") {
-		etcdServerOpts := &etcdserver.EmbeddedServerOpts{
-			Name:         config.GetString("etcd.name"),
-			Listen:       config.GetString("etcd.listen"),
-			DataDir:      config.GetString("etcd.data_dir"),
-			MaxWalFiles:  uint(config.GetInt("etcd.max_wal_files")),
-			MaxSnapFiles: uint(config.GetInt("etcd.max_snap_files")),
-			Debug:        config.GetBool("etcd.debug"),
-			Peers:        config.GetStringMapString("etcd.peers"),
-		}
-
-		embeddedEtcd, err := etcdserver.NewEmbeddedServer(*etcdServerOpts)
+	if opts.EtcdServerOpts != nil {
+		embeddedEtcd, err := etcdserver.NewEmbeddedServer(*opts.EtcdServerOpts)
 		if err != nil {
 			return nil, err
 		}

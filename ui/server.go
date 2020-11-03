@@ -140,16 +140,22 @@ func (s *Server) serveStatics(w http.ResponseWriter, r *http.Request) {
 
 // ServeIndex servers the index page
 func (s *Server) ServeIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	username := r.Username
+	if username == "" {
+		username = "admin"
+	}
+
+	permissions, err := rbac.GetPermissionsForUser(username)
+	if err != nil {
+		logging.GetLogger().Errorf("Unable to execute index template: %s", err)
+		return
+	}
+
 	html, err := s.readStatics("statics/index.html")
 	if err != nil {
 		logging.GetLogger().Error("Unable to find the asset index.html")
 		w.WriteHeader(http.StatusNotFound)
 		return
-	}
-
-	username := r.Username
-	if username == "" {
-		username = "admin"
 	}
 
 	s.RLock()
@@ -162,7 +168,7 @@ func (s *Server) ServeIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest)
 	}{
 		ExtraAssets: s.extraAssets,
 		GlobalVars:  s.globalVars,
-		Permissions: rbac.GetPermissionsForUser(username),
+		Permissions: permissions,
 	}
 
 	shttp.SetTLSHeader(w, &r.Request)

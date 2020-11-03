@@ -31,7 +31,7 @@ func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveAnalyzer(in *jlexer.Lex
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -271,7 +271,7 @@ func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveGraffitiHub(in *jlexer.
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -380,7 +380,7 @@ func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(in *j
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -487,7 +487,7 @@ func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveAnalyzer1(in *jlexer.Le
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()

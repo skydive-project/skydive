@@ -28,7 +28,7 @@ func easyjson28548e40DecodeGithubComSkydiveProjectSkydiveTopologyProbesSocketinf
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()

@@ -18,6 +18,8 @@
 package rbac
 
 import (
+	"context"
+
 	"github.com/casbin/casbin"
 	"github.com/casbin/casbin/model"
 	etcd "github.com/coreos/etcd/client"
@@ -53,7 +55,7 @@ func Init(model model.Model, kapi etcd.KeysAPI, loadPolicy func(model.Model) err
 	}
 	casbinEnforcer.BuildRoleLinks()
 
-	watcher := NewEtcdWatcher(kapi)
+	watcher := NewEtcdWatcher(kapi, context.Background())
 
 	watcher.SetUpdateCallback(func(string) {
 		casbinEnforcer.LoadPolicy()
@@ -88,21 +90,24 @@ func AddRoleForUser(user, role string) bool {
 }
 
 // GetUserRoles returns the roles of a user
-func GetUserRoles(user string) []string {
+func GetUserRoles(user string) ([]string, error) {
 	if enforcer == nil {
-		return []string{}
+		return nil, nil
 	}
 
 	return enforcer.GetRolesForUser(user)
 }
 
 // GetPermissionsForUser returns all the allow and deny permissions for a user
-func GetPermissionsForUser(user string) []Permission {
+func GetPermissionsForUser(user string) ([]Permission, error) {
 	if enforcer == nil {
-		return nil
+		return nil, nil
 	}
 
-	subjects := enforcer.GetRolesForUser(user)
+	subjects, err := enforcer.GetRolesForUser(user)
+	if err != nil {
+		return nil, err
+	}
 	subjects = append(subjects, user)
 
 	mperms := make(map[string]Permission)
@@ -120,5 +125,5 @@ func GetPermissionsForUser(user string) []Permission {
 		permissions = append(permissions, permission)
 	}
 
-	return permissions
+	return permissions, nil
 }

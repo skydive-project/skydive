@@ -29,7 +29,7 @@ func easyjsonBbc2492aDecodeGithubComSkydiveProjectSkydiveGraffitiOndemand(in *jl
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()
@@ -104,7 +104,7 @@ func easyjsonBbc2492aDecodeGithubComSkydiveProjectSkydiveGraffitiOndemand1(in *j
 	}
 	in.Delim('{')
 	for !in.IsDelim('}') {
-		key := in.UnsafeString()
+		key := in.UnsafeFieldName(false)
 		in.WantColon()
 		if in.IsNull() {
 			in.Skip()

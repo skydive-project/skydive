@@ -35,6 +35,7 @@ import (
 	"github.com/skydive-project/skydive/flow/server"
 	"github.com/skydive-project/skydive/flow/storage"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
+	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/hub"
@@ -260,6 +261,18 @@ func NewServerFromConfig() (*Server, error) {
 		Peers:               peers,
 		EtcdClient:          etcdClient,
 		TopologyMarshallers: api.TopologyMarshallers,
+	}
+
+	if config.GetBool("etcd.embedded") {
+		opts.EtcdServerOpts = &etcdserver.EmbeddedServerOpts{
+			Name:         config.GetString("etcd.name"),
+			Listen:       config.GetString("etcd.listen"),
+			DataDir:      config.GetString("etcd.data_dir"),
+			MaxWalFiles:  uint(config.GetInt("etcd.max_wal_files")),
+			MaxSnapFiles: uint(config.GetInt("etcd.max_snap_files")),
+			Debug:        config.GetBool("etcd.debug"),
+			Peers:        config.GetStringMapString("etcd.peers"),
+		}
 	}
 
 	listenAddr := config.GetString("analyzer.listen")

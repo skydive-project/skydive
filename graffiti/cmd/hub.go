@@ -68,22 +68,6 @@ var HubCmd = &cobra.Command{
 
 		authBackend := shttp.NewNoAuthenticationBackend()
 
-		var etcdServer *etcdserver.EmbeddedServer
-		if embeddedEtcd {
-			etcdServerOpts := &etcdserver.EmbeddedServerOpts{
-				Name:    "localhost",
-				Listen:  "127.0.0.1:12379",
-				DataDir: "/tmp/etcd",
-			}
-
-			if etcdServer, err = etcdserver.NewEmbeddedServer(*etcdServerOpts); err != nil {
-				logging.GetLogger().Error(err)
-				os.Exit(1)
-			}
-
-			etcdServer.Start()
-		}
-
 		if len(etcdServers) == 0 {
 			logging.GetLogger().Error("No Etcd server provided")
 			os.Exit(1)
@@ -119,6 +103,15 @@ var HubCmd = &cobra.Command{
 			APIAuthBackend:     authBackend,
 			ClusterAuthBackend: authBackend,
 			EtcdClient:         etcdClient,
+		}
+
+		var etcdServer *etcdserver.EmbeddedServer
+		if embeddedEtcd {
+			hubOpts.EtcdServerOpts = &etcdserver.EmbeddedServerOpts{
+				Name:    "localhost",
+				Listen:  "127.0.0.1:12379",
+				DataDir: "/tmp/etcd",
+			}
 		}
 
 		hub, err := hub.NewHub(hostname, service.Type("Hub"), hubListen, g, cached, "/ws/pod", hubOpts)
