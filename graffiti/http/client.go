@@ -94,16 +94,18 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 		return nil, err
 	}
 
+	if header != nil {
+		req.Header = header
+	}
+
 	if c.authOpts != nil {
 		SetAuthHeaders(&req.Header, c.authOpts)
 	}
 
-	if header != nil {
-		req.Header = header
-	}
 	if req.Header.Get("Content-Type") == "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
+
 	if req.Header.Get("Accept-Encoding") == "" {
 		req.Header.Add("Accept-Encoding", "gzip")
 	}
