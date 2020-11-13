@@ -429,7 +429,7 @@ func (p *Probe) aclMetadata(acl *goovn.ACL) graph.Metadata {
 		"Type":    "acl",
 		"Name":    acl.UUID,
 		"Manager": "ovn",
-		"OVN": Metadata{
+		"OVN": &Metadata{
 			ACLMetadata: ACLMetadata{
 				Action:    acl.Action,
 				Direction: acl.Direction,
