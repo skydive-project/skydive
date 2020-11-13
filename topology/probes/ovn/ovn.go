@@ -484,6 +484,28 @@ func (p *Probe) Do(ctx context.Context, wg *sync.WaitGroup) error {
 
 	p.bundle.Start()
 
+	wg.Add(1)
+
+	go func() {
+		defer func() {
+			wg.Done()
+			p.bundle.Stop()
+		}()
+
+		for {
+			select {
+			case eventCallback, ok := <-p.eventChan:
+				if !ok {
+					return
+				}
+				eventCallback()
+			case <-ctx.Done():
+				p.ovndbapi.Close()
+				return
+			}
+		}
+	}()
+
 	// Initial synchronization
 	switches, _ := p.ovndbapi.LSList()
 	for _, ls := range switches {
@@ -510,28 +532,6 @@ func (p *Probe) Do(ctx context.Context, wg *sync.WaitGroup) error {
 			p.OnLogicalRouterPortCreate(lp)
 		}
 	}
-
-	wg.Add(1)
-
-	go func() {
-		defer func() {
-			wg.Done()
-			p.bundle.Stop()
-		}()
-
-		for {
-			select {
-			case eventCallback, ok := <-p.eventChan:
-				if !ok {
-					return
-				}
-				eventCallback()
-			case <-ctx.Done():
-				p.ovndbapi.Close()
-				return
-			}
-		}
-	}()
 
 	return nil
 }
