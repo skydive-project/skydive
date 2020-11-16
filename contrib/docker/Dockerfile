@@ -1,4 +1,4 @@
-ARG  BASE=ubuntu:19.04
+ARG  BASE=ubuntu:20.04
 FROM $BASE
 ARG  ARCH=amd64
 RUN apt-get -y update \
