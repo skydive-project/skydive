@@ -1,5 +1,3 @@
-export GO111MODULE?=on
-
 define VERSION_CMD =
 eval ' \
 	define=""; \
@@ -153,9 +151,7 @@ skydive.clean:
 
 .PHONY: moddownload
 moddownload:
-ifeq (${GO111MODULE}, on)
 	go mod download
-endif
 
 .PHONY: genlocalfiles
 genlocalfiles: $(EXTRA_BUILD_TARGET) .proto .bindata .gendecoder .easyjson .vppbinapi

@@ -22,9 +22,7 @@ endef
 
 .PHONY: vendor
 vendor: genlocalfiles
-ifeq (${GO111MODULE}, on)
 	go mod vendor
-endif
 
 .PHONY: localdist
 localdist: vendor
