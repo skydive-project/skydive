@@ -577,6 +577,11 @@ func TestAPIPatchNodeTable(t *testing.T) {
 			if err := client.Create("node", &originalNode, nil); err != nil {
 				t.Fatalf("Failed to create originalNode: %s", err.Error())
 			}
+			defer func() {
+				if err := client.Delete("node", originalNode.GetID()); err != nil {
+					t.Fatalf("Failed to clean nodeA: %s", err.Error())
+				}
+			}()
 
 			// Patch node
 			updated, err := client.Update("node", originalNode.GetID(), test.patch, &patchedNode)
@@ -640,9 +645,9 @@ func TestAPIPatchNodeNonExistingNode(t *testing.T) {
 	// Patch node
 	_, err = client.Update("node", "foo", patch, &patchedNode)
 	if err == nil {
-		t.Fatal("Error should be returned because trying to modify a node that does not exists")
+		t.Error("Error should be returned because trying to modify a node that does not exists")
 	} else if err.Error() != expectedError.Error() {
-		t.Fatalf("Returned error is incorrect.\nExpected: %v\nReturned: %v", expectedError, err)
+		t.Errorf("Returned error is incorrect.\nExpected: %v\nReturned: %v", expectedError, err)
 	}
 }
 
@@ -690,9 +695,13 @@ func TestAPIPatchNodeNameDeleteValidationError(t *testing.T) {
 	// Patch node
 	_, err = client.Update("node", "foo", patch, &patchedNode)
 	if err == nil {
-		t.Fatal("Error should be returned because trying to remove Metadata.Name violates validation")
+		t.Errorf("Error should be returned because trying to remove Metadata.Name violates validation")
 	} else if err.Error() != expectedError.Error() {
-		t.Fatalf("Returned error is incorrect.\nExpected: %v\nReturned: %v", expectedError, err)
+		t.Errorf("Returned error is incorrect.\nExpected: %v\nReturned: %v", expectedError, err)
+	}
+
+	if err := client.Delete("node", originalNode.GetID()); err != nil {
+		t.Errorf("Failed to delete originalNode: %s", err.Error())
 	}
 }
 
@@ -873,6 +882,11 @@ func TestAPIPatchEdgeTable(t *testing.T) {
 			if err := client.Create("node", &nodeA, nil); err != nil {
 				t.Fatalf("Failed to create nodeA: %s", err.Error())
 			}
+			defer func() {
+				if err := client.Delete("node", nodeA.GetID()); err != nil {
+					t.Fatalf("Failed to clean nodeA: %s", err.Error())
+				}
+			}()
 
 			nodeB := types.Node{}
 			if err := json.Unmarshal([]byte(`{
@@ -895,11 +909,7 @@ func TestAPIPatchEdgeTable(t *testing.T) {
 				t.Fatalf("Failed to create nodeB: %s", err.Error())
 			}
 
-			// Clean nodes for next execution
 			defer func() {
-				if err := client.Delete("node", nodeA.GetID()); err != nil {
-					t.Fatalf("Failed to clean nodeA: %s", err.Error())
-				}
 				if err := client.Delete("node", nodeB.GetID()); err != nil {
 					t.Fatalf("Failed to clean nodeB: %s", err.Error())
 				}
@@ -986,9 +996,9 @@ func TestAPIPatchEdgeNonExistingEdge(t *testing.T) {
 	// Patch edge
 	_, err = client.Update("edge", "foo", patch, &patchedEdge)
 	if err == nil {
-		t.Fatal("Error should be returned because trying to modify a edge that does not exists")
+		t.Error("Error should be returned because trying to modify a edge that does not exists")
 	} else if err.Error() != expectedError.Error() {
-		t.Fatalf("Returned error is incorrect.\nExpected: %v\nReturned: %v", expectedError, err)
+		t.Errorf("Returned error is incorrect.\nExpected: %v\nReturned: %v", expectedError, err)
 	}
 }
 
