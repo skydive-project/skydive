@@ -31,7 +31,7 @@ func TestRuncSimple(t *testing.T) {
 
 		tearDownCmds: []Cmd{
 			{"podman kill nginx", false},
-			{"podman rm nginx", false},
+			{"podman rm -f nginx", false},
 		},
 
 		mode: Replay,
