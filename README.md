@@ -95,7 +95,7 @@ Skydive tutorials can be found here:
 ## Get involved
 
 * Weekly meeting
-    * [General - Weekly meeting](https://meet.jit.si/skydive-project) - every Thursday at 10:30 - 11:30 AM CEST
+    * [General - Weekly meeting](https://meet.jit.si/skydive-project) - every Thursday at 17:00 - 17:30 AM CET ([Calendar](https://calendar.google.com/calendar/u/2?cid=c2t5ZGl2ZXNvZnR3YXJlQGdtYWlsLmNvbQ))
     * [Minutes](https://docs.google.com/document/d/1eri4vyjmAwxiWs2Kp4HYdCUDWACF_HXZDrDL8WcPF-o/edit?ts=5d946ad5#heading=h.g8f8gdfq0un9)
 
 * Slack
