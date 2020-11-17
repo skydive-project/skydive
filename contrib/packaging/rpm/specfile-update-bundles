@@ -14,7 +14,7 @@ if len(sys.argv) != 3:
     sys.exit(0)
 
 provides = []
-mod = json.loads(commands.getoutput("GO111MODULE=on go mod edit -json " + sys.argv[1]))
+mod = json.loads(commands.getoutput("go mod edit -json " + sys.argv[1]))
 for package in mod["Require"]:
     provides.append("Provides: bundled(golang(%s)) = %s" % (package["Path"], package["Version"].split("-")[-1].split("+")[0]))
 

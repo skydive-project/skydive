@@ -15,14 +15,7 @@ fmt: genlocalfiles
 .PHONY: vet
 vet:
 	@echo "+ $@"
-	test -z "$$($(GO) tool vet $$( \
-			$(GO) list ./... \
-			| perl -pe 's|$(SKYDIVE_GITHUB)/?||g' \
-			| grep -v '^tests') 2>&1 \
-		| tee /dev/stderr \
-		| grep -v '^flow/probes/afpacket/' \
-		| grep -v 'exit status 1' \
-		)"
+	go vet ./...
 
 .PHONY: check
 check: lint
