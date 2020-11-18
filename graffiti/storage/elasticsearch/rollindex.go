@@ -49,9 +49,9 @@ type rollIndexService struct {
 
 func (r *rollIndexService) cleanup(index Index) {
 	if r.config.IndicesLimit != 0 {
-		resp, err := r.client.esClient.IndexGet(index.IndexWildcard()).Do(context.Background())
+		resp, err := r.client.esClient.IndexGet(index.IndexWildcard(r.config.IndexPrefix)).Do(context.Background())
 		if err != nil {
-			logging.GetLogger().Errorf("Error while rolling index %s: %s", index.Alias(), err)
+			logging.GetLogger().Errorf("Error while rolling index %s: %s", index.Alias(r.config.IndexPrefix), err)
 			return
 		}
 
@@ -82,7 +82,7 @@ func (r *rollIndexService) roll(force bool) {
 	logging.GetLogger().Debugf("Start rolling indices (forced: %v)...", force)
 
 	for _, index := range r.indices {
-		ri := r.client.esClient.RolloverIndex(index.Alias())
+		ri := r.client.esClient.RolloverIndex(index.Alias(r.config.IndexPrefix))
 
 		needToRoll := false
 		if force {
@@ -101,17 +101,19 @@ func (r *rollIndexService) roll(force bool) {
 		}
 
 		if needToRoll {
-			logging.GetLogger().Infof("Index %s rolling over", index.Alias())
+			alias := index.Alias(r.config.IndexPrefix)
+
+			logging.GetLogger().Infof("Index %s rolling over", alias)
 
 			logging.GetLogger().Debugf("Rolling over with: %+v", ri)
 
 			resp, err := ri.Do(context.Background())
 			if err != nil {
-				logging.GetLogger().Errorf("Error while rolling index %s: %s", index.Alias(), err)
+				logging.GetLogger().Errorf("Error while rolling index %s: %s", alias, err)
 				continue
 			}
 			if resp.RolledOver {
-				logging.GetLogger().Infof("Index %s rolled over", index.Alias())
+				logging.GetLogger().Infof("Index %s rolled over", alias)
 
 				r.cleanup(index)
 			}

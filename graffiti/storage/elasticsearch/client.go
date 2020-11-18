@@ -41,7 +41,6 @@ import (
 
 const (
 	schemaVersion  = "12"
-	indexPrefix    = "skydive"
 	minimalVersion = "5.5"
 )
 
@@ -53,6 +52,7 @@ type Config struct {
 	AgeLimit     int
 	IndicesLimit int
 	NoSniffing   bool
+	IndexPrefix  string
 }
 
 // ClientInterface describes the mechanism API of ElasticSearch database client
@@ -79,11 +79,11 @@ type Index struct {
 // Client describes a ElasticSearch client connection
 type Client struct {
 	sync.RWMutex
+	Config         Config
 	url            *url.URL
 	esClient       *elastic.Client
 	bulkProcessor  *elastic.BulkProcessor
 	started        atomic.Value
-	cfg            Config
 	indices        map[string]Index
 	rollService    *rollIndexService
 	listeners      []storage.EventListener
@@ -98,28 +98,39 @@ var (
 )
 
 // FullName returns the full name of an index, prefix, name, version, suffix in case of rolling index
-func (i *Index) FullName() string {
+func (i *Index) FullName(prefix string) string {
 	var suffix string
 	if i.RollIndex {
 		suffix = "-000001"
 	}
-	return indexPrefix + "_" + i.Name + "_v" + schemaVersion + suffix
+	name := i.Name + "_v" + schemaVersion + suffix
+	if prefix != "" {
+		name = prefix + name
+	}
+	return name
 }
 
 // Alias returns the Alias of the index
-func (i *Index) Alias() string {
-	return indexPrefix + "_" + i.Name
+func (i *Index) Alias(prefix string) string {
+	if prefix != "" {
+		return prefix + i.Name
+	}
+	return i.Name
 }
 
 // IndexWildcard returns the Index wildcard search string used to all the indexes of an index
 // definition. Useful to request rolled over indexes.
-func (i *Index) IndexWildcard() string {
-	return indexPrefix + "_" + i.Name + "_v" + schemaVersion + "*"
+func (i *Index) IndexWildcard(prefix string) string {
+	name := i.Name + "_v" + schemaVersion + "*"
+	if prefix != "" {
+		return prefix + name
+	}
+	return name
 }
 
 func (c *Client) createAliases(index Index) error {
 	aliasServer := c.esClient.Alias()
-	aliasServer.Add(index.FullName(), index.Alias())
+	aliasServer.Add(index.FullName(c.Config.IndexPrefix), index.Alias(c.Config.IndexPrefix))
 	if _, err := aliasServer.Do(context.Background()); err != nil {
 		return err
 	}
@@ -128,7 +139,7 @@ func (c *Client) createAliases(index Index) error {
 }
 
 func (c *Client) addMapping(index Index) error {
-	if _, err := c.esClient.PutMapping().Index(index.FullName()).BodyString(index.Mapping).Do(context.Background()); err != nil {
+	if _, err := c.esClient.PutMapping().Index(index.FullName(c.Config.IndexPrefix)).BodyString(index.Mapping).Do(context.Background()); err != nil {
 		return fmt.Errorf("Unable to create %s mapping: %s", index.Mapping, err)
 	}
 	return nil
@@ -143,11 +154,11 @@ func (c *Client) checkIndices() error {
 LOOP:
 	for _, index := range c.indices {
 		for name := range aliases.Indices {
-			if index.FullName() == name {
+			if index.FullName(c.Config.IndexPrefix) == name {
 				continue LOOP
 			}
 		}
-		return fmt.Errorf("Alias missing: %s", index.Alias())
+		return fmt.Errorf("Alias missing: %s", index.Alias(c.Config.IndexPrefix))
 	}
 
 	return nil
@@ -155,14 +166,15 @@ LOOP:
 
 func (c *Client) createIndices() error {
 	for _, index := range c.indices {
-		if exists, _ := c.esClient.IndexExists(index.FullName()).Do(context.Background()); !exists {
-			if _, err := c.esClient.CreateIndex(index.FullName()).Do(context.Background()); err != nil {
+		fullName := index.FullName(c.Config.IndexPrefix)
+		if exists, _ := c.esClient.IndexExists(fullName).Do(context.Background()); !exists {
+			if _, err := c.esClient.CreateIndex(fullName).Do(context.Background()); err != nil {
 				return fmt.Errorf("Unable to create the skydive index: %s", err)
 			}
 
 			if index.Mapping != "" {
 				if err := c.addMapping(index); err != nil {
-					if _, err := c.esClient.DeleteIndex(index.FullName()).Do(context.Background()); err != nil {
+					if _, err := c.esClient.DeleteIndex(fullName).Do(context.Background()); err != nil {
 						logging.GetLogger().Errorf("Error while deleting indices: %s", err)
 					}
 
@@ -171,7 +183,7 @@ func (c *Client) createIndices() error {
 			}
 
 			if err := c.createAliases(index); err != nil {
-				if _, err := c.esClient.DeleteIndex(index.Alias()).Do(context.Background()); err != nil {
+				if _, err := c.esClient.DeleteIndex(index.Alias(c.Config.IndexPrefix)).Do(context.Background()); err != nil {
 					logging.GetLogger().Errorf("Error while deleting indices: %s", err)
 				}
 
@@ -189,7 +201,7 @@ func (c *Client) start() error {
 		return err
 	}
 
-	if c.cfg.NoSniffing {
+	if c.Config.NoSniffing {
 		esConfig.Sniff = new(bool)
 		*esConfig.Sniff = false
 	}
@@ -214,7 +226,7 @@ func (c *Client) start() error {
 				}
 			}
 		}).
-		FlushInterval(time.Duration(c.cfg.BulkMaxDelay) * time.Second).
+		FlushInterval(time.Duration(c.Config.BulkMaxDelay) * time.Second).
 		Do(context.Background())
 	if err != nil {
 		return err
@@ -257,7 +269,7 @@ func (c *Client) start() error {
 
 	aliases := []string{}
 	for _, index := range c.indices {
-		aliases = append(aliases, index.Alias())
+		aliases = append(aliases, index.Alias(c.Config.IndexPrefix))
 	}
 
 	logging.GetLogger().Infof("client started for %s", strings.Join(aliases, ", "))
@@ -353,7 +365,7 @@ func FormatFilter(filter *filters.Filter, mapKey string) elastic.Query {
 
 // Index returns the skydive index
 func (c *Client) Index(index Index, id string, data interface{}) error {
-	if _, err := c.esClient.Index().Index(index.Alias()).Id(id).BodyJson(data).Do(context.Background()); err != nil {
+	if _, err := c.esClient.Index().Index(index.Alias(c.Config.IndexPrefix)).Id(id).BodyJson(data).Do(context.Background()); err != nil {
 		return err
 	}
 	return nil
@@ -361,7 +373,7 @@ func (c *Client) Index(index Index, id string, data interface{}) error {
 
 // BulkIndex returns the bulk index from the indexer
 func (c *Client) BulkIndex(index Index, id string, data interface{}) error {
-	req := elastic.NewBulkIndexRequest().Index(index.Alias()).Id(id).Doc(data)
+	req := elastic.NewBulkIndexRequest().Index(index.Alias(c.Config.IndexPrefix)).Id(id).Doc(data)
 	c.bulkProcessor.Add(req)
 
 	return nil
@@ -369,17 +381,17 @@ func (c *Client) BulkIndex(index Index, id string, data interface{}) error {
 
 // Get an object
 func (c *Client) Get(index Index, id string) (*elastic.GetResult, error) {
-	return c.esClient.Get().Index(index.Alias()).Id(id).Do(context.Background())
+	return c.esClient.Get().Index(index.Alias(c.Config.IndexPrefix)).Id(id).Do(context.Background())
 }
 
 // Delete an object
 func (c *Client) Delete(index Index, id string) (*elastic.DeleteResponse, error) {
-	return c.esClient.Delete().Index(index.Alias()).Id(id).Do(context.Background())
+	return c.esClient.Delete().Index(index.Alias(c.Config.IndexPrefix)).Id(id).Do(context.Background())
 }
 
 // BulkDelete an object with the indexer
 func (c *Client) BulkDelete(index Index, id string) error {
-	req := elastic.NewBulkDeleteRequest().Index(index.Alias()).Id(id)
+	req := elastic.NewBulkDeleteRequest().Index(index.Alias(c.Config.IndexPrefix)).Id(id)
 	c.bulkProcessor.Add(req)
 
 	return nil
@@ -504,8 +516,8 @@ func NewClient(indices []Index, cfg Config, electionService etcd.MasterElectionS
 	}
 
 	client := &Client{
+		Config:         cfg,
 		url:            url,
-		cfg:            cfg,
 		indices:        indicesMap,
 		masterElection: electionService.NewElection("/elections/es-index-creator-" + u5.String()),
 	}
