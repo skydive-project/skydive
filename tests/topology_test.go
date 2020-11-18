@@ -359,7 +359,7 @@ func TestNameSpaceTwoVeth(t *testing.T) {
 			}
 
 			if len(nodes) != 1 {
-				return fmt.Errorf("Expected 1 node, got %+v", nodes)
+				return fmt.Errorf("Expected 1 node linked to ns1, got %+v", nodes)
 			}
 
 			nodes, err = gh.GetNodes(prefix.V().Has("LinkNetNsName", "ns2"))
@@ -368,7 +368,7 @@ func TestNameSpaceTwoVeth(t *testing.T) {
 			}
 
 			if len(nodes) != 1 {
-				return fmt.Errorf("Expected 1 node, got %+v", nodes)
+				return fmt.Errorf("Expected 1 node linked to ns2, got %+v", nodes)
 			}
 
 			return nil
