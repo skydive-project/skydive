@@ -73,7 +73,7 @@ require (
 	github.com/skydive-project/dede v0.0.0-20200217172954-b1b74a5bb856
 	github.com/skydive-project/go-debouncer v1.0.0
 	github.com/skydive-project/goloxi v0.0.0-20190117172159-db2324197a3e
-	github.com/skydive-project/skydive/graffiti v0.26.0
+	github.com/skydive-project/skydive/graffiti v0.0.0-00010101000000-000000000000
 	github.com/socketplane/libovsdb v0.0.0-20160607151822-5113f8fb4d9d
 	github.com/spf13/cast v1.3.1
 	github.com/spf13/cobra v1.1.1
