@@ -340,6 +340,7 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 
 		andFilters := []*filters.Filter{
 			filters.NewNotFilter(filters.NewTermStringFilter("UUID", uuid)),
+			filters.NewNotFilter(filters.NewTermStringFilter("Type", "ovsport")),
 			filters.NewTermStringFilter("Name", name),
 			filters.NewOrFilter(macFilters...),
 		}
@@ -360,6 +361,7 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 			// netlink have seen the same interface. In order to keep only
 			// one interface we delete the ovs one and use the netlink one.
 			if nintf := o.Ctx.Graph.LookupFirstNode(graph.NewElementFilter(andFilter)); nintf != nil && intf.ID != nintf.ID {
+				o.Ctx.Logger.Debugf("Removing interface %+v and use %+v instead", intf, nintf)
 				if err := o.Ctx.Graph.DelNode(intf); err != nil {
 					o.Ctx.Logger.Error(err)
 				}
