@@ -867,23 +867,28 @@ func (u *Probe) onNeighborsChanged(index int64, fdb *topology.Neighbors, neighbo
 		return
 	}
 
-	update := func(key string, nb *topology.Neighbors) {
-		_, err := intf.GetField(key)
-		if nb == nil && err == nil {
-			err = u.Ctx.Graph.DelMetadata(intf, key)
-		} else if nb != nil {
-			err = u.Ctx.Graph.AddMetadata(intf, key, nb)
-		} else {
-			err = nil
-		}
+	t := u.Ctx.Graph.StartMetadataTransaction(intf)
 
-		if err != nil {
-			u.Ctx.Logger.Error(err)
+	update := func(key string, nb *topology.Neighbors) {
+		previous, err := intf.GetField(key)
+		switch {
+		case nb == nil && err == nil:
+			t.DelMetadata(key)
+		case nb != nil && err == nil:
+			if len(*previous.(*topology.Neighbors)) != 0 || len(*nb) != 0 {
+				t.AddMetadata(key, nb)
+			}
+		case nb != nil:
+			t.AddMetadata(key, nb)
 		}
 	}
 
 	update("FDB", fdb)
 	update("Neighbors", neighbors)
+
+	if err := t.Commit(); err != nil {
+		u.Ctx.Logger.Error(err)
+	}
 }
 
 func (u *Probe) getNeighbors(index int) (*topology.Neighbors, *topology.Neighbors) {
