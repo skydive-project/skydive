@@ -97,6 +97,7 @@ type ElasticSearchBackend struct {
 	archiveIndex es.Index
 	logger       logging.Logger
 	listeners    []PersistentBackendListener
+	indexPrefix  string
 }
 
 // TimedSearchQuery describes a search query within a time slice and metadata filters
@@ -346,7 +347,7 @@ func (b *ElasticSearchBackend) Query(typ string, tsq *TimedSearchQuery) (sr *ela
 
 	mustQuery := elastic.NewBoolQuery().Must(fltrs...)
 
-	return b.client.Search(mustQuery, tsq.SearchQuery, b.liveIndex.Alias(), b.archiveIndex.IndexWildcard())
+	return b.client.Search(mustQuery, tsq.SearchQuery, b.liveIndex.Alias(b.indexPrefix), b.archiveIndex.IndexWildcard(b.indexPrefix))
 }
 
 // searchNodes search nodes matching the query
@@ -527,7 +528,7 @@ func (b *ElasticSearchBackend) AddListener(listener PersistentBackendListener) {
 
 // newElasticSearchBackendFromClient creates a new graph backend using the given elasticsearch
 // client connection
-func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, archiveIndex es.Index, logger logging.Logger) *ElasticSearchBackend {
+func newElasticSearchBackendFromClient(client es.ClientInterface, indexPrefix string, liveIndex, archiveIndex es.Index, logger logging.Logger) *ElasticSearchBackend {
 	if logger == nil {
 		logger = logging.GetLogger()
 	}
@@ -538,6 +539,7 @@ func newElasticSearchBackendFromClient(client es.ClientInterface, liveIndex, arc
 		liveIndex:    liveIndex,
 		archiveIndex: archiveIndex,
 		logger:       logger,
+		indexPrefix:  indexPrefix,
 	}
 
 	return backend
@@ -584,5 +586,5 @@ func NewElasticSearchBackendFromConfig(cfg es.Config, extraDynamicTemplates map[
 		return nil, err
 	}
 
-	return newElasticSearchBackendFromClient(client, liveIndex, archiveIndex, logger), nil
+	return newElasticSearchBackendFromClient(client, cfg.IndexPrefix, liveIndex, archiveIndex, logger), nil
 }

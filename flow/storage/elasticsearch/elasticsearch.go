@@ -119,7 +119,8 @@ var (
 
 // Storage describes an ElasticSearch flow backend
 type Storage struct {
-	client *es.Client
+	client      *es.Client
+	indexPrefix string
 }
 
 // easyjson:json
@@ -246,7 +247,7 @@ func (c *Storage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filter
 		mustQueries = append(mustQueries, es.FormatFilter(packetFilter, ""))
 	}
 
-	out, err := c.sendRequest(elastic.NewBoolQuery().Must(mustQueries...), fsq, rawpacketIndex.IndexWildcard())
+	out, err := c.sendRequest(elastic.NewBoolQuery().Must(mustQueries...), fsq, rawpacketIndex.IndexWildcard(c.indexPrefix))
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +280,7 @@ func (c *Storage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.F
 	metricQuery := es.FormatFilter(metricFilter, "")
 
 	query := elastic.NewBoolQuery().Must(flowQuery, metricQuery)
-	out, err := c.sendRequest(query, fsq, metricIndex.IndexWildcard())
+	out, err := c.sendRequest(query, fsq, metricIndex.IndexWildcard(c.indexPrefix))
 	if err != nil {
 		return nil, err
 	}
@@ -310,7 +311,7 @@ func (c *Storage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error) {
 	}
 
 	// TODO: dedup and sort in order to remove duplicate flow UUID due to rolling index
-	out, err := c.sendRequest(es.FormatFilter(fsq.Filter, ""), fsq, flowIndex.IndexWildcard())
+	out, err := c.sendRequest(es.FormatFilter(fsq.Filter, ""), fsq, flowIndex.IndexWildcard(c.indexPrefix))
 	if err != nil {
 		return nil, err
 	}
@@ -358,5 +359,8 @@ func New(cfg es.Config, etcdClient *etcd.Client) (*Storage, error) {
 		return nil, err
 	}
 
-	return &Storage{client: client}, nil
+	return &Storage{
+		client:      client,
+		indexPrefix: cfg.IndexPrefix,
+	}, nil
 }
