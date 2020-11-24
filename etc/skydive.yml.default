@@ -410,6 +410,11 @@ storage:
     #   - Metadata.K8s.Labels
     #   - Metadata.Actions
     #   - Metadata.Filters
+    #   - Metadata.LXD.Config
+    #   - Metadata.LXD.Devices
+    #   - Metadata.OVN.ExtID
+    #   - Metadata.OVN.Options
+    #   - Metadata.OVN.IPv6RAConfigs
 
   # OrientDB backend information.
   myorientdb:

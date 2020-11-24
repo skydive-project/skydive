@@ -64,18 +64,28 @@ func newGraphBackendFromConfig(etcdClient *etcd.Client) (graph.PersistentBackend
 	switch driver {
 	case "elasticsearch":
 		excludeFromIndex := config.GetStringSlice(configPath + ".exclude_from_mapping")
+		useFlattened := config.GetBool(configPath + ".use_flattened")
+
+		var mapping map[string]interface{}
+		if useFlattened {
+			mapping = map[string]interface{}{
+				"type": "flattened",
+			}
+		} else {
+			mapping = map[string]interface{}{
+				"type":    "object",
+				"enabled": false,
+				"store":   true,
+				"index":   false,
+			}
+		}
+
 		dynamicTemplates := make(map[string]interface{})
 		for _, field := range excludeFromIndex {
-			dynamicTemplate := map[string]interface{}{
+			dynamicTemplates[field] = map[string]interface{}{
 				"path_match": field,
-				"mapping": map[string]interface{}{
-					"type":    "object",
-					"enabled": false,
-					"store":   true,
-					"index":   false,
-				},
+				"mapping":    mapping,
 			}
-			dynamicTemplates[field] = dynamicTemplate
 		}
 
 		cfg := NewESConfig(backend)

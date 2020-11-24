@@ -40,7 +40,7 @@ import (
 )
 
 const (
-	schemaVersion  = "12"
+	schemaVersion  = "13"
 	minimalVersion = "5.5"
 )
 

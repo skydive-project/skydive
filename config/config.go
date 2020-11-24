@@ -206,7 +206,19 @@ func init() {
 	cfg.SetDefault("storage.elasticsearch.index_entries_limit", 0)
 	cfg.SetDefault("storage.elasticsearch.indices_to_keep", 0)
 	cfg.SetDefault("storage.elasticsearch.index_prefix", "skydive_")
-	cfg.SetDefault("storage.elasticsearch.exclude_from_mapping", []string{"Metadata.*.Extra", "Metadata.Docker.Labels", "Metadata.K8s.Labels", "Metadata.Actions", "Metadata.Filters"})
+	cfg.SetDefault("storage.elasticsearch.use_flattened", true)
+	cfg.SetDefault("storage.elasticsearch.exclude_from_mapping", []string{
+		"Metadata.*.Extra",
+		"Metadata.Docker.Labels",
+		"Metadata.K8s.Labels",
+		"Metadata.Actions",
+		"Metadata.Filters",
+		"Metadata.LXD.Config",
+		"Metadata.LXD.Devices",
+		"Metadata.OVN.ExtID",
+		"Metadata.OVN.Options",
+		"Metadata.OVN.IPv6RAConfigs",
+	})
 	cfg.SetDefault("storage.memory.driver", "memory")
 	cfg.SetDefault("storage.orientdb.driver", "orientdb")
 	cfg.SetDefault("storage.orientdb.addr", "http://localhost:2480")
