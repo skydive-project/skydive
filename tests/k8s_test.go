@@ -48,8 +48,7 @@ func setupFromConfigPath(path string) []Cmd {
 
 func tearDownFromConfigPath(path string) []Cmd {
 	return []Cmd{
-		{"kubectl delete --grace-period=0 --force -f " + path, false},
-		{"sleep 10", true},
+		{"kubectl delete --wait=true --grace-period=0 --force -f " + path, false},
 	}
 }
 
