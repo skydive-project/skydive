@@ -399,6 +399,10 @@ storage:
     # A value of 0 specifies no limit (i.e. indices will never be deleted)
     # indices_to_keep: 0
 
+    # Total fields limit. Maps to index.mapping.total_fields.limit setting.
+    # Set it to to the desired value or 0 if you don't want any limit (be careful)
+    # total_fields_limit: 1000
+
   # OrientDB backend information.
   myorientdb:
     # driver: orientdb

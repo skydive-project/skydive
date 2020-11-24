@@ -43,6 +43,7 @@ func NewESConfig(name ...string) es.Config {
 
 	cfg.ElasticHost = config.GetString(path + ".host")
 	cfg.BulkMaxDelay = config.GetInt(path + ".bulk_maxdelay")
+	cfg.TotalFieldsLimit = config.GetInt(path + ".total_fields_limit")
 
 	cfg.EntriesLimit = config.GetInt(path + ".index_entries_limit")
 	cfg.AgeLimit = config.GetInt(path + ".index_age_limit")
