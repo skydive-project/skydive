@@ -403,6 +403,14 @@ storage:
     # Set it to to the desired value or 0 if you don't want any limit (be careful)
     # total_fields_limit: 1000
 
+    # Fields to exclude to avoid mapping explosion.
+    # exclude_from_mapping:
+    #   - Metadata.*.Extra
+    #   - Metadata.Docker.Labels
+    #   - Metadata.K8s.Labels
+    #   - Metadata.Actions
+    #   - Metadata.Filters
+
   # OrientDB backend information.
   myorientdb:
     # driver: orientdb

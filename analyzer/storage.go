@@ -63,36 +63,22 @@ func newGraphBackendFromConfig(etcdClient *etcd.Client) (graph.PersistentBackend
 
 	switch driver {
 	case "elasticsearch":
-		cfg := NewESConfig(backend)
-		dynamicTemplates := map[string]interface{}{
-			"extra": map[string]interface{}{
-				"path_match": "*.Extra",
+		excludeFromIndex := config.GetStringSlice(configPath + ".exclude_from_mapping")
+		dynamicTemplates := make(map[string]interface{})
+		for _, field := range excludeFromIndex {
+			dynamicTemplate := map[string]interface{}{
+				"path_match": field,
 				"mapping": map[string]interface{}{
 					"type":    "object",
 					"enabled": false,
 					"store":   true,
 					"index":   false,
 				},
-			},
-			"openflow_actions": map[string]interface{}{
-				"path_match": "*.Actions",
-				"mapping": map[string]interface{}{
-					"type":    "object",
-					"enabled": false,
-					"store":   true,
-					"index":   false,
-				},
-			},
-			"openflow_filters": map[string]interface{}{
-				"path_match": "*.Filters",
-				"mapping": map[string]interface{}{
-					"type":    "object",
-					"enabled": false,
-					"store":   true,
-					"index":   false,
-				},
-			},
+			}
+			dynamicTemplates[field] = dynamicTemplate
 		}
+
+		cfg := NewESConfig(backend)
 		return graph.NewElasticSearchBackendFromConfig(cfg, dynamicTemplates, etcdClient, logging.GetLogger())
 	case "memory":
 		// cached memory will be used
