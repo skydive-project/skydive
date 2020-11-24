@@ -178,7 +178,7 @@ func (o *Probe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libo
 				}
 
 				if intf, ok := o.portToIntf[uuid]; ok {
-					o.linkIntfTOBridge(bridge, intf)
+					o.linkIntfToBridge(bridge, intf)
 				}
 			}
 		}
@@ -192,6 +192,10 @@ func (o *Probe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libo
 				topology.AddOwnershipLink(o.Ctx.Graph, bridge, port, nil)
 				topology.AddLayer2Link(o.Ctx.Graph, bridge, port, nil)
 			}
+		}
+
+		if intf, ok := o.portToIntf[uuid]; ok {
+			o.linkIntfToBridge(bridge, intf)
 		}
 	}
 	if o.Handler != nil {
@@ -214,9 +218,9 @@ func (o *Probe) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row *libo
 	}
 }
 
-// linkIntfTOBridge having ifindex set to 0 (not handled by netlink) or being in
+// linkIntfToBridge having ifindex set to 0 (not handled by netlink) or being in
 // error
-func (o *Probe) linkIntfTOBridge(bridge, intf *graph.Node) {
+func (o *Probe) linkIntfToBridge(bridge, intf *graph.Node) {
 	if isOvsDrivenInterface(intf) && !topology.IsOwnershipLinked(o.Ctx.Graph, intf) {
 		topology.AddOwnershipLink(o.Ctx.Graph, bridge, intf, nil)
 	}
@@ -509,7 +513,7 @@ func (o *Probe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 
 		puuid, _ := port.GetFieldString("UUID")
 		if bridge, ok := o.portToBridge[puuid]; ok {
-			o.linkIntfTOBridge(bridge, intf)
+			o.linkIntfToBridge(bridge, intf)
 		}
 	}
 
@@ -661,7 +665,7 @@ func (o *Probe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovs
 		}
 
 		if intf, ok := o.portToIntf[uuid]; ok {
-			o.linkIntfTOBridge(bridge, intf)
+			o.linkIntfToBridge(bridge, intf)
 		}
 	}
 
