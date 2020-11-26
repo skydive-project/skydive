@@ -19,6 +19,8 @@ package tests
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	g "github.com/skydive-project/skydive/gremlin"
@@ -129,19 +131,39 @@ func TestDockerNetHost(t *testing.T) {
 }
 
 func TestDockerLabels(t *testing.T) {
+	labelFile, err := ioutil.TempFile("", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for i := 0; i < 1000; i++ {
+		labelFile.WriteString(fmt.Sprintf("label%d=1\n", i))
+	}
+
+	if err := labelFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(labelFile.Name())
+
 	test := &Test{
 		setupCmds: []Cmd{
-			{"docker run -d -t -i --label a.b.c=123 --label a~b/c@d=456 --name test-skydive-docker-labels busybox", false},
+			{"docker run -d -t -i --label a.b.c=123 --label a~b/c@d=456 --name test-skydive-docker-strange-labels busybox", false},
+			{fmt.Sprintf("docker run -d -t -i --label-file %s --name test-skydive-docker-many-labels busybox", labelFile.Name()), false},
 		},
 
 		tearDownCmds: []Cmd{
-			{"docker rm -f test-skydive-docker-labels", false},
+			{"docker rm -f test-skydive-docker-strange-labels", false},
+			{"docker rm -f test-skydive-docker-many-labels", false},
 		},
 
 		mode: Replay,
 
 		checks: []CheckFunction{func(c *CheckContext) error {
-			gremlin := c.gremlin.V().Has("Docker.ContainerName", "test-skydive-docker-labels", "Type", "container", "Docker.Labels.a.b.c", "123", "Docker.Labels.a~b/c@d", "456")
+			gremlin := c.gremlin.V().Has("Docker.ContainerName", "test-skydive-docker-strange-labels", "Type", "container", "Docker.Labels.a.b.c", "123", "Docker.Labels.a~b/c@d", "456")
+			_, err := c.gh.GetNode(gremlin)
+			return err
+		}, func(c *CheckContext) error {
+			gremlin := c.gremlin.V().Has("Docker.ContainerName", "test-skydive-docker-many-labels", "Type", "container", "Docker.Labels.label999", "1")
 			_, err := c.gh.GetNode(gremlin)
 			return err
 		}},
