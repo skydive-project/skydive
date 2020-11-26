@@ -8,7 +8,18 @@ cd ${GOPATH}/src/github.com/skydive-project/skydive
 
 set -e
 
-make docker-image
+# make docker-image
+
+docker_setup() {
+    echo docker run --name skydive-docker-python-tests -p 8082:8082 -d $* skydive/skydive:devel allinone
+    docker run --name skydive-docker-python-tests -p 8082:8082 -d $* skydive/skydive:devel allinone
+    sleep 5
+}
+
+docker_cleanup() {
+    docker stop skydive-docker-python-tests
+    docker rm -f skydive-docker-python-tests
+}
 
 cd contrib/python
 
@@ -20,26 +31,30 @@ pip install -r api/requirements.txt
 
 pushd api
 python setup.py install
+
+docker_setup && trap docker_cleanup EXIT
+
 python -m unittest discover tests
+
 popd
 
 deactivate
-
 
 echo "Python3 tests"
 virtualenv -p python3 venv3
 source venv3/bin/activate
 
-pip install flake8
+pip install black
 pip install -r api/requirements.txt
 
 pushd api
 python setup.py install
 
-pycodestyle
-flake8
+black skydive
 
 python -m unittest discover tests
+
+docker_cleanup
 
 echo "=== python auth test"
 CONF=$(mktemp /tmp/skydive.yml.XXXXXX)
@@ -64,17 +79,18 @@ EOF
 PASSWD=$(mktemp /tmp/skydive.passwd.XXXXXX)
 # admin pass
 echo 'admin:$apr1$i38WPF8K$0L1TzLo3cI4da8DFvrCLn1' > "$PASSWD"
-export SKYDIVE_PYTHON_TESTS_MAPFILE="$CONF:/etc/skydive.yml,$PASSWD:/etc/skydive.htpasswd"
+
+docker_setup -v $CONF:/etc/skydive.yml -v $PASSWD:/etc/skydive.htpasswd
+
 export SKYDIVE_PYTHON_TESTS_USERPASS="admin:pass"
 python -m unittest discover tests
-
-unset SKYDIVE_PYTHON_TESTS_MAPFILE
 unset SKYDIVE_PYTHON_TESTS_USERPASS
+
+docker_cleanup
+
 rm -f "$CONF" "$PASSWD"
 
-
-
-echo "=== python ssl test"
+echo "=== python SSL test"
 CONF_SSL=$(mktemp /tmp/skydive-ssl.cnf.XXXXXX)
 cat <<EOF > "$CONF_SSL"
 [req]
@@ -97,6 +113,7 @@ extendedKeyUsage = serverAuth,clientAuth
 subjectAltName = @alt_names
 
 [alt_names]
+DNS.1 = localhost
 IP.1 = 127.0.0.1
 IP.2 = ::1
 EOF
@@ -136,13 +153,19 @@ analyzers:
   - 127.0.0.1:8082
 EOF
 
-export SKYDIVE_PYTHON_TESTS_MAPFILE="$CONF:/etc/skydive.yml,$CERT_DIR/rootCA.crt:/etc/skydive.ca.crt,$CERT_DIR/analyzer.crt:/etc/skydive.analyzer.crt,$CERT_DIR/analyzer.key:/etc/skydive.analyzer.key"
+docker_setup -v $CONF:/etc/skydive.yml \
+             -v $CERT_DIR/rootCA.crt:/etc/skydive.ca.crt \
+             -v $CERT_DIR/analyzer.crt:/etc/skydive.analyzer.crt \
+             -v $CERT_DIR/analyzer.key:/etc/skydive.analyzer.key
+
 export SKYDIVE_PYTHON_TESTS_TLS="True"
+export SKYDIVE_PYTHON_TESTS_CERTIFICATES="$CERT_DIR/rootCA.crt:$CERT_DIR/analyzer.crt:$CERT_DIR/analyzer.key"
+
 python -m unittest discover tests
 
-unset SKYDIVE_PYTHON_TESTS_MAPFILE
+unset SKYDIVE_PYTHON_TESTS_CERTIFICATES
 unset SKYDIVE_PYTHON_TESTS_TLS
-rm -rf "$CERT_DIR" "$CONF"
 
+rm -rf "$CERT_DIR" "$CONF"
 
 popd

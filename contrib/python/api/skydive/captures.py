@@ -17,16 +17,30 @@
 
 class Capture(object):
     """
-        Definition of a Skydive Capture
+    Definition of a Skydive Capture
     """
 
-    def __init__(self, uuid,  query,
-                 name="", description="", count=0,
-                 extra_tcp_metric=False, ip_defrag=False,
-                 reassemble_tcp=False, layer_key_mode="L2",
-                 bpf_filter="", capture_type="", raw_pkt_limit=0,
-                 port=0, header_size=0, target="", target_type="",
-                 polling_interval=10, sampling_rate=1):
+    def __init__(
+        self,
+        uuid,
+        query,
+        name="",
+        description="",
+        count=0,
+        extra_tcp_metric=False,
+        ip_defrag=False,
+        reassemble_tcp=False,
+        layer_key_mode="L2",
+        bpf_filter="",
+        capture_type="",
+        raw_pkt_limit=0,
+        port=0,
+        header_size=0,
+        target="",
+        target_type="",
+        polling_interval=10,
+        sampling_rate=1,
+    ):
         self.uuid = uuid
         self.name = name
         self.description = description
@@ -85,21 +99,23 @@ class Capture(object):
 
     @classmethod
     def from_object(self, obj):
-        return self(obj["UUID"], obj["GremlinQuery"],
-                    name=obj.get("Name"),
-                    description=obj.get("Description"),
-                    count=obj.get("Count"),
-                    extra_tcp_metric=obj.get("ExtraTCPMetric"),
-                    ip_defrag=obj.get("IPDefrag"),
-                    reassemble_tcp=obj.get("ReassembleTCP"),
-                    layer_key_mode=obj.get("LayerKeyMode"),
-                    bpf_filter=obj.get("BPFFilter"),
-                    capture_type=obj.get("Type"),
-                    raw_pkt_limit=obj.get("RawPacketLimit"),
-                    header_size=obj.get("HeaderSize"),
-                    port=obj.get("Port"),
-                    target=obj.get("Target"),
-                    target_type=obj.get("TargetType"),
-                    polling_interval=obj.get("PollingInterval"),
-                    sampling_rate=obj.get("SamplingRate")
-                    )
+        return self(
+            obj["UUID"],
+            obj["GremlinQuery"],
+            name=obj.get("Name"),
+            description=obj.get("Description"),
+            count=obj.get("Count"),
+            extra_tcp_metric=obj.get("ExtraTCPMetric"),
+            ip_defrag=obj.get("IPDefrag"),
+            reassemble_tcp=obj.get("ReassembleTCP"),
+            layer_key_mode=obj.get("LayerKeyMode"),
+            bpf_filter=obj.get("BPFFilter"),
+            capture_type=obj.get("Type"),
+            raw_pkt_limit=obj.get("RawPacketLimit"),
+            header_size=obj.get("HeaderSize"),
+            port=obj.get("Port"),
+            target=obj.get("Target"),
+            target_type=obj.get("TargetType"),
+            polling_interval=obj.get("PollingInterval"),
+            sampling_rate=obj.get("SamplingRate"),
+        )

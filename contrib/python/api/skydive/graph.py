@@ -17,12 +17,19 @@
 
 class GraphElement(object):
     """
-        Definition of a Skydive graph element.
+    Definition of a Skydive graph element.
     """
 
-    def __init__(self, id, host,
-                 created_at=0, updated_at=0, deleted_at=0, revision=0,
-                 metadata=None):
+    def __init__(
+        self,
+        id,
+        host,
+        created_at=0,
+        updated_at=0,
+        deleted_at=0,
+        revision=0,
+        metadata=None,
+    ):
         self.id = id
         self.host = host
         self.metadata = metadata
@@ -47,17 +54,20 @@ class GraphElement(object):
 
     @classmethod
     def from_object(self, obj):
-        return self(obj["ID"], obj["Host"],
-                    created_at=obj.get("CreatedAt", 0),
-                    updated_at=obj.get("UpdatedAt", 0),
-                    deleted_at=obj.get("DeletedAt", 0),
-                    revision=obj.get("Revision", 0),
-                    metadata=obj.get("Metadata"))
+        return self(
+            obj["ID"],
+            obj["Host"],
+            created_at=obj.get("CreatedAt", 0),
+            updated_at=obj.get("UpdatedAt", 0),
+            deleted_at=obj.get("DeletedAt", 0),
+            revision=obj.get("Revision", 0),
+            metadata=obj.get("Metadata"),
+        )
 
 
 class Node(GraphElement):
     """
-        Definition of a Skydive graph Node, see GraphElement.
+    Definition of a Skydive graph Node, see GraphElement.
     """
 
     pass
@@ -65,17 +75,29 @@ class Node(GraphElement):
 
 class Edge(GraphElement):
     """
-        Definition of a Skydive graph Edge, see GraphElement.
+    Definition of a Skydive graph Edge, see GraphElement.
     """
 
-    def __init__(self, id, host, parent, child,
-                 created_at=0, updated_at=0, deleted_at=0, revision=0,
-                 metadata=None):
-        super(Edge, self).__init__(id, host,
-                                   created_at=created_at,
-                                   updated_at=updated_at,
-                                   deleted_at=deleted_at,
-                                   metadata=metadata)
+    def __init__(
+        self,
+        id,
+        host,
+        parent,
+        child,
+        created_at=0,
+        updated_at=0,
+        deleted_at=0,
+        revision=0,
+        metadata=None,
+    ):
+        super(Edge, self).__init__(
+            id,
+            host,
+            created_at=created_at,
+            updated_at=updated_at,
+            deleted_at=deleted_at,
+            metadata=metadata,
+        )
         self.parent = parent
         self.child = child
 
@@ -87,10 +109,14 @@ class Edge(GraphElement):
 
     @classmethod
     def from_object(self, obj):
-        return self(obj["ID"], obj["Host"],
-                    obj["Parent"], obj["Child"],
-                    created_at=obj.get("CreatedAt", 0),
-                    updated_at=obj.get("UpdatedAt", 0),
-                    deleted_at=obj.get("DeletedAt", 0),
-                    revision=obj.get("Revision", 0),
-                    metadata=obj.get("Metadata"))
+        return self(
+            obj["ID"],
+            obj["Host"],
+            obj["Parent"],
+            obj["Child"],
+            created_at=obj.get("CreatedAt", 0),
+            updated_at=obj.get("UpdatedAt", 0),
+            deleted_at=obj.get("DeletedAt", 0),
+            revision=obj.get("Revision", 0),
+            metadata=obj.get("Metadata"),
+        )

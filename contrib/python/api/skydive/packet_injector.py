@@ -17,13 +17,30 @@
 
 class PacketInjection(object):
     """
-        Definition of a Skydive packet injection.
+    Definition of a Skydive packet injection.
     """
 
-    def __init__(self, uuid="", src="", dst="", srcip="", dstip="", srcmac="",
-                 dstmac="", srcport=0, dstport=0, type="icmp4", payload="",
-                 trackingid="", icmpid=0, count=1, interval=0,
-                 mode="unique", starttime="", ttl=64):
+    def __init__(
+        self,
+        uuid="",
+        src="",
+        dst="",
+        srcip="",
+        dstip="",
+        srcmac="",
+        dstmac="",
+        srcport=0,
+        dstport=0,
+        type="icmp4",
+        payload="",
+        trackingid="",
+        icmpid=0,
+        count=1,
+        interval=0,
+        mode="unique",
+        starttime="",
+        ttl=64,
+    ):
         self.uuid = uuid
         self.src = src
         self.dst = dst
@@ -84,20 +101,22 @@ class PacketInjection(object):
 
     @classmethod
     def from_object(self, obj):
-        return self(uuid=obj.get("UUID"),
-                    src=obj.get("Src"),
-                    dst=obj.get("Dst"),
-                    srcip=obj.get("SrcIP"),
-                    dstip=obj.get("DstIP"),
-                    srcmac=obj.get("SrcMAC"),
-                    dstmac=obj.get("DstMAC"),
-                    srcport=obj.get("SrcPort"),
-                    dstport=obj.get("DstPort"),
-                    type=obj.get("Type"),
-                    payload=obj.get("Payload"),
-                    trackingid=obj.get("TrackingID"),
-                    icmpid=obj.get("ICMPID"),
-                    count=obj.get("Count"),
-                    interval=obj.get("Interval"),
-                    mode=obj.get("Mode"),
-                    ttl=obj.get("TTL"))
+        return self(
+            uuid=obj.get("UUID"),
+            src=obj.get("Src"),
+            dst=obj.get("Dst"),
+            srcip=obj.get("SrcIP"),
+            dstip=obj.get("DstIP"),
+            srcmac=obj.get("SrcMAC"),
+            dstmac=obj.get("DstMAC"),
+            srcport=obj.get("SrcPort"),
+            dstport=obj.get("DstPort"),
+            type=obj.get("Type"),
+            payload=obj.get("Payload"),
+            trackingid=obj.get("TrackingID"),
+            icmpid=obj.get("ICMPID"),
+            count=obj.get("Count"),
+            interval=obj.get("Interval"),
+            mode=obj.get("Mode"),
+            ttl=obj.get("TTL"),
+        )

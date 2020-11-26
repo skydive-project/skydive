@@ -32,28 +32,42 @@ class SkydiveWSTest(unittest.TestCase):
         cls.username = ""
         cls.password = ""
         cls.auth = False
+        cls.insecure = True
+        cls.cafile = ""
+        cls.certfile = ""
+        cls.keyfile = ""
+
         if "SKYDIVE_PYTHON_TESTS_USERPASS" in os.environ:
             cls.auth = True
             userpass = os.environ["SKYDIVE_PYTHON_TESTS_USERPASS"]
             cls.username, cls.password = userpass.split(":")
 
-        extraArgs = []
-        if "SKYDIVE_PYTHON_TESTS_MAPFILE" in os.environ:
-            files = os.environ["SKYDIVE_PYTHON_TESTS_MAPFILE"]
-            if files:
-                for f in files.split(","):
-                    extraArgs.append("-v")
-                    extraArgs.append(f)
+        if "SKYDIVE_PYTHON_TESTS_CERTIFICATES" in os.environ:
+            cls.insecure = False
+            certificates = os.environ["SKYDIVE_PYTHON_TESTS_CERTIFICATES"]
+            cls.cafile, cls.certfile, cls.keyfile = certificates.split(":")
 
-        subprocess.call(["docker", "run", "--name",
-                         "skydive-docker-python-tests", "-p", "8082:8082"] +
-                        extraArgs +
-                        ["-d", "skydive/skydive:devel", "allinone"])
-        time.sleep(10)
+    def new_rest_client(self):
+        return RESTClient("localhost:8082",
+                          scheme=self.schemeHTTP,
+                          username=self.username,
+                          password=self.password,
+                          insecure=self.insecure,
+                          cafile=self.cafile,
+                          certfile=self.certfile,
+                          keyfile=self.keyfile)
 
-    @classmethod
-    def tearDownClass(cls):
-        subprocess.call(["docker", "rm", "-f", "skydive-docker-python-tests"])
+    def new_ws_client(self, id, endpoint, test):
+        return WSClient(id,
+                        self.schemeWS +
+                        "://localhost:8082/ws/"+endpoint,
+                        protocol=WSTestClient, test=test,
+                        username=self.username,
+                        password=self.password,
+                        insecure=self.insecure,
+                        cafile=self.cafile,
+                        certfile=self.certfile,
+                        keyfile=self.keyfile)
 
     def test_connection(self):
         self.connected = False
@@ -61,13 +75,9 @@ class SkydiveWSTest(unittest.TestCase):
         def is_connected(protocol):
             self.connected = True
 
-        self.wsclient = WSClient("host-test",
-                                 self.schemeWS +
-                                 "://localhost:8082/ws/publisher",
-                                 protocol=WSTestClient, test=is_connected,
-                                 username=self.username,
-                                 password=self.password,
-                                 insecure=True)
+        self.wsclient = self.new_ws_client(id="host-test",
+                                           endpoint="publisher",
+                                           test=is_connected)
         self.wsclient.connect()
         if self.auth:
             ret = self.wsclient.login("localhost:8082", "toto")
@@ -114,23 +124,15 @@ class SkydiveWSTest(unittest.TestCase):
             msg = WSMessage("Graph", EdgeAddedMsgType, edge)
             protocol.sendWSMessage(msg)
 
-        self.wsclient = WSClient("host-test2",
-                                 self.schemeWS +
-                                 "://localhost:8082/ws/publisher",
-                                 protocol=WSTestClient, test=create_node,
-                                 username=self.username,
-                                 password=self.password,
-                                 insecure=True)
+        self.wsclient = self.new_ws_client(id="host-test2",
+                                           endpoint="publisher",
+                                           test=create_node)
         self.wsclient.connect()
         self.wsclient.start()
 
         time.sleep(1)
 
-        restclient = RESTClient("localhost:8082",
-                                scheme=self.schemeHTTP,
-                                username=self.username,
-                                password=self.password,
-                                insecure=True)
+        restclient = self.new_rest_client()
         nodes = restclient.lookup_nodes("G.V().Has('Name', 'Test port')")
         self.assertEqual(len(nodes), 1, "should find one an only one node")
 
@@ -148,11 +150,7 @@ class SkydiveWSTest(unittest.TestCase):
         self.assertEqual(len(edges), 1, "should find one an only one edge")
 
     def test_capture(self):
-        restclient = RESTClient("localhost:8082",
-                                scheme=self.schemeHTTP,
-                                username=self.username,
-                                password=self.password,
-                                insecure=True)
+        restclient = self.new_rest_client()
 
         capture1 = restclient.capture_create(
             "G.V().Has('Name', 'test', 'Type', 'netns')")
@@ -169,11 +167,7 @@ class SkydiveWSTest(unittest.TestCase):
         restclient.capture_delete(capture1.uuid)
 
     def test_alert(self):
-        restclient = RESTClient("localhost:8082",
-                                scheme=self.schemeHTTP,
-                                username=self.username,
-                                password=self.password,
-                                insecure=True)
+        restclient = self.new_rest_client()
 
         alert1 = restclient.alert_create(
             "https://localhost:8081",
@@ -191,11 +185,7 @@ class SkydiveWSTest(unittest.TestCase):
         restclient.alert_delete(alert1.uuid)
 
     def test_topology_rules(self):
-        restclient = RESTClient("localhost:8082",
-                                scheme=self.schemeHTTP,
-                                username=self.username,
-                                password=self.password,
-                                insecure=True)
+        restclient = self.new_rest_client()
 
         noderule1 = restclient.noderule_create(
             "create", metadata={"Name": "node1", "Type": "fabric"})
@@ -245,11 +235,7 @@ class SkydiveWSTest(unittest.TestCase):
         restclient.noderule_delete(noderule2.uuid)
 
     def test_injections(self):
-        restclient = RESTClient("localhost:8082",
-                                scheme=self.schemeHTTP,
-                                username=self.username,
-                                password=self.password,
-                                insecure=True)
+        restclient = self.new_rest_client()
 
         nodes = restclient.lookup("G.V().Has('Name', 'eth0')")
 

@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2017 Red Hat, Inc.
+# Copyright (C) 2020 Sylvain Baubeau
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,12 +14,20 @@
 # limitations under the License.
 #
 
-import json
+import ssl
 
 
-class JSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if hasattr(obj, "repr_json"):
-            return obj.repr_json()
-        else:
-            return json.JSONEncoder.default(self, obj)
+def create_ssl_context(insecure=False, cafile="", certfile="", keyfile=""):
+    context = ssl.create_default_context()
+
+    if insecure:
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+
+    if cafile:
+        context.load_verify_locations(cafile)
+
+    if certfile and keyfile:
+        context.load_cert_chain(certfile=certfile, keyfile=keyfile)
+
+    return context
