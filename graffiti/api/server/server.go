@@ -182,9 +182,11 @@ func (a *Server) RegisterAPIHandler(handler rest.Handler, authBackend shttp.Auth
 					return
 				}
 
-				if err := a.validator.Validate(name, resource); err != nil {
-					http.Error(w, err.Error(), http.StatusBadRequest)
-					return
+				if a.validator != nil {
+					if err := a.validator.Validate(name, resource); err != nil {
+						http.Error(w, err.Error(), http.StatusBadRequest)
+						return
+					}
 				}
 
 				if err := resource.Validate(); err != nil {

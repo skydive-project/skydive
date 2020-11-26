@@ -1,5 +1,5 @@
-//go:generate sh -c "go run github.com/gomatic/renderizer --name=node --resource=node --type=Node --title=Node --article=a swagger_operations.tmpl > node_swagger.go"
-//go:generate sh -c "go run github.com/gomatic/renderizer --name=node --resource=node --type=Node --title=Node swagger_definitions.tmpl > node_swagger.json"
+//go:generate sh -c "go run github.com/gomatic/renderizer --name=node --resource=node --type=Node --title=Node --article=a ../../../api/server/swagger_operations.tmpl > node_swagger.go"
+//go:generate sh -c "go run github.com/gomatic/renderizer --name=node --resource=node --type=Node --title=Node ../../../api/server/swagger_definitions.tmpl > node_swagger.json"
 
 /*
  * Copyright (C) 2020 Sylvain Baubeau
@@ -23,9 +23,8 @@ package server
 import (
 	"time"
 
-	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
-	api "github.com/skydive-project/skydive/graffiti/api/server"
+	"github.com/skydive-project/skydive/graffiti/api/types"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 )
@@ -151,7 +150,7 @@ func (h *NodeAPIHandler) Update(id string, resource rest.Resource) (rest.Resourc
 }
 
 // RegisterNodeAPI registers the node API
-func RegisterNodeAPI(apiServer *api.Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*NodeAPIHandler, error) {
+func RegisterNodeAPI(apiServer *Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*NodeAPIHandler, error) {
 	nodeAPIHandler := &NodeAPIHandler{
 		g: g,
 	}

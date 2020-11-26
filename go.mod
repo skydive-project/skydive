@@ -28,7 +28,6 @@ require (
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.3.2
 	github.com/golangci/golangci-lint v1.18.0
-	github.com/gomatic/funcmap v0.0.0-20190110133044-62047470c142 // indirect
 	github.com/gomatic/renderizer v1.0.1
 	github.com/google/gopacket v1.1.17
 	github.com/gophercloud/gophercloud v0.13.0

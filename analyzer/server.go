@@ -36,6 +36,7 @@ import (
 	"github.com/skydive-project/skydive/flow/server"
 	"github.com/skydive-project/skydive/flow/storage"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
+	gapi "github.com/skydive-project/skydive/graffiti/api/server"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -333,7 +334,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	s.piClient = packetinjector.NewOnDemandInjectionClient(g, piAPIHandler, hub.PodServer(), hub.SubscriberServer(), etcdClient)
 
-	_, err = api.RegisterNodeAPI(apiServer, g, apiAuthBackend)
+	_, err = gapi.RegisterNodeAPI(apiServer, g, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +344,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	_, err = api.RegisterEdgeAPI(apiServer, g, apiAuthBackend)
+	_, err = gapi.RegisterEdgeAPI(apiServer, g, apiAuthBackend)
 	if err != nil {
 		return nil, err
 	}
