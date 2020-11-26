@@ -272,5 +272,5 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 
 // Register registers graph metadata decoders
 func Register() {
-	graph.NodeMetadataDecoders["Lxd"] = MetadataDecoder
+	graph.NodeMetadataDecoders["LXD"] = MetadataDecoder
 }
