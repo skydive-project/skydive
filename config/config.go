@@ -211,6 +211,8 @@ func init() {
 	cfg.SetDefault("storage.orientdb.username", "root")              // defined for backward compatibility and to set defaults
 	cfg.SetDefault("storage.orientdb.password", "root")              // defined for backward compatibility and to set defaults
 
+	cfg.SetDefault("tls.require_client_cert", false)
+
 	cfg.SetDefault("ui", map[string]interface{}{})
 
 	replacer := strings.NewReplacer(".", "_", "-", "_")

@@ -58,7 +58,7 @@ func SetupTLSServerConfig(certPEM string, keyPEM string) (*tls.Config, error) {
 	}
 
 	cfgTLS.MinVersion = tls.VersionTLS12
-	cfgTLS.ClientAuth = tls.VerifyClientCertIfGiven //tls.NoClientCert // tls.RequireAndVerifyClientCert
+	cfgTLS.ClientAuth = tls.VerifyClientCertIfGiven
 	cfgTLS.CurvePreferences = []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256}
 	cfgTLS.PreferServerCipherSuites = true
 	cfgTLS.CipherSuites = []uint16{
