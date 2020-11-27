@@ -17,11 +17,12 @@
 
 class Alert(object):
     """
-        Definition of a Skydive Alert.
+    Definition of a Skydive Alert.
     """
 
-    def __init__(self, uuid,  action, expression, trigger="graph",
-                 name="", description=""):
+    def __init__(
+        self, uuid, action, expression, trigger="graph", name="", description=""
+    ):
         self.uuid = uuid
         self.name = name
         self.description = description
@@ -44,7 +45,11 @@ class Alert(object):
 
     @classmethod
     def from_object(self, obj):
-        return self(obj["UUID"], obj["Action"], obj["Trigger"],
-                    obj["Expression"],
-                    name=obj.get("Name"),
-                    description=obj.get("Description"))
+        return self(
+            obj["UUID"],
+            obj["Action"],
+            obj["Trigger"],
+            obj["Expression"],
+            name=obj.get("Name"),
+            description=obj.get("Description"),
+        )

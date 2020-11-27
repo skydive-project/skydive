@@ -20,6 +20,7 @@ except ImportError:
     from cookielib import CookieJar
 
 import ssl
+
 try:
     import urllib.request as request
 except ImportError:
@@ -30,23 +31,37 @@ try:
 except ImportError:
     import urllib as urlencoder
 
+from skydive.tls import create_ssl_context
+
 
 class Authenticate:
-
-    def __init__(self, endpoint, scheme="http",
-                 username="", password="", cookies={},
-                 insecure=False, debug=0):
+    def __init__(
+        self,
+        endpoint,
+        scheme="http",
+        username="",
+        password="",
+        cookies={},
+        insecure=False,
+        debug=0,
+        cafile="",
+        certfile="",
+        keyfile="",
+    ):
         self.endpoint = endpoint
         self.scheme = scheme
         self.username = username
         self.password = password
         self.cookies = cookies
         self.insecure = insecure
+        self.cafile = cafile
+        self.certfile = certfile
+        self.keyfile = keyfile
         self.debug = debug
 
         self.cookie_jar = CookieJar()
         self.authenticated = False
-        self.authtok = ""
+        self.token = ""
 
     def login(self):
         handlers = []
@@ -57,12 +72,10 @@ class Authenticate:
         data = {"username": self.username, "password": self.password}
 
         if self.scheme == "https":
-            if self.insecure:
-                context = ssl._create_unverified_context()
-            else:
-                context = ssl.create_default_context()
-            handlers.append(request.HTTPSHandler(debuglevel=self.debug,
-                                                 context=context))
+            context = create_ssl_context(insecure, cafile, certfile, keyfile)
+            handlers.append(
+                request.HTTPSHandler(debuglevel=self.debug, context=context)
+            )
 
         opener = request.build_opener(*handlers)
         for k, v in self.cookies.items():
@@ -72,12 +85,12 @@ class Authenticate:
         opener.open(req)
 
         for cookie in self.cookie_jar:
-            if cookie.name == "authtok":
-                self.authtok = cookie.value
+            if cookie.name == "authtoken":
+                self.token = cookie.value
                 self.authenticated = True
 
         return self.authenticated
 
     def logout(self):
         self.authenticated = False
-        self.authtok = ""
+        self.token = ""

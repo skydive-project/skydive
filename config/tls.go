@@ -54,6 +54,11 @@ func GetTLSServerConfig(setupRootCA bool) (*tls.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if GetBool("tls.require_client_cert") {
+		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+	}
+
 	if setupRootCA {
 		rootCaPEM := GetString("tls.ca_cert")
 		tlsConfig.ClientCAs, err = gtls.SetupTLSLoadCA(rootCaPEM)

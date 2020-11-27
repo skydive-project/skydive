@@ -20,13 +20,14 @@ except ImportError:
     import trollius as asyncio
 import functools
 import json
+
 try:
     import http.client as httplib
 except ImportError:
     import httplib
 import logging
-import ssl
 import uuid
+
 try:
     from urllib.parse import urlparse
 except ImportError:
@@ -38,6 +39,7 @@ from autobahn.asyncio.websocket import WebSocketClientFactory
 
 from skydive.auth import Authenticate
 from skydive.encoder import JSONEncoder
+from skydive.tls import create_ssl_context
 
 
 LOG = logging.getLogger(__name__)
@@ -54,7 +56,6 @@ EdgeAddedMsgType = "EdgeAdded"
 
 
 class WSMessage(object):
-
     def __init__(self, ns, type, obj):
         self.uuid = uuid.uuid4().hex
         self.ns = ns
@@ -68,7 +69,7 @@ class WSMessage(object):
             "Namespace": self.ns,
             "Type": self.type,
             "Obj": self.obj,
-            "Status": self.status
+            "Status": self.status,
         }
 
     def to_json(self):
@@ -76,40 +77,36 @@ class WSMessage(object):
 
 
 class SyncRequestMsg:
-
     def __init__(self, filter):
         self.filter = filter
 
     def repr_json(self):
-        return {
-            "GremlinFilter": self.filter
-        }
+        return {"GremlinFilter": self.filter}
 
     def to_json(self):
         return json.dumps(self, cls=JSONEncoder)
 
 
 class WSClientDefaultProtocol(WebSocketClientProtocol):
-
     def debug_send(self, func, arg):
         LOG.debug("Running func %s", func.__name__)
         func(arg)
 
     def sendWSMessage(self, msg):
         self.factory.client.loop.call_soon(
-            functools.partial(self.debug_send, self.sendMessage,
-                              msg.to_json().encode()))
+            functools.partial(self.debug_send, self.sendMessage, msg.to_json().encode())
+        )
 
     def stop(self):
         self.factory.client.loop.stop()
 
     def stop_when_complete(self):
         self.factory.client.loop.call_soon(
-            functools.partial(self.factory.client.loop.stop))
+            functools.partial(self.factory.client.loop.stop)
+        )
 
 
 class WSClientDebugProtocol(WSClientDefaultProtocol):
-
     def onConnect(self, response):
         LOG.debug("Connected: %s", response.peer)
 
@@ -117,15 +114,15 @@ class WSClientDebugProtocol(WSClientDefaultProtocol):
         if isBinary:
             LOG.debug("Binary message received: %d bytes", len(payload))
         else:
-            LOG.debug("Text message received: %s", payload.decode('utf8'))
+            LOG.debug("Text message received: %s", payload.decode("utf8"))
 
     def onOpen(self):
         LOG.debug("WebSocket connection opened.")
 
         if self.factory.client.sync:
             msg = WSMessage(
-                "Graph", SyncRequestMsgType,
-                SyncRequestMsg(self.factory.client.filter))
+                "Graph", SyncRequestMsgType, SyncRequestMsg(self.factory.client.filter)
+            )
             self.sendWSMessage(msg)
 
     def onClose(self, wasClean, code, reason):
@@ -137,13 +134,24 @@ class WSClientDebugProtocol(WSClientDefaultProtocol):
 
 
 class WSClient(WebSocketClientProtocol):
-
-    def __init__(self, host_id, endpoint,
-                 protocol=WSClientDefaultProtocol,
-                 username="", password="", cookie=None,
-                 sync="", filter="", persistent=True,
-                 insecure=False, type="skydive-python-client",
-                 **kwargs):
+    def __init__(
+        self,
+        host_id,
+        endpoint,
+        protocol=WSClientDefaultProtocol,
+        username="",
+        password="",
+        cookie=None,
+        sync="",
+        filter="",
+        persistent=True,
+        insecure=False,
+        type="skydive-python-client",
+        cafile="",
+        certfile="",
+        keyfile="",
+        **kwargs
+    ):
         super(WSClient, self).__init__()
         self.host_id = host_id
         self.endpoint = endpoint
@@ -158,25 +166,36 @@ class WSClient(WebSocketClientProtocol):
             for k, v in cookie.items():
                 self.cookies.append("{}={}".format(k, v))
         else:
-            self.cookies = [cookie, ]
+            self.cookies = [
+                cookie,
+            ]
         self.protocol = protocol
         self.type = type
         self.filter = filter
         self.persistent = persistent
         self.sync = sync
         self.insecure = insecure
+        self.ssl_context = None
         self.kwargs = kwargs
 
         self.url = urlparse(self.endpoint)
 
         scheme = "http"
         if self.url.scheme == "wss":
-            scheme = "http"
+            scheme = "https"
+            self.ssl_context = create_ssl_context(insecure, cafile, certfile, keyfile)
 
         self.auth = Authenticate(
             "%s:%s" % (self.url.hostname, self.url.port),
-            scheme=scheme, username=username, password=password,
-            insecure=insecure)
+            scheme=scheme,
+            username=username,
+            password=password,
+            insecure=insecure,
+            cafile=cafile,
+            certfile=certfile,
+            keyfile=keyfile,
+        )
+
         # We MUST initialize the loop here as the WebSocketClientFactory
         # needs it on init
         try:
@@ -200,33 +219,28 @@ class WSClient(WebSocketClientProtocol):
 
         if self.username:
             if self.auth.login():
-                cookie = 'authtok={}'.format(self.auth.authtok)
+                cookie = "authtoken={}".format(self.auth.token)
                 if self.cookies:
                     self.cookies.append(cookie)
                 else:
-                    self.cookies = [cookie, ]
+                    self.cookies = [
+                        cookie,
+                    ]
 
         if self.filter:
             factory.headers["X-Gremlin-Filter"] = self.filter
 
         if self.cookies:
-            factory.headers['Cookie'] = ';'.join(self.cookies)
+            factory.headers["Cookie"] = ";".join(self.cookies)
 
-        context = None
-        if self.url.scheme == "wss":
-            if self.insecure:
-                context = ssl._create_unverified_context()
-            else:
-                context = ssl.create_default_context()
-
-        coro = self.loop.create_connection(factory,
-                                           self.url.hostname, self.url.port,
-                                           ssl=context)
+        coro = self.loop.create_connection(
+            factory, self.url.hostname, self.url.port, ssl=self.ssl_context
+        )
         (transport, protocol) = self.loop.run_until_complete(coro)
-        LOG.debug('transport, protocol: %r, %r', transport, protocol)
+        LOG.debug("transport, protocol: %r, %r", transport, protocol)
 
     def login(self, host_spec="", username="", password=""):
-        """ Authenticate with infrastructure via the Skydive analyzer
+        """Authenticate with infrastructure via the Skydive analyzer
 
         This method will also set the authentication cookie to be used in
         the future requests
@@ -242,7 +256,7 @@ class WSClient(WebSocketClientProtocol):
         warnings.warn(
             "shouldn't use this function anymore ! use connect which handles"
             "handles authentication directly.",
-            DeprecationWarning
+            DeprecationWarning,
         )
 
         scheme = "http"
@@ -256,15 +270,18 @@ class WSClient(WebSocketClientProtocol):
             if self.password:
                 password = self.password
 
-        auth = Authenticate(host_spec, scheme=scheme,
-                            username=username, password=password)
+        auth = Authenticate(
+            host_spec, scheme=scheme, username=username, password=password
+        )
         try:
             auth.login()
-            cookie = 'authtok={}'.format(auth.authtok)
+            cookie = "authtoken={}".format(auth.token)
             if self.cookies:
                 self.cookies.append(cookie)
             else:
-                self.cookies = [cookie, ]
+                self.cookies = [
+                    cookie,
+                ]
             return True
         except Exception:
             return False

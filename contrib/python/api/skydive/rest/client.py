@@ -15,7 +15,7 @@
 #
 
 import json
-import ssl
+
 try:
     import urllib.request as request
 except ImportError:
@@ -31,6 +31,7 @@ from skydive.rules import NodeRule, EdgeRule
 from skydive.alerts import Alert
 from skydive.captures import Capture
 from skydive.packet_injector import PacketInjection
+from skydive.tls import create_ssl_context
 
 
 class BadRequest(Exception):
@@ -40,19 +41,41 @@ class BadRequest(Exception):
 class RESTClient:
     INJECTION_PATH = "/api/injectpacket"
 
-    def __init__(self, endpoint, scheme="http",
-                 username="", password="", cookies={},
-                 insecure=False, debug=0):
+    def __init__(
+        self,
+        endpoint,
+        scheme="http",
+        username="",
+        password="",
+        cookies={},
+        insecure=False,
+        debug=0,
+        cafile="",
+        certfile="",
+        keyfile="",
+    ):
         self.endpoint = endpoint
         self.scheme = scheme
         self.username = username
         self.password = password
         self.insecure = insecure
+        self.cafile = cafile
+        self.certfile = certfile
+        self.keyfile = keyfile
         self.debug = debug
         self.cookies = cookies
 
-        self.auth = Authenticate(endpoint, scheme, username,
-                                 password, cookies, insecure)
+        self.auth = Authenticate(
+            endpoint,
+            scheme,
+            username,
+            password,
+            cookies,
+            insecure,
+            cafile=cafile,
+            certfile=certfile,
+            keyfile=keyfile,
+        )
 
     def request(self, path, method="GET", data=None):
         if self.username and not self.auth.authenticated:
@@ -64,12 +87,13 @@ class RESTClient:
         handlers.append(request.HTTPCookieProcessor(self.auth.cookie_jar))
 
         if self.scheme == "https":
-            if self.insecure:
-                context = ssl._create_unverified_context()
-            else:
-                context = ssl.create_default_context()
-            handlers.append(request.HTTPSHandler(debuglevel=self.debug,
-                                                 context=context))
+            context = create_ssl_context(
+                self.insecure, self.cafile, self.certfile, self.keyfile
+            )
+
+            handlers.append(
+                request.HTTPSHandler(debuglevel=self.debug, context=context)
+            )
 
         if data is not None:
             encoded_data = data.encode()
@@ -80,13 +104,8 @@ class RESTClient:
         for k, v in self.cookies.items():
             opener.append = (k, v)
 
-        headers = {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-        }
-        req = request.Request(url,
-                              data=encoded_data,
-                              headers=headers)
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+        req = request.Request(url, data=encoded_data, headers=headers)
         req.get_method = lambda: method
 
         try:
@@ -108,9 +127,7 @@ class RESTClient:
         return data
 
     def lookup(self, gremlin, klass=None):
-        data = json.dumps(
-            {"GremlinQuery": gremlin}
-        )
+        data = json.dumps({"GremlinQuery": gremlin})
 
         objs = self.request("/api/topology", method="POST", data=data)
 
@@ -124,13 +141,25 @@ class RESTClient:
     def lookup_edges(self, gremlin):
         return self.lookup(gremlin, Edge)
 
-    def capture_create(self, query, name="", description="",
-                       extra_tcp_metric=False, ip_defrag=False,
-                       reassemble_tcp=False, layer_key_mode="L2",
-                       bpf_filter="", capture_type="", port=0,
-                       raw_pkt_limit=0, header_size=0, target="",
-                       target_type="", polling_interval=10,
-                       sampling_rate=1):
+    def capture_create(
+        self,
+        query,
+        name="",
+        description="",
+        extra_tcp_metric=False,
+        ip_defrag=False,
+        reassemble_tcp=False,
+        layer_key_mode="L2",
+        bpf_filter="",
+        capture_type="",
+        port=0,
+        raw_pkt_limit=0,
+        header_size=0,
+        target="",
+        target_type="",
+        polling_interval=10,
+        sampling_rate=1,
+    ):
         data = {
             "GremlinQuery": query,
             "LayerKeyMode": layer_key_mode,
@@ -176,11 +205,7 @@ class RESTClient:
 
     def alert_create(self, action, expression, trigger="graph"):
         data = json.dumps(
-            {
-                "Action": action,
-                "Expression": expression,
-                "Trigger": trigger
-            }
+            {"Action": action, "Expression": expression, "Trigger": trigger}
         )
         a = self.request("/api/alert", method="POST", data=data)
         return Alert.from_object(a)
@@ -194,13 +219,7 @@ class RESTClient:
         return self.request(path, method="DELETE")
 
     def noderule_create(self, action, metadata=None, query=""):
-        data = json.dumps(
-            {
-                "Action": action,
-                "Metadata": metadata,
-                "Query": query
-            }
-        )
+        data = json.dumps({"Action": action, "Metadata": metadata, "Query": query})
         r = self.request("/api/noderule", method="POST", data=data)
         return NodeRule.from_object(r)
 
@@ -213,13 +232,7 @@ class RESTClient:
         return self.request(path, method="DELETE")
 
     def edgerule_create(self, src, dst, metadata):
-        data = json.dumps(
-            {
-                "Src": src,
-                "Dst": dst,
-                "Metadata": metadata
-            }
-        )
+        data = json.dumps({"Src": src, "Dst": dst, "Metadata": metadata})
         r = self.request("/api/edgerule", method="POST", data=data)
         return EdgeRule.from_object(r)
 
@@ -232,7 +245,7 @@ class RESTClient:
         self.request(path, method="DELETE")
 
     def node_create(self, node_id=None, host=None, metadata=None):
-        now = int(time()*1000)
+        now = int(time() * 1000)
         if not node_id:
             node_id = str(uuid4())
 
@@ -246,7 +259,7 @@ class RESTClient:
                 "UpdatedAt": now,
                 "Host": host,
                 "Metadata": metadata,
-                "Revision": 1
+                "Revision": 1,
             }
         )
         r = self.request("/api/node", method="POST", data=data)
@@ -266,9 +279,8 @@ class RESTClient:
         path = "/api/node/%s" % node_id
         return self.request(path, method="DELETE")
 
-    def edge_create(self, parent_id, child_id, edge_id=None, host=None,
-                    metadata=None):
-        now = int(time()*1000)
+    def edge_create(self, parent_id, child_id, edge_id=None, host=None, metadata=None):
+        now = int(time() * 1000)
         if not edge_id:
             edge_id = str(uuid4())
 
@@ -283,7 +295,7 @@ class RESTClient:
                 "Host": host,
                 "Parent": parent_id,
                 "Child": child_id,
-                "Metadata": metadata
+                "Metadata": metadata,
             }
         )
         r = self.request("/api/edge", method="POST", data=data)
@@ -303,35 +315,50 @@ class RESTClient:
         path = "/api/edge/%s" % edge_id
         self.request(path, method="DELETE")
 
-    def injection_create(self, src_query="", dst_query="", type="icmp4",
-                         payload="", interval=1000, src_ip="",
-                         dst_ip="", src_mac="", dst_mac="",
-                         count=1, icmp_id=0, src_port=0, dst_port=0,
-                         increment=False, ttl=64):
+    def injection_create(
+        self,
+        src_query="",
+        dst_query="",
+        type="icmp4",
+        payload="",
+        interval=1000,
+        src_ip="",
+        dst_ip="",
+        src_mac="",
+        dst_mac="",
+        count=1,
+        icmp_id=0,
+        src_port=0,
+        dst_port=0,
+        increment=False,
+        ttl=64,
+    ):
 
-        data = json.dumps({
-            "Src": src_query,
-            "Dst": dst_query,
-            "SrcPort": src_port,
-            "DstPort": dst_port,
-            "SrcIP": src_ip,
-            "DstIP": dst_ip,
-            "SrcMAC": src_mac,
-            "DstMAC": dst_mac,
-            "Type": type,
-            "Count": count,
-            "ICMPID": icmp_id,
-            "Interval": interval,
-            "Payload": payload,
-            "Increment": increment,
-            "TTL": ttl
-        })
+        data = json.dumps(
+            {
+                "Src": src_query,
+                "Dst": dst_query,
+                "SrcPort": src_port,
+                "DstPort": dst_port,
+                "SrcIP": src_ip,
+                "DstIP": dst_ip,
+                "SrcMAC": src_mac,
+                "DstMAC": dst_mac,
+                "Type": type,
+                "Count": count,
+                "ICMPID": icmp_id,
+                "Interval": interval,
+                "Payload": payload,
+                "Increment": increment,
+                "TTL": ttl,
+            }
+        )
 
         r = self.request(self.INJECTION_PATH, method="POST", data=data)
         return PacketInjection.from_object(r)
 
     def injection_delete(self, injection_id):
-        path = self.INJECTION_PATH+"/"+injection_id
+        path = self.INJECTION_PATH + "/" + injection_id
         return self.request(path, method="DELETE")
 
     def injection_list(self):

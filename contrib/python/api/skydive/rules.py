@@ -17,11 +17,10 @@
 
 class NodeRule(object):
     """
-        Definition of a Skydive Node rule.
+    Definition of a Skydive Node rule.
     """
 
-    def __init__(self, uuid, action, metadata, name="",
-                 description="", query=""):
+    def __init__(self, uuid, action, metadata, name="", description="", query=""):
         self.uuid = uuid
         self.name = name
         self.description = description
@@ -45,15 +44,19 @@ class NodeRule(object):
 
     @classmethod
     def from_object(self, obj):
-        return self(obj["UUID"], obj["Action"], obj["Metadata"],
-                    name=obj.get("Name"),
-                    description=obj.get("Description"),
-                    query=obj.get("Query"))
+        return self(
+            obj["UUID"],
+            obj["Action"],
+            obj["Metadata"],
+            name=obj.get("Name"),
+            description=obj.get("Description"),
+            query=obj.get("Query"),
+        )
 
 
 class EdgeRule(object):
     """
-        Definition of a Skydive Edge rule.
+    Definition of a Skydive Edge rule.
     """
 
     def __init__(self, uuid, src, dst, metadata, name="", description=""):
@@ -79,6 +82,11 @@ class EdgeRule(object):
 
     @classmethod
     def from_object(self, obj):
-        return self(obj["UUID"], obj["Src"], obj["Dst"], obj["Metadata"],
-                    name=obj.get("Name"),
-                    description=obj.get("Description"))
+        return self(
+            obj["UUID"],
+            obj["Src"],
+            obj["Dst"],
+            obj["Metadata"],
+            name=obj.get("Name"),
+            description=obj.get("Description"),
+        )
