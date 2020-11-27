@@ -139,7 +139,7 @@ var routes = [
     component: {
       template: '<div></div>',
       created: function() {
-        setCookie("authtok", "", -1);
+        setCookie("authtoken", "", -1);
         setCookie("permissions", "", -1);
         websocket.disconnect();
         this.$store.commit('logout');
