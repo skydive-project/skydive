@@ -64,6 +64,20 @@ func metadataToOrientDBSetString(m Metadata) string {
 	return ""
 }
 
+func elementToOrientDBSelectString(e ElementMatcher) string {
+	if e == nil {
+		return ""
+	}
+
+	var filter *filters.Filter
+	filter, err := e.Filter()
+	if err != nil {
+		return ""
+	}
+
+	return orientdb.FilterToExpression(filter, func(k string) string { return k })
+}
+
 func metadataToOrientDBSelectString(m ElementMatcher) string {
 	if m == nil {
 		return ""
@@ -297,8 +311,11 @@ func (o *OrientDBBackend) MetadataUpdated(i interface{}) error {
 }
 
 // GetNodes returns a list of nodes within time slice, matching metadata
-func (o *OrientDBBackend) GetNodes(t Context, m ElementMatcher) (nodes []*Node) {
+func (o *OrientDBBackend) GetNodes(t Context, m ElementMatcher, e ElementMatcher) (nodes []*Node) {
 	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
+	if elementQuery := elementToOrientDBSelectString(e); elementQuery != "" {
+		query += " AND " + elementQuery
+	}
 	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
 		query += " AND " + metadataQuery
 	}
@@ -307,8 +324,11 @@ func (o *OrientDBBackend) GetNodes(t Context, m ElementMatcher) (nodes []*Node) 
 }
 
 // GetEdges returns a list of edges within time slice, matching metadata
-func (o *OrientDBBackend) GetEdges(t Context, m ElementMatcher) (edges []*Edge) {
+func (o *OrientDBBackend) GetEdges(t Context, m ElementMatcher, e ElementMatcher) (edges []*Edge) {
 	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
+	if elementQuery := elementToOrientDBSelectString(e); elementQuery != "" {
+		query += " AND " + elementQuery
+	}
 	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
 		query += " AND " + metadataQuery
 	}
@@ -328,6 +348,26 @@ func (o *OrientDBBackend) Start() error {
 
 // Stop backend
 func (o *OrientDBBackend) Stop() {
+}
+
+// FlushElements deletes a set of nodes and edges
+func (o *OrientDBBackend) FlushElements(e ElementMatcher) error {
+	o.logger.Info("Flush graph elements")
+
+	now := TimeUTC().UnixMilli()
+
+	elementQuery := elementToOrientDBSelectString(e)
+	query := fmt.Sprintf("UPDATE Node SET DeletedAt = %d, ArchivedAt = %d WHERE DeletedAt IS NULL AND %s", now, now, elementQuery)
+	if _, err := o.client.SQL(query); err != nil {
+		return fmt.Errorf("Error while flushing graph: %s", err)
+	}
+
+	query = fmt.Sprintf("UPDATE Link SET DeletedAt = %d, ArchivedAt = %d WHERE DeletedAt IS NULL AND %s", now, now, elementQuery)
+	if _, err := o.client.SQL(query); err != nil {
+		return fmt.Errorf("Error while flushing graph: %s", err)
+	}
+
+	return nil
 }
 
 // OnStarted implements the client interface

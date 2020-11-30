@@ -114,8 +114,8 @@ type Backend interface {
 
 	MetadataUpdated(e interface{}) error
 
-	GetNodes(t Context, m ElementMatcher) []*Node
-	GetEdges(t Context, m ElementMatcher) []*Edge
+	GetNodes(t Context, m ElementMatcher, e ElementMatcher) []*Node
+	GetEdges(t Context, m ElementMatcher, e ElementMatcher) []*Edge
 
 	IsHistorySupported() bool
 }
@@ -129,6 +129,7 @@ type PersistentBackend interface {
 	Backend
 
 	AddListener(listener PersistentBackendListener)
+	FlushElements(m ElementMatcher) error
 
 	Start() error
 	Stop()
@@ -897,7 +898,7 @@ func getNodeMinDistance(nodesMap map[Identifier]*Node, distance map[Identifier]u
 
 // GetNodesMap returns a map of nodes within a time slice
 func (g *Graph) GetNodesMap(t Context) map[Identifier]*Node {
-	nodes := g.backend.GetNodes(t, nil)
+	nodes := g.backend.GetNodes(t, nil, nil)
 	nodesMap := make(map[Identifier]*Node, len(nodes))
 	for _, n := range nodes {
 		nodesMap[n.ID] = n
@@ -1276,12 +1277,12 @@ func (g *Graph) DelNodes(m ElementMatcher) error {
 
 // GetNodes returns a list of nodes
 func (g *Graph) GetNodes(m ElementMatcher) []*Node {
-	return g.backend.GetNodes(g.context, m)
+	return g.backend.GetNodes(g.context, m, nil)
 }
 
 // GetEdges returns a list of edges
 func (g *Graph) GetEdges(m ElementMatcher) []*Edge {
-	return g.backend.GetEdges(g.context, m)
+	return g.backend.GetEdges(g.context, m, nil)
 }
 
 // GetEdgeNodes returns a list of nodes of an edge

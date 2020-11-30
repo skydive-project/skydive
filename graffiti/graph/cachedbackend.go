@@ -22,6 +22,9 @@ import (
 	"sync/atomic"
 
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
+	"github.com/skydive-project/skydive/graffiti/filters"
+	"github.com/skydive-project/skydive/graffiti/logging"
+	"github.com/skydive-project/skydive/graffiti/service"
 )
 
 // Define the running cache mode, memory and/or persistent
@@ -37,6 +40,7 @@ var (
 
 // CachedBackend describes a cache mechanism in memory and/or persistent database
 type CachedBackend struct {
+	serviceType    service.Type
 	memory         *MemoryBackend
 	persistent     PersistentBackend
 	cacheMode      atomic.Value
@@ -178,24 +182,24 @@ func (c *CachedBackend) MetadataUpdated(i interface{}) error {
 }
 
 // GetNodes returns a list of nodes with a time slice, matching metadata
-func (c *CachedBackend) GetNodes(t Context, m ElementMatcher) []*Node {
+func (c *CachedBackend) GetNodes(t Context, m ElementMatcher, e ElementMatcher) []*Node {
 	mode := c.cacheMode.Load()
 
 	if t.TimeSlice == nil || mode == CacheOnlyMode || c.persistent == nil {
-		return c.memory.GetNodes(t, m)
+		return c.memory.GetNodes(t, m, e)
 	}
 
-	return c.persistent.GetNodes(t, m)
+	return c.persistent.GetNodes(t, m, e)
 }
 
 // GetEdges returns a list of edges with a time slice, matching metadata
-func (c *CachedBackend) GetEdges(t Context, m ElementMatcher) []*Edge {
+func (c *CachedBackend) GetEdges(t Context, m ElementMatcher, e ElementMatcher) []*Edge {
 	mode := c.cacheMode.Load()
 
 	if t.TimeSlice == nil || mode == CacheOnlyMode || c.persistent == nil {
-		return c.memory.GetEdges(t, m)
+		return c.memory.GetEdges(t, m, e)
 	}
-	return c.persistent.GetEdges(t, m)
+	return c.persistent.GetEdges(t, m, e)
 }
 
 // IsHistorySupported returns whether the persistent backend supports history
@@ -206,13 +210,23 @@ func (c *CachedBackend) IsHistorySupported() bool {
 // OnStarted implements PersistentBackendListener interface
 func (c *CachedBackend) OnStarted() {
 	if c.masterElection.IsMaster() {
+		regexFilter, _ := filters.NewRegexFilter("Origin", string(c.serviceType)+"\\..*")
+		originFilter := &filters.Filter{RegexFilter: regexFilter}
+
+		if err := c.persistent.FlushElements(NewElementFilter(originFilter)); err != nil {
+			logging.GetLogger().Errorf("failed to flush elements: %s", err)
+		}
+
+		elementFilter := NewElementFilter(
+			filters.NewNotFilter(originFilter),
+		)
 
 		// re-insert valid nodes and edges
-		for _, node := range c.persistent.GetNodes(Context{}, nil) {
+		for _, node := range c.persistent.GetNodes(Context{}, nil, elementFilter) {
 			c.memory.NodeAdded(node)
 		}
 
-		for _, edge := range c.persistent.GetEdges(Context{}, nil) {
+		for _, edge := range c.persistent.GetEdges(Context{}, nil, elementFilter) {
 			c.memory.EdgeAdded(edge)
 		}
 	}
@@ -248,13 +262,14 @@ func (c *CachedBackend) AddListener(listener PersistentBackendListener) {
 }
 
 // NewCachedBackend creates new graph cache mechanism
-func NewCachedBackend(persistent PersistentBackend, electionService etcd.MasterElectionService) (*CachedBackend, error) {
+func NewCachedBackend(persistent PersistentBackend, electionService etcd.MasterElectionService, serviceType service.Type) (*CachedBackend, error) {
 	memory, err := NewMemoryBackend()
 	if err != nil {
 		return nil, err
 	}
 
 	sb := &CachedBackend{
+		serviceType:    serviceType,
 		persistent:     persistent,
 		memory:         memory,
 		masterElection: electionService.NewElection("/elections/cachedbackend-persistent"),
