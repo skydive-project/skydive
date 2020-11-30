@@ -126,6 +126,10 @@ func (p *ReplicatorPeer) OnDisconnected(c ws.Speaker) {
 
 	p.endpoint.out.RemoveClient(c)
 	delete(p.endpoint.peerStates, host)
+
+	p.Graph.Lock()
+	graph.DelSubGraphOfOrigin(p.Graph, origin)
+	p.Graph.Unlock()
 }
 
 func (p *ReplicatorPeer) connect(wg *sync.WaitGroup) {
