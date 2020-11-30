@@ -30,6 +30,8 @@ import (
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 )
 
+const apiOrigin = "api"
+
 // NodeResourceHandler aims to creates and manage a new Alert.
 type NodeResourceHandler struct {
 	rest.ResourceHandler
@@ -91,7 +93,7 @@ func (h *NodeAPIHandler) Create(resource rest.Resource, createOpts *rest.CreateO
 		graphNode.UpdatedAt = graphNode.CreatedAt
 	}
 	if graphNode.Origin == "" {
-		graphNode.Origin = h.g.GetOrigin()
+		graphNode.Origin = graph.Origin(h.g.GetHost(), apiOrigin)
 	}
 	if graphNode.Metadata == nil {
 		graphNode.Metadata = graph.Metadata{}
