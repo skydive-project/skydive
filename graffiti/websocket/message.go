@@ -281,7 +281,8 @@ func (a *structSpeakerEventDispatcher) OnDisconnected(c Speaker) {
 
 // OnConnected is implemented here to avoid infinite loop since the default
 // implementation is triggering OnDisconnected too.
-func (a *structSpeakerEventDispatcher) OnConnected(c Speaker) {
+func (a *structSpeakerEventDispatcher) OnConnected(c Speaker) error {
+	return nil
 }
 
 type structSpeakerPoolEventDispatcher struct {
@@ -488,7 +489,8 @@ func (s *StructServer) OnMessage(c Speaker, m Message) {
 }
 
 // OnConnected websocket event.
-func (s *StructServer) OnConnected(c Speaker) {
+func (s *StructServer) OnConnected(c Speaker) error {
+	return nil
 }
 
 // OnDisconnected removes the Speaker from the incomer pool.

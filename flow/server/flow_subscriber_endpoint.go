@@ -79,7 +79,7 @@ func (fs *FlowSubscriberEndpoint) SendStats(stats *flow.Stats) {
 }
 
 // OnConnected Server interface
-func (fs *FlowSubscriberEndpoint) OnConnected(c ws.Speaker) {
+func (fs *FlowSubscriberEndpoint) OnConnected(c ws.Speaker) error {
 	namespaces, ok := c.GetHeaders()["X-Websocket-Namespace"]
 	if !ok {
 		namespaces = []string{flowNS, statsNS}
@@ -96,6 +96,7 @@ func (fs *FlowSubscriberEndpoint) OnConnected(c ws.Speaker) {
 	fs.Unlock()
 
 	logging.GetLogger().Infof("New flow subscriber using namespaces: %v", namespaces)
+	return nil
 }
 
 // OnDisconnected Server interface

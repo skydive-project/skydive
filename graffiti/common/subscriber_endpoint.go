@@ -79,7 +79,7 @@ func (t *SubscriberEndpoint) newSubscriber(host string, gremlinFilter string, lo
 }
 
 // OnConnected called when a subscriber got connected.
-func (t *SubscriberEndpoint) OnConnected(c ws.Speaker) {
+func (t *SubscriberEndpoint) OnConnected(c ws.Speaker) error {
 	gremlinFilter := c.GetHeaders().Get("X-Gremlin-Filter")
 	if gremlinFilter == "" {
 		gremlinFilter = c.GetURL().Query().Get("x-gremlin-filter")
@@ -91,12 +91,14 @@ func (t *SubscriberEndpoint) OnConnected(c ws.Speaker) {
 		subscriber, err := t.newSubscriber(host, gremlinFilter, true)
 		if err != nil {
 			t.logger.Error(err)
-			return
+			return err
 		}
 
 		t.logger.Infof("Client %s subscribed with filter %s during the connection", host, gremlinFilter)
 		t.subscribers[c] = subscriber
 	}
+
+	return nil
 }
 
 // OnDisconnected called when a subscriber got disconnected.

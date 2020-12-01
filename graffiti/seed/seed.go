@@ -54,9 +54,9 @@ type Seed struct {
 }
 
 // OnConnected websocket listener
-func (s *Seed) OnConnected(c ws.Speaker) {
+func (s *Seed) OnConnected(c ws.Speaker) error {
 	s.logger.Infof("connected to %s", c.GetHost())
-	s.subscriber.SendMessage(messages.NewStructMessage(messages.SyncRequestMsgType, messages.SyncRequestMsg{}))
+	return s.subscriber.SendMessage(messages.NewStructMessage(messages.SyncRequestMsgType, messages.SyncRequestMsg{}))
 }
 
 // OnStructMessage callback

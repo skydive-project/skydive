@@ -58,7 +58,7 @@ func (a *MasterElection) SendMessageToMaster(m Message) {
 
 // OnConnected is triggered when a new Speaker get connected. If no master
 // was elected this Speaker will be chosen as master.
-func (a *MasterElection) OnConnected(c Speaker) {
+func (a *MasterElection) OnConnected(c Speaker) error {
 	a.Lock()
 	if a.master == nil {
 		master := c.(*Client)
@@ -66,6 +66,7 @@ func (a *MasterElection) OnConnected(c Speaker) {
 		defer a.notifyNewMaster(master)
 	}
 	a.Unlock()
+	return nil
 }
 
 // OnDisconnected is triggered when a new Speaker get disconnected. If it was
