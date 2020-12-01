@@ -46,5 +46,9 @@ func NewRestClientFromConfig(authOptions *shttp.AuthenticationOpts) (*shttp.Rest
 		return nil, err
 	}
 
-	return shttp.NewRestClient(config.GetURL("http", sa.Addr, sa.Port, "/api/"), authOptions, tlsConfig), nil
+	url, err := config.GetURL("http", sa.Addr, sa.Port, "/api/")
+	if err != nil {
+		return nil, err
+	}
+	return shttp.NewRestClient(url, authOptions, tlsConfig), nil
 }

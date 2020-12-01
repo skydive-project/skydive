@@ -15,25 +15,26 @@
  *
  */
 
-package main
+package client
 
-import (
-	"github.com/skydive-project/skydive/graffiti/cmd"
-	"github.com/skydive-project/skydive/graffiti/cmd/client"
-	"github.com/spf13/cobra"
-)
-
-var rootCmd = &cobra.Command{
-	Use:          "graffiti [sub]",
-	Short:        "Graffiti",
-	SilenceUsage: true,
+// Operation describes a JSONPatch operation
+type Operation struct {
+	Op    string      `json:"op"`
+	Path  string      `json:"path"`
+	Value interface{} `json:"value"`
 }
 
-func main() {
-	client.ClientCmd.PersistentFlags().StringVarP(&client.HubAddress, "hub", "", "127.0.0.1:8082", "hub address")
+// JSONPatch describes a JSON patch
+type JSONPatch []Operation
 
-	rootCmd.AddCommand(cmd.HubCmd)
-	rootCmd.AddCommand(cmd.PodCmd)
-	rootCmd.AddCommand(client.ClientCmd)
-	rootCmd.Execute()
+// NewPatchOperation creates a new JSON patch operation
+func NewPatchOperation(op, path string, value ...interface{}) Operation {
+	patchOperation := Operation{
+		Op:   op,
+		Path: path,
+	}
+	if len(value) > 0 {
+		patchOperation.Value = value[0]
+	}
+	return patchOperation
 }

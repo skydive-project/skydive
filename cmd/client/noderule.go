@@ -22,11 +22,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/skydive-project/skydive/api/client"
 	api "github.com/skydive-project/skydive/api/types"
+	gclient "github.com/skydive-project/skydive/graffiti/cmd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/logging"
-	usertopology "github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/validator"
 
 	"github.com/spf13/cobra"
@@ -35,9 +34,9 @@ import (
 var (
 	name        string
 	description string
+	metadata    string
 	nodeName    string
 	nodeType    string
-	metadata    string
 	query       string
 	action      string
 )
@@ -58,12 +57,7 @@ var NodeRuleCreate = &cobra.Command{
 	SilenceUsage: false,
 
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
-		m, err := usertopology.DefToMetadata(metadata, graph.Metadata{})
+		m, err := gclient.DefToMetadata(metadata, graph.Metadata{})
 		if err != nil {
 			exitOnError(err)
 		}
@@ -89,7 +83,7 @@ var NodeRuleCreate = &cobra.Command{
 			exitOnError(fmt.Errorf("Error while validating node rule: %s", err))
 		}
 
-		if err = client.Create("noderule", &nodeRule, nil); err != nil {
+		if err = CrudClient.Create("noderule", &nodeRule, nil); err != nil {
 			exitOnError(err)
 		}
 
@@ -113,12 +107,7 @@ var NodeRuleGet = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 		var node api.NodeRule
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
-		}
-		if err := client.Get("noderule", args[0], &node); err != nil {
+		if err := CrudClient.Get("noderule", args[0], &node); err != nil {
 			logging.GetLogger().Error(err.Error())
 			os.Exit(1)
 		}
@@ -135,13 +124,7 @@ var NodeRuleList = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 		var nodes map[string]api.NodeRule
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
-		}
-
-		if err := client.List("noderule", &nodes); err != nil {
+		if err := CrudClient.List("noderule", &nodes); err != nil {
 			logging.GetLogger().Error(err.Error())
 			os.Exit(1)
 		}
@@ -164,14 +147,8 @@ var NodeRuleDelete = &cobra.Command{
 	},
 
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
-		}
-
 		for _, id := range args {
-			if err := client.Delete("noderule", id); err != nil {
+			if err := CrudClient.Delete("noderule", id); err != nil {
 				logging.GetLogger().Error(err.Error())
 			}
 		}

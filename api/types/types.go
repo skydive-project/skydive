@@ -289,13 +289,6 @@ func (pi *PacketInjection) Validate() error {
 	return nil
 }
 
-// TopologyParams topology query parameters
-// easyjson:json
-// swagger:model
-type TopologyParams struct {
-	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr" yaml:"GremlinQuery"`
-}
-
 // WorkflowChoice describes one value within a choice
 // easyjson:json
 // swagger:model

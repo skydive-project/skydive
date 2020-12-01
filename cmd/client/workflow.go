@@ -25,7 +25,6 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/validator"
@@ -75,17 +74,12 @@ var WorkflowCreate = &cobra.Command{
 	Long:         "create workflow",
 	SilenceUsage: false,
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
 		workflow, err := loadWorklow(workflowPath)
 		if err != nil {
 			exitOnError(err)
 		}
 
-		if err := client.Create("workflow", &workflow, nil); err != nil {
+		if err := CrudClient.Create("workflow", &workflow, nil); err != nil {
 			exitOnError(err)
 		}
 		printJSON(workflow)
@@ -105,13 +99,8 @@ var WorkflowDelete = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
 		for _, id := range args {
-			if err := client.Delete("workflow", id); err != nil {
+			if err := CrudClient.Delete("workflow", id); err != nil {
 				logging.GetLogger().Error(err)
 			}
 		}
@@ -126,12 +115,7 @@ var WorkflowList = &cobra.Command{
 	SilenceUsage: false,
 	Run: func(cmd *cobra.Command, args []string) {
 		var workflows map[string]types.Workflow
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
-		if err := client.List("workflow", &workflows); err != nil {
+		if err := CrudClient.List("workflow", &workflows); err != nil {
 			exitOnError(err)
 		}
 		printJSON(workflows)
@@ -153,11 +137,6 @@ var WorkflowCall = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		var workflowCall types.WorkflowCall
 		var result interface{}
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
 		params := make([]interface{}, len(args)-1)
 		for i, arg := range args[1:] {
 			params[i] = arg
@@ -171,7 +150,7 @@ var WorkflowCall = &cobra.Command{
 		}
 
 		contentReader := bytes.NewReader(s)
-		resp, err := client.Request("POST", "workflow/"+args[0]+"/call", contentReader, nil)
+		resp, err := CrudClient.Request("POST", "workflow/"+args[0]+"/call", contentReader, nil)
 		if err != nil {
 			exitOnError(err)
 		}

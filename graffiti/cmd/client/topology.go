@@ -25,19 +25,20 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/skydive-project/skydive/config"
+	"github.com/spf13/cobra"
+
 	gcommon "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/messages"
 	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/websocket"
-	"github.com/spf13/cobra"
 )
 
 var (
-	gremlinQuery string
-	outputFormat string
-	filename     string
+	gremlinQuery      string
+	filename          string
+	publisherEndpoint string
 )
 
 // TopologyCmd skydive topology root command
@@ -65,18 +66,13 @@ var TopologyImport = &cobra.Command{
 	Short: "import topology",
 	Long:  "import topology",
 	Run: func(cmd *cobra.Command, args []string) {
-		sa, err := config.GetOneAnalyzerServiceAddress()
+		url, err := shttp.MakeURL("ws", hubService.Addr, hubService.Port, publisherEndpoint, tlsConfig != nil)
 		if err != nil {
 			exitOnError(err)
 		}
-
-		url := config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher")
-		opts := websocket.ClientOpts{AuthOpts: &AuthenticationOpts, Headers: http.Header{}}
+		opts := websocket.ClientOpts{AuthOpts: &AuthenticationOpts, Headers: http.Header{}, TLSConfig: tlsConfig}
 		opts.Headers.Add("X-Persistence-Policy", string(gcommon.Persistent))
-		client, err := config.NewWSClient(service.Type("SkydiveCLI"), url, opts)
-		if err != nil {
-			exitOnError(err)
-		}
+		client := websocket.NewClient(Host, service.Type("CLI"), url, opts)
 
 		if err := client.Connect(); err != nil {
 			exitOnError(err)
@@ -132,6 +128,7 @@ func init() {
 	TopologyCmd.AddCommand(TopologyExport)
 
 	TopologyImport.Flags().StringVarP(&filename, "file", "", "graph.json", "Input file")
+	TopologyImport.Flags().StringVarP(&publisherEndpoint, "endpoint", "", "/ws/publisher", "Publisher WebSocket endpoint")
 	TopologyCmd.AddCommand(TopologyImport)
 
 	TopologyRequest.Flags().StringVarP(&gremlinQuery, "gremlin", "", "G", "Gremlin Query")

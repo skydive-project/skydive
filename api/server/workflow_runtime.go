@@ -25,8 +25,8 @@ import (
 	"github.com/skydive-project/skydive/js"
 
 	"github.com/robertkrimen/otto"
-	"github.com/skydive-project/skydive/api/types"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
+	"github.com/skydive-project/skydive/graffiti/api/types"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 )

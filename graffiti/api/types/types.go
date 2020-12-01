@@ -70,3 +70,10 @@ func (n *Node) GetName() string {
 func (n *Node) Validate() error {
 	return nil
 }
+
+// TopologyParams topology query parameters
+// easyjson:json
+// swagger:model
+type TopologyParams struct {
+	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr" yaml:"GremlinQuery"`
+}

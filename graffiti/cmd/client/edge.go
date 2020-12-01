@@ -22,22 +22,21 @@ import (
 	"os"
 	"time"
 
-	"github.com/skydive-project/skydive/api/client"
-	"github.com/skydive-project/skydive/api/types"
-	api "github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/graffiti/api/client"
+	"github.com/skydive-project/skydive/graffiti/api/types"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
-	usertopology "github.com/skydive-project/skydive/topology/enhancers"
-	"github.com/skydive-project/skydive/validator"
 
 	"github.com/spf13/cobra"
 )
 
 var (
-	edgeType     string
-	parentNodeID string
-	childNodeID  string
+	edgeType           string
+	edgeMetadata       string
+	edgeAddMetadata    []string
+	edgeRemoveMetadata []string
+	parentNodeID       string
+	childNodeID        string
 )
 
 // EdgeCmd skydive edge rule root command
@@ -56,12 +55,7 @@ var EdgeCreate = &cobra.Command{
 	SilenceUsage: false,
 
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
-		m, err := usertopology.DefToMetadata(metadata, graph.Metadata{})
+		m, err := DefToMetadata(edgeMetadata, graph.Metadata{})
 		if err != nil {
 			exitOnError(err)
 		}
@@ -71,22 +65,18 @@ var EdgeCreate = &cobra.Command{
 		}
 
 		var parentNode, childNode graph.Node
-		if err := client.Get("node", parentNodeID, &parentNode); err != nil {
+		if err := CrudClient.Get("node", parentNodeID, &parentNode); err != nil {
 			exitOnError(fmt.Errorf("Could not find parent node: %s", err))
 		}
 
-		if err := client.Get("node", childNodeID, &childNode); err != nil {
+		if err := CrudClient.Get("node", childNodeID, &childNode); err != nil {
 			exitOnError(fmt.Errorf("Could not find child node: %s", err))
 		}
 
-		origin := graph.Origin(host, CLIService)
-		edge := api.Edge(*graph.CreateEdge(graph.GenID(), &parentNode, &childNode, m, graph.Time(time.Now()), host, origin))
+		origin := graph.Origin(Host, CLIService)
+		edge := types.Edge(*graph.CreateEdge(graph.GenID(), &parentNode, &childNode, m, graph.Time(time.Now()), Host, origin))
 
-		if err = validator.Validate("edge", &edge); err != nil {
-			exitOnError(fmt.Errorf("Error while validating edge: %s", err))
-		}
-
-		if err = client.Create("edge", &edge, nil); err != nil {
+		if err = CrudClient.Create("edge", &edge, nil); err != nil {
 			exitOnError(err)
 		}
 
@@ -101,11 +91,7 @@ var EdgeList = &cobra.Command{
 	Long:  "List edges",
 	Run: func(cmd *cobra.Command, args []string) {
 		var edges map[string]types.Edge
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-		if err := client.List("edge", &edges); err != nil {
+		if err := CrudClient.List("edge", &edges); err != nil {
 			exitOnError(err)
 		}
 		printJSON(edges)
@@ -125,12 +111,7 @@ var EdgeGet = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		var edge types.Edge
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
-		if err := client.Get("edge", args[0], &edge); err != nil {
+		if err := CrudClient.Get("edge", args[0], &edge); err != nil {
 			exitOnError(err)
 		}
 		printJSON(&edge)
@@ -149,14 +130,9 @@ var EdgeDelete = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		restClient, err := client.NewRestClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
 		var ids []string
 		if gremlinFlag {
-			queryHelper := client.NewGremlinQueryHelper(restClient)
+			queryHelper := client.NewGremlinQueryHelper(CrudClient.RestClient)
 
 			for _, gremlinQuery := range args {
 				edges, err := queryHelper.GetEdges(gremlinQuery)
@@ -172,9 +148,8 @@ var EdgeDelete = &cobra.Command{
 			ids = args
 		}
 
-		crudClient := http.NewCrudClient(restClient)
 		for _, arg := range ids {
-			if err := crudClient.Delete("edge", arg); err != nil {
+			if err := CrudClient.Delete("edge", arg); err != nil {
 				logging.GetLogger().Error(err)
 			}
 		}
@@ -193,19 +168,14 @@ var EdgeUpdate = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
-		patch, err := createMetadataJSONPatch()
+		patch, err := createMetadataJSONPatch(edgeAddMetadata, edgeRemoveMetadata)
 		if err != nil {
 			exitOnError(err)
 		}
 
 		var result interface{}
 		for _, id := range args {
-			if _, err := client.Update("edge", id, patch, &result); err != nil {
+			if _, err := CrudClient.Update("edge", id, patch, &result); err != nil {
 				exitOnError(err)
 			}
 		}
@@ -219,12 +189,12 @@ var EdgeUpdate = &cobra.Command{
 }
 
 func addCreateEdgeFlags(cmd *cobra.Command) {
-	host, _ = os.Hostname()
+	Host, _ = os.Hostname()
 	cmd.Flags().StringVarP(&edgeType, "edge-type", "", "", "edge type")
 	cmd.Flags().StringVarP(&parentNodeID, "parent", "", "", "parent node identifier")
 	cmd.Flags().StringVarP(&childNodeID, "child", "", "", "child node identifier")
-	cmd.Flags().StringVarP(&metadata, "metadata", "", "", "edge metadata, key value pairs. 'k1=v1, k2=v2'")
-	cmd.Flags().StringVarP(&host, "host", "", host, "host")
+	cmd.Flags().StringVarP(&edgeMetadata, "metadata", "", "", "edge metadata, key value pairs. 'k1=v1, k2=v2'")
+	cmd.Flags().StringVarP(&Host, "host", "", Host, "host")
 }
 
 func init() {
@@ -237,7 +207,7 @@ func init() {
 	EdgeDelete.Flags().BoolVarP(&gremlinFlag, "gremlin", "", false, "use Gremlin expressions instead of a node identifiers")
 	EdgeCmd.AddCommand(EdgeDelete)
 
-	EdgeUpdate.Flags().StringArrayVarP(&addMetadata, "add", "a", nil, "edge metadata to add, key value pair. 'k1=v1'")
-	EdgeUpdate.Flags().StringArrayVarP(&removeMetadata, "remove", "r", nil, "edge metadata keys to remove")
+	EdgeUpdate.Flags().StringArrayVarP(&edgeAddMetadata, "add", "a", nil, "edge metadata to add, key value pair. 'k1=v1'")
+	EdgeUpdate.Flags().StringArrayVarP(&edgeRemoveMetadata, "remove", "r", nil, "edge metadata keys to remove")
 	EdgeCmd.AddCommand(EdgeUpdate)
 }

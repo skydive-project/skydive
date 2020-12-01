@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/graffiti/logging"
 
 	"github.com/spf13/cobra"
@@ -46,18 +45,13 @@ var PcapCmd = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
 		file, err := os.Open(pcapTrace)
 		if err != nil {
 			exitOnError(err)
 		}
 		defer file.Close()
 
-		resp, err := client.Request("POST", "pcap", file, nil)
+		resp, err := CrudClient.Request("POST", "pcap", file, nil)
 		if err != nil {
 			exitOnError(err)
 		}

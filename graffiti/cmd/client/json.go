@@ -21,15 +21,32 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
-	shttp "github.com/skydive-project/skydive/graffiti/http"
+	"github.com/skydive-project/skydive/graffiti/api/client"
 	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
-// AuthenticationOpts Authentication options
-var (
-	AuthenticationOpts shttp.AuthenticationOpts
-)
+func createMetadataJSONPatch(addMetadata, removeMetadata []string) (patch client.JSONPatch, _ error) {
+	for _, add := range addMetadata {
+		split := strings.SplitN(add, "=", 2)
+		if len(split) < 2 {
+			return nil, fmt.Errorf("metadata to add should be of the form k1=v1, got %s", add)
+		}
+
+		var value interface{}
+		if err := json.Unmarshal([]byte(split[1]), &value); err != nil {
+			value = split[1]
+		}
+		patch = append(patch, client.NewPatchOperation("add", "/Metadata/"+strings.Replace(split[0], "/", ".", -1), value))
+	}
+
+	for _, remove := range removeMetadata {
+		patch = append(patch, client.NewPatchOperation("remove", "/Metadata/"+strings.Replace(remove, "/", ".", -1)))
+	}
+
+	return patch, nil
+}
 
 func printJSON(obj interface{}) {
 	s, err := json.MarshalIndent(obj, "", "  ")
