@@ -40,19 +40,20 @@ import (
 )
 
 const (
-	schemaVersion  = "12"
+	schemaVersion  = "13"
 	minimalVersion = "5.5"
 )
 
 // Config describes configuration for elasticsearch
 type Config struct {
-	ElasticHost  string
-	BulkMaxDelay int
-	EntriesLimit int
-	AgeLimit     int
-	IndicesLimit int
-	NoSniffing   bool
-	IndexPrefix  string
+	ElasticHost      string
+	BulkMaxDelay     int
+	TotalFieldsLimit int
+	EntriesLimit     int
+	AgeLimit         int
+	IndicesLimit     int
+	NoSniffing       bool
+	IndexPrefix      string
 }
 
 // ClientInterface describes the mechanism API of ElasticSearch database client
@@ -170,6 +171,13 @@ func (c *Client) createIndices() error {
 		if exists, _ := c.esClient.IndexExists(fullName).Do(context.Background()); !exists {
 			if _, err := c.esClient.CreateIndex(fullName).Do(context.Background()); err != nil {
 				return fmt.Errorf("Unable to create the skydive index: %s", err)
+			}
+
+			if c.Config.TotalFieldsLimit >= 0 {
+				body := fmt.Sprintf(`{"index.mapping.total_fields.limit":%d}`, c.Config.TotalFieldsLimit)
+				if _, err := c.esClient.IndexPutSettings().Index(fullName).BodyString(body).Do(context.Background()); err != nil {
+					return fmt.Errorf("Unable to change settings on index: %s", err)
+				}
 			}
 
 			if index.Mapping != "" {

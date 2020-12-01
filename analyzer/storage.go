@@ -43,6 +43,7 @@ func NewESConfig(name ...string) es.Config {
 
 	cfg.ElasticHost = config.GetString(path + ".host")
 	cfg.BulkMaxDelay = config.GetInt(path + ".bulk_maxdelay")
+	cfg.TotalFieldsLimit = config.GetInt(path + ".total_fields_limit")
 
 	cfg.EntriesLimit = config.GetInt(path + ".index_entries_limit")
 	cfg.AgeLimit = config.GetInt(path + ".index_age_limit")
@@ -62,36 +63,32 @@ func newGraphBackendFromConfig(etcdClient *etcd.Client) (graph.PersistentBackend
 
 	switch driver {
 	case "elasticsearch":
-		cfg := NewESConfig(backend)
-		dynamicTemplates := map[string]interface{}{
-			"extra": map[string]interface{}{
-				"path_match": "*.Extra",
-				"mapping": map[string]interface{}{
-					"type":    "object",
-					"enabled": false,
-					"store":   true,
-					"index":   false,
-				},
-			},
-			"openflow_actions": map[string]interface{}{
-				"path_match": "*.Actions",
-				"mapping": map[string]interface{}{
-					"type":    "object",
-					"enabled": false,
-					"store":   true,
-					"index":   false,
-				},
-			},
-			"openflow_filters": map[string]interface{}{
-				"path_match": "*.Filters",
-				"mapping": map[string]interface{}{
-					"type":    "object",
-					"enabled": false,
-					"store":   true,
-					"index":   false,
-				},
-			},
+		excludeFromIndex := config.GetStringSlice(configPath + ".exclude_from_mapping")
+		useFlattened := config.GetBool(configPath + ".use_flattened")
+
+		var mapping map[string]interface{}
+		if useFlattened {
+			mapping = map[string]interface{}{
+				"type": "flattened",
+			}
+		} else {
+			mapping = map[string]interface{}{
+				"type":    "object",
+				"enabled": false,
+				"store":   true,
+				"index":   false,
+			}
 		}
+
+		dynamicTemplates := make(map[string]interface{})
+		for _, field := range excludeFromIndex {
+			dynamicTemplates[field] = map[string]interface{}{
+				"path_match": field,
+				"mapping":    mapping,
+			}
+		}
+
+		cfg := NewESConfig(backend)
 		return graph.NewElasticSearchBackendFromConfig(cfg, dynamicTemplates, etcdClient, logging.GetLogger())
 	case "memory":
 		// cached memory will be used

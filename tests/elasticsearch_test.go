@@ -93,9 +93,10 @@ func TestRollingSimple(t *testing.T) {
 	}
 
 	cfg := es.Config{
-		ElasticHost:  "localhost:9200",
-		EntriesLimit: 10,
-		IndexPrefix:  "skydive_",
+		ElasticHost:      "localhost:9201",
+		EntriesLimit:     10,
+		IndexPrefix:      "skydive_",
+		TotalFieldsLimit: 1000,
 	}
 
 	client, err := getClient(t, indices, cfg)

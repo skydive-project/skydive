@@ -197,19 +197,34 @@ func init() {
 	cfg.SetDefault("rbac.model.policy_effect", []string{"some(where (p_eft == allow)) && !some(where (p_eft == deny))"})
 	cfg.SetDefault("rbac.model.matchers", []string{"g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act"})
 
-	cfg.SetDefault("storage.elasticsearch.driver", "elasticsearch")  // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.elasticsearch.host", "127.0.0.1:9200")   // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.elasticsearch.bulk_maxdelay", 5)         // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.elasticsearch.index_age_limit", 0)       // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.elasticsearch.index_entries_limit", 0)   // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.elasticsearch.indices_to_keep", 0)       // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.elasticsearch.index_prefix", "skydive_") // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.memory.driver", "memory")                // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.orientdb.driver", "orientdb")            // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.orientdb.addr", "http://localhost:2480") // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.orientdb.database", "Skydive")           // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.orientdb.username", "root")              // defined for backward compatibility and to set defaults
-	cfg.SetDefault("storage.orientdb.password", "root")              // defined for backward compatibility and to set defaults
+	// defined for backward compatibility and to set defaults
+	cfg.SetDefault("storage.elasticsearch.driver", "elasticsearch")
+	cfg.SetDefault("storage.elasticsearch.host", "127.0.0.1:9200")
+	cfg.SetDefault("storage.elasticsearch.bulk_maxdelay", 5)
+	cfg.SetDefault("storage.elasticsearch.total_fields_limit", 1000)
+	cfg.SetDefault("storage.elasticsearch.index_age_limit", 0)
+	cfg.SetDefault("storage.elasticsearch.index_entries_limit", 0)
+	cfg.SetDefault("storage.elasticsearch.indices_to_keep", 0)
+	cfg.SetDefault("storage.elasticsearch.index_prefix", "skydive_")
+	cfg.SetDefault("storage.elasticsearch.use_flattened", true)
+	cfg.SetDefault("storage.elasticsearch.exclude_from_mapping", []string{
+		"Metadata.*.Extra",
+		"Metadata.Docker.Labels",
+		"Metadata.K8s.Labels",
+		"Metadata.Actions",
+		"Metadata.Filters",
+		"Metadata.LXD.Config",
+		"Metadata.LXD.Devices",
+		"Metadata.OVN.ExtID",
+		"Metadata.OVN.Options",
+		"Metadata.OVN.IPv6RAConfigs",
+	})
+	cfg.SetDefault("storage.memory.driver", "memory")
+	cfg.SetDefault("storage.orientdb.driver", "orientdb")
+	cfg.SetDefault("storage.orientdb.addr", "http://localhost:2480")
+	cfg.SetDefault("storage.orientdb.database", "Skydive")
+	cfg.SetDefault("storage.orientdb.username", "root")
+	cfg.SetDefault("storage.orientdb.password", "root")
 
 	cfg.SetDefault("tls.require_client_cert", false)
 
