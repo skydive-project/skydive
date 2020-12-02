@@ -216,7 +216,7 @@ func (c *ResourceCache) OnAdd(obj interface{}) {
 		metadata.SetField(ClusterNameField, c.clusterName)
 	}
 
-	node, err := c.graph.NewNode(id, metadata, "")
+	node, err := c.graph.NewNode(id, metadata)
 	if err != nil {
 		logging.GetLogger().Error(err)
 		return

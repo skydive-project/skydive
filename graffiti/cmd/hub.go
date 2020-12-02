@@ -84,13 +84,14 @@ var HubCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		cached, err := graph.NewCachedBackend(nil, etcdClient)
+		origin := "graffiti-hub"
+		cached, err := graph.NewCachedBackend(nil, etcdClient, origin)
 		if err != nil {
 			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
 
-		g := graph.NewGraph(hostname, cached, "graffiti-hub")
+		g := graph.NewGraph(hostname, cached, origin)
 
 		hubOpts := hub.Opts{
 			Hostname: hostname,

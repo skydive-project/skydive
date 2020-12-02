@@ -80,16 +80,22 @@ func (s *Pool) cloneEventHandlers() (handlers []SpeakerEventHandler) {
 }
 
 // OnConnected forwards the OnConnected event to event listeners of the pool.
-func (s *Pool) OnConnected(c Speaker) {
+func (s *Pool) OnConnected(c Speaker) error {
+	var notified []SpeakerEventHandler
+
 	for _, h := range s.cloneEventHandlers() {
-		h.OnConnected(c)
-		if !c.IsConnected() {
-			break
+		if err := h.OnConnected(c); err != nil {
+			for _, h := range notified {
+				h.OnDisconnected(c)
+			}
+			return err
 		}
+		notified = append(notified, h)
 	}
+	return nil
 }
 
-// OnDisconnected forwards the OnConnected event to event listeners of the pool.
+// OnDisconnected forwards the OnDisconnected event to event listeners of the pool.
 func (s *Pool) OnDisconnected(c Speaker) {
 	s.opts.Logger.Debugf("OnDisconnected %s for pool %s ", c.GetRemoteHost(), s.GetName())
 	for _, h := range s.cloneEventHandlers() {
@@ -97,7 +103,7 @@ func (s *Pool) OnDisconnected(c Speaker) {
 	}
 }
 
-// OnDisconnected forwards the OnConnected event to event listeners of the pool.
+// OnDisconnected forwards the OnDisconnected event to event listeners of the pool.
 func (s *incomerPool) OnDisconnected(c Speaker) {
 	s.Pool.OnDisconnected(c)
 

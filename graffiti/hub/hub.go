@@ -295,6 +295,7 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 
 	repOpts := opts.WebsocketOpts
 	repOpts.AuthBackend = opts.ClusterAuthBackend
+	repOpts.PongListeners = []websocket.PongListener{hub}
 	replicationWSServer := websocket.NewStructServer(websocket.NewServer(httpServer, "/ws/replication", repOpts))
 	replicationEndpoint, err := NewReplicationEndpoint(replicationWSServer, &opts.WebsocketClientOpts, cached, g, opts.Peers, opts.Logger)
 	if err != nil {

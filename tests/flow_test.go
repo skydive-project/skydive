@@ -2148,7 +2148,7 @@ func TestERSpanV1Target(t *testing.T) {
 		},
 
 		captures: []TestCapture{
-			{gremlin: g.G.V().Has("Name", "erspan-vm1-eth0"), target: "169.254.67.2:0", targetType: "erspanv1", bpf: "icmp"},
+			{gremlin: g.G.V().Has("Name", "erspan-vm1-eth0"), target: "169.254.67.2:0", targetType: "erspanv1", bpf: "icmp and ((icmp[icmptype] = icmp-echo) or (icmp[icmptype] = icmp-echoreply))"},
 			{gremlin: g.G.V().Has("Name", "erspan-end-eth0")},
 		},
 

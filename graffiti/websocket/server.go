@@ -172,6 +172,11 @@ func (s *Server) newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRe
 
 	c.State.Store(service.RunningState)
 
+	// notify the pool listeners that the speaker is connected
+	if err := s.OnConnected(pc); err != nil {
+		return nil, err
+	}
+
 	// call pong handlers just after connection to avoid race between cleanup and
 	// insert
 	for _, listener := range s.opts.PongListeners {
@@ -180,9 +185,6 @@ func (s *Server) newIncomingClient(conn *websocket.Conn, r *auth.AuthenticatedRe
 
 	// add the new Speaker to the server pool
 	s.AddClient(pc)
-
-	// notify the pool listeners that the speaker is connected
-	s.OnConnected(pc)
 
 	// send a first ping to help firefox and some other client which wait for a
 	// first ping before doing something

@@ -18,6 +18,7 @@
 package hub
 
 import (
+	"errors"
 	"net/url"
 	"strings"
 	"sync"
@@ -31,6 +32,11 @@ import (
 	"github.com/skydive-project/skydive/graffiti/messages"
 	"github.com/skydive-project/skydive/graffiti/service"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
+)
+
+var (
+	errAlreadyConnected  = errors.New("already connected")
+	errConnectedToItself = errors.New("connected to itself")
 )
 
 // ReplicatorPeer is a remote connection to another Graph server. Only modification
@@ -66,15 +72,14 @@ type ReplicationEndpoint struct {
 
 // OnConnected is called when the peer gets connected then the whole graph
 // is send to initialize it.
-func (p *ReplicatorPeer) OnConnected(c ws.Speaker) {
+func (p *ReplicatorPeer) OnConnected(c ws.Speaker) error {
 	p.endpoint.Lock()
 	defer p.endpoint.Unlock()
 
 	host := c.GetRemoteHost()
 	if c.GetHost() == host {
 		p.endpoint.logger.Debugf("Disconnecting from %s since it's me", p.URL.String())
-		c.Stop()
-		return
+		return errConnectedToItself
 	}
 
 	p.Graph.RLock()
@@ -83,24 +88,26 @@ func (p *ReplicatorPeer) OnConnected(c ws.Speaker) {
 	state, ok := p.endpoint.peerStates[host]
 	if !ok {
 		state = &peerState{}
-		p.endpoint.peerStates[host] = state
 	}
-	state.cnt++
 
 	// disconnect as can be connected to the same host from different addresses.
-	if state.cnt > 1 {
+	if state.cnt > 0 {
 		p.endpoint.logger.Debugf("Disconnecting from %s as already connected through %s", p.URL.String(), c.GetURL().String())
-		c.Stop()
-		return
+		return errAlreadyConnected
 	}
+
+	p.endpoint.peerStates[host] = state
+	state.cnt++
 
 	msg := &messages.SyncMsg{
 		Elements: p.Graph.Elements(),
 	}
 
-	p.wsspeaker.SendMessage(messages.NewStructMessage(messages.SyncMsgType, msg))
+	if err := p.wsspeaker.SendMessage(messages.NewStructMessage(messages.SyncMsgType, msg)); err != nil {
+		return err
+	}
 
-	p.endpoint.out.AddClient(c)
+	return p.endpoint.out.AddClient(c)
 }
 
 // OnDisconnected is called when the peer gets disconnected
@@ -126,6 +133,10 @@ func (p *ReplicatorPeer) OnDisconnected(c ws.Speaker) {
 
 	p.endpoint.out.RemoveClient(c)
 	delete(p.endpoint.peerStates, host)
+
+	p.Graph.Lock()
+	graph.DelSubGraphOfOrigin(p.Graph, origin)
+	p.Graph.Unlock()
 }
 
 func (p *ReplicatorPeer) connect(wg *sync.WaitGroup) {
@@ -309,29 +320,28 @@ func (t *ReplicationEndpoint) GetSpeakers() []ws.Speaker {
 }
 
 // OnConnected is called when an incoming peer got connected.
-func (t *ReplicationEndpoint) OnConnected(c ws.Speaker) {
+func (t *ReplicationEndpoint) OnConnected(c ws.Speaker) error {
 	t.Lock()
 	defer t.Unlock()
 
 	host := c.GetRemoteHost()
 	if host == c.GetHost() {
 		t.logger.Debugf("Disconnect %s since it's me", host)
-		c.Stop()
-		return
+		return errConnectedToItself
 	}
 
 	state, ok := t.peerStates[host]
 	if !ok {
 		state = &peerState{}
-		t.peerStates[host] = state
 	}
-	state.cnt++
 
-	if state.cnt > 1 {
+	if state.cnt > 0 {
 		t.logger.Debugf("Disconnecting %s from %s as already connected", host, c.GetURL())
-		c.Stop()
-		return
+		return errAlreadyConnected
 	}
+
+	t.peerStates[host] = state
+	state.cnt++
 
 	// subscribe to websocket structured messages
 	c.(*ws.StructSpeaker).AddStructMessageHandler(t, []string{messages.Namespace})
@@ -343,7 +353,7 @@ func (t *ReplicationEndpoint) OnConnected(c ws.Speaker) {
 		Elements: t.Graph.Elements(),
 	}
 
-	c.SendMessage(messages.NewStructMessage(messages.SyncMsgType, msg))
+	return c.SendMessage(messages.NewStructMessage(messages.SyncMsgType, msg))
 }
 
 // OnDisconnected is called when an incoming peer got disconnected.

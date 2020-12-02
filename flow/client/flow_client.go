@@ -231,7 +231,7 @@ func NewFlowClient(addr string, port int, wsOpts *ws.ClientOpts) (*FlowClient, e
 }
 
 // OnConnected websocket event handler
-func (p *FlowClientPool) OnConnected(c ws.Speaker) {
+func (p *FlowClientPool) OnConnected(c ws.Speaker) error {
 	p.Lock()
 	defer p.Unlock()
 
@@ -248,10 +248,11 @@ func (p *FlowClientPool) OnConnected(c ws.Speaker) {
 	flowClient, err := NewFlowClient(addr, port, p.wsOpts)
 	if err != nil {
 		logging.GetLogger().Error(err)
-		return
+		return err
 	}
-
 	p.flowClients = append(p.flowClients, flowClient)
+
+	return nil
 }
 
 // OnDisconnected websocket event handler

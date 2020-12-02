@@ -105,6 +105,7 @@ type TimedSearchQuery struct {
 	filters.SearchQuery
 	TimeFilter     *filters.Filter
 	MetadataFilter *filters.Filter
+	ElementFilter  *filters.Filter
 }
 
 // easyjson:json
@@ -341,6 +342,10 @@ func (b *ElasticSearchBackend) Query(typ string, tsq *TimedSearchQuery) (sr *ela
 		fltrs = append(fltrs, f)
 	}
 
+	if ef := es.FormatFilter(tsq.ElementFilter, ""); ef != nil {
+		fltrs = append(fltrs, ef)
+	}
+
 	if mf := es.FormatFilter(tsq.MetadataFilter, "Metadata"); mf != nil {
 		fltrs = append(fltrs, mf)
 	}
@@ -395,14 +400,23 @@ func (b *ElasticSearchBackend) searchEdges(tsq *TimedSearchQuery) (edges []*Edge
 }
 
 // GetEdges returns a list of edges within time slice, matching metadata
-func (b *ElasticSearchBackend) GetEdges(t Context, m ElementMatcher) []*Edge {
-	var filter *filters.Filter
+func (b *ElasticSearchBackend) GetEdges(t Context, m ElementMatcher, e ElementMatcher) []*Edge {
+	var metadataFilter *filters.Filter
 	if m != nil {
 		f, err := m.Filter()
 		if err != nil {
 			return []*Edge{}
 		}
-		filter = f
+		metadataFilter = f
+	}
+
+	var elementFilter *filters.Filter
+	if e != nil {
+		f, err := e.Filter()
+		if err != nil {
+			return []*Edge{}
+		}
+		elementFilter = f
 	}
 
 	var searchQuery filters.SearchQuery
@@ -413,7 +427,8 @@ func (b *ElasticSearchBackend) GetEdges(t Context, m ElementMatcher) []*Edge {
 	edges := b.searchEdges(&TimedSearchQuery{
 		SearchQuery:    searchQuery,
 		TimeFilter:     getTimeFilter(t.TimeSlice),
-		MetadataFilter: filter,
+		MetadataFilter: metadataFilter,
+		ElementFilter:  elementFilter,
 	})
 
 	if t.TimePoint {
@@ -424,7 +439,7 @@ func (b *ElasticSearchBackend) GetEdges(t Context, m ElementMatcher) []*Edge {
 }
 
 // GetNodes returns a list of nodes within time slice, matching metadata
-func (b *ElasticSearchBackend) GetNodes(t Context, m ElementMatcher) []*Node {
+func (b *ElasticSearchBackend) GetNodes(t Context, m ElementMatcher, e ElementMatcher) []*Node {
 	var filter *filters.Filter
 	if m != nil {
 		f, err := m.Filter()
@@ -432,6 +447,15 @@ func (b *ElasticSearchBackend) GetNodes(t Context, m ElementMatcher) []*Node {
 			return []*Node{}
 		}
 		filter = f
+	}
+
+	var elementFilter *filters.Filter
+	if e != nil {
+		f, err := e.Filter()
+		if err != nil {
+			return []*Node{}
+		}
+		elementFilter = f
 	}
 
 	var searchQuery filters.SearchQuery
@@ -443,6 +467,7 @@ func (b *ElasticSearchBackend) GetNodes(t Context, m ElementMatcher) []*Node {
 		SearchQuery:    searchQuery,
 		TimeFilter:     getTimeFilter(t.TimeSlice),
 		MetadataFilter: filter,
+		ElementFilter:  elementFilter,
 	})
 
 	if len(nodes) > 1 && t.TimePoint {
@@ -513,6 +538,30 @@ func (b *ElasticSearchBackend) Start() error {
 
 // Stop backend
 func (b *ElasticSearchBackend) Stop() {}
+
+// FlushElements deletes a set of nodes and edges
+func (b *ElasticSearchBackend) FlushElements(m ElementMatcher) error {
+	b.logger.Info("Flush graph elements")
+
+	filter, err := m.Filter()
+	if err != nil {
+		return err
+	}
+
+	andFilter := filters.NewAndFilter(
+		filter,
+		filters.NewNullFilter("DeletedAt"),
+	)
+	query := es.FormatFilter(andFilter, "")
+
+	script := elastic.NewScript("ctx._source.DeletedAt = params.now; ctx._source.ArchivedAt = params.now;")
+	script.Lang("painless")
+	script.Params(map[string]interface{}{
+		"now": TimeUTC().UnixMilli(),
+	})
+
+	return b.client.UpdateByScript(query, script, b.liveIndex.Alias(b.indexPrefix), b.archiveIndex.IndexWildcard(b.indexPrefix))
+}
 
 // OnStarted implements storage client listener interface
 func (b *ElasticSearchBackend) OnStarted() {

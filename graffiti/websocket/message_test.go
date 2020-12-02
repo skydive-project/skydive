@@ -111,7 +111,7 @@ type fakeMessageClientSubscriptionHandler2 struct {
 	received map[string]bool
 }
 
-func (f *fakeMessageServerSubscriptionHandler) OnConnected(c Speaker) {
+func (f *fakeMessageServerSubscriptionHandler) OnConnected(c Speaker) error {
 	// wait first message received to be sure that the client can consume messages
 	go retry.Do(func() error {
 		f.RLock()
@@ -129,6 +129,7 @@ func (f *fakeMessageServerSubscriptionHandler) OnConnected(c Speaker) {
 
 		return nil
 	}, retry.Delay(10*time.Millisecond))
+	return nil
 }
 
 func (f *fakeMessageServerSubscriptionHandler) OnStructMessage(c Speaker, m *StructMessage) {
@@ -138,7 +139,7 @@ func (f *fakeMessageServerSubscriptionHandler) OnStructMessage(c Speaker, m *Str
 	f.Unlock()
 }
 
-func (f *fakeMessageServerSubscriptionHandler2) OnConnected(c Speaker) {
+func (f *fakeMessageServerSubscriptionHandler2) OnConnected(c Speaker) error {
 	// wait first message received to be sure that the client can consume messages
 	go retry.Do(func() error {
 		f.RLock()
@@ -156,6 +157,7 @@ func (f *fakeMessageServerSubscriptionHandler2) OnConnected(c Speaker) {
 
 		return nil
 	}, retry.Delay(10*time.Millisecond))
+	return nil
 }
 
 func (f *fakeMessageServerSubscriptionHandler2) OnStructMessage(c Speaker, m *StructMessage) {
@@ -166,10 +168,11 @@ func (f *fakeMessageServerSubscriptionHandler2) OnStructMessage(c Speaker, m *St
 	f.receivedCount++
 }
 
-func (f *fakeMessageClientSubscriptionHandler) OnConnected(c Speaker) {
+func (f *fakeMessageClientSubscriptionHandler) OnConnected(c Speaker) error {
 	c.SendMessage(newStructMessage("ClientValidNS", "ClientValidNS1"))
 	c.SendMessage(newStructMessage("ClientNotValidNS", "ClientNotValidNS2"))
 	c.SendMessage(newStructMessage("ClientValidNS", "ClientValidNS3"))
+	return nil
 }
 
 func (f *fakeMessageClientSubscriptionHandler) OnStructMessage(c Speaker, m *StructMessage) {
@@ -178,8 +181,9 @@ func (f *fakeMessageClientSubscriptionHandler) OnStructMessage(c Speaker, m *Str
 	f.Unlock()
 }
 
-func (f *fakeMessageClientSubscriptionHandler2) OnConnected(c Speaker) {
+func (f *fakeMessageClientSubscriptionHandler2) OnConnected(c Speaker) error {
 	c.SendMessage(newStructMessage("ClientValidNS", "ClientValidNS1"))
+	return nil
 }
 
 func (f *fakeMessageClientSubscriptionHandler2) OnMessage(c Speaker, m Message) {

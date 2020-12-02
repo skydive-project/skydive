@@ -185,7 +185,7 @@ type ClientOpts struct {
 // SpeakerEventHandler is the interface to be implement by the client events listeners.
 type SpeakerEventHandler interface {
 	OnMessage(c Speaker, m Message)
-	OnConnected(c Speaker)
+	OnConnected(c Speaker) error
 	OnDisconnected(c Speaker)
 }
 
@@ -198,7 +198,8 @@ func (d *DefaultSpeakerEventHandler) OnMessage(c Speaker, m Message) {
 }
 
 // OnConnected is called when the connection is established.
-func (d *DefaultSpeakerEventHandler) OnConnected(c Speaker) {
+func (d *DefaultSpeakerEventHandler) OnConnected(c Speaker) error {
+	return nil
 }
 
 // OnDisconnected is called when the connection is closed or lost.
@@ -562,7 +563,10 @@ func (c *Client) Connect() error {
 
 	// notify connected
 	for _, l := range c.cloneEventHandlers() {
-		l.OnConnected(c)
+		if err := l.OnConnected(c); err != nil {
+			c.Stop()
+			return err
+		}
 	}
 
 	return nil

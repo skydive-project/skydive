@@ -184,9 +184,9 @@ func (m *MemoryBackend) NodeDeleted(n *Node) error {
 }
 
 // GetNodes from the graph backend
-func (m MemoryBackend) GetNodes(t Context, metadata ElementMatcher) (nodes []*Node) {
+func (m MemoryBackend) GetNodes(t Context, metadata ElementMatcher, element ElementMatcher) (nodes []*Node) {
 	for _, n := range m.nodes {
-		if n.MatchMetadata(metadata) {
+		if n.MatchMetadata(metadata) && n.MatchMetadata(element) {
 			nodes = append(nodes, n.Node)
 		}
 	}
@@ -194,9 +194,9 @@ func (m MemoryBackend) GetNodes(t Context, metadata ElementMatcher) (nodes []*No
 }
 
 // GetEdges from the graph backend
-func (m MemoryBackend) GetEdges(t Context, metadata ElementMatcher) (edges []*Edge) {
+func (m MemoryBackend) GetEdges(t Context, metadata ElementMatcher, element ElementMatcher) (edges []*Edge) {
 	for _, e := range m.edges {
-		if e.MatchMetadata(metadata) {
+		if e.MatchMetadata(metadata) && e.MatchMetadata(element) {
 			edges = append(edges, e.Edge)
 		}
 	}
