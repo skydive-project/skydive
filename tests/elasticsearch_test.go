@@ -26,6 +26,7 @@ import (
 
 	"github.com/avast/retry-go"
 
+	"github.com/skydive-project/skydive/config"
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/filters"
 	es "github.com/skydive-project/skydive/graffiti/storage/elasticsearch"
@@ -93,7 +94,7 @@ func TestRollingSimple(t *testing.T) {
 	}
 
 	cfg := es.Config{
-		ElasticHost:      "localhost:9201",
+		ElasticHosts:     []string{"http://" + config.GetString("storage.elasticsearch.host")},
 		EntriesLimit:     10,
 		IndexPrefix:      "skydive_",
 		TotalFieldsLimit: 1000,

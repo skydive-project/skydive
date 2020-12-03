@@ -21,6 +21,7 @@ package analyzer
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -34,6 +35,7 @@ import (
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/client"
 	"github.com/skydive-project/skydive/flow/server"
 	"github.com/skydive-project/skydive/flow/storage"
+	"github.com/skydive-project/skydive/graffiti/api/rest"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -120,7 +122,10 @@ func (s *Server) createStartupCapture() error {
 	logging.GetLogger().Infof("Invoke capturing of type '%s' from startup with gremlin: %s and BPF: %s", captureType, gremlin, bpf)
 	capture := types.NewCapture(gremlin, bpf)
 	capture.Type = captureType
-	return apiHandler.Create(capture, nil)
+	if err := apiHandler.Create(capture, nil); err != nil && !errors.Is(err, rest.ErrDuplicatedResource) {
+		return err
+	}
+	return nil
 }
 
 // Start the analyzer server

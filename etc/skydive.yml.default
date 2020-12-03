@@ -383,7 +383,17 @@ storage:
   # Elasticsearch backend information.
   myelasticsearch:
     # driver: elasticsearch
-    # host: 127.0.0.1:9200
+    # hosts:
+    #   - http://127.0.0.1:9200
+
+    # Disable TLS certificate verification
+    # Default: false
+    # ssl_insecure: true
+
+    # Basic auth
+    # auth:
+    #   username: user
+    #   password: secret
 
     # Define the maximum delay before flushing document
     # bulk_maxdelay: 5
@@ -415,6 +425,18 @@ storage:
     #   - Metadata.OVN.ExtID
     #   - Metadata.OVN.Options
     #   - Metadata.OVN.IPv6RAConfigs
+
+    # Snif Nodes Info API to get all the nodes in the cluster
+    # See https://pkg.go.dev/gopkg.in/olivere/elastic.v2?tab=doc#NewClient
+    # Default: false
+    # disable_sniffing: true
+
+    # Disable health check
+    # Default: false
+    # disable_healthcheck: true
+
+    # Debug queries
+    # debug: false
 
   # OrientDB backend information.
   myorientdb:
