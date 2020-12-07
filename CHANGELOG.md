@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.27.0] - 2020-12-07
+### Added
+
+- Persist graph element across analyzer restarts
+- Add new block device topology probe
+- Add node and edge APIs
+- Add PATCH method to modify resources
+- Add authentication definition to swagger description
+- Add SSL support to Open vSwitch OpenFlow parser
+- Allow removing nodes and edges in batch from the CLI
+- Support multiple elasticsearch hosts, SSL and authentication
+
+### Changed
+
+- Bump to elasticsearch v7
+- Extract graph engine to its own standalone package 'graffiti'
+- Move hardware related root node data to a probe
+- Use 'flattened' type in elasticsearch to avoid mapping explosion
+
 ## [0.26.0] - 2019-10-18
 ### Added
 

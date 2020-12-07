@@ -34,7 +34,7 @@
 %endif
 %endif
 
-%{!?fullver:%global fullver 0.26.0}
+%{!?fullver:%global fullver 0.27.0}
 %define version %{extractversion %{fullver}}
 %{!?tag:%global tag 1}
 
@@ -118,7 +118,7 @@ This package installs and sets up the SELinux policy security module for Skydive
 
 %build
 export GOPATH=%{_builddir}/skydive-%{fullver}
-make build VERSION=%{fullver} LDFLAGS=%{ldflags} GO111MODULE=off %{with_features}
+make build VERSION=%{fullver} LDFLAGS=%{ldflags} OFFLINE=true GOFLAGS=-mod=vendor %{with_features}
 %{_builddir}/skydive-%{fullver}/src/%{import_path}/skydive bash-completion
 
 # SELinux build
@@ -168,7 +168,7 @@ fi
 %systemd_preun %{basename:%{name}-agent.service}
 
 %postun agent
-%systemd_postun
+%systemd_postun %{basename:%{name}-agent.service}
 if %{_sbindir}/selinuxenabled && [ "$1" = "0" ] ; then
     set +e
     %{_sbindir}/semanage port -d -t skydive_agent_sflow_ports_t -p udp 6343
@@ -192,7 +192,7 @@ fi
 %systemd_preun %{basename:%{name}-analyzer.service}
 
 %postun analyzer
-%systemd_postun
+%systemd_postun %{basename:%{name}-analyzer.service}
 if %{_sbindir}/selinuxenabled && [ "$1" = "0" ] ; then
     set +e
     %{_sbindir}/semanage port -d -t skydive_etcd_ports_t -p tcp 12379-12380
@@ -248,6 +248,9 @@ fi
 %attr(0644,root,root) %{_mandir}/man8/skydive-selinux.8.*
 
 %changelog
+* Mon Dec 7 2020 Sylvain Baubeau <lebauce@gmail.com> - 0.27.0-1
+- Bump to version 0.27.0
+
 * Fri Oct 18 2019 Sylvain Baubeau <sbaubeau@redhat.com> - 0.26.0-1
 - Bump to version 0.26.0
 

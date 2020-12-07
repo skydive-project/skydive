@@ -1,23 +1,23 @@
 #!/usr/bin/python
 
-import commands
 import json
+import subprocess
 import sys
 
 BUNDLE_MARKER = "### AUTO-BUNDLED-GEN-ENTRY-POINT"
 
 def usage():
-    print sys.argv[0], "<go.mod> <specfile>"
+    print(sys.argv[0], "<go.mod> <specfile>")
 
 if len(sys.argv) != 3:
     usage()
     sys.exit(0)
 
 provides = []
-mod = json.loads(commands.getoutput("go mod edit -json " + sys.argv[1]))
+mod = json.loads(subprocess.check_output(["go", "mod", "edit", "-json", sys.argv[1]]))
 for package in mod["Require"]:
     provides.append("Provides: bundled(golang(%s)) = %s" % (package["Path"], package["Version"].split("-")[-1].split("+")[0]))
 
 spec = open(sys.argv[2]).read()
 spec = spec.replace(BUNDLE_MARKER, "\n".join(provides))
-print spec
+print(spec)
