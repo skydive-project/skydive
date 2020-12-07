@@ -4,7 +4,6 @@ require (
 	git.fd.io/govpp.git v0.0.0-20190321220742-345201eedce4
 	github.com/VerizonDigital/vflow v0.0.0-20190111005900-eb30d936249e
 	github.com/abbot/go-http-auth v0.4.0
-	github.com/aktau/github-release v0.7.2
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/bennyscetbun/jsongo v0.0.0-20190110163710-9624bef8c57b // indirect
 	github.com/casbin/casbin v1.9.1
@@ -20,6 +19,7 @@ require (
 	github.com/flosch/pongo2 v0.0.0-20190707114632-bbf5a6c351f4 // indirect
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/gima/govalid v0.0.0-20150214172340-7b486932bea2
+	github.com/github-release/github-release v0.9.0
 	github.com/go-swagger/go-swagger v0.20.1
 	github.com/go-test/deep v1.0.7
 	github.com/gobwas/httphead v0.0.0-20171016043908-01c9b01b368a // indirect
@@ -37,6 +37,7 @@ require (
 	github.com/gosuri/uitable v0.0.0-20160404203958-36ee7e946282 // indirect
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/hydrogen18/stoppableListener v0.0.0-20151210151943-dadc9ccc400c
+	github.com/inconshreveable/log15 v0.0.0-20201112154412-8562bdadbbac // indirect
 	github.com/intel-go/nff-go v0.0.0-20190620122648-8ab691c21da9
 	github.com/iovisor/gobpf v0.0.0-20200329161226-8b2cce9dac28 // indirect
 	github.com/jbowtie/gokogiri v0.0.0-20190301021639-37f655d3078f // indirect
@@ -45,6 +46,7 @@ require (
 	github.com/kami-zh/go-capturer v0.0.0-20171211120116-e492ea43421d
 	github.com/kardianos/osext v0.0.0-20160811001526-c2c54e542fb7
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
+	github.com/kevinburke/rest v0.0.0-20200429221318-0d2892b400f8 // indirect
 	github.com/libvirt/libvirt-go v0.0.0-20181005092746-9c5bdce3c18f
 	github.com/lunixbochs/struc v0.0.0-20180408203800-02e4c2afbb2a
 	github.com/lxc/lxd v0.0.0-20200330183600-518f06676866

@@ -41,7 +41,7 @@ upload() {
     cleanup_on_error
 }
 
-go get github.com/aktau/github-release
+go get github.com/github-release/github-release
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 
 if [ -n "$DRY_RUN" ]; then
