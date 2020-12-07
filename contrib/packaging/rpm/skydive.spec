@@ -118,7 +118,7 @@ This package installs and sets up the SELinux policy security module for Skydive
 
 %build
 export GOPATH=%{_builddir}/skydive-%{fullver}
-make build VERSION=%{fullver} LDFLAGS=%{ldflags} GO111MODULE=off %{with_features}
+make build VERSION=%{fullver} LDFLAGS=%{ldflags} OFFLINE=true GOFLAGS=-mod=vendor %{with_features}
 %{_builddir}/skydive-%{fullver}/src/%{import_path}/skydive bash-completion
 
 # SELinux build
@@ -168,7 +168,7 @@ fi
 %systemd_preun %{basename:%{name}-agent.service}
 
 %postun agent
-%systemd_postun
+%systemd_postun %{basename:%{name}-agent.service}
 if %{_sbindir}/selinuxenabled && [ "$1" = "0" ] ; then
     set +e
     %{_sbindir}/semanage port -d -t skydive_agent_sflow_ports_t -p udp 6343
@@ -192,7 +192,7 @@ fi
 %systemd_preun %{basename:%{name}-analyzer.service}
 
 %postun analyzer
-%systemd_postun
+%systemd_postun %{basename:%{name}-analyzer.service}
 if %{_sbindir}/selinuxenabled && [ "$1" = "0" ] ; then
     set +e
     %{_sbindir}/semanage port -d -t skydive_etcd_ports_t -p tcp 12379-12380

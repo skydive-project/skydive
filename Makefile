@@ -151,7 +151,9 @@ skydive.clean:
 
 .PHONY: moddownload
 moddownload:
+ifneq ($(OFFLINE), true)
 	go mod download
+endif
 
 .PHONY: genlocalfiles
 genlocalfiles: $(EXTRA_BUILD_TARGET) .proto .bindata .gendecoder .easyjson .vppbinapi
