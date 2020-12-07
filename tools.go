@@ -30,7 +30,7 @@ import (
 	_ "github.com/golang/protobuf/protoc-gen-go"
 	_ "github.com/golangci/golangci-lint/cmd/golangci-lint"
 	_ "github.com/gomatic/renderizer"
-	_ "github.com/jteeuwen/go-bindata"
+	_ "github.com/jteeuwen/go-bindata/go-bindata"
 	_ "github.com/mailru/easyjson/easyjson"
 	_ "github.com/mattn/goveralls"
 	_ "github.com/t-yuki/gocover-cobertura"
