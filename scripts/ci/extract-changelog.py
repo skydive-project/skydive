@@ -23,4 +23,4 @@ for i, line in enumerate(changelog):
             break
 
 if start != 0:
-    print ''.join(changelog[start+1:end]).strip()
+    print(''.join(changelog[start+1:end]).strip())
