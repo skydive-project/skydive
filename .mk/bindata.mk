@@ -28,3 +28,7 @@ ebpf/statics/bindata.go: $(EBPF_PROBES)
 statics/bindata.go: statics/js/bundle.js $(STATIC_FILES)
 	go run ${GO_BINDATA_GITHUB} ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go $(BINDATA_DIRS)
 	gofmt -w -s statics/bindata.go
+
+graffiti/js/bindata.go: graffiti/js/*.js
+	go run ${GO_BINDATA_GITHUB} ${GO_BINDATA_FLAGS} -prefix graffiti/js/ -nometadata -o graffiti/js/bindata.go -pkg=js graffiti/js/*.js
+	gofmt -w -s graffiti/js/bindata.go

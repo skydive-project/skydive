@@ -25,12 +25,12 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/graffiti/api/types"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
+	"github.com/skydive-project/skydive/graffiti/js"
 	g "github.com/skydive-project/skydive/gremlin"
-	"github.com/skydive-project/skydive/js"
 )
 
 func lookupWorkflow(client *shttp.CrudClient, name string) (*types.Workflow, error) {

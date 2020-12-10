@@ -33,9 +33,10 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/hydrogen18/stoppableListener"
-	"github.com/skydive-project/skydive/alert"
-	"github.com/skydive-project/skydive/api/types"
+
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/graffiti/alert"
+	"github.com/skydive-project/skydive/graffiti/api/types"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 )
@@ -86,7 +87,7 @@ func newClient(endpoint string) (*websocket.Conn, error) {
 	}
 
 	headers := http.Header{
-		"X-Host-ID":      {"host-test"},
+		"X-Host-ID":     {"host-test"},
 		"X-Client-Type": {"alert-srv"},
 	}
 

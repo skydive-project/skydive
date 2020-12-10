@@ -90,9 +90,9 @@ func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveAnalyzer(in *jlexer.Lex
 				in.Delim('}')
 			}
 		case "Alerts":
-			(out.Alerts).UnmarshalEasyJSON(in)
+			easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveGraffitiHub1(in, &out.Alerts)
 		case "Captures":
-			(out.Captures).UnmarshalEasyJSON(in)
+			easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveGraffitiHub1(in, &out.Captures)
 		case "Probes":
 			if in.IsNull() {
 				in.Skip()
@@ -200,12 +200,12 @@ func easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveAnalyzer(out *jwriter.W
 	{
 		const prefix string = ",\"Alerts\":"
 		out.RawString(prefix)
-		(in.Alerts).MarshalEasyJSON(out)
+		easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveGraffitiHub1(out, in.Alerts)
 	}
 	{
 		const prefix string = ",\"Captures\":"
 		out.RawString(prefix)
-		(in.Captures).MarshalEasyJSON(out)
+		easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveGraffitiHub1(out, in.Captures)
 	}
 	{
 		const prefix string = ",\"Probes\":"
@@ -259,6 +259,48 @@ func (v *Status) UnmarshalJSON(data []byte) error {
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *Status) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveAnalyzer(l, v)
+}
+func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveGraffitiHub1(in *jlexer.Lexer, out *hub.ElectionStatus) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeFieldName(false)
+		in.WantColon()
+		if in.IsNull() {
+			in.Skip()
+			in.WantComma()
+			continue
+		}
+		switch key {
+		case "IsMaster":
+			out.IsMaster = bool(in.Bool())
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveGraffitiHub1(out *jwriter.Writer, in hub.ElectionStatus) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	{
+		const prefix string = ",\"IsMaster\":"
+		out.RawString(prefix[1:])
+		out.Bool(bool(in.IsMaster))
+	}
+	out.RawByte('}')
 }
 func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveGraffitiHub(in *jlexer.Lexer, out *hub.PeersStatus) {
 	isTopLevel := in.IsStart()
@@ -475,70 +517,4 @@ func easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveGraffitiWebsocket(out *
 		out.String(string(in.RemoteServiceType))
 	}
 	out.RawByte('}')
-}
-func easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveAnalyzer1(in *jlexer.Lexer, out *ElectionStatus) {
-	isTopLevel := in.IsStart()
-	if in.IsNull() {
-		if isTopLevel {
-			in.Consumed()
-		}
-		in.Skip()
-		return
-	}
-	in.Delim('{')
-	for !in.IsDelim('}') {
-		key := in.UnsafeFieldName(false)
-		in.WantColon()
-		if in.IsNull() {
-			in.Skip()
-			in.WantComma()
-			continue
-		}
-		switch key {
-		case "IsMaster":
-			out.IsMaster = bool(in.Bool())
-		default:
-			in.SkipRecursive()
-		}
-		in.WantComma()
-	}
-	in.Delim('}')
-	if isTopLevel {
-		in.Consumed()
-	}
-}
-func easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveAnalyzer1(out *jwriter.Writer, in ElectionStatus) {
-	out.RawByte('{')
-	first := true
-	_ = first
-	{
-		const prefix string = ",\"IsMaster\":"
-		out.RawString(prefix[1:])
-		out.Bool(bool(in.IsMaster))
-	}
-	out.RawByte('}')
-}
-
-// MarshalJSON supports json.Marshaler interface
-func (v ElectionStatus) MarshalJSON() ([]byte, error) {
-	w := jwriter.Writer{}
-	easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveAnalyzer1(&w, v)
-	return w.Buffer.BuildBytes(), w.Error
-}
-
-// MarshalEasyJSON supports easyjson.Marshaler interface
-func (v ElectionStatus) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson22b57fa5EncodeGithubComSkydiveProjectSkydiveAnalyzer1(w, v)
-}
-
-// UnmarshalJSON supports json.Unmarshaler interface
-func (v *ElectionStatus) UnmarshalJSON(data []byte) error {
-	r := jlexer.Lexer{Data: data}
-	easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveAnalyzer1(&r, v)
-	return r.Error()
-}
-
-// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
-func (v *ElectionStatus) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson22b57fa5DecodeGithubComSkydiveProjectSkydiveAnalyzer1(l, v)
 }

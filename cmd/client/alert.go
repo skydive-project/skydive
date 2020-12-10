@@ -20,8 +20,8 @@ package client
 import (
 	"os"
 
-	"github.com/skydive-project/skydive/api/types"
 	gapi "github.com/skydive-project/skydive/graffiti/api/client"
+	"github.com/skydive-project/skydive/graffiti/api/types"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/validator"
 

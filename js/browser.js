@@ -15,25 +15,35 @@
  * limitations under the License.
  *
  */
+var __assign = (this && this.__assign) || Object.assign || function(t) {
+    for (var s, i = 1, n = arguments.length; i < n; i++) {
+        s = arguments[i];
+        for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+            t[p] = s[p];
+    }
+    return t;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-var apiLib = require("./api");
-window.api = apiLib;
-window.Metadata = apiLib.Metadata;
-window.NE = apiLib.NE;
-window.GT = apiLib.GT;
-window.LT = apiLib.LT;
-window.GTE = apiLib.GTE;
-window.LTE = apiLib.LTE;
-window.IPV4RANGE = apiLib.IPV4RANGE;
-window.REGEX = apiLib.REGEX;
-window.WITHIN = apiLib.WITHIN;
-window.WITHOUT = apiLib.WITHOUT;
-window.INSIDE = apiLib.INSIDE;
-window.OUTSIDE = apiLib.OUTSIDE;
-window.BETWEEN = apiLib.BETWEEN;
-window.Alert = apiLib.Alert;
-window.Capture = apiLib.Capture;
-window.EdgeRule = apiLib.EdgeRule;
-window.NodeRule = apiLib.NodeRule;
-window.PacketInjection = apiLib.PacketInjection;
-window.Workflow = apiLib.Workflow;
+var gapi = require("../graffiti/js/api");
+var sapi = require("./api");
+var api = __assign({}, gapi, sapi);
+window.api = api;
+window.Metadata = gapi.Metadata;
+window.NE = gapi.NE;
+window.GT = gapi.GT;
+window.LT = gapi.LT;
+window.GTE = gapi.GTE;
+window.LTE = gapi.LTE;
+window.IPV4RANGE = gapi.IPV4RANGE;
+window.REGEX = gapi.REGEX;
+window.WITHIN = gapi.WITHIN;
+window.WITHOUT = gapi.WITHOUT;
+window.INSIDE = gapi.INSIDE;
+window.OUTSIDE = gapi.OUTSIDE;
+window.BETWEEN = gapi.BETWEEN;
+window.Alert = gapi.Alert;
+window.Workflow = gapi.Workflow;
+window.Capture = api.Capture;
+window.EdgeRule = api.EdgeRule;
+window.NodeRule = api.NodeRule;
+window.PacketInjection = api.PacketInjection;

@@ -33,6 +33,7 @@ require (
 	github.com/pierrec/xxHash v0.1.5
 	github.com/pkg/errors v0.9.1
 	github.com/pmylund/go-cache v2.1.0+incompatible
+	github.com/robertkrimen/otto v0.0.0-20200922221731-ef014fd054ac
 	github.com/safchain/insanelock v0.0.0-20200217234559-cfbf166e05b3
 	github.com/skydive-project/go-debouncer v1.0.0
 	github.com/spf13/cast v1.3.1
@@ -42,6 +43,7 @@ require (
 	go.uber.org/zap v1.16.0
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2
 	golang.org/x/tools v0.0.0-20191112195655-aa38f8e97acc
+	gopkg.in/sourcemap.v1 v1.0.5 // indirect
 	gopkg.in/yaml.v2 v2.3.0
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )

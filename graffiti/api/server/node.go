@@ -150,12 +150,10 @@ func (h *NodeAPIHandler) Update(id string, resource rest.Resource) (rest.Resourc
 }
 
 // RegisterNodeAPI registers the node API
-func RegisterNodeAPI(apiServer *Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*NodeAPIHandler, error) {
+func RegisterNodeAPI(apiServer *Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) *NodeAPIHandler {
 	nodeAPIHandler := &NodeAPIHandler{
 		g: g,
 	}
-	if err := apiServer.RegisterAPIHandler(nodeAPIHandler, authBackend); err != nil {
-		return nil, err
-	}
-	return nodeAPIHandler, nil
+	apiServer.RegisterAPIHandler(nodeAPIHandler, authBackend)
+	return nodeAPIHandler
 }

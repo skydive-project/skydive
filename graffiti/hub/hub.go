@@ -27,6 +27,7 @@ import (
 
 	etcd "github.com/coreos/etcd/client"
 
+	"github.com/skydive-project/skydive/graffiti/alert"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	gc "github.com/skydive-project/skydive/graffiti/common"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
@@ -75,6 +76,7 @@ type Hub struct {
 	cached              *graph.CachedBackend
 	httpServer          *shttp.Server
 	apiServer           *api.Server
+	alertServer         *alert.Server
 	embeddedEtcd        *etcdserver.EmbeddedServer
 	etcdClient          *etcdclient.Client
 	podWSServer         *websocket.StructServer
@@ -88,6 +90,11 @@ type Hub struct {
 	masterElection      etcdclient.MasterElection
 }
 
+// ElectionStatus describes the status of an election
+type ElectionStatus struct {
+	IsMaster bool
+}
+
 // PeersStatus describes the state of a peer
 type PeersStatus struct {
 	Incomers map[string]websocket.ConnStatus
@@ -96,6 +103,7 @@ type PeersStatus struct {
 
 // Status describes the status of a hub
 type Status struct {
+	Alerts      ElectionStatus
 	Pods        map[string]websocket.ConnStatus
 	Peers       PeersStatus
 	Publishers  map[string]websocket.ConnStatus
@@ -122,6 +130,7 @@ func (h *Hub) GetStatus() interface{} {
 		Peers:       peersStatus,
 		Publishers:  h.publisherWSServer.GetStatus(),
 		Subscribers: h.subscriberWSServer.GetStatus(),
+		Alerts:      ElectionStatus{IsMaster: h.alertServer.IsMaster()},
 	}
 }
 
@@ -134,6 +143,7 @@ func (h *Hub) OnStarted() {
 		return
 	}
 
+	h.alertServer.Start()
 	h.podWSServer.Start()
 	h.replicationWSServer.Start()
 	h.replicationEndpoint.ConnectPeers()
@@ -165,6 +175,7 @@ func (h *Hub) Stop() {
 	h.replicationWSServer.Stop()
 	h.publisherWSServer.Stop()
 	h.subscriberWSServer.Stop()
+	h.alertServer.Stop()
 	h.cached.Stop()
 	h.masterElection.Stop()
 	if h.embeddedEtcd != nil {
@@ -312,8 +323,14 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 		return nil, err
 	}
 
+	alertServer, err := alert.NewServer(apiServer, subscriberWSServer, g, tr, opts.EtcdClient)
+	if err != nil {
+		return nil, err
+	}
+
 	hub.httpServer = httpServer
 	hub.apiServer = apiServer
+	hub.alertServer = alertServer
 	hub.podWSServer = podWSServer
 	hub.replicationEndpoint = replicationEndpoint
 	hub.replicationWSServer = replicationWSServer
@@ -333,6 +350,16 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 	api.RegisterTopologyAPI(httpServer, g, tr, opts.APIAuthBackend, opts.TopologyMarshallers)
 	api.RegisterNodeAPI(apiServer, g, opts.APIAuthBackend)
 	api.RegisterEdgeAPI(apiServer, g, opts.APIAuthBackend)
+	api.RegisterAlertAPI(apiServer, opts.APIAuthBackend)
+
+	if _, err := api.RegisterWorkflowAPI(apiServer, g, tr, opts.Assets, opts.APIAuthBackend); err != nil {
+		return nil, err
+	}
+
+	hub.alertServer, err = alert.NewServer(apiServer, subscriberWSServer, g, tr, opts.EtcdClient, opts.Assets)
+	if err != nil {
+		return nil, err
+	}
 
 	return hub, nil
 }

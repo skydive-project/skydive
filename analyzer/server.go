@@ -21,13 +21,14 @@ package analyzer
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/pkg/errors"
+	yaml "gopkg.in/yaml.v2"
+
 	"github.com/skydive-project/dede/dede"
-	"github.com/skydive-project/skydive/alert"
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/config"
@@ -37,6 +38,7 @@ import (
 	"github.com/skydive-project/skydive/flow/storage"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
 	gapi "github.com/skydive-project/skydive/graffiti/api/server"
+	gtypes "github.com/skydive-project/skydive/graffiti/api/types"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -49,6 +51,7 @@ import (
 	"github.com/skydive-project/skydive/packetinjector"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/sflow"
+	"github.com/skydive-project/skydive/statics"
 	"github.com/skydive-project/skydive/topology"
 	usertopology "github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/probes/blockdev"
@@ -56,12 +59,7 @@ import (
 	"github.com/skydive-project/skydive/validator"
 )
 
-// ElectionStatus describes the status of an election
-//
-// easyjson:json
-type ElectionStatus struct {
-	IsMaster bool
-}
+const workflowAssetDir = "statics/workflows"
 
 // Status analyzer object
 //
@@ -74,8 +72,8 @@ type Status struct {
 	Peers       hub.PeersStatus
 	Publishers  map[string]ws.ConnStatus
 	Subscribers map[string]ws.ConnStatus
-	Alerts      ElectionStatus
-	Captures    ElectionStatus
+	Alerts      hub.ElectionStatus
+	Captures    hub.ElectionStatus
 	Probes      map[string]interface{}
 }
 
@@ -83,7 +81,6 @@ type Status struct {
 type Server struct {
 	uiServer        *ui.Server
 	hub             *hub.Hub
-	alertServer     *alert.Server
 	onDemandClient  *client.OnDemandClient
 	piClient        *client.OnDemandClient
 	topologyManager *usertopology.TopologyManager
@@ -103,8 +100,8 @@ func (s *Server) GetStatus() interface{} {
 		Peers:       hubStatus.Peers,
 		Publishers:  hubStatus.Publishers,
 		Subscribers: hubStatus.Subscribers,
-		Alerts:      ElectionStatus{IsMaster: s.alertServer.IsMaster()},
-		Captures:    ElectionStatus{IsMaster: s.onDemandClient.IsMaster()},
+		Alerts:      hubStatus.Alerts,
+		Captures:    hub.ElectionStatus{IsMaster: s.onDemandClient.IsMaster()},
 		Probes:      s.probeBundle.GetStatus(),
 	}
 }
@@ -129,6 +126,27 @@ func (s *Server) createStartupCapture() error {
 	return nil
 }
 
+func (s *Server) loadStaticWorkflows() error {
+	assets, err := statics.AssetDir(workflowAssetDir)
+	if err == nil {
+		for _, asset := range assets {
+			yml, err := statics.Asset(workflowAssetDir + "/" + asset)
+			if err != nil {
+				return err
+			}
+
+			var workflow gtypes.Workflow
+			if err := yaml.Unmarshal([]byte(yml), &workflow); err != nil {
+				return errors.Wrapf(err, "failed to load workflow %s", asset)
+			}
+
+			gapi.StaticWorkflows = append(gapi.StaticWorkflows, &workflow)
+		}
+	}
+
+	return nil
+}
+
 // Start the analyzer server
 func (s *Server) Start() error {
 	if err := s.hub.Start(); err != nil {
@@ -147,7 +165,6 @@ func (s *Server) Start() error {
 
 	s.onDemandClient.Start()
 	s.piClient.Start()
-	s.alertServer.Start()
 	s.topologyManager.Start()
 	s.flowServer.Start()
 
@@ -165,7 +182,6 @@ func (s *Server) Stop() {
 	s.probeBundle.Stop()
 	s.onDemandClient.Stop()
 	s.piClient.Stop()
-	s.alertServer.Stop()
 	s.topologyManager.Stop()
 	s.etcdClient.Stop()
 
@@ -322,47 +338,14 @@ func NewServerFromConfig() (*Server, error) {
 
 	apiServer := hub.APIServer()
 
-	captureAPIHandler, err := api.RegisterCaptureAPI(apiServer, g, apiAuthBackend)
-	if err != nil {
-		return nil, err
-	}
+	captureAPIHandler := api.RegisterCaptureAPI(apiServer, g, apiAuthBackend)
 
-	piAPIHandler, err := api.RegisterPacketInjectorAPI(g, apiServer, apiAuthBackend)
-	if err != nil {
-		return nil, err
-	}
-
+	piAPIHandler := api.RegisterPacketInjectorAPI(g, apiServer, apiAuthBackend)
 	s.piClient = packetinjector.NewOnDemandInjectionClient(g, piAPIHandler, hub.PodServer(), hub.SubscriberServer(), etcdClient)
 
-	_, err = gapi.RegisterNodeAPI(apiServer, g, apiAuthBackend)
-	if err != nil {
-		return nil, err
-	}
-
-	nodeRuleAPIHandler, err := api.RegisterNodeRuleAPI(apiServer, g, apiAuthBackend)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = gapi.RegisterEdgeAPI(apiServer, g, apiAuthBackend)
-	if err != nil {
-		return nil, err
-	}
-
-	edgeRuleAPIHandler, err := api.RegisterEdgeRuleAPI(apiServer, g, apiAuthBackend)
-	if err != nil {
-		return nil, err
-	}
-
+	nodeRuleAPIHandler := api.RegisterNodeRuleAPI(apiServer, g, apiAuthBackend)
+	edgeRuleAPIHandler := api.RegisterEdgeRuleAPI(apiServer, g, apiAuthBackend)
 	s.topologyManager = usertopology.NewTopologyManager(etcdClient, nodeRuleAPIHandler, edgeRuleAPIHandler, g)
-
-	if _, err = api.RegisterAlertAPI(apiServer, apiAuthBackend); err != nil {
-		return nil, err
-	}
-
-	if _, err := api.RegisterWorkflowAPI(apiServer, apiAuthBackend); err != nil {
-		return nil, err
-	}
 
 	s.onDemandClient = ondemand.NewOnDemandFlowProbeClient(g, captureAPIHandler, hub.PodServer(), hub.SubscriberServer(), etcdClient)
 
@@ -371,15 +354,13 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	s.alertServer, err = alert.NewServer(apiServer, hub.SubscriberServer(), g, tr, etcdClient)
-	if err != nil {
-		return nil, err
-	}
-
 	httpServer := hub.HTTPServer()
 	api.RegisterPcapAPI(httpServer, s.flowStorage, apiAuthBackend)
 	api.RegisterConfigAPI(httpServer, apiAuthBackend)
-	api.RegisterWorkflowCallAPI(httpServer, apiAuthBackend, apiServer, g, tr)
+
+	if err := s.loadStaticWorkflows(); err != nil {
+		return nil, err
+	}
 
 	if config.GetBool("analyzer.ssh_enabled") {
 		if err := dede.RegisterHandler("terminal", "/dede", httpServer.Router); err != nil {
