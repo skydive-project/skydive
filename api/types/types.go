@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/skydive-project/skydive/graffiti/api/rest"
+	gtypes "github.com/skydive-project/skydive/graffiti/api/types"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/schema"
 )
@@ -134,29 +135,8 @@ func NewCapture(query string, bpfFilter string) *Capture {
 }
 
 // Edge object
-// easyjson:json
 // swagger:model
-type Edge graph.Edge
-
-// GetID returns the edge ID
-func (e *Edge) GetID() string {
-	return string(e.ID)
-}
-
-// SetID sets the node ID
-func (e *Edge) SetID(i string) {
-	e.ID = graph.Identifier(i)
-}
-
-// GetName returns the edge resource name
-func (e *Edge) GetName() string {
-	return "Edge"
-}
-
-// Validate integrity of the resource
-func (e *Edge) Validate() error {
-	return nil
-}
+type Edge = gtypes.Edge
 
 // EdgeRule object
 //
@@ -193,29 +173,8 @@ func (e *EdgeRule) Validate() error {
 }
 
 // Node object
-// easyjson:json
 // swagger:model
-type Node graph.Node
-
-// GetID returns the node ID
-func (n *Node) GetID() string {
-	return string(n.ID)
-}
-
-// SetID sets the resource ID
-func (n *Node) SetID(i string) {
-	n.ID = graph.Identifier(i)
-}
-
-// GetName returns the node resource name
-func (n *Node) GetName() string {
-	return "Node"
-}
-
-// Validate integrity of the resource
-func (n *Node) Validate() error {
-	return nil
-}
+type Node = gtypes.Node
 
 // NodeRule object
 //
@@ -328,13 +287,6 @@ func (pi *PacketInjection) Validate() error {
 		return errors.New("given mode is not supported")
 	}
 	return nil
-}
-
-// TopologyParams topology query parameters
-// easyjson:json
-// swagger:model
-type TopologyParams struct {
-	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr" yaml:"GremlinQuery"`
 }
 
 // WorkflowChoice describes one value within a choice

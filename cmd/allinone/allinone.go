@@ -115,7 +115,12 @@ var AllInOneCmd = &cobra.Command{
 			addr = "127.0.0.1"
 		}
 
-		restClient := http.NewRestClient(config.GetURL("http", addr, svcAddr.Port, ""), authOptions, tlsConfig)
+		url, err := config.GetURL("http", addr, svcAddr.Port, "")
+		if err != nil {
+			logging.GetLogger().Errorf("Invalid service address: %s", err)
+			os.Exit(1)
+		}
+		restClient := http.NewRestClient(url, authOptions, tlsConfig)
 
 		err = retry.Do(func() error {
 			_, err := restClient.Request("GET", "/api", nil, nil)

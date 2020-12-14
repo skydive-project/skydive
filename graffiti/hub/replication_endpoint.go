@@ -164,7 +164,7 @@ func (p *ReplicatorPeer) disconnect() {
 }
 
 func (t *ReplicationEndpoint) addCandidate(addr string, port int, opts *ws.ClientOpts) *ReplicatorPeer {
-	url := http.MakeURL("ws", addr, port, "/ws/replication", opts.TLSConfig != nil)
+	url, _ := http.MakeURL("ws", addr, port, "/ws/replication", opts.TLSConfig != nil)
 	peer := &ReplicatorPeer{
 		URL:      url,
 		Graph:    t.Graph,

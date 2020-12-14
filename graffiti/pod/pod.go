@@ -160,7 +160,10 @@ func NewPod(id string, serviceType service.Type, listen string, podEndpoint stri
 	clientOpts.Protocol = websocket.ProtobufProtocol
 	clientOpts.Headers = http.Header{"X-Persistence-Policy": {string(common.DeleteOnDisconnect)}}
 	for _, sa := range opts.Hubs {
-		url := shttp.MakeURL("ws", sa.Addr, sa.Port, podEndpoint, clientOpts.TLSConfig != nil)
+		url, err := shttp.MakeURL("ws", sa.Addr, sa.Port, podEndpoint, clientOpts.TLSConfig != nil)
+		if err != nil {
+			return nil, err
+		}
 		client := websocket.NewClient(id, serviceType, url, clientOpts)
 		clientPool.AddClient(client)
 	}

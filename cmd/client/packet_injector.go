@@ -26,7 +26,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/skydive-project/skydive/api/client"
 	api "github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
@@ -144,11 +143,6 @@ var PacketInjectionCreate = &cobra.Command{
 	Long:         "create packet injection",
 	SilenceUsage: false,
 	Run: func(cmd *cobra.Command, args []string) {
-		crudClient, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
 		request, err := GetPacketInjectRequest()
 		if err != nil {
 			exitOnError(err)
@@ -196,7 +190,7 @@ var PacketInjectionCreate = &cobra.Command{
 		}
 		createOpts := &http.CreateOptions{TTL: ttl}
 
-		if err := crudClient.Create("injectpacket", &packet, createOpts); err != nil {
+		if err := CrudClient.Create("injectpacket", &packet, createOpts); err != nil {
 			exitOnError(err)
 		}
 
@@ -217,12 +211,7 @@ var PacketInjectionGet = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		var injection api.PacketInjection
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
-		if err := client.Get("injectpacket", args[0], &injection); err != nil {
+		if err := CrudClient.Get("injectpacket", args[0], &injection); err != nil {
 			exitOnError(err)
 		}
 		printJSON(&injection)
@@ -236,12 +225,7 @@ var PacketInjectionList = &cobra.Command{
 	Long:  "list packet injections",
 	Run: func(cmd *cobra.Command, args []string) {
 		var injections map[string]api.PacketInjection
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
-		if err := client.List("injectpacket", &injections); err != nil {
+		if err := CrudClient.List("injectpacket", &injections); err != nil {
 			exitOnError(err)
 		}
 		printJSON(injections)
@@ -260,13 +244,8 @@ var PacketInjectionDelete = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
 		for _, id := range args {
-			if err := client.Delete("injectpacket", id); err != nil {
+			if err := CrudClient.Delete("injectpacket", id); err != nil {
 				logging.GetLogger().Error(err)
 			}
 		}

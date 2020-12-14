@@ -28,6 +28,7 @@ import (
 
 	auth "github.com/abbot/go-http-auth"
 
+	"github.com/skydive-project/skydive/graffiti/api/types"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
@@ -47,13 +48,6 @@ type TopologyAPI struct {
 	graph            *graph.Graph
 	gremlinParser    *traversal.GremlinTraversalParser
 	extraMarshallers TopologyMarshallers
-}
-
-// TopologyParams topology query parameters
-// easyjson:json
-// swagger:model
-type TopologyParams struct {
-	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr" yaml:"GremlinQuery"`
 }
 
 func (t *TopologyAPI) topologyIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
@@ -88,7 +82,7 @@ func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 		return
 	}
 
-	resource := TopologyParams{}
+	resource := types.TopologyParams{}
 	data, _ := ioutil.ReadAll(r.Body)
 	if len(data) != 0 {
 		if err := json.Unmarshal(data, &resource); err != nil {

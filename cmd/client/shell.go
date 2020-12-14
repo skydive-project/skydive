@@ -27,8 +27,6 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 
-	"github.com/skydive-project/skydive/api/client"
-	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/js"
 )
@@ -44,10 +42,9 @@ var (
 
 // Session describes a shell session
 type Session struct {
-	authenticationOpts shttp.AuthenticationOpts
-	runtime            *js.Runtime
-	rl                 *contLiner
-	historyFile        string
+	runtime     *js.Runtime
+	rl          *contLiner
+	historyFile string
 }
 
 func (s *Session) completeWord(line string, pos int) (string, []string, string) {
@@ -165,18 +162,12 @@ func NewSession() (*Session, error) {
 	}
 
 	s := &Session{
-		authenticationOpts: AuthenticationOpts,
-		runtime:            runtime,
-		rl:                 newContLiner(),
-	}
-
-	client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-	if err != nil {
-		return nil, err
+		runtime: runtime,
+		rl:      newContLiner(),
 	}
 
 	s.runtime.Start()
-	s.runtime.RegisterAPIClient(client)
+	s.runtime.RegisterAPIClient(CrudClient)
 
 	if err := s.loadHistory(); err != nil {
 		return nil, fmt.Errorf("while reading history: %s", err)

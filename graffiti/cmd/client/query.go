@@ -28,11 +28,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/skydive-project/skydive/api/client"
+	api "github.com/skydive-project/skydive/graffiti/api/client"
 	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
-var delete bool
+var (
+	delete       bool
+	outputFormat string
+)
 
 // QueryCmd skydive topology query command
 var QueryCmd = &cobra.Command{
@@ -46,11 +49,8 @@ var QueryCmd = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		gremlinQuery = args[0]
-		queryHelper, err := client.NewGremlinQueryHelperFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
+		gremlinQuery := args[0]
+		queryHelper := api.NewGremlinQueryHelper(CrudClient.RestClient)
 
 		switch outputFormat {
 		case "json":

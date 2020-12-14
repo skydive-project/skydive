@@ -18,28 +18,25 @@
 package client
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
-	"github.com/skydive-project/skydive/api/client"
-	"github.com/skydive-project/skydive/api/types"
-	api "github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/graffiti/api/client"
+	"github.com/skydive-project/skydive/graffiti/api/types"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
-	usertopology "github.com/skydive-project/skydive/topology/enhancers"
-	"github.com/skydive-project/skydive/validator"
 
 	"github.com/spf13/cobra"
 )
 
 var (
-	gremlinFlag    bool
-	addMetadata    []string
-	removeMetadata []string
+	gremlinFlag        bool
+	nodeMetadata       string
+	nodeName           string
+	nodeType           string
+	nodeAddMetadata    []string
+	nodeRemoveMetadata []string
 )
 
 // NodeCmd skydive node rule root command
@@ -58,12 +55,7 @@ var NodeCreate = &cobra.Command{
 	SilenceUsage: false,
 
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
-		m, err := usertopology.DefToMetadata(metadata, graph.Metadata{})
+		m, err := DefToMetadata(nodeMetadata, graph.Metadata{})
 		if err != nil {
 			exitOnError(err)
 		}
@@ -76,13 +68,10 @@ var NodeCreate = &cobra.Command{
 			m["Type"] = nodeType
 		}
 
-		origin := graph.Origin(host, CLIService)
-		node := api.Node(*graph.CreateNode(graph.GenID(), m, graph.Time(time.Now()), host, origin))
-		if err = validator.Validate("node", &node); err != nil {
-			exitOnError(fmt.Errorf("Error while validating node: %s", err))
-		}
+		origin := graph.Origin(Host, CLIService)
+		node := types.Node(*graph.CreateNode(graph.GenID(), m, graph.Time(time.Now()), Host, origin))
 
-		if err = client.Create("node", &node, nil); err != nil {
+		if err = CrudClient.Create("node", &node, nil); err != nil {
 			exitOnError(err)
 		}
 
@@ -97,11 +86,7 @@ var NodeList = &cobra.Command{
 	Long:  "List nodes",
 	Run: func(cmd *cobra.Command, args []string) {
 		var nodes map[string]types.Node
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-		if err := client.List("node", &nodes); err != nil {
+		if err := CrudClient.List("node", &nodes); err != nil {
 			exitOnError(err)
 		}
 		printJSON(nodes)
@@ -121,12 +106,7 @@ var NodeGet = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		var node types.Node
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
-		if err := client.Get("node", args[0], &node); err != nil {
+		if err := CrudClient.Get("node", args[0], &node); err != nil {
 			exitOnError(err)
 		}
 		printJSON(&node)
@@ -145,14 +125,9 @@ var NodeDelete = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		restClient, err := client.NewRestClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
 		var ids []string
 		if gremlinFlag {
-			queryHelper := client.NewGremlinQueryHelper(restClient)
+			queryHelper := client.NewGremlinQueryHelper(CrudClient.RestClient)
 
 			for _, gremlinQuery := range args {
 				nodes, err := queryHelper.GetNodes(gremlinQuery)
@@ -168,9 +143,8 @@ var NodeDelete = &cobra.Command{
 			ids = args
 		}
 
-		crudClient := http.NewCrudClient(restClient)
 		for _, arg := range ids {
-			if err := crudClient.Delete("node", arg); err != nil {
+			if err := CrudClient.Delete("node", arg); err != nil {
 				logging.GetLogger().Error(err)
 			}
 		}
@@ -189,19 +163,14 @@ var NodeUpdate = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
-		patch, err := createMetadataJSONPatch()
+		patch, err := createMetadataJSONPatch(nodeAddMetadata, nodeRemoveMetadata)
 		if err != nil {
 			exitOnError(err)
 		}
 
 		var result interface{}
 		for _, id := range args {
-			if _, err := client.Update("node", id, patch, &result); err != nil {
+			if _, err := CrudClient.Update("node", id, patch, &result); err != nil {
 				exitOnError(err)
 			}
 		}
@@ -214,33 +183,12 @@ var NodeUpdate = &cobra.Command{
 	},
 }
 
-func createMetadataJSONPatch() (patch JSONPatch, _ error) {
-	for _, add := range addMetadata {
-		split := strings.SplitN(add, "=", 2)
-		if len(split) < 2 {
-			return nil, fmt.Errorf("metadata to add should be of the form k1=v1, got %s", add)
-		}
-
-		var value interface{}
-		if err := json.Unmarshal([]byte(split[1]), &value); err != nil {
-			value = split[1]
-		}
-		patch = append(patch, newPatchOperation("add", "/Metadata/"+strings.Replace(split[0], "/", ".", -1), value))
-	}
-
-	for _, remove := range removeMetadata {
-		patch = append(patch, newPatchOperation("remove", "/Metadata/"+strings.Replace(remove, "/", ".", -1)))
-	}
-
-	return patch, nil
-}
-
 func addCreateNodeFlags(cmd *cobra.Command) {
-	host, _ = os.Hostname()
+	Host, _ = os.Hostname()
 	cmd.Flags().StringVarP(&nodeName, "node-name", "", "", "node name")
 	cmd.Flags().StringVarP(&nodeType, "node-type", "", "", "node type")
-	cmd.Flags().StringVarP(&metadata, "metadata", "", "", "node metadata, key value pairs. 'k1=v1, k2=v2'")
-	cmd.Flags().StringVarP(&metadata, "host", "", host, "host")
+	cmd.Flags().StringVarP(&nodeMetadata, "metadata", "", "", "node metadata, key value pairs. 'k1=v1, k2=v2'")
+	cmd.Flags().StringVarP(&Host, "host", "", Host, "host")
 }
 
 func init() {
@@ -253,7 +201,7 @@ func init() {
 	NodeDelete.Flags().BoolVarP(&gremlinFlag, "gremlin", "", false, "use Gremlin expressions instead of a node identifiers")
 	NodeCmd.AddCommand(NodeDelete)
 
-	NodeUpdate.Flags().StringArrayVarP(&addMetadata, "add", "a", nil, "node metadata to add, key value pair. 'k1=v1'")
-	NodeUpdate.Flags().StringArrayVarP(&removeMetadata, "remove", "r", nil, "node metadata keys to remove")
+	NodeUpdate.Flags().StringArrayVarP(&nodeAddMetadata, "add", "a", nil, "node metadata to add, key value pair. 'k1=v1'")
+	NodeUpdate.Flags().StringArrayVarP(&nodeRemoveMetadata, "remove", "r", nil, "node metadata keys to remove")
 	NodeCmd.AddCommand(NodeUpdate)
 }

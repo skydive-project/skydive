@@ -25,7 +25,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/skydive-project/skydive/api/client"
 	api "github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/probes"
@@ -40,6 +39,7 @@ var (
 	captureDescription string
 	captureType        string
 	captureTTL         uint64
+	captureQuery       string
 	nodeTID            string
 	port               int
 	samplingRate       uint32
@@ -70,24 +70,19 @@ var CaptureCreate = &cobra.Command{
 	Long:  "Create capture",
 	PreRun: func(cmd *cobra.Command, args []string) {
 		if nodeTID != "" {
-			if gremlinQuery != "" {
+			if captureQuery != "" {
 				exitOnError(errors.New("Options --node and --gremlin are exclusive"))
 			}
-			gremlinQuery = fmt.Sprintf("g.V().Has('TID', '%s')", nodeTID)
+			captureQuery = fmt.Sprintf("g.V().Has('TID', '%s')", nodeTID)
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
 		var layers flow.ExtraLayers
 		if err := layers.Parse(extraLayers...); err != nil {
 			exitOnError(err)
 		}
 
-		capture := api.NewCapture(gremlinQuery, bpfFilter)
+		capture := api.NewCapture(captureQuery, bpfFilter)
 		capture.Name = captureName
 		capture.Description = captureDescription
 		capture.Type = captureType
@@ -115,7 +110,7 @@ var CaptureCreate = &cobra.Command{
 			}
 		}
 
-		if err := client.Create("capture", &capture, createOpts); err != nil {
+		if err := CrudClient.Create("capture", &capture, createOpts); err != nil {
 			exitOnError(err)
 		}
 		printJSON(&capture)
@@ -129,12 +124,7 @@ var CaptureList = &cobra.Command{
 	Long:  "List captures",
 	Run: func(cmd *cobra.Command, args []string) {
 		var captures map[string]api.Capture
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
-		if err := client.List("capture", &captures); err != nil {
+		if err := CrudClient.List("capture", &captures); err != nil {
 			exitOnError(err)
 		}
 		printJSON(captures)
@@ -154,12 +144,7 @@ var CaptureGet = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		var capture api.Capture
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
-		if err := client.Get("capture", args[0], &capture); err != nil {
+		if err := CrudClient.Get("capture", args[0], &capture); err != nil {
 			exitOnError(err)
 		}
 		printJSON(&capture)
@@ -178,13 +163,8 @@ var CaptureDelete = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
 		for _, id := range args {
-			if err := client.Delete("capture", id); err != nil {
+			if err := CrudClient.Delete("capture", id); err != nil {
 				logging.GetLogger().Error(err)
 			}
 		}
@@ -193,7 +173,7 @@ var CaptureDelete = &cobra.Command{
 
 func addCaptureFlags(cmd *cobra.Command) {
 	helpText := fmt.Sprintf("Allowed capture types: %v", probes.ProbeTypes)
-	cmd.Flags().StringVarP(&gremlinQuery, "gremlin", "", "", "Gremlin Query")
+	cmd.Flags().StringVarP(&captureQuery, "gremlin", "", "", "Gremlin Query")
 	cmd.Flags().StringVarP(&nodeTID, "node", "", "", "node TID")
 	cmd.Flags().StringVarP(&bpfFilter, "bpf", "", "", "BPF filter")
 	cmd.Flags().StringVarP(&captureName, "name", "", "", "capture name")

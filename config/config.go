@@ -560,12 +560,12 @@ func BindPFlag(key string, flag *pflag.Flag) error {
 
 // GetURL constructs a URL from a tuple of protocol, address, port and path
 // If TLS is enabled, it will return the https (or wss) version of the URL.
-func GetURL(protocol string, addr string, port int, path string) *url.URL {
+func GetURL(protocol string, addr string, port int, path string) (*url.URL, error) {
 	return cfg.GetURL(protocol, addr, port, path)
 }
 
 // GetURL constructs a URL from a tuple of protocol, address, port and path
 // If TLS is enabled, it will return the https (or wss) version of the URL.
-func (c *SkydiveConfig) GetURL(protocol string, addr string, port int, path string) *url.URL {
+func (c *SkydiveConfig) GetURL(protocol string, addr string, port int, path string) (*url.URL, error) {
 	return http.MakeURL(protocol, addr, port, path, c.IsTLSEnabled())
 }

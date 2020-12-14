@@ -66,14 +66,17 @@ func getHTTPClient(tlsConfig *tls.Config) *http.Client {
 
 // MakeURL creates an URL for the specified protocol, address, port and path,
 // whether TLS is required or not
-func MakeURL(protocol string, addr string, port int, path string, useTLS bool) *url.URL {
-	u, _ := url.Parse(fmt.Sprintf("%s://%s:%d%s", protocol, addr, port, path))
+func MakeURL(protocol string, addr string, port int, path string, useTLS bool) (*url.URL, error) {
+	u, err := url.Parse(fmt.Sprintf("%s://%s:%d%s", protocol, addr, port, path))
+	if err != nil {
+		return nil, err
+	}
 
 	if (protocol == "http" || protocol == "ws") && useTLS {
 		u.Scheme += "s"
 	}
 
-	return u
+	return u, nil
 }
 
 // NewRestClient returns a new REST API client. It takes a URL

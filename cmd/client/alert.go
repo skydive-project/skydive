@@ -20,8 +20,8 @@ package client
 import (
 	"os"
 
-	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
+	gapi "github.com/skydive-project/skydive/graffiti/api/client"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/validator"
 
@@ -50,11 +50,6 @@ var AlertCreate = &cobra.Command{
 	Short: "Create alert",
 	Long:  "Create alert",
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
 		alert := types.NewAlert()
 		alert.Name = alertName
 		alert.Description = alertDescription
@@ -66,7 +61,7 @@ var AlertCreate = &cobra.Command{
 			exitOnError(err)
 		}
 
-		if err := client.Create("alert", &alert, nil); err != nil {
+		if err := CrudClient.Create("alert", &alert, nil); err != nil {
 			exitOnError(err)
 		}
 		printJSON(&alert)
@@ -80,11 +75,7 @@ var AlertList = &cobra.Command{
 	Long:  "List alerts",
 	Run: func(cmd *cobra.Command, args []string) {
 		var alerts map[string]types.Alert
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-		if err := client.List("alert", &alerts); err != nil {
+		if err := CrudClient.List("alert", &alerts); err != nil {
 			exitOnError(err)
 		}
 		printJSON(alerts)
@@ -104,12 +95,7 @@ var AlertGet = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		var alert types.Alert
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
-		if err := client.Get("alert", args[0], &alert); err != nil {
+		if err := CrudClient.Get("alert", args[0], &alert); err != nil {
 			exitOnError(err)
 		}
 		printJSON(&alert)
@@ -128,13 +114,8 @@ var AlertDelete = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
 		for _, id := range args {
-			if err := client.Delete("alert", id); err != nil {
+			if err := CrudClient.Delete("alert", id); err != nil {
 				logging.GetLogger().Error(err)
 			}
 		}
@@ -153,31 +134,26 @@ var AlertUpdate = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
-		var patch JSONPatch
+		var patch gapi.JSONPatch
 		if alertName != "" {
-			patch = append(patch, newPatchOperation("add", "/Name", alertName))
+			patch = append(patch, gapi.NewPatchOperation("add", "/Name", alertName))
 		}
 		if alertDescription != "" {
-			patch = append(patch, newPatchOperation("add", "/Description", alertDescription))
+			patch = append(patch, gapi.NewPatchOperation("add", "/Description", alertDescription))
 		}
 		if alertTrigger != "" {
-			patch = append(patch, newPatchOperation("add", "/Trigger", alertTrigger))
+			patch = append(patch, gapi.NewPatchOperation("add", "/Trigger", alertTrigger))
 		}
 		if alertExpression != "" {
-			patch = append(patch, newPatchOperation("add", "/Expression", alertExpression))
+			patch = append(patch, gapi.NewPatchOperation("add", "/Expression", alertExpression))
 		}
 		if alertAction != "" {
-			patch = append(patch, newPatchOperation("add", "/Action", alertAction))
+			patch = append(patch, gapi.NewPatchOperation("add", "/Action", alertAction))
 		}
 
 		var result interface{}
 		for _, id := range args {
-			if _, err := client.Update("alert", id, &patch, &result); err != nil {
+			if _, err := CrudClient.Update("alert", id, &patch, &result); err != nil {
 				exitOnError(err)
 			}
 		}

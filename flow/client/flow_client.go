@@ -218,7 +218,7 @@ func NewFlowClient(addr string, port int, wsOpts *ws.ClientOpts) (*FlowClient, e
 			return nil, err
 		}
 	case "websocket":
-		endpoint := config.GetURL("ws", normalizeAddrForURL(addr), port, "/ws/agent/flow")
+		endpoint, _ := config.GetURL("ws", normalizeAddrForURL(addr), port, "/ws/agent/flow")
 		connection = NewFlowClientWebSocketConn(endpoint, wsOpts)
 	default:
 		return nil, fmt.Errorf("Invalid protocol %s", protocol)

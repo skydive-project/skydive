@@ -23,8 +23,6 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/skydive-project/skydive/api/client"
-
 	"github.com/spf13/cobra"
 )
 
@@ -35,12 +33,7 @@ var StatusCmd = &cobra.Command{
 	Short: "Show analyzer status",
 	Long:  "Show analyzer status",
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
-		resp, err := client.Request("GET", "status", nil, nil)
+		resp, err := CrudClient.Request("GET", "status", nil, nil)
 		if err != nil {
 			exitOnError(err)
 		}

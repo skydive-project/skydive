@@ -21,11 +21,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/skydive-project/skydive/api/client"
 	api "github.com/skydive-project/skydive/api/types"
+	gclient "github.com/skydive-project/skydive/graffiti/cmd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/logging"
-	usertopology "github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/validator"
 
 	"github.com/spf13/cobra"
@@ -58,12 +57,7 @@ var EdgeRuleCreate = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
-		m, err := usertopology.DefToMetadata(metadata, graph.Metadata{})
+		m, err := gclient.DefToMetadata(metadata, graph.Metadata{})
 		if err != nil {
 			exitOnError(err)
 		}
@@ -81,7 +75,7 @@ var EdgeRuleCreate = &cobra.Command{
 			exitOnError(fmt.Errorf("Error while validating edge rule: %s", err))
 		}
 
-		if err = client.Create("edgerule", &edgeRule, nil); err != nil {
+		if err = CrudClient.Create("edgerule", &edgeRule, nil); err != nil {
 			exitOnError(err)
 		}
 
@@ -105,11 +99,7 @@ var EdgeRuleGet = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 		var edge api.EdgeRule
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-		if err := client.Get("edgerule", args[0], &edge); err != nil {
+		if err := CrudClient.Get("edgerule", args[0], &edge); err != nil {
 			exitOnError(err)
 		}
 		printJSON(&edge)
@@ -125,12 +115,7 @@ var EdgeRuleList = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 		var edges map[string]api.EdgeRule
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
-		if err := client.List("edgerule", &edges); err != nil {
+		if err := CrudClient.List("edgerule", &edges); err != nil {
 			exitOnError(err)
 		}
 		printJSON(edges)
@@ -152,13 +137,8 @@ var EdgeRuleDelete = &cobra.Command{
 	},
 
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			exitOnError(err)
-		}
-
 		for _, id := range args {
-			if err := client.Delete("edgerule", id); err != nil {
+			if err := CrudClient.Delete("edgerule", id); err != nil {
 				logging.GetLogger().Error(err.Error())
 			}
 		}

@@ -331,6 +331,8 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 
 	api.RegisterStatusAPI(httpServer, opts.StatusReporter, opts.APIAuthBackend)
 	api.RegisterTopologyAPI(httpServer, g, tr, opts.APIAuthBackend, opts.TopologyMarshallers)
+	api.RegisterNodeAPI(apiServer, g, opts.APIAuthBackend)
+	api.RegisterEdgeAPI(apiServer, g, opts.APIAuthBackend)
 
 	return hub, nil
 }

@@ -1,5 +1,5 @@
-//go:generate sh -c "go run github.com/gomatic/renderizer --name=edge --resource=edge --type=Edge --title=Edge --article=a swagger_operations.tmpl > edge_swagger.go"
-//go:generate sh -c "go run github.com/gomatic/renderizer --name=edge --resource=edge --type=Edge --title=Edge swagger_definitions.tmpl > edge_swagger.json"
+//go:generate sh -c "go run github.com/gomatic/renderizer --name=edge --resource=edge --type=Edge --title=Edge --article=a ../../../api/server/swagger_operations.tmpl > edge_swagger.go"
+//go:generate sh -c "go run github.com/gomatic/renderizer --name=edge --resource=edge --type=Edge --title=Edge ../../../api/server/swagger_definitions.tmpl > edge_swagger.json"
 
 /*
  * Copyright (C) 2020 Sylvain Baubeau
@@ -23,9 +23,8 @@ package server
 import (
 	"time"
 
-	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/graffiti/api/rest"
-	api "github.com/skydive-project/skydive/graffiti/api/server"
+	"github.com/skydive-project/skydive/graffiti/api/types"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 )
@@ -138,7 +137,7 @@ func (h *EdgeAPIHandler) Update(id string, resource rest.Resource) (rest.Resourc
 }
 
 // RegisterEdgeAPI registers the edge API
-func RegisterEdgeAPI(apiServer *api.Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*EdgeAPIHandler, error) {
+func RegisterEdgeAPI(apiServer *Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*EdgeAPIHandler, error) {
 	edgeAPIHandler := &EdgeAPIHandler{
 		g: g,
 	}
