@@ -394,52 +394,45 @@ func (p *ProbeHandler) start() {
 	for p.state.Load() == service.RunningState {
 		select {
 		case ev := <-p.watcher.Events:
-			if ev.Op&fsnotify.Create == fsnotify.Create {
-				if p.isFolder(ev.Name) {
-					p.watcher.Add(ev.Name)
-				}
-			}
-			if ev.Op&fsnotify.Write == fsnotify.Write {
-				if p.isStatePath(ev.Name) {
-					p.containersLock.RLock()
-					cnt, ok := p.containers[ev.Name]
-					p.containersLock.RUnlock()
+			switch {
+			case ev.Op&fsnotify.Create == fsnotify.Create && p.isFolder(ev.Name):
+				p.watcher.Add(ev.Name)
+			case (ev.Op&fsnotify.Write == fsnotify.Write || ev.Op&fsnotify.Create == fsnotify.Create) && p.isStatePath(ev.Name):
+				p.containersLock.RLock()
+				cnt, ok := p.containers[ev.Name]
+				p.containersLock.RUnlock()
 
-					var err error
-					if ok {
-						err = p.updateContainer(ev.Name, cnt)
-					} else {
-						err = p.registerContainer(ev.Name)
-					}
-					if err != nil {
-						p.Ctx.Logger.Error(err)
-					}
-				}
-			}
-			if ev.Op&fsnotify.Remove == fsnotify.Remove {
-				if p.isStatePath(ev.Name) {
-					p.containersLock.RLock()
-					cnt, ok := p.containers[ev.Name]
-					p.containersLock.RUnlock()
-
-					if ok {
-						p.Unregister(cnt.namespace)
-
-						p.containersLock.Lock()
-						delete(p.containers, ev.Name)
-						p.containersLock.Unlock()
-					}
+				var err error
+				if ok {
+					err = p.updateContainer(ev.Name, cnt)
 				} else {
-					p.containersLock.Lock()
-					for path, cnt := range p.containers {
-						if strings.HasPrefix(path, ev.Name) {
-							p.Unregister(cnt.namespace)
+					err = p.registerContainer(ev.Name)
+				}
+				if err != nil {
+					p.Ctx.Logger.Error(err)
+				}
+			case ev.Op&fsnotify.Remove == fsnotify.Remove && p.isStatePath(ev.Name):
+				p.containersLock.RLock()
+				cnt, ok := p.containers[ev.Name]
+				p.containersLock.RUnlock()
 
-							delete(p.containers, path)
-						}
-					}
+				if ok {
+					p.Unregister(cnt.namespace)
+
+					p.containersLock.Lock()
+					delete(p.containers, ev.Name)
 					p.containersLock.Unlock()
 				}
+			case ev.Op&fsnotify.Remove == fsnotify.Remove && p.isFolder(ev.Name):
+				p.containersLock.Lock()
+				for path, cnt := range p.containers {
+					if strings.HasPrefix(path, ev.Name) {
+						p.Unregister(cnt.namespace)
+
+						delete(p.containers, path)
+					}
+				}
+				p.containersLock.Unlock()
 			}
 		case err := <-p.watcher.Errors:
 			p.Ctx.Logger.Errorf("Error while watching runc state folder: %s", err)
