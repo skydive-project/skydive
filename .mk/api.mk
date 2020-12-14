@@ -1,9 +1,9 @@
-.typescript: statics/js/bundle.js js/browser.js js/api.js
+.typescript: statics/js/bundle.js js/browser.js js/api.js graffiti/js/api.js
 
 graffiti/js/api.js: graffiti/js/api.ts
 	cd graffiti/js && npm ci && PATH=`npm bin`:$$PATH tsc --module commonjs --target ES5 api.ts
 
-js/api.js: js/api.ts
+js/api.js: js/api.ts graffiti/js/api.ts
 	cd js && npm ci && PATH=`npm bin`:$$PATH tsc --module commonjs --target ES5 api.ts
 
 js/browser.js: js/browser.ts js/api.ts

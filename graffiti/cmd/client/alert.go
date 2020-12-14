@@ -20,12 +20,11 @@ package client
 import (
 	"os"
 
+	"github.com/spf13/cobra"
+
 	gapi "github.com/skydive-project/skydive/graffiti/api/client"
 	"github.com/skydive-project/skydive/graffiti/api/types"
 	"github.com/skydive-project/skydive/graffiti/logging"
-	"github.com/skydive-project/skydive/validator"
-
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -56,10 +55,6 @@ var AlertCreate = &cobra.Command{
 		alert.Expression = alertExpression
 		alert.Trigger = alertTrigger
 		alert.Action = alertAction
-
-		if err := validator.Validate("alert", alert); err != nil {
-			exitOnError(err)
-		}
 
 		if err := CrudClient.Create("alert", &alert, nil); err != nil {
 			exitOnError(err)

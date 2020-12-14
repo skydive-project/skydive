@@ -125,8 +125,11 @@ func init() {
 	ClientCmd.PersistentFlags().StringVarP(&keyfile, "key", "", "", "private key file name")
 	ClientCmd.PersistentFlags().BoolVarP(&skipVerify, "insecure", "", false, "do not check server's certificate")
 
+	ClientCmd.AddCommand(AlertCmd)
 	ClientCmd.AddCommand(QueryCmd)
-	ClientCmd.AddCommand(NodeCmd)
 	ClientCmd.AddCommand(EdgeCmd)
+	ClientCmd.AddCommand(NodeCmd)
+	ClientCmd.AddCommand(ShellCmd)
 	ClientCmd.AddCommand(TopologyCmd)
+	ClientCmd.AddCommand(WorkflowCmd)
 }

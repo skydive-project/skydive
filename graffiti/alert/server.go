@@ -34,6 +34,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/api/server"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/api/types"
+	"github.com/skydive-project/skydive/graffiti/assets"
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
@@ -394,10 +395,10 @@ func (a *Server) Stop() {
 }
 
 // NewServer creates a new alerting server
-func NewServer(apiServer *api.Server, pool ws.StructSpeakerPool, graph *graph.Graph, parser *traversal.GremlinTraversalParser, etcdClient *etcd.Client) (*Server, error) {
+func NewServer(apiServer *api.Server, pool ws.StructSpeakerPool, graph *graph.Graph, parser *traversal.GremlinTraversalParser, etcdClient *etcd.Client, assets assets.Assets) (*Server, error) {
 	election := etcdClient.NewElection("/elections/alert-server")
 
-	runtime, err := server.NewWorkflowRuntime(graph, parser, apiServer)
+	runtime, err := server.NewWorkflowRuntime(graph, parser, apiServer, assets)
 	if err != nil {
 		return nil, err
 	}

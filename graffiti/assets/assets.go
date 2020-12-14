@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Red Hat, Inc.
+ * Copyright (C) 2020 Sylvain Baubeau
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,26 +15,9 @@
  *
  */
 
-var globals = this;
+package assets
 
-function require(m) {
-    var module = {}
-    var keys = Object.keys(globals)
-    for (var i in keys) {
-        var key = keys[i]
-        module[key] = globals[key]
-    }
-    return module;
+// Assets is the interface by an asset provider
+type Assets interface {
+	Asset(name string) ([]byte, error)
 }
-
-Promise.prototype.finally = function (f) {
-    return this.then(function (value) {
-      return Promise.resolve(f()).then(function () {
-        return value;
-      });
-    }, function (err) {
-      return Promise.resolve(f()).then(function () {
-        throw err;
-      });
-    });
-  };

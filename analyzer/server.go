@@ -283,6 +283,7 @@ func NewServerFromConfig() (*Server, error) {
 		Peers:               peers,
 		EtcdClient:          etcdClient,
 		TopologyMarshallers: api.TopologyMarshallers,
+		Assets:              &statics.Assets,
 	}
 
 	if config.GetBool("etcd.embedded") {

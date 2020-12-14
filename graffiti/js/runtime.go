@@ -28,11 +28,19 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/robertkrimen/otto"
 
+	"github.com/skydive-project/skydive/graffiti/assets"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
 )
+
+type bindataAssets struct{}
+
+func (b *bindataAssets) Asset(name string) ([]byte, error) {
+	return Asset(name)
+}
 
 type evalReq struct {
 	fn   func(vm *otto.Otto)
@@ -56,6 +64,7 @@ type Runtime struct {
 	closed        chan struct{}
 	timers        map[*jsTimer]*jsTimer
 	timerReady    chan *jsTimer
+	assets        assets.Assets
 }
 
 // RegisterAPIClient exports Go function required by the API to run inside the client JS VM
@@ -111,14 +120,15 @@ func (r *Runtime) RunScript(path string) otto.Value {
 }
 
 func (r *Runtime) runEmbededScript(path string) error {
-	content, err := Asset(path)
+	content, err := r.assets.Asset(path)
 	if err != nil {
-		return fmt.Errorf("Failed to load %s asset: %s)", path, err)
+		return errors.Wrapf(err, "failed to load %s asset: %s)", path)
 	}
 
 	if _, err := r.Run(string(content)); err != nil {
-		return fmt.Errorf("Failed to run %s: %s", path, err)
+		return errors.Wrapf(err, "failed to run %s: %s", path)
 	}
+
 	return nil
 }
 
@@ -344,7 +354,11 @@ func (r *Runtime) Stop() {
 }
 
 // NewRuntime returns a new JavaScript runtime environment
-func NewRuntime() (*Runtime, error) {
+func NewRuntime(assets assets.Assets) (*Runtime, error) {
+	if assets == nil {
+		assets = &bindataAssets{}
+	}
+
 	r := &Runtime{
 		Otto:          otto.New(),
 		closed:        make(chan struct{}),
@@ -352,6 +366,7 @@ func NewRuntime() (*Runtime, error) {
 		stopEventLoop: make(chan bool),
 		timers:        make(map[*jsTimer]*jsTimer),
 		timerReady:    make(chan *jsTimer),
+		assets:        assets,
 	}
 
 	r.registerStandardLibray()
@@ -378,11 +393,15 @@ func NewRuntime() (*Runtime, error) {
 		return nil, err
 	}
 
+	if err := r.runEmbededScript("pure-uuid.js"); err != nil {
+		return nil, err
+	}
+
 	if err := r.runEmbededScript("otto.js"); err != nil {
 		return nil, err
 	}
 
-	if err := r.runEmbededScript("pure-uuid.js"); err != nil {
+	if err := r.runEmbededScript("bootstrap.js"); err != nil {
 		return nil, err
 	}
 

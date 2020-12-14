@@ -29,6 +29,7 @@ import (
 
 	"github.com/skydive-project/skydive/graffiti/alert"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
+	"github.com/skydive-project/skydive/graffiti/assets"
 	gc "github.com/skydive-project/skydive/graffiti/common"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
@@ -62,6 +63,7 @@ type Opts struct {
 	EtcdClient          *etcdclient.Client
 	EtcdServerOpts      *etcdserver.EmbeddedServerOpts
 	Logger              logging.Logger
+	Assets              assets.Assets
 }
 
 type podOrigin struct {
@@ -323,14 +325,8 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 		return nil, err
 	}
 
-	alertServer, err := alert.NewServer(apiServer, subscriberWSServer, g, tr, opts.EtcdClient)
-	if err != nil {
-		return nil, err
-	}
-
 	hub.httpServer = httpServer
 	hub.apiServer = apiServer
-	hub.alertServer = alertServer
 	hub.podWSServer = podWSServer
 	hub.replicationEndpoint = replicationEndpoint
 	hub.replicationWSServer = replicationWSServer

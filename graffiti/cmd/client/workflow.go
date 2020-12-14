@@ -23,13 +23,11 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
 	"github.com/skydive-project/skydive/graffiti/api/types"
 	"github.com/skydive-project/skydive/graffiti/logging"
-	"github.com/skydive-project/skydive/validator"
-
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -57,10 +55,6 @@ func loadWorklow(path string) (*types.Workflow, error) {
 
 	workflow := &types.Workflow{}
 	if err := yaml.Unmarshal([]byte(yml), &workflow); err != nil {
-		return nil, err
-	}
-
-	if err := validator.Validate("workflow", workflow); err != nil {
 		return nil, err
 	}
 

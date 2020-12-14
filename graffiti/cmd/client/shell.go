@@ -27,12 +27,17 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 
+	"github.com/skydive-project/skydive/graffiti/assets"
 	"github.com/skydive-project/skydive/graffiti/js"
 	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 var (
 	shellScript string
+	historyFile string
+
+	// ShellAssets holds the extra assets for the JavaScript engine
+	ShellAssets assets.Assets
 
 	// ErrContinue parser error continue input
 	ErrContinue = errors.New("<continue input>")
@@ -68,13 +73,6 @@ func (s *Session) completeWord(line string, pos int) (string, []string, string) 
 }
 
 func (s *Session) loadHistory() error {
-	historyFile := ""
-	home, err := homeDir()
-	if err != nil {
-		return fmt.Errorf("Failed to retrieve home directory: %s", err)
-	}
-
-	historyFile = filepath.Join(home, "history")
 	f, err := os.Open(historyFile)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -139,24 +137,9 @@ func (s *Session) prompt() error {
 	return nil
 }
 
-func homeDir() (home string, err error) {
-	home = os.Getenv("SKYDIVE_HOME")
-	if home != "" {
-		return
-	}
-
-	home, err = homedir.Dir()
-	if err != nil {
-		return
-	}
-
-	home = filepath.Join(home, ".skydive")
-	return
-}
-
 // NewSession creates a new shell session
 func NewSession() (*Session, error) {
-	runtime, err := js.NewRuntime()
+	runtime, err := js.NewRuntime(ShellAssets)
 	if err != nil {
 		return nil, err
 	}
@@ -195,8 +178,8 @@ func (s *Session) Close() error {
 // ShellCmd skydive shell root command
 var ShellCmd = &cobra.Command{
 	Use:          "shell",
-	Short:        "Shell Command Line Interface",
-	Long:         "Skydive Shell Command Line Interface, yet another shell",
+	Short:        "Gremlin shell",
+	Long:         "Gremlin shell",
 	SilenceUsage: false,
 	Run: func(cmd *cobra.Command, args []string) {
 		s, err := NewSession()
@@ -222,5 +205,14 @@ var ShellCmd = &cobra.Command{
 }
 
 func init() {
+	var history string
+	home, err := homedir.Dir()
+	if err == nil {
+		if executable, err := os.Executable(); err == nil {
+			history = filepath.Join(home, fmt.Sprintf(".%s_history", filepath.Base(executable)))
+		}
+	}
+
+	ShellCmd.Flags().StringVarP(&historyFile, "history", "", history, "path to the command history")
 	ShellCmd.Flags().StringVarP(&shellScript, "script", "", "", "path to a JavaScript to execute")
 }

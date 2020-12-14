@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	promptDefault  = "skydive> "
+	promptDefault  = "shell> "
 	promptContinue = "..... "
 	indent         = "    "
 )
