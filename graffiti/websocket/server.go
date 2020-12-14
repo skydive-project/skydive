@@ -107,13 +107,11 @@ func (s *Server) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReque
 	}
 
 	// call the incomerHandler that will create the Speaker
-	_, err = s.incomerHandler(conn, r, func(c *wsIncomingClient) (Speaker, error) { return c, nil })
-	if err != nil {
+	if _, err = s.incomerHandler(conn, r, func(c *wsIncomingClient) (Speaker, error) { return c, nil }); err != nil {
 		s.opts.Logger.Warningf("Unable to accept incomer from %s: %s", r.RemoteAddr, err)
-		w.Header().Set("Connection", "close")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
+		if err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+           conn.Close()
+		}
 	}
 }
 
