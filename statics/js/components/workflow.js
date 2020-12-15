@@ -6,7 +6,9 @@ Vue.component('item', {
     'Description',
     'Type',
     'Values',
-    'Default'
+    'Default',
+    'Depends',
+    'Factors'
   ],
 
   inject: [
@@ -14,7 +16,7 @@ Vue.component('item', {
   ],
 
   template: `
-  <div class="form-group">
+  <div class="form-group" v-if="allowed()">
     <div v-if="Type == 'string'" class="form-group">
       <label :for="Name">{{Description}}</label>
       <textarea :id="Name" type="text" class="form-control input-sm" v-model="formData[Name]"></textarea>
@@ -57,6 +59,16 @@ Vue.component('item', {
 
   created() {
     if (this.Default) this.formData[this.Name] = this.Default
+  },
+
+  methods: {
+    allowed: function() {
+      if (this.Depends === "" || this.Factors === null) {
+        return true
+      }
+      let d = this.formData[this.Depends]
+      return this.Factors.indexOf(d) >= 0
+    }
   },
 })
 

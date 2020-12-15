@@ -306,6 +306,8 @@ type WorkflowParam struct {
 	Type        string           `yaml:"Type"`
 	Default     interface{}      `yaml:"Default"`
 	Values      []WorkflowChoice `yaml:"Values"`
+	Depends     string           `yaml:"Depends"`
+	Factors     []interface{}    `yaml:"Factors"`
 }
 
 // Workflow object
