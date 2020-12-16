@@ -29,7 +29,7 @@ check: lint
 		echo "===> You should comment you code <==="; \
 		exit 1; \
 	fi
-	unwanteddeps=$$(git grep --text github.com/skydive-project/skydive graffiti | grep -v github.com/skydive-project/skydive/graffiti | grep -v graffiti/gendecoder/main.go | grep -v graffiti/README.md); \
+	unwanteddeps=$$(git grep --text github.com/skydive-project/skydive "graffiti/*.go" | grep -v github.com/skydive-project/skydive/graffiti | grep -v graffiti/gendecoder/main.go); \
 	test -z "$$unwanteddeps" || \
 		(echo -e "Graffiti should not import Skydive only packages:\n$$unwanteddeps" && /bin/false)
 
