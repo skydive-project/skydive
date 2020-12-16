@@ -28,7 +28,7 @@ var __extends = (this && this.__extends) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 var makeRequest = null;
 var Unauthorized = "Unauthorized";
-var jsEnv = require("browser-or-node");
+var jsEnv = require('browser-or-node');
 if (jsEnv) {
     var querystring = require('qs');
     var defaultsDeep = require('lodash.defaultsdeep');

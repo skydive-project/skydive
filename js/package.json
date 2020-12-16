@@ -1,30 +1,29 @@
 {
-    "name": "skydive-api",
-    "version": "0.0.1",
-    "description": "Skydive API",
-    "main": "api.js",
-    "dependencies": {
-      "@formschema/native": "^1.1.1",
-      "browser-or-node": "1.0.2",
-      "browserify": "^16.2.3",
-      "lodash.defaultsdeep": "^4.6.1",
-      "najax": "1.0.3",
-      "qs": "^6.9.1",
-      "typescript": "^2.9.2",
-      "vue-form-generator": "^2.3.4"
-    },
-    "scripts": {
-      "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "author": "Sylvain Baubeau",
-    "license": "Apache-2.0",
-    "repository": {
-      "type": "git",
-      "url": "git+https://github.com/skydive-project/skydive.git"
-    },
-    "bugs": {
-      "url": "https://github.com/skydive-project/skydive/issues"
-    },
-    "homepage": "https://github.com/skydive-project/skydive#readme"
-  }
-  
+  "name": "skydive-api",
+  "version": "0.0.1",
+  "description": "Skydive API",
+  "main": "api.js",
+  "dependencies": {
+    "@formschema/native": "^1.1.1",
+    "browser-or-node": "^1.0.2",
+    "browserify": "^16.2.3",
+    "lodash.defaultsdeep": "^4.6.1",
+    "najax": "1.0.3",
+    "qs": "^6.9.1",
+    "typescript": "^2.9.2",
+    "vue-form-generator": "^2.3.4"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Sylvain Baubeau",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/skydive-project/skydive.git"
+  },
+  "bugs": {
+    "url": "https://github.com/skydive-project/skydive/issues"
+  },
+  "homepage": "https://github.com/skydive-project/skydive#readme"
+}

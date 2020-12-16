@@ -25,7 +25,7 @@ var makeRequest = null;
 
 const Unauthorized = "Unauthorized";
 
-import jsEnv = require('browser-or-node');
+var jsEnv = require('browser-or-node');
 if (jsEnv) {
     var querystring = require('qs')
     var defaultsDeep = require('lodash.defaultsdeep')

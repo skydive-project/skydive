@@ -30,7 +30,7 @@ var __extends = (this && this.__extends) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 var makeRequest = null;
 var Unauthorized = "Unauthorized";
-var jsEnv = require("browser-or-node");
+var jsEnv = require('browser-or-node');
 if (jsEnv) {
     var querystring = require('qs');
     var defaultsDeep = require('lodash.defaultsdeep');
@@ -216,7 +216,7 @@ var API = /** @class */ (function () {
     };
     API.prototype.delete = function (id) {
         var resource = this.Resource;
-        return this.client.request('/api/' + resource + "/" + id, "DELETE", "", { "dataType": "" });
+        return this.client.request('/api/' + resource + "/" + id, "DELETE", "", { "dataType": "text" });
     };
     return API;
 }());
