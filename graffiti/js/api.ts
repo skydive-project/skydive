@@ -203,7 +203,7 @@ export class API<T extends APIObject> {
 
     delete(id: string) {
         let resource = this.Resource;
-        return this.client.request('/api/' + resource + "/" + id, "DELETE", "", { "dataType": "" })
+        return this.client.request('/api/' + resource + "/" + id, "DELETE", "", { "dataType": "text" })
     }
 }
 

@@ -291,6 +291,7 @@ func (a *Server) RegisterAPIHandler(handler rest.Handler, authBackend shttp.Auth
 					return
 				}
 
+				w.Header().Set("Content-Type", "text/plain")
 				w.WriteHeader(http.StatusOK)
 			},
 		},
