@@ -194,16 +194,16 @@ func compressBody(body io.Reader) io.Reader {
 }
 
 // FilterToExpression returns a OrientDB select expression based on filters
-func FilterToExpression(f *filters.Filter, formatter func(string) string) string {
-	if formatter == nil {
-		formatter = func(s string) string { return s }
+func FilterToExpression(f *filters.Filter, normalizeKey func(string) string) string {
+	if normalizeKey == nil {
+		normalizeKey = func(s string) string { return s }
 	}
 
 	if f.BoolFilter != nil {
 		keyword := ""
 		switch f.BoolFilter.Op {
 		case filters.BoolFilterOp_NOT:
-			return "NOT (" + FilterToExpression(f.BoolFilter.Filters[0], formatter) + ")"
+			return "NOT (" + FilterToExpression(f.BoolFilter.Filters[0], normalizeKey) + ")"
 		case filters.BoolFilterOp_OR:
 			keyword = "OR"
 		case filters.BoolFilterOp_AND:
@@ -211,57 +211,57 @@ func FilterToExpression(f *filters.Filter, formatter func(string) string) string
 		}
 		var conditions []string
 		for _, item := range f.BoolFilter.Filters {
-			if expr := FilterToExpression(item, formatter); expr != "" {
-				conditions = append(conditions, "("+FilterToExpression(item, formatter)+")")
+			if expr := FilterToExpression(item, normalizeKey); expr != "" {
+				conditions = append(conditions, "("+FilterToExpression(item, normalizeKey)+")")
 			}
 		}
 		return strings.Join(conditions, " "+keyword+" ")
 	}
 
 	if f.TermStringFilter != nil {
-		return fmt.Sprintf(`(%s = "%s") OR ("%s" IN %s)`, formatter(f.TermStringFilter.Key), f.TermStringFilter.Value,
-			f.TermStringFilter.Value, formatter(f.TermStringFilter.Key))
+		return fmt.Sprintf(`(%s = "%s") OR ("%s" IN %s)`, normalizeKey(f.TermStringFilter.Key), f.TermStringFilter.Value,
+			f.TermStringFilter.Value, normalizeKey(f.TermStringFilter.Key))
 	}
 
 	if f.TermInt64Filter != nil {
-		return fmt.Sprintf(`(%s = %d) OR (%d IN %s)`, formatter(f.TermInt64Filter.Key), f.TermInt64Filter.Value,
-			f.TermInt64Filter.Value, formatter(f.TermInt64Filter.Key))
+		return fmt.Sprintf(`(%s = %d) OR (%d IN %s)`, normalizeKey(f.TermInt64Filter.Key), f.TermInt64Filter.Value,
+			f.TermInt64Filter.Value, normalizeKey(f.TermInt64Filter.Key))
 	}
 
 	if f.TermBoolFilter != nil {
-		return fmt.Sprintf(`(%s = %s) OR (%s IN %s)`, formatter(f.TermBoolFilter.Key), strconv.FormatBool(f.TermBoolFilter.Value),
-			strconv.FormatBool(f.TermBoolFilter.Value), formatter(f.TermBoolFilter.Key))
+		return fmt.Sprintf(`(%s = %s) OR (%s IN %s)`, normalizeKey(f.TermBoolFilter.Key), strconv.FormatBool(f.TermBoolFilter.Value),
+			strconv.FormatBool(f.TermBoolFilter.Value), normalizeKey(f.TermBoolFilter.Key))
 	}
 
 	if f.GtInt64Filter != nil {
-		return fmt.Sprintf("%v > %v", formatter(f.GtInt64Filter.Key), f.GtInt64Filter.Value)
+		return fmt.Sprintf("%v > %v", normalizeKey(f.GtInt64Filter.Key), f.GtInt64Filter.Value)
 	}
 
 	if f.LtInt64Filter != nil {
-		return fmt.Sprintf("%v < %v", formatter(f.LtInt64Filter.Key), f.LtInt64Filter.Value)
+		return fmt.Sprintf("%v < %v", normalizeKey(f.LtInt64Filter.Key), f.LtInt64Filter.Value)
 	}
 
 	if f.GteInt64Filter != nil {
-		return fmt.Sprintf("%v >= %v", formatter(f.GteInt64Filter.Key), f.GteInt64Filter.Value)
+		return fmt.Sprintf("%v >= %v", normalizeKey(f.GteInt64Filter.Key), f.GteInt64Filter.Value)
 	}
 
 	if f.LteInt64Filter != nil {
-		return fmt.Sprintf("%v <= %v", formatter(f.LteInt64Filter.Key), f.LteInt64Filter.Value)
+		return fmt.Sprintf("%v <= %v", normalizeKey(f.LteInt64Filter.Key), f.LteInt64Filter.Value)
 	}
 
 	if f.RegexFilter != nil {
-		return fmt.Sprintf(`%s MATCHES "%s"`, formatter(f.RegexFilter.Key), strings.Replace(f.RegexFilter.Value, `\`, `\\`, -1))
+		return fmt.Sprintf(`%s MATCHES "%s"`, normalizeKey(f.RegexFilter.Key), strings.Replace(f.RegexFilter.Value, `\`, `\\`, -1))
 	}
 
 	if f.NullFilter != nil {
-		return fmt.Sprintf("%s is NULL", formatter(f.NullFilter.Key))
+		return fmt.Sprintf("%s is NULL", normalizeKey(f.NullFilter.Key))
 	}
 
 	if f.IPV4RangeFilter != nil {
 		// ignore the error at this point it should have been catched earlier
 		regex, _ := filters.IPV4CIDRToRegex(f.IPV4RangeFilter.Value)
 
-		return fmt.Sprintf(`%s MATCHES "%s"`, formatter(f.IPV4RangeFilter.Key), strings.Replace(regex, `\`, `\\`, -1))
+		return fmt.Sprintf(`%s MATCHES "%s"`, normalizeKey(f.IPV4RangeFilter.Key), strings.Replace(regex, `\`, `\\`, -1))
 	}
 
 	return ""

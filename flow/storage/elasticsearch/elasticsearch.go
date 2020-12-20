@@ -176,6 +176,10 @@ type rawpacketRecord struct {
 	Flow *embeddedFlow `json:"Flow"`
 }
 
+func normalizeKey(key string) string {
+	return "Flow." + key
+}
+
 // StoreFlows push a set of flows in the database
 func (c *Storage) StoreFlows(flows []*flow.Flow) error {
 	if !c.client.Started() {
@@ -241,10 +245,10 @@ func (c *Storage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filter
 	}
 
 	// do not escape flow as ES use sub object in that case
-	mustQueries := []elastic.Query{es.FormatFilter(fsq.Filter, "Flow")}
+	mustQueries := []elastic.Query{es.FormatFilter(fsq.Filter, normalizeKey)}
 
 	if packetFilter != nil {
-		mustQueries = append(mustQueries, es.FormatFilter(packetFilter, ""))
+		mustQueries = append(mustQueries, es.FormatFilter(packetFilter, nil))
 	}
 
 	out, err := c.sendRequest(elastic.NewBoolQuery().Must(mustQueries...), fsq, rawpacketIndex.IndexWildcard(c.indexPrefix))
@@ -276,8 +280,8 @@ func (c *Storage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.F
 	}
 
 	// do not escape flow as ES use sub object in that case
-	flowQuery := es.FormatFilter(fsq.Filter, "Flow")
-	metricQuery := es.FormatFilter(metricFilter, "")
+	flowQuery := es.FormatFilter(fsq.Filter, normalizeKey)
+	metricQuery := es.FormatFilter(metricFilter, nil)
 
 	query := elastic.NewBoolQuery().Must(flowQuery, metricQuery)
 	out, err := c.sendRequest(query, fsq, metricIndex.IndexWildcard(c.indexPrefix))
@@ -311,7 +315,7 @@ func (c *Storage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error) {
 	}
 
 	// TODO: dedup and sort in order to remove duplicate flow UUID due to rolling index
-	out, err := c.sendRequest(es.FormatFilter(fsq.Filter, ""), fsq, flowIndex.IndexWildcard(c.indexPrefix))
+	out, err := c.sendRequest(es.FormatFilter(fsq.Filter, nil), fsq, flowIndex.IndexWildcard(c.indexPrefix))
 	if err != nil {
 		return nil, err
 	}

@@ -46,6 +46,11 @@ const (
 	EdgeDeleted
 )
 
+const (
+	// MetadataPrefix used to access user metadata
+	MetadataPrefix = "Metadata."
+)
+
 // Identifier graph ID
 type Identifier string
 
@@ -115,8 +120,8 @@ type Backend interface {
 
 	MetadataUpdated(e interface{}) error
 
-	GetNodes(t Context, m ElementMatcher, e ElementMatcher) []*Node
-	GetEdges(t Context, m ElementMatcher, e ElementMatcher) []*Edge
+	GetNodes(t Context, m ElementMatcher) []*Node
+	GetEdges(t Context, m ElementMatcher) []*Edge
 
 	IsHistorySupported() bool
 }
@@ -338,47 +343,47 @@ func GenID(s ...string) Identifier {
 }
 
 func (e *graphElement) GetFieldBool(field string) (_ bool, err error) {
-	return e.Metadata.GetFieldBool(field)
+	return e.Metadata.GetFieldBool(strings.TrimPrefix(field, MetadataPrefix))
 }
 
 func (e *graphElement) GetFieldInt64(field string) (_ int64, err error) {
 	switch field {
-	case "CreatedAt":
+	case "@CreatedAt":
 		return e.CreatedAt.UnixMilli(), nil
-	case "UpdatedAt":
+	case "@UpdatedAt":
 		return e.UpdatedAt.UnixMilli(), nil
-	case "DeletedAt":
+	case "@DeletedAt":
 		return e.DeletedAt.UnixMilli(), nil
-	case "Revision":
+	case "@Revision":
 		return e.Revision, nil
 	default:
-		return e.Metadata.GetFieldInt64(field)
+		return e.Metadata.GetFieldInt64(strings.TrimPrefix(field, MetadataPrefix))
 	}
 }
 
 func (e *graphElement) GetFieldString(field string) (_ string, err error) {
 	switch field {
-	case "ID":
+	case "@ID":
 		return string(e.ID), nil
-	case "Host":
+	case "@Host":
 		return e.Host, nil
-	case "Origin":
+	case "@Origin":
 		return e.Origin, nil
 	default:
-		return e.Metadata.GetFieldString(field)
+		return e.Metadata.GetFieldString(strings.TrimPrefix(field, MetadataPrefix))
 	}
 }
 
-func (e *graphElement) GetField(name string) (interface{}, error) {
-	if i, err := e.GetFieldInt64(name); err == nil {
+func (e *graphElement) GetField(field string) (interface{}, error) {
+	if i, err := e.GetFieldInt64(field); err == nil {
 		return i, nil
 	}
 
-	if s, err := e.GetFieldString(name); err == nil {
+	if s, err := e.GetFieldString(field); err == nil {
 		return s, nil
 	}
 
-	return e.Metadata.GetField(name)
+	return e.Metadata.GetField(strings.TrimPrefix(field, MetadataPrefix))
 }
 
 func (e *graphElement) GetFields(names []string) (interface{}, error) {
@@ -397,7 +402,7 @@ func (e *graphElement) GetFields(names []string) (interface{}, error) {
 	return values, nil
 }
 
-var graphElementKeys = map[string]bool{"ID": false, "Host": false, "Origin": false, "CreatedAt": false, "UpdatedAt": false, "DeletedAt": false, "Revision": false}
+var graphElementKeys = map[string]bool{"@ID": false, "@Host": false, "@Origin": false, "@CreatedAt": false, "@UpdatedAt": false, "@DeletedAt": false, "@Revision": false}
 
 func (e *graphElement) GetFieldKeys() []string {
 	keys := make([]string, len(graphElementKeys))
@@ -418,6 +423,9 @@ func (e *graphElement) MatchBool(field string, predicate getter.BoolPredicate) b
 			}
 		}
 	}
+
+	field = strings.TrimPrefix(field, MetadataPrefix)
+
 	return e.Metadata.MatchBool(field, predicate)
 }
 
@@ -427,6 +435,8 @@ func (e *graphElement) MatchInt64(field string, predicate getter.Int64Predicate)
 			return predicate(n)
 		}
 	}
+
+	field = strings.TrimPrefix(field, MetadataPrefix)
 
 	if index := strings.Index(field, "."); index != -1 {
 		first := field[index+1:]
@@ -446,6 +456,8 @@ func (e *graphElement) MatchString(field string, predicate getter.StringPredicat
 			return predicate(s)
 		}
 	}
+
+	field = strings.TrimPrefix(field, MetadataPrefix)
 
 	if index := strings.Index(field, "."); index != -1 {
 		first := field[index+1:]
@@ -956,7 +968,7 @@ func getNodeMinDistance(nodesMap map[Identifier]*Node, distance map[Identifier]u
 
 // GetNodesMap returns a map of nodes within a time slice
 func (g *Graph) GetNodesMap(t Context) map[Identifier]*Node {
-	nodes := g.backend.GetNodes(t, nil, nil)
+	nodes := g.backend.GetNodes(t, nil)
 	nodesMap := make(map[Identifier]*Node, len(nodes))
 	for _, n := range nodes {
 		nodesMap[n.ID] = n
@@ -1335,12 +1347,12 @@ func (g *Graph) DelNodes(m ElementMatcher) error {
 
 // GetNodes returns a list of nodes
 func (g *Graph) GetNodes(m ElementMatcher) []*Node {
-	return g.backend.GetNodes(g.context, m, nil)
+	return g.backend.GetNodes(g.context, m)
 }
 
 // GetEdges returns a list of edges
 func (g *Graph) GetEdges(m ElementMatcher) []*Edge {
-	return g.backend.GetEdges(g.context, m, nil)
+	return g.backend.GetEdges(g.context, m)
 }
 
 // GetEdgeNodes returns a list of nodes of an edge

@@ -64,21 +64,7 @@ func metadataToOrientDBSetString(m Metadata) string {
 	return ""
 }
 
-func elementToOrientDBSelectString(e ElementMatcher) string {
-	if e == nil {
-		return ""
-	}
-
-	var filter *filters.Filter
-	filter, err := e.Filter()
-	if err != nil {
-		return ""
-	}
-
-	return orientdb.FilterToExpression(filter, func(k string) string { return k })
-}
-
-func metadataToOrientDBSelectString(m ElementMatcher) string {
+func matcherToOrientDBSelectString(m ElementMatcher) string {
 	if m == nil {
 		return ""
 	}
@@ -89,13 +75,20 @@ func metadataToOrientDBSelectString(m ElementMatcher) string {
 		return ""
 	}
 
-	return orientdb.FilterToExpression(filter, func(k string) string {
-		key := "Metadata"
-		for _, s := range strings.Split(k, ".") {
+	normalizeKey := func(key string) string {
+		if key[0] == '@' {
+			return key[1:]
+		}
+		els := strings.Split(key, ".")
+		key, els = MetadataPrefix+els[0], els[1:]
+
+		for _, s := range els {
 			key += "['" + s + "']"
 		}
 		return key
-	})
+	}
+
+	return orientdb.FilterToExpression(filter, normalizeKey)
 }
 
 func (o *OrientDBBackend) updateTimes(e string, id string, events ...eventTime) error {
@@ -233,8 +226,8 @@ func (o *OrientDBBackend) GetNode(i Identifier, t Context) (nodes []*Node) {
 func (o *OrientDBBackend) GetNodeEdges(n *Node, t Context, m ElementMatcher) (edges []*Edge) {
 	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
 	query += fmt.Sprintf(" AND (Parent = '%s' OR Child = '%s')", n.ID, n.ID)
-	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
-		query += " AND " + metadataQuery
+	if matcherQuery := matcherToOrientDBSelectString(m); matcherQuery != "" {
+		query += " AND " + matcherQuery
 	}
 	return o.searchEdges(t, query)
 }
@@ -310,27 +303,21 @@ func (o *OrientDBBackend) MetadataUpdated(i interface{}) error {
 	return err
 }
 
-// GetNodes returns a list of nodes within time slice, matching metadata
-func (o *OrientDBBackend) GetNodes(t Context, m ElementMatcher, e ElementMatcher) (nodes []*Node) {
+// GetNodes returns a list of nodes within time slice
+func (o *OrientDBBackend) GetNodes(t Context, m ElementMatcher) (nodes []*Node) {
 	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
-	if elementQuery := elementToOrientDBSelectString(e); elementQuery != "" {
-		query += " AND " + elementQuery
-	}
-	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
-		query += " AND " + metadataQuery
+	if matcherQuery := matcherToOrientDBSelectString(m); matcherQuery != "" {
+		query += " AND " + matcherQuery
 	}
 
 	return o.searchNodes(t, query)
 }
 
-// GetEdges returns a list of edges within time slice, matching metadata
-func (o *OrientDBBackend) GetEdges(t Context, m ElementMatcher, e ElementMatcher) (edges []*Edge) {
+// GetEdges returns a list of edges within time slice
+func (o *OrientDBBackend) GetEdges(t Context, m ElementMatcher) (edges []*Edge) {
 	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
-	if elementQuery := elementToOrientDBSelectString(e); elementQuery != "" {
-		query += " AND " + elementQuery
-	}
-	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
-		query += " AND " + metadataQuery
+	if matcherQuery := matcherToOrientDBSelectString(m); matcherQuery != "" {
+		query += " AND " + matcherQuery
 	}
 
 	return o.searchEdges(t, query)
@@ -356,13 +343,13 @@ func (o *OrientDBBackend) FlushElements(e ElementMatcher) error {
 
 	now := TimeUTC().UnixMilli()
 
-	elementQuery := elementToOrientDBSelectString(e)
-	query := fmt.Sprintf("UPDATE Node SET DeletedAt = %d, ArchivedAt = %d WHERE DeletedAt IS NULL AND %s", now, now, elementQuery)
+	matcherQuery := matcherToOrientDBSelectString(e)
+	query := fmt.Sprintf("UPDATE Node SET DeletedAt = %d, ArchivedAt = %d WHERE DeletedAt IS NULL AND %s", now, now, matcherQuery)
 	if _, err := o.client.SQL(query); err != nil {
 		return fmt.Errorf("Error while flushing graph: %s", err)
 	}
 
-	query = fmt.Sprintf("UPDATE Link SET DeletedAt = %d, ArchivedAt = %d WHERE DeletedAt IS NULL AND %s", now, now, elementQuery)
+	query = fmt.Sprintf("UPDATE Link SET DeletedAt = %d, ArchivedAt = %d WHERE DeletedAt IS NULL AND %s", now, now, matcherQuery)
 	if _, err := o.client.SQL(query); err != nil {
 		return fmt.Errorf("Error while flushing graph: %s", err)
 	}
@@ -373,11 +360,11 @@ func (o *OrientDBBackend) FlushElements(e ElementMatcher) error {
 // Sync adds all the nodes and edges with the specified filter into an other graph
 func (o *OrientDBBackend) Sync(g *Graph, elementFilter *ElementFilter) error {
 	// re-insert valid nodes and edges
-	for _, node := range o.GetNodes(Context{}, nil, elementFilter) {
+	for _, node := range o.GetNodes(Context{}, elementFilter) {
 		g.NodeAdded(node)
 	}
 
-	for _, edge := range o.GetEdges(Context{}, nil, elementFilter) {
+	for _, edge := range o.GetEdges(Context{}, elementFilter) {
 		g.EdgeAdded(edge)
 	}
 
