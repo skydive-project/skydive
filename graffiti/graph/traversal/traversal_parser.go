@@ -85,12 +85,10 @@ type (
 	GremlinTraversalStepInV struct {
 		GremlinTraversalContext
 	}
-
 	// GremlinTraversalStepBothV step
 	GremlinTraversalStepBothV struct {
 		GremlinTraversalContext
 	}
-
 	// GremlinTraversalStepSubGraph step
 	GremlinTraversalStepSubGraph struct {
 		GremlinTraversalContext
@@ -153,6 +151,10 @@ type (
 	}
 	// GremlinTraversalStepValues step
 	GremlinTraversalStepValues struct {
+		GremlinTraversalContext
+	}
+	// GremlinTraversalStepValueMap step
+	GremlinTraversalStepValueMap struct {
 		GremlinTraversalContext
 	}
 	// GremlinTraversalStepKeys step
@@ -797,6 +799,16 @@ func (s *GremlinTraversalStepValues) Reduce(next GremlinTraversalStep) (GremlinT
 	return next, nil
 }
 
+// Exec ValueMap step
+func (s *GremlinTraversalStepValueMap) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
+	return invokeStepFnc(last, "PropertyValueMap", s)
+}
+
+// Reduce ValueMap step
+func (s *GremlinTraversalStepValueMap) Reduce(next GremlinTraversalStep) (GremlinTraversalStep, error) {
+	return next, nil
+}
+
 // Exec Keys step
 func (s *GremlinTraversalStepKeys) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	return invokeStepFnc(last, "PropertyKeys", s)
@@ -1236,6 +1248,17 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 			return nil, fmt.Errorf("Values parameter has to be a string key : %v", params)
 		}
 		return &GremlinTraversalStepValues{gremlinStepContext}, nil
+	case VALUEMAP:
+		if len(params) == 0 {
+			return nil, fmt.Errorf("ValueMap requires at least on parameter : %v", params)
+		}
+
+		for _, param := range params {
+			if _, ok := param.(string); !ok {
+				return nil, fmt.Errorf("ValueMap parameters have to be string keys : %v", params)
+			}
+		}
+		return &GremlinTraversalStepValueMap{gremlinStepContext}, nil
 	case KEYS:
 		return &GremlinTraversalStepKeys{gremlinStepContext}, nil
 	case SUM:
