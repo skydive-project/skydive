@@ -31,10 +31,27 @@ oc process -f https://raw.githubusercontent.com/skydive-project/skydive/${VERSIO
 
 #### Check that everything is working and created:
 
- - Overall status: `oc status`
- - List all pods: `oc get pods`
- - List all daemonsets: `oc get daemonset`
- - List all routes: `oc get routes`
+ - Overall status:  
+   `oc status`
+ - List all pods:  
+   `oc get pods`
+ - List all daemonsets:  
+   `oc get daemonset`
+ - List all services:  
+   `oc get services`
+ - List all routes:  
+   `oc get routes`
+
+#### UI Access 
+
+Perform the Following steps to access skydive UI 
+ - point your browser to skydive UI end-point  
+ `oc get route skydive-ui -o jsonpath='http://{.spec.host}'`
+ - logout using small person icon on screen top right  
+ - Specify analyzer endpoint   
+ `oc get route skydive-analyzer -o jsonpath='http://{.spec.host}'`
+ - Use username = `admin` , Password = `password`  
+ - press **sign-in**  
 
 # Installation parameters
 

@@ -3,56 +3,22 @@ kind: Template
 metadata:
   name: skydive
 objects:
-- apiVersion: v1
-  kind: Service
-  metadata:
-    labels:
-      app: skydive-analyzer
-    name: skydive-analyzer
-  spec:
-    ports:
-    - name: api
-      port: 8082
-      protocol: TCP
-      targetPort: 8082
-    - name: protobuf
-      port: 8082
-      protocol: UDP
-      targetPort: 8082
-    - name: etcd
-      port: 12379
-      protocol: TCP
-      targetPort: 12379
-    - name: etcd-cluster
-      port: 12380
-      protocol: TCP
-      targetPort: 12380
-    - name: es
-      port: 9200
-      protocol: TCP
-      targetPort: 9200
-    selector:
-      app: skydive
-      tier: analyzer
-    sessionAffinity: None
-    type: NodePort
-- apiVersion: v1
-  kind: DeploymentConfig
+# Skydive Analyzer (Deployment)
+#
+# Containers included in this pod::
+# (1) Skydive Analyzer - main skydive server component
+# (2) Skydive UI - new skydive UI
+# (3) ElasticSearch - persistent storage for skydive
+- apiVersion: apps/v1
+  kind: Deployment
   metadata:
     name: skydive-analyzer
   spec:
     replicas: 1
     selector:
-      app: skydive
-      tier: analyzer
-    strategy:
-      rollingParams:
-        intervalSeconds: 1
-        maxSurge: 25%
-        maxUnavailable: 25%
-        timeoutSeconds: 600
-        updatePeriodSeconds: 1
-      type: Rolling
+      matchLabels:
+        app: skydive
+        tier: analyzer
     template:
       metadata:
         labels:
@@ -60,7 +26,10 @@ objects:
           tier: analyzer
       spec:
         containers:
-        - args:
+        - image: skydive/skydive
+          imagePullPolicy: Always
+          name: skydive-analyzer
+          args:
           - analyzer
           - --listen=0.0.0.0:8082
           env:
@@ -69,24 +38,17 @@ objects:
           - name: SKYDIVE_ANALYZER_TOPOLOGY_BACKEND
             value: elasticsearch
           - name: SKYDIVE_ANALYZER_TOPOLOGY_PROBES
-            value: ${SKYDIVE_ANALYZER_TOPOLOGY_PROBES}
+            value: "k8s ovn"
           - name: SKYDIVE_ANALYZER_TOPOLOGY_K8S_PROBES
-            value: ${SKYDIVE_ANALYZER_TOPOLOGY_K8S_PROBES}
+            value: "cluster namespace node pod container service deployment"
+          - name: SKYDIVE_UI
+            value: '{"theme":"light","k8s_enabled":"true","topology": {"favorites":{"infrastructure":"G.V().Has(\"Manager\", Without(\"k8s\"))","kubernetes":"G.V().Has(\"Manager\",\"k8s\")"},"default_filter":"infrastructure"}}'
+          - name: SKYDIVE_ANALYZER_TOPOLOGY_FABRIC
+            value: 'TOR1->*[Type=host]/eth0 TOR1->*[Type=host]/eth1 TOR1->*[Type=host]/ens1 TOR1->*[Type=host]/ens2 TOR1->*[Type=host]/ens3'
           - name: SKYDIVE_ETCD_LISTEN
             value: 0.0.0.0:12379
           - name: SKYDIVE_LOGGING_LEVEL
             value: ${SKYDIVE_LOGGING_LEVEL}
-          image: skydive/skydive
-          imagePullPolicy: Always
-          livenessProbe:
-            failureThreshold: 3
-            tcpSocket:
-              port: 8082
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            successThreshold: 1
-            timeoutSeconds: 5
-          name: skydive-analyzer
           ports:
           - containerPort: 8082
             protocol: TCP
@@ -96,6 +58,14 @@ objects:
             protocol: TCP
           - containerPort: 12380
             protocol: TCP
+          livenessProbe:
+            failureThreshold: 3
+            tcpSocket:
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
           readinessProbe:
             failureThreshold: 1
             tcpSocket:
@@ -104,8 +74,25 @@ objects:
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 5
-        - image: elasticsearch:5
+        - image: skydive/skydive-ui
+          command: ["/usr/src/skydive-ui/node_modules/webpack-dev-server/bin/webpack-dev-server.js"] 
+          args: ["--host","0.0.0.0","--disableHostCheck"]
+          name: skydive-ui
+          imagePullPolicy: Always
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+        - image: elasticsearch:7.10.1
+          name: skydive-elasticsearch
           imagePullPolicy: IfNotPresent
+          env:
+          - name: discovery.type
+            value: single-node
+          ports:
+          - containerPort: 9200
+            protocol: TCP
+          - containerPort: 9300
+            protocol: TCP
           livenessProbe:
             failureThreshold: 3
             tcpSocket:
@@ -114,10 +101,6 @@ objects:
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 5
-          name: skydive-elasticsearch
-          ports:
-          - containerPort: 9200
-            protocol: TCP
           readinessProbe:
             failureThreshold: 1
             tcpSocket:
@@ -134,7 +117,8 @@ objects:
     test: false
     triggers:
     - type: ConfigChange
-- apiVersion: extensions/v1beta1
+# Skydive Agents  (DaemonSet)
+- apiVersion: apps/v1
   kind: DaemonSet
   metadata:
     labels:
@@ -161,7 +145,7 @@ objects:
           - name: SKYDIVE_LOGGING_LEVEL
             value: ${SKYDIVE_LOGGING_LEVEL}
           - name: SKYDIVE_AGENT_TOPOLOGY_PROBES
-            value: "ovsdb runc docker"
+            value: "netlink netns ovsdb runc"
           - name: SKYDIVE_AGENT_TOPOLOGY_RUNC_RUN_PATH
             value: "/run/containerd/runc /run/runc /run/runc-ctrs"
           image: skydive/skydive
@@ -220,6 +204,41 @@ objects:
         - hostPath:
             path: /var/lib/origin
           name: lib-origin
+# Service for Skydive Analyzer
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: skydive-analyzer
+    name: skydive-analyzer
+  spec:
+    ports:
+      - name: api
+        port: 8082
+        protocol: TCP
+        targetPort: 8082
+      - name: protobuf
+        port: 8082
+        protocol: UDP
+        targetPort: 8082
+      - name: etcd
+        port: 12379
+        protocol: TCP
+        targetPort: 12379
+      - name: etcd-cluster
+        port: 12380
+        protocol: TCP
+        targetPort: 12380
+      - name: es
+        port: 9200
+        protocol: TCP
+        targetPort: 9200
+    selector:
+      app: skydive
+      tier: analyzer
+    sessionAffinity: None
+    type: NodePort
+# Route for Skydive Analyzer
 - apiVersion: v1
   kind: Route
   metadata:
@@ -229,26 +248,48 @@ objects:
   spec:
     port:
       targetPort: api
-    tls:
-      termination: edge
     to:
       kind: Service
       name: skydive-analyzer
       weight: 100
     wildcardPolicy: None
+# Service for Skydive UI
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: skydive-analyzer
+    name: skydive-ui
+  spec:
+    ports:
+      - name: ui
+        port: 8080
+        protocol: TCP
+        targetPort: 8080
+    selector:
+      app: skydive
+      tier: analyzer
+    sessionAffinity: None
+    type: NodePort
+# Route for Skydive UI
+- apiVersion: v1
+  kind: Route
+  metadata:
+    labels:
+      app: skydive-analyzer
+    name: skydive-ui
+  spec:
+    port:
+      targetPort: ui
+    to:
+      kind: Service
+      name: skydive-ui
+      weight: 100
+    wildcardPolicy: None
+# Parameters
 parameters:
 - description: Loglevel of Skydive agent and analyzer
   displayName: Loglevel
   name: SKYDIVE_LOGGING_LEVEL
   required: true
   value: INFO
-- description: Topology probes for analyzer, default is empty. Add 'k8s' to add k8s/openshift objects to skydive
-  displayName: Analyzer topology probes
-  name: SKYDIVE_ANALYZER_TOPOLOGY_PROBES
-  required: false
-  value: ""
-- description: Probes for k8s/openshift, default is empty. If you only want same objects add those objects, for examples "namespace cluster service pod node"
-  displayName: K8s/OpenShift probes
-  name: SKYDIVE_ANALYZER_TOPOLOGY_K8S_PROBES
-  required: false
-  value: ""
