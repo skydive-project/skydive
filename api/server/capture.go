@@ -151,7 +151,7 @@ func (c *CaptureAPIHandler) Update(id string, resource rest.Resource) (rest.Reso
 }
 
 // RegisterCaptureAPI registers an new resource, capture
-func RegisterCaptureAPI(apiServer *api.Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*CaptureAPIHandler, error) {
+func RegisterCaptureAPI(apiServer *api.Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) *CaptureAPIHandler {
 	captureAPIHandler := &CaptureAPIHandler{
 		BasicAPIHandler: rest.BasicAPIHandler{
 			ResourceHandler: &CaptureResourceHandler{},
@@ -159,8 +159,6 @@ func RegisterCaptureAPI(apiServer *api.Server, g *graph.Graph, authBackend shttp
 		},
 		Graph: g,
 	}
-	if err := apiServer.RegisterAPIHandler(captureAPIHandler, authBackend); err != nil {
-		return nil, err
-	}
-	return captureAPIHandler, nil
+	apiServer.RegisterAPIHandler(captureAPIHandler, authBackend)
+	return captureAPIHandler
 }

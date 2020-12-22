@@ -8,10 +8,8 @@ statics/js/dev/*.js linguist-vendored=true
 *_easyjson.go linguist-generated=true
 *_gendecoder.go -diff -merge
 *_gendecoder.go linguist-generated=true
-ebpf/statics/bindata.go -diff -merge
-ebpf/statics/bindata.go linguist-generated=true
-statics/bindata.go -diff -merge
-statics/bindata.go linguist-generated=true
+*/bindata.go -diff -merge
+*/bindata.go linguist-generated=true
 topology/probes/vpp/bin_api/interfaces/* -diff -merge
 topology/probes/vpp/bin_api/interfaces/* linguist-generated=true
 topology/probes/vpp/bin_api/vpe/* -diff -merge

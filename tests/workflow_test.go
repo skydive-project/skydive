@@ -25,12 +25,13 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/graffiti/api/types"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
+	"github.com/skydive-project/skydive/graffiti/js"
 	g "github.com/skydive-project/skydive/gremlin"
-	"github.com/skydive-project/skydive/js"
+	"github.com/skydive-project/skydive/statics"
 )
 
 func lookupWorkflow(client *shttp.CrudClient, name string) (*types.Workflow, error) {
@@ -49,7 +50,7 @@ func lookupWorkflow(client *shttp.CrudClient, name string) (*types.Workflow, err
 }
 
 func TestCheckConnectivityWorkflow(t *testing.T) {
-	runtime, err := js.NewRuntime()
+	runtime, err := js.NewRuntime(&statics.Assets)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +146,7 @@ func TestCheckConnectivityWorkflow(t *testing.T) {
 }
 
 func TestCheckMTUWorkflow(t *testing.T) {
-	runtime, err := js.NewRuntime()
+	runtime, err := js.NewRuntime(&statics.Assets)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,7 +214,7 @@ func TestCheckMTUWorkflow(t *testing.T) {
 }
 
 func TestFlowValidationWorkflow(t *testing.T) {
-	runtime, err := js.NewRuntime()
+	runtime, err := js.NewRuntime(&statics.Assets)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -418,7 +419,7 @@ func flowMatrixClient(t *testing.T) {
 }
 
 func TestFlowMatrixWorkflow(t *testing.T) {
-	runtime, err := js.NewRuntime()
+	runtime, err := js.NewRuntime(&statics.Assets)
 	if err != nil {
 		t.Fatal(err)
 	}

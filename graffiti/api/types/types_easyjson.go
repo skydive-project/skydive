@@ -18,7 +18,358 @@ var (
 	_ easyjson.Marshaler
 )
 
-func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes(in *jlexer.Lexer, out *TopologyParams) {
+func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes(in *jlexer.Lexer, out *WorkflowParam) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeFieldName(false)
+		in.WantColon()
+		if in.IsNull() {
+			in.Skip()
+			in.WantComma()
+			continue
+		}
+		switch key {
+		case "Name":
+			out.Name = string(in.String())
+		case "Description":
+			out.Description = string(in.String())
+		case "Type":
+			out.Type = string(in.String())
+		case "Default":
+			if m, ok := out.Default.(easyjson.Unmarshaler); ok {
+				m.UnmarshalEasyJSON(in)
+			} else if m, ok := out.Default.(json.Unmarshaler); ok {
+				_ = m.UnmarshalJSON(in.Raw())
+			} else {
+				out.Default = in.Interface()
+			}
+		case "Values":
+			if in.IsNull() {
+				in.Skip()
+				out.Values = nil
+			} else {
+				in.Delim('[')
+				if out.Values == nil {
+					if !in.IsDelim(']') {
+						out.Values = make([]WorkflowChoice, 0, 2)
+					} else {
+						out.Values = []WorkflowChoice{}
+					}
+				} else {
+					out.Values = (out.Values)[:0]
+				}
+				for !in.IsDelim(']') {
+					var v1 WorkflowChoice
+					(v1).UnmarshalEasyJSON(in)
+					out.Values = append(out.Values, v1)
+					in.WantComma()
+				}
+				in.Delim(']')
+			}
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes(out *jwriter.Writer, in WorkflowParam) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	{
+		const prefix string = ",\"Name\":"
+		out.RawString(prefix[1:])
+		out.String(string(in.Name))
+	}
+	{
+		const prefix string = ",\"Description\":"
+		out.RawString(prefix)
+		out.String(string(in.Description))
+	}
+	{
+		const prefix string = ",\"Type\":"
+		out.RawString(prefix)
+		out.String(string(in.Type))
+	}
+	{
+		const prefix string = ",\"Default\":"
+		out.RawString(prefix)
+		if m, ok := in.Default.(easyjson.Marshaler); ok {
+			m.MarshalEasyJSON(out)
+		} else if m, ok := in.Default.(json.Marshaler); ok {
+			out.Raw(m.MarshalJSON())
+		} else {
+			out.Raw(json.Marshal(in.Default))
+		}
+	}
+	{
+		const prefix string = ",\"Values\":"
+		out.RawString(prefix)
+		if in.Values == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
+			out.RawString("null")
+		} else {
+			out.RawByte('[')
+			for v2, v3 := range in.Values {
+				if v2 > 0 {
+					out.RawByte(',')
+				}
+				(v3).MarshalEasyJSON(out)
+			}
+			out.RawByte(']')
+		}
+	}
+	out.RawByte('}')
+}
+
+// MarshalJSON supports json.Marshaler interface
+func (v WorkflowParam) MarshalJSON() ([]byte, error) {
+	w := jwriter.Writer{}
+	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes(&w, v)
+	return w.Buffer.BuildBytes(), w.Error
+}
+
+// MarshalEasyJSON supports easyjson.Marshaler interface
+func (v WorkflowParam) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes(w, v)
+}
+
+// UnmarshalJSON supports json.Unmarshaler interface
+func (v *WorkflowParam) UnmarshalJSON(data []byte) error {
+	r := jlexer.Lexer{Data: data}
+	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes(&r, v)
+	return r.Error()
+}
+
+// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
+func (v *WorkflowParam) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes(l, v)
+}
+func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes1(in *jlexer.Lexer, out *WorkflowChoice) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeFieldName(false)
+		in.WantColon()
+		if in.IsNull() {
+			in.Skip()
+			in.WantComma()
+			continue
+		}
+		switch key {
+		case "Value":
+			out.Value = string(in.String())
+		case "Description":
+			out.Description = string(in.String())
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes1(out *jwriter.Writer, in WorkflowChoice) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	{
+		const prefix string = ",\"Value\":"
+		out.RawString(prefix[1:])
+		out.String(string(in.Value))
+	}
+	{
+		const prefix string = ",\"Description\":"
+		out.RawString(prefix)
+		out.String(string(in.Description))
+	}
+	out.RawByte('}')
+}
+
+// MarshalJSON supports json.Marshaler interface
+func (v WorkflowChoice) MarshalJSON() ([]byte, error) {
+	w := jwriter.Writer{}
+	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes1(&w, v)
+	return w.Buffer.BuildBytes(), w.Error
+}
+
+// MarshalEasyJSON supports easyjson.Marshaler interface
+func (v WorkflowChoice) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes1(w, v)
+}
+
+// UnmarshalJSON supports json.Unmarshaler interface
+func (v *WorkflowChoice) UnmarshalJSON(data []byte) error {
+	r := jlexer.Lexer{Data: data}
+	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes1(&r, v)
+	return r.Error()
+}
+
+// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
+func (v *WorkflowChoice) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes1(l, v)
+}
+func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes2(in *jlexer.Lexer, out *Workflow) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeFieldName(false)
+		in.WantColon()
+		if in.IsNull() {
+			in.Skip()
+			in.WantComma()
+			continue
+		}
+		switch key {
+		case "Name":
+			out.Name = string(in.String())
+		case "Title":
+			out.Title = string(in.String())
+		case "Abstract":
+			out.Abstract = string(in.String())
+		case "Description":
+			out.Description = string(in.String())
+		case "Parameters":
+			if in.IsNull() {
+				in.Skip()
+				out.Parameters = nil
+			} else {
+				in.Delim('[')
+				if out.Parameters == nil {
+					if !in.IsDelim(']') {
+						out.Parameters = make([]WorkflowParam, 0, 0)
+					} else {
+						out.Parameters = []WorkflowParam{}
+					}
+				} else {
+					out.Parameters = (out.Parameters)[:0]
+				}
+				for !in.IsDelim(']') {
+					var v4 WorkflowParam
+					(v4).UnmarshalEasyJSON(in)
+					out.Parameters = append(out.Parameters, v4)
+					in.WantComma()
+				}
+				in.Delim(']')
+			}
+		case "Source":
+			out.Source = string(in.String())
+		case "UUID":
+			out.UUID = string(in.String())
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes2(out *jwriter.Writer, in Workflow) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	{
+		const prefix string = ",\"Name\":"
+		out.RawString(prefix[1:])
+		out.String(string(in.Name))
+	}
+	{
+		const prefix string = ",\"Title\":"
+		out.RawString(prefix)
+		out.String(string(in.Title))
+	}
+	{
+		const prefix string = ",\"Abstract\":"
+		out.RawString(prefix)
+		out.String(string(in.Abstract))
+	}
+	{
+		const prefix string = ",\"Description\":"
+		out.RawString(prefix)
+		out.String(string(in.Description))
+	}
+	{
+		const prefix string = ",\"Parameters\":"
+		out.RawString(prefix)
+		if in.Parameters == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
+			out.RawString("null")
+		} else {
+			out.RawByte('[')
+			for v5, v6 := range in.Parameters {
+				if v5 > 0 {
+					out.RawByte(',')
+				}
+				(v6).MarshalEasyJSON(out)
+			}
+			out.RawByte(']')
+		}
+	}
+	{
+		const prefix string = ",\"Source\":"
+		out.RawString(prefix)
+		out.String(string(in.Source))
+	}
+	{
+		const prefix string = ",\"UUID\":"
+		out.RawString(prefix)
+		out.String(string(in.UUID))
+	}
+	out.RawByte('}')
+}
+
+// MarshalJSON supports json.Marshaler interface
+func (v Workflow) MarshalJSON() ([]byte, error) {
+	w := jwriter.Writer{}
+	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes2(&w, v)
+	return w.Buffer.BuildBytes(), w.Error
+}
+
+// MarshalEasyJSON supports easyjson.Marshaler interface
+func (v Workflow) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes2(w, v)
+}
+
+// UnmarshalJSON supports json.Unmarshaler interface
+func (v *Workflow) UnmarshalJSON(data []byte) error {
+	r := jlexer.Lexer{Data: data}
+	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes2(&r, v)
+	return r.Error()
+}
+
+// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
+func (v *Workflow) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes2(l, v)
+}
+func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes3(in *jlexer.Lexer, out *TopologyParams) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -49,7 +400,7 @@ func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes(in *jl
 		in.Consumed()
 	}
 }
-func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes(out *jwriter.Writer, in TopologyParams) {
+func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes3(out *jwriter.Writer, in TopologyParams) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -65,27 +416,27 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes(out *j
 // MarshalJSON supports json.Marshaler interface
 func (v TopologyParams) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes(&w, v)
+	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes3(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v TopologyParams) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes(w, v)
+	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes3(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *TopologyParams) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes(&r, v)
+	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes3(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *TopologyParams) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes(l, v)
+	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes3(l, v)
 }
-func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes1(in *jlexer.Lexer, out *Node) {
+func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes4(in *jlexer.Lexer, out *Node) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -115,15 +466,15 @@ func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes1(in *j
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
-					var v1 interface{}
-					if m, ok := v1.(easyjson.Unmarshaler); ok {
+					var v7 interface{}
+					if m, ok := v7.(easyjson.Unmarshaler); ok {
 						m.UnmarshalEasyJSON(in)
-					} else if m, ok := v1.(json.Unmarshaler); ok {
+					} else if m, ok := v7.(json.Unmarshaler); ok {
 						_ = m.UnmarshalJSON(in.Raw())
 					} else {
-						v1 = in.Interface()
+						v7 = in.Interface()
 					}
-					(out.Metadata)[key] = v1
+					(out.Metadata)[key] = v7
 					in.WantComma()
 				}
 				in.Delim('}')
@@ -156,7 +507,7 @@ func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes1(in *j
 		in.Consumed()
 	}
 }
-func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes1(out *jwriter.Writer, in Node) {
+func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes4(out *jwriter.Writer, in Node) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -172,21 +523,21 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes1(out *
 			out.RawString(`null`)
 		} else {
 			out.RawByte('{')
-			v2First := true
-			for v2Name, v2Value := range in.Metadata {
-				if v2First {
-					v2First = false
+			v8First := true
+			for v8Name, v8Value := range in.Metadata {
+				if v8First {
+					v8First = false
 				} else {
 					out.RawByte(',')
 				}
-				out.String(string(v2Name))
+				out.String(string(v8Name))
 				out.RawByte(':')
-				if m, ok := v2Value.(easyjson.Marshaler); ok {
+				if m, ok := v8Value.(easyjson.Marshaler); ok {
 					m.MarshalEasyJSON(out)
-				} else if m, ok := v2Value.(json.Marshaler); ok {
+				} else if m, ok := v8Value.(json.Marshaler); ok {
 					out.Raw(m.MarshalJSON())
 				} else {
-					out.Raw(json.Marshal(v2Value))
+					out.Raw(json.Marshal(v8Value))
 				}
 			}
 			out.RawByte('}')
@@ -228,27 +579,27 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes1(out *
 // MarshalJSON supports json.Marshaler interface
 func (v Node) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes1(&w, v)
+	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes4(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Node) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes1(w, v)
+	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes4(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *Node) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes1(&r, v)
+	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes4(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *Node) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes1(l, v)
+	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes4(l, v)
 }
-func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes2(in *jlexer.Lexer, out *Edge) {
+func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes5(in *jlexer.Lexer, out *Edge) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -282,15 +633,15 @@ func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes2(in *j
 				for !in.IsDelim('}') {
 					key := string(in.String())
 					in.WantColon()
-					var v3 interface{}
-					if m, ok := v3.(easyjson.Unmarshaler); ok {
+					var v9 interface{}
+					if m, ok := v9.(easyjson.Unmarshaler); ok {
 						m.UnmarshalEasyJSON(in)
-					} else if m, ok := v3.(json.Unmarshaler); ok {
+					} else if m, ok := v9.(json.Unmarshaler); ok {
 						_ = m.UnmarshalJSON(in.Raw())
 					} else {
-						v3 = in.Interface()
+						v9 = in.Interface()
 					}
-					(out.Metadata)[key] = v3
+					(out.Metadata)[key] = v9
 					in.WantComma()
 				}
 				in.Delim('}')
@@ -323,7 +674,7 @@ func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes2(in *j
 		in.Consumed()
 	}
 }
-func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes2(out *jwriter.Writer, in Edge) {
+func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes5(out *jwriter.Writer, in Edge) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -349,21 +700,21 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes2(out *
 			out.RawString(`null`)
 		} else {
 			out.RawByte('{')
-			v4First := true
-			for v4Name, v4Value := range in.Metadata {
-				if v4First {
-					v4First = false
+			v10First := true
+			for v10Name, v10Value := range in.Metadata {
+				if v10First {
+					v10First = false
 				} else {
 					out.RawByte(',')
 				}
-				out.String(string(v4Name))
+				out.String(string(v10Name))
 				out.RawByte(':')
-				if m, ok := v4Value.(easyjson.Marshaler); ok {
+				if m, ok := v10Value.(easyjson.Marshaler); ok {
 					m.MarshalEasyJSON(out)
-				} else if m, ok := v4Value.(json.Marshaler); ok {
+				} else if m, ok := v10Value.(json.Marshaler); ok {
 					out.Raw(m.MarshalJSON())
 				} else {
-					out.Raw(json.Marshal(v4Value))
+					out.Raw(json.Marshal(v10Value))
 				}
 			}
 			out.RawByte('}')
@@ -405,23 +756,159 @@ func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes2(out *
 // MarshalJSON supports json.Marshaler interface
 func (v Edge) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes2(&w, v)
+	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes5(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Edge) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes2(w, v)
+	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes5(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *Edge) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes2(&r, v)
+	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes5(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *Edge) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes2(l, v)
+	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes5(l, v)
+}
+func easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes6(in *jlexer.Lexer, out *Alert) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeFieldName(false)
+		in.WantColon()
+		if in.IsNull() {
+			in.Skip()
+			in.WantComma()
+			continue
+		}
+		switch key {
+		case "Name":
+			out.Name = string(in.String())
+		case "Description":
+			out.Description = string(in.String())
+		case "Expression":
+			out.Expression = string(in.String())
+		case "Action":
+			out.Action = string(in.String())
+		case "Trigger":
+			out.Trigger = string(in.String())
+		case "CreateTime":
+			if data := in.Raw(); in.Ok() {
+				in.AddError((out.CreateTime).UnmarshalJSON(data))
+			}
+		case "UUID":
+			out.UUID = string(in.String())
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes6(out *jwriter.Writer, in Alert) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	if in.Name != "" {
+		const prefix string = ",\"Name\":"
+		first = false
+		out.RawString(prefix[1:])
+		out.String(string(in.Name))
+	}
+	if in.Description != "" {
+		const prefix string = ",\"Description\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Description))
+	}
+	if in.Expression != "" {
+		const prefix string = ",\"Expression\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Expression))
+	}
+	if in.Action != "" {
+		const prefix string = ",\"Action\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Action))
+	}
+	if in.Trigger != "" {
+		const prefix string = ",\"Trigger\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Trigger))
+	}
+	{
+		const prefix string = ",\"CreateTime\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.Raw((in.CreateTime).MarshalJSON())
+	}
+	{
+		const prefix string = ",\"UUID\":"
+		out.RawString(prefix)
+		out.String(string(in.UUID))
+	}
+	out.RawByte('}')
+}
+
+// MarshalJSON supports json.Marshaler interface
+func (v Alert) MarshalJSON() ([]byte, error) {
+	w := jwriter.Writer{}
+	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes6(&w, v)
+	return w.Buffer.BuildBytes(), w.Error
+}
+
+// MarshalEasyJSON supports easyjson.Marshaler interface
+func (v Alert) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjson6601e8cdEncodeGithubComSkydiveProjectSkydiveGraffitiApiTypes6(w, v)
+}
+
+// UnmarshalJSON supports json.Unmarshaler interface
+func (v *Alert) UnmarshalJSON(data []byte) error {
+	r := jlexer.Lexer{Data: data}
+	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes6(&r, v)
+	return r.Error()
+}
+
+// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
+func (v *Alert) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjson6601e8cdDecodeGithubComSkydiveProjectSkydiveGraffitiApiTypes6(l, v)
 }

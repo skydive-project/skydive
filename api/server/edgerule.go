@@ -55,7 +55,7 @@ func (a *EdgeRuleAPI) Update(id string, resource rest.Resource) (rest.Resource, 
 }
 
 // RegisterEdgeRuleAPI registers an EdgeRule's API to a designated API Server
-func RegisterEdgeRuleAPI(apiServer *api.Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*EdgeRuleAPI, error) {
+func RegisterEdgeRuleAPI(apiServer *api.Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) *EdgeRuleAPI {
 	era := &EdgeRuleAPI{
 		BasicAPIHandler: rest.BasicAPIHandler{
 			ResourceHandler: &EdgeRuleResourceHandler{},
@@ -63,9 +63,6 @@ func RegisterEdgeRuleAPI(apiServer *api.Server, g *graph.Graph, authBackend shtt
 		},
 		Graph: g,
 	}
-	if err := apiServer.RegisterAPIHandler(era, authBackend); err != nil {
-		return nil, err
-	}
-
-	return era, nil
+	apiServer.RegisterAPIHandler(era, authBackend)
+	return era
 }

@@ -137,12 +137,10 @@ func (h *EdgeAPIHandler) Update(id string, resource rest.Resource) (rest.Resourc
 }
 
 // RegisterEdgeAPI registers the edge API
-func RegisterEdgeAPI(apiServer *Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*EdgeAPIHandler, error) {
+func RegisterEdgeAPI(apiServer *Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) *EdgeAPIHandler {
 	edgeAPIHandler := &EdgeAPIHandler{
 		g: g,
 	}
-	if err := apiServer.RegisterAPIHandler(edgeAPIHandler, authBackend); err != nil {
-		return nil, err
-	}
-	return edgeAPIHandler, nil
+	apiServer.RegisterAPIHandler(edgeAPIHandler, authBackend)
+	return edgeAPIHandler
 }

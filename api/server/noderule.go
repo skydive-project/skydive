@@ -55,7 +55,7 @@ func (a *NodeRuleAPI) Update(id string, resource rest.Resource) (rest.Resource, 
 }
 
 // RegisterNodeRuleAPI register a new node rule api handler
-func RegisterNodeRuleAPI(apiServer *api.Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) (*NodeRuleAPI, error) {
+func RegisterNodeRuleAPI(apiServer *api.Server, g *graph.Graph, authBackend shttp.AuthenticationBackend) *NodeRuleAPI {
 	nra := &NodeRuleAPI{
 		BasicAPIHandler: rest.BasicAPIHandler{
 			ResourceHandler: &NodeRuleResourceHandler{},
@@ -63,9 +63,6 @@ func RegisterNodeRuleAPI(apiServer *api.Server, g *graph.Graph, authBackend shtt
 		},
 		Graph: g,
 	}
-	if err := apiServer.RegisterAPIHandler(nra, authBackend); err != nil {
-		return nil, err
-	}
-
-	return nra, nil
+	apiServer.RegisterAPIHandler(nra, authBackend)
+	return nra
 }

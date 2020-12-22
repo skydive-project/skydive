@@ -81,7 +81,7 @@ func (pi *PacketInjectorAPI) getNode(gremlinQuery string) *graph.Node {
 }
 
 // RegisterPacketInjectorAPI registers a new packet injector resource in the API
-func RegisterPacketInjectorAPI(g *graph.Graph, apiServer *api.Server, authBackend shttp.AuthenticationBackend) (*PacketInjectorAPI, error) {
+func RegisterPacketInjectorAPI(g *graph.Graph, apiServer *api.Server, authBackend shttp.AuthenticationBackend) *PacketInjectorAPI {
 	pia := &PacketInjectorAPI{
 		BasicAPIHandler: rest.BasicAPIHandler{
 			ResourceHandler: &packetInjectorResourceHandler{},
@@ -89,9 +89,6 @@ func RegisterPacketInjectorAPI(g *graph.Graph, apiServer *api.Server, authBacken
 		},
 		Graph: g,
 	}
-	if err := apiServer.RegisterAPIHandler(pia, authBackend); err != nil {
-		return nil, err
-	}
-
-	return pia, nil
+	apiServer.RegisterAPIHandler(pia, authBackend)
+	return pia
 }

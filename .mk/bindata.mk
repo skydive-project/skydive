@@ -19,7 +19,7 @@ BINDATA_DIRS := \
 	statics/workflows/*.yaml
 
 .PHONY: .bindata
-.bindata: statics/bindata.go ebpf/statics/bindata.go
+.bindata: graffiti/js/bindata.go statics/bindata.go ebpf/statics/bindata.go
 
 ebpf/statics/bindata.go: $(EBPF_PROBES)
 	go run ${GO_BINDATA_GITHUB} ${GO_BINDATA_FLAGS} -nometadata -o ebpf/statics/bindata.go -pkg=statics -ignore=bindata.go $(EBPF_PROBES)
@@ -28,3 +28,7 @@ ebpf/statics/bindata.go: $(EBPF_PROBES)
 statics/bindata.go: statics/js/bundle.js $(STATIC_FILES)
 	go run ${GO_BINDATA_GITHUB} ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go $(BINDATA_DIRS)
 	gofmt -w -s statics/bindata.go
+
+graffiti/js/bindata.go: .typescript graffiti/js/*.js
+	go run ${GO_BINDATA_GITHUB} ${GO_BINDATA_FLAGS} -prefix graffiti/js/ -nometadata -o graffiti/js/bindata.go -pkg=js graffiti/js/*.js
+	gofmt -w -s graffiti/js/bindata.go

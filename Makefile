@@ -2,6 +2,7 @@ define VERSION_CMD =
 eval ' \
 	define=""; \
 	version=`git describe --abbrev=0 --tags | tr -d "[a-z]"` ; \
+	[ -z "$$version" ] && version="unknown"; \
 	commit=`git rev-parse --verify HEAD`; \
 	tagname=`git show-ref --tags | grep $$commit`; \
 	if [ -n "$$tagname" ]; then \

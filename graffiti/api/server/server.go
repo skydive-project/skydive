@@ -92,7 +92,7 @@ func (r ResourceNotFound) Error() string {
 }
 
 // RegisterAPIHandler registers a new handler for an API
-func (a *Server) RegisterAPIHandler(handler rest.Handler, authBackend shttp.AuthenticationBackend) error {
+func (a *Server) RegisterAPIHandler(handler rest.Handler, authBackend shttp.AuthenticationBackend) {
 	name := handler.Name()
 	title := strings.Title(name)
 
@@ -291,16 +291,14 @@ func (a *Server) RegisterAPIHandler(handler rest.Handler, authBackend shttp.Auth
 					return
 				}
 
+				w.Header().Set("Content-Type", "text/plain")
 				w.WriteHeader(http.StatusOK)
 			},
 		},
 	}
 
 	a.HTTPServer.RegisterRoutes(routes, authBackend)
-
 	a.handlers[handler.Name()] = handler
-
-	return nil
 }
 
 func (a *Server) addAPIRootRoute(version, hostID string, kind service.Type, authBackend shttp.AuthenticationBackend) {

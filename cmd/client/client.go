@@ -28,6 +28,7 @@ import (
 	gclient "github.com/skydive-project/skydive/graffiti/cmd/client"
 	"github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
+	"github.com/skydive-project/skydive/statics"
 )
 
 var (
@@ -56,15 +57,12 @@ func printJSON(obj interface{}) {
 
 // RegisterClientCommands registers the 'client' CLI subcommands
 func RegisterClientCommands(cmd *cobra.Command) {
-	cmd.AddCommand(AlertCmd)
 	cmd.AddCommand(CaptureCmd)
 	cmd.AddCommand(EdgeRuleCmd)
 	cmd.AddCommand(NodeRuleCmd)
 	cmd.AddCommand(PacketInjectorCmd)
 	cmd.AddCommand(PcapCmd)
-	cmd.AddCommand(ShellCmd)
 	cmd.AddCommand(StatusCmd)
-	cmd.AddCommand(WorkflowCmd)
 }
 
 func init() {
@@ -91,6 +89,8 @@ func init() {
 	config.BindPFlag("tls.ca_cert", ClientCmd.PersistentFlags().Lookup("cacert"))
 	config.BindPFlag("tls.client_cert", ClientCmd.PersistentFlags().Lookup("cert"))
 	config.BindPFlag("tls.client_key", ClientCmd.PersistentFlags().Lookup("key"))
+
+	gclient.ShellAssets = &statics.Assets
 
 	RegisterClientCommands(ClientCmd)
 }

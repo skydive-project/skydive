@@ -16,24 +16,27 @@
  */
 
 declare var window: any;
-import apiLib = require('./api');
-window.api = apiLib
-window.Metadata = apiLib.Metadata
-window.NE = apiLib.NE
-window.GT = apiLib.GT
-window.LT = apiLib.LT
-window.GTE = apiLib.GTE
-window.LTE = apiLib.LTE
-window.IPV4RANGE = apiLib.IPV4RANGE
-window.REGEX = apiLib.REGEX
-window.WITHIN = apiLib.WITHIN
-window.WITHOUT = apiLib.WITHOUT
-window.INSIDE = apiLib.INSIDE
-window.OUTSIDE = apiLib.OUTSIDE
-window.BETWEEN = apiLib.BETWEEN
-window.Alert = apiLib.Alert
-window.Capture = apiLib.Capture
-window.EdgeRule = apiLib.EdgeRule
-window.NodeRule = apiLib.NodeRule
-window.PacketInjection = apiLib.PacketInjection
-window.Workflow = apiLib.Workflow
+import gapi = require('../graffiti/js/api');
+import sapi = require('./api');
+var api = {...gapi, ...sapi};
+window.api = api
+window.Metadata = gapi.Metadata
+window.NE = gapi.NE
+window.GT = gapi.GT
+window.LT = gapi.LT
+window.GTE = gapi.GTE
+window.LTE = gapi.LTE
+window.IPV4RANGE = gapi.IPV4RANGE
+window.REGEX = gapi.REGEX
+window.WITHIN = gapi.WITHIN
+window.WITHOUT = gapi.WITHOUT
+window.INSIDE = gapi.INSIDE
+window.OUTSIDE = gapi.OUTSIDE
+window.BETWEEN = gapi.BETWEEN
+window.Alert = gapi.Alert
+window.Workflow = gapi.Workflow
+
+window.Capture = api.Capture
+window.EdgeRule = api.EdgeRule
+window.NodeRule = api.NodeRule
+window.PacketInjection = api.PacketInjection

@@ -27,6 +27,7 @@ import (
 
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
+	gtypes "github.com/skydive-project/skydive/graffiti/api/types"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 	g "github.com/skydive-project/skydive/gremlin"
@@ -45,13 +46,13 @@ func TestAlertAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	alert := types.NewAlert()
+	alert := gtypes.NewAlert()
 	alert.Expression = g.G.V().Has("MTU", g.Gt(1500)).String()
 	if err := client.Create("alert", alert, nil); err != nil {
 		t.Errorf("Failed to create alert: %s", err.Error())
 	}
 
-	alert2 := types.NewAlert()
+	alert2 := gtypes.NewAlert()
 	alert2.Expression = g.G.V().Has("MTU", g.Gt(1500)).String()
 	if err := client.Get("alert", alert.UUID, &alert2); err != nil {
 		t.Error(err)
@@ -61,7 +62,7 @@ func TestAlertAPI(t *testing.T) {
 		t.Errorf("Alert corrupted: %+v != %+v", alert, alert2)
 	}
 
-	var alerts map[string]types.Alert
+	var alerts map[string]gtypes.Alert
 	if err := client.List("alert", &alerts); err != nil {
 		t.Error(err)
 	} else {
@@ -78,7 +79,7 @@ func TestAlertAPI(t *testing.T) {
 		t.Errorf("Failed to delete alert: %s", err.Error())
 	}
 
-	var alerts2 map[string]types.Alert
+	var alerts2 map[string]gtypes.Alert
 	if err := client.List("alert", &alerts2); err != nil {
 		t.Errorf("Failed to list alerts: %s", err.Error())
 	} else {

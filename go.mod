@@ -50,9 +50,7 @@ require (
 	github.com/lunixbochs/struc v0.0.0-20180408203800-02e4c2afbb2a
 	github.com/lxc/lxd v0.0.0-20200330183600-518f06676866
 	github.com/mailru/easyjson v0.7.6
-	github.com/mattn/go-runewidth v0.0.0-20160315040712-d6bea18f7897 // indirect
 	github.com/mattn/goveralls v0.0.2
-	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.3.3
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/networkservicemesh/networkservicemesh/controlplane/api v0.2.0
@@ -63,10 +61,9 @@ require (
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/olivere/elastic/v7 v7.0.21
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7 // indirect
-	github.com/peterh/liner v0.0.0-20160615113019-8975875355a8
 	github.com/pierrec/xxHash v0.1.5
+	github.com/pkg/errors v0.9.1
 	github.com/pmylund/go-cache v2.1.0+incompatible
-	github.com/robertkrimen/otto v0.0.0-20161004124959-bf1c3795ba07
 	github.com/safchain/ethtool v0.0.0-20190326074333-42ed695e3de8
 	github.com/safchain/insanelock v0.0.0-20200217234559-cfbf166e05b3
 	github.com/shirou/gopsutil v2.18.12+incompatible
@@ -97,7 +94,6 @@ require (
 	gopkg.in/mcuadros/go-syslog.v2 v2.3.0
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
 	gopkg.in/robfig/cron.v2 v2.0.0-20150107220207-be2e0b0deed5 // indirect
-	gopkg.in/sourcemap.v1 v1.0.0-20160602085544-eef8f47ab679 // indirect
 	gopkg.in/urfave/cli.v2 v2.0.0-20170928224240-b2bf3c5abeb9 // indirect
 	gopkg.in/validator.v2 v2.0.0-20160201165114-3e4f037f12a1
 	gopkg.in/yaml.v2 v2.3.0
@@ -112,6 +108,7 @@ replace (
 	github.com/census-instrumentation/opencensus-proto v0.1.0-0.20181214143942-ba49f56771b8 => github.com/census-instrumentation/opencensus-proto v0.0.3-0.20181214143942-ba49f56771b8
 	github.com/coreos/bbolt => go.etcd.io/bbolt v1.3.5
 	github.com/digitalocean/go-libvirt => github.com/lebauce/go-libvirt v0.0.0-20190717144624-7799d804f7e4
+	github.com/mholt/caddy => github.com/caddyserver/caddy v0.11.5
 	github.com/networkservicemesh/networkservicemesh => github.com/networkservicemesh/networkservicemesh v0.0.0-20191017074247-aa5815869b2c
 	github.com/networkservicemesh/networkservicemesh/controlplane => github.com/networkservicemesh/networkservicemesh/controlplane v0.0.0-20191017074247-aa5815869b2c
 	github.com/networkservicemesh/networkservicemesh/controlplane/api => github.com/networkservicemesh/networkservicemesh/controlplane/api v0.0.0-20191017074247-aa5815869b2c

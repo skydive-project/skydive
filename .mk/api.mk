@@ -1,9 +1,12 @@
-.typescript: statics/js/bundle.js js/browser.js js/api.js
+.typescript: graffiti/js/api.js js/api.js js/browser.js statics/js/bundle.js
 
-js/api.js: js/api.ts
+graffiti/js/api.js: graffiti/js/api.ts
+	cd graffiti/js && npm ci && PATH=`npm bin`:$$PATH tsc --module commonjs --target ES5 api.ts
+
+js/api.js: graffiti/js/api.ts js/api.ts
 	cd js && npm ci && PATH=`npm bin`:$$PATH tsc --module commonjs --target ES5 api.ts
 
-js/browser.js: js/browser.ts js/api.ts
+js/browser.js: graffiti/js/api.js js/api.js js/browser.ts
 	cd js && npm ci && PATH=`npm bin`:$$PATH tsc --module commonjs --target ES5 browser.ts
 
 statics/js/bundle.js: js/browser.js
@@ -11,4 +14,4 @@ statics/js/bundle.js: js/browser.js
 
 .PHONY: .typescript.clean
 .typescript.clean:
-	rm -f statics/js/bundle.js js/browser.js js/api.js
+	rm -f graffiti/js/api.js js/api.js js/browser.js statics/js/bundle.js
