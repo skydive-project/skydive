@@ -211,9 +211,9 @@ var TopologyComponent = {
                title="Metadata" :description="\'ID: \'+currentEdge.id">\
           <object-detail :object="currentEdgeMetadata"></object-detail>\
         </panel>\
-        <panel id="docker-metadata" v-if="currentNodeDocker"\
-               title="Docker">\
-          <object-detail :object="currentNodeDocker"></object-detail>\
+        <panel id="container-metadata" v-if="currentNodeContainer"\
+               title="Container">\
+          <object-detail :object="currentNodeContainer"></object-detail>\
         </panel>\
         <panel id="edge-src-metadata" v-if="currentEdgeSrc"\
                 title="Source">\
@@ -468,7 +468,7 @@ var TopologyComponent = {
     currentNodeMetadata: function() {
       if (!this.currentNode) return null;
       return this.extractMetadata(this.currentNode.metadata,
-        ['LastUpdateMetric', 'Metric', 'Blockdev', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'SFlow.Metric', 'SFlow.LastUpdateMetric', 'RoutingTables', 'Features', 'K8s.Extra', 'Docker']);
+        ['LastUpdateMetric', 'Metric', 'Blockdev', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'SFlow.Metric', 'SFlow.LastUpdateMetric', 'RoutingTables', 'Features', 'K8s.Extra', 'Container']);
     },
 
     currentNodeFlowsQuery: function() {
@@ -477,9 +477,9 @@ var TopologyComponent = {
       return null;
     },
 
-    currentNodeDocker: function() {
-      if (!this.currentNodeMetadata || !this.currentNode.metadata.Docker) return null;
-      return this.currentNode.metadata.Docker;
+    currentNodeContainer: function() {
+      if (!this.currentNodeMetadata || !this.currentNode.metadata.Container) return null;
+      return this.currentNode.metadata.Container;
     },
 
     currentEdgeSrc: function() {

@@ -42,7 +42,7 @@ func TestRuncSimple(t *testing.T) {
 
 			// Newer version of runc switched to bolt to store labels so
 			// we disable the test on labels for now
-			gremlin := c.gremlin.V().Has("Type", "container", "Manager", "runc", "Runc.ContainerID", containerID) // , "Runc.CreateConfig.Labels.Name", "test")
+			gremlin := c.gremlin.V().Has("Type", "container", "Manager", "runc", "Container.ID", containerID) // , "Container.Labels.Name", "test")
 			gremlin = gremlin.In("Type", "netns", "Manager", "runc")
 
 			nodes, err := c.gh.GetNodes(gremlin)

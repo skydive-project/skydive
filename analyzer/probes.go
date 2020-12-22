@@ -26,8 +26,8 @@ import (
 	"github.com/skydive-project/skydive/plugin"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/sflow"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/probes/blockdev"
-	"github.com/skydive-project/skydive/topology/probes/docker"
 	"github.com/skydive-project/skydive/topology/probes/fabric"
 	"github.com/skydive-project/skydive/topology/probes/istio"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
@@ -41,19 +41,17 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/ovn"
 	"github.com/skydive-project/skydive/topology/probes/ovsdb"
 	"github.com/skydive-project/skydive/topology/probes/peering"
-	"github.com/skydive-project/skydive/topology/probes/runc"
 )
 
 func registerStaticProbes() {
 	netlink.Register()
 	blockdev.Register()
-	docker.Register()
+	topology.RegisterContainer()
 	lldp.Register()
 	lxd.Register()
 	neutron.Register()
 	opencontrail.Register()
 	ovsdb.Register()
-	runc.Register()
 	libvirt.Register()
 	ovn.Register()
 }

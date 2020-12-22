@@ -671,6 +671,11 @@ ul.dropdown-menu .fa.pull-right {
   margin-bottom: 5px;
 }
 
+.object-key-value.container {
+  padding-left: 0px;
+  width: 100%;
+}
+
 .object-sub-detail .object-detail {
   margin-left: 20px;
 }

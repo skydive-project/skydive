@@ -26,10 +26,12 @@ import (
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/plugin"
 	"github.com/skydive-project/skydive/probe"
+	"github.com/skydive-project/skydive/topology"
 	tp "github.com/skydive-project/skydive/topology/probes"
 	"github.com/skydive-project/skydive/topology/probes/bess"
 	"github.com/skydive-project/skydive/topology/probes/blockdev"
 	"github.com/skydive-project/skydive/topology/probes/docker"
+	"github.com/skydive-project/skydive/topology/probes/hardware"
 	"github.com/skydive-project/skydive/topology/probes/libvirt"
 	"github.com/skydive-project/skydive/topology/probes/lldp"
 	"github.com/skydive-project/skydive/topology/probes/lxd"
@@ -42,19 +44,17 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/runc"
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
 	"github.com/skydive-project/skydive/topology/probes/vpp"
-	"github.com/skydive-project/skydive/topology/probes/hardware"
 )
 
 func registerStaticProbes() {
 	blockdev.Register()
 	netlink.Register()
-	docker.Register()
+	topology.RegisterContainer()
 	lldp.Register()
 	lxd.Register()
 	neutron.Register()
 	opencontrail.Register()
 	ovsdb.Register()
-	runc.Register()
 	libvirt.Register()
 	ovn.Register()
 	hardware.Register()

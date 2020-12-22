@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/skydive-project/skydive/graffiti/logging"
+	"github.com/skydive-project/skydive/topology"
 	tp "github.com/skydive-project/skydive/topology/probes"
 	ns "github.com/skydive-project/skydive/topology/probes/netns"
 )
@@ -138,7 +139,7 @@ func TestReadHosts(t *testing.T) {
 	}
 	defer os.Remove(filename)
 
-	hosts, err := readHosts(filename)
+	hosts, err := topology.ReadHosts(filename)
 	if err != nil {
 		t.Errorf("unable to parse file: %s", filename)
 	}

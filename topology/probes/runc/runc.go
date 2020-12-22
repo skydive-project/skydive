@@ -21,7 +21,6 @@ package runc
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -31,6 +30,7 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/pkg/errors"
 	"github.com/safchain/insanelock"
 	"github.com/spf13/cast"
 	"github.com/vishvananda/netns"
@@ -123,18 +123,22 @@ func (p *ProbeHandler) getLabels(raw []string) graph.Metadata {
 	return labels
 }
 
+// CreateConfig describes the creating parameters of a runc container
+type CreateConfig struct {
+	Image   string         `json:",omitempty"`
+	ImageID string         `json:",omitempty"`
+	Labels  graph.Metadata `json:",omitempty" field:"Metadata"`
+}
+
 func getCreateConfig(path string) (*CreateConfig, error) {
 	body, err := ioutil.ReadFile(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("Unable to read create config %s: %s", path, err)
+		return nil, errors.Wrapf(err, "unable to read create config %s", path)
 	}
 
 	var cc CreateConfig
 	if err := json.Unmarshal(body, &cc); err != nil {
-		return nil, fmt.Errorf("Unable to parse create config %s: %s", path, err)
+		return nil, errors.Wrapf(err, "unable to parse create config %s", path)
 	}
 
 	return &cc, nil
@@ -162,12 +166,12 @@ func getStatus(state *containerState) string {
 func parseState(path string) (*containerState, error) {
 	body, err := ioutil.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to read container state %s: %s", path, err)
+		return nil, errors.Wrapf(err, "unable to read container state %s", path)
 	}
 
 	var state containerState
 	if err := json.Unmarshal(body, &state); err != nil {
-		return nil, fmt.Errorf("Unable to parse container state %s: %s", path, err)
+		return nil, errors.Wrapf(err, "unable to parse container state %s", path)
 	}
 
 	state.path = path
@@ -185,13 +189,13 @@ func getHostsFromState(state *containerState) (string, error) {
 	return "", fmt.Errorf("Unable to find binding of %s", path)
 }
 
-func (p *ProbeHandler) parseHosts(state *containerState) *Hosts {
+func (p *ProbeHandler) parseHosts(state *containerState) *topology.Hosts {
 	path, err := getHostsFromState(state)
 	if err != nil {
 		return nil
 	}
 
-	hosts, err := readHosts(path)
+	hosts, err := topology.ReadHosts(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			p.Ctx.Logger.Debug(err)
@@ -205,10 +209,12 @@ func (p *ProbeHandler) parseHosts(state *containerState) *Hosts {
 	return hosts
 }
 
-func (p *ProbeHandler) getMetadata(state *containerState) Metadata {
-	m := Metadata{
-		ContainerID: state.ID,
-		Status:      getStatus(state),
+func (p *ProbeHandler) getMetadata(state *containerState) *topology.ContainerMetadata {
+	m := &topology.ContainerMetadata{
+		Runtime:        "runc",
+		ID:             state.ID,
+		Status:         getStatus(state),
+		InitProcessPID: int64(state.InitProcessPid),
 	}
 
 	if labels := p.getLabels(state.Config.Labels); len(labels) > 0 {
@@ -217,15 +223,21 @@ func (p *ProbeHandler) getMetadata(state *containerState) Metadata {
 		if b, ok := labels["bundle"]; ok {
 			cc, err := getCreateConfig(b.(string) + "/artifacts/create-config")
 			if err != nil {
-				p.Ctx.Logger.Error(err)
+				if !errors.Is(err, os.ErrNotExist) {
+					p.Ctx.Logger.Error(err)
+				}
 			} else {
-				m.CreateConfig = cc
+				m.Image = cc.Image
+				m.ImageID = cc.ImageID
+				for k, v := range cc.Labels {
+					m.Labels[k] = v
+				}
 			}
 		}
 	}
 
 	if hosts := p.parseHosts(state); hosts != nil {
-		m.Hosts = hosts
+		m.Hosts = *hosts
 	}
 
 	return m
@@ -238,7 +250,7 @@ func (p *ProbeHandler) updateContainer(path string, cnt *container) error {
 	}
 
 	p.Ctx.Graph.Lock()
-	p.Ctx.Graph.AddMetadata(cnt.node, "Runc", p.getMetadata(state))
+	p.Ctx.Graph.AddMetadata(cnt.node, "Container", p.getMetadata(state))
 	p.Ctx.Graph.Unlock()
 
 	return nil
@@ -255,7 +267,7 @@ func (p *ProbeHandler) registerContainer(path string) error {
 
 	nsHandle, err := netns.GetFromPid(state.InitProcessPid)
 	if err != nil {
-		return fmt.Errorf("Unable to open netns, pid %d, state file %s : %s", state.InitProcessPid, path, err)
+		return errors.Wrapf(err, "unable to open netns, pid %d, state file %s", state.InitProcessPid, path)
 	}
 	defer nsHandle.Close()
 
@@ -290,22 +302,20 @@ func (p *ProbeHandler) registerContainer(path string) error {
 	p.Ctx.Graph.Lock()
 	defer p.Ctx.Graph.Unlock()
 
-	containerNode := p.Ctx.Graph.LookupFirstNode(graph.Metadata{"InitProcessPID": pid})
+	containerNode := p.Ctx.Graph.LookupFirstNode(graph.Metadata{"Container.InitProcessPID": pid})
 	if containerNode != nil {
 		tr := p.Ctx.Graph.StartMetadataTransaction(containerNode)
-		tr.AddMetadata("Runc", runcMetadata)
+		tr.AddMetadata("Container", runcMetadata)
 		tr.AddMetadata("Runtime", "runc")
 		if err := tr.Commit(); err != nil {
 			p.Ctx.Logger.Error(err)
 		}
 	} else {
 		metadata := graph.Metadata{
-			"Type":           "container",
-			"Name":           state.ID,
-			"Manager":        "runc",
-			"Runtime":        "runc",
-			"InitProcessPID": pid,
-			"Runc":           runcMetadata,
+			"Type":      "container",
+			"Name":      state.ID,
+			"Manager":   "runc",
+			"Container": runcMetadata,
 		}
 
 		if containerNode, err = p.Ctx.Graph.NewNode(graph.GenID(), metadata); err != nil {
@@ -479,7 +489,7 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, fmt.Errorf("Unable to create a new Watcher: %s", err)
+		return nil, errors.Wrap(err, "unable to create a new watcher")
 	}
 
 	return &ProbeHandler{
@@ -489,9 +499,4 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 		paths:        ctx.Config.GetStringSlice("agent.topology.runc.run_path"),
 		containers:   make(map[string]*container),
 	}, nil
-}
-
-// Register registers graph metadata decoders
-func Register() {
-	graph.NodeMetadataDecoders["Runc"] = MetadataDecoder
 }

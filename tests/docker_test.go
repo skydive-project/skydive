@@ -40,7 +40,7 @@ func TestDockerSimple(t *testing.T) {
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gremlin := c.gremlin.V().Has("Type", "netns", "Manager", "docker")
-			gremlin = gremlin.Out("Type", "container", "Docker.ContainerName", "test-skydive-docker-simple")
+			gremlin = gremlin.Out("Type", "container", "Name", "test-skydive-docker-simple")
 
 			nodes, err := c.gh.GetNodes(gremlin)
 			if err != nil {
@@ -74,7 +74,7 @@ func TestDockerShareNamespace(t *testing.T) {
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gremlin := c.gremlin.V().Has("Type", "netns", "Manager", "docker")
-			gremlin = gremlin.Out().Has("Type", "container", "Docker.ContainerName", g.Within("test-skydive-docker-share-ns", "test-skydive-docker-share-ns2"))
+			gremlin = gremlin.Out().Has("Type", "container", "Name", g.Within("test-skydive-docker-share-ns", "test-skydive-docker-share-ns2"))
 			nodes, err := c.gh.GetNodes(gremlin)
 			if err != nil {
 				return err
@@ -104,7 +104,7 @@ func TestDockerNetHost(t *testing.T) {
 		mode: Replay,
 
 		checks: []CheckFunction{func(c *CheckContext) error {
-			gremlin := c.gremlin.V().Has("Docker.ContainerName", "test-skydive-docker-net-host", "Type", "container")
+			gremlin := c.gremlin.V().Has("Name", "test-skydive-docker-net-host", "Type", "container")
 			nodes, err := c.gh.GetNodes(gremlin)
 			if err != nil {
 				return err
@@ -159,11 +159,11 @@ func TestDockerLabels(t *testing.T) {
 		mode: Replay,
 
 		checks: []CheckFunction{func(c *CheckContext) error {
-			gremlin := c.gremlin.V().Has("Docker.ContainerName", "test-skydive-docker-strange-labels", "Type", "container", "Docker.Labels.a.b.c", "123", "Docker.Labels.a~b/c@d", "456")
+			gremlin := c.gremlin.V().Has("Name", "test-skydive-docker-strange-labels", "Type", "container", "Container.Labels.a.b.c", "123", "Container.Labels.a~b/c@d", "456")
 			_, err := c.gh.GetNode(gremlin)
 			return err
 		}, func(c *CheckContext) error {
-			gremlin := c.gremlin.V().Has("Docker.ContainerName", "test-skydive-docker-many-labels", "Type", "container", "Docker.Labels.label999", "1")
+			gremlin := c.gremlin.V().Has("Name", "test-skydive-docker-many-labels", "Type", "container", "Container.Labels.label999", "1")
 			_, err := c.gh.GetNode(gremlin)
 			return err
 		}},

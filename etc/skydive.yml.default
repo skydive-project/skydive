@@ -416,7 +416,8 @@ storage:
     # Fields to exclude to avoid mapping explosion.
     # exclude_from_mapping:
     #   - Metadata.*.Extra
-    #   - Metadata.Docker.Labels
+    #   - Metadata.Container.Labels
+    #   - Metadata.Container.Hosts.ByIP
     #   - Metadata.K8s.Labels
     #   - Metadata.Actions
     #   - Metadata.Filters
