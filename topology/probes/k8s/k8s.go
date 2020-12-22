@@ -120,6 +120,7 @@ func NewK8sProbe(g *graph.Graph) (*K8sProbe, error) {
 	InitSubprobes(enabledSubprobes, subprobeHandlers, clientset, g, Manager, clusterName)
 
 	linkerHandlers := []LinkHandler{
+		newContainerRuncLinker,
 		newContainerDockerLinker,
 		newReplicaSetPodLinker,
 		newDeploymentReplicaSetLinker,

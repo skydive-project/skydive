@@ -34,7 +34,11 @@ const (
 	dockerContainerNameField = "Docker.Labels.io.kubernetes.container.name"
 	dockerPodNameField       = "Docker.Labels.io.kubernetes.pod.name"
 	dockerPodNamespaceField  = "Docker.Labels.io.kubernetes.pod.namespace"
-)
+
+	runcContainerNameField = "Runc.Labels.io.kubernetes.container.name"
+	runcPodNameField       = "Runc.Labels.io.kubernetes.pod.name"
+	runcPodNamespaceField  = "Runc.Labels.io.kubernetes.pod.namespace"
+	)
 
 type containerProbe struct {
 	*graph.EventHandler
@@ -175,6 +179,41 @@ func newContainerDockerLinker(g *graph.Graph) probe.Handler {
 	dockerIndexer.Start()
 
 	ml := graph.NewMetadataIndexerLinker(g, containerIndexer, dockerIndexer, NewEdgeMetadata(Manager, "container"))
+
+	linker := &Linker{
+		ResourceLinker: ml.ResourceLinker,
+	}
+	ml.AddEventListener(linker)
+
+	return linker
+}
+
+func newRuncIndexer(g *graph.Graph) *graph.MetadataIndexer {
+	m := graph.NewElementFilter(filters.NewAndFilter(
+		filters.NewTermStringFilter("Manager", "runc"),
+		filters.NewTermStringFilter("Type", "container"),
+		filters.NewNotNullFilter(runcPodNamespaceField),
+		filters.NewNotNullFilter(runcPodNameField),
+		filters.NewNotNullFilter(runcContainerNameField),
+	))
+
+	return graph.NewMetadataIndexer(g, g, m, runcPodNamespaceField, runcPodNameField, runcContainerNameField)
+}
+
+func newContainerRuncLinker(g *graph.Graph) probe.Handler {
+	containerProbe := GetSubprobe(Manager, "container")
+	if containerProbe == nil {
+		return nil
+	}
+
+	containerFilter := newTypesFilter(Manager, "container")
+	containerIndexer := newObjectIndexerFromFilter(g, containerProbe, containerFilter, MetadataFields("Namespace", "Pod", "Name")...)
+	containerIndexer.Start()
+
+	runcIndexer := newRuncIndexer(g)
+	runcIndexer.Start()
+
+	ml := graph.NewMetadataIndexerLinker(g, containerIndexer, runcIndexer, NewEdgeMetadata(Manager, "container"))
 
 	linker := &Linker{
 		ResourceLinker: ml.ResourceLinker,
