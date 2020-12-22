@@ -17,7 +17,6 @@ require (
 	github.com/gogo/protobuf v1.3.1
 	github.com/gomatic/funcmap v1.1.0 // indirect
 	github.com/gomatic/renderizer v1.0.1 // indirect
-	github.com/google/uuid v1.1.2 // indirect
 	github.com/gophercloud/gophercloud v0.13.0
 	github.com/gorilla/context v1.1.1
 	github.com/gorilla/handlers v1.5.1
