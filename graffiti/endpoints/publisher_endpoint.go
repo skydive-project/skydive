@@ -15,7 +15,7 @@
  *
  */
 
-package common
+package endpoints
 
 import (
 	"net/http"
@@ -169,7 +169,7 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 }
 
 // NewPublisherEndpoint returns a new server for external publishers.
-func NewPublisherEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, validator server.Validator, logger logging.Logger) (*PublisherEndpoint, error) {
+func NewPublisherEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, validator server.Validator, logger logging.Logger) *PublisherEndpoint {
 	if logger == nil {
 		logger = logging.GetLogger()
 	}
@@ -187,5 +187,5 @@ func NewPublisherEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, validator s
 	// subscribe to the graph messages
 	pool.AddStructMessageHandler(t, []string{messages.Namespace})
 
-	return t, nil
+	return t
 }

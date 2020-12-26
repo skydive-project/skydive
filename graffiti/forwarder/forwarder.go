@@ -15,7 +15,7 @@
  *
  */
 
-package common
+package forwarder
 
 import (
 	"github.com/skydive-project/skydive/graffiti/graph"

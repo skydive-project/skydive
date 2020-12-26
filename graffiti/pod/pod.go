@@ -22,7 +22,8 @@ import (
 	"net/http"
 
 	api "github.com/skydive-project/skydive/graffiti/api/server"
-	"github.com/skydive-project/skydive/graffiti/common"
+	"github.com/skydive-project/skydive/graffiti/endpoints"
+	"github.com/skydive-project/skydive/graffiti/forwarder"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
@@ -54,7 +55,7 @@ type Pod struct {
 	apiServer          *api.Server
 	subscriberWSServer *websocket.StructServer
 	publisherWSServer  *websocket.StructServer
-	forwarder          *common.Forwarder
+	forwarder          *forwarder.Forwarder
 	clientPool         *websocket.StructClientPool
 	traversalParser    *traversal.GremlinTraversalParser
 }
@@ -119,7 +120,7 @@ func (p *Pod) SubscriberServer() *websocket.StructServer {
 }
 
 // Forwarder returns the pod topology forwarder
-func (p *Pod) Forwarder() *common.Forwarder {
+func (p *Pod) Forwarder() *forwarder.Forwarder {
 	return p.forwarder
 }
 
@@ -158,7 +159,7 @@ func NewPod(id string, serviceType service.Type, listen string, podEndpoint stri
 	clientPool := websocket.NewStructClientPool("HubClientPool", websocket.PoolOpts{})
 	clientOpts := opts.WebsocketClientOpts
 	clientOpts.Protocol = websocket.ProtobufProtocol
-	clientOpts.Headers = http.Header{"X-Persistence-Policy": {string(common.DeleteOnDisconnect)}}
+	clientOpts.Headers = http.Header{"X-Persistence-Policy": {string(endpoints.DeleteOnDisconnect)}}
 	for _, sa := range opts.Hubs {
 		url, err := shttp.MakeURL("ws", sa.Addr, sa.Port, podEndpoint, clientOpts.TLSConfig != nil)
 		if err != nil {
@@ -181,14 +182,12 @@ func NewPod(id string, serviceType service.Type, listen string, podEndpoint stri
 
 	subscriberWSServer := websocket.NewStructServer(newWSServer("/ws/subscriber", opts.APIAuthBackend))
 	tr := traversal.NewGremlinTraversalParser()
-	common.NewSubscriberEndpoint(subscriberWSServer, g, tr, opts.Logger)
+	endpoints.NewSubscriberEndpoint(subscriberWSServer, g, tr, opts.Logger)
 
-	forwarder := common.NewForwarder(g, clientPool, logging.GetLogger())
+	forwarder := forwarder.NewForwarder(g, clientPool, logging.GetLogger())
 
 	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", opts.APIAuthBackend))
-	if _, err := common.NewPublisherEndpoint(publisherWSServer, g, opts.GraphValidator, opts.Logger); err != nil {
-		return nil, err
-	}
+	endpoints.NewPublisherEndpoint(publisherWSServer, g, opts.GraphValidator, opts.Logger)
 
 	api.RegisterTopologyAPI(httpServer, g, tr, opts.APIAuthBackend, opts.TopologyMarshallers)
 

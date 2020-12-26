@@ -15,7 +15,7 @@
  *
  */
 
-package common
+package endpoints
 
 import (
 	"fmt"

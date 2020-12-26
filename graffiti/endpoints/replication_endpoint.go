@@ -15,7 +15,7 @@
  *
  */
 
-package hub
+package endpoints
 
 import (
 	"errors"
@@ -336,6 +336,16 @@ func (t *ReplicationEndpoint) OnEdgeDeleted(e *graph.Edge) {
 	}
 }
 
+// GetIncomingSpeakers return incoming speakers
+func (t *ReplicationEndpoint) GetIncomingSpeakers() []ws.Speaker {
+	return t.in.GetSpeakers()
+}
+
+// GetOutgoingSpeakers return outgoing speakers
+func (t *ReplicationEndpoint) GetOutgoingSpeakers() []ws.Speaker {
+	return t.out.GetSpeakers()
+}
+
 // GetSpeakers return both incoming and outgoing speakers
 func (t *ReplicationEndpoint) GetSpeakers() []ws.Speaker {
 	return append(t.in.GetSpeakers(), t.out.GetSpeakers()...)
@@ -403,7 +413,7 @@ func (t *ReplicationEndpoint) OnDisconnected(c ws.Speaker) {
 }
 
 // NewReplicationEndpoint returns a new server to be used by other analyzers for replication.
-func NewReplicationEndpoint(pool ws.StructSpeakerPool, opts *ws.ClientOpts, cached *graph.CachedBackend, g *graph.Graph, peers []service.Address, logger logging.Logger) (*ReplicationEndpoint, error) {
+func NewReplicationEndpoint(pool ws.StructSpeakerPool, opts *ws.ClientOpts, cached *graph.CachedBackend, g *graph.Graph, peers []service.Address, logger logging.Logger) *ReplicationEndpoint {
 	if logger == nil {
 		logger = logging.GetLogger()
 	}
@@ -427,5 +437,5 @@ func NewReplicationEndpoint(pool ws.StructSpeakerPool, opts *ws.ClientOpts, cach
 	// subscribe to the local graph event
 	g.AddEventListener(t)
 
-	return t, nil
+	return t
 }
