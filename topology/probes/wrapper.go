@@ -45,17 +45,25 @@ func (sm *serviceManager) Start(ctx context.Context) error {
 
 	ctx, cancel := context.WithCancel(ctx)
 	sm.cancel = cancel
+	firstTry := true
+	succeededOnce := false
 
 	go func() {
 		for state := sm.state.Load(); state != service.StoppingState && state != service.StoppedState && ctx.Err() != context.Canceled; state = sm.state.Load() {
 			if err := sm.handler.Do(ctx, &sm.wg); err != nil {
-				logging.GetLogger().Error(err)
+				if firstTry {
+					logging.GetLogger().Errorf("Failed to start: %s, retrying in background every %s", err, sm.retryInterval)
+					firstTry = false
+				} else if succeededOnce {
+					logging.GetLogger().Error(err)
+				}
 			} else {
 				state = service.RunningState
 				if !sm.state.CompareAndSwap(service.StartingState, service.RunningState) {
 					return
 				}
 
+				succeededOnce = true
 				sm.wg.Wait()
 			}
 

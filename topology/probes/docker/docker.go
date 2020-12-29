@@ -21,7 +21,6 @@ package docker
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 
@@ -29,6 +28,7 @@ import (
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"github.com/pkg/errors"
 	"github.com/safchain/insanelock"
 	"github.com/vishvananda/netns"
 
@@ -188,15 +188,13 @@ func (p *ProbeHandler) Do(ctx context.Context, wg *sync.WaitGroup) error {
 	defaultHeaders := map[string]string{"User-Agent": fmt.Sprintf("skydive-agent-%s", sversion.Version)}
 	p.client, err = client.NewClient(p.url, ClientAPIVersion, nil, defaultHeaders)
 	if err != nil {
-		p.Ctx.Logger.Errorf("Failed to create client to Docker daemon: %s", err)
-		return err
+		return errors.Wrapf(err, "failed to create client to Docker daemon")
 	}
 	defer p.client.Close()
 
 	version, err := p.client.ServerVersion(ctx)
 	if err != nil {
-		p.Ctx.Logger.Errorf("Failed to connect to Docker daemon: %s", err)
-		return err
+		return errors.Wrapf(err, "failed to connect to Docker daemon")
 	}
 
 	p.Ctx.Logger.Infof("Connected to Docker %s", version.Version)
