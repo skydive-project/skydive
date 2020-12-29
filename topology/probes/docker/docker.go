@@ -105,9 +105,13 @@ func (p *ProbeHandler) registerContainer(id string) {
 
 	pid := int64(info.State.Pid)
 
-	dockerMetadata := Metadata{
-		ContainerID:   info.ID,
-		ContainerName: info.Name[1:],
+	dockerMetadata := topology.ContainerMetadata{
+		ID:             info.ID,
+		Image:          info.Config.Image,
+		ImageID:        info.Image,
+		Runtime:        "docker",
+		Status:         info.State.Status,
+		InitProcessPID: pid,
 	}
 
 	if len(info.Config.Labels) != 0 {
@@ -117,18 +121,17 @@ func (p *ProbeHandler) registerContainer(id string) {
 	p.Ctx.Graph.Lock()
 	defer p.Ctx.Graph.Unlock()
 
-	containerNode := p.Ctx.Graph.LookupFirstNode(graph.Metadata{"InitProcessPID": pid})
+	containerNode := p.Ctx.Graph.LookupFirstNode(graph.Metadata{"Container.InitProcessPID": pid})
 	if containerNode != nil {
-		if err := p.Ctx.Graph.AddMetadata(containerNode, "Docker", dockerMetadata); err != nil {
+		if err := p.Ctx.Graph.AddMetadata(containerNode, "Container", dockerMetadata); err != nil {
 			p.Ctx.Logger.Error(err)
 		}
 	} else {
 		metadata := graph.Metadata{
-			"Type":           "container",
-			"Name":           info.Name[1:],
-			"Manager":        "docker",
-			"InitProcessPID": pid,
-			"Docker":         dockerMetadata,
+			"Type":      "container",
+			"Name":      info.Name[1:],
+			"Manager":   "docker",
+			"Container": dockerMetadata,
 		}
 
 		if containerNode, err = p.Ctx.Graph.NewNode(graph.GenID(), metadata); err != nil {
@@ -279,9 +282,4 @@ func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	}
 
 	return probes.NewProbeWrapper(p), nil
-}
-
-// Register registers graph metadata decoders
-func Register() {
-	graph.NodeMetadataDecoders["Docker"] = MetadataDecoder
 }

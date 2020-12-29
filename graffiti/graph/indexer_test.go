@@ -81,18 +81,18 @@ func TestMetadataIndexer(t *testing.T) {
 	filter := filters.NewAndFilter(
 		filters.NewTermStringFilter("Manager", "docker"),
 		filters.NewTermStringFilter("Type", "container"),
-		filters.NewNotNullFilter("Docker.Labels.io.kubernetes.pod.name"),
-		filters.NewNotNullFilter("Docker.Labels.io.kubernetes.pod.namespace"),
-		filters.NewNotNullFilter("Docker.Labels.io.kubernetes.container.name"))
+		filters.NewNotNullFilter("Container.Labels.io.kubernetes.pod.name"),
+		filters.NewNotNullFilter("Container.Labels.io.kubernetes.pod.namespace"),
+		filters.NewNotNullFilter("Container.Labels.io.kubernetes.container.name"))
 	m := NewElementFilter(filter)
 
-	dockerCache := NewMetadataIndexer(g, g, m, "Docker.Labels.io.kubernetes.pod.namespace", "Docker.Labels.io.kubernetes.pod.name", "Docker.Labels.io.kubernetes.container.name")
+	dockerCache := NewMetadataIndexer(g, g, m, "Container.Labels.io.kubernetes.pod.namespace", "Container.Labels.io.kubernetes.pod.name", "Container.Labels.io.kubernetes.container.name")
 	dockerCache.Start()
 
 	m5 := Metadata{
 		"Type":    "container",
 		"Manager": "docker",
-		"Docker": map[string]interface{}{
+		"Container": map[string]interface{}{
 			"Labels": map[string]interface{}{
 				"io": map[string]interface{}{
 					"kubernetes": map[string]interface{}{

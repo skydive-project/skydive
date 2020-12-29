@@ -210,7 +210,8 @@ func init() {
 	cfg.SetDefault("storage.elasticsearch.use_flattened", true)
 	cfg.SetDefault("storage.elasticsearch.exclude_from_mapping", []string{
 		"Metadata.*.Extra",
-		"Metadata.Docker.Labels",
+		"Metadata.Container.Labels",
+		"Metadata.Container.Hosts.ByIP",
 		"Metadata.K8s.Labels",
 		"Metadata.Actions",
 		"Metadata.Filters",

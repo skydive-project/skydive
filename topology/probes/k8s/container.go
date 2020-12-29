@@ -19,6 +19,7 @@ package k8s
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -28,12 +29,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
-)
-
-const (
-	dockerContainerNameField = "Docker.Labels.io.kubernetes.container.name"
-	dockerPodNameField       = "Docker.Labels.io.kubernetes.pod.name"
-	dockerPodNamespaceField  = "Docker.Labels.io.kubernetes.pod.namespace"
 )
 
 type containerProbe struct {
@@ -65,9 +60,15 @@ func (c *containerProbe) OnAdd(obj interface{}) {
 
 		wasUpdated := make(map[string]bool)
 
-		for _, container := range pod.Spec.Containers {
+		for i, container := range pod.Spec.Containers {
 			uid := graph.GenID(string(pod.GetUID()), container.Name)
 			m := c.newMetadata(pod, &container)
+			if i < len(pod.Status.InitContainerStatuses) {
+				if splitted := strings.SplitN(pod.Status.ContainerStatuses[i].ContainerID, "://", 2); len(splitted) == 2 {
+					m.SetField(MetadataField("Runtime"), splitted[0])
+					m.SetField(MetadataField("ContainerID"), splitted[1])
+				}
+			}
 			if node := c.graph.GetNode(uid); node == nil {
 				var err error
 
@@ -151,14 +152,10 @@ func newPodContainerLinker(g *graph.Graph) probe.Handler {
 
 func newDockerIndexer(g *graph.Graph) *graph.MetadataIndexer {
 	m := graph.NewElementFilter(filters.NewAndFilter(
-		filters.NewTermStringFilter("Manager", "docker"),
 		filters.NewTermStringFilter("Type", "container"),
-		filters.NewNotNullFilter(dockerPodNamespaceField),
-		filters.NewNotNullFilter(dockerPodNameField),
-		filters.NewNotNullFilter(dockerContainerNameField),
 	))
 
-	return graph.NewMetadataIndexer(g, g, m, dockerPodNamespaceField, dockerPodNameField, dockerContainerNameField)
+	return graph.NewMetadataIndexer(g, g, m, "Container.ID")
 }
 
 func newContainerDockerLinker(g *graph.Graph) probe.Handler {
@@ -168,7 +165,7 @@ func newContainerDockerLinker(g *graph.Graph) probe.Handler {
 	}
 
 	containerFilter := newTypesFilter(Manager, "container")
-	containerIndexer := newObjectIndexerFromFilter(g, containerProbe, containerFilter, MetadataFields("Namespace", "Pod", "Name")...)
+	containerIndexer := newObjectIndexerFromFilter(g, containerProbe, containerFilter, MetadataFields("ContainerID")...)
 	containerIndexer.Start()
 
 	dockerIndexer := newDockerIndexer(g)
