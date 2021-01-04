@@ -49,6 +49,10 @@ graffiti/websocket/structmessage.pb.go: graffiti/websocket/structmessage.proto
 
 .proto: $(GEN_PROTO_FILES)
 
+.PHONY: .proto.touch
+.proto.touch:
+	echo $(GEN_PROTO_FILES) | xargs touch
+
 .PHONY: .proto.clean
 .proto.clean:
 	find . \( -name *.pb.go ! -path './vendor/*' \) -exec rm {} \;

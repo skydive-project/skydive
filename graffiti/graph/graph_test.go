@@ -448,7 +448,7 @@ type FakeListener struct {
 	lastEdgeDeleted *Edge
 }
 
-func (c *FakeListener) OnNodeUpdated(n *Node) {
+func (c *FakeListener) OnNodeUpdated(n *Node, ops []PartiallyUpdatedOp) {
 	c.lastNodeUpdated = n
 }
 
@@ -460,7 +460,7 @@ func (c *FakeListener) OnNodeDeleted(n *Node) {
 	c.lastNodeDeleted = n
 }
 
-func (c *FakeListener) OnEdgeUpdated(e *Edge) {
+func (c *FakeListener) OnEdgeUpdated(e *Edge, ops []PartiallyUpdatedOp) {
 	c.lastEdgeUpdated = e
 }
 

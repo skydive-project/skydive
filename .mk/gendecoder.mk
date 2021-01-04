@@ -7,6 +7,10 @@ GEN_DECODER_FILES += flow/flow.pb_gendecoder.go
 .PHONY: .gendecoder
 .gendecoder: $(GEN_DECODER_FILES)
 
+.PHONY: .gendecoder.touch
+.gendecoder.touch:
+	echo $(GEN_DECODER_FILES) | xargs touch
+
 .PHONY: .gendecoder.clean
 .gendecoder.clean:
 	find . \( -name *_gendecoder.go ! -path './vendor/*' \) -exec rm {} \;

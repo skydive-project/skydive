@@ -265,7 +265,7 @@ func (o *OnDemandClient) OnNodeAdded(n *graph.Node) {
 }
 
 // OnNodeUpdated graph event
-func (o *OnDemandClient) OnNodeUpdated(n *graph.Node) {
+func (o *OnDemandClient) OnNodeUpdated(n *graph.Node, ops []graph.PartiallyUpdatedOp) {
 	o.RLock()
 	if tasks, ok := o.registeredNodes[n.ID]; ok {
 		for resourceID, started := range tasks {

@@ -42,7 +42,7 @@ WSHandler.prototype = {
     if (location.protocol == "https:") {
       this.protocol = "wss://";
     }
-    this.conn = new WebSocket(this.protocol + this.host + "/ws/subscriber?x-client-type=webui");
+    this.conn = new WebSocket(this.protocol + this.host + "/ws/subscriber?x-client-type=webui&x-update-policy=partial");
     this.conn.onopen = function() {
       self.connecting = false;
       self.connected.resolve(true);

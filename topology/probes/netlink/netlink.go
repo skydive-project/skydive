@@ -221,7 +221,7 @@ func (u *Probe) addGenericLinkToTopology(link netlink.Link, m graph.Metadata) *g
 
 	if intf == nil {
 		var err error
-		intf, err = u.Ctx.Graph.NewNode(graph.GenID(), m)
+		intf, err = u.Ctx.Graph.NewNode(graph.GenID(), m.Copy())
 		if err != nil {
 			u.Ctx.Logger.Error(err)
 			return nil

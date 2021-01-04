@@ -22,7 +22,8 @@ import (
 	"net/http"
 	"net/url"
 
-	fw "github.com/skydive-project/skydive/graffiti/common"
+	"github.com/skydive-project/skydive/graffiti/endpoints"
+	"github.com/skydive-project/skydive/graffiti/forwarder"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/messages"
@@ -44,7 +45,7 @@ type EventHandler interface {
 // subscribe only to a part of the agent graph.
 type Seed struct {
 	ws.DefaultSpeakerEventHandler
-	forwarder  *fw.Forwarder
+	forwarder  *forwarder.Forwarder
 	clientPool *ws.StructClientPool
 	publisher  *ws.Client
 	subscriber *ws.StructSpeaker
@@ -171,13 +172,14 @@ func NewSeed(g *graph.Graph, clientType service.Type, address, filter string, ws
 		return nil, fmt.Errorf("failed to add client: %s", err)
 	}
 
-	fw.NewForwarder(g, pool, logger)
+	forwarder.NewForwarder(g, pool, logger)
 
 	if url, err = url.Parse("ws://" + address + "/ws/subscriber"); err != nil {
 		return nil, fmt.Errorf("unable to parse the Address: %s, please check the configuration file", address)
 	}
 
 	wsOpts.Headers.Add("X-Gremlin-Filter", filter)
+	wsOpts.Headers.Add("X-Update-Policy", endpoints.PartialUpdates)
 
 	subClient := ws.NewClient(g.GetHost(), clientType, url, wsOpts)
 	subscriber := subClient.UpgradeToStructSpeaker()

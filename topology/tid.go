@@ -112,7 +112,7 @@ func (t *TIDMapper) onNodeEvent(n *graph.Node) {
 }
 
 // OnNodeUpdated event
-func (t *TIDMapper) OnNodeUpdated(n *graph.Node) {
+func (t *TIDMapper) OnNodeUpdated(n *graph.Node, ops []graph.PartiallyUpdatedOp) {
 	t.onNodeEvent(n)
 }
 
@@ -137,7 +137,7 @@ func (t *TIDMapper) onEdgeEvent(e *graph.Edge) {
 }
 
 // OnEdgeUpdated event
-func (t *TIDMapper) OnEdgeUpdated(e *graph.Edge) {
+func (t *TIDMapper) OnEdgeUpdated(e *graph.Edge, ops []graph.PartiallyUpdatedOp) {
 	t.onEdgeEvent(e)
 }
 

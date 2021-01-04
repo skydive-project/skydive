@@ -53,6 +53,7 @@ func (t *MetadataTransaction) Commit() error {
 		kind = EdgeUpdated
 	}
 
+	var ops []PartiallyUpdatedOp
 	var updated bool
 	for k, v := range t.adds {
 		if o, ok := e.Metadata[k]; ok && reflect.DeepEqual(o, v) {
@@ -61,11 +62,22 @@ func (t *MetadataTransaction) Commit() error {
 
 		if e.Metadata.SetField(k, v) {
 			updated = true
+			ops = append(ops, PartiallyUpdatedOp{
+				Type:  PartiallyUpdatedAddOpType,
+				Key:   k,
+				Value: v,
+			})
 		}
 	}
 
 	for _, k := range t.removes {
-		updated = e.Metadata.DelField(k) || updated
+		if e.Metadata.DelField(k) {
+			ops = append(ops, PartiallyUpdatedOp{
+				Type: PartiallyUpdatedDelOpType,
+				Key:  k,
+			})
+			updated = true
+		}
 	}
 	if !updated {
 		return nil
@@ -78,7 +90,7 @@ func (t *MetadataTransaction) Commit() error {
 		return err
 	}
 
-	t.graph.eventHandler.NotifyEvent(kind, t.graphElement)
+	t.graph.eventHandler.NotifyEvent(kind, t.graphElement, ops...)
 
 	return nil
 }

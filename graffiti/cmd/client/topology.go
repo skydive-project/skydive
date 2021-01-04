@@ -27,7 +27,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	gcommon "github.com/skydive-project/skydive/graffiti/common"
+	endpoints "github.com/skydive-project/skydive/graffiti/endpoints"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/messages"
@@ -71,7 +71,7 @@ var TopologyImport = &cobra.Command{
 			exitOnError(err)
 		}
 		opts := websocket.ClientOpts{AuthOpts: &AuthenticationOpts, Headers: http.Header{}, TLSConfig: tlsConfig}
-		opts.Headers.Add("X-Persistence-Policy", string(gcommon.Persistent))
+		opts.Headers.Add("X-Persistence-Policy", string(endpoints.Persistent))
 		client := websocket.NewClient(Host, service.Type("CLI"), url, opts)
 
 		if err := client.Connect(); err != nil {

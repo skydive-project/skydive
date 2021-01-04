@@ -721,7 +721,7 @@ TopologyGraphLayout.prototype = {
   _onNodeAdded: function(node) {
     node.visible = true;
     if (!node.links) node.links = {};
-    node._metadata = node.metadata;
+    node._metadata = Object.assign({}, node.metadata);
 
     this.nodes[node.id] = node;
 
@@ -802,7 +802,7 @@ TopologyGraphLayout.prototype = {
     if (node.metadata.State !== node._metadata.State) {
        this.stateSet(node);
     }
-    node._metadata = node.metadata;
+    node._metadata = Object.assign({}, node.metadata);
   },
 
   zoomed: function() {

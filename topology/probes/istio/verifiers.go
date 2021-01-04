@@ -35,7 +35,7 @@ func (rv *resourceVerifier) OnNodeAdded(node *graph.Node) {
 	rv.verifier(rv.g)
 }
 
-func (rv *resourceVerifier) OnNodeUpdated(node *graph.Node) {
+func (rv *resourceVerifier) OnNodeUpdated(node *graph.Node, ops []graph.PartiallyUpdatedOp) {
 	rv.verifier(rv.g)
 }
 

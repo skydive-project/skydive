@@ -271,7 +271,7 @@ func (a *Server) evaluateAlerts(alerts map[string]*GremlinAlert, lockGraph bool)
 }
 
 // OnNodeUpdated event
-func (a *Server) OnNodeUpdated(n *graph.Node) {
+func (a *Server) OnNodeUpdated(n *graph.Node, ops []graph.PartiallyUpdatedOp) {
 	a.evaluateAlerts(a.graphAlerts, false)
 }
 
@@ -291,7 +291,7 @@ func (a *Server) OnEdgeAdded(e *graph.Edge) {
 }
 
 // OnEdgeUpdated event
-func (a *Server) OnEdgeUpdated(e *graph.Edge) {
+func (a *Server) OnEdgeUpdated(e *graph.Edge, ops []graph.PartiallyUpdatedOp) {
 	a.evaluateAlerts(a.graphAlerts, false)
 }
 

@@ -32,7 +32,7 @@ func (t Time) UnixMilli() int64 {
 }
 
 // MarshalJSON custom marshalling function
-func (t *Time) MarshalJSON() ([]byte, error) {
+func (t Time) MarshalJSON() ([]byte, error) {
 	if t.IsZero() {
 		return []byte("null"), nil
 	}

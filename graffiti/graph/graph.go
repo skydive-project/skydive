@@ -51,10 +51,10 @@ type Identifier string
 
 // EventListener describes the graph events interface mechanism
 type EventListener interface {
-	OnNodeUpdated(n *Node)
+	OnNodeUpdated(n *Node, ops []PartiallyUpdatedOp)
 	OnNodeAdded(n *Node)
 	OnNodeDeleted(n *Node)
-	OnEdgeUpdated(e *Edge)
+	OnEdgeUpdated(e *Edge, ops []PartiallyUpdatedOp)
 	OnEdgeAdded(e *Edge)
 	OnEdgeDeleted(e *Edge)
 }
@@ -63,6 +63,7 @@ type graphEvent struct {
 	kind     graphEventType
 	element  interface{}
 	listener EventListener
+	ops      []PartiallyUpdatedOp
 }
 
 type graphElement struct {
@@ -177,7 +178,7 @@ type DefaultGraphListener struct {
 }
 
 // OnNodeUpdated event
-func (c *DefaultGraphListener) OnNodeUpdated(n *Node) {
+func (c *DefaultGraphListener) OnNodeUpdated(n *Node, ops []PartiallyUpdatedOp) {
 }
 
 // OnNodeAdded event
@@ -189,7 +190,7 @@ func (c *DefaultGraphListener) OnNodeDeleted(n *Node) {
 }
 
 // OnEdgeUpdated event
-func (c *DefaultGraphListener) OnEdgeUpdated(e *Edge) {
+func (c *DefaultGraphListener) OnEdgeUpdated(e *Edge, ops []PartiallyUpdatedOp) {
 }
 
 // OnEdgeAdded event
@@ -259,13 +260,13 @@ func (g *EventHandler) notifyListeners(ge graphEvent) {
 		case NodeAdded:
 			g.currentEventListener.OnNodeAdded(ge.element.(*Node))
 		case NodeUpdated:
-			g.currentEventListener.OnNodeUpdated(ge.element.(*Node))
+			g.currentEventListener.OnNodeUpdated(ge.element.(*Node), ge.ops)
 		case NodeDeleted:
 			g.currentEventListener.OnNodeDeleted(ge.element.(*Node))
 		case EdgeAdded:
 			g.currentEventListener.OnEdgeAdded(ge.element.(*Edge))
 		case EdgeUpdated:
-			g.currentEventListener.OnEdgeUpdated(ge.element.(*Edge))
+			g.currentEventListener.OnEdgeUpdated(ge.element.(*Edge), ge.ops)
 		case EdgeDeleted:
 			g.currentEventListener.OnEdgeDeleted(ge.element.(*Edge))
 		}
@@ -274,11 +275,11 @@ func (g *EventHandler) notifyListeners(ge graphEvent) {
 
 // NotifyEvent notifies all the listeners of an event. NotifyEvent
 // makes sure that we don't enter a notify endless loop.
-func (g *EventHandler) NotifyEvent(kind graphEventType, element interface{}) {
+func (g *EventHandler) NotifyEvent(kind graphEventType, element interface{}, ops ...PartiallyUpdatedOp) {
 	// push event to chan so that nested notification will be sent in the
 	// right order. Associate the event with the current event listener so
 	// we can avoid loop by not triggering event for the current listener.
-	ge := graphEvent{kind: kind, element: element}
+	ge := graphEvent{kind: kind, element: element, ops: ops}
 	ge.listener = g.currentEventListener
 	g.eventChan <- ge
 
@@ -700,8 +701,27 @@ func (g *Graph) NodeUpdated(n *Node) error {
 	return ErrNodeNotFound
 }
 
+// NodePartiallyUpdated partially updates a node
+func (g *Graph) NodePartiallyUpdated(id Identifier, revision int64, updatedAt Time, ops ...PartiallyUpdatedOp) error {
+	if node := g.GetNode(id); node != nil {
+		if node.Revision < revision {
+			node.Revision = revision
+			node.UpdatedAt = updatedAt
+			node.Metadata.ApplyUpdates(ops...)
+
+			if err := g.backend.MetadataUpdated(node); err != nil {
+				return err
+			}
+
+			g.eventHandler.NotifyEvent(NodeUpdated, node, ops...)
+		}
+		return nil
+	}
+	return ErrNodeNotFound
+}
+
 // EdgeUpdated updates an edge
-func (g *Graph) EdgeUpdated(e *Edge) error {
+func (g *Graph) EdgeUpdated(e *Edge, ops ...PartiallyUpdatedOp) error {
 	if edge := g.GetEdge(e.ID); edge != nil {
 		if edge.Revision < e.Revision {
 			edge.Metadata = e.Metadata
@@ -711,9 +731,28 @@ func (g *Graph) EdgeUpdated(e *Edge) error {
 				return err
 			}
 
-			g.eventHandler.NotifyEvent(EdgeUpdated, edge)
+			g.eventHandler.NotifyEvent(EdgeUpdated, edge, ops...)
 			return nil
 		}
+	}
+	return ErrEdgeNotFound
+}
+
+// EdgePartiallyUpdated partially updates an edge
+func (g *Graph) EdgePartiallyUpdated(id Identifier, revision int64, updatedAt Time, ops ...PartiallyUpdatedOp) error {
+	if edge := g.GetEdge(id); edge != nil {
+		if edge.Revision < revision {
+			edge.Revision = revision
+			edge.UpdatedAt = updatedAt
+			edge.Metadata.ApplyUpdates(ops...)
+
+			if err := g.backend.MetadataUpdated(edge); err != nil {
+				return err
+			}
+
+			g.eventHandler.NotifyEvent(EdgeUpdated, edge, ops...)
+		}
+		return nil
 	}
 	return ErrEdgeNotFound
 }
@@ -773,7 +812,8 @@ func (g *Graph) DelMetadata(i interface{}, k string) error {
 		return err
 	}
 
-	g.eventHandler.NotifyEvent(kind, i)
+	op := PartiallyUpdatedOp{Type: PartiallyUpdatedDelOpType, Key: k}
+	g.eventHandler.NotifyEvent(kind, i, op)
 	return nil
 }
 
@@ -805,7 +845,8 @@ func (g *Graph) addMetadata(i interface{}, k string, v interface{}, t Time) erro
 		return err
 	}
 
-	g.eventHandler.NotifyEvent(kind, i)
+	op := PartiallyUpdatedOp{Type: PartiallyUpdatedAddOpType, Key: k, Value: v}
+	g.eventHandler.NotifyEvent(kind, i, op)
 	return nil
 }
 

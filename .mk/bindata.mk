@@ -21,6 +21,10 @@ BINDATA_DIRS := \
 .PHONY: .bindata
 .bindata: graffiti/js/bindata.go statics/bindata.go ebpf/statics/bindata.go
 
+.PHONY: .bindata.touch
+.bindata.touch:
+	touch statics/bindata.go ebpf/statics/bindata.go
+
 ebpf/statics/bindata.go: $(EBPF_PROBES)
 	go run ${GO_BINDATA_GITHUB} ${GO_BINDATA_FLAGS} -nometadata -o ebpf/statics/bindata.go -pkg=statics -ignore=bindata.go $(EBPF_PROBES)
 	gofmt -w -s ebpf/statics/bindata.go
