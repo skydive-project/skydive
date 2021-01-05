@@ -75,8 +75,6 @@ objects:
             successThreshold: 1
             timeoutSeconds: 5
         - image: skydive/skydive-ui
-          command: ["/usr/src/skydive-ui/node_modules/webpack-dev-server/bin/webpack-dev-server.js"] 
-          args: ["--host","0.0.0.0","--disableHostCheck"]
           name: skydive-ui
           imagePullPolicy: Always
           ports:

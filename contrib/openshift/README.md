@@ -1,3 +1,5 @@
+#### For quick default deployment use `deploy_skydive_ocp.sh` script 
+
 # OpenShift template for skydive agent
 
 This OpenShift template allows you to instantiate skydive in OpenShift. 
