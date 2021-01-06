@@ -63,7 +63,7 @@ func (c *containerProbe) OnAdd(obj interface{}) {
 		for i, container := range pod.Spec.Containers {
 			uid := graph.GenID(string(pod.GetUID()), container.Name)
 			m := c.newMetadata(pod, &container)
-			if i < len(pod.Status.InitContainerStatuses) {
+			if i < len(pod.Status.ContainerStatuses) {
 				if splitted := strings.SplitN(pod.Status.ContainerStatuses[i].ContainerID, "://", 2); len(splitted) == 2 {
 					m.SetField(MetadataField("Runtime"), splitted[0])
 					m.SetField(MetadataField("ContainerID"), splitted[1])
