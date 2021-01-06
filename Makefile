@@ -157,10 +157,10 @@ ifneq ($(OFFLINE), true)
 endif
 
 .PHONY: genlocalfiles
-genlocalfiles: $(EXTRA_BUILD_TARGET) .proto .bindata .gendecoder .easyjson .vppbinapi
+genlocalfiles: $(EXTRA_BUILD_TARGET) .proto .typescript .bindata .gendecoder .easyjson .vppbinapi
 
 .PHONY: touchlocalfiles
-touchlocalfiles: .proto.touch .bindata.touch .gendecoder.touch .easyjson.touch
+touchlocalfiles: .proto.touch .typescript.touch .bindata.touch .gendecoder.touch .easyjson.touch
 
 .PHONY: clean
 clean: skydive.clean test.functionals.clean contribs.clean .ebpf.clean .easyjson.clean .proto.clean .gendecoder.clean .typescript.clean .vppbinapi.clean swagger.clean

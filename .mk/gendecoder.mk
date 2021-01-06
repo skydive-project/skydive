@@ -1,4 +1,4 @@
-GEN_DECODER_FILES = $(patsubst %.go,%_gendecoder.go,$(shell git grep //go:generate | grep "gendecoder" | grep -v Makefile | cut -d ":" -f 1))
+GEN_DECODER_FILES = $(patsubst %.go,%_gendecoder.go,$(shell git grep //go:generate | grep "gendecoder" | grep -v "\.mk" | cut -d ":" -f 1))
 GEN_DECODER_FILES += flow/flow.pb_gendecoder.go
 
 %_gendecoder.go: %.go
@@ -9,7 +9,7 @@ GEN_DECODER_FILES += flow/flow.pb_gendecoder.go
 
 .PHONY: .gendecoder.touch
 .gendecoder.touch:
-	echo $(GEN_DECODER_FILES) | xargs touch
+	@echo $(GEN_DECODER_FILES) | xargs touch
 
 .PHONY: .gendecoder.clean
 .gendecoder.clean:
