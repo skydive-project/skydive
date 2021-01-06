@@ -215,8 +215,11 @@ func (t *SubscriberEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage
 // specified a Gremlin filter, a 'Diff' is applied between the previous graph state
 // for this subscriber and the current graph state.
 func (t *SubscriberEndpoint) notifyClients(typ string, i interface{}, ops []graph.PartiallyUpdatedOp) {
+	var subscribers []*subscriber
 	t.RLock()
-	subscribers := t.subscribers
+	for _, subscriber := range t.subscribers {
+		subscribers = append(subscribers, subscriber)
+	}
 	t.RUnlock()
 
 	for _, subscriber := range subscribers {
