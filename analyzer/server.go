@@ -57,6 +57,7 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/blockdev"
 	"github.com/skydive-project/skydive/ui"
 	"github.com/skydive-project/skydive/validator"
+	"github.com/skydive-project/skydive/version"
 )
 
 const workflowAssetDir = "statics/workflows"
@@ -284,6 +285,7 @@ func NewServerFromConfig() (*Server, error) {
 		EtcdClient:          etcdClient,
 		TopologyMarshallers: api.TopologyMarshallers,
 		Assets:              &statics.Assets,
+		Version:             version.Version,
 	}
 
 	if config.GetBool("etcd.embedded") {
