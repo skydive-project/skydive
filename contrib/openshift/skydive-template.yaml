@@ -45,6 +45,8 @@ objects:
             value: '{"theme":"light","k8s_enabled":"true","topology": {"favorites":{"infrastructure":"G.V().Has(\"Manager\", Without(\"k8s\"))","kubernetes":"G.V().Has(\"Manager\",\"k8s\")"},"default_filter":"infrastructure"}}'
           - name: SKYDIVE_ANALYZER_TOPOLOGY_FABRIC
             value: 'TOR1->*[Type=host]/eth0 TOR1->*[Type=host]/eth1 TOR1->*[Type=host]/ens1 TOR1->*[Type=host]/ens2 TOR1->*[Type=host]/ens3'
+          - name: SKYDIVE_ANALYZER_STARTUP_CAPTURE_GREMLIN
+            value: 'G.V().Has("Type" , "device", "Name", Regex("eth0|ens1|ens2|ens3"))'
           - name: SKYDIVE_ETCD_LISTEN
             value: 0.0.0.0:12379
           - name: SKYDIVE_LOGGING_LEVEL
