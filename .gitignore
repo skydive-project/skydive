@@ -14,3 +14,5 @@ ebpf/flow.o
 ebpf/flow-gre.o
 js/node_modules/
 .idea
+lint.json
+go.sum

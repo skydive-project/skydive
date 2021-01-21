@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.service.name }}
+  labels:
+    app: skydive-analyzer
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+  - port: {{ .Values.service.port }}
+    name: service
+    nodePort: {{ .Values.service.nodePort }}
+  - port: {{ .Values.etcd.port }}
+    name: etcd
+    nodePort: {{ .Values.etcd.nodePort }}
+  {{- if .Values.newui.enabled }}
+  - port: {{ .Values.newui.port }}
+    name: newui
+    nodePort: {{ .Values.newui.nodePort }}
+  {{- end }}
+  selector:
+    app: skydive-analyzer
