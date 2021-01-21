@@ -1,0 +1,40 @@
+image:
+  repository: skydive/skydive
+  tag: "latest"
+  imagePullPolicy: IfNotPresent
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 8192Mi
+  requests:
+    cpu: 100m
+    memory: 512Mi
+
+service:
+  type: NodePort # applies for all services
+  name: skydive-analyzer
+  port: 8082
+  nodePort:
+
+etcd:
+  port: 12379
+  nodePort:
+
+newui:
+  enabled: true
+  image:
+    repository: "skydive/skydive-ui"
+    tag: "latest"
+  port: 8080
+  nodePort:
+
+elasticsearch:
+  enabled: false
+  host: "elasticsearch-master:9200"
+  query:
+
+# Extra environment variables to be appended to default skydive variables
+extraEnvs: []
+#  - name: MY_ENVIRONMENT_VAR
+#    value: the_value_goes_here

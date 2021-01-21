@@ -49,6 +49,21 @@ SKYDIVE_ETCD_DATA_DIR=/tmp SKYDIVE_ANALYZER_LISTEN=0.0.0.0:8082 sudo -E /usr/loc
 
 Open a browser to http://localhost:8082 to access the analyzer Web UI.
 
+### Helm
+
+If you are using Kubernetes then you can deploy skydive using helm directly from Git:
+
+```console
+helm plugin install https://github.com/aslafy-z/helm-git --version 0.10.0
+helm repo add skydive git+https://github.com/skydive-project/skydive@contrib/charts
+helm repo update
+helm install skydive-analyzer skydive/skydive-analyzer
+helm install skydive-agent skydive/skydive-agent
+kubectl port-forward service/skydive-analyzer 8082:8082
+```
+
+Open a browser to http://localhost:8082 to access the analyzer Web UI.
+
 ### Docker
 
 ```console

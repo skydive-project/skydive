@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: skydive-analyzer
+  labels:
+    app: skydive-analyzer
+spec:
+  selector:
+    matchLabels:
+      app: skydive-analyzer
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: skydive-analyzer
+    spec:
+      serviceAccountName: skydive-analyzer
+      dnsPolicy: ClusterFirstWithHostNet
+      affinity:
+        {{- include "nodeaffinity" . | indent 6 }}
+      {{- if .Values.image.secretName }}
+      {{- if ne .Values.image.secretName ""}}
+      imagePullSecrets:
+      - name: {{ .Values.image.secretName }}
+      {{- end }}
+      {{- end }}      
+      containers:
+      - name: skydive-analyzer
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ default "" .Values.image.imagePullPolicy | quote }}
+        terminationMessagePolicy: FallbackToLogsOnError
+        args:
+        - analyzer
+        - --listen=0.0.0.0:{{ .Values.service.port }}
+        ports:
+        - containerPort: {{ .Values.service.port }}
+        - containerPort: {{ .Values.service.port }}
+          protocol: UDP
+        - containerPort: {{ .Values.etcd.port }}
+        readinessProbe:
+          httpGet:
+            port: {{ .Values.service.port }}
+            path: /api/status
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            port: {{ .Values.service.port }}
+            path: /api/status
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          failureThreshold: 10
+        env:
+        - name: SKYDIVE_UI
+          value: '{"theme":"light","k8s_enabled":"true"}'
+        - name: SKYDIVE_ANALYZER_TOPOLOGY_PROBES
+          value: "k8s"
+        - name: SKYDIVE_ANALYZER_TOPOLOGY_FABRIC
+          value: "TOR1->*[Type=host]/eth0"
+        - name: SKYDIVE_ETCD_LISTEN
+          value: 0.0.0.0:{{ .Values.etcd.port }}
+        - name: SKYDIVE_EMBEDDED
+          value: "true"
+        - name: SKYDIVE_FLOW_PROTOCOL
+          value: "websocket"
+      {{- if .Values.elasticsearch.enabled }}
+        - name: SKYDIVE_ANALYZER_FLOW_BACKEND
+          value: "myelasticsearch"
+        - name: SKYDIVE_ANALYZER_TOPOLOGY_BACKEND
+          value: "myelasticsearch"
+        - name: SKYDIVE_STORAGE_MYELASTICSEARCH_DRIVER
+          value: "elasticsearch"
+        - name: SKYDIVE_STORAGE_MYELASTICSEARCH_HOST
+          value: {{ .Values.elasticsearch.host }}
+        - name: SKYDIVE_STORAGE_MYELASTICSEARCH_DISABLE_SNIFFING
+          value: "true"
+        - name: SKYDIVE_STORAGE_MYELASTICSEARCH_DEBUG
+          value: "true"
+      {{- end }}
+      {{- if .Values.extraEnvs }}
+{{ toYaml .Values.extraEnvs | indent 8 }}
+      {{- end }}
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+        volumeMounts:
+        - name: ssl
+          mountPath: /etc/ssl/certs
+    {{- if .Values.newui.enabled }}
+      - name: skydive-ui
+        image: {{ .Values.newui.image.repository }}:{{ .Values.newui.image.tag }}
+        ports:
+           - containerPort: {{ .Values.newui.port }}
+    {{- end }}
+      volumes:
+      - name: ssl
+        hostPath:
+          path: /etc/ssl/certs
