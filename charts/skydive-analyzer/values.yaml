@@ -22,7 +22,7 @@ etcd:
   nodePort:
 
 newui:
-  enabled: false # FIXME: does not manage to connect to analyzer
+  enabled: true
   image:
     repository: "skydive/skydive-ui"
     tag: "latest"
