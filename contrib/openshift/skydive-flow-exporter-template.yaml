@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: skydive-flow-exporter
+objects:
+# Skydive FlowExporter (Deployment)
+#
+# Containers included in this pod::
+# (1) Skydive Flow Exporter - Flow exporter (connects to Skydive Analyzer)
+# (2) Minio - Object storage destination for flows
+# (3) minio-mc - create bucket in Minio (init only container)
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: skydive-flow-exporter
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: skydive-flow-exporter
+        tier: flow-exporter
+    template:
+      metadata:
+        labels:
+          app: skydive-flow-exporter
+          tier: flow-exporter
+      spec:
+        containers:
+        - image: skydive/skydive-flow-exporter
+          imagePullPolicy: Always
+          name: skydive-flow-exporter
+          env:
+          - name: SKYDIVE_LOGGING_LEVEL
+            value: ${SKYDIVE_LOGGING_LEVEL}
+          - name: SKYDIVE_PIPELINE_SUBSCRIBER_URL
+            value: ws://skydive-analyzer:8082/ws/subscriber/flow
+        - image: minio/minio
+          imagePullPolicy: Always
+          name: minio
+          args:
+          - server
+          - /tmp/data
+          env:
+          - name: MINIO_ACCESS_KEY
+            value: user
+          - name: MINIO_SECRET_KEY
+            value: password
+        - image: minio/mc
+          imagePullPolicy: Always
+          name: minio-mc
+          command: ["/bin/sh"]
+          securityContext:
+            privileged: true
+            allowPrivilegeEscalation: true
+          args:
+          - -c
+          - >
+            set -x;
+            while [ $(curl -sw '%{http_code}' "http://localhost:9000" -o /dev/null) -ne 403 ]; do
+              echo "Waiting for minio server to start (autentication failed is expected)";
+              sleep 10;
+            done;
+            echo "Creating bucket";
+            /usr/bin/mc config host add local http://localhost:9000 user password --api S3v4;
+            /usr/bin/mc rm -r --force local/bucket;
+            /usr/bin/mc mb local/bucket;
+            echo "Done.";
+            while true; do
+              echo "====> Listing files in bucket (every 60 seconds)";
+              echo "====> Note: Make sure to working Skydive flow captures";
+              echo "";
+              /usr/bin/mc ls -r local/bucket | tail -n 5;
+              sleep 60;
+            done;
+parameters:
+- description: Loglevel of Skydive-flow-exporter
+  displayName: Loglevel
+  name: SKYDIVE_LOGGING_LEVEL
+  required: true
+  value: INFO

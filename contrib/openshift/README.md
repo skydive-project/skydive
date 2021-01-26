@@ -23,12 +23,20 @@ oc adm policy add-cluster-role-to-user cluster-reader -z default
 ```
 
 
-####  Install from OpenShift template
+####  Deploy skydive analyzer and agents from OpenShift template
 
 ```
 # adjust VERSION for the current version - for example: v0.20.1 or master
 VERSION=master
 oc process -f https://raw.githubusercontent.com/skydive-project/skydive/${VERSION}/contrib/openshift/skydive-template.yaml | oc apply -f -
+```
+
+####  Deploy flow exporter from OpenShift template
+
+```
+# adjust VERSION for the current version - for example: v0.20.1 or master
+VERSION=master
+oc process -f https://raw.githubusercontent.com/skydive-project/skydive/${VERSION}/contrib/openshift/skydive-flow-exporter-template.yaml | oc apply -f -
 ```
 
 #### Check that everything is working and created:

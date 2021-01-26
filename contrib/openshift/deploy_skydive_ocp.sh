@@ -58,6 +58,18 @@ deploy_skydive() {
   oc process -f $DEPLOY_YAML | oc apply -f -
 }
 
+# deoploy skydive-flow-exporter
+deploy_skydive-flow-exporter() {
+  if [ $USE_LOCAL_YAML = "true" ] ; then
+    DEPLOY_YAML=skydive-flow-exporter-template.yaml
+  else
+    DEPLOY_YAML=https://raw.githubusercontent.com/skydive-project/skydive/${VERSION}/contrib/openshift/skydive-flow-exporter-template.yaml
+  fi
+
+  echo -e "\nDeploying $DEPLOY_YAML\n"
+  oc process -f $DEPLOY_YAML | oc apply -f -
+}
+
 # print pod status
 print_pods_status () {
   echo -e "\n"
@@ -78,6 +90,7 @@ main() {
   create_skydive_project
   set_credentials
   deploy_skydive
+  deploy_skydive-flow-exporter
   print_pods_status
   print_usage_insturctions
 }
