@@ -50,6 +50,7 @@ require (
 	github.com/lunixbochs/struc v0.0.0-20180408203800-02e4c2afbb2a
 	github.com/lxc/lxd v0.0.0-20200330183600-518f06676866
 	github.com/mailru/easyjson v0.7.6
+	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/mattn/goveralls v0.0.2
 	github.com/mitchellh/mapstructure v1.3.3
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
@@ -61,6 +62,7 @@ require (
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/olivere/elastic/v7 v7.0.21
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7 // indirect
+	github.com/pelletier/go-toml v1.7.0 // indirect
 	github.com/pierrec/xxHash v0.1.5
 	github.com/pkg/errors v0.9.1
 	github.com/pmylund/go-cache v2.1.0+incompatible
@@ -100,7 +102,7 @@ require (
 	istio.io/api v0.0.0-20191029012234-9fe6a7da3673
 	istio.io/client-go v0.0.0-20191024204624-13a7366c1cab
 	k8s.io/api v0.0.0
-	k8s.io/apimachinery v0.0.0
+	k8s.io/apimachinery v0.18.2
 	k8s.io/client-go v11.0.0+incompatible
 )
 

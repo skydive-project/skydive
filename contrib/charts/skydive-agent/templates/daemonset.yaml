@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: skydive-agent
+  labels:
+    app: skydive-agent
+spec:
+  selector:
+    matchLabels:
+      app: skydive-agent
+  template:
+    metadata:
+      labels:
+        app: skydive-agent
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      hostPID: true
+      hostIPC: true
+      securityContext:
+        runAsNonRoot: false
+      affinity:
+        {{- include "nodeaffinity" . | indent 6 }}
+      containers:
+      - name: skydive-agent
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.imagePullPolicy | default "" | quote }}
+        terminationMessagePolicy: FallbackToLogsOnError
+        args:
+        - agent
+        - --listen=0.0.0.0:8081
+        ports:
+        - containerPort: 8081
+        readinessProbe:
+          httpGet:
+            port: 8081
+            path: /api/status
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            port: 8081
+            path: /api/status
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          failureThreshold: 10
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+        env:
+        - name: SKYDIVE_ANALYZERS
+          value: {{ .Values.analyzer.host }}
+        - name: SKYDIVE_FLOW_PROTOCOL
+          value: websocket
+        - name: SKYDIVE_FLOW_DEFAULT_LAYER_KEY_MODE
+          value: L3
+        - name: SKYDIVE_AGENT_TOPOLOGY_PROBES
+          value: "ovsdb docker runc"
+        - name: SKYDIVE_AGENT_TOPOLOGY_RUNC_RUN_PATH
+          value: /var/run/runc /var/run/runc-ctrs /var/run/containerd/runc
+      {{- if .Values.extraEnvs }}
+{{ toYaml .Values.extraEnvs | indent 8 }}
+      {{- end }}
+        securityContext:
+          privileged: true
+          readOnlyRootFilesystem: false
+          allowPrivilegeEscalation: true
+          runAsNonRoot: false
+          runAsUser: 0
+          capabilities:
+            add:
+            - all
+        volumeMounts:
+        - name: docker
+          mountPath: /var/run/docker.sock
+        - name: run
+          mountPath: /host/run
+        - name: ovsdb
+          mountPath: /var/run/openvswitch/db.sock
+        - name: runc
+          mountPath: /var/run/runc
+        - name: runc-ctrs
+          mountPath: /var/run/runc-ctrs
+        - name: containerd-runc
+          mountPath: /var/run/containerd/runc
+        - name: data-kubelet
+          mountPath: /var/data/kubelet
+        - name: lib-kubelet
+          mountPath: /var/lib/kubelet
+        - name: data-openshiftvolumes
+          mountPath: /var/data/openshiftvolumes
+        - name: lib-origin
+          mountPath: /var/lib/origin
+      volumes:
+      - name: docker
+        hostPath:
+          path: /var/run/docker.sock
+      - name: run
+        hostPath:
+          path: /var/run/netns
+      - name: ovsdb
+        hostPath:
+          path: /var/run/openvswitch/db.sock
+      - name: runc
+        hostPath:
+          path: /var/run/runc
+      - name: runc-ctrs
+        hostPath:
+          path: /var/run/runc-ctrs
+      - name: containerd-runc
+        hostPath:
+          path: /var/run/containerd/runc
+      - name: data-kubelet
+        hostPath:
+          path: /var/data/kubelet
+      - name: lib-kubelet
+        hostPath:
+          path: /var/lib/kubelet
+      - name: data-openshiftvolumes
+        hostPath:
+          path: /var/data/openshiftvolumes
+      - name: lib-origin
+        hostPath:
+          path: /var/lib/origin
