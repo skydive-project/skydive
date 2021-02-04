@@ -1,0 +1,70 @@
+defaultNamespace: default
+targetCustomizations:
+- name: broker
+  helm:
+    values:
+      newui:
+        enabled: false
+      service:
+        type: NodePort
+        nodePort: 30082
+      etcd:
+        nodePort: 30079
+      extraEnvs:
+        - name: SKYDIVE_HOST_ID
+          value: "broker"
+        - name: SKYDIVE_ANALYZER_TOPOLOGY_FABRIC
+          value: null
+        - name: SKYDIVE_ANALYZER_TOPOLOGY_K8S_CLUSTER_NAME
+          value: "broker"
+  clusterSelector:
+    matchLabels:
+      name: local
+
+- name: east
+  helm:
+    values:
+      newui:
+        enabled: false
+      service:
+        type: ClusterIP
+      extraEnvs:
+        - name: SKYDIVE_HOST_ID
+          value: "east"
+        - name: SKYDIVE_ANALYZERS
+          value: "broker:30082"
+        - name: SKYDIVE_ANALYZER_TOPOLOGY_FABRIC
+          value: null
+        - name: SKYDIVE_ANALYZER_TOPOLOGY_K8S_CLUSTER_NAME
+          value: "east"
+        - name: SKYDIVE_ETCD_EMBEDDED
+          value: "false"
+        - name: SKYDIVE_ETCD_SERVERS
+          value: "http://broker:30079"
+  clusterSelector:
+    matchLabels:
+      env: east
+
+- name: west
+  helm:
+    values:
+      newui:
+        enabled: false
+      service:
+        type: ClusterIP
+      extraEnvs:
+        - name: SKYDIVE_HOST_ID
+          value: "west"
+        - name: SKYDIVE_ANALYZERS
+          value: "broker:30082"
+        - name: SKYDIVE_ANALYZER_TOPOLOGY_FABRIC
+          value: null
+        - name: SKYDIVE_ANALYZER_TOPOLOGY_K8S_CLUSTER_NAME
+          value: "west"
+        - name: SKYDIVE_ETCD_EMBEDDED
+          value: "false"
+        - name: SKYDIVE_ETCD_SERVERS
+          value: "http://broker:30079"
+  clusterSelector:
+    matchLabels:
+      env: west

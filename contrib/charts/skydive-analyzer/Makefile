@@ -1,11 +1,11 @@
 include ../../../.mk/k8s.mk
 
 # must be within the range of k8s nodePort
-ANALYZER_NODEPORT?=30000
+ANALYZER_NODEPORT?=30082
 ANALYZER_PORT?=8082
 ANALYZER_SERVICE?=skydive-analyzer
-ETCD_NODEPORT?=30001
-NEWUI_NODEPORT?=30002
+ETCD_NODEPORT?=30079
+NEWUI_NODEPORT?=30080
 
 .PHONY: uninstall
 uninstall: $(TOOLSBIN)/helm
@@ -14,10 +14,12 @@ uninstall: $(TOOLSBIN)/helm
 .PHONY: install
 install: $(TOOLSBIN)/helm
 	helm install skydive-analyzer . \
+		--set service.type=NodePort \
 		--set service.port=${ANALYZER_PORT} \
 		--set service.nodePort=${ANALYZER_NODEPORT} \
 		--set etcd.nodePort=${ETCD_NODEPORT} \
 		--set elasticsearch.enabled=true \
+		--set newui.enabled=true \
 		--set newui.nodePort=${NEWUI_NODEPORT} \
 
 .PHONY: status
