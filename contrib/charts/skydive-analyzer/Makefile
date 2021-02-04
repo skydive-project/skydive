@@ -17,6 +17,7 @@ install: $(TOOLSBIN)/helm
 		--set service.port=${ANALYZER_PORT} \
 		--set service.nodePort=${ANALYZER_NODEPORT} \
 		--set etcd.nodePort=${ETCD_NODEPORT} \
+		--set elasticsearch.enabled=true \
 		--set newui.nodePort=${NEWUI_NODEPORT} \
 
 .PHONY: status

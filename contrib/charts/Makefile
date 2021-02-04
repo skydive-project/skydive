@@ -1,4 +1,6 @@
 SUBDIRS := \
+	elasticsearch \
+	kibana \
 	skydive-analyzer \
 	skydive-agent
 
