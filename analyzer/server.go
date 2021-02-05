@@ -228,7 +228,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	cached, err := graph.NewCachedBackend(graphStorage, etcdClient, config.AnalyzerService)
+	cached, err := graph.NewCachedBackend(graphStorage, etcdClient, host, config.AnalyzerService)
 	if err != nil {
 		return nil, err
 	}

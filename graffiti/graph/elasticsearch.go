@@ -435,16 +435,6 @@ func (b *ElasticSearchBackend) GetEdges(t Context, m ElementMatcher, e ElementMa
 		edges = dedupEdges(edges)
 	}
 
-	for _, e := range edges {
-		raw, err := edgeToRaw(e)
-		if err != nil {
-			b.logger.Errorf("Ignoring edge, failing to marshal: %v", err)
-			continue
-		}
-
-		b.prevRevision[e.ID] = raw
-	}
-
 	return edges
 }
 
@@ -482,16 +472,6 @@ func (b *ElasticSearchBackend) GetNodes(t Context, m ElementMatcher, e ElementMa
 
 	if len(nodes) > 1 && t.TimePoint {
 		nodes = dedupNodes(nodes)
-	}
-
-	for _, n := range nodes {
-		raw, err := nodeToRaw(n)
-		if err != nil {
-			b.logger.Errorf("Ignoring node, failing to marshal: %v", err)
-			continue
-		}
-
-		b.prevRevision[n.ID] = raw
 	}
 
 	return nodes
@@ -581,6 +561,34 @@ func (b *ElasticSearchBackend) FlushElements(m ElementMatcher) error {
 	})
 
 	return b.client.UpdateByScript(query, script, b.liveIndex.Alias(b.indexPrefix), b.archiveIndex.IndexWildcard(b.indexPrefix))
+}
+
+// Sync adds all the nodes and edges with the specified filter into an other graph
+func (b *ElasticSearchBackend) Sync(g *Graph, elementFilter *ElementFilter) error {
+	// re-insert valid nodes and edges
+	for _, node := range b.GetNodes(Context{}, nil, elementFilter) {
+		g.NodeAdded(node)
+
+		raw, err := nodeToRaw(node)
+		if err != nil {
+			return err
+		}
+
+		b.prevRevision[node.ID] = raw
+	}
+
+	for _, edge := range b.GetEdges(Context{}, nil, elementFilter) {
+		g.EdgeAdded(edge)
+
+		raw, err := edgeToRaw(edge)
+		if err != nil {
+			return err
+		}
+
+		b.prevRevision[edge.ID] = raw
+	}
+
+	return nil
 }
 
 // OnStarted implements storage client listener interface

@@ -370,6 +370,20 @@ func (o *OrientDBBackend) FlushElements(e ElementMatcher) error {
 	return nil
 }
 
+// Sync adds all the nodes and edges with the specified filter into an other graph
+func (o *OrientDBBackend) Sync(g *Graph, elementFilter *ElementFilter) error {
+	// re-insert valid nodes and edges
+	for _, node := range o.GetNodes(Context{}, nil, elementFilter) {
+		g.NodeAdded(node)
+	}
+
+	for _, edge := range o.GetEdges(Context{}, nil, elementFilter) {
+		g.EdgeAdded(edge)
+	}
+
+	return nil
+}
+
 // OnStarted implements the client interface
 func (o *OrientDBBackend) OnStarted() {
 	if _, err := o.client.GetDocumentClass("Node"); err != nil {
