@@ -156,6 +156,8 @@ func init() {
 	cfg.SetDefault("etcd.data_dir", "/var/lib/skydive/etcd")
 	cfg.SetDefault("etcd.embedded", true)
 	cfg.SetDefault("etcd.listen", fmt.Sprintf("%s:%d", etcdclient.DefaultServer, etcdclient.DefaultPort))
+	cfg.SetDefault("etcd.max_snap_files", 5)
+	cfg.SetDefault("etcd.max_wal_files", 5)
 	cfg.SetDefault("etcd.name", host)
 
 	cfg.SetDefault("flow.expire", 600)
