@@ -115,69 +115,71 @@ func (s *Server) readStatics(upath string) (content []byte, err error) {
 	return
 }
 
-func (s *Server) serveStatics(w http.ResponseWriter, r *http.Request) {
-	upath := r.URL.Path
-	if strings.HasPrefix(upath, "/") {
-		upath = strings.TrimPrefix(upath, "/")
+func (s *Server) serveStatics() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		upath := "statics" + r.URL.Path
+
+		content, err := s.readStatics(upath)
+		if err != nil {
+			logging.GetLogger().Errorf("Unable to find the asset %s", upath)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		ext := filepath.Ext(upath)
+		ct := mime.TypeByExtension(ext)
+
+		shttp.SetTLSHeader(w, r)
+		w.Header().Set("Content-Type", ct+"; charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write(content)
 	}
-
-	content, err := s.readStatics(upath)
-
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to find the asset %s", upath)
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	ext := filepath.Ext(upath)
-	ct := mime.TypeByExtension(ext)
-
-	shttp.SetTLSHeader(w, r)
-	w.Header().Set("Content-Type", ct+"; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write(content)
 }
 
 // ServeIndex servers the index page
-func (s *Server) ServeIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	username := r.Username
-	if username == "" {
-		username = "admin"
-	}
+func (s *Server) ServeIndex(index string, baseURL string) func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	return func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+		username := r.Username
+		if username == "" {
+			username = "admin"
+		}
 
-	permissions, err := rbac.GetPermissionsForUser(username)
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to execute index template: %s", err)
-		return
-	}
+		permissions, err := rbac.GetPermissionsForUser(username)
+		if err != nil {
+			logging.GetLogger().Errorf("Unable to execute index template: %s", err)
+			return
+		}
 
-	html, err := s.readStatics("statics/index.html")
-	if err != nil {
-		logging.GetLogger().Error("Unable to find the asset index.html")
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
+		html, err := s.readStatics(index)
+		if err != nil {
+			logging.GetLogger().Error("Unable to find the asset index.html")
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 
-	s.RLock()
-	defer s.RUnlock()
+		s.RLock()
+		defer s.RUnlock()
 
-	data := struct {
-		ExtraAssets map[string]ExtraAsset
-		GlobalVars  interface{}
-		Permissions []rbac.Permission
-	}{
-		ExtraAssets: s.extraAssets,
-		GlobalVars:  s.globalVars,
-		Permissions: permissions,
-	}
+		data := struct {
+			ExtraAssets map[string]ExtraAsset
+			GlobalVars  interface{}
+			Permissions []rbac.Permission
+			BaseURL string
+		}{
+			ExtraAssets: s.extraAssets,
+			GlobalVars:  s.globalVars,
+			Permissions: permissions,
+			BaseURL: baseURL,
+		}
 
-	shttp.SetTLSHeader(w, &r.Request)
-	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
+		shttp.SetTLSHeader(w, &r.Request)
+		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
 
-	tmpl := template.Must(template.New("index").Delims("<<", ">>").Parse(string(html)))
-	if err := tmpl.Execute(w, data); err != nil {
-		logging.GetLogger().Criticalf("Unable to execute index template: %s", err)
+		tmpl := template.Must(template.New("index").Delims("<<", ">>").Parse(string(html)))
+		if err := tmpl.Execute(w, data); err != nil {
+			logging.GetLogger().Criticalf("Unable to execute index template: %s", err)
+		}
 	}
 }
 
@@ -194,16 +196,22 @@ func NewServer(server *shttp.Server, assetsFolder string) *Server {
 		s.loadExtraAssets(assetsFolder, ExtraAssetPrefix)
 	}
 
-	router.PathPrefix("/statics").HandlerFunc(s.serveStatics)
-	router.PathPrefix(ExtraAssetPrefix).HandlerFunc(s.serveStatics)
-	router.HandleFunc("/", shttp.NoAuthenticationWrap(s.ServeIndex))
+	router.HandleFunc("/", shttp.NoAuthenticationWrap(s.ServeIndex("statics/ui/index.html", "/ui/")))
+	router.PathPrefix("/ui/").HandlerFunc(s.serveStatics())
+	router.PathPrefix(ExtraAssetPrefix).HandlerFunc(s.serveStatics())
+	
+
+	// v2
+	router.HandleFunc("/ui_v2", shttp.NoAuthenticationWrap(s.ServeIndex("statics/ui_v2/index.html", "/ui_v2/")))
+	router.PathPrefix("/ui_v2/").HandlerFunc(s.serveStatics())
+	
 
 	// server index for the following url as the client side will redirect
 	// the user to the correct page
 	routes := []shttp.Route{
-		{Path: "/topology", Method: "GET", HandlerFunc: s.ServeIndex},
-		{Path: "/preference", Method: "GET", HandlerFunc: s.ServeIndex},
-		{Path: "/status", Method: "GET", HandlerFunc: s.ServeIndex},
+		{Path: "/topology", Method: "GET", HandlerFunc: s.ServeIndex("statics/ui/index.html", "/ui/")},
+		{Path: "/preference", Method: "GET", HandlerFunc: s.ServeIndex("statics/ui/index.html", "/ui/")},
+		{Path: "/status", Method: "GET", HandlerFunc: s.ServeIndex("statics/ui/index.html", "/ui/")},
 	}
 	server.RegisterRoutes(routes, shttp.NewNoAuthenticationBackend())
 

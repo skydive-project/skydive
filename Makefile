@@ -102,6 +102,7 @@ endif
 include .mk/ebpf.mk
 include .mk/api.mk
 include .mk/bench.mk
+include .mk/ui.mk
 include .mk/bindata.mk
 include .mk/check.mk
 include .mk/contrib.mk

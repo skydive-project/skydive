@@ -1,0 +1,39 @@
+text {
+  fill: #fff;
+}
+ 
+.node rect {
+  fill: #3e5482;
+}
+
+.links path.fabric {
+  stroke: #111;
+}
+
+.selected circle {
+  stroke: black;
+}
+
+.down circle {
+  fill: #F9BEB9; /* light red */
+}
+
+.group {
+  fill: #d0d0d0; /* light grey */
+  stroke: #d0d0d0;
+}
+
+.groups .netns {
+  fill: #b293d6; /* light purple */
+  stroke: #b293d6;
+}
+
+.groups .ovsbridge {
+  fill: #78D4AD; /* light green */
+  stroke: #78D4AD;
+}
+
+.groups .fabric {
+  fill: #FFCE71; /* light orange */
+  stroke: #FFCE71;
+}

@@ -1,0 +1,22 @@
+.topology-legend {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background-color: #1e2126;
+  border-radius: 4px;
+  padding: 10px;
+  color: white;
+  text-align: right;
+  min-width: 200px;
+  max-width: 400px;
+}
+
+.topology-legend p {
+  width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  float: left;
+  clear: both;
+  margin: 0;
+}
