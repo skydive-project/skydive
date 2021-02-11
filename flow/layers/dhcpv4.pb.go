@@ -500,10 +500,7 @@ func (m *DHCPv4) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthDhcpv4
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthDhcpv4
 			}
 			if (iNdEx + skippy) > l {

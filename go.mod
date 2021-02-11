@@ -25,7 +25,7 @@ require (
 	github.com/gobwas/httphead v0.0.0-20171016043908-01c9b01b368a // indirect
 	github.com/gobwas/pool v0.0.0-20170829094749-32dbaa12caca // indirect
 	github.com/gobwas/ws v0.0.0-20171112092802-915eed324002 // indirect
-	github.com/gogo/protobuf v1.3.1
+	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.3.2
 	github.com/golangci/golangci-lint v1.18.0
 	github.com/gomatic/renderizer v1.0.1
@@ -87,9 +87,9 @@ require (
 	github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df
 	github.com/voxelbrain/goptions v0.0.0-20180630082107-58cddc247ea2 // indirect
 	github.com/weaveworks/tcptracer-bpf v0.0.0-20170817155301-e080bd747dc6
-	golang.org/x/net v0.0.0-20200202094626-16171245cfb2
-	golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5
-	golang.org/x/tools v0.0.0-20191112195655-aa38f8e97acc
+	golang.org/x/net v0.0.0-20201021035429-f5854403a974
+	golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f
+	golang.org/x/tools v0.0.0-20210106214847-113979e3529a
 	google.golang.org/grpc v1.23.1
 	gopkg.in/fsnotify/fsnotify.v1 v1.0.0-20180110053347-c2828203cd70
 	gopkg.in/macaroon-bakery.v2 v2.2.0 // indirect

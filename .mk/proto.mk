@@ -1,7 +1,7 @@
 define PROTOC_GEN
-go get github.com/gogo/protobuf/protoc-gen-gogofaster@v1.3.1
+go get github.com/gogo/protobuf/protoc-gen-gogofaster@v1.3.2
 go get github.com/golang/protobuf/protoc-gen-go@v1.3.2
-protoc -I. -Iflow/layers -I$${GOPATH}/pkg/mod/github.com/gogo/protobuf@v1.3.1 --plugin=$${GOPATH}/bin/protoc-gen-gogofaster --gogofaster_out $$GOPATH/src $1
+protoc -I. -Iflow/layers -I$${GOPATH}/pkg/mod/github.com/gogo/protobuf@v1.3.2 --plugin=$${GOPATH}/bin/protoc-gen-gogofaster --gogofaster_out $$GOPATH/src $1
 endef
 
 GEN_PROTO_FILES = $(patsubst %.proto,%.pb.go,$(shell find . -name *.proto | grep -v ^./vendor))
