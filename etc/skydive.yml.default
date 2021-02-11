@@ -502,8 +502,8 @@ etcd:
   # listen: 0.0.0.0:12379
 
   # maximum number of WAL and snapshot files. 0 means unlimited
-  # max_wal_files: 0
-  # max_snap_files: 0
+  # max_wal_files: 5
+  # max_snap_files: 5
 
   # path where the etcd files will be stored.
   # data_dir: /var/lib/skydive/etcd
