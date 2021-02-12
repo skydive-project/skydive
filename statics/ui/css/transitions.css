@@ -1,0 +1,25 @@
+.slide-leave-active,
+.slide-enter-active {
+  overflow: hidden;
+  transition: .4s ease-in-out;
+}
+
+.slide-enter {
+  transform: translateX(-100%);
+}
+
+.slide-leave-to {
+  transform: translateX(0);
+}
+
+.rotate {
+  -moz-transition: all 0.2s linear;
+  -webkit-transition: all 0.2s linear;
+  transition: all 0.2s linear;
+}
+
+.rotate.down {
+  -moz-transform:rotate(90deg);
+  -webkit-transform:rotate(90deg);
+  transform:rotate(90deg);
+}

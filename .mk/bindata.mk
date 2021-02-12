@@ -9,12 +9,6 @@ endif
 BINDATA_DIRS := \
 	js/*.js \
 	rbac/policy.csv \
-	statics/index.html \
-	statics/css/* \
-	statics/css/themes/*/* \
-	statics/fonts/* \
-	statics/img/* \
-	statics/js/* \
 	statics/schemas/* \
 	statics/workflows/*.yaml
 
@@ -29,8 +23,8 @@ ebpf/statics/bindata.go: $(EBPF_PROBES)
 	go run ${GO_BINDATA_GITHUB} ${GO_BINDATA_FLAGS} -nometadata -o ebpf/statics/bindata.go -pkg=statics -ignore=bindata.go $(EBPF_PROBES)
 	gofmt -w -s ebpf/statics/bindata.go
 
-statics/bindata.go: statics/js/bundle.js $(STATIC_FILES)
-	go run ${GO_BINDATA_GITHUB} ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go $(BINDATA_DIRS)
+statics/bindata.go: statics/ui/js/bundle.js $(STATIC_FILES) .ui
+	go run ${GO_BINDATA_GITHUB} ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go $(BINDATA_DIRS) $(UI_DIRS) $(UI_V2_DIRS)
 	gofmt -w -s statics/bindata.go
 
 graffiti/js/bindata.go: .typescript graffiti/js/*.js

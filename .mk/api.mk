@@ -2,7 +2,7 @@ API_JS_FILES := \
 	graffiti/js/api.js \
 	js/api.js \
 	js/browser.js \
-	statics/js/bundle.js
+	statics/ui/js/bundle.js
 
 .typescript: $(API_JS_FILES)
 
@@ -15,8 +15,8 @@ js/api.js: graffiti/js/api.ts js/api.ts
 js/browser.js: graffiti/js/api.js js/api.js js/browser.ts
 	cd js && npm ci && PATH=`npm bin`:$$PATH tsc --module commonjs --target ES5 browser.ts
 
-statics/js/bundle.js: js/browser.js
-	cd js && PATH=`npm bin`:$$PATH browserify browser.js -o ../statics/js/bundle.js
+statics/ui/js/bundle.js: js/browser.js
+	cd js && npm ci && PATH=`npm bin`:$$PATH browserify browser.js -o ../statics/ui/js/bundle.js
 
 .PHONY: .typescript.touch
 .typescript.touch:
@@ -24,4 +24,4 @@ statics/js/bundle.js: js/browser.js
 
 .PHONY: .typescript.clean
 .typescript.clean:
-	rm -f graffiti/js/api.js js/api.js js/browser.js statics/js/bundle.js
+	rm -f graffiti/js/api.js js/api.js js/browser.js statics/ui/js/bundle.js

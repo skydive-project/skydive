@@ -462,10 +462,10 @@ func (s *seleniumHelper) enableFakeMousePointer() error {
 			js.onload = function() {
 				fakeMousePointer = new FakeMousePointer();
 			};
-			js.src = "/statics/js/fake-mouse.js";
+			js.src = "/ui/js/fake-mouse.js";
 			document.body.appendChild(js);
 		}
-		css.href = "/statics/css/fake-mouse.css";
+		css.href = "/ui/css/fake-mouse.css";
 		document.body.appendChild(css);
 	`
 	if _, err := s.webdriver.ExecuteScript(script, nil); err != nil {

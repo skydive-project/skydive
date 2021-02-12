@@ -1,0 +1,11 @@
+#FakeMousePointer {
+  position: absolute;
+  z-index: 9999999;
+  width: 19px;
+  height: 32px;
+  background-image: url(img/pointer.png);
+}
+
+#FakeMousePointer.mouse-down {
+  background-image: url(img/pointer-down.png);
+}
