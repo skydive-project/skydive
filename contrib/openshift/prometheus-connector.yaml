@@ -43,6 +43,39 @@ objects:
           ports:
           - containerPort: 9100
             protocol: TCP
+# Service for Skydive Prometheus connector
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: skydive-prometheus-connector
+    name: skydive-prometheus-connector
+  spec:
+    ports:
+      - name: api
+        port: 9100
+        protocol: TCP
+        targetPort: 9100
+    selector:
+      app: skydive-prometheus-connector
+      tier: prometheus-connector
+    sessionAffinity: None
+    type: NodePort
+# Route for Skydive Prometheus connector
+- apiVersion: v1
+  kind: Route
+  metadata:
+    labels:
+      app: skydive-prometheus-connector
+    name: skydive-prometheus-connector
+  spec:
+    port:
+      targetPort: api
+    to:
+      kind: Service
+      name: skydive-prometheus-connector
+      weight: 100
+    wildcardPolicy: None
 parameters:
 - description: Loglevel of Skydive-flow-exporter
   displayName: Loglevel
