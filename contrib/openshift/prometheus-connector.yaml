@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: skydive-prometheus-connector
+objects:
+# Skydive Prometheus Connector (Deployment)
+#
+# Containers included in this pod::
+# (1) Skydive Prometheus Connector - Flow exporter (connects to Skydive Analyzer)
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: skydive-prometheus-connector
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: skydive-prometheus-connector
+        tier: prometheus-connector
+    template:
+      metadata:
+        labels:
+          app: skydive-prometheus-connector
+          tier: prometheus-connector
+      spec:
+        containers:
+        - image: skydive/skydive-flow-exporter
+          imagePullPolicy: Always
+          name: skydive-prometheus-connector
+          env:
+          - name: SKYDIVE_LOGGING_LEVEL
+            value: ${SKYDIVE_LOGGING_LEVEL}
+          - name: SKYDIVE_PIPELINE_SUBSCRIBER_URL
+            value: ws://skydive-analyzer:8082/ws/subscriber/flow
+          - name: SKYDIVE_PIPELINE_MANGLE
+            value: none
+          - name: SKYDIVE_PIPELINE_TRANSFORM_TYPE
+            value: none
+          - name: SKYDIVE_PIPELINE_STORE_TYPE
+            value: prom_sky_con
+          - name: SKYDIVE_PIPELINE_STORE_PROM_SKY_CON_PORT
+            value: "9100"
+          ports:
+          - containerPort: 9100
+            protocol: TCP
+parameters:
+- description: Loglevel of Skydive-flow-exporter
+  displayName: Loglevel
+  name: SKYDIVE_LOGGING_LEVEL
+  required: true
+  value: INFO
