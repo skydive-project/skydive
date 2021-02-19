@@ -20,6 +20,7 @@ package elasticsearch
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -99,6 +100,11 @@ func (r *rollIndexService) roll(force bool) {
 				needToRoll = true
 			}
 		}
+
+		// Use the same mapping for the new created index
+		indexMapping := map[string]interface{}{}
+		json.Unmarshal([]byte(index.Mapping), &indexMapping)
+		ri.Mappings(indexMapping)
 
 		if needToRoll {
 			alias := index.Alias(r.config.IndexPrefix)
