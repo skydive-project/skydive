@@ -14,6 +14,10 @@ $(TOOLSBIN)/kubectl:
 	sudo -E curl -fsSL -o $(TOOLSBIN)/kubectl https://storage.googleapis.com/kubernetes-release/release/v1.20.1/bin/linux/amd64/kubectl && \
 		sudo -E chmod a+x $(TOOLSBIN)/kubectl
 
+$(TOOLSBIN)/jq:
+	sudo wget -O $@ https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 && \
+		sudo chmod a+x $@
+
 # NodePorts are in the 30000-32767 range by default, which means a NodePort is
 # unlikely to match a service’s intended port (for example, 8080 may be exposed
 # as 31020).

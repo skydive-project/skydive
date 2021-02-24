@@ -22,7 +22,7 @@ etcd:
   nodePort:
 
 newui:
-  enabled: true
+  enabled: false
   image:
     repository: "skydive/skydive-ui"
     tag: "latest"
