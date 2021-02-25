@@ -162,9 +162,22 @@ func (i *Index) IndexWildcard(prefix string) string {
 }
 
 func (c *Client) createAliases(index Index) error {
-	aliasServer := c.esClient.Alias()
-	aliasServer.Add(index.FullName(c.Config.IndexPrefix), index.Alias(c.Config.IndexPrefix))
-	if _, err := aliasServer.Do(context.Background()); err != nil {
+	indexName := index.FullName(c.Config.IndexPrefix)
+	aliasName := index.Alias(c.Config.IndexPrefix)
+
+	if aliasResult, err := c.esClient.Aliases().Alias(aliasName).Do(context.Background()); err == nil {
+		indices := aliasResult.IndicesByAlias(aliasName)
+		for _, previousIndex := range indices {
+			if previousIndex != indexName {
+				// remove alias to previous index
+				if _, err := c.esClient.Alias().Remove(previousIndex, aliasName).Do(context.Background()); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	if _, err := c.esClient.Alias().Add(indexName, aliasName).Do(context.Background()); err != nil {
 		return err
 	}
 
@@ -221,14 +234,16 @@ func (c *Client) createIndices() error {
 					return err
 				}
 			}
+		}
 
-			if err := c.createAliases(index); err != nil {
-				if _, err := c.esClient.DeleteIndex(index.Alias(c.Config.IndexPrefix)).Do(context.Background()); err != nil {
-					logging.GetLogger().Errorf("Error while deleting indices: %s", err)
-				}
-
-				return err
+		// the index creation may return an error - due to invalid mapping - even if the index
+		// was successfully created, so we always try to create the alias
+		if err := c.createAliases(index); err != nil {
+			if _, err := c.esClient.DeleteIndex(index.Alias(c.Config.IndexPrefix)).Do(context.Background()); err != nil {
+				logging.GetLogger().Errorf("Error while deleting indices: %s", err)
 			}
+
+			return err
 		}
 	}
 
