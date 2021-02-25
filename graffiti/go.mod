@@ -14,7 +14,7 @@ require (
 	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/fatih/structs v1.1.0
 	github.com/go-test/deep v1.0.7
-	github.com/gogo/protobuf v1.3.1
+	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.3.2
 	github.com/gomatic/funcmap v1.1.0 // indirect
 	github.com/gomatic/renderizer v1.0.1 // indirect
@@ -43,8 +43,8 @@ require (
 	github.com/tchap/zapext v1.0.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.uber.org/zap v1.16.0
-	golang.org/x/net v0.0.0-20200202094626-16171245cfb2
-	golang.org/x/tools v0.0.0-20191112195655-aa38f8e97acc
+	golang.org/x/net v0.0.0-20201021035429-f5854403a974
+	golang.org/x/tools v0.0.0-20210106214847-113979e3529a
 	gopkg.in/sourcemap.v1 v1.0.5 // indirect
 	gopkg.in/yaml.v2 v2.3.0
 	sigs.k8s.io/yaml v1.2.0 // indirect
