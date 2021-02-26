@@ -17,4 +17,4 @@ UI_V2_DIRS := \
 
 .PHONY: .ui_v2
 .ui_v2:
-	pushd statics/ui_v2 && npm install && npm run prepare && popd
+	cd statics/ui_v2 && npm install && npm run prepare && cd -
