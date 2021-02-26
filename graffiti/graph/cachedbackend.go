@@ -40,6 +40,7 @@ var (
 
 // CachedBackend describes a cache mechanism in memory and/or persistent database
 type CachedBackend struct {
+	host           string
 	serviceType    service.Type
 	memory         *MemoryBackend
 	persistent     PersistentBackend
@@ -209,7 +210,7 @@ func (c *CachedBackend) IsHistorySupported() bool {
 
 // OnStarted implements PersistentBackendListener interface
 func (c *CachedBackend) OnStarted() {
-	if c.masterElection.IsMaster() {
+	if c.persistent != nil && c.masterElection.IsMaster() {
 		regexFilter, _ := filters.NewRegexFilter("Origin", string(c.serviceType)+"\\..*")
 		originFilter := &filters.Filter{RegexFilter: regexFilter}
 
@@ -217,17 +218,10 @@ func (c *CachedBackend) OnStarted() {
 			logging.GetLogger().Errorf("failed to flush elements: %s", err)
 		}
 
-		elementFilter := NewElementFilter(
-			filters.NewNotFilter(originFilter),
-		)
-
-		// re-insert valid nodes and edges
-		for _, node := range c.persistent.GetNodes(Context{}, nil, elementFilter) {
-			c.memory.NodeAdded(node)
-		}
-
-		for _, edge := range c.persistent.GetEdges(Context{}, nil, elementFilter) {
-			c.memory.EdgeAdded(edge)
+		g := NewGraph(c.host, c.memory, Origin(c.host, c.serviceType))
+		elementFilter := NewElementFilter(filters.NewNotFilter(originFilter))
+		if err := c.persistent.Sync(g, elementFilter); err != nil {
+			logging.GetLogger().Errorf("failed to synchronize persistent backend with in memory graph: %s", err)
 		}
 	}
 
@@ -257,18 +251,20 @@ func (c *CachedBackend) Stop() {
 	}
 }
 
+// AddListener registers a listener to the cached backend
 func (c *CachedBackend) AddListener(listener PersistentBackendListener) {
 	c.listeners = append(c.listeners, listener)
 }
 
 // NewCachedBackend creates new graph cache mechanism
-func NewCachedBackend(persistent PersistentBackend, electionService etcd.MasterElectionService, serviceType service.Type) (*CachedBackend, error) {
+func NewCachedBackend(persistent PersistentBackend, electionService etcd.MasterElectionService, host string, serviceType service.Type) (*CachedBackend, error) {
 	memory, err := NewMemoryBackend()
 	if err != nil {
 		return nil, err
 	}
 
 	sb := &CachedBackend{
+		host:           host,
 		serviceType:    serviceType,
 		persistent:     persistent,
 		memory:         memory,

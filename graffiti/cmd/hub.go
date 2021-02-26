@@ -85,7 +85,7 @@ var HubCmd = &cobra.Command{
 		}
 
 		origin := "graffiti-hub"
-		cached, err := graph.NewCachedBackend(nil, etcdClient, service.Type(origin))
+		cached, err := graph.NewCachedBackend(nil, etcdClient, hostname, service.Type(origin))
 		if err != nil {
 			logging.GetLogger().Error(err)
 			os.Exit(1)

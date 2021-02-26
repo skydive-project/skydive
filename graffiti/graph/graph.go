@@ -131,6 +131,7 @@ type PersistentBackend interface {
 
 	AddListener(listener PersistentBackendListener)
 	FlushElements(m ElementMatcher) error
+	Sync(*Graph, *ElementFilter) error
 
 	Start() error
 	Stop()
