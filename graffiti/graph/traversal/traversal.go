@@ -686,6 +686,29 @@ func (tv *GraphTraversalV) PropertyValues(ctx StepContext, k ...interface{}) *Gr
 	return NewGraphTraversalValue(tv.GraphTraversal, s)
 }
 
+// PropertyValueMap returns at this step, the values of each metadata selected by the first key
+func (tv *GraphTraversalV) PropertyValueMap(ctx StepContext, k ...interface{}) *GraphTraversalValue {
+	if tv.error != nil {
+		return NewGraphTraversalValueFromError(tv.error)
+	}
+
+	keys := make([]string, len(k))
+	for i, key := range k {
+		keys[i] = key.(string)
+	}
+
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
+
+	var s []interface{}
+	for _, n := range tv.nodes {
+		if values, err := n.GetFields(keys); err == nil {
+			s = append(s, values)
+		}
+	}
+	return NewGraphTraversalValue(tv.GraphTraversal, s)
+}
+
 // PropertyKeys returns at this step, all the metadata keys of each metadata
 func (tv *GraphTraversalV) PropertyKeys(ctx StepContext, keys ...interface{}) *GraphTraversalValue {
 	if tv.error != nil {

@@ -78,6 +78,7 @@ const (
 	LIMIT
 	SORT
 	VALUES
+	VALUEMAP
 	KEYS
 	SUM
 	ASC

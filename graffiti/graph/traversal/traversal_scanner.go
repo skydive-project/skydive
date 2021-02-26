@@ -209,6 +209,8 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return SORT, buf.String()
 	case "VALUES":
 		return VALUES, buf.String()
+	case "VALUEMAP":
+		return VALUEMAP, buf.String()
 	case "KEYS":
 		return KEYS, buf.String()
 	case "SUM":
