@@ -1,0 +1,180 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: skydive-prometheus-connector
+objects:
+# Skydive Prometheus Connector (Deployment)
+#
+# Containers included in this pod::
+# (1) Skydive Prometheus Connector - Flow exporter (connects to Skydive Analyzer)
+# (2) Prometheus
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: skydive-prometheus-connector
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: skydive-prometheus-connector
+        tier: prometheus-connector
+    template:
+      metadata:
+        labels:
+          app: skydive-prometheus-connector
+          tier: prometheus-connector
+      spec:
+        containers:
+        - image: skydive/skydive-flow-exporter
+          imagePullPolicy: Always
+          name: skydive-prometheus-connector
+          env:
+          - name: SKYDIVE_LOGGING_LEVEL
+            value: ${SKYDIVE_LOGGING_LEVEL}
+          - name: SKYDIVE_PIPELINE_SUBSCRIBER_URL
+            value: ws://skydive-analyzer:8082/ws/subscriber/flow
+          - name: SKYDIVE_PIPELINE_MANGLE
+            value: none
+          - name: SKYDIVE_PIPELINE_TRANSFORM_TYPE
+            value: none
+          - name: SKYDIVE_PIPELINE_STORE_TYPE
+            value: prom_sky_con
+          - name: SKYDIVE_PIPELINE_STORE_PROM_SKY_CON_PORT
+            value: "9100"
+          ports:
+          - containerPort: 9100
+            protocol: TCP
+# Service for Skydive Prometheus connector
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: skydive-prometheus-connector
+    name: skydive-prometheus-connector
+  spec:
+    ports:
+      - name: api
+        port: 9100
+        protocol: TCP
+        targetPort: 9100
+    selector:
+      app: skydive-prometheus-connector
+      tier: prometheus-connector
+    sessionAffinity: None
+    type: NodePort
+# Route for Skydive Prometheus connector
+- apiVersion: v1
+  kind: Route
+  metadata:
+    labels:
+      app: skydive-prometheus-connector
+    name: skydive-prometheus-connector
+  spec:
+    port:
+      targetPort: api
+    to:
+      kind: Service
+      name: skydive-prometheus-connector
+      weight: 100
+    wildcardPolicy: None
+# Prometheus (Deployment)
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: prometheus
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: prometheus
+        tier: prometheus-connector
+    template:
+      metadata:
+        labels:
+          app: prometheus
+          tier: prometheus-connector
+      spec:
+        containers:
+        - image: prom/prometheus
+          imagePullPolicy: IfNotPresent
+          name: prometheus
+          ports:
+          - containerPort: 9090
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /prometheus
+            name: prometheus-volume-1
+          - mountPath: /etc/prometheus/
+            name: prom-config-skydive-volume
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - emptyDir: {}
+          name: prometheus-volume-1
+        - configMap:
+            defaultMode: 420
+            name: prom-config-skydive
+          name: prom-config-skydive-volume
+# Service for Skydive Prometheus connector
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: prometheus
+    name: prometheus
+  spec:
+    ports:
+      - name: api
+        port: 9090
+        protocol: TCP
+        targetPort: 9090
+    selector:
+      app: prometheus
+      tier: prometheus-connector
+    sessionAffinity: None
+    type: NodePort
+# Route for Prometheus
+- apiVersion: v1
+  kind: Route
+  metadata:
+    labels:
+      app: prometheus
+    name: prometheus
+  spec:
+    port:
+      targetPort: api
+    to:
+      kind: Service
+      name: prometheus
+      weight: 100
+    wildcardPolicy: None
+# Config info for prometheus
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: prom-config-skydive
+  data:
+    prometheus.yml: |-
+      global:
+        scrape_interval:     5s 
+        evaluation_interval: 5s 
+      scrape_configs:
+        - job_name: 'prometheus'
+          static_configs:
+            - targets: ['localhost:9090']
+        - job_name: 'skydive-openshift-stats'
+          static_configs:
+            - targets: ['skydive-prometheus-connector:9100']
+parameters:
+- description: Loglevel of Skydive-flow-exporter
+  displayName: Loglevel
+  name: SKYDIVE_LOGGING_LEVEL
+  required: true
+  value: INFO
+

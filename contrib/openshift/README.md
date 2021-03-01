@@ -39,6 +39,14 @@ VERSION=master
 oc process -f https://raw.githubusercontent.com/skydive-project/skydive/${VERSION}/contrib/openshift/skydive-flow-exporter-template.yaml | oc apply -f -
 ```
 
+####  Deploy skydive-prometheus connector (and prometheus) from OpenShift template
+
+```
+# adjust VERSION for the current version - for example: v0.20.1 or master
+VERSION=master
+oc process -f https://raw.githubusercontent.com/skydive-project/skydive/${VERSION}/contrib/openshift/prometheus-connector-template.yaml | oc apply -f -
+```
+
 #### Check that everything is working and created:
 
  - Overall status:  
@@ -62,6 +70,14 @@ Perform the Following steps to access skydive UI
  `oc get route skydive-analyzer -o jsonpath='http://{.spec.host}'`
  - Use username = `admin` , Password = `password`  
  - press **sign-in**  
+
+Perform the Following steps to access monitoring data in prometheus
+ - Point your browser to prometheus end-point  
+ `oc get route prometheus -o jsonpath='http://{.spec.host}'`
+ - Go to the popdown menu Status/Targets
+ - Verify that you see the http://skydive-prometheus-connector:9100/metrics endpoint
+ - Go back to the home page
+ - In the query bar, write the variable `skydive_network_connection_total_bytes` and Execute
 
 # Installation parameters
 
