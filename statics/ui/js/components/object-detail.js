@@ -80,7 +80,7 @@ Vue.component('object-detail', {
         <div v-else>\
           <span class="object-key">{{obj.key}}</span> :\
           <span v-if="typeof obj.value != \'object\' || !$.isEmptyObject(obj.value)" class="object-value copy-clipboard" :class="typeof(obj.value)" v-html="transform(obj.key, obj.value)" @click="copyToClipboard(obj.value)"></span>\
-          <i v-if="links && links[obj.key]" :class="links[obj.key].class" @click="links[obj.key].onClick" \
+          <i v-if="links && links[obj.key]" :class="links[obj.key].class" @click="links[obj.key].onClick()" \
             @mouseover="links[obj.key].onMouseOver" @mouseout="links[obj.key].onMouseOut"></i>\
         </div>\
       </div>\
