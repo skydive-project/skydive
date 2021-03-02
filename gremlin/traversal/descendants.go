@@ -18,8 +18,9 @@
 package traversal
 
 import (
-	"fmt"
+	"github.com/pkg/errors"
 
+	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/topology"
@@ -32,8 +33,9 @@ type DescendantsTraversalExtension struct {
 
 // DescendantsGremlinTraversalStep rawpackets step
 type DescendantsGremlinTraversalStep struct {
-	context  traversal.GremlinTraversalContext
-	maxDepth int64
+	context    traversal.GremlinTraversalContext
+	maxDepth   int64
+	edgeFilter graph.ElementMatcher
 }
 
 // NewDescendantsTraversalExtension returns a new graph traversal extension
@@ -60,25 +62,36 @@ func (e *DescendantsTraversalExtension) ParseStep(t traversal.Token, p traversal
 		return nil, nil
 	}
 
-	paramErr := fmt.Errorf("Descendants requires 1 number as parameter : %v", p.Params)
-
 	maxDepth := int64(1)
+	edgeFilter, _ := topology.OwnershipMetadata().Filter()
+
 	switch len(p.Params) {
 	case 0:
+	default:
+		i := len(p.Params) / 2 * 2
+		filter, err := traversal.ParamsToFilter(filters.BoolFilterOp_OR, p.Params[:i]...)
+		if err != nil {
+			return nil, errors.Wrap(err, "Descendants accepts an optional number of key/value tuples and an optional depth")
+		}
+		edgeFilter = filter
+
+		if i == len(p.Params) {
+			break
+		}
+
+		fallthrough
 	case 1:
-		depth, ok := p.Params[0].(int64)
+		depth, ok := p.Params[len(p.Params)-1].(int64)
 		if !ok {
-			return nil, paramErr
+			return nil, errors.New("Descendants last argument must be the maximum depth specified as an integer")
 		}
 		maxDepth = depth
-	default:
-		return nil, paramErr
 	}
 
-	return &DescendantsGremlinTraversalStep{context: p, maxDepth: maxDepth}, nil
+	return &DescendantsGremlinTraversalStep{context: p, maxDepth: maxDepth, edgeFilter: graph.NewElementFilter(edgeFilter)}, nil
 }
 
-func getDescendants(g *graph.Graph, parents []*graph.Node, descendants *[]*graph.Node, currDepth, maxDepth int64, visited map[graph.Identifier]bool) {
+func getDescendants(g *graph.Graph, parents []*graph.Node, descendants *[]*graph.Node, currDepth, maxDepth int64, edgeFilter graph.ElementMatcher, visited map[graph.Identifier]bool) {
 	var ld []*graph.Node
 	for _, parent := range parents {
 		if _, ok := visited[parent.ID]; !ok {
@@ -90,8 +103,8 @@ func getDescendants(g *graph.Graph, parents []*graph.Node, descendants *[]*graph
 
 	if maxDepth == 0 || currDepth < maxDepth {
 		for _, parent := range parents {
-			children := g.LookupChildren(parent, nil, topology.OwnershipMetadata())
-			getDescendants(g, children, descendants, currDepth+1, maxDepth, visited)
+			children := g.LookupChildren(parent, nil, edgeFilter)
+			getDescendants(g, children, descendants, currDepth+1, maxDepth, edgeFilter, visited)
 		}
 	}
 }
@@ -103,7 +116,7 @@ func (d *DescendantsGremlinTraversalStep) Exec(last traversal.GraphTraversalStep
 	switch tv := last.(type) {
 	case *traversal.GraphTraversalV:
 		tv.GraphTraversal.RLock()
-		getDescendants(tv.GraphTraversal.Graph, tv.GetNodes(), &descendants, 0, d.maxDepth, make(map[graph.Identifier]bool))
+		getDescendants(tv.GraphTraversal.Graph, tv.GetNodes(), &descendants, 0, d.maxDepth, d.edgeFilter, make(map[graph.Identifier]bool))
 		tv.GraphTraversal.RUnlock()
 
 		return traversal.NewGraphTraversalV(tv.GraphTraversal, descendants), nil
