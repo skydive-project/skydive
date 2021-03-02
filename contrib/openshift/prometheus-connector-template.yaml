@@ -5,7 +5,7 @@ metadata:
 objects:
 # Skydive Prometheus Connector (Deployment)
 #
-# Containers included in this pod::
+# Pods included in this file:
 # (1) Skydive Prometheus Connector - Flow exporter (connects to Skydive Analyzer)
 # (2) Prometheus
 - apiVersion: apps/v1
