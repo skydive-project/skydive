@@ -46,7 +46,7 @@ set_credentials() {
   oc adm policy add-cluster-role-to-user cluster-reader -z default
 }
 
-# deoploy skydive
+# deploy skydive
 deploy_skydive() {
   if [ $USE_LOCAL_YAML = "true" ] ; then
     DEPLOY_YAML=skydive-template.yaml
@@ -58,12 +58,24 @@ deploy_skydive() {
   oc process -f $DEPLOY_YAML | oc apply -f -
 }
 
-# deoploy skydive-flow-exporter
+# deploy skydive-flow-exporter
 deploy_skydive-flow-exporter() {
   if [ $USE_LOCAL_YAML = "true" ] ; then
     DEPLOY_YAML=skydive-flow-exporter-template.yaml
   else
     DEPLOY_YAML=https://raw.githubusercontent.com/skydive-project/skydive/${VERSION}/contrib/openshift/skydive-flow-exporter-template.yaml
+  fi
+
+  echo -e "\nDeploying $DEPLOY_YAML\n"
+  oc process -f $DEPLOY_YAML | oc apply -f -
+}
+
+# deploy prometheus-skydive-connector
+deploy_prometheus-skydive-connector() {
+  if [ $USE_LOCAL_YAML = "true" ] ; then
+    DEPLOY_YAML=prometheus-connector-template.yaml
+  else
+    DEPLOY_YAML=https://raw.githubusercontent.com/skydive-project/skydive/${VERSION}/contrib/openshift/prometheus-connector-template.yaml
   fi
 
   echo -e "\nDeploying $DEPLOY_YAML\n"
@@ -76,8 +88,8 @@ print_pods_status () {
   oc get pods
 }
 
-# print usage insturctions
-print_usage_insturctions () {
+# print usage instructions
+print_usage_instructions () {
   SKYDIVE_ANALYZER_ROUTE=$(oc get route skydive-analyzer -o jsonpath='http://{.spec.host}')
   SKYDIVE_UI_ROUTE=$(oc get route skydive-ui -o jsonpath='http://{.spec.host}')
   
@@ -91,8 +103,9 @@ main() {
   set_credentials
   deploy_skydive
   deploy_skydive-flow-exporter
+  deploy_prometheus-skydive-connector
   print_pods_status
-  print_usage_insturctions
+  print_usage_instructions
 }
 
 main
