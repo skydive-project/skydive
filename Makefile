@@ -166,3 +166,7 @@ touchlocalfiles: .proto.touch .typescript.touch .bindata.touch .gendecoder.touch
 .PHONY: clean
 clean: skydive.clean test.functionals.clean contribs.clean .ebpf.clean .easyjson.clean .proto.clean .gendecoder.clean .typescript.clean .vppbinapi.clean swagger.clean
 	go clean -i >/dev/null 2>&1 || true
+
+.PHONY: docker
+docker:
+	docker build . -t $(DOCKER_IMAGE):$(DOCKER_TAG)
