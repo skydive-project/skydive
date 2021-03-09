@@ -22,8 +22,11 @@ package ovn
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"sync"
 
 	"github.com/skydive-project/skydive/probe"
@@ -43,6 +46,9 @@ type Probe struct {
 	graph.ListenerHandler
 	graph       *graph.Graph
 	address     string
+	certFile    string
+	keyFile     string
+	cacertFile  string
 	ovndbapi    goovn.Client
 	switchPorts map[string]*goovn.LogicalSwitch
 	eventChan   chan ovnEvent
@@ -491,8 +497,23 @@ func (p *Probe) Do(ctx context.Context, wg *sync.WaitGroup) error {
 	}()
 
 	logging.GetLogger().Debugf("Trying to get an OVN DB api")
+	tlsConfig := &tls.Config{}
+	if p.certFile != "" && p.keyFile != "" && p.cacertFile != "" {
+		cert, err := tls.LoadX509KeyPair(p.certFile, p.keyFile)
+		if err != nil {
+			return err
+		}
+		cacert, err := ioutil.ReadFile(p.cacertFile)
+		if err != nil {
+			return err
+		}
+		cacertPool := x509.NewCertPool()
+		cacertPool.AppendCertsFromPEM(cacert)
+		tlsConfig = &tls.Config{RootCAs: cacertPool, Certificates: []tls.Certificate{cert}}
+	}
 	cfg := &goovn.Config{
 		Addr:         p.address,
+		TLSConfig:    tlsConfig,
 		SignalCB:     p,
 		DisconnectCB: p.OnDisconnected,
 	}
@@ -538,11 +559,14 @@ func (p *Probe) Do(ctx context.Context, wg *sync.WaitGroup) error {
 	return nil
 }
 
-// NewProbe creates a new graph OVS database probe
-func NewProbe(g *graph.Graph, address string) (probe.Handler, error) {
+// NewProbe creates a new graph OVN database probe
+func NewProbe(g *graph.Graph, address string, certFile string, keyFile string, cacertFile string) (probe.Handler, error) {
 	p := &Probe{
 		graph:      g,
 		address:    address,
+		certFile:   certFile,
+		keyFile:    keyFile,
+		cacertFile: cacertFile,
 		eventChan:  make(chan ovnEvent, 50),
 		aclIndexer: graph.NewIndexer(g, nil, uuidHasher, false),
 		lsIndexer:  graph.NewIndexer(g, nil, uuidHasher, false),

@@ -114,7 +114,10 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.Bundle, error) {
 		switch t {
 		case "ovn":
 			addr := config.GetString("analyzer.topology.ovn.address")
-			handler, err = ovn.NewProbe(g, addr)
+			certFile := config.GetString("analyzer.topology.ovn.cert")
+			keyFile := config.GetString("analyzer.topology.ovn.key")
+			cacertFile := config.GetString("analyzer.topology.ovn.cacert")
+			handler, err = ovn.NewProbe(g, addr, certFile, keyFile, cacertFile)
 		case "k8s":
 			handler, err = k8s.NewK8sProbe(g)
 		case "istio":
