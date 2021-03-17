@@ -38,6 +38,13 @@ ifeq ($(WITH_OVN), true)
   ANALYZER_TEST_PROBES+=ovn
 endif
 
+ifeq ($(WITH_OVNK8S), true)
+  ANALYZER_TEST_PROBES+=ovn
+  ANALYZER_TEST_PROBES+=k8s
+  ANALYZER_TEST_PROBES+=ovnk8s
+  EXTRA_ARGS+=-analyzer.topology.ovn.address=$(OVN_ADDRESS)
+endif
+
 
 COVERAGE?=0
 COVERAGE_MODE?=atomic

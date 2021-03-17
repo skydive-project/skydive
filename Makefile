@@ -98,6 +98,10 @@ ifeq ($(WITH_PACKETINJECT), true)
   BUILD_TAGS+=packetinject
 endif
 
+ifeq ($(WITH_OVNK8S), true)
+  BUILD_TAGS+=k8s ovnk8s
+endif
+
 
 include .mk/ebpf.mk
 include .mk/api.mk
