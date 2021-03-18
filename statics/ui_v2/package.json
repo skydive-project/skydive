@@ -4,7 +4,7 @@
   "description": "Skydive Web UI v2",
   "author": "Sylvain Afchain",
   "devDependencies": {
-    "@skydive-project/skydive-ui": ">=0.1.7"
+    "@skydive-project/skydive-ui": ">=0.1.8"
   },
   "scripts": {
     "prepare": "pwd;cp -R node_modules/@skydive-project/skydive-ui/dist/* ."
