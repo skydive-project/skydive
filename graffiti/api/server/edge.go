@@ -90,7 +90,7 @@ func (h *EdgeAPIHandler) Create(resource rest.Resource, createOpts *rest.CreateO
 		graphEdge.UpdatedAt = graphEdge.CreatedAt
 	}
 	if graphEdge.Origin == "" {
-		graphEdge.Origin = h.g.GetOrigin()
+		graphEdge.Origin = graph.Origin(h.g.GetHost(), apiOrigin)
 	}
 	if graphEdge.Metadata == nil {
 		graphEdge.Metadata = graph.Metadata{}
