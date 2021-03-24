@@ -87,6 +87,7 @@ do_delete() {
     go clean --modcache
     rm -rf ${WORKSPACE}/go/src/github.com/ovn-org/ovn-kubernetes
     docker rmi ovn-kube-f || true
+    docker network rm kind || true
     rm -f $HOME/admin.conf
     rm -rf ${WORKSPACE}
 }
