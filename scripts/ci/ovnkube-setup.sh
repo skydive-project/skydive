@@ -89,7 +89,6 @@ do_delete() {
     docker rmi ovn-kube-f || true
     docker network rm kind || true
     rm -f $HOME/admin.conf
-    rm -rf ${WORKSPACE}
 }
 
 do_start() {
