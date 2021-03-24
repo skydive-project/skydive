@@ -21,7 +21,6 @@ OVNK8S_REPO=https://github.com/ovn-org/ovn-kubernetes.git
 WORKSPACE=${WORKSPACE:-${HOME}/ovnkube-setup}
 OS=linux
 ARCH=amd64
-export GOPATH=$WORKSPACE/go
 
 usage(){
     echo "Usage: $0 command"
