@@ -80,6 +80,8 @@ analyzer:
   topology:
     backend: {{.TopologyBackend}}
     probes: {{block "analyzerprobes" .}}{{"\n"}}{{range .AnalyzerProbes}}{{println "    -" .}}{{end}}{{end}}
+    ovn:
+      address: {{.OvnAddress}}
   startup:
     capture_gremlin: "g.V().Has('Name','startup-vm2')"
 
@@ -245,6 +247,7 @@ var (
 	standalone        bool
 	topologyBackend   string
 	profile           bool
+	ovnAddress        string
 )
 
 func initConfig(conf string, params ...helperParams) error {
@@ -297,6 +300,9 @@ func initConfig(conf string, params ...helperParams) error {
 	}
 	if agentProbes != "" {
 		params[0]["AgentProbes"] = strings.Split(agentProbes, ",")
+	}
+	if ovnAddress != "" {
+		params[0]["OvnAddress"] = ovnAddress
 	}
 
 	tmpl, err := template.New("config").Parse(conf)
@@ -942,6 +948,7 @@ func init() {
 	flag.StringVar(&analyzerListen, "analyzer.listen", "0.0.0.0:64500", "Specify the analyzer listen address")
 	flag.StringVar(&analyzerProbes, "analyzer.topology.probes", "", "Specify the analyzer probes to enable")
 	flag.StringVar(&agentProbes, "agent.topology.probes", "", "Specify the extra agent probes to enable")
+	flag.StringVar(&ovnAddress, "analyzer.topology.ovn.address", "unix:///var/run/ovn/ovnnb_db.sock", "Specify the ovn address")
 	flag.BoolVar(&ovsOflowNative, "ovs.oflow.native", false, "Use native OpenFlow protocol instead of ovs-ofctl")
 	flag.BoolVar(&profile, "profile", false, "Start profiling")
 }

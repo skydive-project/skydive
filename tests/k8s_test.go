@@ -21,6 +21,8 @@ package tests
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"testing"
 
 	"github.com/avast/retry-go"
@@ -77,11 +79,9 @@ func makeHasArgsNode(node *graph.Node, args1 ...interface{}) []interface{} {
 	return makeHasArgsType(node.Metadata["Manager"], node.Metadata["Type"], args...)
 }
 
-func queryNodeCreation(t *testing.T, c *CheckContext, query g.QueryString) (node *graph.Node, err error) {
+func queryNodeCreation(t *testing.T, c *CheckContext, query g.QueryString, expectedNumNodes int) (node *graph.Node, err error) {
 	node = nil
 	err = retry.Do(func() error {
-		const expectedNumNodes = 1
-
 		t.Logf("Executing query '%s'", query)
 		nodes, e := c.gh.GetNodes(query.String())
 		if e != nil {
@@ -105,12 +105,16 @@ func queryNodeCreation(t *testing.T, c *CheckContext, query g.QueryString) (node
 }
 
 func checkNodeCreation(t *testing.T, c *CheckContext, mngr, ty string, name interface{}, args ...interface{}) (*graph.Node, error) {
+	return checkMultiNodeCreation(t, c, mngr, ty, name, 1, args...)
+}
+
+func checkMultiNodeCreation(t *testing.T, c *CheckContext, mngr, ty string, name interface{}, numNodes int, args ...interface{}) (*graph.Node, error) {
 	if name != nil {
 		args = append([]interface{}{k8s.MetadataField("Name"), name}, args...)
 	}
 	args = makeHasArgsType(mngr, ty, args...)
 	query := c.gremlin.V().Has(args...)
-	return queryNodeCreation(t, c, query)
+	return queryNodeCreation(t, c, query, numNodes)
 }
 
 func checkEdge(t *testing.T, c *CheckContext, from, to *graph.Node, relType string, edgeArgs ...interface{}) error {
@@ -118,7 +122,7 @@ func checkEdge(t *testing.T, c *CheckContext, from, to *graph.Node, relType stri
 	fromArgs := makeHasArgsNode(from)
 	toArgs := makeHasArgsNode(to)
 	query := c.gremlin.V().Has(fromArgs...).OutE().Has(edgeArgs...).OutV().Has(toArgs...)
-	_, err := queryNodeCreation(t, c, query)
+	_, err := queryNodeCreation(t, c, query, 1)
 	return err
 }
 
@@ -159,10 +163,14 @@ func testRunner(t *testing.T, setupCmds, tearDownCmds []Cmd, checks []CheckFunct
 }
 
 func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []Cmd, mngr, typ string, name interface{}, fields ...string) {
+	testMultiNodeCreation(t, setupCmds, tearDownCmds, mngr, typ, name, 1, fields...)
+}
+
+func testMultiNodeCreation(t *testing.T, setupCmds, tearDownCmds []Cmd, mngr, typ string, name interface{}, numNodes int, fields ...string) {
 	testRunner(t, setupCmds, tearDownCmds, []CheckFunction{
 		func(c *CheckContext) error {
 			var values []interface{}
-			obj, err := checkNodeCreation(t, c, mngr, typ, name, values...)
+			obj, err := checkMultiNodeCreation(t, c, mngr, typ, name, numNodes, values...)
 			if err != nil {
 				return err
 			}
@@ -189,7 +197,7 @@ func testNodeCreationFromConfig(t *testing.T, mngr, ty string, name interface{},
 
 /* -- test creation of single resource -- */
 func TestK8sClusterNode(t *testing.T) {
-	testNodeCreation(t, nil, nil, k8s.Manager, "cluster", "minikube")
+	testNodeCreation(t, nil, nil, k8s.Manager, "cluster", getClusterName())
 }
 
 func TestK8sConfigMapNode(t *testing.T) {
@@ -205,7 +213,15 @@ func TestK8sCronJobNode(t *testing.T) {
 }
 
 func TestK8sDeploymentNode(t *testing.T) {
-	testNodeCreationFromConfig(t, k8s.Manager, "deployment", objName+"-deployment", "DesiredReplicas", "Replicas", "ReadyReplicas", "AvailableReplicas", "UnavailableReplicas")
+	// minikube setup still uses old extensions/v1beta1 API version
+	if getClusterName() == "minikube" {
+		testNodeCreationFromConfig(t, k8s.Manager, "deployment", objName+"-deployment", "DesiredReplicas", "Replicas", "ReadyReplicas", "AvailableReplicas", "UnavailableReplicas")
+	} else {
+		file := "deployment_modern"
+		setup := setupFromConfigFile(k8s.Manager, file)
+		tearDown := tearDownFromConfigFile(k8s.Manager, file)
+		testNodeCreation(t, setup, tearDown, k8s.Manager, "deployment", objName+"-deployment", "DesiredReplicas", "Replicas", "ReadyReplicas", "AvailableReplicas", "UnavailableReplicas")
+	}
 }
 
 func TestK8sEndpointsNode(t *testing.T) {
@@ -233,7 +249,7 @@ func TestK8sNetworkPolicyNode(t *testing.T) {
 }
 
 func TestK8sNodeNode(t *testing.T) {
-	testNodeCreation(t, nil, nil, k8s.Manager, "node", nil, "Arch", "Hostname", "InternalIP", "OS")
+	testMultiNodeCreation(t, nil, nil, k8s.Manager, "node", nil, getNumNodes(), "Arch", "Hostname", "InternalIP", "OS")
 }
 
 func TestK8sPersistentVolumeNode(t *testing.T) {
@@ -314,7 +330,7 @@ func TestHelloNodeScenario(t *testing.T) {
 		[]CheckFunction{
 			func(c *CheckContext) error {
 				// check nodes exist
-				cluster, err := checkNodeCreation(t, c, k8s.Manager, "cluster", "minikube")
+				cluster, err := checkNodeCreation(t, c, k8s.Manager, "cluster", getClusterName())
 				if err != nil {
 					return err
 				}
@@ -697,4 +713,24 @@ func TestK8sContrib(t *testing.T) {
 		},
 	}
 	RunTest(t, test)
+}
+
+func getClusterName() string {
+	clusterName := os.Getenv("K8S_CLUSTER_NAME")
+	if len(clusterName) == 0 {
+		return "minikube"
+	}
+	return clusterName
+}
+
+func getNumNodes() int {
+	numNodesStr := os.Getenv("K8S_NUM_NODES")
+	if len(numNodesStr) == 0 {
+		return 1
+	}
+	numNodes, err := strconv.Atoi(numNodesStr)
+	if err != nil {
+		return 1
+	}
+	return numNodes
 }
