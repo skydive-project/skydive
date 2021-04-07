@@ -251,14 +251,43 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	peers, err := config.GetAnalyzerServiceAddresses()
+	replicationPeers, err := config.GetAnalyzerServiceAddresses()
 	if err != nil {
-		return nil, fmt.Errorf("Unable to get the analyzers list: %s", err)
+		return nil, fmt.Errorf("unable to get the analyzers list: %s", err)
 	}
 
 	wsClientOpts, err := config.NewWSClientOpts(ClusterAuthenticationOpts())
 	if err != nil {
 		return nil, err
+	}
+
+	clusterPeers := make(map[string]hub.PeeringOpts)
+	peeredClusters := config.GetStringMapString("analyzer.peers")
+	for clusterName := range peeredClusters {
+		peerConfig := "analyzer.peers." + clusterName
+		endpoints, err := config.GetServiceAddresses(peerConfig + ".endpoints")
+		if err != nil {
+			return nil, fmt.Errorf("unable to get peers endpoints for cluster '%s': %w", clusterName, err)
+		}
+		peeringOpts := hub.PeeringOpts{
+			Endpoints: endpoints,
+		}
+
+		if wsClientOpts, err := config.NewWSClientOpts(
+			&shttp.AuthenticationOpts{
+				Username: config.GetString(peerConfig + ".username"),
+				Password: config.GetString(peerConfig + ".password"),
+			},
+		); err == nil {
+			peeringOpts.WebsocketClientOpts = *wsClientOpts
+		}
+
+		if subscriptionFilter := config.GetString(peerConfig + ".subscription_filter"); subscriptionFilter != "" {
+			peeringOpts.WebsocketClientOpts.Headers.Add("X-Gremlin-Filter", subscriptionFilter)
+		}
+
+		clusterPeers[clusterName] = peeringOpts
+
 	}
 
 	probeBundle, err := NewTopologyProbeBundleFromConfig(g)
@@ -281,11 +310,13 @@ func NewServerFromConfig() (*Server, error) {
 		GraphValidator:      topology.SchemaValidator,
 		StatusReporter:      s,
 		TLSConfig:           tlsConfig,
-		Peers:               peers,
+		ReplicationPeers:    replicationPeers,
+		ClusterPeers:        clusterPeers,
 		EtcdClient:          etcdClient,
 		TopologyMarshallers: api.TopologyMarshallers,
 		Assets:              &statics.Assets,
 		Version:             version.Version,
+		ClusterName:         config.GetString("analyzer.cluster"),
 	}
 
 	if config.GetBool("etcd.embedded") {

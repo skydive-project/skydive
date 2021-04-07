@@ -20,9 +20,11 @@ package hub
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	etcd "github.com/coreos/etcd/client"
@@ -35,6 +37,7 @@ import (
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/http"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/schema"
@@ -50,6 +53,7 @@ const (
 type Opts struct {
 	Hostname            string
 	Version             string
+	ClusterName         string
 	WebsocketOpts       websocket.ServerOpts
 	WebsocketClientOpts websocket.ClientOpts
 	APIValidator        api.Validator
@@ -58,7 +62,8 @@ type Opts struct {
 	StatusReporter      api.StatusReporter
 	APIAuthBackend      shttp.AuthenticationBackend
 	ClusterAuthBackend  shttp.AuthenticationBackend
-	Peers               []service.Address
+	ReplicationPeers    []service.Address
+	ClusterPeers        map[string]PeeringOpts
 	TLSConfig           *tls.Config
 	EtcdClient          *etcdclient.Client
 	EtcdServerOpts      *etcdserver.EmbeddedServerOpts
@@ -66,30 +71,88 @@ type Opts struct {
 	Assets              assets.Assets
 }
 
-type podOrigin struct {
-	HostID      string
-	ServiceType service.Type
+type PeeringOpts struct {
+	Endpoints           []service.Address
+	WebsocketClientOpts websocket.ClientOpts
+}
+
+type clusterPeering struct {
+	currentPeer    int
+	clusterName    string
+	logger         logging.Logger
+	masterElection etcdclient.MasterElection
+	peers          *websocket.ClientPool
+	ctx            context.Context
+	cancel         context.CancelFunc
+	wg             sync.WaitGroup
+}
+
+func (p *clusterPeering) OnStartAsMaster() {
+	p.connect()
+}
+
+func (p *clusterPeering) OnSwitchToMaster() {
+	p.connect()
+}
+
+func (p *clusterPeering) OnStartAsSlave() {
+}
+
+func (p *clusterPeering) OnSwitchToSlave() {
+	p.cancel()
+	p.wg.Wait()
+}
+
+func (p *clusterPeering) connect() {
+	p.ctx, p.cancel = context.WithCancel(context.Background())
+	speakers := p.peers.GetSpeakers()
+	p.wg.Add(1)
+
+	go func() {
+		defer p.wg.Done()
+
+		for {
+			select {
+			case <-p.ctx.Done():
+				return
+			default:
+				speaker := speakers[p.currentPeer]
+				if err := speaker.Connect(p.ctx); err == nil && p.masterElection.IsMaster() {
+					p.logger.Infof("Peered to cluster %s", p.clusterName)
+					speaker.Run()
+				}
+
+				p.currentPeer = (p.currentPeer + 1) % len(speakers)
+				if p.currentPeer == 0 {
+					p.logger.Warningf("Failed to peer with cluster %s, retrying in 3 seconds", p.clusterName)
+					time.Sleep(3 * time.Second)
+				}
+			}
+		}
+	}()
 }
 
 // Hub describes a graph hub that accepts incoming connections
 // from pods, other hubs, subscribers or external publishers
 type Hub struct {
-	Graph               *graph.Graph
-	cached              *graph.CachedBackend
-	httpServer          *shttp.Server
-	apiServer           *api.Server
-	alertServer         *alert.Server
-	embeddedEtcd        *etcdserver.EmbeddedServer
-	etcdClient          *etcdclient.Client
-	podWSServer         *websocket.StructServer
-	publisherWSServer   *websocket.StructServer
-	replicationWSServer *websocket.StructServer
-	replicationEndpoint *endpoints.ReplicationEndpoint
-	subscriberWSServer  *websocket.StructServer
-	traversalParser     *traversal.GremlinTraversalParser
-	expirationDelay     time.Duration
-	quit                chan bool
-	masterElection      etcdclient.MasterElection
+	Graph                *graph.Graph
+	cached               *graph.CachedBackend
+	logger               logging.Logger
+	httpServer           *shttp.Server
+	apiServer            *api.Server
+	alertServer          *alert.Server
+	embeddedEtcd         *etcdserver.EmbeddedServer
+	etcdClient           *etcdclient.Client
+	podWSServer          *websocket.StructServer
+	publisherWSServer    *websocket.StructServer
+	replicationWSServer  *websocket.StructServer
+	replicationEndpoint  *endpoints.ReplicationEndpoint
+	subscriberWSServer   *websocket.StructServer
+	traversalParser      *traversal.GremlinTraversalParser
+	expirationDelay      time.Duration
+	quit                 chan bool
+	originMasterElection etcdclient.MasterElection
+	clusterPeerings      map[string]*clusterPeering
 }
 
 // ElectionStatus describes the status of an election
@@ -141,7 +204,7 @@ func (h *Hub) OnStarted() {
 	go h.watchOrigins()
 
 	if err := h.httpServer.Start(); err != nil {
-		logging.GetLogger().Errorf("Error while starting http server: %s", err)
+		h.logger.Errorf("Error while starting http server: %s", err)
 		return
 	}
 
@@ -161,7 +224,11 @@ func (h *Hub) Start() error {
 		}
 	}
 
-	h.masterElection.StartAndWait()
+	h.originMasterElection.StartAndWait()
+
+	for _, peering := range h.clusterPeerings {
+		peering.masterElection.StartAndWait()
+	}
 
 	if err := h.cached.Start(); err != nil {
 		return err
@@ -179,7 +246,10 @@ func (h *Hub) Stop() {
 	h.subscriberWSServer.Stop()
 	h.alertServer.Stop()
 	h.cached.Stop()
-	h.masterElection.Stop()
+	h.originMasterElection.Stop()
+	for _, peering := range h.clusterPeerings {
+		peering.masterElection.Stop()
+	}
 	if h.embeddedEtcd != nil {
 		h.embeddedEtcd.Stop()
 	}
@@ -214,7 +284,7 @@ func (h *Hub) GremlinTraversalParser() *traversal.GremlinTraversalParser {
 func (h *Hub) OnPong(speaker websocket.Speaker) {
 	key := fmt.Sprintf("%s/%s", etcPodPongPath, graph.ClientOrigin(speaker))
 	if err := h.etcdClient.SetInt64(key, time.Now().Unix()); err != nil {
-		logging.GetLogger().Errorf("Error while recording Pod pong time: %s", err)
+		h.logger.Errorf("Error while recording Pod pong time: %s", err)
 	}
 }
 
@@ -225,7 +295,7 @@ func (h *Hub) watchOrigins() {
 	for {
 		select {
 		case <-tick.C:
-			if !h.masterElection.IsMaster() {
+			if !h.originMasterElection.IsMaster() {
 				break
 			}
 
@@ -237,19 +307,19 @@ func (h *Hub) watchOrigins() {
 			for _, node := range resp.Node.Nodes {
 				t, _ := strconv.ParseInt(node.Value, 10, 64)
 
-				logging.GetLogger().Infof("TTL of pod of origin %s is %d", node.Key, t)
+				h.logger.Infof("TTL of pod of origin %s is %d", node.Key, t)
 
 				if t+int64(h.expirationDelay.Seconds()) < time.Now().Unix() {
 					origin := strings.TrimPrefix(node.Key, etcPodPongPath+"/")
 
-					logging.GetLogger().Infof("pod of origin %s expired, removing resources", origin)
+					h.logger.Infof("pod of origin %s expired, removing resources", origin)
 
 					h.Graph.Lock()
 					graph.DelSubGraphOfOrigin(h.Graph, origin)
 					h.Graph.Unlock()
 
 					if _, err := h.etcdClient.KeysAPI.Delete(context.Background(), node.Key, &etcd.DeleteOptions{}); err != nil {
-						logging.GetLogger().Infof("unable to delete pod entry %s: %s", node.Key, err)
+						h.logger.Infof("unable to delete pod entry %s: %s", node.Key, err)
 					}
 				}
 			}
@@ -266,6 +336,10 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 		return nil, err
 	}
 
+	if len(opts.ClusterPeers) > 0 && opts.ClusterName == "" {
+		return nil, errors.New("peering was requested but analyzer has no cluster name")
+	}
+
 	tr := traversal.NewGremlinTraversalParser()
 
 	if opts.Logger == nil {
@@ -275,6 +349,7 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 	hub := &Hub{
 		Graph:           g,
 		cached:          cached,
+		logger:          opts.Logger,
 		expirationDelay: opts.WebsocketOpts.PongTimeout * 5,
 		quit:            make(chan bool),
 	}
@@ -305,7 +380,7 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 	repOpts.AuthBackend = opts.ClusterAuthBackend
 	repOpts.PongListeners = []websocket.PongListener{hub}
 	replicationWSServer := websocket.NewStructServer(websocket.NewServer(httpServer, "/ws/replication", repOpts))
-	replicationEndpoint := endpoints.NewReplicationEndpoint(replicationWSServer, &opts.WebsocketClientOpts, cached, g, opts.Peers, opts.Logger)
+	replicationEndpoint := endpoints.NewReplicationEndpoint(replicationWSServer, &opts.WebsocketClientOpts, cached, g, opts.ReplicationPeers, opts.Logger)
 
 	subOpts := opts.WebsocketOpts
 	subOpts.AuthBackend = opts.APIAuthBackend
@@ -328,7 +403,30 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 	hub.etcdClient = opts.EtcdClient
 
 	election := hub.etcdClient.NewElection("/elections/hub-origin-watcher")
-	hub.masterElection = election
+	hub.originMasterElection = election
+
+	hub.clusterPeerings = make(map[string]*clusterPeering)
+	for remoteCluster, peeringOpts := range opts.ClusterPeers {
+		opts.Logger.Debugf("Peering with cluster %s and endpoints %+v", remoteCluster, peeringOpts.Endpoints)
+
+		clientPool := websocket.NewClientPool("HubPeering-"+remoteCluster, websocket.PoolOpts{Logger: opts.WebsocketClientOpts.Logger})
+		for _, peer := range peeringOpts.Endpoints {
+			url, _ := http.MakeURL("ws", peer.Addr, peer.Port, "/ws/subscriber", peeringOpts.WebsocketClientOpts.TLSConfig != nil)
+			client := websocket.NewClient(id, serviceType, url, peeringOpts.WebsocketClientOpts)
+			subscriber := NewSubscriber(client, g, opts.Logger)
+			clientPool.AddClient(subscriber)
+		}
+
+		peering := &clusterPeering{
+			clusterName: remoteCluster,
+			peers:       clientPool,
+			logger:      opts.Logger,
+		}
+		hub.clusterPeerings[remoteCluster] = peering
+
+		peering.masterElection = hub.etcdClient.NewElection("/elections/hub-peering/" + opts.ClusterName + "/" + remoteCluster)
+		peering.masterElection.AddEventListener(peering)
+	}
 
 	if opts.StatusReporter == nil {
 		opts.StatusReporter = hub
