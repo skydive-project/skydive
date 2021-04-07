@@ -18,6 +18,7 @@
 package websocket
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -126,12 +127,13 @@ type Speaker interface {
 	GetHeaders() http.Header
 	GetURL() *url.URL
 	IsConnected() bool
-	SendMessage(m Message) error
+	SendMessage(Message) error
 	SendRaw(r []byte) error
-	Connect() error
+	Connect(context.Context) error
 	Start()
 	Stop()
 	StopAndWait()
+	Run()
 	AddEventHandler(SpeakerEventHandler)
 	GetRemoteHost() string
 	GetRemoteServiceType() service.Type
@@ -180,6 +182,13 @@ type ClientOpts struct {
 	WriteCompression bool
 	TLSConfig        *tls.Config
 	Logger           logging.Logger
+}
+
+// NewClientOpts returns a new client option set
+func NewClientOpts() ClientOpts {
+	return ClientOpts{
+		Headers: http.Header{},
+	}
 }
 
 // SpeakerEventHandler is the interface to be implement by the client events listeners.
@@ -442,7 +451,7 @@ func (c *Conn) AddEventHandler(h SpeakerEventHandler) {
 }
 
 // Connect default implementation doing nothing as for incoming connection it is not used.
-func (c *Conn) Connect() error {
+func (c *Conn) Connect(context.Context) error {
 	return nil
 }
 
@@ -511,7 +520,7 @@ func (c *Client) scheme() string {
 }
 
 // Connect to the server
-func (c *Client) Connect() error {
+func (c *Client) Connect(ctx context.Context) error {
 	var err error
 	endpoint := c.URL.String()
 	headers := http.Header{
@@ -539,7 +548,7 @@ func (c *Client) Connect() error {
 	d.TLSClientConfig = c.TLSConfig
 
 	var resp *http.Response
-	c.conn, resp, err = d.Dial(endpoint, headers)
+	c.conn, resp, err = d.DialContext(ctx, endpoint, headers)
 	if err != nil {
 		return fmt.Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err)
 	}
@@ -576,7 +585,7 @@ func (c *Client) Connect() error {
 func (c *Client) Start() {
 	go func() {
 		for c.running.Load() == true {
-			if err := c.Connect(); err == nil {
+			if err := c.Connect(context.Background()); err == nil {
 				c.Run()
 				if c.running.Load() == true {
 					c.wg.Wait()
