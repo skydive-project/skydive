@@ -19,12 +19,12 @@ package seed
 
 import (
 	"fmt"
-	"net/http"
 	"net/url"
 
 	"github.com/skydive-project/skydive/graffiti/endpoints"
 	"github.com/skydive-project/skydive/graffiti/forwarder"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/hub"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/messages"
 	"github.com/skydive-project/skydive/graffiti/service"
@@ -48,7 +48,7 @@ type Seed struct {
 	forwarder  *forwarder.Forwarder
 	clientPool *ws.StructClientPool
 	publisher  *ws.Client
-	subscriber *ws.StructSpeaker
+	subscriber *hub.Subscriber
 	g          *graph.Graph
 	logger     logging.Logger
 	listeners  []EventHandler
@@ -58,71 +58,6 @@ type Seed struct {
 func (s *Seed) OnConnected(c ws.Speaker) error {
 	s.logger.Infof("connected to %s", c.GetHost())
 	return s.subscriber.SendMessage(messages.NewStructMessage(messages.SyncRequestMsgType, messages.SyncRequestMsg{}))
-}
-
-// OnStructMessage callback
-func (s *Seed) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
-	if msg.Status != http.StatusOK {
-		s.logger.Errorf("request error: %v", msg)
-		return
-	}
-
-	origin := string(c.GetServiceType())
-	if len(c.GetRemoteHost()) > 0 {
-		origin += "." + c.GetRemoteHost()
-	}
-
-	msgType, obj, err := messages.UnmarshalMessage(msg)
-	if err != nil {
-		s.logger.Error("unable to parse websocket message: %s", err)
-		return
-	}
-
-	s.g.Lock()
-	defer s.g.Unlock()
-
-	switch msgType {
-	case messages.SyncMsgType, messages.SyncReplyMsgType:
-		r := obj.(*messages.SyncMsg)
-
-		s.g.DelNodes(graph.Metadata{"Origin": origin})
-
-		for _, n := range r.Nodes {
-			if s.g.GetNode(n.ID) == nil {
-				if err := s.g.NodeAdded(n); err != nil {
-					s.logger.Errorf("%s, %+v", err, n)
-				}
-			}
-		}
-		for _, e := range r.Edges {
-			if s.g.GetEdge(e.ID) == nil {
-				if err := s.g.EdgeAdded(e); err != nil {
-					s.logger.Errorf("%s, %+v", err, e)
-				}
-			}
-		}
-		for _, listener := range s.listeners {
-			listener.OnSynchronized()
-		}
-	case messages.NodeUpdatedMsgType:
-		err = s.g.NodeUpdated(obj.(*graph.Node))
-	case messages.NodeDeletedMsgType:
-		err = s.g.NodeDeleted(obj.(*graph.Node))
-	case messages.NodeAddedMsgType:
-		err = s.g.NodeAdded(obj.(*graph.Node))
-	case messages.EdgeUpdatedMsgType:
-		err = s.g.EdgeUpdated(obj.(*graph.Edge))
-	case messages.EdgeDeletedMsgType:
-		if err = s.g.EdgeDeleted(obj.(*graph.Edge)); err == graph.ErrEdgeNotFound {
-			return
-		}
-	case messages.EdgeAddedMsgType:
-		err = s.g.EdgeAdded(obj.(*graph.Edge))
-	}
-
-	if err != nil {
-		s.logger.Errorf("%s, %+v", err, msg)
-	}
 }
 
 // AddEventHandler register an event handler
@@ -182,7 +117,7 @@ func NewSeed(g *graph.Graph, clientType service.Type, address, filter string, ws
 	wsOpts.Headers.Add("X-Update-Policy", endpoints.PartialUpdates)
 
 	subClient := ws.NewClient(g.GetHost(), clientType, url, wsOpts)
-	subscriber := subClient.UpgradeToStructSpeaker()
+	subscriber := hub.NewSubscriber(subClient, g, wsOpts.Logger)
 
 	s := &Seed{
 		g:          g,
@@ -190,9 +125,6 @@ func NewSeed(g *graph.Graph, clientType service.Type, address, filter string, ws
 		subscriber: subscriber,
 		logger:     wsOpts.Logger,
 	}
-
-	subscriber.AddEventHandler(s)
-	subscriber.AddStructMessageHandler(s, []string{messages.Namespace})
 
 	return s, nil
 }
