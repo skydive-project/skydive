@@ -110,7 +110,7 @@ func (s *Server) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReque
 	if _, err = s.incomerHandler(conn, r, func(c *wsIncomingClient) (Speaker, error) { return c, nil }); err != nil {
 		s.opts.Logger.Warningf("Unable to accept incomer from %s: %s", r.RemoteAddr, err)
 		if err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
-           conn.Close()
+			conn.Close()
 		}
 	}
 }

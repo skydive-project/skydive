@@ -183,24 +183,24 @@ func (c *CachedBackend) MetadataUpdated(i interface{}) error {
 }
 
 // GetNodes returns a list of nodes with a time slice, matching metadata
-func (c *CachedBackend) GetNodes(t Context, m ElementMatcher, e ElementMatcher) []*Node {
+func (c *CachedBackend) GetNodes(t Context, m ElementMatcher) []*Node {
 	mode := c.cacheMode.Load()
 
 	if t.TimeSlice == nil || mode == CacheOnlyMode || c.persistent == nil {
-		return c.memory.GetNodes(t, m, e)
+		return c.memory.GetNodes(t, m)
 	}
 
-	return c.persistent.GetNodes(t, m, e)
+	return c.persistent.GetNodes(t, m)
 }
 
 // GetEdges returns a list of edges with a time slice, matching metadata
-func (c *CachedBackend) GetEdges(t Context, m ElementMatcher, e ElementMatcher) []*Edge {
+func (c *CachedBackend) GetEdges(t Context, m ElementMatcher) []*Edge {
 	mode := c.cacheMode.Load()
 
 	if t.TimeSlice == nil || mode == CacheOnlyMode || c.persistent == nil {
-		return c.memory.GetEdges(t, m, e)
+		return c.memory.GetEdges(t, m)
 	}
-	return c.persistent.GetEdges(t, m, e)
+	return c.persistent.GetEdges(t, m)
 }
 
 // IsHistorySupported returns whether the persistent backend supports history

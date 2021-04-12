@@ -35,7 +35,7 @@ func InterfaceMetrics(ctx traversal.StepContext, tv *traversal.GraphTraversalV, 
 	}
 
 	startField := key + ".Start"
-	tv = tv.Dedup(ctx, "ID", startField).Sort(ctx, filters.SortOrder_Ascending, startField)
+	tv = tv.Dedup(ctx, "@ID", startField).Sort(ctx, filters.SortOrder_Ascending, startField)
 
 	if tv.Error() != nil {
 		return NewMetricsTraversalStepFromError(tv.Error())

@@ -51,7 +51,7 @@ client.login().then(function () {
   console.log(nodes[0].ID)
 })
 .then(function () {
-  return client.G.E().Has("Host", NE(1234))
+  return client.G.E().Has("@Host", NE(1234))
 })
 .then(function (edges) {
   console.log("Edges: " + edges);

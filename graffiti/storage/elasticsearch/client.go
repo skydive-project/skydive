@@ -387,21 +387,22 @@ func (c *Client) start() error {
 }
 
 // FormatFilter creates a ElasticSearch request based on filters
-func FormatFilter(filter *filters.Filter, mapKey string) elastic.Query {
+func FormatFilter(filter *filters.Filter, normalizeKey func(string) string) elastic.Query {
 	// TODO: remove all this and replace with olivere/elastic queries
 	if filter == nil {
 		return nil
 	}
 
-	prefix := mapKey
-	if prefix != "" {
-		prefix += "."
+	if normalizeKey == nil {
+		normalizeKey = func(key string) string {
+			return key
+		}
 	}
 
 	if f := filter.BoolFilter; f != nil {
 		queries := make([]elastic.Query, len(f.Filters))
 		for i, item := range f.Filters {
-			queries[i] = FormatFilter(item, mapKey)
+			queries[i] = FormatFilter(item, normalizeKey)
 		}
 		boolQuery := elastic.NewBoolQuery()
 		switch f.Op {
@@ -417,13 +418,13 @@ func FormatFilter(filter *filters.Filter, mapKey string) elastic.Query {
 	}
 
 	if f := filter.TermStringFilter; f != nil {
-		return elastic.NewTermQuery(prefix+f.Key, f.Value)
+		return elastic.NewTermQuery(normalizeKey(f.Key), f.Value)
 	}
 	if f := filter.TermInt64Filter; f != nil {
-		return elastic.NewTermQuery(prefix+f.Key, f.Value)
+		return elastic.NewTermQuery(normalizeKey(f.Key), f.Value)
 	}
 	if f := filter.TermBoolFilter; f != nil {
-		return elastic.NewTermQuery(prefix+f.Key, f.Value)
+		return elastic.NewTermQuery(normalizeKey(f.Key), f.Value)
 	}
 
 	if f := filter.RegexFilter; f != nil {
@@ -431,7 +432,7 @@ func FormatFilter(filter *filters.Filter, mapKey string) elastic.Query {
 		value := strings.TrimPrefix(f.Value, "^")
 		value = strings.TrimSuffix(value, "$")
 
-		return elastic.NewRegexpQuery(prefix+f.Key, value)
+		return elastic.NewRegexpQuery(normalizeKey(f.Key), value)
 	}
 
 	if f := filter.IPV4RangeFilter; f != nil {
@@ -445,23 +446,23 @@ func FormatFilter(filter *filters.Filter, mapKey string) elastic.Query {
 		value := strings.TrimPrefix(regex, "^")
 		value = strings.TrimSuffix(value, "$")
 
-		return elastic.NewRegexpQuery(prefix+f.Key, value)
+		return elastic.NewRegexpQuery(normalizeKey(f.Key), value)
 	}
 
 	if f := filter.GtInt64Filter; f != nil {
-		return elastic.NewRangeQuery(prefix + f.Key).Gt(f.Value)
+		return elastic.NewRangeQuery(normalizeKey(f.Key)).Gt(f.Value)
 	}
 	if f := filter.LtInt64Filter; f != nil {
-		return elastic.NewRangeQuery(prefix + f.Key).Lt(f.Value)
+		return elastic.NewRangeQuery(normalizeKey(f.Key)).Lt(f.Value)
 	}
 	if f := filter.GteInt64Filter; f != nil {
-		return elastic.NewRangeQuery(prefix + f.Key).Gte(f.Value)
+		return elastic.NewRangeQuery(normalizeKey(f.Key)).Gte(f.Value)
 	}
 	if f := filter.LteInt64Filter; f != nil {
-		return elastic.NewRangeQuery(prefix + f.Key).Lte(f.Value)
+		return elastic.NewRangeQuery(normalizeKey(f.Key)).Lte(f.Value)
 	}
 	if f := filter.NullFilter; f != nil {
-		return elastic.NewBoolQuery().MustNot(elastic.NewExistsQuery(prefix + f.Key))
+		return elastic.NewBoolQuery().MustNot(elastic.NewExistsQuery(normalizeKey(f.Key)))
 	}
 	return nil
 }

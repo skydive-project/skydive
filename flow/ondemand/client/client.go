@@ -113,6 +113,6 @@ func NewOnDemandFlowProbeClient(g *graph.Graph, ch rest.WatchableHandler, agentP
 		nodeTypes[i] = nodeType
 		i++
 	}
-	nodeTypeQuery := new(gremlin.QueryString).Has("Host", gremlin.Ne(""), "Type", gremlin.Within(nodeTypes...)).String()
+	nodeTypeQuery := new(gremlin.QueryString).Has("@Host", gremlin.Ne(""), "Type", gremlin.Within(nodeTypes...)).String()
 	return client.NewOnDemandClient(g, ch, agentPool, subscriberPool, etcdClient, &onDemandFlowHandler{graph: g, nodeTypeQuery: nodeTypeQuery})
 }
