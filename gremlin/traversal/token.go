@@ -33,4 +33,5 @@ const (
 	traversalNextHopToken     traversal.Token = 1011
 	traversalGroupToken       traversal.Token = 1012
 	traversalMoreThanToken    traversal.Token = 1013
+	traversalAscendantsToken  traversal.Token = 1014
 )
