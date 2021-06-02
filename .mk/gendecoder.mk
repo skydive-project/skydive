@@ -1,4 +1,4 @@
-GEN_DECODER_FILES = $(patsubst %.go,%_gendecoder.go,$(shell git grep //go:generate | grep "gendecoder" | grep -v "\.mk" | cut -d ":" -f 1))
+GEN_DECODER_FILES = $(patsubst %.go,%_gendecoder.go,$(shell git grep //go:generate | grep "gendecoder" | grep -v ovnmetagen | grep -v "\.mk" | cut -d ":" -f 1))
 GEN_DECODER_FILES += flow/flow.pb_gendecoder.go
 
 %_gendecoder.go: %.go
