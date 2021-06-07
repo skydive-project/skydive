@@ -193,7 +193,7 @@ func (probe *OfctlProbe) parseEvent(line string) (Event, error) {
 // fillRawUUID Generates a unique UUID for the rule
 // prefix is a unique string per bridge using bridge and host names.
 func fillRawUUID(rule *RawRule, prefix string) {
-	id := prefix + rule.Filter + "-" + string(rule.Table)
+	id := prefix + rule.Filter + "-" + strconv.Itoa(rule.Table)
 	u, err := uuid.NewV5(uuid.NamespaceOID, []byte(id))
 	if err == nil {
 		rule.UUID = u.String()
@@ -203,7 +203,7 @@ func fillRawUUID(rule *RawRule, prefix string) {
 // fillRawUUID Generates a unique UUID for the rule
 // prefix is a unique string per bridge using bridge and host names.
 func fillUUID(rule *jsonof.JSONRule, prefix string) {
-	id := prefix + rule.RawFilter + "-" + string(rule.Table) + "-" + string(rule.Priority)
+	id := prefix + rule.RawFilter + "-" + strconv.Itoa(rule.Table) + "-" + strconv.Itoa(rule.Priority)
 	u, err := uuid.NewV5(uuid.NamespaceOID, []byte(id))
 	if err == nil {
 		rule.UUID = u.String()
@@ -212,7 +212,7 @@ func fillUUID(rule *jsonof.JSONRule, prefix string) {
 
 // Generate a unique UUID for the group
 func fillGroupUUID(group *jsonof.JSONGroup, prefix string) {
-	id := prefix + "-" + string(group.GroupID)
+	id := prefix + "-" + strconv.Itoa(int(group.GroupID))
 	u, err := uuid.NewV5(uuid.NamespaceOID, []byte(id))
 	if err == nil {
 		group.UUID = u.String()
@@ -370,7 +370,7 @@ func (probe *OfctlProbe) getGroup(groupID uint) *jsonof.JSONGroup {
 	prefix := probe.prefix()
 	command, err := probe.makeCommand(
 		[]string{"ovs-ofctl", "-O", "OpenFlow15", "dump-groups"},
-		probe.Bridge, string(groupID))
+		probe.Bridge, strconv.Itoa(int(groupID)))
 	if err != nil {
 		return nil
 	}

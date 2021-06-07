@@ -17,6 +17,7 @@ package bess
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -68,7 +69,7 @@ func (p *Probe) walkAndRender(moduleName string, parentNode *graph.Node, edgeLis
 	}
 	for _, oGate := range modRes.GetOgates() {
 		p.walkAndRender(oGate.GetName(), parentNode, edgeList)
-		edgeID := graph.GenID(moduleName, string(oGate.Igate), string(oGate.Ogate), oGate.GetName())
+		edgeID := graph.GenID(moduleName, strconv.Itoa(int(oGate.Igate)), strconv.Itoa(int(oGate.Ogate)), oGate.GetName())
 		if p.Ctx.Graph.GetEdge(edgeID) == nil {
 			p.Ctx.Graph.NewEdge(edgeID, node,
 				p.Ctx.Graph.GetNode(graph.GenID(oGate.GetName())),
