@@ -105,7 +105,7 @@ func NewProbe(g *graph.Graph) (probe.Handler, error) {
 	p.podIndexer = graph.NewMetadataIndexer(g, g, graph.Metadata{"Type": "pod"}, "Name", "K8s.Namespace")
 	p.bundle.AddHandler("podIndexer", p.podIndexer)
 
-	p.lspPodIndexer = graph.NewMetadataIndexer(g, g, graph.Metadata{"Type": "logical_switch_port", "OVN.ExtID.pod": "true"}, "Name")
+	p.lspPodIndexer = graph.NewMetadataIndexer(g, g, graph.Metadata{"Type": "LogicalSwitchPort", "OVN.ExternalIDsMeta.pod": "true"}, "Name")
 	p.bundle.AddHandler("lspIndexer", p.lspPodIndexer)
 
 	p.ovnPodLinker = graph.NewResourceLinker(g,
