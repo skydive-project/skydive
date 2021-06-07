@@ -98,8 +98,12 @@ ifeq ($(WITH_PACKETINJECT), true)
   BUILD_TAGS+=packetinject
 endif
 
+ifeq ($(WITH_OVN), true)
+  BUILD_TAGS+=ovn
+endif
+
 ifeq ($(WITH_OVNK8S), true)
-  BUILD_TAGS+=k8s ovnk8s
+  BUILD_TAGS+=k8s ovn ovnk8s
 endif
 
 
