@@ -88,9 +88,17 @@ func (e *Edge) Validate() error {
 }
 
 // Node object
-// easyjson:json
 // swagger:model
 type Node graph.Node
+
+// UnmarshalJSON decodes types.Node using the custom graph.Node unmarshal which
+// uses MetadataDecoders
+func (n *Node) UnmarshalJSON(data []byte) error {
+	gNode := graph.Node(*n)
+	err := gNode.UnmarshalJSON(data)
+	*n = Node(gNode)
+	return err
+}
 
 // GetID returns the node ID
 func (n *Node) GetID() string {

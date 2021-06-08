@@ -40,6 +40,7 @@ func getCrudClient() (c *shttp.CrudClient, err error) {
 	})
 	return
 }
+
 func TestAlertAPI(t *testing.T) {
 	client, err := getCrudClient()
 	if err != nil {
