@@ -210,6 +210,7 @@ func init() {
 	cfg.SetDefault("storage.elasticsearch.indices_to_keep", 0)
 	cfg.SetDefault("storage.elasticsearch.index_prefix", "skydive_")
 	cfg.SetDefault("storage.elasticsearch.use_flattened", true)
+	cfg.SetDefault("storage.elasticsearch.flattened_ignore_above", 32768)
 	cfg.SetDefault("storage.elasticsearch.exclude_from_mapping", []string{
 		"Metadata.*.Extra",
 		"Metadata.Container.Labels",

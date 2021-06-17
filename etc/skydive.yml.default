@@ -431,6 +431,12 @@ storage:
     #   - Metadata.OVN.Options
     #   - Metadata.OVN.IPv6RAConfigs
 
+    # Use flatten mapping type for fields specified by 'exclude_from_mapping'
+    # use_flattened: true
+
+    # Ignore flattened fields whose length is above the specified value
+    # flattened_ignore_above: 32768
+
     # Snif Nodes Info API to get all the nodes in the cluster
     # See https://pkg.go.dev/gopkg.in/olivere/elastic.v2?tab=doc#NewClient
     # Default: false

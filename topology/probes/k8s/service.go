@@ -35,11 +35,35 @@ func (h *serviceHandler) Dump(obj interface{}) string {
 	return fmt.Sprintf("service{Namespace: %s, Name: %s}", srv.Namespace, srv.Name)
 }
 
+func getServicePorts(ports []v1.ServicePort) []map[string]interface{} {
+	metadataPorts := make([]map[string]interface{}, len(ports))
+	for i, p := range ports {
+		metadataPort := make(map[string]interface{})
+		if p.Name != "" {
+			metadataPort["Name"] = p.Name
+		}
+		if p.Protocol != "" {
+			metadataPort["Protocol"] = p.Protocol
+		}
+		if p.Port != 0 {
+			metadataPort["Port"] = int64(p.Port)
+		}
+		if p.NodePort != 0 {
+			metadataPort["NodePort"] = int64(p.NodePort)
+		}
+		if targetPort := p.TargetPort.String(); targetPort != "" {
+			metadataPort["TargetPort"] = targetPort
+		}
+		metadataPorts[i] = metadataPort
+	}
+	return metadataPorts
+}
+
 func (h *serviceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	srv := obj.(*v1.Service)
 
 	m := NewMetadataFields(&srv.ObjectMeta)
-	m.SetFieldAndNormalize("Ports", srv.Spec.Ports)
+	m.SetFieldAndNormalize("Ports", getServicePorts(srv.Spec.Ports))
 	m.SetFieldAndNormalize("ClusterIP", srv.Spec.ClusterIP)
 	m.SetFieldAndNormalize("ServiceType", srv.Spec.Type)
 	m.SetFieldAndNormalize("SessionAffinity", srv.Spec.SessionAffinity)

@@ -81,7 +81,8 @@ func newGraphBackendFromConfig(etcdClient *etcd.Client) (graph.PersistentBackend
 		var mapping map[string]interface{}
 		if useFlattened {
 			mapping = map[string]interface{}{
-				"type": "flattened",
+				"type":         "flattened",
+				"ignore_above": config.GetInt(configPath + ".flattened_ignore_above"),
 			}
 		} else {
 			mapping = map[string]interface{}{
