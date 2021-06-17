@@ -50,6 +50,9 @@
     value: "{{ ansible_hostname }}"
   when: skydive_etcd_embedded | bool
 
+- debug:
+    var: analyzers
+    
 - name: Setup Etcd embedded servers list
   yedit:
     src: "{{ skydive_config_file }}"
