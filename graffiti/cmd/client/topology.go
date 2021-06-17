@@ -18,6 +18,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -74,7 +75,7 @@ var TopologyImport = &cobra.Command{
 		opts.Headers.Add("X-Persistence-Policy", string(endpoints.Persistent))
 		client := websocket.NewClient(Host, service.Type("CLI"), url, opts)
 
-		if err := client.Connect(); err != nil {
+		if err := client.Connect(context.Background()); err != nil {
 			exitOnError(err)
 		}
 

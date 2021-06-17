@@ -365,15 +365,15 @@ func (c *SkydiveConfig) SetDefault(key string, value interface{}) {
 	c.Viper.SetDefault(key, value)
 }
 
-// GetAnalyzerServiceAddresses returns a list of connectable Analyzers
-func GetAnalyzerServiceAddresses() ([]service.Address, error) {
-	return cfg.GetAnalyzerServiceAddresses()
+// GetServiceAddresses returns a list of services
+func GetServiceAddresses(section string) ([]service.Address, error) {
+	return cfg.GetServiceAddresses(section)
 }
 
-// GetAnalyzerServiceAddresses returns a list of connectable Analyzers
-func (c *SkydiveConfig) GetAnalyzerServiceAddresses() ([]service.Address, error) {
+// GetServiceAddresses returns a list of services
+func (c *SkydiveConfig) GetServiceAddresses(section string) ([]service.Address, error) {
 	var addresses []service.Address
-	for _, a := range c.GetStringSlice("analyzers") {
+	for _, a := range c.GetStringSlice(section) {
 		sa, err := service.AddressFromString(a)
 		if err != nil {
 			return nil, err
@@ -388,6 +388,16 @@ func (c *SkydiveConfig) GetAnalyzerServiceAddresses() ([]service.Address, error)
 	}
 
 	return addresses, nil
+}
+
+// GetAnalyzerServiceAddresses returns a list of connectable Analyzers
+func GetAnalyzerServiceAddresses() ([]service.Address, error) {
+	return cfg.GetAnalyzerServiceAddresses()
+}
+
+// GetAnalyzerServiceAddresses returns a list of analyzers to connect to
+func (c *SkydiveConfig) GetAnalyzerServiceAddresses() ([]service.Address, error) {
+	return c.GetServiceAddresses("analyzers")
 }
 
 // GetOneAnalyzerServiceAddress returns a random connectable Analyzer
@@ -555,6 +565,16 @@ func GetStringMapString(key string) map[string]string {
 // GetStringMapString returns a map of strings from the configuration
 func (c *SkydiveConfig) GetStringMapString(key string) map[string]string {
 	return c.Viper.GetStringMapString(realKey(key))
+}
+
+// GetStringMap returns a map of strings from the configuration
+func GetStringMap(key string) map[string]interface{} {
+	return cfg.GetStringMap(key)
+}
+
+// GetStringMapString returns a map of strings from the configuration
+func (c *SkydiveConfig) GetStringMap(key string) map[string]interface{} {
+	return c.Viper.GetStringMap(realKey(key))
 }
 
 // BindPFlag binds a command line flag to a configuration value

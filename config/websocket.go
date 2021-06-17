@@ -18,6 +18,7 @@
 package config
 
 import (
+	"net/http"
 	"net/url"
 	"time"
 
@@ -39,6 +40,7 @@ func NewWSClientOpts(authOpts *shttp.AuthenticationOpts) (*websocket.ClientOpts,
 		WriteCompression: GetBool("http.ws.enable_write_compression"),
 		TLSConfig:        tlsConfig,
 		AuthOpts:         authOpts,
+		Headers:          http.Header{},
 	}, nil
 }
 
