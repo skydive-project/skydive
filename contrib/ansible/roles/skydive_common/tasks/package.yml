@@ -1,10 +1,30 @@
 ---
+- name: Self repo for skydive
+  yum_repository:
+    name: self-repo-skydive-skydive
+    description: Self repo for skydive
+    baseurl: "{{ skydive_repo_baseurl }}"
+    skip_if_unavailable: yes
+    gpgcheck: no
+    repo_gpgcheck: no
+    enabled: yes
+  when:
+    - skydive_repo_baseurl is defined
+    - ansible_os_family == "RedHat"
+
+- name: Install skydive package
+  package:
+    name: skydive
+    state: present
+
 - name: Install opstools repository
   package:
     name: centos-release-opstools
     state: present
     update_cache: yes
-  when: ansible_distribution == 'CentOS' and skydive_package_location is not defined
+  when:
+    - ansible_distribution == 'CentOS' and skydive_package_location is not defined
+    - skydive_repo_baseurl is not defined
 
 - name: Copy skydive packages
   copy:
@@ -12,21 +32,29 @@
     dest: /tmp
     force: true
     mode: 0755
-  when: skydive_package_location is defined
+  when:
+    - skydive_package_location is defined
+    - skydive_repo_baseurl is not defined
 
 - name: Move skydive packages
   shell: "mv /tmp/*/*.rpm /tmp"
-  when: skydive_package_location is defined
+  when:
+    - skydive_package_location is defined
+    - skydive_repo_baseurl is not defined
 
 - name: Install createrepo
   package:
     name: createrepo
     state: present
-  when: skydive_package_location is defined
+  when:
+    - skydive_package_location is defined
+    - skydive_repo_baseurl is not defined
 
 - name: Create local repository
   shell: "createrepo /tmp"
-  when: skydive_package_location is defined
+  when:
+    - skydive_package_location is defined
+    - skydive_repo_baseurl is not defined
 
 - name: Add local repository
   yum_repository:
@@ -34,7 +62,9 @@
     description: Local Skydive repository
     baseurl: "file:///tmp"
     gpgcheck: no
-  when: skydive_package_location is defined
+  when:
+    - skydive_package_location is defined
+    - skydive_repo_baseurl is not defined
 
 - name: Install skydive package
   package:
