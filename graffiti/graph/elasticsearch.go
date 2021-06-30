@@ -87,6 +87,8 @@ const graphElementMapping = `
 const (
 	nodeType = "node"
 	edgeType = "edge"
+	// maxClauseCount limit the number of clauses in one query to ES
+	maxClauseCount = 512
 )
 
 // ElasticSearchBackend describes a persistent backend based on ElasticSearch
@@ -506,6 +508,53 @@ func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t Context, m ElementMatcher
 	return
 }
 
+// GetNodesEdges return the list of all edges for a list of nodes within time slice
+func (b *ElasticSearchBackend) GetNodesEdges(nodeList []*Node, t Context, m ElementMatcher) (edges []*Edge) {
+	if len(nodeList) == 0 {
+		return []*Edge{}
+	}
+
+	// See comment at GetNodesFromIDs
+	// As we are adding two operations per item, make small batches
+	nodesBatch := batchNodes(nodeList, maxClauseCount/2)
+
+	for _, nList := range nodesBatch {
+		var filter *filters.Filter
+		if m != nil {
+			f, err := m.Filter()
+			if err != nil {
+				return []*Edge{}
+			}
+			filter = f
+		}
+
+		var searchQuery filters.SearchQuery
+		if !t.TimePoint {
+			searchQuery = filters.SearchQuery{Sort: true, SortBy: "UpdatedAt"}
+		}
+
+		nodesFilter := []*filters.Filter{}
+		for _, n := range nList {
+			nodesFilter = append(nodesFilter, filters.NewTermStringFilter("Parent", string(n.ID)))
+			nodesFilter = append(nodesFilter, filters.NewTermStringFilter("Child", string(n.ID)))
+		}
+		searchQuery.Filter = filters.NewOrFilter(nodesFilter...)
+
+		edges = append(edges, b.searchEdges(&TimedSearchQuery{
+			SearchQuery:   searchQuery,
+			TimeFilter:    getTimeFilter(t.TimeSlice),
+			ElementFilter: filter,
+		})...)
+
+	}
+
+	if len(edges) > 1 && t.TimePoint {
+		edges = dedupEdges(edges)
+	}
+
+	return
+}
+
 // IsHistorySupported returns that this backend does support history
 func (b *ElasticSearchBackend) IsHistorySupported() bool {
 	return true
@@ -646,4 +695,16 @@ func NewElasticSearchBackendFromConfig(cfg es.Config, extraDynamicTemplates map[
 	}
 
 	return newElasticSearchBackendFromClient(client, cfg.IndexPrefix, liveIndex, archiveIndex, logger), nil
+}
+
+func batchNodes(items []*Node, batchSize int) [][]*Node {
+	batches := make([][]*Node, 0, (len(items)+batchSize-1)/batchSize)
+
+	for batchSize < len(items) {
+		items, batches = items[batchSize:], append(batches, items[0:batchSize:batchSize])
+	}
+	batches = append(batches, items)
+
+	return batches
+
 }
