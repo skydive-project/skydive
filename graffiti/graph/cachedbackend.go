@@ -99,6 +99,17 @@ func (c *CachedBackend) GetNode(i Identifier, t Context) []*Node {
 	return c.persistent.GetNode(i, t)
 }
 
+// GetNodesFromIDs retrieve the list of nodes for the list of identifiers from the cache within a time slice
+func (c *CachedBackend) GetNodesFromIDs(i []Identifier, t Context) []*Node {
+	mode := c.cacheMode.Load()
+
+	if t.TimeSlice == nil || mode == CacheOnlyMode || c.persistent == nil {
+		return c.memory.GetNodesFromIDs(i, t)
+	}
+
+	return c.persistent.GetNodesFromIDs(i, t)
+}
+
 // GetNodeEdges retrieve a list of edges from a node within a time slice, matching metadata
 func (c *CachedBackend) GetNodeEdges(n *Node, t Context, m ElementMatcher) (edges []*Edge) {
 	mode := c.cacheMode.Load()
@@ -108,6 +119,17 @@ func (c *CachedBackend) GetNodeEdges(n *Node, t Context, m ElementMatcher) (edge
 	}
 
 	return c.persistent.GetNodeEdges(n, t, m)
+}
+
+// GetNodesEdges return the list of all edges for a list of nodes within time slice, matching metadata
+func (c *CachedBackend) GetNodesEdges(n []*Node, t Context, m ElementMatcher) (edges []*Edge) {
+	mode := c.cacheMode.Load()
+
+	if t.TimeSlice == nil || mode == CacheOnlyMode || c.persistent == nil {
+		return c.memory.GetNodesEdges(n, t, m)
+	}
+
+	return c.persistent.GetNodesEdges(n, t, m)
 }
 
 // EdgeAdded add an edge in the cache
