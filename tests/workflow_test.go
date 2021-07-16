@@ -387,7 +387,7 @@ func flowMatrixServer(t *testing.T, readyChan chan bool) net.Listener {
 
 		c, err := l.Accept()
 		if err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 
 		for {

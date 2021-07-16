@@ -7,15 +7,12 @@ require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/bennyscetbun/jsongo v0.0.0-20190110163710-9624bef8c57b // indirect
 	github.com/casbin/casbin v1.9.1
-	github.com/cenk/hub v0.0.0-20160527103212-11382a9960d3 // indirect
 	github.com/cenk/rpc2 v0.0.0-20160427170138-7ab76d2e88c7 // indirect
-	github.com/cenkalti/rpc2 v0.0.0-20180727162946-9642ea02d0aa // indirect
 	github.com/cnf/structhash v0.0.0-20201013183111-a92e111048cd
 	github.com/coreos/etcd v3.3.22+incompatible
 	github.com/davecgh/go-spew v1.1.1
 	github.com/digitalocean/go-libvirt v0.0.0-20190715144809-7b622097a793
 	github.com/docker/docker v1.13.1
-	github.com/ebay/go-ovn v0.0.0-20190726163905-ca0da4d10c52
 	github.com/flosch/pongo2 v0.0.0-20190707114632-bbf5a6c351f4 // indirect
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/gima/govalid v0.0.0-20150214172340-7b486932bea2
@@ -62,6 +59,7 @@ require (
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/olivere/elastic/v7 v7.0.21
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7 // indirect
+	github.com/ovn-org/libovsdb v0.4.0
 	github.com/pelletier/go-toml v1.7.0 // indirect
 	github.com/pierrec/xxHash v0.1.5
 	github.com/pkg/errors v0.9.1
