@@ -141,12 +141,10 @@ func newMonitor(ctx context.Context, probe *Probe, wg *sync.WaitGroup) (*Libvirt
 		return nil, fmt.Errorf("Could not register the device added event handler %s", err)
 	}
 
-	wg.Add(2)
+	wg.Add(1)
 
 	disconnected := make(chan error, 1)
 	conn.RegisterCloseCallback(func(conn *libvirtgo.Connect, reason libvirtgo.ConnectCloseReason) {
-		defer wg.Done()
-
 		monitor.Stop()
 		disconnected <- errors.New("disconnected from libvirt")
 	})
