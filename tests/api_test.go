@@ -151,7 +151,7 @@ func TestNodeAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	node := new(types.Node)
+	node := &types.Node{Node: new(graph.Node)}
 
 	if err := client.Create("node", node, nil); err == nil {
 		t.Errorf("Expected error when creating a node without ID")
@@ -186,11 +186,11 @@ func TestEdgeAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	node1 := new(types.Node)
+	node1 := &types.Node{Node: new(graph.Node)}
 	node1.ID = graph.GenID()
 	node1.Metadata = graph.Metadata{"Type": "mytype", "Name": "node1"}
 
-	node2 := new(types.Node)
+	node2 := &types.Node{Node: new(graph.Node)}
 	node2.ID = graph.GenID()
 	node2.Metadata = graph.Metadata{"Type": "mytype", "Name": "node2"}
 
@@ -202,7 +202,7 @@ func TestEdgeAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	edge := new(types.Edge)
+	edge := &types.Edge{Edge: new(graph.Edge)}
 
 	if err := client.Create("edge", edge, nil); err == nil {
 		t.Errorf("Expected error when creating a edge without ID")
@@ -560,10 +560,10 @@ func TestAPIPatchNodeTable(t *testing.T) {
 			}
 
 			// Add originalNode to the graph
-			originalNode := types.Node{}
-			expectedNode := types.Node{}
-			patchedNode := types.Node{}
-			getPatchedNode := types.Node{}
+			originalNode := types.Node{Node: new(graph.Node)}
+			expectedNode := types.Node{Node: new(graph.Node)}
+			patchedNode := types.Node{Node: new(graph.Node)}
+			getPatchedNode := types.Node{Node: new(graph.Node)}
 
 			if err := json.Unmarshal(test.originalNode, &originalNode); err != nil {
 				t.Fatalf("error unmarshal originalNode: %v", err)
@@ -630,7 +630,7 @@ func TestAPIPatchNodeNonExistingNode(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	patchedNode := types.Node{}
+	patchedNode := types.Node{Node: new(graph.Node)}
 
 	patch := []JSONPatch{
 		{
@@ -659,8 +659,8 @@ func TestAPIPatchNodeNameDeleteValidationError(t *testing.T) {
 	}
 
 	// Add originalNode to the graph
-	originalNode := types.Node{}
-	patchedNode := types.Node{}
+	originalNode := types.Node{Node: new(graph.Node)}
+	patchedNode := types.Node{Node: new(graph.Node)}
 
 	if err := json.Unmarshal([]byte(`{
                              "ID": "foo",
@@ -713,7 +713,7 @@ func TestAPIPatchNodeErroneousPatch(t *testing.T) {
 	}
 
 	// Add originalNode to the graph
-	patchedNode := types.Node{}
+	patchedNode := types.Node{Node: new(graph.Node)}
 
 	patch := []JSONPatch{
 		{
@@ -862,7 +862,7 @@ func TestAPIPatchEdgeTable(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			nodeA := types.Node{}
+			nodeA := types.Node{Node: new(graph.Node)}
 			if err := json.Unmarshal([]byte(`{
                              "ID": "nodeA",
                              "Metadata": {
@@ -888,7 +888,7 @@ func TestAPIPatchEdgeTable(t *testing.T) {
 				}
 			}()
 
-			nodeB := types.Node{}
+			nodeB := types.Node{Node: new(graph.Node)}
 			if err := json.Unmarshal([]byte(`{
                              "ID": "nodeB",
                              "Metadata": {
@@ -916,10 +916,10 @@ func TestAPIPatchEdgeTable(t *testing.T) {
 			}()
 
 			// Add originalNode to the graph
-			originalEdge := types.Edge{}
-			expectedEdge := types.Edge{}
-			patchedEdge := types.Edge{}
-			getPatchedEdge := types.Edge{}
+			originalEdge := types.Edge{Edge: new(graph.Edge)}
+			expectedEdge := types.Edge{Edge: new(graph.Edge)}
+			patchedEdge := types.Edge{Edge: new(graph.Edge)}
+			getPatchedEdge := types.Edge{Edge: new(graph.Edge)}
 
 			if err := json.Unmarshal(test.originalEdge, &originalEdge); err != nil {
 				t.Fatalf("error unmarshal originalEdge: %v", err)
@@ -981,7 +981,7 @@ func TestAPIPatchEdgeNonExistingEdge(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	patchedEdge := types.Edge{}
+	patchedEdge := types.Edge{Edge: new(graph.Edge)}
 
 	patch := []JSONPatch{
 		{
@@ -1010,7 +1010,7 @@ func TestAPIPatchEdgeErroneousPatch(t *testing.T) {
 	}
 
 	// Add originalEdge to the graph
-	patchedEdge := types.Edge{}
+	patchedEdge := types.Edge{Edge: new(graph.Edge)}
 
 	patch := []JSONPatch{
 		{

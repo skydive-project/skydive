@@ -69,9 +69,9 @@ var NodeCreate = &cobra.Command{
 		}
 
 		origin := graph.Origin(Host, CLIService)
-		node := types.Node(*graph.CreateNode(graph.GenID(), m, graph.Time(time.Now()), Host, origin))
+		node := &types.Node{graph.CreateNode(graph.GenID(), m, graph.Time(time.Now()), Host, origin)}
 
-		if err = CrudClient.Create("node", &node, nil); err != nil {
+		if err = CrudClient.Create("node", node, nil); err != nil {
 			exitOnError(err)
 		}
 

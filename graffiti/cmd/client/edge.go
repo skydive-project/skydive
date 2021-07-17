@@ -74,9 +74,9 @@ var EdgeCreate = &cobra.Command{
 		}
 
 		origin := graph.Origin(Host, CLIService)
-		edge := types.Edge(*graph.CreateEdge(graph.GenID(), &parentNode, &childNode, m, graph.Time(time.Now()), Host, origin))
+		edge := &types.Edge{Edge: graph.CreateEdge(graph.GenID(), &parentNode, &childNode, m, graph.Time(time.Now()), Host, origin)}
 
-		if err = CrudClient.Create("edge", &edge, nil); err != nil {
+		if err = CrudClient.Create("edge", edge, nil); err != nil {
 			exitOnError(err)
 		}
 
