@@ -62,6 +62,7 @@ do_create () {
         sudo firewall-cmd --reload
     fi
 
+    rm -rf $GOPATH/src/github.com/ovn-org
     mkdir -p $GOPATH/src/github.com/ovn-org/
     pushd $GOPATH/src/github.com/ovn-org/
       git clone $OVNK8S_REPO
@@ -84,7 +85,6 @@ do_create () {
 
 do_delete() {
     do_stop
-    go clean --modcache
     rm -rf ${WORKSPACE}/go/src/github.com/ovn-org/ovn-kubernetes
     docker rmi ovn-kube-f || true
     docker network rm kind || true
