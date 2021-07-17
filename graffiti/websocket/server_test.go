@@ -47,7 +47,7 @@ type fakeClientSubscriptionHandler struct {
 	connected int
 }
 
-func (f *fakeServerSubscriptionHandler) OnConnected(c Speaker) {
+func (f *fakeServerSubscriptionHandler) OnConnected(c Speaker) error {
 	f.Lock()
 	f.connected++
 	f.Unlock()
@@ -62,6 +62,8 @@ func (f *fakeServerSubscriptionHandler) OnConnected(c Speaker) {
 
 		return nil
 	}, retry.Delay(10*time.Millisecond))
+
+	return nil
 }
 
 func (f *fakeServerSubscriptionHandler) OnMessage(c Speaker, m Message) {
@@ -70,11 +72,11 @@ func (f *fakeServerSubscriptionHandler) OnMessage(c Speaker, m Message) {
 	f.Unlock()
 }
 
-func (f *fakeClientSubscriptionHandler) OnConnected(c Speaker) {
+func (f *fakeClientSubscriptionHandler) OnConnected(c Speaker) error {
 	f.Lock()
 	f.connected++
 	f.Unlock()
-	c.SendMessage(RawMessage{})
+	return c.SendMessage(RawMessage{})
 }
 
 func (f *fakeClientSubscriptionHandler) OnMessage(c Speaker, m Message) {

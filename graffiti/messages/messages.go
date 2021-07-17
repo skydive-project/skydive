@@ -92,11 +92,11 @@ func (m *PartiallyUpdatedRawMsg) Decode(decoders map[string]graph.MetadataDecode
 			if decoder, found := decoders[op.Key]; found {
 				value, err = decoder(op.Value)
 				if err != nil {
-					return nil, errors.Wrapf(err, "failed to decode partial operation for '%s'", op.Key)
+					return nil, fmt.Errorf("failed to decode partial operation for '%s': %w", op.Key, err)
 				}
 			} else {
 				if err = json.Unmarshal(op.Value, &value); err != nil {
-					return nil, errors.Wrapf(err, "failed to decode partial update of key 's'", op.Key)
+					return nil, fmt.Errorf("failed to decode partial update of key '%s': %w", op.Key, err)
 				}
 			}
 		case graph.PartiallyUpdatedDelOpType:
