@@ -1,4 +1,4 @@
-GEN_EASYJSON_FILES = $(patsubst %.go,%_easyjson.go,$(shell git grep //go:generate | grep "easyjson" | grep -v Makefile | cut -d ":" -f 1))
+GEN_EASYJSON_FILES = $(patsubst %.go,%_easyjson.go,$(shell git grep //go:generate | grep "easyjson" | grep -v ovnmetagen | grep -v Makefile | cut -d ":" -f 1))
 GEN_EASYJSON_FILES += flow/flow.pb_easyjson.go
 
 %_easyjson.go: %.go

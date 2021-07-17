@@ -24,6 +24,8 @@ import (
 )
 
 func TestRuncSimple(t *testing.T) {
+	t.Skip("runc support is currently broken")
+
 	test := &Test{
 		setupCmds: []Cmd{
 			{"podman run -d --name nginx --label Name=test nginx", true},

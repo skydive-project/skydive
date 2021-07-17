@@ -98,8 +98,12 @@ ifeq ($(WITH_PACKETINJECT), true)
   BUILD_TAGS+=packetinject
 endif
 
+ifeq ($(WITH_OVN), true)
+  BUILD_TAGS+=ovn
+endif
+
 ifeq ($(WITH_OVNK8S), true)
-  BUILD_TAGS+=k8s ovnk8s
+  BUILD_TAGS+=k8s ovn ovnk8s
 endif
 
 
@@ -120,6 +124,7 @@ include .mk/tests.mk
 include .mk/vppapi.mk
 include .mk/swagger.mk
 include .mk/stringer.mk
+include .mk/ovn.mk
 
 .DEFAULT_GOAL := all
 
@@ -162,13 +167,13 @@ ifneq ($(OFFLINE), true)
 endif
 
 .PHONY: genlocalfiles
-genlocalfiles: $(EXTRA_BUILD_TARGET) .proto .typescript .bindata .gendecoder .easyjson .vppbinapi
+genlocalfiles: $(EXTRA_BUILD_TARGET) .proto .typescript .bindata .ovnmodel .gendecoder .easyjson .vppbinapi
 
 .PHONY: touchlocalfiles
 touchlocalfiles: .proto.touch .typescript.touch .bindata.touch .gendecoder.touch .easyjson.touch
 
 .PHONY: clean
-clean: skydive.clean test.functionals.clean contribs.clean .ebpf.clean .easyjson.clean .proto.clean .gendecoder.clean .typescript.clean .vppbinapi.clean swagger.clean
+clean: skydive.clean test.functionals.clean contribs.clean .ebpf.clean .easyjson.clean .proto.clean .gendecoder.clean .ovnmodel.clean .typescript.clean .vppbinapi.clean swagger.clean
 	go clean -i >/dev/null 2>&1 || true
 
 .PHONY: docker
