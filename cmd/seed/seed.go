@@ -26,10 +26,10 @@ import (
 
 	"github.com/skydive-project/skydive/agent"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/graffiti/clients"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
-	"github.com/skydive-project/skydive/graffiti/seed"
 	"github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/probe"
 	tp "github.com/skydive-project/skydive/topology/probes"
@@ -104,7 +104,7 @@ var SeedCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		origin := graph.Origin(hostID, seed.Service)
+		origin := graph.Origin(hostID, clients.SeedService)
 		g := graph.NewGraph(hostID, memory, origin)
 
 		probeBundle = probe.NewBundle()
@@ -121,13 +121,12 @@ var SeedCmd = &cobra.Command{
 			TLSConfig:        tlsConfig,
 		}
 
-		seed, err := seed.NewSeed(g, seed.Service, agentAddr, subscriberFilter, *wsOpts, logging.GetLogger())
+		seed, err := clients.NewSeed(g, clients.SeedService, agentAddr, subscriberFilter, "", *wsOpts, logging.GetLogger())
 		if err != nil {
 			logging.GetLogger().Errorf("Failed to start seed: %s", err)
 			os.Exit(1)
 		}
 
-		seed.AddEventHandler(&seedHandler{g: g, probes: args})
 		seed.Start()
 
 		logging.GetLogger().Notice("Skydive seed started")

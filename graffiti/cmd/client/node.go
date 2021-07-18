@@ -55,7 +55,7 @@ var NodeCreate = &cobra.Command{
 	SilenceUsage: false,
 
 	Run: func(cmd *cobra.Command, args []string) {
-		m, err := DefToMetadata(nodeMetadata, graph.Metadata{})
+		m, err := graph.DefToMetadata(nodeMetadata, graph.Metadata{})
 		if err != nil {
 			exitOnError(err)
 		}

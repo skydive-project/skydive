@@ -15,24 +15,23 @@
  *
  */
 
-package seed
+package clients
 
 import (
 	"fmt"
 	"net/url"
 
 	"github.com/skydive-project/skydive/graffiti/endpoints"
-	"github.com/skydive-project/skydive/graffiti/forwarder"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/graffiti/hub"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/messages"
 	"github.com/skydive-project/skydive/graffiti/service"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 )
 
-// Service defines the seed service type
-const Service service.Type = "seed"
+// SeedService defines the seed service type
+const SeedService service.Type = "seed"
 
 // EventHandler is the interface to be implemented by event handler
 type EventHandler interface {
@@ -44,14 +43,11 @@ type EventHandler interface {
 // all its graph events to the agent. A filter can be used to
 // subscribe only to a part of the agent graph.
 type Seed struct {
+	*ws.Client
 	ws.DefaultSpeakerEventHandler
-	forwarder  *forwarder.Forwarder
-	clientPool *ws.StructClientPool
-	publisher  *ws.Client
-	subscriber *hub.Subscriber
+	subscriber *Subscriber
 	g          *graph.Graph
 	logger     logging.Logger
-	listeners  []EventHandler
 }
 
 // OnConnected websocket listener
@@ -60,68 +56,59 @@ func (s *Seed) OnConnected(c ws.Speaker) error {
 	return s.subscriber.SendMessage(messages.NewStructMessage(messages.SyncRequestMsgType, messages.SyncRequestMsg{}))
 }
 
-// AddEventHandler register an event handler
-func (s *Seed) AddEventHandler(handler EventHandler) {
-	s.listeners = append(s.listeners, handler)
-}
-
-// RemoveEventHandler unregister an event handler
-func (s *Seed) RemoveEventHandler(handler EventHandler) {
-	for i, el := range s.listeners {
-		if handler == el {
-			s.listeners = append(s.listeners[:i], s.listeners[i+1:]...)
-			break
-		}
-	}
-}
-
 // Start the seed
 func (s *Seed) Start() {
 	s.subscriber.Start()
-	s.publisher.Start()
+	s.Client.Start()
 }
 
 // Stop the seed
 func (s *Seed) Stop() {
-	s.publisher.Stop()
+	s.Client.Stop()
 	s.subscriber.Stop()
 }
 
 // NewSeed returns a new seed
-func NewSeed(g *graph.Graph, clientType service.Type, address, filter string, wsOpts ws.ClientOpts, logger logging.Logger) (*Seed, error) {
+func NewSeed(g *graph.Graph, clientType service.Type, address, subscribeFilter, publishFilter string, wsOpts ws.ClientOpts, logger logging.Logger) (*Seed, error) {
 	wsOpts.Headers.Add("X-Websocket-Namespace", messages.Namespace)
 
 	if len(address) == 0 {
 		address = "127.0.0.1:8081"
 	}
 
-	url, err := url.Parse("ws://" + address + "/ws/publisher")
+	url, err := url.Parse("ws://" + address + "/ws/pubsub")
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse the Address: %s, please check the configuration file", address)
 	}
 
-	pubClient := ws.NewClient(g.GetHost(), clientType, url, wsOpts)
-
-	pool := ws.NewStructClientPool("publisher", ws.PoolOpts{Logger: wsOpts.Logger})
-	if err := pool.AddClient(pubClient); err != nil {
-		return nil, fmt.Errorf("failed to add client: %s", err)
-	}
-
-	forwarder.NewForwarder(g, pool, logger)
-
-	if url, err = url.Parse("ws://" + address + "/ws/subscriber"); err != nil {
-		return nil, fmt.Errorf("unable to parse the Address: %s, please check the configuration file", address)
-	}
-
-	wsOpts.Headers.Add("X-Gremlin-Filter", filter)
+	wsOpts.Headers.Add("X-Gremlin-Filter", subscribeFilter)
 	wsOpts.Headers.Add("X-Update-Policy", endpoints.PartialUpdates)
 
-	subClient := ws.NewClient(g.GetHost(), clientType, url, wsOpts)
-	subscriber := hub.NewSubscriber(subClient, g, wsOpts.Logger)
+	pubsubClient := ws.NewClient(g.GetHost(), clientType, url, wsOpts)
+
+	pool := ws.NewStructClientPool("pubsub", ws.PoolOpts{Logger: wsOpts.Logger})
+	if err := pool.AddClient(pubsubClient); err != nil {
+		return nil, fmt.Errorf("failed to add client: %w", err)
+	}
+
+	var metadataFilter *filters.Filter
+	if publishFilter != "" {
+		publishMetadata := graph.Metadata{}
+		if _, err := graph.DefToMetadata(publishFilter, publishMetadata); err != nil {
+			return nil, fmt.Errorf("failed to create publish filter: %w", err)
+		}
+
+		if metadataFilter, err = publishMetadata.Filter(); err != nil {
+			return nil, fmt.Errorf("failed to create publish filter: %w", err)
+		}
+	}
+
+	NewForwarder(g, pool, metadataFilter, logger)
+	subscriber := NewSubscriber(pubsubClient, g, wsOpts.Logger)
 
 	s := &Seed{
+		Client:     pubsubClient,
 		g:          g,
-		publisher:  pubClient,
 		subscriber: subscriber,
 		logger:     wsOpts.Logger,
 	}

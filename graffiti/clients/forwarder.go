@@ -15,9 +15,10 @@
  *
  */
 
-package forwarder
+package clients
 
 import (
+	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/messages"
@@ -31,6 +32,7 @@ type Forwarder struct {
 	masterElection *ws.MasterElection
 	graph          *graph.Graph
 	logger         logging.Logger
+	nodeFilter     *filters.Filter
 }
 
 func (t *Forwarder) triggerResync() {
@@ -68,6 +70,10 @@ func (t *Forwarder) OnNewMaster(c ws.Speaker) {
 
 // OnNodeUpdated graph node updated event. Implements the EventListener interface.
 func (t *Forwarder) OnNodeUpdated(n *graph.Node, ops []graph.PartiallyUpdatedOp) {
+	if t.nodeFilter != nil && !t.nodeFilter.Eval(n) {
+		return
+	}
+
 	t.masterElection.SendMessageToMaster(
 		messages.NewStructMessage(
 			messages.NodePartiallyUpdatedMsgType,
@@ -83,6 +89,10 @@ func (t *Forwarder) OnNodeUpdated(n *graph.Node, ops []graph.PartiallyUpdatedOp)
 
 // OnNodeAdded graph node added event. Implements the EventListener interface.
 func (t *Forwarder) OnNodeAdded(n *graph.Node) {
+	if t.nodeFilter != nil && !t.nodeFilter.Eval(n) {
+		return
+	}
+
 	t.masterElection.SendMessageToMaster(
 		messages.NewStructMessage(messages.NodeAddedMsgType, n),
 	)
@@ -90,6 +100,10 @@ func (t *Forwarder) OnNodeAdded(n *graph.Node) {
 
 // OnNodeDeleted graph node deleted event. Implements the EventListener interface.
 func (t *Forwarder) OnNodeDeleted(n *graph.Node) {
+	if t.nodeFilter != nil && !t.nodeFilter.Eval(n) {
+		return
+	}
+
 	t.masterElection.SendMessageToMaster(
 		messages.NewStructMessage(messages.NodeDeletedMsgType, n),
 	)
@@ -97,6 +111,12 @@ func (t *Forwarder) OnNodeDeleted(n *graph.Node) {
 
 // OnEdgeUpdated graph edge updated event. Implements the EventListener interface.
 func (t *Forwarder) OnEdgeUpdated(e *graph.Edge, ops []graph.PartiallyUpdatedOp) {
+	if t.nodeFilter != nil &&
+		!t.nodeFilter.Eval(t.graph.GetEdge(e.Parent)) &&
+		!t.nodeFilter.Eval(t.graph.GetEdge(e.Child)) {
+		return
+	}
+
 	t.masterElection.SendMessageToMaster(
 		messages.NewStructMessage(
 			messages.EdgePartiallyUpdatedMsgType,
@@ -112,6 +132,12 @@ func (t *Forwarder) OnEdgeUpdated(e *graph.Edge, ops []graph.PartiallyUpdatedOp)
 
 // OnEdgeAdded graph edge added event. Implements the EventListener interface.
 func (t *Forwarder) OnEdgeAdded(e *graph.Edge) {
+	if t.nodeFilter != nil &&
+		!t.nodeFilter.Eval(t.graph.GetEdge(e.Parent)) &&
+		!t.nodeFilter.Eval(t.graph.GetEdge(e.Child)) {
+		return
+	}
+
 	t.masterElection.SendMessageToMaster(
 		messages.NewStructMessage(messages.EdgeAddedMsgType, e),
 	)
@@ -119,6 +145,12 @@ func (t *Forwarder) OnEdgeAdded(e *graph.Edge) {
 
 // OnEdgeDeleted graph edge deleted event. Implements the EventListener interface.
 func (t *Forwarder) OnEdgeDeleted(e *graph.Edge) {
+	if t.nodeFilter != nil &&
+		!t.nodeFilter.Eval(t.graph.GetEdge(e.Parent)) &&
+		!t.nodeFilter.Eval(t.graph.GetEdge(e.Child)) {
+		return
+	}
+
 	t.masterElection.SendMessageToMaster(
 		messages.NewStructMessage(messages.EdgeDeletedMsgType, e),
 	)
@@ -131,7 +163,7 @@ func (t *Forwarder) GetMaster() ws.Speaker {
 
 // NewForwarder returns a new Graph forwarder which forwards event of the given graph
 // to the given WebSocket JSON speakers.
-func NewForwarder(g *graph.Graph, pool ws.StructSpeakerPool, logger logging.Logger) *Forwarder {
+func NewForwarder(g *graph.Graph, pool ws.SpeakerPool, nodeFilter *filters.Filter, logger logging.Logger) *Forwarder {
 	if logger == nil {
 		logger = logging.GetLogger()
 	}
@@ -142,6 +174,7 @@ func NewForwarder(g *graph.Graph, pool ws.StructSpeakerPool, logger logging.Logg
 		masterElection: masterElection,
 		graph:          g,
 		logger:         logger,
+		nodeFilter:     nodeFilter,
 	}
 
 	masterElection.AddEventHandler(t)

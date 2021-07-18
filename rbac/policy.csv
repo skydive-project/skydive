@@ -17,6 +17,7 @@ p, admin, websocket, /ws/subscriber/flow, allow
 p, admin, websocket, /ws/publisher, allow
 p, admin, websocket, /ws/replication, allow
 p, admin, websocket, /ws/subscriber, allow
+p, admin, websocket, /ws/pubsub, allow
 p, admin, node, read, allow
 p, admin, node, write, allow
 p, admin, noderule, read, allow

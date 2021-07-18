@@ -270,7 +270,9 @@ func NewServerFromConfig() (*Server, error) {
 			return nil, fmt.Errorf("unable to get peers endpoints for cluster '%s': %w", clusterName, err)
 		}
 		peeringOpts := hub.PeeringOpts{
-			Endpoints: endpoints,
+			Endpoints:          endpoints,
+			PublisherFilter:    config.GetString(peerConfig + ".publish_filter"),
+			SubscriptionFilter: config.GetString(peerConfig + ".subscribe_filter"),
 		}
 
 		if wsClientOpts, err := config.NewWSClientOpts(
@@ -280,10 +282,6 @@ func NewServerFromConfig() (*Server, error) {
 			},
 		); err == nil {
 			peeringOpts.WebsocketClientOpts = *wsClientOpts
-		}
-
-		if subscriptionFilter := config.GetString(peerConfig + ".subscription_filter"); subscriptionFilter != "" {
-			peeringOpts.WebsocketClientOpts.Headers.Add("X-Gremlin-Filter", subscriptionFilter)
 		}
 
 		clusterPeers[clusterName] = peeringOpts

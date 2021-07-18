@@ -15,7 +15,7 @@
  *
  */
 
-package hub
+package clients
 
 import (
 	"net/http"

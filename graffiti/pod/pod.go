@@ -22,8 +22,8 @@ import (
 	"net/http"
 
 	api "github.com/skydive-project/skydive/graffiti/api/server"
+	"github.com/skydive-project/skydive/graffiti/clients"
 	"github.com/skydive-project/skydive/graffiti/endpoints"
-	"github.com/skydive-project/skydive/graffiti/forwarder"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
@@ -55,7 +55,7 @@ type Pod struct {
 	apiServer          *api.Server
 	subscriberWSServer *websocket.StructServer
 	publisherWSServer  *websocket.StructServer
-	forwarder          *forwarder.Forwarder
+	forwarder          *clients.Forwarder
 	clientPool         *websocket.StructClientPool
 	traversalParser    *traversal.GremlinTraversalParser
 }
@@ -120,7 +120,7 @@ func (p *Pod) SubscriberServer() *websocket.StructServer {
 }
 
 // Forwarder returns the pod topology forwarder
-func (p *Pod) Forwarder() *forwarder.Forwarder {
+func (p *Pod) Forwarder() *clients.Forwarder {
 	return p.forwarder
 }
 
@@ -184,7 +184,7 @@ func NewPod(id string, serviceType service.Type, listen string, podEndpoint stri
 	tr := traversal.NewGremlinTraversalParser()
 	endpoints.NewSubscriberEndpoint(subscriberWSServer, g, tr, opts.Logger)
 
-	forwarder := forwarder.NewForwarder(g, clientPool, logging.GetLogger())
+	forwarder := clients.NewForwarder(g, clientPool, nil, logging.GetLogger())
 
 	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", opts.APIAuthBackend))
 	endpoints.NewPublisherEndpoint(publisherWSServer, g, opts.GraphValidator, opts.Logger)

@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	etcd "github.com/coreos/etcd/client"
@@ -32,9 +31,11 @@ import (
 	"github.com/skydive-project/skydive/graffiti/alert"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/assets"
+	"github.com/skydive-project/skydive/graffiti/clients"
 	"github.com/skydive-project/skydive/graffiti/endpoints"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
+	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/http"
@@ -74,62 +75,8 @@ type Opts struct {
 type PeeringOpts struct {
 	Endpoints           []service.Address
 	WebsocketClientOpts websocket.ClientOpts
-}
-
-type clusterPeering struct {
-	currentPeer    int
-	clusterName    string
-	logger         logging.Logger
-	masterElection etcdclient.MasterElection
-	peers          *websocket.ClientPool
-	ctx            context.Context
-	cancel         context.CancelFunc
-	wg             sync.WaitGroup
-}
-
-func (p *clusterPeering) OnStartAsMaster() {
-	p.connect()
-}
-
-func (p *clusterPeering) OnSwitchToMaster() {
-	p.connect()
-}
-
-func (p *clusterPeering) OnStartAsSlave() {
-}
-
-func (p *clusterPeering) OnSwitchToSlave() {
-	p.cancel()
-	p.wg.Wait()
-}
-
-func (p *clusterPeering) connect() {
-	p.ctx, p.cancel = context.WithCancel(context.Background())
-	speakers := p.peers.GetSpeakers()
-	p.wg.Add(1)
-
-	go func() {
-		defer p.wg.Done()
-
-		for {
-			select {
-			case <-p.ctx.Done():
-				return
-			default:
-				speaker := speakers[p.currentPeer]
-				if err := speaker.Connect(p.ctx); err == nil && p.masterElection.IsMaster() {
-					p.logger.Infof("Peered to cluster %s", p.clusterName)
-					speaker.Run()
-				}
-
-				p.currentPeer = (p.currentPeer + 1) % len(speakers)
-				if p.currentPeer == 0 {
-					p.logger.Warningf("Failed to peer with cluster %s, retrying in 3 seconds", p.clusterName)
-					time.Sleep(3 * time.Second)
-				}
-			}
-		}
-	}()
+	PublisherFilter     string
+	SubscriptionFilter  string
 }
 
 // Hub describes a graph hub that accepts incoming connections
@@ -387,6 +334,11 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 	subscriberWSServer := websocket.NewStructServer(websocket.NewServer(httpServer, "/ws/subscriber", subOpts))
 	endpoints.NewSubscriberEndpoint(subscriberWSServer, g, tr, opts.Logger)
 
+	pubsubOpts := opts.WebsocketOpts
+	pubsubOpts.AuthBackend = opts.APIAuthBackend
+	pubsubWSServer := websocket.NewStructServer(websocket.NewServer(httpServer, "/ws/pubsub", pubsubOpts))
+	endpoints.NewPubSubEndpoint(pubsubWSServer, opts.GraphValidator, g, tr, opts.Logger)
+
 	apiServer, err := api.NewAPI(httpServer, opts.EtcdClient, opts.Version, id, serviceType, opts.APIAuthBackend, opts.APIValidator)
 	if err != nil {
 		return nil, err
@@ -410,21 +362,65 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 		opts.Logger.Debugf("Peering with cluster %s and endpoints %+v", remoteCluster, peeringOpts.Endpoints)
 
 		clientPool := websocket.NewClientPool("HubPeering-"+remoteCluster, websocket.PoolOpts{Logger: opts.WebsocketClientOpts.Logger})
-		for _, peer := range peeringOpts.Endpoints {
-			url, _ := http.MakeURL("ws", peer.Addr, peer.Port, "/ws/subscriber", peeringOpts.WebsocketClientOpts.TLSConfig != nil)
-			client := websocket.NewClient(id, serviceType, url, peeringOpts.WebsocketClientOpts)
-			subscriber := NewSubscriber(client, g, opts.Logger)
-			clientPool.AddClient(subscriber)
-		}
 
 		peering := &clusterPeering{
 			clusterName: remoteCluster,
 			peers:       clientPool,
 			logger:      opts.Logger,
 		}
-		hub.clusterPeerings[remoteCluster] = peering
 
 		peering.masterElection = hub.etcdClient.NewElection("/elections/hub-peering/" + opts.ClusterName + "/" + remoteCluster)
+
+		for _, peer := range peeringOpts.Endpoints {
+			var client websocket.Speaker
+			switch {
+			case peeringOpts.SubscriptionFilter != "" && peeringOpts.PublisherFilter != "":
+				var subscriptionFilter, publisherFilter string
+				if peeringOpts.SubscriptionFilter != "*" {
+					subscriptionFilter = peeringOpts.SubscriptionFilter
+				}
+				if peeringOpts.PublisherFilter != "*" {
+					publisherFilter = peeringOpts.PublisherFilter
+				}
+
+				client, err = clients.NewSeed(g, serviceType, fmt.Sprintf("%s:%d", peer.Addr, peer.Port), subscriptionFilter, publisherFilter, peeringOpts.WebsocketClientOpts, opts.Logger)
+				if err != nil {
+					return nil, err
+				}
+			case peeringOpts.SubscriptionFilter != "":
+				url, _ := http.MakeURL("ws", peer.Addr, peer.Port, "/ws/subscriber", peeringOpts.WebsocketClientOpts.TLSConfig != nil)
+				wsClient := websocket.NewClient(id, serviceType, url, peeringOpts.WebsocketClientOpts)
+				if peeringOpts.SubscriptionFilter != "*" {
+					peeringOpts.WebsocketClientOpts.Headers.Add("X-Gremlin-Filter", peeringOpts.SubscriptionFilter)
+				}
+				client = clients.NewSubscriber(wsClient, g, opts.Logger)
+			default:
+				url, _ := http.MakeURL("ws", peer.Addr, peer.Port, "/ws/publisher", peeringOpts.WebsocketClientOpts.TLSConfig != nil)
+				client = websocket.NewClient(id, serviceType, url, peeringOpts.WebsocketClientOpts)
+			}
+			clientPool.AddClient(client)
+		}
+
+		if peeringOpts.SubscriptionFilter == "" {
+			opts.Logger.Debugf("Creating new forwarder for peering")
+
+			var metadataFilter *filters.Filter
+			if peeringOpts.PublisherFilter != "*" {
+				publishMetadata := graph.Metadata{}
+				_, err := graph.DefToMetadata(peeringOpts.PublisherFilter, publishMetadata)
+				if err != nil {
+					return nil, err
+				}
+
+				if metadataFilter, err = publishMetadata.Filter(); err != nil {
+					return nil, fmt.Errorf("failed to create publish filter: %w", err)
+				}
+			}
+			clients.NewForwarder(g, clientPool, metadataFilter, opts.Logger)
+		}
+
+		hub.clusterPeerings[remoteCluster] = peering
+
 		peering.masterElection.AddEventListener(peering)
 	}
 
