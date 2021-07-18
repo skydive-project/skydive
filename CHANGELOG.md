@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.28.0] - 2021-07-19
+### Added
+
+- Introduce Web UI v2
+- Implement partial updates for the graph
+- Standardize container metadata between runtimes
+- Added new ovnk8s probe and new bindings generators for OVN databases
+- Add `Ascendants` and `Descendants` steps
+
+### Changed
+- Allow gremlin request on internal fields, such as @Revision, @Origin...
+
 ## [0.27.0] - 2020-12-07
 ### Added
 

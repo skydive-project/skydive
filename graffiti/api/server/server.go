@@ -22,7 +22,7 @@
 //     Schemes: http, https
 //     Host: localhost:8082
 //     BasePath: /api
-//     Version: 0.27.0
+//     Version: 0.28.0
 //     License: Apache http://opensource.org/licenses/Apache-2.0
 //     Contact: Skydive mailing list <skydive-dev@redhat.com>
 //
