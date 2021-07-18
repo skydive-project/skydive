@@ -28,7 +28,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/robertkrimen/otto"
 
 	"github.com/skydive-project/skydive/graffiti/assets"
@@ -122,11 +121,11 @@ func (r *Runtime) RunScript(path string) otto.Value {
 func (r *Runtime) runEmbededScript(path string) error {
 	content, err := r.assets.Asset(path)
 	if err != nil {
-		return errors.Wrapf(err, "failed to load %s asset: %s)", path)
+		return fmt.Errorf("failed to load %s asset: %w", path, err)
 	}
 
 	if _, err := r.Run(string(content)); err != nil {
-		return errors.Wrapf(err, "failed to run %s: %s", path)
+		return fmt.Errorf("failed to run %s: %w", path, err)
 	}
 
 	return nil

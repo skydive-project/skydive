@@ -27,12 +27,13 @@ import (
 	"strings"
 	"sync"
 
+	libvirt "github.com/digitalocean/go-libvirt"
+
+	"github.com/skydive-project/skydive/graffiti/filters"
+	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/probes"
-
-	libvirt "github.com/digitalocean/go-libvirt"
-	"github.com/skydive-project/skydive/graffiti/graph"
 	tp "github.com/skydive-project/skydive/topology/probes"
 )
 
@@ -411,8 +412,12 @@ func (probe *Probe) Do(ctx context.Context, wg *sync.WaitGroup) error {
 func NewProbe(ctx tp.Context, bundle *probe.Bundle) (probe.Handler, error) {
 	uri := ctx.Config.GetString("agent.topology.libvirt.url")
 	probe := &Probe{
-		Ctx:          ctx,
-		tunProcessor: graph.NewProcessor(ctx.Graph, ctx.Graph, graph.Metadata{"Type": "tun"}, "Name"),
+		Ctx: ctx,
+		tunProcessor: graph.NewProcessor(ctx.Graph, ctx.Graph, graph.NewElementFilter(
+			filters.NewOrFilter(
+				filters.NewTermStringFilter("Type", "tun"),
+				filters.NewTermStringFilter("Type", "tuntap"),
+			)), "Name"),
 		interfaceMap: make(map[string]*Interface),
 		uri:          uri,
 	}

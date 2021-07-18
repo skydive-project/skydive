@@ -1,5 +1,5 @@
 TEST_PATTERN?=
-UT_PACKAGES?=$(shell $(GO) list ./... | grep -Ev '/tests|/contrib')
+UT_PACKAGES?=$(shell $(GO) list $(SKYDIVE_GITHUB)/... | grep -Ev '/tests|/contrib')
 FUNC_TESTS_CMD:="grep -e 'func Test${TEST_PATTERN}' tests/*.go | perl -pe 's|.*func (.*?)\(.*|\1|g' | shuf"
 FUNC_TESTS:=$(shell sh -c $(FUNC_TESTS_CMD))
 VERBOSE_TESTS_FLAGS?=
