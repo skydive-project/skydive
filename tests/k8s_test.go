@@ -197,7 +197,7 @@ func testNodeCreationFromConfig(t *testing.T, mngr, ty string, name interface{},
 
 /* -- test creation of single resource -- */
 func TestK8sClusterNode(t *testing.T) {
-	testNodeCreation(t, nil, nil, k8s.Manager, "cluster", getClusterName())
+	testNodeCreation(t, nil, nil, k8s.Manager, "cluster", nil)
 }
 
 func TestK8sConfigMapNode(t *testing.T) {
