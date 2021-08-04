@@ -23,6 +23,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func newGraph(t *testing.T) *Graph {
@@ -508,6 +510,47 @@ func TestEvents(t *testing.T) {
 	if l.lastNodeDeleted.ID != n2.ID {
 		t.Error("Didn't get the notification")
 	}
+}
+
+func TestNodeCopy(t *testing.T) {
+	n := &Node{
+		graphElement: graphElement{
+			ID:        Identifier("id"),
+			Host:      "Host",
+			Origin:    "Origin",
+			CreatedAt: Time(time.Unix(100, 0)),
+			UpdatedAt: Time(time.Unix(200, 0)),
+			DeletedAt: Time(time.Unix(300, 0)),
+			Revision:  1,
+			Metadata:  Metadata{"foo": "bar"},
+		},
+	}
+
+	cn := n.Copy()
+	assert.Equal(t, n, cn)
+
+	// Check that modifications in the copied node do not affect the origin node
+	ok := cn.Metadata.SetField("new", "value")
+	assert.Truef(t, ok, "copied node set metadata")
+	assert.NotEqualf(t, n, cn, "Metadata")
+
+	cn.Host = "modified"
+	assert.NotEqualf(t, n, cn, "Host")
+
+	cn.Origin = "modified"
+	assert.NotEqualf(t, n, cn, "Origin")
+
+	cn.Revision = 99
+	assert.NotEqualf(t, n, cn, "Revision")
+
+	cn.CreatedAt = Time(time.Unix(100, 99))
+	assert.NotEqualf(t, n, cn, "CreatedAt")
+
+	cn.UpdatedAt = Time(time.Unix(200, 99))
+	assert.NotEqualf(t, n, cn, "UpdatedAt")
+
+	cn.DeletedAt = Time(time.Unix(300, 99))
+	assert.NotEqualf(t, n, cn, "DeletedAt")
 }
 
 type FakeRecursiveListener1 struct {
