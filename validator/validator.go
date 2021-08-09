@@ -180,6 +180,7 @@ func isGremlinExpr(v interface{}, param string) error {
 	tr.AddTraversalExtension(ge.NewNeighborsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
 	tr.AddTraversalExtension(ge.NewGroupTraversalExtension())
+	tr.AddTraversalExtension(ge.NewMergeTraversalExtension())
 
 	if _, err := tr.Parse(strings.NewReader(query)); err != nil {
 		return GremlinNotValid(err)

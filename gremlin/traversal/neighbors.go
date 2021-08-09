@@ -179,6 +179,10 @@ func (d *NeighborsGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) 
 
 // Reduce Neighbors step
 func (d *NeighborsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) (traversal.GremlinTraversalStep, error) {
+	// Merge step only needs the ids of nodes. Saving some queries.
+	if _, ok := next.(*MergeGremlinTraversalStep); ok {
+		d.nextStepOnlyIDs = true
+	}
 	return next, nil
 }
 
