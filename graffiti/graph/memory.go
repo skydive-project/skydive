@@ -138,6 +138,17 @@ func (m *MemoryBackend) GetNode(i Identifier, t Context) []*Node {
 	return nil
 }
 
+// GetNodesFromIDs from the graph backend
+func (m *MemoryBackend) GetNodesFromIDs(identifiersList []Identifier, t Context) []*Node {
+	nodes := []*Node{}
+	for _, i := range identifiersList {
+		if n, ok := m.nodes[i]; ok {
+			nodes = append(nodes, n.Node)
+		}
+	}
+	return nodes
+}
+
 // GetNodeEdges returns a list of edges of a node
 func (m *MemoryBackend) GetNodeEdges(n *Node, t Context, meta ElementMatcher) []*Edge {
 	edges := []*Edge{}

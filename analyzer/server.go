@@ -333,6 +333,7 @@ func NewServerFromConfig() (*Server, error) {
 	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewDescendantsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewAscendantsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewNeighborsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewNextHopTraversalExtension())
 	tr.AddTraversalExtension(ge.NewGroupTraversalExtension())
 
