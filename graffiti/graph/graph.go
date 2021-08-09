@@ -111,6 +111,7 @@ type Backend interface {
 	NodeAdded(n *Node) error
 	NodeDeleted(n *Node) error
 	GetNode(i Identifier, at Context) []*Node
+	GetNodesFromIDs(i []Identifier, at Context) []*Node
 	GetNodeEdges(n *Node, at Context, m ElementMatcher) []*Edge
 	GetNodesEdges(n []*Node, at Context, m ElementMatcher) []*Edge
 
@@ -1184,6 +1185,14 @@ func (g *Graph) GetNode(i Identifier) *Node {
 		return nodes[0]
 	}
 	return nil
+}
+
+// GetNodesFromIDs returns a list of nodes from a list of identifiers
+func (g *Graph) GetNodesFromIDs(i []Identifier) []*Node {
+	if len(i) == 0 {
+		return []*Node{}
+	}
+	return g.backend.GetNodesFromIDs(i, g.context)
 }
 
 // CreateNode returns a new node not bound to a graph
