@@ -96,6 +96,8 @@ func (p *ReplicatorPeer) OnConnected(c ws.Speaker) error {
 		return errAlreadyConnected
 	}
 
+	p.endpoint.logger.Infof("Connected to peer %s for replication", host)
+
 	p.endpoint.peerStates[host] = state
 	state.cnt++
 
@@ -371,6 +373,8 @@ func (t *ReplicationEndpoint) OnConnected(c ws.Speaker) error {
 		t.logger.Debugf("Disconnecting %s from %s as already connected", host, c.GetURL())
 		return errAlreadyConnected
 	}
+
+	t.logger.Infof("New replication incomer %s", host)
 
 	t.peerStates[host] = state
 	state.cnt++

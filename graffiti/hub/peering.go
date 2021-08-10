@@ -33,8 +33,11 @@ func (p *clusterPeering) OnStartAsSlave() {
 }
 
 func (p *clusterPeering) OnSwitchToSlave() {
-	p.cancel()
-	p.wg.Wait()
+	if p.cancel != nil {
+		p.cancel()
+		p.wg.Wait()
+		p.cancel = nil
+	}
 }
 
 func (p *clusterPeering) OnNewMaster(c websocket.Speaker) {

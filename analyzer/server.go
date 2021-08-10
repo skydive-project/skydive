@@ -261,7 +261,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	clusterPeers := make(map[string]hub.PeeringOpts)
+	clusterPeers := make(map[string]*hub.PeeringOpts)
 	peeredClusters := config.GetStringMapString("analyzer.peers")
 	for clusterName := range peeredClusters {
 		peerConfig := "analyzer.peers." + clusterName
@@ -269,7 +269,7 @@ func NewServerFromConfig() (*Server, error) {
 		if err != nil {
 			return nil, fmt.Errorf("unable to get peers endpoints for cluster '%s': %w", clusterName, err)
 		}
-		peeringOpts := hub.PeeringOpts{
+		peeringOpts := &hub.PeeringOpts{
 			Endpoints:          endpoints,
 			PublisherFilter:    config.GetString(peerConfig + ".publish_filter"),
 			SubscriptionFilter: config.GetString(peerConfig + ".subscribe_filter"),

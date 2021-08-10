@@ -64,7 +64,7 @@ type Opts struct {
 	APIAuthBackend      shttp.AuthenticationBackend
 	ClusterAuthBackend  shttp.AuthenticationBackend
 	ReplicationPeers    []service.Address
-	ClusterPeers        map[string]PeeringOpts
+	ClusterPeers        map[string]*PeeringOpts
 	TLSConfig           *tls.Config
 	EtcdClient          *etcdclient.Client
 	EtcdServerOpts      *etcdserver.EmbeddedServerOpts
@@ -342,12 +342,12 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 	podOpts.AuthBackend = opts.ClusterAuthBackend
 	podOpts.PongListeners = []websocket.PongListener{hub}
 	podWSServer := websocket.NewStructServer(websocket.NewServer(httpServer, podEndpoint, podOpts))
-	endpoints.NewPublisherEndpoint(podWSServer, g, nil, opts.Logger)
+	endpoints.NewPublisherEndpoint(podWSServer, g, nil, opts.Logger, nil)
 
 	pubOpts := opts.WebsocketOpts
 	pubOpts.AuthBackend = opts.APIAuthBackend
 	publisherWSServer := websocket.NewStructServer(websocket.NewServer(httpServer, "/ws/publisher", pubOpts))
-	endpoints.NewPublisherEndpoint(publisherWSServer, g, opts.GraphValidator, opts.Logger)
+	endpoints.NewPublisherEndpoint(publisherWSServer, g, opts.GraphValidator, opts.Logger, nil)
 
 	repOpts := opts.WebsocketOpts
 	repOpts.AuthBackend = opts.ClusterAuthBackend
@@ -419,7 +419,7 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 				if peeringOpts.SubscriptionFilter != "*" {
 					peeringOpts.WebsocketClientOpts.Headers.Add("X-Gremlin-Filter", peeringOpts.SubscriptionFilter)
 				}
-				client = clients.NewSubscriber(wsClient, g, opts.Logger)
+				client = clients.NewSubscriber(wsClient, g, opts.Logger, nil)
 			default:
 				url, _ := http.MakeURL("ws", peer.Addr, peer.Port, "/ws/publisher", peeringOpts.WebsocketClientOpts.TLSConfig != nil)
 				client = websocket.NewClient(id, serviceType, url, peeringOpts.WebsocketClientOpts)

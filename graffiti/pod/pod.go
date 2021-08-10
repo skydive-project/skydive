@@ -187,7 +187,7 @@ func NewPod(id string, serviceType service.Type, listen string, podEndpoint stri
 	forwarder := clients.NewForwarder(g, clientPool, nil, logging.GetLogger())
 
 	publisherWSServer := websocket.NewStructServer(newWSServer("/ws/publisher", opts.APIAuthBackend))
-	endpoints.NewPublisherEndpoint(publisherWSServer, g, opts.GraphValidator, opts.Logger)
+	endpoints.NewPublisherEndpoint(publisherWSServer, g, opts.GraphValidator, opts.Logger, nil)
 
 	api.RegisterTopologyAPI(httpServer, g, tr, opts.APIAuthBackend, opts.TopologyMarshallers)
 

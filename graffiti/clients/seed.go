@@ -103,8 +103,8 @@ func NewSeed(g *graph.Graph, clientType service.Type, address, subscribeFilter, 
 		}
 	}
 
-	NewForwarder(g, pool, metadataFilter, logger)
-	subscriber := NewSubscriber(pubsubClient, g, wsOpts.Logger)
+	forwarder := NewForwarder(g, pool, metadataFilter, logger)
+	subscriber := NewSubscriber(pubsubClient, g, wsOpts.Logger, forwarder)
 
 	s := &Seed{
 		Client:     pubsubClient,

@@ -18,6 +18,8 @@
 package clients
 
 import (
+	"sync/atomic"
+
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/logging"
@@ -33,6 +35,7 @@ type Forwarder struct {
 	graph          *graph.Graph
 	logger         logging.Logger
 	nodeFilter     *filters.Filter
+	inhibit        atomic.Value
 }
 
 func (t *Forwarder) triggerResync() {
@@ -70,7 +73,7 @@ func (t *Forwarder) OnNewMaster(c ws.Speaker) {
 
 // OnNodeUpdated graph node updated event. Implements the EventListener interface.
 func (t *Forwarder) OnNodeUpdated(n *graph.Node, ops []graph.PartiallyUpdatedOp) {
-	if t.nodeFilter != nil && !t.nodeFilter.Eval(n) {
+	if t.inhibit.Load() == true || (t.nodeFilter != nil && !t.nodeFilter.Eval(n)) {
 		return
 	}
 
@@ -89,7 +92,7 @@ func (t *Forwarder) OnNodeUpdated(n *graph.Node, ops []graph.PartiallyUpdatedOp)
 
 // OnNodeAdded graph node added event. Implements the EventListener interface.
 func (t *Forwarder) OnNodeAdded(n *graph.Node) {
-	if t.nodeFilter != nil && !t.nodeFilter.Eval(n) {
+	if t.inhibit.Load() == true || (t.nodeFilter != nil && !t.nodeFilter.Eval(n)) {
 		return
 	}
 
@@ -100,7 +103,7 @@ func (t *Forwarder) OnNodeAdded(n *graph.Node) {
 
 // OnNodeDeleted graph node deleted event. Implements the EventListener interface.
 func (t *Forwarder) OnNodeDeleted(n *graph.Node) {
-	if t.nodeFilter != nil && !t.nodeFilter.Eval(n) {
+	if t.inhibit.Load() == true || (t.nodeFilter != nil && !t.nodeFilter.Eval(n)) {
 		return
 	}
 
@@ -111,9 +114,9 @@ func (t *Forwarder) OnNodeDeleted(n *graph.Node) {
 
 // OnEdgeUpdated graph edge updated event. Implements the EventListener interface.
 func (t *Forwarder) OnEdgeUpdated(e *graph.Edge, ops []graph.PartiallyUpdatedOp) {
-	if t.nodeFilter != nil &&
+	if t.inhibit.Load() == true || (t.nodeFilter != nil &&
 		!t.nodeFilter.Eval(t.graph.GetEdge(e.Parent)) &&
-		!t.nodeFilter.Eval(t.graph.GetEdge(e.Child)) {
+		!t.nodeFilter.Eval(t.graph.GetEdge(e.Child))) {
 		return
 	}
 
@@ -132,9 +135,9 @@ func (t *Forwarder) OnEdgeUpdated(e *graph.Edge, ops []graph.PartiallyUpdatedOp)
 
 // OnEdgeAdded graph edge added event. Implements the EventListener interface.
 func (t *Forwarder) OnEdgeAdded(e *graph.Edge) {
-	if t.nodeFilter != nil &&
+	if t.inhibit.Load() == true || (t.nodeFilter != nil &&
 		!t.nodeFilter.Eval(t.graph.GetEdge(e.Parent)) &&
-		!t.nodeFilter.Eval(t.graph.GetEdge(e.Child)) {
+		!t.nodeFilter.Eval(t.graph.GetEdge(e.Child))) {
 		return
 	}
 
@@ -145,15 +148,20 @@ func (t *Forwarder) OnEdgeAdded(e *graph.Edge) {
 
 // OnEdgeDeleted graph edge deleted event. Implements the EventListener interface.
 func (t *Forwarder) OnEdgeDeleted(e *graph.Edge) {
-	if t.nodeFilter != nil &&
+	if t.inhibit.Load() == true || (t.nodeFilter != nil &&
 		!t.nodeFilter.Eval(t.graph.GetEdge(e.Parent)) &&
-		!t.nodeFilter.Eval(t.graph.GetEdge(e.Child)) {
+		!t.nodeFilter.Eval(t.graph.GetEdge(e.Child))) {
 		return
 	}
 
 	t.masterElection.SendMessageToMaster(
 		messages.NewStructMessage(messages.EdgeDeletedMsgType, e),
 	)
+}
+
+// Inhib node and edge forwarding
+func (t *Forwarder) Inhib(c ws.Speaker) {
+	t.inhibit.Store(c != nil)
 }
 
 // GetMaster returns the current analyzer the agent is sending its events to

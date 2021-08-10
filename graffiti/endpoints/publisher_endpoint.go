@@ -39,6 +39,11 @@ const (
 	DeleteOnDisconnect PersistencePolicy = "DeleteOnDisconnect"
 )
 
+// Inhibitor is used to disable graph events on a forwarder
+type Inhibitor interface {
+	Inhib(ws.Speaker)
+}
+
 // PublisherEndpoint serves the graph for external publishers, for instance
 // an external program that interacts with the Skydive graph.
 type PublisherEndpoint struct {
@@ -49,6 +54,7 @@ type PublisherEndpoint struct {
 	validator server.Validator
 	authors   map[string]bool
 	logger    logging.Logger
+	inhibitor Inhibitor
 }
 
 // OnDisconnected called when a publisher got disconnected.
@@ -117,6 +123,11 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 	t.Graph.Lock()
 	defer t.Graph.Unlock()
 
+	if t.inhibitor != nil {
+		t.inhibitor.Inhib(c)
+		defer t.inhibitor.Inhib(nil)
+	}
+
 	switch msgType {
 	case messages.SyncRequestMsgType:
 		reply := msg.Reply(t.Graph, messages.SyncReplyMsgType, http.StatusOK)
@@ -169,7 +180,7 @@ func (t *PublisherEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage)
 }
 
 // NewPublisherEndpoint returns a new server for external publishers.
-func NewPublisherEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, validator server.Validator, logger logging.Logger) *PublisherEndpoint {
+func NewPublisherEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, validator server.Validator, logger logging.Logger, inhibitor Inhibitor) *PublisherEndpoint {
 	if logger == nil {
 		logger = logging.GetLogger()
 	}
@@ -180,6 +191,7 @@ func NewPublisherEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, validator s
 		validator: validator,
 		authors:   make(map[string]bool),
 		logger:    logger,
+		inhibitor: inhibitor,
 	}
 
 	pool.AddEventHandler(t)

@@ -20,6 +20,7 @@ package clients
 import (
 	"net/http"
 
+	"github.com/skydive-project/skydive/graffiti/endpoints"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/messages"
@@ -28,8 +29,9 @@ import (
 
 type Subscriber struct {
 	*websocket.StructSpeaker
-	g      *graph.Graph
-	logger logging.Logger
+	g         *graph.Graph
+	logger    logging.Logger
+	inhibitor endpoints.Inhibitor
 }
 
 // OnStructMessage callback
@@ -52,6 +54,11 @@ func (s *Subscriber) OnStructMessage(c websocket.Speaker, msg *websocket.StructM
 
 	s.g.Lock()
 	defer s.g.Unlock()
+
+	if s.inhibitor != nil {
+		s.inhibitor.Inhib(c)
+		defer s.inhibitor.Inhib(nil)
+	}
 
 	switch msgType {
 	case messages.SyncMsgType, messages.SyncReplyMsgType:
@@ -94,14 +101,14 @@ func (s *Subscriber) OnStructMessage(c websocket.Speaker, msg *websocket.StructM
 	}
 }
 
-func NewSubscriber(client *websocket.Client, g *graph.Graph, logger logging.Logger) *Subscriber {
+func NewSubscriber(client *websocket.Client, g *graph.Graph, logger logging.Logger, inibitor endpoints.Inhibitor) *Subscriber {
 	structSpeaker := client.UpgradeToStructSpeaker()
 	subscriber := &Subscriber{
 		StructSpeaker: structSpeaker,
 		g:             g,
 		logger:        logger,
+		inhibitor:     inibitor,
 	}
-	structSpeaker.AddEventHandler(subscriber)
 	subscriber.AddStructMessageHandler(subscriber, []string{messages.Namespace})
 	return subscriber
 }

@@ -34,8 +34,9 @@ type PubSubEndpoint struct {
 
 // NewPubSubEndpoint returns a new PubSub endpoint
 func NewPubSubEndpoint(pool ws.StructSpeakerPool, validator server.Validator, g *graph.Graph, tr *traversal.GremlinTraversalParser, logger logging.Logger) *PubSubEndpoint {
+	subscriberEndpoint := NewSubscriberEndpoint(pool, g, tr, logger)
 	return &PubSubEndpoint{
-		publisherEndpoint:  NewPublisherEndpoint(pool, g, validator, logger),
-		subscriberEndpoint: NewSubscriberEndpoint(pool, g, tr, logger),
+		publisherEndpoint:  NewPublisherEndpoint(pool, g, validator, logger, subscriberEndpoint),
+		subscriberEndpoint: subscriberEndpoint,
 	}
 }
