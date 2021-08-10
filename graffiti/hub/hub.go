@@ -113,13 +113,20 @@ type PeersStatus struct {
 	Outgoers map[string]websocket.ConnStatus
 }
 
+// PeeredClustersStatus describes the state of peering with an other cluster
+type PeeredClustersStatus struct {
+	Election ElectionStatus
+	Outgoers []websocket.ConnStatus
+}
+
 // Status describes the status of a hub
 type Status struct {
-	Alerts      ElectionStatus
-	Pods        map[string]websocket.ConnStatus
-	Peers       PeersStatus
-	Publishers  map[string]websocket.ConnStatus
-	Subscribers map[string]websocket.ConnStatus
+	Alerts         ElectionStatus
+	Pods           map[string]websocket.ConnStatus
+	Peers          PeersStatus
+	Publishers     map[string]websocket.ConnStatus
+	Subscribers    map[string]websocket.ConnStatus
+	PeeredClusters map[string]PeeredClustersStatus
 }
 
 // GetStatus returns the status of a hub
@@ -137,12 +144,27 @@ func (h *Hub) GetStatus() interface{} {
 		peersStatus.Outgoers[speaker.GetRemoteHost()] = speaker.GetStatus()
 	}
 
+	peeredClusters := make(map[string]PeeredClustersStatus)
+	for cluster, peering := range h.clusterPeerings {
+		outgoers := make([]websocket.ConnStatus, len(peering.peers.GetSpeakers()))
+		for i, speaker := range peering.peers.GetSpeakers() {
+			outgoers[i] = speaker.GetStatus()
+		}
+		peeredClusters[cluster] = PeeredClustersStatus{
+			Election: ElectionStatus{
+				IsMaster: peering.masterElection.IsMaster(),
+			},
+			Outgoers: outgoers,
+		}
+	}
+
 	return &Status{
-		Pods:        h.podWSServer.GetStatus(),
-		Peers:       peersStatus,
-		Publishers:  h.publisherWSServer.GetStatus(),
-		Subscribers: h.subscriberWSServer.GetStatus(),
-		Alerts:      ElectionStatus{IsMaster: h.alertServer.IsMaster()},
+		Pods:           h.podWSServer.GetStatus(),
+		Peers:          peersStatus,
+		Publishers:     h.publisherWSServer.GetStatus(),
+		Subscribers:    h.subscriberWSServer.GetStatus(),
+		Alerts:         ElectionStatus{IsMaster: h.alertServer.IsMaster()},
+		PeeredClusters: peeredClusters,
 	}
 }
 
