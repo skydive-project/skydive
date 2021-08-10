@@ -293,6 +293,10 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 		opts.Logger = logging.GetLogger()
 	}
 
+	if opts.WebsocketClientOpts.Logger == nil {
+		opts.WebsocketClientOpts.Logger = opts.Logger
+	}
+
 	hub := &Hub{
 		Graph:           g,
 		cached:          cached,

@@ -39,8 +39,9 @@ import (
 )
 
 const (
-	maxMessageSize = 0
-	writeWait      = 10 * time.Second
+	maxMessageSize   = 0
+	writeWait        = 10 * time.Second
+	defaultQueueSize = 10000
 )
 
 // ConnState describes the connection state
@@ -188,6 +189,7 @@ type ClientOpts struct {
 func NewClientOpts() ClientOpts {
 	return ClientOpts{
 		Headers: http.Header{},
+		Logger:  logging.GetLogger(),
 	}
 }
 
@@ -477,6 +479,10 @@ func (c *Conn) StopAndWait() {
 func newConn(host string, clientType service.Type, clientProtocol Protocol, url *url.URL, headers http.Header, opts ClientOpts) *Conn {
 	if headers == nil {
 		headers = http.Header{}
+	}
+
+	if opts.QueueSize == 0 {
+		opts.QueueSize = defaultQueueSize
 	}
 
 	port, _ := strconv.Atoi(url.Port())
