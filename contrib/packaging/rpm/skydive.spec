@@ -34,7 +34,7 @@
 %endif
 %endif
 
-%{!?fullver:%global fullver 0.27.0}
+%{!?fullver:%global fullver 0.28.0}
 %define version %{extractversion %{fullver}}
 %{!?tag:%global tag 1}
 
@@ -248,6 +248,9 @@ fi
 %attr(0644,root,root) %{_mandir}/man8/skydive-selinux.8.*
 
 %changelog
+* Mon Jul 19 2021 Sylvain Baubeau <lebauce@gmail.com> - 0.28.0-1
+- Bump to version 0.27.0
+
 * Mon Dec 7 2020 Sylvain Baubeau <lebauce@gmail.com> - 0.27.0-1
 - Bump to version 0.27.0
 
