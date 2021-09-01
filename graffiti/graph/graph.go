@@ -28,10 +28,11 @@ import (
 
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/getter"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 const (
-	maxEvents = 50
+	maxEvents = 500
 )
 
 type graphEventType int
@@ -183,6 +184,13 @@ var (
 type DefaultGraphListener struct {
 }
 
+// String return the name of a graphEventType
+func (g graphEventType) String() string {
+	return []string{
+		"", "NodeUpdated", "NodeAdded", "NodeDeleted", "EdgeUpdated", "EdgeAdded", "EdgeDeleted",
+	}[g]
+}
+
 // OnNodeUpdated event
 func (c *DefaultGraphListener) OnNodeUpdated(n *Node, ops []PartiallyUpdatedOp) {
 }
@@ -287,7 +295,11 @@ func (g *EventHandler) NotifyEvent(kind graphEventType, element interface{}, ops
 	// we can avoid loop by not triggering event for the current listener.
 	ge := graphEvent{kind: kind, element: element, ops: ops}
 	ge.listener = g.currentEventListener
-	g.eventChan <- ge
+	select {
+	case g.eventChan <- ge:
+	default:
+		logging.GetLogger().Errorf("maxEvents reached. Ignoring event '%+v' for element '%+v'", kind, element)
+	}
 
 	// already a consumer no need to run another consumer
 	if g.eventConsumed {
