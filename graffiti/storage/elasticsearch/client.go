@@ -29,6 +29,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	version "github.com/hashicorp/go-version"
 	uuid "github.com/nu7hatch/gouuid"
 	elastic "github.com/olivere/elastic/v7"
@@ -532,7 +533,16 @@ func (c *Client) Search(query elastic.Query, opts filters.SearchQuery, indices .
 		})
 	}
 
-	return searchQuery.Do(context.Background())
+	res, err := searchQuery.Do(context.Background())
+	// Detect partial failures (only some shards failing)
+	if err == nil && res.Shards.Failed != 0 {
+		var shardErrors error
+		for _, f := range res.Shards.Failures {
+			shardErrors = multierror.Append(shardErrors, fmt.Errorf("node %s, index %s, shard %d: %v", f.Node, f.Index, f.Shard, f.Reason))
+		}
+		return nil, shardErrors
+	}
+	return res, err
 }
 
 // Start the Elasticsearch client background jobs

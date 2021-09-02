@@ -23,6 +23,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
+	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/go-version v1.2.1
 	github.com/mailru/easyjson v0.7.6
 	github.com/mitchellh/go-homedir v1.1.0
