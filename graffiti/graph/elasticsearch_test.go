@@ -40,6 +40,10 @@ type fakeESClient struct {
 	searchResult elastic.SearchResult
 }
 
+func (f *fakeESClient) Scroll(hits chan<- *elastic.SearchHit, query elastic.Query, pagination filters.SearchQuery, indices ...string) error {
+	return nil
+}
+
 func (f *fakeESClient) resetIndices() {
 	f.indices = make(map[string]*fakeESIndex)
 }
