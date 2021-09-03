@@ -31,12 +31,13 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
+	conn "github.com/networkservicemesh/networkservicemesh/controlplane/api/connection"
+	"github.com/networkservicemesh/networkservicemesh/controlplane/api/connection/mechanisms/common"
 	cc "github.com/networkservicemesh/networkservicemesh/controlplane/api/crossconnect"
-	localconn "github.com/networkservicemesh/networkservicemesh/controlplane/api/local/connection"
-	remoteconn "github.com/networkservicemesh/networkservicemesh/controlplane/api/remote/connection"
 	v1 "github.com/networkservicemesh/networkservicemesh/k8s/pkg/apis/networkservice/v1alpha1"
 	"github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/clientset/versioned"
 	"github.com/networkservicemesh/networkservicemesh/k8s/pkg/networkservice/informers/externalversions"
+	"github.com/networkservicemesh/networkservicemesh/pkg/tools"
 	"google.golang.org/grpc"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
@@ -145,7 +146,7 @@ func (p *Probe) Stop() {
 }
 
 func (p *Probe) getNSMgrClient(url string) (cc.MonitorCrossConnectClient, error) {
-	conn, err := dial(context.Background(), "tcp", url)
+	conn, err := tools.DialTCP(url)
 	if err != nil {
 		logging.GetLogger().Errorf("NSM: unable to create grpc dialer, error: %+v", err)
 		return nil, err
@@ -194,14 +195,14 @@ func (p *Probe) monitorCrossConnects(url string) {
 			switch {
 			case lSrc != nil && rSrc == nil && lDst != nil && rDst == nil:
 				logging.GetLogger().Debugf("NSM: Got local to local CrossConnect:  %s", cconnStr)
-				if !isDelMsg && (lSrc.GetState() == localconn.State_DOWN || lDst.GetState() == localconn.State_DOWN) {
+				if !isDelMsg && (lSrc.GetState() == conn.State_DOWN || lDst.GetState() == conn.State_DOWN) {
 					logging.GetLogger().Debugf("NSM: one connection of the cross connect %s is in DOWN state, don't affect the skydive connections", cconn.GetId())
 					continue
 				}
 				p.onConnLocalLocal(event.GetType(), cconn, url)
 			case lSrc == nil && rSrc != nil && lDst != nil && rDst == nil:
 				logging.GetLogger().Debugf("NSM: Got remote to local CrossConnect: %s", cconnStr)
-				if !isDelMsg && (rSrc.GetState() == remoteconn.State_DOWN || lDst.GetState() == localconn.State_DOWN) {
+				if !isDelMsg && (rSrc.GetState() == conn.State_DOWN || lDst.GetState() == conn.State_DOWN) {
 					logging.GetLogger().Debugf("NSM: one connection of the cross connect %s is in DOWN state, don't affect the skydive connections", cconn.GetId())
 					continue
 				}
@@ -212,7 +213,7 @@ func (p *Probe) monitorCrossConnects(url string) {
 				p.onConnRemoteLocal(event.GetType(), cconn, url)
 			case lSrc != nil && rSrc == nil && lDst == nil && rDst != nil:
 				logging.GetLogger().Debugf("NSM: Got local to remote CrossConnect:  %s", cconnStr)
-				if !isDelMsg && (lSrc.GetState() == localconn.State_DOWN || rDst.GetState() == remoteconn.State_DOWN) {
+				if !isDelMsg && (lSrc.GetState() == conn.State_DOWN || rDst.GetState() == conn.State_DOWN) {
 					logging.GetLogger().Debugf("NSM: one connection of the cross connect %s is in DOWN state, don't affect the skydive connections", cconn.GetId())
 					continue
 				}
@@ -242,8 +243,8 @@ func (p *Probe) onConnLocalLocal(t cc.CrossConnectEventType, xconn *cc.CrossConn
 				},
 				baseConnectionPair: baseConnectionPair{
 					payload: xconn.GetPayload(),
-					src:     xconn.GetLocalSource(),
-					dst:     xconn.GetLocalDestination(),
+					src:     xconn.GetSource(),
+					dst:     xconn.GetDestination(),
 				},
 			}
 			p.addConnection(l)
@@ -419,7 +420,7 @@ func (p *Probe) getConnection(url string, id string) (connection, int) {
 	return nil, 0
 }
 
-func (p *Probe) getConnectionWithRemote(remote *remoteconn.Connection) (*remoteConnectionPair, int) {
+func (p *Probe) getConnectionWithRemote(remote *conn.Connection) (*remoteConnectionPair, int) {
 	// the probe has to be locked before calling this function
 
 	// since the remote crossconnect id is issued by the responder to the connection request,
@@ -466,8 +467,8 @@ func dial(ctx context.Context, network string, address string) (*grpc.ClientConn
 }
 
 //TODO: consider moving this function to nsm helper functions in the local/connection package
-func getLocalInode(conn *localconn.Connection) (int64, error) {
-	inodeStr, ok := conn.Mechanism.Parameters[localconn.NetNsInodeKey]
+func getLocalInode(c *conn.Connection) (int64, error) {
+	inodeStr, ok := c.Mechanism.Parameters[common.NetNsInodeKey]
 	if !ok {
 		err := errors.New("NSM: no inodes in the connection parameters")
 		logging.GetLogger().Error(err)

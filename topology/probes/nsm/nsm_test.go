@@ -24,52 +24,50 @@ import (
 	"strconv"
 	"testing"
 
+	conn "github.com/networkservicemesh/networkservicemesh/controlplane/api/connection"
+	mcommon "github.com/networkservicemesh/networkservicemesh/controlplane/api/connection/mechanisms/common"
+	"github.com/networkservicemesh/networkservicemesh/controlplane/api/connection/mechanisms/memif"
 	cc "github.com/networkservicemesh/networkservicemesh/controlplane/api/crossconnect"
-	localconn "github.com/networkservicemesh/networkservicemesh/controlplane/api/local/connection"
-	remoteconn "github.com/networkservicemesh/networkservicemesh/controlplane/api/remote/connection"
+	"github.com/networkservicemesh/networkservicemesh/controlplane/pkg/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
 const ns = "ns_test"
 
-func createLocalConn() *localconn.Connection {
-	mech := &localconn.Mechanism{
-		Type:       localconn.MechanismType_DEFAULT_INTERFACE,
+func createLocalConn() *conn.Connection {
+	mech := &conn.Mechanism{
+		Type:       memif.MECHANISM,
 		Parameters: make(map[string]string),
 	}
 
-	c := &localconn.Connection{
+	c := &conn.Connection{
 		NetworkService: ns,
 		Mechanism:      mech,
 		Labels:         make(map[string]string),
+		Path:           common.Strings2Path("local"),
 	}
 	return c
 }
 
-func createLocalSource() *cc.CrossConnect_LocalSource {
+func createLocalSource() *conn.Connection {
 	c := createLocalConn()
 	c.Id = "id_src_conn"
-
-	localSrc := &cc.CrossConnect_LocalSource{LocalSource: c}
-	return localSrc
+	return c
 }
 
-func createLocalDest() *cc.CrossConnect_LocalDestination {
+func createLocalDest() *conn.Connection {
 	c := createLocalConn()
 	c.Id = "id_src_conn"
-
-	localDst := &cc.CrossConnect_LocalDestination{LocalDestination: c}
-	return localDst
+	return c
 }
 
 func createConnectionLocalOnly(inodeSrc string, inodeDst string) *cc.CrossConnect {
-
 	localSrc := createLocalSource()
-	localSrc.LocalSource.GetMechanism().Parameters[localconn.NetNsInodeKey] = inodeSrc
+	localSrc.GetMechanism().Parameters[mcommon.NetNsInodeKey] = inodeSrc
 
 	localDst := createLocalDest()
-	localDst.LocalDestination.GetMechanism().Parameters[localconn.NetNsInodeKey] = inodeDst
+	localDst.GetMechanism().Parameters[mcommon.NetNsInodeKey] = inodeDst
 
 	cconn := &cc.CrossConnect{
 		Id:          "CrossConnectID",
@@ -82,32 +80,29 @@ func createConnectionLocalOnly(inodeSrc string, inodeDst string) *cc.CrossConnec
 
 func createConnectionWithRemote(inodeSrc string, inodeDst string) (*cc.CrossConnect, *cc.CrossConnect) {
 	localSrc := createLocalSource()
-	localSrc.LocalSource.GetMechanism().Parameters[localconn.NetNsInodeKey] = inodeSrc
+	localSrc.GetMechanism().Parameters[mcommon.NetNsInodeKey] = inodeSrc
 
 	localDst := createLocalDest()
-	localDst.LocalDestination.GetMechanism().Parameters[localconn.NetNsInodeKey] = inodeDst
+	localDst.GetMechanism().Parameters[mcommon.NetNsInodeKey] = inodeDst
 
-	remote := &remoteconn.Connection{
+	remote := &conn.Connection{
 		Id:             strconv.Itoa(rand.Int()),
 		NetworkService: ns,
 		Labels:         make(map[string]string),
+		Path:           common.Strings2Path("remote", "nsm"),
 	}
-
-	remoteDst := &cc.CrossConnect_RemoteDestination{RemoteDestination: remote}
 
 	cconn1 := &cc.CrossConnect{
 		Id:          strconv.Itoa(rand.Int()),
 		Payload:     "CrossConnectPayload",
 		Source:      localSrc,
-		Destination: remoteDst,
+		Destination: remote,
 	}
-
-	remoteSrc := &cc.CrossConnect_RemoteSource{RemoteSource: remote}
 
 	cconn2 := &cc.CrossConnect{
 		Id:          strconv.Itoa(rand.Int()),
 		Payload:     "CrossConnectPayload",
-		Source:      remoteSrc,
+		Source:      remote,
 		Destination: localDst,
 	}
 
