@@ -24,7 +24,7 @@ import (
 	"github.com/skydive-project/skydive/probe"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -32,15 +32,15 @@ type ingressHandler struct {
 }
 
 func (h *ingressHandler) Dump(obj interface{}) string {
-	ingress := obj.(*v1beta1.Ingress)
+	ingress := obj.(*networkingv1.Ingress)
 	return fmt.Sprintf("ingress{Namespace: %s, Name: %s}", ingress.Namespace, ingress.Name)
 }
 
 func (h *ingressHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
-	ingress := obj.(*v1beta1.Ingress)
+	ingress := obj.(*networkingv1.Ingress)
 
 	m := NewMetadataFields(&ingress.ObjectMeta)
-	m.SetFieldAndNormalize("Backend", ingress.Spec.Backend)
+	m.SetFieldAndNormalize("DefaultBackend", ingress.Spec.DefaultBackend)
 	m.SetFieldAndNormalize("TLS", ingress.Spec.TLS)
 	m.SetFieldAndNormalize("Rules", ingress.Spec.Rules)
 
@@ -48,25 +48,25 @@ func (h *ingressHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata)
 }
 
 func newIngressProbe(client interface{}, g *graph.Graph) Subprobe {
-	return NewResourceCache(client.(*kubernetes.Clientset).ExtensionsV1beta1().RESTClient(), &v1beta1.Ingress{}, "ingresses", g, &ingressHandler{})
+	return NewResourceCache(client.(*kubernetes.Clientset).NetworkingV1().RESTClient(), &networkingv1.Ingress{}, "ingresses", g, &ingressHandler{})
 }
 
 func ingressServiceAreLinked(a, b interface{}) bool {
-	ingress := a.(*v1beta1.Ingress)
+	ingress := a.(*networkingv1.Ingress)
 	service := b.(*v1.Service)
 
 	if !MatchNamespace(ingress, service) {
 		return false
 	}
 
-	if ingress.Spec.Backend != nil && ingress.Spec.Backend.ServiceName == service.Name {
+	if ingress.Spec.DefaultBackend != nil && ingress.Spec.DefaultBackend.Service.Name == service.Name {
 		return true
 	}
 
 	for _, rule := range ingress.Spec.Rules {
 		if rule.HTTP != nil {
 			for _, path := range rule.HTTP.Paths {
-				if path.Backend.ServiceName == service.Name {
+				if path.Backend.Service.Name == service.Name {
 					return true
 				}
 			}

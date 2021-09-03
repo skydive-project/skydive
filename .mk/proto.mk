@@ -1,6 +1,6 @@
 define PROTOC_GEN
 go get github.com/gogo/protobuf/protoc-gen-gogofaster@v1.3.2
-go get github.com/golang/protobuf/protoc-gen-go@v1.3.2
+go get github.com/golang/protobuf/protoc-gen-go
 protoc -I. -Iflow/layers -I$${GOPATH}/pkg/mod/github.com/gogo/protobuf@v1.3.2 --plugin=$${GOPATH}/bin/protoc-gen-gogofaster --gogofaster_out $$GOPATH/src $1
 endef
 
