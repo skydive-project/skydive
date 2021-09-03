@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	etcd "github.com/coreos/etcd/client"
+	etcd "go.etcd.io/etcd/client/v2"
 
 	"github.com/skydive-project/skydive/graffiti/alert"
 	api "github.com/skydive-project/skydive/graffiti/api/server"

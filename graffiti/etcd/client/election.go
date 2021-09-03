@@ -21,8 +21,8 @@ import (
 	"sync"
 	"time"
 
-	etcd "github.com/coreos/etcd/client"
 	"github.com/safchain/insanelock"
+	etcd "go.etcd.io/etcd/client/v2"
 	"golang.org/x/net/context"
 
 	"github.com/skydive-project/skydive/graffiti/logging"
@@ -212,7 +212,7 @@ func NewMasterElector(etcdClient *Client, path string) *MasterElector {
 	return &MasterElector{
 		EtcdKeyAPI: etcdClient.KeysAPI,
 		HolderID:   etcdClient.id,
-		path:      	path,
+		path:       path,
 		master:     false,
 		logger:     etcdClient.logger,
 	}

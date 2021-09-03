@@ -26,8 +26,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	etcd "github.com/coreos/etcd/client"
 	uuid "github.com/nu7hatch/gouuid"
+	etcd "go.etcd.io/etcd/client/v2"
 
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/logging"
