@@ -77,6 +77,7 @@ require (
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
+	github.com/stretchr/testify v1.7.0
 	github.com/t-yuki/gocover-cobertura v0.0.0-20180217150009-aaee18c8195c
 	github.com/tebeka/go2xunit v1.4.10
 	github.com/tebeka/selenium v0.0.0-20170314201507-657e45ec600f

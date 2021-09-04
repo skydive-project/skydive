@@ -1415,14 +1415,12 @@ func (tv *GraphTraversalV) SubGraph(ctx StepContext, s ...interface{}) *GraphTra
 
 	// then insert edges, ignore edge insert error since one of the linked node couldn't be part
 	// of the SubGraph
-	for _, n := range tv.nodes {
-		edges := tv.GraphTraversal.Graph.GetNodeEdges(n, nil)
-		for _, e := range edges {
-			switch err := memory.EdgeAdded(e); err {
-			case nil, graph.ErrParentNotFound, graph.ErrChildNotFound, graph.ErrEdgeConflict:
-			default:
-				return &GraphTraversal{error: fmt.Errorf("Error while adding edge to SubGraph: %s", err)}
-			}
+	edges := tv.GraphTraversal.Graph.GetNodesEdges(tv.nodes, nil)
+	for _, e := range edges {
+		switch err := memory.EdgeAdded(e); err {
+		case nil, graph.ErrParentNotFound, graph.ErrChildNotFound, graph.ErrEdgeConflict:
+		default:
+			return &GraphTraversal{error: fmt.Errorf("Error while adding edge to SubGraph: %s", err)}
 		}
 	}
 

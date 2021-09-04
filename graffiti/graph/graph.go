@@ -111,7 +111,9 @@ type Backend interface {
 	NodeAdded(n *Node) error
 	NodeDeleted(n *Node) error
 	GetNode(i Identifier, at Context) []*Node
+	GetNodesFromIDs(i []Identifier, at Context) []*Node
 	GetNodeEdges(n *Node, at Context, m ElementMatcher) []*Edge
+	GetNodesEdges(n []*Node, at Context, m ElementMatcher) []*Edge
 
 	EdgeAdded(e *Edge) error
 	EdgeDeleted(e *Edge) error
@@ -571,6 +573,21 @@ func (n *Node) String() string {
 		return ""
 	}
 	return string(b)
+}
+
+func (n *Node) Copy() *Node {
+	return &Node{
+		graphElement: graphElement{
+			ID:        n.ID,
+			Host:      n.Host,
+			Origin:    n.Origin,
+			CreatedAt: n.CreatedAt,
+			UpdatedAt: n.UpdatedAt,
+			DeletedAt: n.DeletedAt,
+			Revision:  n.Revision,
+			Metadata:  n.Metadata.Copy(),
+		},
+	}
 }
 
 // UnmarshalJSON custom unmarshal function
@@ -1185,6 +1202,14 @@ func (g *Graph) GetNode(i Identifier) *Node {
 	return nil
 }
 
+// GetNodesFromIDs returns a list of nodes from a list of identifiers
+func (g *Graph) GetNodesFromIDs(i []Identifier) []*Node {
+	if len(i) == 0 {
+		return []*Node{}
+	}
+	return g.backend.GetNodesFromIDs(i, g.context)
+}
+
 // CreateNode returns a new node not bound to a graph
 func CreateNode(i Identifier, m Metadata, t Time, h string, o string) *Node {
 	n := &Node{
@@ -1363,6 +1388,14 @@ func (g *Graph) GetEdgeNodes(e *Edge, parentMetadata, childMetadata ElementMatch
 // GetNodeEdges returns a list of edges of a node
 func (g *Graph) GetNodeEdges(n *Node, m ElementMatcher) []*Edge {
 	return g.backend.GetNodeEdges(n, g.context, m)
+}
+
+// GetNodesEdges returns the list with all edges for a list of nodes
+func (g *Graph) GetNodesEdges(n []*Node, m ElementMatcher) []*Edge {
+	if len(n) == 0 {
+		return []*Edge{}
+	}
+	return g.backend.GetNodesEdges(n, g.context, m)
 }
 
 func (g *Graph) String() string {

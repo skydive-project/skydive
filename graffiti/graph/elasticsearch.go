@@ -87,6 +87,8 @@ const graphElementMapping = `
 const (
 	nodeType = "node"
 	edgeType = "edge"
+	// maxClauseCount limit the number of clauses in one query to ES
+	maxClauseCount = 512
 )
 
 // ElasticSearchBackend describes a persistent backend based on ElasticSearch
@@ -234,6 +236,44 @@ func (b *ElasticSearchBackend) GetNode(i Identifier, t Context) []*Node {
 		},
 		TimeFilter: getTimeFilter(t.TimeSlice),
 	})
+
+	if len(nodes) > 1 && t.TimePoint {
+		return []*Node{nodes[len(nodes)-1]}
+	}
+
+	return nodes
+}
+
+// GetNodesFromIDs get the list of nodes for the list of identifiers within a time slice
+func (b *ElasticSearchBackend) GetNodesFromIDs(identifiersList []Identifier, t Context) []*Node {
+	if len(identifiersList) == 0 {
+		return []*Node{}
+	}
+
+	// ES default max number of clauses is set by default to 1024
+	// https://www.elastic.co/guide/en/elasticsearch/reference/current/search-settings.html
+	// Group queries in a maximum of half of the max.
+	// Other filters (time), will be also in the query.
+	identifiersBatch := batchIdentifiers(identifiersList, maxClauseCount)
+
+	nodes := []*Node{}
+
+	for _, idList := range identifiersBatch {
+		identifiersFilter := []*filters.Filter{}
+		for _, i := range idList {
+			identifiersFilter = append(identifiersFilter, filters.NewTermStringFilter("ID", string(i)))
+		}
+		identifiersORFilter := filters.NewOrFilter(identifiersFilter...)
+
+		nodes = append(nodes, b.searchNodes(&TimedSearchQuery{
+			SearchQuery: filters.SearchQuery{
+				Filter: identifiersORFilter,
+				Sort:   true,
+				SortBy: "Revision",
+			},
+			TimeFilter: getTimeFilter(t.TimeSlice),
+		})...)
+	}
 
 	if len(nodes) > 1 && t.TimePoint {
 		return []*Node{nodes[len(nodes)-1]}
@@ -506,6 +546,53 @@ func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t Context, m ElementMatcher
 	return
 }
 
+// GetNodesEdges return the list of all edges for a list of nodes within time slice
+func (b *ElasticSearchBackend) GetNodesEdges(nodeList []*Node, t Context, m ElementMatcher) (edges []*Edge) {
+	if len(nodeList) == 0 {
+		return []*Edge{}
+	}
+
+	// See comment at GetNodesFromIDs
+	// As we are adding two operations per item, make small batches
+	nodesBatch := batchNodes(nodeList, maxClauseCount/2)
+
+	for _, nList := range nodesBatch {
+		var filter *filters.Filter
+		if m != nil {
+			f, err := m.Filter()
+			if err != nil {
+				return []*Edge{}
+			}
+			filter = f
+		}
+
+		var searchQuery filters.SearchQuery
+		if !t.TimePoint {
+			searchQuery = filters.SearchQuery{Sort: true, SortBy: "UpdatedAt"}
+		}
+
+		nodesFilter := []*filters.Filter{}
+		for _, n := range nList {
+			nodesFilter = append(nodesFilter, filters.NewTermStringFilter("Parent", string(n.ID)))
+			nodesFilter = append(nodesFilter, filters.NewTermStringFilter("Child", string(n.ID)))
+		}
+		searchQuery.Filter = filters.NewOrFilter(nodesFilter...)
+
+		edges = append(edges, b.searchEdges(&TimedSearchQuery{
+			SearchQuery:   searchQuery,
+			TimeFilter:    getTimeFilter(t.TimeSlice),
+			ElementFilter: filter,
+		})...)
+
+	}
+
+	if len(edges) > 1 && t.TimePoint {
+		edges = dedupEdges(edges)
+	}
+
+	return
+}
+
 // IsHistorySupported returns that this backend does support history
 func (b *ElasticSearchBackend) IsHistorySupported() bool {
 	return true
@@ -646,4 +733,27 @@ func NewElasticSearchBackendFromConfig(cfg es.Config, extraDynamicTemplates map[
 	}
 
 	return newElasticSearchBackendFromClient(client, cfg.IndexPrefix, liveIndex, archiveIndex, logger), nil
+}
+
+func batchNodes(items []*Node, batchSize int) [][]*Node {
+	batches := make([][]*Node, 0, (len(items)+batchSize-1)/batchSize)
+
+	for batchSize < len(items) {
+		items, batches = items[batchSize:], append(batches, items[0:batchSize:batchSize])
+	}
+	batches = append(batches, items)
+
+	return batches
+
+}
+
+func batchIdentifiers(items []Identifier, batchSize int) [][]Identifier {
+	batches := make([][]Identifier, 0, (len(items)+batchSize-1)/batchSize)
+
+	for batchSize < len(items) {
+		items, batches = items[batchSize:], append(batches, items[0:batchSize:batchSize])
+	}
+	batches = append(batches, items)
+
+	return batches
 }
