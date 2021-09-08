@@ -110,6 +110,17 @@ func (c *CachedBackend) GetNodeEdges(n *Node, t Context, m ElementMatcher) (edge
 	return c.persistent.GetNodeEdges(n, t, m)
 }
 
+// GetNodesEdges return the list of all edges for a list of nodes within time slice, matching metadata
+func (c *CachedBackend) GetNodesEdges(n []*Node, t Context, m ElementMatcher) (edges []*Edge) {
+	mode := c.cacheMode.Load()
+
+	if t.TimeSlice == nil || mode == CacheOnlyMode || c.persistent == nil {
+		return c.memory.GetNodesEdges(n, t, m)
+	}
+
+	return c.persistent.GetNodesEdges(n, t, m)
+}
+
 // EdgeAdded add an edge in the cache
 func (c *CachedBackend) EdgeAdded(e *Edge) error {
 	mode := c.cacheMode.Load()

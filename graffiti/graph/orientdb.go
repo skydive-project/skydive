@@ -232,6 +232,23 @@ func (o *OrientDBBackend) GetNodeEdges(n *Node, t Context, m ElementMatcher) (ed
 	return o.searchEdges(t, query)
 }
 
+// GetNodesEdges returns a list of a node edges within time slice
+func (o *OrientDBBackend) GetNodesEdges(nodeList []*Node, t Context, m ElementMatcher) (edges []*Edge) {
+	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
+	query += fmt.Sprintf(" AND (")
+	for i, n := range nodeList {
+		if i == len(nodeList)-1 {
+			query += fmt.Sprintf(" Parent = '%s' OR Child = '%s')", n.ID, n.ID)
+		} else {
+			query += fmt.Sprintf(" Parent = '%s' OR Child = '%s' OR", n.ID, n.ID)
+		}
+	}
+	if matcherQuery := matcherToOrientDBSelectString(m); matcherQuery != "" {
+		query += " AND " + matcherQuery
+	}
+	return o.searchEdges(t, query)
+}
+
 func (o *OrientDBBackend) createEdge(e *Edge) error {
 	fromQuery := fmt.Sprintf("SELECT FROM Node WHERE DeletedAt IS NULL AND ArchivedAt IS NULL AND ID = '%s'", e.Parent)
 	toQuery := fmt.Sprintf("SELECT FROM Node WHERE DeletedAt IS NULL AND ArchivedAt IS NULL AND ID = '%s'", e.Child)

@@ -153,6 +153,22 @@ func (m *MemoryBackend) GetNodeEdges(n *Node, t Context, meta ElementMatcher) []
 	return edges
 }
 
+// GetNodesEdges returns the list of edges for a list of nodes
+func (m *MemoryBackend) GetNodesEdges(nodeList []*Node, t Context, meta ElementMatcher) []*Edge {
+	edges := []*Edge{}
+	for _, n := range nodeList {
+		if n, ok := m.nodes[n.ID]; ok {
+			for _, e := range n.edges {
+				if e.MatchMetadata(meta) {
+					edges = append(edges, e.Edge)
+				}
+			}
+		}
+	}
+
+	return edges
+}
+
 // EdgeDeleted in the graph backend
 func (m *MemoryBackend) EdgeDeleted(e *Edge) error {
 	if _, ok := m.edges[e.ID]; !ok {
