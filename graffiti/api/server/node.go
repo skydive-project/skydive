@@ -43,7 +43,7 @@ type NodeAPIHandler struct {
 
 // New creates a new node
 func (h *NodeAPIHandler) New() rest.Resource {
-	return &types.Node{}
+	return &types.Node{Node: new(graph.Node)}
 }
 
 // Name returns resource name "node"
@@ -57,7 +57,7 @@ func (h *NodeAPIHandler) Index() map[string]rest.Resource {
 	nodes := h.g.GetNodes(nil)
 	nodeMap := make(map[string]rest.Resource, len(nodes))
 	for _, node := range nodes {
-		n := types.Node(*node)
+		n := types.Node{Node: node}
 		nodeMap[string(node.ID)] = &n
 	}
 	h.g.RUnlock()
@@ -73,8 +73,7 @@ func (h *NodeAPIHandler) Get(id string) (rest.Resource, bool) {
 	if n == nil {
 		return nil, false
 	}
-	node := (*types.Node)(n)
-	return node, true
+	return &types.Node{Node: n}, true
 }
 
 // Decorate the specified node
@@ -84,7 +83,7 @@ func (h *NodeAPIHandler) Decorate(resource rest.Resource) {
 // Create adds the specified node to the graph
 func (h *NodeAPIHandler) Create(resource rest.Resource, createOpts *rest.CreateOptions) error {
 	node := resource.(*types.Node)
-	graphNode := graph.Node(*node)
+	graphNode := node.Node
 	if graphNode.CreatedAt.IsZero() {
 		graphNode.CreatedAt = graph.Time(time.Now())
 	}
@@ -99,7 +98,7 @@ func (h *NodeAPIHandler) Create(resource rest.Resource, createOpts *rest.CreateO
 	}
 
 	h.g.Lock()
-	err := h.g.AddNode(&graphNode)
+	err := h.g.AddNode(graphNode)
 	h.g.Unlock()
 	return err
 }
@@ -146,7 +145,7 @@ func (h *NodeAPIHandler) Update(id string, resource rest.Resource) (rest.Resourc
 		return nil, false, err
 	}
 
-	return (*types.Node)(n), n.Revision != previousRevision, nil
+	return &types.Node{Node: n}, n.Revision != previousRevision, nil
 }
 
 // RegisterNodeAPI registers the node API

@@ -41,7 +41,7 @@ type EdgeAPIHandler struct {
 
 // New creates a new edge
 func (h *EdgeAPIHandler) New() rest.Resource {
-	return &types.Edge{}
+	return &types.Edge{Edge: new(graph.Edge)}
 }
 
 // Name returns resource name "edge"
@@ -55,8 +55,8 @@ func (h *EdgeAPIHandler) Index() map[string]rest.Resource {
 	edges := h.g.GetEdges(nil)
 	edgeMap := make(map[string]rest.Resource, len(edges))
 	for _, edge := range edges {
-		n := types.Edge(*edge)
-		edgeMap[string(edge.ID)] = &n
+		e := &types.Edge{Edge: edge}
+		edgeMap[string(edge.ID)] = e
 	}
 	h.g.RUnlock()
 	return edgeMap
@@ -71,8 +71,7 @@ func (h *EdgeAPIHandler) Get(id string) (rest.Resource, bool) {
 	if e == nil {
 		return nil, false
 	}
-	edge := (*types.Edge)(e)
-	return edge, true
+	return &types.Edge{Edge: e}, true
 }
 
 // Decorate the specified edge
@@ -82,7 +81,7 @@ func (h *EdgeAPIHandler) Decorate(resource rest.Resource) {
 // Create adds the specified edge to the graph
 func (h *EdgeAPIHandler) Create(resource rest.Resource, createOpts *rest.CreateOptions) error {
 	edge := resource.(*types.Edge)
-	graphEdge := graph.Edge(*edge)
+	graphEdge := edge.Edge
 	if graphEdge.CreatedAt.IsZero() {
 		graphEdge.CreatedAt = graph.Time(time.Now())
 	}
@@ -97,7 +96,7 @@ func (h *EdgeAPIHandler) Create(resource rest.Resource, createOpts *rest.CreateO
 	}
 
 	h.g.Lock()
-	err := h.g.AddEdge(&graphEdge)
+	err := h.g.AddEdge(graphEdge)
 	h.g.Unlock()
 	return err
 }
@@ -133,7 +132,7 @@ func (h *EdgeAPIHandler) Update(id string, resource rest.Resource) (rest.Resourc
 		return nil, false, err
 	}
 
-	return (*types.Edge)(e), e.Revision != previousRevision, nil
+	return &types.Edge{Edge: e}, e.Revision != previousRevision, nil
 }
 
 // RegisterEdgeAPI registers the edge API

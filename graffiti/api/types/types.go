@@ -63,9 +63,11 @@ func NewAlert() *Alert {
 }
 
 // Edge object
-// easyjson:json
+// easyjson:skip
 // swagger:model
-type Edge graph.Edge
+type Edge struct {
+	*graph.Edge
+}
 
 // GetID returns the edge ID
 func (e *Edge) GetID() string {
@@ -88,9 +90,11 @@ func (e *Edge) Validate() error {
 }
 
 // Node object
-// easyjson:json
+// easyjson:skip
 // swagger:model
-type Node graph.Node
+type Node struct {
+	*graph.Node
+}
 
 // GetID returns the node ID
 func (n *Node) GetID() string {

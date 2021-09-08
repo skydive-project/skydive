@@ -102,7 +102,7 @@ func (s *Server) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReque
 	if err != nil {
 		s.opts.Logger.Errorf("Unable to upgrade the websocket connection for %s: %s", r.RemoteAddr, err)
 		w.Header().Set("Connection", "close")
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusUpgradeRequired)
 		return
 	}
 

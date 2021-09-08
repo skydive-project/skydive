@@ -100,6 +100,7 @@ func NewCapture(query string, bpfFilter string) *Capture {
 
 // Edge object
 // swagger:model
+// easyjson:skip
 type Edge = gtypes.Edge
 
 // EdgeRule object
@@ -138,6 +139,7 @@ func (e *EdgeRule) Validate() error {
 
 // Node object
 // swagger:model
+// easyjson:skip
 type Node = gtypes.Node
 
 // NodeRule object
