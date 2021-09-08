@@ -222,6 +222,23 @@ func (o *OrientDBBackend) GetNode(i Identifier, t Context) (nodes []*Node) {
 	return o.searchNodes(t, query)
 }
 
+func (o *OrientDBBackend) GetNodesFromIDs(identifiersList []Identifier, t Context) (nodes []*Node) {
+	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
+	query += fmt.Sprintf(" AND (")
+	for i, id := range identifiersList {
+		if i == len(identifiersList)-1 {
+			query += fmt.Sprintf(" ID = '%s') ORDER BY Revision", id)
+		} else {
+			query += fmt.Sprintf(" ID = '%s' OR", id)
+		}
+	}
+
+	if t.TimePoint {
+		query += " DESC LIMIT 1"
+	}
+	return o.searchNodes(t, query)
+}
+
 // GetNodeEdges returns a list of a node edges within time slice
 func (o *OrientDBBackend) GetNodeEdges(n *Node, t Context, m ElementMatcher) (edges []*Edge) {
 	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
