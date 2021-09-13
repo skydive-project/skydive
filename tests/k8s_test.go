@@ -229,7 +229,7 @@ func TestK8sEndpointsNode(t *testing.T) {
 }
 
 func TestK8sIngressNode(t *testing.T) {
-	testNodeCreationFromConfig(t, k8s.Manager, "ingress", objName+"-ingress", "Backend", "TLS", "Rules")
+	testNodeCreationFromConfig(t, k8s.Manager, "ingress", objName+"-ingress", "DefaultBackend", "TLS", "Rules")
 }
 
 func TestK8sJobNode(t *testing.T) {

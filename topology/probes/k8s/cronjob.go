@@ -22,7 +22,7 @@ import (
 
 	"github.com/skydive-project/skydive/graffiti/graph"
 
-	"k8s.io/api/batch/v1beta1"
+	v1 "k8s.io/api/batch/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -30,12 +30,12 @@ type cronJobHandler struct {
 }
 
 func (h *cronJobHandler) Dump(obj interface{}) string {
-	cj := obj.(*v1beta1.CronJob)
+	cj := obj.(*v1.CronJob)
 	return fmt.Sprintf("cronjob{Namespace: %s, Name: %s}", cj.Namespace, cj.Name)
 }
 
 func (h *cronJobHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
-	cj := obj.(*v1beta1.CronJob)
+	cj := obj.(*v1.CronJob)
 
 	m := NewMetadataFields(&cj.ObjectMeta)
 	m.SetField("Schedule", cj.Spec.Schedule)
@@ -45,5 +45,5 @@ func (h *cronJobHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata)
 }
 
 func newCronJobProbe(client interface{}, g *graph.Graph) Subprobe {
-	return NewResourceCache(client.(*kubernetes.Clientset).BatchV1beta1().RESTClient(), &v1beta1.CronJob{}, "cronjobs", g, &cronJobHandler{})
+	return NewResourceCache(client.(*kubernetes.Clientset).BatchV1().RESTClient(), &v1.CronJob{}, "cronjobs", g, &cronJobHandler{})
 }

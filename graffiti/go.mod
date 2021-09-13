@@ -8,16 +8,11 @@ require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/casbin/casbin v1.9.1
 	github.com/cnf/structhash v0.0.0-20201013183111-a92e111048cd
-	github.com/coreos/etcd v3.3.22+incompatible
 	github.com/davecgh/go-spew v1.1.1
-	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/fatih/structs v1.1.0
 	github.com/go-test/deep v1.0.7
 	github.com/gogo/protobuf v1.3.2
-	github.com/golang/protobuf v1.3.2
-	github.com/gomatic/funcmap v1.1.0 // indirect
-	github.com/gomatic/renderizer v1.0.1 // indirect
 	github.com/gophercloud/gophercloud v0.13.0
 	github.com/gorilla/context v1.1.1
 	github.com/gorilla/handlers v1.5.1
@@ -40,15 +35,18 @@ require (
 	github.com/safchain/insanelock v0.0.0-20200217234559-cfbf166e05b3
 	github.com/skydive-project/go-debouncer v1.0.0
 	github.com/spf13/cast v1.3.1
-	github.com/spf13/cobra v1.1.1
+	github.com/spf13/cobra v1.1.3
 	github.com/tchap/zapext v1.0.0
 	github.com/xeipuuv/gojsonschema v1.2.0
-	go.uber.org/zap v1.16.0
-	golang.org/x/net v0.0.0-20201021035429-f5854403a974
-	golang.org/x/tools v0.0.0-20210106214847-113979e3529a
+	go.etcd.io/etcd/client/pkg/v3 v3.5.0
+	go.etcd.io/etcd/client/v2 v2.305.0
+	go.etcd.io/etcd/pkg/v3 v3.5.0
+	go.etcd.io/etcd/server/v3 v3.5.0
+	go.uber.org/zap v1.17.0
+	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
+	golang.org/x/tools v0.1.2
 	gopkg.in/sourcemap.v1 v1.0.5 // indirect
-	gopkg.in/yaml.v2 v2.3.0
-	sigs.k8s.io/yaml v1.2.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0
 )
 
 replace (

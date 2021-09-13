@@ -25,10 +25,10 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/coreos/etcd/client"
-	"github.com/coreos/etcd/embed"
-	"github.com/coreos/etcd/pkg/osutil"
-	"github.com/coreos/etcd/pkg/types"
+	"go.etcd.io/etcd/client/pkg/v3/types"
+	client "go.etcd.io/etcd/client/v2"
+	"go.etcd.io/etcd/pkg/v3/osutil"
+	"go.etcd.io/etcd/server/v3/embed"
 
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/service"
@@ -71,8 +71,8 @@ func NewEmbeddedServer(opts EmbeddedServerOpts) (*EmbeddedServer, error) {
 
 	cfg := embed.NewConfig()
 	cfg.Name = opts.Name
-	cfg.Debug = opts.Debug
 	cfg.Dir = opts.DataDir
+	cfg.EnableV2 = true
 	cfg.ClusterState = embed.ClusterStateFlagNew
 	cfg.MaxWalFiles = opts.MaxWalFiles
 	cfg.MaxSnapFiles = opts.MaxSnapFiles

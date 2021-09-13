@@ -45,12 +45,10 @@ func NewIstioProbe(g *graph.Graph) (*k8s.Probe, error) {
 	}
 
 	subprobeHandlers := map[string]k8s.SubprobeHandler{
-		"destinationrule":  newDestinationRuleProbe,
-		"gateway":          newGatewayProbe,
-		"quotaspec":        newQuotaSpecProbe,
-		"quotaspecbinding": newQuotaSpecBindingProbe,
-		"serviceentry":     newServiceEntryProbe,
-		"virtualservice":   newVirtualServiceProbe,
+		"destinationrule": newDestinationRuleProbe,
+		"gateway":         newGatewayProbe,
+		"serviceentry":    newServiceEntryProbe,
+		"virtualservice":  newVirtualServiceProbe,
 	}
 
 	k8s.InitSubprobes(enabledSubprobes, subprobeHandlers, client, g, Manager, "")
@@ -75,8 +73,6 @@ func NewIstioProbe(g *graph.Graph) (*k8s.Probe, error) {
 	probe.AppendNamespaceLinkers(
 		"destinationrule",
 		"gateway",
-		"quotaspec",
-		"quotaspecbinding",
 		"serviceentry",
 		"virtualservice",
 	)

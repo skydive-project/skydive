@@ -1,11 +1,13 @@
 kind: Ingress
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 metadata:
   name: skydive-test-ingress1
 spec:
-  backend:
-    serviceName: skydive-test-ingress1
-    servicePort: 1080
+  defaultBackend:
+    service:
+      name: skydive-test-ingress1
+      port:
+        number: 1080
 ---
 kind: Service
 apiVersion: v1

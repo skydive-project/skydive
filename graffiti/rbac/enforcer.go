@@ -22,7 +22,7 @@ import (
 
 	"github.com/casbin/casbin"
 	"github.com/casbin/casbin/model"
-	etcd "github.com/coreos/etcd/client"
+	etcd "go.etcd.io/etcd/client/v2"
 )
 
 // Permission defines a permission
