@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func newGraph(t *testing.T) *Graph {
@@ -545,4 +546,114 @@ func TestRecursiveEvents(t *testing.T) {
 	if ev1 != 1 || ev2 != 2 {
 		t.Error("Events are not in the right order")
 	}
+}
+
+type edgeGeneratorLinker struct {
+	parent               *Node
+	child                *Node
+	numberEdgesGenerated int
+}
+
+func (l *edgeGeneratorLinker) GetBALinks(nodeConnection *Node) (edges []*Edge) {
+	return []*Edge{}
+}
+
+func (l *edgeGeneratorLinker) GetABLinks(nodeConnection *Node) (edges []*Edge) {
+	edges = []*Edge{}
+	for i := 0; i < l.numberEdgesGenerated; i++ {
+		edges = append(
+			edges,
+			CreateEdge(Identifier(fmt.Sprint(i)), l.parent, l.child, Metadata{"f": 1}, Time(time.Unix(100, 0)), "", ""),
+		)
+	}
+	return edges
+}
+
+// TestNotifyEventChannelExhaustion
+func TestNotifyEventChannelExhaustion(t *testing.T) {
+	parentNode := CreateNode(Identifier("parent"), Metadata{"host": "parent"}, Time(time.Unix(100, 0)), "", "")
+	childNode := CreateNode(Identifier("child"), Metadata{"host": "child"}, Time(time.Unix(100, 0)), "", "")
+
+	nullHasher := func(n *Node) map[string]interface{} {
+		return map[string]interface{}{}
+	}
+
+	t.Run("channel not exhausted", func(t *testing.T) {
+		g := newGraph(t)
+
+		err := g.AddNode(parentNode)
+		if err != nil {
+			t.Errorf("adding parent node")
+		}
+		err = g.AddNode(childNode)
+		if err != nil {
+			t.Errorf("adding parent node")
+		}
+
+		rl := NewResourceLinker(
+			g,
+			[]ListenerHandler{
+				NewIndexer(g, g, nullHasher, false)},
+			nil,
+			&edgeGeneratorLinker{
+				parent:               parentNode,
+				child:                childNode,
+				numberEdgesGenerated: maxEvents,
+			},
+			nil,
+		)
+
+		rl.Start()
+		g.AddEventListener(rl.abListener)
+
+		g.NewNode(GenID(), Metadata{"Value": 1})
+
+		if len(g.GetEdges(nil)) != maxEvents {
+			t.Errorf("linker was unable to generate edges")
+		}
+	})
+
+	t.Run("channel exhausted", func(t *testing.T) {
+		g := newGraph(t)
+
+		err := g.AddNode(parentNode)
+		if err != nil {
+			t.Errorf("adding parent node")
+		}
+		err = g.AddNode(childNode)
+		if err != nil {
+			t.Errorf("adding parent node")
+		}
+
+		rl := NewResourceLinker(
+			g,
+			[]ListenerHandler{
+				NewIndexer(g, g, nullHasher, false)},
+			nil,
+			&edgeGeneratorLinker{
+				parent:               parentNode,
+				child:                childNode,
+				numberEdgesGenerated: maxEvents + 1,
+			},
+			nil,
+		)
+
+		rl.Start()
+		g.AddEventListener(rl.abListener)
+
+		done := make(chan struct{})
+		go func() {
+			g.NewNode(GenID(), Metadata{"Value": 1})
+			close(done)
+		}()
+
+		select {
+		case <-done:
+		case <-time.After(1 * time.Second):
+			t.Errorf("g.NewNode was unable to finish")
+		}
+		if len(g.GetEdges(nil)) != maxEvents+1 {
+			t.Errorf("linker was unable to generate edges")
+		}
+	})
 }
