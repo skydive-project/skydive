@@ -30,8 +30,6 @@ services:
     image: skydive/skydive
     depends_on:
       - skydive-analyzer
-    ports:
-      - "8081:8081"
     network_mode: "host"
     pid: "host"
     command: agent --listen=0.0.0.0:8081
