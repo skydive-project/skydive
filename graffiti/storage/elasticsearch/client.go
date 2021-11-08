@@ -169,24 +169,36 @@ func (i *Index) IndexWildcard(prefix string) string {
 	return name
 }
 
+// createAliases create the aliases for the index. Remove old (previous schema) aliases if any.
+// If there is currently a valid index, do nothing.
 func (c *Client) createAliases(index Index) error {
 	indexName := index.FullName(c.Config.IndexPrefix)
 	aliasName := index.Alias(c.Config.IndexPrefix)
+	validIndex := false
 
-	if aliasResult, err := c.esClient.Aliases().Alias(aliasName).Do(context.Background()); err == nil {
+	// Get previous aliases
+	aliasResult, err := c.esClient.Aliases().Alias(aliasName).Do(context.Background())
+
+	// Remove indexes from previous schemas from the current aliases
+	// Eg.: index skydive_topology_archive_v12-000002 will be removed if schema version != 12
+	if err == nil {
 		indices := aliasResult.IndicesByAlias(aliasName)
 		for _, previousIndex := range indices {
-			if previousIndex != indexName {
-				// remove alias to previous index
+			if !strings.HasPrefix(previousIndex, aliasName+"_v"+schemaVersion) {
 				if _, err := c.esClient.Alias().Remove(previousIndex, aliasName).Do(context.Background()); err != nil {
 					return err
 				}
+			} else {
+				validIndex = true
 			}
 		}
 	}
 
-	if _, err := c.esClient.Alias().Add(indexName, aliasName).Do(context.Background()); err != nil {
-		return err
+	if !validIndex {
+		// Create new alias if there is no valid index
+		if _, err := c.esClient.Alias().Add(indexName, aliasName).Do(context.Background()); err != nil {
+			return err
+		}
 	}
 
 	return nil
