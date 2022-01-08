@@ -63,7 +63,7 @@ fi
 set -v
 
 changelog=$(scripts/ci/extract-changelog.py CHANGELOG.md $CHANGELOG_VERSION)
-make static WITH_EBPF=true
+make static WITH_EBPF=true WITH_OVN=true
 ${dir}/../../contrib/packaging/rpm/generate-skydive-bootstrap.sh -s -r ${TAG}
 
 release "$changelog"
