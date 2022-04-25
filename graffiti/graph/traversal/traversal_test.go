@@ -576,6 +576,26 @@ func TestTraversalSubGraph(t *testing.T) {
 	}
 }
 
+func TestTraversalSubGraphWithEdgeFilter(t *testing.T) {
+	g := newTransversalGraph(t)
+	ctx := StepContext{}
+
+	tr := NewGraphTraversal(g, false)
+
+	te := tr.V(ctx).SubGraph(ctx, "Name", Without("e2", "e3", "e4", "e5")).E(ctx)
+	if len(te.Values()) != 1 {
+		t.Fatalf("Should return 1 edge, returned: %v. Error = %v", te.Values(), te.Error())
+	}
+
+	name, err := te.Values()[0].(*graph.Edge).Metadata.GetFieldString("Name")
+	if err != nil {
+		t.Fatalf("Should return a Name field, returned an error: %s", err)
+	}
+	if name != "e1" {
+		t.Fatalf("Should return a edge with Name e1, returned: %v, %s", te.Values(), te.Error())
+	}
+}
+
 func execTraversalQuery(t *testing.T, g *graph.Graph, query string) GraphTraversalStep {
 	ts, err := NewGremlinTraversalParser().Parse(strings.NewReader(query))
 	if err != nil {
