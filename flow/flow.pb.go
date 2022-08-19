@@ -3043,7 +3043,10 @@ func (m *FlowLayer) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthFlow
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthFlow
 			}
 			if (iNdEx + skippy) > l {
@@ -3169,7 +3172,10 @@ func (m *TransportLayer) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthFlow
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthFlow
 			}
 			if (iNdEx + skippy) > l {
@@ -3276,7 +3282,10 @@ func (m *ICMPLayer) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthFlow
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthFlow
 			}
 			if (iNdEx + skippy) > l {
@@ -3459,7 +3468,10 @@ func (m *FlowMetric) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthFlow
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthFlow
 			}
 			if (iNdEx + skippy) > l {
@@ -3600,7 +3612,10 @@ func (m *RawPacket) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthFlow
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthFlow
 			}
 			if (iNdEx + skippy) > l {
@@ -3688,7 +3703,10 @@ func (m *IPMetric) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthFlow
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthFlow
 			}
 			if (iNdEx + skippy) > l {
@@ -4156,7 +4174,10 @@ func (m *TCPMetric) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthFlow
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthFlow
 			}
 			if (iNdEx + skippy) > l {
@@ -4276,7 +4297,10 @@ func (m *Message) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthFlow
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthFlow
 			}
 			if (iNdEx + skippy) > l {
@@ -4453,7 +4477,10 @@ func (m *Stats) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthFlow
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthFlow
 			}
 			if (iNdEx + skippy) > l {
@@ -5265,7 +5292,10 @@ func (m *Flow) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthFlow
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthFlow
 			}
 			if (iNdEx + skippy) > l {
@@ -5387,7 +5417,10 @@ func (m *FlowSet) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthFlow
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthFlow
 			}
 			if (iNdEx + skippy) > l {
@@ -5473,7 +5506,10 @@ func (m *FlowSearchReply) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthFlow
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthFlow
 			}
 			if (iNdEx + skippy) > l {
@@ -5591,7 +5627,10 @@ func (m *TableQuery) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthFlow
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthFlow
 			}
 			if (iNdEx + skippy) > l {
@@ -5692,7 +5731,10 @@ func (m *TableReply) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthFlow
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthFlow
 			}
 			if (iNdEx + skippy) > l {
