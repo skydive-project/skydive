@@ -55,7 +55,7 @@ var EdgeCreate = &cobra.Command{
 	SilenceUsage: false,
 
 	Run: func(cmd *cobra.Command, args []string) {
-		m, err := DefToMetadata(edgeMetadata, graph.Metadata{})
+		m, err := graph.DefToMetadata(edgeMetadata, graph.Metadata{})
 		if err != nil {
 			exitOnError(err)
 		}

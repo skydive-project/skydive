@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/safchain/insanelock"
 
@@ -29,6 +30,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/messages"
+	"github.com/skydive-project/skydive/graffiti/websocket"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 )
 
@@ -47,6 +49,7 @@ type subscriber struct {
 	gremlinFilter string
 	ts            *traversal.GremlinTraversalSequence
 	updatePolicy  UpdatePolicy
+	inhibit       atomic.Value
 }
 
 func (s *subscriber) getSubGraph(g *graph.Graph, lockGraph bool) (*graph.Graph, error) {
@@ -79,6 +82,7 @@ type SubscriberEndpoint struct {
 	gremlinParser *traversal.GremlinTraversalParser
 	subscribers   map[ws.Speaker]*subscriber
 	logger        logging.Logger
+	inhib         atomic.Value
 }
 
 func (t *SubscriberEndpoint) newSubscriber(speaker ws.Speaker, gremlinFilter string, lockGraph bool) (s *subscriber, err error) {
@@ -222,9 +226,16 @@ func (t *SubscriberEndpoint) notifyClients(typ string, i interface{}, ops []grap
 	}
 	t.RUnlock()
 
+SUBSCRIBER:
 	for _, subscriber := range subscribers {
 		msg := i
 		msgType := typ
+
+		if inhibitedSpeaker := t.inhib.Load(); inhibitedSpeaker.(string) != "" {
+			if inhibitedSpeaker.(string) == subscriber.Speaker.GetRemoteHost() {
+				continue SUBSCRIBER
+			}
+		}
 
 		if subscriber.updatePolicy == PartialUpdates {
 			switch typ {
@@ -323,6 +334,15 @@ func (t *SubscriberEndpoint) OnEdgeDeleted(e *graph.Edge) {
 	t.notifyClients(messages.EdgeDeletedMsgType, e, nil)
 }
 
+// Inhib node and edge forwarding
+func (t *SubscriberEndpoint) Inhib(c websocket.Speaker) {
+	remoteHost := ""
+	if c != nil {
+		remoteHost = c.GetRemoteHost()
+	}
+	t.inhib.Store(remoteHost)
+}
+
 // NewSubscriberEndpoint returns a new server to be used by external subscribers,
 // for instance the WebUI.
 func NewSubscriberEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, tr *traversal.GremlinTraversalParser, logger logging.Logger) *SubscriberEndpoint {
@@ -337,6 +357,8 @@ func NewSubscriberEndpoint(pool ws.StructSpeakerPool, g *graph.Graph, tr *traver
 		gremlinParser: tr,
 		logger:        logger,
 	}
+
+	t.inhib.Store("")
 
 	pool.AddEventHandler(t)
 

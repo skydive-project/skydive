@@ -434,3 +434,25 @@ func GetMapField(obj map[string]interface{}, k string) (interface{}, error) {
 
 	return obj, nil
 }
+
+// DefToMetadata converts a string in k1=v1,k2=v2,... format to a metadata object
+func DefToMetadata(def string, metadata Metadata) (Metadata, error) {
+	if def == "" {
+		return metadata, nil
+	}
+
+	for _, pair := range strings.Split(def, ",") {
+		pair = strings.TrimSpace(pair)
+
+		kv := strings.Split(pair, "=")
+		if len(kv)%2 != 0 {
+			return nil, fmt.Errorf("attributes must be defined by pair k=v: %v", def)
+		}
+		key := strings.Trim(kv[0], `"`)
+		value := strings.Trim(kv[1], `"`)
+
+		metadata.SetField(key, value)
+	}
+
+	return metadata, nil
+}

@@ -23,7 +23,6 @@ import (
 	"os"
 
 	api "github.com/skydive-project/skydive/api/types"
-	gclient "github.com/skydive-project/skydive/graffiti/cmd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/validator"
@@ -57,7 +56,7 @@ var NodeRuleCreate = &cobra.Command{
 	SilenceUsage: false,
 
 	Run: func(cmd *cobra.Command, args []string) {
-		m, err := gclient.DefToMetadata(metadata, graph.Metadata{})
+		m, err := graph.DefToMetadata(metadata, graph.Metadata{})
 		if err != nil {
 			exitOnError(err)
 		}
