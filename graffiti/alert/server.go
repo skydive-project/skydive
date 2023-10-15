@@ -31,7 +31,6 @@ import (
 	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/graffiti/api/rest"
-	"github.com/skydive-project/skydive/graffiti/api/server"
 	api "github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/api/types"
 	"github.com/skydive-project/skydive/graffiti/assets"
@@ -398,7 +397,7 @@ func (a *Server) Stop() {
 func NewServer(apiServer *api.Server, pool ws.StructSpeakerPool, graph *graph.Graph, parser *traversal.GremlinTraversalParser, etcdClient *etcd.Client, assets assets.Assets) (*Server, error) {
 	election := etcdClient.NewElection("/elections/alert-server")
 
-	runtime, err := server.NewWorkflowRuntime(graph, parser, apiServer, assets)
+	runtime, err := api.NewWorkflowRuntime(graph, parser, apiServer, assets)
 	if err != nil {
 		return nil, err
 	}

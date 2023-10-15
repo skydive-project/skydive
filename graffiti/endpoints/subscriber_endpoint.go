@@ -30,7 +30,6 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/messages"
-	"github.com/skydive-project/skydive/graffiti/websocket"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 )
 
@@ -335,7 +334,7 @@ func (t *SubscriberEndpoint) OnEdgeDeleted(e *graph.Edge) {
 }
 
 // Inhib node and edge forwarding
-func (t *SubscriberEndpoint) Inhib(c websocket.Speaker) {
+func (t *SubscriberEndpoint) Inhib(c ws.Speaker) {
 	remoteHost := ""
 	if c != nil {
 		remoteHost = c.GetRemoteHost()
