@@ -1,7 +1,7 @@
 FROM ubuntu:20.04 as builder
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get -y update \
-    && apt-get -y install build-essential git-core golang npm openvswitch-common libpcap0.8 libpcap0.8-dev libxml2-dev protobuf-compiler libprotobuf-dev libvirt-dev \
+    && apt-get -y install build-essential git-core golang npm openvswitch-common libpcap0.8 libpcap0.8-dev libxml2-dev protobuf-compiler libprotobuf-dev libvirt-dev curl \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /go/src/github.com/skydive-project/skydive
 COPY . .
