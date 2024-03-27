@@ -18,6 +18,8 @@
 package analyzer
 
 import (
+	"fmt"
+
 	"github.com/skydive-project/skydive/config"
 	fp "github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -133,7 +135,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.Bundle, error) {
 		}
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to create probe %s: %w", t, err)
 		}
 		if handler != nil {
 			bundle.AddHandler(t, handler)
