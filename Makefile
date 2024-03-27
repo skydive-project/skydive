@@ -147,14 +147,14 @@ endef
 	$(call GOCOMPILE,build)
 
 .PHONY: build
-build: gopath moddownload genlocalfiles .build
+build: genlocalfiles .build
 
 .PHONY: .install
 .install:
 	$(call GOCOMPILE,install)
 
 .PHONY: skydive
-skydive: gopath moddownload genlocalfiles .install
+skydive: genlocalfiles .install
 
 .PHONY: skydive.clean
 skydive.clean:
