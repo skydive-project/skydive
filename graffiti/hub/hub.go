@@ -38,7 +38,6 @@ import (
 	"github.com/skydive-project/skydive/graffiti/filters"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
-	"github.com/skydive-project/skydive/graffiti/http"
 	shttp "github.com/skydive-project/skydive/graffiti/http"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/graffiti/schema"
@@ -414,14 +413,14 @@ func NewHub(id string, serviceType service.Type, listen string, g *graph.Graph, 
 					return nil, err
 				}
 			case peeringOpts.SubscriptionFilter != "":
-				url, _ := http.MakeURL("ws", peer.Addr, peer.Port, "/ws/subscriber", peeringOpts.WebsocketClientOpts.TLSConfig != nil)
+				url, _ := shttp.MakeURL("ws", peer.Addr, peer.Port, "/ws/subscriber", peeringOpts.WebsocketClientOpts.TLSConfig != nil)
 				wsClient := websocket.NewClient(id, serviceType, url, peeringOpts.WebsocketClientOpts)
 				if peeringOpts.SubscriptionFilter != "*" {
 					peeringOpts.WebsocketClientOpts.Headers.Add("X-Gremlin-Filter", peeringOpts.SubscriptionFilter)
 				}
 				client = clients.NewSubscriber(wsClient, g, opts.Logger, nil)
 			default:
-				url, _ := http.MakeURL("ws", peer.Addr, peer.Port, "/ws/publisher", peeringOpts.WebsocketClientOpts.TLSConfig != nil)
+				url, _ := shttp.MakeURL("ws", peer.Addr, peer.Port, "/ws/publisher", peeringOpts.WebsocketClientOpts.TLSConfig != nil)
 				client = websocket.NewClient(id, serviceType, url, peeringOpts.WebsocketClientOpts)
 			}
 			clientPool.AddClient(client)
