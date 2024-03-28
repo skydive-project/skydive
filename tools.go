@@ -1,3 +1,4 @@
+//go:build tools
 // +build tools
 
 /*
@@ -26,7 +27,6 @@ import (
 	_ "github.com/davecgh/go-spew/spew"
 	_ "github.com/github-release/github-release"
 	_ "github.com/go-swagger/go-swagger/cmd/swagger"
-	_ "github.com/gogo/protobuf/protoc-gen-gogofaster"
 	_ "github.com/golang/protobuf/protoc-gen-go"
 	_ "github.com/golangci/golangci-lint/cmd/golangci-lint"
 	_ "github.com/gomatic/renderizer"
