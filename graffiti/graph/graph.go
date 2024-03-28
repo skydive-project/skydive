@@ -586,6 +586,21 @@ func (n *Node) String() string {
 	return string(b)
 }
 
+func (n *Node) Copy() *Node {
+	return &Node{
+		graphElement: graphElement{
+			ID:        n.ID,
+			Host:      n.Host,
+			Origin:    n.Origin,
+			CreatedAt: n.CreatedAt,
+			UpdatedAt: n.UpdatedAt,
+			DeletedAt: n.DeletedAt,
+			Revision:  n.Revision,
+			Metadata:  n.Metadata.Copy(),
+		},
+	}
+}
+
 // UnmarshalJSON custom unmarshal function
 func (n *Node) UnmarshalJSON(b []byte) error {
 	// wrapper to avoid unmarshal infinite loop
