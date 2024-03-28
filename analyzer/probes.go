@@ -38,7 +38,6 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/lxd"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
 	"github.com/skydive-project/skydive/topology/probes/neutron"
-	"github.com/skydive-project/skydive/topology/probes/nsm"
 	"github.com/skydive-project/skydive/topology/probes/opencontrail"
 	"github.com/skydive-project/skydive/topology/probes/ovn"
 	"github.com/skydive-project/skydive/topology/probes/ovnk8s"
@@ -127,8 +126,6 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.Bundle, error) {
 			handler, err = k8s.NewK8sProbe(g)
 		case "istio":
 			handler, err = istio.NewIstioProbe(g)
-		case "nsm":
-			handler, err = nsm.NewNsmProbe(g)
 		default:
 			logging.GetLogger().Errorf("unknown probe type: %s", t)
 			continue
