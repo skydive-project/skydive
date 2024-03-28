@@ -924,9 +924,9 @@ func (m *Stats) GetPacketsReceived() int64 {
 type Flow struct {
 	XXX_state flowState `json:"-"`
 	// Flow Universally Unique IDentifier
-	//flow.UUID is unique in the universe, as it should be used as a key of an
-	//hashtable. By design 2 different flows, their UUID are always different.
-	//flow.UUID can be used as Database Index.
+	// flow.UUID is unique in the universe, as it should be used as a key of an
+	// hashtable. By design 2 different flows, their UUID are always different.
+	// flow.UUID can be used as Database Index.
 	UUID       string `protobuf:"bytes,1,opt,name=UUID,proto3" json:"UUID,omitempty"`
 	LayersPath string `protobuf:"bytes,2,opt,name=LayersPath,proto3" json:"LayersPath,omitempty"`
 	// Application is the last layer which is not a payload.
@@ -941,7 +941,7 @@ type Flow struct {
 	DNS    *layers.DNS    `protobuf:"bytes,1001,opt,name=DNS,proto3" json:"DNS,omitempty"`
 	VRRPv2 *layers.VRRPv2 `protobuf:"bytes,1002,opt,name=VRRPv2,proto3" json:"VRRPv2,omitempty"`
 	// Data Flow Metric info from the 1st layer
-	//amount of data between two updates
+	// amount of data between two updates
 	LastUpdateMetric *FlowMetric `protobuf:"bytes,31,opt,name=LastUpdateMetric,proto3" json:"LastUpdateMetric,omitempty"`
 	// Total amount of data for the whole flow duration
 	Metric *FlowMetric `protobuf:"bytes,32,opt,name=Metric,proto3" json:"Metric,omitempty"`
@@ -951,14 +951,14 @@ type Flow struct {
 	Start     int64      `protobuf:"varint,10,opt,name=Start,proto3" json:"Start"`
 	Last      int64      `protobuf:"varint,11,opt,name=Last,proto3" json:"Last"`
 	// Flow Tracking IDentifier, from 1st packet bytes
-	//flow.TrackingID could be used to identify an unique flow whatever it has
-	//been captured on the infrastructure. flow.TrackingID is calculated from
-	//the bytes of the first packet of his session.
-	//flow.TrackingID can be used as a Tag.
+	// flow.TrackingID could be used to identify an unique flow whatever it has
+	// been captured on the infrastructure. flow.TrackingID is calculated from
+	// the bytes of the first packet of his session.
+	// flow.TrackingID can be used as a Tag.
 	TrackingID   string `protobuf:"bytes,50,opt,name=TrackingID,proto3" json:"TrackingID,omitempty"`
 	L3TrackingID string `protobuf:"bytes,51,opt,name=L3TrackingID,proto3" json:"L3TrackingID,omitempty"`
 	// Flow Parent UUID is used as reference to the parent flow
-	//Flow.ParentUUID is the same value that point to his parent flow.UUID
+	// Flow.ParentUUID is the same value that point to his parent flow.UUID
 	ParentUUID string `protobuf:"bytes,6,opt,name=ParentUUID,proto3" json:"ParentUUID"`
 	// Topology info
 	NodeTID string `protobuf:"bytes,33,opt,name=NodeTID,proto3" json:"NodeTID,omitempty"`
