@@ -1413,9 +1413,15 @@ func (tv *GraphTraversalV) SubGraph(ctx StepContext, s ...interface{}) *GraphTra
 		}
 	}
 
+	// Create a metadataEM for edges if it has been specified in the arguments
+	metadataEM, err := ParamsToElementMatcher(filters.BoolFilterOp_AND, s...)
+	if err != nil {
+		return &GraphTraversal{error: fmt.Errorf("Error creating the edge filter for the nodes subgraph: %s", err)}
+	}
+
 	// then insert edges, ignore edge insert error since one of the linked node couldn't be part
 	// of the SubGraph
-	edges := tv.GraphTraversal.Graph.GetNodesEdges(tv.nodes, nil)
+	edges := tv.GraphTraversal.Graph.GetNodesEdges(tv.nodes, metadataEM)
 	for _, e := range edges {
 		switch err := memory.EdgeAdded(e); err {
 		case nil, graph.ErrParentNotFound, graph.ErrChildNotFound, graph.ErrEdgeConflict:
