@@ -115,7 +115,6 @@ analyzer:
     probes:
       # - k8s
       # - istio
-      # - nsm
       # - ovn
 
     k8s:
