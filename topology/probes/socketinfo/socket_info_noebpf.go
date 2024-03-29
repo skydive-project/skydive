@@ -1,4 +1,4 @@
-// +build linux,!ebpf
+//go:build linux && !ebpf
 
 /*
  * Copyright (C) 2017 Red Hat, Inc.

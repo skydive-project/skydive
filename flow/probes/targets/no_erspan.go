@@ -1,4 +1,4 @@
-// +build !linux
+//go:build !linux
 
 /*
  * Copyright (C) 2019 Red Hat, Inc.

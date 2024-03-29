@@ -1,5 +1,4 @@
 //go:build tools
-// +build tools
 
 /*
  * Copyright (C) 2019 Red Hat, Inc.

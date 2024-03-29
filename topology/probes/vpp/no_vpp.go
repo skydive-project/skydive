@@ -1,4 +1,4 @@
-// +build !linux !vpp
+//go:build !linux || !vpp
 
 /*
  * Copyright (C) 2018 Red Hat, Inc.

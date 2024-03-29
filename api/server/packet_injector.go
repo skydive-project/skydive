@@ -1,4 +1,4 @@
-// +build packetinject
+//go:build packetinject
 
 /*
  * Copyright (C) 2016 Red Hat, Inc.

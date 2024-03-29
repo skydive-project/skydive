@@ -1,4 +1,4 @@
-// +build libvirt,linux
+//go:build linux && libvirt
 
 /*
  * Copyright (C) 2018 Orange.

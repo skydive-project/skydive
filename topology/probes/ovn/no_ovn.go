@@ -1,4 +1,4 @@
-// +build !ovn
+//go:build !ovn
 
 /*
  * Copyright (C) 2019 Red Hat, Inc.

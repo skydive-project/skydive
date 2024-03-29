@@ -1,4 +1,4 @@
-// +build ebpf
+//go:build ebpf
 
 /*
  * Copyright (C) 2019 Red Hat, Inc.
