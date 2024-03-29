@@ -66,8 +66,8 @@ func PciToString(address uint32) string {
 		address&0x7)
 }
 
-/* readIntFile reads a file containing an integer. This function targets
-specifically files from /sys or /proc */
+// readIntFile reads a file containing an integer. This function targets
+// specifically files from /sys or /proc
 func readIntFile(path string) (int, error) {
 	contents, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -80,8 +80,8 @@ func readIntFile(path string) (int, error) {
 	return result, nil
 }
 
-/* ProcessNode, the action associated to a pendingVf connects the node of actual
-   virtual to the VF node associated to the physical interface */
+// ProcessNode, the action associated to a pendingVf connects the node of actual
+// virtual to the VF node associated to the physical interface
 func (pending *pendingVf) ProcessNode(g *graph.Graph, node *graph.Node) bool {
 	tr := g.StartMetadataTransaction(node)
 	tr.AddMetadata("VfID", int64(pending.vfid))
@@ -99,8 +99,8 @@ func (pending *pendingVf) ProcessNode(g *graph.Graph, node *graph.Node) bool {
 // errZeroVfs is used as a catchable exception rather than an error
 var errZeroVfs = errors.New("zero VFS")
 
-/* handleSriov adds a node for each virtual function declared. It takes
-   care of finding the PCI address of each VF */
+// handleSriov adds a node for each virtual function declared. It takes
+// care of finding the PCI address of each VF
 func (u *Probe) handleSriov(
 	graph *graph.Graph,
 	intf *graph.Node,
