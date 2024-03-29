@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/robertkrimen/otto"
-
+	api "github.com/skydive-project/skydive/graffiti/api/server"
 	"github.com/skydive-project/skydive/graffiti/api/types"
 	"github.com/skydive-project/skydive/graffiti/assets"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -33,7 +33,7 @@ import (
 
 // NewRuntime returns a new JavaScript runtime where accesses to resources are done
 // directly using the handlers, not through HTTP requests.
-func NewRuntime(g *graph.Graph, tr *traversal.GremlinTraversalParser, server *Server, assets assets.Assets) (*js.Runtime, error) {
+func NewRuntime(g *graph.Graph, tr *traversal.GremlinTraversalParser, server *api.Server, assets assets.Assets) (*js.Runtime, error) {
 	runtime, err := js.NewRuntime(assets)
 	if err != nil {
 		return nil, err

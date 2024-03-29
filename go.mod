@@ -46,6 +46,7 @@ require (
 	github.com/pierrec/xxHash v0.1.5
 	github.com/pkg/errors v0.9.1
 	github.com/pmylund/go-cache v2.1.0+incompatible
+	github.com/robertkrimen/otto v0.0.0-20200922221731-ef014fd054ac
 	github.com/safchain/ethtool v0.0.0-20190326074333-42ed695e3de8
 	github.com/safchain/insanelock v0.0.0-20200217234559-cfbf166e05b3
 	github.com/shirou/gopsutil v2.18.12+incompatible
@@ -231,7 +232,6 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.26.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
-	github.com/robertkrimen/otto v0.0.0-20200922221731-ef014fd054ac // indirect
 	github.com/rogpeppe/fastuuid v1.2.0 // indirect
 	github.com/shirou/w32 v0.0.0-20160930032740-bb4de0191aa4 // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
