@@ -209,6 +209,8 @@ github.com/denisbrodbeck/machineid v1.0.1/go.mod h1:dJUwb7PTidGDeYyUBmXZ2GphQBbj
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/dgryski/go-sip13 v0.0.0-20181026042036-e10d5fee7954/go.mod h1:vAd38F8PWV+bWy6jNmig1y/TA+kYO4g3RSRF0IAv0no=
 github.com/dgryski/go-sip13 v0.0.0-20190329191031-25c5027a8c7b/go.mod h1:vAd38F8PWV+bWy6jNmig1y/TA+kYO4g3RSRF0IAv0no=
+github.com/digitalocean/go-libvirt v0.0.0-20190715144809-7b622097a793 h1:+ItaX1GKKT70bYwazNtWeYz8QBfirNC85J70psPGgN0=
+github.com/digitalocean/go-libvirt v0.0.0-20190715144809-7b622097a793/go.mod h1:PRcPVAAma6zcLpFd4GZrjR/MRpood3TamjKI2m/z/Uw=
 github.com/docker/distribution v2.7.1+incompatible h1:a5mlkVzth6W5A4fOsS3D2EO5BUmsJpcB+cRlLU7cSug=
 github.com/docker/distribution v2.7.1+incompatible/go.mod h1:J2gT2udsDAN96Uj4KfcMRqY0/ypR+oyYUYmja8H+y+w=
 github.com/docker/docker v1.13.1 h1:IkZjBSIc8hBjLpqeAbeE5mca5mNgeatLHBy3GO78BWo=
@@ -713,8 +715,6 @@ github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
 github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
 github.com/kshvakov/clickhouse v1.3.5/go.mod h1:DMzX7FxRymoNkVgizH0DWAL8Cur7wHLgx3MUnGwJqpE=
-github.com/lebauce/go-libvirt v0.0.0-20190717144624-7799d804f7e4 h1:x5KFqNwY2VCNzeb/e3uDMXFGTsJIkshXR196AICUFlA=
-github.com/lebauce/go-libvirt v0.0.0-20190717144624-7799d804f7e4/go.mod h1:0vvEvX3eAM/+BVh8JR6ujCJR5kiHdNz6EmbN+UXekPY=
 github.com/lebauce/netlink v0.0.0-20200826081334-244950452e97 h1:QmpIzYgdIIdRB11gnReR/uULn9awdZI0Gu8QYsQ3nB0=
 github.com/lebauce/netlink v0.0.0-20200826081334-244950452e97/go.mod h1:FSQhuTO7eHT34mPzX+B04SUAjiqLxtXs1et0S6l9k4k=
 github.com/lebauce/nimbess-agent v0.0.0-20210903082218-878aee9e2258 h1:Tx9BivUROBDBad3qjneLI8W9lozIk/dfkyy5wD4eH2s=
