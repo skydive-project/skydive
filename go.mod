@@ -311,7 +311,6 @@ require (
 replace (
 	github.com/census-instrumentation/opencensus-proto v0.1.0-0.20181214143942-ba49f56771b8 => github.com/census-instrumentation/opencensus-proto v0.0.3-0.20181214143942-ba49f56771b8
 	github.com/coreos/bbolt => go.etcd.io/bbolt v1.3.5
-	github.com/digitalocean/go-libvirt => github.com/lebauce/go-libvirt v0.0.0-20190717144624-7799d804f7e4
 	github.com/hashicorp/consul => github.com/hashicorp/consul v1.6.10
 	github.com/mholt/caddy => github.com/caddyserver/caddy v0.11.5
 	github.com/newtools/ebpf => github.com/nplanel/ebpf v0.0.0-20190918123742-99947faabce5
