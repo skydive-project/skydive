@@ -91,9 +91,9 @@ func NewEmbeddedServer(opts EmbeddedServerOpts) (*EmbeddedServer, error) {
 		listenPeerURLs, _ = types.NewURLs([]string{fmt.Sprintf("http://%s:%d", sa.Addr, sa.Port+1)})
 	}
 
-	cfg.LCUrls = listenClientURLs
-	cfg.LPUrls = listenPeerURLs
-	cfg.ACUrls = listenClientURLs // This probably won't work with proxy feature
+	cfg.ListenClientUrls = listenClientURLs
+	cfg.ListenPeerUrls = listenPeerURLs
+	cfg.AdvertiseClientUrls = listenClientURLs // This probably won't work with proxy feature
 
 	var advertisePeerUrls types.URLs
 	if len(opts.Peers) != 0 {
@@ -113,7 +113,7 @@ func NewEmbeddedServer(opts EmbeddedServerOpts) (*EmbeddedServer, error) {
 		cfg.InitialCluster = types.URLsMap{opts.Name: advertisePeerUrls}.String()
 	}
 
-	cfg.APUrls = advertisePeerUrls
+	cfg.AdvertisePeerUrls = advertisePeerUrls
 
 	return &EmbeddedServer{
 		Port:   sa.Port,
@@ -145,7 +145,7 @@ func (se *EmbeddedServer) Start() error {
 	t := time.Now().Add(startTimeout)
 
 	clientConfig := client.Config{
-		Endpoints:               types.URLs(cfg.LCUrls).StringSlice(),
+		Endpoints:               types.URLs(cfg.ListenClientUrls).StringSlice(),
 		Transport:               client.DefaultTransport,
 		HeaderTimeoutPerRequest: time.Second,
 	}
