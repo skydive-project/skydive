@@ -64,12 +64,12 @@ require (
 	github.com/t-yuki/gocover-cobertura v0.0.0-20180217150009-aaee18c8195c
 	github.com/tebeka/go2xunit v1.4.10
 	github.com/tebeka/selenium v0.0.0-20170314201507-657e45ec600f
-	github.com/vishvananda/netlink v1.0.0
-	github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df
+	github.com/vishvananda/netlink v1.1.0
+	github.com/vishvananda/netns v0.0.4
 	github.com/weaveworks/tcptracer-bpf v0.0.0-20170817155301-e080bd747dc6
 	go.etcd.io/etcd/client/v2 v2.305.0
 	golang.org/x/net v0.17.0
-	golang.org/x/sys v0.13.0
+	golang.org/x/sys v0.18.0
 	golang.org/x/tools v0.6.0
 	google.golang.org/grpc v1.59.0
 	gopkg.in/fsnotify/fsnotify.v1 v1.0.0-20180110053347-c2828203cd70
@@ -318,7 +318,6 @@ replace (
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.3
 	github.com/skydive-project/skydive/graffiti => ./graffiti
 	github.com/spf13/viper v1.7.0 => github.com/lebauce/viper v0.0.0-20210902230629-70f27e465a78
-	github.com/vishvananda/netlink v1.0.0 => github.com/lebauce/netlink v0.0.0-20200826081334-244950452e97
 	golang.org/x/tools => golang.org/x/tools v0.0.0-20190925230517-ea99b82c7b93
 	k8s.io/api => k8s.io/api v0.21.0
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.21.0
