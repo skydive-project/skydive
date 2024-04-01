@@ -32,6 +32,7 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/pierrec/xxHash/xxHash64"
 	"github.com/spf13/cast"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/skydive-project/skydive/config"
 	fl "github.com/skydive-project/skydive/flow/layers"
@@ -1037,24 +1038,24 @@ func (f *Flow) updateDNSLayer(layer gopacket.Layer, timestamp time.Time) error {
 	d := layer.(*layers.DNS)
 	dnsToAppend := &fl.DNS{
 		AA:           d.AA,
-		ID:           d.ID,
+		ID:           uint32(d.ID),
 		QR:           d.QR,
 		RA:           d.RA,
 		RD:           d.RD,
 		TC:           d.TC,
-		ANCount:      d.ANCount,
-		ARCount:      d.ARCount,
-		NSCount:      d.NSCount,
-		QDCount:      d.QDCount,
+		ANCount:      uint32(d.ANCount),
+		ARCount:      uint32(d.ARCount),
+		NSCount:      uint32(d.NSCount),
+		QDCount:      uint32(d.QDCount),
 		ResponseCode: d.ResponseCode.String(),
 		OpCode:       d.OpCode.String(),
-		Z:            d.Z,
+		Z:            uint32(d.Z),
 	}
 	dnsToAppend.Questions = fl.GetDNSQuestions(d.Questions)
 	dnsToAppend.Answers = fl.GetDNSRecords(d.Answers)
 	dnsToAppend.Authorities = fl.GetDNSRecords(d.Authorities)
 	dnsToAppend.Additionals = fl.GetDNSRecords(d.Additionals)
-	dnsToAppend.Timestamp = timestamp
+	dnsToAppend.Timestamp = timestamppb.New(timestamp)
 	f.DNS = dnsToAppend
 	return nil
 }
@@ -1065,11 +1066,11 @@ func (f *Flow) newApplicationLayer(packet *Packet, opts *Opts) error {
 			d := layer.(*layers.DHCPv4)
 			f.DHCPv4 = &fl.DHCPv4{
 				File:         d.File,
-				Flags:        d.Flags,
-				HardwareLen:  d.HardwareLen,
-				HardwareOpts: d.HardwareOpts,
+				Flags:        uint32(d.Flags),
+				HardwareLen:  uint32(d.HardwareLen),
+				HardwareOpts: uint32(d.HardwareOpts),
 				ServerName:   d.ServerName,
-				Secs:         d.Secs,
+				Secs:         uint32(d.Secs),
 			}
 			return nil
 		}
@@ -1086,10 +1087,10 @@ func (f *Flow) newApplicationLayer(packet *Packet, opts *Opts) error {
 		if layer := packet.Layer(layers.LayerTypeVRRP); layer != nil {
 			d := layer.(*layers.VRRPv2)
 			f.VRRPv2 = &fl.VRRPv2{
-				AdverInt:     d.AdverInt,
-				Priority:     d.Priority,
-				Version:      d.Version,
-				VirtualRtrID: d.VirtualRtrID,
+				AdverInt:     uint32(d.AdverInt),
+				Priority:     uint32(d.Priority),
+				Version:      uint32(d.Version),
+				VirtualRtrID: uint32(d.VirtualRtrID),
 			}
 			return nil
 		}

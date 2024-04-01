@@ -23,17 +23,17 @@ import (
 	"github.com/google/gopacket/layers"
 )
 
-func newDNSRecordFromLayersRecord(rr *layers.DNSResourceRecord) DNSResourceRecord {
-	return DNSResourceRecord{
+func newDNSRecordFromLayersRecord(rr *layers.DNSResourceRecord) *DNSResourceRecord {
+	return &DNSResourceRecord{
 		Name:       string(rr.Name),
 		Type:       rr.Type.String(),
 		Class:      rr.Class.String(),
 		TTL:        rr.TTL,
-		DataLength: rr.DataLength,
+		DataLength: uint32(rr.DataLength),
 	}
 }
 
-func toFlowDNSResourceRecord(rr *layers.DNSResourceRecord) (DNSResourceRecord, error) {
+func toFlowDNSResourceRecord(rr *layers.DNSResourceRecord) (*DNSResourceRecord, error) {
 	switch rr.Type {
 	case layers.DNSTypeA, layers.DNSTypeAAAA:
 		record := newDNSRecordFromLayersRecord(rr)
@@ -54,16 +54,16 @@ func toFlowDNSResourceRecord(rr *layers.DNSResourceRecord) (DNSResourceRecord, e
 	case layers.DNSTypeSRV:
 		record := newDNSRecordFromLayersRecord(rr)
 		record.SRV = &DNSSRV{
-			Priority: rr.SRV.Priority,
-			Weight:   rr.SRV.Weight,
-			Port:     rr.SRV.Port,
+			Priority: uint32(rr.SRV.Priority),
+			Weight:   uint32(rr.SRV.Weight),
+			Port:     uint32(rr.SRV.Port),
 			Name:     string(rr.SRV.Name),
 		}
 		return record, nil
 	case layers.DNSTypeMX:
 		record := newDNSRecordFromLayersRecord(rr)
 		record.MX = &DNSMX{
-			Preference: rr.MX.Preference,
+			Preference: uint32(rr.MX.Preference),
 			Name:       string(rr.MX.Name),
 		}
 		return record, nil
@@ -81,7 +81,7 @@ func toFlowDNSResourceRecord(rr *layers.DNSResourceRecord) (DNSResourceRecord, e
 		return record, nil
 	case layers.DNSTypeCNAME:
 		record := newDNSRecordFromLayersRecord(rr)
-		record.CNAME = string(rr.CNAME)
+		record.CName = string(rr.CNAME)
 		return record, nil
 	case layers.DNSTypePTR:
 		record := newDNSRecordFromLayersRecord(rr)
@@ -99,15 +99,15 @@ func toFlowDNSResourceRecord(rr *layers.DNSResourceRecord) (DNSResourceRecord, e
 
 	}
 
-	return DNSResourceRecord{}, errors.New("No Matching Type")
+	return &DNSResourceRecord{}, errors.New("no matching type")
 }
 
 // GetDNSQuestions returns the dns questions from a given packet
-func GetDNSQuestions(dq []layers.DNSQuestion) []DNSQuestion {
+func GetDNSQuestions(dq []layers.DNSQuestion) []*DNSQuestion {
 	if len(dq) > 0 {
-		questions := make([]DNSQuestion, len(dq))
+		questions := make([]*DNSQuestion, len(dq))
 		for i, v := range dq {
-			questions[i] = DNSQuestion{
+			questions[i] = &DNSQuestion{
 				Name:  string(v.Name),
 				Type:  v.Type.String(),
 				Class: v.Class.String(),
@@ -119,9 +119,9 @@ func GetDNSQuestions(dq []layers.DNSQuestion) []DNSQuestion {
 }
 
 // GetDNSRecords returns a dns record
-func GetDNSRecords(records []layers.DNSResourceRecord) []DNSResourceRecord {
+func GetDNSRecords(records []layers.DNSResourceRecord) []*DNSResourceRecord {
 	if len(records) > 0 {
-		holders := make([]DNSResourceRecord, 0, len(records))
+		holders := make([]*DNSResourceRecord, 0, len(records))
 		for _, v := range records {
 			if resource, err := toFlowDNSResourceRecord(&v); err == nil {
 				holders = append(holders, resource)

@@ -156,7 +156,7 @@ func (p *PcapWriter) WriteRawPacket(r *RawPacket) error {
 func (p *PcapWriter) WriteRawPackets(fr []*RawPacket) error {
 
 	for _, r := range fr {
-		if r.LinkType != layers.LinkTypeEthernet {
+		if layers.LinkType(r.LinkType) != layers.LinkTypeEthernet {
 			logging.GetLogger().Errorf("Support only Ethernet link type for the moment")
 			continue
 		}

@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/safchain/insanelock"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
@@ -142,7 +143,7 @@ func (c *FlowClient) close() {
 
 // SendMessage sends a flow to the server
 func (c *FlowClient) SendMessage(m *flow.Message) error {
-	data, err := m.Marshal()
+	data, err := proto.Marshal(m)
 	if err != nil {
 		return err
 	}

@@ -146,7 +146,7 @@ func rawpacketToDoc(rid string, r *flow.RawPacket) *rawpacketDoc {
 		Class:     "FlowRawPacket",
 		Type:      "d",
 		Flow:      rid,
-		LinkType:  r.LinkType,
+		LinkType:  layers.LinkType(r.LinkType),
 		Index:     r.Index,
 		Timestamp: r.Timestamp,
 		Data:      r.Data,
@@ -158,7 +158,7 @@ func (r *rawpacketDoc) rawpacket() *flow.RawPacket {
 		Index:     r.Index,
 		Timestamp: r.Timestamp,
 		Data:      r.Data,
-		LinkType:  r.LinkType,
+		LinkType:  uint32(r.LinkType),
 	}
 }
 

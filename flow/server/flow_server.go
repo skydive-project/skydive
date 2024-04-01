@@ -35,6 +35,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/service"
 	ws "github.com/skydive-project/skydive/graffiti/websocket"
 	"github.com/skydive-project/skydive/probe"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -101,7 +102,7 @@ func (c *FlowServerWebSocketConn) OnMessage(client ws.Speaker, m ws.Message) {
 	b, _ := m.Bytes(ws.RawProtocol)
 
 	var msg flow.Message
-	if err := msg.Unmarshal(b); err != nil {
+	if err := proto.Unmarshal(b, &msg); err != nil {
 		logging.GetLogger().Errorf("Error while parsing flow: %s", err)
 		return
 	}
@@ -172,7 +173,7 @@ func (c *FlowServerUDPConn) Serve(flowChan chan *flow.Flow, statsChan chan *flow
 				}
 
 				var msg flow.Message
-				if err := msg.Unmarshal(data[0:n]); err != nil {
+				if err := proto.Unmarshal(data[0:n], &msg); err != nil {
 					logging.GetLogger().Errorf("Error while parsing flow: %s", err)
 					continue
 				}
