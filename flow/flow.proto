@@ -210,7 +210,7 @@ message Flow {
 /* number of raw packet captured */
   int64 RawPacketsCaptured = 37;
 
-/* describes the way the flow was ended (e.g. by RST, FIN) */
+  /* describes the way the flow was ended (e.g. by RST, FIN) */
   FlowFinishType FinishType = 60;
 }
 

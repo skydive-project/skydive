@@ -21,9 +21,11 @@ package targets
 
 import (
 	"github.com/google/gopacket"
+
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/probe"
 )
 
 // ERSpanTarget defines a ERSpanTarget target
@@ -44,5 +46,5 @@ func (ers *ERSpanTarget) Stop() {
 
 // NewERSpanTarget returns a new ERSpan target
 func NewERSpanTarget(g *graph.Graph, n *graph.Node, capture *types.Capture) (*ERSpanTarget, error) {
-	return nil, errrors.ErrNotImplemented
+	return nil, probe.ErrNotImplemented
 }
