@@ -38,7 +38,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/newtools/ebpf v0.0.0-20190820102627-8b7eaed02eb9
-	github.com/nimbess/nimbess-agent v0.0.0-20190919205041-4e6f317ac4fd
+	github.com/nimbess/nimbess-agent v0.0.0-20191107080950-7b7dccf7df48
 	github.com/nlewo/contrail-introspect-cli v0.0.0-20181003135217-0407b60f2edd
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/olivere/elastic/v7 v7.0.21
@@ -314,7 +314,6 @@ replace (
 	github.com/hashicorp/consul => github.com/hashicorp/consul v1.6.10
 	github.com/mholt/caddy => github.com/caddyserver/caddy v0.11.5
 	github.com/newtools/ebpf => github.com/nplanel/ebpf v0.0.0-20190918123742-99947faabce5
-	github.com/nimbess/nimbess-agent => github.com/lebauce/nimbess-agent v0.0.0-20210903082218-878aee9e2258
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.3
 	github.com/skydive-project/skydive/graffiti => ./graffiti
 	github.com/spf13/viper v1.7.0 => github.com/lebauce/viper v0.0.0-20210902230629-70f27e465a78
