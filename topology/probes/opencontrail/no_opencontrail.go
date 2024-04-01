@@ -1,4 +1,4 @@
-// +build !linux !opencontrail
+//go:build !linux || !opencontrail
 
 /*
  * Copyright (C) 2018 Orange, Inc.

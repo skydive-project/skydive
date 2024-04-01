@@ -1,4 +1,4 @@
-// +build !prof
+//go:build !prof
 
 /*
  * Copyright (C) 2016 Red Hat, Inc.

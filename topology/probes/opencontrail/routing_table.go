@@ -1,4 +1,5 @@
-// +build linux,opencontrail
+//go:build linux && opencontrail
+
 //go:generate go run github.com/mailru/easyjson/easyjson -build_tags opencontrail $GOFILE
 
 /*

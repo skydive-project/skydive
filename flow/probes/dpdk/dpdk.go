@@ -1,4 +1,4 @@
-// +build dpdk
+//go:build dpdk
 
 /*
  * Copyright (C) 2017 Red Hat, Inc.
