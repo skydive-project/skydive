@@ -19,7 +19,6 @@ syntax = "proto3";
 
 package flow;
 
-import "gogoproto/gogo.proto";
 import "dns.proto";
 import "dhcpv4.proto";
 import "vrrpv2.proto";
@@ -27,8 +26,6 @@ import "vrrpv2.proto";
 import "graffiti/filters/filters.proto";
 
 option go_package = "github.com/skydive-project/skydive/flow";
-option (gogoproto.protosizer_all) = true;
-option (gogoproto.sizer_all) = false;
 
 enum FlowProtocol {
   ETHERNET = 0;
@@ -98,7 +95,7 @@ message RawPacket {
   int64 Timestamp = 1;
   int64 Index = 2;
   bytes Data = 3;
-  uint32 LinkType = 4 [(gogoproto.casttype) = "github.com/google/gopacket/layers.LinkType"];
+  uint32 LinkType = 4;
 }
 
 message IPMetric {

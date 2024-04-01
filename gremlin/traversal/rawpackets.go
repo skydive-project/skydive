@@ -135,13 +135,14 @@ func (r *RawPacketsTraversalStep) BPF(ctx traversal.StepContext, s ...interface{
 
 		var filteredPackets []*flow.RawPacket
 		for _, packet := range value {
-			bpf, ok := bpfFilters[packet.LinkType]
+			linkType := layers.LinkType(packet.LinkType)
+			bpf, ok := bpfFilters[linkType]
 			if !ok {
-				bpf, err = flow.NewBPF(packet.LinkType, flow.DefaultCaptureLength, filter)
+				bpf, err = flow.NewBPF(linkType, flow.DefaultCaptureLength, filter)
 				if err != nil {
 					return &RawPacketsTraversalStep{error: err}
 				}
-				bpfFilters[packet.LinkType] = bpf
+				bpfFilters[linkType] = bpf
 			}
 
 			if bpf.Matches(packet.Data) {

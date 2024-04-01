@@ -65,7 +65,7 @@ func (f *WSTableClient) lookupFlows(flowset chan *FlowSet, host string, flowSear
 	}
 	for _, b := range reply.FlowSetBytes {
 		var f FlowSet
-		if err := f.Unmarshal(b); err != nil {
+		if err := proto.Unmarshal(b, &f); err != nil {
 			logging.GetLogger().Errorf("Error returned while reading TableReply from: %s", host)
 			flowset <- NewFlowSet()
 		}

@@ -13,6 +13,8 @@ func (obj *FlowLayer) GetFieldBool(key string) (bool, error) {
 
 func (obj *FlowLayer) GetFieldInt64(key string) (int64, error) {
 	switch key {
+	case "sizeCache":
+		return int64(obj.sizeCache), nil
 	case "ID":
 		return int64(obj.ID), nil
 	}
@@ -33,6 +35,9 @@ func (obj *FlowLayer) GetFieldString(key string) (string, error) {
 
 func (obj *FlowLayer) GetFieldKeys() []string {
 	return []string{
+		"state",
+		"sizeCache",
+		"unknownFields",
 		"Protocol",
 		"A",
 		"B",
@@ -66,6 +71,27 @@ func (obj *FlowLayer) GetField(key string) (interface{}, error) {
 	if i, err := obj.GetFieldInt64(key); err == nil {
 		return i, nil
 	}
+
+	first := key
+	index := strings.Index(key, ".")
+	if index != -1 {
+		first = key[:index]
+	}
+
+	switch first {
+	case "unknownFields":
+		if obj.unknownFields != nil {
+			if index != -1 {
+			} else {
+				var results []interface{}
+				for _, obj := range obj.unknownFields {
+					results = append(results, obj)
+				}
+				return results, nil
+			}
+		}
+
+	}
 	return nil, getter.ErrFieldNotFound
 }
 
@@ -75,6 +101,8 @@ func (obj *FlowMetric) GetFieldBool(key string) (bool, error) {
 
 func (obj *FlowMetric) GetFieldInt64(key string) (int64, error) {
 	switch key {
+	case "sizeCache":
+		return int64(obj.sizeCache), nil
 	case "ABPackets":
 		return int64(obj.ABPackets), nil
 	case "ABBytes":
@@ -99,6 +127,9 @@ func (obj *FlowMetric) GetFieldString(key string) (string, error) {
 
 func (obj *FlowMetric) GetFieldKeys() []string {
 	return []string{
+		"state",
+		"sizeCache",
+		"unknownFields",
 		"ABPackets",
 		"ABBytes",
 		"BAPackets",
@@ -128,6 +159,27 @@ func (obj *FlowMetric) GetField(key string) (interface{}, error) {
 	if i, err := obj.GetFieldInt64(key); err == nil {
 		return i, nil
 	}
+
+	first := key
+	index := strings.Index(key, ".")
+	if index != -1 {
+		first = key[:index]
+	}
+
+	switch first {
+	case "unknownFields":
+		if obj.unknownFields != nil {
+			if index != -1 {
+			} else {
+				var results []interface{}
+				for _, obj := range obj.unknownFields {
+					results = append(results, obj)
+				}
+				return results, nil
+			}
+		}
+
+	}
 	return nil, getter.ErrFieldNotFound
 }
 
@@ -137,6 +189,8 @@ func (obj *ICMPLayer) GetFieldBool(key string) (bool, error) {
 
 func (obj *ICMPLayer) GetFieldInt64(key string) (int64, error) {
 	switch key {
+	case "sizeCache":
+		return int64(obj.sizeCache), nil
 	case "Code":
 		return int64(obj.Code), nil
 	case "ID":
@@ -155,6 +209,9 @@ func (obj *ICMPLayer) GetFieldString(key string) (string, error) {
 
 func (obj *ICMPLayer) GetFieldKeys() []string {
 	return []string{
+		"state",
+		"sizeCache",
+		"unknownFields",
 		"Type",
 		"Code",
 		"ID",
@@ -187,6 +244,27 @@ func (obj *ICMPLayer) GetField(key string) (interface{}, error) {
 	if i, err := obj.GetFieldInt64(key); err == nil {
 		return i, nil
 	}
+
+	first := key
+	index := strings.Index(key, ".")
+	if index != -1 {
+		first = key[:index]
+	}
+
+	switch first {
+	case "unknownFields":
+		if obj.unknownFields != nil {
+			if index != -1 {
+			} else {
+				var results []interface{}
+				for _, obj := range obj.unknownFields {
+					results = append(results, obj)
+				}
+				return results, nil
+			}
+		}
+
+	}
 	return nil, getter.ErrFieldNotFound
 }
 
@@ -196,6 +274,8 @@ func (obj *IPMetric) GetFieldBool(key string) (bool, error) {
 
 func (obj *IPMetric) GetFieldInt64(key string) (int64, error) {
 	switch key {
+	case "sizeCache":
+		return int64(obj.sizeCache), nil
 	case "Fragments":
 		return int64(obj.Fragments), nil
 	case "FragmentErrors":
@@ -210,6 +290,9 @@ func (obj *IPMetric) GetFieldString(key string) (string, error) {
 
 func (obj *IPMetric) GetFieldKeys() []string {
 	return []string{
+		"state",
+		"sizeCache",
+		"unknownFields",
 		"Fragments",
 		"FragmentErrors",
 	}
@@ -234,6 +317,27 @@ func (obj *IPMetric) GetField(key string) (interface{}, error) {
 	if i, err := obj.GetFieldInt64(key); err == nil {
 		return i, nil
 	}
+
+	first := key
+	index := strings.Index(key, ".")
+	if index != -1 {
+		first = key[:index]
+	}
+
+	switch first {
+	case "unknownFields":
+		if obj.unknownFields != nil {
+			if index != -1 {
+			} else {
+				var results []interface{}
+				for _, obj := range obj.unknownFields {
+					results = append(results, obj)
+				}
+				return results, nil
+			}
+		}
+
+	}
 	return nil, getter.ErrFieldNotFound
 }
 
@@ -243,6 +347,8 @@ func (obj *TCPMetric) GetFieldBool(key string) (bool, error) {
 
 func (obj *TCPMetric) GetFieldInt64(key string) (int64, error) {
 	switch key {
+	case "sizeCache":
+		return int64(obj.sizeCache), nil
 	case "ABSynStart":
 		return int64(obj.ABSynStart), nil
 	case "BASynStart":
@@ -297,6 +403,9 @@ func (obj *TCPMetric) GetFieldString(key string) (string, error) {
 
 func (obj *TCPMetric) GetFieldKeys() []string {
 	return []string{
+		"state",
+		"sizeCache",
+		"unknownFields",
 		"ABSynStart",
 		"BASynStart",
 		"ABSynTTL",
@@ -341,6 +450,27 @@ func (obj *TCPMetric) GetField(key string) (interface{}, error) {
 	if i, err := obj.GetFieldInt64(key); err == nil {
 		return i, nil
 	}
+
+	first := key
+	index := strings.Index(key, ".")
+	if index != -1 {
+		first = key[:index]
+	}
+
+	switch first {
+	case "unknownFields":
+		if obj.unknownFields != nil {
+			if index != -1 {
+			} else {
+				var results []interface{}
+				for _, obj := range obj.unknownFields {
+					results = append(results, obj)
+				}
+				return results, nil
+			}
+		}
+
+	}
 	return nil, getter.ErrFieldNotFound
 }
 
@@ -350,6 +480,8 @@ func (obj *TransportLayer) GetFieldBool(key string) (bool, error) {
 
 func (obj *TransportLayer) GetFieldInt64(key string) (int64, error) {
 	switch key {
+	case "sizeCache":
+		return int64(obj.sizeCache), nil
 	case "A":
 		return int64(obj.A), nil
 	case "B":
@@ -370,6 +502,9 @@ func (obj *TransportLayer) GetFieldString(key string) (string, error) {
 
 func (obj *TransportLayer) GetFieldKeys() []string {
 	return []string{
+		"state",
+		"sizeCache",
+		"unknownFields",
 		"Protocol",
 		"A",
 		"B",
@@ -402,6 +537,27 @@ func (obj *TransportLayer) GetField(key string) (interface{}, error) {
 
 	if i, err := obj.GetFieldInt64(key); err == nil {
 		return i, nil
+	}
+
+	first := key
+	index := strings.Index(key, ".")
+	if index != -1 {
+		first = key[:index]
+	}
+
+	switch first {
+	case "unknownFields":
+		if obj.unknownFields != nil {
+			if index != -1 {
+			} else {
+				var results []interface{}
+				for _, obj := range obj.unknownFields {
+					results = append(results, obj)
+				}
+				return results, nil
+			}
+		}
+
 	}
 	return nil, getter.ErrFieldNotFound
 }

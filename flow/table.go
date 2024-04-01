@@ -26,6 +26,7 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/hashicorp/golang-lru/simplelru"
 	"github.com/safchain/insanelock"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/filters"
@@ -358,7 +359,7 @@ func (ft *Table) onQuery(tq *TableQuery) []byte {
 		fs := ft.getFlows(tq.Query)
 
 		// marshal early to avoid race outside of query loop
-		b, err := fs.Marshal()
+		b, err := proto.Marshal(fs)
 		if err != nil {
 			return nil
 		}
@@ -429,7 +430,7 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
 			Timestamp: UnixMilli(packet.GoPacket.Metadata().CaptureInfo.Timestamp),
 			Index:     flow.RawPacketsCaptured,
 			Data:      packet.Data,
-			LinkType:  linkType,
+			LinkType:  uint32(linkType),
 		}
 		flow.LastRawPackets = append(flow.LastRawPackets, data)
 	}

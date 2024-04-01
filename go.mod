@@ -33,7 +33,7 @@ require (
 	github.com/libvirt/libvirt-go v0.0.0-20181005092746-9c5bdce3c18f
 	github.com/lunixbochs/struc v0.0.0-20190916212049-a5c72983bc42
 	github.com/lxc/lxd v0.0.0-20200330183600-518f06676866
-	github.com/mailru/easyjson v0.7.6
+	github.com/mailru/easyjson v0.7.7
 	github.com/mattn/goveralls v0.0.2
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
@@ -72,6 +72,7 @@ require (
 	golang.org/x/sys v0.18.0
 	golang.org/x/tools v0.6.0
 	google.golang.org/grpc v1.59.0
+	google.golang.org/protobuf v1.33.0
 	gopkg.in/fsnotify/fsnotify.v1 v1.0.0-20180110053347-c2828203cd70
 	gopkg.in/mcuadros/go-syslog.v2 v2.3.0
 	gopkg.in/validator.v2 v2.0.0-20160201165114-3e4f037f12a1
@@ -284,7 +285,6 @@ require (
 	google.golang.org/genproto v0.0.0-20231016165738-49dd2c1f3d0b // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20231012201019-e917dd12ba7a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231030173426-d783a09b4405 // indirect
-	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/errgo.v1 v1.0.1 // indirect
 	gopkg.in/httprequest.v1 v1.2.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
