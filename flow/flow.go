@@ -1500,8 +1500,9 @@ func structFieldKeys(t reflect.Type, prefix string) []string {
 		vField := t.Field(i)
 		tField := vField.Type
 
-		// ignore XXX fields as they are considered as private
-		if strings.HasPrefix(vField.Name, "XXX_") {
+		// ignore both XXX fields - as they are considered as private - and internal fields
+		protoTag := vField.Tag.Get("protobuf")
+		if strings.HasPrefix(vField.Name, "XXX_") || protoTag == "" {
 			continue
 		}
 
