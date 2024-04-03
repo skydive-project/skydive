@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"strings"
 
-	uuid "github.com/nu7hatch/gouuid"
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -123,7 +123,7 @@ func (fb *Probe) getOrCreateFabricNodeFromDef(nodeDef string) (*graph.Node, erro
 		metadata["Type"] = "device"
 	}
 
-	u, _ := uuid.NewV5(uuid.NamespaceOID, []byte("fabric"+nodeName))
+	u := uuid.NewV5(uuid.NamespaceOID, "fabric"+nodeName)
 	id := graph.Identifier(u.String())
 
 	if node := fb.Graph.GetNode(id); node != nil {

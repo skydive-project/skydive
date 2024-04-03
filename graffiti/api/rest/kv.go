@@ -26,7 +26,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	uuid "github.com/nu7hatch/gouuid"
+	uuid "github.com/satori/go.uuid"
 	etcd "go.etcd.io/etcd/client/v2"
 
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
@@ -105,7 +105,7 @@ func (h *BasicAPIHandler) Get(id string) (Resource, bool) {
 
 // Create a new resource in Etcd
 func (h *BasicAPIHandler) Create(resource Resource, createOpts *CreateOptions) error {
-	id, _ := uuid.NewV4()
+	id := uuid.NewV4()
 	resource.SetID(id.String())
 
 	data, err := json.Marshal(&resource)

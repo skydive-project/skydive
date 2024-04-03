@@ -18,7 +18,7 @@
 package topology
 
 import (
-	uuid "github.com/nu7hatch/gouuid"
+	uuid "github.com/satori/go.uuid"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/logging"
 )
@@ -63,7 +63,7 @@ func (t *TIDMapper) setTID(parent, child *graph.Node) {
 
 	if tid, _ := parent.GetFieldString("TID"); tid != "" {
 		tid = tid + key + tp
-		u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(tid))
+		u := uuid.NewV5(uuid.NamespaceOID, tid)
 		t.Graph.AddMetadata(child, "TID", u.String())
 	}
 }
@@ -77,14 +77,14 @@ func (t *TIDMapper) onNodeEvent(n *graph.Node) {
 			switch tp {
 			case "host":
 				if name, err := n.GetFieldString("Name"); err == nil {
-					u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(name))
+					u := uuid.NewV5(uuid.NamespaceOID, name)
 					t.hostID = graph.Identifier(u.String())
 					t.Graph.AddMetadata(n, "TID", u.String())
 				}
 			case "netns":
 				if path, _ := n.GetFieldString("Path"); path != "" {
 					tid := string(t.hostID) + path + tp
-					u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(tid))
+					u := uuid.NewV5(uuid.NamespaceOID, tid)
 					t.Graph.AddMetadata(n, "TID", u.String())
 				}
 			case "ovsbridge", "ovsport":
@@ -92,7 +92,7 @@ func (t *TIDMapper) onNodeEvent(n *graph.Node) {
 
 					tid := string(t.hostID) + u + tp
 
-					u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(tid))
+					u := uuid.NewV5(uuid.NamespaceOID, tid)
 					t.Graph.AddMetadata(n, "TID", u.String())
 				}
 			default:

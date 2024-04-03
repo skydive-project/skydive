@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	uuid "github.com/nu7hatch/gouuid"
+	uuid "github.com/satori/go.uuid"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/netns"
@@ -152,7 +152,7 @@ func NewLink(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, relationType 
 		m[k] = v
 	}
 
-	id, _ := uuid.NewV5(uuid.NamespaceOID, []byte(node1.ID+node2.ID+graph.Identifier(relationType)))
+	id := uuid.NewV5(uuid.NamespaceOID, string(node1.ID+node2.ID+graph.Identifier(relationType)))
 	edge := g.CreateEdge(graph.Identifier(id.String()), node1, node2, m, graph.Time(time.Now()))
 	if edge == nil {
 		return nil, fmt.Errorf("Failed to create edge with id %s", id.String())

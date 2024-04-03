@@ -35,7 +35,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go"
-	uuid "github.com/nu7hatch/gouuid"
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -194,29 +194,20 @@ func (probe *OfctlProbe) parseEvent(line string) (Event, error) {
 // prefix is a unique string per bridge using bridge and host names.
 func fillRawUUID(rule *RawRule, prefix string) {
 	id := prefix + rule.Filter + "-" + strconv.Itoa(rule.Table)
-	u, err := uuid.NewV5(uuid.NamespaceOID, []byte(id))
-	if err == nil {
-		rule.UUID = u.String()
-	}
+	rule.UUID = uuid.NewV5(uuid.NamespaceOID, id).String()
 }
 
 // fillRawUUID Generates a unique UUID for the rule
 // prefix is a unique string per bridge using bridge and host names.
 func fillUUID(rule *jsonof.JSONRule, prefix string) {
 	id := prefix + rule.RawFilter + "-" + strconv.Itoa(rule.Table) + "-" + strconv.Itoa(rule.Priority)
-	u, err := uuid.NewV5(uuid.NamespaceOID, []byte(id))
-	if err == nil {
-		rule.UUID = u.String()
-	}
+	rule.UUID = uuid.NewV5(uuid.NamespaceOID, id).String()
 }
 
 // Generate a unique UUID for the group
 func fillGroupUUID(group *jsonof.JSONGroup, prefix string) {
 	id := prefix + "-" + strconv.Itoa(int(group.GroupID))
-	u, err := uuid.NewV5(uuid.NamespaceOID, []byte(id))
-	if err == nil {
-		group.UUID = u.String()
-	}
+	group.UUID = uuid.NewV5(uuid.NamespaceOID, id).String()
 }
 
 func makeFilter(rule *RawRule) string {

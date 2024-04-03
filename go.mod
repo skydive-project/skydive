@@ -40,7 +40,6 @@ require (
 	github.com/newtools/ebpf v0.0.0-20190820102627-8b7eaed02eb9
 	github.com/nimbess/nimbess-agent v0.0.0-20190919205041-4e6f317ac4fd
 	github.com/nlewo/contrail-introspect-cli v0.0.0-20181003135217-0407b60f2edd
-	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/olivere/elastic/v7 v7.0.32
 	github.com/ovn-org/libovsdb v0.4.0
 	github.com/pierrec/xxHash v0.1.5
@@ -49,6 +48,7 @@ require (
 	github.com/robertkrimen/otto v0.3.0
 	github.com/safchain/ethtool v0.0.0-20190326074333-42ed695e3de8
 	github.com/safchain/insanelock v0.0.0-20200217234559-cfbf166e05b3
+	github.com/satori/go.uuid v1.2.0
 	github.com/shirou/gopsutil v2.18.12+incompatible
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skydive-project/dede v0.0.0-20200217172954-b1b74a5bb856
