@@ -32,9 +32,9 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	version "github.com/hashicorp/go-version"
-	uuid "github.com/nu7hatch/gouuid"
 	elastic "github.com/olivere/elastic/v7"
 	"github.com/pkg/errors"
+	uuid "github.com/satori/go.uuid"
 
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/filters"
@@ -645,10 +645,7 @@ func NewClient(indices []Index, cfg Config, electionService etcd.MasterElectionS
 	}
 	sort.Strings(names)
 
-	u5, err := uuid.NewV5(uuid.NamespaceOID, []byte(strings.Join(names, ",")))
-	if err != nil {
-		return nil, err
-	}
+	u5 := uuid.NewV5(uuid.NamespaceOID, strings.Join(names, ","))
 
 	client := &Client{
 		Config:         cfg,

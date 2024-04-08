@@ -27,8 +27,8 @@ import (
 	auth "github.com/abbot/go-http-auth"
 	proto "github.com/gogo/protobuf/proto"
 	"github.com/gorilla/websocket"
-	uuid "github.com/nu7hatch/gouuid"
 	"github.com/safchain/insanelock"
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/skydive-project/skydive/graffiti/logging"
 )
@@ -198,8 +198,7 @@ func NewStructMessage(ns string, tp string, v interface{}, uuids ...string) *Str
 	if len(uuids) != 0 {
 		u = uuids[0]
 	} else {
-		v4, _ := uuid.NewV4()
-		u = v4.String()
+		u = uuid.NewV4().String()
 	}
 
 	msg := &StructMessage{

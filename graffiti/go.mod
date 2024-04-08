@@ -24,7 +24,6 @@ require (
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
-	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/olivere/elastic/v7 v7.0.32
 	github.com/peterh/liner v1.2.2
 	github.com/pierrec/xxHash v0.1.5
@@ -32,6 +31,7 @@ require (
 	github.com/pmylund/go-cache v2.1.0+incompatible
 	github.com/robertkrimen/otto v0.3.0
 	github.com/safchain/insanelock v0.0.0-20200217234559-cfbf166e05b3
+	github.com/satori/go.uuid v1.2.0
 	github.com/skydive-project/go-debouncer v1.0.0
 	github.com/spf13/cast v1.6.0
 	github.com/spf13/cobra v1.8.0
