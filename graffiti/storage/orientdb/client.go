@@ -320,6 +320,10 @@ func (c *Client) Request(method string, url string, body io.Reader) (*http.Respo
 		return nil, err
 	}
 
+	if body != nil {
+		request.Header.Set("Content-Encoding", "gzip")
+	}
+
 	if !c.authenticated {
 		request.SetBasicAuth(c.username, c.password)
 	} else {
@@ -555,7 +559,7 @@ func (c *Client) CreateDatabase() (*Result, error) {
 // SQL Simple Query Language, send a query to the OrientDB server
 func (c *Client) SQL(query string) (*Result, error) {
 	url := fmt.Sprintf("%s/command/%s/sql", c.url, c.database)
-	resp, err := c.Request("POST", url, bytes.NewBufferString(query))
+	resp, err := c.Request("POST", url, strings.NewReader(query))
 	if err != nil {
 		return nil, err
 	}
@@ -604,7 +608,7 @@ func (c *Client) reconnect() error {
 
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("Failed to authenticate to OrientDB: %s", resp.Status)
+		return fmt.Errorf("failed to authenticate to OrientDB: %s", resp.Status)
 	}
 
 	if resp.StatusCode < 400 && len(resp.Cookies()) != 0 {
