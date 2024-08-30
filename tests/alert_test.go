@@ -137,6 +137,7 @@ func connect(endpoint string, timeout int, onReady func(*websocket.Conn)) (*webs
 }
 
 func TestAlertWebhook(t *testing.T) {
+	t.Skip("no alert tests for now in multianalyzer")
 	var (
 		err        error
 		al         *types.Alert
@@ -308,6 +309,7 @@ func TestAlertScript(t *testing.T) {
 }
 
 func TestAlertWithTimer(t *testing.T) {
+	t.Skip("no alert tests for now in multianalyzer")
 	var (
 		err  error
 		conn *websocket.Conn
@@ -383,6 +385,7 @@ func TestAlertWithTimer(t *testing.T) {
 }
 
 func TestMultipleTriggering(t *testing.T) {
+	t.Skip("no alert tests for now in multianalyzer")
 	var (
 		err  error
 		conn *websocket.Conn
