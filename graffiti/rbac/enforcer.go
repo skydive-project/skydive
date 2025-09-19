@@ -22,7 +22,7 @@ import (
 
 	"github.com/casbin/casbin"
 	"github.com/casbin/casbin/model"
-	etcd "go.etcd.io/etcd/client/v2"
+	etcd "go.etcd.io/etcd/client/v3"
 )
 
 // Permission defines a permission
@@ -39,8 +39,8 @@ var enforcer *casbin.SyncedEnforcer
 // - the policy uploaded in etcd and shared by all analyzers
 // - a policy bundled into the binary
 // - a policy specified in the configuration file
-func Init(model model.Model, kapi etcd.KeysAPI, loadPolicy func(model.Model) error) error {
-	etcdAdapter, err := NewEtcdAdapter(kapi)
+func Init(model model.Model, client *etcd.Client, loadPolicy func(model.Model) error) error {
+	etcdAdapter, err := NewEtcdAdapter(client)
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func Init(model model.Model, kapi etcd.KeysAPI, loadPolicy func(model.Model) err
 	}
 	casbinEnforcer.BuildRoleLinks()
 
-	watcher := NewEtcdWatcher(kapi, context.Background())
+	watcher := NewEtcdWatcher(client, context.Background())
 
 	watcher.SetUpdateCallback(func(string) {
 		casbinEnforcer.LoadPolicy()

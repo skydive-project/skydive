@@ -4,14 +4,14 @@
 package ovnmodel
 
 import (
-	"github.com/ovn-org/libovsdb/model"
+	"github.com/ovn-kubernetes/libovsdb/model"
 
 	"github.com/skydive-project/skydive/graffiti/graph"
 )
 
-// FullDatabaseModel returns the DatabaseModel object to be used in libovsdb
-func FullDatabaseModel() (*model.DBModel, error) {
-	return model.NewDBModel("OVN_Northbound", map[string]model.Model{
+// FullDatabaseModel returns the ClientDBModel object to be used in libovsdb
+func FullDatabaseModel() (model.ClientDBModel, error) {
+	return model.NewClientDBModel("OVN_Northbound", map[string]model.Model{
 		"ACL":                         &ACL{},
 		"Address_Set":                 &AddressSet{},
 		"Connection":                  &Connection{},

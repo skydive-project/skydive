@@ -24,7 +24,7 @@ import (
 	"net"
 	"time"
 
-	netflow "github.com/VerizonDigital/vflow/netflow/v5"
+	netflow "github.com/EdgeCast/vflow/netflow/v5"
 	"github.com/google/gopacket/layers"
 	"github.com/safchain/insanelock"
 

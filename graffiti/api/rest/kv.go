@@ -27,7 +27,7 @@ import (
 	"time"
 
 	uuid "github.com/satori/go.uuid"
-	etcd "go.etcd.io/etcd/client/v2"
+	etcd "go.etcd.io/etcd/client/v3"
 
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/logging"

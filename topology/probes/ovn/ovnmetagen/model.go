@@ -4,8 +4,8 @@ import (
 	"log"
 	"text/template"
 
-	"github.com/ovn-org/libovsdb/modelgen"
-	"github.com/ovn-org/libovsdb/ovsdb"
+	"github.com/ovn-kubernetes/libovsdb/modelgen"
+	"github.com/ovn-kubernetes/libovsdb/ovsdb"
 )
 
 const MODEL_HEADER = ` {{ define "header" }}
@@ -15,7 +15,7 @@ const MODEL_HEADER = ` {{ define "header" }}
 `
 const MODEL_IMPORTS = `{{ define "preDBDefinitions" }}
 import (
-	"github.com/ovn-org/libovsdb/model"
+	"github.com/ovn-kubernetes/libovsdb/model"
 
 	"github.com/skydive-project/skydive/graffiti/graph"
 ){{ end }}`
@@ -31,7 +31,7 @@ func Decoders() map[string]graph.MetadataDecoder {
 } {{ end }}
 `
 
-func modelTemplate(pkgName string, db *ovsdb.DatabaseSchema) (*template.Template, map[string]interface{}) {
+func modelTemplate(pkgName string, db ovsdb.DatabaseSchema) (*template.Template, map[string]interface{}) {
 	base := modelgen.NewDBTemplate()
 	data := modelgen.GetDBTemplateData(pkgName, db)
 	_, err := base.Parse(MODEL_HEADER)

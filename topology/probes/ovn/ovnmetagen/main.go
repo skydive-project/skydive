@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
 
-	"github.com/ovn-org/libovsdb/modelgen"
-	"github.com/ovn-org/libovsdb/ovsdb"
+	"github.com/ovn-kubernetes/libovsdb/modelgen"
+	"github.com/ovn-kubernetes/libovsdb/ovsdb"
 )
 
 func usage() {
@@ -54,7 +54,7 @@ func main() {
 	}
 	defer schemaFile.Close()
 
-	schemaBytes, err := ioutil.ReadAll(schemaFile)
+	schemaBytes, err := io.ReadAll(schemaFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -64,7 +64,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	generator := modelgen.NewGenerator(*dryRun)
+	genOpts := []modelgen.Option{}
+	if *dryRun {
+		genOpts = append(genOpts, modelgen.WithDryRun())
+	}
+	generator, err := modelgen.NewGenerator(genOpts...)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	for name := range dbSchema.Tables {
 		templ, data := tableTemplate(pkgName, name, &dbSchema)
@@ -75,7 +82,7 @@ func main() {
 		}
 	}
 
-	dbTempl, dbData := modelTemplate(pkgName, &dbSchema)
+	dbTempl, dbData := modelTemplate(pkgName, dbSchema)
 	if err != nil {
 		log.Print("Error creating DBModel template")
 		log.Fatal(err)

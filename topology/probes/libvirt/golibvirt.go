@@ -1,3 +1,4 @@
+//go:build !libvirt && linux
 // +build !libvirt,linux
 
 /*
@@ -91,7 +92,7 @@ func newMonitor(ctx context.Context, probe *Probe, wg *sync.WaitGroup) (*golibvi
 		return nil, fmt.Errorf("failed to connect: %s", err)
 	}
 
-	events, err := libvirt.LifecycleEvents()
+	events, err := libvirt.LifecycleEvents(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to watch lifecycle events: %s", err)
 	}

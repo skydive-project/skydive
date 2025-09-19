@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/safchain/insanelock"
-	etcd "go.etcd.io/etcd/client/v2"
+	etcd "go.etcd.io/etcd/client/v3"
 	"golang.org/x/net/context"
 
 	"github.com/skydive-project/skydive/graffiti/logging"
@@ -36,15 +36,15 @@ const (
 // MasterElector describes an ETCD master elector
 type MasterElector struct {
 	insanelock.RWMutex
-	EtcdKeyAPI etcd.KeysAPI
-	HolderID   string
-	path       string
-	listeners  []MasterElectionListener
-	cancel     context.CancelFunc
-	master     bool
-	state      service.State
-	wg         sync.WaitGroup
-	logger     logging.Logger
+	Client    *etcd.Client
+	HolderID  string
+	path      string
+	listeners []MasterElectionListener
+	cancel    context.CancelFunc
+	master    bool
+	state     service.State
+	wg        sync.WaitGroup
+	logger    logging.Logger
 }
 
 // TTL time to live
@@ -58,10 +58,9 @@ func (le *MasterElector) holdLock(quit chan bool) {
 	tick := time.NewTicker(timeout / 2)
 	defer tick.Stop()
 
-	setOptions := &etcd.SetOptions{
-		TTL:       timeout,
-		PrevExist: etcd.PrevExist,
-		PrevValue: le.HolderID,
+	leaseResp, err := le.Client.Grant(context.Background(), int64(timeout.Seconds()))
+	if err != nil {
+		panic(err)
 	}
 
 	ch := tick.C
@@ -69,7 +68,15 @@ func (le *MasterElector) holdLock(quit chan bool) {
 	for {
 		select {
 		case <-ch:
-			if _, err := le.EtcdKeyAPI.Set(context.Background(), le.path, le.HolderID, setOptions); err != nil {
+			if _, err := le.Client.Txn(context.Background()).
+				If(
+					etcd.Compare(etcd.Value(le.path), "=", le.HolderID), // PrevValue
+					etcd.Compare(etcd.CreateRevision(le.path), ">", 0),  // PrevExist (key must exist)
+				).
+				Then(
+					etcd.OpPut(le.path, le.HolderID, etcd.WithLease(leaseResp.ID)), // Set the key with the lease (TTL)
+				).
+				Commit(); err != nil {
 				return
 			}
 		case <-quit:
@@ -90,17 +97,32 @@ func (le *MasterElector) IsMaster() bool {
 // election is done
 func (le *MasterElector) start(first chan struct{}) {
 	// delete previous Lock
-	le.EtcdKeyAPI.Delete(context.Background(), le.path, &etcd.DeleteOptions{PrevValue: le.HolderID})
-
+	if _, err := le.Client.Txn(context.Background()).
+		If(
+			etcd.Compare(etcd.Value(le.path), "=", le.HolderID),
+		).
+		Then(
+			etcd.OpDelete(le.path),
+		).
+		Commit(); err != nil {
+		panic(err)
+	}
 	quit := make(chan bool)
 
-	// try to get the lock
-	setOptions := &etcd.SetOptions{
-		TTL:       timeout,
-		PrevExist: etcd.PrevNoExist,
+	leaseResp, err := le.Client.Grant(context.Background(), int64(timeout.Seconds()))
+	if err != nil {
+		panic(err)
 	}
 
-	if _, err := le.EtcdKeyAPI.Set(context.Background(), le.path, le.HolderID, setOptions); err == nil {
+	if _, err := le.Client.Txn(context.Background()).
+		If(
+			etcd.Compare(etcd.CreateRevision(le.path), "=", 0), // Key does NOT exist
+		).
+		Then(
+			etcd.OpPut(le.path, le.HolderID, etcd.WithLease(leaseResp.ID)), // Set with lease (TTL)
+		).
+		Commit(); err != nil {
+
 		le.logger.Infof("starting as the master for %s: %s", le.path, le.HolderID)
 
 		le.Lock()
@@ -124,7 +146,7 @@ func (le *MasterElector) start(first chan struct{}) {
 	}
 
 	// now watch for changes
-	watcher := le.EtcdKeyAPI.Watcher(le.path, &etcd.WatcherOptions{})
+	watcher := le.Client.Watch(le.path, &etcd.WatcherOptions{})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	le.cancel = cancel

@@ -18,6 +18,7 @@
 package k8s
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -198,8 +199,8 @@ func InitSubprobes(enabled []string, subprobeHandlers map[string]SubprobeHandler
 	}
 }
 
-func logOnError(err error) {
-	logging.GetLogger().Warning(err)
+func logOnError(ctx context.Context, err error, msg string, keysAndValues ...interface{}) {
+	logging.GetLogger().Warning(err, msg, keysAndValues)
 }
 
 type errorThrottle struct {
@@ -208,7 +209,7 @@ type errorThrottle struct {
 	last     time.Time
 }
 
-func (r *errorThrottle) onError(error) {
+func (r *errorThrottle) onError(ctx context.Context, err error, msg string, keysAndValues ...interface{}) {
 	r.lastLock.RLock()
 	d := time.Since(r.last)
 	r.lastLock.RUnlock()
@@ -227,7 +228,8 @@ func muteInternalErrors() {
 		period: time.Second,
 		last:   time.Now(),
 	}
-	runtime.ErrorHandlers = []func(error){
+
+	runtime.ErrorHandlers = []runtime.ErrorHandler{
 		logOnError,
 		throttle.onError,
 	}

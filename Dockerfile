@@ -1,4 +1,4 @@
-FROM ubuntu:22.04 as builder
+FROM ubuntu:24.04 AS builder
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get -y update \
     && apt-get -y install build-essential git-core golang npm openvswitch-common libpcap0.8 libpcap0.8-dev libxml2-dev protobuf-compiler libprotobuf-dev libvirt-dev curl \
@@ -8,7 +8,7 @@ COPY . .
 ARG GOPATH=/go
 RUN make build
 
-FROM ubuntu:22.04 as skydive
+FROM ubuntu:24.04 AS skydive
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get -y update \
     && apt-get -y install golang npm openvswitch-common libpcap0.8 libvirt0 \

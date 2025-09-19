@@ -19,11 +19,14 @@ package client
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"strconv"
 	"time"
 
-	etcd "go.etcd.io/etcd/client/v2"
+	etcd "go.etcd.io/etcd/client/v3"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	"github.com/skydive-project/skydive/graffiti/logging"
 )
@@ -60,10 +63,9 @@ type MasterElectionService interface {
 
 // Client describes a ETCD configuration client
 type Client struct {
-	id      string
-	client  *etcd.Client
-	KeysAPI etcd.KeysAPI
-	logger  logging.Logger
+	c      *etcd.Client
+	id     string
+	logger logging.Logger
 }
 
 // Opts describes the options of an etcd client
@@ -75,16 +77,19 @@ type Opts struct {
 
 // GetInt64 returns an int64 value from the configuration key
 func (client *Client) GetInt64(key string) (int64, error) {
-	resp, err := client.KeysAPI.Get(context.Background(), key, nil)
+	resp, err := client.c.Get(context.Background(), key)
 	if err != nil {
 		return 0, err
 	}
-	return strconv.ParseInt(resp.Node.Value, 10, 64)
+	if len(resp.Kvs) != 1 {
+		return 0, fmt.Errorf("bad response key %s len Kvs %d", key, len(resp.Kvs))
+	}
+	return strconv.ParseInt(string(resp.Kvs[0].Value), 10, 64)
 }
 
 // SetInt64 set an int64 value to the configuration key
 func (client *Client) SetInt64(key string, value int64) error {
-	_, err := client.KeysAPI.Set(context.Background(), key, strconv.FormatInt(value, 10), nil)
+	_, err := client.c.Put(context.Background(), key, strconv.FormatInt(value, 10), nil)
 	return err
 }
 
@@ -103,11 +108,7 @@ func (client *Client) Start() {
 
 // Stop the client
 func (client *Client) Stop() {
-	if tr, ok := etcd.DefaultTransport.(interface {
-		CloseIdleConnections()
-	}); ok {
-		tr.CloseIdleConnections()
-	}
+	client.c.Close()
 }
 
 // NewElection creates a new ETCD master elector
@@ -129,10 +130,18 @@ func NewClient(id string, opts Opts) (*Client, error) {
 		opts.Logger = logging.GetLogger()
 	}
 
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: false, // Set to true only for testing with self-signed certs
+	}
+
+	dialOptions := []grpc.DialOption{
+		grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)),
+	}
+
 	cfg := etcd.Config{
-		Endpoints:               opts.Servers,
-		Transport:               etcd.DefaultTransport,
-		HeaderTimeoutPerRequest: opts.Timeout,
+		Endpoints:   opts.Servers,
+		DialOptions: dialOptions,
+		DialTimeout: opts.Timeout,
 	}
 
 	client, err := etcd.New(cfg)
@@ -140,12 +149,9 @@ func NewClient(id string, opts Opts) (*Client, error) {
 		return nil, fmt.Errorf("Failed to connect to etcd: %s", err)
 	}
 
-	kapi := etcd.NewKeysAPI(client)
-
 	return &Client{
-		id:      id,
-		client:  &client,
-		KeysAPI: kapi,
-		logger:  opts.Logger,
+		c:      client,
+		id:     id,
+		logger: opts.Logger,
 	}, nil
 }

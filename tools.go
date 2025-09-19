@@ -26,7 +26,7 @@ import (
 	_ "github.com/davecgh/go-spew/spew"
 	_ "github.com/github-release/github-release"
 	_ "github.com/go-swagger/go-swagger/cmd/swagger"
-	_ "github.com/golang/protobuf/protoc-gen-go"
+	_ "google.golang.org/protobuf"
 	_ "github.com/golangci/golangci-lint/cmd/golangci-lint"
 	_ "github.com/gomatic/renderizer"
 	_ "github.com/jteeuwen/go-bindata/go-bindata"

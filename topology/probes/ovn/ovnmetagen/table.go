@@ -5,8 +5,8 @@ import (
 	"sort"
 	"text/template"
 
-	"github.com/ovn-org/libovsdb/modelgen"
-	"github.com/ovn-org/libovsdb/ovsdb"
+	"github.com/ovn-kubernetes/libovsdb/modelgen"
+	"github.com/ovn-kubernetes/libovsdb/ovsdb"
 )
 
 const TABLE_HEADER = ` {{ define "header" }}

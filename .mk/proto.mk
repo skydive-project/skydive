@@ -1,5 +1,5 @@
 define PROTOC_GEN
-go install github.com/golang/protobuf/protoc-gen-go
+go install google.golang.org/protobuf/cmd/protoc-gen-go
 protoc -I. -Iflow/layers --go_out $$GOPATH/src $1
 endef
 

@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 /*
@@ -24,7 +25,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -212,14 +213,14 @@ func (p *ProbeHandler) Do(ctx context.Context, wg *sync.WaitGroup) error {
 	eventsFilter.Add("event", "start")
 	eventsFilter.Add("event", "die")
 
-	eventChan, errChan := p.client.Events(ctx, types.EventsOptions{Filters: eventsFilter})
+	eventChan, errChan := p.client.Events(ctx, events.ListOptions{Filters: eventsFilter})
 
 	wg.Add(2)
 
 	go func() {
 		defer wg.Done()
 
-		containers, err := p.client.ContainerList(ctx, types.ContainerListOptions{})
+		containers, err := p.client.ContainerList(ctx, container.ListOptions{})
 		if err != nil {
 			p.Ctx.Logger.Errorf("Failed to list containers: %s", err)
 			return

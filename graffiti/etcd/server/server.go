@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	client "go.etcd.io/etcd/client/v2"
+	client "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/osutil"
 	"go.etcd.io/etcd/server/v3/embed"
 
@@ -72,7 +72,6 @@ func NewEmbeddedServer(opts EmbeddedServerOpts) (*EmbeddedServer, error) {
 	cfg := embed.NewConfig()
 	cfg.Name = opts.Name
 	cfg.Dir = opts.DataDir
-	cfg.EnableV2 = true
 	cfg.ClusterState = embed.ClusterStateFlagNew
 	cfg.MaxWalFiles = opts.MaxWalFiles
 	cfg.MaxSnapFiles = opts.MaxSnapFiles

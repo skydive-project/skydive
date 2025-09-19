@@ -22,12 +22,13 @@ import (
 	"runtime"
 
 	"github.com/casbin/casbin/persist"
-	etcd "go.etcd.io/etcd/client/v2"
+	"go.etcd.io/etcd/api/v3/mvccpb"
+	etcd "go.etcd.io/etcd/client/v3"
 )
 
 // EtcdWatcher listens for etcd events
 type EtcdWatcher struct {
-	kapi     etcd.KeysAPI
+	client   *etcd.Client
 	running  bool
 	callback func(string)
 	cancel   context.CancelFunc
@@ -40,11 +41,11 @@ func finalizer(w *EtcdWatcher) {
 }
 
 // NewEtcdWatcher returns new etcd change watcher
-func NewEtcdWatcher(kapi etcd.KeysAPI, parent context.Context) persist.Watcher {
+func NewEtcdWatcher(client *etcd.Client, parent context.Context) persist.Watcher {
 	ctx, cancel := context.WithCancel(parent)
 
 	w := &EtcdWatcher{
-		kapi:    kapi,
+		client:  client,
 		running: true,
 		cancel:  cancel,
 	}
@@ -78,21 +79,18 @@ func (w *EtcdWatcher) Close() {
 
 // startWatch is a goroutine that watches the policy change.
 func (w *EtcdWatcher) startWatch(ctx context.Context) error {
-	watcher := w.kapi.Watcher(etcdPolicyKey, &etcd.WatcherOptions{Recursive: false})
-	for {
+	watchChan := w.client.Watch(ctx, etcdPolicyKey)
+	for resp := range watchChan {
 		if !w.running {
 			return nil
 		}
-
-		res, err := watcher.Next(ctx)
-		if err != nil {
-			return err
-		}
-
-		if res.Action == "set" || res.Action == "update" {
-			if w.callback != nil {
-				w.callback(res.Node.Value)
+		for _, res := range resp.Events {
+			if res.Type == mvccpb.PUT {
+				if w.callback != nil {
+					w.callback(string(res.Kv.Value))
+				}
 			}
 		}
 	}
+	return nil
 }

@@ -22,13 +22,14 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 
 	"github.com/casbin/casbin/model"
 	"github.com/casbin/casbin/persist"
 	"github.com/casbin/casbin/util"
-	etcd "go.etcd.io/etcd/client/v2"
+	etcd "go.etcd.io/etcd/client/v3"
 )
 
 const etcdPolicyKey = "/casbinPolicy"
@@ -36,22 +37,24 @@ const etcdPolicyKey = "/casbinPolicy"
 // EtcdAdapter represents the etcd adapter for policy persistence, can load policy
 // from etcd or save policy to etcd.
 type EtcdAdapter struct {
-	kapi etcd.KeysAPI
+	client *etcd.Client
 }
 
 // NewEtcdAdapter is the constructor for EtcdAdapter.
-func NewEtcdAdapter(kapi etcd.KeysAPI) (*EtcdAdapter, error) {
-	return &EtcdAdapter{kapi: kapi}, nil
+func NewEtcdAdapter(client *etcd.Client) (*EtcdAdapter, error) {
+	return &EtcdAdapter{client: client}, nil
 }
 
 // LoadPolicy loads policy from etcd.
 func (a *EtcdAdapter) LoadPolicy(model model.Model) error {
-	resp, err := a.kapi.Get(context.Background(), etcdPolicyKey, nil)
+	resp, err := a.client.Get(context.Background(), etcdPolicyKey, nil)
 	if err != nil {
 		return err
 	}
-
-	buf := bufio.NewReader(bytes.NewReader([]byte(resp.Node.Value)))
+	if len(resp.Kvs) != 1 {
+		return fmt.Errorf("bad response key %s len Kvs %d", etcdPolicyKey, len(resp.Kvs))
+	}
+	buf := bufio.NewReader(bytes.NewReader([]byte(resp.Kvs[0].Value)))
 	for {
 		line, err := buf.ReadString('\n')
 		line = strings.TrimSpace(line)
@@ -86,7 +89,7 @@ func (a *EtcdAdapter) SavePolicy(model model.Model) error {
 	}
 
 	s := strings.TrimRight(tmp.String(), "\n")
-	_, err := a.kapi.Set(context.Background(), etcdPolicyKey, s, nil)
+	_, err := a.client.Put(context.Background(), etcdPolicyKey, s, nil)
 	return err
 }
 
